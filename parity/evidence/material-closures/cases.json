@@ -1,0 +1,34 @@
+[
+  {
+    "Name": "material",
+    "Shader": "material.wgsl",
+    "Buffers": [
+      "material.input.bin",
+      "material.output.bin",
+      "material.svm.bin"
+    ],
+    "Output": 1,
+    "Dispatches": [
+      {
+        "Entry": "main",
+        "Groups": 112
+      }
+    ]
+  },
+  {
+    "Name": "svm_rejection",
+    "Shader": "svm_rejection.wgsl",
+    "Buffers": [
+      "svm_rejection.input.bin",
+      "svm_rejection.output.bin",
+      "svm_rejection.code.bin"
+    ],
+    "Output": 1,
+    "Dispatches": [
+      {
+        "Entry": "main",
+        "Groups": 1
+      }
+    ]
+  }
+]

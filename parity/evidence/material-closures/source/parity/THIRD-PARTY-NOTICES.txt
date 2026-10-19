@@ -1,0 +1,49 @@
+The WGSL material and closure implementation manually adapts these files from
+Blender Cycles revision a456b761034dda42c32eef9f4aae0fa5a5c9f604:
+
+src/kernel/closure/bsdf_diffuse.h
+src/kernel/sample/mapping.h
+  SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-License-Identifier: BSD-3-Clause
+  Adapted code from Open Shading Language.
+  Full BSD license: licenses/BSD-3-Clause.txt
+
+src/kernel/closure/bsdf_oren_nayar.h
+src/kernel/closure/alloc.h
+src/kernel/svm/svm.h
+src/kernel/svm/closure.h
+src/kernel/svm/geometry.h
+src/kernel/svm/util.h
+src/kernel/svm/node_types.h
+src/util/math_float3.h
+src/util/projection.h
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+  Full Apache license: ../LICENSE
+
+Changes: native closure casts replaced by typed WGSL records; SVM bytecode
+access replaced by bounded storage-buffer indexing; the currently implemented
+instruction/closure subset is explicitly limited and unsupported nodes return
+an error. CPU reference functions are included from the clean upstream checkout.
+
+Original harnesses, adaptation and contributions:
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+
+CodeBrix.WebGpu.Native is supplied unchanged by its NuGet package and retains
+its own LICENSE and THIRD-PARTY-NOTICES.txt. No WebGPU implementation is vendored
+by this parity work.
+
+The test-only GltfImport application consumes the unchanged
+CodeBrix.Graphics3D.Gltf2.MitLicenseForever 1.0.290.996 NuGet package (MIT).
+It is not part of the native renderer, and its package sources/binary are not
+vendored here. That package retains the notices for Vicente Penades and Jeremy
+Ellis and contributors.
+
+Real-asset previews derive from Jeremy's ForestCommunity collection in Oasys:
+ForestVillage bench and ceramic-home geometry: Jeremy Ellis and contributors.
+PolyHaven food_lime_01: CC0, as recorded in the collection's provenance.
+These geometry-only previews do not use their texture images. Original model
+files and their collection notices remain in Oasys and are not redistributed
+by this repository's test evidence.

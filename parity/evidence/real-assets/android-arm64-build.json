@@ -1,0 +1,50 @@
+{
+  "commands": [
+    [
+      "/home/jeremy/Android/Sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang++",
+      "-std=c++20",
+      "-O2",
+      "-I",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/native",
+      "-I",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/include",
+      "-Wl,-rpath,$ORIGIN",
+      "-static-libstdc++",
+      "-fPIC",
+      "-shared",
+      "-fvisibility=hidden",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/native/webgpu_backend.cpp",
+      "-I",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/work/generated",
+      "-I",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/include",
+      "-L",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/runtimes/android-arm64/native",
+      "-lcodebrix_wgpu",
+      "-o",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/work/android-arm64/libcodebrix_cycles_webgpu.so"
+    ],
+    [
+      "/home/jeremy/Android/Sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang++",
+      "-std=c++20",
+      "-O2",
+      "-I",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/native",
+      "-I",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/include",
+      "-Wl,-rpath,$ORIGIN",
+      "-static-libstdc++",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/native/render_driver.cpp",
+      "-L",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/work/android-arm64",
+      "-lcodebrix_cycles_webgpu",
+      "-L",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/runtimes/android-arm64/native",
+      "-lcodebrix_wgpu",
+      "-ldl",
+      "-o",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/work/android-arm64/render_driver"
+    ]
+  ],
+  "webGpuSha256": "8113cbfa287b5ffc3d9b3c092ddc5ce543b8390abf05eefdde86cf69792fed52"
+}

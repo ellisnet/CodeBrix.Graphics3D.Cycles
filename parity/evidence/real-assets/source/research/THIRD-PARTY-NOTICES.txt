@@ -1,0 +1,33 @@
+Cycles research derivations
+==========================
+Upstream: https://github.com/blender/cycles
+Revision: a456b761034dda42c32eef9f4aae0fa5a5c9f604
+License: Apache-2.0 (full text in the repository's ../LICENSE).
+
+Generated WGSL derives from src/util/math_base.h,
+src/util/math_intersect.h, and src/kernel/svm/math_util.h:
+SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+
+The upstream wrapf attribution is retained:
+Adapted from godot-engine math_funcs.h.
+
+The manual static-triangle BVH port derives from kernel/bvh/traversal.h,
+kernel/bvh/nodes.h and direction helpers from kernel/geom/object.h:
+SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+SPDX-FileCopyrightText: 2009-2012 Intel Corporation
+SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+Adapted code from NVIDIA Corporation.
+
+Changes: selected functions translated to WGSL; resource access adapted to
+explicit storage buffers; traversal narrowed to the documented static triangle
+fixture scope. Original C++ reference functions are included/extracted from the
+unmodified upstream checkout at build time.
+
+Original adapters, probes, scripts and manual-port contributions:
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+
+The native WebGPU library and headers remain supplied by the separately
+licensed CodeBrix.WebGpu.Native.MitLicenseForever package. Its LICENSE and
+THIRD-PARTY-NOTICES.txt accompany that dependency; no native binary is checked
+into the research evidence.

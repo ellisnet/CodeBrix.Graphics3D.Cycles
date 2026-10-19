@@ -1,0 +1,48 @@
+[
+  {
+    "Name": "triangles",
+    "Shader": "triangles.wgsl",
+    "Buffers": [
+      "triangles.input.bin",
+      "triangles.output.bin"
+    ],
+    "Output": 1,
+    "Dispatches": [
+      {
+        "Entry": "main",
+        "Groups": 256
+      }
+    ]
+  },
+  {
+    "Name": "material_math",
+    "Shader": "material_math.wgsl",
+    "Buffers": [
+      "material_math.input.bin",
+      "material_math.output.bin"
+    ],
+    "Output": 1,
+    "Dispatches": [
+      {
+        "Entry": "main",
+        "Groups": 164
+      }
+    ]
+  },
+  {
+    "Name": "bvh",
+    "Shader": "bvh.wgsl",
+    "Buffers": [
+      "bvh.input.bin",
+      "bvh.output.bin",
+      "bvh.scene.bin"
+    ],
+    "Output": 1,
+    "Dispatches": [
+      {
+        "Entry": "main",
+        "Groups": 256
+      }
+    ]
+  }
+]

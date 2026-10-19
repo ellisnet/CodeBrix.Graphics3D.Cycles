@@ -1,0 +1,71 @@
+[
+  {
+    "Name": "light_sample",
+    "Shader": "light_sample.wgsl",
+    "Buffers": [
+      "light_sample.input.bin",
+      "light_sample.output.bin",
+      "lights.scene.bin"
+    ],
+    "Output": 1,
+    "Dispatches": [
+      {
+        "Entry": "main",
+        "Groups": 64
+      }
+    ]
+  },
+  {
+    "Name": "sampler",
+    "Shader": "sampler.wgsl",
+    "Buffers": [
+      "sampler.input.bin",
+      "sampler.output.bin",
+      "camera.scene.bin"
+    ],
+    "Output": 1,
+    "Dispatches": [
+      {
+        "Entry": "main",
+        "Groups": 256
+      }
+    ]
+  },
+  {
+    "Name": "camera",
+    "Shader": "camera.wgsl",
+    "Buffers": [
+      "camera.scene.bin",
+      "camera.output.bin"
+    ],
+    "Output": 1,
+    "Dispatches": [
+      {
+        "Entry": "main",
+        "Groups": 1728
+      }
+    ]
+  },
+  {
+    "Name": "pathtrace",
+    "Shader": "pathtrace.wgsl",
+    "Buffers": [
+      "camera.scene.bin",
+      "pathtrace.output.bin",
+      "pathtrace.scene.bin",
+      "lights.scene.bin",
+      "shadow_rays.bin"
+    ],
+    "Output": 1,
+    "Dispatches": [
+      {
+        "Entry": "main",
+        "Groups": 1728
+      },
+      {
+        "Entry": "shadow_resolve",
+        "Groups": 1728
+      }
+    ]
+  }
+]

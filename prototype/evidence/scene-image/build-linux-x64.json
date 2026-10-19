@@ -1,0 +1,48 @@
+{
+  "commands": [
+    [
+      "clang++",
+      "-std=c++20",
+      "-O2",
+      "-I",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/native",
+      "-I",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/include",
+      "-Wl,-rpath,$ORIGIN",
+      "-fPIC",
+      "-shared",
+      "-fvisibility=hidden",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/native/webgpu_backend.cpp",
+      "-I",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/work/generated",
+      "-I",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/include",
+      "-L",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/runtimes/linux-x64/native",
+      "-lcodebrix_wgpu",
+      "-o",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/work/linux-x64/libcodebrix_cycles_webgpu.so"
+    ],
+    [
+      "clang++",
+      "-std=c++20",
+      "-O2",
+      "-I",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/native",
+      "-I",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/include",
+      "-Wl,-rpath,$ORIGIN",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/native/render_driver.cpp",
+      "-L",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/work/linux-x64",
+      "-lcodebrix_cycles_webgpu",
+      "-L",
+      "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/runtimes/linux-x64/native",
+      "-lcodebrix_wgpu",
+      "-ldl",
+      "-o",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/prototype/work/linux-x64/render_driver"
+    ]
+  ],
+  "webGpuSha256": "a2cf8b752085fcce0328b83e8eeaaa2080efac0ecb05213a185ec2caa11e3b14"
+}

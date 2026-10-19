@@ -1,0 +1,12 @@
+{
+  "observation": "Pixel Adreno 640 monolithic lighting kernel produced zeros; smaller workgroups also failed. Separate shadow dispatch restored valid rendering.",
+  "cause": "Not established; resource pressure or driver compilation are hypotheses.",
+  "webGpuModified": false,
+  "workgroup32": {
+    "outputBytes": 28311552,
+    "nonzeroBytes": 0,
+    "outputSha256": "690c1ba61ab81ab5a0e055c06a615df215f48d45bbeabfa512c22c481b5c4ea3"
+  },
+  "reproduce": "Build the saved native probe against the same pinned Android ARM64 package, and run either saved shader with camera.scene.bin, pathtrace.output.bin, pathtrace.scene.bin, lights.scene.bin; dispatch 1728 groups at 64 or 3456 at 32.",
+  "currentFix": "main followed by shadow_resolve, with a GPU storage buffer and separate compute passes; no CPU shadow traversal or per-path readback."
+}
