@@ -1,0 +1,288 @@
+THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
+
+CodeBrix.Graphics3D.Gltf2 is a library for reading, writing and building
+Khronos glTF 2.0 3D models (.gltf and .glb) in .NET. It is a port and
+adaptation of the SharpGLTF project; the source code of this repository's
+library and test projects is derived from SharpGLTF and carries the notice
+reproduced in section 1.
+
+The test project additionally carries a small set of 3D model and image files
+used as test inputs. Every one of them comes from a source whose license is
+identified in section 3 (or was written for this repository); none of them is
+part of the CodeBrix.Graphics3D.Gltf2 assembly or NuGet package.
+
+Jeremy Ellis and contributors license the CodeBrix.Graphics3D.Gltf2 project to
+you under the terms set forth in the LICENSE file, which is located at the root
+of this repository. The third-party material listed below remains under its own
+license, as stated for each item.
+
+If you have any questions about any third-party code or assets referenced here,
+or if you believe that any third-party material has been included in
+CodeBrix.Graphics3D.Gltf2 in error, please open a new issue at:
+https://github.com/ellisnet/CodeBrix.Graphics3D.Gltf2/issues
+
+================================================================================
+1. SharpGLTF
+================================================================================
+
+Project:      SharpGLTF
+Source:       https://github.com/vpenades/SharpGLTF
+Baseline:     tag v1.0.7, commit acbc151e70d65ceb8bec24fa95f0067d0e5ed933 --
+              the source of the SharpGLTF.Core, SharpGLTF.Runtime and
+              SharpGLTF.Toolkit 1.0.7 NuGet packages
+Copyright:    Copyright (c) 2019 Vicente Penades
+              (and the SharpGLTF contributors; see the upstream repository's
+              history for the full list)
+License:      MIT (full text below)
+
+Scope of the port
+-----------------
+
+CodeBrix.Graphics3D.Gltf2 incorporates the source code of the three upstream
+projects behind the SharpGLTF.Core, SharpGLTF.Runtime and SharpGLTF.Toolkit
+NuGet packages, plus the two shared source files each of them links in, merged
+into ONE assembly:
+
+  * src/SharpGLTF.Core      -> src/CodeBrix.Graphics3D.Gltf2/
+                               (glTF 2.0 document model, IO, memory accessors,
+                               transforms, animations, validation, reflection)
+  * src/SharpGLTF.Runtime   -> src/CodeBrix.Graphics3D.Gltf2/Runtime/
+                               (scene templates and instances, mesh decoding)
+  * src/SharpGLTF.Toolkit   -> src/CodeBrix.Graphics3D.Gltf2/
+                               (mesh, material and scene builders, vertex
+                               types, Schema2 conversion helpers)
+  * src/Shared/Guard.cs, src/Shared/_Extensions.cs
+                            -> src/CodeBrix.Graphics3D.Gltf2/ (root)
+
+The upstream test suites for those projects are likewise incorporated, ported
+from NUnit to xUnit.v3 + SilverAssertions, into ONE test project:
+
+  * tests/SharpGLTF.Core.Tests       -> tests/CodeBrix.Graphics3D.Gltf2.Tests/
+  * tests/SharpGLTF.Runtime.Tests    -> tests/CodeBrix.Graphics3D.Gltf2.Tests/Runtime/
+  * tests/SharpGLTF.Toolkit.Tests    -> tests/CodeBrix.Graphics3D.Gltf2.Tests/
+  * tests/SharpGLTF.ThirdParty.Tests -> tests/CodeBrix.Graphics3D.Gltf2.Tests/ThirdParty/
+  * tests/SharpGLTF.NUnit            -> tests/CodeBrix.Graphics3D.Gltf2.Tests/TestSupport/
+                                        (test helpers only)
+
+Three small test input files come from the upstream repository's tests/Assets
+folder and are covered by the same MIT license:
+
+  * tests/CodeBrix.Graphics3D.Gltf2.Tests/Assets/Invalid_Json.gltf
+  * tests/CodeBrix.Graphics3D.Gltf2.Tests/Assets/white space.gltf
+  * tests/CodeBrix.Graphics3D.Gltf2.Tests/Assets/SpecialCases/RelativePaths.gltf
+
+tests/CodeBrix.Graphics3D.Gltf2.Tests/Assets/API/API.SharpGLTF.1.0.7.txt is a
+listing of the public API of the SharpGLTF.Core, SharpGLTF.Runtime and
+SharpGLTF.Toolkit 1.0.7 assemblies (namespace renamed), used by a test that
+checks this library still exposes every one of those signatures.
+
+Not incorporated: the upstream SharpGLTF.Ext.3DTiles and SharpGLTF.Ext.Agi
+extension libraries, the SharpGLTF.CodeGen code generators and the build/
+tools, the examples/ projects, the Toolkit's T4 text templates (their generated
+.cs output IS incorporated), the AOT and DownloadTestFiles test projects, the
+tests that need externally downloaded model collections, and the upstream test
+assets whose origin or license could not be identified.
+
+Modifications made during the port
+----------------------------------
+
+  * Namespaces renamed: SharpGLTF[.Sub] -> CodeBrix.Graphics3D.Gltf2[.Sub].
+    Every ported file records its origin with a
+    `//was previously: <upstream-namespace>;` comment on its namespace line.
+  * The three upstream assemblies were merged into a single assembly and a
+    single NuGet package. One file-name collision was resolved by renaming the
+    Toolkit's Diagnostics/DebugViews.cs to Diagnostics/DebugViews.Toolkit.cs.
+  * Retargeted from the upstream multi-targeting (netstandard2.0,
+    netstandard2.1, net6.0, net8.0, net10.0) to net10.0 only. Conditional-
+    compilation branches that cannot execute on .NET 10 were removed along
+    with their `#if` / `#elif` / `#else` / `#endif` directives; the branch that
+    .NET 10 compiles was kept. `#if DEBUG` and the upstream developer toggle
+    `SUPRESSTRYCATCH` were kept as-is.
+  * Block-scoped namespaces converted to file-scoped namespaces; `using`
+    directives that upstream placed inside a namespace block were hoisted above
+    it and fully qualified.
+  * The glTF `asset.generator` value written into saved models changed from
+    "SharpGLTF <version>" to "CodeBrix.Graphics3D.Gltf2 <version>".
+  * ReadContext.CreateFromDirectory normalises '\' to '/' in relative URIs, so
+    models written with Windows path separators load on Linux and macOS too.
+  * StyleCop `#pragma` lines removed (the build does not run StyleCop); a few
+    malformed XML documentation references and missing <param> tags fixed; the
+    three reflection-based diagnostic helpers annotated for trimming analysis.
+  * Strong-name signing dropped.
+  * Tests: NUnit replaced with xUnit.v3 + SilverAssertions; TestAttachments,
+    Plotly.Sharp, Newtonsoft.Json and SixLabors.ImageSharp usage replaced
+    (attachments are plain files, plots are CSV files, JSON uses
+    System.Text.Json, the one generated PNG uses CodeBrix.Imaging); tests that
+    depended on removed or unidentified assets were retargeted to the assets in
+    section 3 or dropped.
+
+Code incorporated in SharpGLTF from the .NET runtime
+----------------------------------------------------
+
+src/CodeBrix.Graphics3D.Gltf2/Transforms/Matrix4x4Double.cs is, per its
+upstream comment, stripped from System.Numerics.Matrix4x4 in the .NET runtime
+(https://github.com/dotnet/runtime), which is licensed under the MIT License:
+
+    Copyright (c) .NET Foundation and Contributors
+
+    (the MIT License text below applies, with this copyright line)
+
+SharpGLTF license text
+----------------------
+
+MIT License
+
+Copyright (c) 2019 Vicente Penades
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+2. Test assets written for this repository
+================================================================================
+
+These test inputs were written for CodeBrix.Graphics3D.Gltf2 and are covered by
+its LICENSE:
+
+  * Assets/cube-integer-min-max-bounds.gltf, Assets/XmpJsonLd.gltf and
+    Assets/SpecialCases/Invalid_EmptyArray.gltf (hand-authored glTF
+    documents that reproduce specific loader cases)
+  * Assets/white space.jpg, Assets/SpecialCases/RelativePaths.jpg and
+    Assets/SpecialCases/Textures/Texture1.jpg (2x2 placeholder images)
+
+(Paths are relative to tests/CodeBrix.Graphics3D.Gltf2.Tests/.)
+
+================================================================================
+3. Third-party test assets
+================================================================================
+
+The files below are test inputs only. They are copied unmodified from their
+sources unless a note says otherwise, and they are not part of the
+CodeBrix.Graphics3D.Gltf2 assembly or NuGet package. Paths are relative to
+tests/CodeBrix.Graphics3D.Gltf2.Tests/Assets/.
+
+3.1 Khronos glTF Sample Assets
+------------------------------
+
+Source:    https://github.com/KhronosGroup/glTF-Sample-Assets
+Baseline:  commit c6a6bd13ab2b3c685c7903d03561b8a9392f38b8
+Location:  KhronosSampleAssets/Models/<Model>/ -- each model's folder keeps its
+           upstream LICENSE.md and metadata.json, which are the authoritative
+           statement of that model's license.
+
+Only the variants the tests use are included. Per model (title, credit, year,
+license):
+
+  * AnimatedMorphCube (glTF-Binary, glTF-Quantized)
+      "Animated Morph Cube" -- Microsoft, 2017 -- CC0-1.0
+  * AnimationPointerUVs (glTF-Binary)
+      "AnimationPointerUVs" -- 3D asset and textures by Eric Chadwick, 2024
+      -- CC-BY-4.0
+  * BoxAnimated (glTF-Binary)
+      "Box Animated" -- Cesium, 2017 -- CC-BY-4.0
+  * BoxTextured (glTF)
+      "Box Textured" -- Cesium, 2017 -- CC-BY-4.0; the Cesium logo texture is
+      a non-copyrightable logo and trademark of Cesium
+      (LicenseRef-LegalMark-Cesium)
+  * CesiumMan (glTF-Binary)
+      "Cesium Man" -- Cesium, 2017 -- CC-BY-4.0; contains the Cesium logo
+      (LicenseRef-LegalMark-Cesium)
+  * CubeVisibility (glTF-Binary)
+      "CubeVisibility" -- Aaron Franke, 2025 -- CC0-1.0
+  * FlightHelmet (one texture only:
+    glTF-KTX-BasisU/FlightHelmet_Materials_LensesMat_Normal.ktx2)
+      "Flight Helmet" -- conversion from Maya by Gary Hsu, 2018 -- CC0-1.0
+  * Fox (glTF-Binary)
+      "Fox" -- model by PixelMannen, 2014, CC0-1.0; rigging and animation by
+      tomkranis, 2014, CC-BY-4.0; conversion to glTF by @AsoboStudio and
+      @scurest, 2017, CC-BY-4.0
+  * IridescenceMetallicSpheres (glTF)
+      "Iridescence Metallic Spheres" -- UX3D, 2022 -- CC0-1.0
+  * MorphPrimitivesTest (glTF-Binary)
+      "Morph-Primitives Test" -- ft-lab, 2018 -- CC-BY-4.0
+  * NormalTangentMirrorTest (glTF-Binary)
+      "Normal-Tangent Mirror Test" -- Ed Mackey, 2018 -- CC-BY-4.0
+  * NormalTangentTest (glTF-Binary)
+      "Normal-Tangent Test" -- Ed Mackey, 2018 -- CC0-1.0
+  * OrientationTest (glTF-Binary)
+      "Orientation Test" -- Khronos, 2017 -- CC-BY-4.0
+  * RiggedFigure (glTF-Binary)
+      "Rigged Figure" -- Cesium, 2017 -- CC-BY-4.0
+  * RiggedSimple (glTF-Binary)
+      "Rigged Simple" -- Cesium, 2017 -- CC-BY-4.0
+  * SimpleSparseAccessor (glTF)
+      "Simple Sparse Accessor" -- Marco Hutter (https://github.com/javagl/),
+      2017 -- CC-BY-4.0
+  * Suzanne (glTF)
+      "Suzanne" -- Norbert Nopper, 2017 -- CC0-1.0
+  * TextureTransformMultiTest (glTF-Binary)
+      "Texture Transform Multi Test" -- Ed Mackey, 2020 -- CC-BY-4.0
+  * TextureTransformTest (glTF)
+      "Texture Transform Test" -- Microsoft, 2018 -- CC0-1.0
+  * UnlitTest (glTF-Binary)
+      "Unlit Test" -- Ed Mackey, 2019 -- CC-BY-4.0
+
+The LICENSE.md and metadata.json documentation files are themselves licensed
+CC-BY-4.0 by The Khronos Group Inc.
+
+3.2 Babylon.js Assets
+---------------------
+
+Source:    https://github.com/BabylonJS/Assets
+Baseline:  commit dfe46fdd3805445a33e0df115563b2129034c879
+Files:     BabylonJS/meshes/TeapotsGalore/ (TeapotsGalore.gltf, mesh.bin,
+           mesh_2.bin, transforms.bin)
+Credit:    "TeapotsGalore" from the Babylon.js Assets repository
+License:   CC-BY-4.0 -- the repository's full license text is included as
+           BabylonJS/LICENSE
+
+3.3 Poly Haven
+--------------
+
+Source:    https://polyhaven.com -- the textures of the "food_apple_01" model
+Credit:    Poly Haven (polyhaven.com)
+License:   CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)
+Files:     PolyHaven/food_apple_01_diff.png, .jpg, .webp and
+           food_apple_01_diff-dxt5.dds (from the 2K diffuse texture),
+           PolyHaven/food_apple_01_nor_gl.png and .jpg (from the 2K OpenGL
+           normal map), PolyHaven/food_apple_01_rough.png (from the 2K
+           roughness map)
+Changes:   resized (512x512 or 256x256) and re-encoded to the listed formats
+
+3.4 Kenney
+----------
+
+Source:    https://www.kenney.nl -- "Survival Kit" (2.0)
+Credit:    Created and distributed by Kenney (www.kenney.nl)
+License:   CC0-1.0 (http://creativecommons.org/publicdomain/zero/1.0/) -- the
+           kit's License.txt is included as Kenney/SurvivalKit/License.txt
+Files:     Kenney/SurvivalKit/tree.glb and
+           Kenney/SurvivalKit/Textures/colormap.png
+
+3.5 License references
+----------------------
+
+  * CC0-1.0:   https://creativecommons.org/publicdomain/zero/1.0/legalcode
+  * CC-BY-4.0: https://creativecommons.org/licenses/by/4.0/legalcode
+
+The CC-BY-4.0 items above are redistributed unmodified; the credits given with
+each item are the attribution the license requires.
+
+================================================================================
+
+END OF THIRD-PARTY SOFTWARE NOTICES AND INFORMATION

@@ -1,0 +1,114 @@
+--- a/src/device/device.h
++++ b/src/device/device.h
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -46,6 +48,7 @@
+   DEVICE_METAL,
+   DEVICE_ONEAPI,
+   DEVICE_DUMMY,
++  DEVICE_WEBGPU,
+ };
+ 
+ enum DeviceTypeMask {
+@@ -55,6 +58,7 @@
+   DEVICE_MASK_HIP = (1 << DEVICE_HIP),
+   DEVICE_MASK_METAL = (1 << DEVICE_METAL),
+   DEVICE_MASK_ONEAPI = (1 << DEVICE_ONEAPI),
++  DEVICE_MASK_WEBGPU = (1 << DEVICE_WEBGPU),
+   DEVICE_MASK_ALL = ~0
+ };
+ 
+--- a/src/device/device.cpp
++++ b/src/device/device.cpp
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -8,6 +10,9 @@
+ #include "bvh/bvh2.h"
+ 
+ #include "device/device.h"
++#ifdef WITH_WEBGPU
++#  include "codebrix_webgpu_device.h"
++#endif
+ #include "device/queue.h"
+ 
+ #include "device/cpu/device.h"
+@@ -113,6 +118,11 @@
+   unique_ptr<Device> device;
+ 
+   switch (info.type) {
++#ifdef WITH_WEBGPU
++    case DEVICE_WEBGPU:
++      device = device_webgpu_create(info, stats, profiler, headless);
++      break;
++#endif
+     case DEVICE_CPU:
+       device = device_cpu_create(info, stats, profiler, headless);
+       break;
+@@ -184,6 +194,9 @@
+   if (strcmp(name, "METAL") == 0) {
+     return DEVICE_METAL;
+   }
++  if (strcmp(name, "WEBGPU") == 0) {
++    return DEVICE_WEBGPU;
++  }
+   if (strcmp(name, "ONEAPI") == 0) {
+     return DEVICE_ONEAPI;
+   }
+@@ -214,6 +227,9 @@
+   if (type == DEVICE_METAL) {
+     return "METAL";
+   }
++  if (type == DEVICE_WEBGPU) {
++    return "WEBGPU";
++  }
+   if (type == DEVICE_ONEAPI) {
+     return "ONEAPI";
+   }
+@@ -228,6 +244,9 @@
+ {
+   vector<DeviceType> types;
+   types.push_back(DEVICE_CPU);
++#ifdef WITH_WEBGPU
++  types.push_back(DEVICE_WEBGPU);
++#endif
+ #ifdef WITH_CUDA
+   types.push_back(DEVICE_CUDA);
+ #endif
+@@ -345,6 +364,12 @@
+   }
+ #endif
+ 
++#ifdef WITH_WEBGPU
++  if (mask & DEVICE_MASK_WEBGPU) {
++    device_webgpu_info(devices);
++  }
++#endif
++
+   if (mask & DEVICE_MASK_CPU) {
+     if (!(devices_initialized_mask & DEVICE_MASK_CPU)) {
+       device_cpu_info(cpu_devices());
+--- a/src/integrator/path_trace.cpp
++++ b/src/integrator/path_trace.cpp
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -1289,6 +1291,8 @@
+       return "Multi";
+     case DEVICE_METAL:
+       return "Metal";
++    case DEVICE_WEBGPU:
++      return "WebGPU";
+   }
+ 
+   return "UNKNOWN";

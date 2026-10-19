@@ -1,0 +1,1538 @@
+Source notice supplement for oiio
+Origin: https://github.com/AcademySoftwareFoundation/OpenImageIO.git
+Pin: ec3d065c97302364c947579b77fa9a151f3e455e
+Collected verbatim comment blocks from the reviewed snapshot.
+Identical notices are grouped; original source notices remain intact.
+Complete component license texts and selected licenses are in the root notices.
+
+Sources:
+third_party/deps/oiio/CMakeLists.txt
+
+# Modified by CodeBrix: omit disabled test scaffolding and standalone CPack installers.
+# Copyright (c) 2026 Jeremy Ellis and contributors
+# Copyright Contributors to the OpenImageIO project.
+# SPDX-License-Identifier: BSD-3-Clause and Apache-2.0
+# https://github.com/AcademySoftwareFoundation/OpenImageIO
+
+Sources:
+third_party/deps/oiio/src/bmp.imageio/CMakeLists.txt
+third_party/deps/oiio/src/cineon.imageio/CMakeLists.txt
+third_party/deps/oiio/src/cmake/add_oiio_plugin.cmake
+third_party/deps/oiio/src/cmake/check_is_enabled.cmake
+third_party/deps/oiio/src/cmake/checked_find_package.cmake
+third_party/deps/oiio/src/cmake/colors.cmake
+third_party/deps/oiio/src/cmake/compiler.cmake
+third_party/deps/oiio/src/cmake/externalpackages.cmake
+third_party/deps/oiio/src/cmake/fancy_add_executable.cmake
+third_party/deps/oiio/src/cmake/modules/FindNuke.cmake
+third_party/deps/oiio/src/cmake/modules/FindOpenCV.cmake
+third_party/deps/oiio/src/cmake/modules/FindOpenColorIO.cmake
+third_party/deps/oiio/src/cmake/modules/FindOpenEXR.cmake
+third_party/deps/oiio/src/cmake/modules/FindR3DSDK.cmake
+third_party/deps/oiio/src/cmake/modules/Findpugixml.cmake
+third_party/deps/oiio/src/cmake/pythonutils.cmake
+third_party/deps/oiio/src/dds.imageio/CMakeLists.txt
+third_party/deps/oiio/src/dpx.imageio/CMakeLists.txt
+third_party/deps/oiio/src/fits.imageio/CMakeLists.txt
+third_party/deps/oiio/src/hdr.imageio/CMakeLists.txt
+third_party/deps/oiio/src/ico.imageio/CMakeLists.txt
+third_party/deps/oiio/src/iff.imageio/CMakeLists.txt
+third_party/deps/oiio/src/jpeg.imageio/CMakeLists.txt
+third_party/deps/oiio/src/libOpenImageIO/CMakeLists.txt
+third_party/deps/oiio/src/libutil/CMakeLists.txt
+third_party/deps/oiio/src/null.imageio/CMakeLists.txt
+third_party/deps/oiio/src/openexr.imageio/CMakeLists.txt
+third_party/deps/oiio/src/png.imageio/CMakeLists.txt
+third_party/deps/oiio/src/pnm.imageio/CMakeLists.txt
+third_party/deps/oiio/src/psd.imageio/CMakeLists.txt
+third_party/deps/oiio/src/softimage.imageio/CMakeLists.txt
+third_party/deps/oiio/src/targa.imageio/CMakeLists.txt
+third_party/deps/oiio/src/term.imageio/CMakeLists.txt
+third_party/deps/oiio/src/zfile.imageio/CMakeLists.txt
+
+# Copyright Contributors to the OpenImageIO project.
+# SPDX-License-Identifier: Apache-2.0
+# https://github.com/AcademySoftwareFoundation/OpenImageIO
+
+Sources:
+third_party/deps/oiio/src/bmp.imageio/bmp_pvt.cpp
+third_party/deps/oiio/src/bmp.imageio/bmp_pvt.h
+third_party/deps/oiio/src/bmp.imageio/bmpinput.cpp
+third_party/deps/oiio/src/cineon.imageio/cineoninput.cpp
+third_party/deps/oiio/src/dds.imageio/dds_pvt.h
+third_party/deps/oiio/src/dds.imageio/ddsinput.cpp
+third_party/deps/oiio/src/dpx.imageio/dpxinput.cpp
+third_party/deps/oiio/src/fits.imageio/fits_pvt.cpp
+third_party/deps/oiio/src/fits.imageio/fits_pvt.h
+third_party/deps/oiio/src/fits.imageio/fitsinput.cpp
+third_party/deps/oiio/src/fits.imageio/fitsoutput.cpp
+third_party/deps/oiio/src/hdr.imageio/hdrinput.cpp
+third_party/deps/oiio/src/hdr.imageio/hdroutput.cpp
+third_party/deps/oiio/src/ico.imageio/ico.h
+third_party/deps/oiio/src/ico.imageio/icoinput.cpp
+third_party/deps/oiio/src/ico.imageio/icooutput.cpp
+third_party/deps/oiio/src/iff.imageio/iff_pvt.h
+third_party/deps/oiio/src/iff.imageio/iffinput.cpp
+third_party/deps/oiio/src/iff.imageio/iffoutput.cpp
+third_party/deps/oiio/src/iff.imageio/noproxy-iff_pvt.cpp
+third_party/deps/oiio/src/iff.imageio/noproxy-iff_pvt.h
+third_party/deps/oiio/src/iff.imageio/noproxy-iffinput.cpp
+third_party/deps/oiio/src/iff.imageio/noproxy-iffoutput.cpp
+third_party/deps/oiio/src/include/OpenImageIO/array_view.h
+third_party/deps/oiio/src/include/OpenImageIO/atomic.h
+third_party/deps/oiio/src/include/OpenImageIO/attrdelegate.h
+third_party/deps/oiio/src/include/OpenImageIO/benchmark.h
+third_party/deps/oiio/src/include/OpenImageIO/color.h
+third_party/deps/oiio/src/include/OpenImageIO/dassert.h
+third_party/deps/oiio/src/include/OpenImageIO/deepdata.h
+third_party/deps/oiio/src/include/OpenImageIO/detail/fmt.h
+third_party/deps/oiio/src/include/OpenImageIO/errorhandler.h
+third_party/deps/oiio/src/include/OpenImageIO/export.h
+third_party/deps/oiio/src/include/OpenImageIO/filesystem.h
+third_party/deps/oiio/src/include/OpenImageIO/filter.h
+third_party/deps/oiio/src/include/OpenImageIO/fstream_mingw.h
+third_party/deps/oiio/src/include/OpenImageIO/function_view.h
+third_party/deps/oiio/src/include/OpenImageIO/hash.h
+third_party/deps/oiio/src/include/OpenImageIO/image_view.h
+third_party/deps/oiio/src/include/OpenImageIO/imagebufalgo.h
+third_party/deps/oiio/src/include/OpenImageIO/imagebufalgo_util.h
+third_party/deps/oiio/src/include/OpenImageIO/imagecache.h
+third_party/deps/oiio/src/include/OpenImageIO/imageio.h
+third_party/deps/oiio/src/include/OpenImageIO/missing_math.h
+third_party/deps/oiio/src/include/OpenImageIO/optparser.h
+third_party/deps/oiio/src/include/OpenImageIO/parallel.h
+third_party/deps/oiio/src/include/OpenImageIO/paramlist.h
+third_party/deps/oiio/src/include/OpenImageIO/platform.h
+third_party/deps/oiio/src/include/OpenImageIO/plugin.h
+third_party/deps/oiio/src/include/OpenImageIO/refcnt.h
+third_party/deps/oiio/src/include/OpenImageIO/span.h
+third_party/deps/oiio/src/include/OpenImageIO/strided_ptr.h
+third_party/deps/oiio/src/include/OpenImageIO/string_view.h
+third_party/deps/oiio/src/include/OpenImageIO/strongparam.h
+third_party/deps/oiio/src/include/OpenImageIO/strutil.h
+third_party/deps/oiio/src/include/OpenImageIO/sysutil.h
+third_party/deps/oiio/src/include/OpenImageIO/texture.h
+third_party/deps/oiio/src/include/OpenImageIO/thread.h
+third_party/deps/oiio/src/include/OpenImageIO/tiffutils.h
+third_party/deps/oiio/src/include/OpenImageIO/timer.h
+third_party/deps/oiio/src/include/OpenImageIO/type_traits.h
+third_party/deps/oiio/src/include/OpenImageIO/typedesc.h
+third_party/deps/oiio/src/include/OpenImageIO/unittest.h
+third_party/deps/oiio/src/include/OpenImageIO/unordered_map_concurrent.h
+third_party/deps/oiio/src/include/OpenImageIO/ustring.h
+third_party/deps/oiio/src/include/OpenImageIO/varyingref.h
+third_party/deps/oiio/src/include/OpenImageIO/vecparam.h
+third_party/deps/oiio/src/jpeg.imageio/jpeg_pvt.h
+third_party/deps/oiio/src/jpeg.imageio/jpeginput.cpp
+third_party/deps/oiio/src/libOpenImageIO/bluenoise.cpp
+third_party/deps/oiio/src/libOpenImageIO/color_ocio.cpp
+third_party/deps/oiio/src/libOpenImageIO/color_test.cpp
+third_party/deps/oiio/src/libOpenImageIO/compute_test.cpp
+third_party/deps/oiio/src/libOpenImageIO/deepdata.cpp
+third_party/deps/oiio/src/libOpenImageIO/exif-canon.cpp
+third_party/deps/oiio/src/libOpenImageIO/exif.cpp
+third_party/deps/oiio/src/libOpenImageIO/exif.h
+third_party/deps/oiio/src/libOpenImageIO/formatspec.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebuf_test.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_addsub.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_channels.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_compare.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_copy.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_deep.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_draw.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_mad.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_minmaxchan.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_muldiv.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_opencv.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_orient.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_pixelmath.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_test.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_xform.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_yee.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagecache_test.cpp
+third_party/deps/oiio/src/libOpenImageIO/imageinout_test.cpp
+third_party/deps/oiio/src/libOpenImageIO/imageinput.cpp
+third_party/deps/oiio/src/libOpenImageIO/imageio.cpp
+third_party/deps/oiio/src/libOpenImageIO/imageioplugin.cpp
+third_party/deps/oiio/src/libOpenImageIO/imageoutput.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagespec_test.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagespeed_test.cpp
+third_party/deps/oiio/src/libOpenImageIO/iptc.cpp
+third_party/deps/oiio/src/libOpenImageIO/maketexture.cpp
+third_party/deps/oiio/src/libOpenImageIO/printinfo.cpp
+third_party/deps/oiio/src/libOpenImageIO/xmp.cpp
+third_party/deps/oiio/src/libtexture/environment.cpp
+third_party/deps/oiio/src/libtexture/imagecache.cpp
+third_party/deps/oiio/src/libtexture/imagecache_pvt.h
+third_party/deps/oiio/src/libtexture/texoptions.cpp
+third_party/deps/oiio/src/libtexture/texture3d.cpp
+third_party/deps/oiio/src/libtexture/texture_pvt.h
+third_party/deps/oiio/src/libtexture/texturesys.cpp
+third_party/deps/oiio/src/libutil/argparse.cpp
+third_party/deps/oiio/src/libutil/argparse_test.cpp
+third_party/deps/oiio/src/libutil/atomic_test.cpp
+third_party/deps/oiio/src/libutil/benchmark.cpp
+third_party/deps/oiio/src/libutil/errorhandler.cpp
+third_party/deps/oiio/src/libutil/filesystem.cpp
+third_party/deps/oiio/src/libutil/filesystem_test.cpp
+third_party/deps/oiio/src/libutil/filter.cpp
+third_party/deps/oiio/src/libutil/filter_test.cpp
+third_party/deps/oiio/src/libutil/fmath.cpp
+third_party/deps/oiio/src/libutil/hash_test.cpp
+third_party/deps/oiio/src/libutil/optparser_test.cpp
+third_party/deps/oiio/src/libutil/parallel_test.cpp
+third_party/deps/oiio/src/libutil/paramlist.cpp
+third_party/deps/oiio/src/libutil/paramlist_test.cpp
+third_party/deps/oiio/src/libutil/plugin.cpp
+third_party/deps/oiio/src/libutil/simd_test.cpp
+third_party/deps/oiio/src/libutil/span_test.cpp
+third_party/deps/oiio/src/libutil/spin_rw_test.cpp
+third_party/deps/oiio/src/libutil/spinlock_test.cpp
+third_party/deps/oiio/src/libutil/strongparam_test.cpp
+third_party/deps/oiio/src/libutil/strutil.cpp
+third_party/deps/oiio/src/libutil/sysutil.cpp
+third_party/deps/oiio/src/libutil/thread.cpp
+third_party/deps/oiio/src/libutil/thread_test.cpp
+third_party/deps/oiio/src/libutil/timer.cpp
+third_party/deps/oiio/src/libutil/timer_test.cpp
+third_party/deps/oiio/src/libutil/type_traits_test.cpp
+third_party/deps/oiio/src/libutil/typedesc.cpp
+third_party/deps/oiio/src/libutil/typedesc_test.cpp
+third_party/deps/oiio/src/libutil/ustring.cpp
+third_party/deps/oiio/src/libutil/ustring_test.cpp
+third_party/deps/oiio/src/null.imageio/nullimageio.cpp
+third_party/deps/oiio/src/openexr.imageio/exrinput.cpp
+third_party/deps/oiio/src/openexr.imageio/exroutput.cpp
+third_party/deps/oiio/src/png.imageio/png_pvt.h
+third_party/deps/oiio/src/png.imageio/pnginput.cpp
+third_party/deps/oiio/src/pnm.imageio/pnminput.cpp
+third_party/deps/oiio/src/pnm.imageio/pnmoutput.cpp
+third_party/deps/oiio/src/psd.imageio/psd_pvt.h
+third_party/deps/oiio/src/rla.imageio/rla_pvt.h
+third_party/deps/oiio/src/rla.imageio/rlainput.cpp
+third_party/deps/oiio/src/rla.imageio/rlaoutput.cpp
+third_party/deps/oiio/src/sgi.imageio/sgi_pvt.h
+third_party/deps/oiio/src/sgi.imageio/sgiinput.cpp
+third_party/deps/oiio/src/sgi.imageio/sgioutput.cpp
+third_party/deps/oiio/src/softimage.imageio/softimage_pvt.cpp
+third_party/deps/oiio/src/softimage.imageio/softimage_pvt.h
+third_party/deps/oiio/src/softimage.imageio/softimageinput.cpp
+third_party/deps/oiio/src/targa.imageio/targa_pvt.h
+third_party/deps/oiio/src/targa.imageio/targainput.cpp
+third_party/deps/oiio/src/term.imageio/termoutput.cpp
+third_party/deps/oiio/src/zfile.imageio/zfile.cpp
+
+// Copyright Contributors to the OpenImageIO project.
+// SPDX-License-Identifier: Apache-2.0
+// https://github.com/AcademySoftwareFoundation/OpenImageIO
+
+Sources:
+third_party/deps/oiio/src/bmp.imageio/bmpoutput.cpp
+third_party/deps/oiio/src/dpx.imageio/dpxoutput.cpp
+third_party/deps/oiio/src/include/OpenImageIO/argparse.h
+third_party/deps/oiio/src/include/OpenImageIO/fmath.h
+third_party/deps/oiio/src/include/OpenImageIO/imagebuf.h
+third_party/deps/oiio/src/include/OpenImageIO/simd.h
+third_party/deps/oiio/src/jpeg.imageio/jpegoutput.cpp
+third_party/deps/oiio/src/libOpenImageIO/icc.cpp
+third_party/deps/oiio/src/libOpenImageIO/imagebuf.cpp
+third_party/deps/oiio/src/libutil/fmath_test.cpp
+third_party/deps/oiio/src/png.imageio/pngoutput.cpp
+third_party/deps/oiio/src/psd.imageio/psdinput.cpp
+third_party/deps/oiio/src/targa.imageio/targaoutput.cpp
+
+// Copyright Contributors to the OpenImageIO project.
+// SPDX-License-Identifier: BSD-3-Clause and Apache-2.0
+// https://github.com/AcademySoftwareFoundation/OpenImageIO
+
+Sources:
+third_party/deps/oiio/src/cineon.imageio/libcineon/BaseTypeConverter.h
+third_party/deps/oiio/src/cineon.imageio/libcineon/Cineon.cpp
+third_party/deps/oiio/src/cineon.imageio/libcineon/Cineon.h
+third_party/deps/oiio/src/cineon.imageio/libcineon/CineonHeader.cpp
+third_party/deps/oiio/src/cineon.imageio/libcineon/CineonHeader.h
+third_party/deps/oiio/src/cineon.imageio/libcineon/CineonStream.h
+third_party/deps/oiio/src/cineon.imageio/libcineon/Codec.cpp
+third_party/deps/oiio/src/cineon.imageio/libcineon/Codec.h
+third_party/deps/oiio/src/cineon.imageio/libcineon/ElementReadStream.cpp
+third_party/deps/oiio/src/cineon.imageio/libcineon/ElementReadStream.h
+third_party/deps/oiio/src/cineon.imageio/libcineon/EndianSwap.h
+third_party/deps/oiio/src/cineon.imageio/libcineon/InStream.cpp
+third_party/deps/oiio/src/cineon.imageio/libcineon/OutStream.cpp
+third_party/deps/oiio/src/cineon.imageio/libcineon/Reader.cpp
+third_party/deps/oiio/src/cineon.imageio/libcineon/ReaderInternal.h
+third_party/deps/oiio/src/cineon.imageio/libcineon/Writer.cpp
+third_party/deps/oiio/src/cineon.imageio/libcineon/WriterInternal.h
+
+/*
+ * Copyright (c) 2010, Patrick A. Palmer and Leszek Godlewski.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *   - Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *   - Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *
+ *   - Neither the name of Patrick A. Palmer nor the names of its
+ *     contributors may be used to endorse or promote products derived from
+ *     this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+Sources:
+third_party/deps/oiio/src/cineon.imageio/libcineon/Cineon.h
+
+/*!
+		 * \brief Set the basic file information about DPX
+		 *
+		 * \param fileName name of this created file (100 characters max)
+		 * \param creationTimeDate creation time and date - format is "YYYY:MM:DD:HH:MM:SSLTZ"
+		 *               where HH is 24 hour time, LTZ is local time zone using either
+		 *               three character notation (i.e., -04) or five character notation
+		 *               representing hours and minutes offset from Greenwich Mean time
+		 *               (i.e., -0700) (24 characters max)
+		 * \param creator creator (100 characters max)
+		 * \param project project name (200 characters max)
+		 * \param copyright copyright statement (200 characters max)
+		 * \param encryptKey encryption key
+		 */
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindFFmpeg.cmake
+
+# - Try to find ffmpeg libraries (libavcodec, libavformat and libavutil)
+# Once done this will define
+#
+#  FFmpeg_FOUND - system has ffmpeg or libav
+#  FFMPEG_INCLUDE_DIR - the ffmpeg include directory
+#  FFMPEG_LIBRARIES - Link these to use ffmpeg
+#  FFMPEG_LIBAVCODEC
+#  FFMPEG_LIBAVFORMAT
+#  FFMPEG_LIBAVUTIL
+#
+# Original:
+#   Copyright (c) 2008 Andreas Schneider <mail@cynapses.org>
+#   Modified for other libraries by Lasse Kärkkäinen <tronic>
+#   Modified for Hedgewars by Stepik777
+#   Redistribution and use is allowed according to the terms of the New
+#   BSD license.
+#
+# Modifications:
+# Copyright Contributors to the OpenImageIO project.
+# SPDX-License-Identifier: BSD-3-Clause and Apache-2.0
+# https://github.com/AcademySoftwareFoundation/OpenImageIO
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindLibRaw.cmake
+
+# - Find LibRaw
+# Find the LibRaw library <http://www.libraw.org>
+# This module defines
+#  LibRaw_VERSION_STRING, the version string of LibRaw
+#  LibRaw_INCLUDE_DIR, where to find libraw.h
+#  LibRaw_LIBRARIES, the libraries needed to use LibRaw (non-thread-safe)
+#  LibRaw_r_LIBRARIES, the libraries needed to use LibRaw (thread-safe)
+#  LibRaw_DEFINITIONS, the definitions needed to use LibRaw (non-thread-safe)
+#  LibRaw_r_DEFINITIONS, the definitions needed to use LibRaw (thread-safe)
+#
+# Copyright (c) 2013, Pino Toscano <pino at kde dot org>
+# Copyright (c) 2013, Gilles Caulier <caulier dot gilles at gmail dot com>
+#
+# Redistribution and use is allowed according to the terms of the BSD license.
+# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindLibheif.cmake
+
+# Module to find LIBHEIF
+#
+# Copyright Contributors to the OpenImageIO project.
+# SPDX-License-Identifier: Apache-2.0
+# https://github.com/AcademySoftwareFoundation/OpenImageIO
+#
+# This module will first look into the directories defined by the variables:
+#   - Libheif_ROOT, LIBHEIF_INCLUDE_PATH, LIBHEIF_LIBRARY_PATH
+#
+# This module defines the following variables:
+#
+# Libheif_FOUND            True if LIBHEIF was found.
+# LIBHEIF_INCLUDES         Where to find LIBHEIF headers
+# LIBHEIF_LIBRARIES        List of libraries to link against when using LIBHEIF
+# LIBHEIF_VERSION          Version of LIBHEIF (e.g., 3.6.2)
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindOpenJPEG.cmake
+third_party/deps/oiio/src/fonts/CMakeLists.txt
+third_party/deps/oiio/src/include/CMakeLists.txt
+third_party/deps/oiio/src/rla.imageio/CMakeLists.txt
+third_party/deps/oiio/src/sgi.imageio/CMakeLists.txt
+
+# Copyright Contributors to the OpenImageIO project.
+# SPDX-License-Identifier: BSD-3-Clause and Apache-2.0
+# https://github.com/AcademySoftwareFoundation/OpenImageIO
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindOpenVDB.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindOpenVDB.cmake
+
+#=============================================================================
+# Modified from one with this copyright notice:
+#
+# Copyright 2015 Blender Foundation.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindPtex.cmake
+
+# Copyright Disney Enterprises, Inc.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License
+# and the following modification to it: Section 6 Trademarks.
+# deleted and replaced with:
+#
+# 6. Trademarks. This License does not grant permission to use the
+# trade names, trademarks, service marks, or product names of the
+# Licensor and its affiliates, except as required for reproducing
+# the content of the NOTICE file.
+#
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindRobinmap.cmake
+
+# Find Robinmap
+#
+# Copyright Contributors to the OpenImageIO project.
+# SPDX-License-Identifier: Apache-2.0
+# https://github.com/AcademySoftwareFoundation/OpenImageIO
+#
+# Sets the usual variables expected for find_package scripts:
+#
+# ROBINMAP_INCLUDES - header location
+# ROBINMAP_FOUND - true if robin-map was found.
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindTBB.cmake
+
+# The MIT License (MIT)
+#
+# Copyright (c) 2015 Justus Calvin
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+Sources:
+third_party/deps/oiio/src/cmake/modules/FindWebP.cmake
+
+# Module to find Webp
+#
+# Copyright Contributors to the OpenImageIO project.
+# SPDX-License-Identifier: Apache-2.0
+# https://github.com/AcademySoftwareFoundation/OpenImageIO
+#
+# This module will first look into the directories defined by the variables:
+#   - Webp_ROOT, WEBP_INCLUDE_PATH, WEBP_LIBRARY_PATH
+#
+# This module defines the following variables:
+#
+# WebP_FOUND            True if Webp was found.
+# WEBP_INCLUDES         Where to find Webp headers
+# WEBP_LIBRARIES        List of libraries to link against when using Webp
+#
+# This doesn't work, because the webp headers don't seem to include any
+# definitions giving the version:
+# WEBP_VERSION          Version of Webp (e.g., 3.6.2)
+
+Sources:
+third_party/deps/oiio/src/cmake/packaging.cmake
+third_party/deps/oiio/src/cmake/testing.cmake
+
+# Copyright Contributors to the OpenImageIO project.
+# SPDX-License-Identifier: Apache-2.0
+# https://github.com/AcademySoftwareFoundation/OpenImageIO/
+
+Sources:
+third_party/deps/oiio/src/cmake/packaging.cmake
+
+# "Vendor" is only used in copyright notices, so we use the same thing that
+# the rest of the copyright notices say.
+
+Sources:
+third_party/deps/oiio/src/dds.imageio/bcdec.h
+
+/* bcdec.h - v0.93
+   provides functions to decompress blocks of BC compressed images
+   written by Sergii "iOrange" Kudlai in 2022
+
+   This library does not allocate memory and is trying to use as less stack as possible
+
+   The library was never optimized specifically for speed but for the overall size
+   it has zero external dependencies and is not using any runtime functions
+
+   Supported BC formats:
+   BC1 (also known as DXT1) + it's "binary alpha" variant BC1A (DXT1A)
+   BC2 (also known as DXT3)
+   BC3 (also known as DXT5)
+   BC4 (also known as ATI1N)
+   BC5 (also known as ATI2N)
+   BC6H (HDR format)
+   BC7
+
+   BC1/BC2/BC3/BC7 are expected to decompress into 4*4 RGBA blocks 8bit per component (32bit pixel)
+   BC4/BC5 are expected to decompress into 4*4 R/RG blocks 8bit per component (8bit and 16bit pixel)
+   BC6H is expected to decompress into 4*4 RGB blocks of either 32bit float or 16bit "half" per
+   component (96bit or 48bit pixel)
+
+   For more info, issues and suggestions please visit https://github.com/iOrange/bcdec
+
+   CREDITS:
+      Aras Pranckevicius (@aras-p)      - BC1/BC3 decoders optimizations (up to 3x the speed)
+                                        - BC6H/BC7 bits pulling routines optimizations
+
+   LICENSE: See end of file for license information.
+*/
+
+Sources:
+third_party/deps/oiio/src/dds.imageio/bcdec.h
+
+/* LICENSE:
+
+Public Domain (www.unlicense.org)
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <https://unlicense.org>
+
+*/
+
+Sources:
+third_party/deps/oiio/src/dpx.imageio/dpxinput.cpp
+
+// see comment above Copyright, Software and DocumentName
+
+Sources:
+third_party/deps/oiio/src/dpx.imageio/libdpx/BaseTypeConverter.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/Codec.cpp
+third_party/deps/oiio/src/dpx.imageio/libdpx/Codec.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPX.cpp
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPX.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPXColorConverter.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPXHeader.cpp
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPXHeader.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPXStream.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/ElementReadStream.cpp
+third_party/deps/oiio/src/dpx.imageio/libdpx/ElementReadStream.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/EndianSwap.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/OutStream.cpp
+third_party/deps/oiio/src/dpx.imageio/libdpx/Reader.cpp
+third_party/deps/oiio/src/dpx.imageio/libdpx/ReaderInternal.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/RunLengthEncoding.cpp
+third_party/deps/oiio/src/dpx.imageio/libdpx/RunLengthEncoding.h
+third_party/deps/oiio/src/dpx.imageio/libdpx/Writer.cpp
+third_party/deps/oiio/src/dpx.imageio/libdpx/WriterInternal.h
+
+/*
+ * Copyright (c) 2009, Patrick A. Palmer.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *   - Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *   - Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *
+ *   - Neither the name of Patrick A. Palmer nor the names of its
+ *     contributors may be used to endorse or promote products derived from
+ *     this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+Sources:
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPX.h
+
+/*!
+		 * \brief Set the basic file information about DPX
+		 *
+		 * \param fileName name of this created file (100 characters max)
+		 * \param creationTimeDate creation time and date - format is "YYYY:MM:DD:HH:MM:SSLTZ"
+		 *               where HH is 24 hour time, LTZ is local time zone using either
+		 *               three character notation (i.e., -04) or five character notation
+		 *               representing hours and minutes offset from Greenwich Mean time
+		 *               (i.e., -0700) (24 characters max)
+		 * \param creator creator (100 characters max)
+		 * \param project project name (200 characters max)
+		 * \param copyright copyright statement (200 characters max)
+		 * \param encryptKey encryption key
+		 * \param swapEndian whether to write the image header in reverse to native endianness
+		 */
+
+Sources:
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPXColorConverter.cpp
+
+/*
+* Copyright (c) 2009, Patrick A. Palmer.
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+*   - Redistributions of source code must retain the above copyright notice,
+*     this list of conditions and the following disclaimer.
+*
+*   - Redistributions in binary form must reproduce the above copyright
+*     notice, this list of conditions and the following disclaimer in the
+*     documentation and/or other materials provided with the distribution.
+*
+*   - Neither the name of Patrick A. Palmer nor the names of its
+*     contributors may be used to endorse or promote products derived from
+*     this software without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+* LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+* SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+* ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+* POSSIBILITY OF SUCH DAMAGE.
+*/
+
+Sources:
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPXHeader.h
+
+/*!
+		 * \brief Get the copyright information
+		 * \param copy buffer to store copyright string (200+1 chars)
+		 */
+
+Sources:
+third_party/deps/oiio/src/dpx.imageio/libdpx/DPXHeader.h
+
+/*!
+		 * \brief Set the copyright information
+		 * \param copy buffer with copyright string
+		 */
+
+Sources:
+third_party/deps/oiio/src/dpx.imageio/libdpx/InStream.cpp
+
+/*
+ * Copyright (c) 2009, Patrick A. Palmer.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *   - Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *   - Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *
+ *   - Neither the name of Patrick A. Palmer nor the names of its
+ *     contributors may be used to endorse or promote products derived from
+ *     this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+Sources:
+third_party/deps/oiio/src/dpx.imageio/libdpx/InStream.cpp
+
+// Alterations:
+// Copyright Contributors to the OpenImageIO project.
+// SPDX-License-Identifier: BSD-3-Clause and Apache-2.0
+// https://github.com/AcademySoftwareFoundation/OpenImageIO
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/detail/farmhash.h
+third_party/deps/oiio/src/libutil/farmhash.cpp
+
+// Copyright (c) 2014 Google, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
+// FarmHash, by Geoff Pike
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/detail/farmhash.h
+third_party/deps/oiio/src/libutil/farmhash.cpp
+
+// Additional modifications for OpenImageIO:
+// Copyright Contributors to the OpenImageIO project.
+// SPDX-License-Identifier: Apache-2.0
+// https://github.com/AcademySoftwareFoundation/OpenImageIO
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/detail/pugixml/pugiconfig.hpp
+third_party/deps/oiio/src/include/OpenImageIO/detail/pugixml/pugixml.cpp
+third_party/deps/oiio/src/include/OpenImageIO/detail/pugixml/pugixml.hpp
+
+/**
+ * pugixml parser - version 1.12
+ * --------------------------------------------------------
+ * Copyright (C) 2006-2022, by Arseny Kapoulkine (arseny.kapoulkine@gmail.com)
+ * Report bugs and download new versions at https://pugixml.org/
+ *
+ * This library is distributed under the MIT License. See notice at the end
+ * of this file.
+ *
+ * This work is based on the pugxml parser, which is:
+ * Copyright (C) 2003, by Kristen Wegner (kristen@tima.net)
+ */
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/detail/pugixml/pugiconfig.hpp
+third_party/deps/oiio/src/include/OpenImageIO/detail/pugixml/pugixml.cpp
+third_party/deps/oiio/src/include/OpenImageIO/detail/pugixml/pugixml.hpp
+
+/**
+ * Copyright (c) 2006-2022 Arseny Kapoulkine
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/fmath.h
+
+/*
+  A few bits here are based upon code from NVIDIA that was also released
+  under the same 3-Clause BSD license, and marked as:
+     Copyright 2004 NVIDIA Corporation. All Rights Reserved.
+
+  Some parts of this file were first open-sourced in Open Shading Language,
+  also 3-Clause BSD license, then later moved here. The original copyright
+  notice was:
+     Copyright (c) 2009-2014 Sony Pictures Imageworks Inc., et al.
+
+  Many of the math functions were copied from or inspired by other
+  public domain sources or open source packages with compatible licenses.
+  The individual functions give references were applicable.
+*/
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/function_view.h
+
+// Portions of the code in this file is a derived work based on the
+// FunctionRef class in LLVM:
+//
+// University of Illinois/NCSA Open Source License
+//
+// Copyright (c) 2003-2018 University of Illinois at Urbana-Champaign.
+// All rights reserved.
+//
+// Developed by:
+//   LLVM Team, University of Illinois at Urbana-Champaign, http://llvm.org
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy of
+// this software and associated documentation files (the "Software"), to deal with
+// the Software without restriction, including without limitation the rights to
+// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+// of the Software, and to permit persons to whom the Software is furnished to do
+// so, subject to the following conditions:
+//     * Redistributions of source code must retain the above copyright notice,
+//       this list of conditions and the following disclaimers.
+//     * Redistributions in binary form must reproduce the above copyright notice,
+//       this list of conditions and the following disclaimers in the
+//       documentation and/or other materials provided with the distribution.
+//     * Neither the names of the LLVM Team, University of Illinois at
+//       Urbana-Champaign, nor the names of its contributors may be used to
+//       endorse or promote products derived from this Software without specific
+//       prior written permission.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+// CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE
+// SOFTWARE.
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/hash.h
+
+/* The MIT License
+   Copyright (C) 2012 Zilong Tan (eric.zltan@gmail.com)
+   Permission is hereby granted, free of charge, to any person
+   obtaining a copy of this software and associated documentation
+   files (the "Software"), to deal in the Software without
+   restriction, including without limitation the rights to use, copy,
+   modify, merge, publish, distribute, sublicense, and/or sell copies
+   of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+   The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Software.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+   BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+*/
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/hash.h
+
+// xxhash:  https://github.com/Cyan4973/xxHash
+// BSD 2-clause license
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/hash.h
+
+// Bob Jenkins "lookup3" hashes:  http://burtleburtle.net/bob/c/lookup3.c
+// It's in the public domain.
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/hash.h
+
+// These functions were lifted from the public domain Murmurhash3.  We
+// don't bother using Murmurhash -- in my tests, it was slower than
+// xxhash in all cases, and comparable to bjhash.  But these two fmix
+// functions are useful for scrambling the bits of a single 32 or 64 bit
+// value.
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/hash.h
+
+// Copyright (c) 2014 Google, Inc.
+// https://github.com/google/farmhash
+// See OpenImageIO's hashes.cpp for the MIT license for this code.
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/simd.h
+
+// SSE half-to-float by Fabian "ryg" Giesen. Public domain.
+    // https://gist.github.com/rygorous/2144712
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/simd.h
+third_party/deps/oiio/src/include/OpenImageIO/simd.h
+
+// Implementation inspired by:
+    // https://github.com/embree/embree/blob/master/common/simd/sse_special.h
+    // Which is listed as Copyright (C) 2007  Julien Pommier and distributed
+    // under the zlib license.
+
+Sources:
+third_party/deps/oiio/src/include/OpenImageIO/vecparam.h
+
+// NOTE: These interoperable type templates were copied from the
+// [Imath project](http://github.com/AcademySoftwareFoundation/imath),
+// licensed under the same BSD-3-clause license as OpenImageIO.
+
+Sources:
+third_party/deps/oiio/src/libOpenImageIO/bluenoise.cpp
+
+// Bluenoise table. This table is derived using free blue noise textures
+// found here: https://momentsingraphics.de/BlueNoise.html
+// Generated with these scripts: https://github.com/MomentsInGraphics/BlueNoise/
+// The textures bear this notice:
+//
+// To the extent possible under law, Christoph Peters has waived all copyright
+// and related or neighboring rights to the files in this directory and its
+// subdirectories. This work is published from: Germany.
+//
+// The work is made available under the terms of the Creative Commons CC0 Public
+// Domain Dedication.
+//
+// For more information please visit:
+// https://creativecommons.org/publicdomain/zero/1.0/
+
+Sources:
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_pixelmath.cpp
+
+// The color maps for magma, inferno, plasma, and viridis are from
+// Matplotlib, written by Nathaniel Smith & Stefan van der Walt, and are
+// public domain (http://creativecommons.org/publicdomain/zero/1.0/) The
+// originals can be found here: https://github.com/bids/colormap
+// These color maps were specially designed to be (a) perceptually uniform,
+// (b) strictly increasing in luminance, (c) looking good when converted
+// to grayscale for printing, (d) useful even for people with various forms
+// of color blindness. They are therefore superior to most of the ad-hoc
+// visualization color maps used elsewhere, including the original ones used
+// in OIIO.
+//
+// LG has altered the original maps by converting from sRGB to a linear
+// response (since that's how OIIO wants to operate), and also decimated the
+// arrays from 256 entries to 17 entries (fine, since we interpolate).
+// clang-format off
+
+Sources:
+third_party/deps/oiio/src/libOpenImageIO/imagebufalgo_pixelmath.cpp
+
+// "Turbo" color map Copyright 2019 Google LLC.
+// SPDX-License-Identifier: Apache-2.0
+// Author: Anton Mikhailov
+// https://gist.github.com/mikhailov-work/6a308c20e494d9e0ccc29036b28faa7a
+// Altered by LG to convert from sRGB to linear and decimate the table to
+// 17 entries.
+//
+// Turbo is also pretty nice, in similar ways to the matplotlib palettes,
+// except for not being monotonically increasing in luminance.
+
+Sources:
+third_party/deps/oiio/src/libOpenImageIO/kissfft.hh
+
+/*
+Copyright (c) 2003-2010 Mark Borgerding
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+    * Neither the author nor the names of any contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+Sources:
+third_party/deps/oiio/src/libutil/SHA1.cpp
+
+/*
+  100% free public domain implementation of the SHA-1 algorithm
+  by Dominik Reichl <dominik.reichl@t-online.de>
+  Web: http://www.dominik-reichl.de/
+
+  See header file for version history and test vectors.
+*/
+
+Sources:
+third_party/deps/oiio/src/libutil/SHA1.h
+
+/*
+  100% free public domain implementation of the SHA-1 algorithm
+  by Dominik Reichl <dominik.reichl@t-online.de>
+  Web: http://www.dominik-reichl.de/
+
+  Version 2.1 - 2012-06-19
+  - Deconstructor (resetting internal variables) is now only
+    implemented if SHA1_WIPE_VARIABLES is defined (which is the
+    default).
+  - Renamed inclusion guard to contain a GUID.
+  - Demo application is now using C++/STL objects and functions.
+  - Unicode build of the demo application now outputs the hashes of both
+    the ANSI and Unicode representations of strings.
+  - Various other demo application improvements.
+
+  Version 2.0 - 2012-06-14
+  - Added 'limits.h' include.
+  - Renamed inclusion guard and macros for compliancy (names beginning
+    with an underscore are reserved).
+
+  Version 1.9 - 2011-11-10
+  - Added Unicode test vectors.
+  - Improved support for hashing files using the HashFile method that
+    are larger than 4 GB.
+  - Improved file hashing performance (by using a larger buffer).
+  - Disabled unnecessary compiler warnings.
+  - Internal variables are now private.
+
+  Version 1.8 - 2009-03-16
+  - Converted project files to Visual Studio 2008 format.
+  - Added Unicode support for HashFile utility method.
+  - Added support for hashing files using the HashFile method that are
+    larger than 2 GB.
+  - HashFile now returns an error code instead of copying an error
+    message into the output buffer.
+  - GetHash now returns an error code and validates the input parameter.
+  - Added ReportHashStl STL utility method.
+  - Added REPORT_HEX_SHORT reporting mode.
+  - Improved Linux compatibility of test program.
+
+  Version 1.7 - 2006-12-21
+  - Fixed buffer underrun warning that appeared when compiling with
+    Borland C Builder (thanks to Rex Bloom and Tim Gallagher for the
+    patch).
+  - Breaking change: ReportHash writes the final hash to the start
+    of the buffer, i.e. it's not appending it to the string anymore.
+  - Made some function parameters const.
+  - Added Visual Studio 2005 project files to demo project.
+
+  Version 1.6 - 2005-02-07 (thanks to Howard Kapustein for patches)
+  - You can set the endianness in your files, no need to modify the
+    header file of the CSHA1 class anymore.
+  - Aligned data support.
+  - Made support/compilation of the utility functions (ReportHash and
+    HashFile) optional (useful when bytes count, for example in embedded
+    environments).
+
+  Version 1.5 - 2005-01-01
+  - 64-bit compiler compatibility added.
+  - Made variable wiping optional (define SHA1_WIPE_VARIABLES).
+  - Removed unnecessary variable initializations.
+  - ROL32 improvement for the Microsoft compiler (using _rotl).
+
+  Version 1.4 - 2004-07-22
+  - CSHA1 now compiles fine with GCC 3.3 under Mac OS X (thanks to Larry
+    Hastings).
+
+  Version 1.3 - 2003-08-17
+  - Fixed a small memory bug and made a buffer array a class member to
+    ensure correct working when using multiple CSHA1 class instances at
+    one time.
+
+  Version 1.2 - 2002-11-16
+  - Borlands C++ compiler seems to have problems with string addition
+    using sprintf. Fixed the bug which caused the digest report function
+    not to work properly. CSHA1 is now Borland compatible.
+
+  Version 1.1 - 2002-10-11
+  - Removed two unnecessary header file includes and changed BOOL to
+    bool. Fixed some minor bugs in the web page contents.
+
+  Version 1.0 - 2002-06-20
+  - First official release.
+
+  ================ Test Vectors ================
+
+  SHA1("abc" in ANSI) =
+    A9993E36 4706816A BA3E2571 7850C26C 9CD0D89D
+  SHA1("abc" in Unicode LE) =
+    9F04F41A 84851416 2050E3D6 8C1A7ABB 441DC2B5
+
+  SHA1("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+    in ANSI) =
+    84983E44 1C3BD26E BAAE4AA1 F95129E5 E54670F1
+  SHA1("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+    in Unicode LE) =
+    51D7D876 9AC72C40 9C5B0E3F 69C60ADC 9A039014
+
+  SHA1(A million repetitions of "a" in ANSI) =
+    34AA973C D4C4DAA4 F61EEB2B DBAD2731 6534016F
+  SHA1(A million repetitions of "a" in Unicode LE) =
+    C4609560 A108A0C6 26AA7F2B 38A65566 739353C5
+*/
+
+Sources:
+third_party/deps/oiio/src/libutil/hash_test.cpp
+
+// Licensed with the unlicense ( http://choosealicense.com/licenses/unlicense/ )
+
+Sources:
+third_party/deps/oiio/src/libutil/hashes.cpp
+
+/*
+-------------------------------------------------------------------------------
+lookup3.c, by Bob Jenkins, May 2006, Public Domain.
+
+These are functions for producing 32-bit hashes for hash table lookup.
+hashword(), hashlittle(), hashlittle2(), hashbig(), mix(), and final() 
+are externally useful functions.  Routines to test the hash are included 
+if SELF_TEST is defined.  You can use this free for any purpose.  It's in
+the public domain.  It has no warranty.
+
+You probably want to use hashlittle().  hashlittle() and hashbig()
+hash byte arrays.  hashlittle() is is faster than hashbig() on
+little-endian machines.  Intel and AMD are little-endian machines.
+On second thought, you probably want hashlittle2(), which is identical to
+hashlittle() except it returns two 32-bit hashes for the price of one.  
+You could implement hashbig2() if you wanted but I haven't bothered here.
+
+If you want to find a hash of, say, exactly 7 integers, do
+  a = i1;  b = i2;  c = i3;
+  mix(a,b,c);
+  a += i4; b += i5; c += i6;
+  mix(a,b,c);
+  a += i7;
+  final(a,b,c);
+then use c as the hash value.  If you have a variable length array of
+4-byte integers to hash, use hashword().  If you have a byte array (like
+a character string), use hashlittle().  If you have several byte arrays, or
+a mix of things, see the comments above hashlittle().  
+
+Why is this so big?  I read 12 bytes at a time into 3 4-byte integers, 
+then mix those integers.  This is fast (you can do a lot more thorough
+mixing with 12*3 instructions on 3 integers than you can with 3 instructions
+on 1 byte), but shoehorning those bytes into integers efficiently is messy.
+-------------------------------------------------------------------------------
+*/
+
+Sources:
+third_party/deps/oiio/src/libutil/stb_sprintf.h
+
+// stb_sprintf - v1.10 - public domain snprintf() implementation
+// originally by Jeff Roberts / RAD Game Tools, 2015/10/20
+// http://github.com/nothings/stb
+//
+// allowed types:  sc uidBboXx p AaGgEef n
+// lengths      :  hh h ll j z t I64 I32 I
+//
+// Contributors:
+//    Fabian "ryg" Giesen (reformatting)
+//    github:aganm (attribute format)
+//
+// Contributors (bugfixes):
+//    github:d26435
+//    github:trex78
+//    github:account-login
+//    Jari Komppa (SI suffixes)
+//    Rohit Nirmal
+//    Marcin Wojdyr
+//    Leonard Ritter
+//    Stefano Zanotti
+//    Adam Allison
+//    Arvid Gerstmann
+//    Markus Kolb
+//
+// LICENSE:
+//
+//   See end of file for license information.
+
+Sources:
+third_party/deps/oiio/src/libutil/stb_sprintf.h
+
+/*
+Single file sprintf replacement.
+
+Originally written by Jeff Roberts at RAD Game Tools - 2015/10/20.
+Hereby placed in public domain.
+
+This is a full sprintf replacement that supports everything that
+the C runtime sprintfs support, including float/double, 64-bit integers,
+hex floats, field parameters (%*.*d stuff), length reads backs, etc.
+
+Why would you need this if sprintf already exists?  Well, first off,
+it's *much* faster (see below). It's also much smaller than the CRT
+versions code-space-wise. We've also added some simple improvements
+that are super handy (commas in thousands, callbacks at buffer full,
+for example). Finally, the format strings for MSVC and GCC differ
+for 64-bit integers (among other small things), so this lets you use
+the same format strings in cross platform code.
+
+It uses the standard single file trick of being both the header file
+and the source itself. If you just include it normally, you just get
+the header file function definitions. To get the code, you include
+it from a C or C++ file and define STB_SPRINTF_IMPLEMENTATION first.
+
+It only uses va_args macros from the C runtime to do it's work. It
+does cast doubles to S64s and shifts and divides U64s, which does
+drag in CRT code on most platforms.
+
+It compiles to roughly 8K with float support, and 4K without.
+As a comparison, when using MSVC static libs, calling sprintf drags
+in 16K.
+
+API:
+====
+int stbsp_sprintf( char * buf, char const * fmt, ... )
+int stbsp_snprintf( char * buf, int count, char const * fmt, ... )
+  Convert an arg list into a buffer.  stbsp_snprintf always returns
+  a zero-terminated string (unlike regular snprintf).
+
+int stbsp_vsprintf( char * buf, char const * fmt, va_list va )
+int stbsp_vsnprintf( char * buf, int count, char const * fmt, va_list va )
+  Convert a va_list arg list into a buffer.  stbsp_vsnprintf always returns
+  a zero-terminated string (unlike regular snprintf).
+
+int stbsp_vsprintfcb( STBSP_SPRINTFCB * callback, void * user, char * buf, char const * fmt, va_list va )
+    typedef char * STBSP_SPRINTFCB( char const * buf, void * user, int len );
+  Convert into a buffer, calling back every STB_SPRINTF_MIN chars.
+  Your callback can then copy the chars out, print them or whatever.
+  This function is actually the workhorse for everything else.
+  The buffer you pass in must hold at least STB_SPRINTF_MIN characters.
+    // you return the next buffer to use or 0 to stop converting
+
+void stbsp_set_separators( char comma, char period )
+  Set the comma and period characters to use.
+
+FLOATS/DOUBLES:
+===============
+This code uses a internal float->ascii conversion method that uses
+doubles with error correction (double-doubles, for ~105 bits of
+precision).  This conversion is round-trip perfect - that is, an atof
+of the values output here will give you the bit-exact double back.
+
+One difference is that our insignificant digits will be different than
+with MSVC or GCC (but they don't match each other either).  We also
+don't attempt to find the minimum length matching float (pre-MSVC15
+doesn't either).
+
+If you don't need float or doubles at all, define STB_SPRINTF_NOFLOAT
+and you'll save 4K of code space.
+
+64-BIT INTS:
+============
+This library also supports 64-bit integers and you can use MSVC style or
+GCC style indicators (%I64d or %lld).  It supports the C99 specifiers
+for size_t and ptr_diff_t (%jd %zd) as well.
+
+EXTRAS:
+=======
+Like some GCCs, for integers and floats, you can use a ' (single quote)
+specifier and commas will be inserted on the thousands: "%'d" on 12345
+would print 12,345.
+
+For integers and floats, you can use a "$" specifier and the number
+will be converted to float and then divided to get kilo, mega, giga or
+tera and then printed, so "%$d" 1000 is "1.0 k", "%$.2d" 2536000 is
+"2.53 M", etc. For byte values, use two $:s, like "%$$d" to turn
+2536000 to "2.42 Mi". If you prefer JEDEC suffixes to SI ones, use three
+$:s: "%$$$d" -> "2.42 M". To remove the space between the number and the
+suffix, add "_" specifier: "%_$d" -> "2.53M".
+
+In addition to octal and hexadecimal conversions, you can print
+integers in binary: "%b" for 256 would print 100.
+
+PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
+===================================================================
+"%d" across all 32-bit ints (4.8x/4.0x faster than 32-/64-bit MSVC)
+"%24d" across all 32-bit ints (4.5x/4.2x faster)
+"%x" across all 32-bit ints (4.5x/3.8x faster)
+"%08x" across all 32-bit ints (4.3x/3.8x faster)
+"%f" across e-10 to e+10 floats (7.3x/6.0x faster)
+"%e" across e-10 to e+10 floats (8.1x/6.0x faster)
+"%g" across e-10 to e+10 floats (10.0x/7.1x faster)
+"%f" for values near e-300 (7.9x/6.5x faster)
+"%f" for values near e+300 (10.0x/9.1x faster)
+"%e" for values near e-300 (10.1x/7.0x faster)
+"%e" for values near e+300 (9.2x/6.0x faster)
+"%.320f" for values near e-300 (12.6x/11.2x faster)
+"%a" for random values (8.6x/4.3x faster)
+"%I64d" for 64-bits with 32-bit values (4.8x/3.4x faster)
+"%I64d" for 64-bits > 32-bit values (4.9x/5.5x faster)
+"%s%s%s" for 64 char strings (7.1x/7.3x faster)
+"...512 char string..." ( 35.0x/32.5x faster!)
+*/
+
+Sources:
+third_party/deps/oiio/src/libutil/stb_sprintf.h
+
+/*
+------------------------------------------------------------------------------
+This software is available under 2 licenses -- choose whichever you prefer.
+------------------------------------------------------------------------------
+ALTERNATIVE A - MIT License
+Copyright (c) 2017 Sean Barrett
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+------------------------------------------------------------------------------
+ALTERNATIVE B - Public Domain (www.unlicense.org)
+This is free and unencumbered software released into the public domain.
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
+commercial or non-commercial, and by any means.
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
+this software under copyright law.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+------------------------------------------------------------------------------
+*/
+
+Sources:
+third_party/deps/oiio/src/libutil/strutil.cpp
+
+// We use the public domain stb implementation of vsnprintf because
+// not all platforms support a locale-independent version of vsnprintf.
+// See: https://github.com/nothings/stb/blob/master/stb_sprintf.h
+
+Sources:
+third_party/deps/oiio/src/libutil/strutil.cpp
+
+/*
+Copyright for decode function:
+See http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
+
+MIT license
+
+Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+*/
+
+Sources:
+third_party/deps/oiio/src/libutil/strutil.cpp
+
+/* base64 code is based upon: http://www.adp-gmbh.ch/cpp/common/base64.html
+   https://github.com/ReneNyffenegger/cpp-base64
+
+   Zlib license
+
+   Copyright (C) 2004-2008 René Nyffenegger
+
+   This source code is provided 'as-is', without any express or implied
+   warranty. In no event will the author be held liable for any damages
+   arising from the use of this software.
+
+   Permission is granted to anyone to use this software for any purpose,
+   including commercial applications, and to alter it and redistribute it
+   freely, subject to the following restrictions:
+
+   1. The origin of this source code must not be misrepresented; you must not
+      claim that you wrote the original source code. If you use this source code
+      in a product, an acknowledgment in the product documentation would be
+      appreciated but is not required.
+   2. Altered source versions must be plainly marked as such, and must not be
+      misrepresented as being the original source code.
+   3. This notice may not be removed or altered from any source distribution.
+
+   René Nyffenegger rene.nyffenegger@adp-gmbh.ch
+*/
+
+Sources:
+third_party/deps/oiio/src/libutil/strutil.cpp
+
+// Notes:
+//
+// FreeBSD's implementation of strtod:
+//   https://svnweb.freebsd.org/base/stable/10/contrib/gdtoa/strtod.c?view=markup
+// Python's implementation  of strtod: (BSD license)
+//   https://hg.python.org/cpython/file/default/Python/pystrtod.c
+// Julia's implementation (combo of strtod_l and Python's impl):
+//   https://github.com/JuliaLang/julia/blob/master/src/support/strtod.c
+// MSDN documentation on Windows _strtod_l and friends:
+//   https://msdn.microsoft.com/en-us/library/kxsfc1ab.aspx   (_strtod_l)
+//   https://msdn.microsoft.com/en-us/library/4zx9aht2.aspx   (_create_locale)
+// cppreference on locale:
+//   http://en.cppreference.com/w/cpp/locale/locale
+
+Sources:
+third_party/deps/oiio/src/libutil/strutil.cpp
+
+// https://en.wikipedia.org/wiki/Levenshtein_distance
+// With some guidance from https://github.com/wooorm/levenshtein.c (MIT
+// license) as well.
+
+Sources:
+third_party/deps/oiio/src/libutil/strutil_test.cpp
+
+// Copyright Contributors to the OpenImageIO project.
+// SPDX-License-Identifier: Apache-2.0
+// https://github.com/AcademySoftwareFoundation/OpenImageIO
+// clang-format off
+
+Sources:
+third_party/deps/oiio/src/libutil/sysutil.cpp
+
+// Non-windows: also check the TERM env variable for a terminal known to
+    // be capable of the color codes. This list is assembled from a
+    // combination of terminals listed in Google Benchmark:
+    // https://github.com/google/benchmark/blob/master/src/colorprint.cc
+    // (Apache 2.0) also from https://github.com/agauniyal/rang (Unlicense).
+
+Sources:
+third_party/deps/oiio/src/libutil/thread.cpp
+
+// This implementation of thread_pool is based on CTPL.
+// We've made a variety of changes (we hope improvements) ourselves to cater
+// it to our needs.
+//
+// The original CTPL is:
+// https://github.com/vit-vit/CTPL
+// Copyright (C) 2014 by Vitaliy Vitsentiy
+// Licensed with Apache 2.0
+// (see https://github.com/vit-vit/CTPL/blob/master/LICENSE)
+
+Sources:
+third_party/deps/oiio/src/libutil/xxhash.cpp
+
+/*
+xxHash - Fast Hash algorithm
+Copyright (C) 2012-2014, Yann Collet.
+BSD 2-Clause License (http://www.opensource.org/licenses/bsd-license.php)
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+* Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+You can contact the author at :
+- xxHash source repository : https://github.com/Cyan4973/xxHash
+- public discussion board : https://groups.google.com/forum/#!forum/lz4c
+*/
+
+Sources:
+third_party/deps/oiio/src/openexr.imageio/exr_pvt.h
+third_party/deps/oiio/src/openexr.imageio/exrinput_c.cpp
+
+// Copyright 2021-present Contributors to the OpenImageIO project.
+// SPDX-License-Identifier: Apache-2.0
+// https://github.com/AcademySoftwareFoundation/OpenImageIO
+

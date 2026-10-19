@@ -1,0 +1,1441 @@
+Source notice supplement for ocio
+Origin: https://github.com/AcademySoftwareFoundation/OpenColorIO.git
+Pin: 6918fad3f5d22ac3ef2397c754bf4268c2b58dd0
+Collected verbatim comment blocks from the reviewed snapshot.
+Identical notices are grouped; original source notices remain intact.
+Complete component license texts and selected licenses are in the root notices.
+
+Sources:
+third_party/deps/ocio/CMakeLists.txt
+third_party/deps/ocio/ext/CMakeLists.txt
+third_party/deps/ocio/ext/sampleicc/CMakeLists.txt
+third_party/deps/ocio/ext/xxHash/CMakeLists.txt
+third_party/deps/ocio/share/cmake/macros/StripUtils.cmake
+third_party/deps/ocio/share/cmake/macros/ocio_handle_dependency.cmake
+third_party/deps/ocio/share/cmake/macros/ocio_install_dependency.cmake
+third_party/deps/ocio/share/cmake/projects/Buildlcms2.cmake
+third_party/deps/ocio/share/cmake/projects/Buildpystring.cmake
+third_party/deps/ocio/share/cmake/toolchains/android-toolchain.cmake
+third_party/deps/ocio/share/cmake/toolchains/iPhone-armv6-toolchain.cmake
+third_party/deps/ocio/share/cmake/toolchains/iPhone-toolchain.cmake
+third_party/deps/ocio/share/cmake/toolchains/iPhoneSimulator-toolchain.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportARMNeon.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportAVX.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportAVX2.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportAVX512.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportF16C.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportGL.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportSSE2.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportSSE3.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportSSE4.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportSSE42.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportSSEUsingSSE2NEON.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportSSSE3.cmake
+third_party/deps/ocio/share/cmake/utils/CheckSupportX86SIMD.cmake
+third_party/deps/ocio/share/cmake/utils/Colors.cmake
+third_party/deps/ocio/share/cmake/utils/CompilerFlags.cmake
+third_party/deps/ocio/share/cmake/utils/Compilers.cmake
+third_party/deps/ocio/share/cmake/utils/CppVersion.cmake
+third_party/deps/ocio/src/CMakeLists.txt
+third_party/deps/ocio/src/OpenColorIO/CMakeLists.txt
+third_party/deps/ocio/src/apps/CMakeLists.txt
+third_party/deps/ocio/src/apputils/CMakeLists.txt
+third_party/deps/ocio/src/bindings/CMakeLists.txt
+third_party/deps/ocio/src/libutils/CMakeLists.txt
+third_party/deps/ocio/src/utils/CMakeLists.txt
+third_party/deps/ocio/tests/CMakeLists.txt
+third_party/deps/ocio/vendor/CMakeLists.txt
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+
+Sources:
+third_party/deps/ocio/ext/sampleicc/src/include/icProfileHeader.h
+
+/** @file
+File:       icProfileHeader.h
+
+Contains:   ICC profile definitions and structures including Version 4 extensions
+
+Copyright:  � see ICC Software License
+
+* <b>
+* This version of the header file corresponds to the profile
+* specification version 4.2 as defined in ICC Specificion ICC.1:2004-04.
+*
+* Some definitions only provided by version 2.x profiles are also included.
+*
+* This header file should not be considered as a replacement for the ICC
+* profile specification.  The ICC profile specification should always be
+* considered the ULTIMATE authority related to the specifiation for
+* contents in ICC profile file.  Conflicts between this header file
+* and the ICC profile specification (if they exist) should be deferred
+* to the ICC profile specification.
+* </b>
+*
+* All header file entries are pre-fixed with "ic" to help
+* avoid name space collisions. Signatures are pre-fixed with
+* icSig.
+*
+* Note: This header assumes that int is at least a 32 bit quantity
+*
+* The structures defined in this header file were created to
+* represent a description of an ICC profile on disk. Rather
+* than use pointers a technique is used where a single byte array
+* was placed at the end of each structure. This allows us in "C"
+* to extend the structure by allocating more data than is needed
+* to account for variable length structures.
+*
+* This also ensures that data following is allocated
+* contiguously and makes it easier to write and read data from
+* the file.
+*
+* For example to allocate space for a 256 count length UCR
+* and BG array, and fill the allocated data.  Note strlen + 1
+* to remember NULL terminator.
+*
+icUcrBgCurve    *ucrCurve, *bgCurve;
+int             ucr_nbytes, bg_nbytes, string_bytes;
+icUcrBg         *ucrBgWrite;
+char            ucr_string[100], *ucr_char;
+
+strcpy(ucr_string, "Example ucrBG curves");
+ucr_nbytes = sizeof(icUInt32Number) +
+(UCR_CURVE_SIZE * sizeof(icUInt16Number));
+bg_nbytes = sizeof(icUInt32Number) +
+(BG_CURVE_SIZE * sizeof(icUInt16Number));
+string_bytes = strlen(ucr_string) + 1;
+
+ucrBgWrite = (icUcrBg *)malloc(
+(ucr_nbytes + bg_nbytes + string_bytes));
+
+ucrCurve = (icUcrBgCurve *)ucrBgWrite->data;
+ucrCurve->count = UCR_CURVE_SIZE;
+for (i=0; i<ucrCurve->count; i++)
+ucrCurve->curve[i] = (icUInt16Number)i;
+
+bgCurve = (icUcrBgCurve *)((char *)ucrCurve + ucr_nbytes);
+bgCurve->count = BG_CURVE_SIZE;
+for (i=0; i<bgCurve->count; i++)
+bgCurve->curve[i] = 255 - (icUInt16Number)i;
+
+ucr_char = (char *)((char *)bgCurve + bg_nbytes);
+memcpy(ucr_char, ucr_string, string_bytes);
+
+* Many of the structures contain variable length arrays. This
+* is represented by the use of the convention.
+*
+*      type    data[icAny];
+*/
+
+Sources:
+third_party/deps/ocio/ext/sampleicc/src/include/icProfileHeader.h
+
+/*
+*
+*
+* Copyright (c) 2003-2006 The International Color Consortium.
+*
+*
+* THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
+* WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED.  IN NO EVENT SHALL THE INTERNATIONAL COLOR CONSORTIUM OR
+* ITS CONTRIBUTING MEMBERS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+* USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+* OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+* SUCH DAMAGE.
+* ====================================================================
+*
+* This software consists of voluntary contributions made by many
+* individuals on behalf of the The International Color Consortium.
+*
+*
+* Membership in the ICC is encouraged when this software is used for
+* commercial purposes.
+*
+*
+* For more information on The International Color Consortium, please
+* see <http://www.color.org/>.
+*
+*
+*/
+
+Sources:
+third_party/deps/ocio/ext/sampleicc/src/include/icProfileHeader.h
+
+/*****************************************************************
+Copyright (c) 2002  Heidelberger Druckmaschinen AG
+
+* THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
+* WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED.  IN NO EVENT SHALL THE INTERNATIONAL COLOR CONSORTIUM OR
+* ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+* USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+* OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+* SUCH DAMAGE.
+******************************************************************/
+
+Sources:
+third_party/deps/ocio/ext/sampleicc/src/include/icProfileHeader.h
+
+/*****************************************************************
+Copyright (c) 1994 SunSoft, Inc.
+
+Rights Reserved
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without restrict-
+ion, including without limitation the rights to use, copy, modify,
+merge, publish distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-
+INFRINGEMENT.  IN NO EVENT SHALL SUNSOFT, INC. OR ITS PARENT
+COMPANY BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+Except as contained in this notice, the name of SunSoft, Inc.
+shall not be used in advertising or otherwise to promote the
+sale, use or other dealings in this Software without written
+authorization from SunSoft Inc.
+******************************************************************/
+
+Sources:
+third_party/deps/ocio/ext/sampleicc/src/include/iccProfileReader.h
+
+/*
+The ICC Software License, Version 0.2
+
+
+Copyright (c) 2003-2010 The International Color Consortium. All rights
+reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in
+the documentation and/or other materials provided with the
+distribution.
+
+3. In the absence of prior written permission, the names "ICC" and "The
+International Color Consortium" must not be used to imply that the
+ICC organization endorses or promotes products derived from this
+software.
+
+
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED.  IN NO EVENT SHALL THE INTERNATIONAL COLOR CONSORTIUM OR
+ITS CONTRIBUTING MEMBERS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+====================================================================
+
+This software consists of voluntary contributions made by many
+individuals on behalf of the The International Color Consortium.
+
+
+Membership in the ICC is encouraged when this software is used for
+commercial purposes.
+
+
+For more information on The International Color Consortium, please
+see <http://www.color.org/>.
+
+*/
+
+Sources:
+third_party/deps/ocio/ext/sampleicc/src/include/iccProfileReader.h
+
+/*
+This code has been copied and modified from http://sampleicc.sourceforge.net/
+This is the minimal amount of code needed to read icc profiles.
+
+Modifications Copyright Contributors to the OpenColorIO Project.
+*/
+
+Sources:
+third_party/deps/ocio/ext/xxHash/src/include/xxhash.h
+
+/*
+ * xxHash - Extremely Fast Hash algorithm
+ * Header File
+ * Copyright (C) 2012-2020 Yann Collet
+ *
+ * BSD 2-Clause License (https://www.opensource.org/licenses/bsd-license.php)
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above
+ *      copyright notice, this list of conditions and the following disclaimer
+ *      in the documentation and/or other materials provided with the
+ *      distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * You can contact the author at:
+ *   - xxHash homepage: https://www.xxhash.com
+ *   - xxHash source repository: https://github.com/Cyan4973/xxHash
+ */
+
+Sources:
+third_party/deps/ocio/include/OpenColorIO/OpenColorAppHelpers.h
+third_party/deps/ocio/src/OpenColorIO/OpOptimizers.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/range/RangeOpData.cpp
+
+// Copyright Contributors to the OpenColorIO Project.
+
+Sources:
+third_party/deps/ocio/include/OpenColorIO/OpenColorIO.h
+third_party/deps/ocio/include/OpenColorIO/OpenColorTransforms.h
+third_party/deps/ocio/include/OpenColorIO/OpenColorTypes.h
+third_party/deps/ocio/src/OpenColorIO/AVX.h
+third_party/deps/ocio/src/OpenColorIO/AVX2.h
+third_party/deps/ocio/src/OpenColorIO/AVX512.h
+third_party/deps/ocio/src/OpenColorIO/Baker.cpp
+third_party/deps/ocio/src/OpenColorIO/BakingUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/BakingUtils.h
+third_party/deps/ocio/src/OpenColorIO/BitDepthUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/BitDepthUtils.h
+third_party/deps/ocio/src/OpenColorIO/CPUInfo.cpp
+third_party/deps/ocio/src/OpenColorIO/CPUInfo.h
+third_party/deps/ocio/src/OpenColorIO/CPUProcessor.cpp
+third_party/deps/ocio/src/OpenColorIO/CPUProcessor.h
+third_party/deps/ocio/src/OpenColorIO/Caching.cpp
+third_party/deps/ocio/src/OpenColorIO/Caching.h
+third_party/deps/ocio/src/OpenColorIO/ColorSpace.cpp
+third_party/deps/ocio/src/OpenColorIO/ColorSpaceSet.cpp
+third_party/deps/ocio/src/OpenColorIO/Config.cpp
+third_party/deps/ocio/src/OpenColorIO/ConfigUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/ConfigUtils.h
+third_party/deps/ocio/src/OpenColorIO/Context.cpp
+third_party/deps/ocio/src/OpenColorIO/ContextVariableUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/ContextVariableUtils.h
+third_party/deps/ocio/src/OpenColorIO/CustomKeys.h
+third_party/deps/ocio/src/OpenColorIO/Display.cpp
+third_party/deps/ocio/src/OpenColorIO/Display.h
+third_party/deps/ocio/src/OpenColorIO/DynamicProperty.cpp
+third_party/deps/ocio/src/OpenColorIO/DynamicProperty.h
+third_party/deps/ocio/src/OpenColorIO/Exception.cpp
+third_party/deps/ocio/src/OpenColorIO/FileRules.cpp
+third_party/deps/ocio/src/OpenColorIO/FileRules.h
+third_party/deps/ocio/src/OpenColorIO/GPUProcessor.cpp
+third_party/deps/ocio/src/OpenColorIO/GPUProcessor.h
+third_party/deps/ocio/src/OpenColorIO/GpuShader.cpp
+third_party/deps/ocio/src/OpenColorIO/GpuShader.h
+third_party/deps/ocio/src/OpenColorIO/GpuShaderClassWrapper.cpp
+third_party/deps/ocio/src/OpenColorIO/GpuShaderClassWrapper.h
+third_party/deps/ocio/src/OpenColorIO/GpuShaderDesc.cpp
+third_party/deps/ocio/src/OpenColorIO/GpuShaderUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/GpuShaderUtils.h
+third_party/deps/ocio/src/OpenColorIO/HashUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/HashUtils.h
+third_party/deps/ocio/src/OpenColorIO/ImageDesc.cpp
+third_party/deps/ocio/src/OpenColorIO/ImagePacking.cpp
+third_party/deps/ocio/src/OpenColorIO/ImagePacking.h
+third_party/deps/ocio/src/OpenColorIO/Logging.cpp
+third_party/deps/ocio/src/OpenColorIO/Logging.h
+third_party/deps/ocio/src/OpenColorIO/Look.cpp
+third_party/deps/ocio/src/OpenColorIO/LookParse.cpp
+third_party/deps/ocio/src/OpenColorIO/LookParse.h
+third_party/deps/ocio/src/OpenColorIO/MathUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/MathUtils.h
+third_party/deps/ocio/src/OpenColorIO/Mutex.h
+third_party/deps/ocio/src/OpenColorIO/NamedTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/NamedTransform.h
+third_party/deps/ocio/src/OpenColorIO/OCIOYaml.cpp
+third_party/deps/ocio/src/OpenColorIO/OCIOYaml.h
+third_party/deps/ocio/src/OpenColorIO/OCIOZArchive.cpp
+third_party/deps/ocio/src/OpenColorIO/OCIOZArchive.h
+third_party/deps/ocio/src/OpenColorIO/Op.cpp
+third_party/deps/ocio/src/OpenColorIO/Op.h
+third_party/deps/ocio/src/OpenColorIO/OpBuilders.h
+third_party/deps/ocio/src/OpenColorIO/ParseUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/ParseUtils.h
+third_party/deps/ocio/src/OpenColorIO/PathUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/PathUtils.h
+third_party/deps/ocio/src/OpenColorIO/Platform.cpp
+third_party/deps/ocio/src/OpenColorIO/Platform.h
+third_party/deps/ocio/src/OpenColorIO/PrivateTypes.h
+third_party/deps/ocio/src/OpenColorIO/Processor.cpp
+third_party/deps/ocio/src/OpenColorIO/Processor.h
+third_party/deps/ocio/src/OpenColorIO/SSE.h
+third_party/deps/ocio/src/OpenColorIO/SSE2.h
+third_party/deps/ocio/src/OpenColorIO/ScanlineHelper.cpp
+third_party/deps/ocio/src/OpenColorIO/ScanlineHelper.h
+third_party/deps/ocio/src/OpenColorIO/SystemMonitor.cpp
+third_party/deps/ocio/src/OpenColorIO/SystemMonitor.h
+third_party/deps/ocio/src/OpenColorIO/SystemMonitor_macos.cpp
+third_party/deps/ocio/src/OpenColorIO/SystemMonitor_windows.cpp
+third_party/deps/ocio/src/OpenColorIO/TokensManager.h
+third_party/deps/ocio/src/OpenColorIO/Transform.cpp
+third_party/deps/ocio/src/OpenColorIO/TransformBuilder.h
+third_party/deps/ocio/src/OpenColorIO/ViewTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/ViewingRules.cpp
+third_party/deps/ocio/src/OpenColorIO/ViewingRules.h
+third_party/deps/ocio/src/OpenColorIO/apphelpers/CategoryHelpers.cpp
+third_party/deps/ocio/src/OpenColorIO/apphelpers/CategoryHelpers.h
+third_party/deps/ocio/src/OpenColorIO/apphelpers/ColorSpaceHelpers.cpp
+third_party/deps/ocio/src/OpenColorIO/apphelpers/ColorSpaceHelpers.h
+third_party/deps/ocio/src/OpenColorIO/apphelpers/DisplayViewHelpers.cpp
+third_party/deps/ocio/src/OpenColorIO/apphelpers/LegacyViewingPipeline.cpp
+third_party/deps/ocio/src/OpenColorIO/apphelpers/LegacyViewingPipeline.h
+third_party/deps/ocio/src/OpenColorIO/apphelpers/MixingHelpers.cpp
+third_party/deps/ocio/src/OpenColorIO/apphelpers/MixingHelpers.h
+third_party/deps/ocio/src/OpenColorIO/builtinconfigs/BuiltinConfigRegistry.cpp
+third_party/deps/ocio/src/OpenColorIO/builtinconfigs/BuiltinConfigRegistry.h
+third_party/deps/ocio/src/OpenColorIO/builtinconfigs/CGConfig.cpp
+third_party/deps/ocio/src/OpenColorIO/builtinconfigs/CGConfig.h
+third_party/deps/ocio/src/OpenColorIO/builtinconfigs/StudioConfig.cpp
+third_party/deps/ocio/src/OpenColorIO/builtinconfigs/StudioConfig.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormat3DL.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatCC.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatCCC.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatCSP.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatCTF.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatDiscreet1DL.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatHDL.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatICC.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatICC.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatIridasCube.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatIridasItx.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatIridasLook.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatPandora.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatResolveCube.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatSpi1D.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatSpi3D.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatSpiMtx.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatTruelight.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatUtils.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatVF.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FormatMetadata.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/FormatMetadata.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/cdl/CDLParser.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/cdl/CDLParser.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/cdl/CDLReaderHelper.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/cdl/CDLReaderHelper.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/cdl/CDLWriter.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/cdl/CDLWriter.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/ctf/CTFReaderHelper.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/ctf/CTFReaderHelper.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/ctf/CTFReaderUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/ctf/CTFReaderUtils.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/ctf/CTFTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/ctf/CTFTransform.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/ctf/IndexMapping.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/ctf/IndexMapping.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/xmlutils/XMLReaderHelper.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/xmlutils/XMLReaderHelper.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/xmlutils/XMLReaderUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/xmlutils/XMLReaderUtils.h
+third_party/deps/ocio/src/OpenColorIO/fileformats/xmlutils/XMLWriterUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/fileformats/xmlutils/XMLWriterUtils.h
+third_party/deps/ocio/src/OpenColorIO/ops/OpArray.h
+third_party/deps/ocio/src/OpenColorIO/ops/OpTools.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/OpTools.h
+third_party/deps/ocio/src/OpenColorIO/ops/allocation/AllocationOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/allocation/AllocationOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/cdl/CDLOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/cdl/CDLOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/cdl/CDLOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/cdl/CDLOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/cdl/CDLOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/cdl/CDLOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/cdl/CDLOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/cdl/CDLOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/exponent/ExponentOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/exponent/ExponentOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/exposurecontrast/ExposureContrastOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/exposurecontrast/ExposureContrastOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/exposurecontrast/ExposureContrastOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/exposurecontrast/ExposureContrastOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/exposurecontrast/ExposureContrastOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/exposurecontrast/ExposureContrastOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/exposurecontrast/ExposureContrastOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/exposurecontrast/ExposureContrastOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/ACES2/ColorLib.h
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/ACES2/Common.h
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/ACES2/MatrixLib.h
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/ACES2/Transform.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/ACES2/Transform.h
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/FixedFunctionOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/FixedFunctionOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/FixedFunctionOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/FixedFunctionOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/FixedFunctionOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/FixedFunctionOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/FixedFunctionOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/fixedfunction/FixedFunctionOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOpUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gamma/GammaOpUtils.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimary.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimary.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimaryOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimaryOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimaryOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimaryOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimaryOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimaryOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimaryOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingprimary/GradingPrimaryOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingBSplineCurve.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingBSplineCurve.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurve.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurve.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurveOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurveOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurveOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurveOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurveOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurveOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurveOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingrgbcurve/GradingRGBCurveOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingTone.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingTone.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingToneOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingToneOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingToneOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingToneOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingToneOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingToneOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingToneOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/gradingtone/GradingToneOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogUtils.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/log/LogUtils.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU_AVX.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU_AVX.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU_AVX2.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU_AVX2.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU_AVX512.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU_AVX512.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU_SSE2.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpCPU_SSE2.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut1d/Lut1DOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU_AVX.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU_AVX.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU_AVX2.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU_AVX2.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU_AVX512.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU_AVX512.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU_SSE2.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpCPU_SSE2.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/lut3d/Lut3DOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/matrix/MatrixOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/matrix/MatrixOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/matrix/MatrixOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/matrix/MatrixOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/matrix/MatrixOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/matrix/MatrixOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/matrix/MatrixOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/matrix/MatrixOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/noop/NoOps.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/noop/NoOps.h
+third_party/deps/ocio/src/OpenColorIO/ops/range/RangeOp.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/range/RangeOp.h
+third_party/deps/ocio/src/OpenColorIO/ops/range/RangeOpCPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/range/RangeOpCPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/range/RangeOpData.h
+third_party/deps/ocio/src/OpenColorIO/ops/range/RangeOpGPU.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/range/RangeOpGPU.h
+third_party/deps/ocio/src/OpenColorIO/ops/reference/ReferenceOpData.cpp
+third_party/deps/ocio/src/OpenColorIO/ops/reference/ReferenceOpData.h
+third_party/deps/ocio/src/OpenColorIO/transforms/AllocationTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/BuiltinTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/BuiltinTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/CDLTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/CDLTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/ColorSpaceTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/DisplayViewTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/ExponentTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/ExponentTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/ExponentWithLinearTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/ExponentWithLinearTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/ExposureContrastTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/ExposureContrastTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/FileTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/FileTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/FixedFunctionTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/FixedFunctionTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/GradingPrimaryTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/GradingPrimaryTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/GradingRGBCurveTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/GradingRGBCurveTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/GradingToneTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/GradingToneTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/GroupTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/GroupTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/LogAffineTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/LogAffineTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/LogCameraTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/LogCameraTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/LogTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/LogTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/LookTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/Lut1DTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/Lut1DTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/Lut3DTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/Lut3DTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/MatrixTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/MatrixTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/RangeTransform.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/RangeTransform.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/ACES.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/ACES.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/AppleCameras.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/AppleCameras.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/ArriCameras.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/ArriCameras.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/BuiltinTransformRegistry.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/BuiltinTransformRegistry.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/CanonCameras.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/CanonCameras.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/ColorMatrixHelpers.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/ColorMatrixHelpers.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/Displays.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/Displays.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/OpHelpers.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/OpHelpers.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/PanasonicCameras.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/PanasonicCameras.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/RedCameras.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/RedCameras.h
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/SonyCameras.cpp
+third_party/deps/ocio/src/OpenColorIO/transforms/builtins/SonyCameras.h
+third_party/deps/ocio/src/apputils/logGuard.cpp
+third_party/deps/ocio/src/apputils/logGuard.h
+third_party/deps/ocio/src/apputils/measure.h
+third_party/deps/ocio/src/utils/NumberUtils.h
+third_party/deps/ocio/src/utils/StringUtils.h
+
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright Contributors to the OpenColorIO Project.
+
+Sources:
+third_party/deps/ocio/share/cmake/macros/CheckForOpenEXRCompatibility.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Check for compatibility between OpenEXR and OpenImageIO since OCIO requires OpenEXR 3+.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/macros/FindPythonPackage.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate a Python package
+#
+# Variables defined by this module:
+#   <package>_FOUND
+#
+# Usage:
+#   find_python_package(Jinja2 2.10.1)
+#
+# If the package is not installed in a standard path, add it to the PYTHONPATH 
+# environment variable before running CMake.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/macros/GetPythonPreCommand.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Build a Python_EXECUTABLE pre-command which temporarily modifies PATH and 
+# PYTHONPATH with the OCIO Python environment and any additionally provided 
+# paths containing Python packages.
+#
+# Variables defined by this module:
+#   Python_PRE_CMD
+#
+# Usage:
+#   get_python_pre_command([path [...]])
+#
+# Use the PYT_PRE_COMMAND when running a command with Python_EXECUTABLE:
+#   ${Python_PRE_COMMAND} ${Python_EXECUTABLE} [args]
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/macros/PackageUtils.cmake
+third_party/deps/ocio/share/cmake/macros/VariableUtils.cmake
+third_party/deps/ocio/share/cmake/macros/VersionUtils.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# General CMake utility macros.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/macros/ParseArguments.cmake
+
+# Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
+# file Copyright.txt or https://cmake.org/licensing for details.
+#
+# The PARSE_ARGUMENTS macro will take the arguments of another macro and define
+# several variables. The first argument to PARSE_ARGUMENTS is a prefix to put
+# on all variables it creates. The second argument is a list of names, and the
+# third argument is a list of options. Both of these lists should be quoted.
+# The rest of the PARSE_ARGUMENTS args are arguments from another macro to be
+# parsed.
+#
+#     PARSE_ARGUMENTS(prefix arg_names options arg1 arg2...)
+#
+# For each item in options, PARSE_ARGUMENTS will create a variable with that
+# name, prefixed with prefix_. So, for example, if prefix is MY_MACRO and
+# options is OPTION1;OPTION2, then PARSE_ARGUMENTS will create the variables
+# MY_MACRO_OPTION1 and MY_MACRO_OPTION2. These variables will be set to true if
+# the option exists in the command line or false otherwise.
+#
+# For each item in arg_names, PARSE_ARGUMENTS will create a variable with that
+# name, prefixed with prefix_. Each variable will be filled with the arguments
+# that occur after the given arg_name is encountered up to the next arg_name or
+# the end of the arguments. All options are removed from these lists.
+# PARSE_ARGUMENTS also creates a prefix_DEFAULT_ARGS variable containing the
+# list of all arguments up to the first arg_name encountered.
+#
+# Downloaded from: http://www.itk.org/Wiki/CMakeMacroParseArguments
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/FindExtPackages.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# All find modules used in this module support typical find_package
+# behavior or installation of packages from external projects, as configured 
+# by the OCIO_INSTALL_EXT_PACKAGES option.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/FindImath.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate Imath
+#
+# Variables defined by this module:
+#   Imath_FOUND          - Indicate whether the library was found or not
+#   Imath_LIBRARY        - Path to the library file
+#   Imath_INCLUDE_DIR    - Location of the header files
+#   Imath_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   Imath::Imath
+#
+# Usually CMake will use the dynamic library rather than static, if both are present. 
+# In this case, you may set Imath_STATIC_LIBRARY to ON to request use of the static one. 
+# If only the static library is present (such as when OCIO builds the dependency), then the option 
+# is not needed.
+#
+# If the library is not installed in a typical location where CMake will find it, you may specify 
+# the location using one of the following methods:
+# -- Set -DImath_DIR to point to the directory containing the CMake configuration file for the package.
+# -- Set -DImath_ROOT to point to the directory containing the lib and include directories.
+# -- Set -DImath_LIBRARY and -DImath_INCLUDE_DIR to point to the lib and include directories.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/FindNuke.cmake
+
+#==========
+#
+# Copyright (c) 2010, Dan Bethell.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#
+#     * Neither the name of Dan Bethell nor the names of any
+#       other contributors to this software may be used to endorse or
+#       promote products derived from this software without specific prior
+#       written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+# IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+#==========
+#
+# Variables defined by this module:
+#   Nuke_FOUND    
+#   Nuke_INCLUDE_DIR
+#   Nuke_COMPILE_FLAGS
+#   Nuke_LINK_FLAGS
+#   Nuke_LIBRARIES
+#   Nuke_LIBRARY_DIR
+#
+# Usage: 
+#   FIND_PACKAGE( Nuke )
+#   FIND_PACKAGE( Nuke REQUIRED )
+#
+# Note:
+# You can tell the module where Nuke is installed by setting
+# the NUKE_INSTALL_PATH (or setting the NDK_PATH environment
+# variable before calling FIND_PACKAGE.
+# 
+# E.g. 
+#   SET( NUKE_INSTALL_PATH "/usr/local/Nuke5.2v3" )
+#   FIND_PACKAGE( Nuke REQUIRED )
+#
+#==========
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/FindOSL.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate OpenShadingLanguage (OSL)
+#
+# Variables defined by this module:
+#   OSL_FOUND                          - Indicate whether the library was found or not
+#   OSL_LIB_DIR                        - Location of the libary files
+#   OSL_INCLUDE_DIR                    - Location of the header files
+#   OSL_VERSION                        - Library's version
+#   OSL_SHADERS_INCLUDE_DIR            - Location of the shader's header files
+#   OSL_SHADERS_DIR                    - Used for OSL unit tests
+#   
+#   These variables are set only when OSL_ROOT is provided:
+#   oslcomp_LIBRARY                    - Path to the library file
+#   oslexec_LIBRARY                    - Path to the library file
+#
+# Global targets defined by this module:
+#   osl::osl
+#
+# Usually CMake will use the dynamic library rather than static, if both are present. 
+#
+# If the library is not installed in a typical location where CMake will find it, you may specify 
+# the location using one of the following methods:
+# -- Set -DOpenShadingLanguage_DIR to point to the directory containing the CMake configuration file for the package.
+# -- Set -DOpenShadingLanguage_ROOT to point to the directory containing the lib and include directories.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/FindSphinx.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate Sphinx (Python documentation generator)
+#
+# Variables defined by this module:
+#   Sphinx_FOUND             - Indicate whether the executable was found or not
+#   Sphinx_EXECUTABLE        - Path to the executable file
+#
+#
+# If the executable is not installed in a typical location where CMake will find it, you may specify 
+# the location using one of the following methods:
+# -- Set -DSphinx_ROOT to point to the directory containing the executable.
+# -- Set -DSphinx_EXECUTABLE to point to executable file.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/Findexpat.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate expat
+#
+# Variables defined by this module:
+#   expat_FOUND          - Indicate whether the library was found or not
+#   expat_LIBRARY        - Path to the library file
+#   expat_INCLUDE_DIR    - Location of the header files
+#   expat_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   expat::expat
+#
+# Usually CMake will use the dynamic library rather than static, if both are present. 
+# In this case, you may set expat_STATIC_LIBRARY to ON to request use of the static one. 
+# If only the static library is present (such as when OCIO builds the dependency), then the option 
+# is not needed.
+#
+# If the library is not installed in a typical location where CMake will find it, you may specify 
+# the location using one of the following methods:
+# -- Set -Dexpat_DIR to point to the directory containing the CMake configuration file for the package.
+# -- Set -Dexpat_ROOT to point to the directory containing the lib and include directories.
+# -- Set -Dexpat_LIBRARY and -Dexpat_INCLUDE_DIR to point to the lib and include directories.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/Findlcms2.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate lcms2
+#
+# Variables defined by this module:
+#   lcms2_FOUND - If FALSE, do not try to link to lcms
+#   lcms2_LIBRARY - Where to find lcms
+#   lcms2_INCLUDE_DIR - Where to find lcms2.h
+#   lcms2_VERSION - The version of the library
+#
+# Global targets defined by this module:
+#   lcms2::lcms2 - IMPORTED target, if found
+#
+# Usually CMake will use the dynamic library rather than static, if both are present. 
+# In this case, you may set lcms2_STATIC_LIBRARY to ON to request use of the static one. 
+# If only the static library is present (such as when OCIO builds the dependency), then the option 
+# is not needed.
+#
+# If the library is not installed in a typical location where CMake will find it, you may specify 
+# the location using one of the following methods:
+# -- Set -Dlcms2_ROOT to point to the directory containing the lib and include directories.
+# -- Set -Dlcms2_LIBRARY and -Dlcms2_INCLUDE_DIR to point to the lib and include directories.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/Findminizip-ng.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate minizip-ng
+#
+# Variables defined by this module:
+#   minizip-ng_FOUND        - If FALSE, do not try to link to minizip-ng
+#   minizip-ng_LIBRARY      - minizip-ng library to link to
+#   minizip-ng_INCLUDE_DIR  - Where to find mz.h and other headers
+#   minizip-ng_VERSION      - The version of the library
+#   minizip-ng_COMPAT       - Whether minizip-ng MZ_COMPAT was used or not
+#
+# Global targets defined by this module:
+#   MINIZIP::minizip-ng - IMPORTED target, if found
+#
+# Usually CMake will use the dynamic library rather than static, if both are present. 
+# In this case, you may set minizip-ng_STATIC_LIBRARY to ON to request use of the static one. 
+# If only the static library is present (such as when OCIO builds the dependency), then the option 
+# is not needed.
+#
+# If the library is not installed in a typical location where CMake will find it, you may specify 
+# the location using one of the following methods:
+# -- Set -Dminizip-ng_DIR to point to the directory containing the CMake configuration file for the package.
+# -- Set -Dminizip-ng_ROOT to point to the directory containing the lib and include directories.
+# -- Set -Dminizip-ng_LIBRARY and -Dminizip-ng_INCLUDE_DIR to point to the lib and include directories.
+#
+#
+# For external builds of minizip-ng, please note that the same build options should be used.
+# Using more options, such as enabling other compression methods, will provoke linking issue
+# since OCIO is not linking to those libraries.
+#
+# e.g. Setting MZ_BZIP2=ON will cause linking issue since OCIO will not be linked against BZIP2.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/Findopenfx.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate openfx
+#
+# Variables defined by this module:
+#   openfx_FOUND          - Indicate whether the library was found or not
+#   openfx_INCLUDE_DIR    - Location of the header files
+#   openfx_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   openfx::module
+#
+# Usually CMake will use the dynamic library rather than static, if both are present. 
+#
+# If the library is not installed in a typical location where CMake will find it, you may specify 
+# the location using the following method:
+# -- Set -Dopenfx_ROOT to point to the directory containing the lib and include directories.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/Findpybind11.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate pybind11
+#
+# Variables defined by this module:
+#   pybind11_FOUND - If FALSE, do not try to link to pybind11
+#   pybind11_INCLUDE_DIR - Where to find pybind11.h
+#   pybind11_VERSION - The version of the library
+#
+# Global targets defined by this module:
+#   pybind11::module
+#
+# Usually CMake will use the dynamic library rather than static, if both are present. 
+#
+# If the library is not installed in a typical location where CMake will find it, you may specify 
+# the location using one of the following methods:
+# -- Set -Dpybind11_DIR to point to the directory containing the CMake configuration file for the package.
+# -- Set -Dpybind11_ROOT to point to the directory containing the lib and include directories.
+# -- Set -Dpybind11_LIBRARY and -Dpybind11_INCLUDE_DIR to point to the lib and include directories.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/Findpystring.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate pystring
+#
+# Variables defined by this module:
+#   pystring_FOUND          - Indicate whether the library was found or not
+#   pystring_LIBRARY        - Path to the library file
+#   pystring_INCLUDE_DIR    - Location of the header files
+#   pystring_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   pystring::pystring - IMPORTED target, if found
+#
+# Usually CMake will use the dynamic library rather than static, if both are present. 
+#
+# If the library is not installed in a typical location where CMake will find it, you may specify 
+# the location using one of the following methods:
+# -- Set -Dpystring_ROOT to point to the directory containing the lib and include directories.
+# -- Set -Dpystring_LIBRARY and -Dpystring_INCLUDE_DIR to point to the lib and include directories.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/Findyaml-cpp.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Locate yaml-cpp
+#
+# Variables defined by this module:
+#   yaml-cpp_FOUND          - Indicate whether the library was found or not
+#   yaml-cpp_LIBRARY        - Path to the library file
+#   yaml-cpp_INCLUDE_DIR    - Location of the header files
+#   yaml-cpp_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   yaml-cpp::yaml-cpp
+#
+# For compatibility with the upstream CMake package, the following variables and targets are defined:
+#   YAML_CPP_LIBRARIES      - Libraries to link against yaml-cpp
+#   YAML_CPP_INCLUDE_DIR    - Include directory
+#
+# Usually CMake will use the dynamic library rather than static, if both are present. 
+# In this case, you may set yaml-cpp_STATIC_LIBRARY to ON to request use of the static one. 
+# If only the static library is present (such as when OCIO builds the dependency), then the option 
+# is not needed.
+#
+# If the library is not installed in a typical location where CMake will find it, you may specify 
+# the location using one of the following methods:
+# -- Set -Dyaml-cpp_DIR to point to the directory containing the CMake configuration file for the package.
+# -- Set -Dyaml-cpp_ROOT to point to the directory containing the lib and include directories.
+# -- Set -Dyaml-cpp_LIBRARY and -Dyaml-cpp_INCLUDE_DIR to point to the lib and include directories.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/InstallImath.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install Imath
+#
+# Variables defined by this module:
+#   Imath_FOUND          - Indicate whether the library was found or not
+#   Imath_LIBRARY        - Path to the library file
+#   Imath_INCLUDE_DIR    - Location of the header files
+#   Imath_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   Imath::Imath
+#   Imath::ImathConfig     
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/InstallOpenEXR.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install OpenEXR
+#
+# Variables defined by this module:
+#   OpenEXR_FOUND          - Indicate whether the library was found or not
+#   OpenEXR_LIBRARY        - Path to the library file
+#   OpenEXR_INCLUDE_DIR    - Location of the header files
+#   OpenEXR_VERSION        - Library's version
+#
+# Imported targets defined by this module, if found:
+#   OpenEXR::Iex
+#   OpenEXR::IexConfig
+#   OpenEXR::IlmThread
+#   OpenEXR::IlmThreadConfig
+#   OpenEXR::OpenEXR
+#   OpenEXR::OpenEXRConfig
+#   OpenEXR::OpenEXRCore
+#   OpenEXR::OpenEXRUtil
+#
+# Depending on user options when configuring OCIO, OpenEXR can be used to
+# build libOpenColorIOimageioapphelpers.
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/InstallZLIB.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install ZLIB
+#
+# Except for the variable ZLIB_VERSION_STRING, OCIO sets the same variables as the 
+# CMake's FindZLIB when installing ZLIB manually.
+#
+# Variables defined by this module:
+#   ZLIB_FOUND          - Indicate whether the library was found or not
+#   ZLIB_LIBRARY        - Path to the library file
+#   ZLIB_INCLUDE_DIR    - Location of the header files
+#   ZLIB_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   ZLIB::ZLIB
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/Installexpat.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install expat
+#
+# Variables defined by this module:
+#   expat_FOUND          - Indicate whether the library was found or not
+#   expat_LIBRARY        - Path to the library file
+#   expat_INCLUDE_DIR    - Location of the header files
+#   expat_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   expat::expat         
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/Installlcms2.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install lcms2
+#
+# Variables defined by this module:
+#   lcms2_FOUND          - Indicate whether the library was found or not
+#   lcms2_LIBRARY        - Path to the library file
+#   lcms2_INCLUDE_DIR    - Location of the header files
+#   lcms2_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   lcms2::lcms2  
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/Installminizip-ng.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install minizip-ng
+#
+# Variables defined by this module:
+#   minizip-ng_FOUND          - Indicate whether the library was found or not
+#   minizip-ng_LIBRARY        - Path to the library file
+#   minizip-ng_INCLUDE_DIR    - Location of the header files
+#   minizip-ng_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   minizip-ng::minizip-ng
+#
+# Link against the following target:
+#   ZLIB::ZLIB
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/Installopenfx.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install openfx
+#
+# Variables defined by this module:
+#   openfx_FOUND          - Indicate whether the library was found or not
+#   openfx_INCLUDE_DIR    - Location of the header files
+#   openfx_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   openfx::module         
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/Installpybind11.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install pybind11
+#
+# Variables defined by this module:
+#   pybind11_FOUND          - Indicate whether the library was found or not
+#   pybind11_INCLUDE_DIR    - Location of the header files
+#   pybind11_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   pybind11::module         
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/Installpystring.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install pystring
+#
+# Variables defined by this module:
+#   pystring_FOUND          - Indicate whether the library was found or not
+#   pystring_LIBRARY        - Path to the library file
+#   pystring_INCLUDE_DIR    - Location of the header files
+#   pystring_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   pystring::pystring         
+#
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/Installsse2neon.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install sse2neon (header-only version)
+# https://github.com/DLTcollab/sse2neon
+#
+#
+# Global targets defined by this module:
+#   sse2neon
+###############################################################################
+
+Sources:
+third_party/deps/ocio/share/cmake/modules/install/Installyaml-cpp.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright Contributors to the OpenColorIO Project.
+#
+# Install yaml-cpp
+#
+# Variables defined by this module:
+#   yaml-cpp_FOUND          - Indicate whether the library was found or not
+#   yaml-cpp_LIBRARY        - Path to the library file
+#   yaml-cpp_INCLUDE_DIR    - Location of the header files
+#   yaml-cpp_VERSION        - Library's version
+#
+# Global targets defined by this module:
+#   yaml-cpp::yaml-cpp         
+#
+# For compatibility with the upstream CMake package, the following variables and targets are defined:
+#   yaml-cpp::yaml-cpp      - Alias of the yaml-cpp target
+#   YAML_CPP_LIBRARIES      - Libraries to link against yaml-cpp
+#   YAML_CPP_INCLUDE_DIR    - Include directory
+#
+
+Sources:
+third_party/deps/ocio/src/OpenColorIO/fileformats/FileFormatCDL.cpp
+
+/*
+Copyright (c) 2014 Cinesite VFX Ltd, et al.
+All Rights Reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+* Redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+* Neither the name of Sony Pictures Imageworks nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+Sources:
+third_party/deps/ocio/src/apputils/argparse.cpp
+third_party/deps/ocio/src/apputils/argparse.h
+
+/*
+  Copyright 2008 Larry Gritz and the other authors and contributors.
+  All Rights Reserved.
+  Based on BSD-licensed software Copyright 2004 NVIDIA Corp.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are
+  met:
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+  * Neither the name of the software's owners nor the names of its
+    contributors may be used to endorse or promote products derived from
+    this software without specific prior written permission.
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+  (This is the Modified BSD License)
+*/
+
+Sources:
+third_party/deps/ocio/src/apputils/strutil.cpp
+third_party/deps/ocio/src/apputils/strutil.h
+
+/*
+  Copyright 2008 Larry Gritz and the other authors and contributors.
+  All Rights Reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are
+  met:
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+  * Neither the name of the software's owners nor the names of its
+    contributors may be used to endorse or promote products derived from
+    this software without specific prior written permission.
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+  (This is the Modified BSD License)
+*/
+

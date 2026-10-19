@@ -1,0 +1,66 @@
+Original native backend, queue adapter, validation, test and build contributions:
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+Full license: ../LICENSE
+
+Embedded WGSL includes generated and manually adapted Blender Cycles code from
+revision a456b761034dda42c32eef9f4aae0fa5a5c9f604. Its source copyright headers
+are preserved in the generated shader. The complete derivation lists and
+required notices are in:
+  ../parity/THIRD-PARTY-NOTICES.txt
+  ../research/THIRD-PARTY-NOTICES.txt
+  ../parity/licenses/BSD-3-Clause.txt
+The originals include Blender Foundation, Sony Pictures Imageworks Inc.,
+NVIDIA Corporation and Intel Corporation contributions under Apache-2.0 and
+BSD-3-Clause as detailed there.
+
+Changes in this native stage: the camera accepts a batch-relative path index;
+shadow resolution preserves the surface completion marker; a separate GPU
+accumulation pass writes the film and validates path/stage completion.
+
+The CodeBrix.WebGpu.Native.MitLicenseForever package supplies the unchanged
+WebGPU headers and native runtime. Its own LICENSE and THIRD-PARTY-NOTICES.txt
+remain applicable. Build outputs under work/ stage its runtime for local tests;
+the checked-in evidence stores hashes, not native dependency binaries.
+Final native RID redistribution and dependency license closure remain pending.
+
+The registered device's WGSL control kernels adapt these additional Cycles
+files at the same pinned revision:
+  src/kernel/device/gpu/kernel.h
+  src/kernel/device/gpu/parallel_active_index.h
+  src/kernel/device/gpu/parallel_prefix_sum.h
+  src/kernel/device/gpu/parallel_sorted_index.h
+  src/kernel/integrator/state_util.h
+  src/kernel/integrator/state_template.h
+  src/kernel/integrator/shadow_state_template.h
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+Changes: virtual byte addresses, atomic index reservation without subgroups,
+byte/halfword atomic writes, state descriptors and explicit bounds checks.
+The test oracle includes original prefix/sorting helpers and extracts the
+original state-copy/move bodies unchanged, with GPU-address access adapted
+to host arrays and MNEE ownership repair disabled as documented in DEVICE.md.
+The three-file registration overlay preserves upstream notices and leaves
+the reference checkout unchanged; its modifications are Jeremy's contributions.
+
+The registered camera entry additionally adapts these files at that revision:
+  src/kernel/integrator/init_from_camera.h
+  src/kernel/integrator/path_state.h
+  src/kernel/integrator/state_flow.h
+  src/kernel/device/gpu/work_stealing.h
+  src/kernel/camera/camera.h
+  src/kernel/util/differential.h
+  src/kernel/util/lookup_table.h
+  src/kernel/film/light_passes.h
+  src/kernel/film/adaptive_sampling.h
+  src/kernel/sample/tabulated_sobol.h
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-FileCopyrightText: 2019-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+It reuses hash/shuffle ports from ../parity/shaders/sampling.wgsl, whose
+derivations and third-party notices are recorded in the parity notices.
+Changes: native ABI offsets, virtual-address storage, explicit per-dispatch
+parameters, atomic byte/halfword state writes, and bounded work validation.
+The camera oracle includes original CPU functions unchanged. This gate is a
+restricted perspective/pinhole implementation, not all upstream camera modes.

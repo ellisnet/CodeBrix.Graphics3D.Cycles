@@ -1,0 +1,25 @@
+Original native backend, queue adapter, validation, test and build contributions:
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+Full license: ../LICENSE
+
+Embedded WGSL includes generated and manually adapted Blender Cycles code from
+revision a456b761034dda42c32eef9f4aae0fa5a5c9f604. Its source copyright headers
+are preserved in the generated shader. The complete derivation lists and
+required notices are in:
+  ../parity/THIRD-PARTY-NOTICES.txt
+  ../research/THIRD-PARTY-NOTICES.txt
+  ../parity/licenses/BSD-3-Clause.txt
+The originals include Blender Foundation, Sony Pictures Imageworks Inc.,
+NVIDIA Corporation and Intel Corporation contributions under Apache-2.0 and
+BSD-3-Clause as detailed there.
+
+Changes in this native stage: the camera accepts a batch-relative path index;
+shadow resolution preserves the surface completion marker; a separate GPU
+accumulation pass writes the film and validates path/stage completion.
+
+The CodeBrix.WebGpu.Native.MitLicenseForever package supplies the unchanged
+WebGPU headers and native runtime. Its own LICENSE and THIRD-PARTY-NOTICES.txt
+remain applicable. Build outputs under work/ stage its runtime for local tests;
+the checked-in evidence stores hashes, not native dependency binaries.
+Final native RID redistribution and dependency license closure remain pending.

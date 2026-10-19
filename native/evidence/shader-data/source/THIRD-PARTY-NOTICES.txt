@@ -1,0 +1,288 @@
+CodeBrix.Graphics3D.Cycles - third-party notices and source provenance
+===================================================================
+
+Original CodeBrix contributions:
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+Full license: LICENSE
+
+This inventory covers imported/adapted code, external source builds, linked
+development dependencies, and test inputs. Third-party code retains its own
+licenses and copyright notices. This file does not relicense that code.
+It is not a completed audit of a shipping NuGet package or every target RID.
+The project currently has no shipping native Cycles package.
+
+RELEASE BLOCKER: CYCLES' ATOMIC HEADERS
+-------------------------------------
+The Cycles checkout listed below contains GPL-2.0-or-later notices in:
+  third_party/atomic/atomic_ops.h
+  third_party/atomic/intern/atomic_ops_utils.h
+  third_party/atomic/intern/atomic_ops_unix.h
+  third_party/atomic/intern/atomic_ops_ext.h
+
+These files also retain the original jemalloc BSD notices. They do NOT state
+that the Blender modifications are alternatively available under BSD or
+Apache-2.0. Do not infer such a grant from Cycles' top-level Apache license.
+
+The current native host and CPU reference builds include these headers via
+src/util/atomic.h. Compiler dependency files confirm this, including
+cycles_util/guarded_allocator.cpp and cycles_kernel_cpu/kernel.cpp. Thus this
+is a compiled dependency, not merely an unused file found in a checkout.
+See third_party/provenance.json for hashes and compiler-dependency evidence.
+
+The current native host artifacts are NOT cleared for the intended Apache
+2.0 release. Resolution requires an adequately licensed replacement or
+explicit upstream licensing clarification; removing notices is not a fix.
+Jeremy is handling this resolution. Development/rendering research continues
+at his request. Do not describe the unresolved issue as resolved or silently
+include these headers in an Apache-only vendor bundle.
+
+The same checkout contains GPL-2.0-or-later-tagged build/maintenance files:
+  src/cmake/dependency_targets.cmake
+  tools/sync_blender_commits.py
+  tools/update_lib_submodules.py
+Their presence is a separate source-vendoring consideration, not evidence
+that each is compiled into the renderer. Avoid blindly copying the checkout.
+
+Apache/GPL compatibility is directional: permission to combine Apache code
+into a GPLv3 work is not permission to release GPL code under Apache alone.
+Reference: https://apache.org/licenses/GPL-compatibility.html
+
+1. CYCLES AND CODE ADAPTED THROUGH CYCLES
+---------------------------------------
+Source: https://github.com/blender/cycles
+Official upstream: https://projects.blender.org/blender/cycles
+Pinned revision: a456b761034dda42c32eef9f4aae0fa5a5c9f604
+Local reference checkout: ~/ClaudeHome/cycles-webgpu-upstream
+
+Cycles' default license is Apache-2.0, with per-file exceptions. The host
+build compiles external source; the repository contains derived WGSL,
+adapters, generated registration overlays, and source-based test harnesses.
+The reference checkout is kept unchanged. Function translation, resource
+access changes, supported subsets and file-level derivation lists are in:
+  research/THIRD-PARTY-NOTICES.txt
+  parity/THIRD-PARTY-NOTICES.txt
+  native/THIRD-PARTY-NOTICES.txt
+Historical evidence directories preserve the notices at each checkpoint;
+this root inventory records later findings without rewriting that evidence.
+
+Retain the per-file copyright notices, including Blender Foundation/Blender
+Authors, NVIDIA Corporation, Intel Corporation and the contributors below.
+Copies of Cycles' license texts are in third_party/licenses/Cycles-*.
+The atomic-header exception above remains unresolved.
+
+The native world-shader interpreter now additionally adapts the pinned SVM
+bytecode dispatcher, node helpers, background shader setup and BSD-licensed
+emission accumulation. Exact source files and modification descriptions are
+listed in native/THIRD-PARTY-NOTICES.txt. No new external source repository or
+runtime dependency was added for this extension. Its inverse-trigonometric
+adapters are original CodeBrix contributions derived from mathematical series
+and identities; they are not imported libc code.
+
+The native triangle shader-data preparation additionally adapts Cycles'
+geometry, transforms, compact differentials and packed-normal helpers. Those
+Apache-2.0 files include Blender Foundation and Intel notices; their exact
+derivation list is in native/THIRD-PARTY-NOTICES.txt. The portable GPU replay
+harness is original CodeBrix test code using the existing shipped WebGPU
+runtime; it adds no source repository or runtime dependency.
+
+Additional licenses/attributions in the host/kernel source include:
+
+* BSD-3-Clause: Open Shading Language-derived closures, emission, sampling,
+  camera and SVM helpers; Sony Pictures Imageworks Inc., et al., and Blender
+  Foundation. Source lineage: https://github.com/AcademySoftwareFoundation/OpenShadingLanguage
+  These are the copies in the pinned Cycles revision, not a separately
+  downloaded OSL runtime. WITH_CYCLES_OSL is disabled in the current build.
+  The existing WGSL subset's full BSD notice is in parity/licenses/BSD-3-Clause.txt.
+* BSD-3-Clause: math_fast.h (Larry Gritz, NVIDIA, Sony Pictures Imageworks;
+  adapted from OpenImageIO), types_float8.h (Intel and Blender), and the
+  Industrial Light & Magic-derived inverse-projection code.
+* MIT: Appleseed-derived shadow-terminator code in closure/bsdf.h,
+  Copyright (c) 2019 Francois Beaune, The appleseedhq Organization;
+  source lineage https://github.com/appleseedhq/appleseed.
+* MIT: Voronoi code attributed to Inigo Quilez (2013) in svm/voronoi.h;
+  original attribution and references remain in that file.
+* Zlib: src/util/md5.cpp and md5.h, Copyright 1999, 2002 Aladdin Enterprises.
+* Sky models in third_party/sky: BSD-3-Clause (Lukas Hosek and Alexander
+  Wilkie, 2012-2013; Blender Authors), MIT (Fernando Garcia Linan, 2022;
+  Blender Authors), and Apache-2.0 (Blender Authors), as marked per file.
+* Apache-2.0: third_party/libc_compat (Blender Foundation, 2020).
+* CUEW/HIPEW are present in the checkout under their Apache-2.0 LICENSE
+  files; CUDA/HIP backends are disabled in the current native build.
+
+The generated math port retains the upstream wrapf attribution to Godot
+math_funcs.h. The ray-offset port retains the upstream attribution to
+"A Fast and Robust Method for Avoiding Self-Intersection", Ray Tracing Gems,
+chapter 6. These are derivations through the pinned Cycles files, not fresh
+imports of the Godot engine or the book's source tree.
+
+2. OPENIMAGEIO AND ITS FETCHED SOURCE DEPENDENCIES
+------------------------------------------------
+Source: https://github.com/AcademySoftwareFoundation/OpenImageIO
+Version: 2.5.18.0
+Pinned revision: ec3d065c97302364c947579b77fa9a151f3e455e
+Local checkout: ~/ClaudeHome/oiio-cycles-webgpu
+License: Apache-2.0, with BSD-3-Clause and other per-file notices.
+Copyright Contributors to the OpenImageIO project.
+License copy: third_party/licenses/OpenImageIO-LICENSE.md
+
+Used as the native image/texture dependency of the Cycles host. Built locally
+with a restricted plugin set by prototype/tools/build_host.py. Its optional
+plugins must not be assumed to have the same license as OpenImageIO itself.
+File-level notices and embedded-code notices must accompany any future
+redistributable build; the top-level license is not the entire inventory.
+
+Fetched by this build:
+* fmt 10.0.0 - https://github.com/fmtlib/fmt
+  Revision a0b8a92e3d1532361c2f7feb63babc5c18d00ef2
+  MIT; Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors.
+  License: third_party/licenses/fmt-LICENSE.rst
+* robin-map v0.6.2 - https://github.com/Tessil/robin-map
+  Revision 908ccf9f039a0e50813544c0444ca664ca292d7c
+  MIT; Copyright (c) 2017 Tessil.
+  License: third_party/licenses/robin-map-LICENSE.txt
+
+Embedded at the pinned OpenImageIO revision: FarmHash (MIT, Google 2014)
+and pugixml 1.12 (MIT, Arseny Kapoulkine; pugxml attribution to Kristen
+Wegner). Preserved notices: third_party/licenses/OpenImageIO-embedded.txt.
+
+3. OPENCOLORIO AND ITS FETCHED SOURCE DEPENDENCIES
+------------------------------------------------
+Source: https://github.com/AcademySoftwareFoundation/OpenColorIO
+Version: 2.4.2
+Pinned revision: 6918fad3f5d22ac3ef2397c754bf4268c2b58dd0
+Local checkout: ~/ClaudeHome/ocio-cycles-webgpu
+License: BSD-3-Clause; Copyright Contributors to the OpenColorIO Project.
+License: third_party/licenses/OpenColorIO-LICENSE.txt
+Used by the native Cycles host for color management. Built without Python,
+apps, tests or documentation. Includes the upstream built-in color configs.
+
+Fetched and statically linked into the local OpenColorIO library:
+* pystring v1.1.3 - https://github.com/imageworks/pystring
+  Revision c2de99deb4f0bd13751f8436400b5e8662301769
+  BSD-3-Clause; Copyright (c) 2008-2010 Sony Pictures Imageworks Inc.
+  License: third_party/licenses/pystring-LICENSE.txt
+* yaml-cpp 0.7.0 - https://github.com/jbeder/yaml-cpp
+  Revision 0579ae3d976091d7d664aa9d2527e0d0cff25763
+  MIT; Copyright (c) 2008-2015 Jesse Beder.
+  License: third_party/licenses/yaml-cpp-LICENSE.txt
+* minizip-ng 3.0.7 - https://github.com/zlib-ng/minizip-ng
+  Revision 241428886216f0f0efd6926efcaaaa13794e51bd
+  Zlib; preserve its per-file author notices.
+  License: third_party/licenses/minizip-ng-LICENSE.txt
+
+4. BOOST, SYSTEM LIBRARIES AND LOCAL BUILD INPUTS
+------------------------------------------------
+Boost 1.83.0 (Debian 1.83.0-4.2): https://www.boost.org/
+Source: https://github.com/boostorg/boost
+License: Boost Software License 1.0, plus individual source-file notices.
+Locally extracted headers/libraries under prototype/work/deps/usr; the
+current host loads Boost filesystem and thread. Full Debian copyright and
+license inventory: third_party/licenses/Boost-Debian-copyright.txt.
+Archive versions/hashes are in third_party/provenance.json.
+
+Current Linux native build also uses these system/development components:
+* oneTBB 2022.1.0: https://github.com/oneapi-src/oneTBB - Apache-2.0.
+* OpenEXR 3.1.13 (including Iex/IlmThread): https://github.com/AcademySoftwareFoundation/openexr
+  BSD-3-Clause and per-file notices.
+* Imath 3.1.12: https://github.com/AcademySoftwareFoundation/Imath - BSD-3-Clause.
+* zlib 1.3.1: https://zlib.net/ - Zlib license.
+* zstd 1.5.7: https://github.com/facebook/zstd - BSD option of BSD/GPL dual license.
+* libpng 1.6.48: https://libpng.org/pub/png/libpng.html - libpng licenses.
+* libjpeg-turbo 2.1.5: https://github.com/libjpeg-turbo/libjpeg-turbo - IJG,
+  BSD-3-Clause and Zlib portions. Required attribution: this software is
+  based in part on the work of the Independent JPEG Group.
+* Expat 2.9.0: https://github.com/libexpat/libexpat - MIT.
+* pugixml 1.14: https://github.com/zeux/pugixml - MIT. Debian development
+  package is a host link input; the current gate has no dynamic dependency
+  on it. This is separate from OpenImageIO's embedded pugixml 1.12.
+
+The exact installed Debian revisions, runtime paths/hashes, and copies of
+the package copyright records are saved in third_party/provenance.json and
+third_party/licenses/*-Debian-copyright.txt. Such records may include
+licenses for unused examples, tests or Debian packaging; those are not
+automatically licenses of the runtime library being used.
+
+The Linux executable also dynamically uses glibc 2.41 and GCC 14 runtime
+libraries (libstdc++/libgcc). glibc is LGPL; GCC runtime licensing includes
+the GCC Runtime Library Exception. They retain their own licenses and
+conditions, and are not relicensed as Apache code. Their use is distinct
+from copying GPL-only implementation headers into our host. A future RID
+package must decide whether to rely on platform runtimes or redistribute
+them and meet the corresponding requirements.
+
+Compiler/build/test tools (GCC, Clang/LLVM, CMake, Python, .NET SDK, Android
+SDK/NDK and adb) are development tools with separate licenses. Invoking a
+GPL build tool is not the same as incorporating GPL source into our code.
+No toolchain redistribution is authorized by this inventory.
+
+The broad Debian bootstrap prefix also contains unused development
+packages (including distribution OIIO/OCIO, DCMTK, log4cplus and OpenVDB).
+It is NOT a vetted redistributable vendor bundle. The saved package list
+records these downloads without claiming they are renderer dependencies.
+
+5. CODEBRIX.WEBGPU.NATIVE (UNCHANGED PACKAGE)
+-------------------------------------------
+Package: CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433
+Source: https://github.com/ellisnet/CodeBrix.WebGpu
+NuGet: https://www.nuget.org/packages/CodeBrix.WebGpu.Native.MitLicenseForever/1.0.290.1433
+Local sibling repository: ~/GitHome/CodeBrix.WebGpu
+Package archive SHA-256:
+  9ceea7951bff52fe39c4b2451da4e1a80e7a2889a2217487d6392125a18a7112
+
+The native C headers and shared library come from this unchanged package;
+no WebGPU implementation is vendored or rebuilt by this project. Existing
+audit reports compare the shipped headers/binaries and preserve their
+hashes. The wrapper is MIT. wgpu-native v29.0.1.1 uses the MIT option of
+MIT OR Apache-2.0; wgpu is 29.0.3. webgpu-headers revision
+673658bc2bd70ec39fc55ebe6bb0173cf6d0a603 is BSD-3-Clause.
+
+Copies of the package's notices:
+  third_party/licenses/CodeBrix.WebGpu.Native-LICENSE.txt
+  third_party/licenses/CodeBrix.WebGpu.Native-THIRD-PARTY-NOTICES.txt
+  third_party/licenses/LICENSE-WgpuNative.txt
+The last file contains the upstream header notices and the package's full
+Rust dependency/license inventory. Future NuGet delivery must preserve the
+dependency's notices and use the existing Native package.
+
+6. TEST-ONLY GLTF READER AND ASSETS
+----------------------------------
+CodeBrix.Graphics3D.Gltf2.MitLicenseForever 1.0.290.996:
+  https://github.com/ellisnet/CodeBrix.Graphics3D.Gltf2
+  https://www.nuget.org/packages/CodeBrix.Graphics3D.Gltf2.MitLicenseForever/1.0.290.996
+MIT, retaining Vicente Penades and Jeremy Ellis and contributors notices.
+Used by parity/GltfImport as a test-preparation tool. It is not part of
+the native renderer; the package's source and binary are not vendored here.
+Package notice copy: third_party/licenses/Gltf2-THIRD-PARTY-NOTICES.txt.
+
+Test model collection: ~/GitHome/Oasys/Assets/ForestCommunity.
+Bench/ceramic-home geometry: Jeremy Ellis and contributors, as attributed
+in that collection. Poly Haven food_lime_01: CC0-1.0,
+https://polyhaven.com/a/food_lime_01 ; https://polyhaven.com/license .
+See parity/ASSETS.md and the original collection's provenance files. Test
+evidence includes geometry-only renders; original models/textures are not
+redistributed here. Do not assume every future model shares these licenses.
+
+7. EXCLUSIONS, OPEN WORK AND MAINTENANCE
+---------------------------------------
+Previously found and excluded: the system TIFF dependency brought in
+GPL-2.0-or-later JBIG. ENABLE_tiff is OFF in the restricted OpenImageIO
+build. The saved current Linux runtime inspection confirms that TIFF/JBIG
+are absent. This excludes that dependency chain, not all possible licensing
+issues in the larger project. TIFF itself is not being classified as GPL.
+FFmpeg, LibRaw and Libheif plugins are also disabled.
+
+The atomic-header issue above is still OPEN and assigned to Jeremy.
+Full source/binary/dependency license closure for every shipping RID is also
+pending. The main libraries' permissive licenses do not clear every optional
+codec, embedded component, generated file, driver, SDK or platform dependency.
+
+Maintain this inventory whenever code/dependencies are added or upgraded:
+record source URL, immutable revision/version, original license/notices,
+local use and modifications; retain file-level notices and required license
+texts; distinguish build/test inputs from packaged runtime code. Report
+incompatible or unclear licensing to Jeremy immediately. Do not silently
+treat unknown licensing as compatible with the intended Apache 2.0 release.
+
+Saved audit: third_party/provenance.json. This records evidence, including
+the unresolved blocker; it is not an automated legal clearance certificate.

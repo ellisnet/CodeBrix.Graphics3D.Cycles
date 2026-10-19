@@ -1,0 +1,157 @@
+Current consolidated provenance and release blockers: ../THIRD-PARTY-NOTICES.txt.
+The upstream atomic headers used by the host have unresolved GPL notices;
+the current native host build is not cleared for an Apache-only release.
+
+Original native backend, queue adapter, validation, test and build contributions:
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+Full license: ../LICENSE
+
+Embedded WGSL includes generated and manually adapted Blender Cycles code from
+revision a456b761034dda42c32eef9f4aae0fa5a5c9f604. Its source copyright headers
+are preserved in the generated shader. The complete derivation lists and
+required notices are in:
+  ../parity/THIRD-PARTY-NOTICES.txt
+  ../research/THIRD-PARTY-NOTICES.txt
+  ../parity/licenses/BSD-3-Clause.txt
+The originals include Blender Foundation, Sony Pictures Imageworks Inc.,
+NVIDIA Corporation and Intel Corporation contributions under Apache-2.0 and
+BSD-3-Clause as detailed there.
+
+Changes in this native stage: the camera accepts a batch-relative path index;
+shadow resolution preserves the surface completion marker; a separate GPU
+accumulation pass writes the film and validates path/stage completion.
+
+The CodeBrix.WebGpu.Native.MitLicenseForever package supplies the unchanged
+WebGPU headers and native runtime. Its own LICENSE and THIRD-PARTY-NOTICES.txt
+remain applicable. Build outputs under work/ stage its runtime for local tests;
+the checked-in evidence stores hashes, not native dependency binaries.
+Final native RID redistribution and dependency license closure remain pending.
+
+The registered device's WGSL control kernels adapt these additional Cycles
+files at the same pinned revision:
+  src/kernel/device/gpu/kernel.h
+  src/kernel/device/gpu/parallel_active_index.h
+  src/kernel/device/gpu/parallel_prefix_sum.h
+  src/kernel/device/gpu/parallel_sorted_index.h
+  src/kernel/integrator/state_util.h
+  src/kernel/integrator/state_template.h
+  src/kernel/integrator/shadow_state_template.h
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+Changes: virtual byte addresses, atomic index reservation without subgroups,
+byte/halfword atomic writes, state descriptors and explicit bounds checks.
+The test oracle includes original prefix/sorting helpers and extracts the
+original state-copy/move bodies unchanged, with GPU-address access adapted
+to host arrays and MNEE ownership repair disabled as documented in DEVICE.md.
+The three-file registration overlay preserves upstream notices and leaves
+the reference checkout unchanged; its modifications are Jeremy's contributions.
+
+The registered camera entry additionally adapts these files at that revision:
+  src/kernel/integrator/init_from_camera.h
+  src/kernel/integrator/path_state.h
+  src/kernel/integrator/state_flow.h
+  src/kernel/device/gpu/work_stealing.h
+  src/kernel/camera/camera.h
+  src/kernel/util/differential.h
+  src/kernel/util/lookup_table.h
+  src/kernel/film/light_passes.h
+  src/kernel/film/adaptive_sampling.h
+  src/kernel/sample/tabulated_sobol.h
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-FileCopyrightText: 2019-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+It reuses hash/shuffle ports from ../parity/shaders/sampling.wgsl, whose
+derivations and third-party notices are recorded in the parity notices.
+Changes: native ABI offsets, virtual-address storage, explicit per-dispatch
+parameters, atomic byte/halfword state writes, and bounded work validation.
+The camera oracle includes original CPU functions unchanged. This gate is a
+restricted perspective/pinhole implementation, not all upstream camera modes.
+
+The native closest-intersection entry additionally adapts:
+  src/kernel/integrator/intersect_closest.h
+  src/kernel/bvh/traversal.h
+  src/kernel/bvh/nodes.h
+  src/kernel/bvh/bvh.h
+  src/kernel/bvh/util.h
+  src/kernel/bvh/types.h
+  src/kernel/geom/object.h
+  src/kernel/geom/triangle_intersect.h
+  src/util/math_intersect.h
+  SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+  SPDX-FileCopyrightText: 2009-2012 Intel Corporation
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-FileCopyrightText: 2014-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+Changes: raw native scene table descriptors and ABI offsets, WGSL traversal
+stack, bounds/iteration checks, and atomic native state/counter writes.
+Triangle arithmetic is generated using the existing research AST translator;
+its generated prelude/notices and research notices remain applicable.
+The CPU oracle enables the upstream optional local-struct initialization
+hook for deterministic miss fields, without editing original function bodies.
+
+The native constant-background and film entry additionally adapts:
+  src/kernel/integrator/shade_background.h
+  src/kernel/film/light_passes.h
+  src/kernel/film/data_passes.h
+  src/kernel/film/write.h
+  src/kernel/sample/pattern.h
+  src/kernel/light/common.h
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+Changes: native ABI offsets, virtual-address film access, WGSL integer-CAS
+float accumulation, bounds checks and explicit rejection of unsupported
+world shader/integration features. The oracle executes the original CPU
+integrator_shade_background. This entry initially supports the upstream
+constant-emission fast path; the SVM extension below handles selected
+nonconstant world programs.
+
+The native SVM world interpreter additionally adapts these files at the
+same pinned Cycles revision (all paths relative to src/kernel/):
+  svm/svm.h, svm/node_types.h, svm/node_types_template.h, svm/types.h,
+  svm/util.h, svm/value.h, svm/geometry.h, svm/tex_coord.h,
+  svm/math.h, svm/math_util.h, svm/clamp.h, svm/convert.h,
+  svm/sepcomb_vector.h, svm/closure.h, svm/checker.h, svm/gradient.h,
+  svm/gamma.h, svm/invert.h, svm/brightness.h, svm/color_util.h,
+  geom/shader_data.h, geom/primitive.h
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+World emission accumulation also adapts:
+  closure/emissive.h
+  SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al.
+    All Rights Reserved.
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-License-Identifier: BSD-3-Clause
+The full required BSD notice is in ../parity/licenses/BSD-3-Clause.txt.
+Changes: WGSL interpretation of native typed bytecode, integer stack storage
+to preserve bit-encoded integers, explicit bounds/initialization/iteration
+checks, native ABI layout constants, and world-only geometry/coordinates.
+The CPU oracle executes the original SVM through integrator_shade_background;
+the graph compiler and its shader tables remain native Cycles code.
+The inverse-trigonometric numerical adapters in ../research/translate.py are
+original CodeBrix contributions using the Taylor series and half-angle
+identities; no third-party math implementation was imported for them.
+
+The native triangle shader-data preparation additionally adapts these files
+at the same pinned revision:
+  src/kernel/geom/shader_data.h
+  src/kernel/geom/triangle.h
+  src/kernel/geom/triangle_intersect.h
+  src/kernel/geom/object.h
+  src/kernel/geom/attribute.h
+  src/kernel/util/differential.h
+  src/util/transform.h
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  src/util/types_normal.h
+  SPDX-FileCopyrightText: 2011-2026 Blender Foundation
+  src/util/math_float3.h
+  SPDX-FileCopyrightText: 2011-2013 Intel Corporation
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+Changes: native table descriptors and field offsets, a WGSL local shader-data
+record, integer decoding of native packed normals, explicit bounds/geometry
+validation and compact-differential calculations. The oracle calls the
+original shader_setup_from_ray. The probe output record and portable arena
+replay harness are original CodeBrix test code. The replay uses buffers captured
+from the Linux host; it does not substitute a different Cycles host for Android.

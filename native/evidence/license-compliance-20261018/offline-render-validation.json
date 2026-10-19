@@ -1,0 +1,94 @@
+{
+  "passed": true,
+  "freshCheckout": "/home/jeremy/ClaudeHome/cycles-license-migration-20261018/fresh-checkout-4",
+  "nativeExecutableSha256": "a1a1bd978aa5e16f19162c86e7c75e152a361fa1731f3adbcfc4daabbf1717c7",
+  "scenes": {
+    "linux-x64": {
+      "result": {
+        "passed": true,
+        "nativeSceneAndScheduler": true,
+        "independentCpuImage": true,
+        "repeatBitwiseIdentical": true,
+        "width": 64,
+        "height": 48,
+        "samples": 8,
+        "stages": 157,
+        "paths": 136344,
+        "maxBounce": 5,
+        "maxTransparentBounce": 3,
+        "surfaceShaders": 21,
+        "integerChecks": 12218368,
+        "floatChecks": 17362944,
+        "equivalentSharedEdgeComparisons": 0,
+        "strictStageFailures": 17415,
+        "maximumStageError": 2.28668e-05,
+        "strictImageFailures": 1230,
+        "maximumImageError": 5.43594e-05,
+        "cyclesAllocationBytesAfterCleanup": 0
+      },
+      "command": [
+        "/home/jeremy/ClaudeHome/cycles-license-migration-20261018/fresh-checkout-4/native/work/cycles-build/bin/codebrix_cycles_render_gate",
+        "/home/jeremy/ClaudeHome/cycles-license-migration-20261018/fresh-checkout-4/native/work/license-proof/linux-x64/run"
+      ],
+      "baselineBitwiseIdentical": true,
+      "filmAndCommandSha256": {
+        "run.cpu.film.bin": "1e73039db8ebccb8efd1d78a094c6f4296d9945d984b9a6612c81312250a05ef",
+        "run.gpu.film.bin": "c26296a860b7b54a9a3a5d23eb5f767394257a4e5c1bad9ccfb865b85cdc524e",
+        "run.commands.bin": "17a954c12d36f72cd546ada53e6f5d1f56269745234c92de763a3ea94ec93037"
+      },
+      "loadedWebGpuPath": "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/runtimes/linux-x64/native/libcodebrix_wgpu.so",
+      "loadedWebGpuSha256": "a2cf8b752085fcce0328b83e8eeaaa2080efac0ecb05213a185ec2caa11e3b14"
+    },
+    "bench": {
+      "result": {
+        "passed": true,
+        "nativeSceneAndScheduler": true,
+        "independentCpuImage": true,
+        "repeatBitwiseIdentical": true,
+        "width": 64,
+        "height": 48,
+        "samples": 8,
+        "stages": 120,
+        "paths": 165304,
+        "maxBounce": 5,
+        "maxTransparentBounce": 0,
+        "surfaceShaders": 1,
+        "integerChecks": 9338879,
+        "floatChecks": 13271038,
+        "equivalentSharedEdgeComparisons": 1,
+        "strictStageFailures": 24459,
+        "maximumStageError": 6.28233e-05,
+        "strictImageFailures": 321,
+        "maximumImageError": 1.19209e-06,
+        "cyclesAllocationBytesAfterCleanup": 0
+      },
+      "command": [
+        "/home/jeremy/ClaudeHome/cycles-license-migration-20261018/fresh-checkout-4/native/work/cycles-build/bin/codebrix_cycles_render_gate",
+        "/home/jeremy/ClaudeHome/cycles-license-migration-20261018/fresh-checkout-4/native/work/license-proof/bench/run",
+        "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/render/bench/triangles.bin"
+      ],
+      "baselineBitwiseIdentical": true,
+      "filmAndCommandSha256": {
+        "run.cpu.film.bin": "00fd4a409b41f99fbe4d44dcbfe3735141cc2f01aba39a88a9e8d42af7b109ce",
+        "run.gpu.film.bin": "406c1a2b85e9a7a418c7ee78a4329c5093e85e1bce7ffcded62b9388d2818392",
+        "run.commands.bin": "4e7fb0cda2e8d3115bf609131a2eef2111870c8595586ec97095cac4157298b0"
+      },
+      "loadedWebGpuPath": "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/runtimes/linux-x64/native/libcodebrix_wgpu.so",
+      "loadedWebGpuSha256": "a2cf8b752085fcce0328b83e8eeaaa2080efac0ecb05213a185ec2caa11e3b14"
+    }
+  },
+  "atomicFilm": {
+    "originalCpuFilm": true,
+    "filmFloatChecks": 1024,
+    "filmSamplesPerPixel": 800,
+    "memoryAccountingPassed": true,
+    "atomicContract": {
+      "passed": true,
+      "threads": 8,
+      "updatesPerOperation": 200000,
+      "floatAtomicRefLockFree": 1,
+      "sizeAtomicRefLockFree": 1
+    }
+  },
+  "scope": "Fresh offline-built native host drives repeated complete GPU renders; Linux x64 only. Bench test geometry is an explicit data input, not external implementation source."
+}

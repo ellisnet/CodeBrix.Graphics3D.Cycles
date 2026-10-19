@@ -1,0 +1,82 @@
+Current consolidated provenance and release blockers: ../THIRD-PARTY-NOTICES.txt.
+The upstream atomic headers used by the CPU/host build have unresolved GPL
+notices. The permissive shader derivations below do not clear that host build.
+
+The WGSL material and closure implementation manually adapts these files from
+Blender Cycles revision a456b761034dda42c32eef9f4aae0fa5a5c9f604:
+
+src/kernel/closure/bsdf_diffuse.h
+src/kernel/sample/mapping.h
+src/kernel/sample/mis.h
+  SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-License-Identifier: BSD-3-Clause
+  Adapted code from Open Shading Language.
+  Full BSD license: licenses/BSD-3-Clause.txt
+
+src/kernel/closure/bsdf_oren_nayar.h
+src/kernel/closure/alloc.h
+src/kernel/svm/svm.h
+src/kernel/svm/closure.h
+src/kernel/svm/geometry.h
+src/kernel/svm/util.h
+src/kernel/svm/node_types.h
+src/util/math_float3.h
+src/util/projection.h
+src/kernel/geom/triangle_intersect.h
+src/util/math_intersect.h
+src/kernel/bvh/util.h
+src/kernel/integrator/shade_surface.h
+src/kernel/integrator/shade_light.h
+src/kernel/light/point.h
+src/kernel/light/light.h
+src/kernel/light/sample.h
+src/kernel/light/distribution.h
+src/util/math_base.h
+src/kernel/integrator/init_from_camera.h
+src/kernel/integrator/path_state.h
+src/kernel/camera/camera.h
+src/kernel/sample/tabulated_sobol.h
+src/kernel/sample/util.h
+src/kernel/util/lookup_table.h
+src/util/hash.h
+src/util/transform.h
+  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  SPDX-License-Identifier: Apache-2.0
+  Full Apache license: ../LICENSE
+
+Changes: native closure casts replaced by typed WGSL records; SVM bytecode
+access replaced by bounded storage-buffer indexing; the currently implemented
+instruction/closure subset is explicitly limited and unsupported nodes return
+an error. CPU reference functions are included from the clean upstream checkout.
+The multi-bounce port adapts triangle barycentric position reconstruction,
+self-intersection tests, ray offsets and path throughput updates. The ray-offset
+method is attributed upstream to "A Fast and Robust Method for Avoiding
+Self-Intersection", Ray Tracing Gems, chapter 6.
+The camera/sampling port adapts static perspective rays, pixel filtering,
+tabulated Sobol lookup and integer scrambling. Native reference execution
+still includes the original upstream implementation without editing it.
+The finite-light port adapts light CDF selection, spherical point-light
+sampling/intersection, MIS weights, shadow setup and forward light emission.
+Shadow traversal runs in a separate dispatch and consumes GPU-written rays.
+
+Original harnesses, adaptation and contributions:
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: Apache-2.0
+
+CodeBrix.WebGpu.Native is supplied unchanged by its NuGet package and retains
+its own LICENSE and THIRD-PARTY-NOTICES.txt. No WebGPU implementation is vendored
+by this parity work.
+
+The test-only GltfImport application consumes the unchanged
+CodeBrix.Graphics3D.Gltf2.MitLicenseForever 1.0.290.996 NuGet package (MIT).
+It is not part of the native renderer, and its package sources/binary are not
+vendored here. That package retains the notices for Vicente Penades and Jeremy
+Ellis and contributors.
+
+Real-asset previews derive from Jeremy's ForestCommunity collection in Oasys:
+ForestVillage bench and ceramic-home geometry: Jeremy Ellis and contributors.
+PolyHaven food_lime_01: CC0, as recorded in the collection's provenance.
+These geometry-only previews do not use their texture images. Original model
+files and their collection notices remain in Oasys and are not redistributed
+by this repository's test evidence.

@@ -1,0 +1,1552 @@
+Source notice supplement for cycles
+Origin: https://github.com/blender/cycles
+Pin: a456b761034dda42c32eef9f4aae0fa5a5c9f604
+Collected verbatim comment blocks from the reviewed snapshot.
+Identical notices are grouped; original source notices remain intact.
+Complete component license texts and selected licenses are in the root notices.
+
+Sources:
+third_party/cycles/CMakeLists.txt
+
+# Modified by CodeBrix: use reviewed dependency adapters, C++20, and no CUDA/HIP loader includes.
+# Copyright (c) 2026 Jeremy Ellis and contributors
+# SPDX-License-Identifier: Apache-2.0
+# Original standalone Cycles build file; license inherited from upstream LICENSE.
+###########################################################################
+# Disable insource build
+
+Sources:
+third_party/cycles/src/CMakeLists.txt
+
+# Modified by CodeBrix: remove excluded atomic include roots and standalone application build.
+# Copyright (c) 2026 Jeremy Ellis and contributors
+# SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/cycles/src/app/CMakeLists.txt
+third_party/cycles/src/app/io_export_cycles_xml.py
+third_party/cycles/src/bvh/CMakeLists.txt
+third_party/cycles/src/cmake/external_libs.cmake
+third_party/cycles/src/cmake/macros.cmake
+third_party/cycles/src/device/CMakeLists.txt
+third_party/cycles/src/doc/CMakeLists.txt
+third_party/cycles/src/doc/license/CMakeLists.txt
+third_party/cycles/src/graph/CMakeLists.txt
+third_party/cycles/src/integrator/CMakeLists.txt
+third_party/cycles/src/kernel/osl/CMakeLists.txt
+third_party/cycles/src/kernel/osl/shaders/CMakeLists.txt
+third_party/cycles/src/session/CMakeLists.txt
+third_party/cycles/src/subd/CMakeLists.txt
+third_party/cycles/src/test/CMakeLists.txt
+third_party/cycles/src/util/CMakeLists.txt
+
+# SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/cycles/src/app/cycles_precompute.cpp
+third_party/cycles/src/kernel/closure/bsdf_principled_hair_huang.h
+
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/app/cycles_standalone.cpp
+third_party/cycles/src/app/cycles_xml.cpp
+third_party/cycles/src/app/cycles_xml.h
+third_party/cycles/src/app/opengl/display_driver.cpp
+third_party/cycles/src/app/opengl/display_driver.h
+third_party/cycles/src/app/opengl/shader.cpp
+third_party/cycles/src/app/opengl/window.cpp
+third_party/cycles/src/app/opengl/window.h
+third_party/cycles/src/bvh/unaligned.cpp
+third_party/cycles/src/bvh/unaligned.h
+third_party/cycles/src/cmake/msvc_arch_flags.c
+third_party/cycles/src/device/cpu/device.cpp
+third_party/cycles/src/device/cpu/device.h
+third_party/cycles/src/device/cpu/device_impl.cpp
+third_party/cycles/src/device/cpu/device_impl.h
+third_party/cycles/src/device/cpu/kernel.cpp
+third_party/cycles/src/device/cpu/kernel.h
+third_party/cycles/src/device/cpu/kernel_function.h
+third_party/cycles/src/device/cuda/device.cpp
+third_party/cycles/src/device/cuda/device.h
+third_party/cycles/src/device/cuda/device_impl.cpp
+third_party/cycles/src/device/cuda/device_impl.h
+third_party/cycles/src/device/cuda/graphics_interop.cpp
+third_party/cycles/src/device/cuda/graphics_interop.h
+third_party/cycles/src/device/cuda/kernel.cpp
+third_party/cycles/src/device/cuda/kernel.h
+third_party/cycles/src/device/cuda/queue.cpp
+third_party/cycles/src/device/cuda/queue.h
+third_party/cycles/src/device/cuda/util.cpp
+third_party/cycles/src/device/cuda/util.h
+third_party/cycles/src/device/denoise.cpp
+third_party/cycles/src/device/denoise.h
+third_party/cycles/src/device/device.cpp
+third_party/cycles/src/device/device.h
+third_party/cycles/src/device/dummy/device.cpp
+third_party/cycles/src/device/dummy/device.h
+third_party/cycles/src/device/graphics_interop.cpp
+third_party/cycles/src/device/graphics_interop.h
+third_party/cycles/src/device/hip/device.cpp
+third_party/cycles/src/device/hip/device.h
+third_party/cycles/src/device/hip/device_impl.cpp
+third_party/cycles/src/device/hip/device_impl.h
+third_party/cycles/src/device/hip/graphics_interop.cpp
+third_party/cycles/src/device/hip/graphics_interop.h
+third_party/cycles/src/device/hip/kernel.cpp
+third_party/cycles/src/device/hip/kernel.h
+third_party/cycles/src/device/hip/queue.cpp
+third_party/cycles/src/device/hip/queue.h
+third_party/cycles/src/device/hip/util.cpp
+third_party/cycles/src/device/hip/util.h
+third_party/cycles/src/device/hiprt/queue.cpp
+third_party/cycles/src/device/hiprt/queue.h
+third_party/cycles/src/device/kernel.cpp
+third_party/cycles/src/device/kernel.h
+third_party/cycles/src/device/memory.cpp
+third_party/cycles/src/device/memory.h
+third_party/cycles/src/device/multi/device.cpp
+third_party/cycles/src/device/multi/device.h
+third_party/cycles/src/device/oneapi/device.h
+third_party/cycles/src/device/optix/device.h
+third_party/cycles/src/device/optix/queue.cpp
+third_party/cycles/src/device/optix/queue.h
+third_party/cycles/src/device/optix/util.h
+third_party/cycles/src/device/queue.cpp
+third_party/cycles/src/device/queue.h
+third_party/cycles/src/graph/node.cpp
+third_party/cycles/src/graph/node.h
+third_party/cycles/src/graph/node_enum.h
+third_party/cycles/src/graph/node_type.cpp
+third_party/cycles/src/graph/node_type.h
+third_party/cycles/src/graph/node_xml.cpp
+third_party/cycles/src/graph/node_xml.h
+third_party/cycles/src/hydra/file_reader.cpp
+third_party/cycles/src/hydra/file_reader.h
+third_party/cycles/src/integrator/adaptive_sampling.cpp
+third_party/cycles/src/integrator/adaptive_sampling.h
+third_party/cycles/src/integrator/denoiser.cpp
+third_party/cycles/src/integrator/denoiser.h
+third_party/cycles/src/integrator/denoiser_gpu.cpp
+third_party/cycles/src/integrator/denoiser_gpu.h
+third_party/cycles/src/integrator/denoiser_oidn.cpp
+third_party/cycles/src/integrator/denoiser_oidn.h
+third_party/cycles/src/integrator/denoiser_oidn_gpu.h
+third_party/cycles/src/integrator/denoiser_optix.cpp
+third_party/cycles/src/integrator/denoiser_optix.h
+third_party/cycles/src/integrator/guiding.h
+third_party/cycles/src/integrator/pass_accessor.cpp
+third_party/cycles/src/integrator/pass_accessor.h
+third_party/cycles/src/integrator/pass_accessor_cpu.cpp
+third_party/cycles/src/integrator/pass_accessor_cpu.h
+third_party/cycles/src/integrator/pass_accessor_gpu.cpp
+third_party/cycles/src/integrator/pass_accessor_gpu.h
+third_party/cycles/src/integrator/path_trace.cpp
+third_party/cycles/src/integrator/path_trace.h
+third_party/cycles/src/integrator/path_trace_work.cpp
+third_party/cycles/src/integrator/path_trace_work.h
+third_party/cycles/src/integrator/path_trace_work_cpu.cpp
+third_party/cycles/src/integrator/path_trace_work_cpu.h
+third_party/cycles/src/integrator/path_trace_work_gpu.cpp
+third_party/cycles/src/integrator/path_trace_work_gpu.h
+third_party/cycles/src/integrator/render_scheduler.cpp
+third_party/cycles/src/integrator/render_scheduler.h
+third_party/cycles/src/integrator/shader_eval.cpp
+third_party/cycles/src/integrator/shader_eval.h
+third_party/cycles/src/integrator/tile.cpp
+third_party/cycles/src/integrator/tile.h
+third_party/cycles/src/integrator/work_balancer.cpp
+third_party/cycles/src/integrator/work_balancer.h
+third_party/cycles/src/integrator/work_tile_scheduler.cpp
+third_party/cycles/src/integrator/work_tile_scheduler.h
+third_party/cycles/src/kernel/bake/bake.h
+third_party/cycles/src/kernel/bvh/bvh.h
+third_party/cycles/src/kernel/bvh/nodes.h
+third_party/cycles/src/kernel/bvh/types.h
+third_party/cycles/src/kernel/bvh/util.h
+third_party/cycles/src/kernel/camera/camera.h
+third_party/cycles/src/kernel/closure/alloc.h
+third_party/cycles/src/kernel/closure/bsdf.h
+third_party/cycles/src/kernel/closure/bsdf_ashikhmin_shirley.h
+third_party/cycles/src/kernel/closure/bsdf_oren_nayar.h
+third_party/cycles/src/kernel/closure/bssrdf.h
+third_party/cycles/src/kernel/closure/volume.h
+third_party/cycles/src/kernel/data_arrays.h
+third_party/cycles/src/kernel/data_template.h
+third_party/cycles/src/kernel/device/cpu/compat.h
+third_party/cycles/src/kernel/device/cpu/globals.cpp
+third_party/cycles/src/kernel/device/cpu/globals.h
+third_party/cycles/src/kernel/device/cpu/image.h
+third_party/cycles/src/kernel/device/cpu/kernel.cpp
+third_party/cycles/src/kernel/device/cpu/kernel.h
+third_party/cycles/src/kernel/device/cpu/kernel_arch.h
+third_party/cycles/src/kernel/device/cpu/kernel_arch_impl.h
+third_party/cycles/src/kernel/device/cpu/kernel_avx2.cpp
+third_party/cycles/src/kernel/device/cuda/compat.h
+third_party/cycles/src/kernel/device/cuda/config.h
+third_party/cycles/src/kernel/device/cuda/globals.h
+third_party/cycles/src/kernel/device/gpu/kernel.h
+third_party/cycles/src/kernel/device/gpu/work_stealing.h
+third_party/cycles/src/kernel/device/hip/compat.h
+third_party/cycles/src/kernel/device/hip/config.h
+third_party/cycles/src/kernel/device/hip/globals.h
+third_party/cycles/src/kernel/device/hip/kernel.cpp
+third_party/cycles/src/kernel/device/hiprt/bvh.h
+third_party/cycles/src/kernel/device/hiprt/globals.h
+third_party/cycles/src/kernel/device/metal/compat.h
+third_party/cycles/src/kernel/device/optix/globals.h
+third_party/cycles/src/kernel/features.h
+third_party/cycles/src/kernel/film/aov_passes.h
+third_party/cycles/src/kernel/film/data_passes.h
+third_party/cycles/src/kernel/film/denoising_passes.h
+third_party/cycles/src/kernel/film/light_passes.h
+third_party/cycles/src/kernel/film/read.h
+third_party/cycles/src/kernel/film/write.h
+third_party/cycles/src/kernel/geom/attribute.h
+third_party/cycles/src/kernel/geom/curve.h
+third_party/cycles/src/kernel/geom/motion_curve.h
+third_party/cycles/src/kernel/geom/motion_triangle.h
+third_party/cycles/src/kernel/geom/motion_triangle_intersect.h
+third_party/cycles/src/kernel/geom/motion_triangle_shader.h
+third_party/cycles/src/kernel/geom/object.h
+third_party/cycles/src/kernel/geom/point_intersect.h
+third_party/cycles/src/kernel/geom/primitive.h
+third_party/cycles/src/kernel/geom/shader_data.h
+third_party/cycles/src/kernel/geom/triangle.h
+third_party/cycles/src/kernel/geom/volume.h
+third_party/cycles/src/kernel/globals.h
+third_party/cycles/src/kernel/image.h
+third_party/cycles/src/kernel/integrator/displacement_shader.h
+third_party/cycles/src/kernel/integrator/guiding.h
+third_party/cycles/src/kernel/integrator/init_from_bake.h
+third_party/cycles/src/kernel/integrator/init_from_camera.h
+third_party/cycles/src/kernel/integrator/intersect_closest.h
+third_party/cycles/src/kernel/integrator/intersect_shadow.h
+third_party/cycles/src/kernel/integrator/intersect_subsurface.h
+third_party/cycles/src/kernel/integrator/intersect_volume_stack.h
+third_party/cycles/src/kernel/integrator/megakernel.h
+third_party/cycles/src/kernel/integrator/mnee.h
+third_party/cycles/src/kernel/integrator/path_state.h
+third_party/cycles/src/kernel/integrator/shade_background.h
+third_party/cycles/src/kernel/integrator/shade_light.h
+third_party/cycles/src/kernel/integrator/shade_shadow.h
+third_party/cycles/src/kernel/integrator/shade_surface.h
+third_party/cycles/src/kernel/integrator/shade_volume.h
+third_party/cycles/src/kernel/integrator/shadow_catcher.h
+third_party/cycles/src/kernel/integrator/shadow_state_template.h
+third_party/cycles/src/kernel/integrator/state.h
+third_party/cycles/src/kernel/integrator/state_flow.h
+third_party/cycles/src/kernel/integrator/state_template.h
+third_party/cycles/src/kernel/integrator/state_util.h
+third_party/cycles/src/kernel/integrator/subsurface.h
+third_party/cycles/src/kernel/integrator/subsurface_disk.h
+third_party/cycles/src/kernel/integrator/subsurface_random_walk.h
+third_party/cycles/src/kernel/integrator/surface_shader.h
+third_party/cycles/src/kernel/integrator/volume_shader.h
+third_party/cycles/src/kernel/integrator/volume_stack.h
+third_party/cycles/src/kernel/light/area.h
+third_party/cycles/src/kernel/light/background.h
+third_party/cycles/src/kernel/light/common.h
+third_party/cycles/src/kernel/light/distribution.h
+third_party/cycles/src/kernel/light/point.h
+third_party/cycles/src/kernel/light/sample.h
+third_party/cycles/src/kernel/light/spot.h
+third_party/cycles/src/kernel/light/sun.h
+third_party/cycles/src/kernel/light/tree.h
+third_party/cycles/src/kernel/light/triangle.h
+third_party/cycles/src/kernel/osl/closures_template.h
+third_party/cycles/src/kernel/osl/globals.cpp
+third_party/cycles/src/kernel/osl/globals.h
+third_party/cycles/src/kernel/osl/services.cpp
+third_party/cycles/src/kernel/osl/services.h
+third_party/cycles/src/kernel/osl/shaders/node_color.h
+third_party/cycles/src/kernel/osl/shaders/node_color_blend.h
+third_party/cycles/src/kernel/osl/shaders/node_fractal_voronoi.h
+third_party/cycles/src/kernel/osl/shaders/node_math.h
+third_party/cycles/src/kernel/osl/shaders/node_noise.h
+third_party/cycles/src/kernel/osl/shaders/node_ramp_util.h
+third_party/cycles/src/kernel/osl/shaders/node_scatter.h
+third_party/cycles/src/kernel/osl/types.h
+third_party/cycles/src/kernel/sample/lcg.h
+third_party/cycles/src/kernel/sample/pattern.h
+third_party/cycles/src/kernel/sample/sobol_burley.h
+third_party/cycles/src/kernel/sample/tabulated_sobol.h
+third_party/cycles/src/kernel/sample/util.h
+third_party/cycles/src/kernel/svm/ao.h
+third_party/cycles/src/kernel/svm/aov.h
+third_party/cycles/src/kernel/svm/attribute.h
+third_party/cycles/src/kernel/svm/bevel.h
+third_party/cycles/src/kernel/svm/brick.h
+third_party/cycles/src/kernel/svm/brightness.h
+third_party/cycles/src/kernel/svm/bump.h
+third_party/cycles/src/kernel/svm/camera.h
+third_party/cycles/src/kernel/svm/checker.h
+third_party/cycles/src/kernel/svm/clamp.h
+third_party/cycles/src/kernel/svm/closure.h
+third_party/cycles/src/kernel/svm/color_util.h
+third_party/cycles/src/kernel/svm/convert.h
+third_party/cycles/src/kernel/svm/displace.h
+third_party/cycles/src/kernel/svm/fractal_noise.h
+third_party/cycles/src/kernel/svm/fresnel.h
+third_party/cycles/src/kernel/svm/gamma.h
+third_party/cycles/src/kernel/svm/geometry.h
+third_party/cycles/src/kernel/svm/gradient.h
+third_party/cycles/src/kernel/svm/hsv.h
+third_party/cycles/src/kernel/svm/ies.h
+third_party/cycles/src/kernel/svm/image.h
+third_party/cycles/src/kernel/svm/invert.h
+third_party/cycles/src/kernel/svm/light_path.h
+third_party/cycles/src/kernel/svm/magic.h
+third_party/cycles/src/kernel/svm/map_range.h
+third_party/cycles/src/kernel/svm/mapping.h
+third_party/cycles/src/kernel/svm/mapping_util.h
+third_party/cycles/src/kernel/svm/math.h
+third_party/cycles/src/kernel/svm/math_util.h
+third_party/cycles/src/kernel/svm/mix.h
+third_party/cycles/src/kernel/svm/node_types.h
+third_party/cycles/src/kernel/svm/node_types_template.h
+third_party/cycles/src/kernel/svm/noisetex.h
+third_party/cycles/src/kernel/svm/normal.h
+third_party/cycles/src/kernel/svm/ramp.h
+third_party/cycles/src/kernel/svm/ramp_util.h
+third_party/cycles/src/kernel/svm/sepcomb_color.h
+third_party/cycles/src/kernel/svm/sepcomb_vector.h
+third_party/cycles/src/kernel/svm/sky.h
+third_party/cycles/src/kernel/svm/svm.h
+third_party/cycles/src/kernel/svm/tex_coord.h
+third_party/cycles/src/kernel/svm/types.h
+third_party/cycles/src/kernel/svm/util.h
+third_party/cycles/src/kernel/svm/value.h
+third_party/cycles/src/kernel/svm/vector_rotate.h
+third_party/cycles/src/kernel/svm/vector_transform.h
+third_party/cycles/src/kernel/svm/vertex_color.h
+third_party/cycles/src/kernel/svm/voronoi.h
+third_party/cycles/src/kernel/svm/wave.h
+third_party/cycles/src/kernel/svm/white_noise.h
+third_party/cycles/src/kernel/tables.h
+third_party/cycles/src/kernel/types.h
+third_party/cycles/src/kernel/util/colorspace.h
+third_party/cycles/src/kernel/util/differential.h
+third_party/cycles/src/kernel/util/ies.h
+third_party/cycles/src/kernel/util/lookup_table.h
+third_party/cycles/src/kernel/util/profiler.h
+third_party/cycles/src/scene/attribute.cpp
+third_party/cycles/src/scene/attribute.h
+third_party/cycles/src/scene/background.cpp
+third_party/cycles/src/scene/background.h
+third_party/cycles/src/scene/bake.cpp
+third_party/cycles/src/scene/bake.h
+third_party/cycles/src/scene/camera.cpp
+third_party/cycles/src/scene/camera.h
+third_party/cycles/src/scene/constant_fold.cpp
+third_party/cycles/src/scene/constant_fold.h
+third_party/cycles/src/scene/curves.cpp
+third_party/cycles/src/scene/curves.h
+third_party/cycles/src/scene/devicescene.cpp
+third_party/cycles/src/scene/devicescene.h
+third_party/cycles/src/scene/film.cpp
+third_party/cycles/src/scene/film.h
+third_party/cycles/src/scene/geometry.cpp
+third_party/cycles/src/scene/geometry.h
+third_party/cycles/src/scene/geometry_attributes.cpp
+third_party/cycles/src/scene/geometry_bvh.cpp
+third_party/cycles/src/scene/geometry_mesh.cpp
+third_party/cycles/src/scene/hair.cpp
+third_party/cycles/src/scene/hair.h
+third_party/cycles/src/scene/image.cpp
+third_party/cycles/src/scene/image.h
+third_party/cycles/src/scene/image_oiio.cpp
+third_party/cycles/src/scene/image_oiio.h
+third_party/cycles/src/scene/image_sky.cpp
+third_party/cycles/src/scene/image_sky.h
+third_party/cycles/src/scene/image_vdb.cpp
+third_party/cycles/src/scene/image_vdb.h
+third_party/cycles/src/scene/integrator.cpp
+third_party/cycles/src/scene/integrator.h
+third_party/cycles/src/scene/light.cpp
+third_party/cycles/src/scene/light.h
+third_party/cycles/src/scene/light_tree.cpp
+third_party/cycles/src/scene/light_tree.h
+third_party/cycles/src/scene/mesh.cpp
+third_party/cycles/src/scene/mesh.h
+third_party/cycles/src/scene/mesh_displace.cpp
+third_party/cycles/src/scene/object.cpp
+third_party/cycles/src/scene/object.h
+third_party/cycles/src/scene/osl.cpp
+third_party/cycles/src/scene/osl.h
+third_party/cycles/src/scene/particles.cpp
+third_party/cycles/src/scene/particles.h
+third_party/cycles/src/scene/pass.cpp
+third_party/cycles/src/scene/pass.h
+third_party/cycles/src/scene/pointcloud.cpp
+third_party/cycles/src/scene/pointcloud.h
+third_party/cycles/src/scene/procedural.cpp
+third_party/cycles/src/scene/procedural.h
+third_party/cycles/src/scene/scene.cpp
+third_party/cycles/src/scene/scene.h
+third_party/cycles/src/scene/scene_attributes.h
+third_party/cycles/src/scene/shader.cpp
+third_party/cycles/src/scene/shader.h
+third_party/cycles/src/scene/shader_graph.cpp
+third_party/cycles/src/scene/shader_graph.h
+third_party/cycles/src/scene/shader_nodes.cpp
+third_party/cycles/src/scene/shader_nodes.h
+third_party/cycles/src/scene/stats.cpp
+third_party/cycles/src/scene/stats.h
+third_party/cycles/src/scene/svm.cpp
+third_party/cycles/src/scene/svm.h
+third_party/cycles/src/scene/tables.cpp
+third_party/cycles/src/scene/tables.h
+third_party/cycles/src/session/buffers.cpp
+third_party/cycles/src/session/buffers.h
+third_party/cycles/src/session/denoising.cpp
+third_party/cycles/src/session/denoising.h
+third_party/cycles/src/session/merge.cpp
+third_party/cycles/src/session/merge.h
+third_party/cycles/src/session/session.cpp
+third_party/cycles/src/session/session.h
+third_party/cycles/src/session/tile.cpp
+third_party/cycles/src/session/tile.h
+third_party/cycles/src/subd/dice.cpp
+third_party/cycles/src/subd/dice.h
+third_party/cycles/src/subd/patch.cpp
+third_party/cycles/src/subd/patch.h
+third_party/cycles/src/subd/split.cpp
+third_party/cycles/src/subd/split.h
+third_party/cycles/src/subd/subpatch.h
+third_party/cycles/src/test/integrator_adaptive_sampling_test.cpp
+third_party/cycles/src/test/integrator_render_scheduler_test.cpp
+third_party/cycles/src/test/integrator_tile_test.cpp
+third_party/cycles/src/test/kernel_camera_projection_test.cpp
+third_party/cycles/src/test/render_graph_finalize_test.cpp
+third_party/cycles/src/test/util_aligned_malloc_test.cpp
+third_party/cycles/src/test/util_float8_avx2_test.cpp
+third_party/cycles/src/test/util_float8_avx_test.cpp
+third_party/cycles/src/test/util_float8_sse2_test.cpp
+third_party/cycles/src/test/util_float8_test.h
+third_party/cycles/src/test/util_math_test.cpp
+third_party/cycles/src/test/util_md5_test.cpp
+third_party/cycles/src/test/util_path_test.cpp
+third_party/cycles/src/test/util_string_test.cpp
+third_party/cycles/src/test/util_task_test.cpp
+third_party/cycles/src/test/util_time_test.cpp
+third_party/cycles/src/test/util_transform_test.cpp
+third_party/cycles/src/util/algorithm.h
+third_party/cycles/src/util/aligned_malloc.cpp
+third_party/cycles/src/util/aligned_malloc.h
+third_party/cycles/src/util/args.h
+third_party/cycles/src/util/array.h
+third_party/cycles/src/util/boundbox.h
+third_party/cycles/src/util/color.h
+third_party/cycles/src/util/debug.cpp
+third_party/cycles/src/util/debug.h
+third_party/cycles/src/util/defines.h
+third_party/cycles/src/util/deque.h
+third_party/cycles/src/util/disjoint_set.h
+third_party/cycles/src/util/guarded_allocator.cpp
+third_party/cycles/src/util/guarded_allocator.h
+third_party/cycles/src/util/hash.h
+third_party/cycles/src/util/ies.cpp
+third_party/cycles/src/util/ies.h
+third_party/cycles/src/util/image.h
+third_party/cycles/src/util/image_impl.h
+third_party/cycles/src/util/list.h
+third_party/cycles/src/util/log.cpp
+third_party/cycles/src/util/log.h
+third_party/cycles/src/util/map.h
+third_party/cycles/src/util/math.h
+third_party/cycles/src/util/math_base.h
+third_party/cycles/src/util/math_cdf.cpp
+third_party/cycles/src/util/math_cdf.h
+third_party/cycles/src/util/math_float2.h
+third_party/cycles/src/util/math_int2.h
+third_party/cycles/src/util/math_int3.h
+third_party/cycles/src/util/math_intersect.h
+third_party/cycles/src/util/openimagedenoise.h
+third_party/cycles/src/util/openvdb.cpp
+third_party/cycles/src/util/openvdb.h
+third_party/cycles/src/util/optimization.h
+third_party/cycles/src/util/param.h
+third_party/cycles/src/util/path.cpp
+third_party/cycles/src/util/path.h
+third_party/cycles/src/util/profiling.cpp
+third_party/cycles/src/util/profiling.h
+third_party/cycles/src/util/progress.h
+third_party/cycles/src/util/projection.h
+third_party/cycles/src/util/projection_inverse.h
+third_party/cycles/src/util/queue.h
+third_party/cycles/src/util/semaphore.h
+third_party/cycles/src/util/set.h
+third_party/cycles/src/util/stack_allocator.h
+third_party/cycles/src/util/static_assert.h
+third_party/cycles/src/util/stats.h
+third_party/cycles/src/util/string.cpp
+third_party/cycles/src/util/string.h
+third_party/cycles/src/util/system.cpp
+third_party/cycles/src/util/system.h
+third_party/cycles/src/util/task.cpp
+third_party/cycles/src/util/task.h
+third_party/cycles/src/util/tbb.h
+third_party/cycles/src/util/thread.cpp
+third_party/cycles/src/util/thread.h
+third_party/cycles/src/util/time.cpp
+third_party/cycles/src/util/time.h
+third_party/cycles/src/util/transform.cpp
+third_party/cycles/src/util/transform.h
+third_party/cycles/src/util/transform_avx2.cpp
+third_party/cycles/src/util/types.h
+third_party/cycles/src/util/types_base.h
+third_party/cycles/src/util/types_float2.h
+third_party/cycles/src/util/types_float3.h
+third_party/cycles/src/util/types_float4.h
+third_party/cycles/src/util/types_image.h
+third_party/cycles/src/util/types_int2.h
+third_party/cycles/src/util/types_int3.h
+third_party/cycles/src/util/types_int4.h
+third_party/cycles/src/util/types_int8.h
+third_party/cycles/src/util/types_uchar2.h
+third_party/cycles/src/util/types_uchar3.h
+third_party/cycles/src/util/types_uchar4.h
+third_party/cycles/src/util/types_uint2.h
+third_party/cycles/src/util/types_uint3.h
+third_party/cycles/src/util/types_uint4.h
+third_party/cycles/src/util/types_ushort4.h
+third_party/cycles/src/util/unique_ptr.h
+third_party/cycles/src/util/unique_ptr_vector.h
+third_party/cycles/src/util/vector.h
+third_party/cycles/src/util/version.h
+third_party/cycles/src/util/windows.h
+third_party/cycles/src/util/xml.h
+
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/app/oiio_output_driver.cpp
+third_party/cycles/src/app/oiio_output_driver.h
+third_party/cycles/src/bvh/metal.h
+third_party/cycles/src/device/metal/bvh.h
+third_party/cycles/src/device/metal/device.h
+third_party/cycles/src/device/metal/device_impl.h
+third_party/cycles/src/device/metal/kernel.h
+third_party/cycles/src/device/metal/queue.h
+third_party/cycles/src/device/metal/util.h
+third_party/cycles/src/integrator/path_trace_display.cpp
+third_party/cycles/src/integrator/path_trace_display.h
+third_party/cycles/src/integrator/path_trace_tile.cpp
+third_party/cycles/src/integrator/path_trace_tile.h
+third_party/cycles/src/kernel/device/cpu/bvh.h
+third_party/cycles/src/kernel/device/gpu/parallel_active_index.h
+third_party/cycles/src/kernel/device/gpu/parallel_prefix_sum.h
+third_party/cycles/src/kernel/device/gpu/parallel_sorted_index.h
+third_party/cycles/src/kernel/device/metal/bvh.h
+third_party/cycles/src/kernel/device/metal/context_begin.h
+third_party/cycles/src/kernel/device/metal/context_end.h
+third_party/cycles/src/kernel/device/metal/function_constants.h
+third_party/cycles/src/kernel/device/metal/globals.h
+third_party/cycles/src/kernel/device/optix/bvh.h
+third_party/cycles/src/kernel/geom/motion_point.h
+third_party/cycles/src/kernel/geom/point.h
+third_party/cycles/src/session/display_driver.h
+third_party/cycles/src/session/output_driver.h
+
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/app/opengl/shader.h
+
+/* SPDX-FileCopyrightText: 2011-2022 OpenGL Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/bvh/binning.cpp
+third_party/cycles/src/bvh/binning.h
+
+/* SPDX-FileCopyrightText: 2009-2011 Intel Corporation
+ * SPDX-FileCopyrightText: 2012-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted code from Intel Corporation. */
+
+Sources:
+third_party/cycles/src/bvh/build.cpp
+third_party/cycles/src/bvh/build.h
+third_party/cycles/src/bvh/bvh.cpp
+third_party/cycles/src/bvh/bvh.h
+third_party/cycles/src/bvh/bvh2.cpp
+third_party/cycles/src/bvh/bvh2.h
+third_party/cycles/src/bvh/node.cpp
+third_party/cycles/src/bvh/node.h
+third_party/cycles/src/bvh/params.h
+third_party/cycles/src/bvh/sort.cpp
+third_party/cycles/src/bvh/sort.h
+third_party/cycles/src/bvh/split.cpp
+third_party/cycles/src/bvh/split.h
+
+/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted code from NVIDIA Corporation. */
+
+Sources:
+third_party/cycles/src/bvh/embree.cpp
+third_party/cycles/src/bvh/embree.h
+third_party/cycles/src/kernel/film/cryptomatte_passes.h
+third_party/cycles/src/util/murmurhash.cpp
+third_party/cycles/src/util/murmurhash.h
+
+/* SPDX-FileCopyrightText: 2018-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/bvh/hiprt.cpp
+third_party/cycles/src/bvh/hiprt.h
+third_party/cycles/src/device/hiprt/device_impl.cpp
+third_party/cycles/src/device/hiprt/device_impl.h
+third_party/cycles/src/kernel/device/hiprt/kernel.cpp
+third_party/cycles/src/kernel/integrator/intersect_dedicated_light.h
+third_party/cycles/src/kernel/integrator/shade_dedicated_light.h
+third_party/cycles/src/kernel/integrator/shadow_linking.h
+third_party/cycles/src/kernel/osl/compat.h
+
+/* SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/bvh/multi.cpp
+third_party/cycles/src/bvh/multi.h
+third_party/cycles/src/scene/volume.cpp
+third_party/cycles/src/scene/volume.h
+
+/* SPDX-FileCopyrightText: 2020-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/bvh/octree.cpp
+third_party/cycles/src/bvh/octree.h
+third_party/cycles/src/device/metal/graphics_interop.h
+third_party/cycles/src/kernel/film/volume_guiding_denoise.h
+third_party/cycles/src/kernel/geom/geom_intersect.h
+third_party/cycles/src/kernel/osl/shaders/int_vector_types.h
+third_party/cycles/src/test/util_cache_limiter_test.cpp
+third_party/cycles/src/test/util_rgbe_test.cpp
+third_party/cycles/src/test/util_simd_test.cpp
+third_party/cycles/src/test/util_types_base_test.cpp
+third_party/cycles/src/util/cache_limiter.h
+third_party/cycles/src/util/math_dual.h
+third_party/cycles/src/util/types_dual.h
+third_party/cycles/src/util/types_rgbe.h
+
+/* SPDX-FileCopyrightText: 2025 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/bvh/optix.cpp
+third_party/cycles/src/bvh/optix.h
+third_party/cycles/src/device/optix/device.cpp
+third_party/cycles/src/device/optix/device_impl.cpp
+third_party/cycles/src/device/optix/device_impl.h
+third_party/cycles/src/kernel/device/optix/compat.h
+
+/* SPDX-FileCopyrightText: 2019 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2019-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindAlembic.cmake
+third_party/cycles/src/cmake/Modules/FindTBB.cmake
+
+# SPDX-FileCopyrightText: 2016 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindBlosc.cmake
+third_party/cycles/src/cmake/Modules/FindEmbree.cmake
+
+# SPDX-FileCopyrightText: 2018 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindClang.cmake
+third_party/cycles/src/cmake/Modules/FindPythonLibsUnix.cmake
+
+# SPDX-FileCopyrightText: 2011 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindEpoxy.cmake
+third_party/cycles/src/cmake/Modules/FindLibEpoxy.cmake
+
+# SPDX-FileCopyrightText: 2022 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindGLEW.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2014 Blender Foundation.
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindGflags.cmake
+third_party/cycles/src/cmake/Modules/FindGlog.cmake
+
+# SPDX-FileCopyrightText: 2015 Google Inc. All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindHIP.cmake
+third_party/cycles/src/cmake/Modules/FindHIPRT.cmake
+
+# SPDX-FileCopyrightText: 2021 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindLLVM.cmake
+third_party/cycles/src/cmake/Modules/FindOpenVDB.cmake
+third_party/cycles/src/cmake/Modules/FindSDL2.cmake
+
+# SPDX-FileCopyrightText: 2015 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindLevelZero.cmake
+third_party/cycles/src/cmake/Modules/FindSYCL.cmake
+
+# SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindNanoVDB.cmake
+third_party/cycles/src/cmake/Modules/Findsse2neon.cmake
+
+# SPDX-FileCopyrightText: 2020 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindOpenImageDenoise.cmake
+third_party/cycles/src/cmake/Modules/FindOptiX.cmake
+third_party/cycles/src/cmake/Modules/FindUSD.cmake
+third_party/cycles/src/cmake/Modules/FindZstd.cmake
+
+# SPDX-FileCopyrightText: 2019 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindOpenSubdiv.cmake
+
+# SPDX-FileCopyrightText: 2013 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindPugiXML.cmake
+
+# SPDX-FileCopyrightText: 2014 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindUSDHoudini.cmake
+third_party/cycles/src/cmake/Modules/FindUSDPixar.cmake
+
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2019 Blender Foundation.
+
+Sources:
+third_party/cycles/src/cmake/Modules/FindVulkan.cmake
+
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/src/cmake/compiler_utils.cmake
+third_party/cycles/src/cmake/configure_build.cmake
+third_party/cycles/src/cmake/detect_platform.cmake
+
+# Copyright 2011-2020 Blender Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Sources:
+third_party/cycles/src/cmake/zstd_compress.cpp
+third_party/cycles/src/kernel/svm/gabor.h
+third_party/cycles/src/test/util_math_fast_test.cpp
+
+/* SPDX-FileCopyrightText: 2024 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/device/oneapi/device.cpp
+third_party/cycles/src/kernel/device/oneapi/compat.h
+third_party/cycles/src/kernel/device/oneapi/context_begin.h
+third_party/cycles/src/kernel/device/oneapi/context_end.h
+third_party/cycles/src/kernel/device/oneapi/globals.h
+third_party/cycles/src/kernel/device/oneapi/kernel.cpp
+third_party/cycles/src/kernel/device/oneapi/kernel.h
+third_party/cycles/src/kernel/device/oneapi/kernel_templates.h
+
+/* SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/device/oneapi/device_impl.cpp
+third_party/cycles/src/device/oneapi/device_impl.h
+third_party/cycles/src/device/oneapi/queue.cpp
+third_party/cycles/src/device/oneapi/queue.h
+
+/* SPDX-FileCopyrightText: 2021-2025 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/device/oneapi/graphics_interop.cpp
+third_party/cycles/src/device/oneapi/graphics_interop.h
+
+/* SPDX-FileCopyrightText: 2025 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/doc/precompute/thin_film_table.py
+
+# SPDX-FileCopyrightText: 2011-2025 Blender Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/cycles/src/hydra/CMakeLists.txt
+
+# SPDX-FileCopyrightText: 2022 Blender Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/cycles/src/hydra/addon/__init__.py
+
+# SPDX-FileCopyrightText: 2026 Blender Authors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/cycles/src/hydra/camera.cpp
+third_party/cycles/src/hydra/camera.h
+third_party/cycles/src/hydra/config.h
+third_party/cycles/src/hydra/curves.cpp
+third_party/cycles/src/hydra/curves.h
+third_party/cycles/src/hydra/display_driver.cpp
+third_party/cycles/src/hydra/display_driver.h
+third_party/cycles/src/hydra/field.cpp
+third_party/cycles/src/hydra/field.h
+third_party/cycles/src/hydra/geometry.cpp
+third_party/cycles/src/hydra/geometry.h
+third_party/cycles/src/hydra/geometry.inl
+third_party/cycles/src/hydra/instancer.cpp
+third_party/cycles/src/hydra/instancer.h
+third_party/cycles/src/hydra/light.cpp
+third_party/cycles/src/hydra/light.h
+third_party/cycles/src/hydra/material.cpp
+third_party/cycles/src/hydra/material.h
+third_party/cycles/src/hydra/mesh.cpp
+third_party/cycles/src/hydra/mesh.h
+third_party/cycles/src/hydra/node_util.cpp
+third_party/cycles/src/hydra/node_util.h
+third_party/cycles/src/hydra/output_driver.cpp
+third_party/cycles/src/hydra/output_driver.h
+third_party/cycles/src/hydra/plugin.cpp
+third_party/cycles/src/hydra/plugin.h
+third_party/cycles/src/hydra/pointcloud.cpp
+third_party/cycles/src/hydra/pointcloud.h
+third_party/cycles/src/hydra/render_buffer.cpp
+third_party/cycles/src/hydra/render_buffer.h
+third_party/cycles/src/hydra/render_delegate.cpp
+third_party/cycles/src/hydra/render_delegate.h
+third_party/cycles/src/hydra/render_pass.cpp
+third_party/cycles/src/hydra/render_pass.h
+third_party/cycles/src/hydra/session.cpp
+third_party/cycles/src/hydra/session.h
+third_party/cycles/src/hydra/util.cpp
+third_party/cycles/src/hydra/util.h
+third_party/cycles/src/hydra/volume.cpp
+third_party/cycles/src/hydra/volume.h
+
+/* SPDX-FileCopyrightText: 2022 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/integrator/denoiser_oidn_base.cpp
+third_party/cycles/src/integrator/denoiser_oidn_base.h
+third_party/cycles/src/integrator/denoiser_oidn_gpu.cpp
+third_party/cycles/src/kernel/integrator/intersect_mnee.h
+third_party/cycles/src/kernel/util/image_2d.h
+third_party/cycles/src/scene/image_cache.h
+third_party/cycles/src/scene/image_loader.cpp
+third_party/cycles/src/scene/image_loader.h
+third_party/cycles/src/util/colorspace.cpp
+third_party/cycles/src/util/colorspace.h
+third_party/cycles/src/util/half.h
+third_party/cycles/src/util/types_normal.h
+
+/* SPDX-FileCopyrightText: 2011-2026 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/CMakeLists.txt
+third_party/cycles/src/kernel/device/cpu/CMakeLists.txt
+third_party/cycles/src/kernel/device/cuda/CMakeLists.txt
+third_party/cycles/src/kernel/device/hip/CMakeLists.txt
+third_party/cycles/src/kernel/device/hiprt/CMakeLists.txt
+third_party/cycles/src/kernel/device/metal/CMakeLists.txt
+third_party/cycles/src/kernel/device/oneapi/CMakeLists.txt
+third_party/cycles/src/kernel/device/optix/CMakeLists.txt
+
+# SPDX-FileCopyrightText: 2011-2026 Blender Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/cycles/src/kernel/bvh/intersect_filter.h
+third_party/cycles/src/kernel/svm/scene_time.h
+third_party/cycles/src/scene/scene_attributes.cpp
+third_party/cycles/src/session/cache_eviction.cpp
+third_party/cycles/src/session/cache_eviction.h
+third_party/cycles/src/test/util_half_avx2_test.cpp
+third_party/cycles/src/test/util_half_test.cpp
+third_party/cycles/src/test/util_half_test.h
+third_party/cycles/src/util/implicit_sharing.h
+third_party/cycles/src/util/scoped_defer.h
+
+/* SPDX-FileCopyrightText: 2026 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/bvh/local.h
+
+/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2009-2012 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted from code by Intel & NVIDIA. */
+
+Sources:
+third_party/cycles/src/kernel/bvh/shadow_all.h
+third_party/cycles/src/kernel/bvh/traversal.h
+third_party/cycles/src/kernel/bvh/volume.h
+third_party/cycles/src/kernel/bvh/volume_all.h
+
+/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2009-2012 Intel Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted code from NVIDIA Corporation. */
+
+Sources:
+third_party/cycles/src/kernel/camera/projection.h
+
+/* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al.
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Adapted code from Open Shading Language. */
+
+Sources:
+third_party/cycles/src/kernel/closure/bsdf.h
+
+/* Shadow terminator workaround, taken from Appleseed.
+   * SPDX-License-Identifier: MIT
+   * Copyright (c) 2019 Francois Beaune, The appleseedhq Organization */
+
+Sources:
+third_party/cycles/src/kernel/closure/bsdf_ashikhmin_velvet.h
+third_party/cycles/src/kernel/closure/bsdf_diffuse.h
+third_party/cycles/src/kernel/closure/bsdf_diffuse_ramp.h
+third_party/cycles/src/kernel/closure/bsdf_hair.h
+third_party/cycles/src/kernel/closure/bsdf_microfacet.h
+third_party/cycles/src/kernel/closure/bsdf_phong_ramp.h
+third_party/cycles/src/kernel/closure/bsdf_toon.h
+third_party/cycles/src/kernel/closure/bsdf_transparent.h
+third_party/cycles/src/kernel/closure/bsdf_util.h
+third_party/cycles/src/kernel/closure/emissive.h
+third_party/cycles/src/kernel/osl/closures.cpp
+third_party/cycles/src/kernel/osl/closures_setup.h
+third_party/cycles/src/kernel/osl/osl.h
+third_party/cycles/src/kernel/osl/services_gpu.h
+third_party/cycles/src/kernel/osl/shaders/node_fresnel.h
+third_party/cycles/src/kernel/osl/shaders/stdcycles.h
+third_party/cycles/src/kernel/osl/strings.h
+third_party/cycles/src/kernel/sample/mapping.h
+third_party/cycles/src/kernel/sample/mis.h
+third_party/cycles/src/kernel/svm/blackbody.h
+third_party/cycles/src/kernel/svm/noise.h
+third_party/cycles/src/kernel/svm/wavelength.h
+third_party/cycles/src/kernel/svm/wireframe.h
+
+/* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Adapted code from Open Shading Language. */
+
+Sources:
+third_party/cycles/src/kernel/closure/bsdf_burley.h
+
+/* SPDX-FileCopyrightText: 2009-2025 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
+ * SPDX-FileCopyrightText: 2011-2025 Blender Foundation
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Adapted code from Open Shading Language. */
+
+Sources:
+third_party/cycles/src/kernel/closure/bsdf_principled_hair_chiang.h
+
+/* SPDX-FileCopyrightText: 2018-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * This code implements the paper [A practical and controllable hair and fur model for production
+ * path tracing](https://doi.org/10.1145/2775280.2792559) by Chiang, Matt Jen-Yuan, et al. */
+
+Sources:
+third_party/cycles/src/kernel/closure/bsdf_ray_portal.h
+
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/closure/bsdf_sheen.h
+
+/* SPDX-FileCopyrightText: Copyright 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/closure/volume_draine.h
+third_party/cycles/src/kernel/closure/volume_fournier_forand.h
+third_party/cycles/src/kernel/closure/volume_henyey_greenstein.h
+third_party/cycles/src/kernel/closure/volume_rayleigh.h
+third_party/cycles/src/kernel/closure/volume_util.h
+third_party/cycles/src/subd/interpolation.cpp
+third_party/cycles/src/subd/interpolation.h
+third_party/cycles/src/subd/osd.cpp
+third_party/cycles/src/subd/osd.h
+third_party/cycles/src/test/util_ies_test.cpp
+
+/* SPDX-FileCopyrightText: 2011-2024 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/device/gpu/block_sizes.h
+
+/* SPDX-FileCopyrightText: 2017-2025 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/device/gpu/image.h
+third_party/cycles/src/util/rect.h
+
+/* SPDX-FileCopyrightText: 2017-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/device/oneapi/context_intersect_begin.h
+third_party/cycles/src/kernel/device/oneapi/context_intersect_end.h
+
+/* SPDX-FileCopyrightText: 2023 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/film/adaptive_sampling.h
+third_party/cycles/src/scene/tabulated_sobol.cpp
+third_party/cycles/src/scene/tabulated_sobol.h
+third_party/cycles/src/util/windows.cpp
+
+/* SPDX-FileCopyrightText: 2019-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/geom/curve_intersect.h
+
+/* SPDX-FileCopyrightText: 2009-2021 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted from Embree with modifications. */
+
+Sources:
+third_party/cycles/src/kernel/geom/triangle_intersect.h
+third_party/cycles/src/util/atomic.h
+
+/* SPDX-FileCopyrightText: 2014-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/light/light.h
+
+/* SPDX-FileCopyrightText: 2010-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/osl/camera.h
+
+/* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights Reserved.
+ * SPDX-FileCopyrightText: 2011-2024 Blender Foundation
+ *
+ * SPDX-License-Identifier: BSD-3-Clause */
+
+Sources:
+third_party/cycles/src/kernel/osl/services_shared.h
+
+/* SPDX-FileCopyrightText: 2011-2026 Blender Foundation
+ * SPDX-FileCopyrightText: Contributors to the OpenImageIO project
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/osl/shaders/node_hash.h
+third_party/cycles/src/kernel/osl/shaders/node_voronoi.h
+third_party/cycles/src/kernel/svm/raycast.h
+third_party/cycles/src/kernel/util/image_3d.h
+third_party/cycles/src/scene/image_cache.cpp
+third_party/cycles/src/scene/light_tree_debug.cpp
+third_party/cycles/src/scene/light_tree_debug.h
+third_party/cycles/src/scene/mesh_subdivision.cpp
+third_party/cycles/src/test/util_boundbox_test.cpp
+third_party/cycles/src/test/util_math_float3_test.cpp
+third_party/cycles/src/test/util_math_float4_test.cpp
+third_party/cycles/src/util/concurrent_set.h
+third_party/cycles/src/util/concurrent_vector.h
+
+/* SPDX-FileCopyrightText: 2011-2025 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/osl/shaders/node_radial_tiling_shared.h
+third_party/cycles/src/kernel/svm/radial_tiling.h
+third_party/cycles/src/kernel/svm/radial_tiling_shared.h
+
+/* SPDX-FileCopyrightText: 2024-2025 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/kernel/osl/shaders/node_voronoi.h
+
+/*
+ * SPDX-License-Identifier: MIT
+ * Original code is copyright (c) 2013 Inigo Quilez.
+ *
+ * Smooth Voronoi:
+ * - https://wiki.blender.org/wiki/User:OmarSquircleArt/GSoC2019/Documentation/Smooth_Voronoi
+ *
+ * Distance To Edge based on:
+ *
+ * - https://www.iquilezles.org/www/articles/voronoilines/voronoilines.htm
+ * - https://www.shadertoy.com/view/ldl3W8
+ *
+ * With optimization to change -2..2 scan window to -1..1 for better performance,
+ * as explained in https://www.shadertoy.com/view/llG3zy.
+ */
+
+Sources:
+third_party/cycles/src/kernel/svm/voronoi.h
+
+/*
+ * SPDX-License-Identifier: MIT
+ * Original code is copyright (c) 2013 Inigo Quilez.
+ *
+ * Smooth Voronoi:
+ *
+ * - https://wiki.blender.org/wiki/User:OmarSquircleArt/GSoC2019/Documentation/Smooth_Voronoi
+ *
+ * Distance To Edge based on:
+ *
+ * - https://www.iquilezles.org/www/articles/voronoilines/voronoilines.htm
+ * - https://www.shadertoy.com/view/ldl3W8
+ *
+ * With optimization to change -2..2 scan window to -1..1 for better performance,
+ * as explained in https://www.shadertoy.com/view/llG3zy.
+ */
+
+Sources:
+third_party/cycles/src/kernel/util/nanovdb.h
+
+/* SPDX-FileCopyrightText: 2020-2021 Contributors to the OpenVDB Project
+ * SPDX-FileCopyrightText: 2023-2025 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * This is an extract from NanoVDB.h, with minimal code needed for kernel side access to grids. The
+ * original headers are not compatible with Metal due to missing address space qualifiers. */
+
+Sources:
+third_party/cycles/src/scene/CMakeLists.txt
+
+# SPDX-FileCopyrightText: 2011-2021 Blender Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/cycles/src/session/display_driver.cpp
+
+/* SPDX-FileCopyrightText: 2021-2025 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/subd/patch.cpp
+
+/* Parts adapted from code in the public domain in NVidia Mesh Tools. */
+
+Sources:
+third_party/cycles/src/util/atomic.h
+
+// Modified by CodeBrix: use independent host atomics; device branches are unchanged.
+// Copyright (c) 2026 Jeremy Ellis and contributors
+
+Sources:
+third_party/cycles/src/util/guiding.h
+third_party/cycles/src/util/types_spectrum.h
+
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/util/half.h
+
+/* Optimized fallback implementations with fast path for normal and denormal numbers, assuming
+ * no Infs or NaNs. Based on public domain functions from.
+ *
+ * https://fgiesen.wordpress.com/2012/03/28/half-to-float-done-quic/
+ * https://gist.github.com/rygorous/2144712
+ * https://gist.github.com/rygorous/2156668
+ * https://gist.github.com/rygorous/4d9e9e88cab13c703773dc767a23575f
+ */
+
+Sources:
+third_party/cycles/src/util/image_maketx.cpp
+third_party/cycles/src/util/image_maketx.h
+
+/* SPDX-FileCopyrightText: 2025 OpenImageIO project
+ *                         2026 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * This is a modified version of maketexture.cpp from OpenImageIO, to add a few
+ * features missing in the native implementation. */
+
+Sources:
+third_party/cycles/src/util/image_metadata.cpp
+third_party/cycles/src/util/image_metadata.h
+
+/* SPDX-FileCopyrightText: 2011-2026 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/util/implicit_sharing.cpp
+third_party/cycles/src/util/random_access_iterator_mixin.h
+
+/* SPDX-FileCopyrightText: 2026 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/util/math_fast.h
+
+/* SPDX-FileCopyrightText: 2004 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2008-2014 Larry Gritz
+ * SPDX-FileCopyrightText: 2009-2014 Sony Pictures Imageworks Inc., et al.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Adapted from OpenImageIO
+ * Copyright 2008-2014 Larry Gritz and the other authors and contributors.
+ * All Rights Reserved.
+ *
+ * A few bits here are based upon code from NVIDIA that was also released
+ * under the same modified BSD license, and marked as:
+ *    `Copyright 2004 NVIDIA Corporation. All Rights Reserved.`
+ *
+ * Some parts of this file were first open-sourced in Open Shading Language,
+ * then later moved here. The original copyright notice was:
+ *    `Copyright (c) 2009-2014 Sony Pictures Imageworks Inc., et al.`
+ *
+ * Many of the math functions were copied from or inspired by other
+ * public domain sources or open source packages with compatible licenses.
+ * The individual functions give references were applicable.
+ */
+
+Sources:
+third_party/cycles/src/util/math_float3.h
+third_party/cycles/src/util/math_float4.h
+third_party/cycles/src/util/math_int4.h
+third_party/cycles/src/util/math_int8.h
+
+/* SPDX-FileCopyrightText: 2011-2013 Intel Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/util/math_float8.h
+
+/* SPDX-FileCopyrightText: 2011-2013 Intel Corporation
+ * SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/util/md5.cpp
+third_party/cycles/src/util/md5.h
+
+/* SPDX-FileCopyrightText: 1999, 2002 Aladdin Enterprises. All rights reserved.
+ *
+ * SPDX-License-Identifier: Zlib
+ *
+ * By `L. Peter Deutsch <ghost@aladdin.com>`. */
+
+Sources:
+third_party/cycles/src/util/murmurhash.cpp
+
+/* This is taken from alShaders/Cryptomatte/MurmurHash3.h:
+ *
+ * MurmurHash3 was written by Austin Appleby, and is placed in the public
+ * domain. The author hereby disclaims copyright to this source code.
+ */
+
+Sources:
+third_party/cycles/src/util/nanovdb.cpp
+third_party/cycles/src/util/nanovdb.h
+
+/* SPDX-FileCopyrightText: Contributors to the OpenVDB Project
+ * SPDX-FileCopyrightText: 2025 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/util/projection_inverse.h
+
+/* SPDX-License-Identifier: BSD-3-Clause
+   * Adapted from code:
+   * Copyright (c) 2002, Industrial Light & Magic, a division of Lucas
+   * Digital Ltd. LLC. All rights reserved. */
+
+Sources:
+third_party/cycles/src/util/simd.h
+
+/* SPDX-FileCopyrightText: 2011-2013 Intel Corporation
+ * SPDX-FileCopyrightText: 2014-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/util/stats.h
+
+// Modified by CodeBrix: use atomic return/load for concurrent memory accounting.
+// Copyright (c) 2026 Jeremy Ellis and contributors
+
+Sources:
+third_party/cycles/src/util/types_float8.h
+
+/* SPDX-FileCopyrightText: 2017 Intel Corporation
+ * SPDX-FileCopyrightText: 2018-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Originally by Intel Corporation, modified by the Blender Foundation. */
+
+Sources:
+third_party/cycles/third_party/libc_compat/CMakeLists.txt
+
+# Copyright 2020 Blender Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Sources:
+third_party/cycles/third_party/libc_compat/libc_compat.c
+
+/*
+ * Copyright 2020 Blender Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+Sources:
+third_party/cycles/third_party/mikktspace/mikk_atomic_hash_set.hh
+
+/* SPDX-FileCopyrightText: 2012-2021 Meta Platforms, Inc. and affiliates.
+ * SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/third_party/mikktspace/mikk_float3.hh
+
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/third_party/mikktspace/mikk_util.hh
+
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/third_party/mikktspace/mikktspace.hh
+
+/* SPDX-FileCopyrightText: 2011 Morten S. Mikkelsen
+ * SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/third_party/sky/CMakeLists.txt
+
+# SPDX-FileCopyrightText: 2002-2022 Blender Authors
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+Sources:
+third_party/cycles/third_party/sky/include/sky_hosek.h
+third_party/cycles/third_party/sky/source/sky_hosek.cpp
+third_party/cycles/third_party/sky/source/sky_hosek_data.h
+
+/* SPDX-FileCopyrightText: 2012-2013 Lukas Hosek and Alexander Wilkie. All rights reserved.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause */
+
+Sources:
+third_party/cycles/third_party/sky/include/sky_nishita.h
+
+/* SPDX-FileCopyrightText: 2020-2025 Blender Authors
+ *
+ * SPDX-License-Identifier: BSD-3-Clause */
+
+Sources:
+third_party/cycles/third_party/sky/source/sky_math.h
+
+/* SPDX-FileCopyrightText: 2020-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: BSD-3-Clause */
+
+Sources:
+third_party/cycles/third_party/sky/source/sky_multiple_scattering.cpp
+
+/* SPDX-FileCopyrightText: 2022 Fernando García Liñán
+ * SPDX-FileCopyrightText: 2011-2025 Blender Authors
+ *
+ * SPDX-License-Identifier: MIT */
+
+Sources:
+third_party/cycles/third_party/sky/source/sky_single_scattering.cpp
+
+/* SPDX-FileCopyrightText: 2011-2020 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+Sources:
+third_party/cycles/src/util/atomic_ops_codebrix.h
+
+// Copyright (c) 2026 Jeremy Ellis and contributors
+// SPDX-License-Identifier: Apache-2.0
+// Original implementation from the interfaces used by Cycles' permissively
+// licensed call sites and C++20 atomic_ref semantics. No Blender atomic header
+// implementation was used. See tools/licensing/ATOMIC-CONTRACT.md.
+
+Sources:
+third_party/cycles/src/cmake/codebrix_dependencies.cmake
+
+# Copyright (c) 2026 Jeremy Ellis and contributors
+# SPDX-License-Identifier: Apache-2.0
+# Original target adapters from the requirements of Apache-licensed Cycles
+# CMake call sites and the variables produced by its external_libs.cmake.
+# The excluded dependency_targets.cmake implementation was not used.
+
+Sources:
+third_party/cycles/third_party/CMakeLists.txt
+
+# Copyright (c) 2026 Jeremy Ellis and contributors
+# SPDX-License-Identifier: Apache-2.0
+
