@@ -426,3 +426,15 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# Reproducible feasibility experiment output (sources and evidence stay tracked).
+research/work/
+prototype/work/
+parity/work/
+native/work/
+# Reviewed dependency snapshots contain legitimate directories named log,
+# debug, release and build. They are source inputs, not generated outputs.
+!third_party/deps/**
+# Intentional, audited RID deliverables (including unstripped binaries/symbols).
+# Build intermediates belong in work/, bin/ and obj/, not this directory.
+!native/binaries/**
