@@ -11,7 +11,9 @@ extern "C" {
 typedef uint64_t CBCHost;
 typedef uint64_t CBCNode;
 typedef uint64_t CBCImage;
-enum { CBC_HOST_ABI = 1, CBC_HOST_WEBGPU = 1, CBC_HOST_CPU_REFERENCE = 2 };
+/* CBC_HOST_METAL selects Cycles' own Metal device in Apple Silicon builds;
+ * other builds return CBC_UNSUPPORTED for it. */
+enum { CBC_HOST_ABI = 1, CBC_HOST_WEBGPU = 1, CBC_HOST_CPU_REFERENCE = 2, CBC_HOST_METAL = 3 };
 enum { CBC_OK = 0, CBC_INVALID = 1, CBC_UNSUPPORTED = 2, CBC_FAILED = 3,
        CBC_CANCELLED = 4, CBC_NOT_READY = 5, CBC_SMALL_BUFFER = 6 };
 typedef struct CBCHostConfig {
@@ -105,7 +107,9 @@ int cbc_host_attribute_remove(CBCHost host, CBCNode geometry, const char *name, 
  * native endian storage. Sampling, alpha and colorspace come from the bound
  * native image/environment node properties. Releasing an image handle does not
  * invalidate graph bindings. Binding zero detaches memory input and restores
- * native filename loading. A new immutable image can replace an existing binding. */
+ * native filename loading, except in builds without image file readers, which
+ * reject texture filenames with CBC_UNSUPPORTED. A new immutable image can
+ * replace an existing binding. */
 int cbc_host_image_create(CBCHost host, const CBCImageConfig *config, const void *pixels, uint64_t byte_count, CBCImage *image);
 int cbc_host_image_bind(CBCHost host, CBCNode texture_node, CBCImage image);
 int cbc_host_image_release(CBCHost host, CBCImage image);

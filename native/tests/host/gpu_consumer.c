@@ -9,6 +9,12 @@
 #include <string.h>
 #include <time.h>
 
+// Builds select the GPU backend under test; the default remains WebGPU.
+#ifndef CBC_TEST_GPU_BACKEND
+#  define CBC_TEST_GPU_BACKEND CBC_HOST_WEBGPU
+#  define CBC_TEST_GPU_NAME "WebGpu"
+#endif
+
 static void check(int result, const char *call) {
   if (result == CBC_OK) return;
   char error[4096]; uint64_t required = 0;
@@ -110,7 +116,7 @@ static void wait_active(CBCHost host) {
 }
 int main(int argc, char **argv) {
   REQUIRE(argc == 2 || (argc == 3 && strcmp(argv[2], "--exit-live") == 0));
-  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, CBC_HOST_WEBGPU, 1, {0}};
+  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, CBC_TEST_GPU_BACKEND, 1, {0}};
   CBCHost host = 99, other = 0;
   config.abi_version++;
   REQUIRE(cbc_host_create(&config, &host) == CBC_INVALID && host == 0);
@@ -164,7 +170,7 @@ int main(int argc, char **argv) {
   REQUIRE(thread.status == CBC_CANCELLED);
   for (unsigned i = 0; i < FLOAT_COUNT; ++i) REQUIRE(thread.pixels[i] == -99);
   REQUIRE(cbc_host_destroy(host) == CBC_INVALID);
-  printf("{\"passed\":true,\"pureCConsumer\":true,\"explicitWebGpu\":true,"
+  printf("{\"passed\":true,\"pureCConsumer\":true,\"explicit" CBC_TEST_GPU_NAME "\":true,"
          "\"materialEditAfterCompilation\":true,\"sampleBudgetDecrease\":true,"
          "\"failedRenderPreservesOutput\":true,\"cancelPreservesOutput\":true,"
          "\"renderAfterCancel\":true,\"destroyDuringRender\":true,"

@@ -24,6 +24,11 @@
 #include <OpenColorIO/OpenColorIO.h>
 #include "session/output_driver.h"
 #include "session/session.h"
+#include "util/path.h"
+#ifdef __APPLE__
+#  include <dlfcn.h>
+#  include <sys/sysctl.h>
+#endif
 #include <algorithm>
 #include <atomic>
 #include <climits>
@@ -209,6 +214,25 @@ bool reaches(ShaderNode *start, ShaderNode *wanted, std::set<ShaderNode *> &visi
     if (reaches(input->parent, wanted, visited)) return true;
   return false;
 }
+#ifdef __APPLE__
+// The loader does not enforce a library's minimum OS version, so check the
+// build's deployment target before any Cycles or Metal code runs.
+bool supported_macos() {
+  char version[32] = {}; size_t size = sizeof(version) - 1;
+  if (sysctlbyname("kern.osproductversion", version, &size, nullptr, 0) != 0) return false;
+  return std::atoi(version) >= 15;
+}
+// Metal compiles kernels at run time from the source tree shipped beside this
+// library; Cycles otherwise looks beside the consuming executable.
+void initialize_paths() {
+  static std::once_flag once;
+  std::call_once(once, [] {
+    Dl_info info{};
+    if (dladdr(reinterpret_cast<const void *>(&cbc_host_abi_version), &info) && info.dli_fname)
+      path_init(path_join(path_dirname(info.dli_fname), "codebrix-cycles"));
+  });
+}
+#endif
 }
 
 #include "host_properties.inc"
@@ -227,13 +251,29 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
     require(config && out && config->struct_size == sizeof(*config) && config->abi_version == CBC_HOST_ABI, "Invalid host configuration");
     require(std::all_of(std::begin(config->reserved), std::end(config->reserved), [](auto v) { return v == 0; }), "Unknown configuration flags");
     require(config->threads <= 1024, "Invalid thread count");
-    require(config->backend == CBC_HOST_WEBGPU || config->backend == CBC_HOST_CPU_REFERENCE, "Explicit backend selection required");
+    require(config->backend == CBC_HOST_WEBGPU || config->backend == CBC_HOST_CPU_REFERENCE || config->backend == CBC_HOST_METAL,
+            "Explicit backend selection required");
+#ifdef __APPLE__
+    require(supported_macos(), "This library requires macOS 15.0 or later", CBC_UNSUPPORTED);
+    initialize_paths();
+#endif
+#ifndef WITH_METAL
+    require(config->backend != CBC_HOST_METAL, "The Metal backend exists only in Apple Silicon builds", CBC_UNSUPPORTED);
+#endif
     std::lock_guard configuration_lock(configuration_mutex);
     auto host = std::make_shared<Host>();
-    auto type = config->backend == CBC_HOST_WEBGPU ? DEVICE_WEBGPU : DEVICE_CPU;
+    auto type = config->backend == CBC_HOST_WEBGPU ? DEVICE_WEBGPU : config->backend == CBC_HOST_METAL ? DEVICE_METAL : DEVICE_CPU;
     auto devices = Device::available_devices(DeviceTypeMask(1 << type));
     require(!devices.empty(), "Requested device is unavailable", CBC_UNSUPPORTED);
-    SessionParams params; params.device = devices[0]; params.denoise_device = params.device;
+    SessionParams params; params.device = devices[0];
+    if (type == DEVICE_METAL) {
+      // Blender's automatic choice: Apple's ray-tracing API only on GPUs with
+      // ray-tracing hardware (M3 and later). CYCLES_METALRT still overrides it.
+      params.device.use_hardware_raytracing = params.device.use_metalrt_by_default;
+      require(path_is_file(path_get("source/kernel/device/metal/kernel.metal")),
+              "Metal kernel sources are missing beside the native library", CBC_FAILED);
+    }
+    params.denoise_device = params.device;
     params.headless = true; params.background = true; params.threads = int(config->threads);
     params.use_auto_tile = false; params.use_resolution_divider = false;
     SceneParams scene; scene.bvh_layout = BVH_LAYOUT_BVH2; scene.bvh_type = BVH_TYPE_STATIC;
@@ -388,6 +428,11 @@ extern "C" int cbc_host_set_string(CBCHost handle, CBCNode id, const char *name,
   return edit(handle, [&](Host &host) {
     require(value, "Missing string value"); auto &entry = host.entry(id); auto &input = socket(entry, name);
     stored_property(input);
+#ifdef CBC_HOST_NO_IMAGE_FILES
+    // This build contains no image file readers; callers bind decoded pixels.
+    require(!*value || input.name != "filename" || !dynamic_cast<ImageSlotTextureNode *>(entry.node),
+            "Image files are not read by this library; bind decoded pixels with cbc_host_image_bind", CBC_UNSUPPORTED);
+#endif
     // Native automatic colorspace is the default-constructed empty ustring.
     // OIIO distinguishes its null interned pointer from ustring("").
     if (input.type == SocketType::STRING) entry.node->set(input, *value ? ustring(value) : ustring());

@@ -1,0 +1,168 @@
+{
+ "cbcOracleScene": 1,
+ "id": "starter/diffuse-triangle",
+ "description": "Static diffuse triangle, constant world: the C lifecycle fixture (consumer.c fixture(), first render)",
+ "sourceFixture": "native/tests/host/consumer.c fixture()",
+ "render": {
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "caustics_reflective": false,
+    "caustics_refractive": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "max_diffuse_bounce": 4,
+    "sampling_pattern": "tabulated_sobol"
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 1.1,
+    "matrix": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     -4
+    ]
+   }
+  },
+  {
+   "handle": "material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.3
+      }
+     },
+     {
+      "handle": "value",
+      "type": "color",
+      "set": {
+       "value": [
+        0.7,
+        0.2,
+        0.1
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "value",
+      "Color",
+      "diffuse",
+      "Color"
+     ],
+     [
+      "diffuse",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "mesh",
+   "create": "mesh",
+   "set": {
+    "used_shaders": [
+     "material"
+    ]
+   },
+   "mesh": {
+    "positions": [
+     -1.5,
+     -1,
+     0,
+     1.5,
+     -1,
+     0,
+     0,
+     1.5,
+     0
+    ],
+    "indices": [
+     0,
+     1,
+     2
+    ]
+   }
+  },
+  {
+   "handle": "object",
+   "create": "object",
+   "set": {
+    "geometry": "mesh"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "background",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.25,
+        0.4,
+        0.6
+       ],
+       "strength": 0.8
+      }
+     }
+    ],
+    "connect": [
+     [
+      "background",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  }
+ ],
+ "images": []
+}

@@ -45,10 +45,26 @@ def candidates():
     return sorted(set(n for n in names.split('\0') if n and (ROOT/n).exists()))
 
 
+def binary_approvals(errors):
+    """Exact reviewed RID payloads: native/binaries/<rid>/provenance.json lists the
+    SHA-256 of every payload file; kernel source copies must equal the snapshot."""
+    approved={};copies={}
+    for record in sorted((ROOT/'native/binaries').glob('*/provenance.json')):
+        data=json.loads(record.read_text());base=record.parent.relative_to(ROOT)
+        for name,digest in data.get('approvedPayload',{}).items():approved[str(base/name)]=digest
+        for name,source in data.get('snapshotCopies',{}).items():
+            original=ROOT/'third_party/cycles/src'/source
+            if not original.is_file() or sha(original)!=approved.get(str(base/name)):
+                errors.append('Payload source copy differs from the pinned snapshot: '+str(base/name))
+            copies[str(base/name)]=source
+    return approved,copies
+
+
 def source_audit():
     verify_cycles();verify_dependencies();verify_arm_math();verify_notices(check=True)
     reviewed=json.loads((ROOT/EXCEPTIONS).read_text())['files']
     errors=[];rows=[];used=[]
+    approved,copies=binary_approvals(errors)
     for name in candidates():
         p=ROOT/name
         if p.is_symlink():errors.append('Source candidate symlink: '+name);continue
@@ -57,9 +73,13 @@ def source_audit():
         magic=data[:8]
         if data.startswith(b'\x1f\x8b'):
             with gzip.GzipFile(fileobj=io.BytesIO(data)) as stream:magic=stream.read(8)
-        if magic.startswith(COMPILED_MAGIC):
+        payload=name.startswith('native/binaries/') and name.count('/')>3
+        if payload and approved.get(name)!=digest:
+            errors.append('Unreviewed native binary payload file: '+name)
+        if magic.startswith(COMPILED_MAGIC) and not (payload and approved.get(name)==digest):
             errors.append('Compiled artifact in source publication candidate: '+name)
         if name==EXCEPTIONS:continue  # Structured policy data, never implementation.
+        if name in copies:continue  # Verified byte-identical copy of an audited snapshot file.
         try:text=data.decode('utf-8')
         except UnicodeDecodeError:continue
         exception=reviewed.get(name)
@@ -80,6 +100,8 @@ def source_audit():
     # No exception silently changes with a file edit. Obsolete entries are also
     # errors, so an exclusion cannot conceal a newly repurposed file.
     current={r['path']:r['sha256'] for r in rows}
+    for name in approved:
+        if name not in current:errors.append('Approved payload file is missing: '+name)
     for name,entry in reviewed.items():
         if current.get(name)!=entry['sha256']:errors.append('Stale reviewed exception: '+name)
     history=subprocess.check_output(['git','log','--all','--format=','--name-only'],cwd=ROOT,text=True)

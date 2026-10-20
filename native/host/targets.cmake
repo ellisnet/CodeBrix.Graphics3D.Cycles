@@ -30,9 +30,14 @@ if(NOT MSVC)
   endif()
 endif()
 
-# pthread consumers currently cover Linux and Android. Other platforms still
+# A product profile without image file readers rejects texture filenames.
+if(CODEBRIX_HOST_NO_IMAGE_FILES)
+  target_compile_definitions(codebrix_cycles_host PRIVATE CBC_HOST_NO_IMAGE_FILES)
+endif()
+
+# pthread consumers currently cover Linux, Android and macOS. Other platforms still
 # require lifecycle execution; compiling a library alone does not establish it.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
   find_package(Threads REQUIRED)
   # The original and overlaid color implementations must have the same native
   # math options. Cycles sets these in its src/util directory, not on consumers.
@@ -48,7 +53,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID)
   target_include_directories(codebrix_host_reference_color PRIVATE "${PROJECT_SOURCE_DIR}/src")
   target_link_libraries(codebrix_host_reference_color PRIVATE cycles_util)
   set_property(TARGET codebrix_host_reference_color PROPERTY POSITION_INDEPENDENT_CODE ON)
-  foreach(kind IN ITEMS session session64 image)
+  set(reference_kinds session session64)
+  # The image oracle writes and reads EXR/PNG files through OIIO.
+  if(NOT CODEBRIX_HOST_NO_IMAGE_FILES)
+    list(APPEND reference_kinds image)
+  endif()
+  foreach(kind IN LISTS reference_kinds)
     if(kind STREQUAL "session64")
       set(source session_reference.cpp)
     else()
@@ -70,7 +80,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID)
       target_compile_options(${reference} PRIVATE -msse4.2)
     endif()
     target_link_libraries(${reference} PRIVATE ${codebrix_device_libs})
-    target_link_options(${reference} PRIVATE "LINKER:-Map,${CMAKE_BINARY_DIR}/${reference}.map")
+    if(APPLE)
+      target_link_options(${reference} PRIVATE "LINKER:-map,${CMAKE_BINARY_DIR}/${reference}.map")
+    else()
+      target_link_options(${reference} PRIVATE "LINKER:-Map,${CMAKE_BINARY_DIR}/${reference}.map")
+    endif()
   endforeach()
   foreach(kind IN ITEMS cpu gpu reload concurrency)
     if(kind STREQUAL "cpu")
@@ -83,4 +97,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID)
     target_compile_options(codebrix_host_${kind}_test PRIVATE -Wall -Wextra -Werror)
     target_link_libraries(codebrix_host_${kind}_test PRIVATE codebrix_cycles_host Threads::Threads m)
   endforeach()
+  if(CODEBRIX_HOST_GPU_TEST_BACKEND)
+    target_compile_definitions(codebrix_host_gpu_test PRIVATE
+      CBC_TEST_GPU_BACKEND=${CODEBRIX_HOST_GPU_TEST_BACKEND} CBC_TEST_GPU_NAME="${CODEBRIX_HOST_GPU_TEST_NAME}")
+  endif()
 endif()

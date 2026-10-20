@@ -14,13 +14,18 @@ native/binaries/<rid>/symbols/
 
 The nine RIDs remain win-x64, win-arm64, osx-x64, osx-arm64, linux-x64,
 linux-arm64, linux-riscv64, android-arm64 and android-x64. An empty directory
-does not imply a completed port. There are no release binaries here yet.
+does not imply a completed port. `osx-arm64` holds the first reviewed payload
+(Cycles with its Metal device; see [MACOS_ARM64.md](../host/MACOS_ARM64.md));
+no NuGet release has been made.
 
 Each delivery must carry source/dependency manifest hashes, toolchain and build
 options, binary hashes, a passing dependency/license audit and the applicable
 notices. Record which stripped runtime binary corresponds to each unstripped
 binary or symbol file. Configure source/binary audit approval for that exact
 reviewed payload before adding it; arbitrary compiled files remain rejected.
+The approval is `<rid>/provenance.json`: `approvedPayload` lists the SHA-256 of
+every payload file, and `snapshotCopies` names payload sources that must equal
+the pinned snapshot. `tools/licensing/audit.py` rejects anything else.
 
 This location is deliberately unignored. Build work stays in ignored `work/`,
 `bin/` and `obj/` directories. NuGet payloads should include the selected runtime

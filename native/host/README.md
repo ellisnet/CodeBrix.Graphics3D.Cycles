@@ -40,6 +40,10 @@ the pinned snapshot is unchanged. WGSL generation is local to each target, and
 the maintained CMake injection selects that RID's unchanged shipped WebGPU
 binary. These commands do not install an application or establish device support.
 
+The osx-arm64 product profile uses Cycles' own Metal device instead of WebGPU,
+selected with `CBC_HOST_METAL`, and contains no image file readers. Its recipe,
+validation and decisions are in [MACOS_ARM64.md](MACOS_ARM64.md).
+
 The .NET project contains only ownership and marshalling code, has no glTF
 dependency, and currently disables package creation pending runtime packaging.
 Scene compilation, BVH construction, image handling, color management, scheduling

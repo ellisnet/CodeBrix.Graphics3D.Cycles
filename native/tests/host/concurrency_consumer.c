@@ -4,6 +4,36 @@
 #include "consumer.c"
 #undef main
 
+#ifdef __APPLE__
+// macOS omits the optional POSIX barriers; this equivalent covers the uses below.
+typedef struct { pthread_mutex_t mutex; pthread_cond_t ready; unsigned count, waiting, cycle; } cbc_barrier_t;
+static int cbc_barrier_init(cbc_barrier_t *barrier, const void *attributes, unsigned count) {
+  (void)attributes; if (!count) return -1;
+  barrier->count = count; barrier->waiting = 0; barrier->cycle = 0;
+  if (pthread_mutex_init(&barrier->mutex, NULL) != 0) return -1;
+  if (pthread_cond_init(&barrier->ready, NULL) != 0) { pthread_mutex_destroy(&barrier->mutex); return -1; }
+  return 0;
+}
+static int cbc_barrier_wait(cbc_barrier_t *barrier) {
+  pthread_mutex_lock(&barrier->mutex);
+  const unsigned cycle = barrier->cycle;
+  if (++barrier->waiting == barrier->count) {
+    barrier->waiting = 0; ++barrier->cycle; pthread_cond_broadcast(&barrier->ready);
+    pthread_mutex_unlock(&barrier->mutex); return -1;
+  }
+  while (cycle == barrier->cycle) pthread_cond_wait(&barrier->ready, &barrier->mutex);
+  pthread_mutex_unlock(&barrier->mutex); return 0;
+}
+static int cbc_barrier_destroy(cbc_barrier_t *barrier) {
+  pthread_cond_destroy(&barrier->ready); return pthread_mutex_destroy(&barrier->mutex);
+}
+#  define pthread_barrier_t cbc_barrier_t
+#  define pthread_barrier_init cbc_barrier_init
+#  define pthread_barrier_wait cbc_barrier_wait
+#  define pthread_barrier_destroy cbc_barrier_destroy
+#  define PTHREAD_BARRIER_SERIAL_THREAD (-1)
+#endif
+
 enum { WORKERS=4, CONFIG_ROUNDS=64, HOST_ROUNDS=24, DESTROY_ROUNDS=12 };
 static const CBCHostConfig host_config={sizeof(CBCHostConfig),CBC_HOST_ABI,CBC_HOST_CPU_REFERENCE,1,{0}};
 static char config_a[4096],config_b[4096];

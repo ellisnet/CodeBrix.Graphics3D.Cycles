@@ -6,7 +6,8 @@ using Microsoft.Win32.SafeHandles;
 
 namespace CodeBrix.Graphics3D.Cycles;
 
-public enum Backend : uint { WebGpu = 1, CpuReference = 2 }
+// Metal is Cycles' own Metal device, available only in the osx-arm64 build.
+public enum Backend : uint { WebGpu = 1, CpuReference = 2, Metal = 3 }
 public readonly record struct Node(ulong Value);
 public readonly record struct Image(ulong Value);
 public enum AttributeValue : uint { Float = 5, Color = 6, Vector = 7, Point = 8, Normal = 9, Point2 = 10, Transform = 13, Float4 = 16, Byte4 = 17 }
@@ -45,6 +46,7 @@ public sealed unsafe class CyclesHost : IDisposable
     public CyclesHost(Backend backend, uint threads = 1)
     {
         if (IntPtr.Size != 8) throw new PlatformNotSupportedException("This experimental build requires a 64-bit process.");
+        EnsureSupportedOperatingSystem();
         Native.HostConfig config = new() { Size = 32, Abi = 1, Backend = (uint)backend, Threads = threads };
         Check(Native.Create(ref config, out ulong value));
         lifetime = new Lifetime(value);
@@ -53,7 +55,19 @@ public sealed unsafe class CyclesHost : IDisposable
     public void Dispose() => lifetime.Dispose();
     // Native Cycles shares OCIO process-wide. Configure only when no hosts or
     // in-flight calls remain; the native layer serializes against host creation.
-    public static void ConfigureColor(string path) => Check(Native.ConfigureColor(path));
+    public static void ConfigureColor(string path)
+    {
+        EnsureSupportedOperatingSystem();
+        Check(Native.ConfigureColor(path));
+    }
+
+    // The macOS loader does not enforce the native library's minimum OS, so
+    // refuse before the first P/Invoke loads it. The native host checks again.
+    private static void EnsureSupportedOperatingSystem()
+    {
+        if (OperatingSystem.IsMacOS() && !OperatingSystem.IsMacOSVersionAtLeast(15))
+            throw new PlatformNotSupportedException("CodeBrix.Graphics3D.Cycles requires macOS 15.0 or later.");
+    }
 
     private static void Check(int status)
     {
@@ -127,6 +141,7 @@ public sealed unsafe class CyclesHost : IDisposable
     }
     public static string RegistryJson()
     {
+        EnsureSupportedOperatingSystem();
         int status = Native.Registry(null, 0, out ulong required);
         if (status != 6) Check(status);
         byte[] result = new byte[checked((int)required)];

@@ -1,0 +1,101 @@
+{
+  "sceneId": "starter/textured-plane",
+  "sceneSha256": "1a026fda93758780ee8bf1247f75037cb7a215ec5ab3b9fe49cca55b96243563",
+  "width": 48,
+  "height": 32,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-20261019-v4/oracle/starter/textured-plane/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-20261019-v4/oracle/starter/textured-plane/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.9802322387695312e-08,
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-20261019-v4/oracle/starter/textured-plane/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.9802322387695312e-08,
+      "nonfiniteComponents": 0
+    }
+  ],
+  "pairs": [
+    {
+      "maxAbsoluteDifference": 9.627640247344971e-05,
+      "maxRelativeError": 0.0006946088009466935,
+      "rms": 9.617762248244151e-06,
+      "practicalFailures": 4,
+      "strictDifferences": 1558,
+      "worstPixel": {
+        "x": 15,
+        "y": 25,
+        "channel": "G",
+        "reference": 0.16385361552238464,
+        "candidate": 0.1637573391199112,
+        "absoluteDifference": 9.627640247344971e-05,
+        "criterionRatio": 1.1631697641680054
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "practicalPassed": false
+    },
+    {
+      "maxAbsoluteDifference": 9.627640247344971e-05,
+      "maxRelativeError": 0.0006946088009466935,
+      "rms": 9.579333346036107e-06,
+      "practicalFailures": 4,
+      "strictDifferences": 1558,
+      "worstPixel": {
+        "x": 15,
+        "y": 25,
+        "channel": "G",
+        "reference": 0.16385361552238464,
+        "candidate": 0.1637573391199112,
+        "absoluteDifference": 9.627640247344971e-05,
+        "criterionRatio": 1.1631697641680054
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "practicalPassed": false
+    },
+    {
+      "maxAbsoluteDifference": 4.883110523223877e-05,
+      "maxRelativeError": 0.00030494313094427404,
+      "rms": 9.081850301795966e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 3,
+      "worstPixel": {
+        "x": 31,
+        "y": 24,
+        "channel": "G",
+        "reference": 0.16013184189796448,
+        "candidate": 0.16018067300319672,
+        "absoluteDifference": 4.883110523223877e-05,
+        "criterionRatio": 0.5953098521473409
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "practicalPassed": true
+    }
+  ],
+  "problems": [
+    "metal-m2pro vs cpu-arm64-macos: 4 practical failures",
+    "metal-m2pro-metalrt vs cpu-arm64-macos: 4 practical failures"
+  ],
+  "passed": false
+}
