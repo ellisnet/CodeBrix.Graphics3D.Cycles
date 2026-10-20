@@ -438,3 +438,7 @@ native/work/
 # Intentional, audited RID deliverables (including unstripped binaries/symbols).
 # Build intermediates belong in work/, bin/ and obj/, not this directory.
 !native/binaries/**
+# Frozen evidence checkpoints are committed in full, including files the
+# generic rules above would drop (*.log and similar); every file under
+# native/evidence/ is listed in its checkpoint manifest and must be tracked.
+!native/evidence/**

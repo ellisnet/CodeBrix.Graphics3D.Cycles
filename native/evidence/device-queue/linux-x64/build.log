@@ -1,0 +1,103 @@
+-- Not using precompiled libraries
+-- Attempting to use system libraries instead
+CMake Warning (dev) at src/cmake/external_libs.cmake:443 (find_package):
+  Policy CMP0167 is not set: The FindBoost module is removed.  Run "cmake
+  --help-policy CMP0167" for policy details.  Use the cmake_policy command to
+  set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  CMakeLists.txt:247 (include)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Configuring done (0.1s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build
+[  2%] Built target extern_sky
+[  3%] Built target extern_libc_compat
+[ 18%] Built target cycles_util
+[ 21%] Built target cycles_graph
+[ 23%] Built target cycles_kernel_cpu
+[ 24%] Building CXX object src/device/CMakeFiles/cycles_device.dir/dummy/device.cpp.o
+[ 24%] Building CXX object src/device/CMakeFiles/cycles_device.dir/hip/device.cpp.o
+[ 25%] Building CXX object src/device/CMakeFiles/cycles_device.dir/cpu/device.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/memory.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/cpu/device_impl.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/cuda/device.cpp.o
+[ 27%] Building CXX object src/device/CMakeFiles/cycles_device.dir/multi/device.cpp.o
+[ 27%] Building CXX object src/device/CMakeFiles/cycles_device.dir/optix/device.cpp.o
+[ 27%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.cpp.o
+[ 28%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp.o
+[ 28%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/queue.cpp.o
+[ 28%] Linking CXX static library ../../lib/libcycles_device.a
+[ 42%] Built target cycles_device
+[ 42%] Building CXX object src/session/CMakeFiles/cycles_session.dir/buffers.cpp.o
+[ 42%] Building CXX object src/session/CMakeFiles/cycles_session.dir/session.cpp.o
+[ 42%] Building CXX object src/session/CMakeFiles/cycles_session.dir/denoising.cpp.o
+[ 43%] Building CXX object src/session/CMakeFiles/cycles_session.dir/tile.cpp.o
+[ 43%] Linking CXX static library ../../lib/libcycles_session.a
+[ 46%] Built target cycles_session
+[ 46%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/pass_accessor_cpu.cpp.o
+[ 47%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/path_trace_tile.cpp.o
+[ 48%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/path_trace_work.cpp.o
+[ 50%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/denoiser.cpp.o
+[ 50%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/denoiser_gpu.cpp.o
+[ 51%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/denoiser_oidn.cpp.o
+[ 51%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/path_trace_work_cpu.cpp.o
+[ 52%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/path_trace_work_gpu.cpp.o
+[ 52%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/render_scheduler.cpp.o
+[ 53%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/shader_eval.cpp.o
+[ 54%] Building CXX object src/integrator/CMakeFiles/cycles_integrator.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/integrator/path_trace.cpp.o
+[ 54%] Linking CXX static library ../../lib/libcycles_integrator.a
+[ 59%] Built target cycles_integrator
+[ 61%] Building CXX object src/subd/CMakeFiles/cycles_subd.dir/split.cpp.o
+[ 61%] Building CXX object src/subd/CMakeFiles/cycles_subd.dir/interpolation.cpp.o
+[ 61%] Building CXX object src/subd/CMakeFiles/cycles_subd.dir/dice.cpp.o
+[ 62%] Linking CXX static library ../../lib/libcycles_subd.a
+[ 63%] Built target cycles_subd
+[ 64%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/devicescene.cpp.o
+[ 64%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/film.cpp.o
+[ 64%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/bake.cpp.o
+[ 67%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/attribute.cpp.o
+[ 67%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/background.cpp.o
+[ 68%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/camera.cpp.o
+[ 69%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/geometry.cpp.o
+[ 69%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/geometry_attributes.cpp.o
+[ 70%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/geometry_bvh.cpp.o
+[ 71%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/geometry_mesh.cpp.o
+[ 71%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/hair.cpp.o
+[ 72%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/image.cpp.o
+[ 72%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/image_cache.cpp.o
+[ 72%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/integrator.cpp.o
+[ 73%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/scene_attributes.cpp.o
+[ 73%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/light.cpp.o
+[ 74%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/light_tree.cpp.o
+[ 74%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/light_tree_debug.cpp.o
+[ 75%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/mesh.cpp.o
+[ 76%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/mesh_displace.cpp.o
+[ 76%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/mesh_subdivision.cpp.o
+[ 77%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/procedural.cpp.o
+[ 77%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/pointcloud.cpp.o
+[ 78%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/object.cpp.o
+[ 78%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/osl.cpp.o
+[ 79%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/particles.cpp.o
+[ 80%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/scene.cpp.o
+[ 80%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/shader.cpp.o
+[ 81%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/shader_graph.cpp.o
+[ 81%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/shader_nodes.cpp.o
+[ 82%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/stats.cpp.o
+[ 82%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/svm.cpp.o
+[ 84%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/tables.cpp.o
+[ 84%] Building CXX object src/scene/CMakeFiles/cycles_scene.dir/volume.cpp.o
+[ 85%] Linking CXX static library ../../lib/libcycles_scene.a
+[ 90%] Built target cycles_scene
+[ 91%] Building CXX object src/bvh/CMakeFiles/cycles_bvh.dir/unaligned.cpp.o
+[ 91%] Building CXX object src/bvh/CMakeFiles/cycles_bvh.dir/split.cpp.o
+[ 92%] Building CXX object src/bvh/CMakeFiles/cycles_bvh.dir/octree.cpp.o
+[ 92%] Building CXX object src/bvh/CMakeFiles/cycles_bvh.dir/bvh2.cpp.o
+[ 92%] Building CXX object src/bvh/CMakeFiles/cycles_bvh.dir/build.cpp.o
+[ 92%] Linking CXX static library ../../lib/libcycles_bvh.a
+[ 98%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_device_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/control_reference.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_device_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_device_gate
+[100%] Built target codebrix_cycles_device_gate
