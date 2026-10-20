@@ -15,6 +15,13 @@ struct SurfaceData {
 }
 fn surface_failure(sd:ptr<function,SurfaceData>){(*sd).error=1u;fail();}
 fn surface_normalize(v:vec3<f32>)->vec3<f32>{return rounded_safe_normalize(v);}
+// Original adapter for Cycles normalize(float3): per-component division (SSE
+// hosts) or reciprocal-length multiplication (scalar float3 hosts), selected
+// by the generated NATIVE_FLOAT3_RECIPROCAL_NORMALIZE of the originating host.
+fn surface_native_normalize(v:vec3<f32>)->vec3<f32>{
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,rounded_sqrt(rounded_dot(v,v)));}
+    return rounded_normalize(v);
+}
 fn surface_orthogonal(n:vec3<f32>)->vec3<f32>{
     if(n.x!=n.y||n.x!=n.z){return surface_normalize(vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x));}
     return surface_normalize(vec3<f32>(n.z-n.y,n.x+n.z,-n.y-n.x));
@@ -28,7 +35,7 @@ fn surface_transform_point(address:u32,v:vec3<f32>)->vec3<f32>{
 }
 fn surface_transform_normal(address:u32,v:vec3<f32>)->vec3<f32>{
     let x=heap_vec3(address);let y=heap_vec3(address+16u);let z=heap_vec3(address+32u);
-    return rounded_normalize(rounded_add3(rounded_add3(v.x*x,v.y*y),v.z*z));
+    return surface_native_normalize(rounded_add3(rounded_add3(v.x*x,v.y*y),v.z*z));
 }
 fn surface_object_direction(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
     if((sd.object_flag&SD_OBJECT_MOTION)!=0u){if(inverse){return motion_direction(sd.motion_itfm,v);}return motion_direction(sd.motion_tfm,v);}
@@ -39,7 +46,7 @@ fn surface_object_point(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
     let object=table_at(G_objects,sd.object_id,SIZE_objects);return surface_transform_point(object+select(O_tfm,O_itfm,inverse),v);
 }
 fn surface_object_normal(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
-    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){if(inverse){return rounded_normalize(motion_transpose(sd.motion_tfm,v));}return rounded_normalize(motion_transpose(sd.motion_itfm,v));}
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){if(inverse){return surface_native_normalize(motion_transpose(sd.motion_tfm,v));}return surface_native_normalize(motion_transpose(sd.motion_itfm,v));}
     let object=table_at(G_objects,sd.object_id,SIZE_objects);return surface_transform_normal(object+select(O_itfm,O_tfm,inverse),v);
 }
 fn surface_decode_normal(value:u32)->vec3<f32>{
@@ -74,8 +81,10 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
     sd.ray_length=t;sd.time=time;
     sd.wi=-ray_direction;
     if((sd.object_flag&SD_OBJECT_MOTION)!=0u){
+//#if MOTION_OBJECT else atomicOr(&heap[p(17u)/4u],2u);surface_failure(&sd);return sd;
         sd.motion_tfm=motion_object(sd.object_id,sd.time);sd.motion_itfm=motion_inverse(sd.motion_tfm);
         if(load_word(p(17u))!=0u){surface_failure(&sd);return sd;}
+//#endif
     }
     let vi_address=table_at(G_tri_vindex,sd.prim,SIZE_tri_vindex);
     let vi=vec3<u32>(load_word(vi_address),load_word(vi_address+4u),load_word(vi_address+8u));
@@ -87,7 +96,7 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
     var cross_normal=rounded_cross(sd.dPdu,sd.dPdv);
     if(applied&&(sd.object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0u){cross_normal=rounded_cross(sd.dPdv,sd.dPdu);}
     if(dot(cross_normal,cross_normal)==0.0){surface_failure(&sd);return sd;}
-    sd.Ng=rounded_normalize(cross_normal);sd.N=sd.Ng;
+    sd.Ng=surface_native_normalize(cross_normal);sd.N=sd.Ng;
     sd.shader=load_word(table_at(G_tri_shader,sd.prim,4u));let shader_id=sd.shader&SHADER_MASK;
     if(shader_id>=table_count(G_shaders)){surface_failure(&sd);return sd;}
     if((sd.shader&SHADER_SMOOTH_NORMAL)!=0u){
@@ -107,7 +116,7 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
             if(sd.primitive_type==PRIMITIVE_MOTION_TRIANGLE){
                 let next=triangle_frame_index(ni[j],offset,frame.b,stride,nc);if(next==NONE){surface_failure(&sd);return sd;}
                 let n=surface_decode_normal(load_word(table_at(G_attributes_normal,next,SIZE_attributes_normal)));
-                normals[j]=rounded_normalize(rounded_add3((1.0-frame.t)*normals[j],frame.t*n));
+                normals[j]=surface_native_normalize(rounded_add3((1.0-frame.t)*normals[j],frame.t*n));
             }
         }
         let weight=rounded_add(rounded_add(1.0,-sd.u),-sd.v);

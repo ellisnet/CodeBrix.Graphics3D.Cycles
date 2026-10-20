@@ -1,0 +1,204 @@
+--- native/work/phaseC4/04-docs/PARITY.before.md	2026-10-20 04:06:48.306678258 -0700
++++ PARITY.md	2026-10-20 04:06:48.342678780 -0700
+@@ -34,10 +34,10 @@
+ | Native file images and updates | PNG/JPEG/OpenEXR native file loading now passes a Linux gate with 18 fixtures, 450 channel/alpha/color variants, native UDIM mappings, 16 queued-read/replacement cycles and 34,483 independent known lossless texels. The serialized OCIO matrix configuration is tested. A 116,352-case final snapshot has a four-GPU replay gate; actual decoding/lifecycle tests currently execute on Linux only. The original file-image checkpoint preserved earlier renderer/executable identity; renderer edits require the fresh normal-gate regression chain. TIFF/LZW compatibility, other formats, production color/cache/animation stress and native platform hosts remain required. See `native/tools/image_file_gate.py` |
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+-| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons |
+-| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending; Android revalidation of the integrated tree pending |
++| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL passes glass bounce/render but fails feature combination (microfacet lookup-table bounds error 512). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP; the Pixel 4 XL fails the volume-boundary state test, the camera-inside closed volume and the object/deforming motion images |
++| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; emissive triangles fail the ARM64 oracle (sampler and one image mode) and remain unvalidated on ARM64. Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light and transparent shadows; emissive triangle lights fail on the HP compiler (memory) for moving emitters and the sampler probe; static triangle images 0-3 pass. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+-| Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; Android devices have not run this mechanism yet |
++| Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS). Cold compiles: Samsung specialized pipelines at most 32.6 s, except the emissive-triangle entry with object motion at 205 s; HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 25 s with triangle lights), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 70 s |
+ | Platforms/delivery | Full Linux host only; other host builds, remaining GPU backends/RIDs, .NET package loading and Android application sandbox pending |
+ | Full parity decision | Open. A small matching render cannot establish this. Unsupported features must be reported explicitly, never silently approximated |
+ 
+--- native/work/phaseC4/04-docs/DEVICE.before.md	2026-10-20 04:06:48.310678316 -0700
++++ native/DEVICE.md	2026-10-20 04:06:54.042761528 -0700
+@@ -1157,8 +1157,8 @@
+   the only warm path observed (41 s cold, 8 ms warm); HP and Pixel shell
+   processes recompile every time.
+ - Measurements and the original HP/Pixel validations are in the B3 handoff; the
+-  integrated tree's Linux validation is described in the next section. Android
+-  devices have not run the integrated tree yet.
++  integrated tree's Linux validation is described in the next section and its
++  Android device results in the two sections after it.
+ 
+ ## Integrated lighting, specialization and ARM adapters (2026-10-19)
+ 
+@@ -1223,7 +1223,61 @@
+ shadow catchers and MNEE. The emitter-sampling entry with object motion still
+ exceeds the 60 s compile budget cold on Linux (warning only). Old captures replay
+ with their own unspecialized modules and can still crash the driver with a cold
+-cache. Android has not run this combination yet.
++cache. ARM64 and Android x64 device results are in the next two sections.
++
++## Integrated tree on ARM64 Android devices (2026-10-20)
++
++The integrated tree ran natively on the Samsung SM-X700 (API 36, Adreno 730; the full-fidelity device) and the
++Pixel 4 XL (API 33, Adreno 640; the old-hardware gauge). It used the unchanged runtime, Android ARM64 binaries
++built from the same sources with NDK 29.0.14206865 at API 33, and the practical criterion unchanged.
++Outputs are in `native/work/phaseC2/arm64/`.
++
++- ARM64 oracle rounding works on the device. On the Samsung, glass_bounce (path 126), glass_render and
++  microfacet_render pass with exactly the numbers recorded when the adapters were introduced. On the Pixel,
++  glass_bounce and glass_render now also pass.
++- Samsung passes these, with 71 on-device replays of its own v3/v6/v7 captures:
++  - transparent shadows (v7) and transparent lighting;
++  - point/sun/spot/area lighting, MIS and broad lighting;
++  - feature combination;
++  - object and deforming motion;
++  - camera motion;
++  - glass/GGX SVM, bounce and render;
++  - shader data, closest and opaque shadows;
++  - finite and closed homogeneous volumes.
++  Linux Phase C v6/v7 captures replay within tolerance, except the triangle mode-2 capture (below).
++- Specialized pipelines compile in at most 32.6 s on the Samsung and 70 s on the Pixel. The emissive-triangle
++  `shade_surface_light` with object motion took 204.8 s on the Samsung. It still renders correctly, with a
++  degraded-latency warning.
++- Specialization is mandatory on Adreno. The every-handler `shade_surface_light`
++  (`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`) crashes the Adreno 730 driver and exhausts memory on the Adreno 640.
++  Bit-identity between specialized and unspecialized modules is therefore established on Linux only.
++- Open on ARM64 (also listed under "Open device items" below):
++  - Emissive-triangle sampling and the emitter-sample probe follow the x64 oracle's arithmetic rather than the
++    ARM64 oracle's. The triangle sampler gate fails by up to 11.6 times the tolerance, and the probe by 1.1 times
++    on one sun pdf.
++  - Triangle image mode 2 diverges by one path decision on Adreno 730, even when replaying the x64 capture.
++  - Emissive triangles are therefore not yet validated on ARM64.
++  - On the Pixel 4 XL, these fail and are not supported there yet: object/deforming motion images (zero radiance
++    over the geometry), feature combination (microfacet lookup-table bounds error), the volume-boundary state test
++    and the camera-inside closed volume (integer volume-stack mismatches).
++
++## Android x64 (HP, Intel Mesa 24.0.8) on the integrated tree (2026-10-20)
++
++The integrated tree was built for android-x64 (NDK 29.0.14206865, API 33) and run on the HP with cold compiles
++(`MESA_SHADER_CACHE_DISABLE=true`; the device has no Mesa disk cache) and the unchanged 1.0.290.1433 runtime. The
++build uses SSE normalization (`NATIVE_FLOAT3_RECIPROCAL_NORMALIZE=0`). Glass/GGX (svm, bounce incl. path 126,
++render), microfacet, the transparent-shadow split (v7, `prepare_shadow_shader_data`), spot/area and point/sun
++lighting with MIS and forward light, feature combination, the emitter-sample probe for lamps, finite homogeneous
++volumes and volume boundaries, camera motion, object motion and deforming-triangle images pass the practical
++criterion at full tier with no compile-budget warnings; 65 v6/v7 command replays pass with 31,277 exact
++scheduling readbacks. Evidence: `native/work/phaseC2/x64/`.
++
++Three pipelines still exhaust Scudo's 256 MiB per-size-class regions inside the HP's Intel compiler and abort the
++process, on every cold compile: the emissive-triangle `shade_surface_light` with object motion (triangle gate
++mode 5), the triangle sampler gate's `emitter_sample_probe`, and the unspecialized `shade_surface_light`
++(`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`). Emissive triangle lights are therefore not validated on the HP beyond
++static triangle images 0-3 (which pass, with replays), and the specialization on/off bit-identity check cannot
++run there. The HP is not yet a full-fidelity device for emissive triangles.
+ 
+ ## Device tiers: persisted record, known adapters and init canary
+ 
+@@ -1258,15 +1312,19 @@
+ 
+ | Entry | Device | Driver | Tier |
+ | --- | --- | --- | --- |
+-| Pixel 4 XL Adreno 640 | `Adreno (TM) 640` | any | conservative |
++| Pixel 4 XL Adreno 640 | `Adreno (TM) 640` | any | full, 20 s compile budget |
+ | Samsung SM-X700 Adreno 730 | `Adreno (TM) 730` | any | full |
+ | HP Intel Xe (Android x64) | `Intel(R) Xe Graphics` | `Mesa 24.0.8` | full |
+ | Linux Intel UHD ADL-S | `Intel(R) UHD Graphics (ADL-S GT1)` | `Mesa 25.0.7` | full |
+ 
+ An unknown mobile adapter (Android build, or a Qualcomm, ARM, Imagination,
+ Samsung or Apple vendor id or Adreno/Mali/PowerVR/Xclipse device name) starts
+-full with a 20 s compile budget instead of 60 s (warnings only). An explicit
+-`CODEBRIX_CYCLES_PIPELINE_BUDGET_MS` replaces either budget.
++full with a 20 s compile budget instead of 60 s (warnings only). A table entry
++may carry its own budget: the Pixel 4 XL entry is full with 20 s, because full
++tier meets the practical criterion there and the conservative tier was not
++faster (see below). No table entry selects the conservative tier; it remains a
++reactive fallback after a crash breadcrumb or a creation failure, or an explicit
++opt-in. An explicit `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS` replaces any budget.
+ 
+ **Persisted record.** Enabled only when the application supplies a writable
+ directory (`cbc_host_tier_config`, or `CODEBRIX_CYCLES_DEVICE_RECORD_DIR`); missing
+@@ -1329,4 +1387,74 @@
+ table lookups (including the real adapter and an unknown mobile adapter),
+ record-over-table, overrides, canary pass/slow/failure/crash and a slow compile
+ that keeps the full tier. Every film meets the practical criterion against the
+-original CPU session. Android devices have not run this mechanism yet.
++original CPU session.
++
++**Device confirmation (2026-10-20).** Android builds of the merged tree (NDK
++29.0.14206865, API 33, unchanged runtime) report these adapters and decisions,
++with glass_render, transparent_lighting and lighting_mis passing the practical
++criterion (outputs in `native/work/phaseC4/`):
++
++| Device | Adapter device / driver description | Decision | Tier warnings |
++| --- | --- | --- | --- |
++| Samsung SM-X700 | `Adreno (TM) 730` / Adreno driver EV031.36.08.33 | full, `table` | none |
++| HP Android x64 | `Intel(R) Xe Graphics (TGL GT2)` / `Mesa 24.0.8` | full, `table` | none |
++| Pixel 4 XL | `Adreno (TM) 640` / Adreno driver EV031.31.04.01 | full, `table` (20 s budget) | compile-budget warnings only |
++
++- On the Pixel 4 XL, the conservative tier (the former table entry) and the
++  full tier (`CODEBRIX_CYCLES_PIPELINE_TIER=full`) give the same image errors and
++  strict counts (glass_render film bit-identical); the conservative tier was not
++  faster to compile (`shade_surface_light` up to 79 s against up to 70 s in
++  transparent_lighting, 444 s against 410 s wall). The opt-in canary compiled in 2.0 s
++  against its 10 s budget.
++- The Samsung and HP glass_render films are bit-identical across runs with and
++  without a device record. Specialized against unspecialized bit-identity cannot
++  be checked on these devices, because the unspecialized surface module does not
++  compile there (see "Open device items").
++- A device record in a shell-writable folder under `/data/local/tmp` is created
++  with the documented format, reused (`full`, reason `record`), and its
++  `<record>.lock` serializes writers: with another process holding
++  `flock(LOCK_EX)` for 60 s, a gate's record writes waited for it (about 56 s
++  longer wall time) and the stage counts merged.
++- On the HP, `CODEBRIX_CYCLES_TEST_CRASH_PIPELINE=prepare_surface` aborted the
++  process; Android's signal chaining still let the handler append `signal=6` to
++  the pending file. The next run consumed it as a breadcrumb and started
++  conservative (reason `record`, workgroup size 1, practical criterion met, film
++  bit-identical to full tier); after deleting the record the device returned to
++  full (reason `table`).
++- The Android x64 host gate passes on the HP with 38 exports.
++
++## Open device items (2026-10-20)
++
++These device failures from the integrated-tree runs are open. Each is
++deterministic on its device and needs a code change; no tolerance was relaxed.
++
++1. **Samsung SM-X700: emissive-triangle sampler and emitter-sample probe follow
++   the x64 oracle.** At every failing sample the Adreno 730 output equals the x64
++   CPU oracle (and the Intel GPU) bit for bit, while the ARM64 CPU oracle differs:
++   the triangle sampler gate has 24 practical failures in 22 of 4,096 samples (up
++   to 11.6 times the tolerance) and the emitter-sample probe one sun-light pdf at
++   1.1 times. This is the same class as the ShaderData normal rounding fixed for
++   ARM64 (`NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`), now in light and emitter sampling.
++2. **Samsung SM-X700: triangle image mode 2 diverges on the GPU.** One pixel is
++   off by 0.040; replaying the Linux x64 mode-2 capture on the device also fails
++   (scheduler decision readback differs at command 574), so the Adreno takes a
++   different path decision from Intel with identical inputs and WGSL.
++3. **HP Android x64: three cold compiles exhaust compiler memory.** Scudo's
++   per-size-class regions run out inside the Intel Mesa 24.0.8 compiler and the
++   process aborts, every time, for `shade_surface_light` specialized with
++   `MOTION_OBJECT` + `LIGHT_TRIANGLE` (triangle image mode 5), the triangle
++   sampler gate's `emitter_sample_probe`, and the unspecialized
++   `shade_surface_light`.
++4. **`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is not usable on any Android
++   device.** The unspecialized `shade_surface_light` crashes the Adreno 730 driver
++   and exhausts memory on the Adreno 640 and the HP. Specialized/unspecialized
++   bit-identity is shown on Linux only.
++5. **Pixel 4 XL: feature_combination** reports GPU error bit 512 (the microfacet
++   lookup-table bounds check).
++6. **Pixel 4 XL: object and deforming motion images** render a block of zero
++   radiance over the geometry (all four image runs, moving and stationary).
++7. **Pixel 4 XL: volume_boundary state test and camera-inside closed volume**
++   fail with integer volume-stack mismatches.
++
++The emissive-triangle corpora (sampler, five-image triangle gate and their
++replays) were therefore not rerun on devices after the device-tier merge.
+--- native/work/phaseC4/04-docs/README.before.md	2026-10-20 04:06:48.310678316 -0700
++++ native/README.md	2026-10-20 04:06:48.342678780 -0700
+@@ -156,7 +156,9 @@
+ scene-driven shader specialization with compile-budget reporting, split
+ direct-lighting and transparent-shadow stages, and ARM64-oracle normal rounding
+ pass the integrated Linux corpus with cold shader caches. Wider
+-material/light/geometry coverage, Android revalidation of the integrated tree and
++material/light/geometry coverage, the open Android device items (emissive
++triangles on ARM64 and the HP, the unspecialized module on Android, and the
++Pixel 4 XL motion, feature-combination and volume-boundary failures) and
+ numerical discrepancies remain tracked there.
+ Complete cross-platform parity, remaining RID builds, release packaging and
+ final redistribution review remain unfinished. The final package must depend on the existing

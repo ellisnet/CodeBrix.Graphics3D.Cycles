@@ -5,6 +5,8 @@
 #include "device/queue.h"
 #include "kernel/integrator/state.h"
 #include "webgpu_device.h"
+#include "pipelines.h"
+#include "device_tier.h"
 #include <array>
 #include <map>
 #include <mutex>
@@ -42,6 +44,39 @@ class WebGPUDevice final:public Device {
   std::vector<KernelShader> shader_records;
   std::vector<KernelObject> object_records;
   std::vector<uint> object_flag_records;
+  // Scene-driven WGSL specialization (pipelines.h). svm_node_words is the exact
+  // uploaded SVM program; svm_generation counts SVM, shader, light, light
+  // distribution, object-flag and KernelData uploads (features also cover
+  // lights, emissive triangles and motion).
+  // enabled_features only grows during a device lifetime, so
+  // a scene update that reaches a new handler recompiles affected pipelines.
+  std::vector<uint32_t> svm_node_words;
+  uint64_t svm_generation=0,census_generation=~uint64_t(0),enabled_features=0;
+  SvmCensus census;
+  bool specialization_enabled=true;
+  struct PipelineRecord {std::string module,entry;uint64_t features;size_t wgsl_bytes;double module_ms,pipeline_ms;};
+  std::vector<PipelineRecord> pipeline_records;
+  std::map<std::string,uint64_t> pipeline_features;
+  // Pipeline tier (pipelines.h). "full" by default; "conservative" (workgroup
+  // size 1, same algorithm; last-bit differences observed on Linux Intel) only
+  // after a non-fatal creation failure, when forced, or after a budget overrun
+  // when budget_conservative is opted in. Budget overruns are always reported.
+  // Dispatch sizes always follow the workgroup size the compiled module declares.
+  bool conservative=false,budget_conservative=false;
+  double pipeline_budget_ms=pipeline_default_budget_ms;
+  // Tier selection before any compile (device_tier.h): explicit request,
+  // persisted device record, known-adapter table, then full; optional canary.
+  DeviceTierPolicy tier_policy;
+  void select_tier();
+  void run_canary();
+  std::vector<std::string> pipeline_warnings;
+  std::map<std::string,uint32_t> pipeline_workgroups;
+  uint32_t workgroup(const char *entry) const;
+  uint64_t shader_features();
+  std::string module_wgsl(const std::string &source);
+  bool pipeline_current(const cbc::Pipeline &pipeline,const char *entry);
+  std::vector<cbc::Pipeline> build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries);
+  std::string pipeline_report_json() const;
   void validate_geometry_motion() const;
   void validate_lighting(bool sampling) const;
   void validate_volume() const;
@@ -55,6 +90,8 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline shadow_intersect;
   cbc::Pipeline shadow_transparent;
   cbc::Pipeline shadow_shade;
+  cbc::Pipeline shadow_shader_data;
+  uint32_t shadow_shader_cache=0;size_t shadow_shader_cache_bytes=0;
   cbc::Pipeline background;
   cbc::Pipeline light_forward;
   cbc::Pipeline volume;
@@ -65,6 +102,7 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline surface_geometry;
   cbc::Pipeline surface_prepare;
   cbc::Pipeline surface_light;
+  cbc::Pipeline surface_connect;
   uint32_t surface_closures=0;size_t surface_closure_bytes=0;
   std::map<uint32_t,device_image*> images;
   bool image_info_dirty=false;

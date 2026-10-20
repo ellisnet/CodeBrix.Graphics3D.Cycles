@@ -77,7 +77,11 @@ fn integrate_suns(index:u32,base:u32){
     let t=heap_float(state_address(S_isect_t,index,4u));state_f32(S_ray_tmin,index,select(bitcast<f32>(bitcast<u32>(t)+1u),1.1754943508222875e-38,t==0.0));
     if(background_visible(load_word(light+L_shader_id),visibility,flag)){
         let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=heap_vec3(state_address(S_ray_D,index,12u));var factor=heap_float(light+L_point_eval);var pdf=0.0;
-        if(load_word(light+L_type)==LIGHT_AREA){let area=area_evaluate(light,origin,direction,t,vec2<f32>(0),false);factor=select(0.0,area.eval_fac,area.valid);pdf=area.pdf;}
+        if(load_word(light+L_type)==LIGHT_AREA){
+//#if LIGHT_AREA else atomicOr(&heap[p(17u)/4u],2u);fail();return;
+            let area=area_evaluate(light,origin,direction,t,vec2<f32>(0),false);factor=select(0.0,area.eval_fac,area.valid);pdf=area.pdf;
+//#endif
+        }
         else{pdf=point_forward_pdf(index,light);if(load_word(light+L_type)==LIGHT_SPOT){let delta=origin-heap_vec3(light+L_co);let radius=heap_float(light+L_radius);
             if(load_word(light+L_is_sphere)==0u||dot(delta,delta)>radius*radius){factor*=spot_attenuation(light,-direction);}}}
         let eval=forward_constant_emission(light)*factor;

@@ -1,0 +1,275 @@
+{
+ "complete": true,
+ "phase": "complete",
+ "agent": "Phase C close-out (Opus 5.5)",
+ "started": "03:13:15",
+ "repo": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles",
+ "head": "86959d9c (unchanged; nothing committed, no refs/index changes)",
+ "webGpuRuntime": {
+  "package": "CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433",
+  "linux-x64": "a2cf8b752085fcce0328b83e8eeaaa2080efac0ecb05213a185ec2caa11e3b14",
+  "android-arm64": "8113cbfa287b5ffc3d9b3c092ddc5ce543b8390abf05eefdde86cf69792fed52",
+  "android-x64": "c2b0105f28ba01068cd9b6af6d560315af90b4b2cab6c40fcb78813bd9bb4380",
+  "unchanged": true
+ },
+ "steps": {
+  "1-merge-c3": {
+   "passed": true,
+   "patchSha256": "93a8f235b70de6ea3e438f4ea361997c4bf1cb26dea7c3bcf449b978806761d7",
+   "paths": 28,
+   "changed": 24,
+   "added": 4,
+   "beforeHashMismatches": 0,
+   "afterHashMismatches": 0,
+   "method": "git apply (working tree only)"
+  },
+  "2a-adreno640": {
+   "decision": "full tier, 20 s table budget",
+   "basis": "Pixel full tier (CODEBRIX_CYCLES_PIPELINE_TIER=full) passed the practical criterion on glass_render, transparent_lighting, lighting_mis with numbers equal to the conservative (table-as-delivered) run; glass film bit-identical",
+   "files": [
+    "native/cycles/device_tier.cpp",
+    "native/tools/tier_gate.py",
+    "native/DEVICE.md"
+   ],
+   "tierGateChange": "table-adreno-640 -> full/table 20000 ms (table); Adreno 640 block now: render full/table, record full, crash breadcrumb, record-overrides-table -> conservative/record (31 scenarios kept)"
+  },
+  "2b-closest-queue-gate": {
+   "edit": "invalidCasesRejected 16 -> 21 with comment (as shadow_gate.py)",
+   "firstRun": "FAIL in prerequisite device_gate.py (stale selectionCases 7 vs 14, sortCases 6 vs 12; gate.cpp repeats selection/sorting with transparent_shadows false/true, committed at HEAD); device gate binary itself passed",
+   "secondRun": "PASS with device prerequisite skipped (camera + closest assertions unchanged): 22 cases, 36,226 paths, 21 rejections, 164 strict",
+   "deviceGatePyChanged": false
+  },
+  "3-linux": {
+   "cleanRebuild": {
+    "targets": 47,
+    "deleted": {
+     "objects": 315,
+     "archives": 11,
+     "bin": 45,
+     "hostSo": 1
+    },
+    "seconds": 538,
+    "rc": 0
+   },
+   "incrementalAfterAdrenoEdit": {
+    "seconds": 28,
+    "rc": 0
+   },
+   "runs": [
+    {
+     "name": "triangle",
+     "rc": 0,
+     "seconds": 195,
+     "budgetSeconds": 900
+    },
+    {
+     "name": "close-set",
+     "rc": 0,
+     "seconds": 332,
+     "budgetSeconds": 900
+    },
+    {
+     "name": "legacy-v5-cold",
+     "rc": 0,
+     "seconds": 257,
+     "budgetSeconds": 600
+    },
+    {
+     "name": "legacy-v5-warm",
+     "rc": 0,
+     "seconds": 1,
+     "budgetSeconds": 600,
+     "warmUserCache": true
+    },
+    {
+     "name": "shadow",
+     "rc": 0,
+     "seconds": 62,
+     "budgetSeconds": 900
+    },
+    {
+     "name": "glass-render-specialized",
+     "rc": 0,
+     "seconds": 33,
+     "budgetSeconds": 900
+    },
+    {
+     "name": "glass-render-unspecialized",
+     "rc": 0,
+     "seconds": 187,
+     "budgetSeconds": 900
+    },
+    {
+     "name": "tier",
+     "rc": 0,
+     "seconds": 19,
+     "budgetSeconds": 900
+    },
+    {
+     "name": "all-lanes",
+     "rc": 0,
+     "seconds": 1262,
+     "budgetSeconds": 2700
+    },
+    {
+     "name": "closest-queue",
+     "rc": 1,
+     "seconds": 16,
+     "budgetSeconds": 600
+    },
+    {
+     "name": "closest-queue-b",
+     "rc": 0,
+     "seconds": 9,
+     "budgetSeconds": 600
+    },
+    {
+     "name": "host",
+     "rc": 0,
+     "seconds": 70,
+     "budgetSeconds": 1200
+    }
+   ],
+   "concurrency": "two lanes max; Android builds ran beside the clean rebuild (builds only)",
+   "numbers": {
+    "allLanes": "PASS 1262 s/2700; inputs unchanged; binary audit 0 errors; 509 pipelines full/table; strict counts within +-1..2 of C1/C3 (atomic), every maximum error identical",
+    "triangle": "PASS 195 s: sampler 4096 samples max 4.88e-4 strict 2079; surface 18 cases 21 rejections; images 5 max 1.0423e-5 strict 2344; replays 289/417/415/473/464 (70/70 values equal C3)",
+    "closeSet": "PASS 332 s: broad 12 cases 1.087e-4/5047 (C3 5045), transparent 8 2.575e-5/3838, object 8 8.34e-6/5762, deforming 8 8.70e-6/5804; replays 450/596/454/454; camera motion PASS",
+    "legacyV5": "cold PASS 257 s (596 readbacks, 1.9e-6, strict 16) - did NOT crash this time; warm user cache PASS 1 s (same numbers)",
+    "shadowGate": "PASS 62 s: shadow 60 cases 18 rej 5.96e-8 strict 0; closest 22 cases 21 rej; microfacet_render 117 image strict 1.91e-6; replays direct/indexed 4/4",
+    "glassRender": "spec on PASS 33 s, spec off PASS 187 s (shade_surface_light 102.9 s cold), GPU film a8e69a3424036a797160ad074aca1a5435f0d232e7b3298e5509cf8ef7349602 both",
+    "tierGate": "PASS 19 s, 31 scenarios; max 2.98e-8 vs CPU, 0 strict; 8 full / 3 conservative film hashes",
+    "hostGate": "PASS 70 s: 38 exports, 3139 comparisons, max 1.19e-7, 0 practical, 0 strict; dotnet builds",
+    "coldCompileOverBudget": "triangle shade_surface_light 72.5 s (warning only)"
+   },
+   "audits": {
+    "sourceAudit": "PASS 0 errors, 29,935 files",
+    "notices": "PASS 34 components (THIRD-PARTY-NOTICES unchanged)",
+    "compatibilityTests": "12 PASS",
+    "gitDiffCheck": "clean",
+    "inventoryRegeneration": "not run (open for Jeremy)"
+   }
+  },
+  "4-docs": {
+   "files": [
+    "native/DEVICE.md",
+    "PARITY.md",
+    "native/README.md"
+   ],
+   "diff": "native/work/phaseC4/04-docs/closeout-doc-changes.diff",
+   "rootReadme": "unchanged"
+  },
+  "5-devices": {
+   "tiers": {
+    "samsung": {
+     "adapter": "Adreno (TM) 730",
+     "driver": "Driver Build: 0c393b63cf ... Compiler Version: EV031.36.08.33",
+     "decision": "full/table",
+     "tierWarnings": 0
+    },
+    "hp": {
+     "adapter": "Intel(R) Xe Graphics (TGL GT2)",
+     "driver": "Mesa 24.0.8",
+     "decision": "full/table",
+     "tierWarnings": 0
+    },
+    "pixel": {
+     "adapter": "Adreno (TM) 640",
+     "driver": "Driver Build: 85da404 ... Compiler Version: EV031.31.04.01",
+     "decision": "full/table (20 s budget) after edit; conservative/table before",
+     "tierWarnings": "compile-budget warnings only (shade_surface 20.5 s > 20 s)"
+    }
+   },
+   "pixelMeasurement": {
+    "table-conservative": "PASS 682 s: glass 128.8 s (1.91e-6, 40 img strict), transparent 444.1 s (1.62e-5/1656, shade_surface_light max 79.2 s), lighting_mis 94.5 s (6.56e-6/2272)",
+    "full": "PASS 727 s: glass 110.3 s (same), transparent 410.3 s (same, max 70.4 s), lighting_mis 80.1 s (same); glass film 00d76f53... identical to conservative",
+    "canary": "passed, 2015.7 ms vs 10000 ms budget",
+    "final-table": "PASS 199 s: glass 110.5 s full/table, lighting_mis 75.8 s full/table"
+   },
+   "runs": {
+    "hp/hp-confirm": {
+     "passed": true,
+     "wallSeconds": 594.9,
+     "declaredBudgetSeconds": 3600,
+     "inputsUnchanged": true
+    },
+    "hp/hp-lock": {
+     "passed": true,
+     "wallSeconds": 212.4,
+     "declaredBudgetSeconds": 900,
+     "inputsUnchanged": true
+    },
+    "pixel/pixel-final": {
+     "passed": true,
+     "wallSeconds": 199.3,
+     "declaredBudgetSeconds": 1200,
+     "inputsUnchanged": true
+    },
+    "pixel/pixel-full": {
+     "passed": true,
+     "wallSeconds": 726.9,
+     "declaredBudgetSeconds": 3600,
+     "inputsUnchanged": true
+    },
+    "pixel/pixel-table": {
+     "passed": true,
+     "wallSeconds": 682.4,
+     "declaredBudgetSeconds": 4800,
+     "inputsUnchanged": true
+    },
+    "samsung/samsung-confirm": {
+     "passed": true,
+     "wallSeconds": 517.8,
+     "declaredBudgetSeconds": 2400,
+     "inputsUnchanged": true
+    },
+    "samsung/samsung-lock": {
+     "passed": true,
+     "wallSeconds": 232.1,
+     "declaredBudgetSeconds": 900,
+     "inputsUnchanged": true
+    }
+   },
+   "record": "created in /data/local/tmp/codebrix-c4-<run>/record with documented format; reuse -> full/record; lock: native flock holder for 60 s delayed a gate by ~56 s on Samsung and HP (records merged); toybox-flock attempt invalid (mksh close-on-exec -> EBADF), kept as record-reuse evidence",
+   "hpCrashPath": "CODEBRIX_CYCLES_TEST_CRASH_PIPELINE=prepare_surface: exit 134, pending file signal=6; next run conservative/record (wg 1, film bit-identical to full bafd466d...), breadcrumb=full|surface|prepare_surface|signal|6; record deleted -> full/table",
+   "glassBitIdentitySpecOnOff": "not possible on devices (unspecialized shade_surface_light crashes Adreno 730 / OOM Adreno 640 and HP); spec-on films repeat bit-identically (Samsung 8199ad80..., HP bafd466d...)",
+   "androidHostGate": {
+    "device": "hp",
+    "passed": true,
+    "exports": 38,
+    "films": 1579,
+    "practicalFailures": 0,
+    "requiredStrictDifferences": 0,
+    "maximumAbsoluteError": 1.52587890625e-05,
+    "seconds": 123
+   },
+   "triangleCorpora": "skipped on devices (known open failures)",
+   "devicesClean": true,
+   "hostClean": true
+  }
+ },
+ "budgets": {
+  "declared": "native/work/phaseC4/budgets.txt",
+  "overruns": 0,
+  "linuxConcurrentMax": 2,
+  "perDeviceSequential": true
+ },
+ "openItems": [
+  "Samsung triangle sampler + emitter-probe divergence (Adreno = x64 oracle; ARM64 oracle differs)",
+  "Samsung triangle image mode 2 GPU-side divergence (Linux capture fails at command 574)",
+  "HP three cold-compile Scudo OOM crashes (shade_surface_light MOTION_OBJECT+LIGHT_TRIANGLE, emitter_sample_probe, unspecialized shade_surface_light)",
+  "CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 unusable on every Android device",
+  "Pixel feature_combination GPU error bit 512",
+  "Pixel object/deforming motion images zero block",
+  "Pixel volume_boundary state and camera-inside closed volume integer mismatches",
+  "native/tools/device_gate.py stale selectionCases/sortCases (7/6 vs 14/12) - blocks closest_queue_gate.py run chain; not changed",
+  "inventory.py regeneration (failing at HEAD)"
+ ],
+ "inputsUnchanged": true,
+ "finalSourceSha256": "native/work/phaseC4/final-source-sha256.json",
+ "finalLinuxBinarySha256": "native/work/phaseC4/02-linux-build/binaries-final.sha256",
+ "finalAndroidStaged": [
+  "native/work/phaseC4/staged-android-arm64.json",
+  "native/work/phaseC4/staged-android-x64.json"
+ ]
+}

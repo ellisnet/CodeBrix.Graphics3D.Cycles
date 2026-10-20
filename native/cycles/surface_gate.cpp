@@ -95,7 +95,7 @@ static RejectionMetrics rejections(const DeviceInfo &info){
     if(test==9)state.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;
     if(test==10)state.path.flag=PATH_RAY_SUBSURFACE;
     if(test==12){ds.objects[state.isect.object].shadow_terminator_shading_offset=2;ds.objects.copy_to_device();}
-    if(test==13){ds.shaders[ds.tri_shader[state.isect.prim]&SHADER_MASK].flags|=SD_MIS_FRONT|SD_MIS_BACK;ds.shaders.copy_to_device();}
+    if(test==13){data.integrator.distribution_pdf_triangles=-1;reason="Invalid native triangle selection probability";}
     if(test==14){data.integrator.sampling_pattern=999;reason="tabulated Sobol";}
     if(test==15)reason="Incomplete surface";
     if(test==16){ds.svm_nodes[(ds.tri_shader[state.isect.prim]&SHADER_MASK)*4]=NODE_NUM;ds.svm_nodes.copy_to_device();}
@@ -173,5 +173,5 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     evaluate(d,scene,layout,initial,{},"Zero work",m);
   }
   require(stats.mem_used==0,"Surface Cycles allocation leak");auto rejected=rejections(infos[0]);std::ofstream(std::string(argv[1])+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(std::string(argv[1])+".library.txt")<<d.gpu.library_path;
-  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuSurfaceIntegrator\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"maximumErrorField\":\""<<m.maximum_field<<"\",\"maximumErrorActual\":"<<m.maximum_actual<<",\"maximumErrorExpected\":"<<m.maximum_expected<<",\"maximumPracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"invalidCasesRejected\":"<<rejected.cases<<",\"zeroCapacityPathsRejected\":"<<rejected.zero_capacity_paths<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuSurfaceIntegrator\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"maximumErrorField\":\""<<m.maximum_field<<"\",\"maximumErrorActual\":"<<m.maximum_actual<<",\"maximumErrorExpected\":"<<m.maximum_expected<<",\"maximumPracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"invalidCasesRejected\":"<<rejected.cases<<",\"zeroCapacityPathsRejected\":"<<rejected.zero_capacity_paths<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

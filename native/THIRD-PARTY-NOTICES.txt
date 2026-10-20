@@ -328,6 +328,19 @@ The integer significand/remainder adapters, bounded-angle Taylor evaluation
 and their numerical checks introduce
 no imported implementation or new dependency. They preserve rounding boundaries
 used by the already-attributed packed-normal and microfacet ports above.
+The ShaderData normal adapter surface_native_normalize in
+native/shaders/wavefront_shader_data.wgsl (selected by the generated
+NATIVE_FLOAT3_RECIPROCAL_NORMALIZE constant in native/cycles/camera.cpp) and
+the cosine-hemisphere adapter surface_cos_hemisphere in
+native/shaders/wavefront_microfacet.wgsl are likewise original CodeBrix
+Apache-2.0 contributions. They reproduce the operation order of the
+already-attributed pinned Cycles normalize(float3) (per-component division on
+SSE hosts, reciprocal-length multiplication on scalar float3/ARM64 hosts),
+sample_cos_hemisphere and make_orthonormals through the existing rounding and
+native trig adapters. The svm_valid_normal rounding in
+native/shaders/wavefront_svm_closures.wgsl evaluates the already-attributed
+ensure_valid_specular_reflection formula with the same original adapters.
+No implementation or dependency was imported.
 
 The bounded native-math adapter in native/shaders/wavefront_native_trig.wgsl
 adapts the scalar polynomial coefficients/evaluation from Arm Optimized Routines
@@ -633,3 +646,105 @@ Copyright (c) 2026 Jeremy Ellis and contributors; Apache-2.0.
 Volume emission, NEE/MIS, shadow attenuation, heterogeneous media, moving scenes
 and mixed-anisotropy duplicate compaction remain outside this bounded extension.
 Existing BSD-3-Clause closure and MIT numerical-adapter notices remain intact.
+
+Native emissive triangle sampling and forward MIS (2026-10-19)
+-----------------------------------------------------------
+wavefront_triangle_light.wgsl adapts the existing pinned Cycles triangle-light
+sampler/PDF and fast trigonometric operations, retaining solid-angle/area branch
+semantics, center-area selection, motion/instance geometry and sidedness.
+The native distribution integration and emission/MIS wiring adapt the reviewed
+light/distribution.h, light/light.h, light/sample.h and integrator/shade_surface.h.
+Its private motion interpolation copies adapt util/transform.h; the shared
+motion helpers are unchanged.
+Original data access, compiler-layout adaptations and authored test fixtures:
+Copyright (c) 2026 Jeremy Ellis and contributors; Apache-2.0.
+No external implementation was imported. Source hashes and exact license headers
+are recorded in third_party/provenance.json (nativeTriangleLightDerivations).
+The retained source headers follow; full license texts remain in this notice set.
+
+src/kernel/light/triangle.h
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/kernel/light/distribution.h
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/kernel/light/light.h
+/* SPDX-FileCopyrightText: 2010-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/kernel/light/sample.h
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/kernel/integrator/shade_surface.h
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/kernel/geom/triangle.h
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/kernel/geom/motion_triangle.h
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/kernel/geom/object.h
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/util/math_float3.h
+/* SPDX-FileCopyrightText: 2011-2013 Intel Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/util/math_fast.h
+/* SPDX-FileCopyrightText: 2004 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2008-2014 Larry Gritz
+ * SPDX-FileCopyrightText: 2009-2014 Sony Pictures Imageworks Inc., et al.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Adapted from OpenImageIO
+ * Copyright 2008-2014 Larry Gritz and the other authors and contributors.
+ * All Rights Reserved.
+ *
+ * A few bits here are based upon code from NVIDIA that was also released
+ * under the same modified BSD license, and marked as:
+ *    `Copyright 2004 NVIDIA Corporation. All Rights Reserved.`
+ *
+ * Some parts of this file were first open-sourced in Open Shading Language,
+ * then later moved here. The original copyright notice was:
+ *    `Copyright (c) 2009-2014 Sony Pictures Imageworks Inc., et al.`
+ *
+ * Many of the math functions were copied from or inspired by other
+ * public domain sources or open source packages with compatible licenses.
+ * The individual functions give references were applicable.
+ */
+
+Additional triangle numeric-adapter source review (same pinned Cycles revision):
+src/util/transform.h
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/util/math_base.h
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+src/util/math_float4.h
+/* SPDX-FileCopyrightText: 2011-2013 Intel Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */

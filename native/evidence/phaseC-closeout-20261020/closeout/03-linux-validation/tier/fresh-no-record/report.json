@@ -1,0 +1,167 @@
+{
+  "before": {
+    "abiVersion": 1,
+    "backend": "webgpu",
+    "pipelines": {
+      "specialization": true,
+      "tier": "full",
+      "degraded": false,
+      "budgetMs": 60000,
+      "warnings": [],
+      "enabledFeatures": "",
+      "svmDecodedNodes": 0,
+      "svmStoppedPaths": 0,
+      "budgetSource": "default",
+      "decision": {
+        "tier": "full",
+        "reason": "default",
+        "detail": "first run on this device: full fidelity",
+        "adapter": {
+          "vendor": "TestVendor",
+          "architecture": "testarch",
+          "device": "CodeBrix Test GPU",
+          "description": "Test driver 1.0",
+          "vendorId": 0,
+          "deviceId": 0,
+          "simulated": true,
+          "mobile": false
+        },
+        "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+        "shaderHash": "fnv1a64:4b39b64e627ccfd1",
+        "knownAdapter": null,
+        "budgetSource": "default",
+        "record": {
+          "mode": "read-write",
+          "path": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseC4/03-linux-validation/tier/records/a/codebrix-cycles-device-146d54c185ae5bf8.txt",
+          "status": "absent",
+          "fullTierCompiles": 0,
+          "conservativeTierCompiles": 0,
+          "failures": 0,
+          "breadcrumbs": []
+        },
+        "canary": {
+          "enabled": false,
+          "result": "not-run",
+          "ms": 0,
+          "detail": ""
+        },
+        "overrides": [
+          "CODEBRIX_CYCLES_TEST_ADAPTER (simulated adapter identity)"
+        ],
+        "warnings": []
+      },
+      "pipelines": []
+    }
+  },
+  "after": {
+    "abiVersion": 1,
+    "backend": "webgpu",
+    "pipelines": {
+      "specialization": true,
+      "tier": "full",
+      "degraded": false,
+      "budgetMs": 60000,
+      "warnings": [],
+      "enabledFeatures": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE",
+      "svmDecodedNodes": 14,
+      "svmStoppedPaths": 1,
+      "budgetSource": "default",
+      "decision": {
+        "tier": "full",
+        "reason": "default",
+        "detail": "first run on this device: full fidelity",
+        "adapter": {
+          "vendor": "TestVendor",
+          "architecture": "testarch",
+          "device": "CodeBrix Test GPU",
+          "description": "Test driver 1.0",
+          "vendorId": 0,
+          "deviceId": 0,
+          "simulated": true,
+          "mobile": false
+        },
+        "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+        "shaderHash": "fnv1a64:4b39b64e627ccfd1",
+        "knownAdapter": null,
+        "budgetSource": "default",
+        "record": {
+          "mode": "read-write",
+          "path": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseC4/03-linux-validation/tier/records/a/codebrix-cycles-device-146d54c185ae5bf8.txt",
+          "status": "valid",
+          "fullTierCompiles": 8,
+          "conservativeTierCompiles": 0,
+          "failures": 0,
+          "breadcrumbs": []
+        },
+        "canary": {
+          "enabled": false,
+          "result": "not-run",
+          "ms": 0,
+          "detail": ""
+        },
+        "overrides": [
+          "CODEBRIX_CYCLES_TEST_ADAPTER (simulated adapter identity)"
+        ],
+        "warnings": []
+      },
+      "pipelines": [
+        {
+          "module": "camera",
+          "entry": "init_camera",
+          "wgslBytes": 53382,
+          "moduleMs": 4.09086,
+          "pipelineMs": 731.43
+        },
+        {
+          "module": "closest",
+          "entry": "intersect_closest",
+          "wgslBytes": 71577,
+          "moduleMs": 4.79432,
+          "pipelineMs": 500.895
+        },
+        {
+          "module": "background",
+          "entry": "shade_background",
+          "wgslBytes": 188662,
+          "moduleMs": 12.606,
+          "pipelineMs": 678.757
+        },
+        {
+          "module": "surface",
+          "entry": "prepare_shader_data",
+          "wgslBytes": 240157,
+          "moduleMs": 16.1039,
+          "pipelineMs": 1044.94
+        },
+        {
+          "module": "surface",
+          "entry": "prepare_surface",
+          "wgslBytes": 240157,
+          "moduleMs": 16.1309,
+          "pipelineMs": 1332.07
+        },
+        {
+          "module": "surface",
+          "entry": "shade_surface_light",
+          "wgslBytes": 240157,
+          "moduleMs": 16.2986,
+          "pipelineMs": 2366.74
+        },
+        {
+          "module": "surface",
+          "entry": "connect_surface_light",
+          "wgslBytes": 240157,
+          "moduleMs": 16.2967,
+          "pipelineMs": 910.112
+        },
+        {
+          "module": "surface",
+          "entry": "shade_surface",
+          "wgslBytes": 240157,
+          "moduleMs": 16.2112,
+          "pipelineMs": 534.405
+        }
+      ]
+    }
+  }
+}

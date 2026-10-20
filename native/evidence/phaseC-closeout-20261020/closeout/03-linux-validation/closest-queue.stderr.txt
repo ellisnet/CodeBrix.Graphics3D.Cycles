@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseC4/tools/closest_queue_c4.py", line 11, in <module>
+    closest_queue_gate.run()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/closest_queue_gate.py", line 25, in run
+    run_camera()  # Builds once, checks controls, camera, and package identity.
+    ~~~~~~~~~~^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/camera_queue_gate.py", line 26, in run
+    run_controls()
+    ~~~~~~~~~~~~^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/device_gate.py", line 31, in run
+    if any(report[k]!=v for k,v in expected.items()):raise RuntimeError('Unexpected gate coverage')
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Unexpected gate coverage

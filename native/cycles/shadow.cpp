@@ -104,13 +104,27 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
   if(!n||!work)return;
   auto &pipeline=shading?(data.integrator.transparent_shadows?shadow_transparent:shadow_shade):shadow_intersect;
-  if(!pipeline.value){
-    const std::string code=shadow_source();WGPUShaderSourceWGSL source{};
-    source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={code.data(),code.size()};WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;
-    gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
-    pipeline=gpu.pipeline(shader,pipeline_layout,shading?(data.integrator.transparent_shadows?"shade_shadow_transparent":"shade_shadow"):"intersect_shadow");
+  const bool transparent_shading=shading&&data.integrator.transparent_shadows;
+  if(transparent_shading){
+    // GPU-private ShaderData for every recorded hit of each dispatched path.
+    const size_t needed=size_t(n)*INTEGRATOR_SHADOW_ISECT_SIZE_GPU*surface_data_cache_bytes;
+    if(needed>shadow_shader_cache_bytes){
+      if(shadow_shader_cache){flush();release(shadow_shader_cache);shadow_shader_cache=0;shadow_shader_cache_bytes=0;}
+      shadow_shader_cache=allocate(needed);shadow_shader_cache_bytes=needed;
+    }
+    p[26]=shadow_shader_cache;p[27]=surface_data_cache_bytes;
   }
+  const char *entry=shading?(data.integrator.transparent_shadows?"shade_shadow_transparent":"shade_shadow"):"intersect_shadow";
+  if(transparent_shading){
+    // Both transparent entries come from the same specialized shadow module.
+    if(!pipeline_current(pipeline,entry)||!pipeline_current(shadow_shader_data,"prepare_shadow_shader_data")){
+      auto built=build_pipelines("shadow",shadow_source(),{"prepare_shadow_shader_data",entry});
+      shadow_shader_data=std::move(built[0]);pipeline=std::move(built[1]);
+    }
+  }else if(!pipeline_current(pipeline,entry))pipeline=std::move(build_pipelines("shadow",shadow_source(),{entry})[0]);
+  // Dispatch ordering makes the cached hit ShaderData visible to the SVM stage.
+  if(transparent_shading)dispatch(p,uint32_t(work),shadow_shader_data,workgroup("prepare_shadow_shader_data"));
   // Match the smaller transparent SVM workgroup; opaque traversal stays at 64.
-  dispatch(p,uint32_t(work),pipeline,shading&&data.integrator.transparent_shadows?1:64);
+  dispatch(p,uint32_t(work),pipeline,workgroup(entry));
 }
 }

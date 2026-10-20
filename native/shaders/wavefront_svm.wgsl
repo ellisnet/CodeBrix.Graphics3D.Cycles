@@ -193,6 +193,7 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             case NODE_VALUE_F:{svm_store_bits(&s,svm_byte(node+N_ValueF_out_offset),load_word(node+N_ValueF_value));}
             case NODE_VALUE_V:{svm_store3(&s,svm_byte(node+N_ValueV_out_offset),heap_vec3(node+N_ValueV_value));}
             case NODE_GEOMETRY:{
+//#if SVM_NODE_GEOMETRY else svm_error(&s,2u);
                 let kind=svm_byte(node+N_Geometry_geom_type);var v=vec3<f32>(0);
                 switch(kind){
                     case NODE_GEOM_P:{v=s.geometry.P;}
@@ -204,28 +205,64 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                     default:{svm_error(&s,16u);}
                 }
                 svm_store3(&s,svm_byte(node+N_Geometry_out_offset),v);
+//#endif
             }
-            case NODE_TEX_COORD:{svm_store3(&s,svm_byte(node+N_TexCoord_out_offset),svm_texco(&s,node,index));}
-            case NODE_TEX_IMAGE,NODE_TEX_IMAGE_DERIVATIVE:{svm_image(&s,node,0u,opcode==NODE_TEX_IMAGE_DERIVATIVE);}
-            case NODE_TEX_IMAGE_BOX,NODE_TEX_IMAGE_BOX_DERIVATIVE:{svm_image(&s,node,1u,opcode==NODE_TEX_IMAGE_BOX_DERIVATIVE);}
-            case NODE_TEX_ENVIRONMENT,NODE_TEX_ENVIRONMENT_DERIVATIVE:{svm_image(&s,node,2u,opcode==NODE_TEX_ENVIRONMENT_DERIVATIVE);}
-            case NODE_ATTR,NODE_ATTR_DERIVATIVE:{svm_attribute(&s,node,opcode==NODE_ATTR_DERIVATIVE);}
-            case NODE_NORMAL_MAP:{svm_normal_map(&s,node);}
-            case NODE_TANGENT,NODE_TANGENT_DERIVATIVE:{svm_tangent(&s,node,opcode==NODE_TANGENT_DERIVATIVE);}
-            case NODE_VERTEX_COLOR,NODE_VERTEX_COLOR_DERIVATIVE:{svm_vertex_color(&s,node,opcode==NODE_VERTEX_COLOR_DERIVATIVE);}
+            case NODE_TEX_COORD:{
+//#if SVM_NODE_TEX_COORD else svm_error(&s,2u);
+                svm_store3(&s,svm_byte(node+N_TexCoord_out_offset),svm_texco(&s,node,index));
+//#endif
+            }
+            // One call site for all image layouts: drivers inline every WGSL call,
+            // so three identical svm_image calls tripled this code for the compiler.
+            case NODE_TEX_IMAGE,NODE_TEX_IMAGE_DERIVATIVE,NODE_TEX_IMAGE_BOX,NODE_TEX_IMAGE_BOX_DERIVATIVE,NODE_TEX_ENVIRONMENT,NODE_TEX_ENVIRONMENT_DERIVATIVE:{
+//#if SVM_NODE_IMAGE else svm_error(&s,2u);
+                var image_layout=0u;if(opcode==NODE_TEX_IMAGE_BOX||opcode==NODE_TEX_IMAGE_BOX_DERIVATIVE){image_layout=1u;}
+                else if(opcode==NODE_TEX_ENVIRONMENT||opcode==NODE_TEX_ENVIRONMENT_DERIVATIVE){image_layout=2u;}
+                svm_image(&s,node,image_layout,opcode==NODE_TEX_IMAGE_DERIVATIVE||opcode==NODE_TEX_IMAGE_BOX_DERIVATIVE||opcode==NODE_TEX_ENVIRONMENT_DERIVATIVE);
+//#endif
+            }
+            case NODE_ATTR,NODE_ATTR_DERIVATIVE:{
+//#if SVM_NODE_ATTR else svm_error(&s,2u);
+                svm_attribute(&s,node,opcode==NODE_ATTR_DERIVATIVE);
+//#endif
+            }
+            case NODE_NORMAL_MAP:{
+//#if SVM_NODE_NORMAL_MAP else svm_error(&s,2u);
+                svm_normal_map(&s,node);
+//#endif
+            }
+            case NODE_TANGENT,NODE_TANGENT_DERIVATIVE:{
+//#if SVM_NODE_TANGENT else svm_error(&s,2u);
+                svm_tangent(&s,node,opcode==NODE_TANGENT_DERIVATIVE);
+//#endif
+            }
+            case NODE_VERTEX_COLOR,NODE_VERTEX_COLOR_DERIVATIVE:{
+//#if SVM_NODE_VERTEX_COLOR else svm_error(&s,2u);
+                svm_vertex_color(&s,node,opcode==NODE_VERTEX_COLOR_DERIVATIVE);
+//#endif
+            }
             case NODE_MATH:{
+//#if SVM_NODE_MATH else svm_error(&s,2u);
                 let kind=load_word(node+N_Math_math_type);if(kind>NODE_MATH_FLOORED_MODULO){svm_error(&s,16u);}
                 else{let value=c_svm_math(kind,svm_input(&s,node+N_Math_value1),svm_input(&s,node+N_Math_value2),svm_input(&s,node+N_Math_value3));svm_store(&s,svm_byte(node+N_Math_result_offset),value);}
+//#endif
             }
-            case NODE_VECTOR_MATH:{svm_vector(&s,node);}
+            case NODE_VECTOR_MATH:{
+//#if SVM_NODE_VECTOR_MATH else svm_error(&s,2u);
+                svm_vector(&s,node);
+//#endif
+            }
             case NODE_CLAMP:{
+//#if SVM_NODE_CLAMP else svm_error(&s,2u);
                 let kind=load_word(node+N_Clamp_clamp_type);var lo=svm_input(&s,node+N_Clamp_min);var hi=svm_input(&s,node+N_Clamp_max);let v=svm_input(&s,node+N_Clamp_value);
                 if(kind==NODE_CLAMP_RANGE&&lo>hi){let tmp=lo;lo=hi;hi=tmp;}
                 else if(kind!=NODE_CLAMP_RANGE&&kind!=NODE_CLAMP_MINMAX){svm_error(&s,16u);}
                 // Cycles permits reversed MINMAX inputs; WGSL clamp requires ordered bounds.
                 svm_store(&s,svm_byte(node+N_Clamp_result_offset),min(max(v,lo),hi));
+//#endif
             }
             case NODE_CONVERT:{
+//#if SVM_NODE_CONVERT else svm_error(&s,2u);
                 let kind=load_word(node+N_Convert_convert_type);let source_index=svm_byte(node+N_Convert_from_offset);let dest=svm_byte(node+N_Convert_to_offset);
                 switch(kind){
                     case NODE_CONVERT_FI:{svm_store_bits(&s,dest,svm_int(&s,svm_load(&s,source_index)));}
@@ -239,17 +276,36 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                     }
                     default:{svm_error(&s,16u);}
                 }
+//#endif
             }
-            case NODE_SEPARATE_VECTOR:{let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(&s,16u);}else{let v=svm_input3(&s,node+N_SeparateVector_vector);svm_optional_store(&s,svm_byte(node+N_SeparateVector_out_offset),v[component]);}}
-            case NODE_COMBINE_VECTOR:{let component=svm_byte(node+N_CombineVector_vector_index);let dest=svm_byte(node+N_CombineVector_out_offset);if(component>2u){svm_error(&s,16u);}else if(dest!=SVM_STACK_INVALID){svm_store(&s,dest+component,svm_input(&s,node+N_CombineVector_in));}}
-            case NODE_CLOSURE_VOLUME:{if(volume){svm_volume(&s,node);}}
+            case NODE_SEPARATE_VECTOR:{
+//#if SVM_NODE_SEPARATE_VECTOR else svm_error(&s,2u);
+                let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(&s,16u);}else{let v=svm_input3(&s,node+N_SeparateVector_vector);svm_optional_store(&s,svm_byte(node+N_SeparateVector_out_offset),v[component]);}
+//#endif
+            }
+            case NODE_COMBINE_VECTOR:{
+//#if SVM_NODE_COMBINE_VECTOR else svm_error(&s,2u);
+                let component=svm_byte(node+N_CombineVector_vector_index);let dest=svm_byte(node+N_CombineVector_out_offset);if(component>2u){svm_error(&s,16u);}else if(dest!=SVM_STACK_INVALID){svm_store(&s,dest+component,svm_input(&s,node+N_CombineVector_in));}
+//#endif
+            }
+            case NODE_CLOSURE_VOLUME:{
+//#if SVM_NODE_CLOSURE_VOLUME else svm_error(&s,2u);
+                if(volume){svm_volume(&s,node);}
+//#endif
+            }
             case NODE_CLOSURE_BSDF:{if(SVM_SURFACE){svm_bsdf(&s,node,flag,visibility);}else{svm_error(&s,2u);}}
             case NODE_CLOSURE_HOLDOUT:{
+//#if SVM_NODE_CLOSURE_HOLDOUT else svm_error(&s,2u);
                 if(!SVM_SURFACE){svm_error(&s,2u);return s.output;}
                 let mix_index=svm_byte(node+N_ClosureHoldout_mix_weight_offset);let mix_weight=svm_optional(&s,mix_index,1.0);
                 if(mix_index==SVM_STACK_INVALID||mix_weight!=0.0){_ = svm_allocate(&s,CLOSURE_HOLDOUT_ID,s.weight*mix_weight);s.output.runtime_flag|=SR_HOLDOUT;}
+//#endif
             }
-            case NODE_CLOSURE_SET_NORMAL:{if(!SVM_SURFACE){svm_error(&s,2u);return s.output;}let n=svm_load3(&s,svm_byte(node+N_ClosureSetNormal_direction_offset));s.geometry.N=n;svm_store3(&s,svm_byte(node+N_ClosureSetNormal_normal_offset),n);}
+            case NODE_CLOSURE_SET_NORMAL:{
+//#if SVM_NODE_CLOSURE_SET_NORMAL else svm_error(&s,2u);
+                if(!SVM_SURFACE){svm_error(&s,2u);return s.output;}let n=svm_load3(&s,svm_byte(node+N_ClosureSetNormal_direction_offset));s.geometry.N=n;svm_store3(&s,svm_byte(node+N_ClosureSetNormal_normal_offset),n);
+//#endif
+            }
             case NODE_CLOSURE_SET_WEIGHT:{s.weight=heap_vec3(node+N_ClosureSetWeight_rgb);}
             case NODE_CLOSURE_WEIGHT:{s.weight=svm_load3(&s,svm_byte(node+N_ClosureWeight_weight_offset));}
             case NODE_EMISSION_WEIGHT:{s.weight=svm_input3(&s,node+N_EmissionWeight_color)*svm_input(&s,node+N_EmissionWeight_strength);}
@@ -263,18 +319,36 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 svm_optional_store(&s,svm_byte(node+N_MixClosure_weight1_offset),weight*(1.0-f));svm_optional_store(&s,svm_byte(node+N_MixClosure_weight2_offset),weight*f);
             }
             case NODE_TEX_CHECKER:{
+//#if SVM_NODE_TEX_CHECKER else svm_error(&s,2u);
                 let co=svm_load3(&s,svm_byte(node+N_TexChecker_co))*svm_input(&s,node+N_TexChecker_scale);
                 let adjusted=(co+vec3<f32>(0.000001))*0.999999;let parity=abs(vec3<i32>(floor(adjusted)))%vec3<i32>(2);
                 let f=select(0.0,1.0,i32(parity.x==parity.y)==parity.z);
                 let color1=svm_input3(&s,node+N_TexChecker_color1);let color2=svm_input3(&s,node+N_TexChecker_color2);
                 svm_optional_store3(&s,svm_byte(node+N_TexChecker_color_offset),select(color2,color1,f==1.0));svm_optional_store(&s,svm_byte(node+N_TexChecker_fac_offset),f);
+//#endif
             }
-            case NODE_TEX_GRADIENT:{let f=clamp(svm_gradient(&s,load_word(node+N_TexGradient_gradient_type),svm_load3(&s,svm_byte(node+N_TexGradient_co))),0.0,1.0);
-                svm_optional_store(&s,svm_byte(node+N_TexGradient_fac_offset),f);svm_optional_store3(&s,svm_byte(node+N_TexGradient_color_offset),vec3<f32>(f));}
-            case NODE_GAMMA:{svm_optional_store3(&s,svm_byte(node+N_Gamma_out_offset),c_svm_math_gamma_color(svm_input3(&s,node+N_Gamma_color),svm_input(&s,node+N_Gamma_gamma)));}
-            case NODE_INVERT:{let color=svm_input3(&s,node+N_Invert_color);let f=svm_input(&s,node+N_Invert_fac);svm_optional_store3(&s,svm_byte(node+N_Invert_out_offset),f*(vec3<f32>(1)-color)+(1.0-f)*color);}
-            case NODE_BRIGHTCONTRAST:{let color=svm_input3(&s,node+N_BrightContrast_color);let bright=svm_input(&s,node+N_BrightContrast_bright);let contrast=svm_input(&s,node+N_BrightContrast_contrast);
-                svm_optional_store3(&s,svm_byte(node+N_BrightContrast_out_offset),max((1.0+contrast)*color+vec3<f32>(bright-contrast*0.5),vec3<f32>(0)));}
+            case NODE_TEX_GRADIENT:{
+//#if SVM_NODE_TEX_GRADIENT else svm_error(&s,2u);
+                let f=clamp(svm_gradient(&s,load_word(node+N_TexGradient_gradient_type),svm_load3(&s,svm_byte(node+N_TexGradient_co))),0.0,1.0);
+                svm_optional_store(&s,svm_byte(node+N_TexGradient_fac_offset),f);svm_optional_store3(&s,svm_byte(node+N_TexGradient_color_offset),vec3<f32>(f));
+//#endif
+            }
+            case NODE_GAMMA:{
+//#if SVM_NODE_GAMMA else svm_error(&s,2u);
+                svm_optional_store3(&s,svm_byte(node+N_Gamma_out_offset),c_svm_math_gamma_color(svm_input3(&s,node+N_Gamma_color),svm_input(&s,node+N_Gamma_gamma)));
+//#endif
+            }
+            case NODE_INVERT:{
+//#if SVM_NODE_INVERT else svm_error(&s,2u);
+                let color=svm_input3(&s,node+N_Invert_color);let f=svm_input(&s,node+N_Invert_fac);svm_optional_store3(&s,svm_byte(node+N_Invert_out_offset),f*(vec3<f32>(1)-color)+(1.0-f)*color);
+//#endif
+            }
+            case NODE_BRIGHTCONTRAST:{
+//#if SVM_NODE_BRIGHTCONTRAST else svm_error(&s,2u);
+                let color=svm_input3(&s,node+N_BrightContrast_color);let bright=svm_input(&s,node+N_BrightContrast_bright);let contrast=svm_input(&s,node+N_BrightContrast_contrast);
+                svm_optional_store3(&s,svm_byte(node+N_BrightContrast_out_offset),max((1.0+contrast)*color+vec3<f32>(bright-contrast*0.5),vec3<f32>(0)));
+//#endif
+            }
             default:{svm_error(&s,2u);}
         }
         if(s.error!=0u){return s.output;}

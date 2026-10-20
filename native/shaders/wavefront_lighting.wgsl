@@ -4,7 +4,16 @@
 // SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause
 // Native Cycles light distribution, point/sun sampling, BSDF evaluation and
 // shadow-path initialization. See native/THIRD-PARTY-NOTICES.txt.
-struct NativeLightSample {P:vec3<f32>,D:vec3<f32>,t:f32,pdf:f32,eval_fac:f32,shader:u32,object_id:u32,prim:u32}
+struct NativeLightSample {P:vec3<f32>,D:vec3<f32>,t:f32,pdf:f32,eval_fac:f32,shader:u32,object_id:u32,prim:u32,is_light:bool}
+// GPU-private sample cache; 13 scalar words avoid host shading or readback.
+fn light_sample_write(at:u32,ls:NativeLightSample){
+    let words=array<u32,13>(bitcast<u32>(ls.P.x),bitcast<u32>(ls.P.y),bitcast<u32>(ls.P.z),bitcast<u32>(ls.D.x),bitcast<u32>(ls.D.y),bitcast<u32>(ls.D.z),bitcast<u32>(ls.t),bitcast<u32>(ls.pdf),bitcast<u32>(ls.eval_fac),ls.shader,ls.object_id,ls.prim,select(0u,1u,ls.is_light));
+    for(var j=0u;j<13u;j++){store_word(at+j*4u,words[j]);}
+}
+fn light_sample_read(at:u32)->NativeLightSample{
+    var ls:NativeLightSample;ls.P=heap_vec3(at);ls.D=heap_vec3(at+12u);ls.t=heap_float(at+24u);ls.pdf=heap_float(at+28u);ls.eval_fac=heap_float(at+32u);
+    ls.shader=load_word(at+36u);ls.object_id=load_word(at+40u);ls.prim=load_word(at+44u);ls.is_light=load_word(at+48u)!=0u;return ls;
+}
 fn light_normalize_len(v:vec3<f32>)->vec4<f32>{
     let length=rounded_sqrt(rounded_dot(v,v));if(length==0.0){return vec4<f32>(0);}
     return vec4<f32>(rounded_divide(v.x,length),rounded_divide(v.y,length),rounded_divide(v.z,length),length);
@@ -24,7 +33,16 @@ fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
         if(random.z<heap_float(table_at(G_light_distribution,middle,SIZE_light_distribution)+LD_totarea)){length=half_count;}
         else{first=middle+1u;length-=half_count+1u;}if(length==0u){break;}}
     let emitter=u32(clamp(i32(first)-1,0,i32(n)-1));
-    ls.prim=~load_word(table_at(G_light_distribution,emitter,SIZE_light_distribution)+LD_prim);
+    let distribution=table_at(G_light_distribution,emitter,SIZE_light_distribution);let prim=bitcast<i32>(load_word(distribution+LD_prim));
+    if(prim>=0){
+        // Removed by scene specialization when no emissive triangle is in the light
+        // distribution (pipelines.h); a reached removed handler reports error 2.
+//#if LIGHT_TRIANGLE else atomicOr(&heap[p(17u)/4u],2u);return ls;
+        ls=triangle_light_sample_native(load_word(distribution+LD_object),u32(prim),sd.time,sd.P,random.xy);
+        ls.shader|=load_word(distribution+LD_visibility);return ls;
+//#endif
+    }
+    ls.is_light=true;ls.prim=~bitcast<u32>(prim);
     let light=table_at(G_lights,ls.prim,SIZE_lights);
     if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return ls;}
     ls.shader=load_word(light+L_shader_id);ls.object_id=load_word(light+L_object_id);
@@ -33,8 +51,11 @@ fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
         let cone=light_cone(position,heap_float(light+L_sun_angle),random.xy);
         ls.P=cone.xyz;ls.D=-cone.xyz;ls.pdf=cone.w;ls.t=bitcast<f32>(0x7f7fffffu);ls.eval_fac=heap_float(light+L_sun_eval);
     }else if(load_word(light+L_type)==LIGHT_AREA){
+        // Removed by scene specialization when no area light is uploaded (pipelines.h).
+//#if LIGHT_AREA else atomicOr(&heap[p(17u)/4u],2u);return ls;
         let area=area_evaluate(light,sd.P,vec3<f32>(0),0.0,random.xy,true);if(!area.valid){return ls;}
         ls.P=area.P;ls.D=area.D;ls.t=area.t;ls.pdf=area.pdf;ls.eval_fac=area.eval_fac;
+//#endif
     }else{
         let spot=load_word(light+L_type)==LIGHT_SPOT;
         let radius=heap_float(light+L_radius);let r2=radius*radius;let delta=sd.P-position;
@@ -53,7 +74,7 @@ fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
             }else{
                 if((r.runtime_flag&SR_BSDF_HAS_TRANSMISSION)!=0u){let z=1.0-2.0*random.x;let radial=sqrt(max(1.0-z*z,0.0));let phi=2.0*PI*random.y;
                     ls.D=vec3<f32>(radial*cos(phi),radial*sin(phi),z);ls.pdf=0.25*INV_PI;
-                }else{let sampled=hemisphere(sd.N,random.xy);ls.D=sampled.xyz;ls.pdf=sampled.w;}
+                }else{let sampled=surface_cos_hemisphere(sd.N,random.xy);ls.D=sampled.xyz;ls.pdf=sampled.w;}
                 cosine=-dot(ls.D,normal);
             }
             if(spot&&d2>r2){ls.eval_fac*=spot_attenuation(light,-ls.D);if(ls.eval_fac==0.0){ls.pdf=0.0;return ls;}}
@@ -86,11 +107,14 @@ fn light_bsdf(sd:SurfaceData,r:SvmResult,direction:vec3<f32>,shader:u32)->Surfac
     if((shader&SHADER_USE_MIS)!=0u&&weight_sum>0.0){result.pdf=pdf_sum/weight_sum;}
     return result;
 }
-fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult){
+// Called by connect_surface_light with the sample stored by shade_surface_light;
+// the split keeps emitter sampling and BSDF evaluation in separate pipelines.
+fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeLightSample){
     if(data_word(D_integrator_use_direct_light)==0u||(r.runtime_flag&SR_BSDF_HAS_EVAL)==0u){return;}
-    let ls=light_sample_native(index,sd,r);if(!(ls.pdf>0.0)||load_word(p(17u))!=0u){return;}
-    let light=table_at(G_lights,ls.prim,SIZE_lights);let shader=table_at(G_shaders,ls.shader&SHADER_MASK,SIZE_shaders);
-    let emission=heap_vec3(shader+SH_constant_emission)*heap_vec3(light+L_strength);
+    if(!(ls.pdf>0.0)||load_word(p(17u))!=0u){return;}
+    let shader=table_at(G_shaders,ls.shader&SHADER_MASK,SIZE_shaders);
+    var emission=heap_vec3(shader+SH_constant_emission);
+    if(ls.is_light){emission*=heap_vec3(table_at(G_lights,ls.prim,SIZE_lights)+L_strength);}
     var bsdf=light_bsdf(sd,r,ls.D,ls.shader);let mis=(ls.pdf*ls.pdf)/(ls.pdf*ls.pdf+bsdf.pdf*bsdf.pdf);
     let factor=emission*ls.eval_fac/ls.pdf*mis;bsdf.eval*=factor;bsdf.diffuse*=factor;bsdf.glossy*=factor;
     if(all(bsdf.eval==vec3<f32>(0))){return;}

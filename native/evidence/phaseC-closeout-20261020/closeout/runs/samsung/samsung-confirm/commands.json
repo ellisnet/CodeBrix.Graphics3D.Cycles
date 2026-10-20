@@ -1,0 +1,338 @@
+[
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.build.version.sdk"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.product.cpu.abi"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.product.model"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.build.fingerprint"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "ps -A -o PID,ARGS"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "sha256sum /data/local/tmp/codebrix-c4-stage/bin/codebrix_cycles_glass_render_gate /data/local/tmp/codebrix-c4-stage/bin/codebrix_cycles_lighting_mis_gate /data/local/tmp/codebrix-c4-stage/bin/codebrix_cycles_transparent_lighting_gate /data/local/tmp/codebrix-c4-stage/lib/libIex-3_1.so /data/local/tmp/codebrix-c4-stage/lib/libIex.so /data/local/tmp/codebrix-c4-stage/lib/libIlmThread-3_1.so /data/local/tmp/codebrix-c4-stage/lib/libIlmThread.so /data/local/tmp/codebrix-c4-stage/lib/libImath-3_1.so /data/local/tmp/codebrix-c4-stage/lib/libImath.so /data/local/tmp/codebrix-c4-stage/lib/libOpenColorIO.so /data/local/tmp/codebrix-c4-stage/lib/libOpenEXR-3_1.so /data/local/tmp/codebrix-c4-stage/lib/libOpenEXR.so /data/local/tmp/codebrix-c4-stage/lib/libOpenEXRCore-3_1.so /data/local/tmp/codebrix-c4-stage/lib/libOpenEXRCore.so /data/local/tmp/codebrix-c4-stage/lib/libOpenEXRUtil-3_1.so /data/local/tmp/codebrix-c4-stage/lib/libOpenEXRUtil.so /data/local/tmp/codebrix-c4-stage/lib/libOpenImageIO.so /data/local/tmp/codebrix-c4-stage/lib/libOpenImageIO_Util.so /data/local/tmp/codebrix-c4-stage/lib/libboost_chrono.so /data/local/tmp/codebrix-c4-stage/lib/libboost_date_time.so /data/local/tmp/codebrix-c4-stage/lib/libboost_filesystem.so /data/local/tmp/codebrix-c4-stage/lib/libboost_iostreams.so /data/local/tmp/codebrix-c4-stage/lib/libboost_regex.so /data/local/tmp/codebrix-c4-stage/lib/libboost_system.so /data/local/tmp/codebrix-c4-stage/lib/libboost_thread.so /data/local/tmp/codebrix-c4-stage/lib/libc++_shared.so /data/local/tmp/codebrix-c4-stage/lib/libcodebrix_wgpu.so /data/local/tmp/codebrix-c4-stage/lib/libexpat.so /data/local/tmp/codebrix-c4-stage/lib/libjpeg.so /data/local/tmp/codebrix-c4-stage/lib/libpng.so /data/local/tmp/codebrix-c4-stage/lib/libpng16.so /data/local/tmp/codebrix-c4-stage/lib/libpugixml.so /data/local/tmp/codebrix-c4-stage/lib/libtbb.so /data/local/tmp/codebrix-c4-stage/lib/libtiff.so /data/local/tmp/codebrix-c4-stage/lib/libtiffxx.so /data/local/tmp/codebrix-c4-stage/lib/libz.so /data/local/tmp/codebrix-c4-stage/lib/libzstd.so"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "test '!' -e /data/local/tmp/codebrix-c4-samsung-confirm"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-c4-samsung-confirm"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-c4-samsung-confirm/glass_render; echo $$ > /data/local/tmp/codebrix-c4-samsung-confirm/glass_render/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-c4-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-c4-samsung-confirm/glass_render/pipelines.jsonl /data/local/tmp/codebrix-c4-stage/bin/codebrix_cycles_glass_render_gate /data/local/tmp/codebrix-c4-samsung-confirm/glass_render/run"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "find /data/local/tmp/codebrix-c4-samsung-confirm/glass_render -name \"*.arena.bin\" -delete"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-c4-samsung-confirm/glass_render",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseC4/runs/samsung/samsung-confirm/output"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-c4-samsung-confirm/transparent_lighting; echo $$ > /data/local/tmp/codebrix-c4-samsung-confirm/transparent_lighting/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-c4-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-c4-samsung-confirm/transparent_lighting/pipelines.jsonl /data/local/tmp/codebrix-c4-stage/bin/codebrix_cycles_transparent_lighting_gate /data/local/tmp/codebrix-c4-samsung-confirm/transparent_lighting/run"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "find /data/local/tmp/codebrix-c4-samsung-confirm/transparent_lighting -name \"*.arena.bin\" -delete"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-c4-samsung-confirm/transparent_lighting",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseC4/runs/samsung/samsung-confirm/output"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-c4-samsung-confirm/lighting_mis; echo $$ > /data/local/tmp/codebrix-c4-samsung-confirm/lighting_mis/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-c4-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-c4-samsung-confirm/lighting_mis/pipelines.jsonl /data/local/tmp/codebrix-c4-stage/bin/codebrix_cycles_lighting_mis_gate /data/local/tmp/codebrix-c4-samsung-confirm/lighting_mis/run"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "find /data/local/tmp/codebrix-c4-samsung-confirm/lighting_mis -name \"*.arena.bin\" -delete"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-c4-samsung-confirm/lighting_mis",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseC4/runs/samsung/samsung-confirm/output"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "ls -la /data/local/tmp/codebrix-c4-samsung-confirm/record"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-c4-samsung-confirm/record-create; echo $$ > /data/local/tmp/codebrix-c4-samsung-confirm/record-create/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-c4-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-c4-samsung-confirm/record-create/pipelines.jsonl CODEBRIX_CYCLES_DEVICE_RECORD_DIR=/data/local/tmp/codebrix-c4-samsung-confirm/record /data/local/tmp/codebrix-c4-stage/bin/codebrix_cycles_glass_render_gate /data/local/tmp/codebrix-c4-samsung-confirm/record-create/run"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "ls -la /data/local/tmp/codebrix-c4-samsung-confirm/record; for f in /data/local/tmp/codebrix-c4-samsung-confirm/record/*; do echo \"== $f\"; cat \"$f\"; done"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "find /data/local/tmp/codebrix-c4-samsung-confirm/record-create -name \"*.arena.bin\" -delete"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-c4-samsung-confirm/record-create",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseC4/runs/samsung/samsung-confirm/output"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-c4-samsung-confirm/record-reuse; echo $$ > /data/local/tmp/codebrix-c4-samsung-confirm/record-reuse/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-c4-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-c4-samsung-confirm/record-reuse/pipelines.jsonl CODEBRIX_CYCLES_DEVICE_RECORD_DIR=/data/local/tmp/codebrix-c4-samsung-confirm/record /data/local/tmp/codebrix-c4-stage/bin/codebrix_cycles_glass_render_gate /data/local/tmp/codebrix-c4-samsung-confirm/record-reuse/run"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "ls -la /data/local/tmp/codebrix-c4-samsung-confirm/record; for f in /data/local/tmp/codebrix-c4-samsung-confirm/record/*; do echo \"== $f\"; cat \"$f\"; done"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "find /data/local/tmp/codebrix-c4-samsung-confirm/record-reuse -name \"*.arena.bin\" -delete"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-c4-samsung-confirm/record-reuse",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseC4/runs/samsung/samsung-confirm/output"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "nohup sh -c 'L=$(ls /data/local/tmp/codebrix-c4-samsung-confirm/record/codebrix-cycles-device-*.txt | head -1).lock; exec 9>>$L; flock -x 9; echo held $(date +%s) > /data/local/tmp/codebrix-c4-samsung-confirm/lock-holder.txt; sleep 60; echo released $(date +%s) >> /data/local/tmp/codebrix-c4-samsung-confirm/lock-holder.txt' >/dev/null 2>&1 < /dev/null &"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "sleep 2; cat /data/local/tmp/codebrix-c4-samsung-confirm/lock-holder.txt; date +%s"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-c4-samsung-confirm/record-lock-held; echo $$ > /data/local/tmp/codebrix-c4-samsung-confirm/record-lock-held/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-c4-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-c4-samsung-confirm/record-lock-held/pipelines.jsonl CODEBRIX_CYCLES_DEVICE_RECORD_DIR=/data/local/tmp/codebrix-c4-samsung-confirm/record /data/local/tmp/codebrix-c4-stage/bin/codebrix_cycles_glass_render_gate /data/local/tmp/codebrix-c4-samsung-confirm/record-lock-held/run"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "date +%s; cat /data/local/tmp/codebrix-c4-samsung-confirm/lock-holder.txt"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "ls -la /data/local/tmp/codebrix-c4-samsung-confirm/record; for f in /data/local/tmp/codebrix-c4-samsung-confirm/record/*; do echo \"== $f\"; cat \"$f\"; done"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "find /data/local/tmp/codebrix-c4-samsung-confirm/record-lock-held -name \"*.arena.bin\" -delete"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-c4-samsung-confirm/record-lock-held",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseC4/runs/samsung/samsung-confirm/output"
+    ],
+    "timeout": 900
+  }
+]

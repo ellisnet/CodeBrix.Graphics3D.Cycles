@@ -6,6 +6,8 @@
 #include "webgpu_device.h"
 #include <array>
 #include <chrono>
+#include <cstdlib>
+#include <string>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -20,8 +22,12 @@ int main(int argc,char **argv){try{
   std::array<WGPUBindGroupLayoutEntry,2> entries{};for(unsigned i=0;i<2;i++){entries[i].binding=i;entries[i].visibility=WGPUShaderStage_Compute;entries[i].buffer.type=i?WGPUBufferBindingType_Uniform:WGPUBufferBindingType_Storage;}
   WGPUBindGroupLayoutDescriptor bd{};bd.entryCount=2;bd.entries=entries.data();d.push_scope();cbc::BindLayout layout(wgpuDeviceCreateBindGroupLayout(d.get(),&bd));d.pop_scope();
   WGPUPipelineLayoutDescriptor pd{};pd.bindGroupLayoutCount=1;pd.bindGroupLayouts=&layout.value;d.push_scope();cbc::PipelineLayout pl(wgpuDeviceCreatePipelineLayout(d.get(),&pd));d.pop_scope();
-  const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume"};const char *entry[]={"control","init_camera","intersect_closest","shade_background","shade_surface","prepare_surface","intersect_shadow","shade_shadow","shade_light_forward","prepare_shader_data","intersect_volume_stack","shade_volume","shade_shadow_transparent","shade_surface_light","shader_eval_volume_density"};std::array<cbc::Pipeline,15> pipelines;
-  std::array<uint64_t,15> pipeline_dispatches{};
+  const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","surface","shadow"};const char *entry[]={"control","init_camera","intersect_closest","shade_background","shade_surface","prepare_surface","intersect_shadow","shade_shadow","shade_light_forward","prepare_shader_data","intersect_volume_stack","shade_volume","shade_shadow_transparent","shade_surface_light","shader_eval_volume_density","connect_surface_light","prepare_shadow_shader_data"};std::array<cbc::Pipeline,17> pipelines;
+  std::array<uint64_t,17> pipeline_dispatches{};
+  // Compile-latency report (same declared budget as the native device). Replay
+  // never rewrites captured modules: recorded workgroup sizes must match.
+  double budget_ms=60000;if(const char *b=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_MS"))budget_ms=std::strtod(b,nullptr);
+  std::array<double,17> pipeline_ms{};std::vector<std::string> warnings;
   cbc::Handle<WGPUCommandEncoder,wgpuCommandEncoderRelease> encoder;
   auto encode=[&](){if(!encoder.value)encoder=decltype(encoder)(wgpuDeviceCreateCommandEncoder(d.get(),nullptr));return encoder.value;};
   auto flush=[&](){if(!encoder.value)return;d.push_scope();cbc::Handle<WGPUCommandBuffer,wgpuCommandBufferRelease> command(wgpuCommandEncoderFinish(encoder,nullptr));d.pop_scope();wgpuQueueSubmit(d.get_queue(),1,&command.value);encoder={};d.check();};
@@ -40,7 +46,10 @@ int main(int argc,char **argv){try{
       if(!pipelines[address].value){
         auto started=std::chrono::steady_clock::now();std::cerr<<"Creating pipeline "<<entry[address]<<" at command "<<number<<std::endl;
         auto source=read(input/(std::string(names[address])+".wgsl"));WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={source.data(),source.size()};WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;d.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.get(),&sd));d.pop_scope();pipelines[address]=d.pipeline(module,pl,entry[address]);
+        pipeline_ms[address]=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();
         std::cerr<<"Created pipeline "<<entry[address]<<" in "<<std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-started).count()<<" ms"<<std::endl;
+        if(budget_ms>0&&pipeline_ms[address]>budget_ms){warnings.push_back(std::string("pipeline '")+entry[address]+"' took "+std::to_string(int64_t(pipeline_ms[address]))+" ms, over the "+std::to_string(int64_t(budget_ms))+" ms compile budget; first-use latency is degraded on this driver, results are unchanged");
+          std::cerr<<"CodeBrix Cycles WebGPU warning: "<<warnings.back()<<std::endl;}
       }
       auto uniform=d.buffer(128,WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params);std::array<WGPUBindGroupEntry,2> bindings{};bindings[0].binding=0;bindings[0].buffer=arena;bindings[0].size=initial.size();bindings[1].binding=1;bindings[1].buffer=uniform;bindings[1].size=128;
       WGPUBindGroupDescriptor gd{};gd.layout=layout;gd.entryCount=2;gd.entries=bindings.data();d.push_scope();cbc::BindGroup group(wgpuDeviceCreateBindGroup(d.get(),&gd));d.pop_scope();
@@ -53,6 +62,9 @@ int main(int argc,char **argv){try{
   auto staging=d.buffer(initial.size(),WGPUBufferUsage_CopyDst|WGPUBufferUsage_MapRead);wgpuCommandEncoderCopyBufferToBuffer(encode(),arena,0,staging,0,initial.size());flush();std::vector<char> actual(initial.size());d.read(staging,actual.data(),actual.size());d.check();std::ofstream file(output+".arena.bin",std::ios::binary);file.write(actual.data(),actual.size());require(bool(file),"Cannot save replay arena");
   std::ofstream(output+".adapter.txt")<<d.adapter_name;std::ofstream(output+".library.txt")<<d.library_path;
   std::cout<<"{\"passed\":true,\"nativeCommandReplay\":true,\"commands\":"<<number<<",\"dispatches\":"<<dispatches<<",\"exactSchedulingReadbacks\":"<<readbacks<<",\"exactSchedulingReadbackBytes\":"<<readback_bytes<<",\"pipelineDispatches\":[";
-  for(size_t i=0;i<pipeline_dispatches.size();i++){if(i)std::cout<<',';std::cout<<pipeline_dispatches[i];}std::cout<<"]}\n";
+  for(size_t i=0;i<pipeline_dispatches.size();i++){if(i)std::cout<<',';std::cout<<pipeline_dispatches[i];}std::cout<<"]";
+  std::cout<<",\"pipelineReport\":{\"tier\":\"captured\",\"degraded\":"<<(warnings.empty()?"false":"true")<<",\"budgetMs\":"<<budget_ms<<",\"pipelineMs\":[";
+  for(size_t i=0;i<pipeline_ms.size();i++){if(i)std::cout<<',';std::cout<<pipeline_ms[i];}std::cout<<"],\"warnings\":[";
+  for(size_t i=0;i<warnings.size();i++){if(i)std::cout<<',';std::cout<<'"'<<warnings[i]<<'"';}std::cout<<"]}}\n";
   return 0;
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';return 1;}}

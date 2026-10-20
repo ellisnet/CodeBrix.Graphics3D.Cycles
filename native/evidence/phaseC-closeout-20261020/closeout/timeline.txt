@@ -1,0 +1,12 @@
+[03:13:15] start; read AGENTS.md and reports
+[03:13:41] Step 1: C3 merge applied, 28/28 before-hashes matched, 0 after-mismatches
+[03:15:33] Step 2b: closest_queue_gate.py 16->21 edited; Step 3 clean rebuild + 3 Android builds launched
+[03:19:05] Step 5a: arm64 build rc0, staged to Pixel; launching pixel-table
+[03:24:29] Linux clean rebuild rc=0 538 s (47 targets, 315 objects/11 archives/45 bin/host .so deleted first)
+[03:43:16] Step 5a done: Pixel table(conservative) PASS 682 s, full PASS 727 s incl. canary; Step 2a applied: Adreno 640 -> full + 20 s budget (device_tier.cpp, tier_gate.py)
+[03:44:13] incremental rebuilds done (linux 28 s); launching Linux validation (lanes A/B)
+[03:45:26] staged final arm64 to Samsung, x64 to HP
+[03:55:44] Samsung confirm PASS 518 s; HP confirm PASS 595 s (crash breadcrumb signal=6 -> conservative/record -> delete -> full/table); toybox-flock lock test invalid (mksh cloexec, EBADF) -> native lockhold probe runs started
+[03:59:37] lock probes PASS on Samsung (+56 s wait) and HP (+56 s); HP android host gate started
+[04:02:10] HP android host gate PASS 123 s (38 exports, 1,579 films, 0 practical, 0 required strict); all devices cleaned
+[04:06:48] Linux validation done 03:44:13-04:06:41: all PASS except closest-queue attempt 1 (device_gate.py prerequisite stale 7/6 vs 14/12); attempt b PASS (22 cases, 21 rejections)

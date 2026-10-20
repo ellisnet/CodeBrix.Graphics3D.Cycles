@@ -152,9 +152,14 @@ or driven by the existing Cycles `DeviceQueue`/session scheduler**. The separate
 scheduling, shading and film output for the documented bounded subset. New
 point/sun MIS, glass/refraction and camera motion pass integrated Linux state,
 image and combined-scene tests. Constant spot/area lights also pass their merged
-Linux sampling, state, image and replay corpus. Wider
-material/light/geometry coverage and numerical discrepancies remain tracked
-there, including Android glass failures and broader compiler limitations.
+Linux sampling, state, image and replay corpus. Emissive triangle lights,
+scene-driven shader specialization with compile-budget reporting, split
+direct-lighting and transparent-shadow stages, and ARM64-oracle normal rounding
+pass the integrated Linux corpus with cold shader caches. Wider
+material/light/geometry coverage, the open Android device items (emissive
+triangles on ARM64 and the HP, the unspecialized module on Android, and the
+Pixel 4 XL motion, feature-combination and volume-boundary failures) and
+numerical discrepancies remain tracked there.
 Complete cross-platform parity, remaining RID builds, release packaging and
 final redistribution review remain unfinished. The final package must depend on the existing
 WebGPU package and honor its single-library/load-order contract.
@@ -219,3 +224,24 @@ Before reintegration, resolve the transparent-lighting regression and the retain
 instanced-emitter image mismatch, then validate moving emitters and broader
 interactions. Environment/textured emission, light trees and remaining full MIS
 work are unfinished. No percentage increase or new Android coverage is claimed.
+Superseded: the transparent-lighting crash was diagnosed (an intermittent Intel
+Mesa compiler fault) and the candidate was reintegrated; see below.
+
+## Integrated lighting, specialization and ARM adapters (2026-10-19)
+
+The registered device now includes scene-driven WGSL specialization (only the SVM
+handlers, closures, area/triangle lights and motion code the uploaded scene can
+reach are compiled; a reached removed handler reports an error), per-pipeline
+compile-budget warnings with a conservative fallback tier after creation
+failures (chosen before compilation from an explicit request, a persisted
+device-identity record with crash breadcrumbs, a small known-adapter table or an
+optional init canary; see DEVICE.md "Device tiers"), flat-CDF constant-emission triangle lights with forward-hit MIS
+(including moving and deforming emitters), separate light-sampling and
+BSDF/shadow-connection stages, a separate ShaderData stage for transparent
+shadows, and oracle-host-selected `normalize(float3)` rounding plus rounded
+cosine-hemisphere and valid-normal adapters for ARM64 parity. Static instanced
+triangle emitters, light trees, environment/textured emission and the other
+listed lighting interactions remain guarded or unimplemented. Command captures use
+recorder v7 (entry 15 `connect_surface_light`, entry 16
+`prepare_shadow_shader_data`); v1-v6 captures still replay. Details and the
+validation summary are in [DEVICE.md](DEVICE.md).

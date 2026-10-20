@@ -43,6 +43,10 @@ class Device {
   void set_error(const std::string &message);
  public:
   WGPULimits limits{}; std::string adapter_name,library_path;
+  // Adapter identity for the device-tier record and known-adapter table
+  // (device_tier.h): WGPUAdapterInfo strings and PCI-style ids as reported.
+  std::string adapter_vendor,adapter_architecture,adapter_device,adapter_description;
+  uint32_t adapter_vendor_id=0,adapter_device_id=0,adapter_type=0,adapter_backend=0;
   uint64_t buffer_creations=0,pipeline_creations=0;
   Device();
   WGPUDevice get()const{return device.value;}
@@ -52,7 +56,10 @@ class Device {
   void push_scope(){wgpuDevicePushErrorScope(device,WGPUErrorFilter_Validation);}
   void pop_scope();
   Buffer buffer(size_t bytes,WGPUBufferUsage usage,const void *data=nullptr);
-  Pipeline pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry);
+  // label (default: entry) names the stage in the crash breadcrumb. While the
+  // pipeline is created, a crash signal is also appended as "signal=<n>" to
+  // record_fd (the device-tier pending breadcrumb; -1: none).
+  Pipeline pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry,const char *label=nullptr,int record_fd=-1);
   void read(Buffer &buffer,void *out,size_t bytes);
 };
 }

@@ -1,0 +1,288 @@
+diff --git a/PARITY.md b/PARITY.md
+index 4179da0f..4ca3cd1c 100644
+--- a/PARITY.md
++++ b/PARITY.md
+@@ -34,10 +34,10 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Native file images and updates | PNG/JPEG/OpenEXR native file loading now passes a Linux gate with 18 fixtures, 450 channel/alpha/color variants, native UDIM mappings, 16 queued-read/replacement cycles and 34,483 independent known lossless texels. The serialized OCIO matrix configuration is tested. A 116,352-case final snapshot has a four-GPU replay gate; actual decoding/lifecycle tests currently execute on Linux only. The original file-image checkpoint preserved earlier renderer/executable identity; renderer edits require the fresh normal-gate regression chain. TIFF/LZW compatibility, other formats, production color/cache/animation stress and native platform hosts remain required. See `native/tools/image_file_gate.py` |
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+-| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled/microfacet, glass, hair, subsurface and volumes pending |
+-| Lighting | Two constant finite spherical lights with CDF selection, NEE, opaque shadows and both MIS strategies tested on four devices. Strict isolated sphere-sampling/intersection failures remain. Other light types, emissive mesh sampling, light tree, environment maps, linking and general visibility pending |
++| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons |
++| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending; Android revalidation of the integrated tree pending |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+-| Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending |
++| Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; Android devices have not run this mechanism yet |
+ | Platforms/delivery | Full Linux host only; other host builds, remaining GPU backends/RIDs, .NET package loading and Android application sandbox pending |
+ | Full parity decision | Open. A small matching render cannot establish this. Unsupported features must be reported explicitly, never silently approximated |
+ 
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index 0968d45a..31d6eb58 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1113,3 +1113,220 @@ Before reintegration, resolve the transparent-lighting regression and the retain
+ instanced-emitter image mismatch, then validate moving emitters and broader
+ interactions. Environment/textured emission, light trees and remaining full MIS
+ work are unfinished. No percentage increase or new Android coverage is claimed.
++Superseded: the transparent-lighting crash was diagnosed and the candidate was
++reintegrated; see the integration section below.
++
++## Compiler pressure: scene specialization, light-stage split and pipeline tiers (2026-10-19)
++
++Vulkan drivers inline every WGSL function into each entry point. The generic SVM
++interpreter therefore gave the driver one function of about 2.3 MB of inlined
++WGSL for `prepare_surface`, `shade_background`, `shade_volume` and the
++transparent-shadow stage. The HP Intel compiler (Mesa 24.0.8) crashed or exhausted
++Scudo's 256 MiB size-class regions on these entries, and the Pixel 4 XL Adreno
++compiler needed minutes (509 s for `prepare_surface`).
++
++- **Scene-driven specialization** (`native/cycles/pipelines.{h,cpp}`). Optional
++  handlers are comment regions (`//#if FEATURE else FALLBACK` ... `//#endif`); the
++  unspecialized module keeps every handler. Before creating a pipeline the device
++  decodes the uploaded `svm_nodes` exactly as the WGSL interpreter does (shader
++  headers, shader and conditional jumps, node, BSDF-data and texture-transform
++  record sizes) and keeps only reachable SVM node handlers and closure setups,
++  plus area-light and object/camera-motion code when the uploaded lights, object
++  flags or camera use them. A removed handler's fallback reports error bit 2; it
++  never produces substitute radiance. Enabled features only grow during a device
++  lifetime, so a scene update reaching a new handler recompiles the affected
++  pipelines. `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` compiles every handler.
++  Captures record the module the device actually compiles.
++- **Direct-lighting split.** Light sampling and BSDF/MIS/shadow connection run
++  in separate pipelines (`shade_surface_light`, `connect_surface_light`); the
++  sample is stored bit-exactly in the GPU-private stage record. Recorder v6 adds
++  pipeline entry 15; earlier formats replay unchanged. The integrated partition
++  is described in the next section.
++- **Call-site consolidation** (unchanged arithmetic and order): one image call for
++  all image node layouts, one `attribute_fetch` call in `attribute_read`, one
++  `svm_image_sample` in box projection.
++- **Tiers and reporting.** Each pipeline creation is timed against a declared
++  budget (60 s default, `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS`); an overrun marks the
++  session degraded with a warning but never changes the variant. A non-fatal
++  creation failure retries once in the conservative tier (workgroup size 1, which
++  can change last bits on Linux Intel but must meet the practical criterion);
++  device loss and driver crashes are reported with the stage name (a scoped signal
++  breadcrumb names the stage if the driver terminates the process). Gate and
++  replay JSON carry `pipelineReport` (tier, degraded, warnings, compile times).
++  The shipped runtime exposes no pipeline-cache API; Linux Mesa's disk cache is
++  the only warm path observed (41 s cold, 8 ms warm); HP and Pixel shell
++  processes recompile every time.
++- Measurements and the original HP/Pixel validations are in the B3 handoff; the
++  integrated tree's Linux validation is described in the next section. Android
++  devices have not run the integrated tree yet.
++
++## Integrated lighting, specialization and ARM adapters (2026-10-19)
++
++The working tree now combines three further slices on Linux x64 with the
++unchanged CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 runtime. Linux
++validation ran every corpus with a fresh, empty Mesa shader cache, so driver
++compile failures cannot be hidden by the disk cache; outputs are in
++`native/work/phaseC/` and the frozen checkpoint
++`native/evidence/native-integration-20261019/`.
++
++- **Scene-driven specialization and pipeline tiers** (`native/cycles/pipelines.{h,cpp}`)
++  as described in the previous section, now also covering emissive triangles
++  (`LIGHT_TRIANGLE`: any triangle in the light distribution or any shader flagged
++  as a MIS emitter) and the triangle-light private object-motion code
++  (`MOTION_OBJECT`). Uploading the light distribution counts as a scene change.
++  `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` still compiles every handler. Gate
++  probes that compile their own copy of the surface module specialize it the
++  same way.
++- **Emissive triangle lights.** Flat-CDF constant emission with native
++  solid-angle/area sampling, centre-area selection, sidedness and forward-hit
++  MIS (`wavefront_triangle_light.wgsl`), including moving and deforming emitters.
++  The triangle sampler keeps private copies of the motion arithmetic it needs; the
++  shared motion shader is unchanged. Static instanced emitters remain rejected:
++  the GPU matches the CPU at identical inputs, but closest-hit barycentrics differ
++  by 1-3 ULP (driver FMA contraction and the oracle's SSE reciprocal), which flips
++  edge-grazing samples. Light trees, environment and textured/nonconstant
++  emission remain unimplemented.
++- **Direct-lighting split.** `shade_surface_light` samples the lamp or emissive
++  triangle and the forward-hit triangle MIS weight; `connect_surface_light`
++  applies holdout, emission, roulette and the sampled light's BSDF/MIS/shadow
++  setup. The GPU-private surface record carries the weight and the 13-word light
++  sample. (An alternative partition that sampled lights after emission and
++  roulette inside one entry produced wrong moving-emitter images on Linux Intel
++  only when the area-light handler was specialized away, and compiled for 149 s;
++  it was not adopted.)
++- **Transparent-shadow split.** A GPU-only `prepare_shadow_shader_data` stage
++  (workgroup 64) caches per-hit ShaderData for `shade_shadow_transparent`
++  (workgroup 1), which avoids an intermittent Intel Mesa 25.0.7 compiler crash
++  (`brw_opt_combine_constants`) on the combined entry.
++- **ARM64 oracle rounding.** `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE` (from
++  `__KERNEL_SSE__` on the oracle host) selects per-component division or
++  reciprocal-length multiplication for ShaderData normals, matching each CPU
++  oracle's `normalize(float3)`. Cosine-hemisphere sampling and the specular
++  valid-normal adjustment use the existing rounding adapters, which are bit-exact
++  on Intel and Adreno; on Linux these only move results closer to the CPU oracle.
++
++Command recorder formats (replay reads every format):
++
++| Format | Adds pipeline entries |
++| --- | --- |
++| v1 | 0 control, 1 init_camera, 2 intersect_closest, 3 shade_background, 4 shade_surface, 5 prepare_surface (implicit size 64) |
++| v2 | explicit dispatch sizes (kind 5 commands) |
++| v3 | 6 intersect_shadow, 7 shade_shadow |
++| v4 | 8 shade_light_forward |
++| v5 | 9 prepare_shader_data, 10 intersect_volume_stack, 11 shade_volume, 12 shade_shadow_transparent, 13 shade_surface_light, 14 shader_eval_volume_density |
++| v6 | 15 connect_surface_light |
++| v7 | 16 prepare_shadow_shader_data |
++
++Remaining guards and gaps: static instanced triangle emitters; moving
++transparent shadows; volume NEE/MIS, shadow attenuation and heterogeneous media;
++light trees, environment MIS and textured emission; light/shadow linking, AO,
++shadow catchers and MNEE. The emitter-sampling entry with object motion still
++exceeds the 60 s compile budget cold on Linux (warning only). Old captures replay
++with their own unspecialized modules and can still crash the driver with a cold
++cache. Android has not run this combination yet.
++
++## Device tiers: persisted record, known adapters and init canary
++
++WebGPU reports adapter identity and limits but not shader-compiler capacity, and
++a vendor compiler crash ends the process. The WebGPU device therefore chooses
++its pipeline tier once, when it is created and before any renderer pipeline
++compiles (`native/cycles/device_tier.{h,cpp}`):
++
++1. an explicit request (host API or `CODEBRIX_CYCLES_PIPELINE_TIER`), reason
++   `override` (full) or `opt-in` (conservative);
++2. the persisted device-identity record, reason `record`: a full-tier crash
++   breadcrumb or pipeline-creation failure selects conservative; full-tier
++   compiles without any failure select full (so the record overrides the table);
++3. the known-adapter table, reason `table`;
++4. full fidelity, reason `default`.
++
++The optional init canary then compiles one representative module (the surface
++module with no optional handlers, entry `prepare_surface`) in the full tier. A
++canary failure selects conservative before the scene compiles (reason `canary`);
++a canary crash leaves a breadcrumb, so the next run starts conservative from the
++record; a canary over its budget (10 s, `CODEBRIX_CYCLES_PIPELINE_CANARY_BUDGET_MS`)
++only warns. During rendering a non-fatal creation failure still retries in the
++conservative tier (reason `failure`) and is recorded. A slow compile never
++changes the tier: it warns and marks the session degraded, because the
++conservative tier (workgroup size 1) is not bit-identical to full fidelity. The
++only exception is the explicit old-hardware opt-in
++`CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION=conservative` (reason `budget-opt-in`,
++never recorded). Full-tier WGSL is unchanged by this mechanism.
++
++Known-adapter table (`known_adapters()`; device and driver are substrings of the
++WebGPU adapter device name and driver description):
++
++| Entry | Device | Driver | Tier |
++| --- | --- | --- | --- |
++| Pixel 4 XL Adreno 640 | `Adreno (TM) 640` | any | conservative |
++| Samsung SM-X700 Adreno 730 | `Adreno (TM) 730` | any | full |
++| HP Intel Xe (Android x64) | `Intel(R) Xe Graphics` | `Mesa 24.0.8` | full |
++| Linux Intel UHD ADL-S | `Intel(R) UHD Graphics (ADL-S GT1)` | `Mesa 25.0.7` | full |
++
++An unknown mobile adapter (Android build, or a Qualcomm, ARM, Imagination,
++Samsung or Apple vendor id or Adreno/Mali/PowerVR/Xclipse device name) starts
++full with a 20 s compile budget instead of 60 s (warnings only). An explicit
++`CODEBRIX_CYCLES_PIPELINE_BUDGET_MS` replaces either budget.
++
++**Persisted record.** Enabled only when the application supplies a writable
++directory (`cbc_host_tier_config`, or `CODEBRIX_CYCLES_DEVICE_RECORD_DIR`); missing
++directories are created; problems become warnings and never fail rendering. The
++file is `codebrix-cycles-device-<fnv1a64 of vendor, architecture, device,
++driver description, vendor id, device id>.txt`, UTF-8 text, one `key=value` per
++line, fields free of newlines and `|`:
++
++```
++codebrix-cycles-device-record 1
++vendor=<WGPUAdapterInfo.vendor>
++architecture=<WGPUAdapterInfo.architecture>
++device=<WGPUAdapterInfo.device>
++description=<WGPUAdapterInfo.description (driver)>
++runtime=codebrix-api=<n>;wgpu-native=<v>;wgpu-core=<v>;target=<triple>;patches=<list>
++shaderHash=fnv1a64:<16 hex digits over every production WGSL module>
++stage=<tier>|<module>|<entry>|<successes>|<failures>|<last ms>|<max ms>
++breadcrumb=<tier>|<module>|<entry>|signal or interrupted|<signal>|<unix time>
++failure=<tier>|<module>|<entry>|<message>
++```
++
++Unknown keys are ignored; at most 16 breadcrumbs and 16 failures are kept. A
++record whose identity, runtime or shader hash differs is reported
++(`identity-mismatch`, `stale-runtime`, `stale-shader-hash`), never applied, and
++replaced by the next write. Writes take an advisory `flock` on `<record>.lock`,
++re-read the file and rename a temporary copy, so concurrent processes merge.
++Before each pipeline creation the device writes `<record>.pending-<pid>-<device>-<serial>`
++(runtime, shader hash, tier, module, entry, time); the crash handler appends
++`signal=<n>`; the file is removed when creation returns. A pending file whose
++process no longer runs becomes a breadcrumb on the next start (`interrupted` if
++no signal was written, which includes out-of-memory kills and forced stops while
++compiling). Delete the record to start again at full fidelity.
++
++**Host C API (additive; ABI 1).** `cbc_host_tier_config(const CBCTierConfig *,
++const char *record_directory)` sets the process-wide request (`CBC_TIER_AUTO`,
++`CBC_TIER_FULL`, `CBC_TIER_CONSERVATIVE`) and flags (`CBC_TIER_RECORD_OFF`,
++`CBC_TIER_RECORD_READ_ONLY`, `CBC_TIER_CANARY`) for hosts created afterwards;
++`CBCTierConfig` is size/ABI/reserved checked. `cbc_host_device_report_json`
++returns the capability report: backend, adapter identity, tier, reason and
++detail, known-adapter entry, compile budget and its source, record mode, path,
++status and breadcrumbs, canary result, environment overrides, warnings and
++compiled pipelines. The .NET wrapper exposes `CyclesHost.ConfigureTiers` and
++`DeviceReportJson`. Gate and replay JSON carry the same decision under
++`pipelineReport.decision`; the pipeline log adds `tierReason`.
++
++**Environment overrides (gates).** `CODEBRIX_CYCLES_PIPELINE_TIER=full|conservative|auto`,
++`CODEBRIX_CYCLES_DEVICE_RECORD_DIR=<dir>`,
++`CODEBRIX_CYCLES_DEVICE_RECORD=on|off|ignore|readonly` (`ignore` reads and reports
++without applying or writing), `CODEBRIX_CYCLES_PIPELINE_CANARY=1|0`, and the
++existing `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`. Test hooks used only by
++`native/tools/tier_gate.py`: `CODEBRIX_CYCLES_TEST_ADAPTER` (simulated identity for
++the decision; the real adapter still compiles), `CODEBRIX_CYCLES_TEST_CRASH_PIPELINE`
++(raise `SIGABRT` inside the breadcrumb scope of the named stage, or
++`canary:prepare_surface`) and `CODEBRIX_CYCLES_TEST_CANARY=fail` (a canary
++module the WebGPU front end rejects).
++
++`native/tools/tier_gate.py` runs each scenario as a separate process of
++`tests/host/tier_consumer.c` on Linux: fresh device, record reuse, a real crash
++breadcrumb followed by a conservative start, stale shader hash and runtime,
++table lookups (including the real adapter and an unknown mobile adapter),
++record-over-table, overrides, canary pass/slow/failure/crash and a slow compile
++that keeps the full tier. Every film meets the practical criterion against the
++original CPU session. Android devices have not run this mechanism yet.
+diff --git a/native/README.md b/native/README.md
+index 01391e58..916b197e 100644
+--- a/native/README.md
++++ b/native/README.md
+@@ -152,9 +152,12 @@ or driven by the existing Cycles `DeviceQueue`/session scheduler**. The separate
+ scheduling, shading and film output for the documented bounded subset. New
+ point/sun MIS, glass/refraction and camera motion pass integrated Linux state,
+ image and combined-scene tests. Constant spot/area lights also pass their merged
+-Linux sampling, state, image and replay corpus. Wider
+-material/light/geometry coverage and numerical discrepancies remain tracked
+-there, including Android glass failures and broader compiler limitations.
++Linux sampling, state, image and replay corpus. Emissive triangle lights,
++scene-driven shader specialization with compile-budget reporting, split
++direct-lighting and transparent-shadow stages, and ARM64-oracle normal rounding
++pass the integrated Linux corpus with cold shader caches. Wider
++material/light/geometry coverage, Android revalidation of the integrated tree and
++numerical discrepancies remain tracked there.
+ Complete cross-platform parity, remaining RID builds, release packaging and
+ final redistribution review remain unfinished. The final package must depend on the existing
+ WebGPU package and honor its single-library/load-order contract.
+@@ -219,3 +222,24 @@ Before reintegration, resolve the transparent-lighting regression and the retain
+ instanced-emitter image mismatch, then validate moving emitters and broader
+ interactions. Environment/textured emission, light trees and remaining full MIS
+ work are unfinished. No percentage increase or new Android coverage is claimed.
++Superseded: the transparent-lighting crash was diagnosed (an intermittent Intel
++Mesa compiler fault) and the candidate was reintegrated; see below.
++
++## Integrated lighting, specialization and ARM adapters (2026-10-19)
++
++The registered device now includes scene-driven WGSL specialization (only the SVM
++handlers, closures, area/triangle lights and motion code the uploaded scene can
++reach are compiled; a reached removed handler reports an error), per-pipeline
++compile-budget warnings with a conservative fallback tier after creation
++failures (chosen before compilation from an explicit request, a persisted
++device-identity record with crash breadcrumbs, a small known-adapter table or an
++optional init canary; see DEVICE.md "Device tiers"), flat-CDF constant-emission triangle lights with forward-hit MIS
++(including moving and deforming emitters), separate light-sampling and
++BSDF/shadow-connection stages, a separate ShaderData stage for transparent
++shadows, and oracle-host-selected `normalize(float3)` rounding plus rounded
++cosine-hemisphere and valid-normal adapters for ARM64 parity. Static instanced
++triangle emitters, light trees, environment/textured emission and the other
++listed lighting interactions remain guarded or unimplemented. Command captures use
++recorder v7 (entry 15 `connect_surface_light`, entry 16
++`prepare_shadow_shader_data`); v1-v6 captures still replay. Details and the
++validation summary are in [DEVICE.md](DEVICE.md).

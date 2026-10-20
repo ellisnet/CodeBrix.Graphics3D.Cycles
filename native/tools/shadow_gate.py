@@ -40,7 +40,10 @@ def main():
                 assert report['originalCpuShadowKernels'] and report['originalGpuScheduler']
                 assert report['cases']==60 and report['paths']==3846 and report['directDispatchCases']==30 and report['invalidCasesRejected']==18
                 assert report['blocked']>100 and report['unoccluded']>100 and report['selfOrLightExclusions']>50
-            elif kind=='closest':assert report['cases']==22 and report['invalidCasesRejected']==16 and report['originalCameraToIntersectionScheduler']
+            # 21 = the original 16 closest negative cases plus 5 object-motion/deforming
+            # rejections (tests 16-20 in closest_gate.cpp, added with object motion);
+            # this expectation predated them.
+            elif kind=='closest':assert report['cases']==22 and report['invalidCasesRejected']==21 and report['originalCameraToIntersectionScheduler']
             else:assert report['nativeSceneAndScheduler'] and report['independentCpuImage'] and report['repeatBitwiseIdentical']
             results[kind]=report;save(out/'results.json',results)
         status['phase']='shadow-replay';save(out/'status.json',status)
@@ -49,7 +52,7 @@ def main():
             render_replay.run('linux-x64',capture,destination)
             report=json.loads((destination/'validation.json').read_text())
             assert report['workload']=='shadow-stages' and report['terminalShadowPathSlots']>0
-            assert report['results']['pipelineDispatches'][6:]==[1,1]
+            assert report['results']['pipelineDispatches'][6:8]==[1,1] and not any(report['results']['pipelineDispatches'][8:])
             results['replay-'+mode]=report;save(out/'results.json',results)
         assert inputs()==sources and sha(runtime)==runtime_sha and all(sha(Path(name))==digest for name,digest in binaries.items())
         status.update(complete=True,passed=True,phase='complete',inputsUnchanged=True,

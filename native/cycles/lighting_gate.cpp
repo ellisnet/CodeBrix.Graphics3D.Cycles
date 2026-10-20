@@ -39,7 +39,13 @@ using namespace wavefront_test;
 #include "deforming_motion_fixture.h"
 #endif
 constexpr unsigned width=32,height=24,samples=8;
-#ifdef CODEBRIX_BROAD_LIGHT_GATE
+#ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
+constexpr int lighting_cases=5;
+// Image modes; mode 4 (static instanced emitter) is checked for rejection.
+constexpr int lighting_modes[lighting_cases]={0,1,2,3,5};
+#elif defined(CODEBRIX_BROAD_LIGHT_GATE)
 constexpr int lighting_cases=12;
 #else
 constexpr int lighting_cases=8;
@@ -49,7 +55,7 @@ constexpr bool use_mis=true;
 #else
 constexpr bool use_mis=false;
 #endif
-struct Metrics {uint64_t deforming_paths=0,transparent_hits=0,max_shadow_hits=0,transmissions=0,shadows=0,blocked=0,visible=0,forward=0,stages=0,floats=0,strict=0,repeat_differences=0;double maximum=0,repeat_maximum=0;};
+struct Metrics {uint64_t unsupported_emitters=0,mesh_mis_paths=0,deforming_paths=0,transparent_hits=0,max_shadow_hits=0,transmissions=0,shadows=0,blocked=0,visible=0,forward=0,stages=0,floats=0,strict=0,repeat_differences=0;double maximum=0,repeat_maximum=0;};
 static Shader *material(Scene &scene,int variant){
   auto graph=make_unique<ShaderGraph>();auto diffuse=graph->create_node<DiffuseBsdfNode>();diffuse->set_color(make_float3(.55,.32,.18));diffuse->set_roughness(.31f);
   ShaderOutput *surface=diffuse->output("BSDF");
@@ -122,7 +128,21 @@ static void fixture(Scene &scene,int mode,bool stationary=false){
   auto world=scene.create_node<Shader>();world->set_graph(std::move(background));world->tag_update(&scene);scene.background->set_shader(world);
   auto emission_graph=make_unique<ShaderGraph>();auto emission=emission_graph->create_node<EmissionNode>();emission->set_color(one_float3());emission->set_strength(1);
   emission_graph->connect(emission->output("Emission"),emission_graph->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(emission_graph));emitter->tag_update(&scene);
-#ifdef CODEBRIX_BROAD_LIGHT_GATE
+#ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+  // Original fixture: emission-only control, two-sided MIS, mirrored static
+  // one-sided emitter, a static emitter mixed with a point light, a mirrored
+  // emitter plus a second static instance of its mesh (mode 4, retained for its
+  // explicit rejection check) and a moving/deforming emitter with a point light.
+  emission->set_strength(3);emitter->tag_update(&scene);
+  auto panel=quad(scene,emitter,{make_float3(-.8,-.5,0),make_float3(.8,-.5,0),make_float3(.8,.5,0),make_float3(-.8,.5,0)});
+  panel->set_tfm(transform_translate(make_float3(1.65,1.55,-1.4))*transform_rotate(.18f,make_float3(0,1,0))*transform_rotate(.5f,make_float3(1,0,0))*transform_scale(make_float3((mode==2||mode==4)?-1.2f:1.f,1.1f,1.f)));
+  if(mode==4){auto instance=scene.create_node<Object>();instance->set_geometry(panel->get_geometry());instance->set_tfm(transform_translate(make_float3(-2,1.5,-1))*transform_scale(make_float3(.7,1.2,1)));}
+  if(mode==5){deforming_motion_fixture(scene,*panel,1);object_motion_fixture(scene,*panel,1);}
+  if(mode==3||mode==5){
+    auto point=scene.create_node<PointLight>();point->set_radius(.45f);point->set_is_sphere(true);point->set_use_mis(true);point->set_strength(make_float3(25,35,45));
+    array<Node*> slots;slots.push_back_slow(emitter);point->set_used_shaders(slots);auto object=scene.create_node<Object>();object->set_geometry(point);object->set_tfm(transform_translate(make_float3(-2,2,-1)));
+  }
+#elif defined(CODEBRIX_BROAD_LIGHT_GATE)
   for(int lamp=0;lamp<(mode==11?3:1);lamp++){
     Light *light;
     if(mode<4||(mode==11&&lamp==1)){auto spot=scene.create_node<SpotLight>();spot->set_radius(mode==0?0.f:mode==3?1.8f:.45f);spot->set_is_sphere(mode!=1);spot->set_angle(mode==3?.25f:1.2f);spot->set_smooth(mode==0?0.f:.35f);light=spot;}
@@ -153,6 +173,9 @@ static void fixture(Scene &scene,int mode,bool stationary=false){
   if(mode==5)scene.integrator->set_light_sampling_threshold(.3f);
 #endif
   for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
+#ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+  if(mode)emitter->set_emission_sampling_method((mode==2||mode==4)?EMISSION_SAMPLING_FRONT:EMISSION_SAMPLING_FRONT_BACK);
+#endif
 }
 static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &metrics){
   std::vector<IntegratorStateCPU> state(width*height);std::vector<IntegratorShadowStateCPU> shadow(width*height);
@@ -170,6 +193,10 @@ static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &metr
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD){metrics.forward+=ids.size();original_light_forward(scene,ids,state,film);}
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){
           for(int i:ids)metrics.deforming_paths+=state[i].isect.type==PRIMITIVE_MOTION_TRIANGLE;
+#ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+          for(int i:ids){const auto &path=state[i];const auto shader=scene.tri_shader[path.isect.prim]&SHADER_MASK;
+            metrics.mesh_mis_paths+=!(path.path.flag&PATH_RAY_MIS_SKIP)&&(scene.shaders[shader].flags&(SD_MIS_FRONT|SD_MIS_BACK));}
+#endif
           original_surface(scene,ids,state,film);std::vector<int> pending;
           for(int i:ids)metrics.transmissions+=(state[i].path.visibility&PATH_RAY_VISIBILITY_TRANSMIT)!=0;
           for(int i:ids)if(state[i].shadow.shadow_path.queued_kernel){shadow[i]=state[i].shadow;pending.push_back(i);}
@@ -195,12 +222,20 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   const std::filesystem::path out=argv[1];std::filesystem::create_directories(out);
   auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;
   auto owner=Device::create(infos[0],stats,profiler,true);auto &device=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics total;
-  for(int mode=0;mode<lighting_cases;mode++){
-    std::cerr<<"lighting mode="<<mode<<'\n';auto folder=out/("case-"+std::to_string(mode));std::filesystem::create_directories(folder);const auto prefix=(folder/"run").string();Metrics metrics;
+  for(int image=0;image<lighting_cases;image++){
+#ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+    const int mode=lighting_modes[image];
+#else
+    const int mode=image;
+#endif
+    std::cerr<<"lighting mode="<<mode<<'\n';auto folder=out/("case-"+std::to_string(image));std::filesystem::create_directories(folder);const auto prefix=(folder/"run").string();Metrics metrics;
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
     Scene scene(params,&device);fixture(scene,mode,stationary);Progress progress;scene.device_update(&device,progress);healthy(device);require(!progress.get_error(),"Lighting scene preparation failed");
     const auto &data=scene.dscene.data;std::cerr<<"native lights="<<data.integrator.num_lights<<" direct="<<data.integrator.use_direct_light<<" mis="<<data.integrator.use_light_mis<<" transparent="<<data.integrator.transparent_shadows<<"\n";
-#ifdef CODEBRIX_TRANSPARENT_LIGHT_GATE
+#ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+    require(bool(data.integrator.use_direct_light)==(mode!=0)&&!data.integrator.transparent_shadows,"Unexpected native triangle-light configuration");
+    require(mode==0||data.integrator.distribution_pdf_triangles>0,"Missing native triangle distribution");
+#elif defined(CODEBRIX_TRANSPARENT_LIGHT_GATE)
     require(data.integrator.use_direct_light&&data.integrator.transparent_shadows,"Unexpected native transparent-shadow configuration");
 #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native broad-light configuration");
@@ -244,13 +279,15 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #ifdef CODEBRIX_DEFORMING_MOTION_GATE
     require(stationary?metrics.deforming_paths==0:metrics.deforming_paths>100,"Missing original CPU deforming surface paths");
 #endif
-#ifdef CODEBRIX_BROAD_LIGHT_GATE
+#ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+    if(mode!=0)require(metrics.shadows>100&&metrics.visible>100,"Missing mesh direct lighting coverage");
+#elif defined(CODEBRIX_BROAD_LIGHT_GATE)
     require(metrics.shadows>0&&metrics.visible>0,"Missing broad direct lighting coverage");
 #else
     require(metrics.shadows>100&&metrics.visible>100,"Missing direct lighting coverage");if(mode!=6)require(metrics.blocked>10,"Missing occlusion coverage");
 #endif
-    auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"mode\":"<<mode<<",\"transparentSurfaceHits\":"<<metrics.transparent_hits<<",\"maximumShadowHitCount\":"<<metrics.max_shadow_hits<<",\"forwardLightPaths\":"<<metrics.forward<<",\"deformingSurfacePaths\":"<<metrics.deforming_paths<<",\"shadows\":"<<metrics.shadows<<",\"blocked\":"<<metrics.blocked<<",\"visible\":"<<metrics.visible<<",\"stages\":"<<metrics.stages<<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat_differences<<",\"repeatMaximumError\":"<<metrics.repeat_maximum<<"}\n";};
-    std::ofstream details(folder/"result.json");report(details);report(std::cerr);total.deforming_paths+=metrics.deforming_paths;total.transparent_hits+=metrics.transparent_hits;total.max_shadow_hits=std::max(total.max_shadow_hits,metrics.max_shadow_hits);total.transmissions+=metrics.transmissions;total.forward+=metrics.forward;total.shadows+=metrics.shadows;total.blocked+=metrics.blocked;total.visible+=metrics.visible;total.stages+=metrics.stages;total.floats+=metrics.floats;total.strict+=metrics.strict;total.maximum=std::max(total.maximum,metrics.maximum);total.repeat_differences+=metrics.repeat_differences;
+    auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"mode\":"<<mode<<",\"transparentSurfaceHits\":"<<metrics.transparent_hits<<",\"maximumShadowHitCount\":"<<metrics.max_shadow_hits<<",\"forwardLightPaths\":"<<metrics.forward<<",\"meshMisPaths\":"<<metrics.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<metrics.deforming_paths<<",\"shadows\":"<<metrics.shadows<<",\"blocked\":"<<metrics.blocked<<",\"visible\":"<<metrics.visible<<",\"stages\":"<<metrics.stages<<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat_differences<<",\"repeatMaximumError\":"<<metrics.repeat_maximum<<"}\n";};
+    std::ofstream details(folder/"result.json");report(details);report(std::cerr);total.mesh_mis_paths+=metrics.mesh_mis_paths;total.deforming_paths+=metrics.deforming_paths;total.transparent_hits+=metrics.transparent_hits;total.max_shadow_hits=std::max(total.max_shadow_hits,metrics.max_shadow_hits);total.transmissions+=metrics.transmissions;total.forward+=metrics.forward;total.shadows+=metrics.shadows;total.blocked+=metrics.blocked;total.visible+=metrics.visible;total.stages+=metrics.stages;total.floats+=metrics.floats;total.strict+=metrics.strict;total.maximum=std::max(total.maximum,metrics.maximum);total.repeat_differences+=metrics.repeat_differences;
   }
 #ifdef CODEBRIX_FEATURE_COMBINATION_GATE
   require(total.transmissions>100,"Combined scene did not exercise transmission");
@@ -258,7 +295,18 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #ifdef CODEBRIX_TRANSPARENT_LIGHT_GATE
   require(total.transparent_hits>100&&total.max_shadow_hits>=7,"Missing transparent multi-hit image coverage");
 #endif
+#ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+  require(total.mesh_mis_paths>10,"Missing forward emissive triangle MIS paths");
+  for(int mode:{4}){
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;
+    Scene scene(params,&device);fixture(scene,mode);Progress progress;scene.device_update(&device,progress);healthy(device);
+    require(!progress.get_error(),"Unsupported emitter fixture preparation failed");
+    bool rejected=false;try{device.validate_lighting(true);}catch(const std::exception &e){rejected=std::string(e.what()).find("static instanced triangle emitters")!=std::string::npos;}
+    require(rejected,"Unvalidated emitter configuration was accepted");total.unsupported_emitters++;
+  }
+#else
   if(use_mis)require(total.forward>100,"Missing forward point-light paths");
+#endif
   require(stats.mem_used==0,"Lighting test leaked native allocations");std::ofstream(out/"library.txt")<<device.gpu.library_path;std::ofstream(out/"adapter.txt")<<device.gpu.adapter_name;
-  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentOriginalCpuImage\":true,\"fullLightingMisProven\":false,\"cases\":"<<lighting_cases<<",\"pointSunMisEnabled\":"<<(use_mis?"true":"false")<<",\"transparentSurfaceHits\":"<<total.transparent_hits<<",\"maximumShadowHitCount\":"<<total.max_shadow_hits<<",\"forwardLightPaths\":"<<total.forward<<",\"deformingSurfacePaths\":"<<total.deforming_paths<<",\"transmissionPaths\":"<<total.transmissions<<",\"shadowPaths\":"<<total.shadows<<",\"blocked\":"<<total.blocked<<",\"visible\":"<<total.visible<<",\"filmChecks\":"<<total.floats<<",\"strictDifferences\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum<<",\"repeatBitwiseDifferences\":"<<total.repeat_differences<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentOriginalCpuImage\":true,\"fullLightingMisProven\":false,\"cases\":"<<lighting_cases<<",\"pointSunMisEnabled\":"<<(use_mis?"true":"false")<<",\"transparentSurfaceHits\":"<<total.transparent_hits<<",\"maximumShadowHitCount\":"<<total.max_shadow_hits<<",\"forwardLightPaths\":"<<total.forward<<",\"unsupportedEmitterConfigurationsRejected\":"<<total.unsupported_emitters<<",\"meshMisPaths\":"<<total.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<total.deforming_paths<<",\"transmissionPaths\":"<<total.transmissions<<",\"shadowPaths\":"<<total.shadows<<",\"blocked\":"<<total.blocked<<",\"visible\":"<<total.visible<<",\"filmChecks\":"<<total.floats<<",\"strictDifferences\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum<<",\"repeatBitwiseDifferences\":"<<total.repeat_differences<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &error){std::cerr<<error.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

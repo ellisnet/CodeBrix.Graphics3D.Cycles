@@ -238,6 +238,47 @@ void initialize_paths() {
 #include "host_properties.inc"
 #include "host_scene.inc"
 
+#ifdef WITH_WEBGPU
+namespace ccl {
+// Defined with the WebGPU device (native/cycles/device_tier.h, device.cpp).
+void host_tier_config(uint32_t tier, bool record_off, bool read_only, bool canary, const char *directory);
+std::string webgpu_device_report_json(Device *device);
+}
+#endif
+extern "C" int cbc_host_tier_config(const CBCTierConfig *config, const char *directory) {
+  return boundary([&] {
+    require(config && config->struct_size == sizeof(*config) && config->abi_version == CBC_HOST_ABI, "Invalid tier configuration");
+    require(std::all_of(std::begin(config->reserved), std::end(config->reserved), [](auto v) { return v == 0; }), "Unknown configuration flags");
+    require(config->tier <= CBC_TIER_CONSERVATIVE, "Invalid tier");
+    require((config->flags & ~uint32_t(CBC_TIER_RECORD_OFF | CBC_TIER_RECORD_READ_ONLY | CBC_TIER_CANARY)) == 0, "Unknown tier flags");
+#ifdef WITH_WEBGPU
+    ccl::host_tier_config(config->tier, config->flags & CBC_TIER_RECORD_OFF, config->flags & CBC_TIER_RECORD_READ_ONLY,
+                          config->flags & CBC_TIER_CANARY, directory ? directory : "");
+#else
+    (void)directory;
+#endif
+  });
+}
+extern "C" int cbc_host_device_report_json(CBCHost handle, char *json, uint64_t capacity, uint64_t *required) {
+  return edit(handle, [&](Host &host) {
+    require(required && (!capacity || json), "Invalid result buffer or size pointer");
+    std::ostringstream out; out.imbue(std::locale::classic());
+    Device *device = host.session ? host.session->device.get() : nullptr;
+    require(device != nullptr, "Host has no device", CBC_FAILED);
+    out << "{\"abiVersion\":" << CBC_HOST_ABI << ",\"backend\":";
+#ifdef WITH_WEBGPU
+    if (device->info.type == DEVICE_WEBGPU) {
+      const std::string report = webgpu_device_report_json(device);
+      require(!report.empty(), "WebGPU device report unavailable", CBC_FAILED);
+      out << "\"webgpu\",\"pipelines\":" << report;
+    } else
+#endif
+    out << (device->info.type == DEVICE_METAL ? "\"metal\"" : "\"cpu\"") << ",\"pipelines\":null";
+    out << '}';
+    copy_text(out.str(), json, capacity, required);
+  });
+}
+
 extern "C" uint32_t cbc_host_abi_version(void) { return CBC_HOST_ABI; }
 extern "C" int cbc_host_error(char *buffer, uint64_t capacity, uint64_t *required) {
   if (!required || (capacity && !buffer)) return CBC_INVALID;

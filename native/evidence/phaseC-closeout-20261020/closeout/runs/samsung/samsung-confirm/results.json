@@ -1,0 +1,683 @@
+{
+  "glass_render": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {},
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 81.3,
+    "pipelineSummary": {
+      "count": 8,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "table"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      ],
+      "maxSeconds": 5.28918,
+      "secondsByEntry": {
+        "init_camera": [
+          0.41
+        ],
+        "intersect_closest": [
+          0.72
+        ],
+        "prepare_shader_data": [
+          1.09
+        ],
+        "prepare_surface": [
+          2.91
+        ],
+        "shade_surface_light": [
+          4.48
+        ],
+        "connect_surface_light": [
+          1.74
+        ],
+        "shade_surface": [
+          5.29
+        ],
+        "shade_background": [
+          0.84
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": false,
+      "pipelines": 8,
+      "totalPipelineMs": 17465.6,
+      "maxPipelineMs": 5289.18,
+      "maxPipelineEntry": "shade_surface",
+      "warnings": []
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "table",
+      "detail": "Samsung SM-X700 Adreno 730: full-fidelity proof device (2026-10-19 policy)",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 730",
+        "description": "Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  ",
+        "vendorId": 20803,
+        "deviceId": 117637121,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Samsung SM-X700 Adreno 730",
+        "tier": "full",
+        "budgetMs": 0,
+        "evidence": "full-fidelity proof device (2026-10-19 policy)"
+      },
+      "budgetSource": "default",
+      "record": {
+        "mode": "none",
+        "path": "",
+        "status": "none",
+        "fullTierCompiles": 0,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "overrides": [],
+      "warnings": []
+    },
+    "maxError": null,
+    "strict": 44
+  },
+  "transparent_lighting": {
+    "gate": "transparent_lighting",
+    "args": [],
+    "env": {},
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 148.1,
+    "pipelineSummary": {
+      "count": 36,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "table"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      ],
+      "maxSeconds": 26.0901,
+      "secondsByEntry": {
+        "init_camera": [
+          0.4,
+          0.43,
+          0.45
+        ],
+        "intersect_closest": [
+          0.67,
+          0.69,
+          0.7
+        ],
+        "prepare_shader_data": [
+          1.1,
+          1.14,
+          1.16
+        ],
+        "prepare_surface": [
+          2.68,
+          2.74,
+          2.89
+        ],
+        "shade_surface_light": [
+          4.46,
+          25.43,
+          26.09
+        ],
+        "connect_surface_light": [
+          1.74,
+          1.77,
+          1.77
+        ],
+        "shade_surface": [
+          5.33,
+          5.42,
+          5.51
+        ],
+        "shade_background": [
+          0.8,
+          0.8,
+          0.95
+        ],
+        "intersect_shadow": [
+          0.55,
+          0.55,
+          0.54
+        ],
+        "prepare_shadow_shader_data": [
+          1.49,
+          1.49,
+          1.51
+        ],
+        "shade_shadow_transparent": [
+          2.81,
+          2.84,
+          2.95
+        ],
+        "shade_light_forward": [
+          0.17,
+          5.56,
+          5.57
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": false,
+      "pipelines": 36,
+      "totalPipelineMs": 121142,
+      "maxPipelineMs": 26090.1,
+      "maxPipelineEntry": "shade_surface_light",
+      "warnings": []
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "table",
+      "detail": "Samsung SM-X700 Adreno 730: full-fidelity proof device (2026-10-19 policy)",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 730",
+        "description": "Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  ",
+        "vendorId": 20803,
+        "deviceId": 117637121,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Samsung SM-X700 Adreno 730",
+        "tier": "full",
+        "budgetMs": 0,
+        "evidence": "full-fidelity proof device (2026-10-19 policy)"
+      },
+      "budgetSource": "default",
+      "record": {
+        "mode": "none",
+        "path": "",
+        "status": "none",
+        "fullTierCompiles": 0,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "overrides": [],
+      "warnings": []
+    },
+    "maxError": 1.621246337890625e-05,
+    "strict": null
+  },
+  "lighting_mis": {
+    "gate": "lighting_mis",
+    "args": [],
+    "env": {},
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 32.2,
+    "pipelineSummary": {
+      "count": 11,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "table"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      ],
+      "maxSeconds": 5.345140000000001,
+      "secondsByEntry": {
+        "init_camera": [
+          0.4
+        ],
+        "intersect_closest": [
+          0.67
+        ],
+        "shade_background": [
+          0.75
+        ],
+        "prepare_shader_data": [
+          1.14
+        ],
+        "prepare_surface": [
+          2.7
+        ],
+        "shade_surface_light": [
+          4.54
+        ],
+        "connect_surface_light": [
+          1.75
+        ],
+        "shade_surface": [
+          5.35
+        ],
+        "intersect_shadow": [
+          0.54
+        ],
+        "shade_shadow": [
+          0.05
+        ],
+        "shade_light_forward": [
+          0.17
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": false,
+      "pipelines": 11,
+      "totalPipelineMs": 18049.6,
+      "maxPipelineMs": 5345.14,
+      "maxPipelineEntry": "shade_surface",
+      "warnings": []
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "table",
+      "detail": "Samsung SM-X700 Adreno 730: full-fidelity proof device (2026-10-19 policy)",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 730",
+        "description": "Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  ",
+        "vendorId": 20803,
+        "deviceId": 117637121,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Samsung SM-X700 Adreno 730",
+        "tier": "full",
+        "budgetMs": 0,
+        "evidence": "full-fidelity proof device (2026-10-19 policy)"
+      },
+      "budgetSource": "default",
+      "record": {
+        "mode": "none",
+        "path": "",
+        "status": "none",
+        "fullTierCompiles": 0,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "overrides": [],
+      "warnings": []
+    },
+    "maxError": 6.079673767089844e-06,
+    "strict": null
+  },
+  "record-create": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_DEVICE_RECORD_DIR": "{REMOTE}/record"
+    },
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 79.4,
+    "pipelineSummary": {
+      "count": 8,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "table"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      ],
+      "maxSeconds": 5.29201,
+      "secondsByEntry": {
+        "init_camera": [
+          0.4
+        ],
+        "intersect_closest": [
+          0.66
+        ],
+        "prepare_shader_data": [
+          1.09
+        ],
+        "prepare_surface": [
+          2.91
+        ],
+        "shade_surface_light": [
+          4.46
+        ],
+        "connect_surface_light": [
+          1.75
+        ],
+        "shade_surface": [
+          5.29
+        ],
+        "shade_background": [
+          0.83
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": false,
+      "pipelines": 8,
+      "totalPipelineMs": 17386.1,
+      "maxPipelineMs": 5292.01,
+      "maxPipelineEntry": "shade_surface",
+      "warnings": []
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "table",
+      "detail": "Samsung SM-X700 Adreno 730: full-fidelity proof device (2026-10-19 policy)",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 730",
+        "description": "Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  ",
+        "vendorId": 20803,
+        "deviceId": 117637121,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Samsung SM-X700 Adreno 730",
+        "tier": "full",
+        "budgetMs": 0,
+        "evidence": "full-fidelity proof device (2026-10-19 policy)"
+      },
+      "budgetSource": "default",
+      "record": {
+        "mode": "read-write",
+        "path": "/data/local/tmp/codebrix-c4-samsung-confirm/record/codebrix-cycles-device-c03d729fb5dd443e.txt",
+        "status": "absent",
+        "fullTierCompiles": 0,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "overrides": [
+        "CODEBRIX_CYCLES_DEVICE_RECORD_DIR=/data/local/tmp/codebrix-c4-samsung-confirm/record"
+      ],
+      "warnings": []
+    },
+    "maxError": null,
+    "strict": 44
+  },
+  "record-reuse": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_DEVICE_RECORD_DIR": "{REMOTE}/record"
+    },
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 79.1,
+    "pipelineSummary": {
+      "count": 8,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "record"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      ],
+      "maxSeconds": 5.27493,
+      "secondsByEntry": {
+        "init_camera": [
+          0.4
+        ],
+        "intersect_closest": [
+          0.67
+        ],
+        "prepare_shader_data": [
+          1.1
+        ],
+        "prepare_surface": [
+          2.91
+        ],
+        "shade_surface_light": [
+          4.48
+        ],
+        "connect_surface_light": [
+          1.76
+        ],
+        "shade_surface": [
+          5.27
+        ],
+        "shade_background": [
+          0.83
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": false,
+      "pipelines": 8,
+      "totalPipelineMs": 17425.6,
+      "maxPipelineMs": 5274.93,
+      "maxPipelineEntry": "shade_surface",
+      "warnings": []
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "record",
+      "detail": "8 full-tier pipeline compiles recorded without a failure or breadcrumb",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 730",
+        "description": "Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  ",
+        "vendorId": 20803,
+        "deviceId": 117637121,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Samsung SM-X700 Adreno 730",
+        "tier": "full",
+        "budgetMs": 0,
+        "evidence": "full-fidelity proof device (2026-10-19 policy)"
+      },
+      "budgetSource": "default",
+      "record": {
+        "mode": "read-write",
+        "path": "/data/local/tmp/codebrix-c4-samsung-confirm/record/codebrix-cycles-device-c03d729fb5dd443e.txt",
+        "status": "valid",
+        "fullTierCompiles": 8,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "overrides": [
+        "CODEBRIX_CYCLES_DEVICE_RECORD_DIR=/data/local/tmp/codebrix-c4-samsung-confirm/record"
+      ],
+      "warnings": []
+    },
+    "maxError": null,
+    "strict": 44
+  },
+  "record-lock-held": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_DEVICE_RECORD_DIR": "{REMOTE}/record"
+    },
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 78.8,
+    "pipelineSummary": {
+      "count": 8,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "record"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      ],
+      "maxSeconds": 5.30576,
+      "secondsByEntry": {
+        "init_camera": [
+          0.41
+        ],
+        "intersect_closest": [
+          0.67
+        ],
+        "prepare_shader_data": [
+          1.1
+        ],
+        "prepare_surface": [
+          2.88
+        ],
+        "shade_surface_light": [
+          4.47
+        ],
+        "connect_surface_light": [
+          1.73
+        ],
+        "shade_surface": [
+          5.31
+        ],
+        "shade_background": [
+          0.85
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": false,
+      "pipelines": 8,
+      "totalPipelineMs": 17417.6,
+      "maxPipelineMs": 5305.76,
+      "maxPipelineEntry": "shade_surface",
+      "warnings": []
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "record",
+      "detail": "16 full-tier pipeline compiles recorded without a failure or breadcrumb",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 730",
+        "description": "Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  ",
+        "vendorId": 20803,
+        "deviceId": 117637121,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Samsung SM-X700 Adreno 730",
+        "tier": "full",
+        "budgetMs": 0,
+        "evidence": "full-fidelity proof device (2026-10-19 policy)"
+      },
+      "budgetSource": "default",
+      "record": {
+        "mode": "read-write",
+        "path": "/data/local/tmp/codebrix-c4-samsung-confirm/record/codebrix-cycles-device-c03d729fb5dd443e.txt",
+        "status": "valid",
+        "fullTierCompiles": 16,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "overrides": [
+        "CODEBRIX_CYCLES_DEVICE_RECORD_DIR=/data/local/tmp/codebrix-c4-samsung-confirm/record"
+      ],
+      "warnings": []
+    },
+    "maxError": null,
+    "strict": 44
+  }
+}

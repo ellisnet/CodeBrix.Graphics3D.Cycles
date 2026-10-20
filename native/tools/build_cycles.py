@@ -63,7 +63,7 @@ def overlay(out=None):
     film=(ROOT/'shaders/wavefront_background.wgsl').read_text().split('fn background_visible')[0]
     sampling=(REPO/'parity/shaders/closures.wgsl').read_text()
     sampling=sampling[:sampling.index('struct Closure')]+sampling[sampling.index('// Original numerical adapter:'):sampling.index('fn oren_g')]
-    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_surface.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_lighting.wgsl'))
+    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_surface.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_lighting.wgsl'))
     (out/'surface_shader.inc').write_text('R"CBWGSL('+surface+')CBWGSL"\n')
     volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_volume.wgsl'))
     (out/'volume_shader.inc').write_text('R"CBWGSL('+volume+')CBWGSL"\n')
@@ -103,7 +103,7 @@ def main():
         commands[1]=['cmake','--build',str(build),'--target',*args.target,'--parallel',args.jobs]
     else:
         commands[1][4:4]=['codebrix_cycles_host','codebrix_host_cpu_test','codebrix_host_gpu_test',
-                         'codebrix_host_reload_test','codebrix_host_concurrency_test',
+                         'codebrix_host_reload_test','codebrix_host_concurrency_test','codebrix_host_tier_test',
                          'codebrix_host_session_reference','codebrix_host_session64_reference',
                          'codebrix_host_image_reference']
     for command in commands:subprocess.run(command,check=True)

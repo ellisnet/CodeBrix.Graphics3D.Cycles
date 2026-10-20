@@ -49,13 +49,19 @@ fn svm_allocate(s:ptr<function,SvmState>,kind:u32,weight:vec3<f32>)->u32{
     var c:SvmClosure;c.kind=kind;c.weight=weight;svm_closure_write((*s).output.closure_base+index*SVM_CLOSURE_BYTES,c);
     (*s).output.count++;(*s).output.remaining--;return index;
 }
+// Original CodeBrix arithmetic adapter: the pinned ensure_valid_specular_reflection
+// formula with separately rounded binary32 products, sums, square roots and
+// divisions (no driver contraction or approximate builtins). The adjusted
+// normal feeds sharp GGX lobes, where one ulp changes the sampled density.
 fn svm_valid_normal(ng:vec3<f32>,wi:vec3<f32>,n:vec3<f32>)->vec3<f32>{
-    let reflection=2.0*dot(n,wi)*n-wi;let iz=dot(wi,ng);let threshold=min(0.9*iz,0.01);
-    if(dot(ng,reflection)>=threshold){return n;}
-    var x=n-dot(n,ng)*ng;let magnitude=length(x);if(magnitude!=0.0){x*=1.0/magnitude;}else{x=n;}
-    let ix=dot(wi,x);let a=ix*ix+iz*iz;let b=2.0*(a+iz*threshold);let c=(threshold+iz)*(threshold+iz);
-    let root=sqrt(max(b*b-4.0*a*c,0.0));let nz2=select(0.25*(b-root)/a,0.25*(b+root)/a,ix<0.0);
-    return sqrt(max(1.0-nz2,0.0))*x+sqrt(max(nz2,0.0))*ng;
+    let reflection=rounded_add3((2.0*rounded_dot(n,wi))*n,-wi);let iz=rounded_dot(wi,ng);let threshold=min(0.9*iz,0.01);
+    if(rounded_dot(ng,reflection)>=threshold){return n;}
+    var x=rounded_add3(n,-(rounded_dot(n,ng)*ng));let magnitude=rounded_sqrt(rounded_dot(x,x));
+    if(magnitude!=0.0){x=x*rounded_divide(1.0,magnitude);}else{x=n;}
+    let ix=rounded_dot(wi,x);let a=rounded_add(ix*ix,iz*iz);let b=2.0*rounded_add(a,iz*threshold);let tz=rounded_add(threshold,iz);let c=tz*tz;
+    let root=rounded_sqrt(max(rounded_add(b*b,-((4.0*a)*c)),0.0));
+    let nz2=rounded_divide(0.25*rounded_add(b,select(-root,root,ix<0.0)),a);
+    return rounded_add3(rounded_sqrt(max(rounded_add(1.0,-nz2),0.0))*x,rounded_sqrt(max(nz2,0.0))*ng);
 }
 // Original CodeBrix arithmetic adapter. Add already-rounded binary32 products
 // without a driver contracting the multiply/add before 1-E cancellation.
@@ -105,8 +111,18 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
         case CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID:{bytes=SZ_GlossyBsdfData;}
         default:{svm_error(s,16u);return;}}
     let data=svm_take(s,bytes);if((*s).error!=0u||mix_weight==0.0){return;}
-    if(kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID||kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID){svm_glass(s,data,kind,mix_weight,visibility);return;}
-    if(kind==CLOSURE_BSDF_MICROFACET_GGX_ID||kind==CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID){svm_glossy(s,data,kind,mix_weight,visibility);return;}
+    // Scene specialization (pipelines.h) removes closure setup the uploaded SVM
+    // programs cannot reach; reaching a removed handler is reported, never shaded.
+    if(kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID||kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID){
+//#if SVM_BSDF_GLASS else svm_error(s,2u);return;
+        svm_glass(s,data,kind,mix_weight,visibility);return;
+//#endif
+    }
+    if(kind==CLOSURE_BSDF_MICROFACET_GGX_ID||kind==CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID){
+//#if SVM_BSDF_GLOSSY else svm_error(s,2u);return;
+        svm_glossy(s,data,kind,mix_weight,visibility);return;
+//#endif
+    }
     let raw_weight=(*s).weight*mix_weight;
     if(kind==CLOSURE_BSDF_TRANSPARENT_ID){svm_transparent(s,raw_weight,flag);return;}
     let normal_index=svm_byte(data+select(N_SimpleBsdfData_normal_offset,N_DiffuseBsdfData_normal_offset,kind==CLOSURE_BSDF_DIFFUSE_ID));

@@ -1,0 +1,42 @@
+{
+ "purpose": "Pixel 4 XL tier measurement, CODEBRIX_CYCLES_PIPELINE_TIER=full; then opt-in canary timing",
+ "jobs": [
+  {
+   "label": "glass_render",
+   "gate": "glass_render",
+   "env": {
+    "CODEBRIX_CYCLES_PIPELINE_TIER": "full"
+   },
+   "expectTier": "full",
+   "expectReason": "override"
+  },
+  {
+   "label": "transparent_lighting",
+   "gate": "transparent_lighting",
+   "env": {
+    "CODEBRIX_CYCLES_PIPELINE_TIER": "full"
+   },
+   "expectTier": "full",
+   "expectReason": "override"
+  },
+  {
+   "label": "lighting_mis",
+   "gate": "lighting_mis",
+   "env": {
+    "CODEBRIX_CYCLES_PIPELINE_TIER": "full"
+   },
+   "expectTier": "full",
+   "expectReason": "override"
+  },
+  {
+   "label": "canary-glass_render",
+   "gate": "glass_render",
+   "env": {
+    "CODEBRIX_CYCLES_PIPELINE_TIER": "full",
+    "CODEBRIX_CYCLES_PIPELINE_CANARY": "1"
+   },
+   "expectTier": "full",
+   "expectReason": "override"
+  }
+ ]
+}

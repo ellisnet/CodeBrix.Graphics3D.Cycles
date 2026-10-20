@@ -116,6 +116,28 @@ int cbc_host_image_release(CBCHost host, CBCImage image);
 /* Triangle geometry is validated and copied. Every face initially uses material 0. */
 int cbc_host_mesh(CBCHost host, CBCNode mesh, const float *xyz, uint64_t vertex_count,
                   const uint32_t *indices, uint64_t triangle_count);
+/* WebGPU pipeline tier selection (graceful degradation; native/DEVICE.md).
+ * Process-wide; applies to WebGPU hosts created after the call. tier is
+ * CBC_TIER_AUTO (explicit request > persisted device record > known-adapter
+ * table > full), CBC_TIER_FULL or CBC_TIER_CONSERVATIVE. record_directory is an
+ * app-writable directory for the persisted device-identity record (created if
+ * missing; NULL or empty disables the record, as does CBC_TIER_RECORD_OFF).
+ * CBC_TIER_CANARY compiles one representative module at device creation; its
+ * failure selects the conservative tier before the scene compiles. A slow
+ * compile never changes the tier. Environment variables documented in
+ * native/DEVICE.md override these settings for gates. */
+enum { CBC_TIER_AUTO = 0, CBC_TIER_FULL = 1, CBC_TIER_CONSERVATIVE = 2 };
+enum { CBC_TIER_RECORD_OFF = 1, CBC_TIER_RECORD_READ_ONLY = 2, CBC_TIER_CANARY = 4 };
+typedef struct CBCTierConfig {
+  uint32_t struct_size, abi_version, tier, flags;
+  uint32_t reserved[4];
+} CBCTierConfig;
+int cbc_host_tier_config(const CBCTierConfig *config, const char *utf8_record_directory);
+/* Capability report for the host's device as JSON (required includes NUL):
+ * backend, adapter, chosen tier and why (override, opt-in, record, table,
+ * default, canary, failure), record path/status, canary result, compile
+ * budget, warnings and compiled pipelines. Serializes with rendering. */
+int cbc_host_device_report_json(CBCHost host, char *json, uint64_t capacity, uint64_t *required);
 /* Synchronous scene-linear RGBA, lower-left origin. Output changes only on success.
  * All edits serialize with rendering. Cancel and destruction may run concurrently.
  * A requested WebGPU render never falls back to CPU rendering. */

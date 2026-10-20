@@ -91,9 +91,8 @@ void WebGPUDevice::enqueue_volume(int work,const DeviceKernelArguments &args){
   if(!work)return;
   const size_t bytes=size_t(n)*MAX_CLOSURE*sizeof(SurfaceClosureRecord);
   if(volume_closure_bytes<bytes){if(volume_closures){flush();release(volume_closures);}volume_closures=allocate(bytes);volume_closure_bytes=bytes;}p[23]=volume_closures;
-  if(!volume.value){const std::string code=volume_source();WGPUShaderSourceWGSL source{};source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={code.data(),code.size()};
-    WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();volume=gpu.pipeline(shader,pipeline_layout,"shade_volume");}
-  dispatch(p,uint32_t(work),volume);
+  if(!pipeline_current(volume,"shade_volume"))volume=std::move(build_pipelines("volume",volume_source(),{"shade_volume"})[0]);
+  dispatch(p,uint32_t(work),volume,workgroup("shade_volume"));
 }
 }
 
@@ -108,9 +107,8 @@ void WebGPUDevice::enqueue_volume_stack(int work,const DeviceKernelArguments &ar
   p[10]=uint32_t(remaining(uintptr_t(state.path.render_pixel_index))/4);if(!indices)require(uint32_t(n)<=p[10],"Volume stack dispatch exceeds path capacity");
   validate(uintptr_t(state.ray.P),size_t(p[10])*sizeof(packed_float3));validate(uintptr_t(state.path.queued_kernel),size_t(p[10])*sizeof(uint16_t));validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
   if(!work||!n)return;
-  if(!volume_stack.value){const std::string code=volume_stack_source();WGPUShaderSourceWGSL source{};source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={code.data(),code.size()};
-    WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();volume_stack=gpu.pipeline(shader,pipeline_layout,"intersect_volume_stack");}
-  dispatch(p,uint32_t(work),volume_stack);
+  if(!pipeline_current(volume_stack,"intersect_volume_stack"))volume_stack=std::move(build_pipelines("volume_stack",volume_stack_source(),{"intersect_volume_stack"})[0]);
+  dispatch(p,uint32_t(work),volume_stack,workgroup("intersect_volume_stack"));
 }
 }
 
@@ -123,8 +121,7 @@ void WebGPUDevice::enqueue_volume_density(int work,const DeviceKernelArguments &
   std::array<uint32_t,32> p{};p[1]=count;p[2]=pointer(0,(size_t(offset)+count)*2*sizeof(KernelShaderEvalInput));p[3]=offset;p[4]=pointer(1,(size_t(offset)+count)*8);pointer(2,4);
   p[6]=constants.at("data");p[14]=scene_tables();p[17]=error_word;p[18]=globals.at("shaders");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));p[21]=globals.at("svm_nodes");p[22]=uint32_t(remaining(p[21])/4);
   if(!count)return;
-  if(!volume_density.value){const std::string code=volume_source();WGPUShaderSourceWGSL source{};source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={code.data(),code.size()};
-    WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();volume_density=gpu.pipeline(shader,pipeline_layout,"shader_eval_volume_density");}
-  dispatch(p,uint32_t(work),volume_density);
+  if(!pipeline_current(volume_density,"shader_eval_volume_density"))volume_density=std::move(build_pipelines("volume",volume_source(),{"shader_eval_volume_density"})[0]);
+  dispatch(p,uint32_t(work),volume_density,workgroup("shader_eval_volume_density"));
 }
 }

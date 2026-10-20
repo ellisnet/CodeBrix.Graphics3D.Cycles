@@ -1,0 +1,1671 @@
+diff --git a/PARITY.md b/PARITY.md
+index 7f11ada..4ca3cd1 100644
+--- a/PARITY.md
++++ b/PARITY.md
+@@ -37,7 +37,7 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons |
+ | Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending; Android revalidation of the integrated tree pending |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+-| Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux |
++| Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; Android devices have not run this mechanism yet |
+ | Platforms/delivery | Full Linux host only; other host builds, remaining GPU backends/RIDs, .NET package loading and Android application sandbox pending |
+ | Full parity decision | Open. A small matching render cannot establish this. Unsupported features must be reported explicitly, never silently approximated |
+ 
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index cf4ea06..31d6eb5 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1224,3 +1224,109 @@ shadow catchers and MNEE. The emitter-sampling entry with object motion still
+ exceeds the 60 s compile budget cold on Linux (warning only). Old captures replay
+ with their own unspecialized modules and can still crash the driver with a cold
+ cache. Android has not run this combination yet.
++
++## Device tiers: persisted record, known adapters and init canary
++
++WebGPU reports adapter identity and limits but not shader-compiler capacity, and
++a vendor compiler crash ends the process. The WebGPU device therefore chooses
++its pipeline tier once, when it is created and before any renderer pipeline
++compiles (`native/cycles/device_tier.{h,cpp}`):
++
++1. an explicit request (host API or `CODEBRIX_CYCLES_PIPELINE_TIER`), reason
++   `override` (full) or `opt-in` (conservative);
++2. the persisted device-identity record, reason `record`: a full-tier crash
++   breadcrumb or pipeline-creation failure selects conservative; full-tier
++   compiles without any failure select full (so the record overrides the table);
++3. the known-adapter table, reason `table`;
++4. full fidelity, reason `default`.
++
++The optional init canary then compiles one representative module (the surface
++module with no optional handlers, entry `prepare_surface`) in the full tier. A
++canary failure selects conservative before the scene compiles (reason `canary`);
++a canary crash leaves a breadcrumb, so the next run starts conservative from the
++record; a canary over its budget (10 s, `CODEBRIX_CYCLES_PIPELINE_CANARY_BUDGET_MS`)
++only warns. During rendering a non-fatal creation failure still retries in the
++conservative tier (reason `failure`) and is recorded. A slow compile never
++changes the tier: it warns and marks the session degraded, because the
++conservative tier (workgroup size 1) is not bit-identical to full fidelity. The
++only exception is the explicit old-hardware opt-in
++`CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION=conservative` (reason `budget-opt-in`,
++never recorded). Full-tier WGSL is unchanged by this mechanism.
++
++Known-adapter table (`known_adapters()`; device and driver are substrings of the
++WebGPU adapter device name and driver description):
++
++| Entry | Device | Driver | Tier |
++| --- | --- | --- | --- |
++| Pixel 4 XL Adreno 640 | `Adreno (TM) 640` | any | conservative |
++| Samsung SM-X700 Adreno 730 | `Adreno (TM) 730` | any | full |
++| HP Intel Xe (Android x64) | `Intel(R) Xe Graphics` | `Mesa 24.0.8` | full |
++| Linux Intel UHD ADL-S | `Intel(R) UHD Graphics (ADL-S GT1)` | `Mesa 25.0.7` | full |
++
++An unknown mobile adapter (Android build, or a Qualcomm, ARM, Imagination,
++Samsung or Apple vendor id or Adreno/Mali/PowerVR/Xclipse device name) starts
++full with a 20 s compile budget instead of 60 s (warnings only). An explicit
++`CODEBRIX_CYCLES_PIPELINE_BUDGET_MS` replaces either budget.
++
++**Persisted record.** Enabled only when the application supplies a writable
++directory (`cbc_host_tier_config`, or `CODEBRIX_CYCLES_DEVICE_RECORD_DIR`); missing
++directories are created; problems become warnings and never fail rendering. The
++file is `codebrix-cycles-device-<fnv1a64 of vendor, architecture, device,
++driver description, vendor id, device id>.txt`, UTF-8 text, one `key=value` per
++line, fields free of newlines and `|`:
++
++```
++codebrix-cycles-device-record 1
++vendor=<WGPUAdapterInfo.vendor>
++architecture=<WGPUAdapterInfo.architecture>
++device=<WGPUAdapterInfo.device>
++description=<WGPUAdapterInfo.description (driver)>
++runtime=codebrix-api=<n>;wgpu-native=<v>;wgpu-core=<v>;target=<triple>;patches=<list>
++shaderHash=fnv1a64:<16 hex digits over every production WGSL module>
++stage=<tier>|<module>|<entry>|<successes>|<failures>|<last ms>|<max ms>
++breadcrumb=<tier>|<module>|<entry>|signal or interrupted|<signal>|<unix time>
++failure=<tier>|<module>|<entry>|<message>
++```
++
++Unknown keys are ignored; at most 16 breadcrumbs and 16 failures are kept. A
++record whose identity, runtime or shader hash differs is reported
++(`identity-mismatch`, `stale-runtime`, `stale-shader-hash`), never applied, and
++replaced by the next write. Writes take an advisory `flock` on `<record>.lock`,
++re-read the file and rename a temporary copy, so concurrent processes merge.
++Before each pipeline creation the device writes `<record>.pending-<pid>-<device>-<serial>`
++(runtime, shader hash, tier, module, entry, time); the crash handler appends
++`signal=<n>`; the file is removed when creation returns. A pending file whose
++process no longer runs becomes a breadcrumb on the next start (`interrupted` if
++no signal was written, which includes out-of-memory kills and forced stops while
++compiling). Delete the record to start again at full fidelity.
++
++**Host C API (additive; ABI 1).** `cbc_host_tier_config(const CBCTierConfig *,
++const char *record_directory)` sets the process-wide request (`CBC_TIER_AUTO`,
++`CBC_TIER_FULL`, `CBC_TIER_CONSERVATIVE`) and flags (`CBC_TIER_RECORD_OFF`,
++`CBC_TIER_RECORD_READ_ONLY`, `CBC_TIER_CANARY`) for hosts created afterwards;
++`CBCTierConfig` is size/ABI/reserved checked. `cbc_host_device_report_json`
++returns the capability report: backend, adapter identity, tier, reason and
++detail, known-adapter entry, compile budget and its source, record mode, path,
++status and breadcrumbs, canary result, environment overrides, warnings and
++compiled pipelines. The .NET wrapper exposes `CyclesHost.ConfigureTiers` and
++`DeviceReportJson`. Gate and replay JSON carry the same decision under
++`pipelineReport.decision`; the pipeline log adds `tierReason`.
++
++**Environment overrides (gates).** `CODEBRIX_CYCLES_PIPELINE_TIER=full|conservative|auto`,
++`CODEBRIX_CYCLES_DEVICE_RECORD_DIR=<dir>`,
++`CODEBRIX_CYCLES_DEVICE_RECORD=on|off|ignore|readonly` (`ignore` reads and reports
++without applying or writing), `CODEBRIX_CYCLES_PIPELINE_CANARY=1|0`, and the
++existing `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`. Test hooks used only by
++`native/tools/tier_gate.py`: `CODEBRIX_CYCLES_TEST_ADAPTER` (simulated identity for
++the decision; the real adapter still compiles), `CODEBRIX_CYCLES_TEST_CRASH_PIPELINE`
++(raise `SIGABRT` inside the breadcrumb scope of the named stage, or
++`canary:prepare_surface`) and `CODEBRIX_CYCLES_TEST_CANARY=fail` (a canary
++module the WebGPU front end rejects).
++
++`native/tools/tier_gate.py` runs each scenario as a separate process of
++`tests/host/tier_consumer.c` on Linux: fresh device, record reuse, a real crash
++breadcrumb followed by a conservative start, stale shader hash and runtime,
++table lookups (including the real adapter and an unknown mobile adapter),
++record-over-table, overrides, canary pass/slow/failure/crash and a slow compile
++that keeps the full tier. Every film meets the practical criterion against the
++original CPU session. Android devices have not run this mechanism yet.
+diff --git a/native/README.md b/native/README.md
+index 63c2af9..916b197 100644
+--- a/native/README.md
++++ b/native/README.md
+@@ -231,7 +231,9 @@ The registered device now includes scene-driven WGSL specialization (only the SV
+ handlers, closures, area/triangle lights and motion code the uploaded scene can
+ reach are compiled; a reached removed handler reports an error), per-pipeline
+ compile-budget warnings with a conservative fallback tier after creation
+-failures, flat-CDF constant-emission triangle lights with forward-hit MIS
++failures (chosen before compilation from an explicit request, a persisted
++device-identity record with crash breadcrumbs, a small known-adapter table or an
++optional init canary; see DEVICE.md "Device tiers"), flat-CDF constant-emission triangle lights with forward-hit MIS
+ (including moving and deforming emitters), separate light-sampling and
+ BSDF/shadow-connection stages, a separate ShaderData stage for transparent
+ shadows, and oracle-host-selected `normalize(float3)` rounding plus rounded
+diff --git a/native/cycles/device.cpp b/native/cycles/device.cpp
+index 9c80c65..9d1a066 100644
+--- a/native/cycles/device.cpp
++++ b/native/cycles/device.cpp
+@@ -2,8 +2,11 @@
+ // SPDX-License-Identifier: Apache-2.0
+ #include "device.h"
+ #include "device/dummy/device.h"
++#include "wavefront.h"
+ #include <algorithm>
+ #include <array>
++#include <chrono>
++#include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+ #include <limits>
+@@ -16,6 +19,8 @@ std::string controls_wgsl(){return control_source;}
+ static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
+ static size_t aligned(size_t n){require(n<=UINT32_MAX-15,"WebGPU virtual address overflow");return (n+15)&~size_t(15);}
+ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Device(i,s,p,h){
++  // The tier is decided before any pipeline is compiled (device_tier.h).
++  select_tier();
+   std::array<WGPUBindGroupLayoutEntry,2> entries{};
+   for(unsigned n=0;n<2;n++){entries[n].binding=n;entries[n].visibility=WGPUShaderStage_Compute;
+     entries[n].buffer.type=n?WGPUBufferBindingType_Uniform:WGPUBufferBindingType_Storage;}
+@@ -30,10 +35,62 @@ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Devi
+   // Diagnostic override: CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 compiles every
+   // handler (the unspecialized modules) for A/B verification.
+   if(const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION"))specialization_enabled=std::strcmp(mode,"0")!=0;
+-  if(const char *budget=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_MS"))pipeline_budget_ms=std::strtod(budget,nullptr);
+-  if(const char *tier=std::getenv("CODEBRIX_CYCLES_PIPELINE_TIER"))conservative=std::strcmp(tier,"conservative")==0;
++  if(const char *budget=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_MS")){pipeline_budget_ms=std::strtod(budget,nullptr);tier_policy.budget_source="environment";}
+   if(const char *action=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION"))budget_conservative=std::strcmp(action,"conservative")==0;
+-  if(conservative){pipeline_warnings.push_back("conservative pipeline tier requested (workgroup size 1; results may differ in the last bits but must meet the practical criterion)");pipeline_process_warning(pipeline_warnings.back());}
++  if(conservative){
++    pipeline_warnings.push_back(tier_policy.reason=="opt-in"?"conservative pipeline tier requested (workgroup size 1; results may differ in the last bits but must meet the practical criterion)":
++      "conservative pipeline tier selected by the "+tier_policy.reason+" ("+tier_policy.detail+"); workgroup size 1, results may differ in the last bits but must meet the practical criterion");
++    pipeline_process_warning(pipeline_warnings.back());std::fprintf(stderr,"CodeBrix Cycles WebGPU warning: %s\n",pipeline_warnings.back().c_str());
++  }
++  run_canary();
++  pipeline_process_decision(tier_policy.report_json());
++}
++void WebGPUDevice::select_tier(){
++  AdapterIdentity identity{gpu.adapter_vendor,gpu.adapter_architecture,gpu.adapter_device,gpu.adapter_description,gpu.adapter_vendor_id,gpu.adapter_device_id};
++  // Gate hook: "vendor|architecture|device|description[|vendorId|deviceId]"
++  // simulates another adapter's identity for the table and record only; the
++  // real adapter still compiles and renders.
++  if(const char *simulated=std::getenv("CODEBRIX_CYCLES_TEST_ADAPTER")){
++    std::vector<std::string> parts(1);for(const char *c=simulated;*c;c++){if(*c=='|')parts.emplace_back();else parts.back()+=*c;}
++    parts.resize(std::max<size_t>(parts.size(),6));
++    identity={parts[0],parts[1],parts[2],parts[3],uint32_t(std::strtoul(parts[4].c_str(),nullptr,0)),uint32_t(std::strtoul(parts[5].c_str(),nullptr,0)),true};
++  }
++  tier_policy.decide(identity,webgpu_runtime_version(),production_shader_hash());
++  conservative=tier_policy.conservative;
++  if(tier_policy.budget_ms>0)pipeline_budget_ms=tier_policy.budget_ms;
++}
++// Optional init canary: one representative module (the surface module with no
++// optional handlers, entry prepare_surface) compiled in the full tier before
++// the scene. Failure selects the conservative tier; slowness only warns.
++void WebGPUDevice::run_canary(){
++  if(!tier_policy.canary_enabled)return;
++  if(conservative){tier_policy.canary_result("skipped",0,"conservative tier already selected");return;}
++  double budget=canary_default_budget_ms;
++  if(const char *value=std::getenv("CODEBRIX_CYCLES_PIPELINE_CANARY_BUDGET_MS"))budget=std::strtod(value,nullptr);
++  std::string code=specialize_wgsl(surface_source(),0);
++  // Gate hook: a module the WebGPU front end rejects, as a failing compiler would.
++  if(const char *test=std::getenv("CODEBRIX_CYCLES_TEST_CANARY"))if(std::strcmp(test,"fail")==0)code+="\nfn codebrix_canary_invalid( {\n";
++  using clock=std::chrono::steady_clock;const auto t0=clock::now();
++  auto elapsed=[&]{return std::chrono::duration<double,std::milli>(clock::now()-t0).count();};
++  tier_policy.begin_pipeline("canary","prepare_surface",false);
++  try{
++    WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};
++    WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;gpu.push_scope();
++    cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
++    cbc::Pipeline canary=gpu.pipeline(shader,pipeline_layout,"prepare_surface","canary:prepare_surface",tier_policy.pending_descriptor());
++    const double ms=elapsed();tier_policy.end_pipeline(true,ms,"");
++    if(budget>0&&ms>budget){
++      char text[256];std::snprintf(text,sizeof(text),"init canary took %.0f ms, over the %.0f ms canary budget; the tier is unchanged (full); first-use latency is degraded on this driver",ms,budget);
++      tier_policy.canary_result("slow",ms,text);pipeline_warnings.push_back(text);pipeline_process_warning(text);std::fprintf(stderr,"CodeBrix Cycles WebGPU warning: %s\n",text);
++    }else tier_policy.canary_result("passed",ms,"");
++  }catch(const std::exception &e){
++    const double ms=elapsed();const std::string message=e.what();
++    tier_policy.end_pipeline(false,ms,message);tier_policy.canary_result("failed",ms,message);
++    if(message.find("lost")!=std::string::npos)throw std::runtime_error("WebGPU init canary lost the device: "+message);
++    tier_policy.switch_conservative("canary","init canary failed: "+message);conservative=true;
++    pipeline_warnings.push_back("init canary failed ("+message+"); conservative pipeline tier selected before the scene compiles (workgroup size 1; results may differ in the last bits but must meet the practical criterion)");
++    pipeline_process_warning(pipeline_warnings.back());std::fprintf(stderr,"CodeBrix Cycles WebGPU warning: %s\n",pipeline_warnings.back().c_str());
++  }
+ }
+ WebGPUDevice::~WebGPUDevice(){try{flush();}catch(const std::exception&){} }
+ WGPUCommandEncoder WebGPUDevice::commands(){if(!encoder.value)encoder=decltype(encoder)(wgpuDeviceCreateCommandEncoder(gpu.get(),nullptr));return encoder;}
+@@ -179,6 +236,15 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
+   wgpuComputePassEncoderSetPipeline(pass,pipeline?pipeline:controls.value);wgpuComputePassEncoderSetBindGroup(pass,0,group,0,nullptr);
+   wgpuComputePassEncoderDispatchWorkgroups(pass,uint32_t(groups),1,1);wgpuComputePassEncoderEnd(pass);dispatches++;
+ }
++// Host C API seams (native/host/cycles_host.cpp).
++void host_tier_config(uint32_t tier,bool record_off,bool read_only,bool canary,const char *directory){
++  DeviceTierConfig config;config.request=tier;config.record_off=record_off;config.record_read_only=read_only;config.canary=canary;
++  config.record_directory=directory?directory:"";set_device_tier_config(config);
++}
++std::string webgpu_device_report_json(Device *device){
++  auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu)return {};
++  std::lock_guard lock(webgpu->mutex);return webgpu->pipeline_report_json();
++}
+ unique_ptr<Device> device_webgpu_create(const DeviceInfo &i,Stats &s,Profiler &p,bool h){
+   try{return make_unique<WebGPUDevice>(i,s,p,h);}catch(const std::exception &e){auto bad=i;bad.type=DEVICE_DUMMY;bad.error_msg=e.what();return device_dummy_create(bad,s,p,h);}}
+ void device_webgpu_info(vector<DeviceInfo> &devices){try{
+diff --git a/native/cycles/device.h b/native/cycles/device.h
+index ee6e2d8..83428e0 100644
+--- a/native/cycles/device.h
++++ b/native/cycles/device.h
+@@ -6,6 +6,7 @@
+ #include "kernel/integrator/state.h"
+ #include "webgpu_device.h"
+ #include "pipelines.h"
++#include "device_tier.h"
+ #include <array>
+ #include <map>
+ #include <mutex>
+@@ -63,6 +64,11 @@ class WebGPUDevice final:public Device {
+   // Dispatch sizes always follow the workgroup size the compiled module declares.
+   bool conservative=false,budget_conservative=false;
+   double pipeline_budget_ms=pipeline_default_budget_ms;
++  // Tier selection before any compile (device_tier.h): explicit request,
++  // persisted device record, known-adapter table, then full; optional canary.
++  DeviceTierPolicy tier_policy;
++  void select_tier();
++  void run_canary();
+   std::vector<std::string> pipeline_warnings;
+   std::map<std::string,uint32_t> pipeline_workgroups;
+   uint32_t workgroup(const char *entry) const;
+diff --git a/b/native/cycles/device_tier.cpp b/native/cycles/device_tier.cpp
+new file mode 100644
+index 0000000..acb9eb1
+--- /dev/null
++++ b/native/cycles/device_tier.cpp
+@@ -0,0 +1,306 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++#include "device_tier.h"
++#include "device.h"
++#include "wavefront.h"
++#include "webgpu_device.h"
++#include <cerrno>
++#include <csignal>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <ctime>
++#include <dirent.h>
++#include <fcntl.h>
++#include <fstream>
++#include <locale>
++#include <mutex>
++#include <sstream>
++#include <sys/file.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++namespace ccl {
++namespace {
++std::mutex config_mutex;
++DeviceTierConfig host_config;
++uint64_t fnv1a(const std::string &text,uint64_t hash=1469598103934665603ull){
++  for(unsigned char c:text){hash^=c;hash*=1099511628211ull;}return hash;
++}
++std::string hex64(uint64_t value){char text[17];std::snprintf(text,sizeof(text),"%016llx",(unsigned long long)value);return text;}
++// Record fields are single-line and '|'-free.
++std::string field(const std::string &text){
++  std::string out;for(char c:text)out+=(c=='\n'||c=='\r')?' ':c=='|'?'/':c;return out;
++}
++std::string json_escape(const std::string &text){
++  std::string out;for(char c:text){if(c=='"'||c=='\\'){out+='\\';out+=c;}else if(uint8_t(c)<0x20)out+=' ';else out+=c;}return out;
++}
++std::string quoted(const std::string &text){return '"'+json_escape(text)+'"';}
++std::vector<std::string> split(const std::string &text,char separator){
++  std::vector<std::string> out(1);for(char c:text){if(c==separator)out.emplace_back();else out.back()+=c;}return out;
++}
++bool read_file(const std::string &path,std::string &text){
++  std::ifstream in(path,std::ios::binary);if(!in)return false;std::ostringstream s;s<<in.rdbuf();text=s.str();return bool(in)||in.eof();
++}
++const char *env(const char *name){const char *value=std::getenv(name);return value&&*value?value:nullptr;}
++bool contains(const std::string &text,const char *part){return !part||!*part||text.find(part)!=std::string::npos;}
++}
++
++void set_device_tier_config(const DeviceTierConfig &config){std::lock_guard lock(config_mutex);host_config=config;}
++DeviceTierConfig device_tier_config(){std::lock_guard lock(config_mutex);return host_config;}
++
++// Keep this table small and evidence-based (native/DEVICE.md, "Device tiers").
++const std::vector<KnownAdapter> &known_adapters(){
++  static const std::vector<KnownAdapter> table={
++    {"Pixel 4 XL Adreno 640","Adreno (TM) 640","","conservative",0,
++     "B3 2026-10-19: full-tier modules compile in minutes and the unsplit surface-light stage lost the device"},
++    {"Samsung SM-X700 Adreno 730","Adreno (TM) 730","","full",0,"full-fidelity proof device (2026-10-19 policy)"},
++    {"HP Intel Xe (Mesa 24.0.8, Android x64)","Intel(R) Xe Graphics","Mesa 24.0.8","full",0,
++     "B3 2026-10-19: every specialized and all-handler stage compiles"},
++    {"Linux Intel UHD ADL-S (Mesa 25.0.7)","Intel(R) UHD Graphics (ADL-S GT1)","Mesa 25.0.7","full",0,
++     "Phase C1 2026-10-19 Linux validation"},
++  };
++  return table;
++}
++const KnownAdapter *match_known_adapter(const AdapterIdentity &identity){
++  for(auto &entry:known_adapters())if(contains(identity.device,entry.device)&&contains(identity.description,entry.driver))return &entry;
++  return nullptr;
++}
++bool mobile_adapter(const AdapterIdentity &identity){
++#ifdef __ANDROID__
++  (void)identity;return true;
++#else
++  switch(identity.vendor_id){case 0x5143:case 0x13B5:case 0x1010:case 0x144D:case 0x106B:return true;default:break;}
++  for(const char *name:{"Adreno","Mali","PowerVR","Xclipse"})if(identity.device.find(name)!=std::string::npos)return true;
++  return false;
++#endif
++}
++
++std::string production_shader_hash(){
++  static std::once_flag once;static std::string hash;
++  std::call_once(once,[]{
++    uint64_t h=1469598103934665603ull;
++    for(const std::string &source:{controls_wgsl(),camera_wgsl(),closest_wgsl(),background_wgsl(),shadow_source(),
++                                   volume_source(),volume_stack_source(),surface_source()}){h=fnv1a(source,h);h=fnv1a(std::string(1,'\0'),h);}
++    hash="fnv1a64:"+hex64(h);
++  });
++  return hash;
++}
++
++bool parse_device_record(const std::string &text,DeviceRecord &record){
++  std::istringstream in(text);std::string line;
++  if(!std::getline(in,line)||line!="codebrix-cycles-device-record 1")return false;
++  DeviceRecord out;
++  while(std::getline(in,line)){
++    if(line.empty())continue;
++    const size_t eq=line.find('=');if(eq==std::string::npos)return false;
++    const std::string key=line.substr(0,eq),value=line.substr(eq+1);
++    if(key=="vendor")out.vendor=value;else if(key=="architecture")out.architecture=value;
++    else if(key=="device")out.device=value;else if(key=="description")out.description=value;
++    else if(key=="runtime")out.runtime=value;else if(key=="shaderHash")out.shader_hash=value;
++    else if(key=="stage"){auto f=split(value,'|');if(f.size()!=7)return false;
++      out.stages.push_back({f[0],f[1],f[2],std::strtoull(f[3].c_str(),nullptr,10),std::strtoull(f[4].c_str(),nullptr,10),
++                            double(std::strtoll(f[5].c_str(),nullptr,10)),double(std::strtoll(f[6].c_str(),nullptr,10))});}
++    else if(key=="breadcrumb"){auto f=split(value,'|');if(f.size()!=6)return false;
++      out.breadcrumbs.push_back({f[0],f[1],f[2],f[3],int(std::strtol(f[4].c_str(),nullptr,10)),std::strtoll(f[5].c_str(),nullptr,10)});}
++    else if(key=="failure"){auto f=split(value,'|');if(f.size()!=4)return false;out.failures.push_back({f[0],f[1],f[2],f[3]});}
++    // Unknown keys are ignored (later minor additions).
++  }
++  record=std::move(out);return true;
++}
++std::string format_device_record(const DeviceRecord &r){
++  std::ostringstream o;
++  o<<"codebrix-cycles-device-record 1\nvendor="<<field(r.vendor)<<"\narchitecture="<<field(r.architecture)<<"\ndevice="<<field(r.device)
++   <<"\ndescription="<<field(r.description)<<"\nruntime="<<field(r.runtime)<<"\nshaderHash="<<field(r.shader_hash)<<'\n';
++  for(auto &s:r.stages)o<<"stage="<<field(s.tier)<<'|'<<field(s.module)<<'|'<<field(s.entry)<<'|'<<s.successes<<'|'<<s.failures
++                        <<'|'<<(long long)(s.last_ms+0.5)<<'|'<<(long long)(s.max_ms+0.5)<<'\n';
++  for(auto &b:r.breadcrumbs)o<<"breadcrumb="<<field(b.tier)<<'|'<<field(b.module)<<'|'<<field(b.entry)<<'|'<<field(b.kind)<<'|'<<b.signal<<'|'<<b.time<<'\n';
++  for(auto &f:r.failures)o<<"failure="<<field(f.tier)<<'|'<<field(f.module)<<'|'<<field(f.entry)<<'|'<<field(f.message.substr(0,400))<<'\n';
++  return o.str();
++}
++
++namespace {
++bool full_tier_failure(const DeviceRecord &r,std::string *what){
++  for(auto &b:r.breadcrumbs)if(b.tier=="full"){
++    if(what)*what="crash breadcrumb while creating '"+b.entry+"' ("+b.module+", "+(b.kind=="signal"?"signal "+std::to_string(b.signal):"process ended during the compile")+")";
++    return true;}
++  for(auto &f:r.failures)if(f.tier=="full"){if(what)*what="pipeline creation failure in '"+f.entry+"' ("+f.module+"): "+f.message;return true;}
++  return false;
++}
++uint64_t tier_compiles(const DeviceRecord &r,const char *tier){uint64_t n=0;for(auto &s:r.stages)if(s.tier==tier)n+=s.successes;return n;}
++}
++
++void DeviceTierPolicy::persist(const std::function<void(DeviceRecord&)> &apply){
++  if(!record_writable)return;
++  const std::string lock_path=record_path+".lock";
++  const int lock=open(lock_path.c_str(),O_CREAT|O_RDWR|O_CLOEXEC,0600);
++  if(lock<0){warnings.push_back("device record lock '"+lock_path+"' unavailable: "+std::strerror(errno));record_writable=false;return;}
++  flock(lock,LOCK_EX);
++  DeviceRecord current;std::string text;
++  if(!(read_file(record_path,text)&&parse_device_record(text,current)&&current.vendor==field(identity.vendor)&&current.architecture==field(identity.architecture)
++       &&current.device==field(identity.device)&&current.description==field(identity.description)&&current.runtime==field(runtime)&&current.shader_hash==shader_hash)){
++    current=DeviceRecord{};current.vendor=field(identity.vendor);current.architecture=field(identity.architecture);current.device=field(identity.device);
++    current.description=field(identity.description);current.runtime=field(runtime);current.shader_hash=shader_hash;
++  }
++  apply(current);
++  if(current.breadcrumbs.size()>16)current.breadcrumbs.erase(current.breadcrumbs.begin(),current.breadcrumbs.end()-16);
++  if(current.failures.size()>16)current.failures.erase(current.failures.begin(),current.failures.end()-16);
++  const std::string temporary=record_path+".tmp-"+std::to_string(getpid());
++  bool ok=false;{std::ofstream out(temporary,std::ios::binary|std::ios::trunc);out<<format_device_record(current);out.flush();ok=bool(out);}
++  if(ok&&std::rename(temporary.c_str(),record_path.c_str())==0){record=current;record_status="valid";}
++  else{std::remove(temporary.c_str());warnings.push_back("device record '"+record_path+"' could not be written");record_writable=false;}
++  flock(lock,LOCK_UN);close(lock);
++}
++
++// A pending file left by a process that no longer runs is a breadcrumb: the
++// process ended (driver crash, out-of-memory kill or forced stop) while it
++// created that pipeline. "signal=<n>" is present when the crash handler ran.
++void DeviceTierPolicy::consume_pending(){
++  const size_t slash=record_path.rfind('/');
++  const std::string directory=record_path.substr(0,slash),prefix=record_path.substr(slash+1)+".pending-";
++  DIR *dir=opendir(directory.c_str());if(!dir)return;
++  std::vector<std::string> names;while(dirent *e=readdir(dir))if(std::strncmp(e->d_name,prefix.c_str(),prefix.size())==0)names.push_back(e->d_name);
++  closedir(dir);
++  for(const std::string &name:names){
++    const long pid=std::strtol(name.c_str()+prefix.size(),nullptr,10);
++    if(pid<=0||pid==long(getpid()))continue;
++    if(kill(pid_t(pid),0)==0||errno==EPERM)continue;  // Still running (concurrent process).
++    const std::string path=directory+"/"+name;std::string text;if(!read_file(path,text))continue;
++    std::istringstream in(text);std::string line;DeviceRecordBreadcrumb crumb;crumb.kind="interrupted";std::string pending_runtime,pending_hash;bool header=false;
++    while(std::getline(in,line)){
++      if(line=="codebrix-cycles-pending 1"){header=true;continue;}
++      const size_t eq=line.find('=');if(eq==std::string::npos)continue;const std::string key=line.substr(0,eq),value=line.substr(eq+1);
++      if(key=="runtime")pending_runtime=value;else if(key=="shaderHash")pending_hash=value;else if(key=="tier")crumb.tier=value;
++      else if(key=="module")crumb.module=value;else if(key=="entry")crumb.entry=value;else if(key=="time")crumb.time=std::strtoll(value.c_str(),nullptr,10);
++      else if(key=="signal"){crumb.kind="signal";crumb.signal=int(std::strtol(value.c_str(),nullptr,10));}
++    }
++    const bool applies=header&&pending_runtime==field(runtime)&&pending_hash==shader_hash&&!crumb.entry.empty();
++    if(record_mode=="read-write"){
++      if(applies)persist([&](DeviceRecord &r){r.breadcrumbs.push_back(crumb);});
++      std::remove(path.c_str());
++    }else if(applies)record.breadcrumbs.push_back(crumb);
++    if(applies)warnings.push_back("breadcrumb from an earlier run: the process ended while creating '"+crumb.entry+"' ("+crumb.module+", "+crumb.tier+" tier"+
++                                  (crumb.kind=="signal"?", signal "+std::to_string(crumb.signal):"")+")");
++  }
++}
++
++void DeviceTierPolicy::decide(const AdapterIdentity &adapter,const std::string &runtime_version,const std::string &hash){
++  identity=adapter;runtime=runtime_version;shader_hash=hash;config=device_tier_config();
++  if(identity.simulated)overrides.push_back("CODEBRIX_CYCLES_TEST_ADAPTER (simulated adapter identity)");
++  if(const char *tier=env("CODEBRIX_CYCLES_PIPELINE_TIER")){
++    config.request=std::strcmp(tier,"conservative")==0?TIER_REQUEST_CONSERVATIVE:std::strcmp(tier,"full")==0?TIER_REQUEST_FULL:TIER_REQUEST_AUTO;
++    overrides.push_back(std::string("CODEBRIX_CYCLES_PIPELINE_TIER=")+tier);
++  }
++  if(const char *dir=env("CODEBRIX_CYCLES_DEVICE_RECORD_DIR")){config.record_directory=dir;overrides.push_back(std::string("CODEBRIX_CYCLES_DEVICE_RECORD_DIR=")+dir);}
++  bool ignore=false;
++  if(const char *mode=env("CODEBRIX_CYCLES_DEVICE_RECORD")){
++    overrides.push_back(std::string("CODEBRIX_CYCLES_DEVICE_RECORD=")+mode);
++    if(std::strcmp(mode,"off")==0)config.record_off=true;
++    else if(std::strcmp(mode,"ignore")==0)ignore=true;
++    else if(std::strcmp(mode,"readonly")==0)config.record_read_only=true;
++    else if(std::strcmp(mode,"on")==0){config.record_off=false;config.record_read_only=false;}
++  }
++  if(const char *canary=env("CODEBRIX_CYCLES_PIPELINE_CANARY")){config.canary=std::strcmp(canary,"0")!=0;overrides.push_back(std::string("CODEBRIX_CYCLES_PIPELINE_CANARY=")+canary);}
++  canary_enabled=config.canary;
++  table=match_known_adapter(identity);
++
++  bool record_applies=false;
++  if(config.record_off)record_mode=record_status="off";
++  else if(config.record_directory.empty())record_mode=record_status="none";
++  else{
++    record_mode=ignore?"ignore":config.record_read_only?"read-only":"read-write";
++    const std::string directory=config.record_directory;
++    // Create missing directories (app data folders normally exist already).
++    for(size_t at=directory.find('/',1);;at=directory.find('/',at+1)){
++      const std::string part=directory.substr(0,at);
++      if(mkdir(part.c_str(),0700)!=0&&errno!=EEXIST&&at==std::string::npos)warnings.push_back("device record directory '"+directory+"' unavailable: "+std::strerror(errno));
++      if(at==std::string::npos)break;
++    }
++    record_path=directory+"/codebrix-cycles-device-"+hex64(fnv1a(identity.vendor+'\n'+identity.architecture+'\n'+identity.device+'\n'+identity.description+'\n'+
++                                                                 std::to_string(identity.vendor_id)+'\n'+std::to_string(identity.device_id)))+".txt";
++    record_writable=record_mode=="read-write";
++    std::string text;
++    if(!read_file(record_path,text))record_status="absent";
++    else if(!parse_device_record(text,record))record_status="unreadable";
++    else if(record.vendor!=field(identity.vendor)||record.architecture!=field(identity.architecture)||record.device!=field(identity.device)||record.description!=field(identity.description))record_status="identity-mismatch";
++    else if(record.runtime!=field(runtime))record_status="stale-runtime";
++    else if(record.shader_hash!=shader_hash)record_status="stale-shader-hash";
++    else record_status="valid";
++    if(record_status!="valid"&&record_status!="absent"){
++      if(record_status!="unreadable")warnings.push_back("device record ignored ("+record_status+"); it is replaced by this run's record");
++      else warnings.push_back("device record unreadable; it is replaced by this run's record");
++      record=DeviceRecord{};
++    }
++    consume_pending();
++    record_applies=record_mode!="ignore"&&(record_status=="valid"||!record.breadcrumbs.empty());
++  }
++
++  std::string why;
++  if(config.request==TIER_REQUEST_FULL){conservative=false;reason="override";detail="full tier requested";}
++  else if(config.request==TIER_REQUEST_CONSERVATIVE){conservative=true;reason="opt-in";detail="conservative tier requested";}
++  else if(record_applies&&full_tier_failure(record,&why)){conservative=true;reason="record";detail=why;}
++  else if(record_applies&&tier_compiles(record,"full")>0){conservative=false;reason="record";
++    detail=std::to_string(tier_compiles(record,"full"))+" full-tier pipeline compiles recorded without a failure or breadcrumb";}
++  else if(table){conservative=std::strcmp(table->tier,"conservative")==0;reason="table";detail=std::string(table->name)+": "+table->evidence;}
++  else{conservative=false;reason="default";detail=record_status=="absent"?"first run on this device: full fidelity":"no device record: full fidelity";}
++  if(table&&table->budget_ms>0){budget_ms=table->budget_ms;budget_source="table";}
++  else if(!table&&mobile_adapter(identity)){budget_ms=unknown_mobile_budget_ms;budget_source="unknown-mobile";}
++}
++
++void DeviceTierPolicy::begin_pipeline(const char *module,const char *entry,bool tier_conservative){
++  pending_tier=tier_conservative?"conservative":"full";pending_module=module;pending_entry=entry;
++  if(!record_writable)return;
++  // One pending file per device and pipeline: <record>.pending-<pid>-<device>-<serial>.
++  pending_path=record_path+".pending-"+std::to_string(getpid())+"-"+std::to_string(reinterpret_cast<uintptr_t>(this))+"-"+std::to_string(pending_serial++);
++  pending_fd=open(pending_path.c_str(),O_CREAT|O_TRUNC|O_WRONLY|O_CLOEXEC,0600);
++  if(pending_fd<0)return;
++  const std::string text="codebrix-cycles-pending 1\nruntime="+field(runtime)+"\nshaderHash="+shader_hash+"\ntier="+pending_tier+
++                         "\nmodule="+field(module)+"\nentry="+field(entry)+"\ntime="+std::to_string((long long)std::time(nullptr))+"\n";
++  if(write(pending_fd,text.data(),text.size())!=ssize_t(text.size())){close(pending_fd);pending_fd=-1;std::remove(pending_path.c_str());return;}
++}
++void DeviceTierPolicy::abandon_pipeline(){
++  if(pending_fd>=0){close(pending_fd);pending_fd=-1;std::remove(pending_path.c_str());}
++}
++void DeviceTierPolicy::end_pipeline(bool success,double ms,const std::string &failure){
++  abandon_pipeline();
++  persist([&](DeviceRecord &r){
++    DeviceRecordStage *stage=nullptr;
++    for(auto &s:r.stages)if(s.tier==pending_tier&&s.module==pending_module&&s.entry==pending_entry)stage=&s;
++    if(!stage){r.stages.push_back({pending_tier,pending_module,pending_entry});stage=&r.stages.back();}
++    (success?stage->successes:stage->failures)++;stage->last_ms=ms;if(ms>stage->max_ms)stage->max_ms=ms;
++    if(!success)r.failures.push_back({pending_tier,pending_module,pending_entry,failure});
++  });
++}
++void DeviceTierPolicy::canary_result(const std::string &result,double ms,const std::string &text){canary=result;canary_ms=ms;canary_detail=text;}
++void DeviceTierPolicy::switch_conservative(const std::string &why,const std::string &text){
++  if(conservative)return;
++  conservative=true;reason=why;detail=text;
++}
++std::string DeviceTierPolicy::report_json() const{
++  std::ostringstream o;o.imbue(std::locale::classic());
++  o<<"{\"tier\":\""<<(conservative?"conservative":"full")<<"\",\"reason\":"<<quoted(reason)<<",\"detail\":"<<quoted(detail)
++   <<",\"adapter\":{\"vendor\":"<<quoted(identity.vendor)<<",\"architecture\":"<<quoted(identity.architecture)<<",\"device\":"<<quoted(identity.device)
++   <<",\"description\":"<<quoted(identity.description)<<",\"vendorId\":"<<identity.vendor_id<<",\"deviceId\":"<<identity.device_id
++   <<",\"simulated\":"<<(identity.simulated?"true":"false")<<",\"mobile\":"<<(mobile_adapter(identity)?"true":"false")<<"},\"runtime\":"<<quoted(runtime)
++   <<",\"shaderHash\":"<<quoted(shader_hash)<<",\"knownAdapter\":";
++  if(table)o<<"{\"name\":"<<quoted(table->name)<<",\"tier\":"<<quoted(table->tier)<<",\"budgetMs\":"<<table->budget_ms<<",\"evidence\":"<<quoted(table->evidence)<<'}';
++  else o<<"null";
++  o<<",\"budgetSource\":"<<quoted(budget_source)<<",\"record\":{\"mode\":"<<quoted(record_mode)<<",\"path\":"<<quoted(record_path)
++   <<",\"status\":"<<quoted(record_status)<<",\"fullTierCompiles\":"<<tier_compiles(record,"full")<<",\"conservativeTierCompiles\":"<<tier_compiles(record,"conservative")
++   <<",\"failures\":"<<record.failures.size()<<",\"breadcrumbs\":[";
++  for(size_t i=0;i<record.breadcrumbs.size();i++){const auto &b=record.breadcrumbs[i];if(i)o<<',';
++    o<<"{\"tier\":"<<quoted(b.tier)<<",\"module\":"<<quoted(b.module)<<",\"entry\":"<<quoted(b.entry)<<",\"kind\":"<<quoted(b.kind)<<",\"signal\":"<<b.signal<<",\"time\":"<<b.time<<'}';}
++  o<<"]},\"canary\":{\"enabled\":"<<(canary_enabled?"true":"false")<<",\"result\":"<<quoted(canary)<<",\"ms\":"<<canary_ms<<",\"detail\":"<<quoted(canary_detail)<<"},\"overrides\":[";
++  for(size_t i=0;i<overrides.size();i++){if(i)o<<',';o<<quoted(overrides[i]);}
++  o<<"],\"warnings\":[";
++  for(size_t i=0;i<warnings.size();i++){if(i)o<<',';o<<quoted(warnings[i]);}
++  o<<"]}";return o.str();
++}
++
++std::string webgpu_runtime_version(){
++  WGPUCodebrixBuildInfo info{};wgpuCodebrixGetBuildInfo(&info);
++  auto text=[](WGPUStringView s){return s.data?std::string(s.data,s.length==WGPU_STRLEN?std::strlen(s.data):s.length):std::string();};
++  return "codebrix-api="+std::to_string(info.apiVersion)+";wgpu-native="+text(info.wgpuNativeVersion)+";wgpu-core="+text(info.wgpuCoreVersion)+
++         ";target="+text(info.targetTriple)+";patches="+text(info.patches);
++}
++}
+diff --git a/b/native/cycles/device_tier.h b/native/cycles/device_tier.h
+new file mode 100644
+index 0000000..604c5e2
+--- /dev/null
++++ b/native/cycles/device_tier.h
+@@ -0,0 +1,112 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++#pragma once
++// Device-tier selection for WebGPU pipelines (graceful degradation).
++//
++// WebGPU reports adapter identity and hard limits, not shader-compiler time or
++// memory, and a vendor compiler crash terminates the process. The pipeline tier
++// ("full" or "conservative", pipelines.h) is therefore chosen once per device,
++// before any renderer pipeline is compiled, from (highest precedence first):
++//   1. an explicit request (host API or CODEBRIX_CYCLES_PIPELINE_TIER);
++//   2. the persisted device-identity record of earlier runs on this adapter,
++//      driver, runtime and shader source: a full-tier crash breadcrumb or
++//      creation failure selects conservative; full-tier compiles without any
++//      failure select full;
++//   3. the known-adapter table (known_adapters());
++//   4. full fidelity.
++// An opt-in init canary then compiles one representative module; a canary
++// failure selects conservative before the scene compiles. A slow compile never
++// changes the tier (the conservative tier is not bit-identical): it only warns
++// and marks the session degraded.
++#include <cstdint>
++#include <functional>
++#include <string>
++#include <vector>
++
++namespace ccl {
++enum DeviceTierRequest : uint32_t {TIER_REQUEST_AUTO=0,TIER_REQUEST_FULL=1,TIER_REQUEST_CONSERVATIVE=2};
++// Process-wide configuration from the host API (cbc_host_tier_config). Applies
++// to WebGPU devices created afterwards. Environment overrides for gates:
++//   CODEBRIX_CYCLES_PIPELINE_TIER=full|conservative|auto
++//   CODEBRIX_CYCLES_DEVICE_RECORD_DIR=<directory>
++//   CODEBRIX_CYCLES_DEVICE_RECORD=on|off|ignore|readonly
++//   CODEBRIX_CYCLES_PIPELINE_CANARY=1|0
++struct DeviceTierConfig {
++  uint32_t request=TIER_REQUEST_AUTO;
++  bool record_off=false,record_read_only=false,canary=false;
++  std::string record_directory;  // Empty: no persisted record.
++};
++void set_device_tier_config(const DeviceTierConfig &config);
++DeviceTierConfig device_tier_config();
++
++struct AdapterIdentity {
++  std::string vendor,architecture,device,description;
++  uint32_t vendor_id=0,device_id=0;
++  bool simulated=false;  // CODEBRIX_CYCLES_TEST_ADAPTER (gates only).
++};
++// Measured devices. device/driver are substrings of the adapter device name and
++// driver description (empty driver: any). budget_ms 0 keeps the default.
++struct KnownAdapter {const char *name,*device,*driver,*tier;double budget_ms;const char *evidence;};
++const std::vector<KnownAdapter> &known_adapters();
++const KnownAdapter *match_known_adapter(const AdapterIdentity &identity);
++// Mobile GPU vendors (Qualcomm, ARM, Imagination, Samsung, Apple) or an
++// Android build. Unknown mobile adapters start full with a tighter budget.
++bool mobile_adapter(const AdapterIdentity &identity);
++inline constexpr double unknown_mobile_budget_ms=20000.0;
++inline constexpr double canary_default_budget_ms=10000.0;
++
++// FNV-1a 64 over every production WGSL module source (unspecialized).
++std::string production_shader_hash();
++// Runtime identity from wgpuCodebrixGetBuildInfo (API, wgpu versions, target, patches).
++std::string webgpu_runtime_version();
++
++struct DeviceRecordStage {std::string tier,module,entry;uint64_t successes=0,failures=0;double last_ms=0,max_ms=0;};
++struct DeviceRecordBreadcrumb {std::string tier,module,entry,kind;int signal=0;int64_t time=0;};
++struct DeviceRecordFailure {std::string tier,module,entry,message;};
++struct DeviceRecord {
++  std::string vendor,architecture,device,description,runtime,shader_hash;
++  std::vector<DeviceRecordStage> stages;
++  std::vector<DeviceRecordBreadcrumb> breadcrumbs;
++  std::vector<DeviceRecordFailure> failures;
++};
++// Text format "codebrix-cycles-device-record 1" (native/DEVICE.md).
++bool parse_device_record(const std::string &text,DeviceRecord &record);
++std::string format_device_record(const DeviceRecord &record);
++
++class DeviceTierPolicy {
++ public:
++  // Chooses the tier; performs no compile. Never throws for record problems
++  // (they become warnings).
++  void decide(const AdapterIdentity &identity,const std::string &runtime,const std::string &shader_hash);
++  // Pending breadcrumb around one pipeline creation (record enabled only).
++  void begin_pipeline(const char *module,const char *entry,bool conservative);
++  void end_pipeline(bool success,double ms,const std::string &failure);
++  // Clears the pending breadcrumb without recording (WGSL module rejection is
++  // a source defect, not device capacity, and never changes the tier).
++  void abandon_pipeline();
++  // Descriptor of the open pending breadcrumb (-1: none) for cbc::Device::pipeline.
++  int pending_descriptor() const{return pending_fd;}
++  void canary_result(const std::string &result,double ms,const std::string &detail);
++  void switch_conservative(const std::string &reason,const std::string &detail);
++  std::string report_json() const;
++
++  bool conservative=false;
++  std::string reason="default",detail;
++  double budget_ms=0;  // 0: keep the declared default.
++  std::string budget_source="default";
++  std::vector<std::string> warnings,overrides;
++  bool canary_enabled=false;
++  std::string canary="not-run",canary_detail;double canary_ms=0;
++ private:
++  AdapterIdentity identity;std::string runtime,shader_hash;
++  DeviceTierConfig config;
++  const KnownAdapter *table=nullptr;
++  std::string record_path,record_mode="none",record_status="none";
++  bool record_writable=false;
++  DeviceRecord record;
++  std::string pending_path;int pending_fd=-1;unsigned pending_serial=0;
++  std::string pending_tier,pending_module,pending_entry;
++  void persist(const std::function<void(DeviceRecord&)> &apply);
++  void consume_pending();
++};
++}
+diff --git a/native/cycles/pipelines.cpp b/native/cycles/pipelines.cpp
+index f29a233..919c8a7 100644
+--- a/native/cycles/pipelines.cpp
++++ b/native/cycles/pipelines.cpp
+@@ -184,9 +184,12 @@ bool WebGPUDevice::pipeline_current(const cbc::Pipeline &pipeline,const char *en
+   return it!=pipeline_features.end()&&(shader_features()&~it->second)==0;
+ }
+ namespace {
+-struct ProcessPipelines {std::mutex mutex;uint64_t count=0;double max_ms=0,total_ms=0;std::string max_entry;bool conservative=false;std::vector<std::string> warnings;};
++struct ProcessPipelines {std::mutex mutex;uint64_t count=0;double max_ms=0,total_ms=0;std::string max_entry;bool conservative=false;std::vector<std::string> warnings;std::string decision;};
+ ProcessPipelines &process_pipelines(){static ProcessPipelines state;return state;}
+ }
++void pipeline_process_decision(const std::string &json){
++  auto &process=process_pipelines();std::lock_guard lock(process.mutex);process.decision=json;
++}
+ void pipeline_process_warning(const std::string &message){
+   auto &process=process_pipelines();std::lock_guard lock(process.mutex);process.warnings.push_back(message);
+ }
+@@ -207,22 +210,29 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
+       const std::string code=conservative?conservative_wgsl(specialized):specialized;
+       const auto t0=clock::now();
+       WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};
+-      WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;gpu.push_scope();
++      WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;
++      // Pending breadcrumb for the persisted device record (device_tier.h).
++      tier_policy.begin_pipeline(module,entry,conservative);gpu.push_scope();
+       cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));
+-      try{gpu.pop_scope();}catch(const std::exception &e){throw std::runtime_error(std::string("WebGPU shader module '")+module+"' rejected: "+e.what());}
++      try{gpu.pop_scope();}catch(const std::exception &e){tier_policy.abandon_pipeline();throw std::runtime_error(std::string("WebGPU shader module '")+module+"' rejected: "+e.what());}
+       const double module_ms=ms(t0,clock::now());const auto t1=clock::now();
+-      try{out.push_back(gpu.pipeline(shader,pipeline_layout,entry));}
++      try{out.push_back(gpu.pipeline(shader,pipeline_layout,entry,nullptr,tier_policy.pending_descriptor()));}
+       catch(const std::exception &e){
+         // A lost device cannot compile a retry; other driver failures (for
+         // example out-of-memory reported through an error scope) retry once in
+-        // the conservative tier. The stage name is always reported.
+-        const std::string message=e.what();
+-        if(conservative||attempt>0||message.find("lost")!=std::string::npos)
++        // the conservative tier. The stage name is always reported, and the
++        // failure is recorded so later runs start conservative.
++        const std::string message=e.what();tier_policy.end_pipeline(false,ms(t1,clock::now()),message);
++        if(conservative||attempt>0||message.find("lost")!=std::string::npos){
++          pipeline_process_decision(tier_policy.report_json());
+           throw std::runtime_error("WebGPU "+std::string(module)+" pipeline '"+entry+"' could not be created ("+(conservative?"conservative":"full")+" tier): "+message);
+-        conservative=true;warn(std::string("pipeline '")+entry+"' failed in the full tier ("+message+"); retrying in the conservative tier (workgroup size 1; results may differ in the last bits but must meet the practical criterion)");
++        }
++        conservative=true;tier_policy.switch_conservative("failure",std::string("pipeline '")+entry+"' failed in the full tier: "+message);
++        warn(std::string("pipeline '")+entry+"' failed in the full tier ("+message+"); retrying in the conservative tier (workgroup size 1; results may differ in the last bits but must meet the practical criterion)");
++        pipeline_process_decision(tier_policy.report_json());
+         continue;
+       }
+-      const double pipeline_ms=ms(t1,clock::now());
++      const double pipeline_ms=ms(t1,clock::now());tier_policy.end_pipeline(true,pipeline_ms,"");
+       pipeline_records.push_back({module,entry,features,code.size(),module_ms,pipeline_ms});pipeline_features[entry]=features;
+       const uint32_t size=declared_workgroup_size(code,entry);if(!size)throw std::runtime_error(std::string("No workgroup size declared for ")+entry);
+       pipeline_workgroups[entry]=size;
+@@ -232,7 +242,7 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
+       if(const char *path=std::getenv("CODEBRIX_CYCLES_PIPELINE_LOG")){
+         std::ofstream log(path,std::ios::app);const auto &r=pipeline_records.back();
+         log<<"{\"module\":\""<<r.module<<"\",\"entry\":\""<<r.entry<<"\",\"specialized\":"<<(specialization_enabled?"true":"false")
+-           <<",\"tier\":\""<<(conservative?"conservative":"full")<<"\",\"workgroupSize\":"<<size
++           <<",\"tier\":\""<<(conservative?"conservative":"full")<<"\",\"tierReason\":\""<<json_text(tier_policy.reason)<<"\",\"workgroupSize\":"<<size
+            <<",\"features\":\""<<shader_feature_list(r.features)<<"\",\"wgslBytes\":"<<r.wgsl_bytes<<",\"moduleMs\":"<<r.module_ms
+            <<",\"pipelineMs\":"<<r.pipeline_ms<<",\"adapter\":\""<<json_text(gpu.adapter_name)<<"\"}\n";
+       }
+@@ -241,7 +251,7 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
+         // By default latency only: the variant never switches on timing, so
+         // results cannot depend on machine load. An old-hardware deployment may
+         // opt in (budget_conservative) to compile later pipelines conservatively.
+-        if(budget_conservative&&!conservative){conservative=true;
++        if(budget_conservative&&!conservative){conservative=true;tier_policy.switch_conservative("budget-opt-in",text);pipeline_process_decision(tier_policy.report_json());
+           warn(std::string(text)+"; later pipelines use the conservative tier (workgroup size 1; results may differ in the last bits but must meet the practical criterion)");}
+         else warn(std::string(text)+" ("+(conservative?"conservative":"full")+" tier); first-use latency is degraded on this driver");
+       }
+@@ -257,7 +267,7 @@ std::string WebGPUDevice::pipeline_report_json() const{
+   std::ostringstream o;o<<"{\"specialization\":"<<(specialization_enabled?"true":"false")<<",\"tier\":\""<<(conservative?"conservative":"full")
+     <<"\",\"degraded\":"<<(pipeline_warnings.empty()?"false":"true")<<",\"budgetMs\":"<<pipeline_budget_ms<<",\"warnings\":"<<json_list(pipeline_warnings)
+     <<",\"enabledFeatures\":\""<<shader_feature_list(enabled_features)<<"\",\"svmDecodedNodes\":"<<census.decoded_nodes
+-    <<",\"svmStoppedPaths\":"<<census.stopped_paths<<",\"pipelines\":[";
++    <<",\"svmStoppedPaths\":"<<census.stopped_paths<<",\"budgetSource\":\""<<json_text(tier_policy.budget_source)<<"\",\"decision\":"<<tier_policy.report_json()<<",\"pipelines\":[";
+   for(size_t i=0;i<pipeline_records.size();i++){const auto &r=pipeline_records[i];if(i)o<<',';
+     o<<"{\"module\":\""<<r.module<<"\",\"entry\":\""<<r.entry<<"\",\"wgslBytes\":"<<r.wgsl_bytes<<",\"moduleMs\":"<<r.module_ms<<",\"pipelineMs\":"<<r.pipeline_ms<<'}';}
+   o<<"]}";return o.str();
+@@ -266,7 +276,8 @@ std::string pipeline_process_report_json(){
+   auto &process=process_pipelines();std::lock_guard lock(process.mutex);std::ostringstream o;
+   o<<"{\"tier\":\""<<(process.conservative?"conservative":"full")<<"\",\"degraded\":"<<(process.warnings.empty()?"false":"true")
+    <<",\"pipelines\":"<<process.count<<",\"totalPipelineMs\":"<<process.total_ms<<",\"maxPipelineMs\":"<<process.max_ms
+-   <<",\"maxPipelineEntry\":\""<<process.max_entry<<"\",\"warnings\":"<<json_list(process.warnings)<<'}';
++   <<",\"maxPipelineEntry\":\""<<process.max_entry<<"\",\"warnings\":"<<json_list(process.warnings)
++   <<",\"decision\":"<<(process.decision.empty()?std::string("null"):process.decision)<<'}';
+   return o.str();
+ }
+ }
+diff --git a/native/cycles/pipelines.h b/native/cycles/pipelines.h
+index 8ce00ec..866fd85 100644
+--- a/native/cycles/pipelines.h
++++ b/native/cycles/pipelines.h
+@@ -59,7 +59,9 @@ std::string specialize_wgsl(const std::string &source,uint64_t enabled);
+ // degraded (first-use latency) with a warning; it never changes the variant.
+ // Override with CODEBRIX_CYCLES_PIPELINE_BUDGET_MS (0 disables). A non-fatal
+ // pipeline-creation failure retries once in the conservative tier; the tier
+-// can also be forced with CODEBRIX_CYCLES_PIPELINE_TIER=conservative, or chosen
++// is otherwise chosen before any compile by device_tier.h (request, device
++// record, known-adapter table, canary), can be forced with
++// CODEBRIX_CYCLES_PIPELINE_TIER=conservative|full, or chosen
+ // after a budget overrun with CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION=conservative
+ // (old-hardware deployments only; default "warn").
+ inline constexpr double pipeline_default_budget_ms=60000.0;
+@@ -74,4 +76,6 @@ uint32_t declared_workgroup_size(const std::string &source,const char *entry);
+ // Process-wide summary of every pipeline the WebGPU devices created, including
+ // tier, degradation flag and warnings, for gate/replay/capability JSON.
+ std::string pipeline_process_report_json();
++// Latest device-tier decision (DeviceTierPolicy::report_json) for the process report.
++void pipeline_process_decision(const std::string &json);
+ }
+diff --git a/native/host/cycles_host.cpp b/native/host/cycles_host.cpp
+index 3dd4f04..e6e2366 100644
+--- a/native/host/cycles_host.cpp
++++ b/native/host/cycles_host.cpp
+@@ -238,6 +238,47 @@ void initialize_paths() {
+ #include "host_properties.inc"
+ #include "host_scene.inc"
+ 
++#ifdef WITH_WEBGPU
++namespace ccl {
++// Defined with the WebGPU device (native/cycles/device_tier.h, device.cpp).
++void host_tier_config(uint32_t tier, bool record_off, bool read_only, bool canary, const char *directory);
++std::string webgpu_device_report_json(Device *device);
++}
++#endif
++extern "C" int cbc_host_tier_config(const CBCTierConfig *config, const char *directory) {
++  return boundary([&] {
++    require(config && config->struct_size == sizeof(*config) && config->abi_version == CBC_HOST_ABI, "Invalid tier configuration");
++    require(std::all_of(std::begin(config->reserved), std::end(config->reserved), [](auto v) { return v == 0; }), "Unknown configuration flags");
++    require(config->tier <= CBC_TIER_CONSERVATIVE, "Invalid tier");
++    require((config->flags & ~uint32_t(CBC_TIER_RECORD_OFF | CBC_TIER_RECORD_READ_ONLY | CBC_TIER_CANARY)) == 0, "Unknown tier flags");
++#ifdef WITH_WEBGPU
++    ccl::host_tier_config(config->tier, config->flags & CBC_TIER_RECORD_OFF, config->flags & CBC_TIER_RECORD_READ_ONLY,
++                          config->flags & CBC_TIER_CANARY, directory ? directory : "");
++#else
++    (void)directory;
++#endif
++  });
++}
++extern "C" int cbc_host_device_report_json(CBCHost handle, char *json, uint64_t capacity, uint64_t *required) {
++  return edit(handle, [&](Host &host) {
++    require(required && (!capacity || json), "Invalid result buffer or size pointer");
++    std::ostringstream out; out.imbue(std::locale::classic());
++    Device *device = host.session ? host.session->device.get() : nullptr;
++    require(device != nullptr, "Host has no device", CBC_FAILED);
++    out << "{\"abiVersion\":" << CBC_HOST_ABI << ",\"backend\":";
++#ifdef WITH_WEBGPU
++    if (device->info.type == DEVICE_WEBGPU) {
++      const std::string report = webgpu_device_report_json(device);
++      require(!report.empty(), "WebGPU device report unavailable", CBC_FAILED);
++      out << "\"webgpu\",\"pipelines\":" << report;
++    } else
++#endif
++    out << (device->info.type == DEVICE_METAL ? "\"metal\"" : "\"cpu\"") << ",\"pipelines\":null";
++    out << '}';
++    copy_text(out.str(), json, capacity, required);
++  });
++}
++
+ extern "C" uint32_t cbc_host_abi_version(void) { return CBC_HOST_ABI; }
+ extern "C" int cbc_host_error(char *buffer, uint64_t capacity, uint64_t *required) {
+   if (!required || (capacity && !buffer)) return CBC_INVALID;
+diff --git a/native/host/cycles_host.h b/native/host/cycles_host.h
+index 5acf45f..1131757 100644
+--- a/native/host/cycles_host.h
++++ b/native/host/cycles_host.h
+@@ -116,6 +116,28 @@ int cbc_host_image_release(CBCHost host, CBCImage image);
+ /* Triangle geometry is validated and copied. Every face initially uses material 0. */
+ int cbc_host_mesh(CBCHost host, CBCNode mesh, const float *xyz, uint64_t vertex_count,
+                   const uint32_t *indices, uint64_t triangle_count);
++/* WebGPU pipeline tier selection (graceful degradation; native/DEVICE.md).
++ * Process-wide; applies to WebGPU hosts created after the call. tier is
++ * CBC_TIER_AUTO (explicit request > persisted device record > known-adapter
++ * table > full), CBC_TIER_FULL or CBC_TIER_CONSERVATIVE. record_directory is an
++ * app-writable directory for the persisted device-identity record (created if
++ * missing; NULL or empty disables the record, as does CBC_TIER_RECORD_OFF).
++ * CBC_TIER_CANARY compiles one representative module at device creation; its
++ * failure selects the conservative tier before the scene compiles. A slow
++ * compile never changes the tier. Environment variables documented in
++ * native/DEVICE.md override these settings for gates. */
++enum { CBC_TIER_AUTO = 0, CBC_TIER_FULL = 1, CBC_TIER_CONSERVATIVE = 2 };
++enum { CBC_TIER_RECORD_OFF = 1, CBC_TIER_RECORD_READ_ONLY = 2, CBC_TIER_CANARY = 4 };
++typedef struct CBCTierConfig {
++  uint32_t struct_size, abi_version, tier, flags;
++  uint32_t reserved[4];
++} CBCTierConfig;
++int cbc_host_tier_config(const CBCTierConfig *config, const char *utf8_record_directory);
++/* Capability report for the host's device as JSON (required includes NUL):
++ * backend, adapter, chosen tier and why (override, opt-in, record, table,
++ * default, canary, failure), record path/status, canary result, compile
++ * budget, warnings and compiled pipelines. Serializes with rendering. */
++int cbc_host_device_report_json(CBCHost host, char *json, uint64_t capacity, uint64_t *required);
+ /* Synchronous scene-linear RGBA, lower-left origin. Output changes only on success.
+  * All edits serialize with rendering. Cancel and destruction may run concurrently.
+  * A requested WebGPU render never falls back to CPU rendering. */
+diff --git a/native/host/exports.def b/native/host/exports.def
+index 134a26b..2b3e5ca 100644
+--- a/native/host/exports.def
++++ b/native/host/exports.def
+@@ -11,6 +11,7 @@ EXPORTS
+   cbc_host_create
+   cbc_host_create_node
+   cbc_host_destroy
++  cbc_host_device_report_json
+   cbc_host_error
+   cbc_host_get_floats
+   cbc_host_get_ints
+@@ -35,3 +36,4 @@ EXPORTS
+   cbc_host_set_uints
+   cbc_host_shader_node
+   cbc_host_shader_output
++  cbc_host_tier_config
+diff --git a/native/host/exports.macos b/native/host/exports.macos
+index 15bbb6e..d33424a 100644
+--- a/native/host/exports.macos
++++ b/native/host/exports.macos
+@@ -10,6 +10,7 @@ _cbc_host_connect
+ _cbc_host_create
+ _cbc_host_create_node
+ _cbc_host_destroy
++_cbc_host_device_report_json
+ _cbc_host_error
+ _cbc_host_get_floats
+ _cbc_host_get_ints
+@@ -34,3 +35,4 @@ _cbc_host_set_strings
+ _cbc_host_set_uints
+ _cbc_host_shader_node
+ _cbc_host_shader_output
++_cbc_host_tier_config
+diff --git a/native/host/exports.map b/native/host/exports.map
+index 95aabea..64cdc6f 100644
+--- a/native/host/exports.map
++++ b/native/host/exports.map
+@@ -12,6 +12,7 @@ CBC_HOST_EXPERIMENT_1 {
+     cbc_host_create;
+     cbc_host_create_node;
+     cbc_host_destroy;
++    cbc_host_device_report_json;
+     cbc_host_error;
+     cbc_host_get_floats;
+     cbc_host_get_ints;
+@@ -36,5 +37,6 @@ CBC_HOST_EXPERIMENT_1 {
+     cbc_host_set_uints;
+     cbc_host_shader_node;
+     cbc_host_shader_output;
++    cbc_host_tier_config;
+   local: *;
+ };
+diff --git a/native/host/targets.cmake b/native/host/targets.cmake
+index 441fdf6..ee29f73 100644
+--- a/native/host/targets.cmake
++++ b/native/host/targets.cmake
+@@ -86,7 +86,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
+       target_link_options(${reference} PRIVATE "LINKER:-Map,${CMAKE_BINARY_DIR}/${reference}.map")
+     endif()
+   endforeach()
+-  foreach(kind IN ITEMS cpu gpu reload concurrency)
++  foreach(kind IN ITEMS cpu gpu reload concurrency tier)
+     if(kind STREQUAL "cpu")
+       set(source consumer.c)
+     else()
+diff --git a/native/src/webgpu_device.cpp b/native/src/webgpu_device.cpp
+index f90e94f..0fb8838 100644
+--- a/native/src/webgpu_device.cpp
++++ b/native/src/webgpu_device.cpp
+@@ -9,6 +9,7 @@
+ #include <mutex>
+ #include <unistd.h>
+ #include <cstring>
++#include <cstdlib>
+ #include <dlfcn.h>
+ #include <thread>
+ #include <vector>
+@@ -52,7 +53,9 @@ Device::Device(){
+   for(auto a:candidates){WGPUAdapterInfo info{};
+     if(wgpuAdapterGetInfo(a,&info)!=WGPUStatus_Success){wgpuAdapterRelease(a);continue;}
+     bool hardware=info.adapterType==WGPUAdapterType_IntegratedGPU||info.adapterType==WGPUAdapterType_DiscreteGPU;
+-    if(!adapter.value&&hardware&&text(info.device).find("llvmpipe")==std::string::npos){adapter.value=a;adapter_name=text(info.device)+" / "+text(info.description);}
++    if(!adapter.value&&hardware&&text(info.device).find("llvmpipe")==std::string::npos){adapter.value=a;adapter_name=text(info.device)+" / "+text(info.description);
++      adapter_vendor=text(info.vendor);adapter_architecture=text(info.architecture);adapter_device=text(info.device);adapter_description=text(info.description);
++      adapter_vendor_id=info.vendorID;adapter_device_id=info.deviceID;adapter_type=uint32_t(info.adapterType);adapter_backend=uint32_t(info.backendType);}
+     else wgpuAdapterRelease(a);wgpuAdapterInfoFreeMembers(info);
+   }
+   if(!adapter.value)throw Error(CBC_BACKEND_GPU_ERROR,"No hardware Vulkan adapter");
+@@ -90,29 +93,40 @@ Buffer Device::buffer(size_t bytes,WGPUBufferUsage usage,const void *data){
+ // (async-signal-safe write) and then re-raises with the previous disposition.
+ namespace {
+ char crash_note[256];size_t crash_note_bytes=0;
++volatile sig_atomic_t crash_record_fd=-1;
+ constexpr int crash_signals[]={SIGSEGV,SIGABRT,SIGBUS,SIGILL,SIGFPE};
+ struct sigaction previous_actions[5];
+ void crash_breadcrumb(int signal){
+   if(crash_note_bytes){ssize_t ignored=write(2,crash_note,crash_note_bytes);(void)ignored;}
++  if(crash_record_fd>=0){
++    char line[24]="signal=";size_t n=7;char digits[12];size_t d=0;unsigned v=unsigned(signal);
++    do{digits[d++]=char('0'+v%10);v/=10;}while(v&&d<sizeof(digits));
++    while(d)line[n++]=digits[--d];line[n++]='\n';
++    ssize_t ignored=write(crash_record_fd,line,n);(void)ignored;
++  }
+   for(size_t i=0;i<5;i++)if(crash_signals[i]==signal)sigaction(signal,&previous_actions[i],nullptr);
+   raise(signal);
+ }
+ struct CrashBreadcrumb {
+-  explicit CrashBreadcrumb(const char *entry){
++  explicit CrashBreadcrumb(const char *entry,int record_fd){
++    crash_record_fd=record_fd;
+     const int n=std::snprintf(crash_note,sizeof(crash_note),"\nCodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline '%s'\n",entry);
+     crash_note_bytes=n>0?std::min(size_t(n),sizeof(crash_note)-1):0;
+     struct sigaction action{};action.sa_handler=crash_breadcrumb;sigemptyset(&action.sa_mask);
+     for(size_t i=0;i<5;i++)sigaction(crash_signals[i],&action,&previous_actions[i]);
+   }
+-  ~CrashBreadcrumb(){for(size_t i=0;i<5;i++)sigaction(crash_signals[i],&previous_actions[i],nullptr);crash_note_bytes=0;}
++  ~CrashBreadcrumb(){for(size_t i=0;i<5;i++)sigaction(crash_signals[i],&previous_actions[i],nullptr);crash_note_bytes=0;crash_record_fd=-1;}
+ };
+ std::mutex crash_mutex;
+ }
+-Pipeline Device::pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry){
++Pipeline Device::pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry,const char *label,int record_fd){
+   WGPUComputePipelineDescriptor d{};d.layout=layout;d.compute.module=shader;d.compute.entryPoint={entry,std::strlen(entry)};
+   // Driver out-of-memory and internal compiler errors are reported with the
+   // stage name instead of only reaching the uncaptured-error callback.
+-  std::lock_guard crash_lock(crash_mutex);CrashBreadcrumb breadcrumb(entry);
++  std::lock_guard crash_lock(crash_mutex);CrashBreadcrumb breadcrumb(label?label:entry,record_fd);
++  // Test hook for the device-tier gates: terminate exactly as a driver crash
++  // would, inside the breadcrumb scope, when creating the named stage.
++  if(const char *crash=std::getenv("CODEBRIX_CYCLES_TEST_CRASH_PIPELINE"))if(std::strcmp(crash,label?label:entry)==0)raise(SIGABRT);
+   wgpuDevicePushErrorScope(device,WGPUErrorFilter_Internal);wgpuDevicePushErrorScope(device,WGPUErrorFilter_OutOfMemory);
+   push_scope();Pipeline result(wgpuDeviceCreateComputePipeline(device,&d));
+   std::string failure;
+diff --git a/native/src/webgpu_device.h b/native/src/webgpu_device.h
+index f7042f2..90fbbd1 100644
+--- a/native/src/webgpu_device.h
++++ b/native/src/webgpu_device.h
+@@ -43,6 +43,10 @@ class Device {
+   void set_error(const std::string &message);
+  public:
+   WGPULimits limits{}; std::string adapter_name,library_path;
++  // Adapter identity for the device-tier record and known-adapter table
++  // (device_tier.h): WGPUAdapterInfo strings and PCI-style ids as reported.
++  std::string adapter_vendor,adapter_architecture,adapter_device,adapter_description;
++  uint32_t adapter_vendor_id=0,adapter_device_id=0,adapter_type=0,adapter_backend=0;
+   uint64_t buffer_creations=0,pipeline_creations=0;
+   Device();
+   WGPUDevice get()const{return device.value;}
+@@ -52,7 +56,10 @@ class Device {
+   void push_scope(){wgpuDevicePushErrorScope(device,WGPUErrorFilter_Validation);}
+   void pop_scope();
+   Buffer buffer(size_t bytes,WGPUBufferUsage usage,const void *data=nullptr);
+-  Pipeline pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry);
++  // label (default: entry) names the stage in the crash breadcrumb. While the
++  // pipeline is created, a crash signal is also appended as "signal=<n>" to
++  // record_fd (the device-tier pending breadcrumb; -1: none).
++  Pipeline pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry,const char *label=nullptr,int record_fd=-1);
+   void read(Buffer &buffer,void *out,size_t bytes);
+ };
+ }
+diff --git a/b/native/tests/host/tier_consumer.c b/native/tests/host/tier_consumer.c
+new file mode 100644
+index 0000000..3d37839
+--- /dev/null
++++ b/native/tests/host/tier_consumer.c
+@@ -0,0 +1,119 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++// Device-tier consumer for native/tools/tier_gate.py: applies the public tier
++// configuration, prints the device capability report before and after one
++// small WebGPU render, and saves the film. Adapter identity, crashes and canary
++// failures are simulated only through the documented gate environment hooks.
++#define _POSIX_C_SOURCE 200809L
++#include "cycles_host.h"
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++static void check(int result, const char *call) {
++  if (result == CBC_OK) return;
++  char error[4096]; uint64_t required = 0;
++  cbc_host_error(error, sizeof(error), &required);
++  fprintf(stderr, "%s returned %d: %s\n", call, result, error); exit(1);
++}
++#define CHECK(call) check((call), #call)
++#define REQUIRE(test) do { if (!(test)) { fprintf(stderr, "Failed at line %d: %s\n", __LINE__, #test); exit(1); } } while (0)
++static CBCNode create(CBCHost host, const char *type) {
++  CBCNode node = 0; CHECK(cbc_host_create_node(host, type, &node)); return node;
++}
++static CBCNode singleton(CBCHost host, const char *name) {
++  CBCNode node = 0; CHECK(cbc_host_scene_node(host, name, &node)); return node;
++}
++static CBCNode shader_node(CBCHost host, CBCNode shader, const char *type) {
++  CBCNode node = 0; CHECK(cbc_host_shader_node(host, shader, type, &node)); return node;
++}
++static void integer(CBCHost host, CBCNode node, const char *name, int64_t value) {
++  CHECK(cbc_host_set_ints(host, node, name, &value, 1));
++}
++static void scalar(CBCHost host, CBCNode node, const char *name, float value) {
++  CHECK(cbc_host_set_floats(host, node, name, &value, 1));
++}
++static void color(CBCHost host, CBCNode node, const char *name, float r, float g, float b) {
++  float value[] = {r, g, b}; CHECK(cbc_host_set_floats(host, node, name, value, 3));
++}
++static CBCNode fixture(CBCHost host, CBCNode *mesh_out) {
++  CBCNode integrator = singleton(host, "integrator");
++  integer(host, integrator, "use_guiding", 0); integer(host, integrator, "use_light_tree", 0);
++  integer(host, integrator, "use_adaptive_sampling", 0); integer(host, integrator, "use_denoise", 0);
++  integer(host, integrator, "caustics_reflective", 0); integer(host, integrator, "caustics_refractive", 0);
++  integer(host, integrator, "min_bounce", 2); integer(host, integrator, "max_bounce", 4);
++  integer(host, integrator, "max_diffuse_bounce", 4);
++  CHECK(cbc_host_set_string(host, integrator, "sampling_pattern", "tabulated_sobol"));
++  CBCNode camera = singleton(host, "camera"); scalar(host, camera, "fov", 1.1f);
++  float transform[] = {1,0,0,0, 0,1,0,0, 0,0,1,-4};
++  CHECK(cbc_host_set_floats(host, camera, "matrix", transform, 12));
++
++  CBCNode material = create(host, "shader"), output;
++  CHECK(cbc_host_shader_output(host, material, &output));
++  CBCNode diffuse = shader_node(host, material, "diffuse_bsdf");
++  CBCNode value = shader_node(host, material, "color");
++  color(host, value, "value", .7f, .2f, .1f); scalar(host, diffuse, "roughness", .3f);
++  CHECK(cbc_host_connect(host, value, "Color", diffuse, "Color"));
++  CHECK(cbc_host_connect(host, diffuse, "BSDF", output, "Surface"));
++  CHECK(cbc_host_set_string(host, material, "emission_sampling_method", "none"));
++  CBCNode mesh = create(host, "mesh");
++  CHECK(cbc_host_set_nodes(host, mesh, "used_shaders", &material, 1));
++  float xyz[] = {-1.5f,-1,0, 1.5f,-1,0, 0,1.5f,0}; uint32_t indices[] = {0,1,2};
++  CHECK(cbc_host_mesh(host, mesh, xyz, 3, indices, 1));
++  CBCNode object = create(host, "object"); CHECK(cbc_host_set_nodes(host, object, "geometry", &mesh, 1));
++  CBCNode world = create(host, "shader"), background = shader_node(host, world, "background_shader");
++  CHECK(cbc_host_shader_output(host, world, &output));
++  color(host, background, "color", .25f, .4f, .6f); scalar(host, background, "strength", .8f);
++  CHECK(cbc_host_connect(host, background, "Background", output, "Surface"));
++  CHECK(cbc_host_set_string(host, world, "emission_sampling_method", "none"));
++  CBCNode scene_background = singleton(host, "background");
++  CHECK(cbc_host_set_nodes(host, scene_background, "shader", &world, 1));
++  *mesh_out = mesh; return value;
++}
++enum { FLOAT_COUNT = 32 * 24 * 4 };
++static char *report(CBCHost host) {
++  uint64_t required = 0;
++  REQUIRE(cbc_host_device_report_json(host, NULL, 0, &required) == CBC_SMALL_BUFFER && required > 1);
++  char small[2];
++  REQUIRE(cbc_host_device_report_json(host, small, sizeof(small), &required) == CBC_SMALL_BUFFER);
++  char *json = malloc(required); REQUIRE(json);
++  CHECK(cbc_host_device_report_json(host, json, required, &required));
++  REQUIRE(strlen(json) + 1 == required);
++  return json;
++}
++/* argv: render|create, auto|full|conservative|none, record directory or -, flags (c canary, o off, r read-only, - none), film path */
++int main(int argc, char **argv) {
++  REQUIRE(argc == 6);
++  CBCTierConfig tier = {sizeof(tier), CBC_HOST_ABI, CBC_TIER_AUTO, 0, {0}};
++  /* Size, version, reserved, tier and flag validation. */
++  tier.struct_size--; REQUIRE(cbc_host_tier_config(&tier, NULL) == CBC_INVALID); tier.struct_size++;
++  tier.abi_version++; REQUIRE(cbc_host_tier_config(&tier, NULL) == CBC_INVALID); tier.abi_version--;
++  tier.reserved[0] = 1; REQUIRE(cbc_host_tier_config(&tier, NULL) == CBC_INVALID); tier.reserved[0] = 0;
++  tier.tier = 3; REQUIRE(cbc_host_tier_config(&tier, NULL) == CBC_INVALID); tier.tier = CBC_TIER_AUTO;
++  tier.flags = 8; REQUIRE(cbc_host_tier_config(&tier, NULL) == CBC_INVALID); tier.flags = 0;
++  REQUIRE(cbc_host_tier_config(NULL, NULL) == CBC_INVALID);
++  if (strcmp(argv[2], "none") != 0) {
++    tier.tier = strcmp(argv[2], "full") == 0 ? CBC_TIER_FULL : strcmp(argv[2], "conservative") == 0 ? CBC_TIER_CONSERVATIVE : CBC_TIER_AUTO;
++    if (strchr(argv[4], 'c')) tier.flags |= CBC_TIER_CANARY;
++    if (strchr(argv[4], 'o')) tier.flags |= CBC_TIER_RECORD_OFF;
++    if (strchr(argv[4], 'r')) tier.flags |= CBC_TIER_RECORD_READ_ONLY;
++    CHECK(cbc_host_tier_config(&tier, strcmp(argv[3], "-") == 0 ? NULL : argv[3]));
++  }
++  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, CBC_HOST_WEBGPU, 1, {0}};
++  CBCHost host = 0; CHECK(cbc_host_create(&config, &host));
++  REQUIRE(cbc_host_device_report_json(host + 1000, NULL, 0, NULL) == CBC_INVALID);
++  char *before = report(host), *after = NULL;
++  if (strcmp(argv[1], "render") == 0) {
++    CBCNode mesh = 0; fixture(host, &mesh);
++    CBCRenderConfig render = {sizeof(render), 32, 24, 8, {0}};
++    static float pixels[FLOAT_COUNT];
++    CHECK(cbc_host_render(host, &render, pixels, FLOAT_COUNT));
++    FILE *file = fopen(argv[5], "wb"); REQUIRE(file);
++    REQUIRE(fwrite(pixels, sizeof(float), FLOAT_COUNT, file) == FLOAT_COUNT); REQUIRE(fclose(file) == 0);
++    after = report(host);
++  }
++  printf("{\"before\":%s,\"after\":%s}\n", before, after ? after : "null");
++  free(before); free(after);
++  CHECK(cbc_host_destroy(host));
++  return 0;
++}
+diff --git a/native/tools/android_host_gate.py b/native/tools/android_host_gate.py
+index cc9f653..66fec4f 100644
+--- a/native/tools/android_host_gate.py
++++ b/native/tools/android_host_gate.py
+@@ -86,7 +86,7 @@ def inspect(rid, folder):
+     exports = subprocess.check_output([str(toolchain.bin/'llvm-nm'), '-D', '--defined-only', str(library)], text=True)
+     actual = {line.split()[-1].split('@')[0] for line in exports.splitlines()}-{'CBC_HOST_EXPERIMENT_1'}
+     expected = set(re.findall(r'\b(cbc_host_\w+)\(', (ROOT/'host/cycles_host.h').read_text()))
+-    require(actual == expected and len(actual) == 36, 'Unexpected public C exports')
++    require(actual == expected and len(actual) == 38, 'Unexpected public C exports')
+     compiled, headers = [], {}
+     for row in json.loads((build/'compile_commands.json').read_text()):
+         path = Path(row['file']).resolve()
+diff --git a/native/tools/build_cycles.py b/native/tools/build_cycles.py
+index 2a14bcb..4904abf 100644
+--- a/native/tools/build_cycles.py
++++ b/native/tools/build_cycles.py
+@@ -103,7 +103,7 @@ def main():
+         commands[1]=['cmake','--build',str(build),'--target',*args.target,'--parallel',args.jobs]
+     else:
+         commands[1][4:4]=['codebrix_cycles_host','codebrix_host_cpu_test','codebrix_host_gpu_test',
+-                         'codebrix_host_reload_test','codebrix_host_concurrency_test',
++                         'codebrix_host_reload_test','codebrix_host_concurrency_test','codebrix_host_tier_test',
+                          'codebrix_host_session_reference','codebrix_host_session64_reference',
+                          'codebrix_host_image_reference']
+     for command in commands:subprocess.run(command,check=True)
+diff --git a/native/tools/host_gate.py b/native/tools/host_gate.py
+index 32370ac..6caf612 100644
+--- a/native/tools/host_gate.py
++++ b/native/tools/host_gate.py
+@@ -82,7 +82,7 @@ def main():
+         expected = set(re.findall(r'\b(cbc_host_\w+)\(', (ROOT/'host/cycles_host.h').read_text()))
+         exports = call(['nm', '-D', '--defined-only', library], 'exports')
+         actual = {line.split()[-1].split('@')[0] for line in exports.splitlines()} - {'CBC_HOST_EXPERIMENT_1'}
+-        assert actual == expected and len(actual) == 36
++        assert actual == expected and len(actual) == 38
+         for kind in ['session', 'session64', 'image']:
+             link_map = (build/f'codebrix_host_{kind}_reference.map').read_text()
+             assert 'CMakeFiles/codebrix_host_reference_color.dir/src/util/colorspace.cpp.o' in link_map
+@@ -161,7 +161,7 @@ def main():
+         assert all(sha(Path(p)) == digest for p, digest in {**pins, **reference_hashes}.items())
+         save(out/'invocation.json', dict(sourceSha256=sources, binarySha256=pins,
+                                         referenceSha256=reference_hashes, commands=commands))
+-        state.update(complete=True, passed=True, phase='complete', exportCount=36,
++        state.update(complete=True, passed=True, phase='complete', exportCount=38,
+                      independentReferenceFilms=786, comparisons=len(comparisons), results=results,
+                      maximumAbsoluteError=max(row['maximumAbsoluteError'] for row in comparisons),
+                      practicalFailures=sum(row['practicalFailures'] for row in comparisons),
+diff --git a/native/tools/inject_cycles.cmake b/native/tools/inject_cycles.cmake
+index 7a645ee..4601ab2 100644
+--- a/native/tools/inject_cycles.cmake
++++ b/native/tools/inject_cycles.cmake
+@@ -33,6 +33,7 @@ function(codebrix_add_cycles_device)
+     "${CODEBRIX_NATIVE_ROOT}/cycles/volume.cpp"
+     "${CODEBRIX_NATIVE_ROOT}/cycles/svm_layout.cpp"
+     "${CODEBRIX_NATIVE_ROOT}/cycles/pipelines.cpp"
++    "${CODEBRIX_NATIVE_ROOT}/cycles/device_tier.cpp"
+     "${CODEBRIX_NATIVE_ROOT}/cycles/shader_data.cpp"
+     "${CODEBRIX_NATIVE_ROOT}/src/webgpu_device.cpp")
+   target_include_directories(cycles_device PRIVATE "${CODEBRIX_NATIVE_ROOT}/src"
+diff --git a/native/tools/linux_arm64_host_gate.py b/native/tools/linux_arm64_host_gate.py
+index f972729..40aa994 100644
+--- a/native/tools/linux_arm64_host_gate.py
++++ b/native/tools/linux_arm64_host_gate.py
+@@ -74,7 +74,7 @@ def main():
+   library=build/'lib/libcodebrix_cycles_host.so'
+   exported=subprocess.check_output(['aarch64-linux-gnu-nm','-D','--defined-only',str(library)],text=True)
+   actual={line.split()[-1].split('@')[0] for line in exported.splitlines()}-{'CBC_HOST_EXPERIMENT_1'}
+-  expected=set(re.findall(r'\b(cbc_host_\w+)\(', (REPO/'native/host/cycles_host.h').read_text()));assert actual==expected and len(actual)==36
++  expected=set(re.findall(r'\b(cbc_host_\w+)\(', (REPO/'native/host/cycles_host.h').read_text()));assert actual==expected and len(actual)==38
+   for kind in ['session','session64','image']:
+    link=(build/('codebrix_host_'+kind+'_reference.map')).read_text()
+    assert 'CMakeFiles/codebrix_host_reference_color.dir/src/util/colorspace.cpp.o' in link
+diff --git a/native/tools/macos_host_gate.py b/native/tools/macos_host_gate.py
+index a365abf..f309c44 100644
+--- a/native/tools/macos_host_gate.py
++++ b/native/tools/macos_host_gate.py
+@@ -51,7 +51,7 @@ def main():
+   assert all(sha(Path(path))==digest for path,digest in pins.items())
+   library=build/'lib/libcodebrix_cycles_host.dylib'
+   exported={line.split()[-1].lstrip('_') for line in tool('nm','-gU',str(library)).splitlines() if ' T ' in line}
+-  expected=set(re.findall(r'\b(cbc_host_\w+)\(',(REPO/'native/host/cycles_host.h').read_text()));assert exported==expected and len(exported)==36
++  expected=set(re.findall(r'\b(cbc_host_\w+)\(',(REPO/'native/host/cycles_host.h').read_text()));assert exported==expected and len(exported)==38
+   closure={};review=[]
+   for path in [library,*[build/'bin'/name for name in ['codebrix_host_cpu_test','codebrix_host_gpu_test','codebrix_host_session_reference']]]:
+    names=linked(path)
+diff --git a/native/tools/shadow_gate.py b/native/tools/shadow_gate.py
+index 97f3328..7e8ee51 100644
+--- a/native/tools/shadow_gate.py
++++ b/native/tools/shadow_gate.py
+@@ -40,7 +40,10 @@ def main():
+                 assert report['originalCpuShadowKernels'] and report['originalGpuScheduler']
+                 assert report['cases']==60 and report['paths']==3846 and report['directDispatchCases']==30 and report['invalidCasesRejected']==18
+                 assert report['blocked']>100 and report['unoccluded']>100 and report['selfOrLightExclusions']>50
+-            elif kind=='closest':assert report['cases']==22 and report['invalidCasesRejected']==16 and report['originalCameraToIntersectionScheduler']
++            # 21 = the original 16 closest negative cases plus 5 object-motion/deforming
++            # rejections (tests 16-20 in closest_gate.cpp, added with object motion);
++            # this expectation predated them.
++            elif kind=='closest':assert report['cases']==22 and report['invalidCasesRejected']==21 and report['originalCameraToIntersectionScheduler']
+             else:assert report['nativeSceneAndScheduler'] and report['independentCpuImage'] and report['repeatBitwiseIdentical']
+             results[kind]=report;save(out/'results.json',results)
+         status['phase']='shadow-replay';save(out/'status.json',status)
+diff --git a/b/native/tools/tier_gate.py b/native/tools/tier_gate.py
+new file mode 100644
+index 0000000..78705bb
+--- /dev/null
++++ b/native/tools/tier_gate.py
+@@ -0,0 +1,294 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Linux gate for WebGPU device-tier selection (native/DEVICE.md, "Device tiers").
++
++Every scenario is a separate process of the public C consumer
++(tests/host/tier_consumer.c) because the persisted record and crash breadcrumbs
++span processes. Other adapters are simulated only for the tier decision
++(CODEBRIX_CYCLES_TEST_ADAPTER); the real Linux adapter always compiles and
++renders. Crashes are real process terminations inside the pipeline-creation
++breadcrumb scope (CODEBRIX_CYCLES_TEST_CRASH_PIPELINE); canary failures are real
++WGSL rejections (CODEBRIX_CYCLES_TEST_CANARY=fail). Films are checked against
++the original native CPU session with the practical criterion; strict
++differences are reported only (this small fixture is not bitwise repeatable
++across processes because film accumulation order varies).
++"""
++import argparse
++import json
++import os
++import re
++import shutil
++import signal
++import struct
++import subprocess
++import sys
++import time
++from pathlib import Path
++
++from build import REPO, ROOT, WORK
++from device_gate import sha, save
++
++UNKNOWN = 'TestVendor|testarch|CodeBrix Test GPU|Test driver 1.0'
++UNKNOWN_B = 'TestVendor|testarch|CodeBrix Test GPU B|Test driver 1.0'
++UNKNOWN_C = 'TestVendor|testarch|CodeBrix Test GPU C|Test driver 1.0'
++UNKNOWN_D = 'TestVendor|testarch|CodeBrix Test GPU D|Test driver 1.0'
++ADRENO_640 = 'Qualcomm|adreno|Adreno (TM) 640|Driver Build: 85da404, Compiler Version: EV031.31.04.01|0x5143|0x6040001'
++ADRENO_730 = 'Qualcomm|adreno|Adreno (TM) 730|Driver Build: test|0x5143|0x7030001'
++ADRENO_UNKNOWN = 'Qualcomm|adreno|Adreno (TM) 999|Driver Build: test|0x5143|0x9990001'
++INTEL_XE = 'Intel|xe|Intel(R) Xe Graphics (TGL GT2)|Mesa 24.0.8|0x8086|0x9a49'
++GATE_ENV = ['CODEBRIX_CYCLES_PIPELINE_TIER', 'CODEBRIX_CYCLES_DEVICE_RECORD_DIR', 'CODEBRIX_CYCLES_DEVICE_RECORD',
++            'CODEBRIX_CYCLES_PIPELINE_CANARY', 'CODEBRIX_CYCLES_PIPELINE_CANARY_BUDGET_MS', 'CODEBRIX_CYCLES_TEST_ADAPTER',
++            'CODEBRIX_CYCLES_TEST_CRASH_PIPELINE', 'CODEBRIX_CYCLES_TEST_CANARY', 'CODEBRIX_CYCLES_PIPELINE_BUDGET_MS',
++            'CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION', 'CODEBRIX_CYCLES_SHADER_SPECIALIZATION', 'CODEBRIX_CYCLES_PIPELINE_LOG']
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument('--output', type=Path, default=WORK/'tier-validation')
++    parser.add_argument('--jobs', default='6')
++    parser.add_argument('--skip-build', action='store_true')
++    args = parser.parse_args()
++    out = args.output.resolve()
++    out.mkdir(parents=True, exist_ok=False)
++    build = WORK/'cycles-build'
++    binary = build/'bin'
++    library = build/'lib/libcodebrix_cycles_host.so'
++    base = dict(os.environ)
++    for name in GATE_ENV + ['OCIO']:
++        base.pop(name, None)
++    base['LD_LIBRARY_PATH'] = str(library.parent)
++    state = dict(complete=False, passed=False, scenarios={})
++    results = state['scenarios']
++    films = {}
++
++    def run(name, mode='render', tier='auto', record='-', flags='-', env=None, expect_crash=False, timeout=600):
++        folder = out/name
++        folder.mkdir()
++        environment = dict(base)
++        environment['CODEBRIX_CYCLES_PIPELINE_LOG'] = str(folder/'pipelines.jsonl')
++        environment.update(env or {})
++        command = [str(binary/'codebrix_host_tier_test'), mode, tier, str(record), flags, str(folder/'film.rgba.bin')]
++        started = time.monotonic()
++        with (folder/'stdout.txt').open('w') as stdout, (folder/'stderr.txt').open('w') as stderr:
++            result = subprocess.run(command, cwd=REPO, env=environment, stdout=stdout, stderr=stderr, timeout=timeout)
++        seconds = time.monotonic() - started
++        save(folder/'invocation.json', dict(command=command, environment={k: v for k, v in environment.items()
++                                            if k.startswith('CODEBRIX_') or k == 'MESA_SHADER_CACHE_DIR'},
++                                            returncode=result.returncode, seconds=seconds))
++        stderr_text = (folder/'stderr.txt').read_text()
++        if expect_crash:
++            assert result.returncode == -signal.SIGABRT, (name, result.returncode)
++            assert 'the Vulkan driver terminated while creating WebGPU compute pipeline' in stderr_text, name
++            results[name] = dict(crashed=True, returncode=result.returncode, seconds=seconds)
++            save(out/'status.json', state)
++            return None
++        assert result.returncode == 0, (name, result.returncode, stderr_text[-2000:])
++        report = json.loads((folder/'stdout.txt').read_text())
++        log = [json.loads(line) for line in (folder/'pipelines.jsonl').read_text().splitlines()] \
++            if (folder/'pipelines.jsonl').exists() else []
++        before = report['before']['pipelines']['decision']
++        row = dict(seconds=round(seconds, 1), tier=before['tier'], reason=before['reason'], detail=before['detail'],
++                   recordStatus=before['record']['status'], recordMode=before['record']['mode'],
++                   recordPath=before['record']['path'], budgetMs=report['before']['pipelines']['budgetMs'],
++                   budgetSource=report['before']['pipelines']['budgetSource'], canary=before['canary'],
++                   warnings=before['warnings'], pipelineTiers=sorted({r['tier'] for r in log}),
++                   compiledPipelines=len(log))
++        assert report['before']['backend'] == 'webgpu' and report['before']['abiVersion'] == 1
++        if mode == 'render':
++            after = report['after']['pipelines']
++            row.update(afterTier=after['decision']['tier'], afterReason=after['decision']['reason'],
++                       degraded=after['degraded'], pipelineWarnings=len(after['warnings']),
++                       filmSha256=sha(folder/'film.rgba.bin'))
++            films[name] = folder/'film.rgba.bin'
++            assert log, name
++        results[name] = row
++        save(folder/'report.json', report)
++        save(out/'status.json', state)
++        return row, report, log
++
++    def record_file(directory):
++        files = sorted(Path(directory).glob('codebrix-cycles-device-*.txt'))
++        assert len(files) == 1, files
++        return files[0]
++
++    def pending(directory):
++        return sorted(Path(directory).glob('codebrix-cycles-device-*.pending-*'))
++
++    try:
++        if not args.skip_build:
++            with (out/'build.stdout.txt').open('w') as stdout, (out/'build.stderr.txt').open('w') as stderr:
++                subprocess.run([sys.executable, ROOT/'tools/build_cycles.py', '--jobs', args.jobs, '--target', 'codebrix_cycles_host',
++                                '--target', 'codebrix_host_tier_test', '--target', 'codebrix_host_session_reference'],
++                               stdout=stdout, stderr=stderr, check=True, timeout=1800)
++        pins = {str(p): sha(p) for p in [library, binary/'codebrix_host_tier_test', binary/'codebrix_host_session_reference']}
++        save(out/'binary-pins.json', pins)
++        # Independent original native CPU session for the same fixture (round 0).
++        cpu = out/'cpu-reference'
++        cpu.mkdir()
++        cpu_env = dict(base)
++        with (cpu/'stdout.txt').open('w') as stdout, (cpu/'stderr.txt').open('w') as stderr:
++            subprocess.run([str(binary/'codebrix_host_session_reference'), 'CPU', str(cpu/'run')], env=cpu_env,
++                           stdout=stdout, stderr=stderr, check=True, timeout=600)
++        reference = cpu/'run.0.rgba.bin'
++        records = out/'records'
++
++        # 1. Fresh device, no record: full fidelity; the record is created.
++        a = records/'a'
++        row, report, log = run('fresh-no-record', record=a, tier='auto', env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN})
++        assert row['tier'] == 'full' and row['reason'] == 'default' and row['recordStatus'] == 'absent'
++        assert row['detail'].startswith('first run') and row['pipelineTiers'] == ['full'] and row['afterTier'] == 'full'
++        text = record_file(a).read_text()
++        assert text.startswith('codebrix-cycles-device-record 1\n') and re.search(r'^stage=full\|surface\|prepare_surface\|[1-9]\d*\|0\|', text, re.M)
++        assert 'breadcrumb=' not in text and 'failure=' not in text and not pending(a)
++        shutil.copy2(record_file(a), out/'fresh-no-record/record-after.txt')
++        # 2. Same device again: the record decides (full) before any compile.
++        row, *_ = run('second-run-record-full', record=a, env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN})
++        assert row['tier'] == 'full' and row['reason'] == 'record' and row['recordStatus'] == 'valid'
++        assert row['pipelineTiers'] == ['full']
++
++        # 3. Real crash breadcrumb, then the next run starts conservative.
++        b = records/'b'
++        run('crash-in-prepare-surface', record=b, expect_crash=True,
++            env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_B, 'CODEBRIX_CYCLES_TEST_CRASH_PIPELINE': 'prepare_surface'})
++        left = pending(b)
++        assert len(left) == 1 and 'signal=6\n' in left[0].read_text() and 'entry=prepare_surface\n' in left[0].read_text()
++        shutil.copy2(left[0], out/'crash-in-prepare-surface/pending-breadcrumb.txt')
++        row, report, log = run('breadcrumb-selects-conservative', record=b, env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_B})
++        crumbs = report['before']['pipelines']['decision']['record']['breadcrumbs']
++        assert row['tier'] == 'conservative' and row['reason'] == 'record' and 'prepare_surface' in row['detail']
++        assert crumbs and crumbs[-1]['kind'] == 'signal' and crumbs[-1]['signal'] == 6 and crumbs[-1]['tier'] == 'full'
++        assert row['pipelineTiers'] == ['conservative'] and all(r['workgroupSize'] == 1 for r in log)
++        assert row['degraded'] and not pending(b)
++        text = record_file(b).read_text()
++        assert 'breadcrumb=full|surface|prepare_surface|signal|6|' in text
++        assert re.search(r'^stage=conservative\|surface\|prepare_surface\|[1-9]\d*\|0\|', text, re.M)
++        shutil.copy2(record_file(b), out/'breadcrumb-selects-conservative/record-after.txt')
++        # Gate override: force full despite the record; ignore mode reads but does not apply it.
++        row, *_ = run('override-full-over-record', record=b, env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_B,
++                                                                 'CODEBRIX_CYCLES_PIPELINE_TIER': 'full'}, mode='create')
++        assert row['tier'] == 'full' and row['reason'] == 'override'
++        row, *_ = run('ignore-record', record=b, env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_B,
++                                                     'CODEBRIX_CYCLES_DEVICE_RECORD': 'ignore'}, mode='create')
++        assert row['tier'] == 'full' and row['reason'] == 'default' and row['recordMode'] == 'ignore' and row['recordStatus'] == 'valid'
++        row, *_ = run('record-off', record=b, env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_B,
++                                                  'CODEBRIX_CYCLES_DEVICE_RECORD': 'off'}, mode='create')
++        assert row['tier'] == 'full' and row['recordMode'] == 'off' and row['recordPath'] == ''
++        row, *_ = run('host-record-off-flag', record=b, flags='o', env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_B}, mode='create')
++        assert row['tier'] == 'full' and row['recordMode'] == 'off'
++        row, *_ = run('environment-record-dir', record='-', mode='create',
++                      env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_B, 'CODEBRIX_CYCLES_DEVICE_RECORD_DIR': str(b)})
++        assert row['tier'] == 'conservative' and row['reason'] == 'record'
++
++        # 4./5. Stale records (different shader hash or runtime) are never applied.
++        for name, key in [('stale-shader-hash', 'shaderHash='), ('stale-runtime', 'runtime=')]:
++            directory = records/name
++            directory.mkdir(parents=True)
++            source = record_file(b)
++            lines = source.read_text().splitlines()
++            lines = [line + '-different' if line.startswith(key) else line for line in lines]
++            (directory/source.name).write_text('\n'.join(lines) + '\n')
++            row, report, log = run(name, record=directory, env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_B})
++            assert row['tier'] == 'full' and row['reason'] == 'default' and row['recordStatus'] == name
++            assert any(name in w for w in row['warnings']) and row['pipelineTiers'] == ['full']
++            text = record_file(directory).read_text()
++            assert 'breadcrumb=' not in text and '-different' not in text  # replaced by this run's record
++
++        # Known-adapter table (decision only; the real adapter compiles nothing more).
++        for name, adapter, tier, reason, budget, source in [
++                ('table-adreno-640', ADRENO_640, 'conservative', 'table', 60000, 'default'),
++                ('table-adreno-730', ADRENO_730, 'full', 'table', 60000, 'default'),
++                ('table-intel-xe-mesa-24.0.8', INTEL_XE, 'full', 'table', 60000, 'default'),
++                ('table-real-linux-adapter', None, 'full', 'table', 60000, 'default'),
++                ('unknown-mobile-tighter-budget', ADRENO_UNKNOWN, 'full', 'default', 20000, 'unknown-mobile'),
++                ('unknown-desktop', UNKNOWN, 'full', 'default', 60000, 'default')]:
++            env = {'CODEBRIX_CYCLES_TEST_ADAPTER': adapter} if adapter else {}
++            row, *_ = run(name, mode='create', env=env)
++            assert (row['tier'], row['reason'], row['budgetMs'], row['budgetSource']) == (tier, reason, budget, source), row
++        assert 'Linux Intel UHD ADL-S' in results['table-real-linux-adapter']['detail']
++        # Adreno 640 renders conservatively by table; a record with full-tier
++        # evidence then overrides the table.
++        c = records/'c'
++        row, *_ = run('table-adreno-640-render', record=c, env={'CODEBRIX_CYCLES_TEST_ADAPTER': ADRENO_640})
++        assert row['tier'] == 'conservative' and row['reason'] == 'table' and row['pipelineTiers'] == ['conservative']
++        row, *_ = run('table-adreno-640-record-conservative-only', record=c, mode='create',
++                      env={'CODEBRIX_CYCLES_TEST_ADAPTER': ADRENO_640})
++        assert row['tier'] == 'conservative' and row['reason'] == 'table'
++        run('adreno-640-forced-full', record=c, tier='full', env={'CODEBRIX_CYCLES_TEST_ADAPTER': ADRENO_640})
++        row, *_ = run('record-overrides-table', record=c, mode='create', env={'CODEBRIX_CYCLES_TEST_ADAPTER': ADRENO_640})
++        assert row['tier'] == 'full' and row['reason'] == 'record'
++        row, *_ = run('host-opt-in-conservative', tier='conservative', mode='create', env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN})
++        assert row['tier'] == 'conservative' and row['reason'] == 'opt-in'
++
++        # Canary paths.
++        d = records/'d'
++        row, *_ = run('canary-pass', record=d, flags='c', env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_C})
++        assert row['tier'] == 'full' and row['canary']['enabled'] and row['canary']['result'] == 'passed'
++        assert row['pipelineTiers'] == ['full']
++        row, *_ = run('canary-disabled-by-environment', record=d, flags='c', mode='create',
++                      env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_C, 'CODEBRIX_CYCLES_PIPELINE_CANARY': '0'})
++        assert not row['canary']['enabled'] and row['canary']['result'] == 'not-run'
++        row, *_ = run('canary-slow-warns-only', record=d, flags='c', env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_C,
++                                                                         'CODEBRIX_CYCLES_PIPELINE_CANARY_BUDGET_MS': '1'})
++        assert row['tier'] == 'full' and row['canary']['result'] == 'slow' and row['pipelineTiers'] == ['full'] and row['degraded']
++        e = records/'e'
++        row, *_ = run('canary-failure', record=e, flags='c', env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_D,
++                                                                 'CODEBRIX_CYCLES_TEST_CANARY': 'fail'})
++        assert row['tier'] == 'conservative' and row['reason'] == 'canary' and row['canary']['result'] == 'failed'
++        assert row['pipelineTiers'] == ['conservative']
++        assert 'failure=full|canary|prepare_surface|' in record_file(e).read_text()
++        row, *_ = run('canary-failure-recorded', record=e, mode='create', env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_D})
++        assert row['tier'] == 'conservative' and row['reason'] == 'record' and 'canary' in row['detail']
++        f = records/'f'
++        run('canary-crash', record=f, flags='c', expect_crash=True,
++            env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_D, 'CODEBRIX_CYCLES_TEST_CRASH_PIPELINE': 'canary:prepare_surface'})
++        row, report, log = run('canary-breadcrumb-selects-conservative', record=f, flags='c',
++                               env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN_D})
++        assert row['tier'] == 'conservative' and row['reason'] == 'record' and row['canary']['result'] == 'skipped'
++        assert row['pipelineTiers'] == ['conservative']
++
++        # A slow compile never switches tiers (budget 1 ms: every pipeline is over budget).
++        g = records/'g'
++        row, report, log = run('slow-compile-no-switch', record=g, env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN,
++                                                                       'CODEBRIX_CYCLES_PIPELINE_BUDGET_MS': '1'})
++        assert row['tier'] == 'full' and row['afterTier'] == 'full' and row['pipelineTiers'] == ['full']
++        over = sum(r['pipelineMs'] > 1 for r in log)
++        assert row['degraded'] and over >= 1 and row['pipelineWarnings'] == over and row['budgetSource'] == 'environment'
++        row['pipelinesOverBudget'] = over
++        text = record_file(g).read_text()
++        assert 'failure=' not in text and 'breadcrumb=' not in text
++        row, *_ = run('slow-compile-next-run', record=g, mode='create', env={'CODEBRIX_CYCLES_TEST_ADAPTER': UNKNOWN})
++        assert row['tier'] == 'full' and row['reason'] == 'record'
++
++        # Films: every film meets the practical criterion against the original
++        # CPU session; full-tier films are bitwise equal to each other.
++        reference_values = struct.unpack('<3072f', reference.read_bytes())
++        comparisons = {}
++        for name, path in films.items():
++            values = struct.unpack('<3072f', path.read_bytes())
++            errors = [abs(x - y) for x, y in zip(values, reference_values)]
++            comparisons[name] = dict(tier=results[name]['tier'], filmSha256=sha(path), maximumAbsoluteError=max(errors),
++                                     practicalFailures=sum(e > 5e-5 + 2e-4*abs(y) for e, y in zip(errors, reference_values)),
++                                     strictDifferences=sum(e > 1e-7 + 1e-7*abs(y) for e, y in zip(errors, reference_values)))
++            assert comparisons[name]['practicalFailures'] == 0, name
++        full_hashes = {row['filmSha256'] for name, row in comparisons.items() if results[name]['afterTier'] == 'full'}
++        conservative_hashes = {row['filmSha256'] for name, row in comparisons.items() if results[name]['afterTier'] == 'conservative'}
++        state['filmComparisons'] = comparisons
++        state['fullTierFilmHashes'] = sorted(full_hashes)
++        state['conservativeTierFilmHashes'] = sorted(conservative_hashes)
++        # Films of this fixture are not bitwise repeatable across processes
++        # (atomic film accumulation order); report the spread instead.
++        state['maximumStrictDifferencesAgainstCpu'] = max(row['strictDifferences'] for row in comparisons.values())
++        state['maximumAbsoluteErrorAgainstCpu'] = max(row['maximumAbsoluteError'] for row in comparisons.values())
++        assert all(sha(Path(p)) == digest for p, digest in pins.items())
++        state.update(complete=True, passed=True, cpuReferenceSha256=sha(reference))
++        print('Device-tier gate passed:', len(results), 'scenarios', flush=True)
++    except Exception as error:
++        state.update(complete=True, passed=False, error=repr(error))
++        raise
++    finally:
++        save(out/'status.json', state)
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/src/CodeBrix.Graphics3D.Cycles/CyclesHost.cs b/src/CodeBrix.Graphics3D.Cycles/CyclesHost.cs
+index 459928e..ad03d47 100644
+--- a/src/CodeBrix.Graphics3D.Cycles/CyclesHost.cs
++++ b/src/CodeBrix.Graphics3D.Cycles/CyclesHost.cs
+@@ -15,6 +15,9 @@ public enum AttributeDomain : uint { Mesh = 1, Face = 2, Vertex = 3, Corner = 4,
+ [Flags] public enum AttributeFlags : uint { None = 0, Standard = 1, Subdivision = 2 }
+ public enum ImageFormat : uint { Float = 1, Float4 = 2, Half = 3, Half4 = 4, Byte = 5, Byte4 = 6, UShort = 7, UShort4 = 8 }
+ public readonly record struct PropertyInfo(uint ValueType, uint Flags, uint Components, ulong Count);
++// WebGPU pipeline tier (graceful degradation; native/DEVICE.md "Device tiers").
++public enum PipelineTier : uint { Auto = 0, Full = 1, Conservative = 2 }
++[Flags] public enum PipelineTierFlags : uint { None = 0, RecordOff = 1, RecordReadOnly = 2, Canary = 4 }
+ public sealed class NativeFailure(int status, string message) : Exception(message)
+ {
+     public int Status { get; } = status;
+@@ -139,6 +142,32 @@ public sealed unsafe class CyclesHost : IDisposable
+         fixed (ulong* data = values) status = Native.GetNodes(Handle, node.Value, socket, data, (ulong)values.Length, out required);
+         GC.KeepAlive(lifetime); if (status == 6) return false; Check(status); return true;
+     }
++    // Process-wide; applies to WebGPU hosts created afterwards. recordDirectory
++    // is an app-writable folder for the persisted device-identity record (null
++    // disables it).
++    public static void ConfigureTiers(PipelineTier tier, string? recordDirectory, PipelineTierFlags flags = PipelineTierFlags.None)
++    {
++        EnsureSupportedOperatingSystem();
++        Native.TierConfig config = new() { Size = 32, Abi = 1, Tier = (uint)tier, Flags = (uint)flags };
++        Check(Native.ConfigureTiers(ref config, recordDirectory));
++    }
++    // Capability report JSON: backend, adapter, chosen tier and reason, record,
++    // canary, compile budget, warnings and compiled pipelines.
++    public string DeviceReportJson()
++    {
++        int status = Native.DeviceReport(Handle, null, 0, out ulong required);
++        GC.KeepAlive(lifetime);
++        if (status != 6) Check(status);
++        for (;;)
++        {
++            byte[] result = new byte[checked((int)required)];
++            fixed (byte* data = result) status = Native.DeviceReport(Handle, data, (ulong)result.Length, out required);
++            GC.KeepAlive(lifetime);
++            if (status == 6) continue;
++            Check(status);
++            return Encoding.UTF8.GetString(result, 0, checked((int)required - 1));
++        }
++    }
+     public static string RegistryJson()
+     {
+         EnsureSupportedOperatingSystem();
+@@ -219,6 +248,9 @@ internal static unsafe class Native
+     [StructLayout(LayoutKind.Sequential)] internal struct PropertyInfo { public uint Size, ValueType, Flags, Components; public ulong Count, Reserved; }
+     [StructLayout(LayoutKind.Sequential)] internal struct AttributeConfig { public uint Size, Value, Domain, Flags, R0, R1, R2, R3; }
+     [StructLayout(LayoutKind.Sequential)] internal struct ImageConfig { public uint Size, Width, Height, Format, R0, R1, R2, R3; }
++    [StructLayout(LayoutKind.Sequential)] internal struct TierConfig { public uint Size, Abi, Tier, Flags, R0, R1, R2, R3; }
++    [DllImport(Library, EntryPoint="cbc_host_tier_config", CallingConvention=CallingConvention.Cdecl)] internal static extern int ConfigureTiers(ref TierConfig config, [MarshalAs(UnmanagedType.LPUTF8Str)] string? directory);
++    [DllImport(Library, EntryPoint="cbc_host_device_report_json", CallingConvention=CallingConvention.Cdecl)] internal static extern int DeviceReport(ulong host, byte* json, ulong capacity, out ulong required);
+     [DllImport(Library, EntryPoint="cbc_host_attribute_floats", CallingConvention=CallingConvention.Cdecl)] internal static extern int SetAttributeFloats(ulong host, ulong geometry, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, ref AttributeConfig config, float* values, ulong count);
+     [DllImport(Library, EntryPoint="cbc_host_attribute_bytes", CallingConvention=CallingConvention.Cdecl)] internal static extern int SetAttributeBytes(ulong host, ulong geometry, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, ref AttributeConfig config, byte* values, ulong count);
+     [DllImport(Library, EntryPoint="cbc_host_attribute_get_floats", CallingConvention=CallingConvention.Cdecl)] internal static extern int GetAttributeFloats(ulong host, ulong geometry, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, uint flags, float* values, ulong capacity, out ulong required);
+diff --git a/tests/HostLifecycle/Program.cs b/tests/HostLifecycle/Program.cs
+index 4002d24..fc9e704 100644
+--- a/tests/HostLifecycle/Program.cs
++++ b/tests/HostLifecycle/Program.cs
+@@ -83,7 +83,12 @@ using (JsonDocument document = JsonDocument.Parse(registry))
+     Require(nodes.Sum(node => node.GetProperty("inputs").GetArrayLength() + node.GetProperty("outputs").GetArrayLength()) == 1277, "Complete socket registry");
+ }
+ File.WriteAllText(Path.Combine(args[1], "registry.json"), registry);
++CyclesHost.ConfigureTiers(PipelineTier.Auto, null);
++Rejected(() => CyclesHost.ConfigureTiers((PipelineTier)7, null), 1);
++Rejected(() => CyclesHost.ConfigureTiers(PipelineTier.Auto, null, (PipelineTierFlags)8), 1);
+ using CyclesHost host = new(Backend.CpuReference);
++using (JsonDocument report = JsonDocument.Parse(host.DeviceReportJson()))
++    Require(report.RootElement.GetProperty("backend").GetString() == "cpu" && report.RootElement.GetProperty("pipelines").ValueKind == JsonValueKind.Null, "CPU device report");
+ Node color = Fixture(host);
+ using (CyclesHost other = new(Backend.CpuReference))
+     Rejected(() => host.SetFloats(other.SceneNode("camera"), "fov", [1]), 1);
+@@ -117,4 +122,4 @@ await running.WaitAsync(TimeSpan.FromSeconds(30));
+ Require(pixels.All(x => x == -99), "Dispose during render changed output");
+ try { host.SceneNode("camera"); throw new Exception("Disposed host accepted a call"); } catch (ObjectDisposedException) { }
+ host.Dispose();
+-Console.WriteLine("{\"passed\":true,\"thinManagedConsumer\":true,\"cpuReferenceBitwiseEqual\":true,\"cancelAndReuse\":true,\"disposeDuringRender\":true,\"utf8Strings\":true,\"foreignHandlesRejected\":true}");
++Console.WriteLine("{\"passed\":true,\"thinManagedConsumer\":true,\"cpuReferenceBitwiseEqual\":true,\"cancelAndReuse\":true,\"disposeDuringRender\":true,\"utf8Strings\":true,\"foreignHandlesRejected\":true,\"deviceReport\":true,\"tierConfigValidated\":true}");

@@ -26,7 +26,10 @@ def run():
     required=['passed','registeredCyclesDevice','originalGpuSchedulerReset','unsupportedKernelRejected',
               'growthPreservesGpuWrites','uploadOrderingPassed','partialReadbackPassed']
     if not all(report[k] for k in required) or report['cyclesAllocationBytesAfterCleanup']!=0:raise RuntimeError('Device gate failed')
-    expected={'preparedSceneTables':11,'resetCases':7,'selectionCases':7,'sortCases':6,'compactionCases':2,
+    # selectionCases 14 and sortCases 12 = the original 7 and 6 run twice, with
+    # integrator.transparent_shadows false and then true (gate.cpp); the earlier
+    # expectation of 7 and 6 predated that repetition.
+    expected={'preparedSceneTables':11,'resetCases':7,'selectionCases':14,'sortCases':12,'compactionCases':2,
               'nativeStateFields':123,'states':4099,'invalidCasesRejected':7}
     if any(report[k]!=v for k,v in expected.items()):raise RuntimeError('Unexpected gate coverage')
     loaded=Path((OUT/'run.library.txt').read_text()).resolve()

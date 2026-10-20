@@ -83,7 +83,12 @@ using (JsonDocument document = JsonDocument.Parse(registry))
     Require(nodes.Sum(node => node.GetProperty("inputs").GetArrayLength() + node.GetProperty("outputs").GetArrayLength()) == 1277, "Complete socket registry");
 }
 File.WriteAllText(Path.Combine(args[1], "registry.json"), registry);
+CyclesHost.ConfigureTiers(PipelineTier.Auto, null);
+Rejected(() => CyclesHost.ConfigureTiers((PipelineTier)7, null), 1);
+Rejected(() => CyclesHost.ConfigureTiers(PipelineTier.Auto, null, (PipelineTierFlags)8), 1);
 using CyclesHost host = new(Backend.CpuReference);
+using (JsonDocument report = JsonDocument.Parse(host.DeviceReportJson()))
+    Require(report.RootElement.GetProperty("backend").GetString() == "cpu" && report.RootElement.GetProperty("pipelines").ValueKind == JsonValueKind.Null, "CPU device report");
 Node color = Fixture(host);
 using (CyclesHost other = new(Backend.CpuReference))
     Rejected(() => host.SetFloats(other.SceneNode("camera"), "fov", [1]), 1);
@@ -117,4 +122,4 @@ await running.WaitAsync(TimeSpan.FromSeconds(30));
 Require(pixels.All(x => x == -99), "Dispose during render changed output");
 try { host.SceneNode("camera"); throw new Exception("Disposed host accepted a call"); } catch (ObjectDisposedException) { }
 host.Dispose();
-Console.WriteLine("{\"passed\":true,\"thinManagedConsumer\":true,\"cpuReferenceBitwiseEqual\":true,\"cancelAndReuse\":true,\"disposeDuringRender\":true,\"utf8Strings\":true,\"foreignHandlesRejected\":true}");
+Console.WriteLine("{\"passed\":true,\"thinManagedConsumer\":true,\"cpuReferenceBitwiseEqual\":true,\"cancelAndReuse\":true,\"disposeDuringRender\":true,\"utf8Strings\":true,\"foreignHandlesRejected\":true,\"deviceReport\":true,\"tierConfigValidated\":true}");

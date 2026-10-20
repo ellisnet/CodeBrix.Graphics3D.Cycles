@@ -30,8 +30,11 @@ def run():
     if result.returncode:raise RuntimeError(result.stderr)
     report=json.loads(result.stdout)
     if not all(report[k] for k in ['passed','originalCameraToIntersectionScheduler','nativeSceneTables']):raise RuntimeError('Closest integration gate failed')
+    # 21 = the original 16 closest negative cases plus 5 object-motion/deforming
+    # rejections (tests 16-20 in closest_gate.cpp, added with object motion);
+    # this expectation predated them.
     expected={'cases':22,'paths':36226,'nativeInstanceLeaves':3,'hitObjects':5,'originalSchedulerSortCases':2,
-              'directDispatchCases':5,'invalidCasesRejected':16,'cyclesAllocationBytesAfterCleanup':0}
+              'directDispatchCases':5,'invalidCasesRejected':21,'cyclesAllocationBytesAfterCleanup':0}
     if any(report[k]!=v for k,v in expected.items()):raise RuntimeError('Closest coverage changed unexpectedly')
     for key,minimum in [('hits',4000),('misses',30000),('terminated',8000),('rouletteStates',1600),
                         ('emissionTerminationStates',350),('raytraceShaderStates',500),('exactStateChecks',3000000),('floatChecks',140000)]:

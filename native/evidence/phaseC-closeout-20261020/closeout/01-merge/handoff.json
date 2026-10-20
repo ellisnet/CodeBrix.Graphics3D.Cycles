@@ -1,0 +1,29 @@
+{
+ "phase": "C3 graceful degradation (items 2, 3, 5) + shadow_gate count fix",
+ "worktree": "/home/jeremy/ClaudeHome/cycles-worktrees/c3-degradation",
+ "seedHead": "86959d9c3e2d03cba901ee861976af4d1713ee07",
+ "seedManifest": "/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-phaseC.json",
+ "patch": "changes.patch",
+ "patchSha256": "93a8f235b70de6ea3e438f4ea361997c4bf1cb26dea7c3bcf449b978806761d7",
+ "changesJsonSha256": "45e16a9d7db581b111770ce029a3348c3e17ef79d93c878227e4e74420f06392",
+ "changedPaths": 24,
+ "addedPaths": 4,
+ "removedPaths": 0,
+ "patchVerified": "git apply onto seed contents reproduces every after-sha256",
+ "runtime": "CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 (unchanged)",
+ "validation": {
+  "all-lanes": "PASS 1112 s / 2700 s",
+  "triangle": "PASS 176 s",
+  "close-set": "PASS 297 s (legacy v5 omitted)",
+  "shadow (fixed script)": "PASS 43 s",
+  "glass_render specialized": "PASS film a8e69a34",
+  "glass_render unspecialized": "PASS film a8e69a34",
+  "tier gate": "PASS 31 scenarios 19 s",
+  "host": "PASS 60 s, 38 exports",
+  "source audit": "PASS 0 errors 29,935 files",
+  "binary audit": "PASS 0 errors",
+  "notices --check": "PASS 34 components",
+  "compat tests": "12 PASS",
+  "git diff --check": "clean"
+ }
+}

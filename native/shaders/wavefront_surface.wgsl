@@ -29,7 +29,11 @@ fn surf_oren(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec3<f32>{
 }
 fn surf_evaluate(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
     let bump=surf_bump(sd,c,wo,true);if(bump==0.0||c.kind==CLOSURE_BSDF_TRANSPARENT_ID){return vec4<f32>(0);}
-    if(surf_microfacet(c.kind)){let value=ggx_evaluate(c,sd.wi,wo);return vec4<f32>(value.xyz*bump,value.w);}
+    if(surf_microfacet(c.kind)){
+//#if SVM_BSDF_MICROFACET else atomicOr(&heap[p(17u)/4u],2u);return vec4<f32>(0);
+        let value=ggx_evaluate(c,sd.wi,wo);return vec4<f32>(value.xyz*bump,value.w);
+//#endif
+    }
     let cosine=select(dot(c.N,wo),-dot(c.N,wo),c.kind==CLOSURE_BSDF_TRANSLUCENT_ID);let pdf=max(cosine,0.0)*INV_PI;
     if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){if(cosine>0.0){return vec4<f32>(surf_oren(c,sd.wi,wo)*bump,pdf);}return vec4<f32>(0);}
     return vec4<f32>(vec3<f32>(pdf*bump),pdf);
@@ -45,12 +49,16 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
     var value=vec3<f32>(0);
     if(c.kind==CLOSURE_BSDF_TRANSPARENT_ID){out.wo=-sd.wi;out.pdf=1e6;value=vec3<f32>(1e6);out.label=LABEL_TRANSMIT|LABEL_TRANSPARENT;
         if(data_float(D_background_transparent_roughness_squared_threshold)>=0.0){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
-    else if(surf_microfacet(c.kind)){out=ggx_sample(sd,c,rand);value=out.eval;
+    else if(surf_microfacet(c.kind)){
+//#if SVM_BSDF_MICROFACET else atomicOr(&heap[p(17u)/4u],2u);return out;
+        out=ggx_sample(sd,c,rand);value=out.eval;
         if((out.label&LABEL_TRANSMIT)!=0u){let threshold=data_float(D_background_transparent_roughness_squared_threshold);
             if(threshold>=0.0&&c.alpha_x*c.alpha_y<=threshold){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
-        else{value*=surf_bump(sd,c,out.wo,false);}}
+        else{value*=surf_bump(sd,c,out.wo,false);}
+//#endif
+    }
     else{
-        let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=hemisphere(select(c.N,-c.N,transmission),random.xy);
+        let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=surface_cos_hemisphere(select(c.N,-c.N,transmission),random.xy);
         out.wo=sampled.xyz;out.pdf=sampled.w;out.label=LABEL_DIFFUSE|select(LABEL_REFLECT,LABEL_TRANSMIT,transmission);
         let valid=select(dot(sd.Ng,out.wo)>0.0,dot(sd.Ng,out.wo)<0.0,transmission);
         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
@@ -124,8 +132,8 @@ fn surf_finish(index:u32,continues:bool){
     let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[counter/4u+DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE],1u);
     if(continues){atomicAdd(&heap[counter/4u+K_CLOSEST],1u);state_u16(S_path_queued_kernel,index,K_CLOSEST);}else{volume_write_depth(index);state_u16(S_path_queued_kernel,index,0u);}
 }
-fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>){
-    let throughput=heap_vec3(state_address(S_path_throughput,index,12u));var value=throughput*emission;
+fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight:f32){
+    let throughput=heap_vec3(state_address(S_path_throughput,index,12u));var value=throughput*emission*mis_weight;
     value=select(value,vec3<f32>(0),(bitcast<vec3<u32>>(value)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
     let bounce=state_half(S_path_bounce,index);let limit=select(data_float(D_integrator_sample_clamp_direct),data_float(D_integrator_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
@@ -149,17 +157,35 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>){
     var sd=surface_cached(id.x);if(sd.error!=0u){return;}let object=table_at(G_objects,sd.object_id,SIZE_objects);
     if(heap_float(object+O_shadow_terminator_shading_offset)>1.0){fail();return;}
     if(data_word(D_integrator_use_direct_light)!=0u&&(sd.shader&SHADER_SMOOTH_NORMAL)!=0u&&heap_float(object+O_shadow_terminator_geometry_offset)>0.0){fail();return;}
-    if((flag&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u){fail();return;}
     let group=load_word(object+O_lightgroup);let go=data_word(D_film_pass_lightgroup);if(group!=NONE&&go!=PASS_NONE&&(group>=stride/3u||go>stride-3u*(group+1u))){fail();return;}
     if(volume_enabled()&&(sd.shader_flag&VS_HAS_VOLUME)!=0u){if(volume_stack_count(index)==NONE){return;}}
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){var empty:SvmResult;surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,empty);return;}
     var r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}sd.N=r.N;surf_prepare(index,&r);
     surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,r);
 }
-// A separate dispatch bounds compiler pressure from closure evaluation and sampling.
-// Size 1 retains the verified Linux sampling layout; broader tuning remains open.
+// Direct lighting runs in two dispatches. shade_surface_light samples the lamp or
+// emissive triangle and the forward-hit triangle MIS weight (state 1 -> 3);
+// connect_surface_light applies holdout, emission, roulette and the sampled
+// light's BSDF/MIS/shadow setup (state 3 -> 2). Combining emitter sampling with
+// BSDF evaluation caused multi-minute, multi-GB driver compilation (and lost the
+// Pixel's device); records remain GPU-private and native scheduling is unchanged.
 @compute @workgroup_size(1) fn shade_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
-    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=1u){return;}store_word(at,0u);
+    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}
+    let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=1u){return;}store_word(at,0u);
+    var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;
+    var weight=1.0;if((r.runtime_flag&SR_EMISSION)!=0u){weight=triangle_light_forward_weight(index,sd);}
+    var ls:NativeLightSample;
+    let flag=state_word(S_path_flag,index);
+    if(data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
+       (sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u&&(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)==0u&&
+       heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0){ls=light_sample_native(index,sd,r);}
+    if(load_word(p(17u))!=0u){return;}
+    store_word(at+304u,bitcast<u32>(weight));light_sample_write(at+308u,ls);store_word(at,3u);
+}
+// Size 1 retains the verified Linux sampling layout; broader tuning remains open.
+@compute @workgroup_size(1) fn connect_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
+    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=3u){return;}store_word(at,0u);
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);var sd=stage.sd;var r=stage.r;
     let flag=state_word(S_path_flag,index);let stride=data_word(D_film_pass_stride);
@@ -170,7 +196,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>){
         volume_transparent_pass(index,base,(contribution.x+contribution.y+contribution.z)*(1.0/3.0));
         if(all(weight==vec3<f32>(1))){surf_finish(index,false);return;}
     }
-    if((r.runtime_flag&SR_EMISSION)!=0u){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0));}
+    if((r.runtime_flag&SR_EMISSION)!=0u){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0),heap_float(at+304u));}
     let probability=select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)!=0u);
     if(probability==0.0){surf_finish(index,false);return;}
     var throughput=heap_vec3(state_address(S_path_throughput,index,12u));if(probability!=1.0){throughput/=probability;state_vec3(S_path_throughput,index,throughput);}
@@ -181,7 +207,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>){
         let t=sd.ray_length;state_f32(S_ray_tmin,index,select(bitcast<f32>(bitcast<u32>(t)+1u),1.1754943508222875e-38,t==0.0));
         volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);surf_finish(index,true);return;
     }
-    surface_direct_light(index,id.x,sd,r);if(load_word(p(17u))!=0u){return;}
+    surface_direct_light(index,id.x,sd,r,light_sample_read(at+308u));if(load_word(p(17u))!=0u){return;}
     // Holdout may change closure metadata; retain it with the same GPU record.
     surface_stage_write(at,sd,r);store_word(at,2u);
 }

@@ -77,7 +77,7 @@ fn volume_boundary_backfacing(hit:NativeHit,direction:vec3<f32>)->bool{
     let c=heap_vec3(table_at(G_tri_verts,offset+load_word(vi+8u),SIZE_tri_verts));
     let applied=(flags&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
     var cross_normal=rounded_cross(b-a,c-a);if(applied&&(flags&SD_OBJECT_NEGATIVE_SCALE)!=0u){cross_normal=rounded_cross(c-a,b-a);}
-    var normal=rounded_normalize(cross_normal);if(!applied){normal=surface_transform_normal(object+O_itfm,normal);}
+    var normal=surface_native_normalize(cross_normal);if(!applied){normal=surface_transform_normal(object+O_itfm,normal);}
     return dot(normal,-direction)<0.0;
 }
 @compute @workgroup_size(64) fn intersect_volume_stack(@builtin(global_invocation_id) id:vec3<u32>){

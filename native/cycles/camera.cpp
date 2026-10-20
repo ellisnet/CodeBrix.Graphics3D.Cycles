@@ -22,6 +22,15 @@ std::string wavefront_layout(){
 #else
   constant("CAMERA_NATIVE_VECTOR_DIVIDE",0);
 #endif
+  // Cycles normalize(float3) divides each component by the length with SSE,
+  // while the scalar float3 operator/ (ARM64 without SSE2NEON) multiplies by
+  // the reciprocal length. Encode the originating host's rule so ShaderData
+  // normals replay that oracle's rounding on any GPU.
+#ifdef __KERNEL_SSE__
+  constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",0);
+#else
+  constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",1);
+#endif
 #define DATA(parent,member) constant("D_" #parent "_" #member,offsetof(KernelData,parent.member))
   DATA(cam,rastertocamera);DATA(cam,cameratoworld);DATA(cam,dx);DATA(cam,dy);DATA(cam,differential_scale);
   DATA(cam,nearclip);DATA(cam,cliplength);DATA(cam,width);DATA(cam,height);
@@ -171,13 +180,7 @@ void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
 #undef KERNEL_STRUCT_END_ARRAY
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
   if(!work)return;
-  if(!camera.value){
-    const std::string code=camera_wgsl();
-    WGPUShaderSourceWGSL source{};source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={code.data(),code.size()};
-    WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;gpu.push_scope();
-    cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
-    camera=gpu.pipeline(shader,pipeline_layout,"init_camera");
-  }
-  dispatch(p,uint32_t(work),camera);
+  if(!pipeline_current(camera,"init_camera"))camera=std::move(build_pipelines("camera",camera_wgsl(),{"init_camera"})[0]);
+  dispatch(p,uint32_t(work),camera,workgroup("init_camera"));
 }
 }

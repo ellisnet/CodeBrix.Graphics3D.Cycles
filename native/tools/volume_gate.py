@@ -19,7 +19,7 @@ import render_replay
 
 def image_values(folder):
     meta = json.loads((folder/'run.capture.json').read_text())
-    assert meta['format'] == 'native-command-stream-v5'
+    assert meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7')
     assert meta['pipelineDispatches'][11] > 0
     stride = meta['filmStride']
     film = [v[0] for v in struct.iter_unpack('<f', (folder/'run.gpu.film.bin').read_bytes())]

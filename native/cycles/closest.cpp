@@ -91,12 +91,7 @@ void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
   require(p[15]>=uint32_t(data.max_shaders),"Missing surface sort counters");
   p[14]=scene_tables();
   if(!work)return;
-  if(!closest.value){
-    const std::string code=closest_wgsl();WGPUShaderSourceWGSL source{};
-    source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={code.data(),code.size()};WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;
-    gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
-    closest=gpu.pipeline(shader,pipeline_layout,"intersect_closest");
-  }
-  dispatch(p,uint32_t(work),closest);
+  if(!pipeline_current(closest,"intersect_closest"))closest=std::move(build_pipelines("closest",closest_wgsl(),{"intersect_closest"})[0]);
+  dispatch(p,uint32_t(work),closest,workgroup("intersect_closest"));
 }
 }

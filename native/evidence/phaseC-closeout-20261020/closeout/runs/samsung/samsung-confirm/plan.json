@@ -1,0 +1,72 @@
+{
+ "purpose": "Samsung SM-X700 confirmation: tier/adapter, full with no tier warning, device record create/reuse/lock",
+ "jobs": [
+  {
+   "label": "glass_render",
+   "gate": "glass_render",
+   "expectTier": "full",
+   "expectReason": "table",
+   "expectNoTierWarning": true
+  },
+  {
+   "label": "transparent_lighting",
+   "gate": "transparent_lighting",
+   "expectTier": "full",
+   "expectReason": "table",
+   "expectNoTierWarning": true
+  },
+  {
+   "label": "lighting_mis",
+   "gate": "lighting_mis",
+   "expectTier": "full",
+   "expectReason": "table",
+   "expectNoTierWarning": true
+  },
+  {
+   "label": "record-create",
+   "gate": "glass_render",
+   "env": {
+    "CODEBRIX_CYCLES_DEVICE_RECORD_DIR": "{REMOTE}/record"
+   },
+   "pre": [
+    "ls -la {REMOTE}/record"
+   ],
+   "post": [
+    "ls -la {REMOTE}/record; for f in {REMOTE}/record/*; do echo \"== $f\"; cat \"$f\"; done"
+   ],
+   "expectTier": "full",
+   "expectReason": "table",
+   "expectNoTierWarning": true
+  },
+  {
+   "label": "record-reuse",
+   "gate": "glass_render",
+   "env": {
+    "CODEBRIX_CYCLES_DEVICE_RECORD_DIR": "{REMOTE}/record"
+   },
+   "post": [
+    "ls -la {REMOTE}/record; for f in {REMOTE}/record/*; do echo \"== $f\"; cat \"$f\"; done"
+   ],
+   "expectTier": "full",
+   "expectReason": "record",
+   "expectNoTierWarning": true
+  },
+  {
+   "label": "record-lock-held",
+   "gate": "glass_render",
+   "env": {
+    "CODEBRIX_CYCLES_DEVICE_RECORD_DIR": "{REMOTE}/record"
+   },
+   "pre": [
+    "nohup sh -c 'L=$(ls {REMOTE}/record/codebrix-cycles-device-*.txt | head -1).lock; exec 9>>$L; flock -x 9; echo held $(date +%s) > {REMOTE}/lock-holder.txt; sleep 60; echo released $(date +%s) >> {REMOTE}/lock-holder.txt' >/dev/null 2>&1 < /dev/null &",
+    "sleep 2; cat {REMOTE}/lock-holder.txt; date +%s"
+   ],
+   "post": [
+    "date +%s; cat {REMOTE}/lock-holder.txt",
+    "ls -la {REMOTE}/record; for f in {REMOTE}/record/*; do echo \"== $f\"; cat \"$f\"; done"
+   ],
+   "expectTier": "full",
+   "expectReason": "record"
+  }
+ ]
+}

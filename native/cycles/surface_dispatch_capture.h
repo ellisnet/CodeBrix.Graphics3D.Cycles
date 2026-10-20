@@ -42,7 +42,7 @@ struct SurfaceDispatchCapture final:ccl::WebGPUCommandObserver {
     params=p;work=n;workgroup_size=group_size;before=snapshot();
     file(prefix+".arena.bin",before.data(),before.size());
     file(prefix+".params.bin",params.data(),sizeof(params));
-    std::ofstream(prefix+".wgsl")<<ccl::surface_source();
+    std::ofstream(prefix+".wgsl")<<device.module_wgsl(ccl::surface_source());
   }
   void finish(const std::vector<wavefront_test::Field> &fields,
               const std::vector<ccl::IntegratorStateCPU> &expected,const std::vector<float> &film){

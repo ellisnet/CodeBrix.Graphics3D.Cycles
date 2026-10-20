@@ -82,7 +82,7 @@ def main():
         expected = set(re.findall(r'\b(cbc_host_\w+)\(', (ROOT/'host/cycles_host.h').read_text()))
         exports = call(['nm', '-D', '--defined-only', library], 'exports')
         actual = {line.split()[-1].split('@')[0] for line in exports.splitlines()} - {'CBC_HOST_EXPERIMENT_1'}
-        assert actual == expected and len(actual) == 36
+        assert actual == expected and len(actual) == 38
         for kind in ['session', 'session64', 'image']:
             link_map = (build/f'codebrix_host_{kind}_reference.map').read_text()
             assert 'CMakeFiles/codebrix_host_reference_color.dir/src/util/colorspace.cpp.o' in link_map
@@ -161,7 +161,7 @@ def main():
         assert all(sha(Path(p)) == digest for p, digest in {**pins, **reference_hashes}.items())
         save(out/'invocation.json', dict(sourceSha256=sources, binarySha256=pins,
                                         referenceSha256=reference_hashes, commands=commands))
-        state.update(complete=True, passed=True, phase='complete', exportCount=36,
+        state.update(complete=True, passed=True, phase='complete', exportCount=38,
                      independentReferenceFilms=786, comparisons=len(comparisons), results=results,
                      maximumAbsoluteError=max(row['maximumAbsoluteError'] for row in comparisons),
                      practicalFailures=sum(row['practicalFailures'] for row in comparisons),

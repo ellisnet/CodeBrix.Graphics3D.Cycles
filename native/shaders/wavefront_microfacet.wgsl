@@ -50,6 +50,15 @@ fn ggx_disk_sample(r:vec2<f32>)->vec2<f32>{
     else{radius=b;phi=rounded_add(PI*0.5,-(PI*0.25)*rounded_divide(a,b));}
     let sc=native_disk_sincos(phi);return vec2<f32>(radius*sc.y,radius*sc.x);
 }
+// Cycles sample_cos_hemisphere/make_orthonormals through the same rounding
+// adapters as the GGX disk: near the disk edge 1-len_squared cancels, so
+// driver-approximate trig/sqrt or contracted products change the direction.
+fn surface_cos_hemisphere(n:vec3<f32>,r:vec2<f32>)->vec4<f32>{
+    let d=ggx_disk_sample(r);let c=ggx_unit_sqrt(rounded_add(d.x*d.x,d.y*d.y));
+    var t=vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x);if(n.x==n.y&&n.x==n.z){t=vec3<f32>(n.z-n.y,n.x+n.z,-n.y-n.x);}
+    t=surface_native_normalize(t);let b=rounded_cross(n,t);
+    return vec4<f32>(rounded_add3(rounded_add3(d.x*t,d.y*b),c*n),c*INV_PI);
+}
 fn ggx_vndf(wi:vec3<f32>,ax:f32,ay:f32,random:vec2<f32>)->vec3<f32>{
     let v=ggx_normalize(vec3<f32>(ax*wi.x,ay*wi.y,wi.z));let lensq=ggx_positive_add(v.x*v.x,v.y*v.y);
     var x=vec3<f32>(1,0,0);var y=vec3<f32>(0,1,0);

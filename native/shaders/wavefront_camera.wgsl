@@ -91,7 +91,12 @@ fn camera_projection(address:u32,v:vec4<f32>)->vec3<f32>{
     }
     var world=motion_transform_load(p(6u)+D_cam_cameratoworld);
     let steps=data_word(D_cam_num_motion_steps);
-    if(steps!=0u){world=motion_interpolate(G_camera_motion,0u,steps,time);}
+    if(steps!=0u){
+        // Removed by scene specialization when the camera has no motion steps (pipelines.h).
+//#if MOTION_CAMERA else atomicOr(&heap[p(17u)/4u],2u);return;
+        world=motion_interpolate(G_camera_motion,0u,steps,time);
+//#endif
+    }
     if(load_word(p(17u))!=0u){return;}
     let center=motion_direction(world,pc);let direction=camera_normalize(center);
     let dx=camera_normalize(center+heap_vec3(p(6u)+D_cam_dx))-direction;

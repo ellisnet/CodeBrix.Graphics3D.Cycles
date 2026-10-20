@@ -28,10 +28,13 @@ def inputs(capture):
     # Pipeline IDs 0..5 and their command encoding remain unchanged. Old
     # captures need no shadow source; v3 records add IDs 6 and 7.
     assert meta['format'] in ('native-command-stream-v1', 'native-command-stream-v2',
-                              'native-command-stream-v3', 'native-command-stream-v4', 'native-command-stream-v5'), 'Unknown command stream format'
-    if meta['format'] == 'native-command-stream-v5':
+                              'native-command-stream-v3', 'native-command-stream-v4', 'native-command-stream-v5',
+                              'native-command-stream-v6', 'native-command-stream-v7'), 'Unknown command stream format'
+    if meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7'):
+        # v6 adds entry 15 (connect_surface_light in surface.wgsl); v7 adds
+        # entry 16 (prepare_shadow_shader_data in shadow.wgsl).
         names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
-                 'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume']
+                 'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow']
         counts = meta['pipelineDispatches']
         assert len(counts) <= len(names) and all(isinstance(n, int) and n >= 0 for n in counts), 'Unknown pipeline metadata'
         assert all(names[i] is not None for i, count in enumerate(counts) if count), 'Reserved pipeline metadata'
@@ -121,6 +124,10 @@ def validate(capture, out):
             'immutableSceneBytes':immutable, 'terminalPathSlots':count, 'gpuErrorWord':0,
             'inputSha256':{name:sha(capture/name) for name in capture_inputs+['run.capture.json','run.cpu.film.bin']},
             'outputSha256':sha(out/'run.arena.bin')}
+    if 'pipelineReport' in observed:
+        # Compile-latency tier/warnings are reported, never used to accept output.
+        report['pipelineReport'] = observed['pipelineReport']
+        report['degraded'] = observed['pipelineReport']['degraded']
     if 'workload' in meta:
         report['workload'] = workload
     if 'shadowPathCapacity' in meta:

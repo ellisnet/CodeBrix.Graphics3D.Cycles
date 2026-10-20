@@ -74,17 +74,26 @@ fn attribute_read(s:ptr<function,SvmState>,desc:AttributeDesc)->AttributeValue{
     let domain=desc.element&~(ATTR_ELEMENT_IS_BYTE|ATTR_ELEMENT_IS_NORMAL);
     if((desc.element&ATTR_ELEMENT_IS_BYTE)!=0u&&desc.kind!=NODE_ATTR_RGBA&&desc.kind!=NODE_ATTR_FLOAT4){svm_error(s,16u);return result;}
     if((desc.element&ATTR_ELEMENT_IS_NORMAL)!=0u&&desc.kind!=NODE_ATTR_FLOAT3){svm_error(s,16u);return result;}
-    if(domain==ATTR_ELEMENT_OBJECT||domain==ATTR_ELEMENT_MESH){result.value=attribute_fetch(s,desc,0u);return result;}
-    if(!native_triangle_kind(sd.primitive_type)){svm_error(s,16u);return result;}
-    if(domain==ATTR_ELEMENT_FACE){result.value=attribute_fetch(s,desc,sd.prim);return result;}
-    var indices:vec3<u32>;
-    if(domain==ATTR_ELEMENT_VERTEX){
-        if(sd.prim>=table_count(G_tri_vindex)){svm_error(s,64u);return result;}
-        let address=table_at(G_tri_vindex,sd.prim,SIZE_tri_vindex);indices=vec3<u32>(load_word(address),load_word(address+4u),load_word(address+8u));
-    }else if(domain==ATTR_ELEMENT_CORNER){
-        if(sd.prim>(0xffffffffu-2u)/3u){svm_error(s,64u);return result;}indices=vec3<u32>(sd.prim*3u)+vec3<u32>(0,1,2);
-    }else{svm_error(s,16u);return result;}
-    let a=attribute_fetch(s,desc,indices.x);let b=attribute_fetch(s,desc,indices.y);let c=attribute_fetch(s,desc,indices.z);
+    // Drivers inline every call; this function is itself inlined into each
+    // attribute-reading node, so all element kinds share one attribute_fetch call
+    // site. Fetch order and values are unchanged (a, b, c in vertex order).
+    var indices=vec3<u32>(0u);var count=1u;
+    if(domain!=ATTR_ELEMENT_OBJECT&&domain!=ATTR_ELEMENT_MESH){
+        if(!native_triangle_kind(sd.primitive_type)){svm_error(s,16u);return result;}
+        if(domain==ATTR_ELEMENT_FACE){indices=vec3<u32>(sd.prim);}
+        else if(domain==ATTR_ELEMENT_VERTEX){
+            if(sd.prim>=table_count(G_tri_vindex)){svm_error(s,64u);return result;}
+            let address=table_at(G_tri_vindex,sd.prim,SIZE_tri_vindex);indices=vec3<u32>(load_word(address),load_word(address+4u),load_word(address+8u));count=3u;
+        }else if(domain==ATTR_ELEMENT_CORNER){
+            if(sd.prim>(0xffffffffu-2u)/3u){svm_error(s,64u);return result;}indices=vec3<u32>(sd.prim*3u)+vec3<u32>(0,1,2);count=3u;
+        }else{svm_error(s,16u);return result;}
+    }
+    var a=vec4<f32>(0);var b=vec4<f32>(0);var c=vec4<f32>(0);
+    for(var k=0u;k<count;k++){
+        let value=attribute_fetch(s,desc,indices[k]);
+        if(k==0u){a=value;}else if(k==1u){b=value;}else{c=value;}
+    }
+    if(count==1u){result.value=a;return result;}
     result.value=((1.0-sd.u)-sd.v)*a+sd.u*b+sd.v*c;
     result.dx=sd.du.x*b+sd.dv.x*c-(sd.du.x+sd.dv.x)*a;
     result.dy=sd.du.y*b+sd.dv.y*c-(sd.du.y+sd.dv.y)*a;

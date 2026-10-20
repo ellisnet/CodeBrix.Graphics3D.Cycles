@@ -1,0 +1,35 @@
+{
+ "purpose": "Device record advisory lock: a native flock(LOCK_EX) holder (lockhold) holds <record>.lock for 60 s while a gate with the record runs; the gate must wait for it",
+ "jobs": [
+  {
+   "label": "record-create",
+   "gate": "glass_render",
+   "env": {
+    "CODEBRIX_CYCLES_DEVICE_RECORD_DIR": "{REMOTE}/record"
+   },
+   "post": [
+    "ls -la {REMOTE}/record; for f in {REMOTE}/record/*; do echo \"== $f\"; cat \"$f\"; done"
+   ],
+   "expectTier": "full",
+   "expectReason": "table",
+   "expectNoTierWarning": true
+  },
+  {
+   "label": "record-lock-held",
+   "gate": "glass_render",
+   "env": {
+    "CODEBRIX_CYCLES_DEVICE_RECORD_DIR": "{REMOTE}/record"
+   },
+   "pre": [
+    "nohup /data/local/tmp/codebrix-c4-stage/bin/lockhold $(ls {REMOTE}/record/codebrix-cycles-device-*.txt | head -1).lock 60 > {REMOTE}/lock-holder.txt 2>&1 < /dev/null &",
+    "sleep 2; cat {REMOTE}/lock-holder.txt; /data/local/tmp/codebrix-c4-stage/bin/lockhold -n $(ls {REMOTE}/record/codebrix-cycles-device-*.txt | head -1).lock; date +%s"
+   ],
+   "post": [
+    "date +%s; cat {REMOTE}/lock-holder.txt; /data/local/tmp/codebrix-c4-stage/bin/lockhold -n $(ls {REMOTE}/record/codebrix-cycles-device-*.txt | head -1).lock",
+    "ls -la {REMOTE}/record; for f in {REMOTE}/record/*; do echo \"== $f\"; cat \"$f\"; done"
+   ],
+   "expectTier": "full",
+   "expectReason": "record"
+  }
+ ]
+}

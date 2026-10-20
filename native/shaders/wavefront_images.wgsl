@@ -123,10 +123,16 @@ fn image_box(s:ptr<function,SvmState>,co:vec3<f32>,id:i32,blend:f32,flags:u32)->
         else if(n.y<(1.0-limit)*(n.x+n.z)){weight.x=clamp((n.x/(n.x+n.z)-0.5*(1.0-blend))/blend,0.0,1.0);weight.z=1.0-weight.x;}
         else{weight=((2.0-limit)*n+vec3<f32>(limit-1.0))/(2.0*limit-1.0);}
     }else{weight.x=1.0;}
+    // One svm_image_sample call site (drivers inline each call); the X, Y, Z
+    // projections are still accumulated in the original order.
     var result=vec4<f32>(0);
-    if(weight.x>0.0){result+=weight.x*svm_image_sample(s,id,vec2<f32>(select(co.y,1.0-co.y,signed_n.x<0.0),co.z),flags);}
-    if(weight.y>0.0){result+=weight.y*svm_image_sample(s,id,vec2<f32>(select(co.x,1.0-co.x,signed_n.y>0.0),co.z),flags);}
-    if(weight.z>0.0){result+=weight.z*svm_image_sample(s,id,vec2<f32>(select(co.y,1.0-co.y,signed_n.z>0.0),co.x),flags);}
+    for(var axis=0u;axis<3u;axis++){
+        if(!(weight[axis]>0.0)){continue;}
+        var uv=vec2<f32>(select(co.y,1.0-co.y,signed_n.x<0.0),co.z);
+        if(axis==1u){uv=vec2<f32>(select(co.x,1.0-co.x,signed_n.y>0.0),co.z);}
+        else if(axis==2u){uv=vec2<f32>(select(co.y,1.0-co.y,signed_n.z>0.0),co.x);}
+        result+=weight[axis]*svm_image_sample(s,id,uv,flags);
+    }
     return result;
 }
 fn svm_image(s:ptr<function,SvmState>,node:u32,mode:u32,derivative:bool){

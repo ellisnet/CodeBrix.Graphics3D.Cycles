@@ -1,0 +1,496 @@
+{
+  "glass_render": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_PIPELINE_TIER": "full"
+    },
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 110.3,
+    "pipelineSummary": {
+      "count": 8,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "override"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      ],
+      "maxSeconds": 20.6705,
+      "secondsByEntry": {
+        "init_camera": [
+          0.7
+        ],
+        "intersect_closest": [
+          1.27
+        ],
+        "prepare_shader_data": [
+          2.09
+        ],
+        "prepare_surface": [
+          7.21
+        ],
+        "shade_surface_light": [
+          9.79
+        ],
+        "connect_surface_light": [
+          4.67
+        ],
+        "shade_surface": [
+          20.67
+        ],
+        "shade_background": [
+          1.48
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 8,
+      "totalPipelineMs": 47879.7,
+      "maxPipelineMs": 20670.5,
+      "maxPipelineEntry": "shade_surface",
+      "warnings": [
+        "pipeline 'shade_surface' took 20670 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver"
+      ]
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "override",
+      "detail": "full tier requested",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 640",
+        "description": "Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google ",
+        "vendorId": 20803,
+        "deviceId": 100925441,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Pixel 4 XL Adreno 640",
+        "tier": "conservative",
+        "budgetMs": 0,
+        "evidence": "B3 2026-10-19: full-tier modules compile in minutes and the unsplit surface-light stage lost the device"
+      },
+      "budgetSource": "environment",
+      "record": {
+        "mode": "none",
+        "path": "",
+        "status": "none",
+        "fullTierCompiles": 0,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "overrides": [
+        "CODEBRIX_CYCLES_PIPELINE_TIER=full"
+      ],
+      "warnings": []
+    },
+    "maxError": null,
+    "strict": 40
+  },
+  "transparent_lighting": {
+    "gate": "transparent_lighting",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_PIPELINE_TIER": "full"
+    },
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 410.3,
+    "pipelineSummary": {
+      "count": 36,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "override"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      ],
+      "maxSeconds": 70.3725,
+      "secondsByEntry": {
+        "init_camera": [
+          0.71,
+          1.01,
+          1.02
+        ],
+        "intersect_closest": [
+          1.26,
+          1.39,
+          1.41
+        ],
+        "prepare_shader_data": [
+          2.22,
+          2.41,
+          2.51
+        ],
+        "prepare_surface": [
+          8.14,
+          6.81,
+          8.08
+        ],
+        "shade_surface_light": [
+          11.17,
+          67.28,
+          70.37
+        ],
+        "connect_surface_light": [
+          5.79,
+          4.79,
+          4.89
+        ],
+        "shade_surface": [
+          24.29,
+          20.93,
+          21.21
+        ],
+        "shade_background": [
+          1.43,
+          1.81,
+          1.72
+        ],
+        "intersect_shadow": [
+          0.81,
+          0.85,
+          0.85
+        ],
+        "prepare_shadow_shader_data": [
+          3.21,
+          4.15,
+          4.18
+        ],
+        "shade_shadow_transparent": [
+          7.6,
+          9.62,
+          9.18
+        ],
+        "shade_light_forward": [
+          0.29,
+          29.57,
+          29.88
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 36,
+      "totalPipelineMs": 372817,
+      "maxPipelineMs": 70372.5,
+      "maxPipelineEntry": "shade_surface_light",
+      "warnings": [
+        "pipeline 'shade_surface_light' took 11173 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'shade_surface' took 24287 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'shade_surface_light' took 67275 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'shade_surface' took 20935 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'shade_light_forward' took 29570 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'shade_surface_light' took 70372 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'shade_surface' took 21205 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'shade_light_forward' took 29877 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver"
+      ]
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "override",
+      "detail": "full tier requested",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 640",
+        "description": "Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google ",
+        "vendorId": 20803,
+        "deviceId": 100925441,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Pixel 4 XL Adreno 640",
+        "tier": "conservative",
+        "budgetMs": 0,
+        "evidence": "B3 2026-10-19: full-tier modules compile in minutes and the unsplit surface-light stage lost the device"
+      },
+      "budgetSource": "environment",
+      "record": {
+        "mode": "none",
+        "path": "",
+        "status": "none",
+        "fullTierCompiles": 0,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "overrides": [
+        "CODEBRIX_CYCLES_PIPELINE_TIER=full"
+      ],
+      "warnings": []
+    },
+    "maxError": 1.621246337890625e-05,
+    "strict": null
+  },
+  "lighting_mis": {
+    "gate": "lighting_mis",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_PIPELINE_TIER": "full"
+    },
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 80.1,
+    "pipelineSummary": {
+      "count": 11,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "override"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      ],
+      "maxSeconds": 24.3018,
+      "secondsByEntry": {
+        "init_camera": [
+          0.71
+        ],
+        "intersect_closest": [
+          1.27
+        ],
+        "shade_background": [
+          1.28
+        ],
+        "prepare_shader_data": [
+          2.21
+        ],
+        "prepare_surface": [
+          6.64
+        ],
+        "shade_surface_light": [
+          9.71
+        ],
+        "connect_surface_light": [
+          5.26
+        ],
+        "shade_surface": [
+          24.3
+        ],
+        "intersect_shadow": [
+          0.82
+        ],
+        "shade_shadow": [
+          0.05
+        ],
+        "shade_light_forward": [
+          0.29
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 52548.2,
+      "maxPipelineMs": 24301.8,
+      "maxPipelineEntry": "shade_surface",
+      "warnings": [
+        "pipeline 'shade_surface' took 24302 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver"
+      ]
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "override",
+      "detail": "full tier requested",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 640",
+        "description": "Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google ",
+        "vendorId": 20803,
+        "deviceId": 100925441,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Pixel 4 XL Adreno 640",
+        "tier": "conservative",
+        "budgetMs": 0,
+        "evidence": "B3 2026-10-19: full-tier modules compile in minutes and the unsplit surface-light stage lost the device"
+      },
+      "budgetSource": "environment",
+      "record": {
+        "mode": "none",
+        "path": "",
+        "status": "none",
+        "fullTierCompiles": 0,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "overrides": [
+        "CODEBRIX_CYCLES_PIPELINE_TIER=full"
+      ],
+      "warnings": []
+    },
+    "maxError": 6.556510925292969e-06,
+    "strict": null
+  },
+  "canary-glass_render": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_PIPELINE_TIER": "full",
+      "CODEBRIX_CYCLES_PIPELINE_CANARY": "1"
+    },
+    "expect": "pass",
+    "exit": 0,
+    "wallSeconds": 113.6,
+    "pipelineSummary": {
+      "count": 8,
+      "tiers": [
+        "full"
+      ],
+      "tierReasons": [
+        "override"
+      ],
+      "workgroupSizes": [
+        1,
+        64
+      ],
+      "adapters": [
+        "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      ],
+      "maxSeconds": 20.599700000000002,
+      "secondsByEntry": {
+        "init_camera": [
+          0.74
+        ],
+        "intersect_closest": [
+          1.3
+        ],
+        "prepare_shader_data": [
+          2.21
+        ],
+        "prepare_surface": [
+          7.47
+        ],
+        "shade_surface_light": [
+          9.8
+        ],
+        "connect_surface_light": [
+          4.69
+        ],
+        "shade_surface": [
+          20.6
+        ],
+        "shade_background": [
+          1.5
+        ]
+      }
+    },
+    "passed": true,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 8,
+      "totalPipelineMs": 48325.4,
+      "maxPipelineMs": 20599.7,
+      "maxPipelineEntry": "shade_surface",
+      "warnings": [
+        "pipeline 'shade_surface' took 20600 ms, over the 10000 ms compile budget (full tier); first-use latency is degraded on this driver"
+      ]
+    },
+    "decision": {
+      "tier": "full",
+      "reason": "override",
+      "detail": "full tier requested",
+      "adapter": {
+        "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+        "architecture": "",
+        "device": "Adreno (TM) 640",
+        "description": "Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google ",
+        "vendorId": 20803,
+        "deviceId": 100925441,
+        "simulated": false,
+        "mobile": true
+      },
+      "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+      "shaderHash": "fnv1a64:e637d6a6fbc36aa7",
+      "knownAdapter": {
+        "name": "Pixel 4 XL Adreno 640",
+        "tier": "conservative",
+        "budgetMs": 0,
+        "evidence": "B3 2026-10-19: full-tier modules compile in minutes and the unsplit surface-light stage lost the device"
+      },
+      "budgetSource": "environment",
+      "record": {
+        "mode": "none",
+        "path": "",
+        "status": "none",
+        "fullTierCompiles": 0,
+        "conservativeTierCompiles": 0,
+        "failures": 0,
+        "breadcrumbs": []
+      },
+      "canary": {
+        "enabled": true,
+        "result": "passed",
+        "ms": 2015.71,
+        "detail": ""
+      },
+      "overrides": [
+        "CODEBRIX_CYCLES_PIPELINE_TIER=full",
+        "CODEBRIX_CYCLES_PIPELINE_CANARY=1"
+      ],
+      "warnings": []
+    },
+    "maxError": null,
+    "strict": 40
+  }
+}

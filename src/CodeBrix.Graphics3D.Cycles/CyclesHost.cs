@@ -15,6 +15,9 @@ public enum AttributeDomain : uint { Mesh = 1, Face = 2, Vertex = 3, Corner = 4,
 [Flags] public enum AttributeFlags : uint { None = 0, Standard = 1, Subdivision = 2 }
 public enum ImageFormat : uint { Float = 1, Float4 = 2, Half = 3, Half4 = 4, Byte = 5, Byte4 = 6, UShort = 7, UShort4 = 8 }
 public readonly record struct PropertyInfo(uint ValueType, uint Flags, uint Components, ulong Count);
+// WebGPU pipeline tier (graceful degradation; native/DEVICE.md "Device tiers").
+public enum PipelineTier : uint { Auto = 0, Full = 1, Conservative = 2 }
+[Flags] public enum PipelineTierFlags : uint { None = 0, RecordOff = 1, RecordReadOnly = 2, Canary = 4 }
 public sealed class NativeFailure(int status, string message) : Exception(message)
 {
     public int Status { get; } = status;
@@ -139,6 +142,32 @@ public sealed unsafe class CyclesHost : IDisposable
         fixed (ulong* data = values) status = Native.GetNodes(Handle, node.Value, socket, data, (ulong)values.Length, out required);
         GC.KeepAlive(lifetime); if (status == 6) return false; Check(status); return true;
     }
+    // Process-wide; applies to WebGPU hosts created afterwards. recordDirectory
+    // is an app-writable folder for the persisted device-identity record (null
+    // disables it).
+    public static void ConfigureTiers(PipelineTier tier, string? recordDirectory, PipelineTierFlags flags = PipelineTierFlags.None)
+    {
+        EnsureSupportedOperatingSystem();
+        Native.TierConfig config = new() { Size = 32, Abi = 1, Tier = (uint)tier, Flags = (uint)flags };
+        Check(Native.ConfigureTiers(ref config, recordDirectory));
+    }
+    // Capability report JSON: backend, adapter, chosen tier and reason, record,
+    // canary, compile budget, warnings and compiled pipelines.
+    public string DeviceReportJson()
+    {
+        int status = Native.DeviceReport(Handle, null, 0, out ulong required);
+        GC.KeepAlive(lifetime);
+        if (status != 6) Check(status);
+        for (;;)
+        {
+            byte[] result = new byte[checked((int)required)];
+            fixed (byte* data = result) status = Native.DeviceReport(Handle, data, (ulong)result.Length, out required);
+            GC.KeepAlive(lifetime);
+            if (status == 6) continue;
+            Check(status);
+            return Encoding.UTF8.GetString(result, 0, checked((int)required - 1));
+        }
+    }
     public static string RegistryJson()
     {
         EnsureSupportedOperatingSystem();
@@ -219,6 +248,9 @@ internal static unsafe class Native
     [StructLayout(LayoutKind.Sequential)] internal struct PropertyInfo { public uint Size, ValueType, Flags, Components; public ulong Count, Reserved; }
     [StructLayout(LayoutKind.Sequential)] internal struct AttributeConfig { public uint Size, Value, Domain, Flags, R0, R1, R2, R3; }
     [StructLayout(LayoutKind.Sequential)] internal struct ImageConfig { public uint Size, Width, Height, Format, R0, R1, R2, R3; }
+    [StructLayout(LayoutKind.Sequential)] internal struct TierConfig { public uint Size, Abi, Tier, Flags, R0, R1, R2, R3; }
+    [DllImport(Library, EntryPoint="cbc_host_tier_config", CallingConvention=CallingConvention.Cdecl)] internal static extern int ConfigureTiers(ref TierConfig config, [MarshalAs(UnmanagedType.LPUTF8Str)] string? directory);
+    [DllImport(Library, EntryPoint="cbc_host_device_report_json", CallingConvention=CallingConvention.Cdecl)] internal static extern int DeviceReport(ulong host, byte* json, ulong capacity, out ulong required);
     [DllImport(Library, EntryPoint="cbc_host_attribute_floats", CallingConvention=CallingConvention.Cdecl)] internal static extern int SetAttributeFloats(ulong host, ulong geometry, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, ref AttributeConfig config, float* values, ulong count);
     [DllImport(Library, EntryPoint="cbc_host_attribute_bytes", CallingConvention=CallingConvention.Cdecl)] internal static extern int SetAttributeBytes(ulong host, ulong geometry, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, ref AttributeConfig config, byte* values, ulong count);
     [DllImport(Library, EntryPoint="cbc_host_attribute_get_floats", CallingConvention=CallingConvention.Cdecl)] internal static extern int GetAttributeFloats(ulong host, ulong geometry, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, uint flags, float* values, ulong capacity, out ulong required);

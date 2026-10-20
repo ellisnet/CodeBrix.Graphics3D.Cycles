@@ -13,9 +13,11 @@ static constexpr char surface_fragment[]=
 #include "surface_shader.inc"
 ;
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
-// GPU-private record: ready word, 60 ShaderData words and 15 SVM metadata words.
-// Its scalar encoding is defined in wavefront_surface_stage.wgsl.
-static constexpr size_t surface_stage_bytes=surface_data_cache_bytes+16*sizeof(uint32_t);
+// GPU-private record: ready word, 60 ShaderData words, 15 SVM metadata words,
+// then the forward-hit triangle MIS weight and the 13-word sampled light (lamp
+// or emissive triangle) passed from shade_surface_light to connect_surface_light.
+// Its scalar encoding is in wavefront_surface_stage.wgsl and wavefront_lighting.wgsl.
+static constexpr size_t surface_stage_bytes=surface_data_cache_bytes+30*sizeof(uint32_t);
 static std::string surface_layout(){
   std::ostringstream source;
   auto constant=[&](const char *name,size_t value){source<<"const "<<name<<":u32="<<value<<"u;\n";};
@@ -139,19 +141,15 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
   p[24]=surface_closures+uint32_t(closure_bytes);
   p[26]=p[24]+4;p[27]=surface_stage_bytes;
   if(reserve_shadow)p[28]=surface_closures+uint32_t(records_bytes);
-  if(!surface.value){
-    const std::string code=surface_source();WGPUShaderSourceWGSL source{};
-    source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={code.data(),code.size()};WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;
-    gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
-    surface_geometry=gpu.pipeline(shader,pipeline_layout,"prepare_shader_data");
-    surface_prepare=gpu.pipeline(shader,pipeline_layout,"prepare_surface");
-    surface_light=gpu.pipeline(shader,pipeline_layout,"shade_surface_light");
-    surface=gpu.pipeline(shader,pipeline_layout,"shade_surface");
+  if(!pipeline_current(surface,"shade_surface")){
+    auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","connect_surface_light","shade_surface"});
+    surface_geometry=std::move(built[0]);surface_prepare=std::move(built[1]);surface_light=std::move(built[2]);
+    surface_connect=std::move(built[3]);surface=std::move(built[4]);
   }
   // Dispatch ordering makes the GPU-private preparation records visible to the
   // sampling stage without a CPU readback or a native scheduler queue transition.
-  dispatch(p,uint32_t(work),surface_geometry,64);
-  dispatch(p,uint32_t(work),surface_prepare,64);
+  dispatch(p,uint32_t(work),surface_geometry,workgroup("prepare_shader_data"));
+  dispatch(p,uint32_t(work),surface_prepare,workgroup("prepare_surface"));
   if(reserve_shadow){
     // PathTraceWorkGPU::enqueue_path_iteration budgets at least one shadow slot
     // for each surface input before invoking this kernel. Unused reservations
@@ -160,8 +158,10 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
     reserve[2]=uint32_t(uintptr_t(state.next_shadow_path_index));reserve[3]=uint32_t(uintptr_t(state.shadow_path.queued_kernel));
     reserve[4]=p[28];reserve[17]=error_word;reserve[18]=p[25];dispatch(reserve,1);
   }
-  // Keep this in sync with shade_surface's declared workgroup size.
-  dispatch(p,uint32_t(work),surface_light,1);
-  dispatch(p,uint32_t(work),surface,1);
+  // Sizes follow the compiled declarations. Light sampling and BSDF/shadow
+  // connection are separate dispatches to bound compiler pressure.
+  dispatch(p,uint32_t(work),surface_light,workgroup("shade_surface_light"));
+  dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
+  dispatch(p,uint32_t(work),surface,workgroup("shade_surface"));
 }
 }

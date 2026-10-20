@@ -1,0 +1,12 @@
+[23:13:54] Declared budgets (Linux, cold Mesa cache per corpus, sequential):
+- b2-suites: 9 gate binaries, 900 s each (15 min), wrapper 2700 s
+- all-lanes coordinator (29 targets, 7 gate scripts + broad remainder + binary audit): 2700 s (45 min); history 14.5 min warm (B3 final), cold compiles justify more
+- b3-extra: 15 gate binaries, 900 s each, wrapper 2700 s; history 3.5 min total
+- triangle_lighting_gate.py: 900 s
+- close set (restored_regressions pattern incl. camera-motion + legacy v5 replay): 900 s
+- shadow_gate.py: 900 s
+- glass_render with CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0: 900 s
+- host_gate.py: 1200 s (20 min; includes incremental build check and three dotnet builds)
+- legacy v5 replay with user cache (only if cold crashes): 900 s
+Overall stop rule: stop and report if heading past 3 h.
+[23:20:38] diag emitter_sample cold probes 1-2, 900 s each, sequential, concurrent with b3-extra

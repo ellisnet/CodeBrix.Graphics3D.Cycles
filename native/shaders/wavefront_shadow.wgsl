@@ -64,7 +64,25 @@ fn shadow_write_film(index:u32){
     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||(flag&SHADOW_UNSUPPORTED_FLAGS)!=0u||state_half(S_shadow_path_packed_num_hits,index)!=0u){fail();return;}
     shadow_write_film(index);
 }
-// Bound compiler pressure from the combined motion-aware ShaderData/SVM path.
+// Recorded transparent hits get their native ShaderData in a separate GPU
+// dispatch (GPU-private cache, no readback). Keeping the triangle/motion setup
+// out of the SVM stage bounds driver compiler pressure: the combined entry
+// intermittently crashed the Intel Mesa 25.0.7 backend (brw_opt_combine_constants)
+// in cold compiles; the split entries compiled every probe (native/work/b1).
+@compute @workgroup_size(64) fn prepare_shadow_shader_data(@builtin(global_invocation_id) id:vec3<u32>){
+    if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    if(index>=p(10u)){fail();return;}let count=state_half(S_shadow_path_packed_num_hits,index);
+    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||count>4095u){return;}
+    let recorded=min(count,SHADOW_HIT_CAPACITY);
+    for(var slot=0u;slot<recorded;slot++){
+        let hit=shadow_hit_load(index,slot);
+        let sd=surface_setup_hit(hit.kind,hit.object,hit.prim,hit.u,hit.v,hit.t,heap_float(state_address(S_shadow_ray_time,index,4u)),
+          heap_vec3(state_address(S_shadow_ray_D,index,12u)),heap_float(state_address(S_shadow_ray_dP,index,4u)),heap_float(state_address(S_shadow_ray_dD,index,4u)));
+        let at=surface_cache_address(id.x*SHADOW_HIT_CAPACITY+slot);if(at==0u){return;}surface_data_write(at,sd);
+        if(sd.error!=0u){return;}
+    }
+}
+// Bound compiler pressure from the SVM path with one invocation per workgroup.
 // Static transparent triangles remain the supported scope; tuning is pending.
 @compute @workgroup_size(1) fn shade_shadow_transparent(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
@@ -73,8 +91,7 @@ fn shadow_write_film(index:u32){
     let recorded=min(count,SHADOW_HIT_CAPACITY);
     for(var slot=0u;slot<recorded;slot++){
         let hit=shadow_hit_load(index,slot);
-        let sd=surface_setup_hit(hit.kind,hit.object,hit.prim,hit.u,hit.v,hit.t,heap_float(state_address(S_shadow_ray_time,index,4u)),
-          heap_vec3(state_address(S_shadow_ray_D,index,12u)),heap_float(state_address(S_shadow_ray_dP,index,4u)),heap_float(state_address(S_shadow_ray_dD,index,4u)));
+        let sd=surface_cached(id.x*SHADOW_HIT_CAPACITY+slot);
         if(sd.error!=0u){return;}if((sd.shader_flag&SHADOW_ONLY_VOLUME)!=0u){fail();return;}
         let r=svm_evaluate_context(index,sd,0u,0u,0u,PATH_RAY_VISIBILITY_SHADOW,0u,false);if(r.error!=0u){return;}
         let throughput=heap_vec3(state_address(S_shadow_path_throughput,index,12u))*r.transparency;

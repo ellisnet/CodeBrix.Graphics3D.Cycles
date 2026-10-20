@@ -86,7 +86,7 @@ def inspect(rid, folder):
     exports = subprocess.check_output([str(toolchain.bin/'llvm-nm'), '-D', '--defined-only', str(library)], text=True)
     actual = {line.split()[-1].split('@')[0] for line in exports.splitlines()}-{'CBC_HOST_EXPERIMENT_1'}
     expected = set(re.findall(r'\b(cbc_host_\w+)\(', (ROOT/'host/cycles_host.h').read_text()))
-    require(actual == expected and len(actual) == 36, 'Unexpected public C exports')
+    require(actual == expected and len(actual) == 38, 'Unexpected public C exports')
     compiled, headers = [], {}
     for row in json.loads((build/'compile_commands.json').read_text()):
         path = Path(row['file']).resolve()

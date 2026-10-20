@@ -2,8 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "device.h"
 #include "device/dummy/device.h"
+#include "wavefront.h"
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <limits>
 #include <stdexcept>
@@ -15,6 +19,8 @@ std::string controls_wgsl(){return control_source;}
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
 static size_t aligned(size_t n){require(n<=UINT32_MAX-15,"WebGPU virtual address overflow");return (n+15)&~size_t(15);}
 WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Device(i,s,p,h){
+  // The tier is decided before any pipeline is compiled (device_tier.h).
+  select_tier();
   std::array<WGPUBindGroupLayoutEntry,2> entries{};
   for(unsigned n=0;n<2;n++){entries[n].binding=n;entries[n].visibility=WGPUShaderStage_Compute;
     entries[n].buffer.type=n?WGPUBufferBindingType_Uniform:WGPUBufferBindingType_Storage;}
@@ -26,6 +32,65 @@ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Devi
   WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;gpu.push_scope();
   cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
   controls=gpu.pipeline(shader,pipeline_layout,"control");error_word=allocate(4);zero(error_word,4);
+  // Diagnostic override: CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 compiles every
+  // handler (the unspecialized modules) for A/B verification.
+  if(const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION"))specialization_enabled=std::strcmp(mode,"0")!=0;
+  if(const char *budget=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_MS")){pipeline_budget_ms=std::strtod(budget,nullptr);tier_policy.budget_source="environment";}
+  if(const char *action=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION"))budget_conservative=std::strcmp(action,"conservative")==0;
+  if(conservative){
+    pipeline_warnings.push_back(tier_policy.reason=="opt-in"?"conservative pipeline tier requested (workgroup size 1; results may differ in the last bits but must meet the practical criterion)":
+      "conservative pipeline tier selected by the "+tier_policy.reason+" ("+tier_policy.detail+"); workgroup size 1, results may differ in the last bits but must meet the practical criterion");
+    pipeline_process_warning(pipeline_warnings.back());std::fprintf(stderr,"CodeBrix Cycles WebGPU warning: %s\n",pipeline_warnings.back().c_str());
+  }
+  run_canary();
+  pipeline_process_decision(tier_policy.report_json());
+}
+void WebGPUDevice::select_tier(){
+  AdapterIdentity identity{gpu.adapter_vendor,gpu.adapter_architecture,gpu.adapter_device,gpu.adapter_description,gpu.adapter_vendor_id,gpu.adapter_device_id};
+  // Gate hook: "vendor|architecture|device|description[|vendorId|deviceId]"
+  // simulates another adapter's identity for the table and record only; the
+  // real adapter still compiles and renders.
+  if(const char *simulated=std::getenv("CODEBRIX_CYCLES_TEST_ADAPTER")){
+    std::vector<std::string> parts(1);for(const char *c=simulated;*c;c++){if(*c=='|')parts.emplace_back();else parts.back()+=*c;}
+    parts.resize(std::max<size_t>(parts.size(),6));
+    identity={parts[0],parts[1],parts[2],parts[3],uint32_t(std::strtoul(parts[4].c_str(),nullptr,0)),uint32_t(std::strtoul(parts[5].c_str(),nullptr,0)),true};
+  }
+  tier_policy.decide(identity,webgpu_runtime_version(),production_shader_hash());
+  conservative=tier_policy.conservative;
+  if(tier_policy.budget_ms>0)pipeline_budget_ms=tier_policy.budget_ms;
+}
+// Optional init canary: one representative module (the surface module with no
+// optional handlers, entry prepare_surface) compiled in the full tier before
+// the scene. Failure selects the conservative tier; slowness only warns.
+void WebGPUDevice::run_canary(){
+  if(!tier_policy.canary_enabled)return;
+  if(conservative){tier_policy.canary_result("skipped",0,"conservative tier already selected");return;}
+  double budget=canary_default_budget_ms;
+  if(const char *value=std::getenv("CODEBRIX_CYCLES_PIPELINE_CANARY_BUDGET_MS"))budget=std::strtod(value,nullptr);
+  std::string code=specialize_wgsl(surface_source(),0);
+  // Gate hook: a module the WebGPU front end rejects, as a failing compiler would.
+  if(const char *test=std::getenv("CODEBRIX_CYCLES_TEST_CANARY"))if(std::strcmp(test,"fail")==0)code+="\nfn codebrix_canary_invalid( {\n";
+  using clock=std::chrono::steady_clock;const auto t0=clock::now();
+  auto elapsed=[&]{return std::chrono::duration<double,std::milli>(clock::now()-t0).count();};
+  tier_policy.begin_pipeline("canary","prepare_surface",false);
+  try{
+    WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};
+    WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;gpu.push_scope();
+    cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
+    cbc::Pipeline canary=gpu.pipeline(shader,pipeline_layout,"prepare_surface","canary:prepare_surface",tier_policy.pending_descriptor());
+    const double ms=elapsed();tier_policy.end_pipeline(true,ms,"");
+    if(budget>0&&ms>budget){
+      char text[256];std::snprintf(text,sizeof(text),"init canary took %.0f ms, over the %.0f ms canary budget; the tier is unchanged (full); first-use latency is degraded on this driver",ms,budget);
+      tier_policy.canary_result("slow",ms,text);pipeline_warnings.push_back(text);pipeline_process_warning(text);std::fprintf(stderr,"CodeBrix Cycles WebGPU warning: %s\n",text);
+    }else tier_policy.canary_result("passed",ms,"");
+  }catch(const std::exception &e){
+    const double ms=elapsed();const std::string message=e.what();
+    tier_policy.end_pipeline(false,ms,message);tier_policy.canary_result("failed",ms,message);
+    if(message.find("lost")!=std::string::npos)throw std::runtime_error("WebGPU init canary lost the device: "+message);
+    tier_policy.switch_conservative("canary","init canary failed: "+message);conservative=true;
+    pipeline_warnings.push_back("init canary failed ("+message+"); conservative pipeline tier selected before the scene compiles (workgroup size 1; results may differ in the last bits but must meet the practical criterion)");
+    pipeline_process_warning(pipeline_warnings.back());std::fprintf(stderr,"CodeBrix Cycles WebGPU warning: %s\n",pipeline_warnings.back().c_str());
+  }
 }
 WebGPUDevice::~WebGPUDevice(){try{flush();}catch(const std::exception&){} }
 WGPUCommandEncoder WebGPUDevice::commands(){if(!encoder.value)encoder=decltype(encoder)(wgpuDeviceCreateCommandEncoder(gpu.get(),nullptr));return encoder;}
@@ -88,7 +153,7 @@ void WebGPUDevice::sync(){
   uint32_t error=0;download(error_word,&error,4);
   if(error){
     std::string message="WebGPU scheduler kernel reported invalid data (mask "+std::to_string(error)+"):";
-    for(auto [bit,label]:{std::pair{1u," invalid state/data"},std::pair{2u," unsupported SVM opcode"},
+    for(auto [bit,label]:{std::pair{1u," invalid state/data"},std::pair{2u," unsupported SVM opcode or scene-specialized handler"},
         std::pair{4u," SVM bytecode outside table"},std::pair{8u," invalid/uninitialized SVM stack"},
         std::pair{16u," unsupported SVM parameter"},std::pair{32u," SVM instruction limit"},std::pair{64u," invalid attribute map/data"},
         std::pair{128u," invalid image descriptor/data"},std::pair{256u," tiled image cache not implemented"}})
@@ -117,6 +182,9 @@ void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);requ
     if(std::strcmp(mem.global_name(),"shaders")==0)copy(shader_records);
     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
     if(std::strcmp(mem.global_name(),"object_flag")==0)copy(object_flag_records);
+    // Exact SVM program copy: selects the WGSL handlers this scene can reach.
+    if(std::strcmp(mem.global_name(),"svm_nodes")==0)copy(svm_node_words);
+    if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;
   }
   if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images[image.image_info_id]=&image;
     globals["image_pixels_"+std::to_string(image.image_info_id)]=uint32_t(mem.device_pointer);image_info_dirty=true;}});}
@@ -133,14 +201,16 @@ void WebGPUDevice::mem_free(device_memory &mem){std::lock_guard lock(mutex);try{
       if(std::strcmp(mem.global_name(),"light_distribution")==0)light_distribution_records.clear();
       if(std::strcmp(mem.global_name(),"shaders")==0)shader_records.clear();
       if(std::strcmp(mem.global_name(),"objects")==0)object_records.clear();
-      if(std::strcmp(mem.global_name(),"object_flag")==0)object_flag_records.clear();}
+      if(std::strcmp(mem.global_name(),"object_flag")==0)object_flag_records.clear();
+      if(std::strcmp(mem.global_name(),"svm_nodes")==0)svm_node_words.clear();
+      if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;}
     if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images.erase(image.image_info_id);
       globals.erase("image_pixels_"+std::to_string(image.image_info_id));image_info_dirty=true;}
     mem.device_pointer=0;mem.device_size=0;}
   }catch(const std::exception &e){set_error(e.what());}}
 void WebGPUDevice::mem_move_to_host(device_memory&){set_error("WebGPU host-memory fallback not implemented");}
 void WebGPUDevice::const_copy_to(const char *name,void *host,size_t size){guard([&]{
-  if(std::strcmp(name,"data")==0){require(size==sizeof(data),"KernelData layout mismatch");data=*static_cast<KernelData*>(host);}
+  if(std::strcmp(name,"data")==0){require(size==sizeof(data),"KernelData layout mismatch");data=*static_cast<KernelData*>(host);svm_generation++;}
   else if(std::strcmp(name,"integrator_state")==0){require(size==sizeof(state),"IntegratorStateGPU layout mismatch");update_state(*static_cast<IntegratorStateGPU*>(host));}
   else throw std::runtime_error("Unsupported WebGPU constant: "+std::string(name));
   auto &address=constants[name];if(address&&remaining(address)!=size){release(address);address=0;}
@@ -154,8 +224,8 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
   require(work>0&&groups<=gpu.limits.maxComputeWorkgroupsPerDimension,"Dispatch exceeds device limits");
   if(observer){
     const WGPUComputePipeline actual=pipeline?pipeline:controls.value;
-    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:15;
-    require(entry<15,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:17;
+    require(entry<17,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
   }
   auto uniform=gpu.buffer(sizeof(params),WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params.data());
   std::array<WGPUBindGroupEntry,2> entries{};entries[0].binding=0;entries[0].buffer=arena;entries[0].size=arena_bytes;
@@ -165,6 +235,15 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
   cbc::Handle<WGPUComputePassEncoder,wgpuComputePassEncoderRelease> pass(wgpuCommandEncoderBeginComputePass(commands(),nullptr));
   wgpuComputePassEncoderSetPipeline(pass,pipeline?pipeline:controls.value);wgpuComputePassEncoderSetBindGroup(pass,0,group,0,nullptr);
   wgpuComputePassEncoderDispatchWorkgroups(pass,uint32_t(groups),1,1);wgpuComputePassEncoderEnd(pass);dispatches++;
+}
+// Host C API seams (native/host/cycles_host.cpp).
+void host_tier_config(uint32_t tier,bool record_off,bool read_only,bool canary,const char *directory){
+  DeviceTierConfig config;config.request=tier;config.record_off=record_off;config.record_read_only=read_only;config.canary=canary;
+  config.record_directory=directory?directory:"";set_device_tier_config(config);
+}
+std::string webgpu_device_report_json(Device *device){
+  auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu)return {};
+  std::lock_guard lock(webgpu->mutex);return webgpu->pipeline_report_json();
 }
 unique_ptr<Device> device_webgpu_create(const DeviceInfo &i,Stats &s,Profiler &p,bool h){
   try{return make_unique<WebGPUDevice>(i,s,p,h);}catch(const std::exception &e){auto bad=i;bad.type=DEVICE_DUMMY;bad.error_msg=e.what();return device_dummy_create(bad,s,p,h);}}

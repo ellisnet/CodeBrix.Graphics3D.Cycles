@@ -1113,3 +1113,348 @@ Before reintegration, resolve the transparent-lighting regression and the retain
 instanced-emitter image mismatch, then validate moving emitters and broader
 interactions. Environment/textured emission, light trees and remaining full MIS
 work are unfinished. No percentage increase or new Android coverage is claimed.
+Superseded: the transparent-lighting crash was diagnosed and the candidate was
+reintegrated; see the integration section below.
+
+## Compiler pressure: scene specialization, light-stage split and pipeline tiers (2026-10-19)
+
+Vulkan drivers inline every WGSL function into each entry point. The generic SVM
+interpreter therefore gave the driver one function of about 2.3 MB of inlined
+WGSL for `prepare_surface`, `shade_background`, `shade_volume` and the
+transparent-shadow stage. The HP Intel compiler (Mesa 24.0.8) crashed or exhausted
+Scudo's 256 MiB size-class regions on these entries, and the Pixel 4 XL Adreno
+compiler needed minutes (509 s for `prepare_surface`).
+
+- **Scene-driven specialization** (`native/cycles/pipelines.{h,cpp}`). Optional
+  handlers are comment regions (`//#if FEATURE else FALLBACK` ... `//#endif`); the
+  unspecialized module keeps every handler. Before creating a pipeline the device
+  decodes the uploaded `svm_nodes` exactly as the WGSL interpreter does (shader
+  headers, shader and conditional jumps, node, BSDF-data and texture-transform
+  record sizes) and keeps only reachable SVM node handlers and closure setups,
+  plus area-light and object/camera-motion code when the uploaded lights, object
+  flags or camera use them. A removed handler's fallback reports error bit 2; it
+  never produces substitute radiance. Enabled features only grow during a device
+  lifetime, so a scene update reaching a new handler recompiles the affected
+  pipelines. `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` compiles every handler.
+  Captures record the module the device actually compiles.
+- **Direct-lighting split.** Light sampling and BSDF/MIS/shadow connection run
+  in separate pipelines (`shade_surface_light`, `connect_surface_light`); the
+  sample is stored bit-exactly in the GPU-private stage record. Recorder v6 adds
+  pipeline entry 15; earlier formats replay unchanged. The integrated partition
+  is described in the next section.
+- **Call-site consolidation** (unchanged arithmetic and order): one image call for
+  all image node layouts, one `attribute_fetch` call in `attribute_read`, one
+  `svm_image_sample` in box projection.
+- **Tiers and reporting.** Each pipeline creation is timed against a declared
+  budget (60 s default, `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS`); an overrun marks the
+  session degraded with a warning but never changes the variant. A non-fatal
+  creation failure retries once in the conservative tier (workgroup size 1, which
+  can change last bits on Linux Intel but must meet the practical criterion);
+  device loss and driver crashes are reported with the stage name (a scoped signal
+  breadcrumb names the stage if the driver terminates the process). Gate and
+  replay JSON carry `pipelineReport` (tier, degraded, warnings, compile times).
+  The shipped runtime exposes no pipeline-cache API; Linux Mesa's disk cache is
+  the only warm path observed (41 s cold, 8 ms warm); HP and Pixel shell
+  processes recompile every time.
+- Measurements and the original HP/Pixel validations are in the B3 handoff; the
+  integrated tree's Linux validation is described in the next section and its
+  Android device results in the two sections after it.
+
+## Integrated lighting, specialization and ARM adapters (2026-10-19)
+
+The working tree now combines three further slices on Linux x64 with the
+unchanged CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 runtime. Linux
+validation ran every corpus with a fresh, empty Mesa shader cache, so driver
+compile failures cannot be hidden by the disk cache; outputs are in
+`native/work/phaseC/` and the frozen checkpoint
+`native/evidence/native-integration-20261019/`.
+
+- **Scene-driven specialization and pipeline tiers** (`native/cycles/pipelines.{h,cpp}`)
+  as described in the previous section, now also covering emissive triangles
+  (`LIGHT_TRIANGLE`: any triangle in the light distribution or any shader flagged
+  as a MIS emitter) and the triangle-light private object-motion code
+  (`MOTION_OBJECT`). Uploading the light distribution counts as a scene change.
+  `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` still compiles every handler. Gate
+  probes that compile their own copy of the surface module specialize it the
+  same way.
+- **Emissive triangle lights.** Flat-CDF constant emission with native
+  solid-angle/area sampling, centre-area selection, sidedness and forward-hit
+  MIS (`wavefront_triangle_light.wgsl`), including moving and deforming emitters.
+  The triangle sampler keeps private copies of the motion arithmetic it needs; the
+  shared motion shader is unchanged. Static instanced emitters remain rejected:
+  the GPU matches the CPU at identical inputs, but closest-hit barycentrics differ
+  by 1-3 ULP (driver FMA contraction and the oracle's SSE reciprocal), which flips
+  edge-grazing samples. Light trees, environment and textured/nonconstant
+  emission remain unimplemented.
+- **Direct-lighting split.** `shade_surface_light` samples the lamp or emissive
+  triangle and the forward-hit triangle MIS weight; `connect_surface_light`
+  applies holdout, emission, roulette and the sampled light's BSDF/MIS/shadow
+  setup. The GPU-private surface record carries the weight and the 13-word light
+  sample. (An alternative partition that sampled lights after emission and
+  roulette inside one entry produced wrong moving-emitter images on Linux Intel
+  only when the area-light handler was specialized away, and compiled for 149 s;
+  it was not adopted.)
+- **Transparent-shadow split.** A GPU-only `prepare_shadow_shader_data` stage
+  (workgroup 64) caches per-hit ShaderData for `shade_shadow_transparent`
+  (workgroup 1), which avoids an intermittent Intel Mesa 25.0.7 compiler crash
+  (`brw_opt_combine_constants`) on the combined entry.
+- **ARM64 oracle rounding.** `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE` (from
+  `__KERNEL_SSE__` on the oracle host) selects per-component division or
+  reciprocal-length multiplication for ShaderData normals, matching each CPU
+  oracle's `normalize(float3)`. Cosine-hemisphere sampling and the specular
+  valid-normal adjustment use the existing rounding adapters, which are bit-exact
+  on Intel and Adreno; on Linux these only move results closer to the CPU oracle.
+
+Command recorder formats (replay reads every format):
+
+| Format | Adds pipeline entries |
+| --- | --- |
+| v1 | 0 control, 1 init_camera, 2 intersect_closest, 3 shade_background, 4 shade_surface, 5 prepare_surface (implicit size 64) |
+| v2 | explicit dispatch sizes (kind 5 commands) |
+| v3 | 6 intersect_shadow, 7 shade_shadow |
+| v4 | 8 shade_light_forward |
+| v5 | 9 prepare_shader_data, 10 intersect_volume_stack, 11 shade_volume, 12 shade_shadow_transparent, 13 shade_surface_light, 14 shader_eval_volume_density |
+| v6 | 15 connect_surface_light |
+| v7 | 16 prepare_shadow_shader_data |
+
+Remaining guards and gaps: static instanced triangle emitters; moving
+transparent shadows; volume NEE/MIS, shadow attenuation and heterogeneous media;
+light trees, environment MIS and textured emission; light/shadow linking, AO,
+shadow catchers and MNEE. The emitter-sampling entry with object motion still
+exceeds the 60 s compile budget cold on Linux (warning only). Old captures replay
+with their own unspecialized modules and can still crash the driver with a cold
+cache. ARM64 and Android x64 device results are in the next two sections.
+
+## Integrated tree on ARM64 Android devices (2026-10-20)
+
+The integrated tree ran natively on the Samsung SM-X700 (API 36, Adreno 730; the full-fidelity device) and the
+Pixel 4 XL (API 33, Adreno 640; the old-hardware gauge). It used the unchanged runtime, Android ARM64 binaries
+built from the same sources with NDK 29.0.14206865 at API 33, and the practical criterion unchanged.
+Outputs are in `native/work/phaseC2/arm64/`.
+
+- ARM64 oracle rounding works on the device. On the Samsung, glass_bounce (path 126), glass_render and
+  microfacet_render pass with exactly the numbers recorded when the adapters were introduced. On the Pixel,
+  glass_bounce and glass_render now also pass.
+- Samsung passes these, with 71 on-device replays of its own v3/v6/v7 captures:
+  - transparent shadows (v7) and transparent lighting;
+  - point/sun/spot/area lighting, MIS and broad lighting;
+  - feature combination;
+  - object and deforming motion;
+  - camera motion;
+  - glass/GGX SVM, bounce and render;
+  - shader data, closest and opaque shadows;
+  - finite and closed homogeneous volumes.
+  Linux Phase C v6/v7 captures replay within tolerance, except the triangle mode-2 capture (below).
+- Specialized pipelines compile in at most 32.6 s on the Samsung and 70 s on the Pixel. The emissive-triangle
+  `shade_surface_light` with object motion took 204.8 s on the Samsung. It still renders correctly, with a
+  degraded-latency warning.
+- Specialization is mandatory on Adreno. The every-handler `shade_surface_light`
+  (`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`) crashes the Adreno 730 driver and exhausts memory on the Adreno 640.
+  Bit-identity between specialized and unspecialized modules is therefore established on Linux only.
+- Open on ARM64 (also listed under "Open device items" below):
+  - Emissive-triangle sampling and the emitter-sample probe follow the x64 oracle's arithmetic rather than the
+    ARM64 oracle's. The triangle sampler gate fails by up to 11.6 times the tolerance, and the probe by 1.1 times
+    on one sun pdf.
+  - Triangle image mode 2 diverges by one path decision on Adreno 730, even when replaying the x64 capture.
+  - Emissive triangles are therefore not yet validated on ARM64.
+  - On the Pixel 4 XL, these fail and are not supported there yet: object/deforming motion images (zero radiance
+    over the geometry), feature combination (microfacet lookup-table bounds error), the volume-boundary state test
+    and the camera-inside closed volume (integer volume-stack mismatches).
+
+## Android x64 (HP, Intel Mesa 24.0.8) on the integrated tree (2026-10-20)
+
+The integrated tree was built for android-x64 (NDK 29.0.14206865, API 33) and run on the HP with cold compiles
+(`MESA_SHADER_CACHE_DISABLE=true`; the device has no Mesa disk cache) and the unchanged 1.0.290.1433 runtime. The
+build uses SSE normalization (`NATIVE_FLOAT3_RECIPROCAL_NORMALIZE=0`). Glass/GGX (svm, bounce incl. path 126,
+render), microfacet, the transparent-shadow split (v7, `prepare_shadow_shader_data`), spot/area and point/sun
+lighting with MIS and forward light, feature combination, the emitter-sample probe for lamps, finite homogeneous
+volumes and volume boundaries, camera motion, object motion and deforming-triangle images pass the practical
+criterion at full tier with no compile-budget warnings; 65 v6/v7 command replays pass with 31,277 exact
+scheduling readbacks. Evidence: `native/work/phaseC2/x64/`.
+
+Three pipelines still exhaust Scudo's 256 MiB per-size-class regions inside the HP's Intel compiler and abort the
+process, on every cold compile: the emissive-triangle `shade_surface_light` with object motion (triangle gate
+mode 5), the triangle sampler gate's `emitter_sample_probe`, and the unspecialized `shade_surface_light`
+(`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`). Emissive triangle lights are therefore not validated on the HP beyond
+static triangle images 0-3 (which pass, with replays), and the specialization on/off bit-identity check cannot
+run there. The HP is not yet a full-fidelity device for emissive triangles.
+
+## Device tiers: persisted record, known adapters and init canary
+
+WebGPU reports adapter identity and limits but not shader-compiler capacity, and
+a vendor compiler crash ends the process. The WebGPU device therefore chooses
+its pipeline tier once, when it is created and before any renderer pipeline
+compiles (`native/cycles/device_tier.{h,cpp}`):
+
+1. an explicit request (host API or `CODEBRIX_CYCLES_PIPELINE_TIER`), reason
+   `override` (full) or `opt-in` (conservative);
+2. the persisted device-identity record, reason `record`: a full-tier crash
+   breadcrumb or pipeline-creation failure selects conservative; full-tier
+   compiles without any failure select full (so the record overrides the table);
+3. the known-adapter table, reason `table`;
+4. full fidelity, reason `default`.
+
+The optional init canary then compiles one representative module (the surface
+module with no optional handlers, entry `prepare_surface`) in the full tier. A
+canary failure selects conservative before the scene compiles (reason `canary`);
+a canary crash leaves a breadcrumb, so the next run starts conservative from the
+record; a canary over its budget (10 s, `CODEBRIX_CYCLES_PIPELINE_CANARY_BUDGET_MS`)
+only warns. During rendering a non-fatal creation failure still retries in the
+conservative tier (reason `failure`) and is recorded. A slow compile never
+changes the tier: it warns and marks the session degraded, because the
+conservative tier (workgroup size 1) is not bit-identical to full fidelity. The
+only exception is the explicit old-hardware opt-in
+`CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION=conservative` (reason `budget-opt-in`,
+never recorded). Full-tier WGSL is unchanged by this mechanism.
+
+Known-adapter table (`known_adapters()`; device and driver are substrings of the
+WebGPU adapter device name and driver description):
+
+| Entry | Device | Driver | Tier |
+| --- | --- | --- | --- |
+| Pixel 4 XL Adreno 640 | `Adreno (TM) 640` | any | full, 20 s compile budget |
+| Samsung SM-X700 Adreno 730 | `Adreno (TM) 730` | any | full |
+| HP Intel Xe (Android x64) | `Intel(R) Xe Graphics` | `Mesa 24.0.8` | full |
+| Linux Intel UHD ADL-S | `Intel(R) UHD Graphics (ADL-S GT1)` | `Mesa 25.0.7` | full |
+
+An unknown mobile adapter (Android build, or a Qualcomm, ARM, Imagination,
+Samsung or Apple vendor id or Adreno/Mali/PowerVR/Xclipse device name) starts
+full with a 20 s compile budget instead of 60 s (warnings only). A table entry
+may carry its own budget: the Pixel 4 XL entry is full with 20 s, because full
+tier meets the practical criterion there and the conservative tier was not
+faster (see below). No table entry selects the conservative tier; it remains a
+reactive fallback after a crash breadcrumb or a creation failure, or an explicit
+opt-in. An explicit `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS` replaces any budget.
+
+**Persisted record.** Enabled only when the application supplies a writable
+directory (`cbc_host_tier_config`, or `CODEBRIX_CYCLES_DEVICE_RECORD_DIR`); missing
+directories are created; problems become warnings and never fail rendering. The
+file is `codebrix-cycles-device-<fnv1a64 of vendor, architecture, device,
+driver description, vendor id, device id>.txt`, UTF-8 text, one `key=value` per
+line, fields free of newlines and `|`:
+
+```
+codebrix-cycles-device-record 1
+vendor=<WGPUAdapterInfo.vendor>
+architecture=<WGPUAdapterInfo.architecture>
+device=<WGPUAdapterInfo.device>
+description=<WGPUAdapterInfo.description (driver)>
+runtime=codebrix-api=<n>;wgpu-native=<v>;wgpu-core=<v>;target=<triple>;patches=<list>
+shaderHash=fnv1a64:<16 hex digits over every production WGSL module>
+stage=<tier>|<module>|<entry>|<successes>|<failures>|<last ms>|<max ms>
+breadcrumb=<tier>|<module>|<entry>|signal or interrupted|<signal>|<unix time>
+failure=<tier>|<module>|<entry>|<message>
+```
+
+Unknown keys are ignored; at most 16 breadcrumbs and 16 failures are kept. A
+record whose identity, runtime or shader hash differs is reported
+(`identity-mismatch`, `stale-runtime`, `stale-shader-hash`), never applied, and
+replaced by the next write. Writes take an advisory `flock` on `<record>.lock`,
+re-read the file and rename a temporary copy, so concurrent processes merge.
+Before each pipeline creation the device writes `<record>.pending-<pid>-<device>-<serial>`
+(runtime, shader hash, tier, module, entry, time); the crash handler appends
+`signal=<n>`; the file is removed when creation returns. A pending file whose
+process no longer runs becomes a breadcrumb on the next start (`interrupted` if
+no signal was written, which includes out-of-memory kills and forced stops while
+compiling). Delete the record to start again at full fidelity.
+
+**Host C API (additive; ABI 1).** `cbc_host_tier_config(const CBCTierConfig *,
+const char *record_directory)` sets the process-wide request (`CBC_TIER_AUTO`,
+`CBC_TIER_FULL`, `CBC_TIER_CONSERVATIVE`) and flags (`CBC_TIER_RECORD_OFF`,
+`CBC_TIER_RECORD_READ_ONLY`, `CBC_TIER_CANARY`) for hosts created afterwards;
+`CBCTierConfig` is size/ABI/reserved checked. `cbc_host_device_report_json`
+returns the capability report: backend, adapter identity, tier, reason and
+detail, known-adapter entry, compile budget and its source, record mode, path,
+status and breadcrumbs, canary result, environment overrides, warnings and
+compiled pipelines. The .NET wrapper exposes `CyclesHost.ConfigureTiers` and
+`DeviceReportJson`. Gate and replay JSON carry the same decision under
+`pipelineReport.decision`; the pipeline log adds `tierReason`.
+
+**Environment overrides (gates).** `CODEBRIX_CYCLES_PIPELINE_TIER=full|conservative|auto`,
+`CODEBRIX_CYCLES_DEVICE_RECORD_DIR=<dir>`,
+`CODEBRIX_CYCLES_DEVICE_RECORD=on|off|ignore|readonly` (`ignore` reads and reports
+without applying or writing), `CODEBRIX_CYCLES_PIPELINE_CANARY=1|0`, and the
+existing `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`. Test hooks used only by
+`native/tools/tier_gate.py`: `CODEBRIX_CYCLES_TEST_ADAPTER` (simulated identity for
+the decision; the real adapter still compiles), `CODEBRIX_CYCLES_TEST_CRASH_PIPELINE`
+(raise `SIGABRT` inside the breadcrumb scope of the named stage, or
+`canary:prepare_surface`) and `CODEBRIX_CYCLES_TEST_CANARY=fail` (a canary
+module the WebGPU front end rejects).
+
+`native/tools/tier_gate.py` runs each scenario as a separate process of
+`tests/host/tier_consumer.c` on Linux: fresh device, record reuse, a real crash
+breadcrumb followed by a conservative start, stale shader hash and runtime,
+table lookups (including the real adapter and an unknown mobile adapter),
+record-over-table, overrides, canary pass/slow/failure/crash and a slow compile
+that keeps the full tier. Every film meets the practical criterion against the
+original CPU session.
+
+**Device confirmation (2026-10-20).** Android builds of the merged tree (NDK
+29.0.14206865, API 33, unchanged runtime) report these adapters and decisions,
+with glass_render, transparent_lighting and lighting_mis passing the practical
+criterion (outputs in `native/work/phaseC4/`):
+
+| Device | Adapter device / driver description | Decision | Tier warnings |
+| --- | --- | --- | --- |
+| Samsung SM-X700 | `Adreno (TM) 730` / Adreno driver EV031.36.08.33 | full, `table` | none |
+| HP Android x64 | `Intel(R) Xe Graphics (TGL GT2)` / `Mesa 24.0.8` | full, `table` | none |
+| Pixel 4 XL | `Adreno (TM) 640` / Adreno driver EV031.31.04.01 | full, `table` (20 s budget) | compile-budget warnings only |
+
+- On the Pixel 4 XL, the conservative tier (the former table entry) and the
+  full tier (`CODEBRIX_CYCLES_PIPELINE_TIER=full`) give the same image errors and
+  strict counts (glass_render film bit-identical); the conservative tier was not
+  faster to compile (`shade_surface_light` up to 79 s against up to 70 s in
+  transparent_lighting, 444 s against 410 s wall). The opt-in canary compiled in 2.0 s
+  against its 10 s budget.
+- The Samsung and HP glass_render films are bit-identical across runs with and
+  without a device record. Specialized against unspecialized bit-identity cannot
+  be checked on these devices, because the unspecialized surface module does not
+  compile there (see "Open device items").
+- A device record in a shell-writable folder under `/data/local/tmp` is created
+  with the documented format, reused (`full`, reason `record`), and its
+  `<record>.lock` serializes writers: with another process holding
+  `flock(LOCK_EX)` for 60 s, a gate's record writes waited for it (about 56 s
+  longer wall time) and the stage counts merged.
+- On the HP, `CODEBRIX_CYCLES_TEST_CRASH_PIPELINE=prepare_surface` aborted the
+  process; Android's signal chaining still let the handler append `signal=6` to
+  the pending file. The next run consumed it as a breadcrumb and started
+  conservative (reason `record`, workgroup size 1, practical criterion met, film
+  bit-identical to full tier); after deleting the record the device returned to
+  full (reason `table`).
+- The Android x64 host gate passes on the HP with 38 exports.
+
+## Open device items (2026-10-20)
+
+These device failures from the integrated-tree runs are open. Each is
+deterministic on its device and needs a code change; no tolerance was relaxed.
+
+1. **Samsung SM-X700: emissive-triangle sampler and emitter-sample probe follow
+   the x64 oracle.** At every failing sample the Adreno 730 output equals the x64
+   CPU oracle (and the Intel GPU) bit for bit, while the ARM64 CPU oracle differs:
+   the triangle sampler gate has 24 practical failures in 22 of 4,096 samples (up
+   to 11.6 times the tolerance) and the emitter-sample probe one sun-light pdf at
+   1.1 times. This is the same class as the ShaderData normal rounding fixed for
+   ARM64 (`NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`), now in light and emitter sampling.
+2. **Samsung SM-X700: triangle image mode 2 diverges on the GPU.** One pixel is
+   off by 0.040; replaying the Linux x64 mode-2 capture on the device also fails
+   (scheduler decision readback differs at command 574), so the Adreno takes a
+   different path decision from Intel with identical inputs and WGSL.
+3. **HP Android x64: three cold compiles exhaust compiler memory.** Scudo's
+   per-size-class regions run out inside the Intel Mesa 24.0.8 compiler and the
+   process aborts, every time, for `shade_surface_light` specialized with
+   `MOTION_OBJECT` + `LIGHT_TRIANGLE` (triangle image mode 5), the triangle
+   sampler gate's `emitter_sample_probe`, and the unspecialized
+   `shade_surface_light`.
+4. **`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is not usable on any Android
+   device.** The unspecialized `shade_surface_light` crashes the Adreno 730 driver
+   and exhausts memory on the Adreno 640 and the HP. Specialized/unspecialized
+   bit-identity is shown on Linux only.
+5. **Pixel 4 XL: feature_combination** reports GPU error bit 512 (the microfacet
+   lookup-table bounds check).
+6. **Pixel 4 XL: object and deforming motion images** render a block of zero
+   radiance over the geometry (all four image runs, moving and stationary).
+7. **Pixel 4 XL: volume_boundary state test and camera-inside closed volume**
+   fail with integer volume-stack mismatches.
+
+The emissive-triangle corpora (sampler, five-image triangle gate and their
+replays) were therefore not rerun on devices after the device-tier merge.

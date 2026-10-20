@@ -78,7 +78,11 @@ fn trace_native_filtered(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,
                 object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));
                 let obj=table_at(G_objects,object,SIZE_objects);
                 let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
-                if((flags&SD_OBJECT_MOTION)!=0u){let inverse=motion_inverse(motion_object(object,time));pos=motion_point(inverse,origin);dir=clamp_direction(motion_direction(inverse,direction));}
+                if((flags&SD_OBJECT_MOTION)!=0u){
+//#if MOTION_OBJECT else atomicOr(&heap[p(17u)/4u],2u);return result;
+                    let inverse=motion_inverse(motion_object(object,time));pos=motion_point(inverse,origin);dir=clamp_direction(motion_direction(inverse,direction));
+//#endif
+                }
                 else{pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));}
                 inv=inverse_direction(dir);
                 sp++;if(sp>=192){fail();return result;}stack[u32(sp)]=0x76543210i;

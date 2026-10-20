@@ -89,7 +89,7 @@ def main():
         for mode in range(8):
             capture=out/'moving-images/images'/('case-'+str(mode))
             meta=json.loads((capture/'run.capture.json').read_text())
-            assert meta['format']=='native-command-stream-v5' and meta['pipelineDispatches'][9]>0
+            assert meta['format'] in ('native-command-stream-v5','native-command-stream-v6','native-command-stream-v7') and meta['pipelineDispatches'][9]>0 and (meta['format']=='native-command-stream-v5' or meta['pipelineDispatches'][15]>0)
             replay=out/('replay-motion-'+str(mode))
             render_replay.run('linux-x64',capture,replay,None,timeout=900)
             results['replay-motion-'+str(mode)]=json.loads((replay/'validation.json').read_text())

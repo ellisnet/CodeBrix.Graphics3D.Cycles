@@ -1,0 +1,22 @@
+// Copyright (c) 2026 Jeremy Ellis and contributors
+// SPDX-License-Identifier: Apache-2.0
+#include "wavefront.h"
+#include "kernel/types.h"
+#include <sstream>
+namespace ccl {
+static constexpr char source[]=
+#include "shader_data_shader.inc"
+;
+std::string shader_data_layout(){
+  std::ostringstream code;
+  auto constant=[&](const char *name,size_t value){code<<"const "<<name<<":u32="<<value<<"u;\n";};
+  constant("SURFACE_DATA_CACHE_BYTES",surface_data_cache_bytes);
+  constant("O_normal_offset",offsetof(KernelObject,normal_offset));
+#define ENUM(name) constant(#name,uint32_t(name))
+  ENUM(SD_OBJECT_TRANSFORM_APPLIED);ENUM(SD_OBJECT_NEGATIVE_SCALE);ENUM(SD_OBJECT_HAS_CORNER_NORMALS);
+  ENUM(SHADER_SMOOTH_NORMAL);ENUM(SR_BACKFACING);
+#undef ENUM
+  return code.str();
+}
+std::string shader_data_source(){return wavefront_layout()+shader_data_layout()+source;}
+}

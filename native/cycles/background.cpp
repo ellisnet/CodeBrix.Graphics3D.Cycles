@@ -98,12 +98,8 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
   p[14]=scene_tables();
   if(!work)return;
   auto &pipeline=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND?background:light_forward;
-  if(!pipeline.value){
-    const std::string code=background_wgsl();WGPUShaderSourceWGSL source{};
-    source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={code.data(),code.size()};WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;
-    gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
-    pipeline=gpu.pipeline(shader,pipeline_layout,kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND?"shade_background":"shade_light_forward");
-  }
-  dispatch(p,uint32_t(work),pipeline);
+  const char *entry=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND?"shade_background":"shade_light_forward";
+  if(!pipeline_current(pipeline,entry))pipeline=std::move(build_pipelines("background",background_wgsl(),{entry})[0]);
+  dispatch(p,uint32_t(work),pipeline,workgroup(entry));
 }
 }
