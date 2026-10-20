@@ -65,7 +65,8 @@ def render(args,scene,name,target,cache,extra_meta):
  command=[str(args.runner),'--scene',str(scene),'--backend',backend,'--label',name,'--output',str(target),'--threads',str(args.threads)]
  started=time.time()
  result=subprocess.run(command,env=env,capture_output=True,text=True)
- (target.parent/(target.name+'.log')).write_text(result.stdout+result.stderr)
+ # Not *.log: the repository ignores those, and these logs are published as evidence.
+ (target.parent/(target.name+'.output.txt')).write_text(result.stdout+result.stderr)
  if result.returncode:raise RuntimeError(f'{name} failed on {scene}: {result.stderr.strip()}')
  meta=json.loads((target/'meta.json').read_text())
  warnings=[line for line in result.stderr.splitlines() if line.strip() and not line.startswith('[OpenColorIO Info]')]

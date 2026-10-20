@@ -191,7 +191,10 @@ uncommitted changes.
   `cycles-oracles-macos-20261019.tar.zst`, SHA-256
   `a3871626a2479b28027d4940c0468026eb52307e9368cb5355db29bef394ce33`. The
   `meta.json` files keep the absolute paths of the run as recorded. Later runs
-  of `render_oracles.py --bundle` publish there themselves.
+  of `render_oracles.py --bundle` publish there themselves. The 14 runner logs
+  were renamed from `.log` to `.output.txt` after extraction, because the
+  repository ignores `*.log`; their bytes are unchanged, and `manifest.json`
+  records the rename under `renamedAfterBundle`. New runs write `.output.txt`.
 - Fresh-checkout build: the tracked and new files were copied to an empty
   directory at a different path, with no `native/work`, and
   `tools/build_macos.py` rebuilt everything there. That build passed the host
