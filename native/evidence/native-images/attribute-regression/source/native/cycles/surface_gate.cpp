@@ -1,0 +1,139 @@
+// Copyright (c) 2026 Jeremy Ellis and contributors
+// SPDX-License-Identifier: Apache-2.0
+#include "wavefront_test.h"
+#include "wavefront.h"
+#include "surface_reference.h"
+#include "scene/scene.h"
+#include "scene/mesh.h"
+#include "scene/object.h"
+#include "scene/camera.h"
+#include "scene/integrator.h"
+#include "scene/shader_graph.h"
+#include "scene/shader_nodes.h"
+#include "util/progress.h"
+#include "util/task.h"
+#include <algorithm>
+#include <bit>
+#include <cfloat>
+#include <cmath>
+#include <fstream>
+#include <iostream>
+using namespace ccl;
+using namespace wavefront_test;
+#include "surface_fixture.h"
+struct Metrics {uint64_t paths=0,integers=0,floats=0,strict=0;unsigned cases=0;double maximum=0;};
+static void configure(KernelData &data){
+  data.background.use_mis=0;data.integrator.num_lights=0;data.integrator.use_light_mis=0;data.integrator.use_direct_light=0;data.integrator.use_caustics=0;
+  data.integrator.filter_glossy=FLT_MAX;data.max_closures=MAX_CLOSURE;data.kernel_features|=KERNEL_FEATURE_LIGHT_PASSES;
+  auto &f=data.film;f.pass_stride=48;f.pass_combined=0;f.pass_emission=4;f.pass_adaptive_aux_buffer=7;
+  f.pass_diffuse_direct=11;f.pass_glossy_direct=14;f.pass_transmission_direct=17;
+  f.pass_diffuse_indirect=20;f.pass_glossy_indirect=23;f.pass_transmission_indirect=26;
+  f.pass_lightgroup=29;f.pass_flag=0;f.light_pass_flag=PASSMASK(COMBINED)|PASSMASK(EMISSION);
+}
+static void evaluate(WebGPUDevice &d,Scene &scene,const std::vector<Field>&layout,
+    const std::vector<IntegratorStateCPU>&input,const std::vector<int>&ids,const std::string &label,Metrics &m,bool dense=false){
+  const size_t count=193*scene.dscene.data.film.pass_stride;std::vector<float> wanted(count,.125f);auto expected=input;
+  original_surface(scene.dscene,ids,expected,wanted);upload(d,layout,input);
+  device_vector<float> film(&d,"surface_film",MEM_READ_WRITE);film.alloc(count);std::fill_n(film.data(),count,.125f);film.copy_to_device();
+  device_vector<int> selected(&d,"surface_indices",MEM_READ_WRITE);selected.alloc(std::max<size_t>(1,ids.size()));std::copy(ids.begin(),ids.end(),selected.data());selected.copy_to_device();
+  IntegratorQueueCounter counter{};counter.num_queued[DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE]=ids.size();d.upload(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));
+  auto queue=d.gpu_queue_create();int n=ids.size();device_ptr selection=dense?0:selected.device_pointer;
+  DeviceKernelArguments args;args.add(&selection);args.add(&film.device_pointer);args.add(&n);
+  require(queue->enqueue(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,n? n+63:0,args),label+": "+d.error_message());require(queue->synchronize(),label+": "+d.error_message());
+  auto actual=download(d,layout,input.size());
+  auto number=[&](float a,float e,const std::string &where){double error=std::abs(double(a)-e);m.maximum=std::max(m.maximum,error);m.floats++;m.strict+=error>1e-7+1e-7*std::abs(double(e));
+    require(std::isfinite(a)&&std::isfinite(e)&&error<=5e-5+2e-4*std::abs(double(e)),label+" "+where+" actual="+std::to_string(a)+" expected="+std::to_string(e));};
+  for(auto &f:layout)for(size_t i=0;i<expected.size();i++){
+    auto a=reinterpret_cast<const char*>(&actual[i])+f.offset;auto e=reinterpret_cast<const char*>(&expected[i])+f.offset;
+    if(f.floating){for(size_t k=0;k<f.stride;k+=4){float av,ev;std::memcpy(&av,a+k,4);std::memcpy(&ev,e+k,4);number(av,ev,f.name+" path="+std::to_string(i)+" component="+std::to_string(k/4));}}
+    else{require(!std::memcmp(a,e,f.stride),label+" integer "+f.name+" path="+std::to_string(i));m.integers++;}
+  }
+  film.copy_from_device();healthy(d);for(size_t i=0;i<count;i++)number(film[i],wanted[i],"film="+std::to_string(i));
+  IntegratorQueueCounter expected_counter{};for(int i:ids){auto kernel=expected[i].path.queued_kernel;if(kernel)expected_counter.num_queued[kernel]++;}
+  d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));require(!std::memcmp(&counter,&expected_counter,sizeof(counter)),label+" queue counters");
+  m.cases++;m.paths+=ids.size();std::cerr<<"Passed "<<label<<" ("<<ids.size()<<" paths)\n";
+}
+static unsigned rejections(const DeviceInfo &info){
+  for(unsigned test=0;test<20;test++){
+    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);
+    for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
+    Progress progress;scene.device_update(&d,progress);healthy(d);auto &ds=scene.dscene;auto &data=ds.data;configure(data);d.const_copy_to("data",&data,sizeof(data));
+    bool cancelled=false;Scheduler scheduler(&d,scene.film,&ds,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);auto layout=fields(d);
+    std::vector<IntegratorStateCPU> states(scheduler.capacity());states_for(scene,states);auto first=states[0];std::fill(states.begin(),states.end(),IntegratorStateCPU{});states[0]=first;
+    auto &state=states[0];state.path.continuation_probability=1;state.path.throughput=make_float3(.5,.6,.7);state.path.min_ray_pdf=FLT_MAX;
+    std::string reason="reported invalid data";
+    if(test==0){data.integrator.use_direct_light=1;reason="direct lighting";}
+    if(test==1){data.integrator.use_light_mis=1;reason="direct lighting";}
+    if(test==2){data.kernel_features|=KERNEL_FEATURE_AO;reason="optional integration";}
+    if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;reason="optional integration";}
+    if(test==4){data.film.pass_flag=PASSMASK(DEPTH);reason="data passes";}
+    if(test==5){data.integrator.filter_glossy=1;reason="glossy filtering";}
+    if(test==6){data.max_closures=MAX_CLOSURE+1;reason="closure capacity";}
+    if(test==7){data.film.pass_combined=data.film.pass_stride-3;reason="pass offset";}
+    if(test==8)state.path.render_pixel_index=1;
+    if(test==9)state.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;
+    if(test==10)state.path.flag=PATH_RAY_SUBSURFACE;
+    if(test==12){ds.objects[state.isect.object].shadow_terminator_shading_offset=2;ds.objects.copy_to_device();}
+    if(test==13){ds.shaders[ds.tri_shader[state.isect.prim]&SHADER_MASK].flags|=SD_MIS_FRONT|SD_MIS_BACK;ds.shaders.copy_to_device();}
+    if(test==14){data.integrator.sampling_pattern=999;reason="tabulated Sobol";}
+    if(test==15)reason="Incomplete surface";
+    if(test==16){ds.svm_nodes[(ds.tri_shader[state.isect.prim]&SHADER_MASK)*4]=NODE_NUM;ds.svm_nodes.copy_to_device();}
+    if(test==17)state.isect.object=ds.objects.size();
+    if(test==18){ds.objects[state.isect.object].lightgroup=16;ds.objects.copy_to_device();}
+    if(test==19){data.integrator.sample_clamp_direct=-1;reason="surface clamp";}
+    d.const_copy_to("data",&data,sizeof(data));upload(d,layout,states);
+    device_vector<float> film(&d,"surface_negative_film",MEM_READ_WRITE);film.alloc(data.film.pass_stride);std::fill_n(film.data(),film.size(),.125f);film.copy_to_device();
+    device_vector<int> indices(&d,"surface_negative_indices",MEM_READ_WRITE);indices.alloc(1);indices[0]=test==11?scheduler.capacity():0;indices.copy_to_device();
+    IntegratorQueueCounter before{};before.num_queued[state.path.queued_kernel]=1;d.upload(uintptr_t(d.state.queue_counter),&before,sizeof(before));
+    auto queue=d.gpu_queue_create();int n=test==15?2:1;DeviceKernelArguments args;args.add(&indices.device_pointer);args.add(&film.device_pointer);args.add(&n);
+    bool accepted=queue->enqueue(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,1,args);if(accepted)accepted=queue->synchronize();
+    require(!accepted&&d.error_message().find(reason)!=std::string::npos,"Surface rejection "+std::to_string(test)+": "+d.error_message());
+    // Read directly after the intentional error; Device::guard remains sticky.
+    for(auto &f:layout){std::vector<uint8_t> actual(states.size()*f.stride);d.download(f.address,actual.data(),actual.size());
+      for(size_t i=0;i<states.size();i++)require(!std::memcmp(actual.data()+i*f.stride,reinterpret_cast<const char*>(&states[i])+f.offset,f.stride),"Rejected surface changed path state");}
+    std::vector<float> after(film.size());d.download(film.device_pointer,after.data(),after.size()*4);require(std::all_of(after.begin(),after.end(),[](float x){return x==.125f;}),"Rejected surface changed film");
+    IntegratorQueueCounter counter{};d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));require(!std::memcmp(&counter,&before,sizeof(counter)),"Rejected surface changed counters");
+  }return 20;
+}
+int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+  require(argc==2,"Usage: surface_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
+  {
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
+    Scene scene(params,&d);prepare(scene);for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Surface scene preparation failed");
+    auto &data=scene.dscene.data;configure(data);d.const_copy_to("data",&data,sizeof(data));const auto original=data;
+    bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);auto layout=fields(d);
+    std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=states_for(scene,initial);
+    for(int i:ids){auto &s=initial[i];s.path.render_pixel_index=i%193;s.path.throughput=make_float3(.6,.8,.4);s.path.continuation_probability=1;
+      s.path.flag=PATH_RAY_MIS_SKIP|PATH_RAY_TRANSPARENT_BACKGROUND;s.path.min_ray_pdf=FLT_MAX;s.ray.tmax=FLT_MAX;
+      s.path.pass_diffuse_weight=make_float3(.2,.3,.4);s.path.pass_glossy_weight=make_float3(.4,.3,.2);}
+    std::ofstream(std::string(argv[1])+".wgsl")<<surface_source();
+    evaluate(d,scene,layout,initial,ids,"Compiled materials",m);
+    for(unsigned test=0;test<16;test++){
+      data=original;auto states=initial;
+      for(int i:ids){auto &s=states[i];
+        if(test==0)s.path.continuation_probability=.25f;
+        if(test==1)s.path.continuation_probability=0;
+        if(test==2)s.path.flag|=PATH_RAY_TERMINATE_ON_NEXT_SURFACE;
+        if(test==3)s.path.flag|=PATH_RAY_TERMINATE_AFTER_TRANSPARENT;
+        if(test>=4&&test<=6){s.path.bounce=test-3;s.path.flag=PATH_RAY_SURFACE_PASS|PATH_RAY_REFLECT;s.path.visibility=PATH_RAY_VISIBILITY_DIFFUSE;}
+        if(test==7){s.path.bounce=data.integrator.max_bounce-1;s.path.diffuse_bounce=data.integrator.max_diffuse_bounce-1;s.path.transmission_bounce=data.integrator.max_transmission_bounce-1;s.path.transparent_bounce=data.integrator.transparent_max_bounce-1;}
+      }
+      if(test==8){data.integrator.sample_clamp_direct=.2f;data.integrator.sample_clamp_indirect=.1f;}
+      if(test==9)data.integrator.filter_closures=FILTER_CLOSURE_DIFFUSE;
+      if(test==10)data.integrator.filter_closures=FILTER_CLOSURE_TRANSPARENT;
+      if(test==11)data.integrator.filter_closures=FILTER_CLOSURE_EMISSION;
+      if(test==12)data.max_closures=0;
+      if(test==13)data.max_closures=1;
+      if(test==14)data.film.light_pass_flag=0;
+      if(test==15)data.background.transparent_roughness_squared_threshold=-1;
+      d.const_copy_to("data",&data,sizeof(data));evaluate(d,scene,layout,states,ids,"Surface case "+std::to_string(test),m);
+    }
+    data=original;d.const_copy_to("data",&data,sizeof(data));
+    auto dense=initial;std::vector<int> dense_ids;for(size_t i=0;i<ids.size();i++){dense[i]=initial[ids[i]];dense_ids.push_back(i);}evaluate(d,scene,layout,dense,dense_ids,"Dense dispatch",m,true);
+    evaluate(d,scene,layout,initial,{},"Zero work",m);
+  }
+  require(stats.mem_used==0,"Surface Cycles allocation leak");unsigned rejected=rejections(infos[0]);std::ofstream(std::string(argv[1])+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(std::string(argv[1])+".library.txt")<<d.gpu.library_path;
+  std::cout<<"{\"passed\":true,\"originalCpuSurfaceIntegrator\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"invalidCasesRejected\":"<<rejected<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+}catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

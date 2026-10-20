@@ -90,16 +90,36 @@ void WebGPUDevice::sync(){
     std::string message="WebGPU scheduler kernel reported invalid data (mask "+std::to_string(error)+"):";
     for(auto [bit,label]:{std::pair{1u," invalid state/data"},std::pair{2u," unsupported SVM opcode"},
         std::pair{4u," SVM bytecode outside table"},std::pair{8u," invalid/uninitialized SVM stack"},
-        std::pair{16u," unsupported SVM parameter"},std::pair{32u," SVM instruction limit"}})
+        std::pair{16u," unsupported SVM parameter"},std::pair{32u," SVM instruction limit"},std::pair{64u," invalid attribute map/data"},
+        std::pair{128u," invalid image descriptor/data"},std::pair{256u," tiled image cache not implemented"}})
       if(error&bit)message+=label;
     throw std::runtime_error(message);
   }
 }
-void WebGPUDevice::mem_alloc(device_memory &mem){guard([&]{require(mem.type!=MEM_IMAGE_TEXTURE,"WebGPU image textures not implemented");
+void WebGPUDevice::mem_alloc(device_memory &mem){guard([&]{if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);
+    require(image.info.data_type<=IMAGE_DATA_TYPE_USHORT,"WebGPU sparse image formats not implemented");
+    require(image.info.width>0&&image.info.height>0&&image.info.width<=INT32_MAX/2&&image.info.height<=INT32_MAX/2,"Invalid resident image dimensions");
+    require(image.info.interpolation<INTERPOLATION_NUM_TYPES&&image.info.extension<EXTENSION_NUM_TYPES,"Invalid image sampling mode");
+    const size_t pixel_bytes[]={16,4,8,4,1,2,8,2};
+    require(uint64_t(image.info.width)*image.info.height*pixel_bytes[image.info.data_type]==mem.memory_size(),"Image storage size mismatch");
+    require(image.image_info_id<gpu.limits.maxStorageBufferBindingSize/(sizeof(KernelImageInfo)+8),"Image descriptor index exceeds device limit");
+    auto it=images.find(image.image_info_id);require(it==images.end()||it->second==&image,"Duplicate image descriptor ownership");
+  }
   if(!mem.device_pointer&&mem.memory_size()){mem.device_pointer=allocate(mem.memory_size());mem.device_size=mem.memory_size();stats.mem_alloc(mem.device_size);}});}
 void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);require(!have_error(),"WebGPU allocation failed");
   if(mem.memory_size())upload(uint32_t(mem.device_pointer),mem.host_pointer,mem.memory_size());
-  if(mem.type==MEM_GLOBAL)globals[mem.global_name()]=uint32_t(mem.device_pointer);});}
+  if(mem.type==MEM_GLOBAL){globals[mem.global_name()]=uint32_t(mem.device_pointer);
+    auto copy=[&](auto &records){using T=typename std::remove_reference_t<decltype(records)>::value_type;
+      require(mem.memory_size()%sizeof(T)==0,"Invalid native lighting table size");records.resize(mem.memory_size()/sizeof(T));
+      if(mem.memory_size())std::memcpy(records.data(),mem.host_pointer,mem.memory_size());};
+    if(std::strcmp(mem.global_name(),"lights")==0)copy(light_records);
+    if(std::strcmp(mem.global_name(),"light_distribution")==0)copy(light_distribution_records);
+    if(std::strcmp(mem.global_name(),"shaders")==0)copy(shader_records);
+    if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
+    if(std::strcmp(mem.global_name(),"object_flag")==0)copy(object_flag_records);
+  }
+  if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images[image.image_info_id]=&image;
+    globals["image_pixels_"+std::to_string(image.image_info_id)]=uint32_t(mem.device_pointer);image_info_dirty=true;}});}
 void WebGPUDevice::mem_copy_from(device_memory &mem,size_t y,size_t w,size_t h,size_t elem){guard([&]{
   require(w==0||elem<=SIZE_MAX/w,"Readback size overflow");size_t row=w*elem;
   require(!row||(y<=SIZE_MAX/row&&h<=SIZE_MAX/row),"Readback range overflow");size_t offset=y*row,bytes=h*row;
@@ -108,7 +128,14 @@ void WebGPUDevice::mem_copy_from(device_memory &mem,size_t y,size_t w,size_t h,s
 void WebGPUDevice::mem_zero(device_memory &mem){guard([&]{mem_alloc(mem);require(!have_error(),"WebGPU allocation failed");if(mem.memory_size())zero(uint32_t(mem.device_pointer),mem.memory_size());});}
 void WebGPUDevice::mem_free(device_memory &mem){std::lock_guard lock(mutex);try{
   if(mem.device_pointer){flush();release(uint32_t(mem.device_pointer));stats.mem_free(mem.device_size);
-    if(mem.type==MEM_GLOBAL)globals.erase(mem.global_name());
+    if(mem.type==MEM_GLOBAL){globals.erase(mem.global_name());
+      if(std::strcmp(mem.global_name(),"lights")==0)light_records.clear();
+      if(std::strcmp(mem.global_name(),"light_distribution")==0)light_distribution_records.clear();
+      if(std::strcmp(mem.global_name(),"shaders")==0)shader_records.clear();
+      if(std::strcmp(mem.global_name(),"objects")==0)object_records.clear();
+      if(std::strcmp(mem.global_name(),"object_flag")==0)object_flag_records.clear();}
+    if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images.erase(image.image_info_id);
+      globals.erase("image_pixels_"+std::to_string(image.image_info_id));image_info_dirty=true;}
     mem.device_pointer=0;mem.device_size=0;}
   }catch(const std::exception &e){set_error(e.what());}}
 void WebGPUDevice::mem_move_to_host(device_memory&){set_error("WebGPU host-memory fallback not implemented");}
@@ -120,11 +147,15 @@ void WebGPUDevice::const_copy_to(const char *name,void *host,size_t size){guard(
   if(!address)address=allocate(size);
   upload(address,host,size);
 });}
-void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,WGPUComputePipeline pipeline){
+void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,WGPUComputePipeline pipeline,uint32_t workgroup_size){
+  require(workgroup_size>0&&workgroup_size<=gpu.limits.maxComputeWorkgroupSizeX&&
+          workgroup_size<=gpu.limits.maxComputeInvocationsPerWorkgroup,"Invalid workgroup size");
+  const uint64_t groups=(uint64_t(work)+workgroup_size-1)/workgroup_size;
+  require(work>0&&groups<=gpu.limits.maxComputeWorkgroupsPerDimension,"Dispatch exceeds device limits");
   if(observer){
     const WGPUComputePipeline actual=pipeline?pipeline:controls.value;
-    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:5;
-    require(entry<5,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry);
+    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:15;
+    require(entry<15,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
   }
   auto uniform=gpu.buffer(sizeof(params),WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params.data());
   std::array<WGPUBindGroupEntry,2> entries{};entries[0].binding=0;entries[0].buffer=arena;entries[0].size=arena_bytes;
@@ -133,7 +164,7 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
   cbc::BindGroup group(wgpuDeviceCreateBindGroup(gpu.get(),&bd));gpu.pop_scope();
   cbc::Handle<WGPUComputePassEncoder,wgpuComputePassEncoderRelease> pass(wgpuCommandEncoderBeginComputePass(commands(),nullptr));
   wgpuComputePassEncoderSetPipeline(pass,pipeline?pipeline:controls.value);wgpuComputePassEncoderSetBindGroup(pass,0,group,0,nullptr);
-  wgpuComputePassEncoderDispatchWorkgroups(pass,(work+63)/64,1,1);wgpuComputePassEncoderEnd(pass);dispatches++;
+  wgpuComputePassEncoderDispatchWorkgroups(pass,uint32_t(groups),1,1);wgpuComputePassEncoderEnd(pass);dispatches++;
 }
 unique_ptr<Device> device_webgpu_create(const DeviceInfo &i,Stats &s,Profiler &p,bool h){
   try{return make_unique<WebGPUDevice>(i,s,p,h);}catch(const std::exception &e){auto bad=i;bad.type=DEVICE_DUMMY;bad.error_msg=e.what();return device_dummy_create(bad,s,p,h);}}

@@ -44,8 +44,8 @@ class WebGPUQueue final:public DeviceQueue {
   int num_concurrent_states(size_t state_size)const override {
     return int(std::min<size_t>(4096,std::max<size_t>(64,(16*1024*1024)/std::max<size_t>(1,state_size))));}
   int num_concurrent_busy_states(size_t s)const override{return num_concurrent_states(s)/2;}
-  void init_execution()override{d.guard([&]{debug_init_execution();d.sync();});}
-  void load_image_info()override{d.set_error("WebGPU image binding not implemented");}
+  void init_execution()override{d.guard([&]{debug_init_execution();d.load_image_info();d.sync();});}
+  void load_image_info()override{d.guard([&]{d.load_image_info();});}
   bool synchronize()override{d.guard([&]{d.sync();debug_synchronize();});return !d.have_error();}
   void zero_to_device(device_memory &mem)override{d.mem_zero(mem);}
   void copy_to_device(device_memory &mem)override{d.mem_copy_to(mem);}
@@ -62,8 +62,20 @@ class WebGPUQueue final:public DeviceQueue {
       if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST){
         debug_enqueue_begin(kernel,work);d.enqueue_closest(work,args);debug_enqueue_end();return;
       }
-      if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND){
-        debug_enqueue_begin(kernel,work);d.enqueue_background(work,args);debug_enqueue_end();return;
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW){
+        debug_enqueue_begin(kernel,work);d.enqueue_shadow(kernel,work,args);debug_enqueue_end();return;
+      }
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD){
+        debug_enqueue_begin(kernel,work);d.enqueue_background(work,args,kernel);debug_enqueue_end();return;
+      }
+      if(kernel==DEVICE_KERNEL_SHADER_EVAL_VOLUME_DENSITY){
+        debug_enqueue_begin(kernel,work);d.enqueue_volume_density(work,args);debug_enqueue_end();return;
+      }
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK){
+        debug_enqueue_begin(kernel,work);d.enqueue_volume_stack(work,args);debug_enqueue_end();return;
+      }
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME){
+        debug_enqueue_begin(kernel,work);d.enqueue_volume(work,args);debug_enqueue_end();return;
       }
       if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){
         debug_enqueue_begin(kernel,work);d.enqueue_surface(work,args);debug_enqueue_end();return;
@@ -109,6 +121,7 @@ class WebGPUQueue final:public DeviceQueue {
           p[4]=pointer(1,(size_t(p[1])+p[7])*4);p[5]=pointer(2,4);
         }
       }
+      p[21]=d.data.integrator.transparent_shadows!=0;
       if(work){debug_enqueue_begin(kernel,work);d.dispatch(p,uint32_t(work));debug_enqueue_end();}
     });return !d.have_error();
   }

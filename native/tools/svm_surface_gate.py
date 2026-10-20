@@ -37,7 +37,7 @@ def run(android=False):
     report = json.loads(result.stdout)
     assert report['passed'] and report['originalCpuSurfaceSvm']
     expected = {'compiledGraphs':20, 'cases':23, 'paths':8874, 'closureFamilies':5,
-                'integerChecks':603432, 'floatChecks':7463034, 'stateChecks':3297280, 'untouchedGuardBytes':2944}
+                'integerChecks':603432, 'floatChecks':15414138, 'stateChecks':3297280, 'untouchedGuardBytes':2944}
     assert all(report[k] == v for k, v in expected.items()), 'Surface SVM coverage changed'
     assert report['invalidCasesRejected'] == 11 and report['cyclesAllocationBytesAfterCleanup'] == 0
     loaded = Path((OUT/'run.library.txt').read_text()).resolve()

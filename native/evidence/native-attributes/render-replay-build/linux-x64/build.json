@@ -1,0 +1,38 @@
+{
+  "command": [
+    "clang++",
+    "-std=c++20",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-I",
+    "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src",
+    "-I",
+    "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/include",
+    "-I",
+    "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/include",
+    "-I",
+    "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/deps/tbb/include",
+    "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/render_replay.cpp",
+    "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp",
+    "-L",
+    "/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/runtimes/linux-x64/native",
+    "-lcodebrix_wgpu",
+    "-ldl",
+    "-pthread",
+    "-Wl,-rpath,$ORIGIN",
+    "-o",
+    "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/render/replay-build/linux-x64/render_replay"
+  ],
+  "minimumAndroidApi": null,
+  "driverSha256": "ea2ea29718da663670eca4ac7a98b18c1d888373d1487dfa1c920f2975d87188",
+  "webGpuSha256": "a2cf8b752085fcce0328b83e8eeaaa2080efac0ecb05213a185ec2caa11e3b14",
+  "sourceSha256": {
+    "native/tests/render_replay.cpp": "5b9757f571a21bcfa891d4d6c19a446712711e5a35e41b0722bb37f028e7238c",
+    "native/src/webgpu_device.cpp": "1567133aa72b2d09ad052f5542473ab71b4a743c2f1bd7458d2cf344e2d93732",
+    "native/src/webgpu_device.h": "cf6065098f9f514eaaa918c1dbd1b448f49062bd188006880821ff2e542cf455",
+    "native/include/cycles_backend.h": "33cc7a3281aee60db16f17ccc000f8b7a3041d7059bdd99b1399d377b6d6c3a3",
+    "native/tools/render_replay.py": "d0e6fcf7552663e9da8abbdf67fd387547b7de3eb6442ff79200d7d3419d5010"
+  }
+}

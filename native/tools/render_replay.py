@@ -23,6 +23,23 @@ INPUTS = ['run.arena.bin', 'run.commands.bin', 'controls.wgsl', 'camera.wgsl',
           'closest.wgsl', 'background.wgsl', 'surface.wgsl']
 
 
+def inputs(capture):
+    meta = json.loads((capture/'run.capture.json').read_text())
+    # Pipeline IDs 0..5 and their command encoding remain unchanged. Old
+    # captures need no shadow source; v3 records add IDs 6 and 7.
+    assert meta['format'] in ('native-command-stream-v1', 'native-command-stream-v2',
+                              'native-command-stream-v3', 'native-command-stream-v4', 'native-command-stream-v5'), 'Unknown command stream format'
+    if meta['format'] == 'native-command-stream-v5':
+        names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
+                 'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume']
+        counts = meta['pipelineDispatches']
+        assert len(counts) <= len(names) and all(isinstance(n, int) and n >= 0 for n in counts), 'Unknown pipeline metadata'
+        assert all(names[i] is not None for i, count in enumerate(counts) if count), 'Reserved pipeline metadata'
+        return ['run.arena.bin', 'run.commands.bin']+list(dict.fromkeys(
+            names[i]+'.wgsl' for i, count in enumerate(counts) if count))
+    return INPUTS+(['shadow.wgsl'] if meta['format'] in ('native-command-stream-v3', 'native-command-stream-v4') else [])
+
+
 def build(rid):
     out = BASE/rid
     out.mkdir(parents=True, exist_ok=True)
@@ -50,9 +67,13 @@ def build(rid):
 
 def validate(capture, out):
     meta = json.loads((capture/'run.capture.json').read_text())
+    capture_inputs = inputs(capture)
     observed = json.loads((out/'run.stdout.txt').read_text())
     assert observed['passed'] and observed['nativeCommandReplay']
     assert observed['commands'] == meta['commands'] and observed['exactSchedulingReadbacks'] > 0
+    if 'pipelineDispatches' in meta:
+        expected = meta['pipelineDispatches']
+        assert observed['pipelineDispatches'] == expected+[0]*(len(observed['pipelineDispatches'])-len(expected)), 'Pipeline dispatch counts differ'
     before = (capture/'run.arena.bin').read_bytes()
     actual = (out/'run.arena.bin').read_bytes()
     assert len(actual) == len(before) == meta['arenaBytes']
@@ -60,7 +81,13 @@ def validate(capture, out):
     queued = meta['queuedKernelOffset']
     count = meta['pathCapacity']
     assert meta['queuedKernelElementBytes'] == 2
+    assert 0 <= queued <= queued+count*2 <= len(actual)
     assert actual[queued:queued+count*2] == bytes(count*2), 'Unfinished GPU paths'
+    shadow_count = meta.get('shadowPathCapacity', 0)
+    if shadow_count:
+        shadow = meta['shadowQueuedKernelOffset']
+        assert 0 <= shadow <= shadow+shadow_count*2 <= len(actual)
+        assert actual[shadow:shadow+shadow_count*2] == bytes(shadow_count*2), 'Unfinished GPU shadow paths'
     immutable = 0
     for span in meta['immutableSceneSpans']:
         begin, length = span['offset'], span['bytes']
@@ -69,7 +96,7 @@ def validate(capture, out):
         immutable += length
     reference = (capture/'run.cpu.film.bin').read_bytes()
     offset, length = meta['filmOffset'], meta['filmBytes']
-    assert len(reference) == length == meta['width']*meta['height']*16
+    assert len(reference) == length == meta['width']*meta['height']*meta.get('filmStride', 4)*4
     assert offset+length <= len(actual)
     strict = 0
     maximum = squared = 0.0
@@ -81,24 +108,35 @@ def validate(capture, out):
         strict += error > 1e-7+1e-7*abs(e)
         maximum = max(maximum, error)
         squared += error*error
-    return {'passed':True, 'scope':'Full recorded native render loop; every scheduling readback verified; independent original-CPU film',
+    workload = meta.get('workload', 'native-render')
+    assert workload in ('native-render', 'shadow-stages'), 'Unknown capture workload'
+    scope = ('Full recorded native render loop' if workload == 'native-render' else
+             'Recorded shadow stages; light sampling and MIS not proven')
+    report = {'passed':True, 'scope':scope+'; every scheduling readback verified; independent original-CPU film',
             'androidNativeHostProven':False, 'results':observed, 'filmFloats':length//4,
             'maximumAbsoluteImageError':maximum, 'rmsImageError':math.sqrt(squared/(length//4)),
             'strictImageFailures':strict, 'strictNumericalParityPassed':strict == 0,
             'absoluteTolerance':5e-5, 'relativeTolerance':2e-4,
             'strictAbsoluteTolerance':1e-7, 'strictRelativeTolerance':1e-7,
             'immutableSceneBytes':immutable, 'terminalPathSlots':count, 'gpuErrorWord':0,
-            'inputSha256':{name:sha(capture/name) for name in INPUTS+['run.capture.json','run.cpu.film.bin']},
+            'inputSha256':{name:sha(capture/name) for name in capture_inputs+['run.capture.json','run.cpu.film.bin']},
             'outputSha256':sha(out/'run.arena.bin')}
+    if 'workload' in meta:
+        report['workload'] = workload
+    if 'shadowPathCapacity' in meta:
+        report['terminalShadowPathSlots'] = shadow_count
+    return report
 
 
-def run(rid, capture, out, serial=None):
+def run(rid, capture, out, serial=None, timeout=600):
     binary = BASE/rid
     if rid.startswith('android') != bool(serial):
         raise ValueError('Android replay needs a device serial; Linux does not')
     library = PACKAGE/'runtimes'/rid/'native/libcodebrix_wgpu.so'
     assert sha(binary/'libcodebrix_wgpu.so') == sha(library), 'Staged runtime differs from package'
     out.mkdir(parents=True, exist_ok=True)
+    (out/'validation.json').unlink(missing_ok=True)
+    (out/'timeout.json').unlink(missing_ok=True)
     remote = '/data/local/tmp/codebrix-cycles-native-render-'+capture.name
     if serial:
         adb = [str(ADB), '-s', serial]
@@ -109,7 +147,7 @@ def run(rid, capture, out, serial=None):
         assert properties['product.cpu.abi'] == {'android-arm64':'arm64-v8a','android-x64':'x86_64'}[rid]
         save(out/'device.json', {'serial':serial, **properties})
         shell(['mkdir','-p',remote])
-        for path in [binary/'render_replay', binary/'libcodebrix_wgpu.so', *[capture/name for name in INPUTS]]:
+        for path in [binary/'render_replay', binary/'libcodebrix_wgpu.so', *[capture/name for name in inputs(capture)]]:
             subprocess.run(adb+['push',str(path),remote+'/'+path.name], check=True, capture_output=True)
         shell(['chmod','700',remote+'/render_replay'])
         deployed = shell(['sha256sum',remote+'/libcodebrix_wgpu.so']).split()[0]
@@ -118,8 +156,16 @@ def run(rid, capture, out, serial=None):
     else:
         deployed = sha(library)
         command = [str(binary/'render_replay'),str(capture),str(out/'run')]
-    save(out/'invocation.json', {'command':command})
-    result = subprocess.run(command, capture_output=True, text=True, timeout=600)
+    save(out/'invocation.json', {'command':command, 'timeoutSeconds':timeout})
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        for name, value in [('stdout',error.stdout), ('stderr',error.stderr)]:
+            if isinstance(value, bytes):
+                value = value.decode('utf-8', errors='replace')
+            (out/('run.'+name+'.txt')).write_text(value or '')
+        save(out/'timeout.json', {'passed':False, 'timeoutSeconds':timeout, 'command':command})
+        raise
     (out/'run.stdout.txt').write_text(result.stdout)
     (out/'run.stderr.txt').write_text(result.stderr)
     if result.returncode:
@@ -144,10 +190,11 @@ if __name__ == '__main__':
     parser.add_argument('--capture',type=Path)
     parser.add_argument('--output',type=Path)
     parser.add_argument('--serial')
+    parser.add_argument('--timeout',type=int,default=600,help='Shader compilation/execution limit in seconds')
     args = parser.parse_args()
     if args.action == 'build':
         build(args.rid)
     else:
         if args.capture is None or args.output is None:
             parser.error('run requires --capture and --output')
-        run(args.rid,args.capture.resolve(),args.output.resolve(),args.serial)
+        run(args.rid,args.capture.resolve(),args.output.resolve(),args.serial,timeout=args.timeout)

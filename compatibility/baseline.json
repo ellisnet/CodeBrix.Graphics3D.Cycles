@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "copyright": "Copyright (c) 2026 Jeremy Ellis and contributors",
+  "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+  "objective": "Full Cycles functionality through native scene management and scheduling, with WGSL kernels using unchanged CodeBrix.WebGpu.Native binaries, all nine RIDs, native libraries and thin .NET interop.",
+  "runtime": {
+    "package": "CodeBrix.WebGpu.Native.MitLicenseForever",
+    "version": "1.0.290.1433",
+    "unchangedRequired": true
+  },
+  "sourceSha256": {
+    "third_party/cycles/src/kernel/svm/types.h": "292ebde03bfc6f4bf45a49b1d88f78d54f33095a1e690135886ba8773fb994c9",
+    "third_party/cycles/src/kernel/types.h": "91c7d2b91f53419c82b95f5f74fc8a2e037976bd250873992bc6b26897b198bd",
+    "third_party/cycles/src/util/types_image.h": "e18c9ae47722a892da9b6cd1f9fcf0125d57b9ab9f2bde77384ab4ea38bc5fd6",
+    "third_party/cycles/src/kernel/svm/node_types_template.h": "4dede480e1e344c73587194217c479f795c7175243bb13a1be4b084fc4285066",
+    "third_party/cycles/src/kernel/features.h": "6bb3e4fb0ff2cad4361a73a4cc01943afc679e3b2ab5e29540e3c19cc7d65f83",
+    "third_party/cycles/src/kernel/data_arrays.h": "f0a2890e197fcce66ba3059cead68912557d37482c85d52d1eb3f912d3481022"
+  },
+  "remainingInventoryWork": [
+    "P00-01: enumerate native node registration, socket properties, scene/session/public APIs, state fields and build-conditional features outside the selected headers.",
+    "P00-02/P00-03: review every mode and behavior, map exact tests, and assign detailed implementation work items; generic classifications are provisional.",
+    "P00-04: classify CPU/Metal behavior differences, CPU-only functionality and OSL services without excluding them.",
+    "P00-05/P00-06: capability schema, feature combinations, numerical contracts, workload sizes and resource budgets.",
+    "P03-05/P15-C03: target-compiled ABI metadata and real execution on each required RID. The host metadata here is not a cross-target layout proof."
+  ],
+  "numericalPolicy": {
+    "boundedProofAbsolute": 5e-05,
+    "boundedProofRelative": 0.0002,
+    "strictAbsolute": 1e-07,
+    "strictRelative": 1e-07,
+    "appliesTo": "Recorded bounded proof only; predeclare feature-specific limits before extending coverage."
+  },
+  "nativeMetadataProfile": {
+    "target": "x86_64-pc-linux-gnu",
+    "pointerBytes": 8
+  }
+}

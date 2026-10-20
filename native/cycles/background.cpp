@@ -15,6 +15,7 @@ std::string background_layout(){
   std::ostringstream source;
   auto constant=[&](const char *name,size_t value){source<<"const "<<name<<":u32="<<value<<"u;\n";};
 #define DATA(parent,member) constant("D_" #parent "_" #member,offsetof(KernelData,parent.member))
+  DATA(film,pass_emission);DATA(integrator,transparent_max_bounce);
   DATA(background,surface_shader);DATA(background,transparent);DATA(background,lightgroup);
   DATA(integrator,ao_bounces_factor);DATA(integrator,sample_clamp_direct);DATA(integrator,sample_clamp_indirect);
   DATA(film,pass_flag);DATA(film,light_pass_flag);DATA(film,pass_combined);DATA(film,pass_background);
@@ -22,12 +23,14 @@ std::string background_layout(){
   DATA(film,pass_diffuse_indirect);DATA(film,pass_glossy_indirect);DATA(film,pass_transmission_indirect);
   DATA(film,pass_lightgroup);DATA(film,pass_depth);DATA(film,pass_position);DATA(film,pass_object_id);DATA(film,pass_material_id);
 #undef DATA
+  constant("O_lightgroup",offsetof(KernelObject,lightgroup));
   constant("SH_constant_emission",offsetof(KernelShader,constant_emission));
 #define ENUM(name) constant(#name,uint32_t(name))
-  ENUM(SD_HAS_CONSTANT_EMISSION);ENUM(SHADER_EXCLUDE_DIFFUSE);ENUM(SHADER_EXCLUDE_GLOSSY);ENUM(SHADER_EXCLUDE_TRANSMIT);ENUM(SHADER_EXCLUDE_CAMERA);
+  ENUM(SD_HAS_CONSTANT_EMISSION);ENUM(SHADER_EXCLUDE_DIFFUSE);ENUM(SHADER_EXCLUDE_GLOSSY);ENUM(SHADER_EXCLUDE_TRANSMIT);ENUM(SHADER_EXCLUDE_CAMERA);ENUM(SHADER_EXCLUDE_SCATTER);
+  ENUM(PATH_RAY_MIS_SKIP);ENUM(PATH_RAY_MIS_HAD_TRANSMISSION);
   ENUM(PATH_RAY_REFLECT);ENUM(PATH_RAY_TRANSPARENT_BACKGROUND);ENUM(PATH_RAY_ANY_PASS);ENUM(PATH_RAY_SURFACE_PASS);ENUM(PATH_RAY_SINGLE_PASS_DONE);
   constant("BACKGROUND_UNSUPPORTED_FLAGS",PATH_RAY_SHADOW_CATCHER_PASS|PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_BACKGROUND|
-    PATH_RAY_VOLUME_PASS|PATH_RAY_VOLUME_PRIMARY_TRANSMIT|PATH_RAY_DENOISING_FEATURES);
+    PATH_RAY_DENOISING_FEATURES);
   ENUM(PATH_RAY_VISIBILITY_VOLUME_SCATTER);
 #undef ENUM
 #define PASS(name) constant("MASK_" #name,uint32_t(PASSMASK(name)))
@@ -35,8 +38,9 @@ std::string background_layout(){
 #undef PASS
   return source.str();
 }
-std::string background_wgsl(){return wavefront_layout()+shader_data_layout()+background_layout()+svm_layout()+background_source;}
-void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args){
+std::string background_wgsl(){return wavefront_layout()+shader_data_layout()+background_layout()+lighting_layout()+svm_layout()+background_source;}
+void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args,DeviceKernel kernel){
+  require(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD,"Invalid emission kernel");
   require(args.count==3,"Background argument count");
   require(args.types[2]==DeviceKernelArguments::INT32&&args.sizes[2]==4,"Invalid background work argument");
   int n;std::memcpy(&n,args.values[2],4);require(n>=0&&work>=n,"Incomplete background dispatch");
@@ -45,12 +49,15 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
     require(address%4==0,"Unaligned background pointer");return uint32_t(address);};
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[4]=pointer(1,false);p[17]=error_word;
   if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.background.use_mis&&data.integrator.num_lights==0,"WebGPU background light MIS and sun lights not implemented");
-  require(!(data.kernel_features&(KERNEL_FEATURE_VOLUME|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING))&&
+  require(!data.background.use_mis,"WebGPU background light MIS not implemented");
+  validate_volume();
+  validate_lighting(false);
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING))&&
           !data.integrator.has_shadow_catcher&&!data.integrator.use_caustics,"WebGPU background optional integration features not implemented");
   require(!(data.film.pass_flag&PASSMASK(MOTION)),"WebGPU background motion pass not implemented");
   require(data.film.pass_stride>0,"Invalid background film stride");
   auto pass=[&](int offset,int length){require(offset==PASS_UNUSED||(offset>=0&&offset<=data.film.pass_stride-length),"Invalid background film pass offset");};
+  pass(data.film.pass_emission,3);
   pass(data.film.pass_combined,4);pass(data.film.pass_background,3);pass(data.film.pass_adaptive_aux_buffer,4);
   pass(data.film.pass_diffuse_direct,3);pass(data.film.pass_glossy_direct,3);pass(data.film.pass_transmission_direct,3);
   pass(data.film.pass_diffuse_indirect,3);pass(data.film.pass_glossy_indirect,3);pass(data.film.pass_transmission_indirect,3);
@@ -88,13 +95,15 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
 #undef KERNEL_STRUCT_END
 #undef KERNEL_STRUCT_END_ARRAY
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
+  p[14]=scene_tables();
   if(!work)return;
-  if(!background.value){
+  auto &pipeline=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND?background:light_forward;
+  if(!pipeline.value){
     const std::string code=background_wgsl();WGPUShaderSourceWGSL source{};
     source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={code.data(),code.size()};WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;
     gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
-    background=gpu.pipeline(shader,pipeline_layout,"shade_background");
+    pipeline=gpu.pipeline(shader,pipeline_layout,kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND?"shade_background":"shade_light_forward");
   }
-  dispatch(p,uint32_t(work),background);
+  dispatch(p,uint32_t(work),pipeline);
 }
 }

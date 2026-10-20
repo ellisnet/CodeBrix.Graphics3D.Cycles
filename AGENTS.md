@@ -4,6 +4,9 @@
   for Jeremy to review.
 - Use exactly `Copyright (c) 2026 Jeremy Ellis and contributors` for original
   contributions; preserve required third-party copyright and license notices.
+- Never import code or dependencies incompatible with the repository's Apache 2.0
+  license. Verify compatibility and required attribution before importing any new
+  source; availability or a passing build is not license clearance.
 - Maintain the root `THIRD-PARTY-NOTICES.txt` when adding or upgrading imported
   code or dependencies. Record origins, pinned revisions, license/notices and
   how the code is used. Tell Jeremy immediately about licensing that conflicts

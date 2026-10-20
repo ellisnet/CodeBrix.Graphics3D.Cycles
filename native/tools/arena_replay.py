@@ -105,7 +105,7 @@ def validate(out):
                 ['wgsl','arena.bin','params.bin','reference.bin','capture.json']]},
             'outputSha256':sha(out/'arena.result.bin')}
 
-def run(rid, serial=None):
+def run(rid, serial=None, timeout=600):
     binary = BASE/rid
     if rid.startswith('android') != bool(serial):
         raise ValueError('Android replay needs a device serial; Linux does not')
@@ -113,8 +113,12 @@ def run(rid, serial=None):
         raise RuntimeError('Staged WebGPU runtime differs from package')
     out = BASE/(('android-'+serial.replace(':','_')) if serial else 'linux-result')
     out.mkdir(parents=True, exist_ok=True)
+    (out/'validation.json').unlink(missing_ok=True)
     inputs = [CAPTURE/('run.'+name) for name in ['wgsl','arena.bin','params.bin']]
-    entry = json.loads((CAPTURE/'run.capture.json').read_text()).get('entry', 'shader_data_probe')
+    meta = json.loads((CAPTURE/'run.capture.json').read_text())
+    entry = meta.get('entry', 'shader_data_probe')
+    workgroup_size = meta.get('workgroupSize', 64)
+    assert type(workgroup_size) is int and workgroup_size > 0, 'Invalid workgroup size'
     if serial:
         adb = [str(ADB), '-s', serial]
         def shell(args):
@@ -130,11 +134,11 @@ def run(rid, serial=None):
         deployed = shell(['sha256sum', REMOTE+'/libcodebrix_wgpu.so']).split()[0]
         assert deployed == sha(binary/'libcodebrix_wgpu.so')
         command = adb+['shell', shlex.join(['env', 'LD_LIBRARY_PATH='+REMOTE, REMOTE+'/arena_replay',
-                    *[REMOTE+'/'+p.name for p in inputs], REMOTE+'/arena.result.bin', entry, REMOTE+'/run'])]
+                    *[REMOTE+'/'+p.name for p in inputs], REMOTE+'/arena.result.bin', entry, REMOTE+'/run', str(workgroup_size)])]
     else:
         deployed = sha(binary/'libcodebrix_wgpu.so')
-        command = [str(binary/'arena_replay'), *map(str, inputs), str(out/'arena.result.bin'), entry, str(out/'run')]
-    result = subprocess.run(command, capture_output=True, text=True, timeout=180)
+        command = [str(binary/'arena_replay'), *map(str, inputs), str(out/'arena.result.bin'), entry, str(out/'run'), str(workgroup_size)]
+    result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
     (out/'run.stdout.txt').write_text(result.stdout)
     (out/'run.stderr.txt').write_text(result.stderr)
     if result.returncode:
@@ -156,6 +160,7 @@ if __name__ == '__main__':
     p.add_argument('action', choices=['build','run'])
     p.add_argument('--rid', choices=['linux-x64','android-arm64','android-x64'], required=True)
     p.add_argument('--serial')
+    p.add_argument('--timeout', type=int, default=600, help='Shader compilation/execution timeout in seconds')
     p.add_argument('--capture', type=Path, default=CAPTURE)
     p.add_argument('--output', type=Path, default=BASE)
     p.add_argument('--remote', default=REMOTE)
@@ -164,4 +169,4 @@ if __name__ == '__main__':
     if args.action == 'build':
         build(args.rid)
     else:
-        run(args.rid, args.serial)
+        run(args.rid, args.serial, timeout=args.timeout)

@@ -4,6 +4,8 @@
 #include "wavefront.h"
 #include "shader_data_reference.h"
 #include "scene/scene.h"
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
 #include "scene/mesh.h"
 #include "scene/object.h"
 #include "scene/camera.h"
@@ -139,7 +141,7 @@ static std::vector<int> direct_states(Scene &scene,std::vector<IntegratorStateCP
   std::vector<int> indices;
   for(auto ob:scene.objects)for(unsigned triangle=0;triangle<2;triangle++)for(unsigned j=0;j<73;j++){
     unsigned index=indices.size()*3;require(index<states.size(),"Direct shader-data capacity exceeded");indices.push_back(index);auto &s=states[index];
-    s.isect.object=ob->get_device_index();s.isect.prim=ob->get_geometry()->prim_offset+triangle;s.isect.type=PRIMITIVE_TRIANGLE;
+    s.isect.object=ob->get_device_index();s.isect.prim=ob->get_geometry()->prim_offset+triangle;s.isect.type=scene.dscene.objects[s.isect.object].primitive_type;
     s.isect.u=float(j%9)/8;s.isect.v=float(j/9)/9*(1-s.isect.u);s.isect.t=j*.137f;
     s.ray.time=float(j)/72;s.ray.P=make_float3(.1f,.2f,-4);s.ray.dP=mode==0?0:.0003f*(j%7);s.ray.dD=mode==0?0:.0007f*(j%11);
     const float3 directions[]={make_float3(0,0,1),make_float3(0,0,-1),make_float3(1,0,0),make_float3(-1,0,0),make_float3(0,1,0),make_float3(0,-1,0)};
@@ -155,9 +157,9 @@ static unsigned rejected(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,cons
     auto states=initial;states[0]=initial[0];auto &s=states[0];auto object=scene.dscene.objects[s.isect.object];auto flags=scene.dscene.object_flag[s.isect.object];auto tri=scene.dscene.tri_vindex[s.isect.prim];auto sh=scene.dscene.tri_shader[s.isect.prim];
     if(test==0)s.isect.object=OBJECT_NONE;
     if(test==1)s.isect.prim=PRIM_NONE;
-    if(test==2)s.isect.type=PRIMITIVE_MOTION_TRIANGLE;
-    if(test==3)scene.dscene.object_flag[initial[0].isect.object]|=SD_OBJECT_MOTION;
-    if(test==4)scene.dscene.object_flag[initial[0].isect.object]|=SD_OBJECT_HAS_VERTEX_MOTION;
+    if(test==2)s.isect.type=PRIMITIVE_POINT;
+    if(test==3){scene.dscene.object_flag[initial[0].isect.object]|=SD_OBJECT_MOTION;scene.dscene.objects[initial[0].isect.object].num_tfm_steps=1;}
+    if(test==4){scene.dscene.object_flag[initial[0].isect.object]|=SD_OBJECT_HAS_VERTEX_MOTION;scene.dscene.objects[initial[0].isect.object].num_geom_steps=1;}
     if(test==5)scene.dscene.objects[initial[0].isect.object].position_offset=INT_MAX;
     if(test==6)scene.dscene.tri_vindex[initial[0].isect.prim].x=0x7fffffffu;
     if(test==7)scene.dscene.tri_shader[initial[0].isect.prim]=SHADER_MASK;
@@ -175,10 +177,10 @@ static unsigned rejected(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,cons
   return count;
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
-  require(argc==2,"Usage: shader_data_gate OUTPUT_PREFIX");std::string prefix=argv[1];capture_prefix=prefix;auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+  require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: shader_data_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];capture_prefix=prefix;auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;unsigned invalid=0;
   {
-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Scene update failed");
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);if(motion){for(size_t i=0;i<scene.objects.size();i++)if(i%3<2)object_motion_fixture(scene,*scene.objects[i],unsigned(i));}if(deform)for(size_t i=0;i<scene.objects.size();i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Scene update failed");
     scene.dscene.data.integrator.use_light_mis=0;scene.dscene.data.integrator.use_caustics=0;d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);
     auto source=probe_source();std::ofstream(prefix+".wgsl")<<source;auto shader=pipeline(d,source);

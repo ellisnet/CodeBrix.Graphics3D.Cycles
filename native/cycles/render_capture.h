@@ -10,24 +10,41 @@
 // scheduling readbacks. Replay must validate every readback that determined
 // subsequent native scheduling; it may not inject those CPU decisions as data.
 struct RenderCapture final:ccl::WebGPUCommandObserver {
-  ccl::WebGPUDevice &device;std::ofstream commands;size_t arena_size;uint64_t count=0;
+  ccl::WebGPUDevice &device;std::ofstream commands;size_t arena_size;uint64_t count=0;bool sized_dispatch=false;
+  std::array<uint64_t,15> pipeline_dispatches{};
   static void file(const std::string &name,const void *data,size_t bytes){std::ofstream out(name,std::ios::binary);out.write(static_cast<const char*>(data),bytes);if(!out)throw std::runtime_error("Capture write failed: "+name);}
   void header(uint32_t kind,uint32_t address,uint32_t bytes){uint32_t h[]={kind,address,bytes};commands.write(reinterpret_cast<const char*>(h),sizeof(h));count++;}
   RenderCapture(ccl::WebGPUDevice &d,const std::string &prefix):device(d),commands(prefix+".commands.bin",std::ios::binary),arena_size(d.arena_bytes){
     auto staging=d.gpu.buffer(arena_size,WGPUBufferUsage_CopyDst|WGPUBufferUsage_MapRead);wgpuCommandEncoderCopyBufferToBuffer(d.commands(),d.arena,0,staging,0,arena_size);d.flush();std::vector<uint8_t> bytes(arena_size);d.gpu.read(staging,bytes.data(),bytes.size());file(prefix+".arena.bin",bytes.data(),bytes.size());
     std::filesystem::path out=std::filesystem::path(prefix).parent_path();
-    std::ofstream(out/"controls.wgsl")<<ccl::controls_wgsl();std::ofstream(out/"camera.wgsl")<<ccl::camera_wgsl();std::ofstream(out/"closest.wgsl")<<ccl::closest_wgsl();std::ofstream(out/"background.wgsl")<<ccl::background_wgsl();std::ofstream(out/"surface.wgsl")<<ccl::surface_source();
+    std::ofstream(out/"controls.wgsl")<<ccl::controls_wgsl();std::ofstream(out/"camera.wgsl")<<ccl::camera_wgsl();std::ofstream(out/"closest.wgsl")<<ccl::closest_wgsl();std::ofstream(out/"background.wgsl")<<ccl::background_wgsl();std::ofstream(out/"surface.wgsl")<<ccl::surface_source();std::ofstream(out/"shadow.wgsl")<<ccl::shadow_source();
+    std::ofstream(out/"volume.wgsl")<<ccl::volume_source();std::ofstream(out/"volume_stack.wgsl")<<ccl::volume_stack_source();
     device.observer=this;
   }
   ~RenderCapture(){device.observer=nullptr;}
   void upload(uint32_t address,const void *data,size_t bytes)override{header(1,address,bytes);commands.write(static_cast<const char*>(data),bytes);}
   void clear(uint32_t address,size_t bytes)override{header(2,address,bytes);}
-  void dispatch(const std::array<uint32_t,32>&params,uint32_t work,unsigned entry)override{header(3,entry,work);commands.write(reinterpret_cast<const char*>(params.data()),sizeof(params));}
+  void dispatch(const std::array<uint32_t,32>&params,uint32_t work,unsigned entry,uint32_t workgroup_size)override{
+    if(entry>=pipeline_dispatches.size())throw std::runtime_error("Unknown capture pipeline");
+    pipeline_dispatches[entry]++;
+    // Kind 3 retains the original implicit size 64. Kind 5 stores the explicit
+    // size before the same 128-byte parameter block, preserving old captures.
+    header(workgroup_size==64?3:5,entry,work);
+    if(workgroup_size!=64){sized_dispatch=true;commands.write(reinterpret_cast<const char*>(&workgroup_size),sizeof(workgroup_size));}
+    commands.write(reinterpret_cast<const char*>(params.data()),sizeof(params));
+  }
   void readback(uint32_t address,const void *data,size_t bytes)override{header(4,address,bytes);commands.write(static_cast<const char*>(data),bytes);}
-  void finish(const std::string &prefix,uint32_t film,size_t film_bytes,uint32_t queued,unsigned capacity){
+  void finish(const std::string &prefix,uint32_t film,size_t film_bytes,uint32_t queued,unsigned capacity,
+              unsigned width=64,unsigned height=48,unsigned samples=8,unsigned film_stride=4,
+              const char *workload="native-render"){
     device.observer=nullptr;commands.close();if(!commands)throw std::runtime_error("Capture command write failed");
     if(device.arena_bytes!=arena_size)throw std::runtime_error("Capture arena grew; prewarm the complete workload before recording");
-    std::ofstream meta(prefix+".capture.json");meta<<"{\"format\":\"native-command-stream-v1\",\"commands\":"<<count<<",\"arenaBytes\":"<<arena_size<<",\"filmOffset\":"<<film<<",\"filmBytes\":"<<film_bytes<<",\"errorOffset\":"<<device.error_word<<",\"queuedKernelOffset\":"<<queued<<",\"queuedKernelElementBytes\":2,\"pathCapacity\":"<<capacity<<",\"width\":64,\"height\":48,\"samples\":8,\"immutableSceneSpans\":[";
+    if(!width||!height||!film_stride||uint64_t(width)*height*film_stride*4!=film_bytes)throw std::runtime_error("Capture film layout mismatch");
+    std::ofstream meta(prefix+".capture.json");meta<<"{\"format\":\"native-command-stream-v"<<((pipeline_dispatches[9]||pipeline_dispatches[10]||pipeline_dispatches[11]||pipeline_dispatches[12]||pipeline_dispatches[13]||pipeline_dispatches[14])?5:(pipeline_dispatches[8]?4:((pipeline_dispatches[6]||pipeline_dispatches[7])?3:(sized_dispatch?2:1))))<<"\",\"commands\":"<<count<<",\"arenaBytes\":"<<arena_size<<",\"filmOffset\":"<<film<<",\"filmBytes\":"<<film_bytes<<",\"errorOffset\":"<<device.error_word<<",\"queuedKernelOffset\":"<<queued<<",\"queuedKernelElementBytes\":2,\"pathCapacity\":"<<capacity<<",\"width\":"<<width<<",\"height\":"<<height<<",\"samples\":"<<samples<<",\"filmStride\":"<<film_stride<<",\"workload\":\""<<workload<<"\",\"pipelineDispatches\":[";
+    for(size_t i=0;i<pipeline_dispatches.size();i++){if(i)meta<<',';meta<<pipeline_dispatches[i];}meta<<']';
+    if(device.state.shadow_path.queued_kernel){auto shadow=uint32_t(uintptr_t(device.state.shadow_path.queued_kernel));
+      meta<<",\"shadowQueuedKernelOffset\":"<<shadow<<",\"shadowPathCapacity\":"<<device.remaining(shadow)/sizeof(uint16_t);}
+    meta<<",\"immutableSceneSpans\":[";
     bool first=true;for(auto &[name,address]:device.globals)if(address){if(!first)meta<<',';first=false;meta<<"{\"name\":\""<<name<<"\",\"offset\":"<<address<<",\"bytes\":"<<device.remaining(address)<<'}';}
     if(!first)meta<<',';auto data=device.constants.at("data");meta<<"{\"name\":\"KernelData\",\"offset\":"<<data<<",\"bytes\":"<<device.remaining(data)<<"}]}\n";
     if(!meta)throw std::runtime_error("Capture metadata write failed");

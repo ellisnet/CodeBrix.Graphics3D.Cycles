@@ -67,6 +67,14 @@
       "revision": "241428886216f0f0efd6926efcaaaa13794e51bd",
       "version": "3.0.7",
       "trackedChanges": ""
+    },
+    {
+      "name": "Arm Optimized Routines scalar sine/cosine subset",
+      "localPath": "third_party/arm-optimized-routines",
+      "url": "https://github.com/ARM-software/optimized-routines",
+      "revision": "3752b981a6f3b89b5468476a87568a29fd9e0822",
+      "version": "v25.01",
+      "trackedChanges": "Four source files unmodified; LICENSE retains the complete selected MIT grant. This is a WGSL adaptation input, not a separately linked C math library."
     }
   ],
   "nugetArchives": [
@@ -12704,5 +12712,441 @@
     "renderEvidence": "native/evidence/license-clean-render/validation.json",
     "status": "Complete for the source repository and current bounded Linux native proof; not full Cycles parity or all-RID package clearance.",
     "reviewedUtc": "2026-10-18T19:58:05.539350+00:00"
+  },
+  "nativeAttributeDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementation": "native/shaders/wavefront_attributes.wgsl",
+    "license": "Apache-2.0",
+    "sourceSha256": {
+      "src/kernel/geom/attribute.h": "d7bb13740f1681664878d453c1cb214d733d51cf3510366f94444de041bd4d04",
+      "src/kernel/geom/triangle.h": "0c44e107f9df069697a73e127801eef4b9c66387893d4099014cee740752d4e8",
+      "src/kernel/geom/primitive.h": "13f565474f24fe615b8f080199842a4be6d8620ed4f119dd2ab818cf6e8608df",
+      "src/kernel/svm/attribute.h": "b18231e27a87e9fe5b482735677594f8ec25f5df4189c5f9451a025fbf95a861",
+      "src/kernel/svm/vertex_color.h": "45cadc4977cc47b1d8a0926190e3069e9640d9e1fdec47c0b0475229ae16c9d6",
+      "src/kernel/svm/util.h": "00854e9d8f250d82fd3d439cc19103f3cdbaf23ad6cc07628d3e7f7e205d589f",
+      "src/kernel/svm/node_types.h": "eb4fa7cdb5f6561bb4f47349053271428ec18febce1f54796889e2fd72c8a554",
+      "src/kernel/util/colorspace.h": "cee623a1fd9a5c45ca0551963eab719fa9c72b5e434458dd71b14880c258d7eb",
+      "src/util/color.h": "303a8d336b9cc14d7833c0c9be8bf78c07155086b5842b978cc0cabc2b974471"
+    },
+    "scope": "Native static-triangle/object/mesh attribute lookup, interpolation, derivatives and SVM consumers; original CPU comparison and complete UV-driven native render pass on Linux. GPU replay evidence is recorded separately in native/evidence/native-attributes."
+  },
+  "nativeImageDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementation": "native/shaders/wavefront_images.wgsl",
+    "license": "Apache-2.0",
+    "sourceSha256": {
+      "src/kernel/device/cpu/image.h": "b58e759f878b87b4bfa3e9ff10a95dbfbf231314e652034d443f7d19b018347a",
+      "src/kernel/util/image_2d.h": "c3f49e1996ed00da5349510cf0d1449cc133be6e3d3e46ed3b76c6c32c16c34c",
+      "src/kernel/svm/image.h": "6a15693bd2e76575de5ca9464a4e7e339325db3e501b8f3f323711c50ab7e345",
+      "src/kernel/camera/projection.h": "cad9dc95eeee4995b6af99bca8b3d62262e36232f736733650d20580c0d49a1f",
+      "src/util/math_float3.h": "9b1099c844efaf6dd640ee4ad486157e772427ea2ecedd734e17f08db4cac1e4",
+      "src/util/types_image.h": "e18c9ae47722a892da9b6cd1f9fcf0125d57b9ab9f2bde77384ab4ea38bc5fd6"
+    },
+    "scope": "Resident native image transport and original-CPU sampling/SVM comparisons, with bounded four-device GPU replay gates. This does not establish full texture, tiled cache, sparse volume or all-platform completion."
+  },
+  "nativeNormalDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementation": "native/shaders/wavefront_normals.wgsl",
+    "license": "Apache-2.0",
+    "sourceSha256": {
+      "src/kernel/svm/tex_coord.h": "07c1c41de90abb534589ec8d745012343a2e9b9b77748dfd5143d6727f640658",
+      "src/kernel/svm/util.h": "00854e9d8f250d82fd3d439cc19103f3cdbaf23ad6cc07628d3e7f7e205d589f",
+      "src/kernel/svm/node_types.h": "eb4fa7cdb5f6561bb4f47349053271428ec18febce1f54796889e2fd72c8a554",
+      "src/kernel/geom/triangle.h": "0c44e107f9df069697a73e127801eef4b9c66387893d4099014cee740752d4e8",
+      "src/kernel/geom/object.h": "99604599cc09d42f77f6eeab3b0b61826ae12fe76559db6843aa886da3962f85",
+      "src/util/math_dual.h": "935a7c7719135f1ee82877f0de1d563f19a6f378967ba61d3661b67f279b179a",
+      "src/util/math_float3.h": "9b1099c844efaf6dd640ee4ad486157e772427ea2ecedd734e17f08db4cac1e4",
+      "src/util/math_base.h": "ec80b13163cfbbd3fd07a1d418e4ec6e9bb89dfd6df9d4ef340cd4203f37bcd7",
+      "src/util/transform.h": "622b4ebce2e5743b4cebe12e88137b6edce4db255d8a49550f16cb4643182b8f"
+    },
+    "scope": "Normal-map and tangent SVM consumers for native static triangles, with analytic tangent derivatives. Original CPU function bodies provide the comparison; full bump, other geometry and motion remain pending."
+  },
+  "nativeMicrofacetDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementations": [
+      "native/shaders/wavefront_svm_microfacet.wgsl",
+      "native/shaders/wavefront_microfacet.wgsl",
+      "native/shaders/wavefront_surface.wgsl",
+      "native/cycles/surface_reference.cpp"
+    ],
+    "license": "Apache-2.0 AND BSD-3-Clause",
+    "sourceSha256": {
+      "src/kernel/svm/closure.h": "64433791c99008f02f6ff9ffe3c8d9a0dc901e2476d8b45e962c77728f63ece8",
+      "src/kernel/svm/node_types.h": "eb4fa7cdb5f6561bb4f47349053271428ec18febce1f54796889e2fd72c8a554",
+      "src/kernel/closure/bsdf_microfacet.h": "5ff498e2491f130b4938249fab02442ca0ee1c3e662ea412a679e834866ca7c4",
+      "src/kernel/closure/bsdf.h": "aa6419b97c01f6a014fe97d711b19139ca47596a034ee55e856116d582d59051",
+      "src/kernel/sample/mapping.h": "3a7e9b2cfbbb0f22654874e23524b2965ac65ad527a9faf8e59667b76ae8adad",
+      "src/kernel/util/lookup_table.h": "dafa88cd989268fea9c73fb3fb256e433b007c2d45207f21d2e193bb0d1cfd00",
+      "src/kernel/integrator/surface_shader.h": "330d951acc79dc88c2af20732ed631c39d378e8f08c1749fdbfe9093bd21bb10",
+      "src/kernel/integrator/path_state.h": "6c64d9076ef5b09f0df801e03c6e80fb3155c4ddb1f44619c498a7bc6a986b1c",
+      "src/util/math_float3.h": "9b1099c844efaf6dd640ee4ad486157e772427ea2ecedd734e17f08db4cac1e4"
+    },
+    "scope": "GGX and multi-GGX reflection implementation in progress; original CPU SVM/integrator comparisons determine coverage. Other microfacet distributions, transmission/Fresnel models and complete Principled remain required."
+  },
+  "nativeFloatAdapters": {
+    "implementations": [
+      "native/shaders/wavefront_float.wgsl",
+      "native/tools/float_gate.py",
+      "native/shaders/wavefront_trig.wgsl",
+      "native/tools/trig_gate.py"
+    ],
+    "license": "Apache-2.0",
+    "origin": "Original CodeBrix implementation; no external implementation imported.",
+    "copyright": "Copyright (c) 2026 Jeremy Ellis and contributors",
+    "scope": "Binary32 rounding adapters, original bounded-angle two-component Taylor sine/cosine and exact numerical probes. Combined shader and renderer validation remains required."
+  },
+  "nativePlatformTrigAdapter": {
+    "implementation": "native/shaders/wavefront_native_trig.wgsl",
+    "sourceManifest": "third_party/arm-math-import.json",
+    "sourceLicense": "MIT",
+    "modificationsLicense": "Apache-2.0",
+    "changes": "Bounded disk-angle range reduction and two-component Horner evaluation through original CodeBrix float helpers. Native CPU reference bodies are unchanged.",
+    "validationStatus": "Development prototype passed unchanged native full-render gate and four-device scalar checks; integrated source requires fresh validation."
+  },
+  "nativeShadowDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementations": [
+      "native/shaders/wavefront_shadow.wgsl",
+      "native/shaders/wavefront_closest.wgsl"
+    ],
+    "license": "Apache-2.0",
+    "sourceSha256": {
+      "src/kernel/integrator/intersect_shadow.h": "5efbf6b8ecbdbda119dfed17adc1894d0c203bfd698ae52db0ea568f8d708965",
+      "src/kernel/integrator/shade_shadow.h": "9b44b8c318f8376ba97dbaf3eeb2b23e973dd3d12454e2b48cb70817662a3400",
+      "src/kernel/integrator/state_flow.h": "5f489844edd4ce6196eb83dbc9bfa854e977a2318859a79880ec2773f054c62d",
+      "src/kernel/integrator/state_util.h": "dcbfb6f20cd044898a4f630c58b9c51e882ec99a7aebda0bef6b7915fd235e7e",
+      "src/kernel/film/light_passes.h": "28cb2a4a4b365f4b62c64d6d21371fa31a7ee23e6b32a10f3276ab59923f2b18",
+      "src/kernel/bvh/util.h": "2d89a8d4bd7e61288b87306b2de89061eb25d3d2eb9c557413ff711fb9fbeded"
+    },
+    "scope": "Registered opaque static-triangle shadow intersection and surface light-pass output. Independent CPU comparison in progress; complete direct lighting, transparent shadows and MIS remain required."
+  },
+  "nativeLightingDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementations": [
+      "native/shaders/wavefront_lighting.wgsl"
+    ],
+    "license": "Apache-2.0 AND BSD-3-Clause",
+    "sourceSha256": {
+      "src/kernel/light/distribution.h": "fb2504b4476a7fff9c2acf48c017da2d0bc87b0ee3a3544ca72e6ee377c5a4d3",
+      "src/kernel/light/light.h": "c81e5cdacda9538f138459e40a83f3fc0e647f93e6da6d98b41fe7e66418b0c1",
+      "src/kernel/light/point.h": "5c5d2528c40c3bc4870e20fe75b1d5795095340fc5c3cb88110bc53d8511176d",
+      "src/kernel/light/sun.h": "b142cad379e0ef90b5fb934a52f80b9c2ad122d8746715dcdcd3f08c7ffc0b8b",
+      "src/kernel/light/common.h": "01bdce87e82b37199058111cb80433279a905995e96c41b60eff173e0350b711",
+      "src/kernel/light/sample.h": "2dffdb7ccb2ce6b582b606aefdda4a07b02f1f9759181a2ec27cea1ebfd6a1a8",
+      "src/kernel/integrator/shade_surface.h": "08bb71f7a70a366a7dc140aa3bc113f2fc1086b6a0b6212820cc38e4fec3a31d",
+      "src/kernel/integrator/surface_shader.h": "330d951acc79dc88c2af20732ed631c39d378e8f08c1749fdbfe9093bd21bb10",
+      "src/kernel/integrator/state_flow.h": "5f489844edd4ce6196eb83dbc9bfa854e977a2318859a79880ec2773f054c62d",
+      "src/kernel/integrator/path_state.h": "6c64d9076ef5b09f0df801e03c6e80fb3155c4ddb1f44619c498a7bc6a986b1c",
+      "src/kernel/sample/mapping.h": "3a7e9b2cfbbb0f22654874e23524b2965ac65ad527a9faf8e59667b76ae8adad",
+      "src/kernel/sample/mis.h": "63b3487a6801ea13178be84caea4588373b73bd5f45a22f9c6128812f5a2dcce",
+      "src/kernel/film/light_passes.h": "28cb2a4a4b365f4b62c64d6d21371fa31a7ee23e6b32a10f3276ab59923f2b18"
+    },
+    "scope": "Base native point/sun NEE sampling and shadow-state initialization; forward/MIS and spot/area extensions recorded separately. Light tree, mesh/environment emitters and textured emitters remain open."
+  },
+  "nativeCameraMotionDerivations": {
+    "recordedUtc": "2026-10-19T17:23:11.678493+00:00",
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "upstream": "https://github.com/blender/cycles",
+    "notices": "native/THIRD-PARTY-NOTICES.txt",
+    "description": "Native perspective camera transform/FOV motion, shutter CDF and rolling shutter; original CPU camera oracle and independent image comparisons. Existing reviewed Apache-2.0 sources only.",
+    "sourceSha256": {
+      "src/kernel/camera/camera.h": "0cb768b68dde0867d01081d797ed22f0e83e9a56987a4a58922050e09de02772",
+      "src/kernel/integrator/init_from_camera.h": "7bd486c41056a29245c7c759d08772cb72cd171321240fafe0a60f2327a48396",
+      "src/kernel/util/lookup_table.h": "dafa88cd989268fea9c73fb3fb256e433b007c2d45207f21d2e193bb0d1cfd00",
+      "src/util/transform.h": "622b4ebce2e5743b4cebe12e88137b6edce4db255d8a49550f16cb4643182b8f",
+      "src/util/math_float4.h": "2b300b3993f1332ca44cfe8ce32102a270e35578ae7202949c5e3b956d6af681"
+    }
+  },
+  "nativeForwardLightingDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementations": [
+      "native/shaders/wavefront_light_eval.wgsl",
+      "native/shaders/wavefront_closest.wgsl",
+      "native/shaders/wavefront_background.wgsl"
+    ],
+    "license": "Apache-2.0 AND BSD-3-Clause",
+    "sourceSha256": {
+      "src/kernel/light/point.h": "5c5d2528c40c3bc4870e20fe75b1d5795095340fc5c3cb88110bc53d8511176d",
+      "src/kernel/light/sun.h": "b142cad379e0ef90b5fb934a52f80b9c2ad122d8746715dcdcd3f08c7ffc0b8b",
+      "src/kernel/light/light.h": "c81e5cdacda9538f138459e40a83f3fc0e647f93e6da6d98b41fe7e66418b0c1",
+      "src/kernel/light/sample.h": "2dffdb7ccb2ce6b582b606aefdda4a07b02f1f9759181a2ec27cea1ebfd6a1a8",
+      "src/kernel/light/distribution.h": "fb2504b4476a7fff9c2acf48c017da2d0bc87b0ee3a3544ca72e6ee377c5a4d3",
+      "src/kernel/integrator/intersect_closest.h": "fbc75ff920dafb443d1b8feec169a9fcee3745deddc1b8304a67e8a40a040501",
+      "src/kernel/integrator/shade_light.h": "ed68d0e572d03fd4a485c5d0f2d202155fb6efa648ce8309803c814b7bf7cd3e",
+      "src/kernel/integrator/shade_background.h": "576625626b8351e16faaf43a69ac86cbe25972e2e688814c6916502620021778",
+      "src/kernel/film/light_passes.h": "28cb2a4a4b365f4b62c64d6d21371fa31a7ee23e6b32a10f3276ab59923f2b18",
+      "src/kernel/sample/mis.h": "63b3487a6801ea13178be84caea4588373b73bd5f45a22f9c6128812f5a2dcce",
+      "src/util/math_intersect.h": "ec7796c1c7d0a1e5c1d85e03963036e5ceb54f3ead115a52868b0ac088fd9d0b",
+      "src/util/math_fast.h": "8ae830fff8b3aee77144f855731fdb74c9fce94ea65dd5b609b507a514ac2157"
+    },
+    "scope": "Registered point/sun forward lighting and MIS, native lamp intersection and emission film/state. No newly imported dependency."
+  },
+  "nativeGlassDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementations": [
+      "native/shaders/wavefront_svm_microfacet.wgsl",
+      "native/shaders/wavefront_microfacet.wgsl",
+      "native/shaders/wavefront_surface.wgsl",
+      "native/shaders/wavefront_lighting.wgsl"
+    ],
+    "license": "Apache-2.0 AND BSD-3-Clause",
+    "sourceSha256": {
+      "src/kernel/svm/closure.h": "64433791c99008f02f6ff9ffe3c8d9a0dc901e2476d8b45e962c77728f63ece8",
+      "src/kernel/closure/bsdf_microfacet.h": "5ff498e2491f130b4938249fab02442ca0ee1c3e662ea412a679e834866ca7c4",
+      "src/kernel/closure/bsdf_util.h": "6c8bbcf245e131a019f39858507d21bbc11e1dcbc244b8abe1f656118d56d6d9",
+      "src/kernel/closure/alloc.h": "c0c109652d3cce82b6b68c6d88b5084f982104decf541639350fd8d176d5c166",
+      "src/kernel/integrator/surface_shader.h": "330d951acc79dc88c2af20732ed631c39d378e8f08c1749fdbfe9093bd21bb10",
+      "src/kernel/film/light_passes.h": "28cb2a4a4b365f4b62c64d6d21371fa31a7ee23e6b32a10f3276ab59923f2b18",
+      "src/kernel/util/lookup_table.h": "dafa88cd989268fea9c73fb3fb256e433b007c2d45207f21d2e193bb0d1cfd00"
+    },
+    "scope": "Single-scatter GGX refraction and dielectric glass, Fresnel reflection/transmission, TIR, native allocation/LUT weights, filtering and film pass routing. Thin film, multi-GGX glass and full Principled remain unsupported. No new external implementation imported."
+  },
+  "nativeSpotAreaLightingDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementations": [
+      "native/shaders/wavefront_emitters.wgsl",
+      "native/shaders/wavefront_lighting.wgsl",
+      "native/shaders/wavefront_light_eval.wgsl",
+      "native/shaders/wavefront_closest.wgsl"
+    ],
+    "license": "Apache-2.0; existing MIS retains BSD-3-Clause; existing Arm trig helper retains MIT",
+    "sourceSha256": {
+      "src/kernel/light/spot.h": "5f22255ec90a663ffa77c85a053e69549a9f38cbc23595b4c378a2e9558f3d07",
+      "src/kernel/light/area.h": "d4465dfd36501e02ee829583add50e6a7c022afe1dd20a4e5215df0cd8edde8f",
+      "src/kernel/light/common.h": "01bdce87e82b37199058111cb80433279a905995e96c41b60eff173e0350b711",
+      "src/kernel/light/light.h": "c81e5cdacda9538f138459e40a83f3fc0e647f93e6da6d98b41fe7e66418b0c1",
+      "src/kernel/light/sample.h": "2dffdb7ccb2ce6b582b606aefdda4a07b02f1f9759181a2ec27cea1ebfd6a1a8",
+      "src/kernel/geom/object.h": "99604599cc09d42f77f6eeab3b0b61826ae12fe76559db6843aa886da3962f85",
+      "src/kernel/sample/mapping.h": "3a7e9b2cfbbb0f22654874e23524b2965ac65ad527a9faf8e59667b76ae8adad",
+      "src/util/math_intersect.h": "ec7796c1c7d0a1e5c1d85e03963036e5ceb54f3ead115a52868b0ac088fd9d0b",
+      "src/util/math_float3.h": "9b1099c844efaf6dd640ee4ad486157e772427ea2ecedd734e17f08db4cac1e4"
+    },
+    "scope": "Native constant spot and rectangle/ellipse/disk area emission sampling, intersection, forward PDF and MIS. Surface evaluation only. No new external dependency or implementation import."
+  },
+  "nativeHomogeneousWorldVolumeDerivations": {
+    "cyclesCommit": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "reviewedSources": [
+      "kernel/integrator/shade_volume.h",
+      "kernel/integrator/volume_shader.h",
+      "kernel/integrator/volume_stack.h",
+      "kernel/closure/volume_henyey_greenstein.h",
+      "kernel/closure/volume_util.h",
+      "kernel/svm/closure.h",
+      "kernel/film/volume_guiding_denoise.h",
+      "util/types_rgbe.h"
+    ],
+    "armMath": "Existing reviewed third_party/arm-math-import.json pin, MIT sincosf polynomials; new bounded phase-angle helper appended, original disk helper unchanged",
+    "newExternalSourceImports": false,
+    "sharedNoticesRegeneration": "Parent handles final integration notices",
+    "sourceSha256": {
+      "src/kernel/integrator/shade_volume.h": "23354a12e5b32f623d1e75b92ff46bcb4d03773671d5bba6a49edc9e26803c0e",
+      "src/kernel/integrator/volume_shader.h": "af3a1d7de7393d256f60d46d5e648c0c8b180341e5529fb7cb6b341f0d1dc060",
+      "src/kernel/integrator/volume_stack.h": "738c61f728168a0cab58ff73d0e6112b537b9aa22a4be9c5822c44244d59bddb",
+      "src/kernel/closure/volume_henyey_greenstein.h": "b75d1d15ba3a7f89337a3df864aab5f774d2266e15d0385be8dd6a8ae521b1bc",
+      "src/kernel/closure/volume_util.h": "15f88e80d14a7961767c9fe6e34d8bcd88d91c015b39f70599f38934567de2a2",
+      "src/kernel/svm/closure.h": "64433791c99008f02f6ff9ffe3c8d9a0dc901e2476d8b45e962c77728f63ece8",
+      "src/kernel/film/volume_guiding_denoise.h": "e216eaf08bea43119899e40c1c6ddde97e2641827ee848bc037da8eebcaee524",
+      "src/util/types_rgbe.h": "f7f8da0b46e10a295e0acd46ee9eab94db185bac9e3e7a1cfc4e8c2bc11c1f11"
+    },
+    "licenseHeaders": {
+      "src/kernel/integrator/shade_volume.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/integrator/volume_shader.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/integrator/volume_stack.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/closure/volume_henyey_greenstein.h": "/* SPDX-FileCopyrightText: 2011-2024 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/closure/volume_util.h": "/* SPDX-FileCopyrightText: 2011-2024 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/svm/closure.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/film/volume_guiding_denoise.h": "/* SPDX-FileCopyrightText: 2025 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/util/types_rgbe.h": "/* SPDX-FileCopyrightText: 2025 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+    },
+    "scope": "Homogeneous world absorption and Henyey-Greenstein scattering, native stack initialization, spectral free-flight and volume transmission bookkeeping; finite object boundaries, volume NEE/MIS, emission and heterogeneous media remain open."
+  },
+  "nativeTriangleObjectMotionDerivations": {
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "repositorySnapshotsOnly": true,
+    "newExternalSourceImported": false,
+    "reviewedAdaptations": {
+      "third_party/cycles/src/kernel/geom/object.h": {
+        "sha256": "99604599cc09d42f77f6eeab3b0b61826ae12fe76559db6843aa886da3962f85",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/geom/shader_data.h": {
+        "sha256": "fe784aeedb470b5c3922fb5606ecd2d17fd1cd9fd06cfea82921c8755ab4242b",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/bvh/traversal.h": {
+        "sha256": "a88ee0edf6b4e112e5b4de23d9210eeb3d876dde190ec2e7d1adf7804b3fda72",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation\n * SPDX-FileCopyrightText: 2009-2012 Intel Corporation\n * SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0\n *\n * Adapted code from NVIDIA Corporation. */"
+      },
+      "third_party/cycles/src/kernel/bvh/util.h": {
+        "sha256": "2d89a8d4bd7e61288b87306b2de89061eb25d3d2eb9c557413ff711fb9fbeded",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/svm/tex_coord.h": {
+        "sha256": "07c1c41de90abb534589ec8d745012343a2e9b9b77748dfd5143d6727f640658",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/util/transform.h": {
+        "sha256": "622b4ebce2e5743b4cebe12e88137b6edce4db255d8a49550f16cb4643182b8f",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/svm/image.h": {
+        "sha256": "6a15693bd2e76575de5ca9464a4e7e339325db3e501b8f3f323711c50ab7e345",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/integrator/shade_surface.h": {
+        "sha256": "08bb71f7a70a366a7dc140aa3bc113f2fc1086b6a0b6212820cc38e4fec3a31d",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/svm/normal.h": {
+        "sha256": "26e7daa1c532479aa0b70da367a98fe970e7460a6e85f752103e7a43d2a6423a",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/geom/attribute.h": {
+        "sha256": "d7bb13740f1681664878d453c1cb214d733d51cf3510366f94444de041bd4d04",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      }
+    },
+    "originalCodeCopyright": "Copyright (c) 2026 Jeremy Ellis and contributors",
+    "scope": "Moving native triangle instances with GPU ShaderData preparation, per-ray transforms, closest/opaque-shadow traversal, coordinates, normals/tangents and ray offsets. Deforming triangles and animated emitters remain open."
+  },
+  "nativeTransparentShadowDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementations": [
+      "native/shaders/wavefront_shadow_traversal.wgsl",
+      "native/shaders/wavefront_shadow.wgsl",
+      "native/shaders/wavefront_shader_data.wgsl",
+      "native/shaders/wavefront_svm.wgsl"
+    ],
+    "license": "Apache-2.0; existing SVM/closure dependencies retain BSD-3-Clause notices",
+    "sourceSha256": {
+      "src/kernel/bvh/shadow_all.h": "0b255e9848bfc65b628db5d86a16ea50319ade23561aa1cee32122cdeda93006",
+      "src/kernel/bvh/intersect_filter.h": "0bb25134dd3f5f6651a830f51a41b8bad52397b83952b6fdc0f36d5e356323ce",
+      "src/kernel/bvh/util.h": "2d89a8d4bd7e61288b87306b2de89061eb25d3d2eb9c557413ff711fb9fbeded",
+      "src/kernel/integrator/intersect_shadow.h": "5efbf6b8ecbdbda119dfed17adc1894d0c203bfd698ae52db0ea568f8d708965",
+      "src/kernel/integrator/shade_shadow.h": "9b44b8c318f8376ba97dbaf3eeb2b23e973dd3d12454e2b48cb70817662a3400",
+      "src/kernel/integrator/state_util.h": "dcbfb6f20cd044898a4f630c58b9c51e882ec99a7aebda0bef6b7915fd235e7e",
+      "src/kernel/geom/shader_data.h": "fe784aeedb470b5c3922fb5606ecd2d17fd1cd9fd06cfea82921c8755ab4242b",
+      "src/kernel/svm/svm.h": "0f75fa4aaa17f5a1d101917f1abc93f68fa25480bb609592be0b40bbea0a42a1"
+    },
+    "scope": "Static supported triangle transparent shadows, original hit filtering and closest-four recording, native throughput and remaining-hit scheduling; no external implementation or dependency import.",
+    "licenseHeaders": {
+      "src/kernel/bvh/shadow_all.h": "/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation\n * SPDX-FileCopyrightText: 2009-2012 Intel Corporation\n * SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0\n *\n * Adapted code from NVIDIA Corporation. */",
+      "src/kernel/bvh/intersect_filter.h": "/* SPDX-FileCopyrightText: 2026 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/bvh/util.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/integrator/intersect_shadow.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/integrator/shade_shadow.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/integrator/state_util.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/geom/shader_data.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/svm/svm.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+    }
+  },
+  "nativeDeformingTriangleDerivations": {
+    "repositorySnapshotsOnly": true,
+    "newExternalSourceImported": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "reviewedAdaptations": {
+      "third_party/cycles/src/kernel/geom/motion_triangle.h": {
+        "sha256": "16022c1ccba6fd0a00e24fc8ac29e5365f3577737cb5363e1ce0ddef51e8b446",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/geom/motion_triangle_shader.h": {
+        "sha256": "db47c4f79cec764d4a8a09ec7a19546eb78030a8cff7b1a318e2aba186d7c747",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/geom/motion_triangle_intersect.h": {
+        "sha256": "a1a292dbce1a39662dd050a94a79d70700665716042a05c25ff009c7956f303c",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/geom/shader_data.h": {
+        "sha256": "fe784aeedb470b5c3922fb5606ecd2d17fd1cd9fd06cfea82921c8755ab4242b",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/bvh/traversal.h": {
+        "sha256": "a88ee0edf6b4e112e5b4de23d9210eeb3d876dde190ec2e7d1adf7804b3fda72",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation\n * SPDX-FileCopyrightText: 2009-2012 Intel Corporation\n * SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0\n *\n * Adapted code from NVIDIA Corporation. */"
+      },
+      "third_party/cycles/src/kernel/svm/tex_coord.h": {
+        "sha256": "07c1c41de90abb534589ec8d745012343a2e9b9b77748dfd5143d6727f640658",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/kernel/geom/triangle.h": {
+        "sha256": "0c44e107f9df069697a73e127801eef4b9c66387893d4099014cee740752d4e8",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/scene/attribute.h": {
+        "sha256": "0e85e284362cbb1ca5580f373984aec13264917498d1bc47e8960bc53896d9ea",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/scene/attribute.cpp": {
+        "sha256": "62aef6367607f38860d441a78dcb45a3b5f0826cbc373a87d53335556c78b434",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/scene/geometry.cpp": {
+        "sha256": "1ba91093ca1a983e7e5c743b27955d9da20cb8fcac9168338e695c68088edea7",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/scene/mesh.cpp": {
+        "sha256": "15d2fcfeb455c6f93001e9f91d9e05c268392dcd21989462e1d7ed65a8e0e8fa",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      },
+      "third_party/cycles/src/util/types_normal.h": {
+        "sha256": "d6a9dcee0eb501893f93012cf42d9026b207baa9d3fc978ac26693da300eac82",
+        "licenseHeader": "/* SPDX-FileCopyrightText: 2011-2026 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+      }
+    },
+    "originalCodeCopyright": "Copyright (c) 2026 Jeremy Ellis and contributors"
+  },
+  "nativeFiniteHomogeneousVolumeDerivations": {
+    "cyclesCommit": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "reviewedSources": [
+      "kernel/bvh/volume_all.h",
+      "kernel/integrator/intersect_volume_stack.h",
+      "kernel/integrator/volume_stack.h",
+      "kernel/integrator/volume_shader.h",
+      "kernel/integrator/path_state.h",
+      "kernel/integrator/shade_surface.h",
+      "kernel/bake/bake.h",
+      "kernel/geom/shader_data.h",
+      "util/math_float3.h",
+      "util/projection.h",
+      "util/math_float4.h"
+    ],
+    "newExternalSourceImports": false,
+    "sharedNoticesRegeneration": "Parent handles final integrated notices",
+    "sourceSha256": {
+      "src/kernel/bvh/volume_all.h": "6321f5a1519fed0a43086bc014e907d4aa4530c59ec9d7253c4e93307d2ca9bb",
+      "src/kernel/integrator/intersect_volume_stack.h": "57bb0d865ff71e3d8120532beda10af52d3307edf4f2bee30c15e54f05928476",
+      "src/kernel/integrator/volume_stack.h": "738c61f728168a0cab58ff73d0e6112b537b9aa22a4be9c5822c44244d59bddb",
+      "src/kernel/integrator/volume_shader.h": "af3a1d7de7393d256f60d46d5e648c0c8b180341e5529fb7cb6b341f0d1dc060",
+      "src/kernel/integrator/path_state.h": "6c64d9076ef5b09f0df801e03c6e80fb3155c4ddb1f44619c498a7bc6a986b1c",
+      "src/kernel/integrator/shade_surface.h": "08bb71f7a70a366a7dc140aa3bc113f2fc1086b6a0b6212820cc38e4fec3a31d",
+      "src/kernel/bake/bake.h": "0046c7e69b361b9e4d6dd67400b6a046ddfb418ed130025e6bb21376bf2a99ec",
+      "src/kernel/geom/shader_data.h": "fe784aeedb470b5c3922fb5606ecd2d17fd1cd9fd06cfea82921c8755ab4242b",
+      "src/util/math_float3.h": "9b1099c844efaf6dd640ee4ad486157e772427ea2ecedd734e17f08db4cac1e4",
+      "src/util/projection.h": "09f5f97bdcf519ac45e5e1a78abf31f00445207662d9bde1f8f6260a237a3e99",
+      "src/util/math_float4.h": "2b300b3993f1332ca44cfe8ce32102a270e35578ae7202949c5e3b956d6af681"
+    },
+    "licenseHeaders": {
+      "src/kernel/bvh/volume_all.h": "/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation\n * SPDX-FileCopyrightText: 2009-2012 Intel Corporation\n * SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0\n *\n * Adapted code from NVIDIA Corporation. */",
+      "src/kernel/integrator/intersect_volume_stack.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/integrator/volume_stack.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/integrator/volume_shader.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/integrator/path_state.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/integrator/shade_surface.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/bake/bake.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/kernel/geom/shader_data.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/util/math_float3.h": "/* SPDX-FileCopyrightText: 2011-2013 Intel Corporation\n * SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/util/projection.h": "/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */",
+      "src/util/math_float4.h": "/* SPDX-FileCopyrightText: 2011-2013 Intel Corporation\n * SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n *\n * SPDX-License-Identifier: Apache-2.0 */"
+    },
+    "remaining": [
+      "Volume NEE/MIS and shadow attenuation",
+      "Volume emission and volume light passes",
+      "Heterogeneous volumes, biased marching, guiding and denoising",
+      "Mixed-anisotropy duplicate compaction described above",
+      "Moving geometry combined with volumes (entire scene motion remains guarded)",
+      "Other phase closures and Principled volume",
+      "Native ARM volume/camera-normalization validation; this lane validated Linux only"
+    ]
   }
 }

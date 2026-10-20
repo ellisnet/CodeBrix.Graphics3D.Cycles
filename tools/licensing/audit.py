@@ -18,6 +18,7 @@ sys.path.insert(0,str(ROOT/'tools'))
 from cycles_source import verify as verify_cycles
 from dependency_sources import verify as verify_dependencies
 from notices import generate as verify_notices
+from arm_math_source import verify as verify_arm_math
 
 ALLOWED={'Apache-2.0','MIT','BSD-2-Clause','BSD-3-Clause','ISC','Zlib','BSL-1.0',
          'libpng-2.0','Libpng','IJG','libtiff','FTL','CC0-1.0','LLVM-exception',
@@ -45,7 +46,7 @@ def candidates():
 
 
 def source_audit():
-    verify_cycles();verify_dependencies();verify_notices(check=True)
+    verify_cycles();verify_dependencies();verify_arm_math();verify_notices(check=True)
     reviewed=json.loads((ROOT/EXCEPTIONS).read_text())['files']
     errors=[];rows=[];used=[]
     for name in candidates():

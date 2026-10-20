@@ -16,6 +16,7 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     return !(((shader&SHADER_EXCLUDE_DIFFUSE)!=0u&&(visibility&PATH_RAY_VISIBILITY_DIFFUSE)!=0u)||
         ((shader&SHADER_EXCLUDE_GLOSSY)!=0u&&(visibility&PATH_RAY_VISIBILITY_GLOSSY)!=0u&&(flag&PATH_RAY_REFLECT)!=0u)||
         ((shader&SHADER_EXCLUDE_TRANSMIT)!=0u&&(visibility&PATH_RAY_VISIBILITY_TRANSMIT)!=0u)||
+        ((shader&SHADER_EXCLUDE_SCATTER)!=0u&&(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u)||
         ((shader&SHADER_EXCLUDE_CAMERA)!=0u&&(visibility&VIS_CAMERA)!=0u));
 }
 @compute @workgroup_size(64) fn shade_background(@builtin(global_invocation_id) id:vec3<u32>){
@@ -23,9 +24,10 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     if(index>=p(10u)){fail();return;}
     if(state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND){fail();return;}
     let flag=state_word(S_path_flag,index);let visibility=state_byte(S_path_visibility,index);
-    if((flag&BACKGROUND_UNSUPPORTED_FLAGS)!=0u||(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return;}
+    if((flag&BACKGROUND_UNSUPPORTED_FLAGS)!=0u){fail();return;}
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);
     if(pixel>=p(11u)/stride){fail();return;}let base=p(4u)+pixel*stride*4u;
+    integrate_suns(index,base);if(load_word(p(17u))!=0u){return;}
     let light_flags=data_word(D_film_light_pass_flag);let throughput=heap_vec3(state_address(S_path_throughput,index,12u));
     let transparent_ray=data_word(D_background_transparent)!=0u&&(flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u;
     var transparency=0.0;if(transparent_ray){transparency=(throughput.x+throughput.y+throughput.z)*(1.0/3.0);}
@@ -42,6 +44,8 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     let bounce=state_half(S_path_bounce,index);
     let limit=select(data_float(D_integrator_sample_clamp_direct),data_float(D_integrator_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(contribution.x)+abs(contribution.y)+abs(contribution.z);if(total>limit){contribution*=limit/total;}
+    if(transparent_ray){volume_transparent_pass(index,base,transparency);}
+    else{volume_guidance_pass(index,base,contribution);}
     let sample_id=state_word(S_path_sample,index);
     if((light_flags&MASK_COMBINED)!=0u){
         if(!transparent_ray){film_rgb(base,data_word(D_film_pass_combined),contribution);}
@@ -69,6 +73,7 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
         if((flags&MASK_MATERIAL_ID)!=0u){store_word(base+data_word(D_film_pass_material_id)*4u,0u);}
         if((flags&MASK_POSITION)!=0u){let address=base+data_word(D_film_pass_position)*4u;store_word(address,0u);store_word(address+4u,0u);store_word(address+8u,0u);}
     }
+    volume_write_depth(index);
     let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[(counter+DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND*4u)/4u],1u);
     state_u16(S_path_queued_kernel,index,0u);
 }

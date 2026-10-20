@@ -27,6 +27,31 @@ fn fail(){atomicOr(&heap[p(17u)/4u],1u);}
         for(var k=0u;k<n;k++){let value=load_word(p(8u)+k*4u);store_word(p(9u)+k*4u,offset);store_word(p(8u)+k*4u,0u);offset+=value;}
         return;
     }
+    // Stable GPU-only reservation/selection for resumable transparent shadows.
+    // The native scheduler has already budgeted one possible shadow per input.
+    if(op==5u){
+        if(i!=0u||load_word(p(17u))!=0u){return;}let base=load_word(p(2u));
+        if(base>p(18u)||n>p(18u)-base){fail();return;}
+        store_word(p(4u),base);
+        for(var slot=base;slot<base+n;slot++){masked(p(3u)+slot*2u,0u,16u);}
+        store_word(p(2u),base+n);return;
+    }
+    // A serial bounded scan keeps queue order stable without CPU decisions.
+    // This correctness path is O(path capacity); parallel stable scan is future work.
+    if(p(21u)!=0u&&(op==2u||op==3u)){
+        if(i!=0u){return;}
+        for(var j=0u;j<n;j++){
+            let queued=load_half(p(2u)+j*2u);
+            if(op==2u){let mode=p(19u);
+                let selected=select(select(select(queued==p(6u),queued!=0u,mode==1u),queued==0u,mode==2u),j>=p(6u)&&queued!=0u,mode==3u);
+                if(selected){let at=load_word(p(5u));if(at>=n){fail();return;}store_word(p(5u),at+1u);store_word(p(4u)+(at+p(7u))*4u,j);}
+            }else if(queued==p(6u)){
+                let key=load_word(p(10u)+j*4u);if(key>=p(20u)){fail();return;}let at=load_word(p(9u)+key*4u);store_word(p(9u)+key*4u,at+1u);
+                if(at<p(11u)){if(at>=n){fail();return;}store_word(p(4u)+at*4u,j);}
+                else{let address=p(8u)+key*4u;store_word(address,load_word(address)+1u);}
+            }
+        }return;
+    }
     if(i>=n){return;}
     if(op==0u){masked(p(2u)+i*2u,0u,16u);masked(p(3u)+i*2u,0u,16u);return;}
     if(op==2u){

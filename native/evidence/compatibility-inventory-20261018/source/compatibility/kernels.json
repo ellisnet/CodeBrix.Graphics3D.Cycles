@@ -1,0 +1,1523 @@
+{
+  "schemaVersion": 1,
+  "copyright": "Copyright (c) 2026 Jeremy Ellis and contributors",
+  "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+  "inventoryComplete": false,
+  "fullCyclesParity": false,
+  "rows": [
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P09-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "camera-queue",
+        "native-render"
+      ],
+      "nativeValue": 0,
+      "notes": "Static perspective pinhole and tabulated Sobol only; motion, aperture, custom and other projections remain.",
+      "implementation": [
+        "native/cycles/camera.cpp",
+        "native/shaders/wavefront_camera.wgsl"
+      ],
+      "tests": [
+        "native/cycles/camera_gate.cpp",
+        "native/cycles/camera_reference.cpp",
+        "native/cycles/render_gate.cpp"
+      ],
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 1,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P08-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "closest-queue",
+        "native-render"
+      ],
+      "nativeValue": 2,
+      "notes": "Static BVH2 triangles/instances only; strict edge differences remain. Clay edge equivalence cannot extend to texture seams.",
+      "implementation": [
+        "native/cycles/closest.cpp",
+        "native/shaders/wavefront_closest.wgsl"
+      ],
+      "tests": [
+        "native/cycles/closest_gate.cpp",
+        "native/cycles/closest_reference.cpp",
+        "native/cycles/render_gate.cpp"
+      ],
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 3,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P11-02"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 4,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P10-03"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 5,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 6,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P11-02"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 7,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-05"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "background-queue",
+        "native-render"
+      ],
+      "nativeValue": 8,
+      "notes": "Constant and selected SVM worlds; no environment-light importance sampling or general MIS.",
+      "implementation": [
+        "native/cycles/background.cpp",
+        "native/shaders/wavefront_background.wgsl"
+      ],
+      "tests": [
+        "native/cycles/background_gate.cpp",
+        "native/cycles/background_reference.cpp",
+        "native/cycles/render_gate.cpp"
+      ],
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 9,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 10,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "native-render"
+      ],
+      "nativeValue": 11,
+      "notes": "Selected five closure families; no native direct lights/shadows/MIS, general closures, textures or volumes.",
+      "implementation": [
+        "native/cycles/surface.cpp",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/surface_reference.cpp",
+        "native/cycles/render_gate.cpp"
+      ],
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 12,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P10-03"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 13,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P10-03"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 14,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 15,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 16,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADOW_PATH_MNEE_PENDING",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADOW_PATH_MNEE_PENDING",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 17,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 18,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_QUEUED_PATHS_ARRAY",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_QUEUED_PATHS_ARRAY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 19,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_QUEUED_SHADOW_PATHS_ARRAY",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_QUEUED_SHADOW_PATHS_ARRAY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 20,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_ACTIVE_PATHS_ARRAY",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_ACTIVE_PATHS_ARRAY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 21,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_TERMINATED_PATHS_ARRAY",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_TERMINATED_PATHS_ARRAY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 22,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SORTED_PATHS_ARRAY",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SORTED_PATHS_ARRAY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 23,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SORT_BUCKET_PASS",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SORT_BUCKET_PASS",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 24,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SORT_WRITE_PASS",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SORT_WRITE_PASS",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 25,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_COMPACT_PATHS_ARRAY",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_COMPACT_PATHS_ARRAY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 26,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_COMPACT_STATES",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_COMPACT_STATES",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 27,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_TERMINATED_SHADOW_PATHS_ARRAY",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_TERMINATED_SHADOW_PATHS_ARRAY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 28,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_PATHS_ARRAY",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_PATHS_ARRAY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 29,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 30,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_RESET",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_RESET",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 31,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADOW_CATCHER_COUNT_POSSIBLE_SPLITS",
+      "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADOW_CATCHER_COUNT_POSSIBLE_SPLITS",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 32,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_SHADER_EVAL_DISPLACE",
+      "symbol": "DEVICE_KERNEL_SHADER_EVAL_DISPLACE",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 33,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_SHADER_EVAL_BACKGROUND",
+      "symbol": "DEVICE_KERNEL_SHADER_EVAL_BACKGROUND",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 34,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY",
+      "symbol": "DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 35,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_SHADER_EVAL_VOLUME_DENSITY",
+      "symbol": "DEVICE_KERNEL_SHADER_EVAL_VOLUME_DENSITY",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P10-03"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 36,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_DEPTH",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_DEPTH",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 37,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_DEPTH_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_DEPTH_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 38,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_MIST",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_MIST",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 39,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_MIST_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_MIST_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 40,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_VOLUME_MAJORANT",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_VOLUME_MAJORANT",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P10-03"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 41,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_VOLUME_MAJORANT_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_VOLUME_MAJORANT_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P10-03"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 42,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_SAMPLE_COUNT",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_SAMPLE_COUNT",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 43,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_SAMPLE_COUNT_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_SAMPLE_COUNT_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 44,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_FLOAT",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_FLOAT",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 45,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_FLOAT_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_FLOAT_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 46,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_LIGHT_PATH",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_LIGHT_PATH",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 47,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_LIGHT_PATH_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_LIGHT_PATH_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 48,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_RGBE",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_RGBE",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 49,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_RGBE_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_RGBE_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 50,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_FLOAT3",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_FLOAT3",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 51,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_FLOAT3_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_FLOAT3_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 52,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_MOTION",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_MOTION",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 53,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_MOTION_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_MOTION_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 54,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_CRYPTOMATTE",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_CRYPTOMATTE",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 55,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_CRYPTOMATTE_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_CRYPTOMATTE_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 56,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_SHADOW_CATCHER",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_SHADOW_CATCHER",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 57,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_SHADOW_CATCHER_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_SHADOW_CATCHER_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 58,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_SHADOW_CATCHER_MATTE_WITH_SHADOW",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_SHADOW_CATCHER_MATTE_WITH_SHADOW",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 59,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_SHADOW_CATCHER_MATTE_WITH_SHADOW_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_SHADOW_CATCHER_MATTE_WITH_SHADOW_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 60,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_COMBINED",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_COMBINED",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 61,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_COMBINED_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_COMBINED_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 62,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_FLOAT4",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_FLOAT4",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 63,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILM_CONVERT_FLOAT4_HALF_RGBA",
+      "symbol": "DEVICE_KERNEL_FILM_CONVERT_FLOAT4_HALF_RGBA",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 64,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK",
+      "symbol": "DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 65,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_X",
+      "symbol": "DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_X",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 66,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_Y",
+      "symbol": "DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_Y",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 67,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILTER_GUIDING_PREPROCESS",
+      "symbol": "DEVICE_KERNEL_FILTER_GUIDING_PREPROCESS",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 68,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILTER_GUIDING_SET_FAKE_ALBEDO",
+      "symbol": "DEVICE_KERNEL_FILTER_GUIDING_SET_FAKE_ALBEDO",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 69,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILTER_COLOR_PREPROCESS",
+      "symbol": "DEVICE_KERNEL_FILTER_COLOR_PREPROCESS",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 70,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILTER_COLOR_POSTPROCESS",
+      "symbol": "DEVICE_KERNEL_FILTER_COLOR_POSTPROCESS",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 71,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_FILTER_COLOR_FLIP_Y",
+      "symbol": "DEVICE_KERNEL_FILTER_COLOR_FLIP_Y",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 72,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_VOLUME_GUIDING_FILTER_X",
+      "symbol": "DEVICE_KERNEL_VOLUME_GUIDING_FILTER_X",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P10-03"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 73,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_VOLUME_GUIDING_FILTER_Y",
+      "symbol": "DEVICE_KERNEL_VOLUME_GUIDING_FILTER_Y",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P10-03"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 74,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS",
+      "symbol": "DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 75,
+      "classificationReviewed": false
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_PREFIX_SUM",
+      "symbol": "DEVICE_KERNEL_PREFIX_SUM",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [
+        "device-queue"
+      ],
+      "nativeValue": 76,
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ],
+      "classificationReviewed": true
+    },
+    {
+      "id": "DeviceKernel:DEVICE_KERNEL_NUM",
+      "symbol": "DEVICE_KERNEL_NUM",
+      "declaration": "DeviceKernel",
+      "source": "third_party/cycles/src/kernel/types.h",
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "independent-cpu-state-and-native-scheduler",
+      "evidence": [],
+      "nativeValue": 77,
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable.",
+      "classificationReviewed": true
+    }
+  ],
+  "nativeMetadataProfile": {
+    "target": "x86_64-pc-linux-gnu",
+    "pointerBytes": 8
+  }
+}

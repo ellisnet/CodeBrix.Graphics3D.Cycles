@@ -19,7 +19,7 @@ void original_closest(ccl::DeviceScene &scene,const std::vector<int> &indices,
                       std::vector<ccl::IntegratorStateCPU> &states,std::vector<float> &film){
   using namespace ccl;KernelGlobalsCPU base;base.data=scene.data;
 #define TABLE(name,type) base.name.data=reinterpret_cast<decltype(base.name.data)>(scene.name.data());base.name.width=int(scene.name.size());
-  CBC_INTERSECTION_TABLES(TABLE)
+  CBC_SCENE_TABLES(TABLE)
   TABLE(lookup_table,float) TABLE(sample_pattern_lut,float)
 #undef TABLE
   Profiler profiler;ThreadKernelGlobalsCPU thread(base,nullptr,profiler,0);KernelGlobals kg=&thread;

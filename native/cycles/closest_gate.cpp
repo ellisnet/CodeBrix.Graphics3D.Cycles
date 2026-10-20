@@ -3,6 +3,8 @@
 #include "wavefront_test.h"
 #include "closest_reference.h"
 #include "scene/scene.h"
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
 #include "scene/mesh.h"
 #include "scene/object.h"
 #include "scene/camera.h"
@@ -94,22 +96,22 @@ static unsigned consume_sort_counters(WebGPUDevice &d,Scheduler &scheduler,const
 }
 static unsigned rejections(const DeviceInfo &info){
   unsigned rejected=0;
-  for(unsigned test=0;test<16;test++){
+  for(unsigned test=0;test<21;test++){
     Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto *backend=dynamic_cast<WebGPUDevice*>(owner.get());require(backend,"Negative closest device creation failed");auto &d=*backend;
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);
+    Scene scene(params,&d);prepare(scene);if(test>=16)object_motion_fixture(scene,*scene.objects[0],0);Progress progress;scene.device_update(&d,progress);healthy(d);
     auto &data=scene.dscene.data;data.integrator.use_light_mis=0;data.integrator.use_caustics=0;
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Negative closest setup failed");
     const auto layout=fields(d);std::vector<IntegratorStateCPU> states(scheduler.capacity());auto &s=states[0];
     s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.path.throughput=one_float3();s.path.continuation_probability=1;
     s.ray.P=make_float3(0,0,-8);s.ray.D=make_float3(0,0,1);s.ray.tmax=100;s.ray.time=.5;s.isect.prim=PRIM_NONE;s.isect.object=OBJECT_NONE;
     std::string reason="reported invalid data";
-    if(test==0){data.bvh.have_motion=1;reason="static triangles";}
-    if(test==1){data.bvh.have_curves=1;reason="static triangles";}
-    if(test==2){data.bvh.have_points=1;reason="static triangles";}
-    if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;reason="optional integration features";}
+    if(test==0){data.bvh.have_motion=1;reason="motion flag/table mismatch";}
+    if(test==1){data.bvh.have_curves=1;reason="triangle primitives";}
+    if(test==2){data.bvh.have_points=1;reason="triangle primitives";}
+    if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
     if(test==4){data.integrator.use_caustics=1;reason="optional integration features";}
-    if(test==5){data.integrator.use_light_mis=1;reason="light intersection not implemented";}
+    if(test==5){data.integrator.use_light_mis=1;data.integrator.use_light_tree=1;reason="light tree not implemented";}
     if(test==6){data.integrator.sampling_pattern=SAMPLING_PATTERN_SOBOL_BURLEY;reason="tabulated Sobol";}
     if(test==8)data.bvh.root=INT_MAX;
     if(test==9){for(size_t i=0;i<scene.dscene.tri_vindex.size();i++)scene.dscene.tri_vindex[i].x=0x7fffffffu;scene.dscene.tri_vindex.copy_to_device();}
@@ -119,6 +121,13 @@ static unsigned rejections(const DeviceInfo &info){
     if(test==13)reason="Incomplete closest";
     if(test==14){auto state=d.state;state.sort_key_counter[DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE]=nullptr;d.const_copy_to("integrator_state",&state,sizeof(state));s.ray.D=make_float3(0,-2.1f/9.f,1);}
     if(test==15){for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)if(scene.dscene.bvh_leaf_nodes[i].x>=0)scene.dscene.bvh_leaf_nodes[i].w=PRIMITIVE_POINT;scene.dscene.bvh_leaf_nodes.copy_to_device();}
+    if(test>=16){auto &object=scene.dscene.objects[0];auto &flags=scene.dscene.object_flag[0];
+      if(test==16){flags|=SD_OBJECT_HAS_VERTEX_MOTION;reason="deforming triangle flags/type";}
+      if(test==17){object.num_tfm_steps=1;reason="motion range";}
+      if(test==18){flags|=SD_OBJECT_TRANSFORM_APPLIED;reason="applied object motion";}
+      if(test==19){object.primitive_type=PRIMITIVE_LAMP;reason="animated emitters";}
+      if(test==20){object.motion_offset=uint(scene.dscene.object_motion.size());reason="motion range";}
+      scene.dscene.objects.copy_to_device();scene.dscene.object_flag.copy_to_device();}
     d.const_copy_to("data",&data,sizeof(data));upload(d,layout,states);healthy(d);
     device_vector<float> film(&d,"negative_closest_film",MEM_READ_WRITE);film.alloc(16);film.zero_to_device();
     device_vector<int> indices(&d,"negative_closest_indices",MEM_READ_WRITE);indices.alloc(1);indices[0]=test==7?scheduler.capacity():0;indices.copy_to_device();
@@ -133,11 +142,11 @@ static unsigned rejections(const DeviceInfo &info){
   return rejected;
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
-  require(argc==2,"Usage: closest_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+  require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: closest_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto *device=dynamic_cast<WebGPUDevice*>(owner.get());require(device,"Missing registered backend");auto &d=*device;Metrics m;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Scene update failed");
+    Scene scene(params,&d);prepare(scene);if(motion){for(size_t i=0;i<scene.objects.size();i++)if(i<3)object_motion_fixture(scene,*scene.objects[i],unsigned(i));}if(deform)for(size_t i=0;i<3;i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Scene update failed");
     scene.dscene.data.integrator.use_light_mis=0; // Isolate surface/BVH stage; forward light intersection remains pending.
     scene.dscene.data.integrator.use_caustics=0;d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));
     for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)if(scene.dscene.bvh_leaf_nodes[i].x<0)m.instances++;

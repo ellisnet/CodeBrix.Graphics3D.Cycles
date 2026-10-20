@@ -1,0 +1,102 @@
+{
+  "passed": true,
+  "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+  "inventoryComplete": false,
+  "fullCyclesParity": false,
+  "counts": {
+    "opcodes": 111,
+    "closures": 45,
+    "kernels": 78,
+    "passes": 62,
+    "modes": 621,
+    "features": 41,
+    "tables": 53,
+    "platforms": 9,
+    "dependencies": 26
+  },
+  "declarationEnums": 86,
+  "compiler": {
+    "compiler": "Debian clang version 19.1.7 (3+b1)",
+    "target": "x86_64-pc-linux-gnu",
+    "pointerBytes": 8,
+    "definitions": [
+      "CCL_NAMESPACE_BEGIN=namespace ccl {",
+      "CCL_NAMESPACE_END=}"
+    ],
+    "profile": "Native host headers, optional build features disabled; not a target ABI proof",
+    "generatedSourceSha256": "71c5b17f7a174003d9ca81b2b534f3c0c0339cc2ef9823c522f251650a0cc8b4",
+    "binarySha256": "897c46f4409fcbfcb91c95ddde262735077a75253540f8ee0b87dc9865ba6687",
+    "valuesSha256": "c508bfab0bf3228a40277c092efb711376316ab90e8029bee7da1ad3a1985196"
+  },
+  "evidenceReportsChecked": 15,
+  "inventorySha256": {
+    "opcodes.json": "5e991d1b43a55fbf80f9490d1e1c887406acc0dd3611ff124bbe5f4191d3bb5e",
+    "closures.json": "914772a673af839c6cf19620bcdcacbe2a9962f8ca3f79d3e43a8cf45d50105d",
+    "kernels.json": "f799e7b9aff8dd7106a0701ba0003e0ccd6bf71c722a3f9228c8c7c1db889968",
+    "passes.json": "a5ffe15502f709b45ec3365be719baa3ed6bf6cc54faaf0c96ee21d54f4105f9",
+    "modes.json": "1eb21deaa25e7d8dbe7dcf712dc0ae09e894d311580797f24e6da89c282f203e",
+    "features.json": "5827319150cf563f46640f28c62179ee871d38123b15262f0f8d675cf05e687b",
+    "tables.json": "3dcafb884b584482c090049b9f8d066a0e26a04a0409811fbdba420c327c13b1",
+    "platforms.json": "2cce47fad8ae60ca0aecc5a6595d7faa153d3b97eb3a21a5fa43172572fca67c",
+    "dependencies.json": "da3b7cd412f75f3bcea704a068f5ac4e92ccc9525463e8b3327d67c4f12942e1"
+  },
+  "nextWork": [
+    "P00-01: enumerate native node registration, socket properties, scene/session/public APIs, state fields and build-conditional features outside the selected headers.",
+    "P00-02/P00-03: review every mode and behavior, map exact tests, and assign detailed implementation work items; generic classifications are provisional.",
+    "P00-04: classify CPU/Metal behavior differences, CPU-only functionality and OSL services without excluding them.",
+    "P00-05/P00-06: capability schema, feature combinations, numerical contracts, workload sizes and resource budgets.",
+    "P03-05/P15-C03: target-compiled ABI metadata and real execution on each required RID. The host metadata here is not a cross-target layout proof."
+  ],
+  "scope": "Initial P00 source/compiler inventory and evidence-link integrity; no new renderer feature or GPU execution evidence.",
+  "commands": [
+    [
+      "python3",
+      "tools/compatibility/inventory.py",
+      "check"
+    ],
+    [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/compatibility",
+      "-p",
+      "test_*.py",
+      "-v"
+    ],
+    [
+      "python3",
+      "tools/licensing/audit.py",
+      "--output",
+      "native/work/compatibility/source-audit.json"
+    ],
+    [
+      "python3",
+      "tools/licensing/notices.py",
+      "--check"
+    ],
+    [
+      "git",
+      "diff",
+      "--check"
+    ]
+  ],
+  "guardTests": {
+    "passed": true,
+    "tests": 12
+  },
+  "sourceAudit": {
+    "passed": true,
+    "errors": [],
+    "sourceFiles": 23533,
+    "fullWorkingReport": "native/work/compatibility/source-audit.json",
+    "reportSha256": "f0f5e7da93d8576e1b8491c3a9d9bd6ef1e807990f65852bcd65b291004e0b3d",
+    "scope": "Pre-checkpoint proposed source contents; full working report is not duplicated here."
+  },
+  "noticesCheck": {
+    "passed": true,
+    "reviewedComponents": 33
+  },
+  "rendererTestsRerun": false
+}

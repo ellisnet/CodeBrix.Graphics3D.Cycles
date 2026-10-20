@@ -8,24 +8,30 @@
 struct SvmClosure {
     weight:vec3<f32>, sample_weight:f32, N:vec3<f32>, kind:u32,
     roughness:f32, a:f32, b:f32, multiscatter:vec3<f32>,
+    alpha_x:f32, alpha_y:f32, ior:f32, energy_scale:f32, T:vec3<f32>,
+    fresnel_f0:f32,reflection_tint:vec3<f32>,transmission_tint:vec3<f32>,
 }
 struct SvmResult {
     closure_base:u32, count:u32, remaining:u32,
     runtime_flag:u32, error:u32, lcg_state:u32, N:vec3<f32>, emission:vec3<f32>, transparency:vec3<f32>,
 }
 // Per-path closure storage stays in the arena, avoiding large private arrays
-// that exceed register/spill limits on mobile GPU compilers. Packed stride 56.
-const SVM_CLOSURE_BYTES:u32=56u;
+// that exceed register/spill limits on mobile GPU compilers. Native packed stride.
 fn svm_closure_read(r:SvmResult,index:u32)->SvmClosure{
     var c:SvmClosure;if(index>=r.count){return c;}let base=r.closure_base+index*SVM_CLOSURE_BYTES;
     c.weight=heap_vec3(base);c.sample_weight=heap_float(base+12u);c.N=heap_vec3(base+16u);c.kind=load_word(base+28u);
-    c.roughness=heap_float(base+32u);c.a=heap_float(base+36u);c.b=heap_float(base+40u);c.multiscatter=heap_vec3(base+44u);return c;
+    c.roughness=heap_float(base+32u);c.a=heap_float(base+36u);c.b=heap_float(base+40u);c.multiscatter=heap_vec3(base+44u);
+    c.alpha_x=heap_float(base+C_alpha_x);c.alpha_y=heap_float(base+C_alpha_y);c.ior=heap_float(base+C_ior);c.energy_scale=heap_float(base+C_energy_scale);c.T=heap_vec3(base+C_T);c.fresnel_f0=heap_float(base+C_fresnel_f0);c.reflection_tint=heap_vec3(base+C_reflection_tint);c.transmission_tint=heap_vec3(base+C_transmission_tint);return c;
 }
 fn svm_closure_write(base:u32,c:SvmClosure){
     store_word(base,bitcast<u32>(c.weight.x));store_word(base+4u,bitcast<u32>(c.weight.y));store_word(base+8u,bitcast<u32>(c.weight.z));
     store_word(base+12u,bitcast<u32>(c.sample_weight));store_word(base+16u,bitcast<u32>(c.N.x));store_word(base+20u,bitcast<u32>(c.N.y));store_word(base+24u,bitcast<u32>(c.N.z));store_word(base+28u,c.kind);
     store_word(base+32u,bitcast<u32>(c.roughness));store_word(base+36u,bitcast<u32>(c.a));store_word(base+40u,bitcast<u32>(c.b));
     store_word(base+44u,bitcast<u32>(c.multiscatter.x));store_word(base+48u,bitcast<u32>(c.multiscatter.y));store_word(base+52u,bitcast<u32>(c.multiscatter.z));
+    store_word(base+C_alpha_x,bitcast<u32>(c.alpha_x));store_word(base+C_alpha_y,bitcast<u32>(c.alpha_y));store_word(base+C_ior,bitcast<u32>(c.ior));store_word(base+C_energy_scale,bitcast<u32>(c.energy_scale));
+    store_word(base+C_fresnel_f0,bitcast<u32>(c.fresnel_f0));
+    for(var k=0u;k<3u;k++){store_word(base+C_reflection_tint+k*4u,bitcast<u32>(c.reflection_tint[k]));store_word(base+C_transmission_tint+k*4u,bitcast<u32>(c.transmission_tint[k]));}
+    store_word(base+C_T,bitcast<u32>(c.T.x));store_word(base+C_T+4u,bitcast<u32>(c.T.y));store_word(base+C_T+8u,bitcast<u32>(c.T.z));
 }
 fn svm_lcg(index:u32)->u32{
     // Cycles hash_uint3 / Jenkins finalizer, used by lcg_state_init.
@@ -90,12 +96,17 @@ fn svm_transparent(s:ptr<function,SvmState>,weight:vec3<f32>,flag:u32){
         else if((flag&PATH_RAY_TERMINATE)!=0u){(*s).output.remaining=0u;}
     }
 }
-fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32){
+fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     let kind=load_word(node+N_ClosureBsdf_closure_type);let mix_weight=svm_optional(s,svm_byte(node+N_ClosureBsdf_mix_weight_offset),1.0);
     var bytes=0u;switch(kind){case CLOSURE_BSDF_DIFFUSE_ID:{bytes=SZ_DiffuseBsdfData;}
         case CLOSURE_BSDF_TRANSLUCENT_ID,CLOSURE_BSDF_TRANSPARENT_ID:{bytes=SZ_SimpleBsdfData;}
+        case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:{bytes=SZ_RefractionBsdfData;}
+        case CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:{bytes=SZ_GlassBsdfData;}
+        case CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID:{bytes=SZ_GlossyBsdfData;}
         default:{svm_error(s,16u);return;}}
     let data=svm_take(s,bytes);if((*s).error!=0u||mix_weight==0.0){return;}
+    if(kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID||kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID){svm_glass(s,data,kind,mix_weight,visibility);return;}
+    if(kind==CLOSURE_BSDF_MICROFACET_GGX_ID||kind==CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID){svm_glossy(s,data,kind,mix_weight,visibility);return;}
     let raw_weight=(*s).weight*mix_weight;
     if(kind==CLOSURE_BSDF_TRANSPARENT_ID){svm_transparent(s,raw_weight,flag);return;}
     let normal_index=svm_byte(data+select(N_SimpleBsdfData_normal_offset,N_DiffuseBsdfData_normal_offset,kind==CLOSURE_BSDF_DIFFUSE_ID));
@@ -123,4 +134,23 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32){
         closure.a=a;closure.b=b;closure.multiscatter=ems*(1.0-ev);
     }
     svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,closure);
+}
+
+// Native svm_node_closure_volume: absorption shares the extinction accumulator.
+// HG anisotropy uses the existing scalar roughness slot in the private record.
+fn svm_volume(s:ptr<function,SvmState>,node:u32){
+    let kind=load_word(node+N_ClosureVolume_closure_type);
+    if(kind!=CLOSURE_VOLUME_ABSORPTION_ID&&kind!=CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID){svm_error(s,16u);return;}
+    let mix_weight=svm_optional(s,svm_byte(node+N_ClosureVolume_mix_weight_offset),1.0);if(mix_weight==0.0){return;}
+    var density=mix_weight*max(svm_input(s,node+N_ClosureVolume_density),0.0);
+    if((*s).geometry.object_id!=NONE){density*=heap_float(table_at(G_objects,(*s).geometry.object_id,SIZE_objects)+O_volume_density);}
+    var weight=(*s).weight;if(kind==CLOSURE_VOLUME_ABSORPTION_ID){weight=vec3<f32>(1)-weight;}weight*=density;
+    if(kind==CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID){
+        let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));
+        if(sample_weight>0.0){let i=svm_allocate(s,kind,weight);if(i!=NONE){
+            var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;
+            let g=svm_input(s,node+N_ClosureVolume_param1);c.roughness=sign(g)*min(abs(g),1.0-0.001);
+            svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);(*s).output.runtime_flag|=SR_SCATTER;}}
+    }
+    (*s).output.transparency+=weight;(*s).output.runtime_flag|=SR_EXTINCTION;
 }

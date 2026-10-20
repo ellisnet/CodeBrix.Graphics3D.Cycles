@@ -10,7 +10,7 @@ It does not certify unbuilt RIDs or a future NuGet payload.
 Cycles a456b761034dda42c32eef9f4aae0fa5a5c9f604
 Origin: https://github.com/blender/cycles.git
 Selected license: Apache-2.0 AND BSD-3-Clause AND MIT AND Zlib AND LicenseRef-Public-Domain
-Use: Filtered vendored native host, CPU reference and derived WGSL kernels. Inventory: third_party/cycles-import.json.
+Use: Filtered vendored native host, CPU reference and derived WGSL kernels. Registration, OCIO cache-identity and Android platform adaptations are generated from reviewed local snapshots by native/tools/build_cycles.py and build_cycles_android.py. Inventory: third_party/cycles-import.json.
 Attribution: Blender Foundation, Blender Authors, NVIDIA, Intel, Sony Pictures Imageworks, Larry Gritz, Industrial Light & Magic, Francois Beaune and appleseedhq, Inigo Quilez, Aladdin Enterprises, Lukas Hosek, Alexander Wilkie, Fernando Garcia Linan; exact notices retained per file. Public-domain adaptations also credit Austin Appleby (MurmurHash3), Fabian Giesen (half conversion) and NVIDIA Mesh Tools; complete retained comment notices are included.
 Pinned revision: a456b761034dda42c32eef9f4aae0fa5a5c9f604
 Conditions: Filtered manifest in cycles-import.json; independent Apache-2.0 atomics and build adapter. Historical notice inventory describes excluded upstream files; those implementation files are not imported.
@@ -211,7 +211,7 @@ Origin: https://polyhaven.com/a/food_lime_01
 Selected license: Apache-2.0 AND CC0-1.0
 Use: Jeremy-authored ForestVillage bench/ceramic-home geometry and CC0 Poly Haven lime; no original textures/fonts redistributed. See parity/ASSETS.md.
 Attribution: Copyright (c) 2026 Jeremy Ellis and contributors; Poly Haven food_lime_01 contributors.
-Conditions: Prepared scene buffers and renders carry this provenance; licenses of other external models must be reviewed before import.
+Conditions: Prepared scene buffers and renders carry this provenance; licenses of other external models must be reviewed before import. The six original bench textures have a separate pre-import CC0 review in third_party/bench-texture-license-review.json; they remain external and are not redistributed by these clay tests.
 
 libtiff v4.7.0
 Origin: https://gitlab.com/libtiff/libtiff
@@ -268,4 +268,12 @@ Selected license: MIT
 Use: Cycles src/util/math_base.h attributes wrapf to godot-engine math_funcs.h. That existing Cycles function is consumed by the narrow WGSL translator; no additional Godot implementation is vendored. The exact historical adaptation revision is not asserted.
 Attribution: Copyright (c) 2014-present Godot Engine contributors; Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.
 Pinned revision: 4c311cbee68c0b66ff8ebb8b0defdd9979dd2a41
+
+Arm Optimized Routines scalar sine/cosine subset v25.01
+Origin: https://github.com/ARM-software/optimized-routines
+Selected license: MIT
+Use: Pinned source/data for the bounded WGSL native sine/cosine polynomial adapter. No linked library or unreviewed build scripts. Per-file hashes and license basis: third_party/arm-math-import.json.
+Attribution: Copyright (c) 2018-2024, Arm Limited (scalar functions/header); Copyright (c) 2018-2019, Arm Limited (polynomial data).
+Pinned revision: 3752b981a6f3b89b5468476a87568a29fd9e0822
+Conditions: MIT option explicitly selected from the upstream dual license. Retain the complete MIT copyright/permission grant and Arm attribution in source and substantial derived portions. CodeBrix modifications retain their Apache-2.0 notice.
 

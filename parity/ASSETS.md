@@ -40,3 +40,29 @@ Parity is against Cycles after an explicit glTF-to-Cycles material conversion.
 The corpus's alpha-blended glass is not automatically a physical transmission
 material; importing it must not silently substitute a different material model.
 Geometry-only tests must be labeled as such until material coverage is present.
+
+The original bench texture license review is recorded in
+[bench-texture-license-review.json](../third_party/bench-texture-license-review.json)
+(2026-10-19). All six 2K JPEGs match the supplied download byte lengths and MD5
+values, plus the collection's SHA-256 delivery manifest. The two texture sets are
+[Rough Wood](https://polyhaven.com/a/rough_wood) by Rob Tuytel and
+[Japanese Cedar Planks](https://polyhaven.com/a/japanese_cedar_planks) by Charlotte
+Baglioni (scanning) and Rico Cilliers (processing). Poly Haven identifies these
+asset downloads as [CC0](https://polyhaven.com/license); their use is compatible
+with this Apache-2.0 project while retaining their CC0 status. The full CC0 text
+is already retained in `third_party/licenses/CC0-1.0.txt`.
+
+The review pins the external files and source documents; it does not import
+them or establish original-material rendering. Before copying an image, verify
+its exact reviewed hash and record the destination in the dependency notices.
+The review covers the listed texture downloads only. Other collection assets,
+font outlines, generator implementations and website previews need their own
+review before use.
+
+The bench has two textured wood materials and a material with metallic factor
+0.8 and roughness 0.35. Rendering them requires native microfacet/Fresnel closures
+and an explicit glTF-to-Cycles material conversion. That conversion must account
+for the supplied normal scale, color and packed material channels, occlusion
+strength 0.65, and the requested trilinear mip minification with repeat wrapping.
+The existing clay preview and synthetic normal-map proof do not cover these
+original material requirements.

@@ -1,0 +1,865 @@
+{
+  "schemaVersion": 1,
+  "copyright": "Copyright (c) 2026 Jeremy Ellis and contributors",
+  "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+  "inventoryComplete": false,
+  "fullCyclesParity": false,
+  "rows": [
+    {
+      "id": "ClosureType:CLOSURE_NONE_ID",
+      "symbol": "CLOSURE_NONE_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 0,
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_ID",
+      "symbol": "CLOSURE_BSDF_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "category-boundary",
+      "workItems": [
+        "P00-02"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 1,
+      "notes": "Generic/category marker retained; closure family behavior is tracked separately.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_DIFFUSE_ID",
+      "symbol": "CLOSURE_BSDF_DIFFUSE_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "nativeValue": 2,
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ],
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_OREN_NAYAR_ID",
+      "symbol": "CLOSURE_BSDF_OREN_NAYAR_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "nativeValue": 3,
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ],
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID",
+      "symbol": "CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 4,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_BURLEY_ID",
+      "symbol": "CLOSURE_BSDF_BURLEY_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 5,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_DIFFUSE_RAMP_ID",
+      "symbol": "CLOSURE_BSDF_DIFFUSE_RAMP_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 6,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_SHEEN_ID",
+      "symbol": "CLOSURE_BSDF_SHEEN_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 7,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_DIFFUSE_TOON_ID",
+      "symbol": "CLOSURE_BSDF_DIFFUSE_TOON_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 8,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_TRANSLUCENT_ID",
+      "symbol": "CLOSURE_BSDF_TRANSLUCENT_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "nativeValue": 9,
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ],
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_PHYSICAL_CONDUCTOR",
+      "symbol": "CLOSURE_BSDF_PHYSICAL_CONDUCTOR",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 10,
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_F82_CONDUCTOR",
+      "symbol": "CLOSURE_BSDF_F82_CONDUCTOR",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 11,
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_MICROFACET_GGX_ID",
+      "symbol": "CLOSURE_BSDF_MICROFACET_GGX_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 12,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_MICROFACET_BECKMANN_ID",
+      "symbol": "CLOSURE_BSDF_MICROFACET_BECKMANN_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 13,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID",
+      "symbol": "CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 14,
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID",
+      "symbol": "CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 15,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_ASHIKHMIN_VELVET_ID",
+      "symbol": "CLOSURE_BSDF_ASHIKHMIN_VELVET_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 16,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_PHONG_RAMP_ID",
+      "symbol": "CLOSURE_BSDF_PHONG_RAMP_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 17,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_GLOSSY_TOON_ID",
+      "symbol": "CLOSURE_BSDF_GLOSSY_TOON_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 18,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_HAIR_REFLECTION_ID",
+      "symbol": "CLOSURE_BSDF_HAIR_REFLECTION_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 19,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID",
+      "symbol": "CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 20,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID",
+      "symbol": "CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 21,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID",
+      "symbol": "CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 22,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_HAIR_TRANSMISSION_ID",
+      "symbol": "CLOSURE_BSDF_HAIR_TRANSMISSION_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 23,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID",
+      "symbol": "CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 24,
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID",
+      "symbol": "CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 25,
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID",
+      "symbol": "CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 26,
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_HAIR_CHIANG_ID",
+      "symbol": "CLOSURE_BSDF_HAIR_CHIANG_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 27,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_HAIR_HUANG_ID",
+      "symbol": "CLOSURE_BSDF_HAIR_HUANG_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 28,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_RAY_PORTAL_ID",
+      "symbol": "CLOSURE_BSDF_RAY_PORTAL_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 29,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_TRANSPARENT_ID",
+      "symbol": "CLOSURE_BSDF_TRANSPARENT_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "nativeValue": 30,
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ],
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSSRDF_BURLEY_ID",
+      "symbol": "CLOSURE_BSSRDF_BURLEY_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 31,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSSRDF_RANDOM_WALK_ID",
+      "symbol": "CLOSURE_BSSRDF_RANDOM_WALK_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 32,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSSRDF_RANDOM_WALK_LEGACY_ID",
+      "symbol": "CLOSURE_BSSRDF_RANDOM_WALK_LEGACY_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 33,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID",
+      "symbol": "CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 34,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_HOLDOUT_ID",
+      "symbol": "CLOSURE_HOLDOUT_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "nativeValue": 35,
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ],
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_VOLUME_ID",
+      "symbol": "CLOSURE_VOLUME_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "category-boundary",
+      "workItems": [
+        "P00-02"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 36,
+      "notes": "Generic/category marker retained; closure family behavior is tracked separately.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_VOLUME_ABSORPTION_ID",
+      "symbol": "CLOSURE_VOLUME_ABSORPTION_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 37,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID",
+      "symbol": "CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 38,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_VOLUME_MIE_ID",
+      "symbol": "CLOSURE_VOLUME_MIE_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 39,
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:CLOSURE_VOLUME_FOURNIER_FORAND_ID",
+      "symbol": "CLOSURE_VOLUME_FOURNIER_FORAND_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 40,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_VOLUME_RAYLEIGH_ID",
+      "symbol": "CLOSURE_VOLUME_RAYLEIGH_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 41,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_VOLUME_DRAINE_ID",
+      "symbol": "CLOSURE_VOLUME_DRAINE_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "shader-behavior",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 42,
+      "classificationReviewed": false
+    },
+    {
+      "id": "ClosureType:CLOSURE_BSDF_PRINCIPLED_ID",
+      "symbol": "CLOSURE_BSDF_PRINCIPLED_ID",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 43,
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity.",
+      "classificationReviewed": true
+    },
+    {
+      "id": "ClosureType:NBUILTIN_CLOSURES",
+      "symbol": "NBUILTIN_CLOSURES",
+      "declaration": "ClosureType",
+      "source": "third_party/cycles/src/kernel/svm/types.h",
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "fullRequirementVerified": false,
+      "testStrategy": "setup-evaluate-sample-pdf-and-render",
+      "evidence": [],
+      "nativeValue": 44,
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable.",
+      "classificationReviewed": true
+    }
+  ],
+  "nativeMetadataProfile": {
+    "target": "x86_64-pc-linux-gnu",
+    "pointerBytes": 8
+  }
+}

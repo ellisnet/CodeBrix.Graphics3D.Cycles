@@ -6,6 +6,11 @@ Native Cycles integration with a new WebGPU backend, targeting full Cycles
 parity while using the unchanged binaries shipped by CodeBrix.WebGpu.Native.
 Work is in progress; this is not yet a production renderer or NuGet package.
 
+The maintained [native scene host and thin .NET 10 wrapper](native/host/README.md)
+provide an experimental C API, normal CMake targets, and reproducible host/color
+configuration/lifecycle tests. GPU feature coverage and multi-platform delivery
+remain incomplete; see the host guide for the current validation boundary.
+
 Source provenance and licenses are recorded in
 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). The active Cycles build now
 uses a filtered snapshot in `third_party/cycles` and independent Apache-2.0
@@ -21,6 +26,7 @@ from Jeremy's October 18 license plan, including source, dependencies, generated
 shaders, history review, and package contents.
 
 - [Parity ledger and remaining work](PARITY.md)
+- [Source-derived compatibility inventory and evidence checks](compatibility/README.md)
 - [Successful native scene-to-image prototype](prototype/README.md)
 - [Original material tests and real-model renders](parity/README.md)
 - [Multi-bounce WGSL render versus the original Cycles integrator](parity/README.md#multi-bounce-integration-against-the-original-integrator)
@@ -35,6 +41,9 @@ shaders, history review, and package contents.
 - [Native surface shader data and Android GPU replay](native/DEVICE.md#native-surface-shader-data-preparation)
 - [Native surface SVM closure evaluation](native/DEVICE.md#native-surface-svm-evaluation)
 - [Complete native scheduler render and four-GPU replay](native/DEVICE.md#complete-native-scheduler-render)
+- [Native static-triangle attributes and resident image sampling](native/DEVICE.md#resident-native-images)
+- [Native file images, color conversion and replacement checks](native/DEVICE.md#file-image-and-replacement-validation)
+- [Native normal-map and tangent validation](native/DEVICE.md#native-normal-maps-and-tangents)
 - [Kernel research and feasibility findings](research/FEASIBILITY.md)
 
 The prototype renders an actual Cycles-prepared scene on Linux x64 and Android

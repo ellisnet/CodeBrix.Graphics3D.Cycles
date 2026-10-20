@@ -1,6 +1,12 @@
 // Copyright (c) 2026 Jeremy Ellis and contributors
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
+#ifdef CBC_GLASS_FIXTURE
+#include "glass_fixture.h"
+#endif
+#ifdef CBC_MICROFACET_FIXTURE
+#include "microfacet_fixture.h"
+#endif
 static constexpr unsigned GRAPH_COUNT=20;
 static void prepare(Scene &scene){
   scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.integrator->set_aa_samples(16);
@@ -25,6 +31,12 @@ static void prepare(Scene &scene){
       if(test==15){tc->set_use_transform(true);tc->set_ob_tfm(transform_translate(make_float3(.3,.2,.1))*transform_scale(make_float3(.4,.5,.6)));}
       g->connect(tc->output(names[test-10]),emission->input("Color"));auto add=g->create_node<AddClosureNode>();g->connect(emission->output("Emission"),add->input("Closure1"));g->connect(diffuse->output("BSDF"),add->input("Closure2"));result=add->output("Closure");}
     if(test>=16){const float rough[]={1e-5f,.0001f,.001f,.02f};diffuse->set_roughness(rough[test-16]);}
+#ifdef CBC_MICROFACET_FIXTURE
+    result=microfacet_material(*g,test);
+#endif
+#ifdef CBC_GLASS_FIXTURE
+    result=glass_material(*g,test);
+#endif
     g->connect(result,g->output()->input("Surface"));auto sh=scene.create_node<Shader>();sh->set_graph(std::move(g));sh->tag_update(&scene);shaders.push_back(sh);
   }
   auto mesh=[&](){auto m=scene.create_node<Mesh>();array<Node*> material_slots;for(auto sh:shaders)material_slots.push_back_slow(sh);m->set_used_shaders(material_slots);m->resize_mesh(GRAPH_COUNT*3,GRAPH_COUNT);

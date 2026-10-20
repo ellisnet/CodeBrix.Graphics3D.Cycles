@@ -13,10 +13,16 @@ static std::vector<char> read(const char *path){
   return {std::istreambuf_iterator<char>(in),std::istreambuf_iterator<char>()};
 }
 int main(int argc,char **argv){try{
-  if(argc!=7)throw std::runtime_error("Usage: arena_replay SHADER ARENA PARAMS OUTPUT ENTRY REPORT_PREFIX");
+  if(argc!=7&&argc!=8)throw std::runtime_error("Usage: arena_replay SHADER ARENA PARAMS OUTPUT ENTRY REPORT_PREFIX [WORKGROUP_SIZE]");
   auto source=read(argv[1]);auto arena=read(argv[2]);auto params=read(argv[3]);
   if(params.size()!=128||arena.empty()||arena.size()%4)throw std::runtime_error("Invalid replay buffer lengths");
   std::array<uint32_t,32> words{};std::memcpy(words.data(),params.data(),params.size());cbc::Device d;
+  uint64_t workgroup_size=64;
+  if(argc==8){size_t used=0;workgroup_size=std::stoull(argv[7],&used);if(used!=std::strlen(argv[7]))throw std::runtime_error("Invalid workgroup size");}
+  if(!workgroup_size||workgroup_size>d.limits.maxComputeWorkgroupSizeX||workgroup_size>d.limits.maxComputeInvocationsPerWorkgroup)
+    throw std::runtime_error("Invalid workgroup size");
+  const uint64_t groups=(uint64_t(words[1])+workgroup_size-1)/workgroup_size;
+  if(!groups||groups>d.limits.maxComputeWorkgroupsPerDimension)throw std::runtime_error("Invalid dispatch");
   auto storage=d.buffer(arena.size(),WGPUBufferUsage_Storage|WGPUBufferUsage_CopyDst|WGPUBufferUsage_CopySrc,arena.data());
   auto uniform=d.buffer(params.size(),WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params.data());
   auto result=d.buffer(arena.size(),WGPUBufferUsage_CopyDst|WGPUBufferUsage_MapRead);
@@ -36,7 +42,7 @@ int main(int argc,char **argv){try{
   cbc::Handle<WGPUCommandEncoder,wgpuCommandEncoderRelease> encoder(wgpuDeviceCreateCommandEncoder(d.get(),nullptr));
   cbc::Handle<WGPUComputePassEncoder,wgpuComputePassEncoderRelease> pass(wgpuCommandEncoderBeginComputePass(encoder,nullptr));
   wgpuComputePassEncoderSetPipeline(pass,pipeline);wgpuComputePassEncoderSetBindGroup(pass,0,group,0,nullptr);
-  wgpuComputePassEncoderDispatchWorkgroups(pass,(words[1]+63)/64,1,1);wgpuComputePassEncoderEnd(pass);
+  wgpuComputePassEncoderDispatchWorkgroups(pass,uint32_t(groups),1,1);wgpuComputePassEncoderEnd(pass);
   wgpuCommandEncoderCopyBufferToBuffer(encoder,storage,0,result,0,arena.size());d.push_scope();
   cbc::Handle<WGPUCommandBuffer,wgpuCommandBufferRelease> command(wgpuCommandEncoderFinish(encoder,nullptr));d.pop_scope();
   wgpuQueueSubmit(d.get_queue(),1,&command.value);std::vector<char> output(arena.size());d.read(result,output.data(),output.size());d.check();

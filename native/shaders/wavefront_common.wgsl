@@ -42,3 +42,62 @@ fn path_ao(index:u32)->bool{
     let bounce=i32(state_half(S_path_bounce,index))-i32(state_half(S_path_transmission_bounce,index))-select(0i,1i,state_half(S_path_glossy_bounce,index)>0u)+1;
     return bounce>i32(limit);
 }
+
+fn volume_enabled()->bool{return (data_word(D_kernel_features)&KERNEL_FEATURE_VOLUME)!=0u;}
+fn volume_stack_address(index:u32,slot:u32,member:u32)->u32{return load_word(p(7u)+S_volume_stack+slot*VS_stride+member)+index*4u;}
+fn volume_active(index:u32)->bool{return volume_enabled()&&load_word(volume_stack_address(index,0u,VS_shader))!=NONE;}
+fn volume_atomic_add(address:u32,value:f32){
+    var old=load_word(address);loop{let next=bitcast<u32>(bitcast<f32>(old)+value);let result=atomicCompareExchangeWeak(&heap[address/4u],old,next);if(result.exchanged){break;}old=result.old_value;}
+}
+fn volume_write_depth(index:u32){
+    if(!volume_enabled()||(state_word(S_path_flag,index)&PATH_RAY_VOLUME_PRIMARY_TRANSMIT)==0u){return;}
+    let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);
+    if(pixel>=p(11u)/stride){fail();return;}let base=p(4u)+pixel*stride*4u;
+    volume_atomic_add(base+data_word(D_film_pass_volume_majorant)*4u,heap_float(state_address(S_path_optical_depth,index,4u)));
+    volume_atomic_add(base+data_word(D_film_pass_volume_majorant_sample_count)*4u,1.0);
+}
+fn volume_guidance_pass(index:u32,base:u32,value:vec3<f32>){
+    if(!volume_enabled()){return;}var offset=PASS_NONE;
+    if((state_word(S_path_flag,index)&PATH_RAY_VOLUME_PRIMARY_TRANSMIT)!=0u){offset=data_word(D_film_pass_volume_transmit);}
+    else if((state_byte(S_path_visibility,index)&VIS_VOLUME)!=0u){offset=data_word(D_film_pass_volume_scatter);}
+    if(offset!=PASS_NONE){for(var k=0u;k<3u;k++){volume_atomic_add(base+(offset+k)*4u,value[k]);}}
+}
+
+fn volume_transparent_pass(index:u32,base:u32,transparency:f32){
+    if(volume_enabled()&&(state_word(S_path_flag,index)&PATH_RAY_VOLUME_PRIMARY_TRANSMIT)!=0u){
+        let offset=data_word(D_film_pass_volume_transmit);for(var k=0u;k<3u;k++){volume_atomic_add(base+(offset+k)*4u,transparency);}
+    }
+}
+
+// Native volume stack mutation: bounded scan, duplicate suppression, swap-last
+// exit, and ignore a valid enter when the native stack is already full.
+fn volume_stack_count(index:u32)->u32{
+    let limit=data_word(D_volume_stack_size);
+    for(var slot=0u;slot<limit;slot++){
+        let shader=load_word(volume_stack_address(index,slot,VS_shader));if(shader==NONE){return slot;}
+        let object=load_word(volume_stack_address(index,slot,VS_object));
+        if((shader&SHADER_MASK)>=table_count(G_shaders)||(object!=NONE&&object>=table_count(G_objects))){fail();return NONE;}
+        if((load_word(table_at(G_shaders,shader&SHADER_MASK,SIZE_shaders)+SH_flags)&VS_HAS_VOLUME)==0u){fail();return NONE;}
+        for(var prior=0u;prior<slot;prior++){
+            if(load_word(volume_stack_address(index,prior,VS_object))==object&&load_word(volume_stack_address(index,prior,VS_shader))==shader){fail();return NONE;}
+        }
+    }
+    fail();return NONE;
+}
+fn volume_stack_enter_exit(index:u32,object:u32,shader:u32,backfacing:bool){
+    if(!volume_enabled()){return;}
+    let flags=load_word(table_at(G_shaders,shader&SHADER_MASK,SIZE_shaders)+SH_flags);if((flags&VS_HAS_VOLUME)==0u){return;}
+    let count=volume_stack_count(index);if(count==NONE){return;}
+    var found=NONE;for(var slot=0u;slot<count;slot++){
+        if(load_word(volume_stack_address(index,slot,VS_object))==object&&load_word(volume_stack_address(index,slot,VS_shader))==shader){found=slot;break;}}
+    if(backfacing){
+        if(found==NONE){return;}
+        let last=count-1u;if(found!=last){
+            store_word(volume_stack_address(index,found,VS_object),load_word(volume_stack_address(index,last,VS_object)));
+            store_word(volume_stack_address(index,found,VS_shader),load_word(volume_stack_address(index,last,VS_shader)));}
+        store_word(volume_stack_address(index,last,VS_object),NONE);store_word(volume_stack_address(index,last,VS_shader),NONE);
+    }else if(found==NONE&&count<data_word(D_volume_stack_size)-1u){
+        store_word(volume_stack_address(index,count,VS_object),object);store_word(volume_stack_address(index,count,VS_shader),shader);
+        store_word(volume_stack_address(index,count+1u,VS_object),NONE);store_word(volume_stack_address(index,count+1u,VS_shader),NONE);
+    }
+}

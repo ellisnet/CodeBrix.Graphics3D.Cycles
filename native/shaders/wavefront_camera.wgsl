@@ -10,10 +10,26 @@ fn filter_value(value:f32)->f32{
     if(t==0.0){return first;}
     return (1.0-t)*first+t*heap_float(p(8u)+(data_word(D_tables_filter_table_offset)+min(i+1u,FILTER_SIZE-1u))*4u);
 }
-fn camera_direction(v:vec3<f32>)->vec3<f32>{
-    let a=p(6u)+D_cam_cameratoworld;let tx=heap_vec4(a);let ty=heap_vec4(a+16u);let tz=heap_vec4(a+32u);
-    // Original SIMD transform accumulates z, y, then x.
-    return vec3<f32>(tx.x,ty.x,tz.x)*v.x+(vec3<f32>(tx.y,ty.y,tz.y)*v.y+vec3<f32>(tx.z,ty.z,tz.z)*v.z);
+fn camera_shutter(value:f32)->f32{
+    let x=clamp(value,0.0,1.0)*f32(SHUTTER_SIZE-1u);let i=min(u32(x),SHUTTER_SIZE-1u);
+    let address=p(8u)+(data_word(D_cam_shutter_table_offset)+i)*4u;let t=x-f32(i);let first=heap_float(address);
+    if(t==0.0){return first;}
+    return (1.0-t)*first+t*heap_float(p(8u)+(data_word(D_cam_shutter_table_offset)+min(i+1u,SHUTTER_SIZE-1u))*4u);
+}
+// Preserve native float3 normalization at transparent/volume boundary corners.
+// Captures retain the originating host's SSE division or scalar reciprocal rule.
+fn camera_normalize(v:vec3<f32>)->vec3<f32>{
+    if(CAMERA_NATIVE_VECTOR_DIVIDE!=0u){return rounded_normalize(v);}
+    return v*rounded_divide(1.0,rounded_sqrt(rounded_dot(v,v)));
+}
+fn camera_projection(address:u32,v:vec4<f32>)->vec3<f32>{
+    // Native float4 dot rounds paired sums before perspective division.
+    // Fused projection multiply-add can make a ray cross a box corner twice.
+    let w=motion_dot4(heap_vec4(address+48u),v);
+    let c=vec3<f32>(motion_dot4(heap_vec4(address),v),motion_dot4(heap_vec4(address+16u),v),motion_dot4(heap_vec4(address+32u),v));
+    if(w==0.0){return vec3<f32>(0);}
+    if(CAMERA_NATIVE_VECTOR_DIVIDE!=0u){return vec3<f32>(rounded_divide(c.x,w),rounded_divide(c.y,w),rounded_divide(c.z,w));}
+    return c*rounded_divide(1.0,w);
 }
 @compute @workgroup_size(64) fn init_camera(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}
@@ -58,18 +74,34 @@ fn camera_direction(v:vec3<f32>)->vec3<f32>{
     var raster=vec2<f32>(f32(x),f32(y));
     if(data_word(D_integrator_pixel_jitter)==0x7f7fffffu){raster+=vec2<f32>(filter_value(uv.x),filter_value(uv.y));}
     else{raster-=vec2<f32>(data_float(D_integrator_pixel_jitter),data_float(D_integrator_pixel_jitter+4u));}
+    var time=0.5;
+    if(data_float(D_cam_shuttertime)!=-1.0){
+        time=camera_shutter(native_rng(sample_id,rng,RNG_LENS_TIME).x);
+        if(data_word(D_cam_rolling_shutter_type)!=0u){
+            let row_time=1.0-f32(y)/data_float(D_cam_height);let duration=data_float(D_cam_rolling_shutter_duration);
+            if(duration!=0.0){time=(time-0.5)*duration;time+=(row_time-0.5)*(1.0-duration)+0.5;}
+            else{time=row_time;}
+        }
+    }
     let rt=p(6u)+D_cam_rastertocamera;let v=vec4<f32>(raster,0.0,1.0);
-    let pc=vec3<f32>(dot(heap_vec4(rt),v),dot(heap_vec4(rt+16u),v),dot(heap_vec4(rt+32u),v))/dot(heap_vec4(rt+48u),v);
-    let center=camera_direction(pc);let direction=normalize(center);
-    let dx=normalize(center+heap_vec3(p(6u)+D_cam_dx))-direction;
-    let dy=normalize(center+heap_vec3(p(6u)+D_cam_dy))-direction;
+    var pc=camera_projection(rt,v);
+    if(data_word(D_cam_have_perspective_motion)!=0u){
+        if(time<0.5){let before=camera_projection(p(6u)+D_cam_perspective_pre,v);pc=before+(pc-before)*(time*2.0);}
+        else{let after=camera_projection(p(6u)+D_cam_perspective_post,v);pc=pc+(after-pc)*((time-0.5)*2.0);}
+    }
+    var world=motion_transform_load(p(6u)+D_cam_cameratoworld);
+    let steps=data_word(D_cam_num_motion_steps);
+    if(steps!=0u){world=motion_interpolate(G_camera_motion,0u,steps,time);}
+    if(load_word(p(17u))!=0u){return;}
+    let center=motion_direction(world,pc);let direction=camera_normalize(center);
+    let dx=camera_normalize(center+heap_vec3(p(6u)+D_cam_dx))-direction;
+    let dy=camera_normalize(center+heap_vec3(p(6u)+D_cam_dy))-direction;
     let dd=(0.5*(length(dx)+length(dy)))*data_float(D_cam_differential_scale);
-    let zi=1.0/normalize(pc).z;let near=data_float(D_cam_nearclip)*zi;
-    let world=p(6u)+D_cam_cameratoworld;
-    let origin=vec3<f32>(heap_float(world+12u),heap_float(world+28u),heap_float(world+44u))+near*direction;
+    let zi=rounded_divide(1.0,camera_normalize(pc).z);let near=data_float(D_cam_nearclip)*zi;
+    let origin=vec3<f32>(world.x.w,world.y.w,world.z.w)+near*direction;
     state_vec3(S_ray_P,path,origin);state_vec3(S_ray_D,path,direction);
     state_f32(S_ray_dP,path,near*dd);state_f32(S_ray_dD,path,dd);
-    state_f32(S_ray_tmin,path,0.0);state_f32(S_ray_tmax,path,data_float(D_cam_cliplength)*zi);state_f32(S_ray_time,path,0.5);
+    state_f32(S_ray_tmin,path,0.0);state_f32(S_ray_tmax,path,data_float(D_cam_cliplength)*zi);state_f32(S_ray_time,path,time);
     state_u32(S_path_sample,path,sample_id);state_u32(S_path_rng_pixel,path,rng);state_u16(S_path_rng_offset,path,RNG_BOUNCE);
     state_u16(S_path_bounce,path,0u);state_u16(S_path_diffuse_bounce,path,0u);state_u16(S_path_glossy_bounce,path,0u);
     state_u16(S_path_transmission_bounce,path,0u);state_u16(S_path_transparent_bounce,path,0u);
@@ -78,7 +110,13 @@ fn camera_direction(v:vec3<f32>)->vec3<f32>{
     state_f32(S_path_mis_ray_pdf,path,0.0);state_u32(S_path_min_ray_pdf,path,0x7f7fffffu);
     state_f32(S_path_continuation_probability,path,1.0);state_vec3(S_path_throughput,path,vec3<f32>(1.0));
     state_f32(S_path_optical_depth,path,0.0);state_u32(S_isect_object,path,NONE);state_u32(S_isect_prim,path,NONE);state_u32(S_isect_type,path,PRIM_TYPE_NONE);
+    if(volume_enabled()){
+        store_word(volume_stack_address(path,0u,VS_object),data_word(D_background_object_index));
+        store_word(volume_stack_address(path,0u,VS_shader),data_word(D_background_volume_shader));
+        store_word(volume_stack_address(path,1u,VS_object),NONE);store_word(volume_stack_address(path,1u,VS_shader),NONE);
+    }
     let counter=load_word(p(7u)+S_queue_counter);
     if(retry){atomicSub(&heap[(counter+K_CAMERA*4u)/4u],1u);}
-    atomicAdd(&heap[(counter+K_CLOSEST*4u)/4u],1u);state_u16(S_path_queued_kernel,path,K_CLOSEST);
+    let next=select(K_CLOSEST,DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK,data_word(D_cam_is_inside_volume)!=0u);
+    atomicAdd(&heap[(counter+next*4u)/4u],1u);state_u16(S_path_queued_kernel,path,next);
 }

@@ -1,0 +1,930 @@
+{
+  "schemaVersion": 1,
+  "copyright": "Copyright (c) 2026 Jeremy Ellis and contributors",
+  "scope": "Links to immutable prior validation, not newly executed render results. Source hashes force review after implementation edits.",
+  "checkpoints": {
+    "native-render": {
+      "report": "native/evidence/license-clean-render/validation.json",
+      "sha256": "66d70232fe784744d8cfc545c1b04fbe48d8e77037c94a2657502bf839bd094e",
+      "kind": "native-host",
+      "rid": "linux-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/fullCyclesParity",
+          "equals": false
+        },
+        {
+          "pointer": "/nativeResults/linux-x64/nativeSceneAndScheduler",
+          "equals": true
+        },
+        {
+          "pointer": "/nativeResults/linux-x64/independentCpuImage",
+          "equals": true
+        },
+        {
+          "pointer": "/nativeResults/linux-x64/repeatBitwiseIdentical",
+          "equals": true
+        }
+      ],
+      "sourceSha256": {
+        "native/cycles/background.cpp": "99e09d58c76ed24e364eae7cb888284309f61250125cbaa3b0f03e4d86508b5e",
+        "native/cycles/background_gate.cpp": "d6e5fd073fe566063fd06453b7aef781fac52c262c62c19770041d2cf7cc4399",
+        "native/cycles/background_reference.cpp": "7479086ab823e01476df0cbe0026f46ee24504d1ccda3d01912cabd087fbfaa4",
+        "native/cycles/background_reference.h": "ef6285922f1ff3c001c6550dab349fd871fcbf31ba337181ffc3289408f4527f",
+        "native/cycles/camera.cpp": "c79e4978d158fde214e5d2184a7751e5f96384abbbccbec1cd41db2df7f78636",
+        "native/cycles/camera_gate.cpp": "d370a0cc9fbe8280b19bb3560499b9c07b08173c62a70f720c7cc29b01f73c32",
+        "native/cycles/camera_reference.cpp": "c56e2b2be1a6c3cf5919212d5c8acb4837fc0d7a350385cd9cc6df69fef9a695",
+        "native/cycles/camera_reference.h": "8b532b8c7a6b4d43d0917e70458b61299f625dcec7ded6bfcfd9407f7bec8993",
+        "native/cycles/closest.cpp": "c3989571b7237bfc99486af366d57d716e8aa3bb3e033205d02c034fe09d1f9d",
+        "native/cycles/closest_gate.cpp": "02c4d4ac8e9956a2648ec3a20b3a5f6c278cddb9998ecce9d09f3d07537d2d84",
+        "native/cycles/closest_reference.cpp": "f928e9f3eeece66a43d6ef713be9170a46be617c0448d397ca617778a02649df",
+        "native/cycles/closest_reference.h": "53ba55ecd16b2a1c008db70e73a4a1067447f8f6a10b0530e4ef5d678dc19ba3",
+        "native/cycles/control_reference.cpp": "3a602b35b62a52ca9a534324bd60ea948bd7a140f251f21639a9313605997e60",
+        "native/cycles/control_reference.h": "51eecfba0b32292e0524cefde8aee07baa11906a8a2a6091687e14040dcbc716",
+        "native/cycles/device.cpp": "f19fc2d10d22122f393516cf1d174a715fecadccaf3636489e64f3ff8dc8a062",
+        "native/cycles/device.h": "859155f91196ac4fae323ecf59d74b097e1db0a0d849ab7dc1d91471c61c060d",
+        "native/cycles/gate.cpp": "739c2a9bbbfc34e42fba2a9e70e014cffe3a2eaa6446b3e07bdded47ca43e87a",
+        "native/cycles/queue.cpp": "31aabd389217e90e72fcdc0991bf4ea5ce84c1e863f57f3bc00fa200f997400f",
+        "native/cycles/render_capture.h": "357bd372e18e41ba815d36c4f335fcaf02df33fa3647cb3ee2c4592288dfa66d",
+        "native/cycles/render_gate.cpp": "7ae8405d19bef9b9f9a67173593ec312c358f2be73daeab8230cf9a52488b790",
+        "native/cycles/shader_data.cpp": "194ea8f1111143828197d5408232388f2a8bcd02863eeed267a08ea04a6ddc73",
+        "native/cycles/shader_data_gate.cpp": "d5b500fb985a101d0284812be1a8ac533142263a3d874f6906585c251b8df865",
+        "native/cycles/shader_data_reference.cpp": "e78b019b585660b7820e7b0d1a397b20f0575eb1c953b4b33d2fa7843c836bb2",
+        "native/cycles/shader_data_reference.h": "7d0051df8d215d5c25c9ff2bf65119f91ff96656da9108384714422d29e971e5",
+        "native/cycles/surface.cpp": "a3bad6900c45407bca3fca0ff6601e612e62e7fb515df2424bb111065bcfe208",
+        "native/cycles/surface_fixture.h": "122528adaa4e5d122532eb49e6f57c4739a5e87e72956803bca3fd5ea34c601b",
+        "native/cycles/surface_gate.cpp": "3e25fc9f3f5c7ddd465d3d4453353a3d36e0b3599827bf7e2136e3bc788dc98e",
+        "native/cycles/surface_reference.cpp": "32932282fda9de4418cfcabbc18883bc147a34ba11570d7f311743dec1267f2e",
+        "native/cycles/surface_reference.h": "4d5b07cf50f6ac8e32569f7549d3d60789ecf46234e1be3eb92acd5966cfd872",
+        "native/cycles/svm_layout.cpp": "58f151820f2d9bf5598fda2aee4ab2ba61dcb3853f8094d925e81f04f20417b7",
+        "native/cycles/svm_surface_gate.cpp": "bd6f59f9584b952dd13e3fcc00d6656d6187f0e6780dd9928707ed89c25d120e",
+        "native/cycles/svm_surface_reference.cpp": "f93093bb2f8e641741124738dbbbd8b923f96670c9d0f6f21d8f1924591ee14a",
+        "native/cycles/svm_surface_reference.h": "3f85aaf08fdfe409415e31ab0e72610d8a39a91b26a240135e5adb120bc56827",
+        "native/cycles/svm_world_gate.cpp": "49bd644395ad2b90e49f93c0b5082e881cf45cb2c9e58be6e2bb4fb742195b3f",
+        "native/cycles/wavefront.h": "3b72c7a0f4272d56d45845a3687c6f3868bd0bce38885f36ed481d927dfa5117",
+        "native/cycles/wavefront_test.h": "a4a6e4125fa9f77b9000328a1cb11bf107d758511f0147d749ae405667675d7f",
+        "native/include/cycles_backend.h": "33cc7a3281aee60db16f17ccc000f8b7a3041d7059bdd99b1399d377b6d6c3a3",
+        "native/shaders/controls.wgsl": "99cd233e203b3300ffd852fc69c123f2e05e5d74860ec58bd6db3536a1d2c8b6",
+        "native/shaders/queue.wgsl": "f81a271ebfaf2031438fed467348e73ed02929925fe51dbdac581539f184d08d",
+        "native/shaders/wavefront_background.wgsl": "32bd1218fef5207ac623eb71b867ebb60b1bbc1e4d806a00f6a456aaa2f0f4f6",
+        "native/shaders/wavefront_camera.wgsl": "76a9412c0b5a1489395cc7d14f33dcfe1255693c4e96052eb4e3ce650d279248",
+        "native/shaders/wavefront_closest.wgsl": "e1350cf373f5e3ec2473f6f243dbf339346a4383efc78437beafdb153c3da998",
+        "native/shaders/wavefront_common.wgsl": "88bce5cd1e010e872bcf633c0f6ecc095fe005aff92bcfd2355e8dfc9c498092",
+        "native/shaders/wavefront_shader_data.wgsl": "687ad480af29663d6bd46fb03fd43bc1358a7c812066fc4a57de1eba16c63d35",
+        "native/shaders/wavefront_surface.wgsl": "d58e491b64c4a54cc4c8c8c905b9c147e50d1c2e5503a9d53c15bc4f45459077",
+        "native/shaders/wavefront_svm.wgsl": "49c215814ee95315d09479b9b1155483c7bf4ffcc5d7136df3fbd758709933aa",
+        "native/shaders/wavefront_svm_closures.wgsl": "44a8c6b8f320d1ab2cacd3f7ca2dedaa841c91b1b0f5674f1f43203ecb476bae",
+        "native/shaders/wavefront_triangle.wgsl": "20651be0cf233affab6ed00473b003798c2dfa2b0de44b7bb4a4773df8f69173",
+        "native/src/backend.cpp": "685f0bc323af8b4fd512d06c1f1978582b1968863102dad54372ce33a6b4f993",
+        "native/src/scene_data.cpp": "b4712505aa8287cd9b8d0d50f348285bd04330d663e89a18b1d1fdd5ca912cb3",
+        "native/src/scene_data.h": "a056a16e2d30e0aabfddb92157473b5dcfad51f23e0da4e17ca1c35699c11253",
+        "native/src/webgpu_device.cpp": "1567133aa72b2d09ad052f5542473ab71b4a743c2f1bd7458d2cf344e2d93732",
+        "native/src/webgpu_device.h": "cf6065098f9f514eaaa918c1dbd1b448f49062bd188006880821ff2e542cf455",
+        "parity/shaders/camera.wgsl": "9db2665f8e5f042ec1aca88824baf70941d4fd9bc9b053d54e88a3df141d5ff7",
+        "parity/shaders/closures.wgsl": "ac475937c6f94bcfda8113a335fd79c337082cc1977a3d6a1d032db6e463f943",
+        "parity/shaders/light_sampling.wgsl": "1265af6c93c7796bd962cbd815b70411e69b71f0f915c6795193046424e424b4",
+        "parity/shaders/lighting.wgsl": "ae49ad12a5808eaaacc472ba01ff3177a4164779657162247b42fbc72d5ea3dc",
+        "parity/shaders/lighting_none.wgsl": "db0c4df6cade0f32918145f9b3d6cfb3022a0feea4a2e2ab5c7afa93a4adf1a2",
+        "parity/shaders/material.wgsl": "5f2998c93923bdd56819cbe2f8ca5c9be4972919e15435d6c85f9d7128fe7c51",
+        "parity/shaders/path_inputs.wgsl": "f071b6a7a5e8d98d9d4da99fee37b5461e96a9af99f19fc60cc33d2bb34b2c20",
+        "parity/shaders/pathtrace.wgsl": "0a322550108ef0c7dbc90edd6fb00cc581e1e7ce48a8f0e548f57bef5cc70af8",
+        "parity/shaders/pixel_trace.wgsl": "648e11e396d44cc04ccbf981f39bb971d34087059c369a9ec881afa722add913",
+        "parity/shaders/sampling.wgsl": "72a38f21c7382c02b000961f59c30226b30d3878a3bebe323ae6dbc9b42f33fe",
+        "parity/shaders/svm.wgsl": "046b141acedcb084e010c03b3809f6943ae968fd89ade8411f927645cef800a3",
+        "research/FEASIBILITY.md": "ddae3c716acc4bfe63fa15b63614d44aed5b6a16611f63c3971471afee8cf51b",
+        "research/GpuProbe/GpuProbe.csproj": "d10b359004e41ca7f9f727860f1b63555cb89030360d6af36770dfbb9a2d5e72",
+        "research/GpuProbe/Program.cs": "a30dafac69a33adde93b70b8ff898785fac206b6c23607ff815aa21e3b5d2366",
+        "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
+        "research/archive.py": "ba0295e99888f5d960caf917346b55eedd0a91bf44e1906333e59c1f4ef72fb7",
+        "research/bvh.py": "275d58b2d90cb3ead5ce89526a1310f5ac617b2b0ca60c2662dab6cb01242b22",
+        "research/native/bvh_reference.cpp": "ace837fa888ff8fff6b5d2c942005161c7bf640ee73d0977cf0214bf84abb32a",
+        "research/native/gpu_probe.cpp": "77abee63a07a321223810641cc3010894580cc39a15bb46cc574bd7c9a42a6ae",
+        "research/native/reference.cpp": "f9ae0aaa46fd34904f654db4a2e157b7716f66bb5aa4255f220eacfd2e02dd51",
+        "research/native_runner.py": "5ddd7c88e22d2873efe8142082965b0f9ef129160bb962e01bb0d03d6b5985f3",
+        "research/numerics.py": "7830a3588bfc54f227009d96c0a58cecb2530aebd38e8b7e15cd7b56e0c048f6",
+        "research/run.py": "f6ab4deb4d8b983b6daf832e230fc7ec42a30fcd423dc0ad59de2c96a3aa7687",
+        "research/shaders/bvh.wgsl": "47634bb7796ca681b12e31448a2fee6e841782f463a49aa3102d984b758f49a0",
+        "research/translate.py": "e853b3ab5d0cabfe9698fcb3e2ecd10e3f5ff2873ae87498a9b810fc7c113309"
+      },
+      "scope": "Native Cycles scene preparation and original GPU scheduler drive a repeated complete multi-bounce selected-material render through unchanged shipped WebGPU; full command replay on four GPUs"
+    },
+    "device-queue": {
+      "report": "native/evidence/license-clean-render/regressions/device-queue/validation.json",
+      "sha256": "b7ff8523c2e62281221a15b7a4064a98b65466135ed0fbe9579c08d9c6b7f161",
+      "kind": "isolated-or-integrated",
+      "rid": "linux-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        }
+      ],
+      "sourceSha256": {
+        "native/cycles/background.cpp": "99e09d58c76ed24e364eae7cb888284309f61250125cbaa3b0f03e4d86508b5e",
+        "native/cycles/background_gate.cpp": "d6e5fd073fe566063fd06453b7aef781fac52c262c62c19770041d2cf7cc4399",
+        "native/cycles/background_reference.cpp": "7479086ab823e01476df0cbe0026f46ee24504d1ccda3d01912cabd087fbfaa4",
+        "native/cycles/background_reference.h": "ef6285922f1ff3c001c6550dab349fd871fcbf31ba337181ffc3289408f4527f",
+        "native/cycles/camera.cpp": "c79e4978d158fde214e5d2184a7751e5f96384abbbccbec1cd41db2df7f78636",
+        "native/cycles/camera_gate.cpp": "d370a0cc9fbe8280b19bb3560499b9c07b08173c62a70f720c7cc29b01f73c32",
+        "native/cycles/camera_reference.cpp": "c56e2b2be1a6c3cf5919212d5c8acb4837fc0d7a350385cd9cc6df69fef9a695",
+        "native/cycles/camera_reference.h": "8b532b8c7a6b4d43d0917e70458b61299f625dcec7ded6bfcfd9407f7bec8993",
+        "native/cycles/closest.cpp": "c3989571b7237bfc99486af366d57d716e8aa3bb3e033205d02c034fe09d1f9d",
+        "native/cycles/closest_gate.cpp": "02c4d4ac8e9956a2648ec3a20b3a5f6c278cddb9998ecce9d09f3d07537d2d84",
+        "native/cycles/closest_reference.cpp": "f928e9f3eeece66a43d6ef713be9170a46be617c0448d397ca617778a02649df",
+        "native/cycles/closest_reference.h": "53ba55ecd16b2a1c008db70e73a4a1067447f8f6a10b0530e4ef5d678dc19ba3",
+        "native/cycles/control_reference.cpp": "3a602b35b62a52ca9a534324bd60ea948bd7a140f251f21639a9313605997e60",
+        "native/cycles/control_reference.h": "51eecfba0b32292e0524cefde8aee07baa11906a8a2a6091687e14040dcbc716",
+        "native/cycles/device.cpp": "f19fc2d10d22122f393516cf1d174a715fecadccaf3636489e64f3ff8dc8a062",
+        "native/cycles/device.h": "859155f91196ac4fae323ecf59d74b097e1db0a0d849ab7dc1d91471c61c060d",
+        "native/cycles/gate.cpp": "739c2a9bbbfc34e42fba2a9e70e014cffe3a2eaa6446b3e07bdded47ca43e87a",
+        "native/cycles/queue.cpp": "31aabd389217e90e72fcdc0991bf4ea5ce84c1e863f57f3bc00fa200f997400f",
+        "native/cycles/render_capture.h": "357bd372e18e41ba815d36c4f335fcaf02df33fa3647cb3ee2c4592288dfa66d",
+        "native/cycles/render_gate.cpp": "7ae8405d19bef9b9f9a67173593ec312c358f2be73daeab8230cf9a52488b790",
+        "native/cycles/shader_data.cpp": "194ea8f1111143828197d5408232388f2a8bcd02863eeed267a08ea04a6ddc73",
+        "native/cycles/shader_data_gate.cpp": "d5b500fb985a101d0284812be1a8ac533142263a3d874f6906585c251b8df865",
+        "native/cycles/shader_data_reference.cpp": "e78b019b585660b7820e7b0d1a397b20f0575eb1c953b4b33d2fa7843c836bb2",
+        "native/cycles/shader_data_reference.h": "7d0051df8d215d5c25c9ff2bf65119f91ff96656da9108384714422d29e971e5",
+        "native/cycles/surface.cpp": "a3bad6900c45407bca3fca0ff6601e612e62e7fb515df2424bb111065bcfe208",
+        "native/cycles/surface_fixture.h": "122528adaa4e5d122532eb49e6f57c4739a5e87e72956803bca3fd5ea34c601b",
+        "native/cycles/surface_gate.cpp": "3e25fc9f3f5c7ddd465d3d4453353a3d36e0b3599827bf7e2136e3bc788dc98e",
+        "native/cycles/surface_reference.cpp": "32932282fda9de4418cfcabbc18883bc147a34ba11570d7f311743dec1267f2e",
+        "native/cycles/surface_reference.h": "4d5b07cf50f6ac8e32569f7549d3d60789ecf46234e1be3eb92acd5966cfd872",
+        "native/cycles/svm_layout.cpp": "58f151820f2d9bf5598fda2aee4ab2ba61dcb3853f8094d925e81f04f20417b7",
+        "native/cycles/svm_surface_gate.cpp": "bd6f59f9584b952dd13e3fcc00d6656d6187f0e6780dd9928707ed89c25d120e",
+        "native/cycles/svm_surface_reference.cpp": "f93093bb2f8e641741124738dbbbd8b923f96670c9d0f6f21d8f1924591ee14a",
+        "native/cycles/svm_surface_reference.h": "3f85aaf08fdfe409415e31ab0e72610d8a39a91b26a240135e5adb120bc56827",
+        "native/cycles/svm_world_gate.cpp": "49bd644395ad2b90e49f93c0b5082e881cf45cb2c9e58be6e2bb4fb742195b3f",
+        "native/cycles/wavefront.h": "3b72c7a0f4272d56d45845a3687c6f3868bd0bce38885f36ed481d927dfa5117",
+        "native/cycles/wavefront_test.h": "a4a6e4125fa9f77b9000328a1cb11bf107d758511f0147d749ae405667675d7f",
+        "native/include/cycles_backend.h": "33cc7a3281aee60db16f17ccc000f8b7a3041d7059bdd99b1399d377b6d6c3a3",
+        "native/shaders/controls.wgsl": "99cd233e203b3300ffd852fc69c123f2e05e5d74860ec58bd6db3536a1d2c8b6",
+        "native/shaders/queue.wgsl": "f81a271ebfaf2031438fed467348e73ed02929925fe51dbdac581539f184d08d",
+        "native/shaders/wavefront_background.wgsl": "32bd1218fef5207ac623eb71b867ebb60b1bbc1e4d806a00f6a456aaa2f0f4f6",
+        "native/shaders/wavefront_camera.wgsl": "76a9412c0b5a1489395cc7d14f33dcfe1255693c4e96052eb4e3ce650d279248",
+        "native/shaders/wavefront_closest.wgsl": "e1350cf373f5e3ec2473f6f243dbf339346a4383efc78437beafdb153c3da998",
+        "native/shaders/wavefront_common.wgsl": "88bce5cd1e010e872bcf633c0f6ecc095fe005aff92bcfd2355e8dfc9c498092",
+        "native/shaders/wavefront_shader_data.wgsl": "687ad480af29663d6bd46fb03fd43bc1358a7c812066fc4a57de1eba16c63d35",
+        "native/shaders/wavefront_surface.wgsl": "d58e491b64c4a54cc4c8c8c905b9c147e50d1c2e5503a9d53c15bc4f45459077",
+        "native/shaders/wavefront_svm.wgsl": "49c215814ee95315d09479b9b1155483c7bf4ffcc5d7136df3fbd758709933aa",
+        "native/shaders/wavefront_svm_closures.wgsl": "44a8c6b8f320d1ab2cacd3f7ca2dedaa841c91b1b0f5674f1f43203ecb476bae",
+        "native/shaders/wavefront_triangle.wgsl": "20651be0cf233affab6ed00473b003798c2dfa2b0de44b7bb4a4773df8f69173",
+        "native/src/backend.cpp": "685f0bc323af8b4fd512d06c1f1978582b1968863102dad54372ce33a6b4f993",
+        "native/src/scene_data.cpp": "b4712505aa8287cd9b8d0d50f348285bd04330d663e89a18b1d1fdd5ca912cb3",
+        "native/src/scene_data.h": "a056a16e2d30e0aabfddb92157473b5dcfad51f23e0da4e17ca1c35699c11253",
+        "native/src/webgpu_device.cpp": "1567133aa72b2d09ad052f5542473ab71b4a743c2f1bd7458d2cf344e2d93732",
+        "native/src/webgpu_device.h": "cf6065098f9f514eaaa918c1dbd1b448f49062bd188006880821ff2e542cf455",
+        "parity/shaders/camera.wgsl": "9db2665f8e5f042ec1aca88824baf70941d4fd9bc9b053d54e88a3df141d5ff7",
+        "parity/shaders/closures.wgsl": "ac475937c6f94bcfda8113a335fd79c337082cc1977a3d6a1d032db6e463f943",
+        "parity/shaders/light_sampling.wgsl": "1265af6c93c7796bd962cbd815b70411e69b71f0f915c6795193046424e424b4",
+        "parity/shaders/lighting.wgsl": "ae49ad12a5808eaaacc472ba01ff3177a4164779657162247b42fbc72d5ea3dc",
+        "parity/shaders/lighting_none.wgsl": "db0c4df6cade0f32918145f9b3d6cfb3022a0feea4a2e2ab5c7afa93a4adf1a2",
+        "parity/shaders/material.wgsl": "5f2998c93923bdd56819cbe2f8ca5c9be4972919e15435d6c85f9d7128fe7c51",
+        "parity/shaders/path_inputs.wgsl": "f071b6a7a5e8d98d9d4da99fee37b5461e96a9af99f19fc60cc33d2bb34b2c20",
+        "parity/shaders/pathtrace.wgsl": "0a322550108ef0c7dbc90edd6fb00cc581e1e7ce48a8f0e548f57bef5cc70af8",
+        "parity/shaders/pixel_trace.wgsl": "648e11e396d44cc04ccbf981f39bb971d34087059c369a9ec881afa722add913",
+        "parity/shaders/sampling.wgsl": "72a38f21c7382c02b000961f59c30226b30d3878a3bebe323ae6dbc9b42f33fe",
+        "parity/shaders/svm.wgsl": "046b141acedcb084e010c03b3809f6943ae968fd89ade8411f927645cef800a3",
+        "research/FEASIBILITY.md": "ddae3c716acc4bfe63fa15b63614d44aed5b6a16611f63c3971471afee8cf51b",
+        "research/GpuProbe/GpuProbe.csproj": "d10b359004e41ca7f9f727860f1b63555cb89030360d6af36770dfbb9a2d5e72",
+        "research/GpuProbe/Program.cs": "a30dafac69a33adde93b70b8ff898785fac206b6c23607ff815aa21e3b5d2366",
+        "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
+        "research/archive.py": "ba0295e99888f5d960caf917346b55eedd0a91bf44e1906333e59c1f4ef72fb7",
+        "research/bvh.py": "275d58b2d90cb3ead5ce89526a1310f5ac617b2b0ca60c2662dab6cb01242b22",
+        "research/native/bvh_reference.cpp": "ace837fa888ff8fff6b5d2c942005161c7bf640ee73d0977cf0214bf84abb32a",
+        "research/native/gpu_probe.cpp": "77abee63a07a321223810641cc3010894580cc39a15bb46cc574bd7c9a42a6ae",
+        "research/native/reference.cpp": "f9ae0aaa46fd34904f654db4a2e157b7716f66bb5aa4255f220eacfd2e02dd51",
+        "research/native_runner.py": "5ddd7c88e22d2873efe8142082965b0f9ef129160bb962e01bb0d03d6b5985f3",
+        "research/numerics.py": "7830a3588bfc54f227009d96c0a58cecb2530aebd38e8b7e15cd7b56e0c048f6",
+        "research/run.py": "f6ab4deb4d8b983b6daf832e230fc7ec42a30fcd423dc0ad59de2c96a3aa7687",
+        "research/shaders/bvh.wgsl": "47634bb7796ca681b12e31448a2fee6e841782f463a49aa3102d984b758f49a0",
+        "research/translate.py": "e853b3ab5d0cabfe9698fcb3e2ecd10e3f5ff2873ae87498a9b810fc7c113309"
+      },
+      "scope": "Registered Cycles device, scene uploads and wavefront control (control gate only)"
+    },
+    "camera-queue": {
+      "report": "native/evidence/license-clean-render/regressions/camera-queue/validation.json",
+      "sha256": "f5e70e38f18b677727371b904215c3fd230b11507dca8f4a8011617b02cc089b",
+      "kind": "isolated-or-integrated",
+      "rid": "linux-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        }
+      ],
+      "sourceSha256": {
+        "native/cycles/background.cpp": "99e09d58c76ed24e364eae7cb888284309f61250125cbaa3b0f03e4d86508b5e",
+        "native/cycles/background_gate.cpp": "d6e5fd073fe566063fd06453b7aef781fac52c262c62c19770041d2cf7cc4399",
+        "native/cycles/background_reference.cpp": "7479086ab823e01476df0cbe0026f46ee24504d1ccda3d01912cabd087fbfaa4",
+        "native/cycles/background_reference.h": "ef6285922f1ff3c001c6550dab349fd871fcbf31ba337181ffc3289408f4527f",
+        "native/cycles/camera.cpp": "c79e4978d158fde214e5d2184a7751e5f96384abbbccbec1cd41db2df7f78636",
+        "native/cycles/camera_gate.cpp": "d370a0cc9fbe8280b19bb3560499b9c07b08173c62a70f720c7cc29b01f73c32",
+        "native/cycles/camera_reference.cpp": "c56e2b2be1a6c3cf5919212d5c8acb4837fc0d7a350385cd9cc6df69fef9a695",
+        "native/cycles/camera_reference.h": "8b532b8c7a6b4d43d0917e70458b61299f625dcec7ded6bfcfd9407f7bec8993",
+        "native/cycles/closest.cpp": "c3989571b7237bfc99486af366d57d716e8aa3bb3e033205d02c034fe09d1f9d",
+        "native/cycles/closest_gate.cpp": "02c4d4ac8e9956a2648ec3a20b3a5f6c278cddb9998ecce9d09f3d07537d2d84",
+        "native/cycles/closest_reference.cpp": "f928e9f3eeece66a43d6ef713be9170a46be617c0448d397ca617778a02649df",
+        "native/cycles/closest_reference.h": "53ba55ecd16b2a1c008db70e73a4a1067447f8f6a10b0530e4ef5d678dc19ba3",
+        "native/cycles/control_reference.cpp": "3a602b35b62a52ca9a534324bd60ea948bd7a140f251f21639a9313605997e60",
+        "native/cycles/control_reference.h": "51eecfba0b32292e0524cefde8aee07baa11906a8a2a6091687e14040dcbc716",
+        "native/cycles/device.cpp": "f19fc2d10d22122f393516cf1d174a715fecadccaf3636489e64f3ff8dc8a062",
+        "native/cycles/device.h": "859155f91196ac4fae323ecf59d74b097e1db0a0d849ab7dc1d91471c61c060d",
+        "native/cycles/gate.cpp": "739c2a9bbbfc34e42fba2a9e70e014cffe3a2eaa6446b3e07bdded47ca43e87a",
+        "native/cycles/queue.cpp": "31aabd389217e90e72fcdc0991bf4ea5ce84c1e863f57f3bc00fa200f997400f",
+        "native/cycles/render_capture.h": "357bd372e18e41ba815d36c4f335fcaf02df33fa3647cb3ee2c4592288dfa66d",
+        "native/cycles/render_gate.cpp": "7ae8405d19bef9b9f9a67173593ec312c358f2be73daeab8230cf9a52488b790",
+        "native/cycles/shader_data.cpp": "194ea8f1111143828197d5408232388f2a8bcd02863eeed267a08ea04a6ddc73",
+        "native/cycles/shader_data_gate.cpp": "d5b500fb985a101d0284812be1a8ac533142263a3d874f6906585c251b8df865",
+        "native/cycles/shader_data_reference.cpp": "e78b019b585660b7820e7b0d1a397b20f0575eb1c953b4b33d2fa7843c836bb2",
+        "native/cycles/shader_data_reference.h": "7d0051df8d215d5c25c9ff2bf65119f91ff96656da9108384714422d29e971e5",
+        "native/cycles/surface.cpp": "a3bad6900c45407bca3fca0ff6601e612e62e7fb515df2424bb111065bcfe208",
+        "native/cycles/surface_fixture.h": "122528adaa4e5d122532eb49e6f57c4739a5e87e72956803bca3fd5ea34c601b",
+        "native/cycles/surface_gate.cpp": "3e25fc9f3f5c7ddd465d3d4453353a3d36e0b3599827bf7e2136e3bc788dc98e",
+        "native/cycles/surface_reference.cpp": "32932282fda9de4418cfcabbc18883bc147a34ba11570d7f311743dec1267f2e",
+        "native/cycles/surface_reference.h": "4d5b07cf50f6ac8e32569f7549d3d60789ecf46234e1be3eb92acd5966cfd872",
+        "native/cycles/svm_layout.cpp": "58f151820f2d9bf5598fda2aee4ab2ba61dcb3853f8094d925e81f04f20417b7",
+        "native/cycles/svm_surface_gate.cpp": "bd6f59f9584b952dd13e3fcc00d6656d6187f0e6780dd9928707ed89c25d120e",
+        "native/cycles/svm_surface_reference.cpp": "f93093bb2f8e641741124738dbbbd8b923f96670c9d0f6f21d8f1924591ee14a",
+        "native/cycles/svm_surface_reference.h": "3f85aaf08fdfe409415e31ab0e72610d8a39a91b26a240135e5adb120bc56827",
+        "native/cycles/svm_world_gate.cpp": "49bd644395ad2b90e49f93c0b5082e881cf45cb2c9e58be6e2bb4fb742195b3f",
+        "native/cycles/wavefront.h": "3b72c7a0f4272d56d45845a3687c6f3868bd0bce38885f36ed481d927dfa5117",
+        "native/cycles/wavefront_test.h": "a4a6e4125fa9f77b9000328a1cb11bf107d758511f0147d749ae405667675d7f",
+        "native/include/cycles_backend.h": "33cc7a3281aee60db16f17ccc000f8b7a3041d7059bdd99b1399d377b6d6c3a3",
+        "native/shaders/controls.wgsl": "99cd233e203b3300ffd852fc69c123f2e05e5d74860ec58bd6db3536a1d2c8b6",
+        "native/shaders/queue.wgsl": "f81a271ebfaf2031438fed467348e73ed02929925fe51dbdac581539f184d08d",
+        "native/shaders/wavefront_background.wgsl": "32bd1218fef5207ac623eb71b867ebb60b1bbc1e4d806a00f6a456aaa2f0f4f6",
+        "native/shaders/wavefront_camera.wgsl": "76a9412c0b5a1489395cc7d14f33dcfe1255693c4e96052eb4e3ce650d279248",
+        "native/shaders/wavefront_closest.wgsl": "e1350cf373f5e3ec2473f6f243dbf339346a4383efc78437beafdb153c3da998",
+        "native/shaders/wavefront_common.wgsl": "88bce5cd1e010e872bcf633c0f6ecc095fe005aff92bcfd2355e8dfc9c498092",
+        "native/shaders/wavefront_shader_data.wgsl": "687ad480af29663d6bd46fb03fd43bc1358a7c812066fc4a57de1eba16c63d35",
+        "native/shaders/wavefront_surface.wgsl": "d58e491b64c4a54cc4c8c8c905b9c147e50d1c2e5503a9d53c15bc4f45459077",
+        "native/shaders/wavefront_svm.wgsl": "49c215814ee95315d09479b9b1155483c7bf4ffcc5d7136df3fbd758709933aa",
+        "native/shaders/wavefront_svm_closures.wgsl": "44a8c6b8f320d1ab2cacd3f7ca2dedaa841c91b1b0f5674f1f43203ecb476bae",
+        "native/shaders/wavefront_triangle.wgsl": "20651be0cf233affab6ed00473b003798c2dfa2b0de44b7bb4a4773df8f69173",
+        "native/src/backend.cpp": "685f0bc323af8b4fd512d06c1f1978582b1968863102dad54372ce33a6b4f993",
+        "native/src/scene_data.cpp": "b4712505aa8287cd9b8d0d50f348285bd04330d663e89a18b1d1fdd5ca912cb3",
+        "native/src/scene_data.h": "a056a16e2d30e0aabfddb92157473b5dcfad51f23e0da4e17ca1c35699c11253",
+        "native/src/webgpu_device.cpp": "1567133aa72b2d09ad052f5542473ab71b4a743c2f1bd7458d2cf344e2d93732",
+        "native/src/webgpu_device.h": "cf6065098f9f514eaaa918c1dbd1b448f49062bd188006880821ff2e542cf455",
+        "parity/shaders/camera.wgsl": "9db2665f8e5f042ec1aca88824baf70941d4fd9bc9b053d54e88a3df141d5ff7",
+        "parity/shaders/closures.wgsl": "ac475937c6f94bcfda8113a335fd79c337082cc1977a3d6a1d032db6e463f943",
+        "parity/shaders/light_sampling.wgsl": "1265af6c93c7796bd962cbd815b70411e69b71f0f915c6795193046424e424b4",
+        "parity/shaders/lighting.wgsl": "ae49ad12a5808eaaacc472ba01ff3177a4164779657162247b42fbc72d5ea3dc",
+        "parity/shaders/lighting_none.wgsl": "db0c4df6cade0f32918145f9b3d6cfb3022a0feea4a2e2ab5c7afa93a4adf1a2",
+        "parity/shaders/material.wgsl": "5f2998c93923bdd56819cbe2f8ca5c9be4972919e15435d6c85f9d7128fe7c51",
+        "parity/shaders/path_inputs.wgsl": "f071b6a7a5e8d98d9d4da99fee37b5461e96a9af99f19fc60cc33d2bb34b2c20",
+        "parity/shaders/pathtrace.wgsl": "0a322550108ef0c7dbc90edd6fb00cc581e1e7ce48a8f0e548f57bef5cc70af8",
+        "parity/shaders/pixel_trace.wgsl": "648e11e396d44cc04ccbf981f39bb971d34087059c369a9ec881afa722add913",
+        "parity/shaders/sampling.wgsl": "72a38f21c7382c02b000961f59c30226b30d3878a3bebe323ae6dbc9b42f33fe",
+        "parity/shaders/svm.wgsl": "046b141acedcb084e010c03b3809f6943ae968fd89ade8411f927645cef800a3",
+        "research/FEASIBILITY.md": "ddae3c716acc4bfe63fa15b63614d44aed5b6a16611f63c3971471afee8cf51b",
+        "research/GpuProbe/GpuProbe.csproj": "d10b359004e41ca7f9f727860f1b63555cb89030360d6af36770dfbb9a2d5e72",
+        "research/GpuProbe/Program.cs": "a30dafac69a33adde93b70b8ff898785fac206b6c23607ff815aa21e3b5d2366",
+        "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
+        "research/archive.py": "ba0295e99888f5d960caf917346b55eedd0a91bf44e1906333e59c1f4ef72fb7",
+        "research/bvh.py": "275d58b2d90cb3ead5ce89526a1310f5ac617b2b0ca60c2662dab6cb01242b22",
+        "research/native/bvh_reference.cpp": "ace837fa888ff8fff6b5d2c942005161c7bf640ee73d0977cf0214bf84abb32a",
+        "research/native/gpu_probe.cpp": "77abee63a07a321223810641cc3010894580cc39a15bb46cc574bd7c9a42a6ae",
+        "research/native/reference.cpp": "f9ae0aaa46fd34904f654db4a2e157b7716f66bb5aa4255f220eacfd2e02dd51",
+        "research/native_runner.py": "5ddd7c88e22d2873efe8142082965b0f9ef129160bb962e01bb0d03d6b5985f3",
+        "research/numerics.py": "7830a3588bfc54f227009d96c0a58cecb2530aebd38e8b7e15cd7b56e0c048f6",
+        "research/run.py": "f6ab4deb4d8b983b6daf832e230fc7ec42a30fcd423dc0ad59de2c96a3aa7687",
+        "research/shaders/bvh.wgsl": "47634bb7796ca681b12e31448a2fee6e841782f463a49aa3102d984b758f49a0",
+        "research/translate.py": "e853b3ab5d0cabfe9698fcb3e2ecd10e3f5ff2873ae87498a9b810fc7c113309"
+      },
+      "scope": "Registered Cycles camera entry through original GPU scheduler; static perspective pinhole, tabulated Sobol, ray differentials, sample counts and adaptive skip. Intersection/shading still pending."
+    },
+    "closest-queue": {
+      "report": "native/evidence/license-clean-render/regressions/closest-queue/validation.json",
+      "sha256": "8b7f156f51a3286d13206a72fc60846710b4d109763cb2545cfd2bd52be1afb5",
+      "kind": "isolated-or-integrated",
+      "rid": "linux-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        }
+      ],
+      "sourceSha256": {
+        "native/cycles/background.cpp": "99e09d58c76ed24e364eae7cb888284309f61250125cbaa3b0f03e4d86508b5e",
+        "native/cycles/background_gate.cpp": "d6e5fd073fe566063fd06453b7aef781fac52c262c62c19770041d2cf7cc4399",
+        "native/cycles/background_reference.cpp": "7479086ab823e01476df0cbe0026f46ee24504d1ccda3d01912cabd087fbfaa4",
+        "native/cycles/background_reference.h": "ef6285922f1ff3c001c6550dab349fd871fcbf31ba337181ffc3289408f4527f",
+        "native/cycles/camera.cpp": "c79e4978d158fde214e5d2184a7751e5f96384abbbccbec1cd41db2df7f78636",
+        "native/cycles/camera_gate.cpp": "d370a0cc9fbe8280b19bb3560499b9c07b08173c62a70f720c7cc29b01f73c32",
+        "native/cycles/camera_reference.cpp": "c56e2b2be1a6c3cf5919212d5c8acb4837fc0d7a350385cd9cc6df69fef9a695",
+        "native/cycles/camera_reference.h": "8b532b8c7a6b4d43d0917e70458b61299f625dcec7ded6bfcfd9407f7bec8993",
+        "native/cycles/closest.cpp": "c3989571b7237bfc99486af366d57d716e8aa3bb3e033205d02c034fe09d1f9d",
+        "native/cycles/closest_gate.cpp": "02c4d4ac8e9956a2648ec3a20b3a5f6c278cddb9998ecce9d09f3d07537d2d84",
+        "native/cycles/closest_reference.cpp": "f928e9f3eeece66a43d6ef713be9170a46be617c0448d397ca617778a02649df",
+        "native/cycles/closest_reference.h": "53ba55ecd16b2a1c008db70e73a4a1067447f8f6a10b0530e4ef5d678dc19ba3",
+        "native/cycles/control_reference.cpp": "3a602b35b62a52ca9a534324bd60ea948bd7a140f251f21639a9313605997e60",
+        "native/cycles/control_reference.h": "51eecfba0b32292e0524cefde8aee07baa11906a8a2a6091687e14040dcbc716",
+        "native/cycles/device.cpp": "f19fc2d10d22122f393516cf1d174a715fecadccaf3636489e64f3ff8dc8a062",
+        "native/cycles/device.h": "859155f91196ac4fae323ecf59d74b097e1db0a0d849ab7dc1d91471c61c060d",
+        "native/cycles/gate.cpp": "739c2a9bbbfc34e42fba2a9e70e014cffe3a2eaa6446b3e07bdded47ca43e87a",
+        "native/cycles/queue.cpp": "31aabd389217e90e72fcdc0991bf4ea5ce84c1e863f57f3bc00fa200f997400f",
+        "native/cycles/render_capture.h": "357bd372e18e41ba815d36c4f335fcaf02df33fa3647cb3ee2c4592288dfa66d",
+        "native/cycles/render_gate.cpp": "7ae8405d19bef9b9f9a67173593ec312c358f2be73daeab8230cf9a52488b790",
+        "native/cycles/shader_data.cpp": "194ea8f1111143828197d5408232388f2a8bcd02863eeed267a08ea04a6ddc73",
+        "native/cycles/shader_data_gate.cpp": "d5b500fb985a101d0284812be1a8ac533142263a3d874f6906585c251b8df865",
+        "native/cycles/shader_data_reference.cpp": "e78b019b585660b7820e7b0d1a397b20f0575eb1c953b4b33d2fa7843c836bb2",
+        "native/cycles/shader_data_reference.h": "7d0051df8d215d5c25c9ff2bf65119f91ff96656da9108384714422d29e971e5",
+        "native/cycles/surface.cpp": "a3bad6900c45407bca3fca0ff6601e612e62e7fb515df2424bb111065bcfe208",
+        "native/cycles/surface_fixture.h": "122528adaa4e5d122532eb49e6f57c4739a5e87e72956803bca3fd5ea34c601b",
+        "native/cycles/surface_gate.cpp": "3e25fc9f3f5c7ddd465d3d4453353a3d36e0b3599827bf7e2136e3bc788dc98e",
+        "native/cycles/surface_reference.cpp": "32932282fda9de4418cfcabbc18883bc147a34ba11570d7f311743dec1267f2e",
+        "native/cycles/surface_reference.h": "4d5b07cf50f6ac8e32569f7549d3d60789ecf46234e1be3eb92acd5966cfd872",
+        "native/cycles/svm_layout.cpp": "58f151820f2d9bf5598fda2aee4ab2ba61dcb3853f8094d925e81f04f20417b7",
+        "native/cycles/svm_surface_gate.cpp": "bd6f59f9584b952dd13e3fcc00d6656d6187f0e6780dd9928707ed89c25d120e",
+        "native/cycles/svm_surface_reference.cpp": "f93093bb2f8e641741124738dbbbd8b923f96670c9d0f6f21d8f1924591ee14a",
+        "native/cycles/svm_surface_reference.h": "3f85aaf08fdfe409415e31ab0e72610d8a39a91b26a240135e5adb120bc56827",
+        "native/cycles/svm_world_gate.cpp": "49bd644395ad2b90e49f93c0b5082e881cf45cb2c9e58be6e2bb4fb742195b3f",
+        "native/cycles/wavefront.h": "3b72c7a0f4272d56d45845a3687c6f3868bd0bce38885f36ed481d927dfa5117",
+        "native/cycles/wavefront_test.h": "a4a6e4125fa9f77b9000328a1cb11bf107d758511f0147d749ae405667675d7f",
+        "native/include/cycles_backend.h": "33cc7a3281aee60db16f17ccc000f8b7a3041d7059bdd99b1399d377b6d6c3a3",
+        "native/shaders/controls.wgsl": "99cd233e203b3300ffd852fc69c123f2e05e5d74860ec58bd6db3536a1d2c8b6",
+        "native/shaders/queue.wgsl": "f81a271ebfaf2031438fed467348e73ed02929925fe51dbdac581539f184d08d",
+        "native/shaders/wavefront_background.wgsl": "32bd1218fef5207ac623eb71b867ebb60b1bbc1e4d806a00f6a456aaa2f0f4f6",
+        "native/shaders/wavefront_camera.wgsl": "76a9412c0b5a1489395cc7d14f33dcfe1255693c4e96052eb4e3ce650d279248",
+        "native/shaders/wavefront_closest.wgsl": "e1350cf373f5e3ec2473f6f243dbf339346a4383efc78437beafdb153c3da998",
+        "native/shaders/wavefront_common.wgsl": "88bce5cd1e010e872bcf633c0f6ecc095fe005aff92bcfd2355e8dfc9c498092",
+        "native/shaders/wavefront_shader_data.wgsl": "687ad480af29663d6bd46fb03fd43bc1358a7c812066fc4a57de1eba16c63d35",
+        "native/shaders/wavefront_surface.wgsl": "d58e491b64c4a54cc4c8c8c905b9c147e50d1c2e5503a9d53c15bc4f45459077",
+        "native/shaders/wavefront_svm.wgsl": "49c215814ee95315d09479b9b1155483c7bf4ffcc5d7136df3fbd758709933aa",
+        "native/shaders/wavefront_svm_closures.wgsl": "44a8c6b8f320d1ab2cacd3f7ca2dedaa841c91b1b0f5674f1f43203ecb476bae",
+        "native/shaders/wavefront_triangle.wgsl": "20651be0cf233affab6ed00473b003798c2dfa2b0de44b7bb4a4773df8f69173",
+        "native/src/backend.cpp": "685f0bc323af8b4fd512d06c1f1978582b1968863102dad54372ce33a6b4f993",
+        "native/src/scene_data.cpp": "b4712505aa8287cd9b8d0d50f348285bd04330d663e89a18b1d1fdd5ca912cb3",
+        "native/src/scene_data.h": "a056a16e2d30e0aabfddb92157473b5dcfad51f23e0da4e17ca1c35699c11253",
+        "native/src/webgpu_device.cpp": "1567133aa72b2d09ad052f5542473ab71b4a743c2f1bd7458d2cf344e2d93732",
+        "native/src/webgpu_device.h": "cf6065098f9f514eaaa918c1dbd1b448f49062bd188006880821ff2e542cf455",
+        "parity/shaders/camera.wgsl": "9db2665f8e5f042ec1aca88824baf70941d4fd9bc9b053d54e88a3df141d5ff7",
+        "parity/shaders/closures.wgsl": "ac475937c6f94bcfda8113a335fd79c337082cc1977a3d6a1d032db6e463f943",
+        "parity/shaders/light_sampling.wgsl": "1265af6c93c7796bd962cbd815b70411e69b71f0f915c6795193046424e424b4",
+        "parity/shaders/lighting.wgsl": "ae49ad12a5808eaaacc472ba01ff3177a4164779657162247b42fbc72d5ea3dc",
+        "parity/shaders/lighting_none.wgsl": "db0c4df6cade0f32918145f9b3d6cfb3022a0feea4a2e2ab5c7afa93a4adf1a2",
+        "parity/shaders/material.wgsl": "5f2998c93923bdd56819cbe2f8ca5c9be4972919e15435d6c85f9d7128fe7c51",
+        "parity/shaders/path_inputs.wgsl": "f071b6a7a5e8d98d9d4da99fee37b5461e96a9af99f19fc60cc33d2bb34b2c20",
+        "parity/shaders/pathtrace.wgsl": "0a322550108ef0c7dbc90edd6fb00cc581e1e7ce48a8f0e548f57bef5cc70af8",
+        "parity/shaders/pixel_trace.wgsl": "648e11e396d44cc04ccbf981f39bb971d34087059c369a9ec881afa722add913",
+        "parity/shaders/sampling.wgsl": "72a38f21c7382c02b000961f59c30226b30d3878a3bebe323ae6dbc9b42f33fe",
+        "parity/shaders/svm.wgsl": "046b141acedcb084e010c03b3809f6943ae968fd89ade8411f927645cef800a3",
+        "research/FEASIBILITY.md": "ddae3c716acc4bfe63fa15b63614d44aed5b6a16611f63c3971471afee8cf51b",
+        "research/GpuProbe/GpuProbe.csproj": "d10b359004e41ca7f9f727860f1b63555cb89030360d6af36770dfbb9a2d5e72",
+        "research/GpuProbe/Program.cs": "a30dafac69a33adde93b70b8ff898785fac206b6c23607ff815aa21e3b5d2366",
+        "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
+        "research/archive.py": "ba0295e99888f5d960caf917346b55eedd0a91bf44e1906333e59c1f4ef72fb7",
+        "research/bvh.py": "275d58b2d90cb3ead5ce89526a1310f5ac617b2b0ca60c2662dab6cb01242b22",
+        "research/native/bvh_reference.cpp": "ace837fa888ff8fff6b5d2c942005161c7bf640ee73d0977cf0214bf84abb32a",
+        "research/native/gpu_probe.cpp": "77abee63a07a321223810641cc3010894580cc39a15bb46cc574bd7c9a42a6ae",
+        "research/native/reference.cpp": "f9ae0aaa46fd34904f654db4a2e157b7716f66bb5aa4255f220eacfd2e02dd51",
+        "research/native_runner.py": "5ddd7c88e22d2873efe8142082965b0f9ef129160bb962e01bb0d03d6b5985f3",
+        "research/numerics.py": "7830a3588bfc54f227009d96c0a58cecb2530aebd38e8b7e15cd7b56e0c048f6",
+        "research/run.py": "f6ab4deb4d8b983b6daf832e230fc7ec42a30fcd423dc0ad59de2c96a3aa7687",
+        "research/shaders/bvh.wgsl": "47634bb7796ca681b12e31448a2fee6e841782f463a49aa3102d984b758f49a0",
+        "research/translate.py": "e853b3ab5d0cabfe9698fcb3e2ecd10e3f5ff2873ae87498a9b810fc7c113309"
+      },
+      "scope": "Original GPU scheduler camera -> native BVH2 closest -> background/surface/raytrace queues and shader sorting. Static triangles/instances, visibility/self-hit, AO and roulette decisions. Shading and forward lights remain pending."
+    },
+    "background-queue": {
+      "report": "native/evidence/license-clean-render/regressions/background-queue/validation.json",
+      "sha256": "595b0ac4310f8a36e455f5f453bc9cea590fef346fe27318f8c317246adb6e27",
+      "kind": "isolated-or-integrated",
+      "rid": "linux-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        }
+      ],
+      "sourceSha256": {
+        "native/cycles/background.cpp": "99e09d58c76ed24e364eae7cb888284309f61250125cbaa3b0f03e4d86508b5e",
+        "native/cycles/background_gate.cpp": "d6e5fd073fe566063fd06453b7aef781fac52c262c62c19770041d2cf7cc4399",
+        "native/cycles/background_reference.cpp": "7479086ab823e01476df0cbe0026f46ee24504d1ccda3d01912cabd087fbfaa4",
+        "native/cycles/background_reference.h": "ef6285922f1ff3c001c6550dab349fd871fcbf31ba337181ffc3289408f4527f",
+        "native/cycles/camera.cpp": "c79e4978d158fde214e5d2184a7751e5f96384abbbccbec1cd41db2df7f78636",
+        "native/cycles/camera_gate.cpp": "d370a0cc9fbe8280b19bb3560499b9c07b08173c62a70f720c7cc29b01f73c32",
+        "native/cycles/camera_reference.cpp": "c56e2b2be1a6c3cf5919212d5c8acb4837fc0d7a350385cd9cc6df69fef9a695",
+        "native/cycles/camera_reference.h": "8b532b8c7a6b4d43d0917e70458b61299f625dcec7ded6bfcfd9407f7bec8993",
+        "native/cycles/closest.cpp": "c3989571b7237bfc99486af366d57d716e8aa3bb3e033205d02c034fe09d1f9d",
+        "native/cycles/closest_gate.cpp": "02c4d4ac8e9956a2648ec3a20b3a5f6c278cddb9998ecce9d09f3d07537d2d84",
+        "native/cycles/closest_reference.cpp": "f928e9f3eeece66a43d6ef713be9170a46be617c0448d397ca617778a02649df",
+        "native/cycles/closest_reference.h": "53ba55ecd16b2a1c008db70e73a4a1067447f8f6a10b0530e4ef5d678dc19ba3",
+        "native/cycles/control_reference.cpp": "3a602b35b62a52ca9a534324bd60ea948bd7a140f251f21639a9313605997e60",
+        "native/cycles/control_reference.h": "51eecfba0b32292e0524cefde8aee07baa11906a8a2a6091687e14040dcbc716",
+        "native/cycles/device.cpp": "f19fc2d10d22122f393516cf1d174a715fecadccaf3636489e64f3ff8dc8a062",
+        "native/cycles/device.h": "859155f91196ac4fae323ecf59d74b097e1db0a0d849ab7dc1d91471c61c060d",
+        "native/cycles/gate.cpp": "739c2a9bbbfc34e42fba2a9e70e014cffe3a2eaa6446b3e07bdded47ca43e87a",
+        "native/cycles/queue.cpp": "31aabd389217e90e72fcdc0991bf4ea5ce84c1e863f57f3bc00fa200f997400f",
+        "native/cycles/render_capture.h": "357bd372e18e41ba815d36c4f335fcaf02df33fa3647cb3ee2c4592288dfa66d",
+        "native/cycles/render_gate.cpp": "7ae8405d19bef9b9f9a67173593ec312c358f2be73daeab8230cf9a52488b790",
+        "native/cycles/shader_data.cpp": "194ea8f1111143828197d5408232388f2a8bcd02863eeed267a08ea04a6ddc73",
+        "native/cycles/shader_data_gate.cpp": "d5b500fb985a101d0284812be1a8ac533142263a3d874f6906585c251b8df865",
+        "native/cycles/shader_data_reference.cpp": "e78b019b585660b7820e7b0d1a397b20f0575eb1c953b4b33d2fa7843c836bb2",
+        "native/cycles/shader_data_reference.h": "7d0051df8d215d5c25c9ff2bf65119f91ff96656da9108384714422d29e971e5",
+        "native/cycles/surface.cpp": "a3bad6900c45407bca3fca0ff6601e612e62e7fb515df2424bb111065bcfe208",
+        "native/cycles/surface_fixture.h": "122528adaa4e5d122532eb49e6f57c4739a5e87e72956803bca3fd5ea34c601b",
+        "native/cycles/surface_gate.cpp": "3e25fc9f3f5c7ddd465d3d4453353a3d36e0b3599827bf7e2136e3bc788dc98e",
+        "native/cycles/surface_reference.cpp": "32932282fda9de4418cfcabbc18883bc147a34ba11570d7f311743dec1267f2e",
+        "native/cycles/surface_reference.h": "4d5b07cf50f6ac8e32569f7549d3d60789ecf46234e1be3eb92acd5966cfd872",
+        "native/cycles/svm_layout.cpp": "58f151820f2d9bf5598fda2aee4ab2ba61dcb3853f8094d925e81f04f20417b7",
+        "native/cycles/svm_surface_gate.cpp": "bd6f59f9584b952dd13e3fcc00d6656d6187f0e6780dd9928707ed89c25d120e",
+        "native/cycles/svm_surface_reference.cpp": "f93093bb2f8e641741124738dbbbd8b923f96670c9d0f6f21d8f1924591ee14a",
+        "native/cycles/svm_surface_reference.h": "3f85aaf08fdfe409415e31ab0e72610d8a39a91b26a240135e5adb120bc56827",
+        "native/cycles/svm_world_gate.cpp": "49bd644395ad2b90e49f93c0b5082e881cf45cb2c9e58be6e2bb4fb742195b3f",
+        "native/cycles/wavefront.h": "3b72c7a0f4272d56d45845a3687c6f3868bd0bce38885f36ed481d927dfa5117",
+        "native/cycles/wavefront_test.h": "a4a6e4125fa9f77b9000328a1cb11bf107d758511f0147d749ae405667675d7f",
+        "native/include/cycles_backend.h": "33cc7a3281aee60db16f17ccc000f8b7a3041d7059bdd99b1399d377b6d6c3a3",
+        "native/shaders/controls.wgsl": "99cd233e203b3300ffd852fc69c123f2e05e5d74860ec58bd6db3536a1d2c8b6",
+        "native/shaders/queue.wgsl": "f81a271ebfaf2031438fed467348e73ed02929925fe51dbdac581539f184d08d",
+        "native/shaders/wavefront_background.wgsl": "32bd1218fef5207ac623eb71b867ebb60b1bbc1e4d806a00f6a456aaa2f0f4f6",
+        "native/shaders/wavefront_camera.wgsl": "76a9412c0b5a1489395cc7d14f33dcfe1255693c4e96052eb4e3ce650d279248",
+        "native/shaders/wavefront_closest.wgsl": "e1350cf373f5e3ec2473f6f243dbf339346a4383efc78437beafdb153c3da998",
+        "native/shaders/wavefront_common.wgsl": "88bce5cd1e010e872bcf633c0f6ecc095fe005aff92bcfd2355e8dfc9c498092",
+        "native/shaders/wavefront_shader_data.wgsl": "687ad480af29663d6bd46fb03fd43bc1358a7c812066fc4a57de1eba16c63d35",
+        "native/shaders/wavefront_surface.wgsl": "d58e491b64c4a54cc4c8c8c905b9c147e50d1c2e5503a9d53c15bc4f45459077",
+        "native/shaders/wavefront_svm.wgsl": "49c215814ee95315d09479b9b1155483c7bf4ffcc5d7136df3fbd758709933aa",
+        "native/shaders/wavefront_svm_closures.wgsl": "44a8c6b8f320d1ab2cacd3f7ca2dedaa841c91b1b0f5674f1f43203ecb476bae",
+        "native/shaders/wavefront_triangle.wgsl": "20651be0cf233affab6ed00473b003798c2dfa2b0de44b7bb4a4773df8f69173",
+        "native/src/backend.cpp": "685f0bc323af8b4fd512d06c1f1978582b1968863102dad54372ce33a6b4f993",
+        "native/src/scene_data.cpp": "b4712505aa8287cd9b8d0d50f348285bd04330d663e89a18b1d1fdd5ca912cb3",
+        "native/src/scene_data.h": "a056a16e2d30e0aabfddb92157473b5dcfad51f23e0da4e17ca1c35699c11253",
+        "native/src/webgpu_device.cpp": "1567133aa72b2d09ad052f5542473ab71b4a743c2f1bd7458d2cf344e2d93732",
+        "native/src/webgpu_device.h": "cf6065098f9f514eaaa918c1dbd1b448f49062bd188006880821ff2e542cf455",
+        "parity/shaders/camera.wgsl": "9db2665f8e5f042ec1aca88824baf70941d4fd9bc9b053d54e88a3df141d5ff7",
+        "parity/shaders/closures.wgsl": "ac475937c6f94bcfda8113a335fd79c337082cc1977a3d6a1d032db6e463f943",
+        "parity/shaders/light_sampling.wgsl": "1265af6c93c7796bd962cbd815b70411e69b71f0f915c6795193046424e424b4",
+        "parity/shaders/lighting.wgsl": "ae49ad12a5808eaaacc472ba01ff3177a4164779657162247b42fbc72d5ea3dc",
+        "parity/shaders/lighting_none.wgsl": "db0c4df6cade0f32918145f9b3d6cfb3022a0feea4a2e2ab5c7afa93a4adf1a2",
+        "parity/shaders/material.wgsl": "5f2998c93923bdd56819cbe2f8ca5c9be4972919e15435d6c85f9d7128fe7c51",
+        "parity/shaders/path_inputs.wgsl": "f071b6a7a5e8d98d9d4da99fee37b5461e96a9af99f19fc60cc33d2bb34b2c20",
+        "parity/shaders/pathtrace.wgsl": "0a322550108ef0c7dbc90edd6fb00cc581e1e7ce48a8f0e548f57bef5cc70af8",
+        "parity/shaders/pixel_trace.wgsl": "648e11e396d44cc04ccbf981f39bb971d34087059c369a9ec881afa722add913",
+        "parity/shaders/sampling.wgsl": "72a38f21c7382c02b000961f59c30226b30d3878a3bebe323ae6dbc9b42f33fe",
+        "parity/shaders/svm.wgsl": "046b141acedcb084e010c03b3809f6943ae968fd89ade8411f927645cef800a3",
+        "research/FEASIBILITY.md": "ddae3c716acc4bfe63fa15b63614d44aed5b6a16611f63c3971471afee8cf51b",
+        "research/GpuProbe/GpuProbe.csproj": "d10b359004e41ca7f9f727860f1b63555cb89030360d6af36770dfbb9a2d5e72",
+        "research/GpuProbe/Program.cs": "a30dafac69a33adde93b70b8ff898785fac206b6c23607ff815aa21e3b5d2366",
+        "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
+        "research/archive.py": "ba0295e99888f5d960caf917346b55eedd0a91bf44e1906333e59c1f4ef72fb7",
+        "research/bvh.py": "275d58b2d90cb3ead5ce89526a1310f5ac617b2b0ca60c2662dab6cb01242b22",
+        "research/native/bvh_reference.cpp": "ace837fa888ff8fff6b5d2c942005161c7bf640ee73d0977cf0214bf84abb32a",
+        "research/native/gpu_probe.cpp": "77abee63a07a321223810641cc3010894580cc39a15bb46cc574bd7c9a42a6ae",
+        "research/native/reference.cpp": "f9ae0aaa46fd34904f654db4a2e157b7716f66bb5aa4255f220eacfd2e02dd51",
+        "research/native_runner.py": "5ddd7c88e22d2873efe8142082965b0f9ef129160bb962e01bb0d03d6b5985f3",
+        "research/numerics.py": "7830a3588bfc54f227009d96c0a58cecb2530aebd38e8b7e15cd7b56e0c048f6",
+        "research/run.py": "f6ab4deb4d8b983b6daf832e230fc7ec42a30fcd423dc0ad59de2c96a3aa7687",
+        "research/shaders/bvh.wgsl": "47634bb7796ca681b12e31448a2fee6e841782f463a49aa3102d984b758f49a0",
+        "research/translate.py": "e853b3ab5d0cabfe9698fcb3e2ecd10e3f5ff2873ae87498a9b810fc7c113309"
+      },
+      "scope": "Native scene -> original scheduler camera -> closest -> constant background -> film. Combined/transparency, background, lightgroups, diffuse/glossy/transmission direct/indirect, adaptive auxiliary and static background data passes. SVM worlds, sun/MIS and surface shading remain pending."
+    },
+    "svm-world": {
+      "report": "native/evidence/license-clean-render/regressions/svm-world/validation.json",
+      "sha256": "e6920b8dd14e4c43712f841dcc5a126f293b6188a9c46b993a66a46eb695618f",
+      "kind": "isolated-or-integrated",
+      "rid": "linux-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        }
+      ],
+      "sourceSha256": {
+        "native/cycles/background.cpp": "99e09d58c76ed24e364eae7cb888284309f61250125cbaa3b0f03e4d86508b5e",
+        "native/cycles/background_gate.cpp": "d6e5fd073fe566063fd06453b7aef781fac52c262c62c19770041d2cf7cc4399",
+        "native/cycles/background_reference.cpp": "7479086ab823e01476df0cbe0026f46ee24504d1ccda3d01912cabd087fbfaa4",
+        "native/cycles/background_reference.h": "ef6285922f1ff3c001c6550dab349fd871fcbf31ba337181ffc3289408f4527f",
+        "native/cycles/camera.cpp": "c79e4978d158fde214e5d2184a7751e5f96384abbbccbec1cd41db2df7f78636",
+        "native/cycles/camera_gate.cpp": "d370a0cc9fbe8280b19bb3560499b9c07b08173c62a70f720c7cc29b01f73c32",
+        "native/cycles/camera_reference.cpp": "c56e2b2be1a6c3cf5919212d5c8acb4837fc0d7a350385cd9cc6df69fef9a695",
+        "native/cycles/camera_reference.h": "8b532b8c7a6b4d43d0917e70458b61299f625dcec7ded6bfcfd9407f7bec8993",
+        "native/cycles/closest.cpp": "c3989571b7237bfc99486af366d57d716e8aa3bb3e033205d02c034fe09d1f9d",
+        "native/cycles/closest_gate.cpp": "02c4d4ac8e9956a2648ec3a20b3a5f6c278cddb9998ecce9d09f3d07537d2d84",
+        "native/cycles/closest_reference.cpp": "f928e9f3eeece66a43d6ef713be9170a46be617c0448d397ca617778a02649df",
+        "native/cycles/closest_reference.h": "53ba55ecd16b2a1c008db70e73a4a1067447f8f6a10b0530e4ef5d678dc19ba3",
+        "native/cycles/control_reference.cpp": "3a602b35b62a52ca9a534324bd60ea948bd7a140f251f21639a9313605997e60",
+        "native/cycles/control_reference.h": "51eecfba0b32292e0524cefde8aee07baa11906a8a2a6091687e14040dcbc716",
+        "native/cycles/device.cpp": "f19fc2d10d22122f393516cf1d174a715fecadccaf3636489e64f3ff8dc8a062",
+        "native/cycles/device.h": "859155f91196ac4fae323ecf59d74b097e1db0a0d849ab7dc1d91471c61c060d",
+        "native/cycles/gate.cpp": "739c2a9bbbfc34e42fba2a9e70e014cffe3a2eaa6446b3e07bdded47ca43e87a",
+        "native/cycles/queue.cpp": "31aabd389217e90e72fcdc0991bf4ea5ce84c1e863f57f3bc00fa200f997400f",
+        "native/cycles/render_capture.h": "357bd372e18e41ba815d36c4f335fcaf02df33fa3647cb3ee2c4592288dfa66d",
+        "native/cycles/render_gate.cpp": "7ae8405d19bef9b9f9a67173593ec312c358f2be73daeab8230cf9a52488b790",
+        "native/cycles/shader_data.cpp": "194ea8f1111143828197d5408232388f2a8bcd02863eeed267a08ea04a6ddc73",
+        "native/cycles/shader_data_gate.cpp": "d5b500fb985a101d0284812be1a8ac533142263a3d874f6906585c251b8df865",
+        "native/cycles/shader_data_reference.cpp": "e78b019b585660b7820e7b0d1a397b20f0575eb1c953b4b33d2fa7843c836bb2",
+        "native/cycles/shader_data_reference.h": "7d0051df8d215d5c25c9ff2bf65119f91ff96656da9108384714422d29e971e5",
+        "native/cycles/surface.cpp": "a3bad6900c45407bca3fca0ff6601e612e62e7fb515df2424bb111065bcfe208",
+        "native/cycles/surface_fixture.h": "122528adaa4e5d122532eb49e6f57c4739a5e87e72956803bca3fd5ea34c601b",
+        "native/cycles/surface_gate.cpp": "3e25fc9f3f5c7ddd465d3d4453353a3d36e0b3599827bf7e2136e3bc788dc98e",
+        "native/cycles/surface_reference.cpp": "32932282fda9de4418cfcabbc18883bc147a34ba11570d7f311743dec1267f2e",
+        "native/cycles/surface_reference.h": "4d5b07cf50f6ac8e32569f7549d3d60789ecf46234e1be3eb92acd5966cfd872",
+        "native/cycles/svm_layout.cpp": "58f151820f2d9bf5598fda2aee4ab2ba61dcb3853f8094d925e81f04f20417b7",
+        "native/cycles/svm_surface_gate.cpp": "bd6f59f9584b952dd13e3fcc00d6656d6187f0e6780dd9928707ed89c25d120e",
+        "native/cycles/svm_surface_reference.cpp": "f93093bb2f8e641741124738dbbbd8b923f96670c9d0f6f21d8f1924591ee14a",
+        "native/cycles/svm_surface_reference.h": "3f85aaf08fdfe409415e31ab0e72610d8a39a91b26a240135e5adb120bc56827",
+        "native/cycles/svm_world_gate.cpp": "49bd644395ad2b90e49f93c0b5082e881cf45cb2c9e58be6e2bb4fb742195b3f",
+        "native/cycles/wavefront.h": "3b72c7a0f4272d56d45845a3687c6f3868bd0bce38885f36ed481d927dfa5117",
+        "native/cycles/wavefront_test.h": "a4a6e4125fa9f77b9000328a1cb11bf107d758511f0147d749ae405667675d7f",
+        "native/include/cycles_backend.h": "33cc7a3281aee60db16f17ccc000f8b7a3041d7059bdd99b1399d377b6d6c3a3",
+        "native/shaders/controls.wgsl": "99cd233e203b3300ffd852fc69c123f2e05e5d74860ec58bd6db3536a1d2c8b6",
+        "native/shaders/queue.wgsl": "f81a271ebfaf2031438fed467348e73ed02929925fe51dbdac581539f184d08d",
+        "native/shaders/wavefront_background.wgsl": "32bd1218fef5207ac623eb71b867ebb60b1bbc1e4d806a00f6a456aaa2f0f4f6",
+        "native/shaders/wavefront_camera.wgsl": "76a9412c0b5a1489395cc7d14f33dcfe1255693c4e96052eb4e3ce650d279248",
+        "native/shaders/wavefront_closest.wgsl": "e1350cf373f5e3ec2473f6f243dbf339346a4383efc78437beafdb153c3da998",
+        "native/shaders/wavefront_common.wgsl": "88bce5cd1e010e872bcf633c0f6ecc095fe005aff92bcfd2355e8dfc9c498092",
+        "native/shaders/wavefront_shader_data.wgsl": "687ad480af29663d6bd46fb03fd43bc1358a7c812066fc4a57de1eba16c63d35",
+        "native/shaders/wavefront_surface.wgsl": "d58e491b64c4a54cc4c8c8c905b9c147e50d1c2e5503a9d53c15bc4f45459077",
+        "native/shaders/wavefront_svm.wgsl": "49c215814ee95315d09479b9b1155483c7bf4ffcc5d7136df3fbd758709933aa",
+        "native/shaders/wavefront_svm_closures.wgsl": "44a8c6b8f320d1ab2cacd3f7ca2dedaa841c91b1b0f5674f1f43203ecb476bae",
+        "native/shaders/wavefront_triangle.wgsl": "20651be0cf233affab6ed00473b003798c2dfa2b0de44b7bb4a4773df8f69173",
+        "native/src/backend.cpp": "685f0bc323af8b4fd512d06c1f1978582b1968863102dad54372ce33a6b4f993",
+        "native/src/scene_data.cpp": "b4712505aa8287cd9b8d0d50f348285bd04330d663e89a18b1d1fdd5ca912cb3",
+        "native/src/scene_data.h": "a056a16e2d30e0aabfddb92157473b5dcfad51f23e0da4e17ca1c35699c11253",
+        "native/src/webgpu_device.cpp": "1567133aa72b2d09ad052f5542473ab71b4a743c2f1bd7458d2cf344e2d93732",
+        "native/src/webgpu_device.h": "cf6065098f9f514eaaa918c1dbd1b448f49062bd188006880821ff2e542cf455",
+        "parity/shaders/camera.wgsl": "9db2665f8e5f042ec1aca88824baf70941d4fd9bc9b053d54e88a3df141d5ff7",
+        "parity/shaders/closures.wgsl": "ac475937c6f94bcfda8113a335fd79c337082cc1977a3d6a1d032db6e463f943",
+        "parity/shaders/light_sampling.wgsl": "1265af6c93c7796bd962cbd815b70411e69b71f0f915c6795193046424e424b4",
+        "parity/shaders/lighting.wgsl": "ae49ad12a5808eaaacc472ba01ff3177a4164779657162247b42fbc72d5ea3dc",
+        "parity/shaders/lighting_none.wgsl": "db0c4df6cade0f32918145f9b3d6cfb3022a0feea4a2e2ab5c7afa93a4adf1a2",
+        "parity/shaders/material.wgsl": "5f2998c93923bdd56819cbe2f8ca5c9be4972919e15435d6c85f9d7128fe7c51",
+        "parity/shaders/path_inputs.wgsl": "f071b6a7a5e8d98d9d4da99fee37b5461e96a9af99f19fc60cc33d2bb34b2c20",
+        "parity/shaders/pathtrace.wgsl": "0a322550108ef0c7dbc90edd6fb00cc581e1e7ce48a8f0e548f57bef5cc70af8",
+        "parity/shaders/pixel_trace.wgsl": "648e11e396d44cc04ccbf981f39bb971d34087059c369a9ec881afa722add913",
+        "parity/shaders/sampling.wgsl": "72a38f21c7382c02b000961f59c30226b30d3878a3bebe323ae6dbc9b42f33fe",
+        "parity/shaders/svm.wgsl": "046b141acedcb084e010c03b3809f6943ae968fd89ade8411f927645cef800a3",
+        "research/FEASIBILITY.md": "ddae3c716acc4bfe63fa15b63614d44aed5b6a16611f63c3971471afee8cf51b",
+        "research/GpuProbe/GpuProbe.csproj": "d10b359004e41ca7f9f727860f1b63555cb89030360d6af36770dfbb9a2d5e72",
+        "research/GpuProbe/Program.cs": "a30dafac69a33adde93b70b8ff898785fac206b6c23607ff815aa21e3b5d2366",
+        "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
+        "research/archive.py": "ba0295e99888f5d960caf917346b55eedd0a91bf44e1906333e59c1f4ef72fb7",
+        "research/bvh.py": "275d58b2d90cb3ead5ce89526a1310f5ac617b2b0ca60c2662dab6cb01242b22",
+        "research/native/bvh_reference.cpp": "ace837fa888ff8fff6b5d2c942005161c7bf640ee73d0977cf0214bf84abb32a",
+        "research/native/gpu_probe.cpp": "77abee63a07a321223810641cc3010894580cc39a15bb46cc574bd7c9a42a6ae",
+        "research/native/reference.cpp": "f9ae0aaa46fd34904f654db4a2e157b7716f66bb5aa4255f220eacfd2e02dd51",
+        "research/native_runner.py": "5ddd7c88e22d2873efe8142082965b0f9ef129160bb962e01bb0d03d6b5985f3",
+        "research/numerics.py": "7830a3588bfc54f227009d96c0a58cecb2530aebd38e8b7e15cd7b56e0c048f6",
+        "research/run.py": "f6ab4deb4d8b983b6daf832e230fc7ec42a30fcd423dc0ad59de2c96a3aa7687",
+        "research/shaders/bvh.wgsl": "47634bb7796ca681b12e31448a2fee6e841782f463a49aa3102d984b758f49a0",
+        "research/translate.py": "e853b3ab5d0cabfe9698fcb3e2ecd10e3f5ff2873ae87498a9b810fc7c113309"
+      },
+      "scope": "Native Cycles-compiled worlds -> original camera/closest/background scheduler -> typed SVM bytecode in WGSL -> native film. Selected world nodes only; surface/volume shader entries, image textures, derivatives and the remaining SVM nodes are pending."
+    },
+    "svm-surface": {
+      "report": "native/evidence/license-clean-render/regressions/svm-surface/validation.json",
+      "sha256": "2329614c4fad471025880882ac927a8208a473627a48c9dfe8e16679993cdf0a",
+      "kind": "isolated-or-integrated",
+      "rid": "linux-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        }
+      ],
+      "sourceSha256": {
+        "native/cycles/background.cpp": "99e09d58c76ed24e364eae7cb888284309f61250125cbaa3b0f03e4d86508b5e",
+        "native/cycles/background_gate.cpp": "d6e5fd073fe566063fd06453b7aef781fac52c262c62c19770041d2cf7cc4399",
+        "native/cycles/background_reference.cpp": "7479086ab823e01476df0cbe0026f46ee24504d1ccda3d01912cabd087fbfaa4",
+        "native/cycles/background_reference.h": "ef6285922f1ff3c001c6550dab349fd871fcbf31ba337181ffc3289408f4527f",
+        "native/cycles/camera.cpp": "c79e4978d158fde214e5d2184a7751e5f96384abbbccbec1cd41db2df7f78636",
+        "native/cycles/camera_gate.cpp": "d370a0cc9fbe8280b19bb3560499b9c07b08173c62a70f720c7cc29b01f73c32",
+        "native/cycles/camera_reference.cpp": "c56e2b2be1a6c3cf5919212d5c8acb4837fc0d7a350385cd9cc6df69fef9a695",
+        "native/cycles/camera_reference.h": "8b532b8c7a6b4d43d0917e70458b61299f625dcec7ded6bfcfd9407f7bec8993",
+        "native/cycles/closest.cpp": "c3989571b7237bfc99486af366d57d716e8aa3bb3e033205d02c034fe09d1f9d",
+        "native/cycles/closest_gate.cpp": "02c4d4ac8e9956a2648ec3a20b3a5f6c278cddb9998ecce9d09f3d07537d2d84",
+        "native/cycles/closest_reference.cpp": "f928e9f3eeece66a43d6ef713be9170a46be617c0448d397ca617778a02649df",
+        "native/cycles/closest_reference.h": "53ba55ecd16b2a1c008db70e73a4a1067447f8f6a10b0530e4ef5d678dc19ba3",
+        "native/cycles/control_reference.cpp": "3a602b35b62a52ca9a534324bd60ea948bd7a140f251f21639a9313605997e60",
+        "native/cycles/control_reference.h": "51eecfba0b32292e0524cefde8aee07baa11906a8a2a6091687e14040dcbc716",
+        "native/cycles/device.cpp": "f19fc2d10d22122f393516cf1d174a715fecadccaf3636489e64f3ff8dc8a062",
+        "native/cycles/device.h": "859155f91196ac4fae323ecf59d74b097e1db0a0d849ab7dc1d91471c61c060d",
+        "native/cycles/gate.cpp": "739c2a9bbbfc34e42fba2a9e70e014cffe3a2eaa6446b3e07bdded47ca43e87a",
+        "native/cycles/queue.cpp": "31aabd389217e90e72fcdc0991bf4ea5ce84c1e863f57f3bc00fa200f997400f",
+        "native/cycles/render_capture.h": "357bd372e18e41ba815d36c4f335fcaf02df33fa3647cb3ee2c4592288dfa66d",
+        "native/cycles/render_gate.cpp": "7ae8405d19bef9b9f9a67173593ec312c358f2be73daeab8230cf9a52488b790",
+        "native/cycles/shader_data.cpp": "194ea8f1111143828197d5408232388f2a8bcd02863eeed267a08ea04a6ddc73",
+        "native/cycles/shader_data_gate.cpp": "d5b500fb985a101d0284812be1a8ac533142263a3d874f6906585c251b8df865",
+        "native/cycles/shader_data_reference.cpp": "e78b019b585660b7820e7b0d1a397b20f0575eb1c953b4b33d2fa7843c836bb2",
+        "native/cycles/shader_data_reference.h": "7d0051df8d215d5c25c9ff2bf65119f91ff96656da9108384714422d29e971e5",
+        "native/cycles/surface.cpp": "a3bad6900c45407bca3fca0ff6601e612e62e7fb515df2424bb111065bcfe208",
+        "native/cycles/surface_fixture.h": "122528adaa4e5d122532eb49e6f57c4739a5e87e72956803bca3fd5ea34c601b",
+        "native/cycles/surface_gate.cpp": "3e25fc9f3f5c7ddd465d3d4453353a3d36e0b3599827bf7e2136e3bc788dc98e",
+        "native/cycles/surface_reference.cpp": "32932282fda9de4418cfcabbc18883bc147a34ba11570d7f311743dec1267f2e",
+        "native/cycles/surface_reference.h": "4d5b07cf50f6ac8e32569f7549d3d60789ecf46234e1be3eb92acd5966cfd872",
+        "native/cycles/svm_layout.cpp": "58f151820f2d9bf5598fda2aee4ab2ba61dcb3853f8094d925e81f04f20417b7",
+        "native/cycles/svm_surface_gate.cpp": "bd6f59f9584b952dd13e3fcc00d6656d6187f0e6780dd9928707ed89c25d120e",
+        "native/cycles/svm_surface_reference.cpp": "f93093bb2f8e641741124738dbbbd8b923f96670c9d0f6f21d8f1924591ee14a",
+        "native/cycles/svm_surface_reference.h": "3f85aaf08fdfe409415e31ab0e72610d8a39a91b26a240135e5adb120bc56827",
+        "native/cycles/svm_world_gate.cpp": "49bd644395ad2b90e49f93c0b5082e881cf45cb2c9e58be6e2bb4fb742195b3f",
+        "native/cycles/wavefront.h": "3b72c7a0f4272d56d45845a3687c6f3868bd0bce38885f36ed481d927dfa5117",
+        "native/cycles/wavefront_test.h": "a4a6e4125fa9f77b9000328a1cb11bf107d758511f0147d749ae405667675d7f",
+        "native/include/cycles_backend.h": "33cc7a3281aee60db16f17ccc000f8b7a3041d7059bdd99b1399d377b6d6c3a3",
+        "native/shaders/controls.wgsl": "99cd233e203b3300ffd852fc69c123f2e05e5d74860ec58bd6db3536a1d2c8b6",
+        "native/shaders/queue.wgsl": "f81a271ebfaf2031438fed467348e73ed02929925fe51dbdac581539f184d08d",
+        "native/shaders/wavefront_background.wgsl": "32bd1218fef5207ac623eb71b867ebb60b1bbc1e4d806a00f6a456aaa2f0f4f6",
+        "native/shaders/wavefront_camera.wgsl": "76a9412c0b5a1489395cc7d14f33dcfe1255693c4e96052eb4e3ce650d279248",
+        "native/shaders/wavefront_closest.wgsl": "e1350cf373f5e3ec2473f6f243dbf339346a4383efc78437beafdb153c3da998",
+        "native/shaders/wavefront_common.wgsl": "88bce5cd1e010e872bcf633c0f6ecc095fe005aff92bcfd2355e8dfc9c498092",
+        "native/shaders/wavefront_shader_data.wgsl": "687ad480af29663d6bd46fb03fd43bc1358a7c812066fc4a57de1eba16c63d35",
+        "native/shaders/wavefront_surface.wgsl": "d58e491b64c4a54cc4c8c8c905b9c147e50d1c2e5503a9d53c15bc4f45459077",
+        "native/shaders/wavefront_svm.wgsl": "49c215814ee95315d09479b9b1155483c7bf4ffcc5d7136df3fbd758709933aa",
+        "native/shaders/wavefront_svm_closures.wgsl": "44a8c6b8f320d1ab2cacd3f7ca2dedaa841c91b1b0f5674f1f43203ecb476bae",
+        "native/shaders/wavefront_triangle.wgsl": "20651be0cf233affab6ed00473b003798c2dfa2b0de44b7bb4a4773df8f69173",
+        "native/src/backend.cpp": "685f0bc323af8b4fd512d06c1f1978582b1968863102dad54372ce33a6b4f993",
+        "native/src/scene_data.cpp": "b4712505aa8287cd9b8d0d50f348285bd04330d663e89a18b1d1fdd5ca912cb3",
+        "native/src/scene_data.h": "a056a16e2d30e0aabfddb92157473b5dcfad51f23e0da4e17ca1c35699c11253",
+        "native/src/webgpu_device.cpp": "1567133aa72b2d09ad052f5542473ab71b4a743c2f1bd7458d2cf344e2d93732",
+        "native/src/webgpu_device.h": "cf6065098f9f514eaaa918c1dbd1b448f49062bd188006880821ff2e542cf455",
+        "parity/shaders/camera.wgsl": "9db2665f8e5f042ec1aca88824baf70941d4fd9bc9b053d54e88a3df141d5ff7",
+        "parity/shaders/closures.wgsl": "ac475937c6f94bcfda8113a335fd79c337082cc1977a3d6a1d032db6e463f943",
+        "parity/shaders/light_sampling.wgsl": "1265af6c93c7796bd962cbd815b70411e69b71f0f915c6795193046424e424b4",
+        "parity/shaders/lighting.wgsl": "ae49ad12a5808eaaacc472ba01ff3177a4164779657162247b42fbc72d5ea3dc",
+        "parity/shaders/lighting_none.wgsl": "db0c4df6cade0f32918145f9b3d6cfb3022a0feea4a2e2ab5c7afa93a4adf1a2",
+        "parity/shaders/material.wgsl": "5f2998c93923bdd56819cbe2f8ca5c9be4972919e15435d6c85f9d7128fe7c51",
+        "parity/shaders/path_inputs.wgsl": "f071b6a7a5e8d98d9d4da99fee37b5461e96a9af99f19fc60cc33d2bb34b2c20",
+        "parity/shaders/pathtrace.wgsl": "0a322550108ef0c7dbc90edd6fb00cc581e1e7ce48a8f0e548f57bef5cc70af8",
+        "parity/shaders/pixel_trace.wgsl": "648e11e396d44cc04ccbf981f39bb971d34087059c369a9ec881afa722add913",
+        "parity/shaders/sampling.wgsl": "72a38f21c7382c02b000961f59c30226b30d3878a3bebe323ae6dbc9b42f33fe",
+        "parity/shaders/svm.wgsl": "046b141acedcb084e010c03b3809f6943ae968fd89ade8411f927645cef800a3",
+        "research/FEASIBILITY.md": "ddae3c716acc4bfe63fa15b63614d44aed5b6a16611f63c3971471afee8cf51b",
+        "research/GpuProbe/GpuProbe.csproj": "d10b359004e41ca7f9f727860f1b63555cb89030360d6af36770dfbb9a2d5e72",
+        "research/GpuProbe/Program.cs": "a30dafac69a33adde93b70b8ff898785fac206b6c23607ff815aa21e3b5d2366",
+        "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
+        "research/archive.py": "ba0295e99888f5d960caf917346b55eedd0a91bf44e1906333e59c1f4ef72fb7",
+        "research/bvh.py": "275d58b2d90cb3ead5ce89526a1310f5ac617b2b0ca60c2662dab6cb01242b22",
+        "research/native/bvh_reference.cpp": "ace837fa888ff8fff6b5d2c942005161c7bf640ee73d0977cf0214bf84abb32a",
+        "research/native/gpu_probe.cpp": "77abee63a07a321223810641cc3010894580cc39a15bb46cc574bd7c9a42a6ae",
+        "research/native/reference.cpp": "f9ae0aaa46fd34904f654db4a2e157b7716f66bb5aa4255f220eacfd2e02dd51",
+        "research/native_runner.py": "5ddd7c88e22d2873efe8142082965b0f9ef129160bb962e01bb0d03d6b5985f3",
+        "research/numerics.py": "7830a3588bfc54f227009d96c0a58cecb2530aebd38e8b7e15cd7b56e0c048f6",
+        "research/run.py": "f6ab4deb4d8b983b6daf832e230fc7ec42a30fcd423dc0ad59de2c96a3aa7687",
+        "research/shaders/bvh.wgsl": "47634bb7796ca681b12e31448a2fee6e841782f463a49aa3102d984b758f49a0",
+        "research/translate.py": "e853b3ab5d0cabfe9698fcb3e2ecd10e3f5ff2873ae87498a9b810fc7c113309"
+      },
+      "scope": "Selected surface SVM evaluation/setup from native scene tables and typed bytecode: diffuse, Oren-Nayar, translucent, transparent, emission, holdout and mixtures. Not BSDF sampling, a surface-bounce queue kernel or full session rendering."
+    },
+    "replay-linux-x64-linux": {
+      "report": "native/evidence/license-clean-render/replay/linux-x64/linux/validation.json",
+      "sha256": "ef0e0f5592a253e455a0824b455d1c216cb5412b60fdb831e43847d2f369a86f",
+      "kind": "command-replay",
+      "rid": "linux-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        },
+        {
+          "pointer": "/androidNativeHostProven",
+          "equals": false
+        },
+        {
+          "pointer": "/rid",
+          "equals": "linux-x64"
+        }
+      ],
+      "sourceSha256": {
+        "native/tests/render_replay.cpp": "5b9757f571a21bcfa891d4d6c19a446712711e5a35e41b0722bb37f028e7238c",
+        "native/tools/render_replay.py": "d0e6fcf7552663e9da8abbdf67fd387547b7de3eb6442ff79200d7d3419d5010"
+      },
+      "scope": "Full recorded native render loop; every scheduling readback verified; independent original-CPU film"
+    },
+    "replay-bench-linux": {
+      "report": "native/evidence/license-clean-render/replay/bench/linux/validation.json",
+      "sha256": "c83acb6944394db4300fa6b65234cd2aaaf4b2161bd835eb1f4017c889adb7a6",
+      "kind": "command-replay",
+      "rid": "linux-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        },
+        {
+          "pointer": "/androidNativeHostProven",
+          "equals": false
+        },
+        {
+          "pointer": "/rid",
+          "equals": "linux-x64"
+        }
+      ],
+      "sourceSha256": {
+        "native/tests/render_replay.cpp": "5b9757f571a21bcfa891d4d6c19a446712711e5a35e41b0722bb37f028e7238c",
+        "native/tools/render_replay.py": "d0e6fcf7552663e9da8abbdf67fd387547b7de3eb6442ff79200d7d3419d5010"
+      },
+      "scope": "Full recorded native render loop; every scheduling readback verified; independent original-CPU film"
+    },
+    "replay-linux-x64-pixel": {
+      "report": "native/evidence/license-clean-render/replay/linux-x64/pixel/validation.json",
+      "sha256": "078aca68ca96d7cf4fe1c161cecab709a6316964aa52f620c16712e644ce1235",
+      "kind": "command-replay",
+      "rid": "android-arm64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        },
+        {
+          "pointer": "/androidNativeHostProven",
+          "equals": false
+        },
+        {
+          "pointer": "/rid",
+          "equals": "android-arm64"
+        }
+      ],
+      "sourceSha256": {
+        "native/tests/render_replay.cpp": "5b9757f571a21bcfa891d4d6c19a446712711e5a35e41b0722bb37f028e7238c",
+        "native/tools/render_replay.py": "d0e6fcf7552663e9da8abbdf67fd387547b7de3eb6442ff79200d7d3419d5010"
+      },
+      "scope": "Full recorded native render loop; every scheduling readback verified; independent original-CPU film"
+    },
+    "replay-bench-pixel": {
+      "report": "native/evidence/license-clean-render/replay/bench/pixel/validation.json",
+      "sha256": "31564bd8768254b5e80839311f7ff4ea86c70e699946ebb4644431c3f91c380c",
+      "kind": "command-replay",
+      "rid": "android-arm64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        },
+        {
+          "pointer": "/androidNativeHostProven",
+          "equals": false
+        },
+        {
+          "pointer": "/rid",
+          "equals": "android-arm64"
+        }
+      ],
+      "sourceSha256": {
+        "native/tests/render_replay.cpp": "5b9757f571a21bcfa891d4d6c19a446712711e5a35e41b0722bb37f028e7238c",
+        "native/tools/render_replay.py": "d0e6fcf7552663e9da8abbdf67fd387547b7de3eb6442ff79200d7d3419d5010"
+      },
+      "scope": "Full recorded native render loop; every scheduling readback verified; independent original-CPU film"
+    },
+    "replay-linux-x64-samsung": {
+      "report": "native/evidence/license-clean-render/replay/linux-x64/samsung/validation.json",
+      "sha256": "bc9c60936b1f5d2b3a9a6339d09d619223a980c60ffbaf4f5d313dbd2ff06169",
+      "kind": "command-replay",
+      "rid": "android-arm64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        },
+        {
+          "pointer": "/androidNativeHostProven",
+          "equals": false
+        },
+        {
+          "pointer": "/rid",
+          "equals": "android-arm64"
+        }
+      ],
+      "sourceSha256": {
+        "native/tests/render_replay.cpp": "5b9757f571a21bcfa891d4d6c19a446712711e5a35e41b0722bb37f028e7238c",
+        "native/tools/render_replay.py": "d0e6fcf7552663e9da8abbdf67fd387547b7de3eb6442ff79200d7d3419d5010"
+      },
+      "scope": "Full recorded native render loop; every scheduling readback verified; independent original-CPU film"
+    },
+    "replay-bench-samsung": {
+      "report": "native/evidence/license-clean-render/replay/bench/samsung/validation.json",
+      "sha256": "86be02d60bf13899bc807f8702a81e5b609cdf4d1ade2b9431d4a3c259ad6ea9",
+      "kind": "command-replay",
+      "rid": "android-arm64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        },
+        {
+          "pointer": "/androidNativeHostProven",
+          "equals": false
+        },
+        {
+          "pointer": "/rid",
+          "equals": "android-arm64"
+        }
+      ],
+      "sourceSha256": {
+        "native/tests/render_replay.cpp": "5b9757f571a21bcfa891d4d6c19a446712711e5a35e41b0722bb37f028e7238c",
+        "native/tools/render_replay.py": "d0e6fcf7552663e9da8abbdf67fd387547b7de3eb6442ff79200d7d3419d5010"
+      },
+      "scope": "Full recorded native render loop; every scheduling readback verified; independent original-CPU film"
+    },
+    "replay-linux-x64-hp": {
+      "report": "native/evidence/license-clean-render/replay/linux-x64/hp/validation.json",
+      "sha256": "2f384a81f151212fa880e747dd715abb5c13b9a345f54f987be0591bebda801c",
+      "kind": "command-replay",
+      "rid": "android-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        },
+        {
+          "pointer": "/androidNativeHostProven",
+          "equals": false
+        },
+        {
+          "pointer": "/rid",
+          "equals": "android-x64"
+        }
+      ],
+      "sourceSha256": {
+        "native/tests/render_replay.cpp": "5b9757f571a21bcfa891d4d6c19a446712711e5a35e41b0722bb37f028e7238c",
+        "native/tools/render_replay.py": "d0e6fcf7552663e9da8abbdf67fd387547b7de3eb6442ff79200d7d3419d5010"
+      },
+      "scope": "Full recorded native render loop; every scheduling readback verified; independent original-CPU film"
+    },
+    "replay-bench-hp": {
+      "report": "native/evidence/license-clean-render/replay/bench/hp/validation.json",
+      "sha256": "d9958b2612acfb22eb0d56c9c4515496dd7e194c808536b04a02a16d88859bf9",
+      "kind": "command-replay",
+      "rid": "android-x64",
+      "assertions": [
+        {
+          "pointer": "/passed",
+          "equals": true
+        },
+        {
+          "pointer": "/matchesPinnedPackage",
+          "equals": true
+        },
+        {
+          "pointer": "/androidNativeHostProven",
+          "equals": false
+        },
+        {
+          "pointer": "/rid",
+          "equals": "android-x64"
+        }
+      ],
+      "sourceSha256": {
+        "native/tests/render_replay.cpp": "5b9757f571a21bcfa891d4d6c19a446712711e5a35e41b0722bb37f028e7238c",
+        "native/tools/render_replay.py": "d0e6fcf7552663e9da8abbdf67fd387547b7de3eb6442ff79200d7d3419d5010"
+      },
+      "scope": "Full recorded native render loop; every scheduling readback verified; independent original-CPU film"
+    }
+  }
+}

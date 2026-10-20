@@ -8,7 +8,7 @@
       "version": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
       "license": "Apache-2.0 AND BSD-3-Clause AND MIT AND Zlib AND LicenseRef-Public-Domain",
       "source": "https://github.com/blender/cycles.git",
-      "use": "Filtered vendored native host, CPU reference and derived WGSL kernels. Inventory: third_party/cycles-import.json.",
+      "use": "Filtered vendored native host, CPU reference and derived WGSL kernels. Registration, OCIO cache-identity and Android platform adaptations are generated from reviewed local snapshots by native/tools/build_cycles.py and build_cycles_android.py. Inventory: third_party/cycles-import.json.",
       "attribution": "Blender Foundation, Blender Authors, NVIDIA, Intel, Sony Pictures Imageworks, Larry Gritz, Industrial Light & Magic, Francois Beaune and appleseedhq, Inigo Quilez, Aladdin Enterprises, Lukas Hosek, Alexander Wilkie, Fernando Garcia Linan; exact notices retained per file. Public-domain adaptations also credit Austin Appleby (MurmurHash3), Fabian Giesen (half conversion) and NVIDIA Mesh Tools; complete retained comment notices are included.",
       "notices": [
         "third_party/licenses/Cycles-Apache-2.0.txt",
@@ -570,9 +570,10 @@
       "attribution": "Copyright (c) 2026 Jeremy Ellis and contributors; Poly Haven food_lime_01 contributors.",
       "notices": [
         "third_party/licenses/Cycles-Apache-2.0.txt",
-        "parity/ASSETS.md"
+        "parity/ASSETS.md",
+        "third_party/licenses/CC0-1.0.txt"
       ],
-      "conditions": "Prepared scene buffers and renders carry this provenance; licenses of other external models must be reviewed before import."
+      "conditions": "Prepared scene buffers and renders carry this provenance; licenses of other external models must be reviewed before import. The six original bench textures have a separate pre-import CC0 review in third_party/bench-texture-license-review.json; they remain external and are not redistributed by these clay tests."
     },
     {
       "id": "tiff",
@@ -703,6 +704,21 @@
       "notices": [
         "third_party/licenses/Godot-MIT.txt"
       ]
+    },
+    {
+      "id": "arm-scalar-math",
+      "name": "Arm Optimized Routines scalar sine/cosine subset",
+      "version": "v25.01",
+      "license": "MIT",
+      "source": "https://github.com/ARM-software/optimized-routines",
+      "revision": "3752b981a6f3b89b5468476a87568a29fd9e0822",
+      "use": "Pinned source/data for the bounded WGSL native sine/cosine polynomial adapter. No linked library or unreviewed build scripts. Per-file hashes and license basis: third_party/arm-math-import.json.",
+      "attribution": "Copyright (c) 2018-2024, Arm Limited (scalar functions/header); Copyright (c) 2018-2019, Arm Limited (polynomial data).",
+      "conditions": "MIT option explicitly selected from the upstream dual license. Retain the complete MIT copyright/permission grant and Arm attribution in source and substantial derived portions. CodeBrix modifications retain their Apache-2.0 notice.",
+      "notices": [
+        "third_party/arm-optimized-routines/LICENSE",
+        "native/THIRD-PARTY-NOTICES.txt"
+      ]
     }
   ],
   "sourcePins": [
@@ -813,6 +829,12 @@
       "archiveSha256": "6478edfe2f3305127cffe8caf73ea0176c53769f4bf1585be237eb30798c3b8e",
       "version": "1.83.0",
       "id": "boost"
+    },
+    {
+      "source": "https://github.com/ARM-software/optimized-routines",
+      "revision": "3752b981a6f3b89b5468476a87568a29fd9e0822",
+      "version": "v25.01",
+      "id": "arm-scalar-math"
     }
   ],
   "noticeSha256": {
@@ -820,7 +842,7 @@
     "third_party/licenses/Cycles-BSD-3-Clause.txt": "78176499683c1e601241d901486dfdebcd0d511826e67905dd54881f5dc1d7e3",
     "third_party/licenses/Cycles-MIT.txt": "7a91b4754c06385f87b319313871b064d4d9e0dc1570ca94928b09fe74ed03ee",
     "third_party/licenses/Cycles-Zlib.txt": "52a1da7db7828498bb11719974c41f875e310ea241c97c8e27af7cda21887c19",
-    "native/THIRD-PARTY-NOTICES.txt": "b68133132447a70ba879dc10ebe0f11412f57a20778b5d0ba31a68a0c5ae4a31",
+    "native/THIRD-PARTY-NOTICES.txt": "454fb78f42df2f32306e2a78c59f8f56409e95981b82903722b00a55418bb154",
     "parity/THIRD-PARTY-NOTICES.txt": "6d0d3b721f32aea3ed0f54569f5e9cee7c5e3ebaaf0229e77e9f4079bd9a2b4f",
     "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
     "third_party/Cycles-file-notices.txt": "543b1434934bdb47cfe6f3b4ad70d7a657d277a1961a6b54ad249cdc7689800a",
@@ -872,7 +894,7 @@
     "third_party/licenses/CodeBrix.WebGpu.Native-THIRD-PARTY-NOTICES.txt": "8b3e34f8bd6285a5df6bd62731b9f2647d46a0fe2ae00bce063ba6eecdbe7ddf",
     "third_party/licenses/LICENSE-WgpuNative.txt": "b14697c11fd0a05566ad88ee37f6ae3e38f43fd043820748fa75e0d26c56aa5b",
     "third_party/licenses/Gltf2-THIRD-PARTY-NOTICES.txt": "2305f3904c86c9ca5e041439ff3418d4ca27f772a91ddd7a9b1912d4815918ab",
-    "parity/ASSETS.md": "530a2b6a9312036c9daa1fa73e5642b238492a2d1c09cac55ef900b1db12ce17",
+    "parity/ASSETS.md": "c111b09f0f65570af3cff3c51d2c50329428a12fb7140e168437e81d8ef8b4e2",
     "third_party/deps/tiff/LICENSE.md": "0780558a8bfba0af1160ec1ff11ade4f41c0d7deafd6ecfc796b492a788e380d",
     "third_party/licenses/source-notices-tiff.txt": "f1264dcae5ffbf32362490e215b3ed7e61a78a743f648e56ff6e39164bf66ebb",
     "third_party/licenses/Boost-Debian-copyright.txt": "87ff229c71d391f951383b2246ba630c849e2024ea42a2ac9113dc9646f1e667",
@@ -889,7 +911,8 @@
     "third_party/licenses/GitHub-gitignore-LICENSE.txt": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
     "third_party/licenses/Godot-MIT.txt": "b0435e3b3e4e55238f05f4b306f30524a1b2e20147810d436eaa554fa6855c80",
     "third_party/licenses/source-notices-cycles.txt": "0fa1279f3339b9198820d315720fc3e01b8c01219b86e3f78bc832b810b6db73",
-    "third_party/cycles/AUTHORS": "a604f34abb9021668f91219c96b0f0cd9359f5aecb1faa838bee85537c4a7b80"
+    "third_party/cycles/AUTHORS": "a604f34abb9021668f91219c96b0f0cd9359f5aecb1faa838bee85537c4a7b80",
+    "third_party/arm-optimized-routines/LICENSE": "d75af3c6aeaac9021a266599d65d8555658022175c7aae8ccaa7212ca5b0df13"
   },
   "historicalLinuxSystemPackages": [
     {

@@ -1,0 +1,38 @@
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+[New Thread 0x7fffe69ff6c0 (LWP 4011062)]
+[New Thread 0x7ffff2cde6c0 (LWP 4011063)]
+[Thread 0x7ffff2cde6c0 (LWP 4011063) exited]
+[Thread 0x7fffe69ff6c0 (LWP 4011062) exited]
+[New Thread 0x7fffe69ff6c0 (LWP 4011064)]
+[New Thread 0x7ffff2cde6c0 (LWP 4011065)]
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)
+
+Thread 1 "codebrix_cycles" received signal SIGSEGV, Segmentation fault.
+0x00005555557c2fe4 in ccl::ShaderGraph::add_node(std::unique_ptr<ccl::ShaderNode, std::default_delete<ccl::ShaderNode> >&&) ()
+
+Thread 5 (Thread 0x7ffff2cde6c0 (LWP 4011065) "codebr:traceq0"):
+#0  0x00007ffff5ea672e in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007ffff5e9b388 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#2  0x00007ffff5e9b9ac in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#3  0x00007ffff5e9de98 in pthread_cond_wait () from /lib/x86_64-linux-gnu/libc.so.6
+#4  0x00007fffe5209cad in ?? () from /lib/x86_64-linux-gnu/libvulkan_intel.so
+#5  0x00007fffe51f04cb in ?? () from /lib/x86_64-linux-gnu/libvulkan_intel.so
+#6  0x00007fffe5209c0b in ?? () from /lib/x86_64-linux-gnu/libvulkan_intel.so
+#7  0x00007ffff5e9e8bb in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 4 (Thread 0x7fffe69ff6c0 (LWP 4011064) "codebri:disk$0"):
+#0  0x00007ffff5ea672e in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007ffff5e9b388 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#2  0x00007ffff5e9b9ac in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#3  0x00007ffff5e9de98 in pthread_cond_wait () from /lib/x86_64-linux-gnu/libc.so.6
+#4  0x00007fffe5209cad in ?? () from /lib/x86_64-linux-gnu/libvulkan_intel.so
+#5  0x00007fffe51f04cb in ?? () from /lib/x86_64-linux-gnu/libvulkan_intel.so
+#6  0x00007fffe5209c0b in ?? () from /lib/x86_64-linux-gnu/libvulkan_intel.so
+#7  0x00007ffff5e9e8bb in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 1 (Thread 0x7ffff7de6cc0 (LWP 4011059) "codebrix_cycles"):
+#0  0x00005555557c2fe4 in ccl::ShaderGraph::add_node(std::unique_ptr<ccl::ShaderNode, std::default_delete<ccl::ShaderNode> >&&) ()
+#1  0x00005555555b5620 in ccl::UVMapNode* ccl::ShaderGraph::create_node<ccl::UVMapNode>() ()
+#2  0x00005555555ac32a in fixture(ccl::Scene&, char const*, bool, bool) ()
+#3  0x00005555555a4bd4 in main ()

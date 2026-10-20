@@ -6,9 +6,15 @@ passes against the unchanged CodeBrix.WebGpu.Native package. This connects
 scene storage, scheduler control, limited camera initialization, closest
 intersection, selected SVM surface bounces and background/film output to WebGPU.
 A complete bounded scene-to-image loop now runs through the original native GPU
-scheduler. Full `Session` lifecycle and general feature support remain pending. The earlier
+scheduler. The maintained [experimental C host and .NET wrapper](host/README.md)
+now cover a bounded `Session` lifecycle; general feature support and complete
+platform/application validation remain pending. The earlier
 [snapshot renderer](README.md) remains
 the separate, working image reference on Linux and Android.
+
+The latest support and validation status is in
+[Integrated handoffs and current limits](#integrated-handoffs-and-current-limits-2026-10-19).
+Earlier milestone sections preserve their original test scope and limitations.
 
 ## Current session milestone
 
@@ -71,7 +77,7 @@ retains both intersections. This exception does not apply to smooth/textured
 geometry or material/attribute seams. The triangle dot adapter preserves the
 original SSE CPU reference's y/z-first addition grouping.
 
-The isolated surface integration gate additionally passes 19 cases / 18,360
+That frozen isolated surface integration gate additionally passes 19 cases / 18,360
 paths, 1,478,656 integer and 2,510,736 float checks, plus 20 explicit rejection
 cases. Maximum absolute float error is 7.53403e-5 within the relative/absolute
 tolerance; stricter differences, including film accumulation order, remain.
@@ -109,7 +115,7 @@ validates existing working outputs and tests that a changed expected scheduling
 readback is rejected. `archive` creates `evidence/native-render` once and refuses
 to overwrite it. No executable or native dependency library is archived.
 
-Unsupported direct lights/MIS, image textures, most closures, volumes, motion,
+General lighting/MIS, tiled/sparse image paths, most closures, volumes, motion,
 curves/points, guiding, MNEE and general film/session modes still require work.
 The broad roadmap is `/home/jeremy/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md`;
 all nine requested RIDs and full functionality remain its target.
@@ -331,9 +337,10 @@ allocations return to zero after cleanup. Controls, camera and closest-stage
 regressions run alongside it.
 
 The SVM extension below handles selected nonconstant world shaders.
-Sun lights, background MIS, volumes, shadow catchers, denoising, path guiding,
+Sun forward/MIS, background MIS, volumes, shadow catchers, denoising, path guiding,
 light/shadow linking and the background motion pass are explicitly unsupported
-in this entry. Surface and shadow integration remain next. The earlier standalone snapshot renderer's material
+in this entry. Later surface and opaque-shadow progress is recorded below; full
+direct lighting and transparent shadows remain open. The earlier standalone snapshot renderer's material
 support is not yet connected to this registered shading entry.
 
 The root [license inventory](../THIRD-PARTY-NOTICES.txt) records the filtered
@@ -544,13 +551,274 @@ cache bytes must still match the archive exactly. Rust code, C-header and
 native-binary differences still reject the build; six audit tests verify these
 boundaries. Earlier builders retain their strict all-files identity check.
 
+## Native static-triangle attributes
+
+`attribute_gate.py` extends native scene-table transport and the surface SVM
+interpreter with named/standard attribute lookup, 64-bit identity, object-map
+chains, signed offsets and checked table access. Object/mesh/face/vertex/corner
+values include float/float2/float3/float4, packed normals and byte colors. Native
+Rec709 conversion, UV seams, generated-coordinate fallback, interpolation,
+attribute bump offsets and stored derivatives are compared with unmodified CPU
+`shader_setup_from_ray` and `surface_shader_eval`.
+
+The Linux gate has 48 Cycles-compiled graphs and 328 typed programs, 329 cases /
+5,088 evaluations, seven rejected malformed/unsupported inputs, unchanged state
+and output guards, and zero Cycles allocations after cleanup. Maximum absolute
+error is 1.78814e-7; 17 component differences exceed the strict diagnostic bound.
+The captured 48-graph workload has 1,152 evaluations; the derivative/rejection
+programs currently execute only on Linux.
+
+A complete native 64x48/8-spp UV-checker scene exercises 156 stages / 135,912
+paths, five bounces and three transparent bounces. Its independent CPU film
+passes the existing `5e-5 + 2e-4 * abs(reference)` criterion and the GPU repeat
+is bitwise identical, with no shared-edge equivalence. Maximum absolute film
+error is 0.000137329; 840 components exceed the strict diagnostic bound.
+This is procedural shading through native UV attributes, not image sampling or
+original glTF material fidelity. Existing synthetic/clay regressions also pass.
+
+```bash
+python3 native/tools/attribute_gate.py run
+python3 native/tools/attribute_gate.py collect
+python3 native/tools/attribute_gate.py archive
+```
+
+`run` includes the existing regression chain and replays both the native graph
+capture and complete UV-render commands on Linux, Pixel, Samsung and HP Android.
+Each replay checks runtime identity, original CPU output and immutable scene
+bytes; the complete render also verifies every scheduler readback. `collect`
+checks existing results without rerunning passing workloads. `archive` creates
+`native/evidence/native-attributes` once and refuses to overwrite it. The first
+capture invocations were recorded after direct execution while the collection
+driver was being implemented; their invocation metadata states this explicitly.
+
+Other geometry domains, matrix/volume consumers, production image coverage, general bump
+state and full native Android hosts remain unfinished. Strict discrepancies are
+retained, and no all-feature or all-RID completion claim is made.
+
+## Resident native images
+
+The resident image backend now stores native `device_image` pixels in the same
+bounded GPU arena and publishes Cycles `KernelImageInfo` plus checked allocation
+bounds. Logical texture/UDIM descriptors remain native Cycles tables. ImageManager
+continues to prepare pixels; the WebGPU backend does not replace host decoding
+or conformance. Queue initialization and image updates publish current descriptors,
+and image frees remove their ownership records. Large scenes remain bounded by
+the single storage-binding arena; sparse and tiled cache paths remain unfinished.
+
+`image_gate.py` validates eight resident formats (float/half/byte/ushort, scalar
+and RGBA), nearest/linear/cubic/Smart filters and repeat/extend/clip/mirror modes.
+The native ImageManager fixture has 128 images/compiled graphs. Original CPU
+sampling covers 115,650 cases, including boundaries, negative coordinates,
+UDIM hits/misses, HDR, alpha unassociation and compressed-sRGB decoding. Fourteen
+malformed-input cases check descriptor/range/format/coordinate errors, explicit
+tiled-cache rejection and untouched output. Another 176 typed programs exercise
+flat/sphere/tube/box image projections, both environment projections, color/alpha
+outputs, and derivative opcodes. Resident images follow native non-mip sampling;
+this is not proof of tiled footprints, stochastic mip selection or cache retries.
+
+The initial Linux sampling comparison passes the unchanged absolute/relative
+criterion. Its largest absolute difference is 0.328125 at CPU value 225665.84375
+(after HDR/near-transparent unassociation and sRGB conversion); the largest
+ratio to the allowed error across the corpus is 0.00727692016. Strict failures
+remain recorded. The graph/typed corpus has 1,824 evaluations and retains its
+strict discrepancies. The complete `--images` native render compares independent
+CPU film and exact GPU repetition. `image_gate.py run` includes the complete
+attribute/prior-render regression chain and four-device sampler, graph and full
+render replay; `collect` rechecks saved evidence; `archive` refuses to overwrite
+`native/evidence/native-images`.
+
+All four devices pass the 115,650-case sampler and 768-evaluation native graph
+captures. The typed projection/derivative and malformed-input programs currently
+execute on Linux only. The complete native image render has 155 stages and
+136,029 path invocations, with bitwise-identical Linux GPU repetition and no
+shared-edge equivalence. Its recorded loop passes on Linux x64, Pixel API 33,
+Samsung API 36 and HP Android x64 API 33: 890 commands, 377 dispatches and 342
+exact scheduling readbacks per replay. The maximum independent CPU-film error is
+3.67164612e-5 on Linux/HP and 3.05175781e-5 on Pixel/Samsung. Strict image failures
+remain (2,202 / 2,205 / 1,844 / 1,850, respectively). All scene bytes remain
+unchanged and every path terminates. Earlier attribute, selected-material and
+clay-bench regressions also pass. The [image checkpoint](evidence/native-images/validation.json)
+contains these results and fresh earlier regressions; historical checkpoints are
+preserved. Android results establish GPU command replay, with native Android
+Cycles hosts still pending.
+
+```bash
+python3 native/tools/image_gate.py run
+python3 native/tools/image_gate.py collect
+python3 native/tools/image_gate.py archive
+```
+
+These initial fixtures use generated input pixels through native ImageManager.
+The next section extends validation to encoded file inputs and replacements.
+Production OCIO configurations, additional file/animation/UDIM coverage, broader
+edit and resize stress, sparse 3D images, tiled cache residency, original
+ForestCommunity materials, general closures and native Android hosts remain open.
+
+## File-image and replacement validation
+
+`native/tools/image_file_gate.py` exercises the existing native ImageManager and
+reviewed OIIO/OCIO build with eighteen encoded PNG, JPEG and OpenEXR fixtures.
+One through four channels, byte/ushort/half/float precision, five alpha modes and
+five color selections produce 450 parameter variants. Its original OCIO matrix
+configuration is validated, serialized and loaded from disk. Known source pixels
+also verify lossless decoding, channel expansion, image orientation and the
+matrix conversion independently of the CPU sampler; JPEG remains a lossy-codec
+transport comparison, with no exact pre-encoding pixel claim.
+
+Sixteen native replacement cycles change dimensions and precision while an old
+image read is queued. Each verifies the old result, the newly loaded pixels,
+native handle deduplication, logical descriptor reuse, animation-frame update
+signals and unchanged unrelated image storage. This tests replacement by native
+handle release/re-add, not a completed host application edit API. Both `<UDIM>`
+and `<UVTILE>` filename patterns build native three-tile mappings. Missing and
+corrupt inputs retain the original missing-image behavior. Cleanup leaves zero
+Cycles allocation bytes and no image owners or image-info/bounds tables.
+
+The Linux gate checks 154,931 samples, including 34,483 known lossless texels
+(maximum error 5.96046448e-8). The final 116,352-case snapshot is the four-device
+GPU replay corpus, now passed on Linux, Pixel API 33, Samsung API 36 and HP Android
+x64 API 33. Actual file decoding, OCIO setup, replacement/lifetime and
+known-texel assertions currently execute on Linux only. Recorded diagnostics
+separate very large HDR values after near-zero-alpha unassociation/sRGB conversion
+from ordinary-color errors; the same absolute/relative tolerances apply.
+
+The TIFF plugin remains deliberately excluded by the reviewed dependency profile;
+this gate records that gap rather than enabling excluded implementation code.
+A compatible TIFF/LZW path and other unavailable format paths remain required.
+No dependency revision or imported implementation was added for this work.
+Production OCIO configurations, cache/mip residency, broader animation/lifetime
+stress, original material renders and all native platform hosts remain open.
+
+```bash
+python3 native/tools/image_file_gate.py run
+python3 native/tools/image_file_gate.py collect
+python3 native/tools/image_file_gate.py archive
+```
+
+`archive` creates `native/evidence/native-image-files` once, preserving file
+fixtures, the OCIO configuration, captures, replay arenas and test sources. Prior
+native-image rendering evidence remains separately frozen; the collector checks
+identity of its native implementation and four earlier native executables for
+that historical checkpoint. After renderer edits, the normal gate supplies a
+fresh image/attribute/render regression chain with matching source hashes.
+For separate collection after that fresh regression, use
+`python3 native/tools/image_file_gate.py collect --regression native/work/images/validation.json`.
+Without that option, the standalone file gate retains its original strict
+renderer-identity requirement and rejects changed renderer binaries.
+The [file-image checkpoint](evidence/native-image-files/validation.json) records
+the results and explicit proof limits.
+
+## Native normal maps and tangents
+
+`python3 native/tools/normal_gate.py run` checks native static-triangle
+normal-map spaces (tangent, object, world and Blender object/world), both green
+channel conventions, original/displaced base normals, strengths below zero and
+above one, missing attributes, zero colors and out-of-range finite colors.
+Native Mesh tangent generation supplies standard/named UV frames. Shared mesh
+instances, nonuniform/mirrored transforms, front/backfaces, flat/smooth/corner
+normals and separate undisplaced normals feed the original CPU SVM comparison.
+Radial/UV tangents include analytic dx/dy and FLOAT2/FLOAT3 attribute consumers.
+
+The Linux corpus has 48 compiled graphs, 398 typed programs and 10,704 surface
+SVM evaluations. Ten malformed/degenerate cases must set an error without writing
+an output record. A degenerate plain tangent produces nonfinite values in the
+original implementation; this backend explicitly rejects it. The derivative
+zero-frame semantics are separate. Full bump state, motion and other geometry
+remain open. No original asset material-fidelity claim is made.
+
+The gate also runs a complete 64x48, 8-sample native image-normal-mapped render,
+checks independent CPU film, repeats the GPU film bitwise, and replays the graphs,
+selected nonzero tangent derivatives and full recorded render on four GPUs.
+It reruns previous image/attribute/render gates and file-image checks following
+renderer edits. `collect` rechecks existing results; `archive` freezes
+`native/evidence/native-normals` once. Android replay validates the recorded GPU
+work; native Android Cycles hosts remain pending. Strict diagnostics are retained
+alongside the unchanged 5e-5 + 2e-4*abs(reference) acceptance criterion.
+
+## GGX reflection work in progress
+
+The current GGX reflection changes are not a frozen rendering checkpoint. The
+native setup corpus passes 167 cases and 16 malformed-input rejections. The
+earlier full native render stopped on a sharp-GGX PDF comparison. At the retained
+stage-6 input, a one-step difference between host `cosf` and correctly rounded
+binary32 cosine changes the sampled half-vector enough to exceed the unchanged
+PDF tolerance. The original CPU reference and acceptance limits remain intact.
+The corrected bounded adapter now uses the MIT option of Arm Optimized Routines
+v25.01, pinned at 3752b981a6f3b89b5468476a87568a29fd9e0822. The four original
+source/data files and selected MIT grant are retained under
+`third_party/arm-optimized-routines`, with hashes/license basis in
+`third_party/arm-math-import.json`. Original CodeBrix two-component arithmetic
+evaluates the polynomial in WGSL without requiring binary64. This adds no linked
+math library. `tools/arm_math_source.py` verifies the subset before native builds
+and source auditing; root and native notices retain Arm attribution.
+
+Its development backend passes the unchanged full native gate (149 stages /
+140,006 paths, independent CPU film and bitwise repeat) and all 34,838 scalar
+checks on four GPUs. The integrated build still requires fresh native/device and
+broader regression validation. `native/tools/native_trig_gate.py` supplies a
+larger corpus with independent platform `sinf`/`cosf` calls. The original Taylor
+adapter and its rounded-binary64 gate remain separate.
+
+The composed surface shader also exposed execution-layout sensitivity on the
+tested Linux Intel GPU: size 64 reproduces incorrect packed state and ray
+directions. Its size-1 variant passes Linux and Samsung, but HP aborts in the
+vendor compiler and Pixel exceeds the 600-second test timeout. The current path
+therefore separates preparation/closure evaluation (size 64) from sampling and
+state updates (size 1), with a 208-byte GPU-private record per invocation. The
+ready word is cleared before validation and set only after the complete record
+is written. The native scheduler retains one surface operation and its existing
+queue transitions; no CPU readback connects these two GPU dispatches.
+
+The captured split, including the actual native-generated module, passes all
+77,824 integer checks, 110,592 float comparisons, film, queue and guard checks on
+Linux, Pixel, Samsung and HP with unchanged package binaries. Strict differences
+remain reported. The current native GGX bounce gate passes 22 valid cases /
+21,420 paths and 21 invalid-input checks. The generic bounce gate passes 18 valid
+cases / 17,340 paths and the same 21 rejections. These results predate the newly
+integrated native trig adapter. Broader regression
+and performance assessment remain open. A retained branchless arithmetic variant
+fails Linux, so it is not the production default. Working diagnostics are under
+`native/work/microfacet`; older immutable evidence describes its own source pins.
+
+Global closure capacity now requires 1..MAX_CLOSURE, matching native Scene's
+minimum of one. The previously injected global-zero positive case can leave the
+CPU with a BSDF flag but no allocated closure, making sampling undefined. All
+1,020 original paths are retained as a rejection case, with the same flags,
+weights, film allocation and queue counts; every path field, film value and
+counter must remain unchanged. Minimum-capacity-one and local zero-storage SVM
+evaluation remain covered. This reclassification leaves historical evidence
+intact and does not change numerical acceptance.
+
+A complete image diagnostic records exactly one practical state-float mismatch
+(the PDF above), zero integer-state mismatches and zero CPU/GPU queue-count
+differences over 149 stages / 140,006 path invocations. Its independent CPU film
+passes the existing tolerance, with maximum error 1.90735e-6 and 173 strict
+differences; repeated GPU film is bitwise identical. It explicitly reports
+`diagnosticOnly=true` and `stageGatePassed=false`. Four-device replay of this fixed
+capture checks scheduling and film; it cannot establish the failed stage gate.
+Single-kernel replay now allows 600 seconds by default, matching full-render
+replay, after Pixel exceeded the previous 180-second compilation/execution limit.
+
+Dispatch sizes are explicit in native recording and replay. Command-stream v2
+adds kind 5: the existing three-word header contains kind, entry and invocation
+count, followed by a workgroup-size word and the 128-byte parameter block. Kind 3
+retains its original implicit size 64, so v1 captures remain replayable. Entry 5
+selects `prepare_surface` from `surface.wgsl`; entry 4 selects `shade_surface`.
+Tests
+cover an actual size-1 surface dispatch, old and converted full-render captures,
+invalid sizes/grid counts, truncated records and unknown command kinds. Expected
+scheduling readbacks remain assertions and are never injected into GPU state.
+
 ## Next integration
 
-The selected native surface-bounce entry and complete scheduler loop now pass.
-Next are image textures/attributes and broader SVM/closure support, then direct
-light/shadow entries and MIS operating on Cycles' native state and scene tables.
-The separate full-functionality plan also brings forward native Android hosts,
-other platform builds and early feasibility checks for advanced functionality.
+The earlier bounded surface-bounce and complete scheduler-loop checkpoints pass
+for their recorded sources and fixtures; GGX reflection has since passed bounded
+native-render regressions. Point/sun NEE and shadow-path creation now have bounded
+native-render coverage below. Next are transparent shadows, remaining emitters,
+forward/MIS and broader rendering features.
+Use the existing Linux and Android hosts for relevant feature regressions.
+Jeremy's 2026-10-19 priority defers additional platform ports and release packaging
+until rendering functionality is complete, unless a concrete feature needs them.
 The existing WGSL rendering functions provide tested behavior to adapt, but
 the existing complete-path shader must not be disguised as those individual
 kernels. Queue transitions, counters, shadow-path creation, film writes and
@@ -568,3 +836,280 @@ Linux and the three connected Android devices. Its `archive` command creates
 reference sources and prior-gate reports. It never overwrites checkpoints or
 archives a complete upstream checkout or native dependency binaries. All such
 evidence remains subject to the release review in `../RELEASE-LICENSE-PLAN.md`.
+
+## Registered opaque shadow stages (2026-10-19)
+
+The registered queue now implements `INTEGRATOR_INTERSECT_SHADOW` and
+`INTEGRATOR_SHADE_SHADOW` for opaque static triangles and native instances.
+Originating and light primitives are excluded by their native object/primitive
+identities. The stages preserve native shadow-state and queue-counter semantics
+and write combined, adaptive auxiliary, light-group and surface direct/indirect
+film passes. Transparent shadows, volumes, AO, shadow linking and shadow catchers
+remain explicit errors. This initial shadow-stage checkpoint preceded the
+point/sun light-sampling and shadow-state integration recorded below; stage tests
+alone do not prove a complete direct-light render.
+
+A boundary test exposed ordinary WGSL division rounding an exact depth of 4 to
+3.999999761581421. The existing binary32 rounding helper now computes BVH inverse
+directions and generated triangle depth division. This preserves ray bounds;
+the original failed decision and independent scalar probes are retained.
+
+Run the shadow stage and affected traversal/GGX regressions with a new output
+folder:
+
+```bash
+python3 native/tools/shadow_gate.py --output native/work/shadow-check-local
+```
+
+The initial successful run is `native/work/shadow-stages/linux-v4/validation`.
+It passes 60 cases/3,846 paths against unmodified original CPU shadow kernels,
+with 1,204,320 exact state checks, 1,111,680 film-component checks and 18 invalid
+case rejections. Shadow film comparisons have zero strict differences, maximum
+absolute error 5.960464477539063e-8. Existing closest-intersection and GGX full
+render regressions also pass; closest-stage strict floating diagnostics remain
+reported separately.
+
+`native/work/shadow-stages/android-v1/validation` records the same native test
+on Pixel ARM64, Samsung ARM64 and HP Android x64: all pass with the same coverage
+and film-error results through unchanged shipped WebGPU binaries. These isolated
+feature builds reuse the existing reviewed Android dependency prefixes. Payload,
+compiler/header/archive and ELF reviews pass; no new platform port or release
+package is implied. Full direct-light and transparent-shadow integration remains
+required.
+
+The recorder/replayer now includes shadow intersection and shading as pipeline
+IDs 6 and 7. Captures using these entries have format `native-command-stream-v3`
+and include `shadow.wgsl`; existing v1/v2 captures retain their original pipeline
+IDs and shader requirements. Capture metadata records film stride, workload and
+shadow queue bounds. Validation checks all shadow paths terminate and compares
+every film pass against the original CPU reference. A shadow-stage replay is
+reported separately from a full render. `shadow_gate.py` now records and replays
+one direct and one indexed shadow batch on Linux as part of its acceptance run;
+both pass in `native/work/shadow-capture/linux-v1`, alongside the original shadow,
+closest-intersection and GGX render gates. Each replay verifies four scheduling
+readbacks, all 4,096 shadow slots terminated and 9,264 film components, with zero
+strict film differences.
+
+`native/work/shadow-capture/compatibility-v2` passes nine additional replays:
+historical v1/v2 and the current render capture on Linux, plus both shadow batches
+on Pixel, Samsung and HP Android. The shadow batches have zero strict film
+differences on all devices, maximum absolute error 5.960464477539063e-8.
+Historical full-render strict diagnostics remain reported (1,230 v1 and 173 v2);
+their practical image criteria pass unchanged. Altering an expected scheduling
+readback is rejected, as is a nonterminal shadow slot. Source, binary, runtime and
+capture input hashes remained unchanged throughout validation. These Android
+runs are command replay; the separate native-host shadow proof above remains the
+native execution evidence. An initial work-runner import-path error is retained
+with its original source/log; the corrected compatibility run passes.
+
+## Native point/sun next-event estimation (2026-10-19)
+
+The native surface stage now samples the original light CDF and point/sun records,
+evaluates supported diffuse/translucent/GGX mixtures, applies light termination,
+and allocates shadow paths through the original native scheduler. Point lights
+support zero radius, disk and sphere geometry; sun lights support finite cones.
+Constant emission, cast-shadow switches, bounce limits and existing shadow film
+passes use native semantics. CPU table copies only validate capabilities; GPU
+kernels perform the rendering work.
+
+Full forward/MIS, light trees, triangle/area/spot emitters, nonconstant light
+shaders, transparent shadows and smooth shadow-terminator geometry offsets remain
+explicitly unsupported. These remain required work. The direct-light contribution
+is generated by native scene preparation and WGSL kernels without changing the
+shipped WebGPU library.
+
+```bash
+python3 native/tools/lighting_gate.py --output native/work/lighting-check-local
+```
+
+`native/work/direct-light/linux-v4` passes eight 32x24, 8-sample scenes against
+unmodified original CPU integrator/shadow kernels. The test exercises 29,527 CPU
+reference shadow paths (2,707 blocked, 26,820 visible) and 49,152 film comparisons,
+with maximum absolute error 8.344650268554688e-6. All practical comparisons pass;
+5,616 strict differences remain reported. Seven scenes repeat bitwise; the
+light-termination scene has six differing repeated GPU components, maximum
+1.1920928955078125e-7. This is not a determinism fix or a strict-parity claim.
+
+All eight complete native command streams replay successfully on Linux, including
+shadow allocator readbacks and terminal main/shadow queues. Existing shadow,
+closest, surface, background and GGX render regressions pass; their strict
+numerical diagnostics remain intact. Earlier failed fixture/reference-wrapper
+runs and the test scheduler overload mistake are retained in linux-v1/v2/v3.
+The corrected test uses the full native scheduling method, including shadow
+compaction and allocation bookkeeping.
+
+Actual native tests on Samsung ARM64 API36 and HP Android x64 API33 pass all eight
+scenes and 49,152 film comparisons per device, with byte-identical generated WGSL.
+Samsung reports maximum image error 6.020069122314453e-6 and 2,342 strict
+differences; HP reports 8.344650268554688e-6 and 5,584 strict differences. Both
+exercise the same 29,527 reference shadow paths as Linux and leak no native
+allocations. The light-termination scene repeats with five differing components
+on Samsung (maximum 2.384185791015625e-7) and eight on HP (1.1920928955078125e-7).
+Other scenes repeat bitwise.
+
+Pixel ARM64 API33 timed out after 900 seconds in its first GPU scene, after the
+CPU reference film completed. The Android coordinator is retained as failed in
+`native/work/direct-light/android-v1`; this feature is not yet validated on Pixel.
+Separate post-timeout review confirms unchanged source/binary/runtime pins.
+The process is absent and its CPU film is retained. Pipeline timing diagnosis is
+underway; no numerical acceptance criteria were loosened. The first diagnostic
+attempt rejected a stale existing replay binary before device execution; the
+next diagnostic builds an isolated current harness. These are functionality
+tests on existing RIDs, with no new platform or release-package claim.
+
+## Native perspective camera motion
+
+The camera entry now reads Cycles' native decomposed camera-motion array and
+shutter inverse-CDF table. WGSL performs translation/rotation/scale interpolation,
+perspective FOV motion and top-to-bottom rolling shutter, including durations
+zero and one. Native scene preparation still computes the decomposed transforms
+and shutter table. Existing object/deformation-motion and curve guards remain;
+this is camera motion against static triangle geometry, not complete motion blur.
+
+`python3 native/tools/camera_motion_gate.py --output NEW_DIRECTORY` builds and
+runs the original CPU camera/path-state oracle, malformed-configuration checks,
+a stationary image control and eight independent CPU/GPU moving-camera images.
+The images exercise multiple bounces and transparent/diffuse/GGX materials. The
+runner requires both CPU and GPU moving images to differ measurably from the
+stationary control, records unchanged source/binary/runtime hashes, and retains
+strict diagnostics alongside the established practical tolerances. Camera state
+cases include two/three/five transform steps, small/large rotations, scale/shear,
+nonuniform shutter curves, FOV changes, rolling shutter and indexed retries.
+
+The first rotating-image attempt was correctly rejected by the independent film
+comparison even though camera-state and per-stage tolerances passed. The camera
+port now uses paired binary32 quaternion dot/normalization and an original
+bounded Taylor acos adapter with the existing precise sin/cos helper. The failed
+attempt remains in `native/work/camera-motion-v1`; subsequent raw films are saved
+before image comparisons so a failed comparison cannot discard its evidence.
+
+Linux development evidence is recorded under `native/work/camera-motion-v2`.
+No Android camera-motion execution or complete platform coverage is claimed by
+this lane. Depth of field, other camera models, object/deformation motion, hair,
+subdivision and motion-vector passes require their own implementations and tests.
+
+## Parallel functionality integration (2026-10-19)
+
+The main source now includes three separately validated Linux slices: registered
+point/sun forward lighting and MIS; single-scatter GGX glass/refraction; and native
+perspective camera motion. Their isolated gate results and sealed source deltas
+are recorded in the sibling `.parallel/{lighting,materials,geometry}` worktrees.
+The primary agent has merged their shared scene layouts, canonical closure records,
+shader assembly and recorder entries. Main-source regression and combined-scene
+validation passes in `native/work/parallel-integration/validation-v1`: the full
+point/sun MIS and no-MIS corpus, glass/GGX state and image checks, camera-motion
+corpus and 24 complete command replays. The eight combined scenes check 49,152
+film components, with maximum absolute error 3.337860107421875e-5; 5,769 strict
+differences and five differing repeated-film components remain recorded.
+
+`native/tools/feature_combination_gate.py` exercises all three slices in eight
+native scenes with independent original CPU films and full command replay.
+`lighting_mis_gate.py`, `glass_gate.py` and `camera_motion_gate.py` retain their
+independent feature corpora and existing regression checks. Strict diagnostics
+and repeated-film differences are reported under unchanged comparison criteria.
+
+Forward sphere/disk lamp hits, finite suns and their NEE/forward MIS weights now
+have integrated Linux evidence. Broader emitters, light trees, environment MIS,
+nonconstant emitter shaders and transparent shadows remain required. Glass covers
+single-scatter GGX reflection/transmission, backfacing IOR, TIR, mixtures and pass
+classification; thin film, multi-GGX glass and full Principled remain required.
+Camera motion is limited to perspective pinhole cameras and static triangles.
+Focused native Android builds pass for ARM64/x64 using the existing toolchains.
+Static and moving-camera tests pass on Pixel, Samsung and HP. Forward-light state
+checks pass on Samsung and HP. Glass remains unresolved: HP aborts during shader
+compilation with Scudo allocation exhaustion; Samsung fails a near-singular
+refraction PDF comparison. Neither reaches the combined-image corpus. The failed
+coordinator, per-device outputs and unchanged post-failure source/binary checks are
+retained in `native/work/parallel-integration/android-v1/validation`.
+
+Every WebGPU test uses the unchanged runtime from
+`CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.290.1433. Staged hashes are checked
+against the package, and successful native runs verify the loaded library path.
+Copied-shader SVM-storage diagnostics also timed out on Pixel and HP; they have
+not been promoted to production or counted as passed features.
+
+## Spot and area lighting extension (2026-10-19, Linux main validation passed)
+
+Registered NEE, lamp intersections and forward MIS now include constant spot
+lights and rectangle/ellipse/disk area lights with native shape/spread sampling.
+The sealed lighting lane passed 4,096 independent native sampler probes, six
+invalid-input checks, 53 broad-light state cases, 12 independent CPU/GPU images,
+point/sun and combined glass/camera regressions, and 20 complete command replays.
+Its first rectangle-image mismatch was fixed by preserving native float operation
+order and bounded trigonometric evaluation; failed attempts remain retained.
+
+The source delta is merged into main with reviewed in-repository derivations and
+attribution. `python3 native/tools/broad_lighting_gate.py --output NEW_DIRECTORY`
+builds and executes the maintained corpus. Main validation passes all 26 reports
+in `native/work/parallel-integration/lighting-round2-v1`, with source, executable
+and runtime pins unchanged. The 12 new scenes exercise 2,141 forward-light paths
+and 27,285 shadow paths; all 73,728 film comparisons pass the practical criterion.
+Maximum absolute image error is 1.010894775390625e-4; 6,253 strict differences
+and 13 repeated-film component differences remain recorded. All native
+allocations are released. Build-input review covers 263 compilation entries,
+1,296 compiler-observed headers, 11 static archives and six gate executables;
+the source-license audit passes 25,610 files with zero errors.
+
+No Android spot/area claim is made yet. Mesh/environment emitters,
+textured light shaders, light trees and degenerate area dimensions remain
+guarded. Transparent shadows now pass the integrated corpus below. No WebGPU
+runtime or numerical tolerance was changed.
+
+
+## Integrated handoffs and current limits (2026-10-19)
+
+The working tree combines the sealed transparent-shadow, deforming-triangle and
+finite homogeneous-volume slices. The combined Linux regression is PASS in
+`native/work/parallel-integration/all-lanes-validation-v2`: 29 targets built,
+78 independent CPU/GPU scene comparisons and 45 exact command replays with
+22,789 scheduling readbacks. It includes the new feature corpora and shared
+world-volume, glass/GGX, camera-motion and broader-lighting regressions. All
+production source, executable and package-runtime hashes stayed unchanged during
+testing. Strict differences and repeated-film differences remain recorded.
+
+The first combined run crashed in Intel's Vulkan compiler while creating the
+transparent-shadow pipeline. Reducing that shading workgroup from 64 to 1,
+with matching dispatch sizing, passes the unchanged corpus. Opaque traversal
+retains 64; the original crash/backtraces are preserved in `all-lanes-crash-v1`.
+Large-scene performance and wider driver coverage remain unmeasured.
+
+- Transparent/colored shadows support static triangles and bounded hit storage
+  with resumed traversal. Moving transparent shadows, volume shadow attenuation,
+  light/shadow linking, AO, MNEE and shadow catchers remain guarded. The stable
+  GPU queue gather scans path capacity serially; large-scene cost is unmeasured.
+- Deforming triangles use native motion frames, interpolated vertex/corner
+  normals, instance transforms and opaque-shadow traversal. Curves, points,
+  subdivision, animated emitters and transparent-shadow/volume combinations
+  remain unsupported or unvalidated; their guards are retained.
+- Finite homogeneous volumes include native GPU density preparation, camera-
+  inside stack initialization, entry/exit and overlapping HG media. Volume
+  NEE/MIS, emission/light passes, shadow attenuation, heterogeneous media and
+  moving scenes remain guarded. Mixed-anisotropy duplicate compaction is
+  rejected because the independent native CPU closure assignment loses HG data
+  in padding; the original failure is preserved and the oracle is unchanged.
+- These handoffs now have combined Linux evidence. Their new Android paths
+  remain unvalidated. Full Cycles lighting/MIS is not complete: mesh/environment
+  sampling and MIS, light trees, textured emission and remaining interactions
+  still require implementation and proof.
+
+All tests continue to use the unchanged CodeBrix.WebGpu.Native.MitLicenseForever
+1.0.290.1433 binaries, independent original CPU references and unchanged practical
+and strict diagnostic criteria. Recorder v5 uses slots 9 (ShaderData), 10 (volume
+stack), 11 (volume transport), 12 (transparent shadows), 13 (surface lighting)
+and 14 (homogeneous density); earlier capture formats remain supported.
+
+
+## Wrap-up: triangle-light candidate deferred (2026-10-19)
+
+All completed sub-agent handoffs above remain integrated and uncommitted.
+A subsequent primary-agent triangle-light/MIS candidate passes focused sampler,
+surface and four static-image/replay checks, but its final transparent-lighting
+regression crashes. The candidate and failure evidence are preserved under
+`native/work/mesh-light-v1/deferred-candidate`; it is excluded from production.
+The validated pre-extension source was restored by exact hash, retaining the
+original triangle-light guards and recorder v5. Restoration and follow-up results
+are recorded under `native/work/mesh-light-v1` and in section 44 of Jeremy's plan.
+Before reintegration, resolve the transparent-lighting regression and the retained
+instanced-emitter image mismatch, then validate moving emitters and broader
+interactions. Environment/textured emission, light trees and remaining full MIS
+work are unfinished. No percentage increase or new Android coverage is claimed.

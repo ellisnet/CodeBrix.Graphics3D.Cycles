@@ -111,7 +111,7 @@ static unsigned selections(WebGPUDevice &d,DeviceQueue &queue,StateFixture &f){
     std::vector<int> expected;auto queued=shadow?f.cpu.shadow_path.queued_kernel:f.cpu.path.queued_kernel;
     for(int i=0;i<n;i++)if(terminated?queued[i]==0:(compact?(i>=arg&&queued[i]!=0):(active?queued[i]!=0:queued[i]==arg)))expected.push_back(i);
     require(count[0]==int(expected.size()),"Selection count differs");const int offset=terminated?arg:0;
-    std::vector<int> actual(indices.data()+offset,indices.data()+offset+count[0]);std::sort(actual.begin(),actual.end());require(actual==expected,"Selection membership differs");
+    std::vector<int> actual(indices.data()+offset,indices.data()+offset+count[0]);if(d.data.integrator.transparent_shadows)require(actual==expected,"Stable selection order differs");std::sort(actual.begin(),actual.end());require(actual==expected,"Selection membership differs");
     for(int i=0;i<int(indices.size());i++)if(i<offset||i>=offset+count[0])require(indices[i]==-1,"Selection changed an output guard");
     cases++;
   }return cases;
@@ -138,9 +138,22 @@ static unsigned sorting(WebGPUDevice &d,DeviceQueue &queue,StateFixture &f){
     std::set<int> seen;
     for(int i=0;i<n;i++){
       if(expected_indices[i]<0)require(indices[i]==-1,"Sorted output guard changed");
-      else{int path=indices[i];require(path>=0&&path<n&&seen.insert(path).second,"Invalid/duplicate sorted index");
+      else{if(d.data.integrator.transparent_shadows)require(indices[i]==expected_indices[i],"Stable sorted order differs");int path=indices[i];require(path>=0&&path<n&&seen.insert(path).second,"Invalid/duplicate sorted index");
         require(f.cpu.path.queued_kernel[path]==kernel&&f.cpu.path.shader_sort_key[path]==f.cpu.path.shader_sort_key[expected_indices[i]],"Sorted bucket membership differs from original helper");}
     }cases++;
+  }return cases;
+}
+static unsigned stable_reservations(WebGPUDevice &d,StateFixture &f){
+  device_vector<uint32_t> next(&d,"reservation_next",MEM_READ_WRITE),base(&d,"reservation_base",MEM_READ_WRITE);next.alloc(1);base.alloc(1);unsigned cases=0;
+  for(unsigned n:{0u,1u,63u,64u,65u,193u,4099u,4100u}){
+    f.seed();f.upload();const uint32_t start=n>=4099?0:17;next[0]=start;base[0]=0xdeadbeefu;next.copy_to_device();base.copy_to_device();
+    std::array<uint32_t,32> p{};p[0]=5;p[1]=n;p[2]=next.device_pointer;p[3]=uint32_t(uintptr_t(f.gpu.shadow_path.queued_kernel));p[4]=base.device_pointer;p[17]=d.error_word;p[18]=f.count;d.dispatch(p,1);
+    next.copy_from_device();base.copy_from_device();uint32_t error=0;d.download(d.error_word,&error,4);
+    const bool valid=start<=f.count&&n<=f.count-start;
+    require(error==(valid?0u:1u),"Reservation capacity error differs");require(next[0]==(valid?start+n:start)&&base[0]==(valid?start:0xdeadbeefu),"Reservation changed count/base incorrectly");
+    if(valid)std::fill_n(f.cpu.shadow_path.queued_kernel+start,n,0);
+    else d.zero(d.error_word,4);
+    f.compare();cases++;
   }return cases;
 }
 static void allocation_ordering(WebGPUDevice &d){
@@ -200,14 +213,15 @@ int main(int argc,char **argv){TaskScheduler::init(1);int result=0;try{
   unsigned scene_tables=scene_and_scheduler(d);require(stats.mem_used==0,"Scene/scheduler leaked Cycles allocations");
   allocation_ordering(d);require(stats.mem_used==0,"Allocation-order tests leaked Cycles allocations");
   const unsigned rejected=rejections(infos[0]);
-  unsigned reset_cases=0,selection_cases=0,sort_cases=0,compaction_cases=0,field_count=0;
+  unsigned reset_cases=0,selection_cases=0,sort_cases=0,compaction_cases=0,field_count=0,reservation_cases=0;
   {
     StateFixture f(d,4099);field_count=unsigned(f.fields.size());auto queue=d.gpu_queue_create();
     for(int n:{0,1,63,64,65,193,4099}){
       f.seed();f.upload();DeviceKernelArguments args(&n);require(queue->enqueue(DEVICE_KERNEL_INTEGRATOR_RESET,n,args),"Reset dispatch failed");
       require(queue->synchronize(),"Reset sync failed");std::fill_n(f.cpu.path.queued_kernel,n,0);std::fill_n(f.cpu.shadow_path.queued_kernel,n,0);f.compare();reset_cases++;
     }
-    f.seed();f.upload();selection_cases=selections(d,*queue,f);sort_cases=sorting(d,*queue,f);
+    for(bool stable:{false,true}){auto data=d.data;data.integrator.transparent_shadows=stable;d.const_copy_to("data",&data,sizeof(data));f.seed();f.upload();selection_cases+=selections(d,*queue,f);sort_cases+=sorting(d,*queue,f);}
+    reservation_cases=stable_reservations(d,f);
     for(bool shadow:{false,true}){
       f.seed();const int n=193,active=0,terminated=n;
       device_vector<int> pairs(&d,"compaction_pairs",MEM_READ_WRITE);pairs.alloc(2*n);
@@ -224,7 +238,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int result=0;try{
   std::ofstream(output+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(output+".library.txt")<<d.gpu.library_path;
   std::cout<<"{\"passed\":true,\"registeredCyclesDevice\":true,\"originalGpuSchedulerReset\":true,\"preparedSceneTables\":"<<scene_tables
     <<",\"resetCases\":"<<reset_cases<<",\"selectionCases\":"<<selection_cases<<",\"sortCases\":"<<sort_cases<<",\"compactionCases\":"<<compaction_cases
-    <<",\"nativeStateFields\":"<<field_count<<",\"states\":4099,\"unsupportedKernelRejected\":true,\"invalidCasesRejected\":"<<rejected
+    <<",\"stableReservationCases\":"<<reservation_cases<<",\"nativeStateFields\":"<<field_count<<",\"states\":4099,\"unsupportedKernelRejected\":true,\"invalidCasesRejected\":"<<rejected
     <<",\"growthPreservesGpuWrites\":true,\"uploadOrderingPassed\":true,\"partialReadbackPassed\":true,\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used
     <<",\"arenaBytes\":"<<d.arena_bytes<<",\"arenaGrowths\":"<<d.growths<<",\"gpuDispatches\":"<<d.dispatches
     <<",\"gpuSubmissions\":"<<d.submissions<<",\"uploads\":"<<d.uploads<<",\"downloads\":"<<d.downloads<<"}\n";

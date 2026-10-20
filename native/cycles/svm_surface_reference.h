@@ -2,14 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 #include "kernel/integrator/state.h"
+#include "surface_closure.h"
 #include <vector>
 namespace ccl {class DeviceScene;
 // Canonical comparison records, not a native ShaderData or ShaderClosure ABI.
 // Unused closure fields are zero, including undefined holdout N/sample_weight.
-struct SurfaceClosureRecord {
-  packed_float3 weight;float sample_weight;packed_float3 N;uint kind;
-  float roughness,a,b;packed_float3 multiscatter;
-};
 struct SurfaceSvmRecord {
   uint count,remaining,runtime_flag,lcg_state;
   packed_float3 N,emission,transparency;

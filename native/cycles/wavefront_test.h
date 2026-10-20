@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <tuple>
 #include <vector>
 namespace wavefront_test {
 using namespace ccl;
@@ -41,6 +42,10 @@ inline std::vector<Field> fields(WebGPUDevice &d){std::vector<Field> out;
 #undef KERNEL_STRUCT_ARRAY_MEMBER
 #undef KERNEL_STRUCT_END
 #undef KERNEL_STRUCT_END_ARRAY
+  if(d.data.kernel_features&KERNEL_FEATURE_VOLUME)for(unsigned slot=0;slot<d.data.volume_stack_size;slot++){
+    for(auto [name,address,offset]:{std::tuple{"object",d.state.volume_stack[slot].object,offsetof(IntegratorStateCPU,volume_stack[0].object)},std::tuple{"shader",d.state.volume_stack[slot].shader,offsetof(IntegratorStateCPU,volume_stack[0].shader)}})
+      if(address)out.push_back({"volume_stack["+std::to_string(slot)+"]."+name,uint32_t(uintptr_t(address)),sizeof(int),offset+slot*sizeof(IntegratorStateCPU{}.volume_stack[0]),false});
+  }
   return out;
 }
 inline void upload(WebGPUDevice &d,const std::vector<Field> &layout,const std::vector<IntegratorStateCPU> &states){

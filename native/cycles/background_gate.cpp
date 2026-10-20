@@ -63,8 +63,8 @@ static unsigned rejections(const DeviceInfo &info){
     auto layout=fields(d);std::vector<IntegratorStateCPU> states(scheduler.capacity());auto &s=states[0];s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND;s.path.throughput=one_float3();s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.isect.prim=PRIM_NONE;
     std::string reason="reported invalid data";
     if(test==0){data.background.use_mis=1;reason="light MIS";}
-    if(test==1){data.integrator.num_lights=1;reason="sun lights";}
-    if(test==2){data.kernel_features|=KERNEL_FEATURE_VOLUME;reason="optional integration features";}
+    if(test==1){data.integrator.num_lights=1;reason="native light table";}
+    if(test==2){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
     if(test==3){data.film.pass_flag|=PASSMASK(MOTION);reason="motion pass";}
     if(test==4){data.film.pass_combined=data.film.pass_stride-3;reason="film pass offset";}
     if(test==5)s.path.render_pixel_index=1;

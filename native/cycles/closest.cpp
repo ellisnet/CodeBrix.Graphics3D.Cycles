@@ -9,17 +9,43 @@ static constexpr char closest_source[]=
 #include "closest_shader.inc"
 ;
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
+// Typed host copies are capability checks only; GPU kernels evaluate every
+// ray-time transform. Native arrays stay authoritative for rendering.
+// Motion support is limited to triangle deformation and triangle instances.
+// Animated emitters, curves, points and subdivision are outside this adapter;
+// transparent-shadow and volume combinations retain their separate guards.
+void WebGPUDevice::validate_geometry_motion() const{
+  require(object_records.size()==object_flag_records.size(),"Invalid native object flag table");
+  bool moving=false;const auto motion=globals.find("object_motion");
+  const size_t count=motion==globals.end()?0:remaining(motion->second)/sizeof(DecomposedTransform);
+  if(motion!=globals.end())require(remaining(motion->second)%sizeof(DecomposedTransform)==0,"Invalid object motion table size");
+  for(size_t i=0;i<object_records.size();i++){
+    const auto flags=object_flag_records[i];const auto &object=object_records[i];
+    if(flags&SD_OBJECT_HAS_VERTEX_MOTION){
+      moving=true;require(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE,"Invalid deforming triangle flags/type");
+      require(object.num_geom_steps>=2&&object.numverts>0&&object.numprims>0,"Invalid deforming triangle steps/size");
+    }else require(object.primitive_type!=PRIMITIVE_MOTION_TRIANGLE,"Invalid deforming triangle flags/type");
+    if(flags&SD_OBJECT_MOTION){
+      moving=true;require(object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_TRIANGLE,"WebGPU object motion requires triangle instances; animated emitters not implemented");
+      require(!(flags&SD_OBJECT_TRANSFORM_APPLIED),"Invalid applied object motion transform");
+      require(object.num_tfm_steps>=2&&object.motion_offset<=count&&object.num_tfm_steps<=count-object.motion_offset,
+              "Invalid native object motion range");
+    }
+  }
+  require(bool(data.bvh.have_motion)==moving,"Native object motion flag/table mismatch");
+}
 uint32_t WebGPUDevice::scene_tables(){
+  load_image_info();
   std::vector<uint32_t> descriptors;
 #define TABLE(name,type) {auto it=globals.find(#name);uint32_t address=it==globals.end()?0:it->second;size_t bytes=address?remaining(address):0; \
     require(bytes%sizeof(type)==0,"Invalid native scene table size: " #name);descriptors.insert(descriptors.end(),{address,uint32_t(bytes/sizeof(type))});}
-  CBC_SCENE_TABLES(TABLE)
+  CBC_SCENE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE)
 #undef TABLE
   if(!intersection_tables)intersection_tables=allocate(descriptors.size()*4);
   if(descriptors!=intersection_table_cache){upload(intersection_tables,descriptors.data(),descriptors.size()*4);intersection_table_cache=descriptors;}
   return intersection_tables;
 }
-std::string closest_wgsl(){return wavefront_layout()+closest_source;}
+std::string closest_wgsl(){return wavefront_layout()+lighting_layout()+closest_source;}
 void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
   require(args.count==3,"Closest intersection argument count");
   require(args.types[2]==DeviceKernelArguments::INT32&&args.sizes[2]==4,"Invalid closest work argument");
@@ -29,10 +55,12 @@ void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
     require(address%4==0,"Unaligned closest pointer");return uint32_t(address);};
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[4]=pointer(1,false);p[17]=error_word;
   if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_motion&&!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU closest currently requires static triangles");
-  require(!(data.kernel_features&(KERNEL_FEATURE_VOLUME|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING))&&
+  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU closest currently requires triangle primitives");
+  validate_geometry_motion();
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING))&&
           !data.integrator.has_shadow_catcher&&!data.integrator.use_caustics,"WebGPU closest optional integration features not implemented");
-  require(!data.integrator.use_light_mis,"WebGPU closest light intersection not implemented");
+  validate_volume();
+  validate_lighting(false);
   require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU closest requires tabulated Sobol");
   require(data.max_shaders>0&&state.sort_partition_divisor>0,"Invalid closest sort configuration");
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=globals.at("sample_pattern_lut");

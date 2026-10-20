@@ -2,9 +2,10 @@
 
 The following checkpoint covers the working snapshot renderer. The subsequent
 [registered device gate](DEVICE.md) now connects Cycles' original scene upload
-and GPU scheduler control to WebGPU. Camera-to-intersection and shader-queue
-transitions now pass integrated gates; shading and full session output remain
-pending there.
+and GPU scheduler control to WebGPU. Registered camera/intersection, supported
+surface/volume shading and film output pass the bounded native image corpora.
+See [current integrated support and limits](#integrated-handoffs-and-current-limits-2026-10-19)
+for the merged features and remaining gaps.
 
 This is the next step from the parity harness toward a reusable Cycles device.
 `libcodebrix_cycles_webgpu.so` owns the WebGPU device, pipelines, scene buffers,
@@ -147,13 +148,74 @@ or translucent closures, constant world emission and finite-light NEE/MIS.
 
 This remains a snapshot bridge: it is **not yet registered as a `ccl::Device`
 or driven by the existing Cycles `DeviceQueue`/session scheduler**. The separate
-[registered device implementation](DEVICE.md) now passes scene-upload and
-scheduler-control, camera and closest-intersection checks; connecting shading
-and film output is the next gate,
-alongside wider material/light coverage and resolution
-of the documented numerical discrepancies. Windows, macOS/Metal comparisons,
-other Linux RIDs, full host portability, NuGet loading and final redistribution
-license closure remain untested. The final package must depend on the existing
+[registered device implementation](DEVICE.md) now runs native scene preparation,
+scheduling, shading and film output for the documented bounded subset. New
+point/sun MIS, glass/refraction and camera motion pass integrated Linux state,
+image and combined-scene tests. Constant spot/area lights also pass their merged
+Linux sampling, state, image and replay corpus. Wider
+material/light/geometry coverage and numerical discrepancies remain tracked
+there, including Android glass failures and broader compiler limitations.
+Complete cross-platform parity, remaining RID builds, release packaging and
+final redistribution review remain unfinished. The final package must depend on the existing
 WebGPU package and honor its single-library/load-order contract.
 
 See [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) for shader derivations.
+
+
+## Integrated handoffs and current limits (2026-10-19)
+
+The working tree combines the sealed transparent-shadow, deforming-triangle and
+finite homogeneous-volume slices. The combined Linux regression is PASS in
+`native/work/parallel-integration/all-lanes-validation-v2`: 29 targets built,
+78 independent CPU/GPU scene comparisons and 45 exact command replays with
+22,789 scheduling readbacks. It includes the new feature corpora and shared
+world-volume, glass/GGX, camera-motion and broader-lighting regressions. All
+production source, executable and package-runtime hashes stayed unchanged during
+testing. Strict differences and repeated-film differences remain recorded.
+
+The first combined run crashed in Intel's Vulkan compiler while creating the
+transparent-shadow pipeline. Reducing that shading workgroup from 64 to 1,
+with matching dispatch sizing, passes the unchanged corpus. Opaque traversal
+retains 64; the original crash/backtraces are preserved in `all-lanes-crash-v1`.
+Large-scene performance and wider driver coverage remain unmeasured.
+
+- Transparent/colored shadows support static triangles and bounded hit storage
+  with resumed traversal. Moving transparent shadows, volume shadow attenuation,
+  light/shadow linking, AO, MNEE and shadow catchers remain guarded. The stable
+  GPU queue gather scans path capacity serially; large-scene cost is unmeasured.
+- Deforming triangles use native motion frames, interpolated vertex/corner
+  normals, instance transforms and opaque-shadow traversal. Curves, points,
+  subdivision, animated emitters and transparent-shadow/volume combinations
+  remain unsupported or unvalidated; their guards are retained.
+- Finite homogeneous volumes include native GPU density preparation, camera-
+  inside stack initialization, entry/exit and overlapping HG media. Volume
+  NEE/MIS, emission/light passes, shadow attenuation, heterogeneous media and
+  moving scenes remain guarded. Mixed-anisotropy duplicate compaction is
+  rejected because the independent native CPU closure assignment loses HG data
+  in padding; the original failure is preserved and the oracle is unchanged.
+- These handoffs now have combined Linux evidence. Their new Android paths
+  remain unvalidated. Full Cycles lighting/MIS is not complete: mesh/environment
+  sampling and MIS, light trees, textured emission and remaining interactions
+  still require implementation and proof.
+
+All tests continue to use the unchanged CodeBrix.WebGpu.Native.MitLicenseForever
+1.0.290.1433 binaries, independent original CPU references and unchanged practical
+and strict diagnostic criteria. Recorder v5 uses slots 9 (ShaderData), 10 (volume
+stack), 11 (volume transport), 12 (transparent shadows), 13 (surface lighting)
+and 14 (homogeneous density); earlier capture formats remain supported.
+
+
+## Wrap-up: triangle-light candidate deferred (2026-10-19)
+
+All completed sub-agent handoffs above remain integrated and uncommitted.
+A subsequent primary-agent triangle-light/MIS candidate passes focused sampler,
+surface and four static-image/replay checks, but its final transparent-lighting
+regression crashes. The candidate and failure evidence are preserved under
+`native/work/mesh-light-v1/deferred-candidate`; it is excluded from production.
+The validated pre-extension source was restored by exact hash, retaining the
+original triangle-light guards and recorder v5. Restoration and follow-up results
+are recorded under `native/work/mesh-light-v1` and in section 44 of Jeremy's plan.
+Before reintegration, resolve the transparent-lighting regression and the retained
+instanced-emitter image mismatch, then validate moving emitters and broader
+interactions. Environment/textured emission, light trees and remaining full MIS
+work are unfinished. No percentage increase or new Android coverage is claimed.

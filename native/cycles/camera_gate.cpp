@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "device.h"
 #include "camera_reference.h"
+#include "camera_motion_fixture.h"
 #include "integrator/path_trace_work_gpu.h"
 #include "scene/scene.h"
 #include "scene/camera.h"
@@ -89,9 +90,9 @@ static void reorder_atomic_samples(WebGPUDevice &d,std::vector<IntegratorStateCP
   }
   require(records.empty(),"GPU sample reservation omitted a CPU sample");
 }
-static unsigned rejections(const DeviceInfo &info){
+static unsigned rejections(const DeviceInfo &info,bool motion){
   unsigned rejected=0;
-  for(unsigned test=0;test<12;test++){
+  for(unsigned test=0;test<(motion?19u:12u);test++){
     Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto *backend=dynamic_cast<WebGPUDevice*>(owner.get());require(backend,"Negative camera device creation failed");auto &d=*backend;
     SceneParams params;params.use_texture_cache=false;Scene scene(params,&d);
     scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.film->set_use_sample_count(false);
@@ -99,11 +100,18 @@ static unsigned rejections(const DeviceInfo &info){
     CameraScheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Negative camera setup reset failed");
     auto &data=scene.dscene.data;data.film.pass_stride=12;data.film.pass_sample_count=PASS_UNUSED;data.film.pass_adaptive_aux_buffer=PASS_UNUSED;
     std::string reason;
-    if(test==0){data.cam.type=CAMERA_ORTHOGRAPHIC;reason="static perspective";}
-    if(test==1){data.cam.aperturesize=1;reason="static perspective";}
+    if(test==0){data.cam.type=CAMERA_ORTHOGRAPHIC;reason="perspective pinhole";}
+    if(test==1){data.cam.aperturesize=1;reason="perspective pinhole";}
     if(test==2){data.integrator.sampling_pattern=SAMPLING_PATTERN_SOBOL_BURLEY;reason="tabulated Sobol";}
     if(test==3){data.kernel_features|=KERNEL_FEATURE_DENOISING;reason="optional path features";}
     if(test==4){data.film.pass_sample_count=12;reason="film pass offset";}
+    if(test==12){data.cam.num_motion_steps=1;reason="motion step count";}
+    if(test==13){data.cam.num_motion_steps=2;reason="native camera motion table";}
+    if(test==14){data.cam.shuttertime=1;data.cam.shutter_table_offset=-1;reason="shutter table offset";}
+    if(test==15){data.cam.rolling_shutter_duration=-.1f;reason="rolling shutter";}
+    if(test==16){data.cam.height=0;reason="camera height";}
+    if(test==17){data.cam.shuttertime=std::nanf("");reason="shutter time";}
+    if(test==18){data.cam.rolling_shutter_type=9;reason="rolling shutter";}
     d.const_copy_to("data",&data,sizeof(data));healthy(d);
     device_vector<float> film(&d,"negative_camera_film",MEM_READ_WRITE);film.alloc(12);film.zero_to_device();
     device_vector<KernelWorkTile> tiles(&d,"negative_camera_tile",MEM_READ_WRITE);tiles.alloc(2);tiles[0]=tile(0,0,1,1,1,0);tiles[0].work_size=1;tiles[1]=tiles[0];
@@ -128,7 +136,7 @@ static unsigned rejections(const DeviceInfo &info){
   return rejected;
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
-  require(argc==2,"Usage: camera_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+  require(argc==2||(argc==3&&std::string(argv[2])=="--motion"),"Usage: camera_gate OUTPUT_PREFIX [--motion]");const bool motion=argc==3;auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto *device=dynamic_cast<WebGPUDevice*>(owner.get());require(device,"WebGPU creation failed");auto &d=*device;Metrics m;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
@@ -146,7 +154,10 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     auto buffers=scheduler.get_render_buffers();buffers->reset(buffer_params);buffers->zero();healthy(d);
     auto original=scene.dscene.data;
     for(unsigned test=0;test<24;test++){
-      auto &data=scene.dscene.data;data=original;data.integrator.scrambling_distance=std::array{.125f,.75f,.9f,1.f}[test%4];
+      auto &data=scene.dscene.data;
+      if(motion){camera_motion_fixture(scene,transform,test%8,test<8?1.f:test<16?4.f:8.5f);scene.device_update(&d,progress);healthy(d);original=scene.dscene.data;
+        require(original.cam.num_motion_steps>=2&&scene.dscene.camera_motion.size()==size_t(original.cam.num_motion_steps),"Native camera motion preparation failed");}
+      data=original;data.integrator.scrambling_distance=std::array{.125f,.75f,.9f,1.f}[test%4];
       data.integrator.seed=test==15?0xffffffffu:17u+test*43;data.cam.nearclip=test%2?.1f:1e-5f;data.cam.cliplength=1000;
       const bool adaptive=(test>=12&&test<16)||test>=20;
       data.film.pass_stride=12;data.film.pass_sample_count=test>=8?8:PASS_UNUSED;data.film.pass_adaptive_aux_buffer=adaptive?4:PASS_UNUSED;
@@ -163,6 +174,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       std::memcpy(buffers->buffer.data(),film.data(),film.size()*4);buffers->buffer.copy_to_device();
       const unsigned samples=test<8||test>=16?8:1;
       std::vector<KernelWorkTile> tiles{tile(3,2,13,11,samples,test%3==0?0:13),tile(31,19,7,5,samples,test%3==0?0:5),tile(60,46,1,1,1,0)};
+      if(motion){tiles.back().x=0;tiles.back().y=0;}
       constexpr unsigned first=3;
       original_camera(scene.dscene,tiles,first,expected,film);
       scheduler.enqueue_work_tiles(DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA,tiles.data(),int(tiles.size()),first,0);
@@ -190,11 +202,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     }
   }
   require(stats.mem_used==0,"Camera gate leaked Cycles allocations");
-  const unsigned rejected=rejections(infos[0]);
+  const unsigned rejected=rejections(infos[0],motion);
   std::string output=argv[1];std::ofstream(output+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(output+".library.txt")<<d.gpu.library_path;
   std::cout<<"{\"passed\":true,\"originalSchedulerTileDispatch\":true,\"directNativeSceneTables\":true,\"originalCpuCameraOracle\":true,\"rayDifferentials\":true,\"cases\":"<<m.cases
     <<",\"initializedPaths\":"<<m.paths<<",\"retryPaths\":"<<m.retries<<",\"integerAndGuardChecks\":"<<m.integer_checks<<",\"floatChecks\":"<<m.float_checks<<",\"untouchedGuardBytes\":"<<m.guard_bytes
     <<",\"strictFloatFailures\":"<<m.strict_float_failures<<",\"maximumRayErrorExcludingTmax\":"<<m.max_ray_error<<",\"maximumDifferentialError\":"<<m.max_differential_error
-    <<",\"maximumTmaxError\":"<<m.max_tmax_error
+    <<",\"cameraMotionCases\":"<<(motion?m.cases:0)<<",\"maximumTmaxError\":"<<m.max_tmax_error
     <<",\"invalidCasesRejected\":"<<rejected<<",\"absoluteTolerance\":0.00005,\"relativeTolerance\":0.0002,\"strictAbsoluteTolerance\":0.0000001,\"strictRelativeTolerance\":0.0000001,\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

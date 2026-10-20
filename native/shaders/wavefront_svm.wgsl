@@ -8,11 +8,13 @@
 // Background emission accumulation also derives from closure/emissive.h (BSD).
 struct SvmState {
     stack:array<u32,255>, initialized:array<u32,8>, pc:u32, error:u32,
-    weight:vec3<f32>, geometry:SurfaceData, output:SvmResult,
+    volume:bool, weight:vec3<f32>, geometry:SurfaceData, output:SvmResult,
 }
 // Error bits: 2 unsupported opcode; 4 bytecode bounds; 8 invalid/uninitialized
 // stack; 16 unsupported parameter; 32 instruction limit. Bit 1 is shared with
-// other wavefront checks. An error never supplies substitute shader radiance.
+// other wavefront checks; 64 invalid attribute map/data range. An error never
+// supplies substitute shader radiance. Image errors: 128 descriptor/data, 256 tiled cache.
+// Microfacet lookup-table bounds: 512.
 fn svm_error(s:ptr<function,SvmState>,code:u32){(*s).error|=code;(*s).output.error|=code;atomicOr(&heap[p(17u)/4u],code);}
 fn svm_take(s:ptr<function,SvmState>,bytes:u32)->u32{
     let count=bytes/4u;
@@ -95,9 +97,9 @@ fn svm_texco(s:ptr<function,SvmState>,node:u32,index:u32)->vec3<f32>{
     let kind=svm_byte(node+N_TexCoord_texco_type);let sd=(*s).geometry;let world=sd.object_id==NONE;
     var object=0u;if(!world){object=table_at(G_objects,sd.object_id,SIZE_objects);}
     switch(kind){
-        case NODE_TEXCO_OBJECT:{if(world){return sd.P;}return surface_transform_point(object+O_itfm,sd.P);}
+        case NODE_TEXCO_OBJECT:{if(world){return sd.P;}return surface_object_point(sd,sd.P,true);}
         case NODE_TEXCO_VOLUME_GENERATED:{if(!world){svm_error(s,16u);}return sd.P;}
-        case NODE_TEXCO_NORMAL:{if(world){return sd.N;}return surface_transform_normal(object+O_tfm,sd.N);}
+        case NODE_TEXCO_NORMAL:{if(world){return sd.N;}return surface_object_normal(sd,sd.N,true);}
         case NODE_TEXCO_REFLECTION:{if(world){return sd.wi;}return 2.0*dot(sd.wi,sd.N)*sd.N-sd.wi;}
         case NODE_TEXCO_DUPLI_GENERATED:{if(world){return vec3<f32>(0);}return heap_vec3(object+O_dupli_generated);}
         case NODE_TEXCO_DUPLI_UV:{if(world){return vec3<f32>(0);}return vec3<f32>(heap_float(object+O_dupli_uv),heap_float(object+O_dupli_uv+4u),0);}
@@ -126,17 +128,17 @@ fn svm_gradient(s:ptr<function,SvmState>,kind:u32,v:vec3<f32>)->f32{
         default:{svm_error(s,16u);return 0.0;}
     }
 }
-fn svm_evaluate(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32)->SvmResult{
-    var s:SvmState;s.geometry=geometry;s.pc=(geometry.shader&SHADER_MASK)*(1u+SZ_ShaderJump/4u);
-    s.output.runtime_flag=geometry.runtime_flag;s.output.N=geometry.N;s.output.lcg_state=svm_lcg(index);
-    let flag=state_word(S_path_flag,index);let visibility=state_byte(S_path_visibility,index);
+fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,flag:u32,visibility:u32,lcg:u32,volume:bool,previous:SvmResult)->SvmResult{
+    var s:SvmState;s.output=previous;s.volume=volume;s.geometry=geometry;s.pc=(geometry.shader&SHADER_MASK)*(1u+SZ_ShaderJump/4u);
+    s.output.runtime_flag=geometry.runtime_flag;s.output.N=geometry.N;s.output.lcg_state=lcg;
     if(closure_limit>SVM_CLOSURE_CAPACITY){svm_error(&s,16u);return s.output;}
     s.output.closure_base=closure_base;
     if(closure_base!=0u){let bytes=arrayLength(&heap)*4u;let required=SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES;
         if(closure_base%4u!=0u||closure_base>bytes||required>bytes-closure_base){svm_error(&s,1u);return s.output;}}
     else if(closure_limit!=0u){svm_error(&s,1u);return s.output;}
 
-    if((visibility&PATH_RAY_VISIBILITY_SHADOW)==0u&&(flag&(PATH_RAY_TERMINATE|PATH_RAY_EMISSION))==0u){s.output.remaining=closure_limit;}
+    s.output.remaining=0u;
+    if((visibility&PATH_RAY_VISIBILITY_SHADOW)==0u&&(flag&(PATH_RAY_TERMINATE|PATH_RAY_EMISSION|select(0u,PATH_RAY_EXTINCTION,volume)))==0u){s.output.remaining=closure_limit;}
 
     for(var instructions=0u;instructions<65536u;instructions++){
         let opcode_address=svm_take(&s,4u);if(s.error!=0u){return s.output;}let opcode=load_word(opcode_address);
@@ -153,9 +155,17 @@ fn svm_evaluate(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u3
             case NODE_CONVERT:{size=SZ_Convert;}
             case NODE_GEOMETRY:{size=SZ_Geometry;}
             case NODE_TEX_COORD:{size=SZ_TexCoord;}
+            case NODE_TEX_IMAGE,NODE_TEX_IMAGE_DERIVATIVE:{size=SZ_TexImage;}
+            case NODE_TEX_IMAGE_BOX,NODE_TEX_IMAGE_BOX_DERIVATIVE:{size=SZ_TexImageBox;}
+            case NODE_TEX_ENVIRONMENT,NODE_TEX_ENVIRONMENT_DERIVATIVE:{size=SZ_TexEnvironment;}
+            case NODE_ATTR,NODE_ATTR_DERIVATIVE:{size=SZ_Attr;}
+            case NODE_NORMAL_MAP:{size=SZ_NormalMap;}
+            case NODE_TANGENT,NODE_TANGENT_DERIVATIVE:{size=SZ_Tangent;}
+            case NODE_VERTEX_COLOR,NODE_VERTEX_COLOR_DERIVATIVE:{size=SZ_VertexColor;}
             case NODE_VECTOR_MATH:{size=SZ_VectorMath;}
             case NODE_SEPARATE_VECTOR:{size=SZ_SeparateVector;}
             case NODE_COMBINE_VECTOR:{size=SZ_CombineVector;}
+            case NODE_CLOSURE_VOLUME:{size=SZ_ClosureVolume;}
             case NODE_CLOSURE_BSDF:{size=SZ_ClosureBsdf;}
             case NODE_CLOSURE_HOLDOUT:{size=SZ_ClosureHoldout;}
             case NODE_CLOSURE_SET_NORMAL:{size=SZ_ClosureSetNormal;}
@@ -174,7 +184,7 @@ fn svm_evaluate(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u3
         }
         let node=svm_take(&s,size);if(s.error!=0u){return s.output;}
         switch(opcode){
-            case NODE_SHADER_JUMP:{s.pc=load_word(node+N_ShaderJump_offset_surface);}
+            case NODE_SHADER_JUMP:{s.pc=load_word(node+select(N_ShaderJump_offset_surface,N_ShaderJump_offset_volume,volume));}
             case NODE_JUMP_IF_ZERO,NODE_JUMP_IF_ONE:{
                 var offset=N_JumpIfZero_stack_offset;var jump_offset=N_JumpIfZero_jump_offset;
                 if(opcode==NODE_JUMP_IF_ONE){offset=N_JumpIfOne_stack_offset;jump_offset=N_JumpIfOne_jump_offset;}
@@ -196,6 +206,13 @@ fn svm_evaluate(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u3
                 svm_store3(&s,svm_byte(node+N_Geometry_out_offset),v);
             }
             case NODE_TEX_COORD:{svm_store3(&s,svm_byte(node+N_TexCoord_out_offset),svm_texco(&s,node,index));}
+            case NODE_TEX_IMAGE,NODE_TEX_IMAGE_DERIVATIVE:{svm_image(&s,node,0u,opcode==NODE_TEX_IMAGE_DERIVATIVE);}
+            case NODE_TEX_IMAGE_BOX,NODE_TEX_IMAGE_BOX_DERIVATIVE:{svm_image(&s,node,1u,opcode==NODE_TEX_IMAGE_BOX_DERIVATIVE);}
+            case NODE_TEX_ENVIRONMENT,NODE_TEX_ENVIRONMENT_DERIVATIVE:{svm_image(&s,node,2u,opcode==NODE_TEX_ENVIRONMENT_DERIVATIVE);}
+            case NODE_ATTR,NODE_ATTR_DERIVATIVE:{svm_attribute(&s,node,opcode==NODE_ATTR_DERIVATIVE);}
+            case NODE_NORMAL_MAP:{svm_normal_map(&s,node);}
+            case NODE_TANGENT,NODE_TANGENT_DERIVATIVE:{svm_tangent(&s,node,opcode==NODE_TANGENT_DERIVATIVE);}
+            case NODE_VERTEX_COLOR,NODE_VERTEX_COLOR_DERIVATIVE:{svm_vertex_color(&s,node,opcode==NODE_VERTEX_COLOR_DERIVATIVE);}
             case NODE_MATH:{
                 let kind=load_word(node+N_Math_math_type);if(kind>NODE_MATH_FLOORED_MODULO){svm_error(&s,16u);}
                 else{let value=c_svm_math(kind,svm_input(&s,node+N_Math_value1),svm_input(&s,node+N_Math_value2),svm_input(&s,node+N_Math_value3));svm_store(&s,svm_byte(node+N_Math_result_offset),value);}
@@ -225,7 +242,8 @@ fn svm_evaluate(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u3
             }
             case NODE_SEPARATE_VECTOR:{let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(&s,16u);}else{let v=svm_input3(&s,node+N_SeparateVector_vector);svm_optional_store(&s,svm_byte(node+N_SeparateVector_out_offset),v[component]);}}
             case NODE_COMBINE_VECTOR:{let component=svm_byte(node+N_CombineVector_vector_index);let dest=svm_byte(node+N_CombineVector_out_offset);if(component>2u){svm_error(&s,16u);}else if(dest!=SVM_STACK_INVALID){svm_store(&s,dest+component,svm_input(&s,node+N_CombineVector_in));}}
-            case NODE_CLOSURE_BSDF:{if(SVM_SURFACE){svm_bsdf(&s,node,flag);}else{svm_error(&s,2u);}}
+            case NODE_CLOSURE_VOLUME:{if(volume){svm_volume(&s,node);}}
+            case NODE_CLOSURE_BSDF:{if(SVM_SURFACE){svm_bsdf(&s,node,flag,visibility);}else{svm_error(&s,2u);}}
             case NODE_CLOSURE_HOLDOUT:{
                 if(!SVM_SURFACE){svm_error(&s,2u);return s.output;}
                 let mix_index=svm_byte(node+N_ClosureHoldout_mix_weight_offset);let mix_weight=svm_optional(&s,mix_index,1.0);
@@ -272,4 +290,25 @@ fn svm_world(index:u32,shader_id:u32)->vec3<f32>{
     sd.time=heap_float(state_address(S_ray_time,index,4u));sd.ray_length=bitcast<f32>(0x7f7fffffu);
     sd.dP=heap_float(state_address(S_ray_dD,index,4u));sd.dI=sd.dP;sd.du=vec2<f32>(sd.dP,0);sd.dv=vec2<f32>(0,sd.dP);
     return svm_evaluate(index,sd,0u,0u).emission;
+}
+
+fn svm_evaluate(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32)->SvmResult{
+    return svm_evaluate_mode(index,geometry,closure_limit,closure_base,false);
+}
+
+fn svm_evaluate_mode(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,volume:bool)->SvmResult{
+    var empty:SvmResult;return svm_evaluate_seeded(index,geometry,closure_limit,closure_base,volume,empty);
+}
+
+// Function-local SvmState resets stack initialization on every evaluation,
+// including repeated media and transparent hits. Only closure output is seeded.
+fn svm_evaluate_context(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,flag:u32,visibility:u32,lcg:u32,volume:bool)->SvmResult{
+    var empty:SvmResult;
+    return svm_evaluate_context_seeded(index,geometry,closure_limit,closure_base,flag,visibility,lcg,volume,empty);
+}
+fn svm_evaluate_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,volume:bool,previous:SvmResult)->SvmResult{
+    var flag=0u;var visibility=VIS_CAMERA;var lcg=previous.lcg_state;
+    // Homogeneous density preparation has no integrator path to dereference.
+    if(index!=NONE){flag=state_word(S_path_flag,index);visibility=state_byte(S_path_visibility,index);lcg=svm_lcg(index);}
+    return svm_evaluate_context_seeded(index,geometry,closure_limit,closure_base,flag,visibility,lcg,volume,previous);
 }

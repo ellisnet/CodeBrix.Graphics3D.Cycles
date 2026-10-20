@@ -17,6 +17,7 @@ KernelGlobalsCPU globals(DeviceScene &scene){
 #define KERNEL_DATA_ARRAY_WRITABLE KERNEL_DATA_ARRAY
   KERNEL_DATA_ARRAY(float,lookup_table)
   KERNEL_DATA_ARRAY(float,sample_pattern_lut)
+  KERNEL_DATA_ARRAY(DecomposedTransform,camera_motion)
 #undef KERNEL_DATA_ARRAY
 #undef KERNEL_DATA_ARRAY_WRITABLE
   return kg;

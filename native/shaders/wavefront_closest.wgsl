@@ -10,6 +10,10 @@ fn clamp_direction(d:vec3<f32>)->vec3<f32>{
     let tiny=8.271806E-25;let signed_tiny=bitcast<vec3<f32>>((bitcast<vec3<u32>>(d)&vec3<u32>(0x80000000u))|vec3<u32>(bitcast<u32>(tiny)));
     return select(signed_tiny,d,abs(d)>vec3<f32>(tiny));
 }
+fn inverse_direction(d:vec3<f32>)->vec3<f32>{
+    // Approximate reciprocal can reject a slab exactly at ray.tmin/tmax.
+    return vec3<f32>(rounded_divide(1.0,d.x),rounded_divide(1.0,d.y),rounded_divide(1.0,d.z));
+}
 fn transform_vector(a:u32,v:vec3<f32>,point:bool)->vec3<f32>{
     let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
     var result=vec3<f32>(x.x,y.x,z.x)*v.x+(vec3<f32>(x.y,y.y,z.y)*v.y+vec3<f32>(x.z,y.z,z.z)*v.z);
@@ -29,10 +33,10 @@ fn bounds_hit(origin:vec3<f32>,inv:vec3<f32>,tmin:f32,tmax:f32,node:u32,visibili
     return vec3<f32>(f32(mask),near0,near1);
 }
 struct NativeHit {t:f32,u:f32,v:f32,object:u32,prim:u32,kind:u32}
-fn trace_native(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,visibility:u32,self_object:u32,self_prim:u32)->NativeHit{
+fn trace_native_filtered(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,time:f32,visibility:u32,self_object:u32,self_prim:u32,light_object:u32,light_prim:u32)->NativeHit{
     var result=NativeHit(tmax,0.0,0.0,NONE,NONE,PRIM_TYPE_NONE);
     if(table_count(G_prim_index)==0u){return result;}
-    var pos=origin;var dir=clamp_direction(direction);var inv=vec3<f32>(1.0)/dir;
+    var pos=origin;var dir=clamp_direction(direction);var inv=inverse_direction(dir);
     var stack:array<i32,192>;stack[0]=0x76543210i;var sp=0i;
     var node=bitcast<i32>(data_word(D_bvh_root));var object=NONE;var visits=0u;
     loop{
@@ -54,20 +58,18 @@ fn trace_native(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,visibilit
             if(first>=0){
                 if(end>table_count(G_prim_index)||u32(first)>end){fail();return result;}
                 if(sp<0){fail();return result;}node=stack[u32(sp)];sp--;
-                if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return result;}
+                if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&u32(first)!=end){fail();return result;}
                 for(var index=u32(first);index<end;index++){
                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
                     let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
                     if(prim_object==self_object&&prim==self_prim){continue;}
+                    if(prim_object==light_object&&prim==light_prim){continue;}
                     if((load_word(table_at(G_prim_visibility,index,SIZE_prim_visibility))&visibility)==0u){continue;}
-                    let obj=table_at(G_objects,prim_object,SIZE_objects);let offset=load_word(obj+O_position_offset);
-                    let vi=table_at(G_tri_vindex,prim,SIZE_tri_vindex);
-                    let va=heap_vec3(table_at(G_tri_verts,offset+load_word(vi),SIZE_tri_verts));
-                    let vb=heap_vec3(table_at(G_tri_verts,offset+load_word(vi+4u),SIZE_tri_verts));
-                    let vc=heap_vec3(table_at(G_tri_verts,offset+load_word(vi+8u),SIZE_tri_verts));
+                    let vertices=native_triangle_vertices(prim_object,prim,kind&PRIMITIVE_ALL,time);if(vertices.error!=0u){return result;}
+                    let va=vertices.a;let vb=vertices.b;let vc=vertices.c;
                     var u:f32;var v:f32;var t:f32;
                     if(c_ray_triangle_intersect(pos,dir,tmin,result.t,va,vb,vc,&u,&v,&t)){
-                        result=NativeHit(t,u,v,prim_object,prim,PRIMITIVE_TRIANGLE);
+                        result=NativeHit(t,u,v,prim_object,prim,kind&PRIMITIVE_ALL);
                         if((visibility&PATH_RAY_VISIBILITY_SHADOW_OPAQUE)!=0u){return result;}
                     }
                 }
@@ -75,7 +77,10 @@ fn trace_native(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,visibilit
                 if(object!=NONE){fail();return result;}
                 object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));
                 let obj=table_at(G_objects,object,SIZE_objects);
-                pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));inv=vec3<f32>(1.0)/dir;
+                let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
+                if((flags&SD_OBJECT_MOTION)!=0u){let inverse=motion_inverse(motion_object(object,time));pos=motion_point(inverse,origin);dir=clamp_direction(motion_direction(inverse,direction));}
+                else{pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));}
+                inv=inverse_direction(dir);
                 sp++;if(sp>=192){fail();return result;}stack[u32(sp)]=0x76543210i;
                 node=bitcast<i32>(load_word(table_at(G_object_node,object,SIZE_object_node)));
             }
@@ -83,16 +88,55 @@ fn trace_native(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,visibilit
         if(node==0x76543210i){
             if(sp<0){break;}
             if(object==NONE){fail();return result;}
-            pos=origin;dir=clamp_direction(direction);inv=vec3<f32>(1.0)/dir;object=NONE;
+            pos=origin;dir=clamp_direction(direction);inv=inverse_direction(dir);object=NONE;
             node=stack[u32(sp)];sp--;if(node==0x76543210i){break;}
         }
     }
     return result;
 }
+fn trace_native(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,time:f32,visibility:u32,self_object:u32,self_prim:u32)->NativeHit{
+    return trace_native_filtered(origin,direction,tmin,tmax,time,visibility,self_object,self_prim,NONE,NONE);
+}
+// Point emitters use the same native geometry and strict ray interval tests as Cycles.
+fn intersect_point_lights(index:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,input:NativeHit)->NativeHit{
+    var hit=input;let visibility=state_byte(S_path_visibility,index);let flag=state_word(S_path_flag,index);
+    for(var lamp=0u;lamp<data_word(D_integrator_num_lights);lamp++){
+        let light=table_at(G_lights,lamp,SIZE_lights);let light_kind=load_word(light+L_type);if(light_kind!=LIGHT_POINT&&light_kind!=LIGHT_SPOT&&light_kind!=LIGHT_AREA){continue;}
+        let shader=load_word(light+L_shader_id);let object=load_word(light+L_object_id);
+        if((visibility&VIS_CAMERA)!=0u){if((shader&LIGHT_EXCLUDE_CAMERA)!=0u){continue;}}
+        else if((shader&SHADER_USE_MIS)==0u){continue;}
+        if((flag&PATH_RAY_SHADOW_CATCHER_PASS)!=0u&&(shader&LIGHT_EXCLUDE_SHADOW_CATCHER)!=0u){continue;}
+        if(state_word(S_isect_prim,index)==lamp&&state_word(S_isect_object,index)==object&&state_word(S_isect_type,index)==PRIMITIVE_LAMP){continue;}
+        let position=heap_vec3(light+L_co);var t=0.0;
+        if(light_kind==LIGHT_AREA){
+            let N=heap_vec3(light+L_area_dir);let invarea=abs(heap_float(light+L_area_invarea));if(invarea==0.0||dot(direction,N)>=0.0){continue;}
+            t=rounded_divide(-(dot(origin,N)-dot(position,N)),dot(direction,N));if(!(t>tmin&&t<tmax)){continue;}
+            let plane=origin+t*direction-position;let u=dot(plane,heap_vec3(light+L_area_axis_u)/heap_float(light+L_area_len_u));let v=dot(plane,heap_vec3(light+L_area_axis_v)/heap_float(light+L_area_len_v));
+            if(u< -0.5||u>0.5||v< -0.5||v>0.5){continue;}if(heap_float(light+L_area_invarea)<0.0&&u*u+v*v>0.25){continue;}
+        }else{
+        if(light_kind==LIGHT_SPOT&&dot(direction,origin-position)>=0.0){continue;}
+        let radius=heap_float(light+L_radius);if(radius==0.0){continue;}
+        if(load_word(light+L_is_sphere)!=0u){
+            let delta=position-origin;let r2=radius*radius;let d2=rounded_dot(delta,delta);let cosine=rounded_dot(delta,direction);
+            if(d2>r2&&cosine<0.0){continue;}let perpendicular=rounded_add3(delta,-cosine*direction);let sine2=rounded_dot(perpendicular,perpendicular);
+            if(sine2>r2){continue;}let root=rounded_sqrt(rounded_add(r2,-sine2));
+            t=rounded_add(cosine,-bitcast<f32>((bitcast<u32>(root)&0x7fffffffu)|(bitcast<u32>(rounded_add(d2,-r2))&0x80000000u)));
+            if(!(t>tmin&&t<tmax)){continue;}
+        }else{
+            let vp=origin-position;let normal=rounded_normalize(vp);let dp=rounded_dot(vp,normal);let cosine=rounded_dot(normal,-direction);
+            if(!(dp*cosine>0.0)){continue;}t=rounded_divide(dp,cosine);if(t<0.0){continue;}
+            let point=rounded_add3(origin,t*direction);let delta=point-position;
+            if(!(rounded_dot(delta,delta)<radius*radius&&t>tmin&&t<tmax)){continue;}
+        }
+        }
+        if(t>=hit.t){continue;}hit=NativeHit(t,0.0,0.0,object,lamp,PRIMITIVE_LAMP);
+    }return hit;
+}
 fn terminate_surface(index:u32,shader_flags:u32)->bool{
     var flag=state_word(S_path_flag,index);
     if(path_ao(index)){
         if((shader_flags&(SD_HAS_TRANSPARENT_SHADOW|SD_HAS_EMISSION))!=0u){flag|=PATH_RAY_TERMINATE_AFTER_TRANSPARENT;state_u32(S_path_flag,index,flag);}
+        else if(volume_active(index)){flag|=PATH_RAY_TERMINATE_AFTER_VOLUME;state_u32(S_path_flag,index,flag);}
         else{return true;}
     }
     var probability=1.0;var use_rr=false;
@@ -104,6 +148,7 @@ fn terminate_surface(index:u32,shader_flags:u32)->bool{
         let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_TERMINATE).x;
         if(probability==0.0||random>=probability){
             if((shader_flags&SD_HAS_EMISSION)!=0u){state_u32(S_path_flag,index,flag|PATH_RAY_TERMINATE_ON_NEXT_SURFACE);}
+            else if(volume_active(index)){state_u32(S_path_flag,index,flag|PATH_RAY_TERMINATE_IN_NEXT_VOLUME);}
             else{return true;}
         }
     }
@@ -126,13 +171,20 @@ fn terminate_surface(index:u32,shader_flags:u32)->bool{
     var hit=NativeHit(0.0,0.0,0.0,NONE,NONE,PRIM_TYPE_NONE);
     // Match Cycles' early validity test, including zero-length conditional rays.
     if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
-        hit=trace_native(origin,direction,tmin,tmax,visibility,self_object,self_prim);
+        hit=trace_native(origin,direction,tmin,tmax,heap_float(state_address(S_ray_time,index,4u)),visibility,self_object,self_prim);
     }
+    let skip_lights=(data_word(D_integrator_filter_closures)&FILTER_CLOSURE_DIRECT_LIGHT)!=0u&&state_half(S_path_bounce,index)==1u;
+    if(data_word(D_integrator_use_light_mis)!=0u&&!skip_lights){hit=intersect_point_lights(index,origin,direction,tmin,tmax,hit);}
     if(load_word(p(17u))!=0u){return;}
     state_f32(S_isect_t,index,hit.t);state_f32(S_isect_u,index,hit.u);state_f32(S_isect_v,index,hit.v);
     state_u32(S_isect_object,index,hit.object);state_u32(S_isect_prim,index,hit.prim);state_u32(S_isect_type,index,hit.kind);
     var next=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND;var shader=0u;var sorted=false;
-    if(hit.prim!=NONE){
+    if(volume_active(index)){
+        var flags=0u;if(hit.prim!=NONE&&(hit.kind&PRIMITIVE_LAMP)==0u){let id=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader))&SHADER_MASK;flags=load_word(table_at(G_shaders,id,SIZE_shaders)+SH_flags);}
+        next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME,0u,terminate_surface(index,flags));
+    }
+    else if(hit.prim!=NONE&&(hit.kind&PRIMITIVE_LAMP)!=0u){next=DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD;}
+    else if(hit.prim!=NONE){
         shader=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader))&SHADER_MASK;
         let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);
         if(terminate_surface(index,flags)){next=0u;}
@@ -147,6 +199,7 @@ fn terminate_surface(index:u32,shader_flags:u32)->bool{
     }
     let counter=load_word(p(7u)+S_queue_counter);
     atomicSub(&heap[(counter+K_CLOSEST*4u)/4u],1u);
+    if(next==0u){volume_write_depth(index);}
     if(next!=0u){atomicAdd(&heap[(counter+next*4u)/4u],1u);}
     state_u16(S_path_queued_kernel,index,next);
 }

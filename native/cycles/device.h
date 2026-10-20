@@ -17,7 +17,7 @@ struct WebGPUCommandObserver {
   virtual ~WebGPUCommandObserver()=default;
   virtual void upload(uint32_t,const void*,size_t)=0;
   virtual void clear(uint32_t,size_t)=0;
-  virtual void dispatch(const std::array<uint32_t,32>&,uint32_t,unsigned)=0;
+  virtual void dispatch(const std::array<uint32_t,32>&,uint32_t,unsigned,uint32_t)=0;
   virtual void readback(uint32_t,const void*,size_t)=0;
 };
 // Virtual byte addresses preserve Cycles' device_ptr arithmetic without exposing
@@ -36,6 +36,15 @@ class WebGPUDevice final:public Device {
   size_t arena_bytes=0;
   uint64_t dispatches=0,submissions=0,growths=0,uploads=0,downloads=0;
   KernelData data{};
+  // Exact native table copies for capability validation; sampling remains on GPU.
+  std::vector<KernelLight> light_records;
+  std::vector<KernelLightDistribution> light_distribution_records;
+  std::vector<KernelShader> shader_records;
+  std::vector<KernelObject> object_records;
+  std::vector<uint> object_flag_records;
+  void validate_geometry_motion() const;
+  void validate_lighting(bool sampling) const;
+  void validate_volume() const;
   IntegratorStateGPU state{};
   uint32_t fields=0,field_count=0,error_word=0;
   cbc::BindLayout bind_layout;
@@ -43,9 +52,25 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline controls;
   cbc::Pipeline camera;
   cbc::Pipeline closest;
+  cbc::Pipeline shadow_intersect;
+  cbc::Pipeline shadow_transparent;
+  cbc::Pipeline shadow_shade;
   cbc::Pipeline background;
+  cbc::Pipeline light_forward;
+  cbc::Pipeline volume;
+  cbc::Pipeline volume_stack;
+  cbc::Pipeline volume_density;
+  uint32_t volume_closures=0;size_t volume_closure_bytes=0;
   cbc::Pipeline surface;
+  cbc::Pipeline surface_geometry;
+  cbc::Pipeline surface_prepare;
+  cbc::Pipeline surface_light;
   uint32_t surface_closures=0;size_t surface_closure_bytes=0;
+  std::map<uint32_t,device_image*> images;
+  bool image_info_dirty=false;
+  uint32_t image_info_address=0,image_bounds_address=0;
+  void load_image_info();
+  std::vector<KernelImageInfo> reference_image_info() const;
   uint32_t intersection_tables=0;
   std::vector<uint32_t> intersection_table_cache;
   WebGPUDevice(const DeviceInfo&,Stats&,Profiler&,bool);
@@ -69,10 +94,14 @@ class WebGPUDevice final:public Device {
   WGPUCommandEncoder commands();
   void flush();
   void sync();
-  void dispatch(const std::array<uint32_t,32>&,uint32_t,WGPUComputePipeline=nullptr);
+  void dispatch(const std::array<uint32_t,32>&,uint32_t,WGPUComputePipeline=nullptr,uint32_t workgroup_size=64);
   void enqueue_camera(int,const DeviceKernelArguments&);
   void enqueue_closest(int,const DeviceKernelArguments&);
-  void enqueue_background(int,const DeviceKernelArguments&);
+  void enqueue_shadow(DeviceKernel,int,const DeviceKernelArguments&);
+  void enqueue_background(int,const DeviceKernelArguments&,DeviceKernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
+  void enqueue_volume_density(int,const DeviceKernelArguments&);
+  void enqueue_volume_stack(int,const DeviceKernelArguments&);
+  void enqueue_volume(int,const DeviceKernelArguments&);
   void enqueue_surface(int,const DeviceKernelArguments&);
   void update_state(const IntegratorStateGPU&);
   uint32_t scene_tables();

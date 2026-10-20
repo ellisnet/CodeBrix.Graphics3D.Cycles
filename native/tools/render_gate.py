@@ -14,6 +14,7 @@ from pathlib import Path
 from build import ROOT, REPO, WORK, REVISION, PACKAGE, audit
 from build_cycles import UPSTREAM, verify_cycles
 from dependency_sources import verify as verify_dependencies
+from arm_math_source import verify as verify_arm_math
 from device_gate import sha, save
 import render_replay
 import svm_surface_gate
@@ -30,9 +31,10 @@ REGRESSIONS = ['device-queue','camera-queue','closest-queue','background-queue',
 def inputs():
     verify_cycles()
     verify_dependencies()
+    verify_arm_math()
     paths = [REPO/n for n in ['AGENTS.md','README.md','PARITY.md','LICENSE',
                              'NOTICE','RELEASE-LICENSE-PLAN.md','THIRD-PARTY-NOTICES.txt']]
-    for top in ['native','research','prototype','parity','third_party','tools']:
+    for top in ['native','research','prototype','parity','third_party','tools','src','tests']:
         paths += [p for p in (REPO/top).rglob('*') if p.is_file() and not any(
             n in ('work','evidence','__pycache__','bin','obj') for n in p.relative_to(REPO).parts)]
     return {str(p.relative_to(REPO)):sha(p) for p in sorted(set(paths))}
@@ -81,7 +83,8 @@ def readback_rejection():
             assert length > 0
             commands[cursor] ^= 1
             break
-        cursor += length if kind == 1 else 128 if kind == 3 else 0
+        assert kind in (1, 2, 3, 5), 'Unknown command kind'
+        cursor += length if kind == 1 else 128 if kind == 3 else 132 if kind == 5 else 0
     else:
         raise RuntimeError('Capture has no scheduling readback')
     (folder/'run.commands.bin').write_bytes(commands)
@@ -127,7 +130,8 @@ def collect():
         reports[scene] = report
     surface = json.loads((OUT/'surface/run.stdout.txt').read_text())
     assert surface['passed'] and surface['originalCpuSurfaceIntegrator']
-    assert surface['invalidCasesRejected'] == 20 and surface['cases'] == 19 and surface['paths'] == 18360
+    assert surface['invalidCasesRejected'] == 21 and surface['cases'] == 18 and surface['paths'] == 17340
+    assert surface['zeroCapacityPathsRejected'] == 1020
     assert surface['cyclesAllocationBytesAfterCleanup'] == 0
     regression_reports = {}
     for name in REGRESSIONS:
