@@ -76,7 +76,7 @@ def archive():
         if path.is_file() and not any(p in ('work','evidence','__pycache__') for p in path.relative_to(ROOT).parts):copy(path,DEST/'source/native'/path.relative_to(ROOT))
     for path in (REPO/'third_party').rglob('*'):
         if path.is_file():copy(path,DEST/'source'/path.relative_to(REPO))
-    for name in ['README.md','PARITY.md','THIRD-PARTY-NOTICES.txt','AGENTS.md']:copy(REPO/name,DEST/'source'/name)
+    for name in ['README.md','docs/PARITY.md','THIRD-PARTY-NOTICES.txt','AGENTS.md']:copy(REPO/name,DEST/'source'/name)
     save(DEST/'manifest.json',{'capturedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'cyclesRevision':REVISION,
         'scope':validation['scope'],'driverSha256':validation['driverSha256'],
         'savedSha256':{str(p.relative_to(DEST)):sha(p) for p in sorted(DEST.rglob('*')) if p.is_file()}})

@@ -88,7 +88,7 @@ def main():
    for i in range(3):compare(folder/f'run.{i}.rgba.bin',out/'cpu'/f'run.{i}.rgba.bin','same-host CPU lifecycle',bitwise=True)
   # Thin .NET wrapper: same films as the native Session, bit for bit.
   managed=out/'managed-bin'
-  subprocess.run(['dotnet','build',str(REPO/'tests/HostLifecycle/HostLifecycle.csproj'),'-c','Release','-o',str(managed)],check=True,capture_output=True)
+  subprocess.run(['dotnet','build',str(REPO/'tools/hosttests/HostLifecycle/HostLifecycle.csproj'),'-c','Release','-o',str(managed)],check=True,capture_output=True)
   folder=out/'managed-run'
   rows=[json.loads(line) for line in call(['dotnet',managed/'HostLifecycle.dll',out/'cpu',folder],'managed',900,
    {'DYLD_LIBRARY_PATH':str(build/'lib')}).splitlines() if line.strip().startswith('{')]

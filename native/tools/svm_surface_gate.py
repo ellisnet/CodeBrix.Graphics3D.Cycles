@@ -22,7 +22,7 @@ DEST = ROOT/'evidence/svm-surface'
 
 def input_hashes():
     hashes = shader_data_gate.input_hashes()
-    hashes['RELEASE-LICENSE-PLAN.md'] = sha(REPO/'RELEASE-LICENSE-PLAN.md')
+    hashes['docs/RELEASE-LICENSE-PLAN.md'] = sha(REPO/'docs/RELEASE-LICENSE-PLAN.md')
     return hashes
 
 def run(android=False):

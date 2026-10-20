@@ -132,9 +132,9 @@ def main():
             compare(stress_output/(name+'.rgba.bin'), refs/'a/output/case.177.rgba.bin', bitwise=True)
 
         for project in ['HostLifecycle', 'ImageModes', 'ColorReload']:
-            call(['dotnet', 'build', REPO/'tests'/project/(project+'.csproj'), '-c', 'Release',
-                  '--configfile', REPO/'tests/NuGet.Config'], 'managed-build-'+project)
-        managed = {name:REPO/'tests'/name/'bin/Release/net10.0'/(name+'.dll')
+            call(['dotnet', 'build', REPO/'tools/hosttests'/project/(project+'.csproj'), '-c', 'Release',
+                  '--configfile', REPO/'tools/hosttests/NuGet.Config'], 'managed-build-'+project)
+        managed = {name:REPO/'tools/hosttests'/name/'bin/Release/net10.0'/(name+'.dll')
                    for name in ['HostLifecycle', 'ImageModes', 'ColorReload']}
         for path in managed.values():
             pins[str(path)] = sha(path)

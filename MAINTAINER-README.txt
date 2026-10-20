@@ -1,0 +1,433 @@
+================================================================================
+MAINTAINER-README: CodeBrix.Graphics3D.Cycles
+Notes for people and agents MAINTAINING this repository - not for package
+consumers
+================================================================================
+
+If you are CONSUMING the NuGet package, stop reading and open AGENT-README.txt
+instead. Everything below is about the repository itself: its standing
+instructions, how it is laid out, how the native host and the .NET library
+build, how they are tested, how the package is produced, and the conventions
+the source follows.
+
+
+STANDING INSTRUCTIONS
+=====================
+These apply to every person and agent changing this repository. Read them
+before anything else.
+
+- Never create a Git commit or perform `git push`. Leave changes uncommitted
+  for Jeremy to review.
+- Use exactly `Copyright (c) 2026 Jeremy Ellis and contributors` for original
+  contributions; preserve required third-party copyright and license notices.
+- Never import code or dependencies incompatible with the repository's Apache 2.0
+  license. Verify compatibility and required attribution before importing any new
+  source; availability or a passing build is not license clearance.
+- Maintain the root `THIRD-PARTY-NOTICES.txt` when adding or upgrading imported
+  code or dependencies. Record origins, pinned revisions, license/notices and
+  how the code is used. Tell Jeremy immediately about licensing that conflicts
+  with, or is not established as compatible with, the intended Apache 2.0 release.
+- Jeremy explicitly authorized independent replacements for excluded atomic
+  headers and build helpers. Implement from required APIs and behavior, never
+  by editing, translating or paraphrasing excluded implementation bodies.
+  Preserve the existing rendering functionality and immutable historical evidence.
+- All renderer, dependency and WGSL translation implementation sources needed
+  for a build must be pinned, license-reviewed snapshots in this repository.
+  Compilers, platform SDKs/toolchains and the unchanged shipped
+  CodeBrix.WebGpu.Native package are agreed external inputs. Do not make builds
+  depend on personal ClaudeHome checkouts or fetch source during configuration.
+  Verify a fresh-checkout build and preserve the full nine-RID objective.
+- When native RID deliverables are produced for .NET 10 assemblies/NuGet,
+  preserve the intentional platform binaries in Git, including applicable
+  unstripped binaries and debug symbols. Use `native/binaries/<rid>/` with
+  runtime, unstripped and symbols subdirectories and reviewed provenance/hashes.
+  Ordinary build intermediates remain ignored. Jeremy performs every commit/push.
+
+
+PURPOSE AND SCOPE
+=================
+This repository produces exactly one NuGet package:
+
+    PackageId:  CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
+    Assembly:   CodeBrix.Graphics3D.Cycles
+    Namespace:  CodeBrix.Graphics3D.Cycles (internal interop:
+                CodeBrix.Graphics3D.Cycles.Interop)
+    Project:    src/CodeBrix.Graphics3D.Cycles/CodeBrix.Graphics3D.Cycles.csproj
+    License:    Apache-2.0
+    Consumer documentation: AGENT-README.txt (repo root)
+
+The package is a thin .NET 10 ownership and marshalling layer over the native
+Cycles scene host built from this repository (native/host). The native host
+renders with a new WebGPU backend, using the unchanged binaries shipped by
+CodeBrix.WebGpu.Native, or with the explicit CPU reference backend; the
+osx-arm64 profile uses the native Metal device. The goal is full Cycles parity
+on nine RIDs; the work is in progress, and neither the native host nor the
+package is a production release yet.
+
+The library handles raw pixel buffers only. All image file encoding and
+decoding belongs to CodeBrix.Imaging; never add image codecs here.
+
+
+REPOSITORY LAYOUT
+=================
+This repository holds both the .NET package and the native renderer it drives.
+Only the first two folders below are .NET family-standard; everything else is
+the native source, its build and licensing tooling, and the evidence and
+research that back it.
+
+    src/CodeBrix.Graphics3D.Cycles/       the library project (the only packable
+                                          project in the repository)
+      CyclesHost.cs                       the entry-point class
+      NativeFailure.cs                    the exception type
+      Backend.cs, Node.cs, Image.cs,      the public value types and enums, one
+      PropertyInfo.cs, AttributeValue.cs, per file, all in the root namespace
+      AttributeDomain.cs,
+      AttributeFlags.cs, ImageFormat.cs,
+      PipelineTier.cs,
+      PipelineTierFlags.cs
+      Interop/Native.cs                   internal P/Invoke declarations and
+                                          ABI structures for the native host
+                                          (namespace CodeBrix.Graphics3D.Cycles.
+                                          Interop)
+      InternalsVisibleTo.cs               grants the .Tests project access
+
+    tests/CodeBrix.Graphics3D.Cycles.Tests/
+                                          the xUnit v3 tests (see TESTING)
+
+    native/                               the native renderer. host/ is the
+                                          maintained C scene host
+                                          (cycles_host.h is the ABI the managed
+                                          wrapper binds to); cycles/, src/,
+                                          include/ and shaders/ hold the WebGPU
+                                          device, the WGSL kernels and their
+                                          gates; oracle/ the independent
+                                          reference-render runner; tests/ the
+                                          native test drivers and host fixtures;
+                                          tools/ every build and validation gate
+                                          script; binaries/<rid>/ the reviewed,
+                                          intentionally versioned RID payloads;
+                                          evidence/ immutable gate records;
+                                          work/ ignored build output.
+    third_party/                          pinned, license-reviewed source
+                                          snapshots (the filtered Cycles
+                                          snapshot and every native dependency),
+                                          their manifests, hashes and license
+                                          texts. Never edit by hand.
+    tools/                                the native build and licensing
+                                          tooling: build.py (Linux x64),
+                                          build_android.py,
+                                          build_linux_arm64.py,
+                                          build_macos.py, the source verifiers
+                                          (cycles_source.py,
+                                          arm_math_source.py,
+                                          native_dependencies.py), dependencies/
+                                          (dependency build recipes), licensing/
+                                          (audit, notices generator, import and
+                                          binary audits), compatibility/ (the
+                                          compatibility inventory generator and
+                                          its guard tests)
+      tools/hosttests/                    the host-gate fixture applications
+                                          (see HOST-GATE FIXTURES)
+    compatibility/                        the machine-readable Cycles
+                                          compatibility inventory (JSON)
+    parity/, prototype/, research/        the parity harness, the original
+                                          scene-to-image prototype and the
+                                          feasibility research, each with its
+                                          own retained evidence
+    docs/                                 maintainer documents that are not
+                                          part of the family root set:
+                                          PARITY.md (the parity ledger) and
+                                          RELEASE-LICENSE-PLAN.md (publication
+                                          and license readiness)
+
+    NOTICE                                generated Apache-2.0 NOTICE file
+    THIRD-PARTY-NOTICES.txt               generated by
+                                          tools/licensing/notices.py from
+                                          third_party/dependencies.json;
+                                          never hand-edit it (regenerate, then
+                                          run the --check form)
+    global.json                           selects the Microsoft.Testing.Platform
+                                          test runner; pins no SDK
+    CodeBrix.Graphics3D.Cycles.slnx       the solution. Its Solution Items
+                                          folder carries .gitignore,
+                                          AGENT-README.txt, EXTRAS-README.txt,
+                                          global.json, icon-codebrix-128.png,
+                                          LICENSE,
+                                          MAINTAINER-README.txt,
+                                          README-INDEX.txt, README.md and
+                                          THIRD-PARTY-NOTICES.txt; its Tests
+                                          folder holds the test project
+
+The 8 AI-agent pointer files (AGENTS.md, CLAUDE.md, .clinerules, .cursorrules,
+.cursor/rules/agent-readme.mdc, .windsurfrules, .github/copilot-instructions.md,
+.junie/guidelines.md) are byte-for-byte copies of the family canonical set and
+point at README-INDEX.txt. Do not customize them; repository-specific standing
+instructions live in this file.
+
+
+MAP OF THE NATIVE DOCUMENTATION
+===============================
+    native/host/README.md         the maintained scene host, its C ABI, the
+                                  Linux build and the host gate
+    native/host/LINUX_ARM64.md    the Linux ARM64 cross-build and validation
+    native/host/MACOS_ARM64.md    the osx-arm64 Metal product profile
+    native/README.md              the batched native WebGPU backend and the
+                                  current integrated support and limits
+    native/DEVICE.md              the registered Cycles device and wavefront
+                                  scheduler: camera entry, closest
+                                  intersection and shader queues, background
+                                  and film, SVM world and surface shaders,
+                                  surface shader data, the complete native
+                                  scheduler render, resident and file images,
+                                  normal maps and tangents, device tiers
+    native/oracle/README.md       the oracle reference-render runner
+    native/binaries/README.md     the versioned RID deliverables
+    docs/PARITY.md                the parity ledger and remaining work
+    docs/RELEASE-LICENSE-PLAN.md  publication and license readiness
+    compatibility/README.md       the compatibility inventory and its checks
+    prototype/README.md           the native scene-to-image prototype
+    parity/README.md              material tests, real-model renders, multi-
+                                  bounce, camera/sampling and finite-light work
+    parity/ASSETS.md              the real-model corpus
+    research/FEASIBILITY.md       kernel research and feasibility findings
+    tools/licensing/ATOMIC-CONTRACT.md
+                                  the independent atomic replacement contract
+
+Evidence READMEs under native/evidence/, parity/evidence/, prototype/evidence/
+and research/evidence/ are immutable records. Some of them link to PARITY.md and
+RELEASE-LICENSE-PLAN.md at the repository root, where those files lived when
+the evidence was captured; they are deliberately not rewritten (the files are
+now under docs/). The per-folder THIRD-PARTY-NOTICES.txt files under native/,
+parity/ and research/ (and therefore the generated root notices) still name
+"../RELEASE-LICENSE-PLAN.md" in plain text; they are hash-pinned license texts
+and change only through the license review that updates their pinned hashes.
+
+
+BUILDING
+========
+The native host (Linux x64, from the repository root):
+
+    python3 tools/build.py --jobs 6
+
+builds the pinned dependency snapshots in third_party/deps, then the native
+Cycles host, the CPU references, the WGSL translation and the WebGPU backend.
+`python3 native/tools/build_cycles.py --jobs 6` rebuilds only the Cycles host
+targets once the dependencies exist. The host library lands at
+native/work/cycles-build/lib/libcodebrix_cycles_host.so. Build outputs stay in
+ignored work directories. Python 3, CMake, Make, a C/C++20 toolchain and Clang
+(for the AST translation) are external build tools; NASM is optional (JPEG SIMD;
+the verified build uses the scalar fallback). The unchanged
+CodeBrix.WebGpu.Native.MitLicenseForever package (the exact version pinned by
+the build scripts) must be in the normal NuGet cache or at
+CODEBRIX_WEBGPU_PACKAGE, including its original archive for integrity
+verification. Source fetches and sibling implementation checkouts are never
+build inputs. Android, Linux ARM64 and osx-arm64 recipes are described in
+native/host/README.md, LINUX_ARM64.md and MACOS_ARM64.md.
+
+The .NET solution:
+
+    dotnet restore CodeBrix.Graphics3D.Cycles.slnx
+    dotnet build   --configuration Release CodeBrix.Graphics3D.Cycles.slnx
+
+Target framework net10.0 only. The build must stay at 0 warnings / 0 errors;
+TreatWarningsAsErrors is on in the library project. GenerateDocumentationFile
+is on, so CS1591 is fixed by writing the doc comment, never with NoWarn.
+AllowUnsafeBlocks is on because the wrapper pins spans for the P/Invokes.
+
+
+TESTING
+=======
+    tests/CodeBrix.Graphics3D.Cycles.Tests - xUnit v3,
+    xunit.runner.visualstudio, Microsoft.NET.Test.Sdk and SilverAssertions.
+    No coverage collector is referenced.
+
+The test runner IS Microsoft.Testing.Platform, selected by the root global.json.
+Do not delete that file: without it `dotnet test` falls back to the VSTest
+bridge, which fails on the .NET 10 SDK.
+
+    dotnet test --solution CodeBrix.Graphics3D.Cycles.slnx
+
+If `dotnet test` ever reports zero tests, run the built test assembly directly
+and quote its counts:
+
+    dotnet build tests/CodeBrix.Graphics3D.Cycles.Tests -c Release
+    dotnet tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll
+
+What the tests need:
+  - NativeHeaderConstantMatching parses native/host/cycles_host.h from the
+    working tree and checks every managed enum value against its CBC_*
+    constant. It needs only the source tree.
+  - CyclesHostTests exercise the wrapper against the native host built in this
+    working tree (native/work/cycles-build/lib/libcodebrix_cycles_host.so) on
+    the CPU reference backend; NativeHostLibrary registers a
+    DllImport resolver that loads that file. When it is absent, or the host is
+    not Linux x64, those tests SKIP with the reason (they never fail for a
+    missing native build). Build the native host first to run them.
+  - The tests never call ConfigureColor or ConfigureTiers, which are
+    process-wide; the host gate covers those.
+
+The native validation is separate from `dotnet test`. The maintained Linux host
+gate rebuilds the native targets, generates 786 independent CPU reference films,
+and runs the C and managed lifecycle, color-reload, concurrency and GPU
+lifecycle checks:
+
+    python3 native/tools/host_gate.py --output native/work/<new-folder>
+
+Use a new output folder for each run (allow about 20 minutes). The other gates
+in native/tools/ are documented in the native documents listed above. Licensing
+and source checks:
+
+    python3 tools/licensing/audit.py
+    python3 tools/licensing/notices.py --check
+    (cd tools/compatibility && python3 -m unittest test_inventory -q)
+    (cd tools/licensing/tests && python3 -m unittest test_guards -q)
+
+audit.py requires every active code file (outside evidence/ and third_party/),
+including every .cs file, to carry an SPDX-License-Identifier line and the
+original-contribution copyright line. That is why the .cs files in src/ and
+tests/ start with the two-line header described under CODING CONVENTIONS.
+
+
+HOST-GATE FIXTURES
+==================
+    tools/hosttests/HostLifecycle/   managed lifecycle, property, registry,
+                                     tier, cancellation and disposal checks
+    tools/hosttests/ImageModes/      managed image-mode film checks
+    tools/hosttests/ColorReload/     six A/B/C/A/B/C color configuration rounds
+    tools/hosttests/AndroidHost/     the Android validation-app template
+    tools/hosttests/NuGet.Config     clears every package source for fixture
+                                     builds
+
+These are console/app fixtures driven by the gate scripts, not family tests and
+not in the solution. native/tools/host_gate.py builds HostLifecycle, ImageModes
+and ColorReload with tools/hosttests/NuGet.Config and runs them;
+native/tools/macos_host_gate.py builds HostLifecycle. They keep their own
+project settings (they are fixtures, not shipped code).
+
+ANDROID VALIDATION APP
+----------------------
+AndroidHost is a template, not a standalone build:
+native/tools/build_android_app.py copies it, generates callable checks from
+HostLifecycle/Program.cs and ImageModes/Program.cs, and builds a diagnostic APK
+that consumes the wrapper and native host on Android ARM64 and x64 (minimum API
+33) with the explicit CPU reference backend. Native WebGPU lifecycle tests are
+separate; loading the WebGPU library does not prove GPU rendering in the app.
+
+From the repository root, first build both Android RIDs with
+`python3 tools/build_android.py --rid android-arm64` and
+`python3 tools/build_android.py --rid android-x64`. Generate independent Linux
+references with `python3 native/tools/host_gate.py --output
+native/work/host-validation`. A failed reference-validation run must be
+investigated; the app builder requires a passed reference record and verifies
+its pinned outputs. Existing validated reference directories may be reused
+while their fixture inputs still match. Build and inspect a new APK with:
+
+    python3 native/tools/build_android_app.py \
+      --output native/work/android-app/validation-v1 \
+      --references native/work/host-validation
+
+The builder audits the current native inputs when --native-review is omitted.
+An existing matching review directory can be supplied explicitly. The recipe
+requires the installed Linux x64 build tools, the pinned NDK, the .NET
+SDK/Android workload and runtime-pack versions recorded in the script, Java and
+the Android build-tools recorded there. NuGet feeds are cleared for this test
+build. No renderer or dependency implementation source is fetched.
+
+Run on an explicitly selected attached device after other native tests on that
+device have completed:
+
+    python3 native/tools/android_app_gate.py \
+      --build-output native/work/android-app/validation-v1 \
+      --output native/work/android-app/device-v1 \
+      --device tablet,android-arm64,DEVICE_SERIAL
+
+Repeat --device LABEL,RID,SERIAL for additional devices. Use a new output
+directory for each build/run. The runner refuses to replace an
+already-installed validation app and force-stops its own installation after
+collecting output.
+
+The app tests registry and property readback, cancellation/reuse, disposal
+during rendering, three lifecycle films and six A/B/C/A/B/C configuration
+rounds totaling 1,560 image films. Cross-platform films retain
+`5e-5 + 2e-4*abs(reference)` practical acceptance and
+`1e-7 + 1e-7*abs(reference)` strict diagnostics. Lifecycle films also require
+strict agreement. Same-process CPU repeat assertions remain bitwise. The runner
+independently compares the saved film bytes and verifies installed native
+hashes and app-private loading. Comparison of a serialized maximum-error
+diagnostic alone allows one double ULP for Mono JSON formatting; that allowance
+does not change either film threshold. Reports retain strict image differences.
+Only staged copies lose native debug information; the shipped WebGPU binaries
+are unchanged. APK inspection verifies native payloads, reference and notice
+assets, runtime-pack provenance, minimum API and ELF segment alignment. These
+are local diagnostic APKs, not release packages or proof of 16-KiB-page
+execution.
+
+
+PACKAGING AND PUBLISHING
+========================
+The library csproj carries the family's canonical date-stamped version block
+(1.<years since 2026>.<UTC day of year>.<UTC minute of day>) and
+GeneratePackageOnBuild, so every build writes a fresh
+CodeBrix.Graphics3D.Cycles.ApacheLicenseForever.<version>.nupkg under
+src/CodeBrix.Graphics3D.Cycles/bin/<Configuration>/. The package contains the
+assembly, its XML documentation, icon-codebrix-128.png, README.md,
+AGENT-README.txt and THIRD-PARTY-NOTICES.txt.
+
+The package does NOT yet contain native runtime assets (runtimes/<rid>/native)
+and has not been published. Adding the reviewed native payloads from
+native/binaries/<rid>/, and the package audit in tools/licensing/audit.py
+(--package with a reviewed --payload-manifest, which also requires LICENSE and
+NOTICE in the payload), are release prerequisites. Jeremy publishes; nobody
+else pushes packages.
+
+
+CODING CONVENTIONS
+==================
+- Every .cs file: the two-line header
+      // Copyright (c) 2026 Jeremy Ellis and contributors
+      // SPDX-License-Identifier: Apache-2.0
+  (required by tools/licensing/audit.py), one blank line, the using block
+  (System.* first, then others, alphabetical, no blank lines inside, no global
+  usings), one blank line, the file-scoped namespace, one blank line, the type.
+- No nullable reference annotations: NRT is off; never write `?` on a
+  reference type (string, object, classes) and never use the `!`
+  null-forgiveness operator. Value-type nullables (int?, enum?) are fine.
+- No <Nullable>, <ImplicitUsings>, <NoWarn> or <LangVersion> in the library
+  csproj.
+- XML doc comments on every public type and member, including every enum
+  value.
+- Public types stay in the root namespace CodeBrix.Graphics3D.Cycles; the
+  internal P/Invoke layer is CodeBrix.Graphics3D.Cycles.Interop.
+- Managed enum values are the C ABI constants; NativeHeaderConstantMatching
+  fails when they drift. Change native/host/cycles_host.h and the enum
+  together.
+- Tests: <ClassUnderTest>Tests.cs, method names Member_snake_case or pure
+  snake_case, //Arrange //Act //Assert comments, expression-bodied
+  single-statement tests, SilverAssertions fluent assertions, and
+  TestContext.Current.CancellationToken on any cancellable call.
+
+
+PROVENANCE AND VENDORED SOURCES
+===============================
+The managed code in src/ and tests/ is original. The native renderer
+incorporates a filtered, pinned Cycles source snapshot and pinned native
+dependency snapshots under third_party/, with independent Apache-2.0
+replacements for excluded upstream files. Every origin, pinned revision,
+license, modification and exclusion is recorded in the third_party/ manifests;
+THIRD-PARTY-NOTICES.txt and NOTICE are generated from them by
+tools/licensing/notices.py. Never hand-edit the generated files.
+
+
+NOTES
+=====
+- The CPU reference backend is the oracle for the WebGPU backend; GPU feature
+  coverage is still partial (see native/DEVICE.md and docs/PARITY.md).
+- Color configuration and pipeline-tier configuration are process-wide in the
+  native layer; keep tests that touch them out of the parallel xUnit suite.
+- The managed API in src/ is the thin layer that a typed, higher-level scene
+  API will be built on; keep its public signatures stable unless that work
+  changes them deliberately.
+
+
+================================================================================
+END OF MAINTAINER-README

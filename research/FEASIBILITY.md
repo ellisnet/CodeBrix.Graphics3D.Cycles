@@ -5,7 +5,7 @@ Research performed 2026-10-18/19. **Conditional GO for a limited native prototyp
 Update: the [native scene-to-image gate](../prototype/README.md) now passes on
 Linux and all three Android devices using unchanged shipped WebGPU binaries.
 Jeremy has authorized continued work toward **full parity**; see the
-[parity ledger](../PARITY.md). The kernel results and their numerical failures
+[parity ledger](../docs/PARITY.md). The kernel results and their numerical failures
 below remain valid; the small image test does not supersede them.
 
 The absence of a general Cycles C++ → WGSL compiler is not a fundamental obstacle to starting. This repository now translates a narrow, real upstream kernel subset through Clang's AST and executes it through the native CodeBrix WebGPU library. It also contains a manual static-triangle BVH traversal port. This is evidence for an engineering path, not evidence that all Cycles kernels translate automatically.

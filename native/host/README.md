@@ -44,8 +44,9 @@ The osx-arm64 product profile uses Cycles' own Metal device instead of WebGPU,
 selected with `CBC_HOST_METAL`, and contains no image file readers. Its recipe,
 validation and decisions are in [MACOS_ARM64.md](MACOS_ARM64.md).
 
-The .NET project contains only ownership and marshalling code, has no glTF
-dependency, and currently disables package creation pending runtime packaging.
+The .NET project contains only ownership and marshalling code and has no glTF
+dependency. Its package build carries no native runtime assets yet and is not
+published pending runtime packaging.
 Scene compilation, BVH construction, image handling, color management, scheduling
 and rendering remain native. The optional glTF/GLB client uses
 CodeBrix.Graphics3D.Gltf2 and converts its data into this format-neutral API.

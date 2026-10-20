@@ -3,7 +3,7 @@
 The target remains full Cycles parity. These are measured intermediate gates,
 not a complete renderer. All GPU tests use the unchanged binaries from
 `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.290.1433. No Slang is involved.
-The [parity ledger](../PARITY.md) lists the remaining areas.
+The [parity ledger](../docs/PARITY.md) lists the remaining areas.
 The [native library gate](../native/README.md) now reuses these kernels with
 bounded batches, GPU film accumulation and persistent native resources.
 

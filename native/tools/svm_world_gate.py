@@ -23,7 +23,7 @@ SVM_REFERENCES += ['kernel/geom/shader_data.h', 'kernel/geom/primitive.h', 'kern
 
 def input_hashes():
     hashes = background_input_hashes()
-    for path in [REPO/'README.md', REPO/'PARITY.md', ROOT/'DEVICE.md', REPO/'research/THIRD-PARTY-NOTICES.txt',
+    for path in [REPO/'README.md', REPO/'docs/PARITY.md', ROOT/'DEVICE.md', REPO/'research/THIRD-PARTY-NOTICES.txt',
                  *(p for p in (REPO/'third_party').rglob('*') if p.is_file())]:
         hashes[str(path.relative_to(REPO))] = sha(path)
     return hashes
@@ -101,7 +101,7 @@ def archive():
     for path in (REPO/'third_party').rglob('*'):
         if path.is_file():
             copy(path, DEST/'source'/path.relative_to(REPO))
-    for name in ['README.md', 'PARITY.md', 'THIRD-PARTY-NOTICES.txt', 'AGENTS.md']:
+    for name in ['README.md', 'docs/PARITY.md', 'THIRD-PARTY-NOTICES.txt', 'AGENTS.md']:
         copy(REPO/name, DEST/'source'/name)
     save(DEST/'manifest.json', {
         'capturedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(), 'cyclesRevision':REVISION,

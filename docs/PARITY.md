@@ -55,7 +55,7 @@ investigation of numerical differences. Each gate keeps
 prior evidence reproducible. The full renderer remains the objective; passing
 a limited image gate is permission to continue, not a declaration of parity.
 
-The initial [machine-readable compatibility inventory](compatibility/README.md)
+The initial [machine-readable compatibility inventory](../compatibility/README.md)
 now records 1,011 declarations, all nine platform requirements and dependency
 tracks. Its native metadata is checked against Clang declarations and a compiled
 Linux x64 probe. The evidence registry is refreshed after implementation changes, with bounded mappings

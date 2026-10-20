@@ -45,7 +45,7 @@ def main():
     for path in ROOT.rglob('*'):
         if not path.is_file() or any(part in ('work','evidence','__pycache__') for part in path.relative_to(ROOT).parts):continue
         parity.copy(path,dest/'source/native'/path.relative_to(ROOT))
-    for path in [REPO/'README.md',REPO/'PARITY.md',REPO/'parity/README.md']:
+    for path in [REPO/'README.md',REPO/'docs/PARITY.md',REPO/'parity/README.md']:
         parity.copy(path,dest/'source'/path.relative_to(REPO))
     regressions=WORK/'regressions'
     for path in regressions.rglob('*'):

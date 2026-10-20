@@ -2,7 +2,7 @@
 
 **Passed on Linux x64 and Android ARM64/x64, including both API 33 devices.**
 The target is now full Cycles parity; this experiment establishes a foundation,
-not that final result. See [the parity ledger](../PARITY.md) for remaining work.
+not that final result. See [the parity ledger](../docs/PARITY.md) for remaining work.
 
 The native host builds an actual upstream `ccl::Scene` containing a floor and
 three boxes (38 triangles), calls `Scene::device_update`, and exports Cycles'
@@ -126,7 +126,7 @@ before full Cycles resources can be represented.
 
 The active host uses the filtered `third_party/cycles` snapshot and independent
 Apache-2.0 CPU atomic and CMake dependency adapters. Excluded upstream atomic
-headers are not build inputs. The [license work](../RELEASE-LICENSE-PLAN.md)
+headers are not build inputs. The [license work](../docs/RELEASE-LICENSE-PLAN.md)
 tracks the current repository, build and publication audits. Historical proof
 bundles preserve the findings that applied when those bundles were captured.
 

@@ -1,80 +1,90 @@
 # CodeBrix.Graphics3D.Cycles
 
-Copyright (c) 2026 Jeremy Ellis and contributors
+A .NET library for building and rendering 3D scenes with the Cycles path-tracing renderer, through a native scene host with a WebGPU rendering backend and an explicit CPU reference backend. CodeBrix.Graphics3D.Cycles is provided as a .NET 10 library and associated `CodeBrix.Graphics3D.Cycles.ApacheLicenseForever` NuGet package.
 
-Native Cycles integration with a new WebGPU backend, targeting full Cycles
-parity while using the unchanged binaries shipped by CodeBrix.WebGpu.Native.
-Work is in progress; this is not yet a production renderer or NuGet package.
+CodeBrix.Graphics3D.Cycles supports applications and assemblies that target Microsoft .NET version 10.0 and later.
+Microsoft .NET version 10.0 is a Long-Term Supported (LTS) version of .NET, and was released on Nov 11, 2025; and will be actively supported by Microsoft until Nov 14, 2028.
+Please update your C#/.NET code and projects to the latest LTS version of Microsoft .NET.
 
-The maintained [native scene host and thin .NET 10 wrapper](native/host/README.md)
-provide an experimental C API, normal CMake targets, and reproducible host/color
-configuration/lifecycle tests. GPU feature coverage and multi-platform delivery
-remain incomplete; see the host guide for the current validation boundary.
+## Installation
 
-Source provenance and licenses are recorded in
-[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). The active Cycles build now
-uses a filtered snapshot in `third_party/cycles` and independent Apache-2.0
-host atomics and dependency-target adapters. The excluded upstream atomic
-headers are no longer build inputs. The repository publication checks, fresh
-offline Linux build and bounded rendering revalidation have passed; see
-[the review evidence](native/evidence/license-compliance-20261018/README.md).
-Future RID and package audits remain tracked in [the license work](RELEASE-LICENSE-PLAN.md).
-Historical evidence retains the earlier findings; it is not rewritten.
+```
+dotnet add package CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
+```
 
-The [WGSL release license work](RELEASE-LICENSE-PLAN.md) tracks the requirements
-from Jeremy's October 18 license plan, including source, dependencies, generated
-shaders, history review, and package contents.
+Note that the NuGet package ID and the namespace are different - there is no package named plain `CodeBrix.Graphics3D.Cycles`:
 
-- [Parity ledger and remaining work](PARITY.md)
-- [Source-derived compatibility inventory and evidence checks](compatibility/README.md)
-- [Successful native scene-to-image prototype](prototype/README.md)
-- [Original material tests and real-model renders](parity/README.md)
-- [Multi-bounce WGSL render versus the original Cycles integrator](parity/README.md#multi-bounce-integration-against-the-original-integrator)
-- [GPU camera and sampling checkpoint](parity/README.md#gpu-camera-and-sampling)
-- [Finite lights, shadows, MIS and the Pixel dispatch fix](parity/README.md#finite-lights-shadows-and-mis)
-- [Reusable native backend, bounded batches and GPU film accumulation](native/README.md)
-- [Registered Cycles device and wavefront scheduler kernels](native/DEVICE.md)
-- [Camera initialization through Cycles' original GPU scheduler](native/DEVICE.md#camera-entry-through-the-original-scheduler)
-- [Native BVH intersection, instances and shader-queue transitions](native/DEVICE.md#closest-intersection-and-shader-queues)
-- [Native background shading and Cycles film passes](native/DEVICE.md#background-entry-and-native-film)
-- [Cycles-compiled SVM world shaders executed in WGSL](native/DEVICE.md#native-svm-world-shaders)
-- [Native surface shader data and Android GPU replay](native/DEVICE.md#native-surface-shader-data-preparation)
-- [Native surface SVM closure evaluation](native/DEVICE.md#native-surface-svm-evaluation)
-- [Complete native scheduler render and four-GPU replay](native/DEVICE.md#complete-native-scheduler-render)
-- [Native static-triangle attributes and resident image sampling](native/DEVICE.md#resident-native-images)
-- [Native file images, color conversion and replacement checks](native/DEVICE.md#file-image-and-replacement-validation)
-- [Native normal-map and tangent validation](native/DEVICE.md#native-normal-maps-and-tangents)
-- [Kernel research and feasibility findings](research/FEASIBILITY.md)
+* NuGet package ID: `CodeBrix.Graphics3D.Cycles.ApacheLicenseForever`
+* Assembly and primary namespace: `CodeBrix.Graphics3D.Cycles` - i.e. `using CodeBrix.Graphics3D.Cycles;`
 
-The prototype renders an actual Cycles-prepared scene on Linux x64 and Android
-ARM64/x64, including API 33, with no CLR or Slang in the rendering path. Its
-current shading is deliberately restricted; full materials and integration
-remain under development. Changes are left uncommitted for Jeremy's review.
+XML documentation (IntelliSense) ships alongside the assembly.
 
-The bounded native-scheduler proof now includes a repeated mixed-material render
-and a ForestCommunity clay bench, independently compared against original CPU
-kernels. Complete captured GPU command sequences pass on Linux and all three
-Android devices through the unchanged shipped runtime. Android native Cycles
-hosts and full rendering parity remain pending. The comprehensive continuation
-plan is `/home/jeremy/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md`.
+CodeBrix.Graphics3D.Cycles has no NuGet dependencies other than .NET.
 
-The current Linux x64 build starts with `python3 tools/build.py --jobs 6`.
-It builds the 18 pinned dependency snapshots in `third_party/deps`, then the
-native Cycles host, CPU references, WGSL translation and WebGPU backend. Build
-outputs stay in ignored work directories. Python 3, CMake, Make, a C/C++20
-toolchain and Clang for AST translation are external build tools. NASM is
-optional for JPEG SIMD acceleration; the verified build uses the scalar fallback. The
-unchanged `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.290.1433 package must be
-available in the normal NuGet cache or at `CODEBRIX_WEBGPU_PACKAGE`, including
-its original archive for integrity verification. Source fetches and sibling
-implementation checkouts are not normal build inputs.
+## CodeBrix.Graphics3D.Cycles supports:
 
-Run `python3 tools/licensing/audit.py` to check the proposed Git contents and
-notice consistency. Offline build, deep license scanning, binary dependency
-inspection and rendering regression checks are additional publication gates;
-see `RELEASE-LICENSE-PLAN.md` for their current status.
+* Creating native scene hosts that render with WebGPU or with the explicit CPU reference backend (a requested WebGPU render never falls back to the CPU)
+* Scene authoring by node and socket: scene singletons (camera, background, film, integrator), objects, meshes, lights and shader graphs
+* Typed socket reads and writes for floats, integers, unsigned integers, UTF-8 strings and node references, with size queries
+* Triangle mesh upload and geometry attributes (positions, normals, UVs, tangents and custom attributes)
+* In-memory image textures from raw pixel buffers in float, half, byte and unsigned-short layouts
+* Synchronous, cancellable renders into scene-linear RGBA float buffers
+* Process-wide color configuration and WebGPU pipeline-tier selection, with a JSON device capability report
+* The native node and property registry as JSON
 
-Intentional future RID binaries, applicable unstripped builds and symbols will
-be versioned under `native/binaries/<rid>/` after their artifact reviews. The
-Visual Studio/.NET build-output ignore rules remain active elsewhere. Jeremy
-performs all commits and pushes.
+The library works on raw pixel buffers only. Image file encoding and decoding belong to the CodeBrix.Imaging library.
+
+## Requirements
+
+This library is experimental and is not yet published to nuget.org. The managed assembly loads a native scene host library (`codebrix_cycles_host`) that is built from this repository; the package does not yet carry native runtime assets, so the native host must be available on the library search path of the consuming process. A 64-bit process is required.
+
+## Sample Code
+
+### Render a Lit Triangle with the CPU Reference Backend
+
+```csharp
+using CodeBrix.Graphics3D.Cycles;
+
+using CyclesHost host = new(Backend.CpuReference);
+
+Node camera = host.SceneNode("camera");
+host.SetFloats(camera, "fov", [1.1f]);
+host.SetFloats(camera, "matrix", [1,0,0,0, 0,1,0,0, 0,0,1,-4]);
+
+Node material = host.CreateNode("shader");
+Node diffuse = host.ShaderNode(material, "diffuse_bsdf");
+Node color = host.ShaderNode(material, "color");
+host.SetFloats(color, "value", [.7f, .2f, .1f]);
+host.Connect(color, "Color", diffuse, "Color");
+host.Connect(diffuse, "BSDF", host.ShaderOutput(material), "Surface");
+
+Node mesh = host.CreateNode("mesh");
+host.SetNodes(mesh, "used_shaders", [material]);
+host.Mesh(mesh, [-1.5f,-1,0, 1.5f,-1,0, 0,1.5f,0], [0, 1, 2]);
+Node triangle = host.CreateNode("object");
+host.SetNodes(triangle, "geometry", [mesh]);
+
+Node world = host.CreateNode("shader");
+Node background = host.ShaderNode(world, "background_shader");
+host.SetFloats(background, "color", [.25f, .4f, .6f]);
+host.Connect(background, "Background", host.ShaderOutput(world), "Surface");
+host.SetNodes(host.SceneNode("background"), "shader", [world]);
+
+float[] rgba = new float[32 * 24 * 4];
+host.Render(32, 24, 8, rgba);   // scene-linear RGBA, lower-left origin
+```
+
+## Documentation
+
+The NuGet package includes `AGENT-README.txt`, a complete API reference and usage guide written for AI coding agents - point your agent at that file when it is writing code against this library.
+
+Additional sample code and usage examples are available in the `CodeBrix.Graphics3D.Cycles.Tests` project:
+https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/tree/main/tests/CodeBrix.Graphics3D.Cycles.Tests
+
+## License
+
+CodeBrix.Graphics3D.Cycles is licensed under the Apache License 2.0 - see the
+[LICENSE](https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/LICENSE) file.
+
+For licensing and provenance information about the open source code included in
+this package, see [THIRD-PARTY-NOTICES.txt](https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/THIRD-PARTY-NOTICES.txt).

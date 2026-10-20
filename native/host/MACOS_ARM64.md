@@ -146,7 +146,7 @@ uncommitted changes.
   framework linked, no image codec library in the load closure. CPU C-API
   films are bitwise identical to the independent native Session references
   (6 films), as are the concurrent-lifetime films and the thin .NET wrapper's
-  films from `tests/HostLifecycle`. The Metal lifecycle test
+  films from `tools/hosttests/HostLifecycle`. The Metal lifecycle test
   (edits after compilation, sample budget changes, cancel, destroy during
   render) passes. Metal films differ from the CPU references by at most
   4.5e-8, with MetalRT both off and on.

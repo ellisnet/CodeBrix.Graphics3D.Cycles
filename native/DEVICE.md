@@ -835,7 +835,7 @@ Linux and the three connected Android devices. Its `archive` command creates
 `evidence/svm-surface` once, preserving capture/replay data, input hashes,
 reference sources and prior-gate reports. It never overwrites checkpoints or
 archives a complete upstream checkout or native dependency binaries. All such
-evidence remains subject to the release review in `../RELEASE-LICENSE-PLAN.md`.
+evidence remains subject to the release review in `../docs/RELEASE-LICENSE-PLAN.md`.
 
 ## Registered opaque shadow stages (2026-10-19)
 

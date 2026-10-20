@@ -32,8 +32,8 @@ def inputs():
     verify_cycles()
     verify_dependencies()
     verify_arm_math()
-    paths = [REPO/n for n in ['AGENTS.md','README.md','PARITY.md','LICENSE',
-                             'NOTICE','RELEASE-LICENSE-PLAN.md','THIRD-PARTY-NOTICES.txt']]
+    paths = [REPO/n for n in ['AGENTS.md','README.md','docs/PARITY.md','LICENSE',
+                             'NOTICE','docs/RELEASE-LICENSE-PLAN.md','THIRD-PARTY-NOTICES.txt']]
     for top in ['native','research','prototype','parity','third_party','tools','src','tests']:
         paths += [p for p in (REPO/top).rglob('*') if p.is_file() and not any(
             n in ('work','evidence','__pycache__','bin','obj') for n in p.relative_to(REPO).parts)]

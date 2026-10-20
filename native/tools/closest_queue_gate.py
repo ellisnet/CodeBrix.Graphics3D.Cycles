@@ -75,7 +75,7 @@ def archive():
     module.snapshot(DEST)
     for path in ROOT.rglob('*'):
         if path.is_file() and not any(p in ('work','evidence','__pycache__') for p in path.relative_to(ROOT).parts):copy(path,DEST/'source/native'/path.relative_to(ROOT))
-    for name in ['README.md','PARITY.md']:copy(REPO/name,DEST/'source'/name)
+    for name in ['README.md','docs/PARITY.md']:copy(REPO/name,DEST/'source'/Path(name).name)
     save(DEST/'manifest.json',{'capturedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'cyclesRevision':REVISION,
         'scope':validation['scope'],'driverSha256':validation['driverSha256'],
         'savedSha256':{str(p.relative_to(DEST)):sha(p) for p in sorted(DEST.rglob('*')) if p.is_file()}})

@@ -94,7 +94,7 @@ def inspect(apk,app,payload,native,notices):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,required=True)
-    parser.add_argument('--templates',type=Path,default=REPO/'tests/AndroidHost')
+    parser.add_argument('--templates',type=Path,default=REPO/'tools/hosttests/AndroidHost')
     parser.add_argument('--native-review',type=Path,help='Reuse a matching native binary review, or inspect current native builds when omitted')
     parser.add_argument('--references',type=Path,required=True)
     args=parser.parse_args();out=args.output.resolve();templates=args.templates.resolve();refs=args.references.resolve()
@@ -107,7 +107,7 @@ def main():
             assert path.is_file(),path
             shutil.copy2(path,app/path.name);pins[str(path)]=sha(path)
         for project,name in [('HostLifecycle','HostChecks'),('ImageModes','ImageChecks')]:
-            source=REPO/'tests'/project/'Program.cs'
+            source=REPO/'tools/hosttests'/project/'Program.cs'
             (app/(name+'.cs')).write_text(checks(source,name));pins[str(source)]=sha(source)
         reference_status=json.loads((refs/'status.json').read_text());assert reference_status['passed'] and reference_status['independentReferenceFilms']==786
         reference_pins=json.loads((refs/'invocation.json').read_text())['referenceSha256']
@@ -168,7 +168,7 @@ def main():
         save(app/'payload.json',payload);save(app/'native-inputs.json',dict(files=native,newExternalImplementationImported=False,nativeReleaseCleared=False))
         save(app/'notice-inputs.json',dict(files=notices))
         staged={str(p):sha(p) for p in app.rglob('*') if p.is_file()}
-        command=['dotnet','build',str(app/'AndroidHost.csproj'),'-c','Debug','--configfile',str(REPO/'tests/NuGet.Config'),'--nologo',
+        command=['dotnet','build',str(app/'AndroidHost.csproj'),'-c','Debug','--configfile',str(REPO/'tools/hosttests/NuGet.Config'),'--nologo',
             '-p:CodeBrixSourceRoot='+str(REPO),'-p:JavaSdkDirectory=/usr/lib/jvm/java-21-openjdk-amd64',
             '-p:AndroidSdkDirectory='+str(Path.home()/'Android/Sdk')]
         save(out/'invocation.json',dict(sourceSha256=source_pin,inputSha256=pins,stagedSha256=staged,command=command))

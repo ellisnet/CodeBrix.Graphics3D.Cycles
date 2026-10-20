@@ -126,7 +126,7 @@ def archive():
     for path in (REPO/'third_party').rglob('*'):
         if path.is_file():
             copy(path, DEST/'source'/path.relative_to(REPO))
-    for name in ['README.md','PARITY.md','THIRD-PARTY-NOTICES.txt','AGENTS.md']:
+    for name in ['README.md','docs/PARITY.md','THIRD-PARTY-NOTICES.txt','AGENTS.md']:
         copy(REPO/name, DEST/'source'/name)
     save(DEST/'manifest.json', {
         'capturedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(), 'cyclesRevision':REVISION,

@@ -18,7 +18,7 @@ The limited library gate passes on Linux x64 and all three Android devices,
 including ARM64 and x64 at API 33. Every image is byte-identical to that
 device's earlier finite-light GPU image and passes comparison against the
 original Cycles CPU megakernel. Full Cycles parity remains open; the known
-strict kernel discrepancies in [the parity ledger](../PARITY.md) remain.
+strict kernel discrepancies in [the parity ledger](../docs/PARITY.md) remain.
 
 ![Native library render](evidence/batched-backend/linux-x64/render.png)
 
