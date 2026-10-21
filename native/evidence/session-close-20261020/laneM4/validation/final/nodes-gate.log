@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/tools/nodes_gate.py", line 83, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/tools/nodes_gate.py", line 64, in main
+    report=run(binary,out/name,specialized,kind);reports[name]=report;save(out/'results.json',reports)
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/tools/nodes_gate.py", line 31, in run
+    subprocess.run([str(binary),str(folder/'run')],stdout=stdout,stderr=stderr,check=True,timeout=900,env=env)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_cycles_nodes_render_gate', '/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/nodes-gate/nodes_render-unspecialized/run']' died with <Signals.SIGSEGV: 11>.

@@ -1,0 +1,127 @@
+[09:33:46] Started X2 in worktree x2-exact-traversal (detached 01eb27b6 + Phase D2-D5 seed). Read MAINTAINER standing instructions, reports B1/B2/B3/M1/E1, closest/shadow traversal WGSL, build_cycles.py overlay.
+[09:34:35] Linux baseline build launched (default + all gate targets, --jobs 6) -> logs/build-baseline.log
+[09:39:10] Oracle flags (compile_commands): GCC 14.2, -O3 -ffp-contract=off -msse4.2 (no AVX2/FMA): madd/msub unfused; ray_triangle_reciprocal = RCPSS + one Newton step r*(2-r*a) with separately rounded mul/sub/mul (__KERNEL_AVX2_ typo means never fused).
+[09:39:10] RCPSS model: host i7-12850HX RCPSS = round(2^25/(4097+2*(m>>12))) 12-bit mantissa, exponent 253-e, denormal in -> inf, underflow -> 0, inf -> 0, NaN quieted. Exhaustive 2^32 check diag/rcp/rcp_verify.c: 0 mismatches (8.5 s).
+[09:46:05] Baseline build finished but camera.cpp was recompiled after WIP edits began; restored seed sources and rebuilding a clean baseline (WIP saved in work/x2/wip).
+[09:47:34] START base-all-lanes budget=2700s
+[09:47:34] END base-all-lanes exit=2 0s
+[09:47:35] START base-triangle budget=900s
+[09:47:39] START base-all-lanes budget=2700s
+[09:48:14] Triangle probe (diag/tri, 65,536 sliver/edge rays incl. M1 bench ray, CPU = pinned ray_triangle_intersect with oracle flags): baseline WGSL 33,586 rows not bit-identical, 4,833 hit-decision flips, bench u=0.00332160713 t=3.36632848 (= M1 symptom); exact adapter mode 1: 0 differences, bench u=0.00346690859 t=3.36632943 (= CPU).
+[09:50:17] Attribution (diag/tri): contraction-proof + SSE grouping with correctly rounded 1/x (mode 2) already fixes every hit decision and t and the bench ray; remaining 14,302 rows differ by 1-2 ULP in u/v only = the RCPSS+Newton reciprocal. Scalar grouping (mode 0) against the SSE oracle: 2,085 hit-decision flips (grouping matters).
+[09:50:17] Symptom 2 (diag/shadow, E1's at573 arenas + E1 baseline case-2 capture, single-path re-dispatch of intersect_shadow on Intel): Adreno inputs -> blocked with the captured traversal AND with the exact traversal; Intel inputs -> unblocked with both. The decision follows the 1-2 ULP input perturbation; upstream, the main path (index 504, pixel 504 sample 4) has bit-identical camera ray D and isect t but isect.u 0x3e39c8be (Adreno) vs 0x3e39c8c0 (Intel): the perturbation originates in the closest-hit barycentric (traversal arithmetic), then flows through ShaderData P into the shadow ray.
+[09:51:23] END base-triangle exit=0 228s
+[09:51:23] START base-closest-queue budget=600s
+[09:52:00] END base-closest-queue exit=0 37s
+[09:52:00] START base-closest-motion budget=600s
+[09:52:14] END base-closest-motion exit=0 14s
+[09:52:14] START base-closest-deform budget=600s
+[09:52:21] END base-closest-deform exit=0 7s
+[09:52:21] START base-closest-deform-motion budget=600s
+[09:52:39] END base-closest-deform-motion exit=0 18s
+[09:52:39] START base-shadow budget=600s
+[09:53:49] END base-shadow exit=0 70s
+[09:53:49] START base-object-motion budget=900s
+[09:57:21] END base-object-motion exit=0 212s
+[09:57:21] START base-deforming-motion budget=900s
+[10:02:13] END base-deforming-motion exit=0 292s
+[10:02:13] START base-glass-render-specoff budget=900s
+[10:05:30] END base-glass-render-specoff exit=0 197s
+[10:05:30] START base-close-set budget=900s
+[10:09:25] END base-all-lanes exit=0 1306s
+[10:10:54] END base-close-set exit=1 324s
+[10:11:16] Baseline complete: all-lanes 29 PASS (1306 s, inputs unchanged); slot-2 set PASS except close-set legacy-v5 replay (capture absent in worktree, as in E1).
+[10:11:16] START base-compile-closest budget=600s
+[10:11:22] END base-compile-closest exit=0 6s
+[10:11:22] START base-compile-shadow budget=600s
+[10:11:26] END base-compile-shadow exit=0 4s
+[10:13:29] START c1-closest budget=600s
+[10:13:34] END c1-closest exit=0 5s
+[10:13:40] START c1-shadow budget=600s
+[10:13:44] END c1-shadow exit=0 4s
+[10:13:51] c1 closest PASS: strict 0, max 0 (precision 8192 paths, 0 bit mismatches, bench ray exact); c1 shadow PASS: precision 4096 paths 0 decision mismatches. Trying B1 guard lift (wip-b1).
+[10:14:10] START c1-triangle-b1 budget=900s
+[10:14:57] END c1-triangle-b1 exit=1 47s
+[10:41:46] Compile-stability finding: candidate emitter_sample_probe (triangle-light module, exact intersection) crashes Intel Mesa 25.0.7 backend (driver SIGSEGV, same brw class as B1) 2/3 with select()-based Cycles min/max, ~1/10 with builtin min/max (10 runs), 2/10 division-free RCPSS variant; baseline module 0/8. Switched to builtin min/max (exact for non-NaN inputs).
+[10:43:04] START c2-triangle-b1 budget=900s
+[10:46:29] END c2-triangle-b1 exit=0 205s
+[10:46:53] c2 triangle gate PASS with static instanced emitters enabled (6 images, 6 replays): sampler strict 2079->865; images strict 2344->2076; mode 2 strict 288->74 max 1.042e-5->6.41e-7; mode 4 (new) 154 strict max 3.31e-5. Launching final candidate validation.
+[10:46:53] START fin-all-lanes budget=2700s
+[10:46:53] START fin-triangle budget=900s
+[10:50:23] END fin-triangle exit=0 210s
+[10:50:23] START fin-closest-queue budget=600s
+[10:50:54] END fin-closest-queue exit=0 31s
+[10:50:54] START fin-closest-motion budget=600s
+[10:51:08] END fin-closest-motion exit=0 14s
+[10:51:08] START fin-closest-deform budget=600s
+[10:51:14] END fin-closest-deform exit=0 6s
+[10:51:14] START fin-closest-deform-motion budget=600s
+[10:51:29] END fin-closest-deform-motion exit=0 15s
+[10:51:29] START fin-shadow budget=600s
+[10:52:22] END fin-shadow exit=0 53s
+[10:52:22] START fin-object-motion budget=900s
+[10:55:47] END fin-object-motion exit=0 205s
+[10:55:47] START fin-deforming-motion budget=900s
+[11:00:42] END fin-deforming-motion exit=0 295s
+[11:00:42] START fin-glass-render-specoff budget=900s
+[11:04:02] END fin-glass-render-specoff exit=0 200s
+[11:04:02] START fin-close-set budget=900s
+[11:07:50] END fin-all-lanes exit=0 1257s
+[11:10:12] END fin-close-set exit=1 370s
+[11:10:21] START bench-principled budget=900s
+[11:11:18] END bench-principled exit=1 57s
+[11:11:58] Disk at 100% (5.4 GB free, shared machine). Pruned 702 replay arena captures (*.arena.bin >1 MB) from runs/ after recording sha256 in pruned-arenas.sha256; summaries kept.
+[11:12:03] START bench-principled budget=900s
+[11:12:46] END bench-principled exit=0 43s
+[11:12:49] Principled bench (ForestCommunity, M1 code + X2 exact traversal, scratch build): PASS, 114 stages per repeat, repeat bitwise; previously stopped at stage 30 (isect.u 0.003322 vs 0.003467).
+[11:14:18] START pb-closest budget=600s
+[11:14:26] END pb-closest exit=1 8s
+[11:14:26] START pb-shadow budget=600s
+[11:14:26] END pb-shadow exit=1 0s
+[11:15:11] DISK FULL (0 bytes; other worktrees growing). A cp during the restore truncated shaders/wavefront_closest.wgsl; restored all candidate files from wip and verified with cmp. Freed baseline-bin (hashes kept), probe arenas, mesa caches, bench scratch build.
+[11:21:08] RESUMED after disk-full stop (52G free). Integrity: worktree vs seed = exactly the 10 modified + 1 added candidate files, all == wip/wip-b1 (tools/build_cycles.py had been left at the baseline copy by the pb experiment; restored from wip). Suspect (written after 11:05): fin-all-lanes (ended 11:07), fin-close-set, bench-principled, pb-closest/pb-shadow, summary-all.json (0 bytes), baseline-bin.sha256 (0 bytes), work/cycles-build (pb experiment build + aborted final rebuild). No ENOSPC text in run logs; treating all as suspect anyway. Plan: clean rebuild, rerun those, regenerate summaries.
+[11:31:02] Clean rebuild OK (default+gates exit 0; bench scratch principled exit 0). Suspect outputs moved to work/x2/suspect/. final-bin.sha256 recorded. RERUN slot1 fin-all-lanes 2700 s; slot2 fin-close-set 900 s (cold).
+[11:31:05] START fin-all-lanes budget=2700s
+[11:31:06] START fin-close-set budget=900s
+[11:37:11] END fin-close-set exit=1 365s
+[11:37:22] fin-close-set rerun: same result shape as base (all 8 phases pass; legacy-v5-replay input missing in both base and final = pre-existing fixture gap). RERUN pb-closest/pb-shadow 600 s each from pb-scratch build (cold)
+[11:37:22] START pb-closest budget=600s
+[11:37:28] END pb-closest exit=1 6s
+[11:37:28] START pb-shadow budget=600s
+[11:37:32] END pb-shadow exit=1 4s
+[11:37:38] pb rerun: closest before = decisions 396, bit 5069, strict 9333, max 0.0635, bench ray not exact (identical to the 11:14 run); shadow before = 223 decision mismatches of 4096 (11:14 attempt had died at 0 s). RERUN bench-principled 900 s (scratch build, cold)
+[11:37:38] START bench-principled budget=900s
+[11:38:45] END bench-principled exit=0 67s
+[11:39:41] START bench-principled budget=900s
+[11:40:27] END bench-principled exit=0 46s
+[11:40:37] bench rerun at ~11:41 omitted the asset argument (ran default principled_render fixture, PASS 145 stages); a follow-up with the asset wrote into the same folder (PASS, 114 stages, film + all WGSL byte-identical to the 11:12 run). Folder discarded for cleanliness; bench asset copied from M1 to work/x2/bench-asset. RERUN bench-principled (asset) 900 s cold into a clean folder.
+[11:40:37] START bench-principled budget=900s
+[11:41:21] END bench-principled exit=0 44s
+[11:52:34] END fin-all-lanes exit=0 1289s
+[11:52:55] fin-all-lanes rerun exit 0 (1289 s): 236/236 reports pass; vs the 11:07 suspect run only atomic-film run-to-run noise (broad_lighting strict 3803->3800, light_state 12->13, feature_combination replays 2800->2799); before/after table regenerated (base summary regenerated byte-identical). Compile measurement now: closest+shadow, pb-scratch (baseline WGSL) vs final bin, 3 cold runs each, sequential, nothing else on GPU.
+[11:52:55] START cmpb-closest-1 budget=600s
+[11:53:00] END cmpb-closest-1 exit=1 5s
+[11:53:00] START cmfin-closest-1 budget=600s
+[11:53:06] END cmfin-closest-1 exit=0 6s
+[11:53:06] START cmpb-shadow-1 budget=600s
+[11:53:09] END cmpb-shadow-1 exit=1 3s
+[11:53:09] START cmfin-shadow-1 budget=600s
+[11:53:13] END cmfin-shadow-1 exit=0 4s
+[11:53:13] START cmpb-closest-2 budget=600s
+[11:53:18] END cmpb-closest-2 exit=1 5s
+[11:53:18] START cmfin-closest-2 budget=600s
+[11:53:23] END cmfin-closest-2 exit=0 5s
+[11:53:23] START cmpb-shadow-2 budget=600s
+[11:53:27] END cmpb-shadow-2 exit=1 4s
+[11:53:27] START cmfin-shadow-2 budget=600s
+[11:53:30] END cmfin-shadow-2 exit=0 3s
+[11:53:30] START cmpb-closest-3 budget=600s
+[11:53:36] END cmpb-closest-3 exit=1 6s
+[11:53:36] START cmfin-closest-3 budget=600s
+[11:53:42] END cmfin-closest-3 exit=0 6s
+[11:53:42] START cmpb-shadow-3 budget=600s
+[11:53:46] END cmpb-shadow-3 exit=1 4s
+[11:53:46] START cmfin-shadow-3 budget=600s
+[11:53:50] END cmfin-shadow-3 exit=0 4s
+[11:54:09] Compile measurement (runs/compile-measurement.txt, median of 3 cold): intersect_closest 550->1146 ms (x2.08), intersect_shadow 687->1092 ms (x1.59), init_camera 742->764, shade_shadow 43->43; tier stays full/table; matches the c1 single-run numbers (1133/1111).
+[11:54:58] Docs applied: native/DEVICE.md new section 'Exact traversal and intersection arithmetic (2026-10-20)' (cost numbers from the 11:53 measurement) before 'Open device items', item 2 updated; docs/PARITY.md lighting row (static instanced emitters pass on Linux, device pending). Seed copies in handoff-baseline (git HEAD == seed for code; doc copies taken pre-edit, sha == seed). Sealing.

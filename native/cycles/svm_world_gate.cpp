@@ -28,6 +28,18 @@ static unsigned node_size(uint op){switch(op){
   NODE(NODE_SEPARATE_VECTOR,SeparateVector);NODE(NODE_COMBINE_VECTOR,CombineVector);NODE(NODE_CLOSURE_SET_WEIGHT,ClosureSetWeight);NODE(NODE_CLOSURE_WEIGHT,ClosureWeight);
   NODE(NODE_CLOSURE_BACKGROUND,ClosureBackground);NODE(NODE_CLOSURE_EMISSION,ClosureEmission);NODE(NODE_EMISSION_WEIGHT,EmissionWeight);NODE(NODE_MIX_CLOSURE,MixClosure);
   NODE(NODE_TEX_CHECKER,TexChecker);NODE(NODE_TEX_GRADIENT,TexGradient);NODE(NODE_GAMMA,Gamma);NODE(NODE_INVERT,Invert);NODE(NODE_BRIGHTCONTRAST,BrightContrast);
+  // Texture, colour and utility nodes (ramp/curve tables are added by inspect_program).
+  NODE(NODE_TEX_NOISE,TexNoise);NODE(NODE_TEX_VORONOI,TexVoronoi);NODE(NODE_TEX_WHITE_NOISE,TexWhiteNoise);NODE(NODE_TEX_WAVE,TexWave);NODE(NODE_TEX_MAGIC,TexMagic);NODE(NODE_TEX_BRICK,TexBrick);
+  NODE(NODE_MAPPING,Mapping);NODE(NODE_TEXTURE_MAPPING,TextureMapping);NODE(NODE_MIN_MAX,MinMax);NODE(NODE_MAP_RANGE,MapRange);NODE(NODE_VECTOR_MAP_RANGE,VectorMapRange);
+  NODE(NODE_MIX,Mix);NODE(NODE_MIX_COLOR,MixColor);NODE(NODE_MIX_FLOAT,MixFloat);NODE(NODE_MIX_VECTOR,MixVector);NODE(NODE_MIX_VECTOR_NON_UNIFORM,MixVectorNonUniform);
+  NODE(NODE_HSV,HSV);NODE(NODE_SEPARATE_COLOR,SeparateColor);NODE(NODE_COMBINE_COLOR,CombineColor);NODE(NODE_RGB_RAMP,RGBRamp);NODE(NODE_CURVES,Curves);NODE(NODE_FLOAT_CURVE,FloatCurve);
+  NODE(NODE_FRESNEL,Fresnel);NODE(NODE_LAYER_WEIGHT,LayerWeight);NODE(NODE_VECTOR_ROTATE,VectorRotate);NODE(NODE_BLACKBODY,Blackbody);NODE(NODE_NORMAL,Normal);
+  NODE(NODE_OBJECT_INFO,ObjectInfo);NODE(NODE_CAMERA,Camera);NODE(NODE_SCENE_TIME,SceneTime);NODE(NODE_VECTOR_TRANSFORM,VectorTransform);NODE(NODE_LIGHT_PATH,LightPath);
+  NODE(NODE_WAVELENGTH,Wavelength);NODE(NODE_WIREFRAME,Wireframe);
+  // Bump stage and derivative variants (world 22).
+  NODE(NODE_SET_BUMP,SetBump);NODE(NODE_GEOMETRY_DERIVATIVE,Geometry);NODE(NODE_TEX_COORD_DERIVATIVE,TexCoord);NODE(NODE_VALUE_F_DERIVATIVE,ValueF);
+  NODE(NODE_VALUE_V_DERIVATIVE,ValueV);NODE(NODE_CONVERT_DERIVATIVE,Convert);NODE(NODE_VECTOR_MATH_DERIVATIVE,VectorMath);NODE(NODE_MAPPING_DERIVATIVE,Mapping);
+  NODE(NODE_TEXTURE_MAPPING_DERIVATIVE,TextureMapping);NODE(NODE_SEPARATE_VECTOR_DERIVATIVE,SeparateVector);NODE(NODE_COMBINE_VECTOR_DERIVATIVE,CombineVector);
 #undef NODE
   case NODE_END:return 0;default:throw std::runtime_error("Fixture contains unsupported opcode "+std::to_string(op));}}
 static SVMInputFloat value(float f){return {std::bit_cast<uint>(f)};}
@@ -67,6 +79,78 @@ static void graph_scene(Scene &scene,unsigned test){
   }else{graph->connect(color,bg->input("Color"));graph->connect(bg->output("Background"),graph->output()->input("Surface"));}
   auto shader=scene.create_node<Shader>();shader->set_graph(std::move(graph));shader->tag_update(&scene);scene.background->set_shader(shader);
 }
+#ifdef CBC_NODES_FIXTURE
+// Compiled worlds for the texture, colour and utility nodes. World inputs are
+// the GPU camera directions read by both sides, so they are bit-identical.
+static constexpr unsigned WORLD_COUNT=23;
+static void nodes_world(Scene &scene,unsigned test){
+  base_scene(scene);auto graph=make_unique<ShaderGraph>();auto &g=*graph;auto geo=g.create_node<GeometryNode>();auto bg=g.create_node<BackgroundNode>();bg->set_strength(.7f);
+  ShaderOutput *dir=geo->output("Position");ShaderOutput *color=dir;
+  auto vmath=[&](NodeVectorMathType type,ShaderOutput *a,float3 b){auto n=g.create_node<VectorMathNode>();n->set_math_type(type);n->set_vector2(b);g.connect(a,n->input("Vector1"));return n->output("Vector");};
+  auto component=[&](ShaderOutput *v,const char *name){auto n=g.create_node<SeparateXYZNode>();g.connect(v,n->input("Vector"));return n->output(name);};
+  auto noise=[&](unsigned dims,NodeNoiseType type,float detail,float distortion){auto n=g.create_node<NoiseTextureNode>();n->set_dimensions(dims);n->set_type(type);n->set_detail(detail);n->set_distortion(distortion);
+    n->set_scale(2.3f);n->set_roughness(.6f);g.connect(dir,n->input("Vector"));g.connect(component(dir,"Z"),n->input("W"));return n;};
+  if(test==0)color=noise(3,NODE_NOISE_FBM,6.5f,.3f)->output("Color");
+  if(test==1)color=noise(4,NODE_NOISE_RIDGED_MULTIFRACTAL,4,0)->output("Color");
+  if(test==2){auto m=g.create_node<MappingNode>();m->set_mapping_type(NODE_MAPPING_TYPE_POINT);m->set_rotation(make_float3(.3f,.2f,.9f));m->set_scale(make_float3(2,1,1.5f));g.connect(dir,m->input("Vector"));
+    auto w=g.create_node<WaveTextureNode>();w->set_wave_type(NODE_WAVE_RINGS);w->set_profile(NODE_WAVE_PROFILE_SAW);w->set_distortion(1.5f);w->set_detail(2);g.connect(m->output("Vector"),w->input("Vector"));color=w->output("Color");}
+  if(test==3){auto n=g.create_node<MagicTextureNode>();n->set_depth(3);n->set_scale(3.1f);g.connect(dir,n->input("Vector"));color=n->output("Color");}
+  if(test==4){auto mix=g.create_node<MixColorNode>();mix->set_blend_type(NODE_MIX_OVERLAY);g.connect(noise(2,NODE_NOISE_FBM,2,0)->output("Color"),mix->input("A"));
+    auto grad=g.create_node<GradientTextureNode>();g.connect(dir,grad->input("Vector"));g.connect(grad->output("Color"),mix->input("B"));g.connect(component(dir,"Y"),mix->input("Factor"));color=mix->output("Result");}
+  if(test==5){auto r=g.create_node<RGBRampNode>();array<packed_float3> ramp;array<float> alpha;for(unsigned i=0;i<RAMP_TABLE_SIZE;i++){const float t=float(i)/(RAMP_TABLE_SIZE-1);ramp.push_back_slow(make_float3(t,t*t,1-t));alpha.push_back_slow(t);}
+    r->set_ramp(ramp);r->set_ramp_alpha(alpha);r->set_interpolate(true);g.connect(noise(1,NODE_NOISE_HETERO_TERRAIN,3,0)->output("Fac"),r->input("Fac"));color=r->output("Color");}
+  if(test==6){auto checker=g.create_node<CheckerTextureNode>();checker->set_scale(6);g.connect(dir,checker->input("Vector"));auto h=g.create_node<HSVNode>();h->set_hue(.2f);h->set_saturation(1.3f);
+    g.connect(checker->output("Color"),h->input("Color"));g.connect(component(dir,"X"),h->input("Fac"));color=h->output("Color");}
+  if(test==8){auto lp=g.create_node<LightPathNode>();auto comb=g.create_node<CombineXYZNode>();g.connect(lp->output("Ray Depth"),comb->input("X"));g.connect(lp->output("Is Camera Ray"),comb->input("Y"));
+    g.connect(lp->output("Ray Length"),comb->input("Z"));color=vmath(NODE_VECTOR_MATH_MINIMUM,comb->output("Vector"),make_float3(3,3,3));}
+  if(test==9){auto m=g.create_node<MapRangeNode>();m->set_from_min(-1);m->set_from_max(1);m->set_to_min(600);m->set_to_max(15000);g.connect(component(dir,"Z"),m->input("Value"));
+    auto b=g.create_node<BlackbodyNode>();g.connect(m->output("Result"),b->input("Temperature"));color=b->output("Color");}
+  if(test==10){auto sep=g.create_node<SeparateColorNode>();sep->set_color_type(NODE_COMBSEP_COLOR_HSL);g.connect(vmath(NODE_VECTOR_MATH_ABSOLUTE,dir,zero_float3()),sep->input("Color"));
+    auto comb=g.create_node<CombineColorNode>();comb->set_color_type(NODE_COMBSEP_COLOR_HSV);g.connect(sep->output("Blue"),comb->input("Red"));g.connect(sep->output("Red"),comb->input("Green"));g.connect(sep->output("Green"),comb->input("Blue"));color=comb->output("Color");}
+  if(test==11){auto r=g.create_node<VectorRotateNode>();r->set_rotate_type(NODE_VECTOR_ROTATE_TYPE_EULER_XYZ);r->set_rotation(make_float3(.4f,.1f,-.7f));g.connect(dir,r->input("Vector"));
+    // White noise hashes float bits, so it reads the exact direction (a rotated
+    // direction differs in the last bits through sin/cos).
+    auto w=g.create_node<WhiteNoiseTextureNode>();w->set_dimensions(3);g.connect(dir,w->input("Vector"));
+    auto mix=g.create_node<MixVectorNode>();mix->set_fac(.5f);g.connect(r->output("Vector"),mix->input("A"));g.connect(w->output("Color"),mix->input("B"));color=mix->output("Result");}
+  if(test==12){auto b=g.create_node<BrickTextureNode>();b->set_scale(3);b->set_mortar_smooth(.3f);g.connect(dir,b->input("Vector"));color=b->output("Color");}
+  if(test==13){auto f=g.create_node<FresnelNode>();f->set_IOR(1.45f);auto lw=g.create_node<LayerWeightNode>();lw->set_blend(.3f);auto comb=g.create_node<CombineXYZNode>();
+    g.connect(f->output("Fac"),comb->input("X"));g.connect(lw->output("Fresnel"),comb->input("Y"));g.connect(lw->output("Facing"),comb->input("Z"));color=comb->output("Vector");}
+  if(test==14){auto cam=g.create_node<CameraNode>();auto add=g.create_node<VectorMathNode>();add->set_math_type(NODE_VECTOR_MATH_SCALE);g.connect(cam->output("View Vector"),add->input("Vector1"));
+    g.connect(cam->output("View Distance"),add->input("Scale"));color=vmath(NODE_VECTOR_MATH_ABSOLUTE,add->output("Vector"),zero_float3());}
+  if(test==15){auto info=g.create_node<ObjectInfoNode>();auto comb=g.create_node<CombineXYZNode>();g.connect(info->output("Material Index"),comb->input("X"));g.connect(info->output("Random"),comb->input("Y"));
+    g.connect(component(dir,"Z"),comb->input("Z"));auto add=g.create_node<VectorMathNode>();add->set_math_type(NODE_VECTOR_MATH_ADD);g.connect(comb->output("Vector"),add->input("Vector1"));g.connect(info->output("Location"),add->input("Vector2"));color=add->output("Vector");}
+  if(test==16){auto vt=g.create_node<VectorTransformNode>();vt->set_transform_type(NODE_VECTOR_TRANSFORM_TYPE_POINT);vt->set_convert_from(NODE_VECTOR_TRANSFORM_CONVERT_SPACE_WORLD);
+    vt->set_convert_to(NODE_VECTOR_TRANSFORM_CONVERT_SPACE_CAMERA);g.connect(dir,vt->input("Vector"));color=vmath(NODE_VECTOR_MATH_FRACTION,vt->output("Vector"),zero_float3());}
+  if(test==17){auto vm=g.create_node<VectorMapRangeNode>();vm->set_range_type(NODE_MAP_RANGE_SMOOTHERSTEP);vm->set_from_min(make_float3(-1,-1,-1));vm->set_from_max(make_float3(1,1,1));g.connect(dir,vm->input("Vector"));
+    auto f=g.create_node<FloatCurveNode>();array<float> curve;for(unsigned i=0;i<RAMP_TABLE_SIZE;i++){const float t=float(i)/(RAMP_TABLE_SIZE-1);curve.push_back_slow(t*t);}f->set_curve(curve);f->set_min_x(-1);f->set_max_x(1);
+    g.connect(component(dir,"X"),f->input("Value"));auto mix=g.create_node<MixVectorNode>();g.connect(vm->output("Vector"),mix->input("A"));g.connect(f->output("Value"),mix->input("Factor"));color=mix->output("Result");}
+  if(test==18||test==19){auto v=g.create_node<VoronoiTextureNode>();v->set_dimensions(test==18?3:4);v->set_feature(test==18?NODE_VORONOI_SMOOTH_F1:NODE_VORONOI_DISTANCE_TO_EDGE);
+    v->set_scale(4.f);v->set_detail(test==18?1.5f:2.f);v->set_use_normalize(true);g.connect(dir,v->input("Vector"));g.connect(component(dir,"Y"),v->input("W"));
+    if(test==18)color=v->output("Color");else{auto c=g.create_node<CombineXYZNode>();g.connect(v->output("Distance"),c->input("X"));g.connect(v->output("Distance"),c->input("Z"));color=c->output("Vector");}}
+  if(test==20){auto m=g.create_node<MapRangeNode>();m->set_from_min(-1);m->set_from_max(1);m->set_to_min(385);m->set_to_max(775);g.connect(component(dir,"Z"),m->input("Value"));
+    auto w=g.create_node<WavelengthNode>();g.connect(m->output("Result"),w->input("Wavelength"));color=w->output("Color");}
+  if(test==21){
+    // Wireframe has no primitive in a world evaluation (0, as on the host).
+    auto wire=g.create_node<WireframeNode>();wire->set_use_pixel_size(true);wire->set_size(3.f);auto n=noise(3,NODE_NOISE_FBM,1.5f,0);
+    auto comb=g.create_node<CombineXYZNode>();g.connect(wire->output("Fac"),comb->input("X"));g.connect(n->output("Fac"),comb->input("Y"));g.connect(component(dir,"Z"),comb->input("Z"));color=comb->output("Vector");}
+  if(test==22){
+    // Bump in a world: the derivative variants of the copied height sub-graph run,
+    // and the background node mask has no BUMP feature, so the host bump normal is
+    // zero; the texture-coordinate tap reads the world direction.
+    auto bump=g.create_node<BumpNode>();bump->set_filter_width(20.f);auto tc=g.create_node<TextureCoordinateNode>();auto sum=g.create_node<VectorMathNode>();sum->set_math_type(NODE_VECTOR_MATH_ADD);
+    g.connect(dir,sum->input("Vector1"));g.connect(tc->output("Object"),sum->input("Vector2"));auto dot=g.create_node<VectorMathNode>();dot->set_math_type(NODE_VECTOR_MATH_DOT_PRODUCT);dot->set_vector2(make_float3(.6f,-.9f,1.2f));
+    g.connect(sum->output("Vector"),dot->input("Vector1"));g.connect(dot->output("Value"),bump->input("Height"));
+    auto add=g.create_node<VectorMathNode>();add->set_math_type(NODE_VECTOR_MATH_ADD);g.connect(bump->output("Normal"),add->input("Vector1"));g.connect(vmath(NODE_VECTOR_MATH_ABSOLUTE,dir,zero_float3()),add->input("Vector2"));
+    color=add->output("Vector");}
+  if(test==7){
+    // Is Camera Ray selects between two backgrounds (camera rays at bounce 0 here).
+    auto lp=g.create_node<LightPathNode>();auto other=g.create_node<BackgroundNode>();other->set_color(make_float3(.8,.1,.2));g.connect(noise(3,NODE_NOISE_MULTIFRACTAL,2,0)->output("Color"),bg->input("Color"));
+    auto mix=g.create_node<MixClosureNode>();g.connect(lp->output("Is Camera Ray"),mix->input("Fac"));g.connect(bg->output("Background"),mix->input("Closure1"));g.connect(other->output("Background"),mix->input("Closure2"));
+    g.connect(mix->output("Closure"),g.output()->input("Surface"));
+  }else{g.connect(color,bg->input("Color"));g.connect(bg->output("Background"),g.output()->input("Surface"));}
+  auto shader=scene.create_node<Shader>();shader->set_graph(std::move(graph));shader->tag_update(&scene);scene.background->set_shader(shader);
+}
+#endif
 static void prepare_device(Scene &scene,WebGPUDevice &d){
   Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"SVM scene preparation failed");
   auto &data=scene.dscene.data;data.background.use_mis=0;data.integrator.num_lights=0;data.integrator.use_light_mis=0;data.integrator.use_caustics=0;
@@ -78,6 +162,9 @@ static void inspect_program(DeviceScene &scene,Metrics &m){
   for(unsigned n=0;n<65536;n++){
     require(at<words.size(),"Fixture program outside table");uint op=words[at++];m.opcodes.insert(op);if(op==NODE_END)return;
     unsigned extra=0;if(op==NODE_TEX_COORD){auto *node=reinterpret_cast<const SVMNodeTexCoord*>(words.data()+at);if(node->texco_type==NODE_TEXCO_OBJECT_WITH_TRANSFORM)extra=sizeof(PackedTransform)/4;}
+    if(op==NODE_RGB_RAMP)extra=reinterpret_cast<const SVMNodeRGBRamp*>(words.data()+at)->table_size*4;
+    if(op==NODE_CURVES)extra=reinterpret_cast<const SVMNodeCurves*>(words.data()+at)->table_size*4;
+    if(op==NODE_FLOAT_CURVE)extra=reinterpret_cast<const SVMNodeFloatCurve*>(words.data()+at)->table_size;
     at+=node_size(op)+extra;
   }throw std::runtime_error("Fixture program missing END");
 }
@@ -117,7 +204,7 @@ static void execute_program(Scene &scene,WebGPUDevice &d,Scheduler &scheduler,co
 }
 static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
   for(unsigned test=0;test<10;test++){
-    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);graph_scene(scene,0);prepare_device(scene,d);
+    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"svm_world_gate device creation");SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);graph_scene(scene,0);prepare_device(scene,d);
     Program code(scene.dscene);uint mask=0;
     if(test==0){code.words.push_back(NODE_NUM);mask=2;}
     if(test==1){code.words.push_back(NODE_MATH);mask=4;}
@@ -143,9 +230,15 @@ static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
   }return rejected;
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
-  require(argc==2,"Usage: svm_world_gate OUTPUT_PREFIX");const std::string output=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
+  require(argc==2,"Usage: svm_world_gate OUTPUT_PREFIX");const std::string output=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"svm_world_gate device creation");Metrics m;
+#ifdef CBC_NODES_FIXTURE
+  for(unsigned test=0;test<WORLD_COUNT;test++){
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);nodes_world(scene,test);
+#else
   for(unsigned test=0;test<20;test++){
-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);graph_scene(scene,test);prepare_device(scene,d);
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);graph_scene(scene,test);
+#endif
+    prepare_device(scene,d);
     require(!(scene.dscene.shaders[scene.dscene.data.background.surface_shader&SHADER_MASK].flags&SD_HAS_CONSTANT_EMISSION),"World unexpectedly constant-folded");inspect_program(scene.dscene,m);
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);
     BufferParams bp;bp.width=64;bp.height=48;bp.pass_stride=scene.dscene.data.film.pass_stride;auto buffers=scheduler.get_render_buffers();buffers->reset(bp);buffers->zero();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Compiled-world reset failed");

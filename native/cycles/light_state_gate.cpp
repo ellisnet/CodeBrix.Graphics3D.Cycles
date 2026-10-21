@@ -83,7 +83,7 @@ static void run_stage(WebGPUDevice &d,Scheduler &scheduler,DeviceScene &scene,co
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2,"Usage: light_state_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics metrics;
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"light_state_gate device creation");Metrics metrics;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Light state scene preparation failed");
     auto &data=scene.dscene.data;film_layout(data);require(scene.dscene.lights.size()==4,"Expected two points and two suns");

@@ -1,0 +1,1671 @@
+{
+ "pixel": {
+  "arm-pixel-after": {
+   "passed": null,
+   "failures": null,
+   "error": null,
+   "wallSeconds": null,
+   "declaredBudgetSeconds": 1800,
+   "perJobTimeoutSeconds": 1200,
+   "pipelineBudgetMs": null,
+   "withinBudget": null,
+   "inputsUnchanged": null,
+   "remoteProcessesAfter": null,
+   "jobs": {},
+   "replays": {},
+   "compileMs": {},
+   "budgetWarnings": []
+  },
+  "arm-pixel-final": {
+   "passed": true,
+   "failures": [],
+   "error": null,
+   "wallSeconds": 608.8,
+   "declaredBudgetSeconds": 1800,
+   "perJobTimeoutSeconds": 1200,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "glass_bounce": {
+     "passed": true,
+     "wallSeconds": 481.3,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 29,
+      "paths": 28560,
+      "maximumAbsoluteError": 3072,
+      "maximumPracticalToleranceRatio": 0.08450964102417233,
+      "strictFloatFailures": 5141,
+      "invalidCasesRejected": 21
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 45,
+      "totalPipelineMs": 454923,
+      "maxPipelineEntry": "shade_surface",
+      "maxPipelineMs": 28170,
+      "warnings": 9
+     }
+    },
+    "glass_render": {
+     "passed": true,
+     "wallSeconds": 119.2,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "samples": 8,
+      "stages": 149,
+      "paths": 140646,
+      "maximumImageError": 1.9073486328125e-06,
+      "maximumStageError": 4096,
+      "maximumStagePracticalToleranceRatio": 0.029932474805496514,
+      "strictStageFailures": 2309,
+      "strictImageFailures": 40,
+      "repeatBitwiseIdentical": true
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 8,
+      "totalPipelineMs": 55417.5,
+      "maxPipelineEntry": "shade_surface",
+      "maxPipelineMs": 24601.8,
+      "warnings": 1
+     }
+    }
+   },
+   "replays": {},
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 7315.6,
+     "min": 4733.4,
+     "count": 10
+    },
+    "init_camera": {
+     "max": 705.6,
+     "min": 705.6,
+     "count": 1
+    },
+    "intersect_closest": {
+     "max": 1261.5,
+     "min": 1261.5,
+     "count": 1
+    },
+    "prepare_shader_data": {
+     "max": 2702.5,
+     "min": 1931.6,
+     "count": 10
+    },
+    "prepare_surface": {
+     "max": 8027.7,
+     "min": 6128.6,
+     "count": 10
+    },
+    "shade_background": {
+     "max": 1422.0,
+     "min": 1422.0,
+     "count": 1
+    },
+    "shade_surface": {
+     "max": 28170,
+     "min": 20611.8,
+     "count": 10
+    },
+    "shade_surface_light": {
+     "max": 12296.3,
+     "min": 10075.9,
+     "count": 10
+    }
+   },
+   "budgetWarnings": [
+    "glass_bounce: pipeline 'shade_surface' took 24341 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "glass_bounce: pipeline 'shade_surface' took 20612 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "glass_bounce: pipeline 'shade_surface' took 26655 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "glass_bounce: pipeline 'shade_surface' took 22108 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "glass_bounce: pipeline 'shade_surface' took 27224 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "glass_bounce: pipeline 'shade_surface' took 28170 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "glass_bounce: pipeline 'shade_surface' took 22733 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "glass_bounce: pipeline 'shade_surface' took 21535 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "glass_bounce: pipeline 'shade_surface' took 25107 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "glass_render: pipeline 'shade_surface' took 24602 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+   ]
+  },
+  "ggx-final-r2": {
+   "passed": true,
+   "failures": [],
+   "error": null,
+   "wallSeconds": 1196.3,
+   "declaredBudgetSeconds": 2400,
+   "perJobTimeoutSeconds": 1200,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "glass_svm": {
+     "passed": true,
+     "wallSeconds": 340.9,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 119,
+      "paths": 13770,
+      "maximumAbsoluteError": 3.59118e-06,
+      "strictFloatFailures": 1038,
+      "invalidCasesRejected": 17
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": false,
+      "pipelines": 0,
+      "totalPipelineMs": 0,
+      "maxPipelineEntry": "",
+      "maxPipelineMs": 0,
+      "warnings": 0
+     }
+    },
+    "microfacet_svm": {
+     "passed": true,
+     "wallSeconds": 321.8,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 167,
+      "paths": 16218,
+      "maximumAbsoluteError": 3.59118e-06,
+      "strictFloatFailures": 3209,
+      "invalidCasesRejected": 16
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": false,
+      "pipelines": 0,
+      "totalPipelineMs": 0,
+      "maxPipelineEntry": "",
+      "maxPipelineMs": 0,
+      "warnings": 0
+     }
+    },
+    "microfacet_bounce": {
+     "passed": true,
+     "wallSeconds": 445.1,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 22,
+      "paths": 21420,
+      "maximumAbsoluteError": 128,
+      "maximumPracticalToleranceRatio": 0.08450964102417233,
+      "strictFloatFailures": 9087,
+      "invalidCasesRejected": 21
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 45,
+      "totalPipelineMs": 424493,
+      "maxPipelineEntry": "shade_surface",
+      "maxPipelineMs": 25233.1,
+      "warnings": 9
+     }
+    },
+    "shader_data": {
+     "passed": true,
+     "wallSeconds": 51.3,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 11,
+      "paths": 12066,
+      "maximumAbsoluteError": 2.38419e-07,
+      "strictFloatFailures": 9,
+      "invalidCasesRejected": 12
+     },
+     "pipelineReport": null
+    },
+    "closest": {
+     "passed": true,
+     "wallSeconds": 20.2,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 22,
+      "paths": 36226,
+      "maximumAbsoluteError": 1.78814e-07,
+      "strictFloatFailures": 0,
+      "invalidCasesRejected": 21
+     },
+     "pipelineReport": null
+    },
+    "shadow": {
+     "passed": true,
+     "wallSeconds": 8.8,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 60,
+      "paths": 3846,
+      "maximumAbsoluteError": 5.960464477539063e-08,
+      "strictDifferences": 0,
+      "invalidCasesRejected": 18
+     },
+     "pipelineReport": null
+    }
+   },
+   "replays": {},
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 6081.7,
+     "min": 4662.4,
+     "count": 9
+    },
+    "init_camera": {
+     "max": 817.2,
+     "min": 741.5,
+     "count": 2
+    },
+    "intersect_closest": {
+     "max": 1456.9,
+     "min": 1370.8,
+     "count": 9
+    },
+    "intersect_shadow": {
+     "max": 836.1,
+     "min": 726.7,
+     "count": 4
+    },
+    "prepare_shader_data": {
+     "max": 2496.5,
+     "min": 1944.3,
+     "count": 9
+    },
+    "prepare_surface": {
+     "max": 7112.1,
+     "min": 5756.0,
+     "count": 9
+    },
+    "shade_shadow": {
+     "max": 52.0,
+     "min": 49.8,
+     "count": 6
+    },
+    "shade_surface": {
+     "max": 25233.1,
+     "min": 20654.6,
+     "count": 9
+    },
+    "shade_surface_light": {
+     "max": 11814.8,
+     "min": 9628.7,
+     "count": 9
+    }
+   },
+   "budgetWarnings": [
+    "microfacet_bounce: pipeline 'shade_surface' took 20655 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "microfacet_bounce: pipeline 'shade_surface' took 24665 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "microfacet_bounce: pipeline 'shade_surface' took 21087 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "microfacet_bounce: pipeline 'shade_surface' took 25233 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "microfacet_bounce: pipeline 'shade_surface' took 21282 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "microfacet_bounce: pipeline 'shade_surface' took 21197 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "microfacet_bounce: pipeline 'shade_surface' took 24932 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "microfacet_bounce: pipeline 'shade_surface' took 24152 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "microfacet_bounce: pipeline 'shade_surface' took 21505 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+   ]
+  },
+  "lighting-after": {
+   "passed": true,
+   "failures": [],
+   "error": null,
+   "wallSeconds": 385.4,
+   "declaredBudgetSeconds": 1500,
+   "perJobTimeoutSeconds": 900,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "lighting_mis": {
+     "passed": true,
+     "wallSeconds": 84.2,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 8,
+      "maximumAbsoluteError": 6.556510925292969e-06,
+      "strictDifferences": 2272,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 56169.2,
+      "maxPipelineEntry": "shade_surface",
+      "maxPipelineMs": 23678.6,
+      "warnings": 1
+     }
+    },
+    "feature_combination": {
+     "passed": true,
+     "wallSeconds": 124.7,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 8,
+      "maximumAbsoluteError": 3.409385681152344e-05,
+      "strictDifferences": 2386,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 96724.5,
+      "maxPipelineEntry": "init_camera",
+      "maxPipelineMs": 31575.7,
+      "warnings": 2
+     }
+    }
+   },
+   "replays": {
+    "lighting_mis-replay-0": {
+     "passed": true,
+     "readbacks": 414,
+     "maxImageError": 1.7881393432617188e-07,
+     "strict": 2,
+     "format": "native-command-stream-v6",
+     "degraded": false,
+     "pipelineReportPresent": true,
+     "wallSeconds": 62.2
+    },
+    "feature_combination-replay-0": {
+     "passed": true,
+     "readbacks": 408,
+     "maxImageError": 3.8743019104003906e-07,
+     "strict": 5,
+     "format": "native-command-stream-v6",
+     "degraded": false,
+     "pipelineReportPresent": true,
+     "wallSeconds": 103.6
+    }
+   },
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 5775.5,
+     "min": 5608.9,
+     "count": 2
+    },
+    "init_camera": {
+     "max": 31575.7,
+     "min": 713.0,
+     "count": 2
+    },
+    "intersect_closest": {
+     "max": 1807.5,
+     "min": 1685.0,
+     "count": 2
+    },
+    "intersect_shadow": {
+     "max": 1149.0,
+     "min": 1130.8,
+     "count": 2
+    },
+    "prepare_shader_data": {
+     "max": 6044.1,
+     "min": 5718.5,
+     "count": 2
+    },
+    "prepare_surface": {
+     "max": 15331.7,
+     "min": 5985.5,
+     "count": 2
+    },
+    "shade_background": {
+     "max": 1512.2,
+     "min": 1201.3,
+     "count": 2
+    },
+    "shade_light_forward": {
+     "max": 302.4,
+     "min": 295.9,
+     "count": 2
+    },
+    "shade_shadow": {
+     "max": 52.6,
+     "min": 52.4,
+     "count": 2
+    },
+    "shade_surface": {
+     "max": 23678.6,
+     "min": 23338.5,
+     "count": 2
+    },
+    "shade_surface_light": {
+     "max": 10026.8,
+     "min": 9907.9,
+     "count": 2
+    }
+   },
+   "budgetWarnings": [
+    "lighting_mis: pipeline 'shade_surface' took 23679 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "feature_combination: pipeline 'init_camera' took 31576 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "feature_combination: pipeline 'shade_surface' took 23339 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+   ]
+  },
+  "lighting-before": {
+   "passed": false,
+   "failures": [
+    "feature_combination: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 512):"
+   ],
+   "error": null,
+   "wallSeconds": 98.3,
+   "declaredBudgetSeconds": 900,
+   "perJobTimeoutSeconds": 600,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "feature_combination": {
+     "passed": false,
+     "wallSeconds": 92.2,
+     "exit": 1,
+     "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 24878 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "01:31.92 | ERROR: WebGPU scheduler kernel reported invalid data (mask 512):",
+      "Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 512):"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    }
+   },
+   "replays": {},
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 5979.0,
+     "min": 5979.0,
+     "count": 1
+    },
+    "init_camera": {
+     "max": 27535.1,
+     "min": 27535.1,
+     "count": 1
+    },
+    "intersect_closest": {
+     "max": 1412.0,
+     "min": 1412.0,
+     "count": 1
+    },
+    "prepare_shader_data": {
+     "max": 2379.0,
+     "min": 2379.0,
+     "count": 1
+    },
+    "prepare_surface": {
+     "max": 16768.9,
+     "min": 16768.9,
+     "count": 1
+    },
+    "shade_background": {
+     "max": 1674.6,
+     "min": 1674.6,
+     "count": 1
+    },
+    "shade_surface": {
+     "max": 24878.2,
+     "min": 24878.2,
+     "count": 1
+    },
+    "shade_surface_light": {
+     "max": 10591.4,
+     "min": 10591.4,
+     "count": 1
+    }
+   },
+   "budgetWarnings": []
+  },
+  "lighting-final": {
+   "passed": true,
+   "failures": [],
+   "error": null,
+   "wallSeconds": 337.3,
+   "declaredBudgetSeconds": 1500,
+   "perJobTimeoutSeconds": 900,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "lighting_mis": {
+     "passed": true,
+     "wallSeconds": 77.9,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 8,
+      "maximumAbsoluteError": 6.556510925292969e-06,
+      "strictDifferences": 2272,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 49916,
+      "maxPipelineEntry": "shade_surface",
+      "maxPipelineMs": 22927,
+      "warnings": 1
+     }
+    },
+    "feature_combination": {
+     "passed": true,
+     "wallSeconds": 112.7,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 8,
+      "maximumAbsoluteError": 3.409385681152344e-05,
+      "strictDifferences": 2386,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 84224.4,
+      "maxPipelineEntry": "init_camera",
+      "maxPipelineMs": 26968.8,
+      "warnings": 2
+     }
+    }
+   },
+   "replays": {
+    "lighting_mis-replay-0": {
+     "passed": true,
+     "readbacks": 414,
+     "maxImageError": 1.7881393432617188e-07,
+     "strict": 2,
+     "format": "native-command-stream-v6",
+     "degraded": false,
+     "pipelineReportPresent": true,
+     "wallSeconds": 49.7
+    },
+    "feature_combination-replay-0": {
+     "passed": true,
+     "readbacks": 408,
+     "maxImageError": 3.8743019104003906e-07,
+     "strict": 5,
+     "format": "native-command-stream-v6",
+     "degraded": false,
+     "pipelineReportPresent": true,
+     "wallSeconds": 86.3
+    }
+   },
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 4765.8,
+     "min": 4720.6,
+     "count": 2
+    },
+    "init_camera": {
+     "max": 26968.8,
+     "min": 719.2,
+     "count": 2
+    },
+    "intersect_closest": {
+     "max": 1361.3,
+     "min": 1273.5,
+     "count": 2
+    },
+    "intersect_shadow": {
+     "max": 829.2,
+     "min": 826.9,
+     "count": 2
+    },
+    "prepare_shader_data": {
+     "max": 2381.1,
+     "min": 2211.0,
+     "count": 2
+    },
+    "prepare_surface": {
+     "max": 15178.5,
+     "min": 5876.0,
+     "count": 2
+    },
+    "shade_background": {
+     "max": 1507.4,
+     "min": 1193.2,
+     "count": 2
+    },
+    "shade_light_forward": {
+     "max": 305.6,
+     "min": 297.4,
+     "count": 2
+    },
+    "shade_shadow": {
+     "max": 51.9,
+     "min": 51.1,
+     "count": 2
+    },
+    "shade_surface": {
+     "max": 22927,
+     "min": 20896.8,
+     "count": 2
+    },
+    "shade_surface_light": {
+     "max": 9977.9,
+     "min": 9820.1,
+     "count": 2
+    }
+   },
+   "budgetWarnings": [
+    "lighting_mis: pipeline 'shade_surface' took 22927 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "feature_combination: pipeline 'init_camera' took 26969 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "feature_combination: pipeline 'shade_surface' took 20897 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+   ]
+  },
+  "motion-after": {
+   "passed": false,
+   "failures": [
+    "object-moving-images: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+    "object-stationary-images: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+    "deforming-moving-images: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+    "deforming-stationary-images: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+    "object-replay-motion-0: not run (source job failed)",
+    "deforming-replay-motion-0: not run (source job failed)"
+   ],
+   "error": null,
+   "wallSeconds": 680.5,
+   "declaredBudgetSeconds": 2400,
+   "perJobTimeoutSeconds": 900,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "object-moving-images": {
+     "passed": false,
+     "wallSeconds": 266.0,
+     "exit": 1,
+     "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 24846 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "04:25.73 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+      "Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    },
+    "object-stationary-images": {
+     "passed": false,
+     "wallSeconds": 116.8,
+     "exit": 1,
+     "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 22906 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "01:56.45 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+      "Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    },
+    "deforming-moving-images": {
+     "passed": false,
+     "wallSeconds": 116.4,
+     "exit": 1,
+     "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 22854 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "01:56.08 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+      "Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    },
+    "deforming-stationary-images": {
+     "passed": false,
+     "wallSeconds": 125.8,
+     "exit": 1,
+     "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 27541 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "02:05.56 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+      "Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    },
+    "camera-static": {
+     "passed": true,
+     "wallSeconds": 9.8,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 24,
+      "strictFloatFailures": 0,
+      "invalidCasesRejected": 12
+     },
+     "pipelineReport": null
+    },
+    "camera-motion": {
+     "passed": true,
+     "wallSeconds": 38.2,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 24,
+      "strictFloatFailures": 2818,
+      "invalidCasesRejected": 19
+     },
+     "pipelineReport": null
+    }
+   },
+   "replays": {
+    "object-replay-motion-0": {
+     "passed": false,
+     "notRun": "source job failed"
+    },
+    "deforming-replay-motion-0": {
+     "passed": false,
+     "notRun": "source job failed"
+    }
+   },
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 6951.9,
+     "min": 5561.1,
+     "count": 4
+    },
+    "init_camera": {
+     "max": 28127.3,
+     "min": 703.5,
+     "count": 16
+    },
+    "intersect_closest": {
+     "max": 75612.7,
+     "min": 1676.7,
+     "count": 4
+    },
+    "prepare_shader_data": {
+     "max": 66570,
+     "min": 5953.8,
+     "count": 4
+    },
+    "prepare_surface": {
+     "max": 75279.7,
+     "min": 63983.1,
+     "count": 4
+    },
+    "shade_background": {
+     "max": 5550.6,
+     "min": 4598.7,
+     "count": 4
+    },
+    "shade_surface": {
+     "max": 27541,
+     "min": 22854,
+     "count": 4
+    },
+    "shade_surface_light": {
+     "max": 12116.8,
+     "min": 10188.1,
+     "count": 4
+    }
+   },
+   "budgetWarnings": []
+  },
+  "motion-before": {
+   "passed": false,
+   "failures": [
+    "object-moving-images: Lighting film mismatch mode=0 component=256 actual=0.000000 expected=0.130682",
+    "object-stationary-images: Lighting film mismatch mode=0 component=256 actual=0.000000 expected=0.130682",
+    "deforming-moving-images: Lighting film mismatch mode=0 component=256 actual=0.000000 expected=0.130682",
+    "deforming-stationary-images: Lighting film mismatch mode=0 component=256 actual=0.000000 expected=0.130682"
+   ],
+   "error": null,
+   "wallSeconds": 611.8,
+   "declaredBudgetSeconds": 1800,
+   "perJobTimeoutSeconds": 600,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "object-moving-images": {
+     "passed": false,
+     "wallSeconds": 230.6,
+     "exit": 1,
+     "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 50042 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 21029 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "Lighting film mismatch mode=0 component=256 actual=0.000000 expected=0.130682"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    },
+    "object-stationary-images": {
+     "passed": false,
+     "wallSeconds": 125.3,
+     "exit": 1,
+     "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 53112 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 24898 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "Lighting film mismatch mode=0 component=256 actual=0.000000 expected=0.130682"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    },
+    "deforming-moving-images": {
+     "passed": false,
+     "wallSeconds": 127.3,
+     "exit": 1,
+     "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 54137 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 24790 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "Lighting film mismatch mode=0 component=256 actual=0.000000 expected=0.130682"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    },
+    "deforming-stationary-images": {
+     "passed": false,
+     "wallSeconds": 121.4,
+     "exit": 1,
+     "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 49686 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 24553 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "Lighting film mismatch mode=0 component=256 actual=0.000000 expected=0.130682"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    }
+   },
+   "replays": {},
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 5959.0,
+     "min": 4846.4,
+     "count": 4
+    },
+    "init_camera": {
+     "max": 714.4,
+     "min": 707.8,
+     "count": 4
+    },
+    "intersect_closest": {
+     "max": 67723.7,
+     "min": 1262.9,
+     "count": 4
+    },
+    "prepare_shader_data": {
+     "max": 46616.7,
+     "min": 2346.1,
+     "count": 4
+    },
+    "prepare_surface": {
+     "max": 54136.9,
+     "min": 49686.3,
+     "count": 4
+    },
+    "shade_background": {
+     "max": 28439.9,
+     "min": 24203.2,
+     "count": 4
+    },
+    "shade_surface": {
+     "max": 24898.2,
+     "min": 21029.3,
+     "count": 4
+    },
+    "shade_surface_light": {
+     "max": 11802,
+     "min": 10265,
+     "count": 4
+    }
+   },
+   "budgetWarnings": []
+  },
+  "motion-final": {
+   "passed": true,
+   "failures": [],
+   "error": null,
+   "wallSeconds": 1413.8,
+   "declaredBudgetSeconds": 2400,
+   "perJobTimeoutSeconds": 900,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "object-moving-images": {
+     "passed": true,
+     "wallSeconds": 296.9,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 8,
+      "maximumAbsoluteError": 6.079673767089844e-06,
+      "strictDifferences": 2702,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 267872,
+      "maxPipelineEntry": "intersect_closest",
+      "maxPipelineMs": 68724.3,
+      "warnings": 5
+     }
+    },
+    "object-stationary-images": {
+     "passed": true,
+     "wallSeconds": 133.6,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 8,
+      "maximumAbsoluteError": 6.079673767089844e-06,
+      "strictDifferences": 2506,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 106522,
+      "maxPipelineEntry": "prepare_surface",
+      "maxPipelineMs": 54256.2,
+      "warnings": 2
+     }
+    },
+    "deforming-moving-images": {
+     "passed": true,
+     "wallSeconds": 407.6,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 8,
+      "maximumAbsoluteError": 6.079673767089844e-06,
+      "strictDifferences": 2660,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 4733
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 21,
+      "totalPipelineMs": 378529,
+      "maxPipelineEntry": "intersect_closest",
+      "maxPipelineMs": 72524,
+      "warnings": 7
+     }
+    },
+    "deforming-stationary-images": {
+     "passed": true,
+     "wallSeconds": 130.6,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 8,
+      "maximumAbsoluteError": 6.079673767089844e-06,
+      "strictDifferences": 2506,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 104046,
+      "maxPipelineEntry": "prepare_surface",
+      "maxPipelineMs": 49984.2,
+      "warnings": 2
+     }
+    },
+    "camera-static": {
+     "passed": true,
+     "wallSeconds": 9.9,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 24,
+      "strictFloatFailures": 0,
+      "invalidCasesRejected": 12
+     },
+     "pipelineReport": null
+    },
+    "camera-motion": {
+     "passed": true,
+     "wallSeconds": 37.1,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 24,
+      "strictFloatFailures": 2818,
+      "invalidCasesRejected": 19
+     },
+     "pipelineReport": null
+    }
+   },
+   "replays": {
+    "object-replay-motion-0": {
+     "passed": true,
+     "readbacks": 414,
+     "maxImageError": 3.5762786865234375e-07,
+     "strict": 17,
+     "format": "native-command-stream-v6",
+     "degraded": true,
+     "pipelineReportPresent": true,
+     "wallSeconds": 286.5
+    },
+    "deforming-replay-motion-0": {
+     "passed": true,
+     "readbacks": 420,
+     "maxImageError": 3.5762786865234375e-07,
+     "strict": 9,
+     "format": "native-command-stream-v6",
+     "degraded": false,
+     "pipelineReportPresent": true,
+     "wallSeconds": 95.2
+    }
+   },
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 6481.9,
+     "min": 4767.7,
+     "count": 5
+    },
+    "init_camera": {
+     "max": 27011.3,
+     "min": 704.6,
+     "count": 17
+    },
+    "intersect_closest": {
+     "max": 72524,
+     "min": 1264.6,
+     "count": 5
+    },
+    "intersect_shadow": {
+     "max": 61163.3,
+     "min": 829.7,
+     "count": 5
+    },
+    "prepare_shader_data": {
+     "max": 49718.9,
+     "min": 2343.2,
+     "count": 5
+    },
+    "prepare_surface": {
+     "max": 57419.7,
+     "min": 49669.2,
+     "count": 5
+    },
+    "shade_background": {
+     "max": 4855.6,
+     "min": 3980.0,
+     "count": 5
+    },
+    "shade_light_forward": {
+     "max": 312.1,
+     "min": 256.5,
+     "count": 4
+    },
+    "shade_shadow": {
+     "max": 55.6,
+     "min": 51.5,
+     "count": 5
+    },
+    "shade_surface": {
+     "max": 26394.2,
+     "min": 20985.9,
+     "count": 5
+    },
+    "shade_surface_light": {
+     "max": 11799.7,
+     "min": 10135.1,
+     "count": 5
+    }
+   },
+   "budgetWarnings": [
+    "object-moving-images: pipeline 'intersect_closest' took 68724 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "object-moving-images: pipeline 'prepare_shader_data' took 46650 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "object-moving-images: pipeline 'prepare_surface' took 49669 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "object-moving-images: pipeline 'shade_surface' took 21142 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "object-moving-images: pipeline 'intersect_shadow' took 60748 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "object-stationary-images: pipeline 'prepare_surface' took 54256 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "object-stationary-images: pipeline 'shade_surface' took 24944 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "deforming-moving-images: pipeline 'prepare_surface' took 49692 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "deforming-moving-images: pipeline 'shade_surface' took 21199 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "deforming-moving-images: pipeline 'intersect_closest' took 72524 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "deforming-moving-images: pipeline 'prepare_shader_data' took 49719 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "deforming-moving-images: pipeline 'prepare_surface' took 57420 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "deforming-moving-images: pipeline 'shade_surface' took 20986 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "deforming-moving-images: pipeline 'intersect_shadow' took 61163 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "deforming-stationary-images: pipeline 'prepare_surface' took 49984 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "deforming-stationary-images: pipeline 'shade_surface' took 26394 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+   ]
+  },
+  "transparent-final-r2": {
+   "passed": true,
+   "failures": [],
+   "error": null,
+   "wallSeconds": 399.8,
+   "declaredBudgetSeconds": 2400,
+   "perJobTimeoutSeconds": 1200,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "transparent_shadow": {
+     "passed": true,
+     "wallSeconds": 8.9,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 60,
+      "paths": 3846,
+      "maximumAbsoluteError": 1.1920928955078125e-07,
+      "strictDifferences": 0,
+      "invalidCasesRejected": 0
+     },
+     "pipelineReport": null
+    },
+    "transparent_lighting": {
+     "passed": true,
+     "wallSeconds": 381.0,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 8,
+      "maximumAbsoluteError": 1.621246337890625e-05,
+      "strictDifferences": 1656,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 36,
+      "totalPipelineMs": 343800,
+      "maxPipelineEntry": "shade_surface_light",
+      "maxPipelineMs": 70126.1,
+      "warnings": 7
+     }
+    }
+   },
+   "replays": {},
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 5260.9,
+     "min": 4697.2,
+     "count": 3
+    },
+    "init_camera": {
+     "max": 1027.8,
+     "min": 718.2,
+     "count": 3
+    },
+    "intersect_closest": {
+     "max": 1431.8,
+     "min": 1259.1,
+     "count": 3
+    },
+    "intersect_shadow": {
+     "max": 943.0,
+     "min": 711.6,
+     "count": 4
+    },
+    "prepare_shader_data": {
+     "max": 2524.1,
+     "min": 2108.4,
+     "count": 3
+    },
+    "prepare_shadow_shader_data": {
+     "max": 4983.8,
+     "min": 2885.7,
+     "count": 4
+    },
+    "prepare_surface": {
+     "max": 7039.3,
+     "min": 5840.3,
+     "count": 3
+    },
+    "shade_background": {
+     "max": 1694.2,
+     "min": 1384.1,
+     "count": 3
+    },
+    "shade_light_forward": {
+     "max": 30284,
+     "min": 297.3,
+     "count": 3
+    },
+    "shade_shadow_transparent": {
+     "max": 2560.2,
+     "min": 1134.3,
+     "count": 4
+    },
+    "shade_surface": {
+     "max": 21463.7,
+     "min": 20524.9,
+     "count": 3
+    },
+    "shade_surface_light": {
+     "max": 70126.1,
+     "min": 9761.4,
+     "count": 3
+    }
+   },
+   "budgetWarnings": [
+    "transparent_lighting: pipeline 'shade_surface' took 20525 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "transparent_lighting: pipeline 'shade_surface_light' took 70126 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "transparent_lighting: pipeline 'shade_surface' took 21025 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "transparent_lighting: pipeline 'shade_light_forward' took 25951 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "transparent_lighting: pipeline 'shade_surface_light' took 70049 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "transparent_lighting: pipeline 'shade_surface' took 21464 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "transparent_lighting: pipeline 'shade_light_forward' took 30284 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+   ]
+  },
+  "volume-after": {
+   "passed": true,
+   "failures": [],
+   "error": null,
+   "wallSeconds": 525.1,
+   "declaredBudgetSeconds": 1800,
+   "perJobTimeoutSeconds": 900,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "boundary-state": {
+     "passed": true,
+     "wallSeconds": 85.0,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 24,
+      "paths": 12288,
+      "maximumPracticalToleranceRatio": 0.04374319246567253
+     },
+     "pipelineReport": null
+    },
+    "closed-inside": {
+     "passed": true,
+     "wallSeconds": 333.7,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "samples": 8,
+      "stages": 542,
+      "paths": 307127,
+      "maximumImageError": 1.52587890625e-05,
+      "maximumStageError": 0.0009765625,
+      "maximumStagePracticalToleranceRatio": 0.060293728764073594,
+      "strictStageFailures": 18546,
+      "strictImageFailures": 2069,
+      "repeatBitwiseIdentical": true
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 107860,
+      "maxPipelineEntry": "shade_surface",
+      "maxPipelineMs": 29629.7,
+      "warnings": 2
+     }
+    }
+   },
+   "replays": {
+    "closed-replay-inside": {
+     "passed": true,
+     "readbacks": 1116,
+     "maxImageError": 1.52587890625e-05,
+     "strict": 2069,
+     "format": "native-command-stream-v6",
+     "degraded": false,
+     "pipelineReportPresent": true,
+     "wallSeconds": 97.6
+    }
+   },
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 8211.4,
+     "min": 5573.5,
+     "count": 2
+    },
+    "init_camera": {
+     "max": 751.4,
+     "min": 751.4,
+     "count": 1
+    },
+    "intersect_closest": {
+     "max": 1779.9,
+     "min": 1779.9,
+     "count": 1
+    },
+    "intersect_volume_stack": {
+     "max": 873.2,
+     "min": 704.2,
+     "count": 2
+    },
+    "prepare_shader_data": {
+     "max": 7323.3,
+     "min": 6195.5,
+     "count": 2
+    },
+    "prepare_surface": {
+     "max": 16071.2,
+     "min": 7479.1,
+     "count": 2
+    },
+    "shade_background": {
+     "max": 2305.5,
+     "min": 2305.5,
+     "count": 1
+    },
+    "shade_surface": {
+     "max": 29629.7,
+     "min": 24219,
+     "count": 2
+    },
+    "shade_surface_light": {
+     "max": 12194.8,
+     "min": 10242.1,
+     "count": 2
+    },
+    "shade_volume": {
+     "max": 27025.2,
+     "min": 19230.3,
+     "count": 2
+    },
+    "shader_eval_volume_density": {
+     "max": 1863.2,
+     "min": 1162.2,
+     "count": 2
+    }
+   },
+   "budgetWarnings": [
+    "closed-inside: pipeline 'shade_volume' took 27025 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "closed-inside: pipeline 'shade_surface' took 29630 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+   ]
+  },
+  "volume-before": {
+   "passed": false,
+   "failures": [
+    "boundary-state: case=0 volume_stack[0].object path=171 integer mismatch",
+    "closed-inside: stage 0 integer volume_stack[1].object path=0"
+   ],
+   "error": null,
+   "wallSeconds": 37.2,
+   "declaredBudgetSeconds": 900,
+   "perJobTimeoutSeconds": 600,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "boundary-state": {
+     "passed": false,
+     "wallSeconds": 12.3,
+     "exit": 1,
+     "error": [
+      "00:00.15 | WARNING: Maximum number of closures exceeded: 66 > 64",
+      "Closed volume stack=5 closures=64 film=15",
+      "case=0 volume_stack[0].object path=171 integer mismatch"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    },
+    "closed-inside": {
+     "passed": false,
+     "wallSeconds": 19.3,
+     "exit": 1,
+     "error": [
+      "Volume film stride=15 combined=0 scatter=4 transmit=7 majorant=13 count=14",
+      "State diagnostic actual bounce/kernel/pdf=0/2/0 expected=0/2/0 prim/object=-1/-1 actual D=-0.5678790212,-0.423653543,0.7057132125 expected D=-0.5678790212,-0.423653543,0.7057132125",
+      "stage 0 integer volume_stack[1].object path=0"
+     ],
+     "assertion": null,
+     "timeout": null,
+     "metrics": {},
+     "pipelineReport": null
+    }
+   },
+   "replays": {},
+   "compileMs": {
+    "init_camera": {
+     "max": 755.9,
+     "min": 755.9,
+     "count": 1
+    },
+    "intersect_volume_stack": {
+     "max": 4818.3,
+     "min": 4770.7,
+     "count": 2
+    },
+    "shader_eval_volume_density": {
+     "max": 12531.3,
+     "min": 6480.3,
+     "count": 2
+    }
+   },
+   "budgetWarnings": []
+  },
+  "volume-final": {
+   "passed": true,
+   "failures": [],
+   "error": null,
+   "wallSeconds": 483.1,
+   "declaredBudgetSeconds": 1800,
+   "perJobTimeoutSeconds": 900,
+   "pipelineBudgetMs": null,
+   "withinBudget": true,
+   "inputsUnchanged": true,
+   "remoteProcessesAfter": [],
+   "jobs": {
+    "boundary-state": {
+     "passed": true,
+     "wallSeconds": 77.1,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "cases": 24,
+      "paths": 12288,
+      "maximumPracticalToleranceRatio": 0.04374319246567253
+     },
+     "pipelineReport": null
+    },
+    "closed-inside": {
+     "passed": true,
+     "wallSeconds": 307.7,
+     "exit": 0,
+     "error": null,
+     "assertion": null,
+     "timeout": null,
+     "metrics": {
+      "samples": 8,
+      "stages": 542,
+      "paths": 307127,
+      "maximumImageError": 1.52587890625e-05,
+      "maximumStageError": 0.0009765625,
+      "maximumStagePracticalToleranceRatio": 0.060293728764073594,
+      "strictStageFailures": 18546,
+      "strictImageFailures": 2069,
+      "repeatBitwiseIdentical": true
+     },
+     "pipelineReport": {
+      "tier": "full",
+      "degraded": true,
+      "pipelines": 11,
+      "totalPipelineMs": 82719.8,
+      "maxPipelineEntry": "shade_volume",
+      "maxPipelineMs": 26215.9,
+      "warnings": 2
+     }
+    }
+   },
+   "replays": {
+    "closed-replay-inside": {
+     "passed": true,
+     "readbacks": 1116,
+     "maxImageError": 1.52587890625e-05,
+     "strict": 2069,
+     "format": "native-command-stream-v6",
+     "degraded": false,
+     "pipelineReportPresent": true,
+     "wallSeconds": 89.0
+    }
+   },
+   "compileMs": {
+    "connect_surface_light": {
+     "max": 4763.9,
+     "min": 4742.3,
+     "count": 2
+    },
+    "init_camera": {
+     "max": 755.9,
+     "min": 755.9,
+     "count": 1
+    },
+    "intersect_closest": {
+     "max": 1328.6,
+     "min": 1328.6,
+     "count": 1
+    },
+    "intersect_volume_stack": {
+     "max": 738.0,
+     "min": 707.4,
+     "count": 2
+    },
+    "prepare_shader_data": {
+     "max": 2363.3,
+     "min": 2232.5,
+     "count": 2
+    },
+    "prepare_surface": {
+     "max": 11744.6,
+     "min": 6374.7,
+     "count": 2
+    },
+    "shade_background": {
+     "max": 2177.1,
+     "min": 2177.1,
+     "count": 1
+    },
+    "shade_surface": {
+     "max": 22782.8,
+     "min": 20727.2,
+     "count": 2
+    },
+    "shade_surface_light": {
+     "max": 10068,
+     "min": 9777.9,
+     "count": 2
+    },
+    "shade_volume": {
+     "max": 26215.9,
+     "min": 19057.2,
+     "count": 2
+    },
+    "shader_eval_volume_density": {
+     "max": 1868.1,
+     "min": 1111.0,
+     "count": 2
+    }
+   },
+   "budgetWarnings": [
+    "closed-inside: pipeline 'shade_volume' took 26216 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "closed-inside: pipeline 'shade_surface' took 20727 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+   ]
+  }
+ }
+}

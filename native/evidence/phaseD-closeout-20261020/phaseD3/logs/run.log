@@ -1,0 +1,22 @@
+[05:45:37] build-initial budget=1800s (cold full build of 47 targets + tier test; history 538 s)
+[05:52:12] build-initial rc=0
+[05:55:04] build-host-1 budget=900s (host + abi/example/oracle targets)
+[05:55:50] dev abi cpu budget=300s
+[05:59:55] dev abi gpu budget=600s cold mesa
+[06:01:19] dev example gpu budget=300s
+[06:12:10] oracle-dev-run budget=900s cold mesa (45 linux-gates scenes + 4 starters, cpu-x64-linux + wgsl-linux-intel)
+[06:12:19] oracle-dev-run retry budget=900s
+[06:13:08] oracle-dev-run retry2 budget=900s
+[06:17:07] oracle-dev2 (4 render-gate scenes) budget=600s cold
+[06:20:02] licensing audit/notices/guards/inventory budget=600s
+[06:20:49] build-final budget=1800s (47 targets + tier/abi/example/oracle)
+[06:22:32] build-final rc=0
+[06:22:48] START host-gate budget=1200s cold mesa; START all-lanes budget=2700s cold mesa (2 concurrent)
+[06:25:34] END host-gate rc=0
+[06:25:43] START glass-specialized budget=900s cold
+[06:26:17] END glass-specialized rc=0 seconds=34
+[06:26:17] START glass-unspecialized budget=900s cold
+[06:29:23] END glass-unspecialized rc=0 seconds=186
+[06:29:33] START oracle budget=900s cold (49 scenes x cpu-x64-linux, wgsl-linux-intel)
+[06:33:29] END oracle rc=0 seconds=236
+[06:40:24] END all-lanes rc=0

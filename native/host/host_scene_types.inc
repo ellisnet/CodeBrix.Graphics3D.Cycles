@@ -33,3 +33,11 @@ class MemoryImageLoader final : public ImageLoader {
     auto image=dynamic_cast<const MemoryImageLoader *>(&other);return image && image->data->identity==data->identity;
   }
 };
+// Authored attributes of a geometry captured before the static BVH path may
+// bake it with its object transform, and the bake inputs (host_edits.inc).
+struct BakeRecord {
+  Object *object = nullptr;
+  Transform tfm;
+  bool to_motion = false;
+  std::unique_ptr<AttributeSet> attributes;
+};

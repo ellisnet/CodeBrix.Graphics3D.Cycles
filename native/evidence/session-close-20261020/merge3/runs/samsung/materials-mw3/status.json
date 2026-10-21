@@ -1,0 +1,42 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "device": "samsung",
+  "serial": "R52W207XQ1V",
+  "corpus": "materials",
+  "label": "mw3",
+  "declaredBudgetSeconds": 7200,
+  "perJobTimeoutSeconds": 2400,
+  "pipelineBudgetMs": null,
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "startedLocal": "19:30:18",
+  "deviceProperties": {
+    "api": "36",
+    "abi": "arm64-v8a",
+    "model": "SM-X700",
+    "fingerprint": "samsung/gts8wifixx/gts8wifi:16/BP2A.250605.031.A3/X700XXSBEZH3:user/release-keys"
+  },
+  "stagedVerified": true,
+  "reference": {
+    "root": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64",
+    "oracleSha256": "1d215d564e7b2172fa6cb825f5e1cac44a9a3b9cffe60628bed08aeed43323b1",
+    "libc": "glibc 2.41",
+    "provenanceSha256": "21e7092de3b6b2aa3554c04dc4d9612bc3706a4f03833aaaae73f3d8b8262654"
+  },
+  "referenceImported": [
+    "nodes_render"
+  ],
+  "passed": false,
+  "failures": [
+    "nodes_svm: Typed node noise 2d type 0 variant 2 22 float closures[0].weight path 28 component 0 actual=1.792859 expected=1.791512",
+    "nodes_render: Independent CPU image 6720 actual=0.928481 expected=0.928078",
+    "nodes-replay: not run (source job failed)"
+  ],
+  "wallSeconds": 1564.9,
+  "withinBudget": true,
+  "remoteProcessesAfter": [],
+  "productionSourcesUnchanged": true,
+  "binaryInputsUnchanged": true,
+  "inputsUnchanged": true
+}

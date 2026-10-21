@@ -1,0 +1,33 @@
+diff --git a/src/CodeBrix.Graphics3D.Cycles/CyclesHost.cs b/src/CodeBrix.Graphics3D.Cycles/CyclesHost.cs
+index ad03d479..1ef5906b 100644
+--- a/src/CodeBrix.Graphics3D.Cycles/CyclesHost.cs
++++ b/src/CodeBrix.Graphics3D.Cycles/CyclesHost.cs
+@@ -7,7 +7,8 @@ using Microsoft.Win32.SafeHandles;
+ namespace CodeBrix.Graphics3D.Cycles;
+ 
+ // Metal is Cycles' own Metal device, available only in the osx-arm64 build.
+-public enum Backend : uint { WebGpu = 1, CpuReference = 2, Metal = 3 }
++// Gpu selects the binary's GPU backend: Metal in macOS builds, WebGPU elsewhere.
++public enum Backend : uint { WebGpu = 1, CpuReference = 2, Metal = 3, Gpu = 4 }
+ public readonly record struct Node(ulong Value);
+ public readonly record struct Image(ulong Value);
+ public enum AttributeValue : uint { Float = 5, Color = 6, Vector = 7, Point = 8, Normal = 9, Point2 = 10, Transform = 13, Float4 = 16, Byte4 = 17 }
+@@ -283,4 +284,18 @@ internal static unsafe class Native
+     [DllImport(Library, EntryPoint="cbc_host_set_nodes", CallingConvention=CallingConvention.Cdecl)] internal static extern int SetNodes(ulong host, ulong node, [MarshalAs(UnmanagedType.LPUTF8Str)] string socket, ulong* values, ulong count);
+     [DllImport(Library, EntryPoint="cbc_host_mesh", CallingConvention=CallingConvention.Cdecl)] internal static extern int Mesh(ulong host, ulong mesh, float* xyz, ulong vertices, uint* indices, ulong triangles);
+     [DllImport(Library, EntryPoint="cbc_host_render", CallingConvention=CallingConvention.Cdecl)] internal static extern int Render(ulong host, ref RenderConfig config, float* pixels, ulong count);
++    // Phase D additions to ABI 1 (native/host/ABI.md). Thin declarations only;
++    // the typed managed surface wraps them.
++    [StructLayout(LayoutKind.Sequential)] internal struct VersionInfo { public uint Size, Abi, R0, R1; public fixed byte LibraryVersion[32]; public fixed byte CyclesRevision[48]; }
++    [StructLayout(LayoutKind.Sequential)] internal struct Event { public uint Size, Kind; public ulong SamplesDone, SamplesTotal; public double ElapsedSeconds; public byte* Message; }
++    [DllImport(Library, EntryPoint="cbc_host_version", CallingConvention=CallingConvention.Cdecl)] internal static extern int Version(ref VersionInfo info);
++    [DllImport(Library, EntryPoint="cbc_host_resolve_backend", CallingConvention=CallingConvention.Cdecl)] internal static extern int ResolveBackend(uint requested, out uint resolved);
++    [DllImport(Library, EntryPoint="cbc_host_backend", CallingConvention=CallingConvention.Cdecl)] internal static extern int GetBackend(ulong host, out uint backend);
++    [DllImport(Library, EntryPoint="cbc_host_capabilities_json", CallingConvention=CallingConvention.Cdecl)] internal static extern int Capabilities(ulong host, byte* json, ulong capacity, out ulong required);
++    [DllImport(Library, EntryPoint="cbc_host_delete_node", CallingConvention=CallingConvention.Cdecl)] internal static extern int DeleteNode(ulong host, ulong node);
++    [DllImport(Library, EntryPoint="cbc_host_image_update", CallingConvention=CallingConvention.Cdecl)] internal static extern int UpdateImage(ulong host, ulong image, ref ImageConfig config, byte* pixels, ulong count);
++    [DllImport(Library, EntryPoint="cbc_host_motion_positions", CallingConvention=CallingConvention.Cdecl)] internal static extern int MotionPositions(ulong host, ulong mesh, uint steps, float* xyz, ulong count);
++    [DllImport(Library, EntryPoint="cbc_host_set_event_callback", CallingConvention=CallingConvention.Cdecl)] internal static extern int SetEventCallback(ulong host, delegate* unmanaged[Cdecl]<nint, Event*, int> callback, nint userData);
++    [DllImport(Library, EntryPoint="cbc_host_pass_floats", CallingConvention=CallingConvention.Cdecl)] internal static extern int PassFloats(ulong host, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, float* values, ulong capacity, out ulong required, out uint components);
++    [DllImport(Library, EntryPoint="cbc_host_render_passes_json", CallingConvention=CallingConvention.Cdecl)] internal static extern int RenderPasses(ulong host, byte* json, ulong capacity, out ulong required);
+ }

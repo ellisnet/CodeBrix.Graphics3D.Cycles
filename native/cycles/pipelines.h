@@ -34,7 +34,29 @@ enum ShaderFeatureBit : uint64_t {
   // Emissive-triangle sampling and forward-hit MIS: any triangle in the light
   // distribution or any shader flagged as a MIS emitter (SD_MIS_FRONT/BACK).
   SF_LIGHT_TRIANGLE=1ull<<29,
-  SF_ALL=(1ull<<30)-1,
+  // Object shadow terminator offsets (Phase E3): the geometry offset on
+  // smooth-shaded triangles with direct lighting, the shading offset whenever
+  // an object's frequency multiplier exceeds 1.
+  SF_TERMINATOR_GEOMETRY=1ull<<30, SF_TERMINATOR_SHADING=1ull<<31,
+  // Principled BSDF closure setup, its Fresnel models and the sheen closure.
+  SF_BSDF_PRINCIPLED=1ull<<32,
+  // Principled thin-film iridescence and thin-walled transmission.
+  SF_BSDF_THIN_FILM=1ull<<33, SF_BSDF_THIN_WALL=1ull<<34,
+  // Texture, colour and utility node handlers (wavefront_svm_nodes.wgsl).
+  SF_TEX_NOISE=1ull<<35, SF_TEX_WHITE_NOISE=1ull<<36, SF_TEX_WAVE=1ull<<37, SF_TEX_MAGIC=1ull<<38,
+  SF_TEX_BRICK=1ull<<39, SF_MAPPING=1ull<<40, SF_MAP_RANGE=1ull<<41, SF_MIX=1ull<<42, SF_HSV=1ull<<43,
+  SF_COLOR_SEPCOMB=1ull<<44, SF_RAMP=1ull<<45, SF_FRESNEL=1ull<<46, SF_VECTOR_ROTATE=1ull<<47,
+  SF_BLACKBODY=1ull<<48, SF_NORMAL=1ull<<49, SF_SHADING_INFO=1ull<<50, SF_LIGHT_PATH=1ull<<51,
+  SF_TEX_VORONOI=1ull<<52,
+  // Wavelength and wireframe handlers (wavefront_svm_nodes.wgsl).
+  SF_WAVELENGTH=1ull<<53, SF_WIREFRAME=1ull<<54,
+  // Bump stages and dual-number derivative variants (wavefront_svm_derivatives.wgsl;
+  // mapping variants in wavefront_svm_nodes.wgsl). Bits 62 and 63 stay free.
+  SF_BUMP=1ull<<55, SF_BUMP_STATE=1ull<<56, SF_GEOMETRY_DERIVATIVE=1ull<<57,
+  SF_TEX_COORD_DERIVATIVE=1ull<<58, SF_VALUE_DERIVATIVE=1ull<<59,
+  SF_VECTOR_MATH_DERIVATIVE=1ull<<60, SF_MAPPING_DERIVATIVE=1ull<<61,
+  SF_ALL=(1ull<<62)-1,
+  SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL,
 };
 struct ShaderFeatureName {const char *name;uint64_t bit;};
 const std::vector<ShaderFeatureName> &shader_feature_names();
@@ -44,13 +66,19 @@ struct SvmCensus {
   uint64_t features=0;      // Handlers any reachable decode path can execute.
   uint64_t decoded_nodes=0; // Distinct node records decoded.
   uint64_t stopped_paths=0; // Paths ending where the GPU interpreter reports an error.
+  // First reachable feature the device rejects before rendering (empty: none).
+  // Principled subsurface is refused here when a constant enables it or its
+  // weight is linked; the GPU handler also reports it (error 16) and never
+  // approximates it.
+  std::string unsupported;
 };
 // Mirrors the WGSL interpreter's decode exactly: every program start reachable
 // through a shader header, shader jump or conditional jump, record sizes from
 // the native SVM node layouts, BSDF data records and texture-coordinate
 // transforms. Paths stop where the GPU would stop (END, unknown opcode/closure,
 // or a bounds error); the result is a superset of executable handlers.
-SvmCensus svm_census(const std::vector<uint32_t> &words,size_t shader_count);
+// `roots` (optional) limits the program starts to these shader indices.
+SvmCensus svm_census(const std::vector<uint32_t> &words,size_t shader_count,const std::vector<uint32_t> *roots=nullptr);
 
 // Applies feature markers. Unknown feature names or malformed regions throw.
 std::string specialize_wgsl(const std::string &source,uint64_t enabled);

@@ -1,0 +1,364 @@
+diff --git a/docs/PARITY.md b/docs/PARITY.md
+index 3002dc3..b516ff4 100644
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -35,9 +35,9 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+ | Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL passes glass bounce/render but fails feature combination (microfacet lookup-table bounds error 512). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP; the Pixel 4 XL fails the volume-boundary state test, the camera-inside closed volume and the object/deforming motion images |
+-| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; emissive triangles fail the ARM64 oracle (sampler and one image mode) and remain unvalidated on ARM64. Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light and transparent shadows; emissive triangle lights fail on the HP compiler (memory) for moving emitters and the sampler probe; static triangle images 0-3 pass. Open device items are listed in `native/DEVICE.md` |
++| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; emissive-triangle images 0-1 and the Linux captures of modes 0, 1, 3 and 5 pass, image mode 2 diverges by one shadow-ray visibility decision on the Adreno. Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light, transparent shadows and all five emissive-triangle images (including the moving/deforming emitter) with replays. The triangle sampler gate and one emitter-probe pdf disagree with the Android CPU oracles because bionic's acosf/asinf are not correctly rounded (the GPU follows glibc's correctly rounded results); open, needs a decision. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+-| Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS). Cold compiles: Samsung specialized pipelines at most 32.6 s, except the emissive-triangle entry with object motion at 205 s; HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 25 s with triangle lights), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 70 s |
++| Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS), so `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is refused on Android. Cold compiles: Samsung specialized pipelines at most 32.6 s (the emissive-triangle entry with object motion now 29-30 s, was 205 s); HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 20 s with triangle lights, 27.6 s with triangle lights and object motion, which previously ran out of compiler memory), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 70 s |
+ | Platforms/delivery | Full Linux host. The .NET typed API renders on the WebGPU backend and the CPU reference backend on Linux x64 (Intel UHD, Mesa 25.0.7) and inside the Android validation app on the Samsung SM-X700, the HP Android x64 and the Pixel 4 XL (glass, diffuse with a sun, textured plane: practical criterion met, strict differences reported; progress and cancellation checked); the Android host gate passes with 48 exports on the Samsung and the HP. A glTF example client (tools/gltf) converts glTF factor-only materials to the closures the WebGPU backend has. The package still carries no native runtime assets; other host builds and remaining GPU backends/RIDs pending |
+ | Full parity decision | Open. A small matching render cannot establish this. Unsupported features must be reported explicitly, never silently approximated |
+ 
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index e14ab97..c7d5dd2 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1454,32 +1454,91 @@ shadow-terminator geometry offset: the WebGPU device does not implement that
+ offset (found on Linux; a smooth mesh lit by a sun otherwise fails with
+ "WebGPU scheduler kernel reported invalid data (mask 1)").
+ 
++## Emissive-triangle compile load and the Android oracles' C library (2026-10-20)
++
++**Compile load.** Drivers inline every WGSL call, and `shade_surface_light`
++with `MOTION_OBJECT` + `LIGHT_TRIANGLE` held four copies of the emissive-triangle
++vertex computation (the forward-hit MIS weight and the emitter sample each needed
++the path-time and centre-time vertices, each with the object-motion transform,
++its 30-step double-word arccosine and the motion sine/cosine). That entry inlined
++to 3.35 MB of WGSL and ran the HP's Intel Mesa 24.0.8 compiler out of memory
++(Scudo); the Samsung took 205 s and Linux 65-75 s cold. The sampler now reads
++vertices from `triangle_light_prefill`, which computes every set an invocation can
++use, in the original order, from one call site; the arccosine, the motion
++sine/cosine and its disk sine/cosine are triangle-light-private copies whose
++Horner series run as loops (the same operations in the same order). The shared
++motion and trigonometry helpers are unchanged. Inlined size: mode-5
++`shade_surface_light` 3.35 -> 1.32 MB, triangle without motion 1.60 -> 1.16 MB,
++the triangle sampler gate's probe 2.15 -> 1.20 MB. Every Linux result is
++byte-identical (triangle sampler and emitter-sample bins, all five triangle
++images' GPU/CPU/repeat films and command streams). Cold single-pipeline compiles:
++
++| Entry (cold, one pipeline per process) | Linux Intel Mesa 25.0.7 | HP Intel Xe, Mesa 24.0.8 | Samsung Adreno 730 |
++| --- | --- | --- | --- |
++| `shade_surface_light`, triangle + object motion (mode 5) | 75.3 -> 24.3 s | Scudo OOM at 2.25 GB after 21 s -> 27.4-27.6 s / 2.08 GB (2 of 2) | 203.9 s / 3.28 GB -> 29.4-30.0 s / 0.49 GB |
++| `shade_surface_light`, triangle, no motion (mode 1) | 14.9 -> 14.7 s | 24.9 s / 2.61 GB -> 20.5 s / 1.84 GB | 34.1 s / 0.54 GB -> 20.1 s / 0.39 GB |
++| `emitter_sample_probe` (triangle sampler gate) | compiled cold in both | Scudo OOM at 1.85 GB after 13 s -> 21.9-22.0 s / 1.99 GB (2 of 2) | 80.5 s / 1.47 GB -> 24.4-24.7 s / 0.41 GB |
++| `connect_surface_light` (mode 5) | unchanged | 10.8 -> 10.9 s / 0.32 GB | 1.7 -> 1.7 s |
++| `prepare_surface` (mode 5) | unchanged | 5.9 -> 5.9 s / 0.34 GB | 2.6 -> 2.6 s |
++
++**Android oracles use bionic's arccosine and arcsine.** The Samsung triangle
++sampler failures (24 in 22 of 4,096 samples) and the emitter-probe area-light
++pdf (1.10 times the tolerance) are not SSE-versus-scalar float3 arithmetic. At
++all 18 failing samples on static emitters the ARM64 oracle's
++`acosf(cos_alpha)` (`kernel/light/triangle.h`, `safe_acosf`) differs from the
++correctly rounded value, which glibc returns and the WGSL reproduces; the
++probe's pdf difference is one `asinf` in the rectangle solid angle
++(`kernel/light/area.h`), 2 ulp in one term reproducing both oracle pdfs exactly.
++Over every binary32 input in [-1, 1], bionic arm64 `acosf` differs from the
++correctly rounded result at 5,387,136 inputs and `asinf` at 682,540; bionic
++x86_64 (the HP) differs at 5,717,766 and 4,220,748 with different results again;
++glibc is correctly rounded. Evidence for this section: `native/work/e1/` (`libm/`, `analysis/`, `logs/probe-table-*.jsonl`, `runs/`). Matching these
++oracles on the GPU means reproducing bionic's libm (a separate, licensed
++implementation, different per Android ABI); that is a decision for the
++maintainer, not a rounding adapter.
++
++**Specialization off on Android.** `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is now
++refused on Android when the WebGPU device is created, with a message naming the
++variable, before any pipeline compiles. It remains a desktop A/B diagnostic.
++
++**Device results with these changes** (unchanged runtime, cold compiles, practical
++criterion unchanged). HP: the triangle sampler gate now compiles (22 s); the
++surface gate and all five triangle images pass, including the moving/deforming
++emitter (mode 5) and the static-instanced rejection, with five on-device replays
++and the five Linux triangle captures replayed exactly. Samsung: the surface gate,
++triangle images 0 and 1 and the Linux captures of modes 0, 1, 3 and 5 pass
++(the mode-5 capture's `shade_surface_light` now compiles in 29 s). On both,
++glass_render, lighting_mis and transparent_lighting match the previous device runs
++(glass bit for bit; the others within each run's own repeat variation).
++
+ ## Open device items (2026-10-20)
+ 
+ These device failures from the integrated-tree runs are open. Each is
+ deterministic on its device and needs a code change; no tolerance was relaxed.
+ 
+-1. **Samsung SM-X700: emissive-triangle sampler and emitter-sample probe follow
+-   the x64 oracle.** At every failing sample the Adreno 730 output equals the x64
+-   CPU oracle (and the Intel GPU) bit for bit, while the ARM64 CPU oracle differs:
+-   the triangle sampler gate has 24 practical failures in 22 of 4,096 samples (up
+-   to 11.6 times the tolerance) and the emitter-sample probe one sun-light pdf at
+-   1.1 times. This is the same class as the ShaderData normal rounding fixed for
+-   ARM64 (`NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`), now in light and emitter sampling.
++1. **Android oracles (Samsung and HP): emissive-triangle sampler and
++   emitter-sample probe.** The GPU follows the correctly rounded arccosine and
++   arcsine (glibc's); the Android CPU oracles call bionic's `acosf`/`asinf`,
++   which round differently (section above). The triangle sampler gate fails on
++   the Samsung (24 practical failures in 22 of 4,096 samples, up to 11.6 times the
++   tolerance) and on the HP (32 in 30 samples); the Samsung emitter-sample probe
++   fails one area-light pdf at 1.10 times. Matching needs bionic's libm reproduced
++   per Android ABI (a licensing and design decision); emissive-triangle images and
++   replays pass on the HP.
+ 2. **Samsung SM-X700: triangle image mode 2 diverges on the GPU.** One pixel is
+-   off by 0.040; replaying the Linux x64 mode-2 capture on the device also fails
+-   (scheduler decision readback differs at command 574), so the Adreno takes a
+-   different path decision from Intel with identical inputs and WGSL.
+-3. **HP Android x64: three cold compiles exhaust compiler memory.** Scudo's
+-   per-size-class regions run out inside the Intel Mesa 24.0.8 compiler and the
+-   process aborts, every time, for `shade_surface_light` specialized with
+-   `MOTION_OBJECT` + `LIGHT_TRIANGLE` (triangle image mode 5), the triangle
+-   sampler gate's `emitter_sample_probe`, and the unspecialized
+-   `shade_surface_light`.
+-4. **`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is not usable on any Android
+-   device.** The unspecialized `shade_surface_light` crashes the Adreno 730 driver
+-   and exhausts memory on the Adreno 640 and the HP. Specialized/unspecialized
+-   bit-identity is shown on Linux only.
++   off by 0.040, and the Linux x64 mode-2 capture fails on the device at command
++   574. The divergence is one bounce-0 shadow ray toward the instanced emitter
++   whose origin, direction and tmax already differ by 1-2 ulp between the Adreno
++   and Intel (plain-arithmetic closest-hit/ShaderData stages): Intel finds it
++   unoccluded, the Adreno occluded. The HP replays the same capture exactly. It is
++   the same ulp-level, edge-grazing family as the static-instanced rejection;
++   removing it needs contraction-proof traversal and intersection in shared stages.
++3. **Resolved:** the HP compiles `shade_surface_light` with `MOTION_OBJECT` +
++   `LIGHT_TRIANGLE` (27.4-27.6 s, 2.08 GB peak) and the triangle sampler gate's
++   probe (22 s, 1.99 GB); see the section above.
++4. **Resolved as a refusal:** `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is refused
++   on Android at device creation (the host API returns the message; no driver
++   crash). Specialized/unspecialized bit-identity is shown on Linux only.
+ 5. **Pixel 4 XL: feature_combination** reports GPU error bit 512 (the microfacet
+    lookup-table bounds check).
+ 6. **Pixel 4 XL: object and deforming motion images** render a block of zero
+@@ -1487,5 +1546,5 @@ deterministic on its device and needs a code change; no tolerance was relaxed.
+ 7. **Pixel 4 XL: volume_boundary state test and camera-inside closed volume**
+    fail with integer volume-stack mismatches.
+ 
+-The emissive-triangle corpora (sampler, five-image triangle gate and their
+-replays) were therefore not rerun on devices after the device-tier merge.
++The emissive-triangle corpora were rerun on the Samsung and the HP after the
++compile-load change (section above).
+diff --git a/native/cycles/device.cpp b/native/cycles/device.cpp
+index 9d1a066..cccc809 100644
+--- a/native/cycles/device.cpp
++++ b/native/cycles/device.cpp
+@@ -19,6 +19,14 @@ std::string controls_wgsl(){return control_source;}
+ static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
+ static size_t aligned(size_t n){require(n<=UINT32_MAX-15,"WebGPU virtual address overflow");return (n+15)&~size_t(15);}
+ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Device(i,s,p,h){
++#ifdef __ANDROID__
++  // The unspecialized (every-handler) modules are a desktop A/B diagnostic. On
++  // every Android test driver they crash the compiler or exhaust its memory
++  // (Adreno 730 SIGSEGV, Adreno 640 and Intel Mesa 24.0.8 Scudo out of memory),
++  // which ends the process; refuse before any pipeline compiles.
++  if(const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION");mode&&std::strcmp(mode,"0")==0)
++    throw std::runtime_error("CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 is a desktop-only diagnostic and is refused on Android: the unspecialized shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules.");
++#endif
+   // The tier is decided before any pipeline is compiled (device_tier.h).
+   select_tier();
+   std::array<WGPUBindGroupLayoutEntry,2> entries{};
+diff --git a/native/cycles/emitter_sample_gate.cpp b/native/cycles/emitter_sample_gate.cpp
+index b666138..482d04f 100644
+--- a/native/cycles/emitter_sample_gate.cpp
++++ b/native/cycles/emitter_sample_gate.cpp
+@@ -94,7 +94,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+ @compute @workgroup_size(EMITTER_PROBE_GROUP_SIZE) fn emitter_sample_probe(@builtin(global_invocation_id) id:vec3<u32>){
+  if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
+  if((state_word(S_path_flag,id.x)&PATH_RAY_MIS_HAD_TRANSMISSION)!=0u){r.runtime_flag=SR_BSDF_HAS_TRANSMISSION;}
+- let ls=light_sample_native(id.x,sd,r);let at=p(4u)+id.x*48u;let valid=ls.pdf>0.0;store_word(at,bitcast<u32>(select(0.0,1.0,valid)));
++ triangle_light_prefill(id.x,sd,false,true);let ls=light_sample_native(id.x,sd,r);let at=p(4u)+id.x*48u;let valid=ls.pdf>0.0;store_word(at,bitcast<u32>(select(0.0,1.0,valid)));
+  if(valid){let values=array<f32,11>(ls.P.x,ls.P.y,ls.P.z,ls.D.x,ls.D.y,ls.D.z,ls.t,ls.pdf,ls.eval_fac,f32(ls.prim),f32(ls.object_id));
+  for(var j=0u;j<11u;j++){store_word(at+4u+j*4u,bitcast<u32>(values[j]));}}
+ })WGSL";
+diff --git a/native/shaders/wavefront_lighting.wgsl b/native/shaders/wavefront_lighting.wgsl
+index 5b2addb..8558872 100644
+--- a/native/shaders/wavefront_lighting.wgsl
++++ b/native/shaders/wavefront_lighting.wgsl
+@@ -25,15 +25,23 @@ fn light_cone(n:vec3<f32>,angle:f32,random:vec2<f32>)->vec4<f32>{
+     xy*=sqrt(max(angle*(2.0-angle*r2),0.0));let b=light_basis(n);
+     return vec4<f32>(xy.x*b.X+xy.y*b.Y+cosine*n,(0.5*INV_PI)/angle);
+ }
+-fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
+-    var ls:NativeLightSample;
++// Light CDF selection (shared with triangle_light_prefill).
++struct LightSelection {random:vec3<f32>,distribution:u32,prim:i32}
++fn light_select(index:u32)->LightSelection{
+     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
+     let n=data_word(D_integrator_num_distribution);var first=0u;var length=n+1u;
+     loop{let half_count=length>>1u;let middle=first+half_count;
+         if(random.z<heap_float(table_at(G_light_distribution,middle,SIZE_light_distribution)+LD_totarea)){length=half_count;}
+         else{first=middle+1u;length-=half_count+1u;}if(length==0u){break;}}
+     let emitter=u32(clamp(i32(first)-1,0,i32(n)-1));
+-    let distribution=table_at(G_light_distribution,emitter,SIZE_light_distribution);let prim=bitcast<i32>(load_word(distribution+LD_prim));
++    let distribution=table_at(G_light_distribution,emitter,SIZE_light_distribution);
++    return LightSelection(random,distribution,bitcast<i32>(load_word(distribution+LD_prim)));
++}
++// Emissive-triangle vertices come from triangle_light_prefill, which the caller
++// runs first for the same invocation.
++fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
++    var ls:NativeLightSample;
++    let selection=light_select(index);let random=selection.random;let distribution=selection.distribution;let prim=selection.prim;
+     if(prim>=0){
+         // Removed by scene specialization when no emissive triangle is in the light
+         // distribution (pipelines.h); a reached removed handler reports error 2.
+diff --git a/native/shaders/wavefront_surface.wgsl b/native/shaders/wavefront_surface.wgsl
+index 7a0828b..e6ee224 100644
+--- a/native/shaders/wavefront_surface.wgsl
++++ b/native/shaders/wavefront_surface.wgsl
+@@ -174,12 +174,14 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
+     let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=1u){return;}store_word(at,0u);
+     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;
+-    var weight=1.0;if((r.runtime_flag&SR_EMISSION)!=0u){weight=triangle_light_forward_weight(index,sd);}
+-    var ls:NativeLightSample;
+-    let flag=state_word(S_path_flag,index);
+-    if(data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
++    let flag=state_word(S_path_flag,index);let emission=(r.runtime_flag&SR_EMISSION)!=0u;
++    let sample=data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
+        (sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u&&(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)==0u&&
+-       heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0){ls=light_sample_native(index,sd,r);}
++       heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0;
++    triangle_light_prefill(index,sd,emission,sample);
++    var weight=1.0;if(emission){weight=triangle_light_forward_weight(index,sd);}
++    var ls:NativeLightSample;
++    if(sample){ls=light_sample_native(index,sd,r);}
+     if(load_word(p(17u))!=0u){return;}
+     store_word(at+304u,bitcast<u32>(weight));light_sample_write(at+308u,ls);store_word(at,3u);
+ }
+diff --git a/native/shaders/wavefront_triangle_light.wgsl b/native/shaders/wavefront_triangle_light.wgsl
+index 8e95050..fb0dd24 100644
+--- a/native/shaders/wavefront_triangle_light.wgsl
++++ b/native/shaders/wavefront_triangle_light.wgsl
+@@ -22,36 +22,11 @@ fn triangle_light_acos(value:f32)->f32{
+     let product=trig_product(root,root);
+     let residual=rounded_add(rounded_add(x.x,-product.x),rounded_add(x.y,-product.y));
+     let z=vec2<f32>(root,rounded_divide(residual,2.0*root));
++    // One Horner step per iteration: the same operations in the same order as
++    // the unrolled form, but one inlined copy instead of 29 per call site.
++    var coefficients=array<vec2<f32>,29>(vec2<f32>(0.0018622264033183455,3.0847819958157441e-12),vec2<f32>(0.0019650335889309645,2.7346319219495596e-11),vec2<f32>(0.0020776609890162945,4.3501873110696199e-11),vec2<f32>(0.0022014740388840437,-6.5173905335058624e-11),vec2<f32>(0.0023380918428301811,4.9281793923494632e-11),vec2<f32>(0.0024894487578421831,-7.9595299535412112e-11),vec2<f32>(0.0026578705292195082,1.0898778190701619e-10),vec2<f32>(0.0028461783658713102,3.5237631822865323e-11),vec2<f32>(0.0030578216537833214,-4.5252907324155878e-12),vec2<f32>(0.0032970595639199018,-6.0446416969006656e-11),vec2<f32>(0.0035692052915692329,1.0225670180399882e-10),vec2<f32>(0.0038809645920991898,-3.3261520707844605e-11),vec2<f32>(0.0042409072630107403,-1.6933137704511214e-10),vec2<f32>(0.0046601435169577599,-3.004266366929409e-11),vec2<f32>(0.005153309553861618,1.2845828654267644e-10),vec2<f32>(0.0057400376535952091,1.7246714473229119e-11),vec2<f32>(0.0064472104422748089,-1.3038516013391677e-10),vec2<f32>(0.0073125259950757027,-1.2147685721913826e-10),vec2<f32>(0.0083903353661298752,4.4348693988005561e-10),vec2<f32>(0.0097616091370582581,3.9213582034292038e-10),vec2<f32>(0.011551801115274429,-2.1913472425527658e-10),vec2<f32>(0.013964843936264515,-1.8626451422920631e-10),vec2<f32>(0.017352763563394547,8.5968237736877562e-10),vec2<f32>(0.022372158244252205,8.4665688696028418e-10),vec2<f32>(0.0303819440305233,4.139211438880519e-10),vec2<f32>(0.0446428582072258,-1.0643686557121335e-09),vec2<f32>(0.075000002980232239,-2.9802322415450888e-09),vec2<f32>(0.1666666716337204,-4.9670537405344106e-09),vec2<f32>(1,0));
+     var polynomial=vec2<f32>(0.0017680810997262597,2.0789158589051837e-11);
+-    polynomial=trig_coeff(vec2<f32>(0.0018622264033183455,3.0847819958157441e-12),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0019650335889309645,2.7346319219495596e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0020776609890162945,4.3501873110696199e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0022014740388840437,-6.5173905335058624e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0023380918428301811,4.9281793923494632e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0024894487578421831,-7.9595299535412112e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0026578705292195082,1.0898778190701619e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0028461783658713102,3.5237631822865323e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0030578216537833214,-4.5252907324155878e-12),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0032970595639199018,-6.0446416969006656e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0035692052915692329,1.0225670180399882e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0038809645920991898,-3.3261520707844605e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0042409072630107403,-1.6933137704511214e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0046601435169577599,-3.004266366929409e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.005153309553861618,1.2845828654267644e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0057400376535952091,1.7246714473229119e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0064472104422748089,-1.3038516013391677e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0073125259950757027,-1.2147685721913826e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0083903353661298752,4.4348693988005561e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0097616091370582581,3.9213582034292038e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.011551801115274429,-2.1913472425527658e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.013964843936264515,-1.8626451422920631e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.017352763563394547,8.5968237736877562e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.022372158244252205,8.4665688696028418e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0303819440305233,4.139211438880519e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0446428582072258,-1.0643686557121335e-09),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.075000002980232239,-2.9802322415450888e-09),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.1666666716337204,-4.9670537405344106e-09),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(1,0),trig_mul(polynomial,x));
++    for(var k=0u;k<29u;k++){polynomial=trig_coeff(coefficients[k],trig_mul(polynomial,x));}
+     let result=2.0*trig_mul(z,polynomial);
+     // Retain the subtraction residual before the final rounding. Rounding the
+     // high subtraction first can move acos by one ULP and amplify triangle samples.
+@@ -67,7 +42,34 @@ fn triangle_light_rotation(a:vec4<f32>,b:vec4<f32>,t:f32)->vec4<f32>{
+     let costheta=motion_dot4(a,b);
+     if(costheta>0.9995){return triangle_light_normalize4(motion_add4((1.0-t)*a,t*b));}
+     let theta=triangle_light_acos(costheta);let perpendicular=triangle_light_normalize4(motion_add4(b,-a*costheta));
+-    let angle=theta*t;let sc=motion_sincos(angle);return motion_add4(a*sc.y,perpendicular*sc.x);
++    let angle=theta*t;let sc=triangle_light_motion_sincos(angle);return motion_add4(a*sc.y,perpendicular*sc.x);
++}
++// precise_disk_sincos (wavefront_trig.wgsl) with each Horner series as a loop:
++// the same operations in the same order, one inlined step instead of 7+8.
++fn triangle_light_disk_sincos(angle:f32)->vec2<f32>{
++    if(angle==0.0){return vec2<f32>(angle,1);}
++    var x=vec2<f32>(angle,0);let swap=angle>0.7853981633974483;
++    if(swap){x=vec2<f32>(rounded_add(1.5707963705062866,-angle),-4.3711390001862426e-8);}
++    if(abs(x.x)<0.000244140625){return select(vec2<f32>(rounded_add(x.x,x.y),1),vec2<f32>(1,rounded_add(x.x,x.y)),swap);}
++    let z=trig_mul(x,x);
++    var sine_coefficients=array<vec2<f32>,7>(vec2<f32>(1.6059044372074283e-10,-5.352526511562726e-18),vec2<f32>(-2.5052107943679403e-08,-4.4176230446483665e-16),vec2<f32>(2.7557318844628753e-06,3.793571224297229e-14),vec2<f32>(-0.00019841270113829523,2.725596874933456e-12),vec2<f32>(0.008333333767950535,-4.34617203337595e-10),vec2<f32>(-0.1666666716337204,4.967053879312289e-09),vec2<f32>(1.0,0.0));
++    var s=vec2<f32>(-7.647163609812713e-13,-1.2200710471178288e-20);
++    for(var k=0u;k<7u;k++){s=trig_coeff(sine_coefficients[k],trig_mul(s,z));}
++    var cosine_coefficients=array<vec2<f32>,8>(vec2<f32>(-1.147074536050896e-11,-2.372207689231238e-19),vec2<f32>(2.0876755879584152e-09,1.1082839809204342e-16),vec2<f32>(-2.755731998149713e-07,7.575112209051195e-15),vec2<f32>(2.4801587642286904e-05,-3.40699609366682e-13),vec2<f32>(-0.0013888889225199819,3.3631094437103215e-11),vec2<f32>(0.0416666679084301,-1.2417634698280722e-09),vec2<f32>(-0.5,0.0),vec2<f32>(1.0,0.0));
++    var c=vec2<f32>(4.7794772561329454e-14,7.62544404448643e-22);
++    for(var k=0u;k<8u;k++){c=trig_coeff(cosine_coefficients[k],trig_mul(c,z));}
++    s=trig_mul(s,x);
++    let sine=rounded_add(s.x,s.y);let cosine=rounded_add(c.x,c.y);
++    return select(vec2<f32>(sine,cosine),vec2<f32>(cosine,sine),swap);
++}
++// motion_sincos (wavefront_motion.wgsl) with one disk sine/cosine call site (the shared helper has two):
++// the same reduction, polynomial and correction, in the same order.
++fn triangle_light_motion_sincos(angle:f32)->vec2<f32>{
++    let reduce=!(angle<=2.356194490192345);
++    let sc=triangle_light_disk_sincos(select(angle,rounded_add(3.1415927410125732,-angle),reduce));
++    if(!reduce){return sc;}
++    let low=-8.742278000372485e-8;
++    return vec2<f32>(rounded_add(sc.x,sc.y*low),-rounded_add(sc.y,-sc.x*low));
+ }
+ fn triangle_light_compose(q:vec4<f32>,y:vec4<f32>,z:vec4<f32>,w:vec4<f32>)->NativeTransform{
+     let q0=1.4142135623730951*q.w;let q1=1.4142135623730951*q.x;
+@@ -137,7 +139,7 @@ fn triangle_light_point(t:NativeTransform,v:vec3<f32>)->vec3<f32>{
+ }
+ // Negative time requests the center positions and center object transform used
+ // by the native host CDF, even when the sampled geometry itself is moving.
+-fn triangle_light_vertices(object:u32,prim:u32,time:f32)->TriangleVertices{
++fn triangle_light_vertices_compute(object:u32,prim:u32,time:f32)->TriangleVertices{
+     var v:TriangleVertices;
+     if(object>=table_count(G_objects)||object>=table_count(G_object_flag)||prim>=table_count(G_tri_vindex)){fail();v.error=1u;return v;}
+     let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
+@@ -147,6 +149,46 @@ fn triangle_light_vertices(object:u32,prim:u32,time:f32)->TriangleVertices{
+     if((flags&SD_OBJECT_TRANSFORM_APPLIED)==0u){let t=triangle_light_object(object,select(time,0.5,time<0.0));v.a=triangle_light_point(t,v.a);v.b=triangle_light_point(t,v.b);v.c=triangle_light_point(t,v.c);}
+     if(load_word(p(17u))!=0u){v.error=1u;}return v;
+ }
++// Drivers inline every WGSL call, so each call site of the vertex computation
++// (motion transform interpolation with its arccosine and sine/cosine) was a full
++// copy: the forward-hit MIS weight and the emitter sample each needed the path
++// time and centre-time vertices, four copies that exhausted the HP Intel
++// compiler's memory. triangle_light_prefill computes every set an invocation can
++// use, in the original evaluation order, from one call site; the sampling and
++// forward-PDF code reads them back by (object, prim, time).
++struct TriangleLightCacheEntry {key:vec3<u32>,v:TriangleVertices}
++var<private> triangle_light_cache:array<TriangleLightCacheEntry,4>;
++var<private> triangle_light_cache_count:u32;
++fn triangle_light_vertices(object:u32,prim:u32,time:f32)->TriangleVertices{
++    let key=vec3<u32>(object,prim,bitcast<u32>(time));
++    for(var k=0u;k<triangle_light_cache_count;k++){if(all(triangle_light_cache[k].key==key)){return triangle_light_cache[k].v;}}
++    fail();var v:TriangleVertices;v.error=1u;return v;
++}
++// The light CDF uses the centre-time area of moving or instanced emitters.
++fn triangle_light_needs_center(object:u32)->bool{
++    if(object>=table_count(G_object_flag)){return false;}let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
++    return (flags&SD_OBJECT_HAS_VERTEX_MOTION)!=0u||(flags&SD_OBJECT_TRANSFORM_APPLIED)==0u;
++}
++// emission/sample: whether the caller will evaluate the forward-hit MIS weight
++// and the light sample (the same conditions as shade_surface_light).
++fn triangle_light_prefill(index:u32,sd:SurfaceData,emission:bool,sample:bool){
++    triangle_light_cache_count=0u;
++//#if LIGHT_TRIANGLE
++    var keys:array<vec3<u32>,4>;var count=0u;
++    if(emission&&(state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u){
++        keys[count]=vec3<u32>(sd.object_id,sd.prim,bitcast<u32>(sd.time));count++;
++        if(triangle_light_needs_center(sd.object_id)){keys[count]=vec3<u32>(sd.object_id,sd.prim,bitcast<u32>(-1.0));count++;}
++    }
++    if(sample){let selection=light_select(index);
++        if(selection.prim>=0){let object=load_word(selection.distribution+LD_object);
++            keys[count]=vec3<u32>(object,u32(selection.prim),bitcast<u32>(sd.time));count++;
++            if(triangle_light_needs_center(object)){keys[count]=vec3<u32>(object,u32(selection.prim),bitcast<u32>(-1.0));count++;}}}
++    for(var k=0u;k<count;k++){
++        triangle_light_cache[k]=TriangleLightCacheEntry(keys[k],triangle_light_vertices_compute(keys[k].x,keys[k].y,bitcast<f32>(keys[k].z)));
++        triangle_light_cache_count=k+1u;
++    }
++//#endif
++}
+ fn triangle_light_selection_area(object:u32,prim:u32,area:f32)->f32{
+     let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
+     if(area!=0.0&&((flags&SD_OBJECT_HAS_VERTEX_MOTION)!=0u||(flags&SD_OBJECT_TRANSFORM_APPLIED)==0u)){

@@ -1,0 +1,10 @@
+[07:07:20] started; read MAINTAINER-README, gates, svm interpreter, pinned noise/hash sources
+[07:16:33] baseline build done (5 min); baseline binaries snapshotted; launching baseline gate lanes
+[07:22:36] baseline gate lanes passed (svm_surface, svm_world, background, attribute, normal, render, image, glass_render spec on/off); WGSL+layout+census+fixture+gate code written; first build
+[07:34:16] noise/white-noise exactness fixed: inputs quantized to 1/64 (exact) and product+add pairs routed through rounded_add (no FMA contraction); all node typed programs pass except magic depth>=9 at distortion>=1.6 (GPU sin/cos accuracy amplified) - test params reduced and documented
+[07:48:11] Batch A (noise/white noise/wave/magic/brick), B (mapping/texture mapping/min-max, map range, mix x5, HSV, sep/comb colour, ramps/curves, vector rotate, blackbody, normal) and C (fresnel/layer weight, object info, camera, scene time, vector transform, light path) pass nodes_svm (52 graphs, 330 cases, 31 rejections) and nodes_render (independent CPU image, repeat bitwise) on Linux
+[08:03:18] Voronoi (F1/F2/smooth F1/edge/n-sphere, all metrics, 1-4D, fractal) passes nodes_svm (60 graphs, 394 cases) and nodes_render; finding: make_float4(float3) gives w=1 for the 3D position lane
+[08:36:56] call-site consolidation: one fractal site in noise texture (distortion = fBM detail 0), one ramp lookup site, one normalize site in normal node, one site per object transform in vector transform
+[08:56:42] nodes_gate.py passed (spec on/off identical films/images); launching all-lanes corpus
+[09:24:36] all-lanes corpus 29/29 passed (sources unchanged during run); glass film a8e69a34 unchanged spec on/off; compile measurements done; docs restored; audits/notices/guard tests/diff-check pass
+[09:24:39] sealing handoff

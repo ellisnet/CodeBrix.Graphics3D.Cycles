@@ -1,0 +1,75 @@
+{
+  "emitter_sample": {
+    "gate": "emitter_sample",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 41.0,
+    "pipelines": [],
+    "maxPipelineMs": null,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "oracleSha256": "ae651a23d30ed58b9f72add5e532ff139d0024b79a4656354b705ce8bc07833f",
+      "hostRejudgedPassed": false,
+      "rows": [
+        {
+          "key": "samples",
+          "authoritative": {
+            "compared": 13442,
+            "bitwiseDiffering": 8724,
+            "nonFinite": 0,
+            "practicalFailures": 24,
+            "strictDifferences": 4764,
+            "maximumAbsoluteError": 14.9931640625,
+            "maximumPracticalRatio": 26.80747005265285,
+            "maximumUlps": 61412,
+            "firstPracticalFailure": {
+              "index": 4112,
+              "actual": 587.6021118164062,
+              "reference": 587.4375610351562
+            },
+            "passed": false,
+            "validityDifferences": 0,
+            "validSamples": 1222
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 13442,
+            "bitwiseDiffering": 7352,
+            "nonFinite": 0,
+            "practicalFailures": 24,
+            "strictDifferences": 4684,
+            "maximumAbsoluteError": 14.9931640625,
+            "maximumPracticalRatio": 26.80747005265285,
+            "maximumUlps": 61412,
+            "firstPracticalFailure": {
+              "index": 4112,
+              "actual": 587.6021118164062,
+              "reference": 587.4375610351562
+            },
+            "passed": false,
+            "validityDifferences": 0,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 13442,
+            "bitwiseDiffering": 2260,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 734,
+            "maximumAbsoluteError": 0.0131072998046875,
+            "maximumPracticalRatio": 0.4043448825682269,
+            "maximumUlps": 4096,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        }
+      ]
+    },
+    "passed": false,
+    "error": [
+      "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)",
+      "Emitter sample=342 field=8 got=587.602112 expected=587.437561"
+    ]
+  }
+}

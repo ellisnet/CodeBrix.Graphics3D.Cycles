@@ -1,0 +1,44 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "device": "pixel",
+  "serial": "98271FFBA0048D",
+  "corpus": "materials",
+  "label": "mw2r",
+  "declaredBudgetSeconds": 7200,
+  "perJobTimeoutSeconds": 2400,
+  "pipelineBudgetMs": 20000,
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "startedLocal": "17:39:20",
+  "deviceProperties": {
+    "api": "33",
+    "abi": "arm64-v8a",
+    "model": "Pixel 4 XL",
+    "fingerprint": "google/coral/coral:13/TP1A.221005.002.B2/9382335:user/release-keys"
+  },
+  "stagedVerified": true,
+  "reference": {
+    "root": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/reference/linux-x64",
+    "oracleSha256": "258c7f4530cbcba72a07034e3c287be53d6c28a111c25fee433280fce00fc8f9",
+    "libc": "glibc 2.41",
+    "provenanceSha256": "3865c19cbee17189cc893d20ed0cf645bf1cb6d36ff9e3b7bfa6520cfbde5bdf"
+  },
+  "referenceImported": [
+    "nodes_render",
+    "principled_render"
+  ],
+  "passed": false,
+  "failures": [
+    "principled_render: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+    "nodes_render: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 24): invalid/uninitialized SVM stack unsupported SVM parameter",
+    "principled-replay: not run (source job failed)",
+    "nodes-replay: not run (source job failed)"
+  ],
+  "wallSeconds": 363.3,
+  "withinBudget": true,
+  "remoteProcessesAfter": [],
+  "productionSourcesUnchanged": true,
+  "binaryInputsUnchanged": true,
+  "inputsUnchanged": true
+}

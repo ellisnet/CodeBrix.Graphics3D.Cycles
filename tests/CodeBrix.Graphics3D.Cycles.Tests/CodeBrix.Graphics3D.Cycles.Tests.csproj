@@ -2,10 +2,17 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CodeBrix.Graphics3D.Cycles\CodeBrix.Graphics3D.Cycles.csproj" />
+    <ProjectReference Include="..\..\tools\gltf\CycleGltfRender\CodeBrix.Graphics3D.Cycles.GltfRender.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shared with the Android validation app, so both render the same WebGPU scenes. -->
+    <Compile Include="..\..\tools\hosttests\WebGpuScenes\WebGpuValidationScenes.cs" Link="Shared\WebGpuValidationScenes.cs" />
   </ItemGroup>
 
   <ItemGroup>

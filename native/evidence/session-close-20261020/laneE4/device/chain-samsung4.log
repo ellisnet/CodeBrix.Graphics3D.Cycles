@@ -1,0 +1,89 @@
+[17:55:44] samsung triangle-final3: START triangle_sample timeout=900s
+[17:55:44] samsung triangle-final3: SCENE-DUMP triangle_sample
+[17:55:49] samsung triangle-final3: SCENE-REFERENCE triangle_sample references=1
+samples          gpu-vs-glibc passed=False practical=2 strict=1069 max=0.002195 | local-vs-glibc differing=4620 maxUlps=15520768 practical=65
+[17:56:15] samsung triangle-final3: REFERENCE triangle_sample host re-judged vs glibc: False
+[17:56:16] samsung triangle-final3: FAIL triangle_sample exit=1 26s: Emitter sample=3133 field=2 got=0.382186 expected=0.379992
+[17:56:16] samsung triangle-final3: START surface timeout=900s
+[17:57:52] samsung triangle-final3: PASS surface 96s maxPipelineMs=4568.94
+[17:57:52] samsung triangle-final3: START triangle_lighting timeout=900s
+[17:57:52] samsung triangle-final3: SCENE-DUMP triangle_lighting
+[17:57:58] samsung triangle-final3: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=12 max=4.768e-07 | local-vs-glibc differing=57 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=5 max=1.788e-07 | local-vs-glibc differing=929 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=8 max=6.407e-07 | local-vs-glibc differing=987 maxUlps=2273 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=235 max=1.788e-06 | local-vs-glibc differing=716 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=11 max=3.725e-07 | local-vs-glibc differing=933 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=248 max=1.788e-06 | local-vs-glibc differing=778 maxUlps=55 practical=0
+[18:00:40] samsung triangle-final3: REFERENCE triangle_lighting host re-judged vs glibc: True
+[18:00:40] samsung triangle-final3: PASS triangle_lighting 159s maxPipelineMs=30772.5
+[18:00:40] samsung triangle-final3: START replay-0 timeout=900s
+[18:01:01] samsung triangle-final3: PASS replay-0 21s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[18:01:01] samsung triangle-final3: START replay-1 timeout=900s
+[18:01:41] samsung triangle-final3: PASS replay-1 39s readbacks=417 max=1.79e-07 strict=5 fmt=native-command-stream-v6
+[18:01:41] samsung triangle-final3: START replay-2 timeout=900s
+[18:02:20] samsung triangle-final3: PASS replay-2 38s readbacks=415 max=6.41e-07 strict=8 fmt=native-command-stream-v6
+[18:02:20] samsung triangle-final3: START replay-3 timeout=900s
+[18:02:59] samsung triangle-final3: PASS replay-3 39s readbacks=473 max=1.79e-06 strict=235 fmt=native-command-stream-v6
+[18:02:59] samsung triangle-final3: START replay-4 timeout=900s
+[18:03:38] samsung triangle-final3: PASS replay-4 39s readbacks=415 max=3.73e-07 strict=11 fmt=native-command-stream-v6
+[18:03:38] samsung triangle-final3: START replay-5 timeout=900s
+[18:05:05] samsung triangle-final3: PASS replay-5 87s readbacks=464 max=1.79e-06 strict=248 fmt=native-command-stream-v6
+[18:05:11] samsung triangle-final3: END passed=False wall=569s/2400s failures=1
+{"passed": false, "failures": ["triangle_sample: Emitter sample=3133 field=2 got=0.382186 expected=0.379992"], "error": null, "wallSeconds": 569.0}
+[18:05:18] samsung regression-final3: START glass_render timeout=600s
+image            gpu-vs-glibc passed=True practical=0 strict=97 max=1.907e-06 | local-vs-glibc differing=2280 maxUlps=11 practical=0
+[18:06:42] samsung regression-final3: REFERENCE glass_render host re-judged vs glibc: True
+[18:06:42] samsung regression-final3: PASS glass_render 83s maxPipelineMs=6281.67
+[18:06:42] samsung regression-final3: START lighting_mis timeout=600s
+[18:06:42] samsung regression-final3: SCENE-DUMP lighting_mis
+[18:06:49] samsung regression-final3: SCENE-REFERENCE lighting_mis references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=780 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=787 maxUlps=78 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=278 max=3.278e-06 | local-vs-glibc differing=509 maxUlps=169 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=0 max=4.936e-08 | local-vs-glibc differing=515 maxUlps=75 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=271 max=6.05e-06 | local-vs-glibc differing=526 maxUlps=154 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=12 max=1.431e-06 | local-vs-glibc differing=416 maxUlps=165 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=289 max=6.08e-06 | local-vs-glibc differing=534 maxUlps=154 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=220 max=6.02e-06 | local-vs-glibc differing=442 maxUlps=99 practical=0
+[18:07:27] samsung regression-final3: REFERENCE lighting_mis host re-judged vs glibc: True
+[18:07:27] samsung regression-final3: PASS lighting_mis 35s maxPipelineMs=6547.2
+[18:07:27] samsung regression-final3: START transparent_lighting timeout=600s
+[18:07:27] samsung regression-final3: SCENE-DUMP transparent_lighting
+[18:07:34] samsung regression-final3: SCENE-REFERENCE transparent_lighting references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=780 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=812 maxUlps=44 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=77 max=3.815e-06 | local-vs-glibc differing=980 maxUlps=636 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=134 max=2.295e-06 | local-vs-glibc differing=797 maxUlps=670 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=168 max=6.02e-06 | local-vs-glibc differing=521 maxUlps=96 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=3 max=7.898e-07 | local-vs-glibc differing=350 maxUlps=199 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=103 max=6.02e-06 | local-vs-glibc differing=421 maxUlps=100 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=208 max=6.02e-06 | local-vs-glibc differing=447 maxUlps=100 practical=0
+[18:09:37] samsung regression-final3: REFERENCE transparent_lighting host re-judged vs glibc: True
+[18:09:37] samsung regression-final3: PASS transparent_lighting 119s maxPipelineMs=11571.2
+[18:09:42] samsung regression-final3: END passed=True wall=266s/1500s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 266.4}
+[18:09:49] samsung emitter-final3: START emitter_sample timeout=300s
+[18:09:49] samsung emitter-final3: SCENE-DUMP emitter_sample
+[18:09:54] samsung emitter-final3: SCENE-REFERENCE emitter_sample references=1
+samples          gpu-vs-glibc passed=True practical=0 strict=135 max=9.06e-06 | local-vs-glibc differing=1192 maxUlps=3310 practical=1
+[18:10:05] samsung emitter-final3: REFERENCE emitter_sample host re-judged vs glibc: True
+[18:10:05] samsung emitter-final3: PASS emitter_sample 11s maxPipelineMs=None
+[18:10:11] samsung emitter-final3: END passed=True wall=23s/600s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 22.9}
+[18:10:17] samsung precision-final3: START closest timeout=600s
+[18:10:39] samsung precision-final3: PASS closest 22s maxPipelineMs=1375.13
+[18:10:39] samsung precision-final3: START shadow timeout=600s
+[18:10:56] samsung precision-final3: PASS shadow 16s maxPipelineMs=1107.17
+[18:10:56] samsung precision-final3: START shadow-replay-direct timeout=600s
+[18:10:57] samsung precision-final3: PASS shadow-replay-direct 2s readbacks=4 max=5.96e-08 strict=0 fmt=native-command-stream-v3
+[18:10:57] samsung precision-final3: START shadow-replay-indexed timeout=600s
+[18:10:59] samsung precision-final3: PASS shadow-replay-indexed 2s readbacks=4 max=0 strict=0 fmt=native-command-stream-v3
+[18:11:05] samsung precision-final3: END passed=True wall=49s/900s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 48.6}
+[18:11:12] samsung spec-refusal-final3: START glass_render-spec timeout=300s
+[18:12:34] samsung spec-refusal-final3: PASS glass_render-spec 82s maxPipelineMs=5933.18
+[18:12:34] samsung spec-refusal-final3: START glass_render-nospec-refused timeout=300s
+[18:12:34] samsung spec-refusal-final3: PASS glass_render-nospec-refused refusal exit=1 0s
+[18:12:40] samsung spec-refusal-final3: END passed=True wall=90s/600s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 89.7}

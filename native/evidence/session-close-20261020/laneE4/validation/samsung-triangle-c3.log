@@ -1,0 +1,33 @@
+[15:47:32] samsung triangle-c3: START triangle_sample timeout=900s
+[15:47:32] samsung triangle-c3: SCENE-DUMP triangle_sample
+[15:47:37] samsung triangle-c3: SCENE-REFERENCE triangle_sample references=1
+samples          gpu-vs-glibc passed=False practical=2 strict=1069 max=0.002195 | local-vs-glibc differing=4620 maxUlps=15520768 practical=65
+[15:48:02] samsung triangle-c3: REFERENCE triangle_sample host re-judged vs glibc: False
+[15:48:03] samsung triangle-c3: FAIL triangle_sample exit=1 25s: Emitter sample=3133 field=2 got=0.382186 expected=0.379992
+[15:48:03] samsung triangle-c3: START surface timeout=900s
+[15:49:38] samsung triangle-c3: PASS surface 95s maxPipelineMs=4560.85
+[15:49:38] samsung triangle-c3: START triangle_lighting timeout=900s
+[15:49:38] samsung triangle-c3: SCENE-DUMP triangle_lighting
+[15:49:44] samsung triangle-c3: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=12 max=4.768e-07 | local-vs-glibc differing=57 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=5 max=1.788e-07 | local-vs-glibc differing=929 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=8 max=6.407e-07 | local-vs-glibc differing=987 maxUlps=2273 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=235 max=1.788e-06 | local-vs-glibc differing=716 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=11 max=3.725e-07 | local-vs-glibc differing=933 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=248 max=1.788e-06 | local-vs-glibc differing=778 maxUlps=55 practical=0
+[15:52:25] samsung triangle-c3: REFERENCE triangle_lighting host re-judged vs glibc: True
+[15:52:25] samsung triangle-c3: PASS triangle_lighting 159s maxPipelineMs=30691.8
+[15:52:25] samsung triangle-c3: START replay-0 timeout=900s
+[15:52:46] samsung triangle-c3: PASS replay-0 21s readbacks=289 max=1.79e-06 strict=20 fmt=native-command-stream-v6
+[15:52:46] samsung triangle-c3: START replay-1 timeout=900s
+[15:53:26] samsung triangle-c3: PASS replay-1 39s readbacks=417 max=2.69e-05 strict=77 fmt=native-command-stream-v6
+[15:53:26] samsung triangle-c3: START replay-2 timeout=900s
+[15:54:05] samsung triangle-c3: PASS replay-2 39s readbacks=415 max=1.69e-05 strict=124 fmt=native-command-stream-v6
+[15:54:05] samsung triangle-c3: START replay-3 timeout=900s
+[15:54:45] samsung triangle-c3: PASS replay-3 40s readbacks=473 max=9.3e-06 strict=324 fmt=native-command-stream-v6
+[15:54:45] samsung triangle-c3: START replay-4 timeout=900s
+[15:55:25] samsung triangle-c3: FAIL replay-4 AssertionError('Film 312: GPU 0.06584370881319046, CPU 0.06464733928442001')
+[15:55:25] samsung triangle-c3: START replay-5 timeout=900s
+[15:56:54] samsung triangle-c3: PASS replay-5 89s readbacks=464 max=8.58e-06 strict=333 fmt=native-command-stream-v6
+[15:56:59] samsung triangle-c3: END passed=False wall=567s/2400s failures=2
+{"passed": false, "failures": ["triangle_sample: Emitter sample=3133 field=2 got=0.382186 expected=0.379992", "replay-4: AssertionError('Film 312: GPU 0.06584370881319046, CPU 0.06464733928442001')"], "error": null, "wallSeconds": 566.9}

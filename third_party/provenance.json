@@ -13220,5 +13220,25 @@
     },
     "newExternalImports": false,
     "scope": "Native triangle solid-angle/area sampling, center-area CDF selection and forward-hit MIS; original CPU oracle includes unchanged pinned headers. Triangle-light-private motion interpolation copies adapt util/transform.h; the shared motion helpers are unchanged."
+  },
+  "nativeShadowTerminatorDerivations": {
+    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "implementations": [
+      "native/shaders/wavefront_terminator.wgsl",
+      "native/shaders/wavefront_surface.wgsl",
+      "native/shaders/wavefront_lighting.wgsl"
+    ],
+    "license": "Apache-2.0 AND BSD-3-Clause AND MIT",
+    "sourceSha256": {
+      "src/kernel/light/sample.h": "2dffdb7ccb2ce6b582b606aefdda4a07b02f1f9759181a2ec27cea1ebfd6a1a8",
+      "src/kernel/closure/bsdf.h": "aa6419b97c01f6a014fe97d711b19139ca47596a034ee55e856116d582d59051",
+      "src/util/math_fast.h": "8ae830fff8b3aee77144f855731fdb74c9fce94ea65dd5b609b507a514ac2157",
+      "src/kernel/geom/triangle.h": "0c44e107f9df069697a73e127801eef4b9c66387893d4099014cee740752d4e8",
+      "src/kernel/geom/motion_triangle.h": "16022c1ccba6fd0a00e24fc8ac29e5365f3577737cb5363e1ce0ddef51e8b446",
+      "src/kernel/integrator/shade_surface.h": "08bb71f7a70a366a7dc140aa3bc113f2fc1086b6a0b6212820cc38e4fec3a31d",
+      "src/scene/object.cpp": "409aad258a3511fef63477394c96446a661243893e7bf73897e24b353a6598f2"
+    },
+    "newExternalImports": false,
+    "scope": "Object shadow terminator geometry offset (shadow-ray origin lift and self-intersection skip on smooth triangles, static, instanced, moving and deforming) and shading offset (shift_cos_in from Appleseed via Cycles bsdf.h, MIT; fast_acosf from util/math_fast.h, BSD-3-Clause) in WGSL. The shift_cos_in cosine reuses the existing Arm-derived native_disk_sincos adapter. Shading offsets above 1 are rejected before dispatch."
   }
 }

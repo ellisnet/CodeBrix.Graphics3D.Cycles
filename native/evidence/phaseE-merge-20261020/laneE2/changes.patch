@@ -1,0 +1,246 @@
+--- a/native/shaders/wavefront_svm.wgsl
++++ b/native/shaders/wavefront_svm.wgsl
+@@ -6,8 +6,18 @@
+ // Node layouts/enums come from the compiled
+ // Cycles ABI; scalar math/gamma functions are generated from upstream AST.
+ // Background emission accumulation also derives from closure/emissive.h (BSD).
++// The value stack (words 0..254) and its initialization mask (words 255..262)
++// share one module-scope private array instead of two arrays inside the
++// function-local SvmState. On the Pixel 4 XL's Adreno 640 (driver
++// EV031.31.04.01) dynamic indexing into arrays held in the large SvmState
++// corrupted other live values: a lookup-table address lost its low 16 bits
++// (error 512) and the closure budget read as zero (no closures, black motion
++// images); two separate private arrays lost mask bits (error 8). Evaluations
++// never nest and each one clears the mask first, so reads, errors and results
++// are unchanged.
++var<private> svm_stack:array<u32,263>;
+ struct SvmState {
+-    stack:array<u32,255>, initialized:array<u32,8>, pc:u32, error:u32,
++    pc:u32, error:u32,
+     volume:bool, weight:vec3<f32>, geometry:SurfaceData, output:SvmResult,
+ }
+ // Error bits: 2 unsupported opcode; 4 bytecode bounds; 8 invalid/uninitialized
+@@ -24,13 +34,13 @@
+ fn svm_byte(address:u32)->u32{return (load_word(address)>>(8u*(address%4u)))&255u;}
+ fn svm_load_bits(s:ptr<function,SvmState>,index:u32)->u32{
+     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return 0u;}
+-    if(((*s).initialized[index/32u]&(1u<<(index%32u)))==0u){svm_error(s,8u);return 0u;}
+-    return (*s).stack[index];
++    if((svm_stack[255u+index/32u]&(1u<<(index%32u)))==0u){svm_error(s,8u);return 0u;}
++    return svm_stack[index];
+ }
+ fn svm_load(s:ptr<function,SvmState>,index:u32)->f32{return bitcast<f32>(svm_load_bits(s,index));}
+ fn svm_store_bits(s:ptr<function,SvmState>,index:u32,value:u32){
+     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return;}
+-    (*s).stack[index]=value;(*s).initialized[index/32u]|=1u<<(index%32u);
++    svm_stack[index]=value;svm_stack[255u+index/32u]|=1u<<(index%32u);
+ }
+ fn svm_store(s:ptr<function,SvmState>,index:u32,value:f32){svm_store_bits(s,index,bitcast<u32>(value));}
+ fn svm_load3(s:ptr<function,SvmState>,index:u32)->vec3<f32>{return vec3<f32>(svm_load(s,index),svm_load(s,index+1u),svm_load(s,index+2u));}
+@@ -129,6 +139,7 @@
+     }
+ }
+ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,flag:u32,visibility:u32,lcg:u32,volume:bool,previous:SvmResult)->SvmResult{
++    svm_stack[255]=0u;svm_stack[256]=0u;svm_stack[257]=0u;svm_stack[258]=0u;svm_stack[259]=0u;svm_stack[260]=0u;svm_stack[261]=0u;svm_stack[262]=0u;
+     var s:SvmState;s.output=previous;s.volume=volume;s.geometry=geometry;s.pc=(geometry.shader&SHADER_MASK)*(1u+SZ_ShaderJump/4u);
+     s.output.runtime_flag=geometry.runtime_flag;s.output.N=geometry.N;s.output.lcg_state=lcg;
+     if(closure_limit>SVM_CLOSURE_CAPACITY){svm_error(&s,16u);return s.output;}
+--- a/native/shaders/wavefront_volume_stack.wgsl
++++ b/native/shaders/wavefront_volume_stack.wgsl
+@@ -5,34 +5,37 @@
+ // SPDX-License-Identifier: Apache-2.0
+ // Native CPU volume_all BVH2 hit recording and intersect_volume_stack
+ // initialization, using original scene tables and the native hit limit/order.
+-struct VolumeHits {hits:array<NativeHit,VS_MAX_HITS>,count:u32}
+-fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32)->VolumeHits{
++// Hits are kept as parallel scalar arrays and filled through a pointer. The
++// Adreno 640 (EV031.31.04.01) compiler collapsed a dynamically indexed
++// array<NativeHit,VS_MAX_HITS> (every entry read back as the last hit), which
++// corrupted the initial volume stack; order and comparisons are unchanged.
++struct VolumeHits {t:array<f32,VS_MAX_HITS>,object:array<u32,VS_MAX_HITS>,prim:array<u32,VS_MAX_HITS>,count:u32}
++fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32,result:ptr<function,VolumeHits>){
+     let tmin=0.0;let tmax=bitcast<f32>(0x7f7fffffu);
+-    var result:VolumeHits;
+-    if(table_count(G_prim_index)==0u){return result;}
++    if(table_count(G_prim_index)==0u){return;}
+     var pos=origin;var dir=clamp_direction(direction);var inv=inverse_direction(dir);
+     var stack:array<i32,192>;stack[0]=0x76543210i;var sp=0i;
+     var node=bitcast<i32>(data_word(D_bvh_root));var object=NONE;var visits=0u;
+     loop{
+         // Malformed cycles in a scene table must fail instead of hanging a GPU.
+-        visits++;if(visits>1048576u){fail();return result;}
++        visits++;if(visits>1048576u){fail();return;}
+         while(node>=0&&node!=0x76543210i){
+-            visits++;if(visits>1048576u){fail();return result;}
++            visits++;if(visits>1048576u){fail();return;}
+             let bounds=bounds_hit(pos,inv,tmin,tmax,u32(node),visibility);
+             let a=table_at(G_bvh_nodes,u32(node),SIZE_bvh_nodes);
+             node=bitcast<i32>(load_word(a+8u));var other=bitcast<i32>(load_word(a+12u));let mask=u32(bounds.x);
+             if(mask==3u){if(bounds.z<bounds.y){let tmp=node;node=other;other=tmp;}
+-                sp++;if(sp>=192){fail();return result;}stack[u32(sp)]=other;
++                sp++;if(sp>=192){fail();return;}stack[u32(sp)]=other;
+             }else if(mask==2u){node=other;}
+-            else if(mask==0u){if(sp<0){fail();return result;}node=stack[u32(sp)];sp--;}
++            else if(mask==0u){if(sp<0){fail();return;}node=stack[u32(sp)];sp--;}
+         }
+         if(node<0){
+             let a=table_at(G_bvh_leaf_nodes,u32(-node-1),SIZE_bvh_leaf_nodes);
+             let first=bitcast<i32>(load_word(a));let end=load_word(a+4u);let kind=load_word(a+12u);
+             if(first>=0){
+-                if(end>table_count(G_prim_index)||u32(first)>end){fail();return result;}
+-                if(sp<0){fail();return result;}node=stack[u32(sp)];sp--;
+-                if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return result;}
++                if(end>table_count(G_prim_index)||u32(first)>end){fail();return;}
++                if(sp<0){fail();return;}node=stack[u32(sp)];sp--;
++                if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return;}
+                 for(var index=u32(first);index<end;index++){
+                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
+                     let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
+@@ -47,27 +50,27 @@
+                     let vc=heap_vec3(table_at(G_tri_verts,offset+load_word(vi+8u),SIZE_tri_verts));
+                     var u:f32;var v:f32;var t:f32;
+                     if(c_ray_triangle_intersect(pos,dir,tmin,tmax,va,vb,vc,&u,&v,&t)){
+-                        result.hits[result.count]=NativeHit(t,u,v,prim_object,prim,PRIMITIVE_TRIANGLE);result.count++;
+-                        if(result.count==limit){return result;}
++                        let k=(*result).count;(*result).t[k]=t;(*result).object[k]=prim_object;(*result).prim[k]=prim;(*result).count=k+1u;
++                        if((*result).count==limit){return;}
+                     }
+                 }
+             }else{
+-                if(object!=NONE){fail();return result;}
++                if(object!=NONE){fail();return;}
+                 object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));
+                 let obj=table_at(G_objects,object,SIZE_objects);
+                 pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));inv=inverse_direction(dir);
+-                sp++;if(sp>=192){fail();return result;}stack[u32(sp)]=0x76543210i;
++                sp++;if(sp>=192){fail();return;}stack[u32(sp)]=0x76543210i;
+                 node=bitcast<i32>(load_word(table_at(G_object_node,object,SIZE_object_node)));
+             }
+         }
+         if(node==0x76543210i){
+             if(sp<0){break;}
+-            if(object==NONE){fail();return result;}
++            if(object==NONE){fail();return;}
+             pos=origin;dir=clamp_direction(direction);inv=inverse_direction(dir);object=NONE;
+             node=stack[u32(sp)];sp--;if(node==0x76543210i){break;}
+         }
+     }
+-    return result;
++    return;
+ }
+ fn volume_boundary_backfacing(hit:NativeHit,direction:vec3<f32>)->bool{
+     let object=table_at(G_objects,hit.object,SIZE_objects);let flags=load_word(table_at(G_object_flag,hit.object,SIZE_object_flag));
+@@ -84,12 +87,12 @@
+     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK){fail();return;}
+     let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=vec3<f32>(0,0,1);let size=data_word(D_volume_stack_size);
+-    var result=volume_all_hits(origin,direction,VIS_CAMERA,2u*size);if(load_word(p(17u))!=0u){return;}
++    var result:VolumeHits;volume_all_hits(origin,direction,VIS_CAMERA,2u*size,&result);if(load_word(p(17u))!=0u){return;}
+     // Native qsort orders hits by distance; retain traversal order for equal t.
+-    for(var i=1u;i<result.count;i++){let hit=result.hits[i];var j=i;while(j>0u&&result.hits[j-1u].t>hit.t){result.hits[j]=result.hits[j-1u];j--;}result.hits[j]=hit;}
++    for(var i=1u;i<result.count;i++){let ht=result.t[i];let ho=result.object[i];let hp=result.prim[i];var j=i;while(j>0u&&result.t[j-1u]>ht){result.t[j]=result.t[j-1u];result.object[j]=result.object[j-1u];result.prim[j]=result.prim[j-1u];j--;}result.t[j]=ht;result.object[j]=ho;result.prim[j]=hp;}
+     var objects:array<u32,VS_MAX>;var shaders:array<u32,VS_MAX>;var enclosed:array<u32,VS_MAX_HITS>;var enclosed_count=0u;var count=0u;
+     if(data_word(D_background_volume_shader)!=NONE){objects[0]=data_word(D_background_object_index);shaders[0]=data_word(D_background_volume_shader);count=1u;}
+-    for(var i=0u;i<result.count;i++){let hit=result.hits[i];
++    for(var i=0u;i<result.count;i++){let hit=NativeHit(result.t[i],0.0,0.0,result.object[i],result.prim[i],PRIMITIVE_TRIANGLE);
+         if(volume_boundary_backfacing(hit,direction)){
+             var add=true;for(var j=0u;j<enclosed_count;j++){if(enclosed[j]==hit.object){add=false;break;}}
+             for(var j=0u;j<count;j++){if(objects[j]==hit.object){add=false;break;}}
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1257,9 +1257,9 @@
+     on one sun pdf.
+   - Triangle image mode 2 diverges by one path decision on Adreno 730, even when replaying the x64 capture.
+   - Emissive triangles are therefore not yet validated on ARM64.
+-  - On the Pixel 4 XL, these fail and are not supported there yet: object/deforming motion images (zero radiance
+-    over the geometry), feature combination (microfacet lookup-table bounds error), the volume-boundary state test
+-    and the camera-inside closed volume (integer volume-stack mismatches).
++  - On the Pixel 4 XL, object/deforming motion images, feature combination, the volume-boundary state test and the
++    camera-inside closed volume failed in this run; they pass after the Adreno 640 fix described in
++    "Pixel 4 XL (Adreno 640) function-scope array fix" below.
+ 
+ ## Android x64 (HP, Intel Mesa 24.0.8) on the integrated tree (2026-10-20)
+ 
+@@ -1454,6 +1454,54 @@
+ offset (found on Linux; a smooth mesh lit by a sun otherwise fails with
+ "WebGPU scheduler kernel reported invalid data (mask 1)").
+ 
++## Pixel 4 XL (Adreno 640) function-scope array fix (2026-10-20)
++
++The three Pixel-only failure families from the integrated-tree run were one driver defect class: the Adreno 640
++compiler (driver EV031.31.04.01) miscompiles dynamically indexed arrays held inside function-scope aggregates in
++large entries. Each family was reproduced by replaying the unchanged Linux x64 Phase C captures on the Pixel
++(`native/work/e2/probe/`): the first scheduling readback that differs isolates the stage, and arena dumps after
++each dispatch, compared with the same replay on Linux after injecting the Linux state, isolate the field.
++
++- **feature_combination (error 512).** `prepare_surface` raised the microfacet lookup-table bounds error in
++  `microfacet_lut3` (generalized Schlick for glass) because `table_count` read 0: the table-descriptor address
++  `p(14)` arrived with its low 16 bits cleared (0x270000 instead of 0x27E7F0). Coordinates, offsets and the table
++  were correct; adding an atomic probe hid the fault. The B3-era capture of the same scene replays cleanly; the
++  larger `prepare_surface` after the ARM rounding adapters exposed the latent fault.
++- **Object and deforming motion images (zero film).** `prepare_surface` produced no closures: its
++  stage record held `count=0, remaining=0` where Linux has `count=1, remaining=11`, so shading created no shadow rays
++  and the film stayed zero.
++  The B3-era deforming capture fails the same way; the fault predates B3 (motion images had not run on the Pixel).
++- **Volume-boundary state and camera-inside closed volume (integer stack mismatches).** In
++  `intersect_volume_stack` every entry of the function-local `array<NativeHit,64>` read back as the last hit
++  appended, so the sort and the enclosure test picked the wrong object for the initial volume stack.
++
++The fix keeps every computation and comparison unchanged:
++- `wavefront_svm.wgsl`: the SVM value stack and its initialization mask live in one module-scope
++  `var<private>` array (`svm_stack`, words 0..254 and mask words 255..262) instead of two arrays inside the
++  function-local `SvmState`; the mask is cleared with constant-index stores at the start of every evaluation
++  (evaluations never nest). Two separate private arrays lost mask bits on this driver (error 8), and an
++  in-struct vector mask still failed, so the single array is deliberate.
++- `wavefront_volume_stack.wgsl`: hits are parallel scalar arrays (t, object, prim) filled through a pointer; a
++  pointer-passed array of structs still failed.
++
++Results with the fix (Pixel, full tier by table, 20 s budget, warnings only):
++
++| Corpus (Pixel, single confirmation run) | Before | After |
++| --- | --- | --- |
++| feature_combination (+1 replay) | error 512 | PASS; replay 408 readbacks, max 3.87e-7 |
++| object/deforming motion images, moving and stationary (+2 replays) | zero film, all four | PASS, all four; replays 414/420 readbacks |
++| volume_boundary state test | `volume_stack[0].object` mismatch | PASS |
++| camera-inside closed volume (+1 replay) | `volume_stack[1].object` mismatch | PASS; replay 1,116 readbacks, max 1.53e-5 |
++| regression: lighting_mis, glass_bounce, glass_render, transparent shadow/lighting, camera static/motion, GGX set | passed in C2 | PASS; lighting_mis (8), glass_render and transparent (8) films bit-identical to the C2 Pixel films |
++
++Linux x64 results are unchanged: every deterministic film of the affected gates is bit-identical before and after,
++the only differing films are atomic-accumulation cases whose own repeat differs within the run, the glass film is
++unchanged with specialization on and off, and all-lanes passes. The conservative tier does not change these outcomes
++(emulated on the pre-fix WGSL with workgroup-1 modules and dispatches, the same failures occur), so it is still never
++selected for this adapter. The fix does not change compile times: on the Pixel the motion entries still take
++50-73 s (`intersect_closest`, `intersect_shadow`, `prepare_surface`, `prepare_shader_data`) and the surface/camera
++entries 21-31 s against the 20 s budget, as warnings. Evidence: `native/work/e2/` in the E2 worktree.
++
+ ## Open device items (2026-10-20)
+ 
+ These device failures from the integrated-tree runs are open. Each is
+@@ -1480,12 +1528,10 @@
+    device.** The unspecialized `shade_surface_light` crashes the Adreno 730 driver
+    and exhausts memory on the Adreno 640 and the HP. Specialized/unspecialized
+    bit-identity is shown on Linux only.
+-5. **Pixel 4 XL: feature_combination** reports GPU error bit 512 (the microfacet
+-   lookup-table bounds check).
+-6. **Pixel 4 XL: object and deforming motion images** render a block of zero
+-   radiance over the geometry (all four image runs, moving and stationary).
+-7. **Pixel 4 XL: volume_boundary state test and camera-inside closed volume**
+-   fail with integer volume-stack mismatches.
++
++The Pixel 4 XL items formerly listed here (feature_combination error 512, zero-radiance
++object/deforming motion images, volume-boundary and camera-inside volume-stack mismatches)
++are fixed; see "Pixel 4 XL (Adreno 640) function-scope array fix".
+ 
+ The emissive-triangle corpora (sampler, five-image triangle gate and their
+ replays) were therefore not rerun on devices after the device-tier merge.
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -34,7 +34,7 @@
+ | Native file images and updates | PNG/JPEG/OpenEXR native file loading now passes a Linux gate with 18 fixtures, 450 channel/alpha/color variants, native UDIM mappings, 16 queued-read/replacement cycles and 34,483 independent known lossless texels. The serialized OCIO matrix configuration is tested. A 116,352-case final snapshot has a four-GPU replay gate; actual decoding/lifecycle tests currently execute on Linux only. The original file-image checkpoint preserved earlier renderer/executable identity; renderer edits require the fresh normal-gate regression chain. TIFF/LZW compatibility, other formats, production color/cache/animation stress and native platform hosts remain required. See `native/tools/image_file_gate.py` |
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+-| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL passes glass bounce/render but fails feature combination (microfacet lookup-table bounds error 512). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP; the Pixel 4 XL fails the volume-boundary state test, the camera-inside closed volume and the object/deforming motion images |
++| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL (Adreno 640) passes glass bounce/render and feature combination; feature combination needed the SVM value stack moved out of the function-local SvmState (an Adreno 640 dynamic-indexing miscompile). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP, and on the Pixel 4 XL after the same Adreno 640 fix plus volume-stack hits kept as scalar arrays (volume-boundary state test, camera-inside closed volume, object/deforming motion images) |
+ | Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; emissive triangles fail the ARM64 oracle (sampler and one image mode) and remain unvalidated on ARM64. Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light and transparent shadows; emissive triangle lights fail on the HP compiler (memory) for moving emitters and the sampler probe; static triangle images 0-3 pass. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS). Cold compiles: Samsung specialized pipelines at most 32.6 s, except the emissive-triangle entry with object motion at 205 s; HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 25 s with triangle lights), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 70 s |

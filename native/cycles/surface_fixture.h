@@ -7,7 +7,15 @@
 #ifdef CBC_MICROFACET_FIXTURE
 #include "microfacet_fixture.h"
 #endif
+#ifdef CBC_PRINCIPLED_FIXTURE
+#include "principled_fixture.h"
+#endif
+#ifdef CBC_NODES_FIXTURE
+#include "nodes_fixture.h"
+static constexpr unsigned GRAPH_COUNT=NODES_GRAPH_COUNT;
+#else
 static constexpr unsigned GRAPH_COUNT=20;
+#endif
 static void prepare(Scene &scene){
   scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.integrator->set_aa_samples(16);
   scene.film->set_use_sample_count(false);scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();
@@ -37,6 +45,12 @@ static void prepare(Scene &scene){
 #ifdef CBC_GLASS_FIXTURE
     result=glass_material(*g,test);
 #endif
+#ifdef CBC_PRINCIPLED_FIXTURE
+    result=principled_material(*g,test);
+#endif
+#ifdef CBC_NODES_FIXTURE
+    result=nodes_material(*g,test);
+#endif
     g->connect(result,g->output()->input("Surface"));auto sh=scene.create_node<Shader>();sh->set_graph(std::move(g));sh->tag_update(&scene);shaders.push_back(sh);
   }
   auto mesh=[&](){auto m=scene.create_node<Mesh>();array<Node*> material_slots;for(auto sh:shaders)material_slots.push_back_slow(sh);m->set_used_shaders(material_slots);m->resize_mesh(GRAPH_COUNT*3,GRAPH_COUNT);
@@ -48,7 +62,15 @@ static void prepare(Scene &scene){
   for(unsigned i=0;i<3;i++){auto ob=scene.create_node<Object>();ob->set_geometry(i<2?shared:mesh());ob->set_tfm(transform_translate(make_float3(-4,-4,float(i)*2))*transform_rotate(.17f*i,make_float3(0,1,0))*transform_scale(make_float3(i==1?-1.2f:1.1f,.8f,1.4f)));}
 }
 [[maybe_unused]] static std::vector<int> states_for(Scene &scene,std::vector<IntegratorStateCPU> &states){
-  std::vector<int> ids;for(auto ob:scene.objects)for(unsigned t=0;t<GRAPH_COUNT;t++)for(unsigned j=0;j<17;j++){
+  // The node fixture has more graphs; fewer rays per triangle keep it within capacity.
+  // Graphs 60+ (wavelength/wireframe) follow every earlier graph, so the paths
+  // of graphs 0-59 keep their state indices.
+#ifdef CBC_NODES_FIXTURE
+  constexpr unsigned rays=7,first_graphs=60,late_rays=7;
+#else
+  constexpr unsigned rays=17,first_graphs=GRAPH_COUNT,late_rays=0;
+#endif
+  std::vector<int> ids;for(unsigned pass=0;pass<2;pass++)for(auto ob:scene.objects)for(unsigned t=pass?first_graphs:0;t<(pass?GRAPH_COUNT:first_graphs);t++)for(unsigned j=0;j<(pass?late_rays:rays);j++){
     unsigned i=ids.size()*3;require(i<states.size(),"SVM fixture capacity");ids.push_back(i);auto &s=states[i];s.isect.object=ob->get_device_index();s.isect.prim=ob->get_geometry()->prim_offset+t;s.isect.type=PRIMITIVE_TRIANGLE;s.isect.t=.1f*j;
     s.isect.u=.05f*(j%9);s.isect.v=.04f*(j%11);s.ray.P=make_float3(.1,.2,-2);s.ray.D=normalize(make_float3(.13f*j-.8f,.4f-.07f*j,j%2?1.f:-1.f));s.ray.time=float(j)/16;s.ray.dP=.0001f*j;s.ray.dD=.0003f*j;
     s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.path.rng_pixel=0x12345678u+i*0x9e3779b9u;s.path.rng_offset=uint16_t(65500u+i*79u);s.path.sample=j*137u;

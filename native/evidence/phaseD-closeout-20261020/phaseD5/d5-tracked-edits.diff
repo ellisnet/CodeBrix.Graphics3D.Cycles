@@ -1,0 +1,1629 @@
+diff --git a/AGENT-README.txt b/AGENT-README.txt
+index 2dcd85bb..b8339fd7 100644
+--- a/AGENT-README.txt
++++ b/AGENT-README.txt
+@@ -7,16 +7,36 @@ CodeBrix.Graphics3D.Cycles.ApacheLicenseForever NuGet package
+ OVERVIEW
+ ========
+ CodeBrix.Graphics3D.Cycles builds and renders 3D scenes with the Cycles
+-path-tracing renderer from .NET 10 or later. A CyclesHost owns one native scene
+-host: you create nodes, set their sockets, upload meshes, attributes and raw
+-image pixels, and render into a scene-linear RGBA float buffer. Rendering runs
+-on WebGPU or on an explicit CPU reference backend.
+-
+-The managed assembly is a thin ownership and marshalling layer. Scene
+-compilation, BVH construction, image handling, color management, scheduling and
+-rendering all happen in the native host library. The C-level contract is
+-experimental, and this managed API is the low-level foundation that a typed,
+-higher-level scene API will be built on; expect it to grow.
++path-tracing renderer from .NET 10 or later. Rendering runs in a native scene
++host on a GPU backend (WebGPU, or Cycles' own Metal device on Apple Silicon)
++or on an explicit CPU reference backend.
++
++The package offers three tiers over the same native host. Use the highest one
++that does what you need; they can be mixed on one scene.
++
++  1. Typed facade (start here). CyclesScene owns a scene and hands out typed
++     nodes: scene.Camera, scene.CreateShader(), shader.Add<DiffuseBsdfNode>(),
++     shader.Connect(...), scene.CreateMesh(...), scene.CreateLight<T>(),
++     scene.CreateImage<T>(...), await scene.RenderAsync(...).
++  2. Generated object model. One class per native node type (scene nodes,
++     geometry, lights and every shader graph node), generated from the
++     native registry, with strongly typed properties, enums and shader graph
++     sockets. The facade returns these classes.
++  3. Interop tier. CyclesHost (by-name sockets, exceptions, spans),
++     Interop.CyclesAbi (one method per C function, status codes, raw 64-bit
++     handles) and Interop.Native (the raw P/Invoke declarations). This tier is
++     the stable low-level surface; it addresses node types and sockets by
++     their native names and mirrors the C ABI one to one.
++
++Everything happens in the native library: scene compilation, BVH construction,
++image handling, color management, scheduling and rendering. The managed code
++only owns, marshals and types. Nothing is rendered, cached or simulated in
++managed code; a typed property read is a native socket read.
++
++RAW PIXELS ONLY. Textures go in as decoded pixels in one of eight layouts
++(ImageFormat); renders come out as raw scene-linear float32 RGBA. This package
++reads and writes no image files. Convert any image format (PNG, JPEG, JPEG XL,
++TIFF, EXR, ...) to and from these buffers with CodeBrix.Imaging.
+ 
+ STATUS: experimental. The package is not yet published to nuget.org, and it
+ does not yet carry native runtime assets (see INSTALLATION).
+@@ -31,7 +51,7 @@ PackageId:  CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
+ Dependencies: none other than .NET.
+ License:      Apache-2.0.
+ Requirements:
+-  - A 64-bit process (the constructor throws PlatformNotSupportedException
++  - A 64-bit process (constructors throw PlatformNotSupportedException
+     otherwise).
+   - The native scene host library, named codebrix_cycles_host
+     (libcodebrix_cycles_host.so on Linux), resolvable by the .NET native
+@@ -45,199 +65,466 @@ Requirements:
+ 
+ KEY NAMESPACES / USINGS
+ =======================
+-    using CodeBrix.Graphics3D.Cycles;
+-
+-Every public type is in this one namespace.
++    using CodeBrix.Graphics3D.Cycles;                     // CyclesScene, CyclesHost, CyclesImage,
++                                                          // CyclesBackend, Backend, ImageFormat,
++                                                          // Transform3x4, CyclesException, CyclesVersion
++    using CodeBrix.Graphics3D.Cycles.Rendering;           // RenderSettings, FilmBuffer, RenderProgress,
++                                                          // RenderEvent, RenderPassInfo
++    using CodeBrix.Graphics3D.Cycles.Generated.Scene;     // CameraNode, FilmNode, IntegratorNode,
++                                                          // BackgroundNode, ObjectNode, ShaderNode, ...
++    using CodeBrix.Graphics3D.Cycles.Generated.Geometry;  // GeometryBaseNode, MeshNode, HairNode,
++                                                          // PointCloudNode, VolumeNode
++    using CodeBrix.Graphics3D.Cycles.Generated.Lights;    // LightNode, PointLightNode, SpotLightNode,
++                                                          // AreaLightNode, SunLightNode, BackgroundLightNode
++    using CodeBrix.Graphics3D.Cycles.Generated.Shaders;   // DiffuseBsdfNode, PrincipledBsdfNode,
++                                                          // ImageTextureNode, OutputNode, ...
++    using CodeBrix.Graphics3D.Cycles.Generated;           // NodeType (the catalogue)
++    using CodeBrix.Graphics3D.Cycles.Nodes;               // CyclesNode, ShaderGraphNode, ShaderInput,
++                                                          // ShaderOutput, NodeTypeInfo, SocketInfo
++    using CodeBrix.Graphics3D.Cycles.Diagnostics;         // ICapabilityReport
++    using CodeBrix.Graphics3D.Cycles.Interop;             // CyclesAbi, Native (low-level tier)
+ 
+ 
+ CORE API REFERENCE
+ ==================
+-CyclesHost : IDisposable                          (sealed)
+----------------------------------------------------------
+-Construction and lifetime
+-    CyclesHost(Backend backend, uint threads = 1)
+-    void Dispose()          cancels active work, waits for native cleanup;
+-                            safe to call more than once. Any later member call
+-                            throws ObjectDisposedException.
+-    bool IsRendering        true while a render runs on this host.
+-    bool Cancel()           cancels the active render (callable from another
+-                            thread); false when nothing was rendering.
+-
+-Scene graph
+-    Node SceneNode(string name)            singletons: "camera", "background",
+-                                           "film", "integrator"
+-    Node CreateNode(string type)           native type names, e.g. "object",
+-                                           "mesh", "light", "shader"
+-    Node ShaderOutput(Node shader)         the graph's output node (inputs
+-                                           "Surface", "Volume", "Displacement")
+-    Node ShaderNode(Node shader, string type)
+-                                           e.g. "diffuse_bsdf", "color",
+-                                           "background_shader", "image_texture"
++TIER 1 - TYPED FACADE
++---------------------
++CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
++    CyclesScene(CyclesBackend backend, uint threads = 1)
++    CyclesScene(Backend backend, uint threads = 1)    explicit native backend
++    static Backend ResolveBackend(CyclesBackend)      asks the native binary:
++                                                      Gpu -> Metal in macOS builds,
++                                                      WebGpu elsewhere;
++                                                      CpuReference -> CpuReference
++    static ICapabilityReport GetBinaryCapabilities()  binary-level report, no device
++    CyclesHost Host            the by-name host this scene owns (tier 3)
++    Backend Backend            the concrete backend the native host reports
++                               (never Backend.Gpu)
++    bool IsFaulted             a render failed with NativeStatus.Failed: the
++                               device is dead for good; dispose and recreate
++    event EventHandler<RenderEvent> RenderEventReceived
++                               native status/progress/error events while a
++                               render runs (see CALLBACKS AND THREADING)
++    CameraNode Camera / FilmNode Film / IntegratorNode Integrator /
++    BackgroundNode Background  the scene singletons (typed)
++    T Create<T>() where T : CyclesNode
++                               objects, geometry, lights, shader graphs,
++                               particle systems, passes (NodeCreation.Scene);
++                               ArgumentException for any other type
++    ShaderNode CreateShader()  a new, empty shader graph
++    T CreateLight<T>() where T : LightNode
++    MeshNode CreateMesh(ReadOnlySpan<float> xyz, ReadOnlySpan<uint> indices,
++                        ShaderNode shader = null)
++    ObjectNode CreateObject(GeometryBaseNode geometry, Transform3x4? transform = null)
++                               places a mesh, other geometry or a LIGHT in the scene
++    CyclesImage CreateImage<T>(uint width, uint height, ImageFormat format,
++                               ReadOnlySpan<T> pixels) where T : unmanaged
++                               T = float, Half, byte or ushort (the format's
++                               component type) or byte for raw bytes
++    static int ComponentBytes(ImageFormat) / static int Channels(ImageFormat)
++    CyclesNode Wrap(Node) / T Wrap<T>(Node)
++                               typed view of a node created through Host;
++                               the same object is returned for the same node
++    void Remove(CyclesNode node)
++                               deletes objects, geometry, lights, passes,
++                               shader graphs (and their nodes) and shader
++                               graph nodes; node.IsRemoved becomes true.
++                               InvalidOperationException while another node
++                               still references it (an object's Geometry, a
++                               mesh's UsedShaders, Background.Shader): clear
++                               the reference or remove the referrer first.
++                               ArgumentException for singletons and shader
++                               output nodes.
++    PassNode AddPass(PassType type, string name)
++                               enables a pass/AOV (e.g. PassType.Depth)
++    IReadOnlyList<RenderPassInfo> GetRenderedPasses()
++                               passes of the last successful render
++    FilmBuffer ReadPass(string name)
++                               copy of one pass ("Combined" always present,
++                               bit-identical to the rendered film);
++                               InvalidOperationException before a successful
++                               render, NotSupportedException when the device
++                               did not write it
++    ICapabilityReport GetCapabilities()   the scene's device + binary report
++    void Render(RenderSettings, Span<float> destination)
++    FilmBuffer Render(RenderSettings)
++    Task<FilmBuffer> RenderAsync(RenderSettings, IProgress<RenderProgress> = null,
++                                 CancellationToken = default)
++    Task RenderAsync(RenderSettings, Memory<float> destination,
++                     IProgress<RenderProgress> = null, CancellationToken = default)
++    TimeSpan ProgressInterval  how often RenderAsync re-sends a pending
++                               cancellation (default 50 ms); progress itself
++                               comes from native events
++    bool IsRendering / bool Cancel()
++    void Dispose() / ValueTask DisposeAsync()
++                               cancel any active render, wait, destroy; every
++                               later member (and every node) throws
++                               ObjectDisposedException
++
++RenderSettings(uint Width, uint Height, uint Samples)   readonly record struct
++    long FloatCount            Width * Height * 4
++
++FilmBuffer                                              (sealed)
++    int Width, Height, Components (4 for Combined; 1, 3 or 4 for other passes),
++    Stride (= Width * Components floats), RenderPass Pass, string PassName
++    ReadOnlyMemory<float> Pixels / ReadOnlySpan<float> Span
++    ReadOnlySpan<float> GetRow(int y)    y = 0 is the BOTTOM row
++    void CopyTo(Span<float>) / float[] ToArray()
++  THE FILM CONTRACT: raw scene-linear float32 RGBA, four floats per pixel,
++  rows bottom to top (lower-left origin), unclamped, not display-encoded,
++  alpha = coverage. Flip rows and encode with CodeBrix.Imaging for files.
++  Other passes follow the same layout with Components floats per pixel.
++
++RenderProgress(RenderStage Stage, TimeSpan Elapsed, uint TotalSamples,
++               uint? CompletedSamples, double? Fraction)
++RenderStage   Starting, Rendering, Completed, Cancelled, Failed
++RenderPass    Combined, Named (a pass enabled with AddPass)
++RenderPassInfo(string Name, string Type, int Components, bool Written)
++RenderEvent(RenderEventKind Kind, ulong SamplesDone, ulong SamplesTotal,
++            TimeSpan Elapsed, string Message)
++RenderEventKind  Status, Progress, Error   (= CBC_EVENT_*)
++  Progress comes from the native progress callback: one Rendering report per
++  native progress event, with CompletedSamples and Fraction filled; Completed
++  reports Fraction = 1. Reports arrive on a native render thread unless your
++  IProgress<T> marshals them.
++
++CyclesImage : IDisposable                               (sealed)
++    Image Handle, uint Width, uint Height, ImageFormat Format, bool IsReleased
++    void Update<T>(ReadOnlySpan<T> pixels)             same size and format
++    void Update<T>(uint w, uint h, ImageFormat, ReadOnlySpan<T> pixels)
++                               re-uploads raw pixels; every texture still
++                               bound to the image renders them next time
++    Dispose() releases YOUR reference; bound textures keep the pixels
++    (textures bound before Dispose keep the pixels they had).
++
++CyclesBackend   Gpu, CpuReference
++CyclesVersion (static)
++    uint Abi                   ABI integer of the loaded native host
++    const uint ExpectedAbi     the ABI this assembly was built against
++    bool IsAbiCompatible
++    string NativeLibraryVersion  native build version, major.minor.yyyyMMdd.build
++    uint NativeAbi             ABI in the native version structure
++    string CyclesRevision      pinned upstream Cycles commit hash
++    Version ManagedVersion
++
++ICapabilityReport (GetCapabilities / GetBinaryCapabilities; exactly what the
++native report states, nothing inferred)
++    int SchemaVersion, uint AbiVersion, string LibraryVersion, CyclesRevision
++    bool HasDevice             false for the binary-level report
++    string BackendName ("webgpu", "metal", "cpu"; null without a device),
++    Backend Backend (Backend.Gpu without a device), bool IsGpu,
++    string DeviceDescription, DeviceId, PipelineTier ("full", "conservative",
++    or null off WebGPU), IReadOnlyList<string> Warnings
++    IReadOnlyList<string> CompiledBackends, string GpuBackendName,
++    bool GpuFallsBackToCpu (always false)
++    IReadOnlyDictionary<string, BackendScope> BackendScopes, BackendScope Scope
++    IReadOnlyDictionary<string, bool> OptionalLibraries (osl, embree, ...)
++    IReadOnlyList<string> ImageFormats, Events
++    IReadOnlyDictionary<string, int> PassTypes      registered pass types
++    IReadOnlyDictionary<string, long> Limits        maxRenderWidth, maxMotionSteps...
++    string DeterminismReference, string Json (the full native report)
++BackendScope: Device, CameraTypes, Primitives, WrittenPasses, PassesNote,
++    RenderTimeRejections, Reference
++
++Transform3x4(M11..M34)    readonly record struct; Cycles 3x4 row-major,
++                          translation in the 4th column
++    Identity, CreateTranslation(x, y, z), FromMatrix(Matrix4x4),
++    ToMatrix(), FromSpan(ReadOnlySpan<float>), CopyTo(Span<float>)
++
++CyclesException : Exception
++    NativeStatus NativeStatus  Invalid, Unsupported, Failed, Cancelled,
++                               NotReady, SmallBuffer
++NativeFailure : CyclesException   (sealed; what every failing native call throws)
++    int Status                 the same status as an integer
++
++TIER 2 - GENERATED OBJECT MODEL
++-------------------------------
++One class per native node type, generated from the native registry. Class
++names are the PascalCase native name plus "Node" (diffuse_bsdf ->
++DiffuseBsdfNode, image_texture -> ImageTextureNode, pointlight ->
++PointLightNode, geometry_base -> GeometryBaseNode). Each class has:
++  const string NativeTypeName
++  one property per readable, writable, non-internal input socket, named in
++  PascalCase after the native socket name (tex_mapping.scale ->
++  TexMappingScale):
++      float, int, bool, uint, ulong, string     scalar sockets
++      Vector3                                   color, vector, point, normal
++      Vector2                                   point2
++      Transform3x4                              transform
++      generated enum                            enum sockets (values are the
++                                                native values; enum type name
++                                                = class name without "Node" +
++                                                property name, e.g.
++                                                ImageTextureInterpolation)
++      typed node class                          node sockets (e.g.
++                                                ObjectNode.Geometry is a
++                                                GeometryBaseNode)
++      T[]                                       array sockets (copies in/out)
++  shader graph nodes also have, per linkable input and per output:
++      ShaderInput  <UiName>Input     e.g. DiffuseBsdfNode.ColorInput
++      ShaderOutput <UiName>Output    e.g. DiffuseBsdfNode.BsdfOutput
++Hand-maintained conveniences on a few generated classes:
++  ShaderNode.Output (OutputNode), ShaderNode.Add<T>(),
++  ShaderNode.Connect(ShaderOutput from, ShaderInput to)
++  GeometryBaseNode.SetAttribute / SetAttributeBytes / GetAttribute /
++  RemoveAttribute
++  MeshNode.SetTriangles(ReadOnlySpan<float> or ReadOnlySpan<Vector3>, indices)
++  MeshNode.SetMotionPositions(uint steps, ReadOnlySpan<float> or
++  ReadOnlySpan<Vector3>) / ClearMotionPositions()   deformation motion
++  (BEFORE THE FIRST RENDER; see MOTION)
++  ImageTextureNode / EnvironmentTextureNode .Bind(CyclesImage) / .Unbind()
++
++CyclesNode (base of every generated class)
++    CyclesScene Scene, Node Handle, NodeTypeInfo TypeInfo,
++    PropertyInfo Describe(string socket), bool IsRemoved (every accessor of a
++    removed node throws ObjectDisposedException)
++ShaderGraphNode : CyclesNode     ShaderNode Graph
++
++NodeType (static catalogue)
++    IReadOnlyList<NodeTypeInfo> All, NodeTypeInfo Find(string nativeName),
++    NodeTypeInfo Of(Type) / Of<T>(), const uint RegistryAbiVersion
++NodeTypeInfo: Name, Category (Scene, Camera, Film, Integrator, Background,
++    Geometry, Light, Shader, Output), Creation (Singleton, Scene, ShaderGraph,
++    GraphOutput, Unavailable), BaseName, HasFactory, ClrType, Inputs, Outputs
++SocketInfo: Name, UiName, TypeName, Kind (ValueKind), Components, Flags
++    (PropertyFlags), NodeTypeName, EnumValues (EnumEntry(Name, Value))
++  Creation = Unavailable marks base types and types the native host does not
++  create directly (buffer_params, buffer_pass, denoise_params,
++  scene_attributes); they are catalogued for completeness.
++
++TIER 3 - INTEROP (STABLE LOW-LEVEL TIER)
++----------------------------------------
++CyclesHost : IDisposable  (root namespace; by name, throws NativeFailure)
++    CyclesHost(Backend backend, uint threads = 1); Dispose; IsRendering; Cancel
++    Node SceneNode(string) / CreateNode(string type) / ShaderOutput(Node) /
++         ShaderNode(Node shader, string type)
+     void Connect(Node from, string output, Node to, string input)
+-
+-Socket writes (values are copied before the call returns)
+-    void SetFloats(Node node, string socket, ReadOnlySpan<float> values)
+-    void SetInts(Node node, string socket, ReadOnlySpan<long> values)
+-    void SetUInt(Node node, string socket, ulong value)
+-    void SetString(Node node, string socket, string value)
+-    void SetNodes(Node node, string socket, ReadOnlySpan<Node> values)
+-
+-  Float sockets take flattened components: float2 = 2, float3/color/vector = 3,
+-  a transform = 12 floats (row-major 3x4) per element. Booleans are 0 or 1 via
+-  SetInts. Enum sockets take the item name via SetString.
+-
+-Socket reads
+-    PropertyInfo Property(Node node, string socket)
+-    bool GetFloats(Node node, string socket, Span<float> values, out ulong required)
+-    bool GetInts(Node node, string socket, Span<long> values, out ulong required)
+-    ulong GetUInt(Node node, string socket)
+-    bool GetUtf8(Node node, string socket, ulong index, Span<byte> values, out ulong required)
+-    bool GetNodes(Node node, string socket, Span<ulong> values, out ulong required)
+-
+-  The span readers follow one protocol: pass Span<T>.Empty to query the size;
+-  a false return means the destination was too small, was left unchanged, and
+-  'required' holds the size needed. For GetUtf8, 'required' includes the
+-  trailing NUL byte.
+-
+-Geometry
+-    void Mesh(Node mesh, ReadOnlySpan<float> positions, ReadOnlySpan<uint> indices)
+-        positions are x,y,z triples; indices three per triangle (both lengths
+-        must be multiples of 3, else ArgumentException). Every face starts on
+-        material 0.
+-    void SetAttribute(Node geometry, string name, AttributeValue value,
+-                      AttributeDomain domain, AttributeFlags flags,
+-                      ReadOnlySpan<float> values)
+-    void SetAttributeBytes(Node geometry, string name, AttributeDomain domain,
+-                           AttributeFlags flags, ReadOnlySpan<byte> values)
+-    bool GetAttribute(Node geometry, string name, AttributeFlags flags,
+-                      Span<float> values, out ulong required)
+-    bool GetAttributeBytes(Node geometry, string name, AttributeFlags flags,
+-                           Span<byte> values, out ulong required)
+-    void RemoveAttribute(Node geometry, string name,
+-                         AttributeFlags flags = AttributeFlags.None)
+-
+-  AttributeFlags.Standard selects a standard attribute by name ("P", "N", "uv",
+-  "generated", "radius", "tangent", "tangent_sign"); any other name with
+-  AttributeFlags.None is a custom attribute. The element count derives from the
+-  current geometry, so upload the mesh first.
+-
+-Images (raw pixels only)
+-    Image CreateImage(uint width, uint height, ImageFormat format,
+-                      ReadOnlySpan<byte> pixels)
+-    void BindImage(Node texture, Image image)
+-    void ReleaseImage(Image image)
+-
+-  Pixels are tightly packed, row zero at v = 0, and copied. Float and half data
+-  are native-endian. Sampling, alpha and colorspace come from the texture node's
+-  own sockets. ReleaseImage drops your identifier; a bound texture keeps the
+-  image alive. Binding new Image(0) detaches the in-memory input.
+-
+-Rendering
+-    void Render(uint width, uint height, uint samples, Span<float> pixels)
+-        synchronous; scene-linear RGBA, lower-left origin; pixels must hold at
+-        least width*height*4 floats. The buffer changes only on success.
+-
+-Process-wide configuration (static)
+-    static void ConfigureColor(string path)
+-        selects the OpenColorIO configuration file. Call it before creating any
+-        host, or after every host and its in-flight calls have finished.
+-    static void ConfigureTiers(PipelineTier tier, string recordDirectory,
+-                               PipelineTierFlags flags = PipelineTierFlags.None)
+-        WebGPU pipeline tier for hosts created afterwards. recordDirectory is an
+-        app-writable folder for the persisted device record (null disables it).
+-    static string RegistryJson()
+-        the native node/property registry: {"nodeTypes":[{..."inputs":[...],
+-        "outputs":[...]}...]}. It describes native properties, NOT which
+-        features a GPU backend implements.
+-    string DeviceReportJson()      (instance)
+-        backend, adapter, chosen tier and reason, record status, canary
+-        result, compile budget, warnings and compiled pipelines.
+-
+-Value types and enums
+-    Node(ulong Value)       opaque node identifier, valid only in its own host
+-    Image(ulong Value)      opaque image identifier, valid only in its own host
+-    PropertyInfo(uint ValueType, uint Flags, uint Components, ulong Count)
+-        ValueType is the native value kind (5 float, 6 color, 7 vector,
+-        8 point, 9 normal, 10 point2, 11 string, 12 enum, 13 transform,
+-        14 node, ...); Flags bit 1 = array, 2 = linkable, 4 = internal,
+-        8 = readable, 16 = writable.
+-    Backend                 WebGpu, CpuReference, Metal (osx-arm64 builds only)
+-    AttributeValue          Float, Color, Vector, Point, Normal, Point2,
+-                            Transform, Float4, Byte4
+-    AttributeDomain         Mesh, Face, Vertex, Corner, Curve, CurveKey,
+-                            VertexNormal, CornerNormal, CornerByte,
+-                            CurveKeyNormal
+-    AttributeFlags [Flags]  None, Standard, Subdivision
+-    ImageFormat             Float, Float4, Half, Half4, Byte, Byte4, UShort,
+-                            UShort4
+-    PipelineTier            Auto, Full, Conservative
+-    PipelineTierFlags [Flags]  None, RecordOff, RecordReadOnly, Canary
+-
+-Error model
+-    NativeFailure : Exception
+-        int Status    1 invalid argument, 2 unsupported, 3 failed,
+-                      4 cancelled, 5 not ready, 6 buffer too small
+-        Message       the native error text
+-    Every failing native call throws NativeFailure, except the documented
+-    'false' returns of the span readers and Cancel.
++                               output/input are socket UI names ("BSDF",
++                               "Color", "Surface")
++    SetFloats / SetInts / SetUInt / SetString / SetStrings / SetNodes
++                               socket names are native names ("value",
++                               "roughness", "used_shaders")
++    Property / GetFloats / GetInts / GetUInt / GetUtf8 / GetNodes
++                               span readers: Span<T>.Empty = size query;
++                               false = too small, destination unchanged
++    string NodeTypeName(Node)
++    Mesh, SetAttribute, SetAttributeBytes, GetAttribute, GetAttributeBytes,
++    RemoveAttribute, CreateImage, BindImage, ReleaseImage
++    void Render(uint w, uint h, uint samples, Span<float> rgba)
++    static ConfigureColor(string path)       process-wide OCIO config
++    static ConfigureTiers(PipelineTier, string recordDirectory, PipelineTierFlags)
++    static string RegistryJson() / string DeviceReportJson()
++    static Backend ResolveBackend(Backend) / Backend GetBackend()
++    static string CapabilitiesJson() / string HostCapabilitiesJson()
++    void DeleteNode(Node), UpdateImage(Image, w, h, ImageFormat, bytes),
++    MotionPositions(Node mesh, uint steps, ReadOnlySpan<float>)
++    void SetEventCallback(delegate* unmanaged[Cdecl]<nint, Native.Event*, int>,
++                          nint userData)    (a scene manages this itself)
++    bool PassFloats(string name, Span<float>, out ulong required,
++                    out uint components) / string RenderPassesJson()
++  Float sockets take flattened components: float2 = 2, color/vector/point/
++  normal = 3, transform = 12 (row-major 3x4) per element. Booleans are 0/1
++  via SetInts. Enum sockets accept the item name via SetString or the value
++  via SetInts.
++
++Interop.CyclesAbi (static) - one method per cbc_host_* C function
++    NativeStatus Create(Backend, uint threads, out ulong host) / Destroy(host)
++    NativeStatus SceneNode / CreateNode / ShaderOutput / ShaderNode / Connect
++    NativeStatus SetFloats / SetInts / SetUInts / SetString / SetStrings /
++                 SetNodes
++    NativeStatus PropertyInfo / GetFloats / GetInts / GetUInts / GetString /
++                 GetNodes / NodeType / RegistryJson / DeviceReportJson
++    NativeStatus SetAttributeFloats / SetAttributeBytes / GetAttributeFloats /
++                 GetAttributeBytes / RemoveAttribute
++    NativeStatus CreateImage / BindImage / ReleaseImage / Mesh / Render /
++                 Cancel / IsRendering / ConfigureColor / ConfigureTiers
++    NativeStatus Version(out uint abi, out string library, out string revision)
++    NativeStatus ResolveBackend / GetBackend / CapabilitiesJson / DeleteNode /
++                 UpdateImage / MotionPositions / SetEventCallback /
++                 PassFloats / RenderPassesJson
++    uint AbiVersion(); string LastError()   (thread-local; read right after
++                                             the failing call)
++    const uint ExpectedAbiVersion
++  Nothing throws for a native failure; you own every host handle and must
++  Destroy it exactly once.
++
++Interop.Native (static) - the raw [DllImport] declarations and ABI structs
++(HostConfig, RenderConfig, PropertyInfo, AttributeConfig, ImageConfig,
++TierConfig: 32 bytes each; VersionInfo: 96 bytes; Event: 40 bytes; Size is
++always first). Use it to write your own binding; the C header
++native/host/cycles_host.h and native/host/ABI.md are the contract.
++
++Shared value types and enums (root namespace)
++    Node(ulong Value), Image(ulong Value)  opaque per-host identifiers
++    PropertyInfo(ValueType, Flags, Components, Count) + Kind, PropertyFlags
++    Backend         WebGpu, CpuReference, Metal (osx-arm64 builds only),
++                    Gpu (the backend-neutral request; the native host
++                    resolves it, a host never reports it)
++    NativeStatus    Ok, Invalid, Unsupported, Failed, Cancelled, NotReady,
++                    SmallBuffer
++    ValueKind       Unsupported, Boolean, Int, UInt, UInt64, Float, Color,
++                    Vector, Point, Normal, Point2, String, Enum, Transform,
++                    Node, Closure, Float4, Byte4
++    PropertyFlags   None, Array, Linkable, Internal, Readable, Writable
++    AttributeValue, AttributeDomain, AttributeFlags (geometry attributes)
++    ImageFormat     Float, Float4, Half, Half4, Byte, Byte4, UShort, UShort4
++    PipelineTier, PipelineTierFlags (WebGPU pipeline-tier selection)
++  Every enum value equals the C constant of the same meaning.
++
++BACKEND SELECTION
++-----------------
++Use CyclesBackend.Gpu for "the GPU of this platform" and CyclesBackend.
++CpuReference for the CPU. A GPU render never falls back to the CPU: if no
++usable GPU exists, scene creation or the render fails with a CyclesException.
++Which GPU backend renders (WebGPU or Metal) is visible through scene.Backend
++and GetCapabilities(); write backend-neutral code against CyclesBackend.
++
++WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
++render runs (the render fails with NativeStatus.Failed, not at edit time):
++  - passes other than Combined (AddPass of any other type fails the render;
++    data passes report "surface data passes not implemented");
++  - cameras other than perspective (orthographic, panorama);
++  - the integrator defaults: switch off UseLightTree, UseDenoise,
++    UseAdaptiveSampling and UseGuiding before a WebGPU render;
++  - the classes listed in GetCapabilities().Scope.RenderTimeRejections.
++The CPU reference backend renders all of these.
++
++DEVICE ERRORS ARE PERMANENT. After a render fails with NativeStatus.Failed
++(scene.IsFaulted), every later render on that scene fails with the same
++message even after the cause is removed. Dispose the scene and build a new
++one.
++
++MOTION
++------
++Object motion is ObjectNode.Motion, camera motion CameraNode.Motion (with
++CameraNode.Shuttertime), deformation MeshNode.SetMotionPositions(steps,
++positions) (odd steps 3..129; the center step must equal the mesh positions
++bit for bit); all need Integrator.MotionBlur = true. Configure motion BEFORE
++the mesh's first render: the pinned Cycles static BVH bakes a mesh with its
++object transform at its first render. SetMotionPositions afterwards throws
++InvalidOperationException; object motion set afterwards is silently not
++applied. To change motion later, Remove the object and mesh and create new
++ones. ClearMotionPositions is always allowed.
++
++CALLBACKS AND THREADING
++-----------------------
++RenderEventReceived handlers and RenderAsync progress reports run on a native
++render thread (or the rendering thread) and only while a render runs, never
++concurrently with each other for one scene. They must return quickly and must
++NOT call the scene, its host or its nodes: the native host refuses every
++re-entrant call (NativeStatus.NotReady). To stop a render from a handler,
++cancel the RenderAsync CancellationToken; the native event callback returns
++the request and the render stops with OperationCanceledException. A handler
++that throws cancels the render and the render rethrows that exception. Renders
++on one scene run one at a time; edits serialize with rendering.
++
++DETERMINISM
++-----------
++On the CPU reference backend, rendering the same scene with the same settings
++in the same process is bit-identical, and the three managed tiers produce
++bit-identical films for the same scene. GPU accumulation is not guaranteed to
++be bitwise repeatable. The native determinism statement (native/host/ABI.md,
++section Determinism; GetCapabilities().DeterminismReference) is
++authoritative.
+ 
+ 
+ COMPLETE EXAMPLES
+ =================
+-Render a lit triangle on the CPU reference backend
+---------------------------------------------------
++Render a lit triangle with the typed facade
++-------------------------------------------
++    using System.Numerics;
+     using CodeBrix.Graphics3D.Cycles;
+-
+-    using CyclesHost host = new(Backend.CpuReference);
+-
+-    Node camera = host.SceneNode("camera");
+-    host.SetFloats(camera, "fov", [1.1f]);
+-    host.SetFloats(camera, "matrix", [1,0,0,0, 0,1,0,0, 0,0,1,-4]);
+-
+-    Node material = host.CreateNode("shader");
+-    Node diffuse = host.ShaderNode(material, "diffuse_bsdf");
+-    Node color = host.ShaderNode(material, "color");
+-    host.SetFloats(color, "value", [.7f, .2f, .1f]);
+-    host.Connect(color, "Color", diffuse, "Color");
+-    host.Connect(diffuse, "BSDF", host.ShaderOutput(material), "Surface");
+-
+-    Node mesh = host.CreateNode("mesh");
+-    host.SetNodes(mesh, "used_shaders", [material]);
+-    host.Mesh(mesh, [-1.5f,-1,0, 1.5f,-1,0, 0,1.5f,0], [0, 1, 2]);
+-    Node triangle = host.CreateNode("object");
+-    host.SetNodes(triangle, "geometry", [mesh]);
+-
+-    Node world = host.CreateNode("shader");
+-    Node background = host.ShaderNode(world, "background_shader");
+-    host.SetFloats(background, "color", [.25f, .4f, .6f]);
+-    host.Connect(background, "Background", host.ShaderOutput(world), "Surface");
+-    host.SetNodes(host.SceneNode("background"), "shader", [world]);
+-
+-    float[] rgba = new float[32 * 24 * 4];
+-    host.Render(32, 24, 8, rgba);
+-
+-Read a string socket safely (size query, then copy)
+----------------------------------------------------
+-    host.GetUtf8(node, "asset_name", 0, Span<byte>.Empty, out ulong size);
+-    byte[] utf8 = new byte[(int)size];
+-    while (!host.GetUtf8(node, "asset_name", 0, utf8, out size))
+-        utf8 = new byte[(int)size];          // another edit resized it
+-    string name = System.Text.Encoding.UTF8.GetString(utf8, 0, (int)size - 1);
+-
+-Bind a raw RGBA8 texture
+-------------------------
+-    Node texture = host.ShaderNode(material, "image_texture");
+-    Image image = host.CreateImage(2, 2, ImageFormat.Byte4, pixels);  // 16 bytes
+-    host.BindImage(texture, image);
+-    host.ReleaseImage(image);       // the binding keeps the pixels alive
+-    host.Connect(texture, "Color", diffuse, "Color");
+-
+-Cancel a long render from another thread
+-----------------------------------------
+-    Task render = Task.Run(() => host.Render(256, 256, 100000, rgba));
+-    // ... later
+-    host.Cancel();
+-    // the render throws NativeFailure with Status == 4; rgba is unchanged
++    using CodeBrix.Graphics3D.Cycles.Generated.Geometry;
++    using CodeBrix.Graphics3D.Cycles.Generated.Scene;
++    using CodeBrix.Graphics3D.Cycles.Generated.Shaders;
++    using CodeBrix.Graphics3D.Cycles.Rendering;
++
++    await using CyclesScene scene = new(CyclesBackend.CpuReference);
++    scene.Camera.Fov = 1.1f;
++    scene.Camera.Matrix = Transform3x4.CreateTranslation(0, 0, -4);
++
++    ShaderNode material = scene.CreateShader();
++    DiffuseBsdfNode diffuse = material.Add<DiffuseBsdfNode>();
++    diffuse.Color = new Vector3(.7f, .2f, .1f);
++    material.Connect(diffuse.BsdfOutput, material.Output.SurfaceInput);
++
++    MeshNode mesh = scene.CreateMesh([-1.5f,-1,0, 1.5f,-1,0, 0,1.5f,0], [0, 1, 2], material);
++    scene.CreateObject(mesh);
++
++    ShaderNode world = scene.CreateShader();
++    BackgroundShaderNode sky = world.Add<BackgroundShaderNode>();
++    sky.Color = new Vector3(.25f, .4f, .6f);
++    world.Connect(sky.BackgroundOutput, world.Output.SurfaceInput);
++    scene.Background.Shader = world;
++
++    FilmBuffer film = await scene.RenderAsync(new RenderSettings(320, 240, 16));
++    // film.Span: scene-linear RGBA floats, bottom row first
++
++Progress and cancellation
++-------------------------
++    using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(5));
++    Progress<RenderProgress> progress = new(p => Console.WriteLine($"{p.Stage} {p.CompletedSamples}/{p.TotalSamples} {p.Fraction:P0}"));
++    try
++    {
++        FilmBuffer film = await scene.RenderAsync(new RenderSettings(1920, 1080, 4096), progress, timeout.Token);
++    }
++    catch (OperationCanceledException)
++    {
++        // the native render stopped; the scene is reusable
++    }
++
++Render into your own buffer (no allocation per frame)
++-----------------------------------------------------
++    RenderSettings settings = new(640, 480, 64);
++    float[] rgba = new float[settings.FloatCount];
++    await scene.RenderAsync(settings, rgba);          // or scene.Render(settings, rgba)
++
++A light
++-------
++    PointLightNode lamp = scene.CreateLight<PointLightNode>();
++    lamp.Strength = new Vector3(100, 100, 100);
++    ShaderNode emission = scene.CreateShader();
++    EmissionNode emit = emission.Add<EmissionNode>();
++    emission.Connect(emit.EmissionOutput, emission.Output.SurfaceInput);
++    lamp.UsedShaders = [emission];
++    scene.CreateObject(lamp, Transform3x4.CreateTranslation(2, 3, -2));
++
++A texture from decoded pixels (decode the file with CodeBrix.Imaging)
++---------------------------------------------------------------------
++    // rgba8: tightly packed width*height*4 bytes, row 0 at v = 0
++    ImageTextureNode texture = material.Add<ImageTextureNode>();
++    using (CyclesImage image = scene.CreateImage<byte>(width, height, ImageFormat.Byte4, rgba8))
++        texture.Bind(image);                  // the binding keeps the pixels
++    texture.Colorspace = "__builtin_srgb";
++    material.Connect(texture.ColorOutput, diffuse.ColorInput);
++    mesh.SetAttribute("uv", AttributeValue.Point2, AttributeDomain.Corner,
++                      AttributeFlags.Standard, uvs);   // 2 floats per corner
++
++    // float data: scene.CreateImage<float>(w, h, ImageFormat.Float4, floats)
++    // half data:  scene.CreateImage<Half>(w, h, ImageFormat.Half4, halves)
++
++Dropping to the by-name tier for a socket
++-----------------------------------------
++    Node camera = scene.Host.SceneNode("camera");
++    scene.Host.SetFloats(camera, "fov", [0.9f]);
++    float fov = scene.Camera.Fov;             // 0.9: both tiers see one native socket
++
++The status-code interop tier
++----------------------------
++    using CodeBrix.Graphics3D.Cycles.Interop;
++
++    if (CyclesAbi.Create(Backend.CpuReference, 1, out ulong host) != NativeStatus.Ok)
++        throw new InvalidOperationException(CyclesAbi.LastError());
++    try
++    {
++        CyclesAbi.SceneNode(host, "camera", out ulong camera);
++        NativeStatus status = CyclesAbi.SetFloats(host, camera, "fov", [1.1f]);
++        // ... CreateNode, ShaderNode, Connect, Mesh, Render as in the C header
++    }
++    finally
++    {
++        CyclesAbi.Destroy(host);
++    }
+ 
+ 
+ MINIMUM VIABLE PROJECT TEMPLATE
+@@ -252,85 +539,157 @@ MINIMUM VIABLE PROJECT TEMPLATE
+       </ItemGroup>
+     </Project>
+ 
+-Program.cs: the "Render a lit triangle" example above. Run it with the native
+-host on the library search path (for example LD_LIBRARY_PATH on Linux).
++Program.cs: the "Render a lit triangle with the typed facade" example above.
++Run it with the native host on the library search path (for example
++LD_LIBRARY_PATH on Linux).
+ 
+ 
+ PERFORMANCE TIPS
+ ================
+-- Reuse one CyclesHost for repeated renders; edit sockets between renders
+-  instead of rebuilding the scene. Host creation and scene compilation are the
+-  expensive steps.
+-- Allocate the RGBA buffer once and reuse it; Render writes it only on success.
+-- Upload a mesh once and change materials or transforms through sockets.
+-- Keep span-reader buffers around between calls and grow them only when a
+-  call returns false.
++- Reuse one CyclesScene for repeated renders; change properties between
++  renders instead of rebuilding the scene. Host creation and scene
++  compilation are the expensive steps.
++- Render into a buffer you keep (Render(settings, span) or
++  RenderAsync(settings, memory, ...)) instead of allocating a FilmBuffer per
++  frame.
++- Array properties copy the whole array in and out on every access. Read an
++  array property once into a local; set it once with the finished array.
++- Upload a mesh once (SetTriangles) and change materials or transforms
++  through properties.
++- Keep RenderEventReceived handlers and IProgress<T> reports short: they run
++  inside the native render loop.
+ 
+ 
+ COMMON PITFALLS TO AVOID
+ ========================
+-- CALLING ConfigureColor WHILE A HOST EXISTS. Color configuration is
+-  process-wide; it fails with Status 5 while any host or in-flight call is
+-  alive. Configure first, then create hosts.
+-- EXPECTING A CPU FALLBACK. A host created with Backend.WebGpu never falls back
+-  to CPU shading; choose Backend.CpuReference explicitly when you want the CPU.
+-- READING RegistryJson AS A FEATURE LIST. The registry lists native node types
+-  and sockets; a node being registered does not mean a GPU kernel implements it.
+-- MIXING NODES BETWEEN HOSTS. Node and Image identifiers belong to the host
+-  that created them; passing one to another host throws NativeFailure (Status 1).
+-- UNDERSIZED RENDER BUFFERS. Render needs width*height*4 floats; a smaller span
+-  is rejected with Status 1 and the buffer is not touched.
+-- ASSUMING A QUERY-THEN-COPY CANNOT RACE. Another edit can change a socket's
+-  size between the size query and the copy; loop until the copy returns true.
++- FORGETTING THE OBJECT. A mesh or light renders only when an object places it:
++  scene.CreateObject(meshOrLight). Lights are geometry in Cycles.
++- CONNECTING ACROSS GRAPHS. Shader links stay inside one ShaderNode graph;
++  connecting sockets from two graphs throws ArgumentException.
++- PASSING THE WRONG COMPONENT TYPE. CreateImage<float> with a Half or Byte
++  format throws ArgumentException; use the format's component type or byte.
++- EXPECTING ENCODED OR TOP-DOWN OUTPUT. Films are scene-linear float RGBA with
++  the BOTTOM row first. Flip the rows and display-encode (CodeBrix.Imaging)
++  before writing a file.
+ - LOADING IMAGE FILES THROUGH THIS LIBRARY. It takes raw pixel buffers only;
+-  decode files with CodeBrix.Imaging first.
++  decode files with CodeBrix.Imaging first. Setting a texture's Filename is a
++  development convenience of some native builds, not a product feature.
++- EXPECTING A CPU FALLBACK. CyclesBackend.Gpu never falls back to the CPU;
++  choose CyclesBackend.CpuReference explicitly when you want the CPU.
++- CALLING ConfigureColor WHILE A HOST EXISTS. Color configuration is
++  process-wide; it fails with NotReady while any scene, host or in-flight call
++  is alive. Configure first, then create scenes.
++- MIXING NODES BETWEEN SCENES. Nodes and images belong to the scene that
++  created them; assigning one to another scene throws ArgumentException (or a
++  NativeFailure with Invalid on the low-level tiers).
++- TOUCHING THE DESTINATION DURING RenderAsync. The buffer is written by the
++  native render on another thread and only on success; wait for the task.
++- CALLING THE SCENE FROM A PROGRESS OR EVENT HANDLER. Handlers run inside the
++  native render loop; any scene call fails with NotReady. System.Progress<T>
++  posts reports to the thread pool, so they can arrive out of order; implement
++  IProgress<T> yourself when the order matters.
++- ADDING MOTION AFTER THE FIRST RENDER. It is refused (deformation) or not
++  applied (object motion); set motion before rendering or recreate the nodes.
++- MOVING AN OBJECT AFTER ITS FIRST RENDER. Changing ObjectNode.Tfm after the
++  mesh's first render is likely not applied (open item in docs/PARITY.md);
++  remove and recreate the object and mesh to move it.
++- REUSING A FAULTED SCENE. After a NativeStatus.Failed render, recreate the
++  scene; the device stays failed.
++- ENABLING NON-COMBINED PASSES ON WEBGPU. The render fails; read extra passes
++  on the CPU reference backend.
++- READING THE REGISTRY AS A FEATURE LIST. A node type being registered (and
++  generated) does not mean a GPU backend implements it; the CPU reference is
++  the complete implementation.
++- SMOOTH MESHES WITH LIGHTS ON WEBGPU. The WebGPU backend does not implement
++  the shadow-terminator geometry offset (ObjectNode default 0.1): a smooth-shaded
++  mesh lit by a light fails with "invalid state/data". Set the object's
++  ShadowTerminatorGeometryOffset = 0 (do the same on the CPU reference when you
++  compare films).
++- USING SOCKET NAMES FOR LINKS. On the low-level tiers, Connect takes socket
++  UI names ("Color", "BSDF"); the setters take native socket names ("color",
++  "value"). The typed tier handles both for you.
++
++
++BRINGING GLTF SCENES
++====================
++The package does not read glTF; load the file with a glTF library and build the
++scene through the typed API. The repository's example client,
++tools/gltf/CycleGltfRender (GltfSceneConverter.cs), does exactly that with
++CodeBrix.Graphics3D.Gltf2.MitLicenseForever and is a starting point to copy:
++one MeshNode per glTF mesh (positions, indices, per-face shaders for
++primitives, "N" vertex normals with Smooth, "uv" corner attribute with v
++flipped), one CreateObject per node instance with Transform3x4.FromMatrix(the
++node's world matrix), KHR_lights_punctual lights as sun/point/spot lights with
++an emission shader, and the glTF camera with its Z axis flipped (glTF cameras
++look along -Z, Cycles cameras along +Z). Current material-mapping limits on the
++WebGPU backend: there is no Principled BSDF there yet, so metallic-roughness is
++approximated by a Diffuse BSDF mixed with a GGX Glossy BSDF by the metallic
++factor, emission is added with Add Closure, and alpha uses a Transparent BSDF.
++Textures need decoded pixels (CreateImage with raw RGBA): the example uses
++base-colour factors only because Gltf2 does not decode images. Set each mesh
++object's ShadowTerminatorGeometryOffset to 0 for smooth-shaded meshes on the
++WebGPU backend (it does not implement that offset and fails otherwise).
+ 
+ 
+ WHAT THIS PACKAGE DOES NOT DO
+ =============================
+-- It does not encode or decode image files (PNG, JPEG, EXR, ...). It accepts
+-  and returns raw pixel buffers; use CodeBrix.Imaging for files.
++- It does not encode or decode image or video files (PNG, JPEG, JPEG XL, TIFF,
++  EXR, ...). It accepts and returns raw pixel buffers; use CodeBrix.Imaging.
+ - It does not import model formats (glTF and others); convert their data into
+-  nodes, meshes and attributes yourself.
++  nodes, meshes and attributes yourself (see BRINGING GLTF SCENES).
+ - It does not display images or present to a window or swap chain.
++- It does not render passes other than Combined, non-perspective cameras,
++  light trees, denoising, adaptive sampling or path guiding on the WebGPU
++  device (the CPU reference backend does).
+ - It does not yet ship the native host library inside the package.
+-- It does not provide a typed scene object model; scenes are built through
+-  node type names and socket names.
+ 
+ 
+ WORKING EXAMPLES ON GITHUB
+ ==========================
+-- Host lifetime, socket round trips, registry and device report JSON, mesh
+-  validation and rendering:
++- The typed facade: scene building, sync and async rendering, cancellation,
++  all eight image formats, disposal:
++  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesSceneTests.cs
++- One scene built through all three tiers:
++  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/TestScenes.cs
++- The generated model and catalogue, and a round trip of every property:
++  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/NodeTypeTests.cs
++- The status-code interop tier:
++  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesAbiTests.cs
++- The by-name host: socket round trips, registry and device report JSON:
+   https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesHostTests.cs
+-- Enum values and their native constants:
+-  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/NativeHeaderConstantMatching.cs
+-- The error type:
+-  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/NativeFailureTests.cs
++- Rendering on the GPU (WebGPU) backend and comparing with the CPU reference,
++  progress and cancellation on the GPU:
++  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs
++- Converting a glTF file into a scene (example client):
++  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tools/gltf/CycleGltfRender/GltfSceneConverter.cs
+ 
+ 
+ QUICK REFERENCE CARD
+ ====================
+-Create:        using CyclesHost host = new(Backend.CpuReference);
+-Singleton:     Node cam = host.SceneNode("camera");
+-New node:      Node obj = host.CreateNode("object");
+-Shader graph:  Node sh = host.CreateNode("shader");
+-               Node bsdf = host.ShaderNode(sh, "diffuse_bsdf");
+-               host.Connect(bsdf, "BSDF", host.ShaderOutput(sh), "Surface");
+-Set values:    host.SetFloats(n, "socket", [..]); SetInts / SetUInt /
+-               SetString / SetNodes
+-Get values:    host.GetFloats(n, "socket", span, out ulong required)
+-               (Span<T>.Empty = size query; false = too small)
+-Mesh:          host.Mesh(mesh, xyz, triangleIndices);
+-Attribute:     host.SetAttribute(mesh, "uv", AttributeValue.Point2,
+-                   AttributeDomain.Corner, AttributeFlags.Standard, values);
+-Image:         Image img = host.CreateImage(w, h, ImageFormat.Byte4, bytes);
+-               host.BindImage(textureNode, img);
+-Render:        host.Render(w, h, samples, rgbaFloats);
+-Cancel:        host.Cancel();
+-Errors:        catch (NativeFailure e) when (e.Status == 4) { /* cancelled */ }
+-Process-wide:  CyclesHost.ConfigureColor(path); CyclesHost.ConfigureTiers(...);
+-               CyclesHost.RegistryJson();
++Scene:         await using CyclesScene scene = new(CyclesBackend.Gpu);   // or CpuReference
++Settings:      scene.Camera.Fov = 1.1f; scene.Integrator.MaxBounce = 8;
++Material:      ShaderNode m = scene.CreateShader();
++               DiffuseBsdfNode d = m.Add<DiffuseBsdfNode>();
++               m.Connect(d.BsdfOutput, m.Output.SurfaceInput);
++Mesh:          MeshNode mesh = scene.CreateMesh(xyz, indices, m);
++Place:         scene.CreateObject(mesh, Transform3x4.CreateTranslation(x, y, z));
++Light:         PointLightNode l = scene.CreateLight<PointLightNode>(); scene.CreateObject(l, t);
++World:         scene.Background.Shader = worldGraph;
++Texture:       using CyclesImage img = scene.CreateImage<byte>(w, h, ImageFormat.Byte4, rgba8);
++               imageTextureNode.Bind(img);
++Render:        FilmBuffer film = await scene.RenderAsync(new RenderSettings(w, h, spp), progress, token);
++Into buffer:   scene.Render(new RenderSettings(w, h, spp), rgbaFloats);
++Capabilities:  ICapabilityReport caps = scene.GetCapabilities();
++Version:       CyclesVersion.NativeLibraryVersion, CyclesRevision, IsAbiCompatible
++Progress:      scene.RenderEventReceived += (s, e) => Log(e.Kind, e.SamplesDone);  // no scene calls inside
++Passes:        scene.AddPass(PassType.Depth, "Depth"); scene.Render(s); scene.ReadPass("Depth");
++Remove:        scene.Remove(obj); scene.Remove(mesh);   // referrers first
++Re-upload:     img.Update<byte>(rgba8);
++Motion:        mesh.SetMotionPositions(3, xyzSteps);    // before the first render
++Catalogue:     NodeType.Find("principled_bsdf").Inputs
++By name:       scene.Host.SetFloats(node.Handle, "socket", [..]);
++Raw ABI:       CyclesAbi.Create(Backend.CpuReference, 1, out ulong host); ... CyclesAbi.Destroy(host);
++Errors:        catch (CyclesException e) when (e.NativeStatus == NativeStatus.Unsupported)
+ 
+ Target: .NET 10 or later
+ License: Apache-2.0
+@@ -338,3 +697,4 @@ License: Apache-2.0
+ 
+ ================================================================================
+ END OF AGENT-README
++================================================================================
+diff --git a/CodeBrix.Graphics3D.Cycles.slnx b/CodeBrix.Graphics3D.Cycles.slnx
+index 901dc019..c1587116 100644
+--- a/CodeBrix.Graphics3D.Cycles.slnx
++++ b/CodeBrix.Graphics3D.Cycles.slnx
+@@ -14,5 +14,8 @@
+   <Folder Name="/Tests/">
+     <Project Path="tests/CodeBrix.Graphics3D.Cycles.Tests/CodeBrix.Graphics3D.Cycles.Tests.csproj" />
+   </Folder>
++  <Folder Name="/Tools/">
++    <Project Path="tools/gltf/CycleGltfRender/CodeBrix.Graphics3D.Cycles.GltfRender.csproj" />
++  </Folder>
+   <Project Path="src/CodeBrix.Graphics3D.Cycles/CodeBrix.Graphics3D.Cycles.csproj" />
+ </Solution>
+diff --git a/EXTRAS-README.txt b/EXTRAS-README.txt
+index 24008eab..21e303b0 100644
+--- a/EXTRAS-README.txt
++++ b/EXTRAS-README.txt
+@@ -4,8 +4,8 @@ Samples, tools and other content in this repository that is not part of a NuGet
+ package
+ ================================================================================
+ 
+-This repository ships no sample applications or demos. Exactly one .NET project
+-is packable - src/CodeBrix.Graphics3D.Cycles - and it is a thin wrapper over a
++This repository ships no sample applications. It has one example client (the
++glTF render tool below). Exactly one .NET project is packable - src/CodeBrix.Graphics3D.Cycles - and it is a thin wrapper over a
+ native renderer whose source, build tooling, validation gates and evidence also
+ live here. None of the content listed below is included in the
+ CodeBrix.Graphics3D.Cycles.ApacheLicenseForever package.
+@@ -19,9 +19,72 @@ TEST PROJECT
+ ============
+     tests/CodeBrix.Graphics3D.Cycles.Tests/
+ 
+-The only non-package project in the solution. xUnit v3; run it as described in
+-MAINTAINER-README.txt (TESTING). Its native-host tests skip with a reason when
+-the native host has not been built in the working tree.
++xUnit v3; run it as described in MAINTAINER-README.txt (TESTING). Its
++native-host tests skip with a reason when the native host has not been built in
++the working tree, and its WebGPU tests (WebGpuRenderTests.cs) also skip with a
++reason when no WebGPU adapter is available.
++
++
++GLTF RENDER TOOL (EXAMPLE CLIENT)
++=================================
++    tools/gltf/CycleGltfRender/      project CodeBrix.Graphics3D.Cycles.GltfRender
++
++A console tool in the solution's Tools folder, never packed. It loads a .gltf or
++.glb file with the CodeBrix.Graphics3D.Gltf2.MitLicenseForever package (a
++dependency of this tool only, never of the library), converts it into a Cycles
++scene through the typed API and renders it on the GPU (WebGPU) or the explicit
++CPU reference backend:
++
++    dotnet run --project tools/gltf/CycleGltfRender -c Release -- \
++        MODEL.glb --output film.bin [--backend cpu|gpu] [--compare] \
++        [--width 64 --height 48 --samples 16] [--camera N | --default-camera] \
++        [--native-library PATH]
++    ... --write-sample sample.glb [--sample-sun]   (a procedural test model)
++
++It writes the raw film (film.bin: little-endian float32 RGBA, scene-linear,
++row 0 at the bottom) and a small header (film.bin.json: size, samples, backend,
++sha256); it encodes no images. --compare renders on both backends, writes
++film.cpu.bin and film.gpu.bin and prints the maximum error, practical failures
++and strict differences with the repository criteria (exit code 3 on a practical
++failure). --help prints the mapping below. The native host is found through
++--native-library, then CODEBRIX_CYCLES_NATIVE, then the in-tree Linux build.
++
++What it maps (the closest closures the WebGPU backend has today; the Principled
++BSDF is not available on that backend yet, so glTF materials are approximated):
++
++    glTF                         Cycles
++    baseColorFactor (rgb)        Diffuse BSDF (Lambert) colour
++    metallicFactor > 0           Mix Closure (fac = metallic) of Diffuse and a
++                                 GGX Glossy BSDF coloured by the base colour
++    roughnessFactor              Glossy roughness (both perceptual)
++    emissiveFactor (+ strength)  Emission, added with Add Closure; emission
++                                 sampling off (forward hits only)
++    KHR_materials_unlit          Emission (base colour, strength 1)
++    alphaMode BLEND / MASK       Mix Closure with a Transparent BSDF (fac =
++                                 alpha) / all-or-nothing at alphaCutoff
++    meshes, nodes                one Cycles mesh per glTF mesh (primitives as
++                                 per-face shaders), one object per node
++                                 instance; shared meshes and
++                                 EXT_mesh_gpu_instancing become instances
++    NORMAL, TEXCOORD_0           smooth shading with the vertex normals; "uv"
++                                 corner attribute with v flipped
++    KHR_lights_punctual          directional -> sun (strength = intensity),
++                                 point -> point, spot -> spot (strength =
++                                 intensity x 4 pi); a default sun when none
++    camera                       the first perspective camera (yfov); otherwise
++                                 a default camera framing the scene bounds
++
++Limits, stated plainly: textures are NOT used. Gltf2 carries image bytes but
++does not decode them and the library takes raw pixels only (it never decodes
++image files), so the tool uses base-colour, metallic, roughness and emissive
++factors and warns once when a material has textures. Normal and occlusion maps,
++dielectric specular, clearcoat, transmission, sheen, volume, KHR_texture_transform,
++skins, morph targets, animations, orthographic cameras and light ranges are
++ignored with a warning. Every object's shadow-terminator geometry offset is set
++to 0, because the WebGPU backend does not implement it (a smooth-shaded mesh lit
++by a light otherwise fails to render there). The tests in
++tests/CodeBrix.Graphics3D.Cycles.Tests/GltfSceneConverterTests.cs drive the
++conversion on the procedural sample model.
+ 
+ 
+ NATIVE RENDERER SOURCE
+@@ -66,10 +129,12 @@ HOST-GATE FIXTURES
+ ------------------
+     tools/hosttests/HostLifecycle/   tools/hosttests/ImageModes/
+     tools/hosttests/ColorReload/     tools/hosttests/AndroidHost/
+-    tools/hosttests/NuGet.Config
++    tools/hosttests/WebGpuScenes/    tools/hosttests/NuGet.Config
+ 
+ Console fixtures and an Android app template that consume the .NET wrapper and
+-the native host. They are driven by native/tools/host_gate.py,
++the native host. WebGpuScenes/WebGpuValidationScenes.cs holds the small WebGPU
++validation scenes (glass, diffuse with a sun, textured plane) compiled into
++both the test project and the Android app. They are driven by native/tools/host_gate.py,
+ macos_host_gate.py and build_android_app.py, are not in the solution, and are
+ not family tests. MAINTAINER-README.txt (HOST-GATE FIXTURES) describes them.
+ 
+diff --git a/MAINTAINER-README.txt b/MAINTAINER-README.txt
+index 18efcc86..5468723c 100644
+--- a/MAINTAINER-README.txt
++++ b/MAINTAINER-README.txt
+@@ -50,14 +50,16 @@ This repository produces exactly one NuGet package:
+ 
+     PackageId:  CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
+     Assembly:   CodeBrix.Graphics3D.Cycles
+-    Namespace:  CodeBrix.Graphics3D.Cycles (internal interop:
+-                CodeBrix.Graphics3D.Cycles.Interop)
++    Namespace:  CodeBrix.Graphics3D.Cycles (sub-namespaces Rendering,
++                Diagnostics, Nodes, Generated.*, Interop)
+     Project:    src/CodeBrix.Graphics3D.Cycles/CodeBrix.Graphics3D.Cycles.csproj
+     License:    Apache-2.0
+     Consumer documentation: AGENT-README.txt (repo root)
+ 
+-The package is a thin .NET 10 ownership and marshalling layer over the native
+-Cycles scene host built from this repository (native/host). The native host
++The package is a .NET 10 ownership, marshalling and typing layer over the
++native Cycles scene host built from this repository (native/host): a typed
++facade (CyclesScene), an object model generated from the native registry, and
++a public low-level interop tier (CyclesHost, Interop.CyclesAbi, Interop.Native). The native host
+ renders with a new WebGPU backend, using the unchanged binaries shipped by
+ CodeBrix.WebGpu.Native, or with the explicit CPU reference backend; the
+ osx-arm64 profile uses the native Metal device. The goal is full Cycles parity
+@@ -77,18 +79,36 @@ research that back it.
+ 
+     src/CodeBrix.Graphics3D.Cycles/       the library project (the only packable
+                                           project in the repository)
+-      CyclesHost.cs                       the entry-point class
+-      NativeFailure.cs                    the exception type
+-      Backend.cs, Node.cs, Image.cs,      the public value types and enums, one
+-      PropertyInfo.cs, AttributeValue.cs, per file, all in the root namespace
+-      AttributeDomain.cs,
+-      AttributeFlags.cs, ImageFormat.cs,
++      CyclesScene.cs                      the typed facade entry point
++      CyclesHost.cs                       the by-name host (low-level tier)
++      CyclesException.cs, NativeFailure.cs  the exception types
++      CyclesImage.cs, CyclesVersion.cs,   facade value types and enums
++      CyclesBackend.cs, Transform3x4.cs,
++      NativeStatus.cs, ValueKind.cs,
++      PropertyFlags.cs
++      Backend.cs, Node.cs, Image.cs,      the original public value types and
++      PropertyInfo.cs, AttributeValue.cs, enums, one per file, in the root
++      AttributeDomain.cs,                 namespace (the host-gate fixtures
++      AttributeFlags.cs, ImageFormat.cs,  bind to them; keep them in place)
+       PipelineTier.cs,
+       PipelineTierFlags.cs
+-      Interop/Native.cs                   internal P/Invoke declarations and
+-                                          ABI structures for the native host
+-                                          (namespace CodeBrix.Graphics3D.Cycles.
+-                                          Interop)
++      Rendering/                          RenderSettings, FilmBuffer,
++                                          RenderProgress, RenderStage,
++                                          RenderPass
++      Diagnostics/                        ICapabilityReport, CapabilityReport
++      Nodes/                              hand-written bases of the generated
++                                          model (CyclesNode, ShaderGraphNode),
++                                          ShaderInput/ShaderOutput and the
++                                          catalogue record types
++      Generated/                          GENERATED - never edit by hand (see
++                                          GENERATED OBJECT MODEL): registry.json
++                                          (the generator input), NodeType.cs
++                                          and Scene/, Geometry/, Lights/,
++                                          Shaders/ (one class per node type)
++      Interop/Native.cs                   the public raw P/Invoke declarations
++                                          and ABI structures
++      Interop/CyclesAbi.cs                the public status-code layer, one
++                                          method per C function
+       InternalsVisibleTo.cs               grants the .Tests project access
+ 
+     tests/CodeBrix.Graphics3D.Cycles.Tests/
+@@ -125,9 +145,14 @@ research that back it.
+                                           (audit, notices generator, import and
+                                           binary audits), compatibility/ (the
+                                           compatibility inventory generator and
+-                                          its guard tests)
++                                          its guard tests), managed/ (the typed
++                                          model generator, generate_model.py)
+       tools/hosttests/                    the host-gate fixture applications
+                                           (see HOST-GATE FIXTURES)
++      tools/gltf/CycleGltfRender/         the glTF example client
++                                          (CodeBrix.Graphics3D.Cycles.GltfRender,
++                                          in the solution's Tools folder, not
++                                          packable; see EXTRAS-README.txt)
+     compatibility/                        the machine-readable Cycles
+                                           compatibility inventory (JSON)
+     parity/, prototype/, research/        the parity harness, the original
+@@ -263,13 +288,40 @@ What the tests need:
+     DllImport resolver that loads that file. When it is absent, or the host is
+     not Linux x64, those tests SKIP with the reason (they never fail for a
+     missing native build). Build the native host first to run them.
++  - CyclesSceneTests, CyclesAbiTests, CyclesImageTests, CyclesVersionTests,
++    CapabilityReportTests and NodeTypeTests use the same native host and skip
++    the same way (CapabilityReportTests' bare-device-report parse runs without
++    it). They cover the ABI 1 additions on the CPU reference backend: native
++    progress events, cancellation through the event callback's return value,
++    node deletion and its reference check, image re-upload, pass readback,
++    the motion rule, the version structure and the capability report. The test
++    project sets AllowUnsafeBlocks for the raw callback test in CyclesAbiTests; NodeTypeTests' generator check runs
++    `python3 tools/managed/generate_model.py --check` and skips when python3
++    is not available.
++  - WebGpuRenderTests render the shared validation scenes
++    (tools/hosttests/WebGpuScenes/WebGpuValidationScenes.cs: glass sphere,
++    diffuse with a sun, textured plane through image upload) and the procedural
++    glTF sample on CyclesBackend.Gpu and on CyclesBackend.CpuReference, require
++    the practical criterion and print the maximum error and strict differences
++    (test output; `-showLiveOutput` when running the test assembly directly),
++    check progress events, cancellation and reuse on the GPU backend and the
++    capability report's tier decision. They skip with a reason when no WebGPU
++    adapter is available. Run them once with a cold scratch
++    MESA_SHADER_CACHE_DIR after changing GPU code (the whole class takes about
++    a minute cold on the Intel UHD laptop).
++  - GltfSceneConverterTests drive the glTF example client
++    (tools/gltf/CycleGltfRender, referenced by the test project; it brings the
++    CodeBrix.Graphics3D.Gltf2.MitLicenseForever package into the tests only) on
++    the CPU reference backend with a procedural sample model; no glTF asset is
++    stored in the repository.
+   - The tests never call ConfigureColor or ConfigureTiers, which are
+     process-wide; the host gate covers those.
+ 
+ The native validation is separate from `dotnet test`. The maintained Linux host
+ gate rebuilds the native targets, generates 786 independent CPU reference films,
+ and runs the C and managed lifecycle, color-reload, concurrency and GPU
+-lifecycle checks:
++lifecycle checks, plus the ABI test (abi_consumer.c, CPU and WebGPU) and the
++ABI.md example (example.c), and checks the 48 exports:
+ 
+     python3 native/tools/host_gate.py --output native/work/<new-folder>
+ 
+@@ -288,6 +340,45 @@ original-contribution copyright line. That is why the .cs files in src/ and
+ tests/ start with the two-line header described under CODING CONVENTIONS.
+ 
+ 
++GENERATED OBJECT MODEL
++======================
++src/CodeBrix.Graphics3D.Cycles/Generated/ is produced by
++tools/managed/generate_model.py from Generated/registry.json, a formatted
++snapshot of cbc_host_registry_json (CyclesHost.RegistryJson()) taken from the
++native host built in this tree. The generator is deterministic, needs only
++Python 3 and runs offline; its output is checked in.
++
++    python3 tools/managed/generate_model.py            # regenerate from the snapshot
++    python3 tools/managed/generate_model.py --check    # fail when out of date
++
++After a native change that alters the registry, rebuild the host, capture the
++registry and regenerate:
++
++    python3 native/tools/build_cycles.py --jobs 6
++    (capture CyclesHost.RegistryJson() to native/work/<folder>/registry.json with
++     a small program that registers a DllImport resolver for the built host)
++    python3 tools/managed/generate_model.py --registry native/work/<folder>/registry.json --update-registry
++
++then build (0 warnings) and run the tests; NodeTypeTests compares the catalogue
++with the snapshot and the live registry, checks --check, and round-trips every
++generated property through the native host.
++
++Generation rules: one class per node type, named <PascalCase native name>Node
++(a small rename table in the script covers the light, point-cloud and
++geometry-base names); folders and namespaces by category (Scene, Geometry,
++Lights, Shaders); one property per readable, writable, non-internal input,
++typed from the registry socket type; one enum per enum socket; ShaderInput /
++ShaderOutput accessors (named after the socket UI names, which the native link
++call uses) for shader graph nodes; NodeType.cs carries every type and socket
++with its factory. The few hand-maintained members (shader graph Output, Add and
++Connect, geometry attributes, mesh triangles and deformation motion, texture
++Bind and Unbind) are the
++EXTRAS table in the script and delegate to CyclesScene. Generated files carry
++the two-line copyright/SPDX header and an <auto-generated> banner; every
++public member has an XML doc comment generated from the registry (native
++name, UI name, socket type), so CS1591 stays satisfied without suppression.
++
++
+ HOST-GATE FIXTURES
+ ==================
+     tools/hosttests/HostLifecycle/   managed lifecycle, property, registry,
+@@ -295,6 +386,9 @@ HOST-GATE FIXTURES
+     tools/hosttests/ImageModes/      managed image-mode film checks
+     tools/hosttests/ColorReload/     six A/B/C/A/B/C color configuration rounds
+     tools/hosttests/AndroidHost/     the Android validation-app template
++    tools/hosttests/WebGpuScenes/    WebGpuValidationScenes.cs: the WebGPU
++                                     validation scenes, compiled into the test
++                                     project and the Android app
+     tools/hosttests/NuGet.Config     clears every package source for fixture
+                                      builds
+ 
+@@ -310,8 +404,15 @@ AndroidHost is a template, not a standalone build:
+ native/tools/build_android_app.py copies it, generates callable checks from
+ HostLifecycle/Program.cs and ImageModes/Program.cs, and builds a diagnostic APK
+ that consumes the wrapper and native host on Android ARM64 and x64 (minimum API
+-33) with the explicit CPU reference backend. Native WebGPU lifecycle tests are
+-separate; loading the WebGPU library does not prove GPU rendering in the app.
++33). By default the app runs the explicit CPU reference suite below. Launched
++with the intent extra `mode=webgpu` (android_app_gate.py --mode webgpu) it
++instead renders the three WebGPU validation scenes (glass sphere, diffuse with a
++sun, textured plane through image upload; WebGpuValidationScenes.cs, shared with
++the Linux tests) on CyclesBackend.Gpu and on CyclesBackend.CpuReference inside
++the app, compares the films with the repository criteria, checks progress
++events and cancellation-then-reuse on the GPU backend, and records the
++capability report (pipeline tier decision, compile budget, warnings). The
++builder copies WebGpuChecks.cs and the shared scenes file with the template.
+ 
+ From the repository root, first build both Android RIDs with
+ `python3 tools/build_android.py --rid android-arm64` and
+@@ -344,7 +445,25 @@ device have completed:
+ Repeat --device LABEL,RID,SERIAL for additional devices. Use a new output
+ directory for each build/run. The runner refuses to replace an
+ already-installed validation app and force-stops its own installation after
+-collecting output.
++collecting output. To leave an installed validation app untouched, build with
++`build_android_app.py --application-id com.codebrix.cycles.hostvalidation.<suffix>`
++(the runner reads the id from the build status) and pass `--uninstall` to the
++runner to remove its own installation after the evidence is extracted.
++
++The WebGPU mode, with a result timeout matching the declared device budget:
++
++    python3 native/tools/android_app_gate.py --mode webgpu \
++      --result-timeout 2400 --uninstall \
++      --build-output native/work/android-app/validation-v1 \
++      --output native/work/android-app/device-webgpu-v1 \
++      --device tablet,android-arm64,DEVICE_SERIAL
++
++It recomputes every GPU-versus-CPU comparison from the extracted film bytes,
++requires practical agreement for all three scenes and for the re-render after
++cancellation, records strict differences, and saves the capability report as
++capability-report.json per device. The source-tree pins of the native build,
++the app build and both gates must match: do not edit pinned sources between the
++Android native build and the device runs.
+ 
+ The app tests registry and property readback, cancellation/reuse, disposal
+ during rendering, three lifecycle films and six A/B/C/A/B/C configuration
+@@ -396,8 +515,11 @@ CODING CONVENTIONS
+   csproj.
+ - XML doc comments on every public type and member, including every enum
+   value.
+-- Public types stay in the root namespace CodeBrix.Graphics3D.Cycles; the
+-  internal P/Invoke layer is CodeBrix.Graphics3D.Cycles.Interop.
++- Entry points and shared value types stay in the root namespace
++  CodeBrix.Graphics3D.Cycles; sub-folders are sub-namespaces (Rendering,
++  Diagnostics, Nodes, Generated.*, Interop). Interop.Native and
++  Interop.CyclesAbi are public and mirror the C ABI one to one: add members for
++  new exports, never change existing signatures.
+ - Managed enum values are the C ABI constants; NativeHeaderConstantMatching
+   fails when they drift. Change native/host/cycles_host.h and the enum
+   together.
+@@ -424,9 +546,33 @@ NOTES
+   coverage is still partial (see native/DEVICE.md and docs/PARITY.md).
+ - Color configuration and pipeline-tier configuration are process-wide in the
+   native layer; keep tests that touch them out of the parallel xUnit suite.
+-- The managed API in src/ is the thin layer that a typed, higher-level scene
+-  API will be built on; keep its public signatures stable unless that work
+-  changes them deliberately.
++- Keep the public signatures of CyclesHost and the root value types stable:
++  the host-gate fixtures and the Android validation app compile against them.
++- Every facade behaviour maps onto an existing native export; nothing is
++  simulated in managed code. The ABI 1 additions (native/host/ABI.md) are
++  wired as follows: cbc_host_version -> CyclesVersion; CBC_HOST_GPU,
++  cbc_host_resolve_backend and cbc_host_backend -> Backend.Gpu,
++  CyclesScene.ResolveBackend and CyclesScene.Backend; cbc_host_capabilities_json
++  -> CapabilityReport (device fields from its host.deviceReport object);
++  cbc_host_delete_node -> CyclesScene.Remove (CBC_INVALID becomes
++  InvalidOperationException; the wrapper and, for a shader, its graph nodes
++  are marked removed); cbc_host_image_update -> CyclesImage.Update;
++  cbc_host_motion_positions -> MeshNode.SetMotionPositions (CBC_NOT_READY
++  becomes InvalidOperationException with the motion rule);
++  cbc_host_set_event_callback -> CyclesScene.RenderEventReceived and
++  RenderAsync progress/cancellation; cbc_host_pass_floats and
++  cbc_host_render_passes_json -> AddPass, GetRenderedPasses, ReadPass.
++- Render event callback design: every render (sync and async) takes a
++  per-scene render lock, registers one [UnmanagedCallersOnly] static callback
++  with a GCHandle to a per-render listener, renders, clears the callback and
++  frees the handle. The native host never invokes a callback after
++  cbc_host_render returns or after a clear/destroy returns, so freeing the
++  handle there is safe. The callback returns nonzero when the render's token
++  is cancelled or a handler threw (the exception is rethrown after the render).
++  RenderAsync still re-sends cbc_host_cancel every ProgressInterval while the
++  token is cancelled, for the window before the first native event.
++- A Cycles device error is permanent for the host (ABI.md); CyclesScene sets
++  IsFaulted on a CBC_FAILED render and documents recreation.
+ 
+ 
+ ================================================================================
+diff --git a/docs/PARITY.md b/docs/PARITY.md
+index 9b4e5b64..3002dc38 100644
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -38,7 +38,7 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; emissive triangles fail the ARM64 oracle (sampler and one image mode) and remain unvalidated on ARM64. Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light and transparent shadows; emissive triangle lights fail on the HP compiler (memory) for moving emitters and the sampler probe; static triangle images 0-3 pass. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS). Cold compiles: Samsung specialized pipelines at most 32.6 s, except the emissive-triangle entry with object motion at 205 s; HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 25 s with triangle lights), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 70 s |
+-| Platforms/delivery | Full Linux host only; other host builds, remaining GPU backends/RIDs, .NET package loading and Android application sandbox pending |
++| Platforms/delivery | Full Linux host. The .NET typed API renders on the WebGPU backend and the CPU reference backend on Linux x64 (Intel UHD, Mesa 25.0.7) and inside the Android validation app on the Samsung SM-X700, the HP Android x64 and the Pixel 4 XL (glass, diffuse with a sun, textured plane: practical criterion met, strict differences reported; progress and cancellation checked); the Android host gate passes with 48 exports on the Samsung and the HP. A glTF example client (tools/gltf) converts glTF factor-only materials to the closures the WebGPU backend has. The package still carries no native runtime assets; other host builds and remaining GPU backends/RIDs pending |
+ | Full parity decision | Open. A small matching render cannot establish this. Unsupported features must be reported explicitly, never silently approximated |
+ 
+ Material-driven, multi-bounce image comparisons now exist for a limited scene.
+@@ -63,3 +63,13 @@ for 16 kernels, five closures, four attribute opcodes, six image/environment
+ opcodes and the normal/tangent continuation; no full requirement is marked verified. Native
+ node registration, properties, additional conditional features and most behavior
+ classification remain P00 work. Compiler metadata alone does not establish renderer feature coverage.
++
++## Open items from the native ABI additions
++
++These were found while closing the scene-host ABI gaps (native/host/ABI.md).
++Both are OPEN; neither is fixed.
++
++| Item | Status |
++| --- | --- |
++| Object `tfm` changed after a mesh's first render | OPEN. Likely not applied: the pinned Cycles static-BVH update path bakes a single-user mesh with its object transform at the first render (geometry `transform_applied` stays set and `cbc_host_mesh` does not clear it). The same mechanism is why motion must be configured before the first render. Changing it would alter existing semantics; it needs its own fix and its own gate. Until then, remove and recreate the object and mesh to move them. |
++| A host is dead after a device error | OPEN. A Cycles device error is permanent for that device: after a render fails with `CBC_FAILED` (for example an unimplemented WebGPU feature), every later render on the same host fails with the same message even after the cause is removed (measured on Linux WebGPU). The host must be destroyed and recreated; the managed `CyclesScene.IsFaulted` reports it. |
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index 7ad61b0e..e14ab972 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1423,6 +1423,37 @@ criterion (outputs in `native/work/phaseC4/`):
+   full (reason `table`).
+ - The Android x64 host gate passes on the HP with 38 exports.
+ 
++## Managed WebGPU renders on Android and the 48-export host (2026-10-20)
++
++Android builds of the ABI 1 tree (D2 typed API, D3 48 exports; NDK 29.0.14206865,
++API 33, unchanged WebGPU runtime) pass `android_host_gate.py` on the Samsung
++SM-X700 and the HP (48 exports in both binary reviews; 1,579 films each, 0
++practical failures, 0 required strict differences; GPU lifecycle repeats within
++the strict criterion). The validation app gained a WebGPU mode
++(`android_app_gate.py --mode webgpu`, see MAINTAINER-README.txt): inside the
++installed app the typed API renders three scenes (glass sphere, diffuse with a
++sun, textured plane through image upload; 32x24, 16 samples;
++`tools/hosttests/WebGpuScenes/WebGpuValidationScenes.cs`) on `CyclesBackend.Gpu`
++and on `CyclesBackend.CpuReference`, and the runner recomputes every comparison
++from the extracted films (outputs in `native/work/phaseD5/android/`):
++
++| Device | Glass max / strict | Diffuse+sun max / strict | Textured plane max / strict | Practical | Tier decision | Compile-budget warnings | App time |
++| --- | --- | --- | --- | --- | --- | --- | --- |
++| Samsung SM-X700 (Adreno 730) | 2.32e-6 / 301 | 4.17e-7 / 549 | 2.38e-7 / 30 | 0 | full, `table` (60 s budget) | none | 178 s |
++| HP Android x64 (Intel Xe, Mesa 24.0.8) | 3.71e-5 / 319 | 1.43e-6 / 567 | 2.38e-7 / 32 | 0 | full, `table` (60 s budget) | none | 195 s |
++| Pixel 4 XL (Adreno 640), optional gauge | 2.26e-6 / 315 | 4.17e-7 / 537 | 2.38e-7 / 35 | 0 | full, `table` (20 s budget) | `shade_surface_light` 121-125 s; `shade_surface` 24 s, `prepare_surface` 25 s, `shade_background` 21 s | 641 s |
++
++Strict counts are out of 3,072 floats per film. On every device the GPU render
++reported native progress events, a render cancelled from its first progress
++event threw `OperationCanceledException` without faulting the device, and a
++re-render on the same scene met the practical criterion. GPU render times are
++dominated by first-use pipeline compiles (Samsung 40-48 s, HP 37-64 s, Pixel
++135-181 s per scene). The ARM64 CPU reference films are bit-identical between
++the Samsung and the Pixel. Smooth-shaded objects in these scenes use a zero
++shadow-terminator geometry offset: the WebGPU device does not implement that
++offset (found on Linux; a smooth mesh lit by a sun otherwise fails with
++"WebGPU scheduler kernel reported invalid data (mask 1)").
++
+ ## Open device items (2026-10-20)
+ 
+ These device failures from the integrated-tree runs are open. Each is
+diff --git a/native/tools/android_app_gate.py b/native/tools/android_app_gate.py
+index 4f843bff..a2eb0776 100644
+--- a/native/tools/android_app_gate.py
++++ b/native/tools/android_app_gate.py
+@@ -9,6 +9,7 @@ from device_gate import sha,save
+ from render_gate import inputs
+ from android_toolchain import TARGETS
+ APP_ID='com.codebrix.cycles.hostvalidation'
++ACTIVITY='com.codebrix.cycles.hostvalidation.MainActivity'
+ 
+ 
+ def main():
+@@ -17,18 +18,23 @@ def main():
+     parser.add_argument('--output',type=Path,required=True)
+     parser.add_argument('--device',action='append',required=True,metavar='LABEL,RID,SERIAL')
+     parser.add_argument('--adb',default=str(Path.home()/'Android/Sdk/platform-tools/adb'))
++    parser.add_argument('--mode',choices=['cpu','webgpu'],default='cpu',
++                        help='cpu: the CPU reference suite; webgpu: GPU versus CPU reference films rendered in the app')
++    parser.add_argument('--result-timeout',type=int,default=600,help='Seconds to wait for the app result')
++    parser.add_argument('--uninstall',action='store_true',help='Uninstall the app after its evidence is extracted')
+     args=parser.parse_args();root=args.build_output.resolve();out=args.output.resolve();app=root/'app'
+     out.mkdir(parents=True,exist_ok=False)
+     status=json.loads((root/'status.json').read_text());inspection=json.loads((app/'apk-inspection.json').read_text())
+     assert status['complete'] and status['passed'] and inspection['passed']
+     apk=Path(inspection['apk']);assert sha(apk)==inspection['apkSha256']==status['apkSha256']
++    app_id=status.get('applicationId',APP_ID)
+     payload=json.loads((app/'payload.json').read_text());build_pin=json.loads((root/'invocation.json').read_text())
+     assert all(sha(Path(p))==digest for p,digest in {**build_pin['inputSha256'],**build_pin['stagedSha256']}.items())
+     sources=inputs();devices=[tuple(d.split(',')) for d in args.device]
+     assert all(len(d)==3 and d[1] in TARGETS and d[0].isalnum() for d in devices)
+     assert len({d[0] for d in devices})==len({d[2] for d in devices})==len(devices)
+     save(out/'invocation.json',dict(sourceSha256=sources,runnerSha256=sha(Path(__file__)),apkSha256=sha(apk),
+-        inspectionSha256=sha(app/'apk-inspection.json'),devices=devices))
++        inspectionSha256=sha(app/'apk-inspection.json'),devices=devices,mode=args.mode,resultTimeoutSeconds=args.result_timeout))
+     save(out/'status.json',dict(complete=False,phase='devices'))
+ 
+     def run(label,rid,serial):
+@@ -43,24 +49,26 @@ def main():
+         try:
+             processes=call(['shell','ps','-A','-o','PID,ARGS'],'prior-processes')[1].decode()
+             assert not any('/data/local/tmp/codebrix-' in line for line in processes.splitlines()),'Device native test still running; do not overlap workloads'
+-            existing=call(['shell','pm','path',APP_ID],'prior-app',check=False)[1]
++            existing=call(['shell','pm','path',app_id],'prior-app',check=False)[1]
+             assert b'package:' not in existing,'Validation app already installed; preserve it until its evidence is reviewed'
+             call(['install',str(apk)],'install',timeout=300);installed=True
+-            path=call(['shell','pm','path',APP_ID],'installed-path')[1].decode().strip().removeprefix('package:')
++            path=call(['shell','pm','path',app_id],'installed-path')[1].decode().strip().removeprefix('package:')
+             assert call(['shell','sha256sum',path],'installed-hash')[1].decode().split()[0]==sha(apk)
+-            call(['shell','am','start','-W','-n',APP_ID+'/.MainActivity'],'launch')
+-            state['phase']='managed CPU lifecycle and configuration reloads';save(folder/'status.json',state)
+-            report=None;deadline=time.monotonic()+600;attempt=0
++            call(['shell','am','start','-W','-n',app_id+'/'+ACTIVITY,*(['--es','mode','webgpu'] if args.mode=='webgpu' else [])],'launch')
++            state['phase']='managed WebGPU versus CPU reference films' if args.mode=='webgpu' else 'managed CPU lifecycle and configuration reloads'
++            save(folder/'status.json',state);started=time.monotonic()
++            report=None;deadline=time.monotonic()+args.result_timeout;attempt=0
+             while time.monotonic()<deadline:
+-                code,data=call(['shell','run-as',APP_ID,'cat','files/result.json'],'result-'+str(attempt),check=False)
++                code,data=call(['shell','run-as',app_id,'cat','files/result.json'],'result-'+str(attempt),check=False)
+                 if code==0:
+                     try:report=json.loads(data);break
+                     except json.JSONDecodeError:pass
+                 attempt+=1;time.sleep(2)
+             assert report is not None,'Android application result timeout'
++            state['appSeconds']=round(time.monotonic()-started,1)
+             save(folder/'app-result.json',report)
+             # Preserve complete output before checking reported acceptance.
+-            _,archive=call(['exec-out','run-as',APP_ID,'tar','-cf','-','files/output','files/result.json','files/native-maps.txt'],
++            _,archive=call(['exec-out','run-as',app_id,'tar','-cf','-','files/output','files/result.json','files/native-maps.txt'],
+                            'outputs',check=False,timeout=240)
+             extracted=folder/'extracted';extracted.mkdir()
+             with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
+@@ -73,6 +81,8 @@ def main():
+                         assert member.isfile(),'Unexpected output archive member'
+                         target.parent.mkdir(parents=True,exist_ok=True)
+                         with bundle.extractfile(member) as data:target.write_bytes(data.read())
++            if args.mode=='webgpu':
++                webgpu(report,extracted,folder,rid,state);print(label+': '+json.dumps(state),flush=True);return True
+             assert report['passed'],report
+             assert all(report[field] for field in ['actualAndroidApp','explicitCpuReference','cancellationAndReuse','disposeDuringRender','propertyReadbackChecks'])
+             assert report['architecture']==('Arm64' if rid=='android-arm64' else 'X64')
+@@ -116,8 +126,44 @@ def main():
+             (folder/'failure-traceback.txt').write_text(traceback.format_exc())
+             state.update(complete=True,passed=False,error=repr(error));print(label+': '+repr(error),flush=True);return False
+         finally:
+-            if installed:call(['shell','am','force-stop',APP_ID],'force-stop',check=False)
++            if installed:call(['shell','am','force-stop',app_id],'force-stop',check=False)
++            if installed and args.uninstall:
++                state['uninstalled']=call(['uninstall',app_id],'uninstall',check=False)[0]==0
+             save(folder/'status.json',state)
++    def webgpu(report,extracted,folder,rid,state):
++        # Independent recomputation of the in-app GPU versus CPU reference comparison.
++        assert report['mode']=='webgpu' and report['actualAndroidApp'],report
++        assert report['architecture']==('Arm64' if rid=='android-arm64' else 'X64')
++        assert report['nativeDirectory'].startswith('/data/app/')
++        rows=[]
++        for scene in report['scenes']:
++            gpu=extracted/'files/output/webgpu'/(scene['name']+'.gpu.rgba.bin');cpu=extracted/'files/output/webgpu'/(scene['name']+'.cpu.rgba.bin')
++            count=scene['width']*scene['height']*4
++            a,b=struct.unpack('<%df'%count,gpu.read_bytes()),struct.unpack('<%df'%count,cpu.read_bytes())
++            assert all(math.isfinite(x) for x in a+b)
++            errors=[abs(x-y) for x,y in zip(a,b)]
++            row=dict(scene=scene['name'],gpuSha256=sha(gpu),cpuSha256=sha(cpu),bitwiseEqual=gpu.read_bytes()==cpu.read_bytes(),
++                maximumAbsoluteError=max(errors),practicalFailures=sum(e>5e-5+2e-4*abs(y) for e,y in zip(errors,b)),
++                strictDifferences=sum(e>1e-7+1e-7*abs(y) for e,y in zip(errors,b)),gpuSeconds=scene['gpuSeconds'],
++                cpuSeconds=scene['cpuSeconds'],progressEvents=scene['progressEvents'],pipelineTier=scene['pipelineTier'],warnings=scene['warnings'])
++            assert row['gpuSha256']==scene['gpuSha256'] and row['cpuSha256']==scene['cpuSha256']
++            assert row['practicalFailures']==scene['practicalFailures'] and row['strictDifferences']==scene['strictDifferences']
++            rows.append(row)
++        save(folder/'comparisons.json',rows)
++        capability=report['capability']
++        (folder/'capability-report.json').write_text(capability['json'])
++        state.update(scenes=len(rows),practicalFailures=sum(r['practicalFailures'] for r in rows),
++            strictDifferences=sum(r['strictDifferences'] for r in rows),maximumAbsoluteError=max(r['maximumAbsoluteError'] for r in rows),
++            pipelineTier=capability['pipelineTier'],deviceDescription=capability['deviceDescription'],
++            capabilityWarnings=capability['warnings'],cancellation=report['cancellation'],perScene=rows)
++        assert report['passed'],report
++        assert len(rows)==3 and state['practicalFailures']==0
++        assert report['cancellation']['cancelled'] and not report['cancellation']['faultedAfterCancel']
++        assert report['cancellation']['reRenderPracticalFailures']==0
++        assert all(r['progressEvents']>0 for r in rows)
++        assert inputs()==sources and sha(apk)==inspection['apkSha256']
++        state.update(complete=True,passed=True,phase='complete')
++
+     with concurrent.futures.ThreadPoolExecutor(max_workers=len(devices)) as pool:
+         futures=[pool.submit(run,*device) for device in devices];passed=[f.result() for f in futures]
+     save(out/'status.json',dict(complete=True,passed=all(passed),phase='complete'))
+diff --git a/native/tools/build_android_app.py b/native/tools/build_android_app.py
+index 36306e8d..429d749d 100644
+--- a/native/tools/build_android_app.py
++++ b/native/tools/build_android_app.py
+@@ -97,15 +97,20 @@ def main():
+     parser.add_argument('--templates',type=Path,default=REPO/'tools/hosttests/AndroidHost')
+     parser.add_argument('--native-review',type=Path,help='Reuse a matching native binary review, or inspect current native builds when omitted')
+     parser.add_argument('--references',type=Path,required=True)
++    parser.add_argument('--application-id',default='com.codebrix.cycles.hostvalidation',
++                        help='Android package id; a separate id leaves an installed validation app untouched')
+     args=parser.parse_args();out=args.output.resolve();templates=args.templates.resolve();refs=args.references.resolve()
+     out.mkdir(parents=True,exist_ok=False);app=out/'app';app.mkdir()
+     source_pin=inputs();pins={str(Path(__file__).resolve()):sha(Path(__file__))}
+     state=dict(complete=False,phase='staging');save(out/'status.json',state)
+     try:
+-        for name in ['AndroidHost.csproj','AndroidManifest.xml','MainActivity.cs','FilmComparison.cs']:
++        for name in ['AndroidHost.csproj','AndroidManifest.xml','MainActivity.cs','FilmComparison.cs','WebGpuChecks.cs']:
+             path=templates/name
+             assert path.is_file(),path
+             shutil.copy2(path,app/path.name);pins[str(path)]=sha(path)
++        # WebGPU validation scenes shared with the Linux managed tests.
++        shared=REPO/'tools/hosttests/WebGpuScenes/WebGpuValidationScenes.cs'
++        shutil.copy2(shared,app/shared.name);pins[str(shared)]=sha(shared)
+         for project,name in [('HostLifecycle','HostChecks'),('ImageModes','ImageChecks')]:
+             source=REPO/'tools/hosttests'/project/'Program.cs'
+             (app/(name+'.cs')).write_text(checks(source,name));pins[str(source)]=sha(source)
+@@ -170,15 +175,15 @@ def main():
+         staged={str(p):sha(p) for p in app.rglob('*') if p.is_file()}
+         command=['dotnet','build',str(app/'AndroidHost.csproj'),'-c','Debug','--configfile',str(REPO/'tools/hosttests/NuGet.Config'),'--nologo',
+             '-p:CodeBrixSourceRoot='+str(REPO),'-p:JavaSdkDirectory=/usr/lib/jvm/java-21-openjdk-amd64',
+-            '-p:AndroidSdkDirectory='+str(Path.home()/'Android/Sdk')]
++            '-p:AndroidSdkDirectory='+str(Path.home()/'Android/Sdk'),'-p:ApplicationId='+args.application_id]
+         save(out/'invocation.json',dict(sourceSha256=source_pin,inputSha256=pins,stagedSha256=staged,command=command))
+         state['phase']='build';save(out/'status.json',state)
+         with (out/'build.log').open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=600)
+-        apk=app/'bin/Debug/net10.0-android/com.codebrix.cycles.hostvalidation-Signed.apk'
++        apk=app/'bin/Debug/net10.0-android'/(args.application_id+'-Signed.apk')
+         state['phase']='inspect';save(out/'status.json',state);inspect(apk,app,payload,native,notices)
+         assert inputs()==source_pin
+         assert all(sha(Path(path))==digest for path,digest in {**pins,**staged}.items())
+-        state.update(complete=True,passed=True,phase='complete',apk=str(apk),apkSha256=sha(apk),nativePayloads=len(native),noticeAssets=len(notices),references=len(payload['references']))
++        state.update(complete=True,passed=True,phase='complete',applicationId=args.application_id,apk=str(apk),apkSha256=sha(apk),nativePayloads=len(native),noticeAssets=len(notices),references=len(payload['references']))
+         print(json.dumps(state),flush=True)
+     except Exception as error:
+         state.update(complete=True,passed=False,error=repr(error));raise
+diff --git a/tests/CodeBrix.Graphics3D.Cycles.Tests/CodeBrix.Graphics3D.Cycles.Tests.csproj b/tests/CodeBrix.Graphics3D.Cycles.Tests/CodeBrix.Graphics3D.Cycles.Tests.csproj
+index f790c3cc..d3f9bc01 100644
+--- a/tests/CodeBrix.Graphics3D.Cycles.Tests/CodeBrix.Graphics3D.Cycles.Tests.csproj
++++ b/tests/CodeBrix.Graphics3D.Cycles.Tests/CodeBrix.Graphics3D.Cycles.Tests.csproj
+@@ -2,10 +2,17 @@
+ 
+   <PropertyGroup>
+     <TargetFramework>net10.0</TargetFramework>
++    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+   </PropertyGroup>
+ 
+   <ItemGroup>
+     <ProjectReference Include="..\..\src\CodeBrix.Graphics3D.Cycles\CodeBrix.Graphics3D.Cycles.csproj" />
++    <ProjectReference Include="..\..\tools\gltf\CycleGltfRender\CodeBrix.Graphics3D.Cycles.GltfRender.csproj" />
++  </ItemGroup>
++
++  <ItemGroup>
++    <!-- Shared with the Android validation app, so both render the same WebGPU scenes. -->
++    <Compile Include="..\..\tools\hosttests\WebGpuScenes\WebGpuValidationScenes.cs" Link="Shared\WebGpuValidationScenes.cs" />
+   </ItemGroup>
+ 
+   <ItemGroup>
+diff --git a/tools/hosttests/AndroidHost/MainActivity.cs b/tools/hosttests/AndroidHost/MainActivity.cs
+index 1bac78d4..5aaf8fff 100644
+--- a/tools/hosttests/AndroidHost/MainActivity.cs
++++ b/tools/hosttests/AndroidHost/MainActivity.cs
+@@ -20,6 +20,34 @@ public sealed class MainActivity : Activity
+         {
+             object report;
+             List<FilmComparison> comparisons = new();
++            // "webgpu" (am start --es mode webgpu) renders the shared WebGPU validation scenes on the GPU and
++            // CPU reference backends and compares them; any other mode runs the CPU reference suite.
++            string mode = Intent?.GetStringExtra("mode") ?? "cpu";
++            if (mode == "webgpu")
++            {
++                try
++                {
++                    Dictionary<string, object> result = await WebGpuChecks.Run(Path.Combine(directory, "output", "webgpu"));
++                    string nativeDirectory = ApplicationInfo!.NativeLibraryDir!;
++                    string maps = File.ReadAllText("/proc/self/maps");
++                    foreach (string name in new[] { "libcodebrix_cycles_host.so", "libcodebrix_wgpu.so" })
++                        if (!maps.Contains(Path.Combine(nativeDirectory, name), StringComparison.Ordinal))
++                            throw new Exception("Native library not mapped from app installation: " + name);
++                    File.WriteAllText(Path.Combine(directory, "native-maps.txt"), maps);
++                    result["actualAndroidApp"] = true;
++                    result["architecture"] = RuntimeInformation.ProcessArchitecture.ToString();
++                    result["apiLevel"] = (int)Build.VERSION.SdkInt;
++                    result["nativeDirectory"] = nativeDirectory;
++                    report = result;
++                }
++                catch (Exception error) { report = new { passed = false, mode, error = error.ToString() }; }
++                string webgpuJson = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
++                string webgpuTemporary = Path.Combine(directory, "result.tmp");
++                File.WriteAllText(webgpuTemporary, webgpuJson);
++                File.Move(webgpuTemporary, Path.Combine(directory, "result.json"), true);
++                RunOnUiThread(() => text.Text = webgpuJson);
++                return;
++            }
+             try
+             {
+                 using Stream manifestStream = Assets!.Open("payload.json");

@@ -22,36 +22,11 @@ fn triangle_light_acos(value:f32)->f32{
     let product=trig_product(root,root);
     let residual=rounded_add(rounded_add(x.x,-product.x),rounded_add(x.y,-product.y));
     let z=vec2<f32>(root,rounded_divide(residual,2.0*root));
+    // One Horner step per iteration: the same operations in the same order as
+    // the unrolled form, but one inlined copy instead of 29 per call site.
+    var coefficients=array<vec2<f32>,29>(vec2<f32>(0.0018622264033183455,3.0847819958157441e-12),vec2<f32>(0.0019650335889309645,2.7346319219495596e-11),vec2<f32>(0.0020776609890162945,4.3501873110696199e-11),vec2<f32>(0.0022014740388840437,-6.5173905335058624e-11),vec2<f32>(0.0023380918428301811,4.9281793923494632e-11),vec2<f32>(0.0024894487578421831,-7.9595299535412112e-11),vec2<f32>(0.0026578705292195082,1.0898778190701619e-10),vec2<f32>(0.0028461783658713102,3.5237631822865323e-11),vec2<f32>(0.0030578216537833214,-4.5252907324155878e-12),vec2<f32>(0.0032970595639199018,-6.0446416969006656e-11),vec2<f32>(0.0035692052915692329,1.0225670180399882e-10),vec2<f32>(0.0038809645920991898,-3.3261520707844605e-11),vec2<f32>(0.0042409072630107403,-1.6933137704511214e-10),vec2<f32>(0.0046601435169577599,-3.004266366929409e-11),vec2<f32>(0.005153309553861618,1.2845828654267644e-10),vec2<f32>(0.0057400376535952091,1.7246714473229119e-11),vec2<f32>(0.0064472104422748089,-1.3038516013391677e-10),vec2<f32>(0.0073125259950757027,-1.2147685721913826e-10),vec2<f32>(0.0083903353661298752,4.4348693988005561e-10),vec2<f32>(0.0097616091370582581,3.9213582034292038e-10),vec2<f32>(0.011551801115274429,-2.1913472425527658e-10),vec2<f32>(0.013964843936264515,-1.8626451422920631e-10),vec2<f32>(0.017352763563394547,8.5968237736877562e-10),vec2<f32>(0.022372158244252205,8.4665688696028418e-10),vec2<f32>(0.0303819440305233,4.139211438880519e-10),vec2<f32>(0.0446428582072258,-1.0643686557121335e-09),vec2<f32>(0.075000002980232239,-2.9802322415450888e-09),vec2<f32>(0.1666666716337204,-4.9670537405344106e-09),vec2<f32>(1,0));
     var polynomial=vec2<f32>(0.0017680810997262597,2.0789158589051837e-11);
-    polynomial=trig_coeff(vec2<f32>(0.0018622264033183455,3.0847819958157441e-12),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0019650335889309645,2.7346319219495596e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0020776609890162945,4.3501873110696199e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0022014740388840437,-6.5173905335058624e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0023380918428301811,4.9281793923494632e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0024894487578421831,-7.9595299535412112e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0026578705292195082,1.0898778190701619e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0028461783658713102,3.5237631822865323e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0030578216537833214,-4.5252907324155878e-12),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0032970595639199018,-6.0446416969006656e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0035692052915692329,1.0225670180399882e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0038809645920991898,-3.3261520707844605e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0042409072630107403,-1.6933137704511214e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0046601435169577599,-3.004266366929409e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.005153309553861618,1.2845828654267644e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0057400376535952091,1.7246714473229119e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0064472104422748089,-1.3038516013391677e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0073125259950757027,-1.2147685721913826e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0083903353661298752,4.4348693988005561e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0097616091370582581,3.9213582034292038e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.011551801115274429,-2.1913472425527658e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.013964843936264515,-1.8626451422920631e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.017352763563394547,8.5968237736877562e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.022372158244252205,8.4665688696028418e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0303819440305233,4.139211438880519e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0446428582072258,-1.0643686557121335e-09),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.075000002980232239,-2.9802322415450888e-09),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.1666666716337204,-4.9670537405344106e-09),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(1,0),trig_mul(polynomial,x));
+    for(var k=0u;k<29u;k++){polynomial=trig_coeff(coefficients[k],trig_mul(polynomial,x));}
     let result=2.0*trig_mul(z,polynomial);
     // Retain the subtraction residual before the final rounding. Rounding the
     // high subtraction first can move acos by one ULP and amplify triangle samples.
@@ -67,7 +42,34 @@ fn triangle_light_rotation(a:vec4<f32>,b:vec4<f32>,t:f32)->vec4<f32>{
     let costheta=motion_dot4(a,b);
     if(costheta>0.9995){return triangle_light_normalize4(motion_add4((1.0-t)*a,t*b));}
     let theta=triangle_light_acos(costheta);let perpendicular=triangle_light_normalize4(motion_add4(b,-a*costheta));
-    let angle=theta*t;let sc=motion_sincos(angle);return motion_add4(a*sc.y,perpendicular*sc.x);
+    let angle=theta*t;let sc=triangle_light_motion_sincos(angle);return motion_add4(a*sc.y,perpendicular*sc.x);
+}
+// precise_disk_sincos (wavefront_trig.wgsl) with each Horner series as a loop:
+// the same operations in the same order, one inlined step instead of 7+8.
+fn triangle_light_disk_sincos(angle:f32)->vec2<f32>{
+    if(angle==0.0){return vec2<f32>(angle,1);}
+    var x=vec2<f32>(angle,0);let swap=angle>0.7853981633974483;
+    if(swap){x=vec2<f32>(rounded_add(1.5707963705062866,-angle),-4.3711390001862426e-8);}
+    if(abs(x.x)<0.000244140625){return select(vec2<f32>(rounded_add(x.x,x.y),1),vec2<f32>(1,rounded_add(x.x,x.y)),swap);}
+    let z=trig_mul(x,x);
+    var sine_coefficients=array<vec2<f32>,7>(vec2<f32>(1.6059044372074283e-10,-5.352526511562726e-18),vec2<f32>(-2.5052107943679403e-08,-4.4176230446483665e-16),vec2<f32>(2.7557318844628753e-06,3.793571224297229e-14),vec2<f32>(-0.00019841270113829523,2.725596874933456e-12),vec2<f32>(0.008333333767950535,-4.34617203337595e-10),vec2<f32>(-0.1666666716337204,4.967053879312289e-09),vec2<f32>(1.0,0.0));
+    var s=vec2<f32>(-7.647163609812713e-13,-1.2200710471178288e-20);
+    for(var k=0u;k<7u;k++){s=trig_coeff(sine_coefficients[k],trig_mul(s,z));}
+    var cosine_coefficients=array<vec2<f32>,8>(vec2<f32>(-1.147074536050896e-11,-2.372207689231238e-19),vec2<f32>(2.0876755879584152e-09,1.1082839809204342e-16),vec2<f32>(-2.755731998149713e-07,7.575112209051195e-15),vec2<f32>(2.4801587642286904e-05,-3.40699609366682e-13),vec2<f32>(-0.0013888889225199819,3.3631094437103215e-11),vec2<f32>(0.0416666679084301,-1.2417634698280722e-09),vec2<f32>(-0.5,0.0),vec2<f32>(1.0,0.0));
+    var c=vec2<f32>(4.7794772561329454e-14,7.62544404448643e-22);
+    for(var k=0u;k<8u;k++){c=trig_coeff(cosine_coefficients[k],trig_mul(c,z));}
+    s=trig_mul(s,x);
+    let sine=rounded_add(s.x,s.y);let cosine=rounded_add(c.x,c.y);
+    return select(vec2<f32>(sine,cosine),vec2<f32>(cosine,sine),swap);
+}
+// motion_sincos (wavefront_motion.wgsl) with one disk sine/cosine call site (the shared helper has two):
+// the same reduction, polynomial and correction, in the same order.
+fn triangle_light_motion_sincos(angle:f32)->vec2<f32>{
+    let reduce=!(angle<=2.356194490192345);
+    let sc=triangle_light_disk_sincos(select(angle,rounded_add(3.1415927410125732,-angle),reduce));
+    if(!reduce){return sc;}
+    let low=-8.742278000372485e-8;
+    return vec2<f32>(rounded_add(sc.x,sc.y*low),-rounded_add(sc.y,-sc.x*low));
 }
 fn triangle_light_compose(q:vec4<f32>,y:vec4<f32>,z:vec4<f32>,w:vec4<f32>)->NativeTransform{
     let q0=1.4142135623730951*q.w;let q1=1.4142135623730951*q.x;
@@ -137,7 +139,7 @@ fn triangle_light_point(t:NativeTransform,v:vec3<f32>)->vec3<f32>{
 }
 // Negative time requests the center positions and center object transform used
 // by the native host CDF, even when the sampled geometry itself is moving.
-fn triangle_light_vertices(object:u32,prim:u32,time:f32)->TriangleVertices{
+fn triangle_light_vertices_compute(object:u32,prim:u32,time:f32)->TriangleVertices{
     var v:TriangleVertices;
     if(object>=table_count(G_objects)||object>=table_count(G_object_flag)||prim>=table_count(G_tri_vindex)){fail();v.error=1u;return v;}
     let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
@@ -146,6 +148,46 @@ fn triangle_light_vertices(object:u32,prim:u32,time:f32)->TriangleVertices{
     }else{v=native_triangle_vertices(object,prim,select(PRIMITIVE_TRIANGLE,PRIMITIVE_MOTION_TRIANGLE,(flags&SD_OBJECT_HAS_VERTEX_MOTION)!=0u),time);}
     if((flags&SD_OBJECT_TRANSFORM_APPLIED)==0u){let t=triangle_light_object(object,select(time,0.5,time<0.0));v.a=triangle_light_point(t,v.a);v.b=triangle_light_point(t,v.b);v.c=triangle_light_point(t,v.c);}
     if(load_word(p(17u))!=0u){v.error=1u;}return v;
+}
+// Drivers inline every WGSL call, so each call site of the vertex computation
+// (motion transform interpolation with its arccosine and sine/cosine) was a full
+// copy: the forward-hit MIS weight and the emitter sample each needed the path
+// time and centre-time vertices, four copies that exhausted the HP Intel
+// compiler's memory. triangle_light_prefill computes every set an invocation can
+// use, in the original evaluation order, from one call site; the sampling and
+// forward-PDF code reads them back by (object, prim, time).
+struct TriangleLightCacheEntry {key:vec3<u32>,v:TriangleVertices}
+var<private> triangle_light_cache:array<TriangleLightCacheEntry,4>;
+var<private> triangle_light_cache_count:u32;
+fn triangle_light_vertices(object:u32,prim:u32,time:f32)->TriangleVertices{
+    let key=vec3<u32>(object,prim,bitcast<u32>(time));
+    for(var k=0u;k<triangle_light_cache_count;k++){if(all(triangle_light_cache[k].key==key)){return triangle_light_cache[k].v;}}
+    fail();var v:TriangleVertices;v.error=1u;return v;
+}
+// The light CDF uses the centre-time area of moving or instanced emitters.
+fn triangle_light_needs_center(object:u32)->bool{
+    if(object>=table_count(G_object_flag)){return false;}let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
+    return (flags&SD_OBJECT_HAS_VERTEX_MOTION)!=0u||(flags&SD_OBJECT_TRANSFORM_APPLIED)==0u;
+}
+// emission/sample: whether the caller will evaluate the forward-hit MIS weight
+// and the light sample (the same conditions as shade_surface_light).
+fn triangle_light_prefill(index:u32,sd:SurfaceData,emission:bool,sample:bool){
+    triangle_light_cache_count=0u;
+//#if LIGHT_TRIANGLE
+    var keys:array<vec3<u32>,4>;var count=0u;
+    if(emission&&(state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u){
+        keys[count]=vec3<u32>(sd.object_id,sd.prim,bitcast<u32>(sd.time));count++;
+        if(triangle_light_needs_center(sd.object_id)){keys[count]=vec3<u32>(sd.object_id,sd.prim,bitcast<u32>(-1.0));count++;}
+    }
+    if(sample){let selection=light_select(index);
+        if(selection.prim>=0){let object=load_word(selection.distribution+LD_object);
+            keys[count]=vec3<u32>(object,u32(selection.prim),bitcast<u32>(sd.time));count++;
+            if(triangle_light_needs_center(object)){keys[count]=vec3<u32>(object,u32(selection.prim),bitcast<u32>(-1.0));count++;}}}
+    for(var k=0u;k<count;k++){
+        triangle_light_cache[k]=TriangleLightCacheEntry(keys[k],triangle_light_vertices_compute(keys[k].x,keys[k].y,bitcast<f32>(keys[k].z)));
+        triangle_light_cache_count=k+1u;
+    }
+//#endif
 }
 fn triangle_light_selection_area(object:u32,prim:u32,area:f32)->f32{
     let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));

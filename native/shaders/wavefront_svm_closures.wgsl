@@ -109,8 +109,14 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
         case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:{bytes=SZ_RefractionBsdfData;}
         case CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:{bytes=SZ_GlassBsdfData;}
         case CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID:{bytes=SZ_GlossyBsdfData;}
+//#if SVM_BSDF_PRINCIPLED
+        case CLOSURE_BSDF_PRINCIPLED_ID:{bytes=SZ_PrincipledBsdfData;}
+//#endif
         default:{svm_error(s,16u);return;}}
     let data=svm_take(s,bytes);if((*s).error!=0u||mix_weight==0.0){return;}
+//#if SVM_BSDF_PRINCIPLED
+    if(kind==CLOSURE_BSDF_PRINCIPLED_ID){svm_principled(s,data,mix_weight,flag,visibility);return;}
+//#endif
     // Scene specialization (pipelines.h) removes closure setup the uploaded SVM
     // programs cannot reach; reaching a removed handler is reported, never shaded.
     if(kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID||kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID){

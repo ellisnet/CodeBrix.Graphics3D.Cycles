@@ -1,0 +1,24 @@
+linux-gates/glass-render                 cpu-x64-linux          [0.0109314, 0.00838235]
+linux-gates/textured-plane               cpu-x64-linux          [0.010179, 0.00620221]
+linux-gates/world-volume                 cpu-x64-linux          [0.0155031, 0.0117543]
+linux-gates/closed-volumes               cpu-x64-linux          [0.0194518, 0.0139245]
+linux-gates/glass-render                 wgsl-linux-intel       [15.9222, 0.243886]
+linux-gates/textured-plane               wgsl-linux-intel       [14.8646, 0.314082]
+linux-gates/world-volume                 wgsl-linux-intel       FAILED: codebrix_cycles_oracle: cbc_host_render returned 3: WebGPU surface data passes not implemented
+linux-gates/closed-volumes               wgsl-linux-intel       FAILED: codebrix_cycles_oracle: cbc_host_render returned 3: WebGPU surface data passes not implemented
+linux-gates/glass-render (64x48)
+  cpu-x64-linux      samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel   samples 8     repeats 2 bitwise=False repeatMaxAbs=4.77e-07 nonfinite=0
+  candidate vs reference                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux      2.38e-07   3.61e-07   1.35e-08             0          2
+      worst x=28 y=35 G: ref 0.412426949 got 0.4124268 (0.00112x tolerance)
+  PASSED
+
+linux-gates/textured-plane (64x48)
+  cpu-x64-linux      samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel   samples 8     repeats 2 bitwise=False repeatMaxAbs=3.81e-06 nonfinite=0
+  candidate vs reference                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux      5.54e-06   0.000111   1.08e-07             0        205
+      worst x=49 y=31 B: ref 0.550571024 got 0.550576568 (0.0346x tolerance)
+  PASSED
+

@@ -1,0 +1,690 @@
+{
+  "glass_render": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 21.2,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 53423,
+        "moduleMs": 7.99307,
+        "pipelineMs": 537.795,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 76495,
+        "moduleMs": 13.9469,
+        "pipelineMs": 1305.97,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 257255,
+        "moduleMs": 39.7559,
+        "pipelineMs": 1670.63,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 257255,
+        "moduleMs": 39.7673,
+        "pipelineMs": 2578.01,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 257255,
+        "moduleMs": 39.767,
+        "pipelineMs": 4973.88,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 257255,
+        "moduleMs": 41.1235,
+        "pipelineMs": 2194.87,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 257255,
+        "moduleMs": 41.1415,
+        "pipelineMs": 6538.04,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 6538.04,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "flow": "linux-prepared",
+      "oracleSha256": "10a9bf9aa7938a0d348a0757e452cae950216a9bdca98943d8ebb8d7a79b369c",
+      "hostRejudgedPassed": false,
+      "rows": [
+        {
+          "key": "image",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        }
+      ]
+    },
+    "passed": false,
+    "error": [
+      "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)",
+      "Intersection diagnostic actual prim/object/t=4/0/10.94013119 expected=4/0/10.94013119 P=-3.27372241,-1.964182138,0.2523859739 D=-0.2662062347,0.02572562173,0.9635728598 tmin=0 bounce=1",
+      "stage 1 path.mis_ray_pdf path=1043 actual=2035.839111 expected=2035.206665"
+    ]
+  },
+  "lighting_mis": {
+    "gate": "lighting_mis",
+    "args": [],
+    "env": {},
+    "exit": 0,
+    "wallSeconds": 36.5,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 53423,
+        "moduleMs": 8.21677,
+        "pipelineMs": 531.254,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 76495,
+        "moduleMs": 11.8689,
+        "pipelineMs": 1296.09,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 193947,
+        "moduleMs": 30.0339,
+        "pipelineMs": 669.889,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 257256,
+        "moduleMs": 39.7472,
+        "pipelineMs": 1716.27,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 257256,
+        "moduleMs": 39.902,
+        "pipelineMs": 2356.91,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 257256,
+        "moduleMs": 41.1487,
+        "pipelineMs": 4972.51,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 257256,
+        "moduleMs": 41.5634,
+        "pipelineMs": 2190.17,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 257256,
+        "moduleMs": 40.6886,
+        "pipelineMs": 6610.91,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "shadow",
+        "entry": "intersect_shadow",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 189222,
+        "moduleMs": 30.8779,
+        "pipelineMs": 1136.99,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "shadow",
+        "entry": "shade_shadow",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 189222,
+        "moduleMs": 29.9586,
+        "pipelineMs": 47.5711,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "background",
+        "entry": "shade_light_forward",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 193947,
+        "moduleMs": 51.3207,
+        "pipelineMs": 170.136,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 6610.91,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "flow": "device-scene",
+      "oracleSha256": "1893a2ce50f3bea32c856a112821b884f282c28d966f06bb830aaa8fd09b8103",
+      "hostRejudgedPassed": true,
+      "rows": [
+        {
+          "key": "case-0.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 831,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 0,
+            "maximumAbsoluteError": 1.1920928955078125e-07,
+            "maximumPracticalRatio": 0.0011012427524461355,
+            "maximumUlps": 25,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 780,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 12,
+            "maximumAbsoluteError": 2.682209014892578e-07,
+            "maximumPracticalRatio": 0.00314422520316966,
+            "maximumUlps": 31,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 915,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 11,
+            "maximumAbsoluteError": 2.682209014892578e-07,
+            "maximumPracticalRatio": 0.0030212566554507552,
+            "maximumUlps": 23,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-1.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 906,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 0,
+            "maximumAbsoluteError": 1.1920928955078125e-07,
+            "maximumPracticalRatio": 0.001183727674452162,
+            "maximumUlps": 6,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 787,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 13,
+            "maximumAbsoluteError": 1.9073486328125e-06,
+            "maximumPracticalRatio": 0.01224994062705059,
+            "maximumUlps": 78,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 935,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 16,
+            "maximumAbsoluteError": 1.9073486328125e-06,
+            "maximumPracticalRatio": 0.012092860478826389,
+            "maximumUlps": 77,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-2.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 958,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 278,
+            "maximumAbsoluteError": 3.2782554626464844e-06,
+            "maximumPracticalRatio": 0.02755115422805523,
+            "maximumUlps": 478,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 509,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 37,
+            "maximumAbsoluteError": 3.2782554626464844e-06,
+            "maximumPracticalRatio": 0.027255843516570736,
+            "maximumUlps": 169,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 974,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 293,
+            "maximumAbsoluteError": 6.556510925292969e-06,
+            "maximumPracticalRatio": 0.054511984187163624,
+            "maximumUlps": 477,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-3.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 950,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 0,
+            "maximumAbsoluteError": 4.936009645462036e-08,
+            "maximumPracticalRatio": 0.0009312123749789405,
+            "maximumUlps": 77,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 515,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 1,
+            "maximumAbsoluteError": 1.0803341865539551e-07,
+            "maximumPracticalRatio": 0.001952017485122581,
+            "maximumUlps": 75,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 858,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 0,
+            "maximumAbsoluteError": 1.0244548320770264e-07,
+            "maximumPracticalRatio": 0.0018510517861354,
+            "maximumUlps": 61,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-4.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 934,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 271,
+            "maximumAbsoluteError": 6.0498714447021484e-06,
+            "maximumPracticalRatio": 0.0453397483791375,
+            "maximumUlps": 203,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 526,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 61,
+            "maximumAbsoluteError": 3.159046173095703e-06,
+            "maximumPracticalRatio": 0.023040890668669687,
+            "maximumUlps": 154,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 954,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 315,
+            "maximumAbsoluteError": 6.079673767089844e-06,
+            "maximumPracticalRatio": 0.04511639784961846,
+            "maximumUlps": 202,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-5.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 620,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 11,
+            "maximumAbsoluteError": 1.430511474609375e-06,
+            "maximumPracticalRatio": 0.0051298322057534654,
+            "maximumUlps": 17,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 416,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 16,
+            "maximumAbsoluteError": 2.7418136596679688e-06,
+            "maximumPracticalRatio": 0.02540319880158485,
+            "maximumUlps": 165,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 630,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 26,
+            "maximumAbsoluteError": 2.8014183044433594e-06,
+            "maximumPracticalRatio": 0.02601890173138086,
+            "maximumUlps": 169,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-6.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 930,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 289,
+            "maximumAbsoluteError": 6.079673767089844e-06,
+            "maximumPracticalRatio": 0.04252220367735353,
+            "maximumUlps": 204,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 534,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 63,
+            "maximumAbsoluteError": 3.159046173095703e-06,
+            "maximumPracticalRatio": 0.023040890668669687,
+            "maximumUlps": 154,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 947,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 327,
+            "maximumAbsoluteError": 6.079673767089844e-06,
+            "maximumPracticalRatio": 0.04252220367735353,
+            "maximumUlps": 204,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-7.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 899,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 220,
+            "maximumAbsoluteError": 6.020069122314453e-06,
+            "maximumPracticalRatio": 0.04599132758384059,
+            "maximumUlps": 202,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 442,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 32,
+            "maximumAbsoluteError": 2.9802322387695312e-06,
+            "maximumPracticalRatio": 0.015288908878317667,
+            "maximumUlps": 99,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 903,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 242,
+            "maximumAbsoluteError": 6.079673767089844e-06,
+            "maximumPracticalRatio": 0.04599132758384059,
+            "maximumUlps": 202,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        }
+      ]
+    },
+    "passed": true,
+    "report": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentOriginalCpuImage": true,
+      "fullLightingMisProven": false,
+      "cases": 8,
+      "pointSunMisEnabled": true,
+      "transparentSurfaceHits": 0,
+      "maximumShadowHitCount": 0,
+      "forwardLightPaths": 1622,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0,
+      "transmissionPaths": 0,
+      "shadowPaths": 29523,
+      "blocked": 2707,
+      "visible": 26816,
+      "filmChecks": 49152,
+      "strictDifferences": 2139,
+      "maximumAbsoluteError": 6.079673767089844e-06,
+      "repeatBitwiseDifferences": 3,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 11,
+        "totalPipelineMs": 21698.7,
+        "maxPipelineMs": 6610.91,
+        "maxPipelineEntry": "shade_surface",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Samsung SM-X700 Adreno 730: full-fidelity proof device (2026-10-19 policy)",
+          "adapter": {
+            "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+            "architecture": "",
+            "device": "Adreno (TM) 730",
+            "description": "Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  ",
+            "vendorId": 20803,
+            "deviceId": 117637121,
+            "simulated": false,
+            "mobile": true
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:6ed3ee5443c58663",
+          "knownAdapter": {
+            "name": "Samsung SM-X700 Adreno 730",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "full-fidelity proof device (2026-10-19 policy)"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "pipelineReportPresent": true
+  }
+}

@@ -1,0 +1,570 @@
+{
+ "cbcOracleScene": 1,
+ "id": "linux-gates/deforming-motion-1",
+ "description": "deforming-motion gate fixture, mode 1",
+ "sourceFixture": "native/cycles/lighting_gate.cpp fixture(scene, 1) in codebrix_cycles_deforming_motion_render_gate (CODEBRIX_DEFORMING_MOTION_GATE, MIS)",
+ "render": {
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 3,
+    "filter_glossy": 0.0,
+    "motion_blur": true
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ],
+    "shuttertime": 0.6
+   }
+  },
+  {
+   "handle": "diffuse",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.55,
+        0.32,
+        0.18
+       ],
+       "roughness": 0.31
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "mixed",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.55,
+        0.32,
+        0.18
+       ],
+       "roughness": 0.31
+      }
+     },
+     {
+      "handle": "g",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.2,
+        0.5,
+        0.8
+       ],
+       "roughness": 0.35
+      }
+     },
+     {
+      "handle": "m",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.4
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "m",
+      "Closure1"
+     ],
+     [
+      "g",
+      "BSDF",
+      "m",
+      "Closure2"
+     ],
+     [
+      "m",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4.0,
+     -3.0,
+     3.0,
+     4.0,
+     -3.0,
+     3.0,
+     4.0,
+     3.0,
+     3.0,
+     -4.0,
+     3.0,
+     3.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "diffuse"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4.0,
+     -2.0,
+     -2.0,
+     4.0,
+     -2.0,
+     -2.0,
+     4.0,
+     -2.0,
+     3.0,
+     -4.0,
+     -2.0,
+     3.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "mixed"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor"
+   }
+  },
+  {
+   "handle": "moving",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "tc",
+      "type": "texture_coordinate"
+     },
+     {
+      "handle": "abs",
+      "type": "vector_math",
+      "set": {
+       "math_type": "absolute"
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.27
+      }
+     },
+     {
+      "handle": "n",
+      "type": "normal_map",
+      "set": {
+       "space": "object",
+       "color": [
+        0.55,
+        0.42,
+        0.97
+       ],
+       "strength": 0.35
+      }
+     }
+    ],
+    "connect": [
+     [
+      "tc",
+      "Object",
+      "abs",
+      "Vector1"
+     ],
+     [
+      "abs",
+      "Vector",
+      "d",
+      "Color"
+     ],
+     [
+      "n",
+      "Normal",
+      "d",
+      "Normal"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "center",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.8,
+     -1.2,
+     0.0,
+     0.8,
+     -1.2,
+     0.0,
+     0.8,
+     1.1,
+     0.0,
+     -0.8,
+     1.1,
+     0.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ],
+    "motion": {
+     "steps": 5,
+     "positions": [
+      -0.704,
+      -1.168,
+      -0.1528,
+      0.896,
+      -1.232,
+      0.1528,
+      0.712,
+      1.068,
+      -0.0864,
+      -0.888,
+      1.132,
+      0.0864,
+      -0.752,
+      -1.184,
+      -0.0694,
+      0.848,
+      -1.216,
+      0.0694,
+      0.756,
+      1.084,
+      -0.0502,
+      -0.844,
+      1.116,
+      0.0502,
+      -0.8,
+      -1.2,
+      0.0,
+      0.8,
+      -1.2,
+      0.0,
+      0.8,
+      1.1,
+      0.0,
+      -0.8,
+      1.1,
+      0.0,
+      -0.848,
+      -1.216,
+      0.0554,
+      0.752,
+      -1.184,
+      -0.0554,
+      0.844,
+      1.116,
+      0.0642,
+      -0.756,
+      1.084,
+      -0.0642,
+      -0.896,
+      -1.232,
+      0.0968,
+      0.704,
+      -1.168,
+      -0.0968,
+      0.888,
+      1.132,
+      0.1424,
+      -0.712,
+      1.068,
+      -0.1424
+     ]
+    }
+   },
+   "set": {
+    "used_shaders": [
+     "moving"
+    ]
+   }
+  },
+  {
+   "handle": "center-object",
+   "create": "object",
+   "set": {
+    "geometry": "center",
+    "tfm": [
+     -1.1,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.9,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.2,
+     0.0
+    ],
+    "motion": [
+     [
+      -0.9874729,
+      -0.0576159,
+      0.2273403,
+      -0.34,
+      -0.0297264,
+      0.9421371,
+      0.0602368,
+      -0.11,
+      0.2383111,
+      -0.0751945,
+      1.1344327,
+      -0.07
+     ],
+     [
+      -1.1,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.9,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.2,
+      0.0
+     ],
+     [
+      -1.1592073,
+      0.037517,
+      -0.244571,
+      0.34,
+      0.0484871,
+      0.8524098,
+      -0.0553216,
+      0.11,
+      -0.2761322,
+      0.0786597,
+      1.2046038,
+      0.07
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "light-0",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": false,
+    "strength": [
+     140,
+     100,
+     70
+    ],
+    "use_mis": true,
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "light-0-object",
+   "create": "object",
+   "set": {
+    "geometry": "light-0",
+    "tfm": [
+     0.9553365,
+     -0.115081,
+     0.2721921,
+     2.2,
+     0.0,
+     0.921061,
+     0.3894183,
+     2.0,
+     -0.2955202,
+     -0.3720256,
+     0.8799232,
+     -2.0
+    ]
+   }
+  }
+ ],
+ "images": []
+}

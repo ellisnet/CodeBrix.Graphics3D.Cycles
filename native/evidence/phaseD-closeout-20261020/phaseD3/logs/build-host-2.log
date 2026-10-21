@@ -1,0 +1,118 @@
+-- Not using precompiled libraries
+-- Attempting to use system libraries instead
+CMake Warning (dev) at src/cmake/external_libs.cmake:443 (find_package):
+  Policy CMP0167 is not set: The FindBoost module is removed.  Run "cmake
+  --help-policy CMP0167" for policy details.  Use the cmake_policy command to
+  set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  CMakeLists.txt:257 (include)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- CodeBrix Cycles host 1.0.20261020.0, Cycles a456b761034dda42c32eef9f4aae0fa5a5c9f604
+-- Configuring done (0.1s)
+-- Generating done (0.2s)
+-- Build files have been written to: /home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/work/cycles-build
+[  2%] Built target extern_sky
+[  4%] Built target extern_libc_compat
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/shadow.cpp.o
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/background.cpp.o
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/surface.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/volume.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/svm_layout.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/work/cycles-overlay/device/device.cpp.o
+[ 30%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/device.cpp.o
+[ 30%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/shader_data.cpp.o
+[ 30%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/camera.cpp.o
+[ 30%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/closest.cpp.o
+/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/device.cpp: In instantiation of ‘ccl::WebGPUDevice::mem_copy_to(ccl::device_memory&)::<lambda()>::<lambda(auto:42&)> [with auto:42 = std::vector<ccl::KernelObject>]’:
+/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/device.cpp:183:56:   required from here
+  183 |     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
+      |                                                    ~~~~^~~~~~~~~~~~~~~~
+/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/device.cpp:179:39: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  179 |       if(mem.memory_size())std::memcpy(records.data(),mem.host_pointer,mem.memory_size());};
+      |                            ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/third_party/cycles/src/device/../bvh/params.h:13,
+                 from /home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/device.h:4,
+                 from /home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/cycles/device.cpp:3:
+/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/third_party/cycles/src/device/../kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+[ 30%] Linking CXX static library ../../lib/libcycles_device.a
+[ 45%] Built target cycles_device
+[ 50%] Built target cycles_session
+[ 63%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Linking CXX shared library lib/libcodebrix_cycles_host.so
+[100%] Built target codebrix_cycles_host
+[  2%] Built target extern_sky
+[  4%] Built target extern_libc_compat
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 45%] Built target cycles_device
+[ 50%] Built target cycles_session
+[ 63%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Built target codebrix_cycles_host
+[100%] Linking C executable bin/codebrix_host_abi_test
+[100%] Built target codebrix_host_abi_test
+[  2%] Built target extern_libc_compat
+[  4%] Built target extern_sky
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 44%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 61%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Built target codebrix_cycles_host
+[ 97%] Building C object CMakeFiles/codebrix_host_example_test.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/tests/host/example.c.o
+[100%] Linking C executable bin/codebrix_host_example_test
+[100%] Built target codebrix_host_example_test
+[  2%] Built target extern_libc_compat
+[  4%] Built target extern_sky
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 45%] Built target cycles_device
+[ 50%] Built target cycles_session
+[ 63%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Built target codebrix_cycles_host
+[100%] Building CXX object CMakeFiles/codebrix_cycles_oracle.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/oracle/runner.cpp.o
+/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/oracle/runner.cpp: In member function ‘void {anonymous}::Loader::mesh(CBCNode, const oracle::Json&)’:
+/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/oracle/runner.cpp:176:99: error: enumerated and non-enumerated type in conditional expression [-Werror=extra]
+  176 |         flags |= flag.string() == "standard" ? CBC_ATTR_STANDARD : flag.string() == "subdivision" ? CBC_ATTR_SUBDIVISION : (fail("Unknown attribute flag"), 0u);
+      |                                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/oracle/runner.cpp:176:46: error: enumerated and non-enumerated type in conditional expression [-Werror=extra]
+  176 |         flags |= flag.string() == "standard" ? CBC_ATTR_STANDARD : flag.string() == "subdivision" ? CBC_ATTR_SUBDIVISION : (fail("Unknown attribute flag"), 0u);
+      |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cc1plus: all warnings being treated as errors
+gmake[3]: *** [CMakeFiles/codebrix_cycles_oracle.dir/build.make:79: CMakeFiles/codebrix_cycles_oracle.dir/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/oracle/runner.cpp.o] Error 1
+gmake[2]: *** [CMakeFiles/Makefile2:2068: CMakeFiles/codebrix_cycles_oracle.dir/all] Error 2
+gmake[1]: *** [CMakeFiles/Makefile2:2075: CMakeFiles/codebrix_cycles_oracle.dir/rule] Error 2
+gmake: *** [Makefile:699: codebrix_cycles_oracle] Error 2
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/tools/build_cycles.py", line 117, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/tools/build_cycles.py", line 109, in main
+    for command in commands:subprocess.run(command,check=True)
+                            ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['cmake', '--build', '/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/work/cycles-build', '--target', 'codebrix_cycles_host', 'codebrix_host_abi_test', 'codebrix_host_example_test', 'codebrix_cycles_oracle', '--parallel', '16']' returned non-zero exit status 2.

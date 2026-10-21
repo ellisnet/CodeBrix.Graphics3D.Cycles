@@ -1,0 +1,34 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "device": "pixel",
+  "serial": "98271FFBA0048D",
+  "corpus": "materials",
+  "label": "mw2a",
+  "declaredBudgetSeconds": 9600,
+  "perJobTimeoutSeconds": 2400,
+  "pipelineBudgetMs": 20000,
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "startedLocal": "17:19:38",
+  "deviceProperties": {
+    "api": "33",
+    "abi": "arm64-v8a",
+    "model": "Pixel 4 XL",
+    "fingerprint": "google/coral/coral:13/TP1A.221005.002.B2/9382335:user/release-keys"
+  },
+  "stagedVerified": true,
+  "passed": false,
+  "failures": [
+    "principled_svm: Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12",
+    "principled_bounce: Compiled materials: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+    "nodes_svm: Native compiled graphs SVM error mask=24 first incomplete path=287 shader=46",
+    "nodes_world: Compiled world 0: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+  ],
+  "wallSeconds": 503.7,
+  "withinBudget": true,
+  "remoteProcessesAfter": [],
+  "productionSourcesUnchanged": true,
+  "binaryInputsUnchanged": true,
+  "inputsUnchanged": true
+}

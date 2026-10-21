@@ -85,7 +85,7 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){a
     device_vector<uint> output(&d,"normal_rejection_output",MEM_READ_WRITE);output.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(output.data(),output.size(),0xa5a5a5a5u);output.copy_to_device();
     device_vector<uint> scratch(&d,"normal_rejection_scratch",MEM_READ_WRITE);scratch.alloc(MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);scratch.zero_to_device();
     std::array<uint32_t,32> p{};p[1]=1;p[4]=output.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=d.remaining(uintptr_t(d.state.path.render_pixel_index))/4;p[14]=d.scene_tables();p[17]=d.error_word;p[21]=ds.svm_nodes.device_pointer;p[22]=ds.svm_nodes.size();p[23]=scratch.device_pointer;
-    PreparedSurfaceCache cache(d,p);
+    refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
     d.dispatch(p,1,shader);uint error=0;d.download(d.error_word,&error,4);output.copy_from_device();healthy(d);
     require(error==((test==3||test==8)?8u:16u),"Normal rejection "+std::to_string(test)+" error="+std::to_string(error));
     require(std::all_of(output.data(),output.data()+output.size(),[](uint v){return v==0xa5a5a5a5u;}),"Invalid normal wrote output");cache.verify();d.zero(d.error_word,4);
@@ -94,12 +94,12 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){a
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: normal_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;unsigned typed=0,rejected=0;
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"normal_gate device creation");Metrics m;unsigned typed=0,rejected=0;
   {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare_normals(scene);if(motion)for(size_t i=0;i<scene.objects.size();i++)object_motion_fixture(scene,*scene.objects[i],unsigned(i));if(deform)for(size_t i=0;i<scene.objects.size();i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));
     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Normal scene update failed");auto &ds=scene.dscene;
     ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;ds.data.max_closures=MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&ds,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=normal_states(scene,initial);if(motion||deform)for(int i:ids)initial[i].ray.time*=2.5f;
-    auto source=probe_source();std::ofstream(prefix+".wgsl")<<source;auto shader=pipeline(d,source);
+    auto source=probe_source();std::ofstream(prefix+".wgsl")<<gate_probe_wgsl(d,source);auto shader=pipeline(d,source);
     evaluate(d,scene,shader,layout,initial,ids,"Native normal/tangent graphs",m,prefix);
     std::vector<int> small;for(unsigned ob=0;ob<4;ob++)for(unsigned j=0;j<6;j++)small.push_back(ids[ob*graph_count*6+j]);
     auto id=[&](AttributeStandard attr){return int(scene.shader_manager->get_attribute_id(attr));};

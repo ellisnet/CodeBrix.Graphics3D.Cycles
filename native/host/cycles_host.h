@@ -7,7 +7,11 @@
 extern "C" {
 #endif
 
-/* Experimental ABI; not a released contract. Handles never expose C++ layouts. */
+/* Experimental ABI; not a released contract. Handles never expose C++ layouts.
+ * The consumer reference is ABI.md beside this header.
+ * Additive only: add functions, enum values and trailing struct fields; never
+ * change or renumber existing signatures, enum values, error codes or layouts.
+ * A breaking change bumps CBC_HOST_ABI. */
 typedef uint64_t CBCHost;
 typedef uint64_t CBCNode;
 typedef uint64_t CBCImage;
@@ -142,6 +146,87 @@ int cbc_host_device_report_json(CBCHost host, char *json, uint64_t capacity, uin
  * All edits serialize with rendering. Cancel and destruction may run concurrently.
  * A requested WebGPU render never falls back to CPU rendering. */
 int cbc_host_render(CBCHost host, const CBCRenderConfig *config, float *rgba, uint64_t float_count);
+
+/* ---- Additions to ABI 1 (Phase D). Every struct below is size-checked. ---- */
+
+/* Library identity. library_version is "<major>.<minor>.<yyyyMMdd>.<build>",
+ * stamped by the native build; cycles_revision is the pinned upstream Cycles
+ * commit. Both are NUL-terminated ASCII. Callable at any time, including from
+ * an event callback. */
+typedef struct CBCVersionInfo {
+  uint32_t struct_size, abi_version;
+  uint32_t reserved[2];
+  char library_version[32];
+  char cycles_revision[48];
+} CBCVersionInfo;
+int cbc_host_version(CBCVersionInfo *info);
+
+/* Backend-neutral GPU request: Cycles' Metal device in macOS builds, WebGPU in
+ * every other build. Accepted by cbc_host_create and the queries below. */
+enum { CBC_HOST_GPU = 4 };
+/* Maps a requested backend (CBC_HOST_GPU, CBC_HOST_WEBGPU, CBC_HOST_METAL or
+ * CBC_HOST_CPU_REFERENCE) to the concrete backend this binary would create.
+ * Returns CBC_UNSUPPORTED when the backend is not compiled into this binary.
+ * It does not probe hardware; cbc_host_create reports unavailable devices. */
+int cbc_host_resolve_backend(uint32_t requested, uint32_t *resolved);
+/* The concrete backend of an existing host (never CBC_HOST_GPU). */
+int cbc_host_backend(CBCHost host, uint32_t *backend);
+/* Capability report as JSON (required includes NUL). host may be 0 for the
+ * binary-level report (version, compiled backends, image formats, pass types,
+ * limits, determinism reference); a host adds its backend, device identity and
+ * the WebGPU tier decision (cbc_host_device_report_json). See ABI.md. */
+int cbc_host_capabilities_json(CBCHost host, char *json, uint64_t capacity, uint64_t *required);
+
+/* Deletes a node and invalidates its handle. Scene nodes: objects, geometry
+ * (mesh, hair, pointcloud, volume), lights, particle systems, passes and
+ * shaders made by cbc_host_create_node; deleting a shader also invalidates the
+ * handles of its graph nodes. Shader graph nodes are disconnected and removed;
+ * the shader output node and the scene singletons cannot be deleted. A node
+ * that another node's socket still references is rejected with CBC_INVALID;
+ * clear the reference first. Serializes with rendering. */
+int cbc_host_delete_node(CBCHost host, CBCNode node);
+
+/* Replaces the pixels of an existing image handle (same rules and formats as
+ * cbc_host_image_create; size and format may change). Every texture still bound
+ * to this handle uses the new pixels on the next render; bindings made before
+ * cbc_host_image_release keep the pixels they had at release. */
+int cbc_host_image_update(CBCHost host, CBCImage image, const CBCImageConfig *config, const void *pixels, uint64_t byte_count);
+
+/* Deformation motion for a mesh: steps (odd, 3..129) time-ordered position
+ * arrays of vertex_count*3 floats; the center step must equal the current
+ * positions bit for bit. steps == 1 with count 0 removes deformation motion.
+ * Sets the mesh motion_steps/use_motion_blur sockets; Cycles regenerates motion
+ * vertex normals. Call again after cbc_host_mesh changes the vertex count.
+ * Object and camera motion use the generic "motion" transform-array sockets. */
+int cbc_host_motion_positions(CBCHost host, CBCNode mesh, uint32_t steps, const float *xyz, uint64_t count);
+
+/* Render events. A callback runs on a native render thread or the thread that
+ * called cbc_host_render, never concurrently with itself for the same host,
+ * and only while cbc_host_render is executing. It must not call any cbc_host_
+ * function other than cbc_host_error and cbc_host_version: such calls return
+ * CBC_NOT_READY. Returning nonzero requests cancellation (cbc_host_render then
+ * returns CBC_CANCELLED). message is UTF-8 and valid only during the call. */
+enum { CBC_EVENT_STATUS = 1, CBC_EVENT_PROGRESS = 2, CBC_EVENT_ERROR = 3 };
+typedef struct CBCEvent {
+  uint32_t struct_size, kind;
+  uint64_t samples_done, samples_total;
+  double elapsed_seconds;
+  const char *message;
+} CBCEvent;
+typedef int (*CBCEventCallback)(void *user_data, const CBCEvent *event);
+/* Registers (or with NULL clears) the host's callback. Serializes with
+ * rendering; after it returns the previous callback is never invoked again. */
+int cbc_host_set_event_callback(CBCHost host, CBCEventCallback callback, void *user_data);
+
+/* Pass readback from the most recent successful cbc_host_render. Enable a pass
+ * with cbc_host_create_node("pass") and its "type"/"name" sockets; passes are
+ * read by name ("Combined" is always present). Values are copied raw
+ * scene-linear float32, lower-left origin, components per pixel as reported.
+ * A render that starts clears the previous results (CBC_NOT_READY until a
+ * render succeeds). */
+int cbc_host_pass_floats(CBCHost host, const char *name, float *values, uint64_t capacity, uint64_t *required, uint32_t *components);
+/* JSON list of the passes captured by the most recent successful render. */
+int cbc_host_render_passes_json(CBCHost host, char *json, uint64_t capacity, uint64_t *required);
 #ifdef __cplusplus
 }
 #endif

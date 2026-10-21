@@ -1,0 +1,21 @@
+# X2 exact traversal budgets (declared before each run). Shared machine: --jobs 6, <=2 concurrent Linux gates, cold runs use scratch MESA_SHADER_CACHE_DIR under native/work/x2/mesa/.
+[09:34:35] linux baseline build: default targets + all gate targets (--jobs 6): budget 40 min (first configure+build of a fresh worktree; E1 needed ~12 min for default+gates)
+[09:46:05] linux baseline rebuild (sources restored to seed; my WIP edits had landed mid-build) default+gates --jobs 6: budget 25 min
+[09:47:31] BASELINE slot1: all-lanes 29 (linux_validate.py --skip-build, cold): 2700 s (justified: 29 corpora, E1 took ~23 min)
+[09:47:31] BASELINE slot2 (sequential, cold each): triangle 900 s, closest_queue 600 s, closest --motion/--deform/--deform-motion 600 s each, shadow 600 s, object_motion 900 s, deforming_motion 900 s, glass_render spec-off 900 s, close set 900 s
+[10:11:16] baseline compile measurement: closest gate + shadow gate (baseline-bin, cold, pipeline log) 600 s each; candidate build default+gates --jobs 6 25 min (concurrent, CPU only)
+[10:13:29] cand1 closest + shadow gates direct (cold, pipeline log) 600 s each
+[10:13:51] b1 experiment: build triangle targets 15 min; triangle gate cold 900 s
+[10:41:46] cand2 rebuild (min/max) gates 15 min; triangle gate (b1 lift) cold 900 s
+[10:46:53] FINAL candidate slot1: all-lanes 29 (cold) 2700 s; slot2 set (same per-gate budgets as baseline) 
+[10:48:21] bench scratch (candidate + M1 code patch, own build dir) build principled_render target --jobs 6: 30 min (fresh configure)
+[11:10:21] principled bench (scratch build, candidate+M1) cold 900 s
+[11:12:03] principled bench rerun (previous attempt rendered all 8 samples, 114 stages, then failed writing its capture: disk full) 900 s
+[11:12:58] compile measurement: closest+shadow gates, baseline-bin vs final bin, 3 cold runs each, sequential, 600 s each
+[11:14:12] precision-before experiment: baseline shaders/camera/build_cycles + new gate code, build closest+shadow 15 min, run each 600 s
+[11:16:44] final rebuild default+gates 25 min
+[11:21:08] clean rebuild (rm cycles-build + cycles-overlay) default + gates --jobs 6: 30 min
+[11:21:30] bench scratch clean rebuild (fresh configure) principled_render target --jobs 6, concurrent with main rebuild: 30 min
+[11:21:57] pb-scratch tree (copy, third_party hardlinked, baseline closest/triangle WGSL + camera.cpp + build_cycles.py from baseline-src, X2 gate code) replaces the earlier in-place swap; build closest+shadow targets --jobs 6 after main rebuild: 25 min (fresh configure)
+[11:31:02] RERUN fin-all-lanes 2700 s + fin-close-set 900 s concurrent (2 slots), cold
+[11:52:55] compile measurement (replaces never-run 11:12:58 plan; baseline-bin was freed, pb-scratch build carries the baseline WGSL): 12 runs x 600 s, sequential

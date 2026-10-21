@@ -1,0 +1,301 @@
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -35,7 +35,7 @@
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+ | Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL (Adreno 640) passes glass bounce/render and feature combination; feature combination needed the SVM value stack moved out of the function-local SvmState (an Adreno 640 dynamic-indexing miscompile). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP, and on the Pixel 4 XL after the same Adreno 640 fix plus volume-stack hits kept as scalar arrays (volume-boundary state test, camera-inside closed volume, object/deforming motion images) |
+-| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming and static instanced emitters, pass independent CPU images and replay on Linux; closest-hit and shadow traversal reproduce the CPU oracle's ray/triangle and instance arithmetic bit for bit on Linux x64. Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. Android results are judged against the correctly rounded (Linux x64 glibc) CPU reference computed from the device's own prepared scene, with the on-device (bionic) CPU reference a diagnostic (`native/DEVICE.md`, "Validation reference policy"). Android x64 (HP Intel) passes lamps with MIS and forward light, transparent shadows, the emitter probe and every emissive-triangle gate (sampler, six images including moving/deforming and static instanced emitters, replays). ARM64 Android (Samsung Adreno 730): lamps, broad lighting, feature combination, the emitter probe and emissive-triangle images 0-3 pass with replays; static instanced triangle emitters fail on the Adreno 730 and 640, and the deforming emitter's sampler fails on ARM64 float3 arithmetic (to be checked against a Linux ARM64 glibc reference). The Pixel 4 XL passes lamps and emissive-triangle images 0-3; its triangle sampler gate fails. Open device items are listed in `native/DEVICE.md` |
++| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming and static instanced emitters, pass independent CPU images and replay on Linux; closest-hit and shadow traversal reproduce the CPU oracle's ray/triangle and instance arithmetic bit for bit on Linux x64. Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. Android results are judged against the correctly rounded (Linux x64 glibc) CPU reference computed from the device's own prepared scene, with the on-device (bionic) CPU reference a diagnostic (`native/DEVICE.md`, "Validation reference policy"). Android x64 (HP Intel) passes lamps with MIS and forward light, transparent shadows, the emitter probe and every emissive-triangle gate (sampler, six images including moving/deforming and static instanced emitters, replays). ARM64 Android (Samsung Adreno 730): lamps, broad lighting, feature combination, the emitter probe and all six emissive-triangle images, static instanced emitters included, pass with replays (Phase E4: contraction-proof ShaderData position/object transform, and the x64 reference oracle's arithmetic adapters in the gates judged against the imported reference); the triangle sampler still differs in one sample (`native/DEVICE.md` open item 1). The Pixel 4 XL passes lamps and all six emissive-triangle images (Phase E4 confirmation); its triangle sampler gate fails. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS), so `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is refused on Android. Cold compiles: Samsung specialized pipelines at most 32.6 s (the emissive-triangle entry with object motion now 29-30 s, was 205 s); HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 20 s with triangle lights, 27.6 s with triangle lights and object motion, which previously ran out of compiler memory), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 87 s (`intersect_closest` with object motion; 20 s budget, warnings only) |
+ | Platforms/delivery | Full Linux host. The .NET typed API renders on the WebGPU backend and the CPU reference backend on Linux x64 (Intel UHD, Mesa 25.0.7) and inside the Android validation app on the Samsung SM-X700, the HP Android x64 and the Pixel 4 XL (glass, diffuse with a sun, textured plane: practical criterion met, strict differences reported; progress and cancellation checked); the Android host gate passes with 48 exports on the Samsung and the HP. A glTF example client (tools/gltf) converts glTF factor-only materials to the closures the WebGPU backend has. The package still carries no native runtime assets; other host builds and remaining GPU backends/RIDs pending |
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1866,6 +1866,57 @@
+ Android devices: the specialization-off refusal, which previously ended the gate with exit 139, now
+ exits 1 with that message.
+ 
++## Static instanced emitters on the Adreno: ShaderData arithmetic and the reference oracle (Phase E4, 2026-10-20)
++
++Triangle image mode 4 (static instanced emitters) failed on the Samsung SM-X700 and the Pixel 4 XL
++with the same values. Two separate causes were found; both are fixed.
++
++- **Contractible ShaderData arithmetic (all GPUs).** Replaying the Linux x64 mode-4 capture on the
++  Samsung with arena dumps after each dispatch, and with the Linux arena injected before
++  `prepare_shader_data` (command 433), localised the divergence at command 438 (queue count 343 on
++  Linux, 342 on the Adreno). One light sample of path 127 lies exactly on a vertex of the instanced
++  emitter, and `c_ray_triangle_intersect` hits it or misses it depending on one ULP of ShaderData
++  `P.z`. With identical inputs, `prepare_shader_data` produced different `P` on Intel and Adreno:
++  `sd.P=(a+u*dPdu)+v*dPdv` and the static object transform (`surface_transform_point`) were plain
++  WGSL products and sums, which drivers may fuse; the transform also grouped the translation
++  differently from the CPU oracle. Intel Mesa fuses them; the Adreno result already matched the
++  unfused oracle. `wavefront_shader_data.wgsl` now rounds every product before its sum and uses the
++  oracle grouping of the closest-stage instance push (SSE `((w+z)+y)+x`, scalar `(x+y)+(z+w)`).
++  After the change `P` is bit-identical on Intel and the Adreno at command 433, and every Linux
++  triangle image moved toward the CPU film (mode 4: 77 -> 10 strict, maximum 3.31e-5 -> 3.73e-7).
++  Probe variants that rewrite the triangle-light cache and key arrays (the Adreno 640 array class)
++  did not change the replay, so the compiler defect is not involved here.
++- **Android ARM64 emitted its own scalar oracle's adapters.** The native device images were judged
++  against the Linux x64 glibc reference, but the Android ARM64 build is a scalar build: its layout
++  emits `CAMERA_NATIVE_VECTOR_DIVIDE` 0, `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE` 1,
++  `NATIVE_TRIANGLE_ARITHMETIC` 0, `GGX_NATIVE_RECIPROCAL_NORMALIZE` 1 and
++  `TRIANGLE_LIGHT_NATIVE_SSE` 0 (not mode 2 as recorded earlier). The Adreno therefore reproduced the
++  device's ARM64 CPU (mode 4 component 312: GPU 0.0646473, device CPU 0.0646473, glibc 0.0658437).
++  Gates whose every check uses the imported reference (`lighting_gate.cpp` images and the
++  `emitter_sample_gate.cpp` samplers) now call `reference_policy::use_reference_oracle_arithmetic()`;
++  on Android with `CODEBRIX_CYCLES_REFERENCE_IMPORT` this sets
++  `CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2`, and `reference_oracle_sse()` (camera.cpp)
++  makes an Android scalar build emit the x64 SSE4.2 oracle's five constants (triangle mode 1, the
++  verified `RCPSS` model). Gates with local lockstep checks (`render_gate.cpp`) and the product keep
++  the device's own oracle; selecting the x64 constants process-wide made the Samsung `glass_render`
++  lockstep stage check fail against the local CPU (`path.mis_ray_pdf`), which is why the selection
++  is per gate. Linux x64 and Android x64 builds are unchanged (SSE builds always use the SSE oracle).
++
++Results (full tier by table, device-scene glibc reference, bionic CPU a diagnostic):
++- Samsung SM-X700: `triangle_lighting` all six images pass (mode 4: 0 practical, 11 strict, max 3.73e-7; it
++  was 9 practical, max 0.0127) with all six on-device replays; the six Linux triangle captures replay (tri4: 415
++  readbacks, max 3.73e-7) and the ten terminator captures replay. Strict counts fell in every image corpus
++  (broad lighting 2,184 -> 993, transparent 978 -> 693, lighting_mis 1,188 -> 1,070, motion 1,461/1,484 ->
++  1,306/1,258, terminator 195 -> 124). Regression, emitter probe, precision fixtures (local CPU, 0 mismatches),
++  volume and the specialization-off refusal pass. The sampler improves from 41 to 2 practical (open item 1).
++- Linux x64: the triangle images move toward the CPU (2,076 -> 1,776 strict; mode 4 77 -> 10, maximum 3.31e-5 ->
++  3.73e-7); every other gate passes with strict counts within a few values of before. The glass_render
++  specialization on/off film is `db8e84f9...` for both (was `a072683c...`).
++- Pixel 4 XL (confirmation, 20 s compile budget as warnings): all six triangle images pass (mode 4: 8 strict,
++  max 3.58e-7); the sampler still fails with its own error mask (open item 3).
++- The device's bionic CPU film is unchanged; for mode 4 it is itself 6 practical away from glibc, so on-device
++  replays of image captures are judged against the same glibc reference as their source gate.
++
+ ## Open device items (2026-10-20, after the Phase E merge)
+ 
+ These items are open. None is masked, and no tolerance was relaxed. Items resolved in Phase E, now
+@@ -1875,24 +1926,20 @@
+ - the specialization-off crashes (refused on Android);
+ - the Pixel feature-combination, motion and volume-stack failures (function-scope array fix);
+ - the Android oracle libm differences (validation reference policy);
+-- static instanced triangle emitters on Linux and the HP (exact traversal).
++- static instanced triangle emitters on Linux and the HP (exact traversal), and on the Adreno 730
++  and 640 (Phase E4: ShaderData arithmetic and the reference oracle).
+ 
+-1. **Deforming triangle emitter on ARM64 (Samsung).** The triangle sampler fails against the glibc
+-   reference in 41 values (24 samples), all on the deforming emitter. The cause is ARM64 float3
+-   arithmetic, which the x64 reference does not share. It is to be confirmed against a Linux ARM64
+-   glibc reference (Raspberry Pi 5, Phase F).
+-2. **Static instanced triangle emitters on Adreno (Samsung SM-X700, Pixel 4 XL).**
+-   - Image mode 4 fails with identical values on both GPUs: 9 practical differences against the
+-     glibc reference. The device's own ARM64 CPU result also differs from glibc there (6
+-     practical).
+-   - The Linux x64 mode-4 capture, whose layout selects the oracle-exact triangle arithmetic,
+-     diverges on both at command 438, the queue count after surface shading.
+-   - The HP and Linux pass.
+-   - Related decision: Android ARM64 builds emit `NATIVE_TRIANGLE_ARITHMETIC` 2 (SSE2NEON: SSE
+-     grouping with `1/x`). The authoritative reference is the x64 oracle (mode 1, `RCPSS` model),
+-     so the native device images use arithmetic that the reference does not. Whether ARM64 device
+-     builds should emit mode 1 under the validation reference policy is undecided. The capture
+-     result shows that the arithmetic mode alone does not explain mode 4.
++1. **Triangle sampler on the Samsung.** With the reference oracle's adapters (Phase E4) the sampler
++   fails in 2 values of 1 sample against the glibc reference (sample 3133, object 4, prim 5: `P.y`
++   0.382186 against 0.379992, and `t`); it failed in 41 values (24 samples) before. The device CPU
++   and glibc agree on that sample, so the Adreno differs from both; not yet localised.
++2. **Static instanced emitters on the Adreno: resolved** (section "Static instanced emitters on the
++   Adreno: ShaderData arithmetic and the reference oracle"). Android ARM64 builds emit the x64
++   oracle's adapters, `NATIVE_TRIANGLE_ARITHMETIC` 1 included, only in gates judged against the
++   imported reference; elsewhere (lockstep and state gates, the product) they keep their own scalar
++   oracle (mode 0).
++   The Pixel 4 XL confirms: all six triangle images pass natively against glibc, mode 4 and mode 5 included
++   (mode 5 reached natively for the first time).
+ 3. **Pixel 4 XL: triangle sampler gate.** The `emitter_sample_probe` module writes a float into
+    the GPU error word, an out-of-bounds store. The emissive-triangle prefill keeps a module-scope
+    array of structs (`triangle_light_cache`), the form that the Adreno 640 miscompiles. The fix
+--- a/native/cycles/camera.cpp
++++ b/native/cycles/camera.cpp
+@@ -4,6 +4,7 @@
+ #include "wavefront.h"
+ #include <cfloat>
+ #include <cmath>
++#include <cstdlib>
+ #include <cstring>
+ #include <sstream>
+ #include <stdexcept>
+@@ -34,6 +35,15 @@
+   return true;
+ }
+ #endif
++bool reference_oracle_sse(){
++#ifdef __KERNEL_SSE__
++  return true;
++#elif defined(__ANDROID__)
++  const char *oracle=std::getenv("CODEBRIX_CYCLES_REFERENCE_ORACLE");return oracle&&std::strcmp(oracle,"linux-x64-sse4.2")==0;
++#else
++  return false;
++#endif
++}
+ static constexpr char camera_source[]=
+ #include "camera_shader.inc"
+ ;
+@@ -41,31 +51,27 @@
+ std::string wavefront_layout(){
+   std::ostringstream source;
+   auto constant=[&](const char *name,size_t value){source<<"const "<<name<<":u32="<<value<<"u;\n";};
+-#ifdef __KERNEL_SSE__
+-  constant("CAMERA_NATIVE_VECTOR_DIVIDE",1);
+-#else
+-  constant("CAMERA_NATIVE_VECTOR_DIVIDE",0);
+-#endif
++  const bool oracle_sse=reference_oracle_sse();
++  constant("CAMERA_NATIVE_VECTOR_DIVIDE",oracle_sse?1:0);
+   // Cycles normalize(float3) divides each component by the length with SSE,
+   // while the scalar float3 operator/ (ARM64 without SSE2NEON) multiplies by
+   // the reciprocal length. Encode the originating host's rule so ShaderData
+   // normals replay that oracle's rounding on any GPU.
+-#ifdef __KERNEL_SSE__
+-  constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",0);
+-#else
+-  constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",1);
+-#endif
++  constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",oracle_sse?0:1);
+   // Cycles ray_triangle_intersect arithmetic of the originating oracle host:
+   // 0 scalar build (dot (x+y)+z, 1/x), 1 SSE4.2 build with the modelled RCPSS
+   // (dot x+(y+z), RCPSS + Newton step), 2 SSE build not modelled (SSE2NEON or
+   // an x86 RCPSS that differs): SSE grouping with 1/x, not oracle-exact.
++  // An Android scalar build judged against the Linux x64 reference emits 1.
+ #if defined(__KERNEL_SSE__) && !defined(__KERNEL_NEON__)
+   static const bool rcpss_modelled=host_rcpss_modelled();
+   constant("NATIVE_TRIANGLE_ARITHMETIC",rcpss_modelled?1:2);
+ #elif defined(__KERNEL_SSE__)
+   constant("NATIVE_TRIANGLE_ARITHMETIC",2);
+ #else
+-  constant("NATIVE_TRIANGLE_ARITHMETIC",0);
++  // Android scalar build judged against the Linux x64 reference: that oracle's
++  // RCPSS is the verified model (integer WGSL, any GPU), so mode 1.
++  constant("NATIVE_TRIANGLE_ARITHMETIC",oracle_sse?1:0);
+ #endif
+ #define DATA(parent,member) constant("D_" #parent "_" #member,offsetof(KernelData,parent.member))
+   DATA(cam,rastertocamera);DATA(cam,cameratoworld);DATA(cam,dx);DATA(cam,dy);DATA(cam,differential_scale);
+--- a/native/cycles/emitter_sample_gate.cpp
++++ b/native/cycles/emitter_sample_gate.cpp
+@@ -71,6 +71,7 @@
+ #endif
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
++  reference_policy::use_reference_oracle_arithmetic();
+   require(argc==2,"Usage: emitter_sample_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"emitter_sample_gate device creation");Metrics metrics;bool exchange_only=false;
+   {
+--- a/native/cycles/lighting.cpp
++++ b/native/cycles/lighting.cpp
+@@ -9,11 +9,7 @@
+ static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
+ std::string lighting_layout(){
+   std::ostringstream out;auto constant=[&](const char *name,size_t value){out<<"const "<<name<<":u32="<<value<<"u;\n";};
+-#ifdef __KERNEL_SSE__
+-  constant("TRIANGLE_LIGHT_NATIVE_SSE",1);
+-#else
+-  constant("TRIANGLE_LIGHT_NATIVE_SSE",0);
+-#endif
++  constant("TRIANGLE_LIGHT_NATIVE_SSE",reference_oracle_sse()?1:0);
+ #define DATA(member) constant("D_integrator_" #member,offsetof(KernelData,integrator.member))
+   DATA(use_direct_light);DATA(use_light_mis);DATA(num_lights);DATA(num_distribution);DATA(distribution_pdf_lights);DATA(distribution_pdf_triangles);DATA(light_inv_rr_threshold);
+ #undef DATA
+--- a/native/cycles/lighting_gate.cpp
++++ b/native/cycles/lighting_gate.cpp
+@@ -227,6 +227,7 @@
+   }
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
++  reference_policy::use_reference_oracle_arithmetic();
+   #ifdef CODEBRIX_OBJECT_MOTION_GATE
+   require(argc==2||(argc==3&&std::string(argv[2])=="--stationary"),"Usage: object_motion_render_gate OUTPUT_DIRECTORY [--stationary]");const bool stationary=argc==3;
+ #else
+--- a/native/cycles/reference_policy.h
++++ b/native/cycles/reference_policy.h
+@@ -61,6 +61,11 @@
+ #include "scene/devicescene.h"
+ namespace reference_policy {
+ inline const char *environment(const char *name){const char *value=std::getenv(name);return value&&*value?value:nullptr;}
++// Gates whose every check uses the imported reference (sampler arrays, lighting_gate.cpp images)
++// call this before creating the device: an Android scalar build then generates the reference
++// oracle's (Linux x64 SSE4.2) arithmetic adapters (wavefront.h reference_oracle_sse). Gates with
++// local lockstep checks (render_gate.cpp) do not, and keep the device's own oracle.
++inline void use_reference_oracle_arithmetic(){if(environment("CODEBRIX_CYCLES_REFERENCE_IMPORT"))setenv("CODEBRIX_CYCLES_REFERENCE_ORACLE","linux-x64-sse4.2",1);}
+ inline int64_t ordered(float value){int32_t bits;std::memcpy(&bits,&value,4);return bits<0?int64_t(INT32_MIN)-bits:bits;}
+ // Units in the last place between two finite floats (0 for equal bits; +0/-0 count as equal).
+ inline uint64_t ulps(float a,float b){if(a==b)return 0;const int64_t d=ordered(a)-ordered(b);return uint64_t(d<0?-d:d);}
+--- a/native/cycles/surface.cpp
++++ b/native/cycles/surface.cpp
+@@ -24,11 +24,7 @@
+   constant("SURFACE_STAGE_BYTES",surface_stage_bytes);
+   // Preserve the originating native kernel's float3 division order. This is
+   // encoded into captures too, independently of the GPU that replays them.
+-#ifdef __KERNEL_SSE__
+-  constant("GGX_NATIVE_RECIPROCAL_NORMALIZE",0);
+-#else
+-  constant("GGX_NATIVE_RECIPROCAL_NORMALIZE",1);
+-#endif
++  constant("GGX_NATIVE_RECIPROCAL_NORMALIZE",reference_oracle_sse()?0:1);
+ #define DATA(parent,member) constant("D_" #parent "_" #member,offsetof(KernelData,parent.member))
+   DATA(integrator,max_bounce);
+   DATA(integrator,max_diffuse_bounce);DATA(integrator,max_transmission_bounce);
+--- a/native/cycles/wavefront.h
++++ b/native/cycles/wavefront.h
+@@ -6,6 +6,17 @@
+ std::string volume_source();std::string volume_stack_source();std::string wavefront_layout();std::string svm_layout(bool surface=false);
+ std::string shadow_source();
+ std::string shadow_layout();std::string lighting_layout();
++// Generated arithmetic-adapter constants (CAMERA_NATIVE_VECTOR_DIVIDE,
++// NATIVE_FLOAT3_RECIPROCAL_NORMALIZE, NATIVE_TRIANGLE_ARITHMETIC,
++// GGX_NATIVE_RECIPROCAL_NORMALIZE, TRIANGLE_LIGHT_NATIVE_SSE) make the WGSL
++// reproduce the rounding of the CPU oracle the GPU is judged against: true
++// selects the x86 SSE4.2 oracle. An SSE build always does; an Android scalar
++// (ARM64) build does when CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2,
++// which the gates judged only against the correctly rounded reference computed
++// on Linux x64 from the device's own scene set (reference_policy.h
++// use_reference_oracle_arithmetic; native/DEVICE.md "Validation reference
++// policy"). Otherwise it keeps its own scalar oracle (local CPU checks).
++bool reference_oracle_sse();
+ std::string shader_data_layout();std::string shader_data_source();std::string svm_surface_source();std::string background_layout();std::string surface_source();std::string camera_wgsl();std::string closest_wgsl();std::string background_wgsl();}
+ // A descriptor contains a native virtual address and an element count. The
+ // original arrays are never repacked or converted to synthetic scene records.
+--- a/native/shaders/wavefront_shader_data.wgsl
++++ b/native/shaders/wavefront_shader_data.wgsl
+@@ -26,13 +26,25 @@
+     if(n.x!=n.y||n.x!=n.z){return surface_normalize(vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x));}
+     return surface_normalize(vec3<f32>(n.z-n.y,n.x+n.z,-n.y-n.x));
+ }
+-fn surface_transform_direction(address:u32,v:vec3<f32>)->vec3<f32>{
+-    let x=heap_vec4(address);let y=heap_vec4(address+16u);let z=heap_vec4(address+32u);
+-    return v.x*vec3<f32>(x.x,y.x,z.x)+(v.y*vec3<f32>(x.y,y.y,z.y)+v.z*vec3<f32>(x.z,y.z,z.z));
++// Static object transforms (util/transform.h transform_point/direction) with the
++// originating oracle's grouping and every product rounded before its sum, as in
++// the closest-stage instance push: SSE builds transpose and accumulate
++// ((w+z)+y)+x, scalar builds take the float4 dot (x+y)+(z+w). Plain WGSL
++// arithmetic let drivers fuse products into sums differently (Intel Mesa and the
++// Adreno compiler disagreed by an ULP in ShaderData P of static instances).
++fn surface_transform_row(t:vec4<f32>,v:vec3<f32>,point:bool)->f32{
++    if(NATIVE_TRIANGLE_ARITHMETIC==0u){
++        let w=select(bitcast<f32>(bitcast<u32>(t.w)&0x80000000u),t.w,point);
++        return rounded_add(rounded_add(v.x*t.x,v.y*t.y),rounded_add(v.z*t.z,w));
++    }
++    var sum=v.z*t.z;if(point){sum=rounded_add(t.w,sum);}
++    return rounded_add(rounded_add(sum,v.y*t.y),v.x*t.x);
+ }
+-fn surface_transform_point(address:u32,v:vec3<f32>)->vec3<f32>{
+-    return surface_transform_direction(address,v)+vec3<f32>(heap_float(address+12u),heap_float(address+28u),heap_float(address+44u));
++fn surface_transform_vector(address:u32,v:vec3<f32>,point:bool)->vec3<f32>{
++    return vec3<f32>(surface_transform_row(heap_vec4(address),v,point),surface_transform_row(heap_vec4(address+16u),v,point),surface_transform_row(heap_vec4(address+32u),v,point));
+ }
++fn surface_transform_direction(address:u32,v:vec3<f32>)->vec3<f32>{return surface_transform_vector(address,v,false);}
++fn surface_transform_point(address:u32,v:vec3<f32>)->vec3<f32>{return surface_transform_vector(address,v,true);}
+ fn surface_transform_normal(address:u32,v:vec3<f32>)->vec3<f32>{
+     let x=heap_vec3(address);let y=heap_vec3(address+16u);let z=heap_vec3(address+32u);
+     return surface_native_normalize(rounded_add3(rounded_add3(v.x*x,v.y*y),v.z*z));
+@@ -90,7 +102,8 @@
+     let vi=vec3<u32>(load_word(vi_address),load_word(vi_address+4u),load_word(vi_address+8u));
+     let vertices=native_triangle_vertices(sd.object_id,sd.prim,sd.primitive_type,sd.time);
+     if(vertices.error!=0u){surface_failure(&sd);return sd;}let a=vertices.a;let b=vertices.b;let c=vertices.c;
+-    sd.dPdu=b-a;sd.dPdv=c-a;sd.P=(a+sd.u*sd.dPdu)+sd.v*sd.dPdv;
++    // triangle_point_from_uv: a+u*(b-a)+v*(c-a), each product rounded before its sum.
++    sd.dPdu=b-a;sd.dPdv=c-a;sd.P=rounded_add3(rounded_add3(a,sd.u*sd.dPdu),sd.v*sd.dPdv);
+     let applied=(sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
+     if(!applied){sd.P=surface_object_point(sd,sd.P,false);}
+     var cross_normal=rounded_cross(sd.dPdu,sd.dPdv);

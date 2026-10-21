@@ -1,0 +1,62 @@
+{
+  "kind": "samples",
+  "run": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/runs/hp/triangle-mw3/output/triangle_sample/run",
+  "reference": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/runs/hp/triangle-mw3/device-scene-reference/references/triangle_sample",
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "passed": true,
+  "rows": [
+    {
+      "key": "samples",
+      "authoritative": {
+        "compared": 45056,
+        "bitwiseDiffering": 2960,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 865,
+        "maximumAbsoluteError": 0.00048828125,
+        "maximumPracticalRatio": 0.0011324470425296148,
+        "maximumUlps": 3,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "validityDifferences": 0,
+        "validSamples": 4096
+      },
+      "diagnosticLocalVersusGlibc": {
+        "compared": 45056,
+        "bitwiseDiffering": 1194,
+        "nonFinite": 0,
+        "practicalFailures": 32,
+        "strictDifferences": 1033,
+        "maximumAbsoluteError": 0.0015299320220947266,
+        "maximumPracticalRatio": 11.5693169901626,
+        "maximumUlps": 2186752,
+        "firstPracticalFailure": {
+          "index": 518,
+          "actual": 0.18177056312561035,
+          "reference": 0.18187665939331055
+        },
+        "passed": false,
+        "validityDifferences": 0,
+        "role": "diagnostic"
+      },
+      "diagnosticGpuVersusLocal": {
+        "compared": 45056,
+        "bitwiseDiffering": 4154,
+        "nonFinite": 0,
+        "practicalFailures": 32,
+        "strictDifferences": 1898,
+        "maximumAbsoluteError": 0.0015299320220947266,
+        "maximumPracticalRatio": 11.59614889464806,
+        "maximumUlps": 2186752,
+        "firstPracticalFailure": {
+          "index": 518,
+          "actual": 0.18187665939331055,
+          "reference": 0.18177056312561035
+        },
+        "passed": false,
+        "role": "diagnostic"
+      }
+    }
+  ]
+}

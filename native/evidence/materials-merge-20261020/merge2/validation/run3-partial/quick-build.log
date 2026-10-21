@@ -1,0 +1,179 @@
+-- Not using precompiled libraries
+-- Attempting to use system libraries instead
+CMake Warning (dev) at src/cmake/external_libs.cmake:443 (find_package):
+  Policy CMP0167 is not set: The FindBoost module is removed.  Run "cmake
+  --help-policy CMP0167" for policy details.  Use the cmake_policy command to
+  set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  CMakeLists.txt:257 (include)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- CodeBrix Cycles host 1.0.20261020.0, Cycles a456b761034dda42c32eef9f4aae0fa5a5c9f604
+-- Configuring done (0.1s)
+-- Generating done (0.3s)
+-- Build files have been written to: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 21%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/shadow.cpp.o
+[ 21%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/background.cpp.o
+[ 21%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.cpp.o
+[ 21%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp.o
+[ 21%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/camera.cpp.o
+[ 21%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/closest.cpp.o
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp: In instantiation of ‘ccl::WebGPUDevice::mem_copy_to(ccl::device_memory&)::<lambda()>::<lambda(auto:42&)> [with auto:42 = std::vector<ccl::KernelObject>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:191:56:   required from here
+  191 |     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
+      |                                                    ~~~~^~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:187:39: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  187 |       if(mem.memory_size())std::memcpy(records.data(),mem.host_pointer,mem.memory_size());};
+      |                            ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/../bvh/params.h:13,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:3:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/../kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+[ 21%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface.cpp.o
+[ 21%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/volume.cpp.o
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_layout.cpp.o
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/shader_data.cpp.o
+[ 26%] Linking CXX static library ../../lib/libcycles_device.a
+[ 47%] Built target cycles_device
+[ 52%] Built target cycles_session
+[ 64%] Built target cycles_integrator
+[ 69%] Built target cycles_subd
+[ 92%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_svm_surface_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_svm_surface_gate
+[100%] Built target codebrix_cycles_svm_surface_gate
+[  2%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 20%] Built target cycles_graph
+[ 20%] Built target cycles_kernel_cpu
+[ 46%] Built target cycles_device
+[ 51%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 90%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_normal_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/normal_gate.cpp.o
+[ 97%] Linking CXX executable bin/codebrix_cycles_normal_gate
+[100%] Built target codebrix_cycles_normal_gate
+[  2%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_kernel_cpu
+[ 20%] Built target cycles_graph
+[ 46%] Built target cycles_device
+[ 51%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 90%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_attribute_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/attribute_gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_attribute_gate
+[100%] Built target codebrix_cycles_attribute_gate
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 16%] Built target cycles_util
+[ 20%] Built target cycles_graph
+[ 20%] Built target cycles_kernel_cpu
+[ 46%] Built target cycles_device
+[ 51%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 90%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_image_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_gate.cpp.o
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_gate.cpp: In function ‘uint64_t sample_gate(ccl::WebGPUDevice&, ccl::Scene&, const std::vector<ccl::ImageHandle>&, const std::string&, double&, uint64_t&, unsigned int&)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_gate.cpp:94:5: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   94 |     for(uint v:guard)require(v==0xa5a5a5a5,"Rejected image wrote output");d.zero(d.error_word,4);rejected++;
+      |     ^~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_gate.cpp:94:75: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   94 |     for(uint v:guard)require(v==0xa5a5a5a5,"Rejected image wrote output");d.zero(d.error_word,4);rejected++;
+      |                                                                           ^
+[100%] Linking CXX executable bin/codebrix_cycles_image_gate
+[100%] Built target codebrix_cycles_image_gate
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 16%] Built target cycles_util
+[ 19%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 47%] Built target cycles_device
+[ 52%] Built target cycles_session
+[ 64%] Built target cycles_integrator
+[ 69%] Built target cycles_subd
+[ 92%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Linking CXX executable bin/codebrix_cycles_image_file_gate
+[100%] Built target codebrix_cycles_image_file_gate
+[  2%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 19%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 47%] Built target cycles_device
+[ 52%] Built target cycles_session
+[ 64%] Built target cycles_integrator
+[ 69%] Built target cycles_subd
+[ 92%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_principled_svm_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_principled_svm_gate
+[100%] Built target codebrix_cycles_principled_svm_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 20%] Built target cycles_kernel_cpu
+[ 20%] Built target cycles_graph
+[ 46%] Built target cycles_device
+[ 51%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 90%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_nodes_svm_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp.o
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp: In function ‘int main(int, char**)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp:307:7: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  307 |       if(kind<=NODE_INFO_OB_COLOR)p.add(NODE_SEPARATE_VECTOR,SVMNodeSeparateVector{.vector=stack_in3(10),.vector_index=0,.out_offset=13});finish(p,"object info "+std::to_string(kind));
+      |       ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp:307:139: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  307 |       if(kind<=NODE_INFO_OB_COLOR)p.add(NODE_SEPARATE_VECTOR,SVMNodeSeparateVector{.vector=stack_in3(10),.vector_index=0,.out_offset=13});finish(p,"object info "+std::to_string(kind));
+      |                                                                                                                                           ^~~~~~
+[100%] Linking CXX executable bin/codebrix_cycles_nodes_svm_gate
+[100%] Built target codebrix_cycles_nodes_svm_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 47%] Built target cycles_device
+[ 52%] Built target cycles_session
+[ 64%] Built target cycles_integrator
+[ 69%] Built target cycles_subd
+[ 92%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_microfacet_svm_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_microfacet_svm_gate
+[100%] Built target codebrix_cycles_microfacet_svm_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 47%] Built target cycles_device
+[ 52%] Built target cycles_session
+[ 64%] Built target cycles_integrator
+[ 69%] Built target cycles_subd
+[ 92%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_glass_svm_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_glass_svm_gate
+[100%] Built target codebrix_cycles_glass_svm_gate

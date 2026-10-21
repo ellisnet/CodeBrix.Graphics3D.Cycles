@@ -1,0 +1,20 @@
+[17:44:30] hp materials-mw2r: START principled_render timeout=2400s
+image            gpu-vs-glibc passed=True practical=0 strict=194 max=8.44e-05 | local-vs-glibc differing=231 maxUlps=438 practical=0
+[17:47:13] hp materials-mw2r: REFERENCE principled_render host re-judged vs glibc: True
+[17:47:13] hp materials-mw2r: PASS principled_render 160s maxPipelineMs=66742.5
+[17:47:13] hp materials-mw2r: START nodes_render timeout=2400s
+image            gpu-vs-glibc passed=True practical=0 strict=3059 max=0.0003028 | local-vs-glibc differing=994 maxUlps=1517 practical=0
+[17:49:06] hp materials-mw2r: REFERENCE nodes_render host re-judged vs glibc: True
+[17:49:06] hp materials-mw2r: PASS nodes_render 107s maxPipelineMs=39289.6
+[17:49:06] hp materials-mw2r: START principled-replay timeout=2400s
+[17:51:19] hp materials-mw2r: PASS principled-replay 128s readbacks=322 max=6.44e-06 strict=101 fmt=native-command-stream-v6
+[17:51:19] hp materials-mw2r: START nodes-replay timeout=2400s
+[17:52:38] hp materials-mw2r: PASS nodes-replay 73s readbacks=320 max=0.000303 strict=2903 fmt=native-command-stream-v6
+[17:52:54] hp materials-mw2r: END passed=True wall=505s/7200s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 505.2}
+[17:53:10] hp spec-refusal-mw2: START glass_render-spec timeout=1200s
+[17:54:24] hp spec-refusal-mw2: PASS glass_render-spec 71s maxPipelineMs=11141.1
+[17:54:24] hp spec-refusal-mw2: START glass_render-nospec-refused timeout=1200s
+[17:54:25] hp spec-refusal-mw2: PASS glass_render-nospec-refused refusal exit=1 0s
+[17:54:40] hp spec-refusal-mw2: END passed=True wall=91s/1800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 91.3}

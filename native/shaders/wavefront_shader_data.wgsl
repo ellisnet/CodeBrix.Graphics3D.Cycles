@@ -26,13 +26,25 @@ fn surface_orthogonal(n:vec3<f32>)->vec3<f32>{
     if(n.x!=n.y||n.x!=n.z){return surface_normalize(vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x));}
     return surface_normalize(vec3<f32>(n.z-n.y,n.x+n.z,-n.y-n.x));
 }
-fn surface_transform_direction(address:u32,v:vec3<f32>)->vec3<f32>{
-    let x=heap_vec4(address);let y=heap_vec4(address+16u);let z=heap_vec4(address+32u);
-    return v.x*vec3<f32>(x.x,y.x,z.x)+(v.y*vec3<f32>(x.y,y.y,z.y)+v.z*vec3<f32>(x.z,y.z,z.z));
+// Static object transforms (util/transform.h transform_point/direction) with the
+// originating oracle's grouping and every product rounded before its sum, as in
+// the closest-stage instance push: SSE builds transpose and accumulate
+// ((w+z)+y)+x, scalar builds take the float4 dot (x+y)+(z+w). Plain WGSL
+// arithmetic let drivers fuse products into sums differently (Intel Mesa and the
+// Adreno compiler disagreed by an ULP in ShaderData P of static instances).
+fn surface_transform_row(t:vec4<f32>,v:vec3<f32>,point:bool)->f32{
+    if(NATIVE_TRIANGLE_ARITHMETIC==0u){
+        let w=select(bitcast<f32>(bitcast<u32>(t.w)&0x80000000u),t.w,point);
+        return rounded_add(rounded_add(v.x*t.x,v.y*t.y),rounded_add(v.z*t.z,w));
+    }
+    var sum=v.z*t.z;if(point){sum=rounded_add(t.w,sum);}
+    return rounded_add(rounded_add(sum,v.y*t.y),v.x*t.x);
 }
-fn surface_transform_point(address:u32,v:vec3<f32>)->vec3<f32>{
-    return surface_transform_direction(address,v)+vec3<f32>(heap_float(address+12u),heap_float(address+28u),heap_float(address+44u));
+fn surface_transform_vector(address:u32,v:vec3<f32>,point:bool)->vec3<f32>{
+    return vec3<f32>(surface_transform_row(heap_vec4(address),v,point),surface_transform_row(heap_vec4(address+16u),v,point),surface_transform_row(heap_vec4(address+32u),v,point));
 }
+fn surface_transform_direction(address:u32,v:vec3<f32>)->vec3<f32>{return surface_transform_vector(address,v,false);}
+fn surface_transform_point(address:u32,v:vec3<f32>)->vec3<f32>{return surface_transform_vector(address,v,true);}
 fn surface_transform_normal(address:u32,v:vec3<f32>)->vec3<f32>{
     let x=heap_vec3(address);let y=heap_vec3(address+16u);let z=heap_vec3(address+32u);
     return surface_native_normalize(rounded_add3(rounded_add3(v.x*x,v.y*y),v.z*z));
@@ -90,7 +102,8 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
     let vi=vec3<u32>(load_word(vi_address),load_word(vi_address+4u),load_word(vi_address+8u));
     let vertices=native_triangle_vertices(sd.object_id,sd.prim,sd.primitive_type,sd.time);
     if(vertices.error!=0u){surface_failure(&sd);return sd;}let a=vertices.a;let b=vertices.b;let c=vertices.c;
-    sd.dPdu=b-a;sd.dPdv=c-a;sd.P=(a+sd.u*sd.dPdu)+sd.v*sd.dPdv;
+    // triangle_point_from_uv: a+u*(b-a)+v*(c-a), each product rounded before its sum.
+    sd.dPdu=b-a;sd.dPdv=c-a;sd.P=rounded_add3(rounded_add3(a,sd.u*sd.dPdu),sd.v*sd.dPdv);
     let applied=(sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
     if(!applied){sd.P=surface_object_point(sd,sd.P,false);}
     var cross_normal=rounded_cross(sd.dPdu,sd.dPdv);

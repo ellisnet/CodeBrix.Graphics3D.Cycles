@@ -1,0 +1,15 @@
+# Phase D5 budgets (declared before each run; terminate-and-report on overrun)
+[07:27] android-arm64 native build (tools/build_android.py --skip-dependencies --jobs 6): 3600 s (incremental tree from C2; justified: Cycles cross-build at 6 jobs)
+[07:27] android-x64 native build (tools/build_android.py --skip-dependencies --jobs 6): 3600 s (no host build tree for x64 in main's work dir; full Cycles cross-build at 6 jobs)
+[07:32] linux glTF tool --compare dev run (sample.glb, sample-sun.glb): 900 s each
+[07:36] linux managed tests (GltfSceneConverterTests + WebGpuRenderTests), cold MESA_SHADER_CACHE_DIR native/work/phaseD5/mesa-cold-1: 900 s
+[07:37] linux managed tests rerun with TRX output, cold cache mesa-cold-2: 900 s
+[07:41] android-arm64 + android-x64 native rebuild #2 (first attempt failed its own source-pin assertion because I edited tools/ during the build; build trees warm): 1800 s each
+[07:43] android_host_gate.py (48 exports) on Samsung R52W207XQ1V and HP 192.168.86.225:5555, references native/work/phaseD4/host-gate, --gpu-timeout 2400: 2400 s per device (outer timeout 3000 s)
+[07:43] build_android_app.py (native review of both RIDs + APK build, application id com.codebrix.cycles.hostvalidation.webgpu): 1200 s
+[07:46] android_app_gate.py --mode webgpu --uninstall on Samsung + HP (3 scenes CPU vs GPU + cancellation), --result-timeout 2400: 2400 s per device (outer 3000 s)
+[07:50] OPTIONAL Pixel 4 XL 98271FFBA0048D one confirmation run: android_app_gate.py --mode webgpu --uninstall, --result-timeout 2400 (table 20 s compile budget applies): 2400 s (outer 3000 s)
+[08:00] Linux closeout managed group: dotnet build --no-incremental Release+Debug, dotnet test Release+Debug, dotnet pack: 900 s
+[08:01] Linux host gate (48 exports) native/tools/host_gate.py --output native/work/phaseD5/host-gate --jobs 6, cold MESA_SHADER_CACHE_DIR=native/work/phaseD5/mesa-host: 1200 s (concurrent with the Pixel device run; 1 Linux gate)
+[08:01] licensing audit/notices/guards/generator --check/diff --check group: 600 s
+[08:07] evidence freeze native/evidence/phaseD-closeout-20261020 (<=150 MB): 900 s

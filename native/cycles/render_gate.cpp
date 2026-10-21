@@ -6,6 +6,7 @@
 #include "image_fixture.h"
 #include "../../parity/native/import_triangles.h"
 #include "camera_reference.h"
+#include "reference_policy.h"
 #include "camera_motion_fixture.h"
 #include "closest_reference.h"
 #include "surface_reference.h"
@@ -86,7 +87,7 @@ static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vect
     if(edge_hits.contains(i)&&(f.name=="isect.prim"||f.name=="isect.u"||f.name=="isect.v"))continue;
     auto a=reinterpret_cast<const char*>(&actual[i])+f.offset;auto e=reinterpret_cast<const char*>(&expected[i])+f.offset;
     if(f.floating){for(size_t k=0;k<f.stride;k+=4){float av,ev;std::memcpy(&av,a+k,4);std::memcpy(&ev,e+k,4);
-      if(std::abs(double(av)-ev)>5e-5+2e-4*std::abs(double(ev))){auto &a0=actual[i];auto &e0=expected[i];std::cerr<<std::setprecision(10)<<"Intersection diagnostic actual prim/object/t="<<a0.isect.prim<<'/'<<a0.isect.object<<'/'<<a0.isect.t<<" expected="<<e0.isect.prim<<'/'<<e0.isect.object<<'/'<<e0.isect.t<<" P="<<e0.ray.P.x<<','<<e0.ray.P.y<<','<<e0.ray.P.z<<" D="<<e0.ray.D.x<<','<<e0.ray.D.y<<','<<e0.ray.D.z<<" tmin="<<e0.ray.tmin<<" bounce="<<e0.path.bounce<<'\n';}
+      if(std::abs(double(av)-ev)>5e-5+2e-4*std::abs(double(ev))){auto &a0=actual[i];auto &e0=expected[i];std::cerr<<std::setprecision(10)<<"Intersection diagnostic actual prim/object/t="<<a0.isect.prim<<'/'<<a0.isect.object<<'/'<<a0.isect.t<<" expected="<<e0.isect.prim<<'/'<<e0.isect.object<<'/'<<e0.isect.t<<" P="<<e0.ray.P.x<<','<<e0.ray.P.y<<','<<e0.ray.P.z<<" D="<<e0.ray.D.x<<','<<e0.ray.D.y<<','<<e0.ray.D.z<<" rayBitsIdentical="<<(!std::memcmp(&a0.ray.P,&e0.ray.P,sizeof(e0.ray.P))&&!std::memcmp(&a0.ray.D,&e0.ray.D,sizeof(e0.ray.D))&&a0.ray.tmin==e0.ray.tmin&&a0.ray.time==e0.ray.time)<<" tmin="<<e0.ray.tmin<<" bounce="<<e0.path.bounce<<'\n';}
       number(av,ev,"stage "+std::to_string(m.stages)+" "+f.name+" path="+std::to_string(i),m);}}
     else{
       if(std::memcmp(a,e,f.stride)){auto &a0=actual[i];auto &e0=expected[i];
@@ -119,8 +120,37 @@ static void fixture(Scene &scene,const char *asset,bool attributes=false,bool im
     checker->set_color1(make_float3(.8,.15,.09));checker->set_color2(make_float3(.12,.45,.8));checker->set_scale(5.3f);
     g->connect(uv->output("UV"),checker->input("Vector"));g->connect(checker->output("Color"),diffuse->input("Color"));}
   auto wall=scene.create_node<Shader>();wall->set_graph(std::move(g));wall->tag_update(&scene);
+  Shader *model_shader=wall,*floor_shader=wall,*wall_shader=wall;
+#ifdef CBC_PRINCIPLED_FIXTURE
+  // Principled materials replace the clay: real native Principled graphs.
+  struct Look {float metallic,roughness,ior,transmission,coat,sheen,anisotropic,emission;float3 base;};
+  auto principled_shader=[&](const Look &k){auto pg=make_unique<ShaderGraph>();auto n=pg->create_node<PrincipledBsdfNode>();
+    n->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);n->set_base_color(k.base);n->set_metallic(k.metallic);n->set_roughness(k.roughness);n->set_ior(k.ior);
+    n->set_transmission_weight(k.transmission);n->set_coat_weight(k.coat);n->set_coat_roughness(.15f);n->set_coat_tint(make_float3(.9f,.85f,.7f));
+    n->set_sheen_weight(k.sheen);n->set_sheen_roughness(.4f);n->set_sheen_tint(make_float3(.9f,.8f,1));n->set_specular_tint(make_float3(.95f,.8f,.6f));
+    n->set_anisotropic(k.anisotropic);n->set_diffuse_roughness(.3f);n->set_emission_color(make_float3(1,.5f,.2f));n->set_emission_strength(k.emission);
+    if(k.anisotropic>0){auto tangent=pg->create_node<ColorNode>();tangent->set_value(make_float3(.8,.3,.2));pg->connect(tangent->output("Color"),n->input("Tangent"));}
+    pg->connect(n->output("BSDF"),pg->output()->input("Surface"));auto sh=scene.create_node<Shader>();sh->set_graph(std::move(pg));sh->tag_update(&scene);return sh;};
+  if(asset){model_shader=principled_shader({0,.45f,1.45f,0,.6f,.5f,0,0,make_float3(.55,.33,.18)});
+    floor_shader=principled_shader({1,.3f,1.45f,0,0,0,0,0,make_float3(.8,.6,.45)});wall_shader=principled_shader({0,.6f,1.45f,0,0,0,0,0,make_float3(.6,.65,.7)});}
+  else{
+    // A row of smooth-shaded spheres sweeping the Principled lobes.
+    const Look looks[]={{0,0,1.5f,1,0,0,0,0,make_float3(1,1,1)},{0,.3f,1.33f,1,0,0,0,0,make_float3(.7,.9,.8)},{1,.25f,1.45f,0,0,0,0,0,make_float3(.95,.75,.35)},
+                        {0,.5f,1.45f,0,1,0,0,0,make_float3(.7,.1,.08)},{0,.7f,1.45f,0,0,1,0,0,make_float3(.2,.25,.6)},{.8f,.35f,1.45f,0,0,0,.6f,.5f,make_float3(.6,.6,.65)}};
+    constexpr unsigned stacks=8,slices=12;
+    for(unsigned s=0;s<6;s++){auto sphere=scene.create_node<Mesh>();array<Node*> slot;slot.push_back_slow(principled_shader(looks[s]));sphere->set_used_shaders(slot);
+      sphere->resize_mesh((stacks+1)*(slices+1),stacks*slices*2);auto v=sphere->get_position_for_write();
+      for(unsigned i=0;i<=stacks;i++)for(unsigned j=0;j<=slices;j++){const float th=M_PI_F*i/stacks,ph=M_2PI_F*j/slices;v[i*(slices+1)+j]=make_float3(sinf(th)*cosf(ph),cosf(th),sinf(th)*sinf(ph));}
+      unsigned tri=0;for(unsigned i=0;i<stacks;i++)for(unsigned j=0;j<slices;j++){const int a=i*(slices+1)+j,b=a+slices+1;const int q[]={a,b,a+1,a+1,b,b+1};
+        for(unsigned k=0;k<6;k++){sphere->get_triangles()[tri*3+k]=q[k];}
+        tri+=2;}
+      std::ranges::fill(sphere->get_smooth(),true);std::ranges::fill(sphere->get_shader(),0);sphere->tag_triangles_modified();
+      auto normals=sphere->attributes.add(ATTR_STD_VERTEX_NORMAL)->data_for_write<packed_normal>();for(unsigned i=0;i<(stacks+1)*(slices+1);i++)normals[i]=packed_normal(normalize(v[i]+make_float3(0,1e-6f,0)));
+      auto ob=scene.create_node<Object>();ob->set_geometry(sphere);ob->set_tfm(transform_translate(make_float3(-4.5f+1.8f*s,-3.1f,-2.f))*transform_scale(make_float3(.85f,.85f,.85f)));}
+  }
+#endif
   if(asset){
-    auto points=import_test_triangles(asset);auto model=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(wall);model->set_used_shaders(slots);model->resize_mesh(points.size(),points.size()/3);
+    auto points=import_test_triangles(asset);auto model=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(model_shader);model->set_used_shaders(slots);model->resize_mesh(points.size(),points.size()/3);
     for(size_t i=0;i<points.size();i++){auto p=points[i];model->get_position_for_write()[i]=make_float3(p[0],p[2]-4,2-p[1]);model->get_triangles()[i]=i;}
     std::ranges::fill(model->get_smooth(),false);std::ranges::fill(model->get_shader(),0);model->tag_triangles_modified();scene.create_node<Object>()->set_geometry(model);
     // Rigid view transform toward the bench from above and its front-right side.
@@ -128,11 +158,12 @@ static void fixture(Scene &scene,const char *asset,bool attributes=false,bool im
     camera.x=make_float4(right.x,up.x,forward.x,origin.x);camera.y=make_float4(right.y,up.y,forward.y,origin.y);camera.z=make_float4(right.z,up.z,forward.z,origin.z);
     scene.camera->set_matrix(camera);scene.camera->set_fov(.68f);scene.camera->compute_auto_viewplane();
   }
-  auto mesh=scene.create_node<Mesh>();array<Node*> materials;materials.push_back_slow(wall);mesh->set_used_shaders(materials);mesh->resize_mesh(16,8);
+  auto mesh=scene.create_node<Mesh>();array<Node*> materials;materials.push_back_slow(floor_shader);if(wall_shader!=floor_shader)materials.push_back_slow(wall_shader);mesh->set_used_shaders(materials);mesh->resize_mesh(16,8);
   const float v[][3]={{-6,-4,-4},{6,-4,-4},{6,-4,8},{-6,-4,8},{-6,-4,8},{6,-4,8},{6,5,8},{-6,5,8},{-6,-4,-4},{-6,-4,8},{-6,5,8},{-6,5,-4},{6,-4,8},{6,-4,-4},{6,5,-4},{6,5,8}};
   for(unsigned i=0;i<16;i++)mesh->get_position_for_write()[i]=make_float3(v[i][0],v[i][1],v[i][2]);
   for(unsigned i=0;i<4;i++){const int tri[]={0,1,2,0,2,3};for(unsigned j=0;j<6;j++)mesh->get_triangles()[i*6+j]=i*4+tri[j];}
-  std::ranges::fill(mesh->get_smooth(),false);std::ranges::fill(mesh->get_shader(),0);mesh->tag_triangles_modified();auto object=scene.create_node<Object>();object->set_geometry(mesh);
+  std::ranges::fill(mesh->get_smooth(),false);std::ranges::fill(mesh->get_shader(),0);if(wall_shader!=floor_shader)for(unsigned i=2;i<8;i++)mesh->get_shader()[i]=1;
+  mesh->tag_triangles_modified();auto object=scene.create_node<Object>();object->set_geometry(mesh);
   if(attributes){auto uv=mesh->attributes.add(ATTR_STD_UV)->data_for_write<float2>();const float corners[][2]={{0,0},{1,0},{1,1},{0,0},{1,1},{0,1}};
     for(unsigned i=0;i<24;i++)uv[i]=make_float2(corners[i%6][0]+.17f*(i/6),corners[i%6][1]);}
   auto world=make_unique<ShaderGraph>();auto bg=world->create_node<BackgroundNode>();bg->set_color(make_float3(.25,.4,.6));bg->set_strength(.8f);world->connect(bg->output("Background"),world->output()->input("Surface"));auto shader=scene.create_node<Shader>();
@@ -177,7 +208,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   const char *asset=argc>=3&&!attribute_mode&&!motion_mode?argv[2]:nullptr;const bool preview_mode=argc==7;
   const unsigned width=preview_mode?std::stoul(argv[4]):64,height=preview_mode?std::stoul(argv[5]):48,samples=preview_mode?std::stoul(argv[6]):8;
   require(width>0&&height>0&&width<=2048&&height<=2048&&samples>0&&samples<=1024,"Invalid render dimensions/samples");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;Metrics image;
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"render_gate device creation");Metrics m;Metrics image;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene,asset,attribute_mode,image_mode,normal_mode);scene.camera->set_full_width(width);scene.camera->set_full_height(height);scene.camera->set_screen_size(width,height);scene.camera->compute_auto_viewplane();scene.integrator->set_aa_samples(samples);if(motion_mode)camera_motion_fixture(scene,scene.camera->get_matrix(),motion_case);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Render scene preparation failed");
     if(motion_mode)require(scene.dscene.data.cam.num_motion_steps>=2&&scene.dscene.data.cam.shuttertime!=-1,"Motion render preparation failed");
@@ -238,7 +269,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       }
       if(capture)capture->finish(prefix,buffers->buffer.device_pointer,buffers->buffer.memory_size(),uintptr_t(d.state.path.queued_kernel),scheduler.capacity(),width,height,samples,data.film.pass_stride);
       buffers->buffer.copy_from_device();healthy(d);std::vector<float> result(buffers->buffer.data(),buffers->buffer.data()+buffers->buffer.size());
-      if(repeat==0){first=result;write_image(prefix+".gpu",result,samples,width,height,data.film.pass_stride);write_image(prefix+".cpu",gold,samples,width,height,data.film.pass_stride);for(size_t i=0;i<result.size();i++)number(result[i],gold[i],"Independent CPU image "+std::to_string(i),image);}
+      if(repeat==0){first=result;write_image(prefix+".gpu",result,samples,width,height,data.film.pass_stride);write_image(prefix+".cpu",gold,samples,width,height,data.film.pass_stride);
+        // Pass/fail reference for the independent image: local, or the imported correctly rounded one
+        // (reference_policy.h). The lockstep stage checks above keep the local oracle: their input is this GPU's state.
+        const auto reference=reference_policy::resolve("image",gold,prefix+".reference-diagnostic.jsonl");
+        for(size_t i=0;i<result.size();i++)number(result[i],reference[i],"Independent CPU image "+std::to_string(i),image);}
       else require(!std::memcmp(first.data(),result.data(),result.size()*4),"GPU render repeat differs");
     }
 #ifdef CBC_VOLUME_FIXTURE

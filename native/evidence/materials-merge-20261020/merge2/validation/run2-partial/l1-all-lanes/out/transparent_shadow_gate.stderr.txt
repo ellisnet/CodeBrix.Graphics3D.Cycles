@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/transparent_shadow_gate.py", line 92, in <module>
+    main()
+    ~~~~^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/transparent_shadow_gate.py", line 54, in main
+    subprocess.run([str(WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate')), str(directory/'run')],
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   stdout=stdout, stderr=stderr, check=True, timeout=900)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_shader_data_gate', '/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l1-all-lanes/out/transparent_shadow_gate/shader_data/run']' returned non-zero exit status 1.

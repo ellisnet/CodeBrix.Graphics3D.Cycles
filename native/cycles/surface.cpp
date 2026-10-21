@@ -24,11 +24,7 @@ static std::string surface_layout(){
   constant("SURFACE_STAGE_BYTES",surface_stage_bytes);
   // Preserve the originating native kernel's float3 division order. This is
   // encoded into captures too, independently of the GPU that replays them.
-#ifdef __KERNEL_SSE__
-  constant("GGX_NATIVE_RECIPROCAL_NORMALIZE",0);
-#else
-  constant("GGX_NATIVE_RECIPROCAL_NORMALIZE",1);
-#endif
+  constant("GGX_NATIVE_RECIPROCAL_NORMALIZE",reference_oracle_sse()?0:1);
 #define DATA(parent,member) constant("D_" #parent "_" #member,offsetof(KernelData,parent.member))
   DATA(integrator,max_bounce);
   DATA(integrator,max_diffuse_bounce);DATA(integrator,max_transmission_bounce);
@@ -61,6 +57,14 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
   validate_geometry_motion();
   validate_volume();
   validate_lighting(data.integrator.use_direct_light);
+  // Shadow terminator: the shading multiplier 1/(1-offset/2) is implemented
+  // for offsets in [0,1] (multiplier at most 2, keeping shift_cos_in's cosine
+  // argument inside [0,pi]); larger offsets are rejected, never approximated.
+  for(const KernelObject &object:object_records){
+    require(std::isfinite(object.shadow_terminator_geometry_offset),"Invalid native shadow terminator geometry offset");
+    require(!(object.shadow_terminator_shading_offset>2.0f)&&!std::isnan(object.shadow_terminator_shading_offset),
+            "WebGPU shadow terminator shading offset outside [0, 1] not implemented");
+  }
   require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO))&&
           !data.integrator.has_shadow_catcher&&!data.integrator.use_caustics,"WebGPU surface optional integration features not implemented");
   require(data.film.pass_flag==0,"WebGPU surface data passes not implemented");

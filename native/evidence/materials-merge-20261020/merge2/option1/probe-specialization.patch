@@ -1,0 +1,324 @@
+diff -ruN before/native/cycles/attribute_gate.cpp after/native/cycles/attribute_gate.cpp
+--- before/native/cycles/attribute_gate.cpp	2026-10-20 18:02:24.410454715 -0700
++++ after/native/cycles/attribute_gate.cpp	2026-10-20 18:37:58.905223105 -0700
+@@ -116,7 +116,7 @@
+     device_vector<uint> output(&d,"attribute_rejection_output",MEM_READ_WRITE);output.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(output.data(),output.size(),0xa5a5a5a5u);output.copy_to_device();
+     device_vector<uint> scratch(&d,"attribute_rejection_scratch",MEM_READ_WRITE);scratch.alloc(MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);scratch.zero_to_device();
+     std::array<uint32_t,32> p{};p[1]=1;p[4]=output.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=d.remaining(uintptr_t(d.state.path.render_pixel_index))/4;p[14]=d.scene_tables();p[17]=d.error_word;p[21]=ds.svm_nodes.device_pointer;p[22]=ds.svm_nodes.size();p[23]=scratch.device_pointer;
+-    PreparedSurfaceCache cache(d,p);
++    refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
+     d.dispatch(p,1,shader);uint error=0;d.download(d.error_word,&error,4);output.copy_from_device();healthy(d);
+     const uint expected[]={64,64,64,16,16,8,16};require(error==expected[test],"Attribute rejection "+std::to_string(test)+" error="+std::to_string(error));
+     require(std::all_of(output.data(),output.data()+output.size(),[](uint v){return v==0xa5a5a5a5u;}),"Invalid attribute wrote output");cache.verify();d.zero(d.error_word,4);
+@@ -132,7 +132,7 @@
+     for(auto &a:std::span(ds.attributes_map.data(),ds.attributes_map.size())){negative_offsets+=a.offset<0&&a.offset!=ATTR_STD_NOT_FOUND;chains+=a.id==ATTR_STD_NONE&&a.element!=0;}
+     require(negative_offsets>0&&chains>0,"Missing negative offsets or object-to-geometry map chains");
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&ds,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=attribute_states(scene,initial);
+-    auto source=probe_source();std::ofstream(prefix+".wgsl")<<source;auto shader=pipeline(d,source);
++    auto source=probe_source();std::ofstream(prefix+".wgsl")<<gate_probe_wgsl(d,source);auto shader=pipeline(d,source);
+     evaluate(d,scene,shader,layout,initial,ids,"Native attribute graphs",m,prefix);
+     std::vector<int> small;
+     for(unsigned ob=0;ob<3;ob++)for(unsigned i=0;i<4;i++)small.push_back(ids[ob*graph_count*8+i]);
+diff -ruN before/native/cycles/device.h after/native/cycles/device.h
+--- before/native/cycles/device.h	2026-10-20 18:02:24.418454827 -0700
++++ after/native/cycles/device.h	2026-10-20 18:37:58.905223105 -0700
+@@ -168,5 +168,12 @@
+     (device&&device->have_error()?device->error_message():std::string("no device was returned")));
+   return *webgpu;
+ }
++// Gate probe modules (surface SVM, shader-data and image probes) compile the
++// scene-specialized module, like every renderer pipeline (module_wgsl), never the
++// whole unspecialized source: Intel Mesa 25.0.7 miscompiles the module-scope
++// svm_stack inside the large unspecialized SVM probe module (normal_gate SVM
++// error 8 after the materials merge; the withheld Gabor node hit the same class).
++// CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 still selects the unspecialized module.
++inline std::string gate_probe_wgsl(WebGPUDevice &device,const std::string &source){return device.module_wgsl(source);}
+ void device_webgpu_info(vector<DeviceInfo>&);
+ }
+diff -ruN before/native/cycles/image_file_gate.cpp after/native/cycles/image_file_gate.cpp
+--- before/native/cycles/image_file_gate.cpp	2026-10-20 18:02:24.410454715 -0700
++++ after/native/cycles/image_file_gate.cpp	2026-10-20 18:37:58.909223144 -0700
+@@ -82,7 +82,8 @@
+  for(var i=0u;i<4u;i++){store_word(out+i*4u,bitcast<u32>(color[i]));}
+ })WGSL";
+ 
+-static cbc::Pipeline make_pipeline(WebGPUDevice &device, const std::string &source) {
++static cbc::Pipeline make_pipeline(WebGPUDevice &device, const std::string &probe) {
++  const std::string source=gate_probe_wgsl(device,probe);
+   WGPUShaderSourceWGSL code{};code.chain.sType=WGPUSType_ShaderSourceWGSL;
+   code.code={source.data(),source.size()};WGPUShaderModuleDescriptor desc{};desc.nextInChain=&code.chain;
+   device.gpu.push_scope();
+@@ -206,7 +207,7 @@
+     auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+     Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);
+     auto &d=require_webgpu_device(owner.get(),"image_file_gate device creation");
+-    const std::string source=svm_surface_source()+probe_entry;auto pipeline=make_pipeline(d,source);
++    const std::string source=gate_probe_wgsl(d,svm_surface_source()+probe_entry);auto pipeline=make_pipeline(d,source);
+     Checks checks;uint64_t capture_samples=0;unsigned duplicate_handles=0,replacements=0,missing_files=0,udim_tiles=0;
+     std::set<unsigned> formats;unsigned parameter_variants=0;
+     {
+diff -ruN before/native/cycles/image_gate.cpp after/native/cycles/image_gate.cpp
+--- before/native/cycles/image_gate.cpp	2026-10-20 18:02:24.410454715 -0700
++++ after/native/cycles/image_gate.cpp	2026-10-20 18:37:58.913223182 -0700
+@@ -48,7 +48,7 @@
+  let color=svm_image_sample(&s,bitcast<i32>(load_word(at)),vec2<f32>(heap_float(at+8u),heap_float(at+12u)),load_word(at+4u));
+  if(s.error!=0u){return;}let out=p(4u)+id.x*16u;for(var i=0u;i<4u;i++){store_word(out+i*4u,bitcast<u32>(color[i]));}
+ })WGSL";
+-  std::ofstream(prefix+".sampling.wgsl")<<source;
++  source=gate_probe_wgsl(d,source);std::ofstream(prefix+".sampling.wgsl")<<source;
+   WGPUShaderSourceWGSL code{};code.chain.sType=WGPUSType_ShaderSourceWGSL;code.code={source.data(),source.size()};WGPUShaderModuleDescriptor md{};md.nextInChain=&code.chain;d.gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&md));d.gpu.pop_scope();auto shader=d.gpu.pipeline(module,d.pipeline_layout,"image_probe");
+   std::array<uint32_t,32> p{};p[1]=probes.size();p[2]=input.device_pointer;p[4]=output.device_pointer+32;p[14]=d.scene_tables();p[17]=d.error_word;
+   const auto capture=std::filesystem::path(prefix).parent_path()/"sampling"/"run";std::filesystem::create_directories(capture.parent_path());
+@@ -104,7 +104,7 @@
+     auto &ds=scene.dscene;ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;ds.data.max_closures=MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&ds,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);std::vector<IntegratorStateCPU> states(scheduler.capacity());std::vector<int> ids;
+     for(unsigned t=0;t<IMAGE_COUNT;t++)for(unsigned j=0;j<6;j++){unsigned i=ids.size()*2;ids.push_back(i);auto &s=states[i];s.isect.object=scene.objects[0]->get_device_index();s.isect.prim=scene.objects[0]->get_geometry()->prim_offset+t;s.isect.type=scene.dscene.objects[s.isect.object].primitive_type;s.isect.u=.17f*j;s.isect.v=.11f*(5-j);s.isect.t=.1f*j;s.ray.P=make_float3(.1,.2,-2);s.ray.D=normalize(make_float3(.13f*j-.8f,.4f-.07f*j,j%2?1.f:-1.f));s.ray.time=((motion||deform)?.2f:.1f)*j;s.ray.dP=.007f*j;s.ray.dD=.013f*j;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE;}
+-    auto source=probe_source();std::ofstream(prefix+".wgsl")<<source;auto shader=pipeline(d,source);evaluate(d,scene,shader,layout,states,ids,"Native image graphs",m,prefix);
++    auto source=probe_source();std::ofstream(prefix+".wgsl")<<gate_probe_wgsl(d,source);auto shader=pipeline(d,source);evaluate(d,scene,shader,layout,states,ids,"Native image graphs",m,prefix);
+     std::vector<int> small(ids.begin(),ids.begin()+6);
+     const float3 coordinates[]={make_float3(.13,.47,.61),make_float3(0,0,0),make_float3(.5,.5,.5),make_float3(.5,.5,1),make_float3(1,0,1),make_float3(.99,.01,.57)};
+     const float3 normals[]={make_float3(1,0,0),make_float3(0,1,0),make_float3(0,0,1),normalize(make_float3(-1,1,0)),normalize(make_float3(0,-1,1)),normalize(make_float3(1,0,-1)),normalize(make_float3(-1,1,1))};
+diff -ruN before/native/cycles/normal_gate.cpp after/native/cycles/normal_gate.cpp
+--- before/native/cycles/normal_gate.cpp	2026-10-20 18:02:24.410454715 -0700
++++ after/native/cycles/normal_gate.cpp	2026-10-20 18:37:58.917223219 -0700
+@@ -85,7 +85,7 @@
+     device_vector<uint> output(&d,"normal_rejection_output",MEM_READ_WRITE);output.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(output.data(),output.size(),0xa5a5a5a5u);output.copy_to_device();
+     device_vector<uint> scratch(&d,"normal_rejection_scratch",MEM_READ_WRITE);scratch.alloc(MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);scratch.zero_to_device();
+     std::array<uint32_t,32> p{};p[1]=1;p[4]=output.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=d.remaining(uintptr_t(d.state.path.render_pixel_index))/4;p[14]=d.scene_tables();p[17]=d.error_word;p[21]=ds.svm_nodes.device_pointer;p[22]=ds.svm_nodes.size();p[23]=scratch.device_pointer;
+-    PreparedSurfaceCache cache(d,p);
++    refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
+     d.dispatch(p,1,shader);uint error=0;d.download(d.error_word,&error,4);output.copy_from_device();healthy(d);
+     require(error==((test==3||test==8)?8u:16u),"Normal rejection "+std::to_string(test)+" error="+std::to_string(error));
+     require(std::all_of(output.data(),output.data()+output.size(),[](uint v){return v==0xa5a5a5a5u;}),"Invalid normal wrote output");cache.verify();d.zero(d.error_word,4);
+@@ -99,7 +99,7 @@
+     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Normal scene update failed");auto &ds=scene.dscene;
+     ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;ds.data.max_closures=MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&ds,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=normal_states(scene,initial);if(motion||deform)for(int i:ids)initial[i].ray.time*=2.5f;
+-    auto source=probe_source();std::ofstream(prefix+".wgsl")<<source;auto shader=pipeline(d,source);
++    auto source=probe_source();std::ofstream(prefix+".wgsl")<<gate_probe_wgsl(d,source);auto shader=pipeline(d,source);
+     evaluate(d,scene,shader,layout,initial,ids,"Native normal/tangent graphs",m,prefix);
+     std::vector<int> small;for(unsigned ob=0;ob<4;ob++)for(unsigned j=0;j<6;j++)small.push_back(ids[ob*graph_count*6+j]);
+     auto id=[&](AttributeStandard attr){return int(scene.shader_manager->get_attribute_id(attr));};
+diff -ruN before/native/cycles/surface_svm_test.h after/native/cycles/surface_svm_test.h
+--- before/native/cycles/surface_svm_test.h	2026-10-20 18:02:24.410454715 -0700
++++ after/native/cycles/surface_svm_test.h	2026-10-20 18:37:58.917223219 -0700
+@@ -53,13 +53,33 @@
+   s<<"}\n";
+   s<<"}\n";return s.str();
+ }
+-static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &source){
++// The probe module is scene-specialized (gate_probe_wgsl, device.h) and follows
++// the uploaded programs like the renderer's pipelines: refresh_probe rebuilds it
++// before a dispatch whose programs reach a region the module was built without
++// (typed programs and rejection cases upload new programs after creation).
++static std::string probe_raw,probe_module;static uint64_t probe_features=0;
++static uint64_t probe_scene_features(WebGPUDevice &d){
++  // Native refusals (unsupported Principled features) keep the current module:
++  // the case under test then reports through the WGSL handler, as before.
++  // Glass records carry the canonical generalized-Schlick fields (model in
++  // roughness, f0 in multiscatter) only in modules with the Principled region;
++  // the probe compares those canonical records, so it keeps that region whenever
++  // glass is reachable (the arithmetic is identical either way; films match).
++  try{uint64_t f=d.shader_features();if(f&SF_BSDF_GLASS)f|=SF_BSDF_PRINCIPLED;return f;}
++  catch(const std::exception&){return probe_features;}
++}
++static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &probe){
++  probe_raw=probe;probe_features=probe_scene_features(d);probe_module=specialize_wgsl(probe,probe_features);
++  const std::string &source=probe_module;
+   WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={source.data(),source.size()};
+   WGPUShaderModuleDescriptor desc{};desc.nextInChain=&wgsl.chain;d.gpu.push_scope();
+   cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&desc));d.gpu.pop_scope();
+   d.surface_geometry=d.gpu.pipeline(module,d.pipeline_layout,"prepare_shader_data");
+   return d.gpu.pipeline(module,d.pipeline_layout,"surface_svm_probe");
+ }
++static void refresh_probe(WebGPUDevice &d,cbc::Pipeline &shader){
++  if(!probe_raw.empty()&&(probe_scene_features(d)&~probe_features)!=0)shader=pipeline(d,probe_raw);
++}
+ // The prepass is executed by the GPU before every probe, including rejections.
+ // Captures retain that GPU-generated cache, never CPU-derived ShaderData.
+ struct PreparedSurfaceCache {
+@@ -80,8 +100,9 @@
+   device_vector<uint> output(&d,"svm_surface_output",MEM_READ_WRITE);output.alloc(16+ids.size()*sizeof(SurfaceSvmRecord)/4);std::fill_n(output.data(),output.size(),0xa5a5a5a5u);output.copy_to_device();
+   device_vector<uint> scratch(&d,"svm_surface_closures",MEM_READ_WRITE);scratch.alloc(16+ids.size()*MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);std::fill_n(scratch.data(),scratch.size(),0xa5a5a5a5u);std::fill(scratch.data()+8,scratch.data()+scratch.size()-8,0);scratch.copy_to_device();
+   std::array<uint32_t,32> p{};p[1]=ids.size();p[2]=dense?0:selected.device_pointer;p[4]=output.device_pointer+32;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=states.size();p[14]=d.scene_tables();p[17]=d.error_word;p[21]=scene.dscene.svm_nodes.device_pointer;p[22]=scene.dscene.svm_nodes.size();p[23]=scratch.device_pointer+32;
+-  PreparedSurfaceCache cache(d,p);
++  refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
+   if(!capture.empty()){
++    std::ofstream(capture+".wgsl")<<probe_module;
+     auto staging=d.gpu.buffer(d.arena_bytes,WGPUBufferUsage_CopyDst|WGPUBufferUsage_MapRead);wgpuCommandEncoderCopyBufferToBuffer(d.commands(),d.arena,0,staging,0,d.arena_bytes);d.flush();std::vector<uint8_t> arena(d.arena_bytes);d.gpu.read(staging,arena.data(),arena.size());
+     std::ofstream(capture+".arena.bin",std::ios::binary).write(reinterpret_cast<const char*>(arena.data()),arena.size());std::ofstream(capture+".params.bin",std::ios::binary).write(reinterpret_cast<const char*>(p.data()),sizeof(p));std::ofstream(capture+".reference.bin",std::ios::binary).write(reinterpret_cast<const char*>(expected.data()),expected.size()*sizeof(SurfaceSvmRecord));
+     std::ofstream info(capture+".capture.json");info<<"{\"entry\":\"surface_svm_probe\",\"recordSize\":"<<sizeof(SurfaceSvmRecord)<<",\"count\":"<<ids.size()<<",\"outputOffset\":"<<p[4]<<",\"errorOffset\":"<<p[17]<<",\"closureScratch\":{\"offset\":"<<p[23]<<",\"stride\":"<<MAX_CLOSURE*sizeof(SurfaceClosureRecord)<<",\"recordOffset\":"<<offsetof(SurfaceSvmRecord,closures)<<"},\"fields\":[";bool first=true;
+diff -ruN before/native/cycles/svm_surface_gate.cpp after/native/cycles/svm_surface_gate.cpp
+--- before/native/cycles/svm_surface_gate.cpp	2026-10-20 18:02:24.418454827 -0700
++++ after/native/cycles/svm_surface_gate.cpp	2026-10-20 18:37:58.921223258 -0700
+@@ -80,7 +80,7 @@
+     if(test==8)p[23]=0;
+     if(test==9)p[23]++;
+     if(test==10)p[23]=d.arena_bytes-4;
+-    PreparedSurfaceCache cache(d,p);
++    refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
+     d.dispatch(p,1,shader);uint error=0;d.download(d.error_word,&error,4);const uint expected[]={16,2,8,16,4,16,16,8,1,1,1,
+ #ifdef CBC_PRINCIPLED_FIXTURE
+       16,4,512,512,512,512,16,16
+@@ -124,7 +124,7 @@
+     device_vector<uint> out(&d,"invalid_node_svm",MEM_READ_WRITE);out.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(out.data(),out.size(),0xa5a5a5a5u);out.copy_to_device();
+     device_vector<uint> scratch(&d,"invalid_node_closures",MEM_READ_WRITE);scratch.alloc(MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);scratch.zero_to_device();
+     std::array<uint32_t,32> p{};p[1]=1;p[4]=out.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=1;p[14]=d.scene_tables();p[17]=d.error_word;p[21]=ds.svm_nodes.device_pointer;p[22]=ds.svm_nodes.size();p[23]=scratch.device_pointer;
+-    PreparedSurfaceCache cache(d,p);
++    refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
+     d.dispatch(p,1,shader);uint error=0;d.download(d.error_word,&error,4);
+     require(error==expected[test],"Node SVM rejection mask "+std::to_string(test)+" actual="+std::to_string(error)+" expected="+std::to_string(expected[test]));
+     out.copy_from_device();healthy(d);require(std::all_of(out.data(),out.data()+out.size(),[](uint v){return v==0xa5a5a5a5u;}),"Rejected node SVM wrote output");cache.verify();d.zero(d.error_word,4);
+@@ -137,7 +137,7 @@
+     auto &ds=scene.dscene;ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;
+     auto limit=[&](int n){ds.data.max_closures=n;d.const_copy_to("data",&ds.data,sizeof(KernelData));};limit(MAX_CLOSURE);
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&ds,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=states_for(scene,initial);
+-    auto source=probe_source();std::ofstream(prefix+".wgsl")<<source;auto shader=pipeline(d,source);
++    auto source=probe_source();std::ofstream(prefix+".wgsl")<<gate_probe_wgsl(d,source);auto shader=pipeline(d,source);
+     evaluate(d,scene,shader,layout,initial,ids,"Native compiled graphs",m,prefix);
+     for(int cap:{0,1,2}){limit(cap);evaluate(d,scene,shader,layout,initial,ids,"Closure limit "+std::to_string(cap),m);}limit(MAX_CLOSURE);
+     for(unsigned mode=0;mode<3;mode++){auto states=initial;for(int i:ids){if(mode==0)states[i].path.flag=PATH_RAY_TERMINATE;if(mode==1)states[i].path.flag=PATH_RAY_EMISSION;if(mode==2)states[i].path.visibility=PATH_RAY_VISIBILITY_SHADOW;}evaluate(d,scene,shader,layout,states,ids,"Evaluation mode "+std::to_string(mode),m);}
+--- before/native/tools/compile_probe.cpp	2026-10-17 06:00:47.704000196 -0700
++++ after/native/tools/compile_probe.cpp	2026-10-20 15:56:27.599984412 -0700
+@@ -0,0 +1,45 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++// Compile-only measurement probe (unspecialized_compile_smoke.py; from the Phase E1
++// probe): creates one compute pipeline from a WGSL file with
++// the unchanged shipped runtime and reports wall time and process peak memory.
++// Usage: compile_probe FILE.wgsl ENTRY [checks]
++//   checks: "default" (wgpuDeviceCreateShaderModule), or a trusted-module
++//   runtime-check mask for attribution experiments only (never production).
++#include "webgpu_device.h"
++#include <chrono>
++#include <cstdlib>
++#include <cstring>
++#include <fstream>
++#include <iostream>
++#include <iterator>
++#include <string>
++static long status_kb(const char *key){std::ifstream in("/proc/self/status");std::string line;
++  while(std::getline(in,line))if(line.rfind(key,0)==0)return std::atol(line.c_str()+std::strlen(key));return -1;}
++int main(int argc,char **argv){
++  if(argc<3){std::cerr<<"Usage: compile_probe FILE ENTRY [default|MASK]\n";return 2;}
++  std::string mode=argc>3?argv[3]:"default";
++  try{
++    std::ifstream in(argv[1],std::ios::binary);if(!in)throw std::runtime_error("Cannot read WGSL");
++    std::string source{std::istreambuf_iterator<char>(in),{}};
++    cbc::Device d;const long base_hwm=status_kb("VmHWM:"),base_rss=status_kb("VmRSS:");
++    std::array<WGPUBindGroupLayoutEntry,2> entries{};for(unsigned i=0;i<2;i++){entries[i].binding=i;entries[i].visibility=WGPUShaderStage_Compute;entries[i].buffer.type=i?WGPUBufferBindingType_Uniform:WGPUBufferBindingType_Storage;}
++    WGPUBindGroupLayoutDescriptor bd{};bd.entryCount=2;bd.entries=entries.data();cbc::BindLayout layout(wgpuDeviceCreateBindGroupLayout(d.get(),&bd));
++    WGPUPipelineLayoutDescriptor pd{};pd.bindGroupLayoutCount=1;pd.bindGroupLayouts=&layout.value;cbc::PipelineLayout pl(wgpuDeviceCreatePipelineLayout(d.get(),&pd));
++    std::cerr<<"Creating module for "<<argv[2]<<std::endl;
++    auto t0=std::chrono::steady_clock::now();
++    WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={source.data(),source.size()};
++    WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;d.push_scope();
++    cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(mode=="default"?wgpuDeviceCreateShaderModule(d.get(),&sd):
++      wgpuDeviceCreateShaderModuleTrusted(d.get(),&sd,WGPUShaderRuntimeChecks(std::strtoull(mode.c_str(),nullptr,0))));d.pop_scope();
++    auto t1=std::chrono::steady_clock::now();const long module_hwm=status_kb("VmHWM:");
++    std::cerr<<"Creating pipeline "<<argv[2]<<std::endl;
++    auto pipeline=d.pipeline(module,pl,argv[2]);
++    auto t2=std::chrono::steady_clock::now();
++    auto ms=[](auto a,auto b){return std::chrono::duration<double,std::milli>(b-a).count();};
++    std::cout<<"{\"entry\":\""<<argv[2]<<"\",\"mode\":\""<<mode<<"\",\"wgslBytes\":"<<source.size()<<",\"moduleMs\":"<<ms(t0,t1)<<",\"pipelineMs\":"<<ms(t1,t2)
++      <<",\"baseVmHWMkB\":"<<base_hwm<<",\"baseVmRSSkB\":"<<base_rss<<",\"moduleVmHWMkB\":"<<module_hwm<<",\"peakVmHWMkB\":"<<status_kb("VmHWM:")
++      <<",\"adapter\":\""<<d.adapter_name<<"\",\"passed\":true}"<<std::endl;
++    return 0;
++  }catch(const std::exception &e){std::cout<<"{\"entry\":\""<<argv[2]<<"\",\"passed\":false,\"error\":\""<<e.what()<<"\",\"peakVmHWMkB\":"<<status_kb("VmHWM:")<<"}"<<std::endl;return 1;}
++}
+--- before/native/tools/unspecialized_compile_smoke.py	2026-10-17 06:00:47.704000196 -0700
++++ after/native/tools/unspecialized_compile_smoke.py	2026-10-20 18:33:15.898648572 -0700
+@@ -0,0 +1,93 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Compile-only smoke step for the unspecialized surface module (warning only).
++
++Scene specialization is the production path and every probe gate compiles
++scene-specialized modules; the unspecialized module (every handler, the
++CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 desktop diagnostic) is checked for
++correctness by the specialization-off render gates (glass_render,
++principled_render, nodes_render on/off bit-identity). This step only measures
++it: for prepare_surface and shade_surface_light it records the module size, the
++largest inlined entry size (drivers inline every WGSL call) and the cold
++pipeline-creation time and peak memory, each in a fresh process with a fresh
++Mesa shader cache. Sizes above the 2.3 MB Intel Android danger zone and times
++above the 60 s pipeline budget are reported as warnings; this step never fails
++a gate (its exit code is 0 unless the tool itself cannot run).
++
++Usage: unspecialized_compile_smoke.py --wgsl SURFACE.wgsl --output DIR
++  SURFACE.wgsl: the unspecialized surface module, e.g. the surface.wgsl capture
++  of a render gate run with CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0
++  (nodes_gate.py writes it to <output>/nodes_render-unspecialized/surface.wgsl).
++"""
++import argparse, json, os, re, subprocess, sys, tempfile, time
++from functools import lru_cache
++from pathlib import Path
++from build import ROOT, PACKAGE
++
++DANGER_BYTES = 2_300_000
++BUDGET_MS = 60_000
++ENTRIES = ('prepare_surface', 'shade_surface_light')
++
++def functions(text):
++    text = re.sub(r'//[^\n]*', '', text); out = {}
++    for m in re.finditer(r'\bfn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(', text):
++        b = text.index('{', m.end()); depth = 0; j = b
++        while True:
++            c = text[j]
++            if c == '{': depth += 1
++            elif c == '}':
++                depth -= 1
++                if depth == 0: break
++            j += 1
++        out[m.group(1)] = text[m.start():j+1]
++    return out
++
++def inlined_bytes(text, entry):
++    fns = functions(text)
++    @lru_cache(maxsize=None)
++    def size(name, depth=0):
++        body = fns[name]; total = len(body)
++        if depth > 64: return total
++        for call in re.findall(r'\b([A-Za-z_][A-Za-z0-9_]*)\s*\(', body[body.index('{'):]):
++            if call in fns and call != name: total += size(call, depth+1)
++        return total
++    return size(entry) if entry in fns else None
++
++def build_probe(out):
++    exe = out/'compile_probe'
++    command = ['clang++', '-std=c++20', '-O2', '-I', str(ROOT/'src'), '-I', str(ROOT/'include'), '-I', str(PACKAGE/'include'),
++               str(Path(__file__).with_name('compile_probe.cpp')), str(ROOT/'src/webgpu_device.cpp'),
++               '-L', str(PACKAGE/'runtimes/linux-x64/native'), '-lcodebrix_wgpu', '-ldl', '-pthread',
++               '-Wl,-rpath,'+str(PACKAGE/'runtimes/linux-x64/native'), '-o', str(exe)]
++    subprocess.run(command, check=True)
++    return exe
++
++def main():
++    ap = argparse.ArgumentParser(); ap.add_argument('--wgsl', type=Path, required=True); ap.add_argument('--output', type=Path, required=True)
++    ap.add_argument('--timeout', type=int, default=900)
++    a = ap.parse_args(); out = a.output.resolve(); out.mkdir(parents=True, exist_ok=False)
++    text = a.wgsl.read_text(); exe = build_probe(out)
++    report = dict(tool='unspecialized_compile_smoke', wgsl=str(a.wgsl.resolve()), moduleBytes=len(text.encode()),
++                  dangerBytes=DANGER_BYTES, budgetMs=BUDGET_MS, entries={}, warnings=[], gateFailure=False)
++    for entry in ENTRIES:
++        row = dict(inlinedBytes=inlined_bytes(text, entry))
++        with tempfile.TemporaryDirectory(prefix='mesa-smoke-', dir=str(out)) as cache:
++            env = dict(os.environ, MESA_SHADER_CACHE_DIR=cache); started = time.time()
++            try:
++                r = subprocess.run([str(exe), str(a.wgsl.resolve()), entry], capture_output=True, text=True, timeout=a.timeout, env=env)
++                lines = r.stdout.strip().splitlines(); row.update(json.loads(lines[-1]) if lines else dict(passed=False, error=r.stderr[-800:]))
++                row['returncode'] = r.returncode
++            except subprocess.TimeoutExpired:
++                row.update(passed=False, timeout=True)
++            row['wallSeconds'] = round(time.time()-started, 1)
++        if not row.get('passed'): report['warnings'].append(entry+': compile did not complete ('+str(row.get('error', 'timeout' if row.get('timeout') else 'exit '+str(row.get('returncode'))))+')')
++        if row.get('inlinedBytes') and row['inlinedBytes'] > DANGER_BYTES: report['warnings'].append('%s: inlined %d bytes above the %d-byte Intel Android danger zone' % (entry, row['inlinedBytes'], DANGER_BYTES))
++        if row.get('pipelineMs', 0) > BUDGET_MS: report['warnings'].append('%s: cold pipeline %.0f ms above the %d ms budget' % (entry, row['pipelineMs'], BUDGET_MS))
++        report['entries'][entry] = row
++    (out/'compile_probe').unlink()
++    (out/'smoke.json').write_text(json.dumps(report, indent=1)+'\n')
++    for w in report['warnings']: print('WARNING:', w, file=sys.stderr)
++    print(json.dumps({k: report[k] for k in ('moduleBytes', 'warnings', 'gateFailure')}), flush=True)
++
++if __name__ == '__main__': main()

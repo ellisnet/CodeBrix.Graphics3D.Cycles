@@ -152,6 +152,18 @@ function(codebrix_add_cycles_device)
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_broad_lighting_gate PRIVATE ${codebrix_device_libs})
   target_compile_definitions(codebrix_cycles_broad_lighting_gate PRIVATE CODEBRIX_LIGHTING_MIS_GATE CODEBRIX_BROAD_LIGHT_GATE)
+  # Phase E3: object shadow terminator offsets on smooth triangles (lighting_gate.cpp variant).
+  add_executable(codebrix_cycles_shadow_terminator_gate "${CODEBRIX_NATIVE_ROOT}/cycles/lighting_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp")
+  target_compile_features(codebrix_cycles_shadow_terminator_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_shadow_terminator_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_shadow_terminator_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_shadow_terminator_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_shadow_terminator_gate PRIVATE ${codebrix_device_libs})
+  target_compile_definitions(codebrix_cycles_shadow_terminator_gate PRIVATE CODEBRIX_LIGHTING_MIS_GATE CODEBRIX_SHADOW_TERMINATOR_GATE)
   add_executable(codebrix_cycles_object_motion_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/lighting_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
@@ -242,6 +254,15 @@ function(codebrix_add_cycles_device)
      "${CODEBRIX_NATIVE_ROOT}/src"
     "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_svm_world_gate PRIVATE ${codebrix_device_libs})
+  add_executable(codebrix_cycles_nodes_world_gate "${CODEBRIX_NATIVE_ROOT}/cycles/svm_world_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp")
+  target_compile_features(codebrix_cycles_nodes_world_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_nodes_world_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_nodes_world_gate PRIVATE ${definitions} CBC_NODES_FIXTURE=1)
+  target_include_directories(codebrix_cycles_nodes_world_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+     "${CODEBRIX_NATIVE_ROOT}/src"
+    "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_nodes_world_gate PRIVATE ${codebrix_device_libs})
   add_executable(codebrix_cycles_shader_data_gate "${CODEBRIX_NATIVE_ROOT}/cycles/shader_data_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/shader_data_reference.cpp")
   target_compile_features(codebrix_cycles_shader_data_gate PRIVATE cxx_std_20)
@@ -347,6 +368,57 @@ function(codebrix_add_cycles_device)
     target_compile_features(${gate_target} PRIVATE cxx_std_20)
     target_compile_options(${gate_target} PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
     target_compile_definitions(${gate_target} PRIVATE ${definitions} CBC_GLASS_FIXTURE=1)
+    target_include_directories(${gate_target} PRIVATE "${PROJECT_SOURCE_DIR}/src"
+      "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+    target_link_libraries(${gate_target} PRIVATE ${codebrix_device_libs})
+  endforeach()
+  foreach(kind IN ITEMS svm bounce render)
+    if(kind STREQUAL "svm")
+      set(gate_source svm_surface_gate.cpp)
+      set(reference_source svm_surface_reference.cpp)
+    elseif(kind STREQUAL "bounce")
+      set(gate_source surface_gate.cpp)
+      set(reference_source surface_reference.cpp)
+    else()
+      set(gate_source render_gate.cpp)
+      set(reference_source surface_reference.cpp)
+    endif()
+    set(gate_target codebrix_cycles_principled_${kind}_gate)
+    add_executable(${gate_target} "${CODEBRIX_NATIVE_ROOT}/cycles/${gate_source}"
+      "${CODEBRIX_NATIVE_ROOT}/cycles/${reference_source}")
+    if(kind STREQUAL "render")
+      target_sources(${gate_target} PRIVATE "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp"
+        "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp")
+    endif()
+    target_compile_features(${gate_target} PRIVATE cxx_std_20)
+    target_compile_options(${gate_target} PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+    target_compile_definitions(${gate_target} PRIVATE ${definitions} CBC_PRINCIPLED_FIXTURE=1)
+    target_include_directories(${gate_target} PRIVATE "${PROJECT_SOURCE_DIR}/src"
+      "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+    target_link_libraries(${gate_target} PRIVATE ${codebrix_device_libs})
+  endforeach()
+  # Texture, colour and utility node graphs: original-CPU SVM evaluation and render.
+  foreach(kind IN ITEMS svm render)
+    if(kind STREQUAL "svm")
+      set(gate_source svm_surface_gate.cpp)
+      set(reference_source svm_surface_reference.cpp)
+    else()
+      set(gate_source render_gate.cpp)
+      set(reference_source surface_reference.cpp)
+    endif()
+    set(gate_target codebrix_cycles_nodes_${kind}_gate)
+    add_executable(${gate_target} "${CODEBRIX_NATIVE_ROOT}/cycles/${gate_source}"
+      "${CODEBRIX_NATIVE_ROOT}/cycles/${reference_source}")
+    if(kind STREQUAL "render")
+      target_sources(${gate_target} PRIVATE "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp"
+        "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp")
+    endif()
+    target_compile_features(${gate_target} PRIVATE cxx_std_20)
+    target_compile_options(${gate_target} PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+    target_compile_definitions(${gate_target} PRIVATE ${definitions} CBC_NODES_FIXTURE=1)
+    if(kind STREQUAL "render")
+      target_compile_definitions(${gate_target} PRIVATE CBC_NODES_RENDER=1)
+    endif()
     target_include_directories(${gate_target} PRIVATE "${PROJECT_SOURCE_DIR}/src"
       "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
     target_link_libraries(${gate_target} PRIVATE ${codebrix_device_libs})

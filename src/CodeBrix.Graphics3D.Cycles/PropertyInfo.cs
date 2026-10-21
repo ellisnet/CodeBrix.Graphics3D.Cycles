@@ -10,4 +10,15 @@ namespace CodeBrix.Graphics3D.Cycles;
 /// <param name="Flags">The property flags (a combination of the <c>CBC_PROPERTY_*</c> constants: array, linkable, internal, readable, writable).</param>
 /// <param name="Components">The number of flattened components per element (for example 3 for a vector, 12 for a transform).</param>
 /// <param name="Count">The current number of elements stored in the socket.</param>
-public readonly record struct PropertyInfo(uint ValueType, uint Flags, uint Components, ulong Count);
+public readonly record struct PropertyInfo(uint ValueType, uint Flags, uint Components, ulong Count)
+{
+    /// <summary>
+    /// Gets <see cref="ValueType"/> as a <see cref="ValueKind"/>.
+    /// </summary>
+    public ValueKind Kind => (ValueKind)ValueType;
+
+    /// <summary>
+    /// Gets <see cref="Flags"/> as <see cref="Cycles.PropertyFlags"/>.
+    /// </summary>
+    public PropertyFlags PropertyFlags => (PropertyFlags)Flags;
+}

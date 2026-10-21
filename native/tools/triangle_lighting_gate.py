@@ -58,15 +58,15 @@ def main():
             if kind == 'triangle_sample':
                 assert report['samples'] == 4096 and report['guardCases'] == 5
             elif image:
-                assert report['cases'] == 5 and report['meshMisPaths'] > 10
-                assert report['unsupportedEmitterConfigurationsRejected'] == 1
+                assert report['cases'] == 6 and report['meshMisPaths'] > 10
+                assert report['unsupportedEmitterConfigurationsRejected'] == 0
                 assert report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage']
                 assert not report['fullLightingMisProven']
             else:
                 assert report['invalidCasesRejected'] == 21
             reports[kind] = report
             save(out/'results.json', reports)
-        for case in range(5):
+        for case in range(6):
             name = 'replay-'+str(case)
             state['phase'] = name
             save(out/'status.json', state)

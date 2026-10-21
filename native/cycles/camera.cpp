@@ -4,12 +4,46 @@
 #include "wavefront.h"
 #include <cfloat>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
+#if defined(__KERNEL_SSE__) && !defined(__KERNEL_NEON__)
+#include <xmmintrin.h>
+#endif
 namespace ccl {
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
+#if defined(__KERNEL_SSE__) && !defined(__KERNEL_NEON__)
+// Cycles' ray_triangle_reciprocal uses this host's RCPSS estimate. The WGSL
+// models it as the 12-bit mantissa nearest to 2^25/(4097+2i), where i is the
+// top 11 input mantissa bits, with the exponent 253-e. Check every mantissa
+// class plus exponent and special cases on this host before claiming it.
+static uint32_t host_rcpss(uint32_t bits){float x;std::memcpy(&x,&bits,4);float r=_mm_cvtss_f32(_mm_rcp_ss(_mm_set_ss(x)));uint32_t out;std::memcpy(&out,&r,4);return out;}
+static uint32_t modelled_rcpss(uint32_t bits){
+  const uint32_t sign=bits&0x80000000u,e=(bits>>23)&255u,m=bits&0x7fffffu;
+  if(e==255u)return m?(bits|0x400000u):sign;
+  if(e==0u)return sign|0x7f800000u;
+  if(e>=253u)return sign;
+  const uint32_t d=4097u+2u*(m>>12),q=((1u<<26)+d)/(2u*d);
+  return sign|((253u-e)<<23)|((q-4096u)<<11);
+}
+static bool host_rcpss_modelled(){
+  for(uint32_t i=0;i<2048;i++)for(uint32_t low:{0u,0xfffu,0x5a5u})for(uint32_t e:{1u,2u,100u,126u,127u,128u,200u,252u,253u,254u})
+    for(uint32_t sign:{0u,0x80000000u}){const uint32_t bits=sign|(e<<23)|(i<<12)|low;if(host_rcpss(bits)!=modelled_rcpss(bits))return false;}
+  for(uint32_t bits:{0u,0x80000000u,1u,0x7fffffu,0x7f800000u,0xff800000u,0x7fc00000u})if(host_rcpss(bits)!=modelled_rcpss(bits))return false;
+  return true;
+}
+#endif
+bool reference_oracle_sse(){
+#ifdef __KERNEL_SSE__
+  return true;
+#elif defined(__ANDROID__)
+  const char *oracle=std::getenv("CODEBRIX_CYCLES_REFERENCE_ORACLE");return oracle&&std::strcmp(oracle,"linux-x64-sse4.2")==0;
+#else
+  return false;
+#endif
+}
 static constexpr char camera_source[]=
 #include "camera_shader.inc"
 ;
@@ -17,19 +51,27 @@ static constexpr char camera_source[]=
 std::string wavefront_layout(){
   std::ostringstream source;
   auto constant=[&](const char *name,size_t value){source<<"const "<<name<<":u32="<<value<<"u;\n";};
-#ifdef __KERNEL_SSE__
-  constant("CAMERA_NATIVE_VECTOR_DIVIDE",1);
-#else
-  constant("CAMERA_NATIVE_VECTOR_DIVIDE",0);
-#endif
+  const bool oracle_sse=reference_oracle_sse();
+  constant("CAMERA_NATIVE_VECTOR_DIVIDE",oracle_sse?1:0);
   // Cycles normalize(float3) divides each component by the length with SSE,
   // while the scalar float3 operator/ (ARM64 without SSE2NEON) multiplies by
   // the reciprocal length. Encode the originating host's rule so ShaderData
   // normals replay that oracle's rounding on any GPU.
-#ifdef __KERNEL_SSE__
-  constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",0);
+  constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",oracle_sse?0:1);
+  // Cycles ray_triangle_intersect arithmetic of the originating oracle host:
+  // 0 scalar build (dot (x+y)+z, 1/x), 1 SSE4.2 build with the modelled RCPSS
+  // (dot x+(y+z), RCPSS + Newton step), 2 SSE build not modelled (SSE2NEON or
+  // an x86 RCPSS that differs): SSE grouping with 1/x, not oracle-exact.
+  // An Android scalar build judged against the Linux x64 reference emits 1.
+#if defined(__KERNEL_SSE__) && !defined(__KERNEL_NEON__)
+  static const bool rcpss_modelled=host_rcpss_modelled();
+  constant("NATIVE_TRIANGLE_ARITHMETIC",rcpss_modelled?1:2);
+#elif defined(__KERNEL_SSE__)
+  constant("NATIVE_TRIANGLE_ARITHMETIC",2);
 #else
-  constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",1);
+  // Android scalar build judged against the Linux x64 reference: that oracle's
+  // RCPSS is the verified model (integer WGSL, any GPU), so mode 1.
+  constant("NATIVE_TRIANGLE_ARITHMETIC",oracle_sse?1:0);
 #endif
 #define DATA(parent,member) constant("D_" #parent "_" #member,offsetof(KernelData,parent.member))
   DATA(cam,rastertocamera);DATA(cam,cameratoworld);DATA(cam,dx);DATA(cam,dy);DATA(cam,differential_scale);

@@ -1,0 +1,24 @@
+# M3 procedural lane: declared budgets (Linux, shared machine; --jobs 6 max; <=2 concurrent gate runs). Format: [HH:MM:SS] run | budget | justification
+[11:23:05] full native build of combined M1+M2 tree: python3 tools/build.py --jobs 6 --skip-dependencies (reviewed prefix already copied) | 60 min | first build in this fresh worktree (prototype host + Cycles host + default gates + linux-x64 package)
+[11:30:30] build gate targets (29 all-lanes + principled_{svm,bounce,render} + nodes_{svm,world,render}) build_cycles.py --jobs 6 | 30 min | gate binaries for job-1 validation
+[11:36:23] J1 slot A: all-lanes 29-target corpus (tools/linux_validate.py --skip-build, cold MESA cache) | 45 min | sealed M1/M2 ran 22-28 min
+[11:36:23] J1 slot B: principled_gate.py --skip-build (cold) | 15 min; then nodes_gate.py --skip-build (spec on+off) | 35 min
+[11:56:08] J1 slot B part 2: principled_render (spec on, capture) + spec off, replay, glass_render on/off, svm_surface, principled bench-equivalent not rerun (no fixture) | 15 min each, sequential
+[11:58:34] J1 slot A: broad_lighting gate x2 + transparent_lighting x1 (nondeterminism check of strict counts) | 15 min each
+[12:09:14] J1 glass_render spec-off retry (first attempt: Vulkan driver terminated compiling unspecialized shade_surface_light under concurrent load; same module compiled fine in principled spec-off) | 30 min, run alone
+[12:15:07] J2 build nodes_svm/world/render gates --jobs 6 | 20 min
+[12:15:53] J2 dev nodes_svm + nodes_world (spec on) | 15 min each, concurrent
+[12:32:08] J2 dev4 nodes_svm + nodes_render (spec on) | 15 min each concurrent
+[12:43:05] J2 dev5 nodes_render (precise Gabor trig) | 15 min
+[12:45:52] J2 dev6 nodes_render (wireframe out of render variant) | 15 min
+[12:48:18] J2 dev7 nodes_render diagnostic (M2 order, new graphs appended) | 15 min
+[12:51:13] J2 dev8 nodes_render (60-triangle render scene) | 15 min
+[12:54:17] FINAL full build tools/build.py --jobs 6 --skip-dependencies + all gate targets | 30 min
+[13:02:23] FINAL slot A: principled_gate.py (15 min) then all-lanes 29 targets (45 min); slot B: nodes_gate.py spec on+off (35 min)
+[13:03:27] J2 dev9 nodes_svm+nodes_render concurrent, then nodes_world (one sincos call site) | 15 min each
+[13:12:32] J2 dev10 nodes gates (single hash/acos call sites) | 15 min each
+[13:16:43] FINAL rebuild (build_cycles default + all gate targets) | 20 min
+[13:17:31] FINAL slot A: principled_gate.py (15 min) then all-lanes (45 min); slot B: nodes_gate.py spec on+off (35 min)
+[13:48:14] diagnostic principled_svm runs (Gabor stub / no-array variant) | 10 min each
+[13:56:42] FINAL2 (Gabor withheld) full build + gates | 20 min
+[14:04:12] FINAL2 slot A: all-lanes (45 min) then host_gate.py (30 min); slot B: nodes_gate (35 min), principled_gate (15), extras: principled_render on/off+replay, glass on/off, svm_surface, nodes_render replay (15 each)

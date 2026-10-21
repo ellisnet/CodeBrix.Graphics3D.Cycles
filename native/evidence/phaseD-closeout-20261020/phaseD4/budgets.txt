@@ -1,0 +1,9 @@
+[06:46:08] native full build: python3 native/tools/build_cycles.py --jobs 6; budget 1800 s; terminate-and-report on overrun
+[06:54:15] dotnet test Release (dev run), budget 600 s
+[06:59:14] managed validation: build Release+Debug no-incremental, test Release x1 Debug x1, pack; budget 900 s
+[06:59:34] START host-gate: python3 native/tools/host_gate.py --output native/work/phaseD4/host-gate; budget 1200 s; cold MESA_SHADER_CACHE_DIR=native/work/phaseD4/mesa-host
+[06:59:40] licensing/guards/generator/diff-check budget 600 s
+[07:00:17] START all-lanes: python3 native/work/phaseD4/tools/linux_validate.py --tree . --output native/work/phaseD4/all-lanes (c3 copy of all_lanes_v2.py, sha 9f403fa1...); budget 2700 s; cold MESA_SHADER_CACHE_DIR=native/work/phaseD4/mesa-all-lanes; concurrent with host-gate (2)
+[07:03:10] END host-gate rc=0. START glass_render specialized: native/work/cycles-build/bin/codebrix_cycles_glass_render_gate native/work/phaseD4/glass-specialized/run; budget 900 s; cold mesa-glass-spec (concurrent with all-lanes: 2)
+[07:03:46] START glass_render unspecialized (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0); budget 900 s; cold mesa-glass-unspec
+[07:06:55] START oracle: render_oracles.py --output native/work/phaseD4/oracle --backend cpu-x64-linux --backend wgsl-linux-intel (all scenes); budget 1800 s; cold mesa-oracle; concurrent with all-lanes (2)

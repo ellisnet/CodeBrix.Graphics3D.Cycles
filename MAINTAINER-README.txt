@@ -50,14 +50,16 @@ This repository produces exactly one NuGet package:
 
     PackageId:  CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
     Assembly:   CodeBrix.Graphics3D.Cycles
-    Namespace:  CodeBrix.Graphics3D.Cycles (internal interop:
-                CodeBrix.Graphics3D.Cycles.Interop)
+    Namespace:  CodeBrix.Graphics3D.Cycles (sub-namespaces Rendering,
+                Diagnostics, Nodes, Generated.*, Interop)
     Project:    src/CodeBrix.Graphics3D.Cycles/CodeBrix.Graphics3D.Cycles.csproj
     License:    Apache-2.0
     Consumer documentation: AGENT-README.txt (repo root)
 
-The package is a thin .NET 10 ownership and marshalling layer over the native
-Cycles scene host built from this repository (native/host). The native host
+The package is a .NET 10 ownership, marshalling and typing layer over the
+native Cycles scene host built from this repository (native/host): a typed
+facade (CyclesScene), an object model generated from the native registry, and
+a public low-level interop tier (CyclesHost, Interop.CyclesAbi, Interop.Native). The native host
 renders with a new WebGPU backend, using the unchanged binaries shipped by
 CodeBrix.WebGpu.Native, or with the explicit CPU reference backend; the
 osx-arm64 profile uses the native Metal device. The goal is full Cycles parity
@@ -77,18 +79,36 @@ research that back it.
 
     src/CodeBrix.Graphics3D.Cycles/       the library project (the only packable
                                           project in the repository)
-      CyclesHost.cs                       the entry-point class
-      NativeFailure.cs                    the exception type
-      Backend.cs, Node.cs, Image.cs,      the public value types and enums, one
-      PropertyInfo.cs, AttributeValue.cs, per file, all in the root namespace
-      AttributeDomain.cs,
-      AttributeFlags.cs, ImageFormat.cs,
+      CyclesScene.cs                      the typed facade entry point
+      CyclesHost.cs                       the by-name host (low-level tier)
+      CyclesException.cs, NativeFailure.cs  the exception types
+      CyclesImage.cs, CyclesVersion.cs,   facade value types and enums
+      CyclesBackend.cs, Transform3x4.cs,
+      NativeStatus.cs, ValueKind.cs,
+      PropertyFlags.cs
+      Backend.cs, Node.cs, Image.cs,      the original public value types and
+      PropertyInfo.cs, AttributeValue.cs, enums, one per file, in the root
+      AttributeDomain.cs,                 namespace (the host-gate fixtures
+      AttributeFlags.cs, ImageFormat.cs,  bind to them; keep them in place)
       PipelineTier.cs,
       PipelineTierFlags.cs
-      Interop/Native.cs                   internal P/Invoke declarations and
-                                          ABI structures for the native host
-                                          (namespace CodeBrix.Graphics3D.Cycles.
-                                          Interop)
+      Rendering/                          RenderSettings, FilmBuffer,
+                                          RenderProgress, RenderStage,
+                                          RenderPass
+      Diagnostics/                        ICapabilityReport, CapabilityReport
+      Nodes/                              hand-written bases of the generated
+                                          model (CyclesNode, ShaderGraphNode),
+                                          ShaderInput/ShaderOutput and the
+                                          catalogue record types
+      Generated/                          GENERATED - never edit by hand (see
+                                          GENERATED OBJECT MODEL): registry.json
+                                          (the generator input), NodeType.cs
+                                          and Scene/, Geometry/, Lights/,
+                                          Shaders/ (one class per node type)
+      Interop/Native.cs                   the public raw P/Invoke declarations
+                                          and ABI structures
+      Interop/CyclesAbi.cs                the public status-code layer, one
+                                          method per C function
       InternalsVisibleTo.cs               grants the .Tests project access
 
     tests/CodeBrix.Graphics3D.Cycles.Tests/
@@ -125,9 +145,14 @@ research that back it.
                                           (audit, notices generator, import and
                                           binary audits), compatibility/ (the
                                           compatibility inventory generator and
-                                          its guard tests)
+                                          its guard tests), managed/ (the typed
+                                          model generator, generate_model.py)
       tools/hosttests/                    the host-gate fixture applications
                                           (see HOST-GATE FIXTURES)
+      tools/gltf/CycleGltfRender/         the glTF example client
+                                          (CodeBrix.Graphics3D.Cycles.GltfRender,
+                                          in the solution's Tools folder, not
+                                          packable; see EXTRAS-README.txt)
     compatibility/                        the machine-readable Cycles
                                           compatibility inventory (JSON)
     parity/, prototype/, research/        the parity harness, the original
@@ -263,19 +288,56 @@ What the tests need:
     DllImport resolver that loads that file. When it is absent, or the host is
     not Linux x64, those tests SKIP with the reason (they never fail for a
     missing native build). Build the native host first to run them.
+  - CyclesSceneTests, CyclesAbiTests, CyclesImageTests, CyclesVersionTests,
+    CapabilityReportTests and NodeTypeTests use the same native host and skip
+    the same way (CapabilityReportTests' bare-device-report parse runs without
+    it). They cover the ABI 1 additions on the CPU reference backend: native
+    progress events, cancellation through the event callback's return value,
+    node deletion and its reference check, image re-upload, pass readback,
+    edits after a render (bit-identical to a scene built with them), the
+    version structure and the capability report. The test
+    project sets AllowUnsafeBlocks for the raw callback test in CyclesAbiTests; NodeTypeTests' generator check runs
+    `python3 tools/managed/generate_model.py --check` and skips when python3
+    is not available.
+  - WebGpuRenderTests render the shared validation scenes
+    (tools/hosttests/WebGpuScenes/WebGpuValidationScenes.cs: glass sphere,
+    diffuse with a sun, textured plane through image upload) and the procedural
+    glTF sample on CyclesBackend.Gpu and on CyclesBackend.CpuReference, require
+    the practical criterion and print the maximum error and strict differences
+    (test output; `-showLiveOutput` when running the test assembly directly),
+    check progress events, cancellation and reuse on the GPU backend and the
+    capability report's tier decision. They skip with a reason when no WebGPU
+    adapter is available. They also recover a scene after a rejected render
+    (a depth pass) and move an object after a render (Phase E3 semantics).
+    Run them once with a cold scratch
+    MESA_SHADER_CACHE_DIR after changing GPU code (the whole class takes about
+    a minute cold on the Intel UHD laptop).
+  - GltfSceneConverterTests drive the glTF example client
+    (tools/gltf/CycleGltfRender, referenced by the test project; it brings the
+    CodeBrix.Graphics3D.Gltf2.MitLicenseForever package into the tests only) on
+    the CPU reference backend with a procedural sample model; no glTF asset is
+    stored in the repository.
   - The tests never call ConfigureColor or ConfigureTiers, which are
     process-wide; the host gate covers those.
 
 The native validation is separate from `dotnet test`. The maintained Linux host
 gate rebuilds the native targets, generates 786 independent CPU reference films,
 and runs the C and managed lifecycle, color-reload, concurrency and GPU
-lifecycle checks:
+lifecycle checks, plus the ABI test (abi_consumer.c, CPU and WebGPU) and the
+ABI.md example (example.c), and checks the 48 exports:
 
     python3 native/tools/host_gate.py --output native/work/<new-folder>
 
 Use a new output folder for each run (allow about 20 minutes). The other gates
-in native/tools/ are documented in the native documents listed above. Licensing
-and source checks:
+in native/tools/ are documented in the native documents listed above. The SVM
+probe gates compile scene-specialized modules, like the renderer. Render gates
+are validated with specialization on; the unspecialized modules now exceed what
+Intel Mesa 25.0.7 compiles reliably, so the specialization-off on/off film check
+is run only where it still completes (nodes_gate.py --unspecialized, and the
+glass and node renders with CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0), and
+native/tools/unspecialized_compile_smoke.py records the module size and cold
+compile time as warnings only (native/DEVICE.md, "Session close:
+specialization-off status" and open item 11). Licensing and source checks:
 
     python3 tools/licensing/audit.py
     python3 tools/licensing/notices.py --check
@@ -288,6 +350,45 @@ original-contribution copyright line. That is why the .cs files in src/ and
 tests/ start with the two-line header described under CODING CONVENTIONS.
 
 
+GENERATED OBJECT MODEL
+======================
+src/CodeBrix.Graphics3D.Cycles/Generated/ is produced by
+tools/managed/generate_model.py from Generated/registry.json, a formatted
+snapshot of cbc_host_registry_json (CyclesHost.RegistryJson()) taken from the
+native host built in this tree. The generator is deterministic, needs only
+Python 3 and runs offline; its output is checked in.
+
+    python3 tools/managed/generate_model.py            # regenerate from the snapshot
+    python3 tools/managed/generate_model.py --check    # fail when out of date
+
+After a native change that alters the registry, rebuild the host, capture the
+registry and regenerate:
+
+    python3 native/tools/build_cycles.py --jobs 6
+    (capture CyclesHost.RegistryJson() to native/work/<folder>/registry.json with
+     a small program that registers a DllImport resolver for the built host)
+    python3 tools/managed/generate_model.py --registry native/work/<folder>/registry.json --update-registry
+
+then build (0 warnings) and run the tests; NodeTypeTests compares the catalogue
+with the snapshot and the live registry, checks --check, and round-trips every
+generated property through the native host.
+
+Generation rules: one class per node type, named <PascalCase native name>Node
+(a small rename table in the script covers the light, point-cloud and
+geometry-base names); folders and namespaces by category (Scene, Geometry,
+Lights, Shaders); one property per readable, writable, non-internal input,
+typed from the registry socket type; one enum per enum socket; ShaderInput /
+ShaderOutput accessors (named after the socket UI names, which the native link
+call uses) for shader graph nodes; NodeType.cs carries every type and socket
+with its factory. The few hand-maintained members (shader graph Output, Add and
+Connect, geometry attributes, mesh triangles and deformation motion, texture
+Bind and Unbind) are the
+EXTRAS table in the script and delegate to CyclesScene. Generated files carry
+the two-line copyright/SPDX header and an <auto-generated> banner; every
+public member has an XML doc comment generated from the registry (native
+name, UI name, socket type), so CS1591 stays satisfied without suppression.
+
+
 HOST-GATE FIXTURES
 ==================
     tools/hosttests/HostLifecycle/   managed lifecycle, property, registry,
@@ -295,6 +396,9 @@ HOST-GATE FIXTURES
     tools/hosttests/ImageModes/      managed image-mode film checks
     tools/hosttests/ColorReload/     six A/B/C/A/B/C color configuration rounds
     tools/hosttests/AndroidHost/     the Android validation-app template
+    tools/hosttests/WebGpuScenes/    WebGpuValidationScenes.cs: the WebGPU
+                                     validation scenes, compiled into the test
+                                     project and the Android app
     tools/hosttests/NuGet.Config     clears every package source for fixture
                                      builds
 
@@ -310,8 +414,15 @@ AndroidHost is a template, not a standalone build:
 native/tools/build_android_app.py copies it, generates callable checks from
 HostLifecycle/Program.cs and ImageModes/Program.cs, and builds a diagnostic APK
 that consumes the wrapper and native host on Android ARM64 and x64 (minimum API
-33) with the explicit CPU reference backend. Native WebGPU lifecycle tests are
-separate; loading the WebGPU library does not prove GPU rendering in the app.
+33). By default the app runs the explicit CPU reference suite below. Launched
+with the intent extra `mode=webgpu` (android_app_gate.py --mode webgpu) it
+instead renders the three WebGPU validation scenes (glass sphere, diffuse with a
+sun, textured plane through image upload; WebGpuValidationScenes.cs, shared with
+the Linux tests) on CyclesBackend.Gpu and on CyclesBackend.CpuReference inside
+the app, compares the films with the repository criteria, checks progress
+events and cancellation-then-reuse on the GPU backend, and records the
+capability report (pipeline tier decision, compile budget, warnings). The
+builder copies WebGpuChecks.cs and the shared scenes file with the template.
 
 From the repository root, first build both Android RIDs with
 `python3 tools/build_android.py --rid android-arm64` and
@@ -344,7 +455,41 @@ device have completed:
 Repeat --device LABEL,RID,SERIAL for additional devices. Use a new output
 directory for each build/run. The runner refuses to replace an
 already-installed validation app and force-stops its own installation after
-collecting output.
+collecting output. To leave an installed validation app untouched, build with
+`build_android_app.py --application-id com.codebrix.cycles.hostvalidation.<suffix>`
+(the runner reads the id from the build status) and pass `--uninstall` to the
+runner to remove its own installation after the evidence is extracted.
+
+The WebGPU mode, with a result timeout matching the declared device budget:
+
+    python3 native/tools/android_app_gate.py --mode webgpu \
+      --result-timeout 2400 --uninstall \
+      --build-output native/work/android-app/validation-v1 \
+      --output native/work/android-app/device-webgpu-v1 \
+      --device tablet,android-arm64,DEVICE_SERIAL
+
+It recomputes every GPU-versus-CPU comparison from the extracted film bytes,
+requires practical agreement for all three scenes and for the re-render after
+cancellation, records strict differences, and saves the capability report as
+capability-report.json per device. The source-tree pins of the native build,
+the app build and both gates must match: do not edit pinned sources between the
+Android native build and the device runs.
+
+Validation reference policy (native/DEVICE.md): add `--linux-reference DIR` to
+judge each device GPU film against the Linux x64 (glibc) CPU film of the same
+scene; the in-app CPU film (Android's bionic C library) is then recorded as a
+diagnostic. Produce DIR on Linux with
+
+    CODEBRIX_CYCLES_REFERENCE_EXPORT=$PWD/native/work/managed-reference \
+      dotnet test --project tests/CodeBrix.Graphics3D.Cycles.Tests/CodeBrix.Graphics3D.Cycles.Tests.csproj \
+      -c Release --filter-method "*gpu_film_matches_the_cpu_reference_with_the_practical_criterion*"
+
+The native device gates follow the same policy through
+native/tools/android_reference.py (Linux export, device-scene reference and
+host-side comparison) and the CODEBRIX_CYCLES_REFERENCE_* and
+CODEBRIX_CYCLES_SCENE_* variables documented in
+native/cycles/reference_policy.h; native/tools/libm_probe.py measures a device
+C library against correctly rounded results.
 
 The app tests registry and property readback, cancellation/reuse, disposal
 during rendering, three lifecycle films and six A/B/C/A/B/C configuration
@@ -396,8 +541,11 @@ CODING CONVENTIONS
   csproj.
 - XML doc comments on every public type and member, including every enum
   value.
-- Public types stay in the root namespace CodeBrix.Graphics3D.Cycles; the
-  internal P/Invoke layer is CodeBrix.Graphics3D.Cycles.Interop.
+- Entry points and shared value types stay in the root namespace
+  CodeBrix.Graphics3D.Cycles; sub-folders are sub-namespaces (Rendering,
+  Diagnostics, Nodes, Generated.*, Interop). Interop.Native and
+  Interop.CyclesAbi are public and mirror the C ABI one to one: add members for
+  new exports, never change existing signatures.
 - Managed enum values are the C ABI constants; NativeHeaderConstantMatching
   fails when they drift. Change native/host/cycles_host.h and the enum
   together.
@@ -424,9 +572,36 @@ NOTES
   coverage is still partial (see native/DEVICE.md and docs/PARITY.md).
 - Color configuration and pipeline-tier configuration are process-wide in the
   native layer; keep tests that touch them out of the parallel xUnit suite.
-- The managed API in src/ is the thin layer that a typed, higher-level scene
-  API will be built on; keep its public signatures stable unless that work
-  changes them deliberately.
+- Keep the public signatures of CyclesHost and the root value types stable:
+  the host-gate fixtures and the Android validation app compile against them.
+- Every facade behaviour maps onto an existing native export; nothing is
+  simulated in managed code. The ABI 1 additions (native/host/ABI.md) are
+  wired as follows: cbc_host_version -> CyclesVersion; CBC_HOST_GPU,
+  cbc_host_resolve_backend and cbc_host_backend -> Backend.Gpu,
+  CyclesScene.ResolveBackend and CyclesScene.Backend; cbc_host_capabilities_json
+  -> CapabilityReport (device fields from its host.deviceReport object);
+  cbc_host_delete_node -> CyclesScene.Remove (CBC_INVALID becomes
+  InvalidOperationException; the wrapper and, for a shader, its graph nodes
+  are marked removed); cbc_host_image_update -> CyclesImage.Update;
+  cbc_host_motion_positions -> MeshNode.SetMotionPositions (CBC_NOT_READY, a
+  refused edit of a baked volume, becomes InvalidOperationException);
+  cbc_host_set_event_callback -> CyclesScene.RenderEventReceived and
+  RenderAsync progress/cancellation; cbc_host_pass_floats and
+  cbc_host_render_passes_json -> AddPass, GetRenderedPasses, ReadPass.
+- Render event callback design: every render (sync and async) takes a
+  per-scene render lock, registers one [UnmanagedCallersOnly] static callback
+  with a GCHandle to a per-render listener, renders, clears the callback and
+  frees the handle. The native host never invokes a callback after
+  cbc_host_render returns or after a clear/destroy returns, so freeing the
+  handle there is safe. The callback returns nonzero when the render's token
+  is cancelled or a handler threw (the exception is rethrown after the render).
+  RenderAsync still re-sends cbc_host_cancel every ProgressInterval while the
+  token is cancelled, for the window before the first native event.
+- Device errors (ABI.md "Device errors"): the next render recovers a WebGPU
+  device that is intact and re-uploads the scene; CyclesScene sets IsFaulted on
+  a CBC_FAILED render and clears it on a successful one. Edits after a render
+  (ABI.md "Edits after a render", native/host/host_edits.inc) restore baked
+  geometry's authored attributes; native/tools/scene_edit_gate.py covers them.
 
 
 ================================================================================

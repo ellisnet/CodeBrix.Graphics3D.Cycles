@@ -1,0 +1,44 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "device": "pixel",
+  "serial": "98271FFBA0048D",
+  "corpus": "triangle",
+  "label": "mw1",
+  "declaredBudgetSeconds": 7200,
+  "perJobTimeoutSeconds": 2400,
+  "pipelineBudgetMs": 20000,
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "startedLocal": "12:49:24",
+  "deviceProperties": {
+    "api": "33",
+    "abi": "arm64-v8a",
+    "model": "Pixel 4 XL",
+    "fingerprint": "google/coral/coral:13/TP1A.221005.002.B2/9382335:user/release-keys"
+  },
+  "stagedVerified": true,
+  "reference": {
+    "root": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge1/reference/linux-x64",
+    "oracleSha256": "10a9bf9aa7938a0d348a0757e452cae950216a9bdca98943d8ebb8d7a79b369c",
+    "libc": "glibc 2.41",
+    "provenanceSha256": "802ddbcc7961e53c520c296b7a8858c4707e54dfdec628376c500f32fff11a49"
+  },
+  "referenceImported": [],
+  "deviceScene": {
+    "flow": "device-scene",
+    "linuxBin": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin"
+  },
+  "passed": false,
+  "failures": [
+    "triangle_sample: WebGPU scheduler kernel reported invalid data (mask 1059595178): unsupported SVM opcode or scene-specialized handler invalid/uninitialized SVM stack SVM instruction limit invalid image descriptor/data tiled image cache not implemented",
+    "triangle_lighting: Lighting film mismatch mode=4 component=312 actual=0.064647 expected=0.065844",
+    "replay-0: not run (source job failed)"
+  ],
+  "wallSeconds": 505.7,
+  "withinBudget": true,
+  "remoteProcessesAfter": [],
+  "productionSourcesUnchanged": true,
+  "binaryInputsUnchanged": true,
+  "inputsUnchanged": true
+}

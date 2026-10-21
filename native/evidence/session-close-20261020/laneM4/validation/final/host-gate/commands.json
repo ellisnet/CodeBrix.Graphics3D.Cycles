@@ -1,0 +1,178 @@
+[
+  {
+    "command": [
+      "/usr/bin/python3",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/tools/build_cycles.py",
+      "--jobs",
+      "6",
+      "--target",
+      "codebrix_cycles_host",
+      "--target",
+      "codebrix_host_cpu_test",
+      "--target",
+      "codebrix_host_gpu_test",
+      "--target",
+      "codebrix_host_reload_test",
+      "--target",
+      "codebrix_host_concurrency_test",
+      "--target",
+      "codebrix_host_session_reference",
+      "--target",
+      "codebrix_host_session64_reference",
+      "--target",
+      "codebrix_host_image_reference"
+    ],
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "nm",
+      "-D",
+      "--defined-only",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/lib/libcodebrix_cycles_host.so"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_session_reference",
+      "CPU",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/cpu/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_session64_reference",
+      "CPU",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/cpu64/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/tests/host/configs/a.ocio",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/references/a/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/tests/host/configs/b.ocio",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/references/b/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/tests/host/configs/c.ocio",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/references/c/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_cpu_test",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/cpu-consumer/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_cpu_test",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/cpu-exit-consumer/run",
+      "--exit-live"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_reload_test",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/references",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/reload",
+      "6"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_concurrency_test",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/stress-input",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/stress-output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/tools/hosttests/HostLifecycle/HostLifecycle.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/tools/hosttests/NuGet.Config"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/tools/hosttests/ImageModes/ImageModes.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/tools/hosttests/NuGet.Config"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/tools/hosttests/ColorReload/ColorReload.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/tools/hosttests/NuGet.Config"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/tools/hosttests/HostLifecycle/bin/Release/net10.0/HostLifecycle.dll",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/cpu",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/managed-lifecycle"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/tools/hosttests/ColorReload/bin/Release/net10.0/ColorReload.dll",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/tools/hosttests/ImageModes/bin/Release/net10.0/ImageModes.dll",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/references",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/managed-reload"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_gpu_test",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/gpu/run"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/cycles-build/bin/codebrix_host_gpu_test",
+      "/home/jeremy/ClaudeHome/cycles-worktrees/m4-bump-derivative/native/work/m4/validation/final/host-gate/gpu-exit/run",
+      "--exit-live"
+    ],
+    "timeoutSeconds": 900
+  }
+]

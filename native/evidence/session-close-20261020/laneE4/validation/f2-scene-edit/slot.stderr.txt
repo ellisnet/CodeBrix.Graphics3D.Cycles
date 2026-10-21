@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/tools/scene_edit_gate.py", line 129, in <module>
+    main()
+    ~~~~^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/tools/scene_edit_gate.py", line 72, in main
+    pins = {str(p): sha(p) for p in [library, binary, runtime]}
+                    ~~~^^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/tools/device_gate.py", line 15, in sha
+    def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+                                        ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/pathlib/_abc.py", line 625, in read_bytes
+    with self.open(mode='rb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 539, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/cycles-build/bin/codebrix_host_scene_edit_test'

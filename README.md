@@ -23,14 +23,17 @@ CodeBrix.Graphics3D.Cycles has no NuGet dependencies other than .NET.
 
 ## CodeBrix.Graphics3D.Cycles supports:
 
-* Creating native scene hosts that render with WebGPU or with the explicit CPU reference backend (a requested WebGPU render never falls back to the CPU)
-* Scene authoring by node and socket: scene singletons (camera, background, film, integrator), objects, meshes, lights and shader graphs
-* Typed socket reads and writes for floats, integers, unsigned integers, UTF-8 strings and node references, with size queries
+* A typed scene API: `CyclesScene` with typed camera, film, integrator and background settings, objects, meshes, lights, shader graphs and images
+* A complete object model generated from the native node registry: one class per native node type (scene nodes, geometry, lights and every shader graph node) with strongly typed properties, enumerations and shader graph sockets
+* Backend-neutral device selection (GPU or the explicit CPU reference backend) resolved by the native host, with the native capability report and library version; a GPU render never falls back to the CPU
+* Asynchronous rendering with `CancellationToken` cancellation and per-sample `IProgress<T>` progress from native render events, plus synchronous rendering into caller-owned buffers
+* Raw scene-linear float32 RGBA film readback as `ReadOnlyMemory<float>` / spans with width, height and stride, and named render passes and AOVs (depth, normal and others on the CPU reference backend)
+* Node removal with reference checks, live image re-upload and mesh deformation motion
+* In-memory image textures from raw pixel spans in eight float, half, byte and unsigned-short layouts
 * Triangle mesh upload and geometry attributes (positions, normals, UVs, tangents and custom attributes)
-* In-memory image textures from raw pixel buffers in float, half, byte and unsigned-short layouts
-* Synchronous, cancellable renders into scene-linear RGBA float buffers
-* Process-wide color configuration and WebGPU pipeline-tier selection, with a JSON device capability report
-* The native node and property registry as JSON
+* .NET exceptions that carry the native status code and error text
+* A public low-level interop tier: by-name socket access, a status-code layer that mirrors the native C ABI one to one, and the raw P/Invoke declarations
+* Process-wide color configuration and WebGPU pipeline-tier selection, and the native node and property registry as JSON
 
 The library works on raw pixel buffers only. Image file encoding and decoding belong to the CodeBrix.Imaging library.
 
@@ -43,35 +46,44 @@ This library is experimental and is not yet published to nuget.org. The managed 
 ### Render a Lit Triangle with the CPU Reference Backend
 
 ```csharp
+using System.Numerics;
+using CodeBrix.Graphics3D.Cycles;
+using CodeBrix.Graphics3D.Cycles.Generated.Geometry;
+using CodeBrix.Graphics3D.Cycles.Generated.Scene;
+using CodeBrix.Graphics3D.Cycles.Generated.Shaders;
+using CodeBrix.Graphics3D.Cycles.Rendering;
+
+await using CyclesScene scene = new(CyclesBackend.CpuReference);
+scene.Camera.Fov = 1.1f;
+scene.Camera.Matrix = Transform3x4.CreateTranslation(0, 0, -4);
+
+ShaderNode material = scene.CreateShader();
+DiffuseBsdfNode diffuse = material.Add<DiffuseBsdfNode>();
+diffuse.Color = new Vector3(.7f, .2f, .1f);
+material.Connect(diffuse.BsdfOutput, material.Output.SurfaceInput);
+
+MeshNode mesh = scene.CreateMesh([-1.5f,-1,0, 1.5f,-1,0, 0,1.5f,0], [0, 1, 2], material);
+scene.CreateObject(mesh);
+
+ShaderNode world = scene.CreateShader();
+BackgroundShaderNode sky = world.Add<BackgroundShaderNode>();
+sky.Color = new Vector3(.25f, .4f, .6f);
+world.Connect(sky.BackgroundOutput, world.Output.SurfaceInput);
+scene.Background.Shader = world;
+
+FilmBuffer film = await scene.RenderAsync(new RenderSettings(320, 240, 16));
+// film.Pixels: scene-linear RGBA floats, bottom row first
+```
+
+### Address Native Sockets Directly
+
+```csharp
 using CodeBrix.Graphics3D.Cycles;
 
 using CyclesHost host = new(Backend.CpuReference);
-
 Node camera = host.SceneNode("camera");
 host.SetFloats(camera, "fov", [1.1f]);
 host.SetFloats(camera, "matrix", [1,0,0,0, 0,1,0,0, 0,0,1,-4]);
-
-Node material = host.CreateNode("shader");
-Node diffuse = host.ShaderNode(material, "diffuse_bsdf");
-Node color = host.ShaderNode(material, "color");
-host.SetFloats(color, "value", [.7f, .2f, .1f]);
-host.Connect(color, "Color", diffuse, "Color");
-host.Connect(diffuse, "BSDF", host.ShaderOutput(material), "Surface");
-
-Node mesh = host.CreateNode("mesh");
-host.SetNodes(mesh, "used_shaders", [material]);
-host.Mesh(mesh, [-1.5f,-1,0, 1.5f,-1,0, 0,1.5f,0], [0, 1, 2]);
-Node triangle = host.CreateNode("object");
-host.SetNodes(triangle, "geometry", [mesh]);
-
-Node world = host.CreateNode("shader");
-Node background = host.ShaderNode(world, "background_shader");
-host.SetFloats(background, "color", [.25f, .4f, .6f]);
-host.Connect(background, "Background", host.ShaderOutput(world), "Surface");
-host.SetNodes(host.SceneNode("background"), "shader", [world]);
-
-float[] rgba = new float[32 * 24 * 4];
-host.Render(32, 24, 8, rgba);   // scene-linear RGBA, lower-left origin
 ```
 
 ## Documentation

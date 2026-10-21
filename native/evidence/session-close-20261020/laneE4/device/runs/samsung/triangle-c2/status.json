@@ -1,0 +1,49 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "device": "samsung",
+  "serial": "R52W207XQ1V",
+  "corpus": "triangle",
+  "label": "c2",
+  "declaredBudgetSeconds": 2400,
+  "perJobTimeoutSeconds": 900,
+  "pipelineBudgetMs": null,
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "startedLocal": "15:30:58",
+  "deviceProperties": {
+    "api": "36",
+    "abi": "arm64-v8a",
+    "model": "SM-X700",
+    "fingerprint": "samsung/gts8wifixx/gts8wifi:16/BP2A.250605.031.A3/X700XXSBEZH3:user/release-keys"
+  },
+  "stagedVerified": true,
+  "reference": {
+    "root": "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/reference/linux-x64",
+    "oracleSha256": "10a9bf9aa7938a0d348a0757e452cae950216a9bdca98943d8ebb8d7a79b369c",
+    "libc": "glibc 2.41",
+    "provenanceSha256": "c2e5a6d4df9b6ece0bc195fe393129c1a9b0f8e6b01a90dc44535adbb2431ca7"
+  },
+  "referenceImported": [],
+  "deviceScene": {
+    "flow": "device-scene",
+    "linuxBin": "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/cycles-build/bin"
+  },
+  "passed": false,
+  "failures": [
+    "triangle_sample: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164",
+    "triangle_lighting: Lighting film mismatch mode=4 component=312 actual=0.064647 expected=0.065844",
+    "replay-0: not run (source job failed)",
+    "replay-1: not run (source job failed)",
+    "replay-2: not run (source job failed)",
+    "replay-3: not run (source job failed)",
+    "replay-4: not run (source job failed)",
+    "replay-5: not run (source job failed)"
+  ],
+  "wallSeconds": 203.3,
+  "withinBudget": true,
+  "remoteProcessesAfter": [],
+  "productionSourcesUnchanged": true,
+  "binaryInputsUnchanged": true,
+  "inputsUnchanged": true
+}

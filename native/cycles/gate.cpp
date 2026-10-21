@@ -207,9 +207,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int result=0;try{
   require(argc==2,"Usage: codebrix_cycles_device_gate OUTPUT_PREFIX");std::string output=argv[1];
   require(Device::type_from_string("WEBGPU")==DEVICE_WEBGPU&&Device::string_from_type(DEVICE_WEBGPU)=="WEBGPU","Device type registration missing");
   auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Registered WebGPU adapter missing");
-  Stats stats;Profiler profiler;auto device=Device::create(infos[0],stats,profiler,true);auto *backend=dynamic_cast<WebGPUDevice*>(device.get());
-  if(!backend)throw std::runtime_error("Device factory: "+device->error_message());
-  auto &d=*backend;healthy(d);
+  Stats stats;Profiler profiler;auto device=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(device.get(),"gate device creation");healthy(d);
   unsigned scene_tables=scene_and_scheduler(d);require(stats.mem_used==0,"Scene/scheduler leaked Cycles allocations");
   allocation_ordering(d);require(stats.mem_used==0,"Allocation-order tests leaked Cycles allocations");
   const unsigned rejected=rejections(infos[0]);

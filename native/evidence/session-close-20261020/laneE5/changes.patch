@@ -1,0 +1,165 @@
+--- a/native/cycles/emitter_sample_gate.cpp
++++ b/native/cycles/emitter_sample_gate.cpp
+@@ -97,15 +97,23 @@
+     device_vector<float> output(&d,"emitter_samples",MEM_READ_WRITE);output.alloc(expected.size()+16);std::fill_n(output.data(),output.size(),-1234.f);output.copy_to_device();
+ #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+     constexpr unsigned probe_group_size=1;
++    // The Adreno 640 (Pixel 4 XL) driver resets the GPU (device lost) when one
++    // submission runs past about two seconds. The triangle probe at workgroup size 1
++    // takes about 1 ms per invocation there (4 s for all samples in one dispatch), so
++    // it runs in slices of 256 invocations, each synchronized and its error word
++    // checked before the next. Every invocation computes exactly what it did in one
++    // dispatch: the slice start (p[30]) only offsets the invocation index.
++    constexpr unsigned probe_slice=256;
+ #else
+     constexpr unsigned probe_group_size=64;
++    constexpr unsigned probe_slice=count;
+ #endif
+     // The probe compiles the surface module specialized to this scene, exactly as
+     // the device does (pipelines.h): the unspecialized module with emissive-triangle
+     // sampling crashed the Intel Mesa 25.0.7 compiler on every cold compile.
+     const std::string source=d.module_wgsl(surface_source())+"const EMITTER_PROBE_GROUP_SIZE:u32="+std::to_string(probe_group_size)+"u;\n"+R"WGSL(
+-@compute @workgroup_size(EMITTER_PROBE_GROUP_SIZE) fn emitter_sample_probe(@builtin(global_invocation_id) id:vec3<u32>){
+- if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
++@compute @workgroup_size(EMITTER_PROBE_GROUP_SIZE) fn emitter_sample_probe(@builtin(global_invocation_id) invocation:vec3<u32>){
++ let id=vec3<u32>(invocation.x+p(30u),invocation.y,invocation.z);if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
+  if((state_word(S_path_flag,id.x)&PATH_RAY_MIS_HAD_TRANSMISSION)!=0u){r.runtime_flag=SR_BSDF_HAS_TRANSMISSION;}
+  triangle_light_prefill(id.x,sd,false,true);let ls=light_sample_native(id.x,sd,r);let at=p(4u)+id.x*48u;let valid=ls.pdf>0.0;store_word(at,bitcast<u32>(select(0.0,1.0,valid)));
+  if(valid){let values=array<f32,11>(ls.P.x,ls.P.y,ls.P.z,ls.D.x,ls.D.y,ls.D.z,ls.t,ls.pdf,ls.eval_fac,f32(ls.prim),f32(ls.object_id));
+@@ -114,7 +122,8 @@
+     std::ofstream(std::string(argv[1])+".wgsl")<<source;
+     WGPUShaderSourceWGSL code{};code.chain.sType=WGPUSType_ShaderSourceWGSL;code.code={source.data(),source.size()};WGPUShaderModuleDescriptor descriptor{};descriptor.nextInChain=&code.chain;d.gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&descriptor));d.gpu.pop_scope();auto shader=d.gpu.pipeline(module,d.pipeline_layout,"emitter_sample_probe");
+     std::array<uint32_t,32> p{};p[1]=count;p[4]=output.device_pointer+32;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[9]=scene.dscene.sample_pattern_lut.device_pointer;p[14]=d.scene_tables();p[17]=d.error_word;
+-    d.dispatch(p,count,shader,probe_group_size);d.sync();output.copy_from_device();healthy(d);uint error=0;d.download(d.error_word,&error,4);require(error==0,"Emitter shader error");
++    for(unsigned first=0;first<count;first+=probe_slice){p[30]=first;d.dispatch(p,std::min(probe_slice,count-first),shader,probe_group_size);d.sync();}
++    output.copy_from_device();healthy(d);uint error=0;d.download(d.error_word,&error,4);require(error==0,"Emitter shader error");
+     auto save=[&](const char *suffix,const float *data,size_t count){std::ofstream f(std::string(argv[1])+suffix,std::ios::binary);f.write(reinterpret_cast<const char*>(data),count*4);};
+     save(".reference.bin",local.data(),local.size());save(".actual.bin",output.data()+8,expected.size());
+     unsigned valid=0;for(unsigned i=0;i<count;i++){const auto at=i*12;require(output[at+8]==expected[at],"Emitter validity differs index="+std::to_string(i));metrics.exact++;if(!expected[at])continue;valid++;
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1848,11 +1848,9 @@
+ - Triangle images 0-3 pass, and Linux captures 0-3 and 5 replay. Mode 4 fails exactly as on the
+   Samsung (same component, same values), and the mode-4 Linux capture diverges at the same command
+   438.
+-- The triangle sampler gate fails with a garbage GPU error mask: a float value is written into the
+-  error word, which is an out-of-bounds store. The sampler module holds E1's per-invocation
+-  `triangle_light_cache`, a module-scope array of structs. Function- and private-scope arrays of
+-  structs are the Adreno 640 defect class described in "Pixel 4 XL (Adreno 640) function-scope array
+-  fix". The sampler had not run on the Pixel before.
++- The triangle sampler gate failed with a garbage GPU error mask. Phase E5 traced this to a GPU
++  reset during the probe's single 4,096-invocation dispatch, not to an out-of-bounds store; see
++  "Pixel 4 XL triangle sampler: GPU reset, not an out-of-bounds store (Phase E5)".
+ - Compile-budget warnings (over 20 s; warnings only, no tier change): `intersect_closest` 86-87 s and
+   `intersect_shadow` 74-83 s in the motion images, `prepare_surface` 48-50 s, emissive-triangle
+   `shade_surface_light` 65 s, `init_camera` 27 s, `shade_volume` 27 s, and `shade_surface` 21-23 s.
+@@ -1866,6 +1864,45 @@
+ Android devices: the specialization-off refusal, which previously ended the gate with exit 139, now
+ exits 1 with that message.
+ 
++## Pixel 4 XL triangle sampler: GPU reset, not an out-of-bounds store (Phase E5, 2026-10-20)
++
++The merged-tree Pixel run reported the triangle sampler gate (`codebrix_cycles_triangle_sample_gate`)
++as a float written into the GPU error word. That reading was wrong. A diagnostic copy of the gate
++(work folder only) timed the dispatch and dumped the output buffer and error word.
++- The gate dispatches all 4,096 probe invocations at workgroup size 1 in one submission. On the
++  Adreno 640 this runs for about 4 s. The submission ended after 2.05 s, and the next submission
++  reported `Parent device is lost`. The error-word value read back from the lost device is not data
++  that any shader wrote: it changed between runs (0x3F2823AA in the merge run, 0x3F07024E in three runs here),
++  and it matches no value the probe writes.
++- The same WGSL, unchanged, completes when dispatched in slices: 64 invocations take 106 ms, slices
++  of 256 take 220-300 ms each (4.0 s in total), and slices of 1,024 and 2,048 take 1.0 s and 2.0 s.
++  The error word stays 0, the guards are intact, and every sample is written.
++- The output does not depend on how the dispatch is sliced, or on the form of E1's triangle-light
++  cache. The array-of-structs cache, a struct-of-arrays copy and a copy with no cache give
++  bit-identical outputs. The struct-of-arrays copy takes the same time. The copy with no cache is
++  about 25% faster, still over 3 s for one dispatch. So the Adreno 640 array defect class (see
++  "Pixel 4 XL (Adreno 640) function-scope array fix") is not involved.
++
++Fix (test harness only; no shader, kernel or production change): the triangle variant of
++`native/cycles/emitter_sample_gate.cpp` dispatches the probe in slices of 256 invocations. Each
++slice is synchronized and its error word checked before the next. The slice start (`p[30]`) only
++offsets the invocation index, so every invocation computes exactly what it did in one dispatch. The
++emitter (lamp) probe still uses one dispatch. On Linux the sampler, emitter and triangle-image
++outputs are bit-identical to the merged tree.
++
++Pixel result (full tier by table, 20 s budget, glibc reference from the device's own scene):
++- The sampler now runs to completion. The static, instanced and moving emitters pass: 0 practical,
++  734 strict, max 4.88e-4. The 42 practical differences (25 samples, max 0.743) are all on the
++  deforming emitter (object 5). That is open item 1, the Samsung's ARM64 deforming-emitter
++  difference: 24 of the 25 samples are the Samsung's failing samples.
++- The emitter probe passes (0 practical, 125 strict, max 9.06e-6).
++- Triangle images 0-3 pass. Mode 4 fails as before (open item 2), so mode 5 is still not reached
++  natively.
++- As a check on E2's fix, feature_combination (0 practical, 1,300 strict) and the object-moving
++  motion image pass, with one replay each. Deterministic films are bit-identical to the merged-tree
++  Pixel run. Only feature_combination case 5 differs, by 4 values of up to 1.19e-7; that case's own
++  gpu and repeat films also differ within each run.
++
+ ## Open device items (2026-10-20, after the Phase E merge)
+ 
+ These items are open. None is masked, and no tolerance was relaxed. Items resolved in Phase E, now
+@@ -1875,12 +1912,14 @@
+ - the specialization-off crashes (refused on Android);
+ - the Pixel feature-combination, motion and volume-stack failures (function-scope array fix);
+ - the Android oracle libm differences (validation reference policy);
++- the Pixel triangle sampler's garbage error mask (a GPU reset during one long dispatch; Phase E5);
+ - static instanced triangle emitters on Linux and the HP (exact traversal).
+ 
+-1. **Deforming triangle emitter on ARM64 (Samsung).** The triangle sampler fails against the glibc
+-   reference in 41 values (24 samples), all on the deforming emitter. The cause is ARM64 float3
+-   arithmetic, which the x64 reference does not share. It is to be confirmed against a Linux ARM64
+-   glibc reference (Raspberry Pi 5, Phase F).
++1. **Deforming triangle emitter on ARM64 (Samsung, Pixel 4 XL).** The triangle sampler fails
++   against the glibc reference only on the deforming emitter: 41 values (24 samples) on the Samsung,
++   42 values (25 samples) on the Pixel. The cause is ARM64 float3 arithmetic, which the x64
++   reference does not share. It is to be confirmed against a Linux ARM64 glibc reference
++   (Raspberry Pi 5, Phase F).
+ 2. **Static instanced triangle emitters on Adreno (Samsung SM-X700, Pixel 4 XL).**
+    - Image mode 4 fails with identical values on both GPUs: 9 practical differences against the
+      glibc reference. The device's own ARM64 CPU result also differs from glibc there (6
+@@ -1893,12 +1932,15 @@
+      so the native device images use arithmetic that the reference does not. Whether ARM64 device
+      builds should emit mode 1 under the validation reference policy is undecided. The capture
+      result shows that the arithmetic mode alone does not explain mode 4.
+-3. **Pixel 4 XL: triangle sampler gate.** The `emitter_sample_probe` module writes a float into
+-   the GPU error word, an out-of-bounds store. The emissive-triangle prefill keeps a module-scope
+-   array of structs (`triangle_light_cache`), the form that the Adreno 640 miscompiles. The fix
+-   pattern is in "Pixel 4 XL (Adreno 640) function-scope array fix" (one private scalar array or
+-   parallel scalar arrays). Triangle image mode 5 was not reached natively on the Pixel; its Linux
+-   capture replays.
++3. **Adreno 640 GPU reset on long submissions (Pixel 4 XL).** The driver resets the GPU when one
++   submission runs for about 2 s; the device is then lost. The sampler gate now dispatches in slices
++   (see "Pixel 4 XL triangle sampler: GPU reset"). The renderer does not slice its own dispatches,
++   and a dispatch covers up to 4,096 paths (`num_concurrent_states`). The sampler probe, which does
++   about the work of `shade_surface_light` for an emissive-triangle sample, takes about 1 ms per
++   invocation on this GPU. A larger emissive-triangle render on the Pixel could therefore reach the
++   reset. This is an estimate from the probe; renders have not been timed per dispatch, and the
++   gate images (small films) pass. Triangle image mode 5 is not reached natively on the Pixel (the
++   gate stops at mode 4); its Linux capture replays.
+ 4. **Intel Mesa 25.0.7 cold-compile crash** (`brw_opt_combine_constants`, intermittent; Linux).
+    - Phase E3's area-light mitigation leaves a later recompile after an area light (object motion)
+      crashing 2 of 4 cold runs. The GPU ABI test keeps its area light on the CPU.
+@@ -1916,8 +1958,9 @@
+    signature of cleared low bits or collapsed elements):
+    - `array<i32,192>` BVH stacks;
+    - three `array<vec3<f32>,3>` locals (normals, shader data, motion triangles);
+-   - `array<u32,13>` in light-sample packing;
+-   - the triangle-light cache of item 3.
++   - `array<u32,13>` in light-sample packing.
++   The triangle-light cache is not in this class: Phase E5 found array-of-structs and
++   struct-of-arrays copies bit-identical on the Pixel.
+ 7. **Pixel 4 XL compile time.** Over the 20 s budget, as warnings: `intersect_closest` and
+    `intersect_shadow` with motion take 74-87 s, emissive-triangle and managed-scene
+    `shade_surface_light` 64-71 s, and `prepare_surface` with motion 48-50 s. Every run stayed on
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -35,7 +35,7 @@
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+ | Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL (Adreno 640) passes glass bounce/render and feature combination; feature combination needed the SVM value stack moved out of the function-local SvmState (an Adreno 640 dynamic-indexing miscompile). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP, and on the Pixel 4 XL after the same Adreno 640 fix plus volume-stack hits kept as scalar arrays (volume-boundary state test, camera-inside closed volume, object/deforming motion images) |
+-| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming and static instanced emitters, pass independent CPU images and replay on Linux; closest-hit and shadow traversal reproduce the CPU oracle's ray/triangle and instance arithmetic bit for bit on Linux x64. Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. Android results are judged against the correctly rounded (Linux x64 glibc) CPU reference computed from the device's own prepared scene, with the on-device (bionic) CPU reference a diagnostic (`native/DEVICE.md`, "Validation reference policy"). Android x64 (HP Intel) passes lamps with MIS and forward light, transparent shadows, the emitter probe and every emissive-triangle gate (sampler, six images including moving/deforming and static instanced emitters, replays). ARM64 Android (Samsung Adreno 730): lamps, broad lighting, feature combination, the emitter probe and emissive-triangle images 0-3 pass with replays; static instanced triangle emitters fail on the Adreno 730 and 640, and the deforming emitter's sampler fails on ARM64 float3 arithmetic (to be checked against a Linux ARM64 glibc reference). The Pixel 4 XL passes lamps and emissive-triangle images 0-3; its triangle sampler gate fails. Open device items are listed in `native/DEVICE.md` |
++| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming and static instanced emitters, pass independent CPU images and replay on Linux; closest-hit and shadow traversal reproduce the CPU oracle's ray/triangle and instance arithmetic bit for bit on Linux x64. Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. Android results are judged against the correctly rounded (Linux x64 glibc) CPU reference computed from the device's own prepared scene, with the on-device (bionic) CPU reference a diagnostic (`native/DEVICE.md`, "Validation reference policy"). Android x64 (HP Intel) passes lamps with MIS and forward light, transparent shadows, the emitter probe and every emissive-triangle gate (sampler, six images including moving/deforming and static instanced emitters, replays). ARM64 Android (Samsung Adreno 730): lamps, broad lighting, feature combination, the emitter probe and emissive-triangle images 0-3 pass with replays; static instanced triangle emitters fail on the Adreno 730 and 640, and the deforming emitter's sampler fails on ARM64 float3 arithmetic (to be checked against a Linux ARM64 glibc reference). The Pixel 4 XL passes lamps, the emitter probe and emissive-triangle images 0-3; its triangle sampler (dispatched in slices, since the Adreno 640 resets on submissions of about 2 s) passes every emitter except the deforming one, the same ARM64 item as the Samsung. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS), so `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is refused on Android. Cold compiles: Samsung specialized pipelines at most 32.6 s (the emissive-triangle entry with object motion now 29-30 s, was 205 s); HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 20 s with triangle lights, 27.6 s with triangle lights and object motion, which previously ran out of compiler memory), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 87 s (`intersect_closest` with object motion; 20 s budget, warnings only) |
+ | Platforms/delivery | Full Linux host. The .NET typed API renders on the WebGPU backend and the CPU reference backend on Linux x64 (Intel UHD, Mesa 25.0.7) and inside the Android validation app on the Samsung SM-X700, the HP Android x64 and the Pixel 4 XL (glass, diffuse with a sun, textured plane: practical criterion met, strict differences reported; progress and cancellation checked); the Android host gate passes with 48 exports on the Samsung and the HP. A glTF example client (tools/gltf) converts glTF factor-only materials to the closures the WebGPU backend has. The package still carries no native runtime assets; other host builds and remaining GPU backends/RIDs pending |

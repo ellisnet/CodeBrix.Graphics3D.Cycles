@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Runtime.InteropServices;
 using System.Text;
 using CodeBrix.Graphics3D.Cycles.Interop;
 using Microsoft.Win32.SafeHandles;
@@ -79,7 +80,7 @@ public sealed unsafe class CyclesHost : IDisposable
 
     // The macOS loader does not enforce the native library's minimum OS, so
     // refuse before the first P/Invoke loads it. The native host checks again.
-    private static void EnsureSupportedOperatingSystem()
+    internal static void EnsureSupportedOperatingSystem()
     {
         if (OperatingSystem.IsMacOS() && !OperatingSystem.IsMacOSVersionAtLeast(15))
             throw new PlatformNotSupportedException("CodeBrix.Graphics3D.Cycles requires macOS 15.0 or later.");
@@ -327,6 +328,60 @@ public sealed unsafe class CyclesHost : IDisposable
     }
 
     /// <summary>
+    /// Sets a string-array socket. Every element is copied before the call returns.
+    /// </summary>
+    /// <param name="node">The node.</param>
+    /// <param name="socket">The native socket name.</param>
+    /// <param name="values">The strings; none may be <see langword="null"/>.</param>
+    /// <exception cref="ArgumentNullException">An element is <see langword="null"/>.</exception>
+    public void SetStrings(Node node, string socket, ReadOnlySpan<string> values)
+    {
+        byte[][] utf8 = new byte[values.Length][];
+        int total = 0;
+        for (int i = 0; i < values.Length; ++i)
+        {
+            if (values[i] == null) throw new ArgumentNullException(nameof(values), "String array elements cannot be null.");
+            utf8[i] = Encoding.UTF8.GetBytes(values[i]);
+            total += utf8[i].Length + 1;
+        }
+        byte[] storage = new byte[Math.Max(total, 1)];
+        int[] offsets = new int[values.Length];
+        for (int i = 0, offset = 0; i < utf8.Length; ++i)
+        {
+            offsets[i] = offset;
+            utf8[i].CopyTo(storage, offset);
+            offset += utf8[i].Length + 1;
+        }
+        byte*[] pointers = new byte*[values.Length];
+        fixed (byte* data = storage)
+        {
+            for (int i = 0; i < pointers.Length; ++i) pointers[i] = data + offsets[i];
+            fixed (byte** list = pointers) Finish(Native.SetStrings(Handle, node.Value, socket, list, (ulong)pointers.Length));
+        }
+    }
+
+    /// <summary>
+    /// Returns a node's native registry type name (for example <c>mesh</c> or <c>diffuse_bsdf</c>).
+    /// </summary>
+    /// <param name="node">The node.</param>
+    /// <returns>The native type name.</returns>
+    public string NodeTypeName(Node node)
+    {
+        int status = Native.NodeType(Handle, node.Value, null, 0, out ulong required);
+        GC.KeepAlive(lifetime);
+        if (status != 6) Check(status);
+        for (;;)
+        {
+            byte[] result = new byte[checked((int)required)];
+            fixed (byte* data = result) status = Native.NodeType(Handle, node.Value, data, (ulong)result.Length, out required);
+            GC.KeepAlive(lifetime);
+            if (status == 6) continue;
+            Check(status);
+            return Encoding.UTF8.GetString(result, 0, checked((int)required - 1));
+        }
+    }
+
+    /// <summary>
     /// Sets a node or node-array socket (for example an object's <c>geometry</c> or a mesh's <c>used_shaders</c>).
     /// </summary>
     /// <param name="node">The node.</param>
@@ -488,5 +543,150 @@ public sealed unsafe class CyclesHost : IDisposable
         int status = Native.Cancel(Handle); GC.KeepAlive(lifetime);
         if (status == 5) return false;
         Check(status); return true;
+    }
+
+    /// <summary>
+    /// Maps a requested backend (including <see cref="Backend.Gpu"/>) to the concrete backend this
+    /// native binary creates for it, without probing hardware: Metal for <see cref="Backend.Gpu"/> in
+    /// macOS builds, WebGPU in every other build.
+    /// </summary>
+    /// <param name="requested">The requested backend.</param>
+    /// <returns>The concrete backend.</returns>
+    /// <exception cref="NativeFailure">The backend is not compiled into this binary (status 2).</exception>
+    public static Backend ResolveBackend(Backend requested)
+    {
+        EnsureSupportedOperatingSystem();
+        Check(Native.ResolveBackend((uint)requested, out uint resolved));
+        return (Backend)resolved;
+    }
+
+    /// <summary>
+    /// Returns the concrete backend this host renders with (never <see cref="Backend.Gpu"/>). It may be
+    /// called while a render runs.
+    /// </summary>
+    /// <returns>The concrete backend.</returns>
+    public Backend GetBackend()
+    {
+        int status = Native.GetBackend(Handle, out uint backend);
+        Finish(status);
+        return (Backend)backend;
+    }
+
+    /// <summary>
+    /// Returns the binary-level capability report as JSON: version, compiled backends, image formats,
+    /// pass types, limits and the determinism reference (<c>native/host/ABI.md</c>).
+    /// </summary>
+    /// <returns>The JSON report.</returns>
+    public static string CapabilitiesJson()
+    {
+        EnsureSupportedOperatingSystem();
+        return ReadJson(0, Native.Capabilities, null);
+    }
+
+    /// <summary>
+    /// Returns this host's capability report as JSON: the binary-level report plus a <c>host</c> object
+    /// with the concrete backend, device identity and the device report of <see cref="DeviceReportJson"/>.
+    /// </summary>
+    /// <returns>The JSON report.</returns>
+    public string HostCapabilitiesJson() => ReadJson(Handle, Native.Capabilities, lifetime);
+
+    /// <summary>
+    /// Returns the JSON list of the passes captured by the most recent successful render (name, type,
+    /// components, written).
+    /// </summary>
+    /// <returns>The JSON list.</returns>
+    /// <exception cref="NativeFailure">No render has succeeded since the last render started (status 5).</exception>
+    public string RenderPassesJson() => ReadJson(Handle, Native.RenderPasses, lifetime);
+
+    private delegate int JsonReader(ulong host, byte* json, ulong capacity, out ulong required);
+
+    private static string ReadJson(ulong host, JsonReader reader, SafeHandle keepAlive)
+    {
+        int status = reader(host, null, 0, out ulong required);
+        GC.KeepAlive(keepAlive);
+        if (status != 6) Check(status);
+        for (;;)
+        {
+            byte[] result = new byte[checked((int)required)];
+            fixed (byte* data = result) status = reader(host, data, (ulong)result.Length, out required);
+            GC.KeepAlive(keepAlive);
+            if (status == 6) continue;
+            Check(status);
+            return Encoding.UTF8.GetString(result, 0, checked((int)required - 1));
+        }
+    }
+
+    /// <summary>
+    /// Deletes a node and invalidates its identifier: objects, geometry, lights, particle systems,
+    /// passes and shaders created with <see cref="CreateNode"/>, and shader graph nodes (their links are
+    /// removed). Deleting a shader also invalidates its graph nodes. Singletons and shader output nodes
+    /// cannot be deleted.
+    /// </summary>
+    /// <param name="node">The node to delete.</param>
+    /// <exception cref="NativeFailure">Another node still references the node, or the node cannot be deleted (status 1).</exception>
+    public void DeleteNode(Node node) => Finish(Native.DeleteNode(Handle, node.Value));
+
+    /// <summary>
+    /// Replaces the pixels behind a live image identifier (size and format may change). Every texture
+    /// still bound to it uses the new pixels on the next render; bindings made before
+    /// <see cref="ReleaseImage"/> keep the pixels they had.
+    /// </summary>
+    /// <param name="image">The image identifier.</param>
+    /// <param name="width">The width in pixels.</param>
+    /// <param name="height">The height in pixels.</param>
+    /// <param name="format">The pixel layout.</param>
+    /// <param name="pixels">The tightly packed raw pixel bytes; copied before the call returns.</param>
+    /// <exception cref="NativeFailure">The identifier was released, or the size, byte count or values are invalid (status 1).</exception>
+    public void UpdateImage(Image image, uint width, uint height, ImageFormat format, ReadOnlySpan<byte> pixels)
+    {
+        Native.ImageConfig config = new() { Size = 32, Width = width, Height = height, Format = (uint)format };
+        fixed (byte* data = pixels) Finish(Native.UpdateImage(Handle, image.Value, ref config, data, (ulong)pixels.Length));
+    }
+
+    /// <summary>
+    /// Sets a mesh's deformation motion: <paramref name="steps"/> (odd, 3 to 129) time-ordered arrays of
+    /// x, y, z vertex positions whose center step equals the current positions bit for bit. Pass
+    /// <paramref name="steps"/> 1 with no positions to remove it. Configure it before the mesh's first
+    /// render: the native host refuses it afterwards (status 5).
+    /// </summary>
+    /// <param name="mesh">The mesh node.</param>
+    /// <param name="steps">The number of time steps.</param>
+    /// <param name="positions">The flattened positions, <c>steps * vertices * 3</c> floats.</param>
+    /// <exception cref="NativeFailure">The input is malformed (status 1) or the mesh was already rendered (status 5).</exception>
+    public void MotionPositions(Node mesh, uint steps, ReadOnlySpan<float> positions)
+    {
+        fixed (float* xyz = positions) Finish(Native.MotionPositions(Handle, mesh.Value, steps, xyz, (ulong)positions.Length));
+    }
+
+    /// <summary>
+    /// Registers (or, with a null callback, clears) the host's native render event callback. The
+    /// callback runs on a native render thread or the rendering thread, only while a render runs, and
+    /// must not call the native library except <c>cbc_host_error</c> and <c>cbc_host_version</c>;
+    /// returning nonzero requests cancellation. After this returns the previous callback is never
+    /// invoked again. <see cref="CyclesScene"/> manages this callback itself while it renders.
+    /// </summary>
+    /// <param name="callback">The unmanaged callback, or null.</param>
+    /// <param name="userData">The value passed back to the callback.</param>
+    public void SetEventCallback(delegate* unmanaged[Cdecl]<nint, Native.Event*, int> callback, nint userData)
+        => Finish(Native.SetEventCallback(Handle, callback, userData));
+
+    /// <summary>
+    /// Copies one pass captured by the most recent successful render: raw scene-linear float32, lower-left
+    /// origin, <paramref name="components"/> floats per pixel. An empty destination is a size query.
+    /// </summary>
+    /// <param name="name">The pass name (<c>Combined</c> is always present).</param>
+    /// <param name="values">The destination.</param>
+    /// <param name="required">Receives the float count the pass holds.</param>
+    /// <param name="components">Receives the floats per pixel.</param>
+    /// <returns><see langword="true"/> when the values were copied; <see langword="false"/> when the destination is too small.</returns>
+    /// <exception cref="NativeFailure">No render has succeeded (status 5), the pass is unknown (status 1) or the device did not write it (status 2).</exception>
+    public bool PassFloats(string name, Span<float> values, out ulong required, out uint components)
+    {
+        int status;
+        fixed (float* data = values) status = Native.PassFloats(Handle, name, data, (ulong)values.Length, out required, out components);
+        GC.KeepAlive(lifetime);
+        if (status == 6) return false;
+        Check(status);
+        return true;
     }
 }

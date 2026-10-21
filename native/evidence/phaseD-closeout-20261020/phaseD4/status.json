@@ -1,0 +1,25 @@
+{
+  "agent": "phaseD4-merge-wire",
+  "start": "06:43:32",
+  "end": "07:25",
+  "head": "01eb27b6 (Jeremy committed D1 at 06:43:53 during the run; D2/D3/D4 changes are uncommitted on top)",
+  "merge": {
+    "d2": {"patchSha256": "0893a16a3015081f65bbed6ecc56621536dcd0badcdde2a7cb4eba5ed1097ec6", "beforeHashMatch": "228/228", "afterHashMatch": "228/228", "handReconciled": []},
+    "d3": {"patchSha256": "ff6959d59037b9f93030132c39b548c4e1a917dd677b37b400dc57e19e8732b4", "beforeHashMatch": "64/68", "afterHashMatch": "64/64 applied cleanly",
+           "handReconciled": ["native/host/README.md", "native/tools/host_gate.py", "native/tools/macos_host_gate.py", "src/CodeBrix.Graphics3D.Cycles/CyclesHost.cs (-> Backend.cs + Interop/Native.cs)"]}
+  },
+  "validation": {
+    "nativeBuild": {"rc": 0, "budgetSeconds": 1800, "seconds": 22, "exports": 48},
+    "dotnetBuildRelease": "0 warnings 0 errors", "dotnetBuildDebug": "0 warnings 0 errors",
+    "dotnetTestRelease": "142/142", "dotnetTestDebug": "142/142",
+    "testsWithoutNativeHost": "151 total (direct runner), 0 failed, 138 skipped",
+    "pack": "OK, not published",
+    "hostGate": {"passed": true, "budgetSeconds": 1200, "seconds": 210, "exportCount": 48, "independentReferenceFilms": 786, "comparisons": 3142, "maximumAbsoluteError": 1.1920928955078125e-07, "practicalFailures": 0, "strictDifferences": 0, "abiCpu": true, "abiGpu": true, "exampleCpu": true, "exampleGpu": true},
+    "allLanes": {"passed": true, "targets": 29, "budgetSeconds": 2700, "seconds": 1318, "productionSourcesUnchanged": true, "binaryRuntimeInputsUnchanged": true, "cold": true},
+    "glassRender": {"specialized": {"rc": 0, "seconds": 32}, "unspecialized": {"rc": 0, "seconds": 185}, "film": "a8e69a3424036a797160ad074aca1a5435f0d232e7b3298e5509cf8ef7349602", "bitIdentical": true},
+    "oracle": {"rc": 0, "budgetSeconds": 1800, "seconds": 279, "compared": 46, "scenes": 49, "practicalFailures": 0, "recordedWebGpuFailures": ["linux-gates/closed-volumes", "linux-gates/world-volume", "starter/glass-and-area-light"]},
+    "auditPy": "passed, 0 errors", "noticesCheck": "OK (34 components)", "compatGuard": "OK", "licensingGuards": "OK",
+    "generatorCheck": "up to date (185 files; registry unchanged, no --update-registry)", "gitDiffCheck": "clean"
+  },
+  "passed": true
+}

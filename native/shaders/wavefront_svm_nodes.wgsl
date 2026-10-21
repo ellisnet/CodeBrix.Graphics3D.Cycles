@@ -1,0 +1,1066 @@
+//#if SVM_NODES_ANY
+// SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+// Copyright (c) 2026 Jeremy Ellis and contributors
+// SPDX-License-Identifier: Apache-2.0
+// Modified from Cycles: kernel/svm/{noise,fractal_noise,noisetex,voronoi,white_noise,wave,
+// magic,brick,mapping,mapping_util,map_range,mix,color_util,hsv,sepcomb_color,ramp,
+// fresnel,vector_rotate,blackbody,normal,geometry,camera,scene_time,vector_transform,
+// light_path,wavelength,wireframe}.h, closure/bsdf_util.h, util/hash.h,
+// util/color.h, util/transform.h, kernel/util/colorspace.h,
+// kernel/util/differential.h and kernel/tables.h (blackbody fit, CIE colour
+// matching rows), translated to WGSL for the SVM interpreter.
+// The x86-64 CPU oracle compiles the SSE4.2 branches of noise.h/util: vector fade
+// association, truncating float3/float4 fmod and Perlin lane order are reproduced.
+// Every helper has one call site per handler (drivers inline every WGSL call).
+// Products that the host rounds before an addition go through rounded_add, so
+// a driver cannot contract them into a fused multiply-add: high-octave noise,
+// distortion and the hash offsets amplify a single-ulp difference.
+// The whole file is one feature region: scenes without these nodes compile
+// byte-identical modules.
+// Shared by several node families (regions are kept when any user is reachable).
+//#if SVM_NODES_DOT
+fn svmn_dot(a:vec3<f32>,b:vec3<f32>)->f32{return (a.x*b.x+a.y*b.y)+a.z*b.z;}
+//#endif
+//#if SVM_NODES_HASH
+// util/hash.h: Jenkins lookup3 hash_uint..hash_uint4 on wrapping u32 arithmetic.
+fn svmn_rot(x:u32,k:u32)->u32{return (x<<k)|(x>>(32u-k));}
+fn svmn_hash(k:vec4<u32>,n:u32)->u32{
+    var a=0xdeadbeefu+(n<<2u)+13u;var b=a;var c=a;
+    if(n==4u){
+        a+=k.x;b+=k.y;c+=k.z;
+        a-=c;a^=svmn_rot(c,4u);c+=b;b-=a;b^=svmn_rot(a,6u);a+=c;c-=b;c^=svmn_rot(b,8u);b+=a;
+        a-=c;a^=svmn_rot(c,16u);c+=b;b-=a;b^=svmn_rot(a,19u);a+=c;c-=b;c^=svmn_rot(b,4u);b+=a;
+        a+=k.w;
+    }else{a+=k.x;if(n>=2u){b+=k.y;}if(n==3u){c+=k.z;}}
+    c^=b;c-=svmn_rot(b,14u);a^=c;a-=svmn_rot(c,11u);b^=a;b-=svmn_rot(a,25u);c^=b;c-=svmn_rot(b,16u);
+    a^=c;a-=svmn_rot(c,4u);b^=a;b-=svmn_rot(a,14u);c^=b;c-=svmn_rot(b,24u);return c;
+}
+// Nearest-even u32 -> f32 like the host conversion; WGSL leaves the rounding of
+// inexact integer conversions to the implementation.
+fn svmn_u32_float(n:u32)->f32{
+    if(n<0x1000000u){return f32(n);}
+    let drop=8u-countLeadingZeros(n);var m=n>>drop;let rest=n&((1u<<drop)-1u);let half=1u<<(drop-1u);
+    if(rest>half||(rest==half&&(m&1u)!=0u)){m+=1u;}
+    return ldexp(f32(m),i32(drop));
+}
+// uint_to_float_incl(hash_uintN(float bits)): the scale is exactly 2^-32.
+fn svmn_hash_float(k:vec4<f32>,n:u32)->f32{return svmn_u32_float(svmn_hash(bitcast<vec4<u32>>(k),n))*2.3283064365386963e-10;}
+//#endif
+//#if SVM_NODES_FMOD
+// C fmodf is exact; float3/float4 SSE4.2 fmod is a-trunc(a/b)*b (sse=true).
+// The exact path subtracts power-of-two multiples of b; each step is exact.
+fn svmn_fmod(a:f32,b:f32,sse:bool)->f32{
+    if(!(abs(a)>=b)){return a;}
+    if(sse){return rounded_add(a,-(trunc(a/b)*b));}
+    if(abs(a)>=bitcast<f32>(0x7f800000u)){return a-a;}
+    var r=abs(a);var d=b;
+    for(var j=0u;j<128u&&d<=r*0.5;j++){d*=2.0;}
+    for(var j=0u;j<130u&&d>=b;j++){if(r>=d){r-=d;}d*=0.5;}
+    return select(r,-r,a<0.0);
+}
+//#endif
+//#if SVM_NODES_NOISE
+// noise.h perlin_1d (scalar) and perlin_2d/3d/4d (SSE): lattice gradients are
+// combined along x, then y, z and w with mix(a,b,t)=a+t*(b-a), as the SSE lanes.
+fn svmn_perlin(p:vec4<f32>,dims:u32)->f32{
+    let lattice=floor(p);let cell=vec4<i32>(lattice);let fr=p-lattice;var fade=vec4<f32>(0);
+    for(var d=0u;d<dims;d++){
+        let t=fr[d];let inner=rounded_add(t*rounded_add(t*6.0,-15.0),10.0);
+        fade[d]=select((t*t)*(t*inner),((t*t)*t)*inner,dims==1u);
+    }
+    var partial=vec4<f32>(0);var result=0.0;let corners=1u<<dims;
+    for(var c=0u;c<corners;c++){
+        let bit=vec4<u32>(c&1u,(c>>1u)&1u,(c>>2u)&1u,(c>>3u)&1u);
+        let x=fr-vec4<f32>(bit);let h=svmn_hash(bitcast<vec4<u32>>(cell+vec4<i32>(bit)),dims);var g=0.0;
+        switch(dims){
+            case 1u:{let hh=h&15u;g=f32(1u+(hh&7u));g=select(g,-g,(hh&8u)!=0u)*x.x;}
+            case 2u:{let hh=h&7u;let u=select(x.y,x.x,hh<4u);let v=2.0*select(x.x,x.y,hh<4u);
+                g=select(u,-u,(hh&1u)!=0u)+select(v,-v,(hh&2u)!=0u);}
+            case 3u:{let hh=h&15u;let u=select(x.y,x.x,hh<8u);let vt=select(x.z,x.x,hh==12u||hh==14u);let v=select(vt,x.y,hh<4u);
+                g=select(u,-u,(hh&1u)!=0u)+select(v,-v,(hh&2u)!=0u);}
+            default:{let hh=h&31u;let u=select(x.y,x.x,hh<24u);let v=select(x.z,x.y,hh<16u);let s=select(x.w,x.z,hh<8u);
+                g=(select(u,-u,(hh&1u)!=0u)+select(v,-v,(hh&2u)!=0u))+select(s,-s,(hh&4u)!=0u);}
+        }
+        var level=0u;
+        for(;level<dims&&((c>>level)&1u)!=0u;level++){g=rounded_add(partial[level],fade[level]*rounded_add(g,-partial[level]));}
+        if(level==dims){result=g;}else{partial[level]=g;}
+    }
+    return result;
+}
+// noise.h snoise_1d..snoise_4d: repeat every 100000 with the precision correction.
+fn svmn_snoise(input:vec4<f32>,dims:u32)->f32{
+    var p=input;
+    for(var d=0u;d<dims;d++){let correction=select(0.0,0.5,abs(p[d])>=1000000.0);p[d]=svmn_fmod(p[d],100000.0,dims>=3u)+correction;}
+    var scale=0.25;if(dims==2u){scale=0.6616;}else if(dims==3u){scale=0.982;}else if(dims==4u){scale=0.8344;}
+    return scale*svmn_perlin(p,dims);
+}
+// fractal_noise.h: fBM, multifractal, hetero terrain, hybrid and ridged
+// multifractal as one octave loop (index count evaluates the detail remainder).
+fn svmn_fractal(kind:u32,p:vec4<f32>,dims:u32,detail:f32,roughness:f32,lacunarity:f32,offset:f32,gain:f32,normalize:bool)->f32{
+    let octaves=i32(detail);let rmd=detail-floor(detail);
+    let first=kind==NODE_NOISE_HETERO_TERRAIN||kind==NODE_NOISE_RIDGED_MULTIFRACTAL;
+    var count=octaves+1;if(first){count=max(octaves,0)+1;}count=max(count,0);
+    var q=p;var fscale=1.0;var amp=1.0;var maxamp=0.0;var sum=0.0;var sum2=0.0;var mixed=false;var value=1.0;var pwr=1.0;var weight=1.0;var signal=0.0;
+    if(first){pwr=roughness;}
+    if(kind==NODE_NOISE_HYBRID_MULTIFRACTAL){value=0.0;}
+    for(var i=0;i<=count;i++){
+        let tail=i==count;
+        if(tail&&(rmd==0.0||kind==NODE_NOISE_RIDGED_MULTIFRACTAL)){break;}
+        if(kind==NODE_NOISE_HYBRID_MULTIFRACTAL&&!(weight>0.001)){break;}
+        if(kind==NODE_NOISE_RIDGED_MULTIFRACTAL&&i>0){q*=lacunarity;weight=clamp(signal*gain,0.0,1.0);}
+        var point=q;if(kind==NODE_NOISE_FBM){point=fscale*p;}
+        let t=svmn_snoise(point,dims);
+        // Each octave is base+product with the product rounded first (rounded_add).
+        var base=0.0;var product=0.0;
+        switch(kind){
+            case NODE_NOISE_FBM:{base=sum;product=t*amp;}
+            case NODE_NOISE_MULTIFRACTAL:{base=1.0;product=select(pwr*t,rmd*pwr*t,tail);}
+            case NODE_NOISE_HETERO_TERRAIN:{if(i==0){base=offset;product=t;}else{base=value;product=(t+offset)*pwr*value;if(tail){product*=rmd;}}}
+            case NODE_NOISE_HYBRID_MULTIFRACTAL:{weight=min(weight,1.0);let s=(t+offset)*pwr;base=value;product=select(weight*s,rmd*weight*s,tail);
+                if(!tail){pwr*=roughness;weight*=gain*s;}}
+            default:{signal=offset-abs(t);signal*=signal;if(i==0){product=signal;}else{signal*=weight;base=value;product=signal*pwr;pwr*=roughness;}}
+        }
+        let r=rounded_add(base,product);
+        switch(kind){
+            case NODE_NOISE_FBM:{if(tail){sum2=r;mixed=true;}else{sum=r;}if(!tail){maxamp+=amp;amp*=roughness;fscale*=lacunarity;}}
+            case NODE_NOISE_MULTIFRACTAL:{value*=r;if(tail){return value;}pwr*=roughness;q*=lacunarity;}
+            case NODE_NOISE_HETERO_TERRAIN:{value=r;if(tail){return value;}if(i>0){pwr*=roughness;}q*=lacunarity;}
+            case NODE_NOISE_HYBRID_MULTIFRACTAL:{value=r;if(tail){return value;}q*=lacunarity;}
+            default:{value=r;}
+        }
+    }
+    if(kind!=NODE_NOISE_FBM){return value;}
+    // fBM result: optional 0.5*sum/maxamp+0.5 normalization (correctly rounded
+    // quotient), then the detail-remainder mix between both octave sums.
+    var ends=vec2<f32>(sum,sum2);
+    if(normalize){for(var k=0u;k<select(1u,2u,mixed);k++){ends[k]=rounded_divide(0.5*ends[k],select(maxamp,maxamp+amp,k==1u))+0.5;}}
+    if(!mixed){return ends.x;}
+    return rounded_add(ends.x,rmd*rounded_add(ends.y,-ends.x));
+}
+//#endif
+//#if SVM_NODE_TEX_NOISE
+// noisetex.h random_float*_offset.
+fn svmn_offset(seed:f32,dims:u32)->vec4<f32>{
+    var o=vec4<f32>(0);
+    for(var d=0u;d<dims;d++){o[d]=rounded_add(100.0,svmn_hash_float(vec4<f32>(seed,f32(d),0,0),select(2u,1u,dims==1u))*100.0);}
+    return o;
+}
+fn svm_noise_texture(s:ptr<function,SvmState>,node:u32){
+    let dims=load_word(node+N_TexNoise_dimensions);let kind=load_word(node+N_TexNoise_noise_type);
+    if(dims<1u||dims>4u||kind>NODE_NOISE_HETERO_TERRAIN){svm_error(s,16u);return;}
+    let scale=svm_input(s,node+N_TexNoise_scale);let w=svm_input(s,node+N_TexNoise_w)*scale;
+    let detail=clamp(svm_input(s,node+N_TexNoise_detail),0.0,15.0);let roughness=max(svm_input(s,node+N_TexNoise_roughness),0.0);
+    let lacunarity=svm_input(s,node+N_TexNoise_lacunarity);let offset=svm_input(s,node+N_TexNoise_offset);
+    let gain=svm_input(s,node+N_TexNoise_gain);let distortion=svm_input(s,node+N_TexNoise_distortion);
+    var p=vec4<f32>(w,0,0,0);
+    if(dims>=2u){let v=svm_load3(s,svm_byte(node+N_TexNoise_vector))*scale;p=vec4<f32>(v,select(0.0,w,dims==4u));}
+    if((*s).error!=0u){return;}
+    // One fractal call site: distortion samples snoise(p+offset) are fBM with
+    // detail 0 (exactly snoise), then value and colour channels use the node type.
+    let color_index=svm_byte(node+N_TexNoise_color_offset);var out=vec3<f32>(0);var shift=vec4<f32>(0);
+    let samples=select(0u,dims,distortion!=0.0);
+    for(var k=0u;k<samples+select(1u,3u,color_index!=SVM_STACK_INVALID);k++){
+        let distort=k<samples;let c=k-select(samples,0u,distort);var q=p;
+        if(distort||c>0u){q=p+svmn_offset(f32(select(dims+c-1u,k,distort)),dims);}
+        let r=svmn_fractal(select(kind,NODE_NOISE_FBM,distort),q,dims,select(detail,0.0,distort),roughness,lacunarity,offset,gain,!distort&&load_word(node+N_TexNoise_normalize)!=0u);
+        if(distort){shift[k]=r*distortion;if(k+1u==samples){for(var d=0u;d<dims;d++){p[d]=rounded_add(p[d],shift[d]);}}}else{out[c]=r;}
+    }
+    svm_optional_store(s,svm_byte(node+N_TexNoise_value_offset),out.x);svm_optional_store3(s,color_index,out);
+}
+//#endif
+//#if SVM_NODE_TEX_WHITE_NOISE
+// white_noise.h with hash_float*_to_float/float3 component keys.
+fn svm_white_noise(s:ptr<function,SvmState>,node:u32){
+    let dims=load_word(node+N_TexWhiteNoise_dimensions);if(dims<1u||dims>4u){svm_error(s,16u);return;}
+    let v=svm_input3(s,node+N_TexWhiteNoise_vector);let w=svm_input(s,node+N_TexWhiteNoise_w);
+    let color_index=svm_byte(node+N_TexWhiteNoise_color_offset);let value_index=svm_byte(node+N_TexWhiteNoise_value_offset);
+    var base=vec4<f32>(v,w);if(dims==1u){base=vec4<f32>(w,0,0,0);}else if(dims==2u){base.z=0.0;base.w=0.0;}else if(dims==3u){base.w=0.0;}
+    var count=0u;if(value_index!=SVM_STACK_INVALID){count=1u;}if(color_index!=SVM_STACK_INVALID){count=3u;}
+    var out=vec3<f32>(0);
+    for(var c=0u;c<count;c++){
+        var key=base;var n=dims;
+        if(c>0u){if(dims==4u){key=select(base.wzyx,base.zxwy,c==1u);}else{key[dims]=f32(c);n=dims+1u;}}
+        out[c]=svmn_hash_float(key,n);
+    }
+    svm_optional_store3(s,color_index,out);svm_optional_store(s,value_index,out.x);
+}
+//#endif
+//#if SVM_NODE_TEX_WAVE
+// wave.h svm_wave.
+fn svm_wave_texture(s:ptr<function,SvmState>,node:u32){
+    let kind=load_word(node+N_TexWave_wave_type);let bands=load_word(node+N_TexWave_bands_direction);
+    let rings=load_word(node+N_TexWave_rings_direction);let profile=load_word(node+N_TexWave_profile);
+    let scale=svm_input(s,node+N_TexWave_scale);let distortion=svm_input(s,node+N_TexWave_distortion);
+    let detail=svm_input(s,node+N_TexWave_detail);let dscale=svm_input(s,node+N_TexWave_dscale);
+    let droughness=svm_input(s,node+N_TexWave_droughness);let phase=svm_input(s,node+N_TexWave_phase);
+    let co=svm_load3(s,svm_byte(node+N_TexWave_co))*scale;var p=vec3<f32>(0);
+    for(var c=0u;c<3u;c++){p[c]=rounded_add(co[c],0.000001)*0.999999;}
+    // The octave loop runs float_to_int(detail) times; unbounded detail is refused.
+    if(kind>NODE_WAVE_RINGS||bands>NODE_WAVE_BANDS_DIRECTION_DIAGONAL||rings>NODE_WAVE_RINGS_DIRECTION_SPHERICAL||profile>NODE_WAVE_PROFILE_TRI||(distortion!=0.0&&!(detail<=64.0))){svm_error(s,16u);}
+    if((*s).error!=0u){return;}
+    var n=0.0;
+    if(kind==NODE_WAVE_BANDS){
+        if(bands==NODE_WAVE_BANDS_DIRECTION_X){n=p.x*20.0;}else if(bands==NODE_WAVE_BANDS_DIRECTION_Y){n=p.y*20.0;}
+        else if(bands==NODE_WAVE_BANDS_DIRECTION_Z){n=p.z*20.0;}else{n=((p.x+p.y)+p.z)*10.0;}
+    }else{
+        var rp=p;
+        if(rings==NODE_WAVE_RINGS_DIRECTION_X){rp*=vec3<f32>(0,1,1);}else if(rings==NODE_WAVE_RINGS_DIRECTION_Y){rp*=vec3<f32>(1,0,1);}
+        else if(rings==NODE_WAVE_RINGS_DIRECTION_Z){rp*=vec3<f32>(1,1,0);}
+        n=rounded_sqrt(rounded_dot(rp,rp))*20.0;
+    }
+    var shift=phase;
+    if(distortion!=0.0){shift=distortion*(svmn_fractal(NODE_NOISE_FBM,vec4<f32>(p*dscale,0),3u,detail,droughness,2.0,0.0,0.0,true)*2.0-1.0);}
+    // n+=phase, then n+=distortion*(...): one rounded_add site for both sums.
+    for(var k=0u;k<select(1u,2u,distortion!=0.0);k++){n=rounded_add(n,select(shift,phase,k==0u));}
+    var f=0.0;
+    if(profile==NODE_WAVE_PROFILE_SIN){f=0.5+0.5*sin(n-1.5707963267948966);}
+    else{let m=rounded_divide(n,6.283185307179586);if(profile==NODE_WAVE_PROFILE_SAW){f=m-floor(m);}else{f=abs(m-floor(m+0.5))*2.0;}}
+    svm_optional_store(s,svm_byte(node+N_TexWave_fac_offset),f);svm_optional_store3(s,svm_byte(node+N_TexWave_color_offset),vec3<f32>(f));
+}
+//#endif
+//#if SVM_NODE_TEX_MAGIC
+// magic.h svm_magic.
+fn svm_magic_texture(s:ptr<function,SvmState>,node:u32){
+    let co=svm_load3(s,svm_byte(node+N_TexMagic_co));let scale=svm_input(s,node+N_TexMagic_scale);var distortion=svm_input(s,node+N_TexMagic_distortion);
+    if((*s).error!=0u){return;}
+    let depth=svm_byte(node+N_TexMagic_depth);var q=vec3<f32>(0);
+    for(var d=0u;d<3u;d++){q[d]=svmn_fmod(co[d]*scale,6.2831855,false);}
+    var x=sin(((q.x+q.y)+q.z)*5.0);var y=cos(((-q.x+q.y)-q.z)*5.0);var z=-cos(((-q.x-q.y)+q.z)*5.0);
+    if(depth>0u){
+        x*=distortion;y*=distortion;z*=distortion;y=-cos((x-y)+z);y*=distortion;
+        if(depth>1u){x=cos((x-y)-z);x*=distortion;}
+        if(depth>2u){z=sin((-x-y)-z);z*=distortion;}
+        if(depth>3u){x=-cos((-x+y)-z);x*=distortion;}
+        if(depth>4u){y=-sin((-x+y)+z);y*=distortion;}
+        if(depth>5u){y=-cos((-x+y)+z);y*=distortion;}
+        if(depth>6u){x=cos((x+y)+z);x*=distortion;}
+        if(depth>7u){z=sin((x+y)-z);z*=distortion;}
+        if(depth>8u){x=-cos((-x-y)+z);x*=distortion;}
+        if(depth>9u){y=-sin((x-y)+z);y*=distortion;}
+    }
+    if(distortion!=0.0){distortion*=2.0;x/=distortion;y/=distortion;z/=distortion;}
+    let color=vec3<f32>(0.5-x,0.5-y,0.5-z);
+    svm_optional_store(s,svm_byte(node+N_TexMagic_fac_offset),((color.x+color.y)+color.z)*(1.0/3.0));svm_optional_store3(s,svm_byte(node+N_TexMagic_color_offset),color);
+}
+//#endif
+//#if SVM_NODE_TEX_BRICK
+// brick.h svm_brick; the two lattice quotients use the correctly rounded divide.
+fn svm_brick_texture(s:ptr<function,SvmState>,node:u32){
+    let p=svm_load3(s,svm_byte(node+N_TexBrick_co))*svm_input(s,node+N_TexBrick_scale);
+    var color1=svm_input3(s,node+N_TexBrick_color1);let color2=svm_input3(s,node+N_TexBrick_color2);let mortar=svm_input3(s,node+N_TexBrick_mortar);
+    let mortar_size=svm_input(s,node+N_TexBrick_mortar_size);let mortar_smooth=svm_input(s,node+N_TexBrick_mortar_smooth);
+    let bias=svm_input(s,node+N_TexBrick_bias);let row_height=svm_input(s,node+N_TexBrick_row_height);var width=svm_input(s,node+N_TexBrick_brick_width);
+    if((*s).error!=0u){return;}
+    let offset_frequency=i32(svm_byte(node+N_TexBrick_offset_frequency));let squash_frequency=i32(svm_byte(node+N_TexBrick_squash_frequency));
+    var rownum=0;var bricknum=0;var offset=0.0;
+    for(var k=0u;k<2u;k++){
+        var num=p.y;var den=row_height;
+        if(k==1u){
+            if(offset_frequency!=0&&squash_frequency!=0){
+                width*=select(heap_float(node+N_TexBrick_squash_amount),1.0,(rownum%squash_frequency)!=0);
+                offset=select(width*heap_float(node+N_TexBrick_offset_amount),0.0,(rownum%offset_frequency)!=0);
+            }
+            num=p.x+offset;den=width;
+        }
+        let cell=i32(floor(rounded_divide(num,den)));if(k==0u){rownum=cell;}else{bricknum=cell;}
+    }
+    let x=(p.x+offset)-width*f32(bricknum);let y=p.y-row_height*f32(rownum);
+    var n=(bitcast<u32>((rownum<<16u)+(bricknum&0xffff))+1013u)&0x7fffffffu;n=(n>>13u)^n;
+    let nn=(n*(n*n*60493u+19990303u)+1376312589u)&0x7fffffffu;
+    let tint=clamp(0.5*(svmn_u32_float(nn)*9.313225746154785e-10)+bias,0.0,1.0);
+    var dist=min(min(x,y),min(width-x,row_height-y));var f=0.0;
+    if(dist>=mortar_size){f=0.0;}else if(mortar_smooth==0.0){f=1.0;}
+    else{dist=1.0-dist/mortar_size;let t=dist/mortar_smooth;if(t<=0.0){f=0.0;}else if(t>=1.0){f=1.0;}else{let tt=t*t;f=3.0*tt-2.0*tt*t;}}
+    if(f!=1.0){color1=(1.0-tint)*color1+tint*color2;}
+    svm_optional_store3(s,svm_byte(node+N_TexBrick_color_offset),color1*(1.0-f)+mortar*f);svm_optional_store(s,svm_byte(node+N_TexBrick_fac_offset),f);
+}
+//#endif
+//#if SVM_NODES_TRANSFORM
+// util/transform.h euler_to_transform rows and the SSE transform_direction order.
+fn svmn_euler(r:vec3<f32>)->mat3x3<f32>{
+    let c=cos(r);let s=sin(r);
+    return mat3x3<f32>(vec3<f32>(c.y*c.z,(s.y*s.x)*c.z-c.x*s.z,(s.y*c.x)*c.z+s.x*s.z),
+                       vec3<f32>(c.y*s.z,(s.y*s.x)*s.z+c.x*c.z,(s.y*c.x)*s.z-s.x*c.z),
+                       vec3<f32>(-s.y,c.y*s.x,c.y*c.x));
+}
+fn svmn_direction(t:mat3x3<f32>,a:vec3<f32>)->vec3<f32>{
+    let col_x=vec3<f32>(t[0].x,t[1].x,t[2].x);let col_y=vec3<f32>(t[0].y,t[1].y,t[2].y);let col_z=vec3<f32>(t[0].z,t[1].z,t[2].z);
+    return a.x*col_x+(a.y*col_y+a.z*col_z);
+}
+// transform_direction_transposed: to_local against the transform columns.
+fn svmn_transposed(t:mat3x3<f32>,a:vec3<f32>)->vec3<f32>{
+    return vec3<f32>(svmn_dot(a,vec3<f32>(t[0].x,t[1].x,t[2].x)),svmn_dot(a,vec3<f32>(t[0].y,t[1].y,t[2].y)),svmn_dot(a,vec3<f32>(t[0].z,t[1].z,t[2].z)));
+}
+//#endif
+//#if SVM_NODE_MAPPING
+fn svmn_safe_divide(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{return select(vec3<f32>(0),a/b,b!=vec3<f32>(0));}
+// mapping.h/mapping_util.h svm_mapping, texture mapping and min/max.
+fn svm_mapping(s:ptr<function,SvmState>,node:u32,opcode:u32){
+    if(opcode==NODE_TEXTURE_MAPPING){
+        let v=svm_load3(s,svm_byte(node+N_TextureMapping_vec_offset));let a=node+N_TextureMapping_tfm;
+        let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
+        let r=vec3<f32>(x.w,y.w,z.w)+v.z*vec3<f32>(x.z,y.z,z.z)+v.y*vec3<f32>(x.y,y.y,z.y)+v.x*vec3<f32>(x.x,y.x,z.x);
+        svm_store3(s,svm_byte(node+N_TextureMapping_out_offset),r);return;
+    }
+    if(opcode==NODE_MIN_MAX){
+        let v=svm_load3(s,svm_byte(node+N_MinMax_vec_offset));
+        svm_store3(s,svm_byte(node+N_MinMax_out_offset),min(max(heap_vec3(node+N_MinMax_mn),v),heap_vec3(node+N_MinMax_mx)));return;
+    }
+    let kind=load_word(node+N_Mapping_mapping_type);let v=svm_input3(s,node+N_Mapping_vector);let location=svm_input3(s,node+N_Mapping_location);
+    let scale=svm_input3(s,node+N_Mapping_scale);let rotation=svmn_euler(svm_input3(s,node+N_Mapping_rotation));var r=vec3<f32>(0);
+    switch(kind){
+        case NODE_MAPPING_TYPE_POINT,NODE_MAPPING_TYPE_VECTOR,NODE_MAPPING_TYPE_NORMAL:{
+            var input=v*scale;if(kind==NODE_MAPPING_TYPE_NORMAL){input=svmn_safe_divide(v,scale);}
+            r=svmn_direction(rotation,input);
+            if(kind==NODE_MAPPING_TYPE_POINT){r+=location;}
+            else if(kind==NODE_MAPPING_TYPE_NORMAL){let len=sqrt(svmn_dot(r,r));if(len!=0.0){r*=1.0/len;}}
+        }
+        case NODE_MAPPING_TYPE_TEXTURE:{r=svmn_safe_divide(svmn_transposed(rotation,v-location),scale);}
+        default:{svm_error(s,16u);}
+    }
+    svm_store3(s,svm_byte(node+N_Mapping_result_offset),r);
+}
+//#endif
+//#if SVM_NODE_MAP_RANGE
+// map_range.h scalar and vector map range (one component per call).
+fn svmn_map_range(kind:u32,value:f32,from_min:f32,from_max:f32,to_min:f32,to_max:f32,steps:f32,vector:bool)->f32{
+    let range=from_max-from_min;
+    if(!vector&&range==0.0){return 0.0;}
+    var factor=value;
+    if(vector||kind==NODE_MAP_RANGE_LINEAR||kind==NODE_MAP_RANGE_STEPPED){factor=select(0.0,rounded_divide(value-from_min,range),!vector||range!=0.0);}
+    switch(kind){
+        case NODE_MAP_RANGE_STEPPED:{factor=select(0.0,floor(factor*(steps+1.0))/steps,steps>0.0);}
+        case NODE_MAP_RANGE_SMOOTHSTEP:{
+            if(vector){factor=clamp(factor,0.0,1.0);factor=(3.0-2.0*factor)*(factor*factor);}
+            else{
+                let lo=min(from_min,from_max);let hi=max(from_min,from_max);var t=0.0;
+                if(value<lo){t=0.0;}else if(value>=hi){t=1.0;}else{let u=(value-lo)/(hi-lo);t=(3.0-2.0*u)*(u*u);}
+                factor=select(t,1.0-t,from_min>from_max);
+            }
+        }
+        case NODE_MAP_RANGE_SMOOTHERSTEP:{
+            if(!vector){let lo=min(from_min,from_max);let hi=max(from_min,from_max);factor=select(0.0,(value-lo)/(hi-lo),hi-lo!=0.0);}
+            factor=clamp(factor,0.0,1.0);factor=((factor*factor)*factor)*(factor*(factor*6.0-15.0)+10.0);
+            if(!vector&&from_min>from_max){factor=1.0-factor;}
+        }
+        default:{}
+    }
+    return to_min+factor*(to_max-to_min);
+}
+fn svm_map_range(s:ptr<function,SvmState>,node:u32,opcode:u32){
+    if(opcode==NODE_MAP_RANGE){
+        let kind=load_word(node+N_MapRange_range_type);if(kind>NODE_MAP_RANGE_SMOOTHERSTEP){svm_error(s,16u);return;}
+        svm_store(s,svm_byte(node+N_MapRange_result_offset),svmn_map_range(kind,svm_input(s,node+N_MapRange_value),svm_input(s,node+N_MapRange_from_min),svm_input(s,node+N_MapRange_from_max),
+            svm_input(s,node+N_MapRange_to_min),svm_input(s,node+N_MapRange_to_max),svm_input(s,node+N_MapRange_steps),false));
+        return;
+    }
+    let kind=load_word(node+N_VectorMapRange_range_type);if(kind>NODE_MAP_RANGE_SMOOTHERSTEP){svm_error(s,16u);return;}
+    let value=svm_input3(s,node+N_VectorMapRange_value);let from_min=svm_input3(s,node+N_VectorMapRange_from_min);let from_max=svm_input3(s,node+N_VectorMapRange_from_max);
+    let to_min=svm_input3(s,node+N_VectorMapRange_to_min);let to_max=svm_input3(s,node+N_VectorMapRange_to_max);let steps=svm_input3(s,node+N_VectorMapRange_steps);
+    let use_clamp=svm_byte(node+N_VectorMapRange_use_clamp)!=0u&&(kind==NODE_MAP_RANGE_LINEAR||kind==NODE_MAP_RANGE_STEPPED);var r=vec3<f32>(0);
+    for(var c=0u;c<3u;c++){
+        r[c]=svmn_map_range(kind,value[c],from_min[c],from_max[c],to_min[c],to_max[c],steps[c],true);
+        if(use_clamp){r[c]=min(max(r[c],min(to_min[c],to_max[c])),max(to_min[c],to_max[c]));}
+    }
+    svm_store3(s,svm_byte(node+N_VectorMapRange_result_offset),r);
+}
+//#endif
+//#if SVM_NODES_HSV
+// util/color.h rgb_to_hsv/hsv_to_rgb/rgb_to_hsl/hsl_to_rgb.
+fn svmn_rgb_to_hsv(rgb:vec3<f32>)->vec3<f32>{
+    let cmax=max(rgb.x,max(rgb.y,rgb.z));let cmin=min(rgb.x,min(rgb.y,rgb.z));let cdelta=cmax-cmin;
+    var s=0.0;var h=0.0;if(cmax!=0.0){s=cdelta/cmax;}
+    if(s!=0.0){
+        let c=(vec3<f32>(cmax)-rgb)/cdelta;
+        if(rgb.x==cmax){h=c.z-c.y;}else if(rgb.y==cmax){h=(2.0+c.x)-c.z;}else{h=(4.0+c.y)-c.x;}
+        h/=6.0;if(h<0.0){h+=1.0;}
+    }
+    return vec3<f32>(h,s,cmax);
+}
+fn svmn_hsv_to_rgb(hsv:vec3<f32>)->vec3<f32>{
+    var h=hsv.x;let s=hsv.y;let v=hsv.z;if(s==0.0){return vec3<f32>(v);}
+    if(h==1.0){h=0.0;}h*=6.0;let i=floor(h);let f=h-i;
+    let p=v*(1.0-s);let q=v*(1.0-(s*f));let t=v*(1.0-(s*(1.0-f)));
+    if(i==0.0){return vec3<f32>(v,t,p);}if(i==1.0){return vec3<f32>(q,v,p);}if(i==2.0){return vec3<f32>(p,v,t);}
+    if(i==3.0){return vec3<f32>(p,q,v);}if(i==4.0){return vec3<f32>(t,p,v);}return vec3<f32>(v,p,q);
+}
+fn svmn_color_convert(kind:u32,c:vec3<f32>,separate:bool)->vec3<f32>{
+    if(kind==NODE_COMBSEP_COLOR_HSV){if(separate){return svmn_rgb_to_hsv(c);}return svmn_hsv_to_rgb(c);}
+    if(kind!=NODE_COMBSEP_COLOR_HSL){return c;}
+    if(!separate){
+        let nr=clamp(abs(c.x*6.0-3.0)-1.0,0.0,1.0);let ng=clamp(2.0-abs(c.x*6.0-2.0),0.0,1.0);let nb=clamp(2.0-abs(c.x*6.0-4.0),0.0,1.0);
+        let chroma=(1.0-abs(2.0*c.z-1.0))*c.y;return vec3<f32>((nr-0.5)*chroma+c.z,(ng-0.5)*chroma+c.z,(nb-0.5)*chroma+c.z);
+    }
+    let cmax=max(c.x,max(c.y,c.z));let cmin=min(c.x,min(c.y,c.z));let l=min(1.0,(cmax+cmin)/2.0);var h=0.0;var s=0.0;
+    if(cmax!=cmin){
+        let cdelta=cmax-cmin;s=select(cdelta/(cmax+cmin),cdelta/((2.0-cmax)-cmin),l>0.5);
+        if(cmax==c.x){h=(c.y-c.z)/cdelta+select(0.0,6.0,c.y<c.z);}else if(cmax==c.y){h=(c.z-c.x)/cdelta+2.0;}else{h=(c.x-c.y)/cdelta+4.0;}
+    }
+    return vec3<f32>(h/6.0,s,l);
+}
+//#endif
+//#if SVM_NODE_COLOR_SEPCOMB
+// sepcomb_color.h.
+fn svm_color_sepcomb(s:ptr<function,SvmState>,node:u32,opcode:u32){
+    if(opcode==NODE_COMBINE_COLOR){
+        let rgb=vec3<f32>(svm_input(s,node+N_CombineColor_red),svm_input(s,node+N_CombineColor_green),svm_input(s,node+N_CombineColor_blue));
+        svm_optional_store3(s,svm_byte(node+N_CombineColor_color_offset),svmn_color_convert(load_word(node+N_CombineColor_color_type),rgb,false));return;
+    }
+    let c=svmn_color_convert(load_word(node+N_SeparateColor_color_type),svm_input3(s,node+N_SeparateColor_color),true);
+    svm_optional_store(s,svm_byte(node+N_SeparateColor_red_offset),c.x);svm_optional_store(s,svm_byte(node+N_SeparateColor_green_offset),c.y);svm_optional_store(s,svm_byte(node+N_SeparateColor_blue_offset),c.z);
+}
+//#endif
+//#if SVM_NODE_HSV
+// hsv.h.
+fn svm_hsv(s:ptr<function,SvmState>,node:u32){
+    let fac=svm_input(s,node+N_HSV_fac);let input=svm_input3(s,node+N_HSV_color);
+    var color=svmn_rgb_to_hsv(input);let h=color.x+svm_input(s,node+N_HSV_hue)+0.5;
+    color.x=h-floor(h);color.y=clamp(color.y*svm_input(s,node+N_HSV_sat),0.0,1.0);color.z*=svm_input(s,node+N_HSV_val);
+    color=svmn_hsv_to_rgb(color);color=fac*color+(1.0-fac)*input;
+    svm_optional_store3(s,svm_byte(node+N_HSV_out_color_offset),max(color,vec3<f32>(0)));
+}
+//#endif
+//#if SVM_NODE_MIX
+// color_util.h svm_mix (every blend type; HSV conversions share one call site each).
+fn svmn_mix(kind:u32,t:f32,c1:vec3<f32>,c2:vec3<f32>)->vec3<f32>{
+    let tm=1.0-t;let one=vec3<f32>(1);
+    switch(kind){
+        case NODE_MIX_BLEND:{return tm*c1+t*c2;}
+        case NODE_MIX_ADD:{return c1+t*c2;}
+        case NODE_MIX_MUL:{return c1*(vec3<f32>(tm)+t*c2);}
+        case NODE_MIX_SCREEN:{return one-(vec3<f32>(tm)+t*(one-c2))*(one-c1);}
+        case NODE_MIX_OVERLAY:{return select(one-(tm+2.0*t*(one-c2))*(one-c1),c1*(tm+2.0*t*c2),c1<vec3<f32>(0.5));}
+        case NODE_MIX_SUB:{return c1-t*c2;}
+        case NODE_MIX_DIV:{return select(c1,tm*c1+t*c1/c2,c2!=vec3<f32>(0));}
+        case NODE_MIX_DIFF:{return c1+t*(abs(c1-c2)-c1);}
+        case NODE_MIX_EXCLUSION:{return max(c1+t*(((c1+c2)-2.0*c1*c2)-c1),vec3<f32>(0));}
+        case NODE_MIX_DARK:{return c1+t*(min(c1,c2)-c1);}
+        case NODE_MIX_LIGHT:{return c1+t*(max(c1,c2)-c1);}
+        case NODE_MIX_DODGE:{
+            var out=c1;
+            for(var c=0u;c<3u;c++){if(out[c]!=0.0){let tmp=1.0-t*c2[c];if(tmp<=0.0){out[c]=1.0;}else{let q=out[c]/tmp;out[c]=select(q,1.0,q>1.0);}}}
+            return out;
+        }
+        case NODE_MIX_BURN:{
+            var out=c1;
+            for(var c=0u;c<3u;c++){let tmp=tm+t*c2[c];if(tmp<=0.0){out[c]=0.0;}else{let v=1.0-(1.0-c1[c])/tmp;if(v<0.0){out[c]=0.0;}else if(v>1.0){out[c]=1.0;}else{out[c]=v;}}}
+            return out;
+        }
+        case NODE_MIX_HUE,NODE_MIX_SAT,NODE_MIX_VAL,NODE_MIX_COL:{
+            var hsv1=vec3<f32>(0);var hsv2=vec3<f32>(0);
+            for(var k=0u;k<2u;k++){let h=svmn_rgb_to_hsv(select(c2,c1,k==1u));if(k==0u){hsv2=h;}else{hsv1=h;}}
+            var hsv=hsv1;var convert=true;var blend=false;
+            if(kind==NODE_MIX_HUE){convert=hsv2.y!=0.0;hsv.x=hsv2.x;blend=true;}
+            else if(kind==NODE_MIX_SAT){convert=hsv1.y!=0.0;hsv.y=tm*hsv1.y+t*hsv2.y;}
+            else if(kind==NODE_MIX_VAL){hsv.z=tm*hsv1.z+t*hsv2.z;}
+            else{convert=hsv2.y!=0.0;hsv.x=hsv2.x;hsv.y=hsv2.y;blend=true;}
+            if(!convert){return c1;}
+            let rgb=svmn_hsv_to_rgb(hsv);if(blend){return c1+t*(rgb-c1);}return rgb;
+        }
+        case NODE_MIX_SOFT:{let scr=one-(one-c2)*(one-c1);return tm*c1+t*((one-c1)*c2*c1+c1*scr);}
+        case NODE_MIX_LINEAR:{return c1+t*(2.0*c2+vec3<f32>(-1.0));}
+        case NODE_MIX_CLAMP:{return clamp(c1,vec3<f32>(0),vec3<f32>(1));}
+        default:{return vec3<f32>(0);}
+    }
+}
+// mix.h: legacy mix, mix color/float/vector and non-uniform vector mix.
+fn svm_mix_node(s:ptr<function,SvmState>,node:u32,opcode:u32){
+    switch(opcode){
+        case NODE_MIX:{
+            let kind=load_word(node+N_Mix_mix_type);if(kind>NODE_MIX_CLAMP){svm_error(s,16u);return;}
+            svm_store3(s,svm_byte(node+N_Mix_result_offset),svmn_mix(kind,clamp(svm_input(s,node+N_Mix_fac),0.0,1.0),svm_input3(s,node+N_Mix_c1),svm_input3(s,node+N_Mix_c2)));
+        }
+        case NODE_MIX_COLOR:{
+            let kind=load_word(node+N_MixColor_blend_type);if(kind>NODE_MIX_CLAMP){svm_error(s,16u);return;}
+            var t=svm_input(s,node+N_MixColor_fac);if(svm_byte(node+N_MixColor_use_clamp)>0u){t=clamp(t,0.0,1.0);}
+            var r=svmn_mix(kind,t,svm_input3(s,node+N_MixColor_a),svm_input3(s,node+N_MixColor_b));
+            if(svm_byte(node+N_MixColor_use_clamp_result)!=0u){r=clamp(r,vec3<f32>(0),vec3<f32>(1));}
+            svm_store3(s,svm_byte(node+N_MixColor_result_offset),r);
+        }
+        case NODE_MIX_FLOAT:{
+            var t=svm_input(s,node+N_MixFloat_fac);if(svm_byte(node+N_MixFloat_use_clamp)>0u){t=clamp(t,0.0,1.0);}
+            svm_store(s,svm_byte(node+N_MixFloat_result_offset),(1.0-t)*svm_input(s,node+N_MixFloat_a)+t*svm_input(s,node+N_MixFloat_b));
+        }
+        case NODE_MIX_VECTOR,NODE_MIX_VECTOR_NON_UNIFORM:{
+            let uniform=opcode==NODE_MIX_VECTOR;
+            var t=vec3<f32>(0);var a=vec3<f32>(0);var b=vec3<f32>(0);var clamped=false;var result=0u;
+            if(uniform){t=vec3<f32>(svm_input(s,node+N_MixVector_fac));a=svm_input3(s,node+N_MixVector_a);b=svm_input3(s,node+N_MixVector_b);clamped=svm_byte(node+N_MixVector_use_clamp)>0u;result=svm_byte(node+N_MixVector_result_offset);}
+            else{t=svm_input3(s,node+N_MixVectorNonUniform_fac);a=svm_input3(s,node+N_MixVectorNonUniform_a);b=svm_input3(s,node+N_MixVectorNonUniform_b);clamped=svm_byte(node+N_MixVectorNonUniform_use_clamp)>0u;result=svm_byte(node+N_MixVectorNonUniform_result_offset);}
+            if(clamped){t=clamp(t,vec3<f32>(0),vec3<f32>(1));}
+            svm_store3(s,result,(vec3<f32>(1)-t)*a+t*b);
+        }
+        default:{svm_error(s,2u);}
+    }
+}
+//#endif
+//#if SVM_NODE_RAMP
+// ramp.h rgb_ramp_lookup/float_ramp_lookup on the inline bytecode table.
+fn svmn_ramp(table:u32,stride:u32,input:f32,interpolate:bool,extrapolate:bool,size:u32)->vec4<f32>{
+    var f=input;let last=f32(size-1u);
+    if((f<0.0||f>1.0)&&extrapolate){
+        var t0=vec4<f32>(0);var dy=vec4<f32>(0);
+        if(f<0.0){t0=svmn_ramp_entry(table,stride,0u);dy=t0-svmn_ramp_entry(table,stride,1u);f=-f;}
+        else{t0=svmn_ramp_entry(table,stride,size-1u);dy=t0-svmn_ramp_entry(table,stride,size-2u);f=f-1.0;}
+        return t0+dy*f*last;
+    }
+    f=clamp(f,0.0,1.0)*last;let i=u32(clamp(i32(f),0,i32(size)-1));let t=f-f32(i);
+    var a=svmn_ramp_entry(table,stride,i);
+    if(interpolate&&t>0.0){a=(1.0-t)*a+t*svmn_ramp_entry(table,stride,i+1u);}
+    return a;
+}
+fn svmn_ramp_entry(table:u32,stride:u32,i:u32)->vec4<f32>{
+    if(stride==1u){return vec4<f32>(heap_float(table+i*4u));}return heap_vec4(table+i*16u);
+}
+fn svm_ramp_node(s:ptr<function,SvmState>,node:u32,opcode:u32){
+    var size=0u;var stride=4u;
+    if(opcode==NODE_RGB_RAMP){size=load_word(node+N_RGBRamp_table_size);}
+    else if(opcode==NODE_CURVES){size=load_word(node+N_Curves_table_size);}
+    else{size=load_word(node+N_FloatCurve_table_size);stride=1u;}
+    if(size<2u||size>0x0fffffffu){svm_error(s,16u);return;}
+    let table=svm_take(s,size*stride*4u);if((*s).error!=0u){return;}
+    // Lookup positions: RGB ramp fac, per-channel curve positions, float curve position.
+    var positions=vec3<f32>(0);var lookups=1u;var interpolate=true;var extrapolate=false;var fac=0.0;var color=vec3<f32>(0);var input=0.0;
+    if(opcode==NODE_RGB_RAMP){positions.x=clamp(svm_input(s,node+N_RGBRamp_fac),0.0,1.0);interpolate=svm_byte(node+N_RGBRamp_interpolate)!=0u;}
+    else if(opcode==NODE_CURVES){
+        fac=svm_input(s,node+N_Curves_fac);color=svm_input3(s,node+N_Curves_color);let min_x=heap_float(node+N_Curves_min_x);
+        positions=(color-vec3<f32>(min_x))/(heap_float(node+N_Curves_max_x)-min_x);lookups=3u;extrapolate=svm_byte(node+N_Curves_extrapolate)!=0u;
+    }else{
+        fac=svm_input(s,node+N_FloatCurve_fac);input=svm_input(s,node+N_FloatCurve_value_in);let min_x=heap_float(node+N_FloatCurve_min_x);
+        positions.x=(input-min_x)/(heap_float(node+N_FloatCurve_max_x)-min_x);extrapolate=svm_byte(node+N_FloatCurve_extrapolate)!=0u;
+    }
+    var ramp=vec4<f32>(0);var out=vec3<f32>(0);
+    for(var c=0u;c<lookups;c++){ramp=svmn_ramp(table,stride,positions[c],interpolate,extrapolate,size);out[c]=ramp[c];}
+    if(opcode==NODE_RGB_RAMP){svm_optional_store3(s,svm_byte(node+N_RGBRamp_color_offset),ramp.xyz);svm_optional_store(s,svm_byte(node+N_RGBRamp_alpha_offset),ramp.w);}
+    else if(opcode==NODE_CURVES){svm_store3(s,svm_byte(node+N_Curves_out_offset),(1.0-fac)*color+fac*out);}
+    else{svm_store(s,svm_byte(node+N_FloatCurve_out_offset),(1.0-fac)*input+fac*ramp.x);}
+}
+//#endif
+//#if SVM_NODE_FRESNEL
+// fresnel.h with closure/bsdf_util.h fresnel_dielectric_cos.
+fn svm_fresnel_node(s:ptr<function,SvmState>,node:u32,opcode:u32){
+    let backfacing=((*s).geometry.runtime_flag&SR_BACKFACING)!=0u;
+    var normal_index=svm_byte(node+N_Fresnel_normal_offset);var out_index=svm_byte(node+N_Fresnel_out_offset);var blend=0.0;var kind=NODE_LAYER_WEIGHT_FRESNEL;
+    if(opcode==NODE_LAYER_WEIGHT){normal_index=svm_byte(node+N_LayerWeight_normal_offset);out_index=svm_byte(node+N_LayerWeight_out_offset);blend=svm_input(s,node+N_LayerWeight_blend);kind=load_word(node+N_LayerWeight_weight_type);}
+    var n=(*s).geometry.N;if(normal_index!=SVM_STACK_INVALID){n=svm_load3(s,normal_index);}
+    let cosi=svmn_dot((*s).geometry.wi,n);var f=0.0;
+    if(opcode==NODE_FRESNEL||kind==NODE_LAYER_WEIGHT_FRESNEL){
+        var eta=0.0;
+        if(opcode==NODE_FRESNEL){eta=max(svm_input(s,node+N_Fresnel_ior),1e-5);if(backfacing){eta=1.0/eta;}}
+        else{eta=max(1.0-blend,1e-5);if(!backfacing){eta=1.0/eta;}}
+        let c=abs(cosi);var g=eta*eta-1.0+c*c;f=1.0;
+        if(g>0.0){g=sqrt(g);let a=(g-c)/(g+c);let b=(c*(g+c)-1.0)/(c*(g-c)+1.0);f=0.5*a*a*(1.0+b*b);}
+    }else{
+        f=abs(cosi);
+        if(blend!=0.5){blend=clamp(blend,0.0,1.0-1e-5);blend=select(0.5/(1.0-blend),2.0*blend,blend<0.5);f=pow(f,blend);}
+        f=1.0-f;
+    }
+    svm_store(s,out_index,f);
+}
+//#endif
+//#if SVM_NODE_VECTOR_ROTATE
+// vector_rotate.h and util rotate_around_axis.
+fn svm_vector_rotate(s:ptr<function,SvmState>,node:u32){
+    let out_index=svm_byte(node+N_VectorRotate_result_offset);if(out_index==SVM_STACK_INVALID){return;}
+    let kind=load_word(node+N_VectorRotate_rotate_type);let invert=svm_byte(node+N_VectorRotate_invert)!=0u;
+    let v=svm_input3(s,node+N_VectorRotate_vector);let center=svm_input3(s,node+N_VectorRotate_center);var r=v;
+    if(kind==NODE_VECTOR_ROTATE_TYPE_EULER_XYZ){
+        let t=svmn_euler(svm_input3(s,node+N_VectorRotate_rotation));let d=v-center;
+        if(invert){r=svmn_transposed(t,d)+center;}else{r=svmn_direction(t,d)+center;}
+    }else{
+        var axis=vec3<f32>(0,0,1);var axis_length=1.0;
+        if(kind==NODE_VECTOR_ROTATE_TYPE_AXIS_X){axis=vec3<f32>(1,0,0);}else if(kind==NODE_VECTOR_ROTATE_TYPE_AXIS_Y){axis=vec3<f32>(0,1,0);}
+        else if(kind!=NODE_VECTOR_ROTATE_TYPE_AXIS_Z){axis=svm_input3(s,node+N_VectorRotate_axis);axis_length=sqrt(svmn_dot(axis,axis));}
+        var angle=svm_input(s,node+N_VectorRotate_angle);if(invert){angle=-angle;}
+        if(axis_length!=0.0){
+            let a=axis/axis_length;let p=v-center;let ct=cos(angle);let st=sin(angle);let k=1.0-ct;
+            r=vec3<f32>(((ct+k*a.x*a.x)*p.x+(k*a.x*a.y-a.z*st)*p.y)+(k*a.x*a.z+a.y*st)*p.z,
+                        ((k*a.x*a.y+a.z*st)*p.x+(ct+k*a.y*a.y)*p.y)+(k*a.y*a.z-a.x*st)*p.z,
+                        ((k*a.x*a.z-a.y*st)*p.x+(k*a.y*a.z+a.x*st)*p.y)+(ct+k*a.z*a.z)*p.z)+center;
+        }
+    }
+    svm_store3(s,out_index,r);
+}
+//#endif
+//#if SVM_NODE_BLACKBODY
+// blackbody.h, math_util.h svm_math_blackbody_color_rec709 and tables.h fit.
+fn svm_blackbody(s:ptr<function,SvmState>,node:u32){
+    let t=svm_input(s,node+N_Blackbody_temperature);var rec709=vec3<f32>(0.8262954810464208,0.9945080501520986,1.566307710274283);
+    if(t<800.0){rec709=vec3<f32>(5.413294490189271,-0.20319390035873933,-0.0822535242887164);}
+    else if(t<12000.0){
+        var i=0u;if(t>=6365.0){i=6u;}else if(t>=3315.0){i=5u;}else if(t>=1902.0){i=4u;}else if(t>=1449.0){i=3u;}else if(t>=1167.0){i=2u;}else if(t>=965.0){i=1u;}
+        var r=vec3<f32>(0);var g=vec3<f32>(0);var b=vec4<f32>(0);
+        switch(i){
+            case 0u:{r=vec3<f32>(1.61919106e+03,-2.05010916e-03,5.02995757e+00);g=vec3<f32>(-4.88999748e+02,6.04330754e-04,-7.55807526e-02);b=vec4<f32>(5.96945309e-11,-4.85742887e-08,-9.70622247e-05,-4.07936148e-03);}
+            case 1u:{r=vec3<f32>(2.48845471e+03,-1.11330907e-03,3.22621544e+00);g=vec3<f32>(-7.55994277e+02,3.16730098e-04,4.78306139e-01);b=vec4<f32>(2.40430366e-11,5.55021075e-08,-1.98503712e-04,2.89312858e-02);}
+            case 2u:{r=vec3<f32>(3.34143193e+03,-4.86551192e-04,1.76486769e+00);g=vec3<f32>(-1.02363977e+03,1.20223470e-04,9.36662319e-01);b=vec4<f32>(-1.40949732e-11,1.89878968e-07,-3.56632824e-04,9.10767778e-02);}
+            case 3u:{r=vec3<f32>(4.09461742e+03,-1.27446582e-04,7.25731635e-01);g=vec3<f32>(-1.26571316e+03,4.87340896e-06,1.27054498e+00);b=vec4<f32>(-3.61460868e-11,2.84822009e-07,-4.93211319e-04,1.56723440e-01);}
+            case 4u:{r=vec3<f32>(4.67028036e+03,2.91258199e-05,1.26703442e-01);g=vec3<f32>(-1.42529332e+03,-4.01150431e-05,1.43972784e+00);b=vec4<f32>(-1.97075738e-11,1.75359352e-07,-2.50542825e-04,-2.22783266e-02);}
+            case 5u:{r=vec3<f32>(4.59509185e+03,2.87495649e-05,1.50345020e-01);g=vec3<f32>(-1.17554822e+03,-2.16378048e-05,1.30408023e+00);b=vec4<f32>(-1.61997957e-13,-1.64216008e-08,3.86216271e-04,-7.38077418e-01);}
+            default:{r=vec3<f32>(3.78717450e+03,9.35907826e-06,3.99075871e-01);g=vec3<f32>(-5.00799571e+02,-4.59832026e-06,1.09098763e+00);b=vec4<f32>(6.72650283e-13,-2.73078809e-08,4.24098264e-04,-7.52335691e-01);}
+        }
+        let t_inv=rounded_divide(1.0,t);
+        rec709=vec3<f32>((r.x*t_inv+r.y*t)+r.z,(g.x*t_inv+g.y*t)+g.z,((b.x*t+b.y)*t+b.z)*t+b.w);
+    }
+    var rgb=rec709;
+    if(data_word(D_film_is_rec709)==0u){rgb=vec3<f32>(svmn_dot(heap_vec3(p(6u)+D_film_rec709_to_r),rec709),svmn_dot(heap_vec3(p(6u)+D_film_rec709_to_g),rec709),svmn_dot(heap_vec3(p(6u)+D_film_rec709_to_b),rec709));}
+    svm_store3(s,svm_byte(node+N_Blackbody_color_offset),max(rgb,vec3<f32>(0)));
+}
+//#endif
+//#if SVM_NODE_NORMAL
+// normal.h (SSE normalize: per-component division by the length).
+fn svm_normal_node(s:ptr<function,SvmState>,node:u32){
+    let n=svm_input3(s,node+N_Normal_in_normal);let dot_index=svm_byte(node+N_Normal_out_dot_offset);var unit=array<vec3<f32>,2>();
+    for(var k=0u;k<select(1u,2u,dot_index!=SVM_STACK_INVALID);k++){unit[k]=surface_native_normalize(select(n,heap_vec3(node+N_Normal_direction_x),k==0u));}
+    svm_optional_store3(s,svm_byte(node+N_Normal_out_normal_offset),unit[0]);
+    if(dot_index!=SVM_STACK_INVALID){svm_store(s,dot_index,svmn_dot(unit[0],unit[1]));}
+}
+//#endif
+//#if SVM_NODE_SHADING_INFO
+// geometry.h svm_node_object_info, camera.h svm_node_camera, scene_time.h and
+// vector_transform.h (with geom/object.h transforms; motion uses the per-path
+// interpolated transforms of SurfaceData).
+fn svmn_heap_direction(address:u32,a:vec3<f32>)->vec3<f32>{
+    let x=heap_vec4(address);let y=heap_vec4(address+16u);let z=heap_vec4(address+32u);
+    return a.x*vec3<f32>(x.x,y.x,z.x)+(a.y*vec3<f32>(x.y,y.y,z.y)+a.z*vec3<f32>(x.z,y.z,z.z));
+}
+fn svmn_heap_transposed(address:u32,a:vec3<f32>)->vec3<f32>{
+    return vec3<f32>(svmn_dot(a,heap_vec3(address)),svmn_dot(a,heap_vec3(address+16u)),svmn_dot(a,heap_vec3(address+32u)));
+}
+fn svm_shading_info(s:ptr<function,SvmState>,node:u32,opcode:u32){
+    let sd=(*s).geometry;let world=sd.object_id==NONE;var object=0u;if(!world){object=table_at(G_objects,sd.object_id,SIZE_objects);}
+    switch(opcode){
+        case NODE_OBJECT_INFO:{
+            let kind=load_word(node+N_ObjectInfo_info_type);let out=svm_byte(node+N_ObjectInfo_out_offset);
+            if(kind==NODE_INFO_OB_LOCATION||kind==NODE_INFO_OB_COLOR){
+                var v=vec3<f32>(0);
+                if(!world){
+                    if(kind==NODE_INFO_OB_COLOR){v=heap_vec3(object+SVMN_O_color);}
+                    else if((sd.object_flag&SD_OBJECT_MOTION)!=0u){v=vec3<f32>(sd.motion_tfm.x.w,sd.motion_tfm.y.w,sd.motion_tfm.z.w);}
+                    else{v=vec3<f32>(heap_float(object+O_tfm+12u),heap_float(object+O_tfm+28u),heap_float(object+O_tfm+44u));}
+                }
+                svm_store3(s,out,v);return;
+            }
+            var f=0.0;
+            if(kind==NODE_INFO_MAT_INDEX){f=f32(bitcast<i32>(load_word(p(18u)+(sd.shader&SHADER_MASK)*SIZE_shaders+SVMN_SH_pass_id)));}
+            else if(!world){
+                if(kind==NODE_INFO_OB_ALPHA){f=heap_float(object+SVMN_O_alpha);}else if(kind==NODE_INFO_OB_INDEX){f=heap_float(object+SVMN_O_pass_id);}
+                else if(kind==NODE_INFO_OB_RANDOM){f=heap_float(object+SVMN_O_random_number);}
+            }
+            svm_store(s,out,f);
+        }
+        case NODE_CAMERA:{
+            let v=svm_transform(p(6u)+D_cam_worldtocamera,sd.P);
+            svm_optional_store3(s,svm_byte(node+N_Camera_vector_offset),surface_native_normalize(v));
+            svm_optional_store(s,svm_byte(node+N_Camera_zdepth_offset),v.z);
+            svm_optional_store(s,svm_byte(node+N_Camera_distance_offset),rounded_sqrt(rounded_dot(v,v)));
+        }
+        case NODE_SCENE_TIME:{
+            svm_optional_store(s,svm_byte(node+N_SceneTime_seconds_out),data_float(SVMN_D_scene_time_time));
+            svm_optional_store(s,svm_byte(node+N_SceneTime_frame_out),data_float(SVMN_D_scene_time_frame));
+        }
+        default:{
+            let kind=load_word(node+N_VectorTransform_transform_type);let space_from=load_word(node+N_VectorTransform_convert_from);let space_to=load_word(node+N_VectorTransform_convert_to);
+            if(kind>NODE_VECTOR_TRANSFORM_TYPE_NORMAL||space_from>NODE_VECTOR_TRANSFORM_CONVERT_SPACE_CAMERA||space_to>NODE_VECTOR_TRANSFORM_CONVERT_SPACE_CAMERA){svm_error(s,16u);return;}
+            var v=svm_input3(s,node+N_VectorTransform_vector_in);let normal=kind==NODE_VECTOR_TRANSFORM_TYPE_NORMAL;let direction=kind==NODE_VECTOR_TRANSFORM_TYPE_VECTOR;
+            let camera_space=NODE_VECTOR_TRANSFORM_CONVERT_SPACE_CAMERA;let object_space=NODE_VECTOR_TRANSFORM_CONVERT_SPACE_OBJECT;
+            // Up to two steps: [object->world], [world<->camera], [world->object].
+            var to_world=false;var camera_step=0u;var to_object=false;
+            if(space_from==NODE_VECTOR_TRANSFORM_CONVERT_SPACE_WORLD){if(space_to==camera_space){camera_step=1u;}else if(space_to==object_space){to_object=true;}}
+            else if(space_from==camera_space){if(space_to!=camera_space){camera_step=2u;}if(space_to==object_space){to_object=true;}}
+            else{to_world=space_to!=object_space;if(space_to==camera_space){camera_step=1u;}}
+            // Stage 0 object->world, stage 1 world<->camera, stage 2 world->object;
+            // one call site per transform helper.
+            for(var stage=0u;stage<3u;stage++){
+                if(stage==1u){
+                    if(camera_step==0u){continue;}
+                    // 1: world->camera, 2: camera->world.
+                    let forward=select(D_cam_cameratoworld,D_cam_worldtocamera,camera_step==1u);let backward=select(D_cam_worldtocamera,D_cam_cameratoworld,camera_step==1u);
+                    if(normal){v=surface_native_normalize(svmn_heap_transposed(p(6u)+backward,v));}
+                    else if(direction){v=svmn_heap_direction(p(6u)+forward,v);}else{v=svm_transform(p(6u)+forward,v);}
+                    continue;
+                }
+                if(world||!select(to_world,to_object,stage==2u)){continue;}
+                let inverse=stage==2u;
+                if(normal){v=surface_object_normal(sd,v,inverse);}else if(direction){v=surface_object_direction(sd,v,inverse);}else{v=surface_object_point(sd,v,inverse);}
+            }
+            svm_optional_store3(s,svm_byte(node+N_VectorTransform_vector_out_offset),v);
+        }
+    }
+}
+//#endif
+//#if SVM_NODE_LIGHT_PATH
+// light_path.h. Ray-type flags, backfacing and ray length come from the
+// evaluation's path flag/visibility and ShaderData in every surface, background
+// and shadow evaluation (the shadow stage passes the host's SHADOW visibility and
+// empty flag). Bounce depths read the main path state: surface stage
+// (prepare_surface) and background stage, where the host adds PATH_RAY_EMISSION
+// (one bounce further). Depths in a shadow evaluation (shadow_path counters)
+// and volume evaluations are unsupported (error 2).
+fn svm_light_path(s:ptr<function,SvmState>,node:u32,index:u32,flag:u32,visibility:u32){
+    let kind=load_word(node+N_LightPath_path_type);let sd=(*s).geometry;var info=0.0;
+    if((*s).volume||(kind>=NODE_LP_ray_depth&&(index==NONE||(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u))){svm_error(s,2u);return;}
+    switch(kind){
+        case NODE_LP_camera:{info=select(0.0,1.0,(visibility&SVMN_PATH_RAY_VISIBILITY_CAMERA)!=0u);}
+        case NODE_LP_shadow:{info=select(0.0,1.0,(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u);}
+        case NODE_LP_diffuse:{info=select(0.0,1.0,(visibility&SVMN_PATH_RAY_VISIBILITY_DIFFUSE)!=0u);}
+        case NODE_LP_glossy:{info=select(0.0,1.0,(visibility&SVMN_PATH_RAY_VISIBILITY_GLOSSY)!=0u);}
+        case NODE_LP_singular:{info=select(0.0,1.0,(flag&SVMN_PATH_RAY_SINGULAR)!=0u);}
+        case NODE_LP_reflection:{info=select(0.0,1.0,(flag&SVMN_PATH_RAY_REFLECT)!=0u);}
+        case NODE_LP_transmission:{info=select(0.0,1.0,(visibility&SVMN_PATH_RAY_VISIBILITY_TRANSMIT)!=0u);}
+        case NODE_LP_volume_scatter:{info=select(0.0,1.0,(visibility&SVMN_PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u);}
+        case NODE_LP_backfacing:{info=select(0.0,1.0,(sd.runtime_flag&SR_BACKFACING)!=0u);}
+        case NODE_LP_ray_length:{info=sd.ray_length;}
+        case NODE_LP_ray_depth:{info=f32(state_half(S_path_bounce,index));if(!SVM_SURFACE||(flag&PATH_RAY_EMISSION)!=0u){info+=1.0;}}
+        case NODE_LP_ray_diffuse:{info=f32(state_half(S_path_diffuse_bounce,index));}
+        case NODE_LP_ray_glossy:{info=f32(state_half(S_path_glossy_bounce,index));}
+        case NODE_LP_ray_transparent:{info=f32(state_half(S_path_transparent_bounce,index));}
+        case NODE_LP_ray_transmission:{info=f32(state_half(S_path_transmission_bounce,index));}
+        // Portal bounces exist only with KERNEL_FEATURE_NODE_PORTAL (refused by this device).
+        case NODE_LP_ray_portal:{if((data_word(D_kernel_features)&SVMN_KERNEL_FEATURE_NODE_PORTAL)!=0u){svm_error(s,2u);return;}info=0.0;}
+        default:{svm_error(s,16u);return;}
+    }
+    svm_store(s,svm_byte(node+N_LightPath_out_offset),info);
+}
+//#endif
+//#if SVM_NODE_TEX_VORONOI
+// voronoi.h: F1, F2, smooth F1, distance to edge and n-sphere radius in one to
+// four dimensions, every metric, fractal octaves. Coordinates are vec4 with the
+// unused lanes zero; the cell loops run x fastest, as the nested host loops.
+// util/hash.h hash_pcg2d_i/3d_i/4d_i (wrapping i32 arithmetic).
+fn svmn_pcg(input:vec4<i32>,n:u32)->vec4<i32>{
+    var v=input*1664525+vec4<i32>(1013904223);
+    for(var round=0u;round<2u;round++){
+        if(round==1u){v=v^(v>>vec4<u32>(16u));}
+        if(n==2u){v.x+=v.y*1664525;v.y+=v.x*1664525;}
+        else if(n==3u){v.x+=v.y*v.z;v.y+=v.z*v.x;v.z+=v.x*v.y;}
+        else{v.x+=v.y*v.w;v.y+=v.z*v.x;v.z+=v.x*v.y;v.w+=v.y*v.z;}
+    }
+    return v&vec4<i32>(0x7fffffff);
+}
+struct VoronoiCell {point:vec4<f32>, color:vec3<f32>}
+// Cell feature point (hash_float_to_float / hash_int{2,3,4}_to_float{2,3,4}) and
+// colour (hash_float_to_float3 / hash_int{2,4}_to_float3 / hash_int3_to_float3).
+fn svmn_voronoi_cell(cell:vec4<f32>,dims:u32)->VoronoiCell{
+    var out:VoronoiCell;
+    if(dims==1u){
+        var h=vec4<f32>(0);
+        for(var k=0u;k<4u;k++){h[k]=svmn_hash_float(vec4<f32>(cell.x,f32(max(k,1u)-1u),0,0),select(2u,1u,k<2u));}
+        out.point=vec4<f32>(h.x,0,0,0);out.color=vec3<f32>(h.y,h.z,h.w);return out;
+    }
+    let c=vec4<i32>(cell);
+    for(var k=0u;k<select(1u,2u,dims==2u);k++){
+        var key=c;if(k==1u){key.z=0;}
+        let v=svmn_pcg(key,select(dims,3u,k==1u));
+        let f=vec4<f32>(svmn_u32_float(u32(v.x)),svmn_u32_float(u32(v.y)),svmn_u32_float(u32(v.z)),svmn_u32_float(u32(v.w)))*4.656612873077393e-10;
+        if(k==0u){out.point=f;out.color=f.xyz;}else{out.color=f.xyz;}
+    }
+    if(dims==2u){out.point.z=0.0;}
+    if(dims<4u){out.point.w=0.0;}
+    return out;
+}
+fn svmn_vsum(v:vec4<f32>,dims:u32)->f32{
+    if(dims==1u){return v.x;}if(dims==2u){return v.x+v.y;}if(dims==3u){return (v.x+v.y)+v.z;}return (v.x+v.y)+(v.z+v.w);
+}
+// voronoi_distance (bound=false) and voronoi_distance_bound (bound=true).
+fn svmn_vdistance(d:vec4<f32>,dims:u32,metric:u32,exponent:f32,bound:bool)->f32{
+    if(dims==1u){return abs(d.x);}
+    let a=abs(d);
+    switch(metric){
+        case NODE_VORONOI_EUCLIDEAN:{let sq=svmn_vsum(d*d,dims);if(bound){return sq;}return sqrt(sq);}
+        case NODE_VORONOI_MANHATTAN:{return svmn_vsum(a,dims);}
+        case NODE_VORONOI_CHEBYCHEV:{var m=max(a.x,a.y);if(dims>=3u){m=max(m,a.z);}if(dims==4u){m=max(m,a.w);}return m;}
+        default:{let sum=svmn_vsum(pow(a,vec4<f32>(exponent)),dims);if(bound){return sum;}return pow(sum,1.0/exponent);}
+    }
+}
+fn svmn_voronoi_offset(k:u32,range:u32,dims:u32)->vec4<f32>{
+    let half_extent=i32(range/2u);var o=vec4<f32>(0);var rest=k;
+    for(var d=0u;d<dims;d++){o[d]=f32(i32(rest%range)-half_extent);rest/=range;}
+    return o;
+}
+fn svmn_voronoi_point(cell:VoronoiCell,offset:vec4<f32>,dims:u32,randomness:f32)->vec4<f32>{
+    var p=vec4<f32>(0);for(var d=0u;d<dims;d++){p[d]=rounded_add(offset[d],cell.point[d]*randomness);}return p;
+}
+struct VoronoiOctave {distance:f32, color:vec3<f32>, position:vec4<f32>}
+// voronoi_f1 / voronoi_f2 / voronoi_smooth_f1 for one octave.
+fn svmn_voronoi_octave(feature:u32,coord:vec4<f32>,dims:u32,metric:u32,exponent:f32,randomness:f32,smoothness:f32)->VoronoiOctave{
+    let cell=floor(coord);let local_position=coord-cell;let smoothed=feature==NODE_VORONOI_SMOOTH_F1;let range=select(3u,5u,smoothed);
+    var count=1u;for(var d=0u;d<dims;d++){count*=range;}
+    var f1=bitcast<f32>(0x7f7fffffu);var f2=f1;var p1=vec4<f32>(0);var p2=vec4<f32>(0);var c1=vec3<f32>(0);var c2=vec3<f32>(0);
+    var sdist=0.0;var scolor=vec3<f32>(0);var spos=vec4<f32>(0);var h=-1.0;
+    for(var k=0u;k<count;k++){
+        let offset=svmn_voronoi_offset(k,range,dims);let data=svmn_voronoi_cell(cell+offset,dims);let point=svmn_voronoi_point(data,offset,dims,randomness);
+        let bound=feature==NODE_VORONOI_F1&&dims>1u;let d=svmn_vdistance(point-local_position,dims,metric,exponent,bound);
+        if(smoothed){
+            if(h==-1.0){h=1.0;}else{let x=0.5+0.5*(sdist-d)/smoothness;h=select(select((3.0-2.0*x)*(x*x),1.0,x>=1.0),0.0,x<0.0);}
+            var correction=smoothness*h*(1.0-h);sdist=(sdist+h*(d-sdist))-correction;correction/=1.0+3.0*smoothness;
+            scolor=(scolor+h*(data.color-scolor))-vec3<f32>(correction);spos=(spos+h*(point-spos))-vec4<f32>(correction);
+        }else if(d<f1){f2=f1;p2=p1;c2=c1;f1=d;p1=point;c1=data.color;}
+        else if(feature==NODE_VORONOI_F2&&d<f2){f2=d;p2=point;c2=data.color;}
+    }
+    var out:VoronoiOctave;
+    if(smoothed){out.distance=sdist;out.color=scolor;out.position=cell+spos;}
+    else if(feature==NODE_VORONOI_F2){out.distance=f2;out.color=c2;out.position=p2+cell;}
+    else{out.distance=select(f1,svmn_vdistance(p1-local_position,dims,metric,exponent,false),dims>1u);out.color=c1;out.position=p1+cell;}
+    // voronoi_position: make_float4(float3) has w=1; the 1D/2D positions have w=0.
+    if(dims<4u){out.position.w=select(0.0,1.0,dims==3u);}if(dims<3u){out.position.z=0.0;}if(dims<2u){out.position.y=0.0;}
+    return out;
+}
+// voronoi_distance_to_edge (mode 0) and voronoi_n_sphere_radius (mode 1).
+fn svmn_voronoi_edge(mode:u32,coord:vec4<f32>,dims:u32,randomness:f32)->f32{
+    let cell=floor(coord);let local_position=coord-cell;
+    if(dims==1u){
+        if(mode==0u){
+            var q=vec3<f32>(0);for(var k=0u;k<3u;k++){q[k]=f32(i32(k)-1)+svmn_voronoi_cell(cell+vec4<f32>(f32(i32(k)-1),0,0,0),1u).point.x*randomness;}
+            return min(abs((q.y+q.x)/2.0-local_position.x),abs((q.y+q.z)/2.0-local_position.x));
+        }
+    }
+    // Pass 0: closest point (and its offset); pass 1: closest edge or neighbour.
+    var closest=vec4<f32>(0);var closest_offset=vec4<f32>(0);var best=bitcast<f32>(0x7f7fffffu);var neighbour=vec4<f32>(0);
+    var count=1u;for(var d=0u;d<dims;d++){count*=3u;}
+    for(var sweep=0u;sweep<2u;sweep++){
+        if(sweep==1u){best=bitcast<f32>(0x7f7fffffu);}
+        for(var k=0u;k<count;k++){
+            var offset=svmn_voronoi_offset(k,3u,dims);
+            if(sweep==1u&&mode==1u){if(all(offset==vec4<f32>(0))){continue;}offset+=closest_offset;}
+            let point=svmn_voronoi_point(svmn_voronoi_cell(cell+offset,dims),offset,dims,randomness);
+            if(sweep==0u){
+                // Edge: dot(vectorToPoint) on point-local_position; sphere: len_squared/|.| of the same difference.
+                let v=point-local_position;let d=select(svmn_vsum(v*v,dims),abs(v.x),dims==1u);
+                if(d<best){best=d;closest=select(point,v,mode==0u);closest_offset=offset;}
+            }else if(mode==0u){
+                let v=point-local_position;let perpendicular=v-closest;let pp=svmn_vsum(perpendicular*perpendicular,dims);
+                if(pp>0.0001){let n=perpendicular/sqrt(pp);best=min(best,svmn_vsum(((closest+v)/2.0)*n,dims));}
+            }else{
+                let v=closest-point;let d=select(svmn_vsum(v*v,dims),abs(v.x),dims==1u);
+                if(d<best){best=d;neighbour=point;}
+            }
+        }
+    }
+    if(mode==0u){return best;}
+    let v=neighbour-closest;return select(sqrt(svmn_vsum(v*v,dims)),abs(v.x),dims==1u)/2.0;
+}
+fn svm_voronoi_texture(s:ptr<function,SvmState>,node:u32){
+    let dims=load_word(node+N_TexVoronoi_dimensions);let feature=load_word(node+N_TexVoronoi_feature);let metric=load_word(node+N_TexVoronoi_metric);
+    if(dims<1u||dims>4u||feature>NODE_VORONOI_N_SPHERE_RADIUS||metric>NODE_VORONOI_MINKOWSKI){svm_error(s,16u);return;}
+    let scale=svm_input(s,node+N_TexVoronoi_scale);let detail=clamp(svm_input(s,node+N_TexVoronoi_detail),0.0,15.0);
+    let roughness=clamp(svm_input(s,node+N_TexVoronoi_roughness),0.0,1.0);let lacunarity=svm_input(s,node+N_TexVoronoi_lacunarity);
+    let smoothness=clamp(svm_input(s,node+N_TexVoronoi_smoothness)/2.0,0.0,0.5);let exponent=svm_input(s,node+N_TexVoronoi_exponent);
+    let randomness=clamp(svm_input(s,node+N_TexVoronoi_randomness),0.0,1.0);let w=svm_input(s,node+N_TexVoronoi_w)*scale;
+    var coord=vec4<f32>(w,0,0,0);
+    if(dims>=2u){let v=svm_load3(s,svm_byte(node+N_TexVoronoi_coord))*scale;coord=vec4<f32>(v,select(0.0,w,dims==4u));if(dims==2u){coord.z=0.0;}}
+    if((*s).error!=0u){return;}
+    let normalize=svm_byte(node+N_TexVoronoi_normalize)!=0u;var distance=0.0;var color=vec3<f32>(0);var position=vec4<f32>(0);var radius=0.0;
+    if(feature==NODE_VORONOI_N_SPHERE_RADIUS){radius=svmn_voronoi_edge(1u,coord,dims,randomness);}
+    else{
+        // fractal_voronoi_x_fx / fractal_voronoi_distance_to_edge.
+        let edge=feature==NODE_VORONOI_DISTANCE_TO_EDGE;let half_extent=0.5+0.5*randomness;
+        var max_distance=half_extent;
+        if(!edge){if(dims>1u){max_distance=svmn_vdistance(vec4<f32>(half_extent),dims,metric,exponent,false);}if(feature==NODE_VORONOI_F2){max_distance*=2.0;}}
+        var amplitude=1.0;var max_amplitude=select(0.0,max_distance,edge);var octave_scale=1.0;distance=select(0.0,8.0,edge);
+        let zero_input=detail==0.0||roughness==0.0;let octaves=i32(ceil(detail));
+        var octave_feature=feature;if(feature==NODE_VORONOI_SMOOTH_F1&&smoothness==0.0){octave_feature=NODE_VORONOI_F1;}
+        for(var i=0;i<=octaves;i++){
+            var o:VoronoiOctave;
+            if(edge){o.distance=svmn_voronoi_edge(0u,coord*octave_scale,dims,randomness);}
+            else{o=svmn_voronoi_octave(octave_feature,coord*octave_scale,dims,metric,exponent,randomness,smoothness);}
+            if(zero_input){max_amplitude=select(1.0,max_amplitude,edge);distance=o.distance;color=o.color;position=o.position;break;}
+            let regular=f32(i)<=detail;let remainder=detail-floor(detail);
+            if(!regular&&remainder==0.0){continue;}
+            if(edge){
+                let lerp_amplitude=max_amplitude+amplitude*(max_distance/octave_scale-max_amplitude);
+                let lerp_distance=distance+amplitude*(min(distance,o.distance/octave_scale)-distance);
+                if(regular){max_amplitude=lerp_amplitude;distance=lerp_distance;}
+                else{max_amplitude=max_amplitude+remainder*(lerp_amplitude-max_amplitude);distance=distance+remainder*(min(distance,lerp_distance)-distance);}
+            }else{
+                let next_distance=distance+o.distance*amplitude;let next_color=color+o.color*amplitude;
+                let next_position=position+amplitude*(o.position/octave_scale-position);
+                if(regular){max_amplitude+=amplitude;distance=next_distance;color=next_color;position=next_position;}
+                else{max_amplitude=max_amplitude+remainder*((max_amplitude+amplitude)-max_amplitude);distance=distance+remainder*(next_distance-distance);
+                    color=color+remainder*(next_color-color);position=position+remainder*(next_position-position);}
+            }
+            if(regular){octave_scale*=lacunarity;amplitude*=roughness;}
+        }
+        if(edge){if(normalize){distance/=max_amplitude;}}
+        else{
+            if(normalize){distance/=max_amplitude*max_distance;color/=max_amplitude;}
+            position=select(vec4<f32>(0),position/scale,scale!=0.0);
+        }
+    }
+    // 1D positions live in the w lane (voronoi_position(float)).
+    if(dims==1u){position=vec4<f32>(0,0,0,position.x);}
+    svm_optional_store(s,svm_byte(node+N_TexVoronoi_distance_offset),distance);svm_optional_store3(s,svm_byte(node+N_TexVoronoi_color_offset),color);
+    svm_optional_store3(s,svm_byte(node+N_TexVoronoi_position_offset),position.xyz);svm_optional_store(s,svm_byte(node+N_TexVoronoi_w_out_offset),position.w);
+    svm_optional_store(s,svm_byte(node+N_TexVoronoi_radius_offset),radius);
+}
+//#endif
+//#if SVM_NODE_WAVELENGTH
+// wavelength.h and math_util.h svm_math_wavelength_color_xyz with the
+// tables.h cie_color_match rows as constants (no private array).
+fn svmn_cie(i:u32)->vec3<f32>{
+    switch(i){
+        case 0u:{return vec3<f32>(0.00139999995008111,0.0,0.006500000134110451);}
+        case 1u:{return vec3<f32>(0.002199999988079071,9.999999747378752e-05,0.010499999858438969);}
+        case 2u:{return vec3<f32>(0.00419999985024333,9.999999747378752e-05,0.020099999383091927);}
+        case 3u:{return vec3<f32>(0.007600000128149986,0.00019999999494757503,0.03620000183582306);}
+        case 4u:{return vec3<f32>(0.014299999922513962,0.00039999998989515007,0.06790000200271606);}
+        case 5u:{return vec3<f32>(0.02319999970495701,0.0006000000284984708,0.11020000278949738);}
+        case 6u:{return vec3<f32>(0.04349999874830246,0.0012000000569969416,0.20739999413490295);}
+        case 7u:{return vec3<f32>(0.07760000228881836,0.002199999988079071,0.37130001187324524);}
+        case 8u:{return vec3<f32>(0.13439999520778656,0.004000000189989805,0.6456000208854675);}
+        case 9u:{return vec3<f32>(0.21480000019073486,0.007300000172108412,1.0391000509262085);}
+        case 10u:{return vec3<f32>(0.2838999927043915,0.011599999852478504,1.385599970817566);}
+        case 11u:{return vec3<f32>(0.32850000262260437,0.01679999940097332,1.6230000257492065);}
+        case 12u:{return vec3<f32>(0.3483000099658966,0.023000000044703484,1.7470999956130981);}
+        case 13u:{return vec3<f32>(0.3481000065803528,0.02979999966919422,1.7826000452041626);}
+        case 14u:{return vec3<f32>(0.3361999988555908,0.03799999877810478,1.7720999717712402);}
+        case 15u:{return vec3<f32>(0.31869998574256897,0.04800000041723251,1.7440999746322632);}
+        case 16u:{return vec3<f32>(0.290800005197525,0.05999999865889549,1.6691999435424805);}
+        case 17u:{return vec3<f32>(0.25110000371932983,0.0738999992609024,1.5281000137329102);}
+        case 18u:{return vec3<f32>(0.19539999961853027,0.09099999815225601,1.287600040435791);}
+        case 19u:{return vec3<f32>(0.1421000063419342,0.11259999871253967,1.0419000387191772);}
+        case 20u:{return vec3<f32>(0.09560000151395798,0.13899999856948853,0.8130000233650208);}
+        case 21u:{return vec3<f32>(0.057999998331069946,0.16930000483989716,0.6161999702453613);}
+        case 22u:{return vec3<f32>(0.03200000151991844,0.20800000429153442,0.4652000069618225);}
+        case 23u:{return vec3<f32>(0.014700000174343586,0.25859999656677246,0.353300005197525);}
+        case 24u:{return vec3<f32>(0.004900000058114529,0.3230000138282776,0.2720000147819519);}
+        case 25u:{return vec3<f32>(0.002400000113993883,0.4072999954223633,0.21230000257492065);}
+        case 26u:{return vec3<f32>(0.00930000003427267,0.503000020980835,0.1581999957561493);}
+        case 27u:{return vec3<f32>(0.029100000858306885,0.6082000136375427,0.11169999837875366);}
+        case 28u:{return vec3<f32>(0.0632999986410141,0.7099999785423279,0.07819999754428864);}
+        case 29u:{return vec3<f32>(0.1096000000834465,0.7932000160217285,0.05730000138282776);}
+        case 30u:{return vec3<f32>(0.1655000001192093,0.8619999885559082,0.0421999990940094);}
+        case 31u:{return vec3<f32>(0.2257000058889389,0.914900004863739,0.02979999966919422);}
+        case 32u:{return vec3<f32>(0.2903999984264374,0.9539999961853027,0.0203000009059906);}
+        case 33u:{return vec3<f32>(0.3596999943256378,0.9803000092506409,0.013399999588727951);}
+        case 34u:{return vec3<f32>(0.4334000051021576,0.9950000047683716,0.008700000122189522);}
+        case 35u:{return vec3<f32>(0.5120999813079834,1.0,0.00570000009611249);}
+        case 36u:{return vec3<f32>(0.5945000052452087,0.9950000047683716,0.0038999998942017555);}
+        case 37u:{return vec3<f32>(0.6783999800682068,0.978600025177002,0.0027000000700354576);}
+        case 38u:{return vec3<f32>(0.7620999813079834,0.9520000219345093,0.002099999925121665);}
+        case 39u:{return vec3<f32>(0.8424999713897705,0.9154000282287598,0.0017999999690800905);}
+        case 40u:{return vec3<f32>(0.9162999987602234,0.8700000047683716,0.0017000000225380063);}
+        case 41u:{return vec3<f32>(0.978600025177002,0.8162999749183655,0.00139999995008111);}
+        case 42u:{return vec3<f32>(1.0262999534606934,0.7570000290870667,0.0010999999940395355);}
+        case 43u:{return vec3<f32>(1.0566999912261963,0.6948999762535095,0.0010000000474974513);}
+        case 44u:{return vec3<f32>(1.0621999502182007,0.6309999823570251,0.0007999999797903001);}
+        case 45u:{return vec3<f32>(1.0456000566482544,0.5667999982833862,0.0006000000284984708);}
+        case 46u:{return vec3<f32>(1.0025999546051025,0.503000020980835,0.0003000000142492354);}
+        case 47u:{return vec3<f32>(0.9383999705314636,0.44119998812675476,0.00019999999494757503);}
+        case 48u:{return vec3<f32>(0.8543999791145325,0.38100001215934753,0.00019999999494757503);}
+        case 49u:{return vec3<f32>(0.7513999938964844,0.32100000977516174,9.999999747378752e-05);}
+        case 50u:{return vec3<f32>(0.6424000263214111,0.26499998569488525,0.0);}
+        case 51u:{return vec3<f32>(0.5418999791145325,0.21699999272823334,0.0);}
+        case 52u:{return vec3<f32>(0.4478999972343445,0.17499999701976776,0.0);}
+        case 53u:{return vec3<f32>(0.36079999804496765,0.13819999992847443,0.0);}
+        case 54u:{return vec3<f32>(0.28349998593330383,0.10700000077486038,0.0);}
+        case 55u:{return vec3<f32>(0.21870000660419464,0.08160000294446945,0.0);}
+        case 56u:{return vec3<f32>(0.164900004863739,0.061000000685453415,0.0);}
+        case 57u:{return vec3<f32>(0.12120000272989273,0.044599998742341995,0.0);}
+        case 58u:{return vec3<f32>(0.08739999681711197,0.03200000151991844,0.0);}
+        case 59u:{return vec3<f32>(0.06360000371932983,0.02319999970495701,0.0);}
+        case 60u:{return vec3<f32>(0.046799998730421066,0.017000000923871994,0.0);}
+        case 61u:{return vec3<f32>(0.03290000185370445,0.011900000274181366,0.0);}
+        case 62u:{return vec3<f32>(0.022700000554323196,0.008200000040233135,0.0);}
+        case 63u:{return vec3<f32>(0.015799999237060547,0.00570000009611249,0.0);}
+        case 64u:{return vec3<f32>(0.01140000019222498,0.004100000020116568,0.0);}
+        case 65u:{return vec3<f32>(0.008100000210106373,0.002899999963119626,0.0);}
+        case 66u:{return vec3<f32>(0.005799999926239252,0.002099999925121665,0.0);}
+        case 67u:{return vec3<f32>(0.004100000020116568,0.001500000013038516,0.0);}
+        case 68u:{return vec3<f32>(0.002899999963119626,0.0010000000474974513,0.0);}
+        case 69u:{return vec3<f32>(0.0020000000949949026,0.000699999975040555,0.0);}
+        case 70u:{return vec3<f32>(0.00139999995008111,0.0005000000237487257,0.0);}
+        case 71u:{return vec3<f32>(0.0010000000474974513,0.00039999998989515007,0.0);}
+        case 72u:{return vec3<f32>(0.000699999975040555,0.00019999999494757503,0.0);}
+        case 73u:{return vec3<f32>(0.0005000000237487257,0.00019999999494757503,0.0);}
+        case 74u:{return vec3<f32>(0.0003000000142492354,9.999999747378752e-05,0.0);}
+        case 75u:{return vec3<f32>(0.00019999999494757503,9.999999747378752e-05,0.0);}
+        case 76u:{return vec3<f32>(0.00019999999494757503,9.999999747378752e-05,0.0);}
+        case 77u:{return vec3<f32>(9.999999747378752e-05,0.0,0.0);}
+        case 78u:{return vec3<f32>(9.999999747378752e-05,0.0,0.0);}
+        case 79u:{return vec3<f32>(9.999999747378752e-05,0.0,0.0);}
+        default:{return vec3<f32>(0.0,0.0,0.0);}
+    }
+}
+fn svm_wavelength(s:ptr<function,SvmState>,node:u32){
+    let lambda=svm_input(s,node+N_Wavelength_wavelength);if((*s).error!=0u){return;}
+    var ii=(lambda-380.0)*0.2;
+    // float_to_int truncates toward zero (ii in (-1,0) extrapolates from row 0, as on
+    // the host); NaN and out-of-range values give the host's zero colour.
+    var xyz=vec3<f32>(0);
+    if(ii==ii&&ii>-1.0&&ii<80.0){
+        let i=u32(i32(ii));ii-=f32(i);var c=array<vec3<f32>,2>();
+        for(var k=0u;k<2u;k++){c[k]=svmn_cie(i+k);}
+        xyz=rounded_add3(c[0],ii*(c[1]-c[0]));
+    }
+    let film=p(6u);
+    var rgb=vec3<f32>(svmn_dot(heap_vec3(film+SVMN_D_film_xyz_to_r),xyz),svmn_dot(heap_vec3(film+SVMN_D_film_xyz_to_g),xyz),svmn_dot(heap_vec3(film+SVMN_D_film_xyz_to_b),xyz));
+    // 1.0f/2.52f folded in binary32 by the host compiler.
+    rgb*=bitcast<f32>(0x3ecb2cb3u);
+    svm_store3(s,svm_byte(node+N_Wavelength_color_offset),max(rgb,vec3<f32>(0)));
+}
+//#endif
+//#if SVM_NODE_WIREFRAME
+// wireframe.h. Triangle corners come from the same native vertex tables as the
+// shader-data setup (motion triangles included), object space corners use the
+// shading point's object or motion transform. Background and volume
+// evaluations have no primitive (0), as on the host.
+fn svm_wireframe(s:ptr<function,SvmState>,node:u32){
+    let size=svm_input(s,node+N_Wireframe_in_size);if((*s).error!=0u){return;}
+    let g=(*s).geometry;var f=0.0;
+    if(!(*s).volume&&g.prim!=NONE&&native_triangle_kind(g.primitive_type)){
+        // differential_from_compact(Ng, dP): make_orthonormals frame scaled by dP.
+        let tangent=surface_orthogonal(g.Ng);let dx=tangent*g.dP;let dy=cross(g.Ng,tangent)*g.dP;
+        var position=g.P;let bump=svm_byte(node+N_Wireframe_bump_offset);let width=bitcast<f32>(load_word(node+N_Wireframe_bump_filter_width));
+        if(bump==NODE_BUMP_OFFSET_DX){position+=dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){position+=dy*width;}
+        let vertices=native_triangle_vertices(g.object_id,g.prim,g.primitive_type,g.time);
+        if(vertices.error!=0u){svm_error(s,16u);return;}
+        var corners=array<vec3<f32>,3>(vertices.a,vertices.b,vertices.c);
+        if((g.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){for(var k=0u;k<3u;k++){corners[k]=surface_object_point(g,corners[k],false);}}
+        var pixelwidth=1.0;
+        if(svm_byte(node+N_Wireframe_use_pixel_size)!=0u){
+            let x=dx-svmn_dot(dx,g.wi)*g.wi;let y=dy-svmn_dot(dy,g.wi)*g.wi;
+            pixelwidth=(sqrt(svmn_dot(x,x))+sqrt(svmn_dot(y,y)))*0.5;
+        }
+        pixelwidth*=0.5*size;pixelwidth*=pixelwidth;
+        for(var i=0u;i<3u;i++){
+            let edge=corners[i]-corners[select(2u,i-1u,i>0u)];let crs=rounded_cross(edge,position-corners[i]);
+            if(rounded_dot(crs,crs)<rounded_dot(edge,edge)*pixelwidth){f=1.0;break;}
+        }
+    }
+    svm_optional_store(s,svm_byte(node+N_Wireframe_out_fac_offset),f);
+}
+//#endif
+//#if SVM_NODE_MAPPING_DERIVATIVE
+// mapping.h svm_node_mapping<dual3> and svm_node_texture_mapping<dual3> with the
+// util/math_dual.h operators: dual / float3 multiplies by the reciprocal.
+fn svmn_dual_direction(t:mat3x3<f32>,a:NormalDual)->NormalDual{return NormalDual(svmn_direction(t,a.value),svmn_direction(t,a.dx),svmn_direction(t,a.dy));}
+fn svmn_dual_divide(a:NormalDual,b:vec3<f32>)->NormalDual{
+    let inv=vec3<f32>(1)/b;let zero=b==vec3<f32>(0);
+    return NormalDual(select(a.value*inv,vec3<f32>(0),zero),select(a.dx*inv,vec3<f32>(0),zero),select(a.dy*inv,vec3<f32>(0),zero));
+}
+fn svm_mapping_derivative(s:ptr<function,SvmState>,node:u32,opcode:u32){
+    if(opcode==NODE_TEXTURE_MAPPING_DERIVATIVE){
+        let index=svm_byte(node+N_TextureMapping_vec_offset);let v=NormalDual(svm_load3(s,index),svm_load3(s,index+3u),svm_load3(s,index+6u));
+        let a=node+N_TextureMapping_tfm;let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
+        let cx=vec3<f32>(x.x,y.x,z.x);let cy=vec3<f32>(x.y,y.y,z.y);let cz=vec3<f32>(x.z,y.z,z.z);
+        let r=NormalDual(vec3<f32>(x.w,y.w,z.w)+v.value.z*cz+v.value.y*cy+v.value.x*cx,v.dx.z*cz+v.dx.y*cy+v.dx.x*cx,v.dy.z*cz+v.dy.y*cy+v.dy.x*cx);
+        let out=svm_byte(node+N_TextureMapping_out_offset);svm_store3(s,out,r.value);svm_store3(s,out+3u,r.dx);svm_store3(s,out+6u,r.dy);return;
+    }
+    let kind=load_word(node+N_Mapping_mapping_type);let v=svmd_input3(s,node+N_Mapping_vector);let location=svm_input3(s,node+N_Mapping_location);
+    let scale=svm_input3(s,node+N_Mapping_scale);let rotation=svmn_euler(svm_input3(s,node+N_Mapping_rotation));var r=NormalDual(vec3<f32>(0),vec3<f32>(0),vec3<f32>(0));
+    switch(kind){
+        case NODE_MAPPING_TYPE_POINT,NODE_MAPPING_TYPE_VECTOR:{
+            r=svmn_dual_direction(rotation,NormalDual(v.value*scale,v.dx*scale,v.dy*scale));
+            if(kind==NODE_MAPPING_TYPE_POINT){r.value+=location;}
+        }
+        case NODE_MAPPING_TYPE_NORMAL:{r=svmd_safe_normalize(svmn_dual_direction(rotation,svmn_dual_divide(v,scale)));}
+        case NODE_MAPPING_TYPE_TEXTURE:{
+            let shifted=v.value-location;
+            r=svmn_dual_divide(NormalDual(svmn_transposed(rotation,shifted),svmn_transposed(rotation,v.dx),svmn_transposed(rotation,v.dy)),scale);
+        }
+        default:{svm_error(s,16u);return;}
+    }
+    let out=svm_byte(node+N_Mapping_result_offset);svm_store3(s,out,r.value);svm_store3(s,out+3u,r.dx);svm_store3(s,out+6u,r.dy);
+}
+//#endif
+//#endif

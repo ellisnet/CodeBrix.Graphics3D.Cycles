@@ -1,0 +1,659 @@
+diff --git a/docs/PARITY.md b/docs/PARITY.md
+index 3002dc3..e0a6336 100644
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -35,7 +35,7 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+ | Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL passes glass bounce/render but fails feature combination (microfacet lookup-table bounds error 512). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP; the Pixel 4 XL fails the volume-boundary state test, the camera-inside closed volume and the object/deforming motion images |
+-| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; emissive triangles fail the ARM64 oracle (sampler and one image mode) and remain unvalidated on ARM64. Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light and transparent shadows; emissive triangle lights fail on the HP compiler (memory) for moving emitters and the sampler probe; static triangle images 0-3 pass. Open device items are listed in `native/DEVICE.md` |
++| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters pass on Linux since closest-hit and shadow traversal reproduce the CPU arithmetic exactly; device confirmation is pending. Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; emissive triangles fail the ARM64 oracle (sampler and one image mode) and remain unvalidated on ARM64. Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light and transparent shadows; emissive triangle lights fail on the HP compiler (memory) for moving emitters and the sampler probe; static triangle images 0-3 pass. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS). Cold compiles: Samsung specialized pipelines at most 32.6 s, except the emissive-triangle entry with object motion at 205 s; HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 25 s with triangle lights), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 70 s |
+ | Platforms/delivery | Full Linux host. The .NET typed API renders on the WebGPU backend and the CPU reference backend on Linux x64 (Intel UHD, Mesa 25.0.7) and inside the Android validation app on the Samsung SM-X700, the HP Android x64 and the Pixel 4 XL (glass, diffuse with a sun, textured plane: practical criterion met, strict differences reported; progress and cancellation checked); the Android host gate passes with 48 exports on the Samsung and the HP. A glTF example client (tools/gltf) converts glTF factor-only materials to the closures the WebGPU backend has. The package still carries no native runtime assets; other host builds and remaining GPU backends/RIDs pending |
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index e14ab97..ac54e9f 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1454,6 +1454,91 @@ shadow-terminator geometry offset: the WebGPU device does not implement that
+ offset (found on Linux; a smooth mesh lit by a sun otherwise fails with
+ "WebGPU scheduler kernel reported invalid data (mask 1)").
+ 
++## Exact traversal and intersection arithmetic (2026-10-20)
++
++The closest, shadow (opaque and transparent) and volume-stack traversals, and
++the emissive-triangle planar hit, now reproduce the CPU oracle's ray/triangle
++and instance-push arithmetic bit for bit. Before, the WGSL used plain products
++and sums that drivers may fuse into FMA, and an exact divide where the x86
++oracle takes an approximate reciprocal.
++
++- **Contraction-proof sums.** `c_ray_triangle_intersect` (in
++  `shaders/wavefront_triangle.wgsl`) rounds every product before it reaches a
++  sum, using the integer `rounded_add`. No driver can fuse it. The generated AST
++  version stays in the module as `c_ray_triangle_intersect_ast` for review.
++- **Oracle grouping.** A new layout constant, `NATIVE_TRIANGLE_ARITHMETIC`, is
++  emitted from the source host, the same way `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`
++  is:
++  - **0 (scalar build, ARM64 without SSE2NEON).** `ray_triangle_dot` is
++    `(x+y)+z` and the reciprocal is a correctly rounded `1/x`.
++  - **1 (x86 SSE4.2 build).** `ray_triangle_dot` is `x+(y+z)`. `madd`/`msub` are
++    unfused. The reciprocal is `RCPSS` followed by one Newton step,
++    `r*(2-r*x)`, with each operation rounded.
++  - **2 (any other SSE build, i.e. SSE2NEON or an unrecognised `RCPSS`).** SSE
++    grouping with `1/x`; this mode is documented as not oracle-exact.
++- **`RCPSS` model.** On the Intel i7-12850HX that produces the Linux oracle, the
++  result depends only on the sign, the exponent and the top 11 mantissa bits.
++  - Its 12-bit mantissa is the value nearest to `2^25/(4097+2i)`, with exponent
++    `253-e`. Denormal inputs give infinity, infinities give zero, and underflow
++    flushes to zero.
++  - An exhaustive check of all 2^32 inputs against the instruction found no
++    difference.
++  - `wavefront_layout()` re-checks every mantissa class on the host before it
++    emits mode 1. A host whose `RCPSS` differs, such as another x86 vendor, gets
++    mode 2.
++- **Instance push.** `transform_vector` and the object-motion push compute
++  `transform_point`/`transform_direction` exactly as the oracle does:
++  - SSE builds: transpose and accumulate `((w+z)+y)+x`.
++  - Scalar builds: the float4 dot `(x+y)+(z+w)`, using a signed zero for
++    directions.
++  - The shared `wavefront_motion.wgsl` is unchanged.
++- **Closest-stage lamp hits.** The area-light quad test (`area_light_intersect`
++  plus `ray_quad_intersect`) and the spot back-face test use rounded dots, sums
++  and quotients.
++- **min/max.** Builtin `min`/`max` equal Cycles' `(a<b)?a:b` for every non-NaN
++  input. A `select()` form also mirrors NaN inputs, but it made an intermittent
++  Intel Mesa 25.0.7 backend crash (`brw_opt_combine_constants`) frequent in the
++  triangle-light module.
++
++Gates:
++
++- **`closest_gate`.** Adds a precision fixture (`cycles/precision_fixture.h`):
++  - Geometry: the Principled bench sliver (bench triangle 328, 0.62 m x 5.7 mm),
++    seven synthetic slivers shared by three instances (mirrored, rotated,
++    scaled), and an instanced emissive quad.
++  - Rays: 8,192, aimed at edges, vertices, the quad diagonal and interiors, with
++    0-2 ULP perturbations. They include the exact ray that stopped the
++    Principled bench at stage 30.
++  - Every hit's t, u, v, prim, object and type must equal the CPU bit for bit.
++- **`shadow_gate`.** Adds 4,096 near-tangent shadow rays on the same fixture:
++  - tmax is within 1e-6 of the target.
++  - The aimed emitter triangle is excluded as the light.
++  - The blocked decision and every state field must match exactly.
++- **Triangle gate.** Now renders static instanced triangle emitters (mode 4) and
++  checks them against an independent CPU image plus a replay. The renderer guard
++  is lifted.
++
++Command 574 of the Samsung triangle mode-2 replay:
++
++- Re-dispatched on Intel with the Adreno's own arena, the shadow ray is blocked
++  with the old traversal and with the exact one. With Intel's arena it is
++  unblocked with both. The decision follows its inputs.
++- The inputs already differ at bounce 0. The camera ray and `isect.t` are
++  bit-identical, but `isect.u` is `0x3e39c8be` on the Adreno against
++  `0x3e39c8c0` on Intel. That barycentric comes from the closest stage, which is
++  now integer-exact on every GPU.
++- Device confirmation is pending: a Samsung rerun of the mode-2 capture, then
++  the HP and Pixel.
++
++Cost on Linux (Intel Mesa 25.0.7, cold cache, median of three runs):
++
++- `intersect_closest`: 0.55 s before, 1.15 s after (71.6 KB to 76.5 KB of WGSL).
++- `intersect_shadow`: 0.69 s before, 1.09 s after.
++- `init_camera` and `shade_shadow` are unchanged (0.74 to 0.76 s, 0.04 s).
++- Every module stays on the full tier.
++- Textual inlined size: `intersect_closest` +76-92 KB, `intersect_shadow`
++  +76 KB, `intersect_volume_stack` +38 KB, `shade_surface_light` +21 KB.
++
+ ## Open device items (2026-10-20)
+ 
+ These device failures from the integrated-tree runs are open. Each is
+@@ -1468,8 +1553,10 @@ deterministic on its device and needs a code change; no tolerance was relaxed.
+    ARM64 (`NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`), now in light and emitter sampling.
+ 2. **Samsung SM-X700: triangle image mode 2 diverges on the GPU.** One pixel is
+    off by 0.040; replaying the Linux x64 mode-2 capture on the device also fails
+-   (scheduler decision readback differs at command 574), so the Adreno takes a
+-   different path decision from Intel with identical inputs and WGSL.
++   (scheduler decision readback differs at command 574). The decision follows
++   a closest-stage barycentric that differed by 2 ULP at bounce 0; the closest
++   stage is now integer-exact (see "Exact traversal and intersection
++   arithmetic"), and a device rerun is pending.
+ 3. **HP Android x64: three cold compiles exhaust compiler memory.** Scudo's
+    per-size-class regions run out inside the Intel Mesa 24.0.8 compiler and the
+    process aborts, every time, for `shade_surface_light` specialized with
+diff --git a/native/cycles/camera.cpp b/native/cycles/camera.cpp
+index 24357bd..d75dd02 100644
+--- a/native/cycles/camera.cpp
++++ b/native/cycles/camera.cpp
+@@ -8,8 +8,32 @@
+ #include <sstream>
+ #include <stdexcept>
+ #include <type_traits>
++#if defined(__KERNEL_SSE__) && !defined(__KERNEL_NEON__)
++#include <xmmintrin.h>
++#endif
+ namespace ccl {
+ static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
++#if defined(__KERNEL_SSE__) && !defined(__KERNEL_NEON__)
++// Cycles' ray_triangle_reciprocal uses this host's RCPSS estimate. The WGSL
++// models it as the 12-bit mantissa nearest to 2^25/(4097+2i), where i is the
++// top 11 input mantissa bits, with the exponent 253-e. Check every mantissa
++// class plus exponent and special cases on this host before claiming it.
++static uint32_t host_rcpss(uint32_t bits){float x;std::memcpy(&x,&bits,4);float r=_mm_cvtss_f32(_mm_rcp_ss(_mm_set_ss(x)));uint32_t out;std::memcpy(&out,&r,4);return out;}
++static uint32_t modelled_rcpss(uint32_t bits){
++  const uint32_t sign=bits&0x80000000u,e=(bits>>23)&255u,m=bits&0x7fffffu;
++  if(e==255u)return m?(bits|0x400000u):sign;
++  if(e==0u)return sign|0x7f800000u;
++  if(e>=253u)return sign;
++  const uint32_t d=4097u+2u*(m>>12),q=((1u<<26)+d)/(2u*d);
++  return sign|((253u-e)<<23)|((q-4096u)<<11);
++}
++static bool host_rcpss_modelled(){
++  for(uint32_t i=0;i<2048;i++)for(uint32_t low:{0u,0xfffu,0x5a5u})for(uint32_t e:{1u,2u,100u,126u,127u,128u,200u,252u,253u,254u})
++    for(uint32_t sign:{0u,0x80000000u}){const uint32_t bits=sign|(e<<23)|(i<<12)|low;if(host_rcpss(bits)!=modelled_rcpss(bits))return false;}
++  for(uint32_t bits:{0u,0x80000000u,1u,0x7fffffu,0x7f800000u,0xff800000u,0x7fc00000u})if(host_rcpss(bits)!=modelled_rcpss(bits))return false;
++  return true;
++}
++#endif
+ static constexpr char camera_source[]=
+ #include "camera_shader.inc"
+ ;
+@@ -30,6 +54,18 @@ std::string wavefront_layout(){
+   constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",0);
+ #else
+   constant("NATIVE_FLOAT3_RECIPROCAL_NORMALIZE",1);
++#endif
++  // Cycles ray_triangle_intersect arithmetic of the originating oracle host:
++  // 0 scalar build (dot (x+y)+z, 1/x), 1 SSE4.2 build with the modelled RCPSS
++  // (dot x+(y+z), RCPSS + Newton step), 2 SSE build not modelled (SSE2NEON or
++  // an x86 RCPSS that differs): SSE grouping with 1/x, not oracle-exact.
++#if defined(__KERNEL_SSE__) && !defined(__KERNEL_NEON__)
++  static const bool rcpss_modelled=host_rcpss_modelled();
++  constant("NATIVE_TRIANGLE_ARITHMETIC",rcpss_modelled?1:2);
++#elif defined(__KERNEL_SSE__)
++  constant("NATIVE_TRIANGLE_ARITHMETIC",2);
++#else
++  constant("NATIVE_TRIANGLE_ARITHMETIC",0);
+ #endif
+ #define DATA(parent,member) constant("D_" #parent "_" #member,offsetof(KernelData,parent.member))
+   DATA(cam,rastertocamera);DATA(cam,cameratoworld);DATA(cam,dx);DATA(cam,dy);DATA(cam,differential_scale);
+diff --git a/native/cycles/closest_gate.cpp b/native/cycles/closest_gate.cpp
+index c0635d8..4062b9e 100644
+--- a/native/cycles/closest_gate.cpp
++++ b/native/cycles/closest_gate.cpp
+@@ -5,6 +5,7 @@
+ #include "scene/scene.h"
+ #include "object_motion_fixture.h"
+ #include "deforming_motion_fixture.h"
++#include "precision_fixture.h"
+ #include "scene/mesh.h"
+ #include "scene/object.h"
+ #include "scene/camera.h"
+@@ -94,6 +95,56 @@ static unsigned consume_sort_counters(WebGPUDevice &d,Scheduler &scheduler,const
+   }
+   return cases;
+ }
++// Traversal precision: sliver triangles (with the Principled bench ray), mirrored
++// instances and an instanced emitter, edge-aimed and ULP-perturbed rays. Hits
++// must equal the CPU oracle bit for bit (t, u, v, prim, object, type).
++struct Precision {uint64_t paths=0,hits=0,instanced_hits=0,emitter_hits=0,bit_mismatches=0,decision_mismatches=0,strict=0;double maximum=0;bool bench_exact=false;};
++static Precision precision(const DeviceInfo &info){
++  Precision p;Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto *backend=dynamic_cast<WebGPUDevice*>(owner.get());require(backend,"Precision device creation failed");auto &d=*backend;
++  {
++    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
++    Scene scene(params,&d);
++    scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
++    scene.integrator->set_aa_samples(64);scene.integrator->set_seed(17);scene.film->set_use_sample_count(false);
++    scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();
++    precision_fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Precision scene update failed");
++    auto &data=scene.dscene.data;data.integrator.use_light_mis=0;data.integrator.use_caustics=0;d.const_copy_to("data",&data,sizeof(KernelData));
++    unsigned instances=0;for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)instances+=scene.dscene.bvh_leaf_nodes[i].x<0;
++    require(instances>=5,"Precision fixture lost its instances");
++    bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);
++    auto layout=fields(d);BufferParams bp;bp.width=64;bp.height=48;bp.pass_stride=data.film.pass_stride;
++    auto buffers=scheduler.get_render_buffers();buffers->reset(bp);buffers->zero();
++    const unsigned n=std::min(scheduler.capacity(),4096);const auto rays=precision_rays(scene,n,false);
++    for(unsigned round=0;round<2;round++){
++      scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Precision reset failed");
++      std::vector<IntegratorStateCPU> expected(scheduler.capacity());std::vector<int> indices;
++      for(unsigned i=0;i<n;i++){auto &s=expected[i];s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;
++        s.path.throughput=one_float3();s.path.continuation_probability=1;s.path.sample=i%64;s.path.render_pixel_index=i%3072;
++        s.ray.P=rays[i].P;s.ray.D=rays[i].D;s.ray.tmin=0;s.ray.tmax=rays[i].tmax;s.ray.time=.5f;s.isect.prim=PRIM_NONE;s.isect.object=OBJECT_NONE;
++        // Round 1 marks every other aimed triangle as the previous hit (self-hit skip).
++        if(round&&i%2){s.isect.object=rays[i].object;s.isect.prim=rays[i].prim;s.isect.type=PRIMITIVE_TRIANGLE;}
++        indices.push_back(int(i));}
++      upload(d,layout,expected);IntegratorQueueCounter counters{};counters.num_queued[DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST]=n;d.upload(uintptr_t(d.state.queue_counter),&counters,sizeof(counters));
++      scheduler.set_active(int(n));require(scheduler.update_queue_counter_and_cache(),"Precision counters failed");
++      std::vector<float> film(buffers->buffer.size());original_closest(scene.dscene,indices,expected,film);
++      scheduler.enqueue_path_iteration(DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);require(scheduler.update_queue_counter_and_cache(),"Precision closest failed: "+d.error_message());
++      auto actual=download(d,layout,n);
++      for(unsigned i=0;i<n;i++){const auto &e=expected[i].isect;const auto &a=actual[i].isect;p.paths++;
++        const bool same_hit=e.prim==a.prim&&e.object==a.object&&e.type==a.type;p.decision_mismatches+=!same_hit;
++        const bool bits=same_hit&&std::memcmp(&e.t,&a.t,4)==0&&std::memcmp(&e.u,&a.u,4)==0&&std::memcmp(&e.v,&a.v,4)==0;p.bit_mismatches+=!bits;
++        if(e.prim!=PRIM_NONE){p.hits++;p.instanced_hits+=e.object!=0;p.emitter_hits+=e.object>=3;}
++        if(same_hit)for(auto [ev,av]:{std::pair{e.t,a.t},std::pair{e.u,a.u},std::pair{e.v,a.v}}){double error=std::abs(double(av)-ev);p.maximum=std::max(p.maximum,error);p.strict+=error>1e-7+1e-7*std::abs(double(ev));}
++        if(round==0&&i==0)p.bench_exact=bits&&e.prim==0&&e.object==0;
++      }
++    }
++    std::cerr<<"precision paths="<<p.paths<<" hits="<<p.hits<<" instancedHits="<<p.instanced_hits<<" emitterHits="<<p.emitter_hits<<" decisionMismatches="<<p.decision_mismatches
++      <<" bitMismatches="<<p.bit_mismatches<<" strict="<<p.strict<<" max="<<p.maximum<<" benchExact="<<p.bench_exact<<"\n";
++    require(p.hits>1000&&p.hits<p.paths&&p.instanced_hits>500&&p.emitter_hits>100,"Missing precision coverage");
++    require(p.decision_mismatches==0&&p.bit_mismatches==0&&p.bench_exact,"Closest precision differs from the CPU oracle: decisions="+std::to_string(p.decision_mismatches)+" bitMismatches="+std::to_string(p.bit_mismatches));
++  }
++  require(stats.mem_used==0,"Precision closest leaked Cycles allocations");
++  return p;
++}
+ static unsigned rejections(const DeviceInfo &info){
+   unsigned rejected=0;
+   for(unsigned test=0;test<21;test++){
+@@ -209,13 +260,14 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     require(m.object_hits.size()==5,"Not every instance/material object was hit");
+   }
+   require(stats.mem_used==0,"Closest test leaked Cycles allocations");const unsigned rejected=rejections(infos[0]);
++  const Precision exact=motion||deform?Precision{}:precision(infos[0]);
+   std::string output=argv[1];std::ofstream(output+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(output+".library.txt")<<d.gpu.library_path;
+   std::cout<<"{\"passed\":true,\"originalCameraToIntersectionScheduler\":true,\"nativeSceneTables\":true,\"nativeInstanceLeaves\":"<<m.instances<<",\"cases\":"<<m.cases
+     <<",\"paths\":"<<m.paths<<",\"hits\":"<<m.hits<<",\"misses\":"<<m.misses<<",\"terminated\":"<<m.terminated<<",\"rouletteStates\":"<<m.rr<<",\"emissionTerminationStates\":"<<m.emission_termination
+     <<",\"raytraceShaderStates\":"<<m.raytrace_states<<",\"hitObjects\":"<<m.object_hits.size()
+     <<",\"originalSchedulerSortCases\":"<<m.sort_cases
+     <<",\"directDispatchCases\":"<<m.direct_cases
+-    <<",\"invalidCasesRejected\":"<<rejected
++    <<",\"invalidCasesRejected\":"<<rejected<<",\"precisionPaths\":"<<exact.paths<<",\"precisionHits\":"<<exact.hits<<",\"precisionInstancedHits\":"<<exact.instanced_hits<<",\"precisionEmitterHits\":"<<exact.emitter_hits<<",\"precisionBitMismatches\":"<<exact.bit_mismatches<<",\"precisionBenchRayExact\":"<<(exact.bench_exact?"true":"false")
+     <<",\"exactStateChecks\":"<<m.exact_checks<<",\"floatChecks\":"<<m.float_checks<<",\"strictFloatFailures\":"<<m.strict_failures<<",\"maximumAbsoluteError\":"<<m.maximum_error
+     <<",\"absoluteTolerance\":0.00005,\"relativeTolerance\":0.0002,\"strictAbsoluteTolerance\":0.0000001,\"strictRelativeTolerance\":0.0000001,\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+ }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}
+diff --git a/native/cycles/emitter_sample_gate.cpp b/native/cycles/emitter_sample_gate.cpp
+index b666138..3ad6157 100644
+--- a/native/cycles/emitter_sample_gate.cpp
++++ b/native/cycles/emitter_sample_gate.cpp
+@@ -109,10 +109,10 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     for(unsigned i=0;i<8;i++)require(output[i]==-1234.f&&output[output.size()-1-i]==-1234.f,"Emitter sample output guard overwritten");require(valid>100,"Insufficient valid emitter samples");metrics.paths=count;metrics.lamp_hits=valid;
+ #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+     const auto saved=d.light_distribution_records;const auto data=d.data;
+-    // Pure sampler math includes configurations that the renderer deliberately
+-    // rejects until their independent images pass. Verify that boundary too.
+-    bool unsupported=false;try{d.validate_lighting(true);}catch(const std::exception &e){unsupported=std::string(e.what()).find("static instanced triangle emitters")!=std::string::npos;}
+-    require(unsupported,"Missing renderer static-instance emitter guard");metrics.guards++;
++    // The sampler fixture includes static instanced emitters; the renderer
++    // accepts them now that their independent image passes (exact traversal).
++    bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
++    require(accepted,"Renderer rejected the validated static-instance emitters");metrics.guards++;
+     const char *reasons[]={"Invalid native triangle light distribution","Invalid native triangle light distribution","Invalid native triangle selection probability","Invalid native light CDF"};
+     for(unsigned bad=0;bad<4;bad++){
+       d.light_distribution_records=saved;d.data=data;
+diff --git a/native/cycles/lighting.cpp b/native/cycles/lighting.cpp
+index a2af22a..6d3ab26 100644
+--- a/native/cycles/lighting.cpp
++++ b/native/cycles/lighting.cpp
+@@ -86,14 +86,10 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
+           data.integrator.distribution_pdf_triangles>0,"Invalid native triangle light distribution");
+         require(size_t(entry.object_id)<object_flag_records.size(),"Invalid native triangle object flags");
+         const auto flags=object_flag_records[entry.object_id];
+-        // Moving/deforming emitters pass their independent image. The static
+-        // instanced image still differs at two pixels: the emitter sample and
+-        // shadow match the original CPU at identical inputs, but the shading
+-        // point's barycentrics differ by ULPs (closest-hit FMA contraction and
+-        // the oracle's SSE reciprocal), flipping edge-grazing samples. Keep
+-        // that configuration closed until its image passes (native/work/b1).
+-        require((flags&(SD_OBJECT_TRANSFORM_APPLIED|SD_OBJECT_MOTION|SD_OBJECT_HAS_VERTEX_MOTION))!=0,
+-          "WebGPU static instanced triangle emitters are not validated");
++        // Static instanced emitters pass their independent image since the
++        // closest/shadow traversal reproduces the CPU oracle's arithmetic
++        // exactly (contraction-proof sums, SSE grouping, RCPSS model; X2).
++        (void)flags;
+       }
+     }
+   }
+diff --git a/native/cycles/lighting_gate.cpp b/native/cycles/lighting_gate.cpp
+index 42048ff..332d6cf 100644
+--- a/native/cycles/lighting_gate.cpp
++++ b/native/cycles/lighting_gate.cpp
+@@ -42,9 +42,9 @@ constexpr unsigned width=32,height=24,samples=8;
+ #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+ #include "object_motion_fixture.h"
+ #include "deforming_motion_fixture.h"
+-constexpr int lighting_cases=5;
+-// Image modes; mode 4 (static instanced emitter) is checked for rejection.
+-constexpr int lighting_modes[lighting_cases]={0,1,2,3,5};
++constexpr int lighting_cases=6;
++// Image modes; mode 4 is the static instanced emitter.
++constexpr int lighting_modes[lighting_cases]={0,1,2,3,4,5};
+ #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
+ constexpr int lighting_cases=12;
+ #else
+@@ -297,13 +297,6 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+ #endif
+ #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+   require(total.mesh_mis_paths>10,"Missing forward emissive triangle MIS paths");
+-  for(int mode:{4}){
+-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;
+-    Scene scene(params,&device);fixture(scene,mode);Progress progress;scene.device_update(&device,progress);healthy(device);
+-    require(!progress.get_error(),"Unsupported emitter fixture preparation failed");
+-    bool rejected=false;try{device.validate_lighting(true);}catch(const std::exception &e){rejected=std::string(e.what()).find("static instanced triangle emitters")!=std::string::npos;}
+-    require(rejected,"Unvalidated emitter configuration was accepted");total.unsupported_emitters++;
+-  }
+ #else
+   if(use_mis)require(total.forward>100,"Missing forward point-light paths");
+ #endif
+diff --git a/b/native/cycles/precision_fixture.h b/native/cycles/precision_fixture.h
+new file mode 100644
+index 0000000..3bbd166
+--- /dev/null
++++ b/native/cycles/precision_fixture.h
+@@ -0,0 +1,79 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++#pragma once
++// Traversal precision fixture: sliver triangles (including the Principled bench
++// sliver, triangle 328 of the bench asset in render_gate presentation space),
++// shared by mirrored/rotated/scaled instances, and an instanced emissive quad
++// whose diagonal is grazed by near-tangent rays. Rays aim at edges, vertices and
++// interiors, then are perturbed by 0-2 ULP per component.
++#include "scene/scene.h"
++#include "scene/mesh.h"
++#include "scene/object.h"
++#include "scene/shader_graph.h"
++#include "scene/shader_nodes.h"
++#include "util/transform.h"
++#include <cmath>
++#include <cstring>
++#include <random>
++#include <vector>
++namespace ccl {
++struct PrecisionRay {float3 P,D;float tmax;int object,prim;};
++inline float precision_bits(uint32_t bits){float value;std::memcpy(&value,&bits,4);return value;}
++// The ray the Principled bench (M1) rendered at stage 30, path 84, bit for bit.
++inline PrecisionRay precision_bench_ray(){
++  return {make_float3(0.52153337f,-4.f,-1.887770772f),make_float3(-0.6102825999f,0.45429039f,0.6489803195f),3.4e38f,0,0};
++}
++inline void precision_fixture(Scene &scene){
++  auto sliver=scene.create_node<Mesh>();array<Node*> surfaces;surfaces.push_back_slow(scene.default_surface);sliver->set_used_shaders(surfaces);
++  std::vector<float3> v={
++    make_float3(precision_bits(0xbfc4a0b1),precision_bits(0xc03e7fc6),precision_bits(0x3ebf4ed8)),
++    make_float3(precision_bits(0xbfc4a0b1),precision_bits(0xbfb41c04),precision_bits(0x3e155360)),
++    make_float3(precision_bits(0xbfc3509c),precision_bits(0xbfb44c4a),precision_bits(0x3e0aeea0))};
++  std::mt19937 rng(20261020);std::uniform_real_distribution<float> unit(-1.f,1.f);
++  for(int k=0;k<7;k++){
++    const float3 a=make_float3(unit(rng)*1.5f,unit(rng)*1.5f-2.f,unit(rng)*1.5f);
++    const float3 dir=normalize(make_float3(unit(rng),unit(rng),unit(rng)));const float length=.6f+.4f*k;
++    const float width=std::pow(10.f,-4.f+.35f*k);const float3 n=normalize(make_float3(unit(rng),unit(rng),unit(rng)));
++    v.push_back(a);v.push_back(a+length*dir);v.push_back(a+.5f*length*dir+width*n);
++  }
++  sliver->resize_mesh(v.size(),v.size()/3);
++  for(size_t i=0;i<v.size();i++){sliver->get_position_for_write()[i]=v[i];sliver->get_triangles()[i]=int(i);}
++  std::ranges::fill(sliver->get_smooth(),false);std::ranges::fill(sliver->get_shader(),0);sliver->tag_triangles_modified();
++  const Transform sliver_tfms[]={transform_identity(),
++    transform_translate(make_float3(3.1f,.2f,.7f))*transform_rotate(.71f,normalize(make_float3(.2f,1.f,.4f)))*transform_scale(make_float3(-1.3f,.9f,1.1f)),
++    transform_translate(make_float3(-2.9f,.4f,-.3f))*transform_rotate(-1.13f,normalize(make_float3(1.f,.1f,.3f)))*transform_scale(make_float3(.7f,1.6f,-.8f))};
++  for(auto &tfm:sliver_tfms){auto object=scene.create_node<Object>();object->set_geometry(sliver);object->set_tfm(tfm);}
++  auto emission=scene.create_node<Shader>();auto graph=make_unique<ShaderGraph>();auto light=graph->create_node<EmissionNode>();
++  light->set_color(make_float3(.8f,.7f,.5f));light->set_strength(2.f);graph->connect(light->output("Emission"),graph->output()->input("Surface"));
++  emission->set_graph(std::move(graph));emission->tag_update(&scene);
++  auto quad=scene.create_node<Mesh>();array<Node*> lights;lights.push_back_slow(emission);quad->set_used_shaders(lights);quad->resize_mesh(4,2);
++  const float q[][3]={{-.9f,-.4f,0},{.8f,-.5f,.05f},{.7f,.6f,-.04f},{-.8f,.5f,0}};
++  for(int i=0;i<4;i++)quad->get_position_for_write()[i]=make_float3(q[i][0],q[i][1],q[i][2]);
++  const int tris[]={0,1,2,0,2,3};std::copy_n(tris,6,quad->get_triangles().data());
++  std::ranges::fill(quad->get_smooth(),false);std::ranges::fill(quad->get_shader(),0);quad->tag_triangles_modified();
++  const Transform quad_tfms[]={transform_translate(make_float3(.4f,1.9f,1.3f))*transform_rotate(.37f,make_float3(1,0,0)),
++    transform_translate(make_float3(-.6f,-1.7f,1.6f))*transform_rotate(-.52f,normalize(make_float3(1.f,.3f,0.f)))*transform_scale(make_float3(-1.f,1.2f,1.f))};
++  for(auto &tfm:quad_tfms){auto object=scene.create_node<Object>();object->set_geometry(quad);object->set_tfm(tfm);}
++}
++// Targets on edges (and the shared quad diagonal), at vertices and inside, seen
++// from random origins; components then move by 0-2 ULP. tmax is the target
++// distance scaled by 1 +- 2^-20 for shadow use (closest uses 3.4e38).
++inline std::vector<PrecisionRay> precision_rays(const Scene &scene,unsigned count,bool shadow){
++  std::vector<PrecisionRay> rays;if(!shadow)rays.push_back(precision_bench_ray());
++  std::mt19937 rng(shadow?77u:41u);std::uniform_real_distribution<float> unit(0.f,1.f);
++  auto ulp=[&](float x){int steps=int(rng()%5)-2;for(;steps>0;steps--)x=std::nextafter(x,INFINITY);for(;steps<0;steps++)x=std::nextafter(x,-INFINITY);return x;};
++  while(rays.size()<count){
++    const int object=int(rng()%scene.objects.size());const Object *o=scene.objects[object];const Mesh *mesh=static_cast<const Mesh*>(o->get_geometry());
++    const int prim=int(rng()%mesh->num_triangles());const Transform tfm=o->get_tfm();
++    float3 c[3];for(int k=0;k<3;k++)c[k]=transform_point(&tfm,float3(mesh->get_position()[mesh->get_triangles()[prim*3+k]]));
++    float u=unit(rng),w=unit(rng);const unsigned kind=rng()%4;const float eps=std::pow(10.f,-7.f+4.f*unit(rng))*(unit(rng)<.5f?-1.f:1.f);
++    if(kind==0){w=eps;}else if(kind==1){u=eps;}else if(kind==2){w=1.f-u+eps;}else if(u+w>1.f){u=1.f-u;w=1.f-w;}
++    const float3 target=c[0]+u*(c[1]-c[0])+w*(c[2]-c[0]);
++    const float3 offset=normalize(make_float3(unit(rng)-.5f,unit(rng)-.5f,unit(rng)-.5f))*(.5f+7.5f*unit(rng));
++    float3 P=target+offset;float3 D=normalize(target-P);const float distance=len(target-P);
++    if(rng()%3){P=make_float3(ulp(P.x),ulp(P.y),ulp(P.z));D=make_float3(ulp(D.x),ulp(D.y),ulp(D.z));}
++    rays.push_back({P,D,shadow?distance*(unit(rng)<.5f?1.f-9.5e-7f:1.f+9.5e-7f):3.4e38f,object,prim});
++  }
++  return rays;
++}
++}
+diff --git a/native/cycles/shadow_gate.cpp b/native/cycles/shadow_gate.cpp
+index 6fad662..20fc97c 100644
+--- a/native/cycles/shadow_gate.cpp
++++ b/native/cycles/shadow_gate.cpp
+@@ -7,6 +7,7 @@
+ #include "scene/scene.h"
+ #include "object_motion_fixture.h"
+ #include "deforming_motion_fixture.h"
++#include "precision_fixture.h"
+ #include "scene/mesh.h"
+ #include "scene/object.h"
+ #include "scene/integrator.h"
+@@ -110,6 +111,41 @@ static States initial(int count,int variant,bool motion=false){
+   }
+   return states;
+ }
++// Traversal precision: near-tangent shadow rays toward sliver triangles and an
++// instanced emissive quad (light self-exclusion on the aimed emitter triangle,
++// grazing its diagonal neighbour), tmax within 1e-6 of the target, inputs
++// perturbed by 0-2 ULP. Blocked decisions must equal the CPU oracle exactly.
++struct ShadowPrecision {uint64_t paths=0,blocked=0,clear=0,emitter_paths=0;unsigned instances=0;};
++static ShadowPrecision shadow_precision(const DeviceInfo &info){
++  ShadowPrecision p;Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
++  {
++    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
++    Scene scene(params,&d);scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
++    precision_fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
++    for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)p.instances+=scene.dscene.bvh_leaf_nodes[i].x<0;require(p.instances>=5,"Shadow precision fixture lost its instances");
++    d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));bool cancel=false;ShadowScheduler scheduler(&d,scene.film,&scene.dscene,&cancel);
++    scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
++    const int n=std::min(scheduler.capacity(),4096);const auto rays=precision_rays(scene,n,true);
++    scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Shadow precision reset failed");
++    auto expected=initial(n,0);std::vector<int> indices;
++    for(int i=0;i<n;i++){auto &s=expected[i];s.shadow_path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW;
++      s.shadow_ray.P=rays[i].P;s.shadow_ray.D=rays[i].D;s.shadow_ray.tmin=0;s.shadow_ray.tmax=rays[i].tmax;s.shadow_ray.time=.5f;
++      const bool emitter=rays[i].object>=3;p.emitter_paths+=emitter;
++      if(emitter||i%2){s.shadow_ray.self_light_object=rays[i].object;s.shadow_ray.self_light_prim=rays[i].prim;}
++      indices.push_back(i);}
++    upload(d,layout,expected);IntegratorQueueCounter counter{};counter.num_queued[DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW]=n;d.upload(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));
++    scheduler.active(n);require(scheduler.update_queue_counter_and_cache(),"Shadow precision counters failed");
++    std::vector<float> film(48);original_shadow(scene.dscene,DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,indices,expected,film);
++    scheduler.enqueue_path_iteration(DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW);require(scheduler.update_queue_counter_and_cache(),"Shadow precision intersect failed: "+d.error_message());
++    std::vector<uint16_t> queued(n);d.download(uintptr_t(d.state.shadow_path.queued_kernel),queued.data(),queued.size()*2);uint64_t mismatches=0;
++    for(int i=0;i<n;i++){mismatches+=queued[i]!=expected[i].shadow_path.queued_kernel;if(expected[i].shadow_path.queued_kernel)p.clear++;else p.blocked++;}
++    p.paths=n;std::cerr<<"shadow precision paths="<<p.paths<<" blocked="<<p.blocked<<" unblocked="<<p.clear<<" emitterPaths="<<p.emitter_paths<<" decisionMismatches="<<mismatches<<"\n";
++    require(mismatches==0,"Shadow precision decisions differ from the CPU oracle: "+std::to_string(mismatches));
++    Metrics full;compare(d,layout,expected,full); // every state field and queue counter, bit for bit
++    require(p.blocked>200&&p.clear>200&&p.emitter_paths>200,"Missing shadow precision coverage");
++  }
++  require(stats.mem_used==0,"Shadow precision leaked Cycles allocations");return p;
++}
+ static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
+   for(int test=0;test<18;test++){
+     Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
+@@ -201,9 +237,10 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     require(m.blocked>100&&m.clear>100&&m.excluded>50,"Insufficient shadow occlusion/self-light coverage");
+   }
+   require(stats.mem_used==0,"Shadow gate leaked Cycles allocations");auto rejected=rejections(infos[0]);
++  const ShadowPrecision exact=motion||deform?ShadowPrecision{}:shadow_precision(infos[0]);
+   std::ofstream(prefix+".library.txt")<<d.gpu.library_path;std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".wgsl")<<shadow_source();
+   std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuShadowKernels\":true,\"originalGpuScheduler\":true,\"transparentShadowsProven\":false,\"directLightingProven\":false,\"cases\":"<<m.cases
+     <<",\"paths\":"<<m.paths<<",\"blocked\":"<<m.blocked<<",\"unoccluded\":"<<m.clear<<",\"selfOrLightExclusions\":"<<m.excluded<<",\"nativeInstanceLeaves\":"<<m.instances
+     <<",\"directDispatchCases\":"<<m.direct<<",\"exactStateChecks\":"<<m.exact<<",\"filmFloatChecks\":"<<m.floats<<",\"strictDifferences\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum
+-    <<",\"recordedShadowCases\":2,\"invalidCasesRejected\":"<<rejected<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
++    <<",\"recordedShadowCases\":2,\"invalidCasesRejected\":"<<rejected<<",\"precisionPaths\":"<<exact.paths<<",\"precisionBlocked\":"<<exact.blocked<<",\"precisionUnblocked\":"<<exact.clear<<",\"precisionEmitterPaths\":"<<exact.emitter_paths<<",\"precisionDecisionMismatches\":0,\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+ }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}
+diff --git a/native/shaders/wavefront_closest.wgsl b/native/shaders/wavefront_closest.wgsl
+index 627c7cd..49b5e78 100644
+--- a/native/shaders/wavefront_closest.wgsl
++++ b/native/shaders/wavefront_closest.wgsl
+@@ -14,10 +14,26 @@ fn inverse_direction(d:vec3<f32>)->vec3<f32>{
+     // Approximate reciprocal can reject a slab exactly at ray.tmin/tmax.
+     return vec3<f32>(rounded_divide(1.0,d.x),rounded_divide(1.0,d.y),rounded_divide(1.0,d.z));
+ }
++// Instance push (kernel/geom/object.h bvh_instance_push, util/transform.h
++// transform_point/direction) with the originating oracle's grouping and every
++// product rounded before its sum. SSE builds transpose and accumulate
++// ((w+z)+y)+x (directions start from the z product); scalar builds take the
++// float4 dot (x+y)+(z+w) with w=1 for points and w*0 (signed zero) otherwise.
++fn exact_transform_row(t:vec4<f32>,v:vec3<f32>,point:bool)->f32{
++    if(NATIVE_TRIANGLE_ARITHMETIC==0u){
++        let w=select(bitcast<f32>(bitcast<u32>(t.w)&0x80000000u),t.w,point);
++        return rounded_add(rounded_add(v.x*t.x,v.y*t.y),rounded_add(v.z*t.z,w));
++    }
++    var sum=v.z*t.z;if(point){sum=rounded_add(t.w,sum);}
++    return rounded_add(rounded_add(sum,v.y*t.y),v.x*t.x);
++}
++fn transform_rows(x:vec4<f32>,y:vec4<f32>,z:vec4<f32>,v:vec3<f32>,point:bool)->vec3<f32>{
++    let rows=array<vec4<f32>,3>(x,y,z);var result:vec3<f32>;
++    for(var i=0u;i<3u;i++){result[i]=exact_transform_row(rows[i],v,point);}
++    return result;
++}
+ fn transform_vector(a:u32,v:vec3<f32>,point:bool)->vec3<f32>{
+-    let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
+-    var result=vec3<f32>(x.x,y.x,z.x)*v.x+(vec3<f32>(x.y,y.y,z.y)*v.y+vec3<f32>(x.z,y.z,z.z)*v.z);
+-    if(point){result+=vec3<f32>(x.w,y.w,z.w);}return result;
++    return transform_rows(heap_vec4(a),heap_vec4(a+16u),heap_vec4(a+32u),v,point);
+ }
+ fn bounds_hit(origin:vec3<f32>,inv:vec3<f32>,tmin:f32,tmax:f32,node:u32,visibility:u32)->vec3<f32>{
+     let a=table_at(G_bvh_nodes,node,SIZE_bvh_nodes);
+@@ -80,7 +96,7 @@ fn trace_native_filtered(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,
+                 let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
+                 if((flags&SD_OBJECT_MOTION)!=0u){
+ //#if MOTION_OBJECT else atomicOr(&heap[p(17u)/4u],2u);return result;
+-                    let inverse=motion_inverse(motion_object(object,time));pos=motion_point(inverse,origin);dir=clamp_direction(motion_direction(inverse,direction));
++                    let inverse=motion_inverse(motion_object(object,time));pos=transform_rows(inverse.x,inverse.y,inverse.z,origin,true);dir=clamp_direction(transform_rows(inverse.x,inverse.y,inverse.z,direction,false));
+ //#endif
+                 }
+                 else{pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));}
+@@ -113,12 +129,17 @@ fn intersect_point_lights(index:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
+         if(state_word(S_isect_prim,index)==lamp&&state_word(S_isect_object,index)==object&&state_word(S_isect_type,index)==PRIMITIVE_LAMP){continue;}
+         let position=heap_vec3(light+L_co);var t=0.0;
+         if(light_kind==LIGHT_AREA){
+-            let N=heap_vec3(light+L_area_dir);let invarea=abs(heap_float(light+L_area_invarea));if(invarea==0.0||dot(direction,N)>=0.0){continue;}
+-            t=rounded_divide(-(dot(origin,N)-dot(position,N)),dot(direction,N));if(!(t>tmin&&t<tmax)){continue;}
+-            let plane=origin+t*direction-position;let u=dot(plane,heap_vec3(light+L_area_axis_u)/heap_float(light+L_area_len_u));let v=dot(plane,heap_vec3(light+L_area_axis_v)/heap_float(light+L_area_len_v));
+-            if(u< -0.5||u>0.5||v< -0.5||v>0.5){continue;}if(heap_float(light+L_area_invarea)<0.0&&u*u+v*v>0.25){continue;}
++            // area_light_intersect + ray_quad_intersect with rounded products, sums and quotients.
++            let N=heap_vec3(light+L_area_dir);let invarea=abs(heap_float(light+L_area_invarea));let facing=rounded_dot(direction,N);if(invarea==0.0||facing>=0.0){continue;}
++            t=rounded_divide(-rounded_add(rounded_dot(origin,N),-rounded_dot(position,N)),facing);if(!(t>tmin&&t<tmax)){continue;}
++            let plane=rounded_add3(origin,t*direction)-position;
++            let axis_u=heap_vec3(light+L_area_axis_u);let len_u=heap_float(light+L_area_len_u);let axis_v=heap_vec3(light+L_area_axis_v);let len_v=heap_float(light+L_area_len_v);
++            let u=rounded_dot(plane,vec3<f32>(rounded_divide(axis_u.x,len_u),rounded_divide(axis_u.y,len_u),rounded_divide(axis_u.z,len_u)));
++            if(u< -0.5||u>0.5){continue;}
++            let v=rounded_dot(plane,vec3<f32>(rounded_divide(axis_v.x,len_v),rounded_divide(axis_v.y,len_v),rounded_divide(axis_v.z,len_v)));
++            if(v< -0.5||v>0.5){continue;}if(heap_float(light+L_area_invarea)<0.0&&rounded_add(u*u,v*v)>0.25){continue;}
+         }else{
+-        if(light_kind==LIGHT_SPOT&&dot(direction,origin-position)>=0.0){continue;}
++        if(light_kind==LIGHT_SPOT&&rounded_dot(direction,origin-position)>=0.0){continue;}
+         let radius=heap_float(light+L_radius);if(radius==0.0){continue;}
+         if(load_word(light+L_is_sphere)!=0u){
+             let delta=position-origin;let r2=radius*radius;let d2=rounded_dot(delta,delta);let cosine=rounded_dot(delta,direction);
+diff --git a/native/shaders/wavefront_triangle.wgsl b/native/shaders/wavefront_triangle.wgsl
+index b025edf..5c71b47 100644
+--- a/native/shaders/wavefront_triangle.wgsl
++++ b/native/shaders/wavefront_triangle.wgsl
+@@ -5,7 +5,62 @@
+ // SPDX-License-Identifier: Apache-2.0
+ // Native comparison uses Cycles' SSE4.2 CPU oracle. Its ray_triangle_dot
+ // groups y/z before x, unlike the generic scalar AST branch. This adapter
+-// preserves that grouping; it does not emulate SSE reciprocal approximation.
++// preserves that grouping for the surface self-intersection test.
+ fn c_ray_triangle_dot(a:vec3<f32>,b:vec3<f32>)->f32{
+     return a.x*b.x+(a.y*b.y+a.z*b.z);
+ }
++// Contraction-proof ray/triangle intersection (util/math_intersect.h
++// ray_triangle_intersect, Plücker form). Every product is rounded before it
++// reaches a sum (rounded_add is integer arithmetic), so no driver can fuse it,
++// and every sum keeps the originating CPU oracle's grouping:
++// NATIVE_TRIANGLE_ARITHMETIC 0 = scalar build (no __KERNEL_SSE__, e.g. ARM64
++// without SSE2NEON): dot (x+y)+z, cross a*b-c*d, reciprocal 1/x correctly
++// rounded. 1 = x86 SSE4.2 build: ray_triangle_dot x+(y+z), unfused madd/msub,
++// reciprocal = the host's RCPSS estimate plus one Newton step r*(2-r*x), each
++// operation rounded. The estimate model below was verified bit for bit on the
++// generating host when the layout was emitted (2 = SSE build whose RCPSS
++// differs from the model: correctly rounded 1/x, not oracle-exact).
++fn exact_tri_dot(a:vec3<f32>,b:vec3<f32>)->f32{
++    if(NATIVE_TRIANGLE_ARITHMETIC==0u){return rounded_add(rounded_add(a.x*b.x,a.y*b.y),a.z*b.z);}
++    return rounded_add(a.x*b.x,rounded_add(a.y*b.y,a.z*b.z));
++}
++fn exact_tri_cross(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
++    return vec3<f32>(rounded_add(a.y*b.z,-(a.z*b.y)),rounded_add(a.z*b.x,-(a.x*b.z)),rounded_add(a.x*b.y,-(a.y*b.x)));
++}
++// RCPSS model: the result depends only on the sign, the exponent and the top
++// 11 mantissa bits; its 12-bit mantissa is the nearest value to 2^25/(4097+2i).
++// Zero/denormal inputs give infinity, infinities give zero, underflow flushes.
++fn exact_rcpss(x:f32)->f32{
++    let bits=bitcast<u32>(x);let sign=bits&0x80000000u;let e=(bits>>23u)&255u;let m=bits&0x7fffffu;
++    if(e==255u){return bitcast<f32>(select(sign,bits|0x400000u,m!=0u));}
++    if(e==0u){return bitcast<f32>(sign|0x7f800000u);}
++    if(e>=253u){return bitcast<f32>(sign);}
++    let d=4097u+2u*(m>>12u);let q=((1u<<26u)+d)/(2u*d);
++    return bitcast<f32>(sign|((253u-e)<<23u)|((q-4096u)<<11u));
++}
++fn exact_tri_reciprocal(x:f32)->f32{
++    if(NATIVE_TRIANGLE_ARITHMETIC==1u){let r=exact_rcpss(x);return r*rounded_add(2.0,-(r*x));}
++    return rounded_divide(1.0,x);
++}
++fn c_ray_triangle_intersect(ray_P:vec3<f32>,ray_D:vec3<f32>,ray_tmin:f32,ray_tmax:f32,tri_a:vec3<f32>,tri_b:vec3<f32>,tri_c:vec3<f32>,isect_u:ptr<function,f32>,isect_v:ptr<function,f32>,isect_t:ptr<function,f32>)->bool{
++    let v0=tri_a-ray_P;let v1=tri_b-ray_P;let v2=tri_c-ray_P;
++    let e0=v2-v0;let e1=v0-v1;let e2=v1-v2;
++    // One call site for the three edge functions keeps the inlined size small.
++    let edges=array<vec3<f32>,3>(e0,e1,e2);let sums=array<vec3<f32>,3>(v2+v0,v0+v1,v1+v2);var uvw:array<f32,3>;
++    for(var i=0u;i<3u;i++){uvw[i]=exact_tri_dot(exact_tri_cross(edges[i],sums[i]),ray_D);}
++    let U=uvw[0];let V=uvw[1];let W=uvw[2];
++    let UVW=U+V+W;let eps=1.1920929e-7*abs(UVW);
++    // Builtin min/max equal Cycles' (a<b)?a:b for every non-NaN input. A select()
++    // form also mirrors NaN, but it triggered an intermittent Intel Mesa 25.0.7
++    // backend crash (brw_opt_combine_constants) in the triangle-light module.
++    let minUVW=min(U,min(V,W));let maxUVW=max(U,max(V,W));
++    if(!(minUVW>=-eps||maxUVW<=eps)){return false;}
++    let Ng1=exact_tri_cross(e1,e0);let Ng=Ng1+Ng1;
++    let den=rounded_dot(Ng,ray_D);if(den==0.0){return false;}
++    let T=rounded_dot(v0,Ng);let t=rounded_divide(T,den);
++    if(!(t>=ray_tmin&&t<=ray_tmax)){return false;}
++    var rcp_uvw=0.0;if(!(abs(UVW)<1e-18)){rcp_uvw=exact_tri_reciprocal(UVW);}
++    let u=U*rcp_uvw;let v=V*rcp_uvw;
++    *isect_u=min(u,1.0);*isect_v=min(v,1.0);*isect_t=t;
++    return true;
++}
+diff --git a/native/tools/build_cycles.py b/native/tools/build_cycles.py
+index 4904abf..dd05bd5 100644
+--- a/native/tools/build_cycles.py
++++ b/native/tools/build_cycles.py
+@@ -51,6 +51,10 @@ def overlay(out=None):
+     depth_division='var v_t: f32 = (v_T / v_den);'
+     if translated.count(depth_division)!=1:raise RuntimeError('Triangle depth translation anchor changed')
+     translated=translated.replace(depth_division,'var v_t: f32 = rounded_divide(v_T, v_den);')
++    # The AST intersection stays as reviewed translation evidence; renderer
++    # modules call the contraction-proof, oracle-ordered adapter instead.
++    if translated.count('fn c_ray_triangle_intersect(')!=1:raise RuntimeError('Triangle intersection translation anchor changed')
++    translated=translated.replace('fn c_ray_triangle_intersect(', 'fn c_ray_triangle_intersect_ast(')
+     translated=translated.replace('fn c_ray_triangle_dot(', 'fn c_ray_triangle_dot_scalar(')+(ROOT/'shaders/wavefront_triangle.wgsl').read_text()
+     svm=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm.wgsl','wavefront_attributes.wgsl','wavefront_images.wgsl','wavefront_normals.wgsl'))
+     closures=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm_closures.wgsl','wavefront_svm_microfacet.wgsl'))
+diff --git a/native/tools/triangle_lighting_gate.py b/native/tools/triangle_lighting_gate.py
+index 9bced5e..d4ffff8 100644
+--- a/native/tools/triangle_lighting_gate.py
++++ b/native/tools/triangle_lighting_gate.py
+@@ -58,15 +58,15 @@ def main():
+             if kind == 'triangle_sample':
+                 assert report['samples'] == 4096 and report['guardCases'] == 5
+             elif image:
+-                assert report['cases'] == 5 and report['meshMisPaths'] > 10
+-                assert report['unsupportedEmitterConfigurationsRejected'] == 1
++                assert report['cases'] == 6 and report['meshMisPaths'] > 10
++                assert report['unsupportedEmitterConfigurationsRejected'] == 0
+                 assert report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage']
+                 assert not report['fullLightingMisProven']
+             else:
+                 assert report['invalidCasesRejected'] == 21
+             reports[kind] = report
+             save(out/'results.json', reports)
+-        for case in range(5):
++        for case in range(6):
+             name = 'replay-'+str(case)
+             state['phase'] = name
+             save(out/'status.json', state)

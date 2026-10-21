@@ -31,6 +31,13 @@ std::string svm_layout(bool surface){
   SHARED_FIELD(id) SHARED_FIELD(flags) SHARED_FIELD(co) SHARED_FIELD(out_offset) SHARED_FIELD(alpha_offset)
 #undef SHARED_FIELD
   static_assert(offsetof(SVMNodeTexImage,projection)==offsetof(SVMNodeTexEnvironment,projection));
+  // Bump stages (wavefront_svm_derivatives.wgsl): emitted only for scenes that reach them.
+  source<<"//#if SVM_NODE_BUMP\n";
+  SIZE(SetBump);FIELD(SetBump,scale);FIELD(SetBump,strength);FIELD(SetBump,bump_filter_width);FIELD(SetBump,normal_offset);FIELD(SetBump,invert);
+  FIELD(SetBump,use_object_space);FIELD(SetBump,center_offset);FIELD(SetBump,dx_offset);FIELD(SetBump,dy_offset);FIELD(SetBump,out_offset);FIELD(SetBump,bump_state_offset);
+  source<<"//#endif\n//#if SVM_NODE_BUMP_STATE\n";
+  SIZE(EnterBumpEval);FIELD(EnterBumpEval,state_offset);SIZE(LeaveBumpEval);FIELD(LeaveBumpEval,state_offset);
+  source<<"//#endif\n";
   SIZE(VertexColor);FIELD(VertexColor,layer_id);FIELD(VertexColor,color_offset);FIELD(VertexColor,alpha_offset);FIELD(VertexColor,bump_offset);FIELD(VertexColor,bump_filter_width);
   SIZE(VectorMath);FIELD(VectorMath,math_type);FIELD(VectorMath,a);FIELD(VectorMath,b);FIELD(VectorMath,c);FIELD(VectorMath,param1);FIELD(VectorMath,value_offset);FIELD(VectorMath,vector_offset);
   SIZE(SeparateVector);FIELD(SeparateVector,vector);FIELD(SeparateVector,vector_index);FIELD(SeparateVector,out_offset);
@@ -55,11 +62,61 @@ std::string svm_layout(bool surface){
   SIZE(Gamma);FIELD(Gamma,color);FIELD(Gamma,gamma);FIELD(Gamma,out_offset);
   SIZE(Invert);FIELD(Invert,color);FIELD(Invert,fac);FIELD(Invert,out_offset);
   SIZE(BrightContrast);FIELD(BrightContrast,color);FIELD(BrightContrast,bright);FIELD(BrightContrast,contrast);FIELD(BrightContrast,out_offset);
+  // Texture, colour and utility nodes (wavefront_svm_nodes.wgsl). The region
+  // keeps modules of scenes without these nodes byte-identical.
+  source<<"//#if SVM_NODES_ANY\n";
+  SIZE(TexNoise);FIELD(TexNoise,dimensions);FIELD(TexNoise,noise_type);FIELD(TexNoise,normalize);FIELD(TexNoise,w);FIELD(TexNoise,scale);FIELD(TexNoise,detail);
+  FIELD(TexNoise,roughness);FIELD(TexNoise,lacunarity);FIELD(TexNoise,offset);FIELD(TexNoise,gain);FIELD(TexNoise,distortion);FIELD(TexNoise,vector);FIELD(TexNoise,value_offset);FIELD(TexNoise,color_offset);
+  SIZE(TexWhiteNoise);FIELD(TexWhiteNoise,dimensions);FIELD(TexWhiteNoise,vector);FIELD(TexWhiteNoise,w);FIELD(TexWhiteNoise,value_offset);FIELD(TexWhiteNoise,color_offset);
+  SIZE(TexWave);FIELD(TexWave,wave_type);FIELD(TexWave,bands_direction);FIELD(TexWave,rings_direction);FIELD(TexWave,profile);FIELD(TexWave,scale);FIELD(TexWave,distortion);
+  FIELD(TexWave,detail);FIELD(TexWave,dscale);FIELD(TexWave,droughness);FIELD(TexWave,phase);FIELD(TexWave,co);FIELD(TexWave,color_offset);FIELD(TexWave,fac_offset);
+  SIZE(TexMagic);FIELD(TexMagic,scale);FIELD(TexMagic,distortion);FIELD(TexMagic,depth);FIELD(TexMagic,co);FIELD(TexMagic,color_offset);FIELD(TexMagic,fac_offset);
+  SIZE(TexBrick);FIELD(TexBrick,color1);FIELD(TexBrick,color2);FIELD(TexBrick,mortar);FIELD(TexBrick,scale);FIELD(TexBrick,mortar_size);FIELD(TexBrick,bias);FIELD(TexBrick,brick_width);
+  FIELD(TexBrick,row_height);FIELD(TexBrick,mortar_smooth);FIELD(TexBrick,offset_amount);FIELD(TexBrick,squash_amount);FIELD(TexBrick,offset_frequency);FIELD(TexBrick,squash_frequency);
+  FIELD(TexBrick,co);FIELD(TexBrick,color_offset);FIELD(TexBrick,fac_offset);
+  SIZE(Mapping);FIELD(Mapping,mapping_type);FIELD(Mapping,vector);FIELD(Mapping,location);FIELD(Mapping,rotation);FIELD(Mapping,scale);FIELD(Mapping,result_offset);
+  SIZE(TextureMapping);FIELD(TextureMapping,vec_offset);FIELD(TextureMapping,out_offset);FIELD(TextureMapping,tfm);
+  SIZE(MinMax);FIELD(MinMax,vec_offset);FIELD(MinMax,out_offset);FIELD(MinMax,mn);FIELD(MinMax,mx);
+  SIZE(MapRange);FIELD(MapRange,range_type);FIELD(MapRange,value);FIELD(MapRange,from_min);FIELD(MapRange,from_max);FIELD(MapRange,to_min);FIELD(MapRange,to_max);FIELD(MapRange,steps);FIELD(MapRange,result_offset);
+  SIZE(VectorMapRange);FIELD(VectorMapRange,range_type);FIELD(VectorMapRange,use_clamp);FIELD(VectorMapRange,value);FIELD(VectorMapRange,from_min);FIELD(VectorMapRange,from_max);
+  FIELD(VectorMapRange,to_min);FIELD(VectorMapRange,to_max);FIELD(VectorMapRange,steps);FIELD(VectorMapRange,result_offset);
+  SIZE(Mix);FIELD(Mix,mix_type);FIELD(Mix,c1);FIELD(Mix,c2);FIELD(Mix,fac);FIELD(Mix,result_offset);
+  SIZE(MixColor);FIELD(MixColor,blend_type);FIELD(MixColor,a);FIELD(MixColor,b);FIELD(MixColor,fac);FIELD(MixColor,use_clamp);FIELD(MixColor,use_clamp_result);FIELD(MixColor,result_offset);
+  SIZE(MixFloat);FIELD(MixFloat,fac);FIELD(MixFloat,a);FIELD(MixFloat,b);FIELD(MixFloat,use_clamp);FIELD(MixFloat,result_offset);
+  SIZE(MixVector);FIELD(MixVector,a);FIELD(MixVector,b);FIELD(MixVector,fac);FIELD(MixVector,use_clamp);FIELD(MixVector,result_offset);
+  SIZE(MixVectorNonUniform);FIELD(MixVectorNonUniform,a);FIELD(MixVectorNonUniform,b);FIELD(MixVectorNonUniform,fac);FIELD(MixVectorNonUniform,use_clamp);FIELD(MixVectorNonUniform,result_offset);
+  SIZE(HSV);FIELD(HSV,color);FIELD(HSV,hue);FIELD(HSV,sat);FIELD(HSV,val);FIELD(HSV,fac);FIELD(HSV,out_color_offset);
+  SIZE(SeparateColor);FIELD(SeparateColor,color_type);FIELD(SeparateColor,color);FIELD(SeparateColor,red_offset);FIELD(SeparateColor,green_offset);FIELD(SeparateColor,blue_offset);
+  SIZE(CombineColor);FIELD(CombineColor,color_type);FIELD(CombineColor,red);FIELD(CombineColor,green);FIELD(CombineColor,blue);FIELD(CombineColor,color_offset);
+  SIZE(RGBRamp);FIELD(RGBRamp,table_size);FIELD(RGBRamp,fac);FIELD(RGBRamp,interpolate);FIELD(RGBRamp,color_offset);FIELD(RGBRamp,alpha_offset);
+  SIZE(Curves);FIELD(Curves,color);FIELD(Curves,fac);FIELD(Curves,min_x);FIELD(Curves,max_x);FIELD(Curves,table_size);FIELD(Curves,extrapolate);FIELD(Curves,out_offset);
+  SIZE(FloatCurve);FIELD(FloatCurve,fac);FIELD(FloatCurve,value_in);FIELD(FloatCurve,min_x);FIELD(FloatCurve,max_x);FIELD(FloatCurve,table_size);FIELD(FloatCurve,extrapolate);FIELD(FloatCurve,out_offset);
+  SIZE(Fresnel);FIELD(Fresnel,ior);FIELD(Fresnel,normal_offset);FIELD(Fresnel,out_offset);
+  SIZE(LayerWeight);FIELD(LayerWeight,weight_type);FIELD(LayerWeight,blend);FIELD(LayerWeight,normal_offset);FIELD(LayerWeight,out_offset);
+  SIZE(VectorRotate);FIELD(VectorRotate,rotate_type);FIELD(VectorRotate,vector);FIELD(VectorRotate,center);FIELD(VectorRotate,axis);FIELD(VectorRotate,rotation);
+  FIELD(VectorRotate,angle);FIELD(VectorRotate,invert);FIELD(VectorRotate,result_offset);
+  SIZE(Blackbody);FIELD(Blackbody,temperature);FIELD(Blackbody,color_offset);
+  SIZE(Normal);FIELD(Normal,in_normal);FIELD(Normal,out_normal_offset);FIELD(Normal,out_dot_offset);FIELD(Normal,direction_x);
+  static_assert(offsetof(SVMNodeNormal,direction_y)==offsetof(SVMNodeNormal,direction_x)+4&&offsetof(SVMNodeNormal,direction_z)==offsetof(SVMNodeNormal,direction_x)+8);
+  SIZE(ObjectInfo);FIELD(ObjectInfo,info_type);FIELD(ObjectInfo,out_offset);
+  SIZE(Camera);FIELD(Camera,vector_offset);FIELD(Camera,zdepth_offset);FIELD(Camera,distance_offset);
+  SIZE(SceneTime);FIELD(SceneTime,seconds_out);FIELD(SceneTime,frame_out);
+  SIZE(VectorTransform);FIELD(VectorTransform,transform_type);FIELD(VectorTransform,convert_from);FIELD(VectorTransform,convert_to);FIELD(VectorTransform,vector_in);FIELD(VectorTransform,vector_out_offset);
+  SIZE(LightPath);FIELD(LightPath,path_type);FIELD(LightPath,out_offset);
+  SIZE(TexVoronoi);FIELD(TexVoronoi,dimensions);FIELD(TexVoronoi,feature);FIELD(TexVoronoi,metric);FIELD(TexVoronoi,w);FIELD(TexVoronoi,scale);FIELD(TexVoronoi,detail);
+  FIELD(TexVoronoi,roughness);FIELD(TexVoronoi,lacunarity);FIELD(TexVoronoi,smoothness);FIELD(TexVoronoi,exponent);FIELD(TexVoronoi,randomness);FIELD(TexVoronoi,normalize);
+  FIELD(TexVoronoi,coord);FIELD(TexVoronoi,distance_offset);FIELD(TexVoronoi,color_offset);FIELD(TexVoronoi,position_offset);FIELD(TexVoronoi,w_out_offset);FIELD(TexVoronoi,radius_offset);
+  SIZE(Wavelength);FIELD(Wavelength,wavelength);FIELD(Wavelength,color_offset);
+  SIZE(Wireframe);FIELD(Wireframe,in_size);FIELD(Wireframe,bump_filter_width);FIELD(Wireframe,use_pixel_size);FIELD(Wireframe,bump_offset);FIELD(Wireframe,out_fac_offset);
+  source<<"//#endif\n";
 #undef SIZE
 #undef FIELD
 #define ENUM(name) constant(#name,uint32_t(name))
   // Enum constants are taken from the same native headers as the bytecode compiler.
 #include "svm_enums.inc"
+  source<<"//#if SVM_NODES_ANY\n";
+#include "svm_nodes_enums.inc"
+  source<<"//#endif\n";
   ENUM(CLOSURE_BSDF_DIFFUSE_ID);ENUM(CLOSURE_BSDF_OREN_NAYAR_ID);ENUM(CLOSURE_BSDF_TRANSLUCENT_ID);
   ENUM(CLOSURE_BSDF_TRANSPARENT_ID);ENUM(CLOSURE_HOLDOUT_ID);
   ENUM(CLOSURE_BSDF_MICROFACET_GGX_ID);ENUM(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
@@ -68,6 +125,17 @@ std::string svm_layout(bool surface){
   ENUM(SR_SCATTER);ENUM(SR_EXTINCTION);ENUM(SR_IS_VOLUME_SHADER_EVAL);ENUM(PATH_RAY_EXTINCTION);
   ENUM(SR_EMISSION);ENUM(SR_BSDF);ENUM(SR_BSDF_HAS_EVAL);ENUM(SR_BSDF_HAS_TRANSMISSION);ENUM(SR_TRANSPARENT);ENUM(SR_HOLDOUT);
   ENUM(SD_USE_BUMP_MAP_CORRECTION);ENUM(PATH_RAY_TERMINATE);ENUM(PATH_RAY_EMISSION);ENUM(PATH_RAY_VISIBILITY_SHADOW);
+  // Node-specific copies (prefixed: other stage layouts define some of these names).
+  source<<"//#if SVM_NODES_ANY\n";
+  constant("SVMN_PATH_RAY_VISIBILITY_CAMERA",PATH_RAY_VISIBILITY_CAMERA);constant("SVMN_PATH_RAY_VISIBILITY_DIFFUSE",PATH_RAY_VISIBILITY_DIFFUSE);
+  constant("SVMN_PATH_RAY_VISIBILITY_GLOSSY",PATH_RAY_VISIBILITY_GLOSSY);constant("SVMN_PATH_RAY_VISIBILITY_TRANSMIT",PATH_RAY_VISIBILITY_TRANSMIT);
+  constant("SVMN_PATH_RAY_VISIBILITY_VOLUME_SCATTER",PATH_RAY_VISIBILITY_VOLUME_SCATTER);constant("SVMN_PATH_RAY_SINGULAR",PATH_RAY_SINGULAR);
+  constant("SVMN_PATH_RAY_REFLECT",PATH_RAY_REFLECT);constant("SVMN_KERNEL_FEATURE_NODE_PORTAL",KERNEL_FEATURE_NODE_PORTAL);
+  constant("SVMN_SH_pass_id",offsetof(KernelShader,pass_id));constant("SVMN_O_color",offsetof(KernelObject,color));constant("SVMN_O_alpha",offsetof(KernelObject,alpha));
+  constant("SVMN_O_pass_id",offsetof(KernelObject,pass_id));constant("SVMN_O_random_number",offsetof(KernelObject,random_number));
+  constant("SVMN_D_scene_time_time",offsetof(KernelData,scene_time.time));constant("SVMN_D_scene_time_frame",offsetof(KernelData,scene_time.frame));
+  constant("SVMN_D_film_xyz_to_r",offsetof(KernelData,film.xyz_to_r));constant("SVMN_D_film_xyz_to_g",offsetof(KernelData,film.xyz_to_g));constant("SVMN_D_film_xyz_to_b",offsetof(KernelData,film.xyz_to_b));
+  source<<"//#endif\n";
 #undef ENUM
   source<<"const SVM_SURFACE:bool="<<(surface?"true":"false")<<";\n";
   constant("SVM_CLOSURE_CAPACITY",surface?MAX_CLOSURE:1);
@@ -105,6 +173,34 @@ std::string svm_layout(bool surface){
   constant("D_cam_worldtocamera",offsetof(KernelData,cam.worldtocamera));
   constant("D_cam_worldtondc",offsetof(KernelData,cam.worldtondc));
   constant("SZ_PackedTransform",sizeof(PackedTransform));
+  // Principled BSDF layout, enums and lookup tables: emitted only into modules
+  // whose scene can reach the Principled handler (pipelines.h specialization).
+  source<<"//#if SVM_BSDF_PRINCIPLED\n";
+#define FIELD(member) constant("N_PrincipledBsdfData_" #member,offsetof(SVMNodePrincipledBsdfData,member))
+  constant("SZ_PrincipledBsdfData",sizeof(SVMNodePrincipledBsdfData));
+  FIELD(distribution);FIELD(ior);FIELD(roughness);FIELD(sheen_weight);FIELD(coat_weight);FIELD(metallic);
+  FIELD(transmission_weight);FIELD(subsurface_weight);FIELD(base_color);FIELD(alpha);FIELD(diffuse_roughness);
+  FIELD(normal_offset);FIELD(tangent_offset);FIELD(coat_normal_offset);FIELD(specular_tint);FIELD(specular_ior_level);
+  FIELD(anisotropic);FIELD(anisotropic_rotation);FIELD(emission_color);FIELD(emission_strength);FIELD(sheen_tint);
+  FIELD(sheen_roughness);FIELD(coat_tint);FIELD(coat_roughness);FIELD(coat_ior);FIELD(thin_film_thickness);FIELD(thin_film_ior);FIELD(thin_wall);
+#undef FIELD
+  // The WGSL reads SVMInputInt's stack offset byte at +4.
+  static_assert(offsetof(SVMInputInt,value)==0&&offsetof(SVMInputInt,offset)==4);
+#define ENUM(name) constant(#name,uint32_t(name))
+  ENUM(CLOSURE_BSDF_PRINCIPLED_ID);ENUM(CLOSURE_BSDF_SHEEN_ID);ENUM(CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+#undef ENUM
+  constant("PRINCIPLED_CLOSURE_NONE",uint32_t(CLOSURE_NONE_ID));
+  constant("PRINCIPLED_THIN_GLASS",uint32_t(CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID));
+  constant("D_ggx_gen_schlick_s",offsetof(KernelData,tables.ggx_gen_schlick_s));
+  constant("D_ggx_glass_E",offsetof(KernelData,tables.ggx_glass_E));constant("D_ggx_glass_Eavg",offsetof(KernelData,tables.ggx_glass_Eavg));
+  constant("D_ggx_glass_inv_E",offsetof(KernelData,tables.ggx_glass_inv_E));constant("D_ggx_glass_inv_Eavg",offsetof(KernelData,tables.ggx_glass_inv_Eavg));
+  constant("D_sheen_ltc",offsetof(KernelData,tables.sheen_ltc));
+  source<<"//#endif\n";
+  source<<"//#if SVM_BSDF_THIN_FILM\n";
+  constant("D_thin_film_table",offsetof(KernelData,tables.thin_film_table));constant("THIN_FILM_TABLE_SIZE",THIN_FILM_TABLE_SIZE);
+  source<<"//#endif\n//#if SVM_BSDF_THIN_WALL\n";
+  constant("CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID",uint32_t(CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID));
+  source<<"//#endif\n";
   return source.str();
 }
 static constexpr char svm_surface_fragment[]=

@@ -1,0 +1,33 @@
+# Phase E1 budgets (declared before each run). Shared machine: --jobs 6, <=2 concurrent Linux gates.
+[08:19] linux build baseline (default targets, --jobs 6): budget 30 min (first full configure+build of a fresh worktree)
+[08:26] linux build baseline all gate targets (--jobs 6): budget 20 min
+[08:28] samsung diag replay of Linux phaseC r2 triangle case-2 capture (render_replay_diag): budget 300 s
+[08:30] samsung + linux diag replays (dump at 573), 300 s each
+[08:32] linux baseline triangle gate (cold) 900 s; linux baseline emitter_sample + triangle_sample direct (cold) 600 s
+[08:33] HP compile probe draft1 mode-5 shade_surface_light: 300 s; Samsung same: 400 s
+[08:34] HP compile probes base-mode1 and draft1-mode1 shade_surface_light: 200 s each
+[08:35] HP compile probe draft2-mode5 shade_surface_light: 200 s
+[08:36] linux candidate build v1 (all gates + host default) --jobs 6: 20 min
+[08:37] HP + Samsung compile probes draft3 (mode5 shade_surface_light, triangle probe): 300 s each
+[08:38] linux v1 triangle gate (cold) 900 s; linux v1 emitter_sample (cold) 600 s
+[08:38] android-arm64 build (7 gates, --jobs 6): 25 min
+[08:40] linux all-lanes 29 (cold): 2700 s (Phase C took 1169 s; justified: 29 corpora); linux close-set (cold): 900 s
+[08:41] HP compile table (12 single-pipeline cold probes, 300 s each, sequential): 3600 s max; Samsung compile table (12 probes, 400 s each): 4800 s max (base mode-5 ~205 s)
+[08:42] android-x64 build (7 gates, --jobs 6): 25 min
+[08:51:09] DECLARED device=hp serial=192.168.86.225:5555 corpus=triangle label=r1 wallBudget=2400s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=5
+[08:51:09] DECLARED device=samsung serial=R52W207XQ1V corpus=triangle label=r1 wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=5
+[08:51] linux glass_render spec-off (cold): 900 s
+[08:54:21] DECLARED device=samsung serial=R52W207XQ1V corpus=emitter label=r1 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[08:54:56] DECLARED device=samsung serial=R52W207XQ1V corpus=regression label=r1 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[08:59:29] DECLARED device=samsung serial=R52W207XQ1V corpus=spec-refusal label=r1 wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render-spec,glass_render-nospec-refused replays=0
+[09:00:58] DECLARED device=samsung serial=R52W207XQ1V corpus=hostcap label=linux-v1-r1 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=5
+[09:01:27] DECLARED device=hp serial=192.168.86.225:5555 corpus=emitter label=r1 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[09:02] android-arm64 host lib + codebrix_host_gpu_test build for the refusal check: 15 min
+[09:02:17] DECLARED device=hp serial=192.168.86.225:5555 corpus=regression label=r1 wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[09:02] android-x64 host lib + gpu_test build: 15 min
+[09:04] samsung host-API refusal check (codebrix_host_gpu_test, spec=0): 120 s
+[09:04] linux host gate (48 exports, --jobs 6, cold): 1800 s (Phase D ~20 min)
+[09:06:35] DECLARED device=hp serial=192.168.86.225:5555 corpus=spec-refusal label=r1 wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render-spec,glass_render-nospec-refused replays=0
+[09:07:59] DECLARED device=hp serial=192.168.86.225:5555 corpus=hostcap label=linux-v1-r1 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=5
+[09:13] hp host-API refusal check: 120 s
+[09:13] dotnet test (solution, cold scratch Mesa cache): 1200 s

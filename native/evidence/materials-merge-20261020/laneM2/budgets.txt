@@ -1,0 +1,14 @@
+# M2 svm-nodes run budgets (declared before each run). Format: [HH:MM:SS] run | budget | justification
+[07:07:20] baseline full build (python3 native/tools/build_cycles.py --jobs 6, fresh build tree) | 45 min | first configure+compile of the pinned Cycles libraries and all default gate targets in this worktree; no prior build tree exists here
+[07:16:33] baseline gate runs: A=svm_surface,svm_world,background,attribute,normal; B=render,image,glass_render(spec default),glass_render(spec 0) | 15 min each lane, two lanes concurrent | baseline films/compile times for unchanged-comparison
+[07:22:36] incremental build with M2 sources (default targets + nodes_svm/nodes_render) | 15 min
+[07:23:10] nodes_svm gate first run | 15 min
+[07:34:16] build nodes_svm+nodes_render; dev runs | 15 min
+[07:56:11] Voronoi build + nodes gates dev runs | 15 min
+[08:07:53] build: region-wrapped node helpers/layout/enums (byte-identical specialized modules for scenes without the nodes) | 15 min
+[08:11:14] after-change gate lanes (same set as baseline, cold caches, sequential lanes A and B) | 15 min each
+[08:22:10] after2 lane: render, glass_render (spec default and 0), nodes_render (spec default and 0), svm_world, nodes_world | 20 min (unspecialized glass ~5 min, nodes unspecialized unknown)
+[08:36:56] full rebuild (default + all gate targets incl. nodes) after call-site consolidation | 20 min
+[08:42:05] nodes_gate.py --skip-build (nodes_svm/world/render, spec on+off) | 30 min (unspecialized nodes modules compile ~5 min each)
+[08:56:42] 29-target all-lanes corpus (c3 linux_validate.py, --skip-build, existing binaries) | 45 min
+[09:17:45] final compile measurement lanes (glass_render spec on/off, render, svm_world; final binaries, cold, sequential) | 15 min

@@ -16,7 +16,7 @@
 #include "scene/scene.h"
 #include "wavefront.h"
 #include "surface_reference.h"
-#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE)
+#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
@@ -30,12 +30,12 @@ void original_surface(ccl::DeviceScene &scene,const std::vector<int> &indices,
   TABLE(svm_nodes,uint) TABLE(lookup_table,float) TABLE(sample_pattern_lut,float)
 #undef TABLE
   Profiler profiler;ThreadKernelGlobalsCPU thread(base,nullptr,profiler,0);KernelGlobals kg=&thread;
-#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE)
+#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
   const char *debug_index=std::getenv("CODEBRIX_MICROFACET_DIAGNOSTIC_INDEX");
   const int diagnostic_index=debug_index?std::atoi(debug_index):162;
 #endif
   for(int i:indices){
-#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE)
+#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
     if(i==diagnostic_index)if(const char *path=std::getenv("CODEBRIX_MICROFACET_DIAGNOSTIC")){
       auto state=states[i];Ray ray{};Intersection isect{};ShaderData sd{};
       integrator_state_read_ray(&state,&ray);integrator_state_read_isect(&state,&isect);shader_setup_from_ray(kg,&sd,&ray,&isect);

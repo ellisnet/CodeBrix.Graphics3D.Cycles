@@ -1,0 +1,25 @@
+{
+ "lane": "M1 Principled BSDF closures (WGSL backend)",
+ "worktree": "/home/jeremy/ClaudeHome/cycles-worktrees/m1-principled",
+ "baselineManifest": "/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json",
+ "baselineHead": "01eb27b6",
+ "patchSha256": "b2072d45e257675c923172af566369179aab9d9f236b6acad20a86c1567dae13",
+ "changedPaths": 21,
+ "runtime": "CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 (unchanged)",
+ "scope": "Principled BSDF closure set (sheen, coat incl. tint/normal, emission, F82-tint metallic, generalized-Schlick transmission and specular, thin-walled transmission, thin-film iridescence, Lambert/Oren-Nayar diffuse, alpha, GGX and multiscatter GGX) in WGSL, validated against the unmodified CPU kernels; subsurface rejected natively (host message + GPU error 16)",
+ "featureBits": {
+  "SVM_BSDF_PRINCIPLED": 30,
+  "SVM_BSDF_THIN_FILM": 31,
+  "SVM_BSDF_THIN_WALL": 32
+ },
+ "validation": {
+  "principled_svm": "PASS 237 cases/19788 paths, max 9.54e-7, strict 966, 19 GPU rejections, 3 native rejections",
+  "principled_bounce": "PASS 29 cases/28560 paths, max practical ratio 0.109, strict 7672",
+  "principled_render": "PASS 121235 paths, image max 8.34e-6, strict image 126, bitwise repeat; spec on/off film 6fa85969... identical; Linux replay PASS (native-command-stream-v6)",
+  "principled_bench": "FAIL at stage 30: pre-existing closest-intersection barycentric difference (u 0.003322 vs 0.003467) on a 5.7 mm sliver triangle with bit-identical ray inputs",
+  "glass_render": "film a8e69a34... specialization on and off; all specialized modules byte-identical to baseline",
+  "allLanes": "29-target corpus PASS twice (candidate A and final), cold caches, sources/binaries unchanged during runs",
+  "audits": "audit.py, notices.py --check, compatibility and guard tests, git diff --check all pass"
+ },
+ "report": "/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/agent-reports/m1-principled.md"
+}

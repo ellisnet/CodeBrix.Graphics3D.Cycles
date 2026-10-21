@@ -1,0 +1,61 @@
+[09:50:51] hp emitter-r1: START emitter_sample timeout=300s
+samples          gpu-vs-glibc passed=False practical=24 strict=4764 max=14.99 | local-vs-glibc differing=7352 maxUlps=61412 practical=24
+[09:51:32] hp emitter-r1: REFERENCE emitter_sample host re-judged vs glibc: False
+[09:51:32] hp emitter-r1: FAIL emitter_sample exit=1 41s: Emitter sample=342 field=8 got=587.602112 expected=587.437561
+[09:51:38] hp emitter-r1: END passed=False wall=47s/600s failures=1
+{"passed": false, "failures": ["emitter_sample: Emitter sample=342 field=8 got=587.602112 expected=587.437561"], "error": null, "wallSeconds": 47.3}
+[09:51:47] hp triangle-r1: START triangle_sample timeout=900s
+[09:51:59] hp triangle-r1: REFERENCE triangle_sample host re-judged vs glibc: FileNotFoundError(2, 'No such file or directory')
+[09:51:59] hp triangle-r1: FAIL triangle_sample exit=139 12s: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'emitter_sample_probe'
+[09:51:59] hp triangle-r1: START surface timeout=900s
+[09:54:26] hp triangle-r1: PASS surface 146s maxPipelineMs=5814.89
+[09:54:26] hp triangle-r1: START triangle_lighting timeout=900s
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=9 max=4.768e-07 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=80 max=7.987e-06 | local-vs-glibc differing=97 maxUlps=6 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=144 max=1.042e-05 | local-vs-glibc differing=91 maxUlps=82 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=467 max=9.418e-06 | local-vs-glibc differing=25 maxUlps=10 practical=0
+case-4.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=154 maxUlps=203 practical=0
+[09:56:27] hp triangle-r1: REFERENCE triangle_lighting host re-judged vs glibc: False
+[09:56:27] hp triangle-r1: FAIL triangle_lighting exit=134 112s: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'shade_surface_light'
+[09:56:31] hp triangle-r1: END passed=False wall=289s/2400s failures=7
+{"passed": false, "failures": ["triangle_sample: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'emitter_sample_probe'", "triangle_lighting: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'shade_surface_light'", "replay-0: not run (source job failed)", "replay-1: not run (source job failed)", "replay-2: not run (source job failed)", "replay-3: not run (source job failed)", "replay-4: not run (source job failed)"], "error": null, "wallSeconds": 289.0}
+[09:56:38] hp regression-r1: START glass_render timeout=900s
+image            gpu-vs-glibc passed=True practical=0 strict=152 max=6.989e-05 | local-vs-glibc differing=168 maxUlps=2345 practical=0
+[09:58:02] hp regression-r1: REFERENCE glass_render host re-judged vs glibc: True
+[09:58:02] hp regression-r1: PASS glass_render 70s maxPipelineMs=10937.9
+[09:58:02] hp regression-r1: START lighting_mis timeout=900s
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=19 max=6.706e-07 | local-vs-glibc differing=6 maxUlps=3 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=24 max=1.907e-06 | local-vs-glibc differing=5 maxUlps=2 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=710 max=4.947e-06 | local-vs-glibc differing=5 maxUlps=1 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=6 max=2.086e-07 | local-vs-glibc differing=837 maxUlps=112 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=683 max=8.345e-06 | local-vs-glibc differing=106 maxUlps=22 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=27 max=2.548e-06 | local-vs-glibc differing=20 maxUlps=5 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=705 max=8.106e-06 | local-vs-glibc differing=116 maxUlps=22 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=596 max=8.315e-06 | local-vs-glibc differing=84 maxUlps=7 practical=0
+[09:59:04] hp regression-r1: REFERENCE lighting_mis host re-judged vs glibc: True
+[09:59:04] hp regression-r1: PASS lighting_mis 48s maxPipelineMs=10765.2
+[09:59:04] hp regression-r1: START transparent_lighting timeout=900s
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=16 max=6.706e-07 | local-vs-glibc differing=6 maxUlps=3 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=13 max=1.907e-06 | local-vs-glibc differing=3 maxUlps=4 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=355 max=4.053e-05 | local-vs-glibc differing=981 maxUlps=462 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=328 max=4.947e-06 | local-vs-glibc differing=3 maxUlps=1 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=441 max=7.749e-06 | local-vs-glibc differing=204 maxUlps=136 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=5 max=7.749e-07 | local-vs-glibc differing=24 maxUlps=7 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=304 max=6.557e-06 | local-vs-glibc differing=298 maxUlps=136 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=531 max=6.795e-06 | local-vs-glibc differing=99 maxUlps=12 practical=0
+[10:00:53] hp regression-r1: REFERENCE transparent_lighting host re-judged vs glibc: True
+[10:00:53] hp regression-r1: PASS transparent_lighting 94s maxPipelineMs=16548
+[10:00:57] hp regression-r1: END passed=True wall=261s/1800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 261.4}
+[10:01:03] hp hostcap-linux-r1: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-0)
+[10:01:40] hp hostcap-linux-r1: PASS tri0 readbacks=289 max=4.77e-07 strict=9 fmt=native-command-stream-v6
+[10:01:40] hp hostcap-linux-r1: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-1)
+[10:02:41] hp hostcap-linux-r1: PASS tri1 readbacks=417 max=7.99e-06 strict=80 fmt=native-command-stream-v6
+[10:02:42] hp hostcap-linux-r1: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-2)
+[10:03:41] hp hostcap-linux-r1: PASS tri2 readbacks=415 max=1.04e-05 strict=144 fmt=native-command-stream-v6
+[10:03:42] hp hostcap-linux-r1: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-3)
+[10:04:42] hp hostcap-linux-r1: PASS tri3 readbacks=473 max=9.42e-06 strict=467 fmt=native-command-stream-v6
+[10:04:42] hp hostcap-linux-r1: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-4)
+[10:05:33] hp hostcap-linux-r1: FAIL tri4 exit 134
+[10:05:38] hp hostcap-linux-r1: END passed=False wall=276s/1500s
+exit 0

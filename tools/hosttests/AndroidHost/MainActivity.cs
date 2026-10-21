@@ -20,6 +20,34 @@ public sealed class MainActivity : Activity
         {
             object report;
             List<FilmComparison> comparisons = new();
+            // "webgpu" (am start --es mode webgpu) renders the shared WebGPU validation scenes on the GPU and
+            // CPU reference backends and compares them; any other mode runs the CPU reference suite.
+            string mode = Intent?.GetStringExtra("mode") ?? "cpu";
+            if (mode == "webgpu")
+            {
+                try
+                {
+                    Dictionary<string, object> result = await WebGpuChecks.Run(Path.Combine(directory, "output", "webgpu"));
+                    string nativeDirectory = ApplicationInfo!.NativeLibraryDir!;
+                    string maps = File.ReadAllText("/proc/self/maps");
+                    foreach (string name in new[] { "libcodebrix_cycles_host.so", "libcodebrix_wgpu.so" })
+                        if (!maps.Contains(Path.Combine(nativeDirectory, name), StringComparison.Ordinal))
+                            throw new Exception("Native library not mapped from app installation: " + name);
+                    File.WriteAllText(Path.Combine(directory, "native-maps.txt"), maps);
+                    result["actualAndroidApp"] = true;
+                    result["architecture"] = RuntimeInformation.ProcessArchitecture.ToString();
+                    result["apiLevel"] = (int)Build.VERSION.SdkInt;
+                    result["nativeDirectory"] = nativeDirectory;
+                    report = result;
+                }
+                catch (Exception error) { report = new { passed = false, mode, error = error.ToString() }; }
+                string webgpuJson = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
+                string webgpuTemporary = Path.Combine(directory, "result.tmp");
+                File.WriteAllText(webgpuTemporary, webgpuJson);
+                File.Move(webgpuTemporary, Path.Combine(directory, "result.json"), true);
+                RunOnUiThread(() => text.Text = webgpuJson);
+                return;
+            }
             try
             {
                 using Stream manifestStream = Assets!.Open("payload.json");

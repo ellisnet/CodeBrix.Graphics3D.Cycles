@@ -1,0 +1,26 @@
+[14:43:34] DECLARED android-arm64 'before' gate build (7 gates, --jobs 6): budget 3600 s
+[14:43:48] DECLARED linux 'before' native build (tools/build.py --jobs 6 --skip-dependencies; reviewed prefix reused): budget 1800 s
+[14:47:50] DECLARED pixel probe v0 (unchanged probe WGSL): budget 600 s
+[14:49:39] DECLARED pixel probe v0b (dump fix): budget 600 s
+[14:51:55] DECLARED pixel probes base-timed, lim64, noprefill: budget 3x600 s
+[14:55:52] DECLARED pixel probe chunk256 (offset variant, 16 dispatches of 256): budget 600 s
+[14:58:32] DECLARED pixel probes soa-c256, nocache-c256, base-c1024, base-c2048: budget 4x600 s
+[15:05:33] DECLARED android-arm64 'after' gate build (7 gates, --jobs 6): budget 3600 s
+[15:05:50] DECLARED linux clean final build (tools/build.py --jobs 6 --skip-dependencies + all gate targets): budget 2400 s
+[15:19:00] DECLARED pixel corpus triangle (e5final): wall budget 7200 s, 2400 s per gate
+[15:19:00] DECLARED device=pixel serial=98271FFBA0048D corpus=triangle label=e5final wallBudget=7200s perJobTimeout=2400s pipelineBudgetMs=20000 jobs=triangle_sample,surface,triangle_lighting replays=1
+[15:19:15] DECLARED linux triangle budget=900s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/tools/triangle_lighting_gate.py --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/linux/triangle/out
+[15:21:22] DECLARED linux emitter-sample budget=600s: /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/cycles-build/bin/codebrix_cycles_emitter_sample_gate /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/linux/emitter-sample/run
+[15:21:35] DECLARED linux all-lanes budget=2700s: python3 native/evidence/phaseC-closeout-20261020/closeout/tools/linux_validate.py --tree /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler --output /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/linux/all-lanes/out --skip-build
+[15:26:58] DECLARED pixel corpus emitter (e5final): wall budget 1200 s, 2400 s per gate
+[15:26:58] DECLARED device=pixel serial=98271FFBA0048D corpus=emitter label=e5final wallBudget=1200s perJobTimeout=2400s pipelineBudgetMs=20000 jobs=emitter_sample replays=0
+[15:27:32] DECLARED pixel corpus pixel-lighting (e5final): wall budget 2400 s, 2400 s per gate
+[15:27:32] DECLARED device=pixel serial=98271FFBA0048D corpus=pixel-lighting label=e5final wallBudget=2400s perJobTimeout=2400s pipelineBudgetMs=20000 jobs=feature_combination replays=1
+[15:31:16] DECLARED pixel corpus pixel-motion (e5final): wall budget 2400 s, 2400 s per gate
+[15:31:16] DECLARED device=pixel serial=98271FFBA0048D corpus=pixel-motion label=e5final wallBudget=2400s perJobTimeout=2400s pipelineBudgetMs=20000 jobs=object-moving-images replays=1
+[15:40:40] DECLARED linux glass-spec-on budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/cycles-build/bin/codebrix_cycles_glass_render_gate /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/linux/glass-spec-on/run
+[15:41:15] DECLARED linux glass-spec-off budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/cycles-build/bin/codebrix_cycles_glass_render_gate /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/linux/glass-spec-off/run
+[15:43:20] DECLARED linux host-gate budget=1500s: python3 native/tools/host_gate.py --output /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/linux/host-gate/out
+[15:45:39] DECLARED linux dotnet-build budget=900s: dotnet build --configuration Release CodeBrix.Graphics3D.Cycles.slnx
+[15:45:43] DECLARED linux dotnet-test budget=1500s: dotnet test --solution CodeBrix.Graphics3D.Cycles.slnx --configuration Release --no-build
+[15:47:20] DECLARED linux host-gate budget=1500s: python3 native/tools/host_gate.py --output /home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/linux/host-gate/out

@@ -1,0 +1,101 @@
+[16:26:14] samsung triangle-final: START triangle_sample timeout=900s
+[16:26:14] samsung triangle-final: SCENE-DUMP triangle_sample
+[16:26:20] samsung triangle-final: SCENE-REFERENCE triangle_sample references=1
+samples          gpu-vs-glibc passed=False practical=2 strict=1069 max=0.002195 | local-vs-glibc differing=4620 maxUlps=15520768 practical=65
+[16:26:46] samsung triangle-final: REFERENCE triangle_sample host re-judged vs glibc: False
+[16:26:46] samsung triangle-final: FAIL triangle_sample exit=1 26s: Emitter sample=3133 field=2 got=0.382186 expected=0.379992
+[16:26:46] samsung triangle-final: START surface timeout=900s
+[16:28:23] samsung triangle-final: PASS surface 96s maxPipelineMs=4649.71
+[16:28:23] samsung triangle-final: START triangle_lighting timeout=900s
+[16:28:23] samsung triangle-final: SCENE-DUMP triangle_lighting
+[16:28:29] samsung triangle-final: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=12 max=4.768e-07 | local-vs-glibc differing=57 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=5 max=1.788e-07 | local-vs-glibc differing=929 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=8 max=6.407e-07 | local-vs-glibc differing=987 maxUlps=2273 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=235 max=1.788e-06 | local-vs-glibc differing=716 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=11 max=3.725e-07 | local-vs-glibc differing=933 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=248 max=1.788e-06 | local-vs-glibc differing=778 maxUlps=55 practical=0
+[16:31:11] samsung triangle-final: REFERENCE triangle_lighting host re-judged vs glibc: True
+[16:31:11] samsung triangle-final: PASS triangle_lighting 160s maxPipelineMs=30844
+[16:31:11] samsung triangle-final: START replay-0 timeout=900s
+[16:31:33] samsung triangle-final: PASS replay-0 22s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[16:31:33] samsung triangle-final: START replay-1 timeout=900s
+[16:32:13] samsung triangle-final: PASS replay-1 39s readbacks=417 max=1.79e-07 strict=5 fmt=native-command-stream-v6
+[16:32:13] samsung triangle-final: START replay-2 timeout=900s
+[16:32:53] samsung triangle-final: PASS replay-2 40s readbacks=415 max=6.41e-07 strict=8 fmt=native-command-stream-v6
+[16:32:53] samsung triangle-final: START replay-3 timeout=900s
+[16:33:33] samsung triangle-final: PASS replay-3 40s readbacks=473 max=1.79e-06 strict=235 fmt=native-command-stream-v6
+[16:33:33] samsung triangle-final: START replay-4 timeout=900s
+[16:34:13] samsung triangle-final: PASS replay-4 39s readbacks=415 max=3.73e-07 strict=11 fmt=native-command-stream-v6
+[16:34:13] samsung triangle-final: START replay-5 timeout=900s
+[16:35:41] samsung triangle-final: PASS replay-5 88s readbacks=464 max=1.79e-06 strict=248 fmt=native-command-stream-v6
+[16:35:46] samsung triangle-final: END passed=False wall=574s/2400s failures=1
+{"passed": false, "failures": ["triangle_sample: Emitter sample=3133 field=2 got=0.382186 expected=0.379992"], "error": null, "wallSeconds": 573.6}
+[16:35:54] samsung emitter-final: START emitter_sample timeout=300s
+[16:35:54] samsung emitter-final: SCENE-DUMP emitter_sample
+[16:36:00] samsung emitter-final: SCENE-REFERENCE emitter_sample references=1
+samples          gpu-vs-glibc passed=True practical=0 strict=135 max=9.06e-06 | local-vs-glibc differing=1192 maxUlps=3310 practical=1
+[16:36:11] samsung emitter-final: REFERENCE emitter_sample host re-judged vs glibc: True
+[16:36:11] samsung emitter-final: PASS emitter_sample 11s maxPipelineMs=None
+[16:36:16] samsung emitter-final: END passed=True wall=24s/600s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 24.3}
+[16:36:23] samsung precision-final: START closest timeout=600s
+[16:36:45] samsung precision-final: PASS closest 21s maxPipelineMs=1364.81
+[16:36:45] samsung precision-final: START shadow timeout=600s
+[16:37:02] samsung precision-final: PASS shadow 16s maxPipelineMs=1110.45
+[16:37:02] samsung precision-final: START shadow-replay-direct timeout=600s
+[16:37:03] samsung precision-final: PASS shadow-replay-direct 2s readbacks=4 max=5.96e-08 strict=0 fmt=native-command-stream-v3
+[16:37:03] samsung precision-final: START shadow-replay-indexed timeout=600s
+[16:37:05] samsung precision-final: PASS shadow-replay-indexed 2s readbacks=4 max=0 strict=0 fmt=native-command-stream-v3
+[16:37:10] samsung precision-final: END passed=True wall=49s/900s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 48.7}
+[16:37:17] samsung spec-refusal-final: START glass_render-spec timeout=300s
+[16:38:39] samsung spec-refusal-final: PASS glass_render-spec 81s maxPipelineMs=5960.73
+[16:38:39] samsung spec-refusal-final: START glass_render-nospec-refused timeout=300s
+[16:38:39] samsung spec-refusal-final: PASS glass_render-nospec-refused refusal exit=1 0s
+[16:38:45] samsung spec-refusal-final: END passed=True wall=89s/600s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 88.9}
+[16:38:52] samsung regression-final: START glass_render timeout=600s
+image            gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[16:39:13] samsung regression-final: REFERENCE glass_render host re-judged vs glibc: False
+[16:39:14] samsung regression-final: FAIL glass_render exit=1 21s: stage 1 path.mis_ray_pdf path=1043 actual=2035.839111 expected=2035.206665
+[16:39:14] samsung regression-final: START lighting_mis timeout=600s
+[16:39:14] samsung regression-final: SCENE-DUMP lighting_mis
+[16:39:21] samsung regression-final: SCENE-REFERENCE lighting_mis references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=780 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=787 maxUlps=78 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=278 max=3.278e-06 | local-vs-glibc differing=509 maxUlps=169 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=0 max=4.936e-08 | local-vs-glibc differing=515 maxUlps=75 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=271 max=6.05e-06 | local-vs-glibc differing=526 maxUlps=154 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=11 max=1.431e-06 | local-vs-glibc differing=416 maxUlps=165 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=289 max=6.08e-06 | local-vs-glibc differing=534 maxUlps=154 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=220 max=6.02e-06 | local-vs-glibc differing=442 maxUlps=99 practical=0
+[16:40:01] samsung regression-final: REFERENCE lighting_mis host re-judged vs glibc: True
+[16:40:01] samsung regression-final: PASS lighting_mis 36s maxPipelineMs=6610.91
+[16:40:01] samsung regression-final: START transparent_lighting timeout=600s
+[16:40:01] samsung regression-final: SCENE-DUMP transparent_lighting
+[16:40:08] samsung regression-final: SCENE-REFERENCE transparent_lighting references=8
+[16:41:09] samsung regression-final: ERROR KeyboardInterrupt()
+[16:41:15] samsung regression-final: END passed=False wall=144s/1500s failures=1
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 333, in <module>
+    code, stdout = call(['shell', command], label, timeout, False)
+                   ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 225, in call
+    r = subprocess.run(command, stdout=so, stderr=se, timeout=timeout)
+  File "/usr/lib/python3.13/subprocess.py", line 556, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 1222, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 2154, in _communicate
+    self.wait(timeout=self._remaining_time(endtime))
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 1280, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 2060, in _wait
+    time.sleep(delay)
+    ~~~~~~~~~~^^^^^^^
+KeyboardInterrupt

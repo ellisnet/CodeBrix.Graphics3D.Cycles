@@ -131,7 +131,7 @@ extern "C" int cbc_host_get_ints(CBCHost handle,CBCNode id,const char *name,int6
 }
 extern "C" int cbc_host_set_uints(CBCHost handle,CBCNode id,const char *name,const uint64_t *values,uint64_t count) {
   return edit(handle,[&](Host &host) {
-    count_ok(values,count);require(count==1,"Expected one unsigned integer");auto &entry=host.entry(id);auto &input=socket(entry,name);stored_property(input);
+    count_ok(values,count);require(count==1,"Expected one unsigned integer");auto &entry=host.entry(id);auto &input=socket(entry,name);stored_property(input);before_edit(host,entry,name);
     if(input.type==SocketType::UINT64)entry.node->set(input,values[0]);
     else if(input.type==SocketType::UINT){require(values[0]<=UINT_MAX,"Unsigned socket out of range");entry.node->set(input,uint(values[0]));}
     else throw Failure(CBC_INVALID,"Socket is not an unsigned integer");
@@ -149,7 +149,7 @@ extern "C" int cbc_host_get_uints(CBCHost handle,CBCNode id,const char *name,uin
 }
 extern "C" int cbc_host_set_strings(CBCHost handle,CBCNode id,const char *name,const char *const *values,uint64_t count) {
   return edit(handle,[&](Host &host) {
-    count_ok(values,count);auto &entry=host.entry(id);auto &input=socket(entry,name);stored_property(input);
+    count_ok(values,count);auto &entry=host.entry(id);auto &input=socket(entry,name);stored_property(input);before_edit(host,entry,name);
     require(input.type==SocketType::STRING_ARRAY,"Expected a string array socket");
     for(size_t i=0;i<count;++i)require(values[i],"Null string array element");
     array<ustring> copy;copy.resize(size_t(count));for(size_t i=0;i<count;++i)copy[i]=*values[i]?ustring(values[i]):ustring();entry.node->set(input,copy);host.changed(entry);

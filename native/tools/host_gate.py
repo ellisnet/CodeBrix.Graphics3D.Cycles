@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from build import REPO, ROOT, WORK, PACKAGE
+from build import REPO, ROOT, WORK, PACKAGE, REVISION
 from device_gate import sha, save
 from render_gate import inputs
 
@@ -76,13 +76,14 @@ def main():
     try:
         targets = ['codebrix_cycles_host', *['codebrix_host_'+n for n in
             ['cpu_test', 'gpu_test', 'reload_test', 'concurrency_test',
-             'session_reference', 'session64_reference', 'image_reference']]]
+             'session_reference', 'session64_reference', 'image_reference',
+             'abi_test', 'example_test']], 'codebrix_cycles_oracle']
         call([sys.executable, ROOT/'tools/build_cycles.py', '--jobs', args.jobs,
               *[v for target in targets for v in ('--target', target)]], 'build', 1800)
         expected = set(re.findall(r'\b(cbc_host_\w+)\(', (ROOT/'host/cycles_host.h').read_text()))
         exports = call(['nm', '-D', '--defined-only', library], 'exports')
         actual = {line.split()[-1].split('@')[0] for line in exports.splitlines()} - {'CBC_HOST_EXPERIMENT_1'}
-        assert actual == expected and len(actual) == 38
+        assert actual == expected and len(actual) == 48
         for kind in ['session', 'session64', 'image']:
             link_map = (build/f'codebrix_host_{kind}_reference.map').read_text()
             assert 'CMakeFiles/codebrix_host_reference_color.dir/src/util/colorspace.cpp.o' in link_map
@@ -157,11 +158,43 @@ def main():
             for i in range(count):
                 reference = cpu64/'run.1.rgba.bin' if i == 3 else cpu/f'run.{i if i < 3 else 1}.rgba.bin'
                 compare(folder/f'run.{i}.rgba.bin', reference)
+        # Phase D ABI additions: every new export, malformed input, lifetime
+        # and struct-size rejection, on the CPU reference and through CBC_HOST_GPU.
+        abi = {}
+        for mode in ['cpu', 'gpu']:
+            folder = destination('abi-'+mode)
+            row = report([binary/'codebrix_host_abi_test', folder/'run', mode], 'abi-'+mode, 900)[0]
+            assert re.fullmatch(r'1\.0\.\d{8}\.\d+', row['libraryVersion']) and row['cyclesRevision'] == REVISION
+            binary_caps = json.loads((folder/'run.capabilities-binary.json').read_text())
+            host_caps = json.loads((folder/'run.capabilities-host.json').read_text())
+            assert binary_caps['abiVersion'] == 1 and binary_caps['cyclesRevision'] == REVISION and 'host' not in binary_caps
+            assert binary_caps['backends'] == dict(compiled=['cpu', 'webgpu'], gpu='webgpu', gpuFallbackToCpu=False)
+            assert binary_caps['imageInput']['formats'] == ['float', 'float4', 'half', 'half4', 'byte', 'byte4', 'ushort', 'ushort4']
+            assert host_caps['host']['backend'] == ('cpu' if mode == 'cpu' else 'webgpu')
+            assert host_caps['host']['deviceReport']['backend'] == host_caps['host']['backend']
+            assert row['lightTypes'] == 5 and row['cancelledByCallback'] and row['refusedReentry'] == row['progressEvents'] + row['statusEvents']
+            if mode == 'cpu':
+                assert all(row[k] for k in ['lightDeletionRestores', 'graphRebuildRestores', 'motionRemovalRestores', 'imageUpdateRestores'])
+                assert row['litRenders'] == 4 and row['projections'] == 2 and row['errorEvents'] == 0
+                assert all(row[k] == 0 for k in ['depthStatus', 'normalStatus', 'aovStatus', 'dataPassRender', 'lightPassRender',
+                                                 'diffuseDirectStatus', 'backgroundStatus'])
+                passes = json.loads((folder/'run.passes.json').read_text())['passes']
+                assert [(p['name'], p['components'], p['written']) for p in passes] == [
+                    ('Combined', 4, True), ('Depth', 1, True), ('Normal', 3, True), ('Mask', 1, True)]
+            else:
+                assert row['litRenders'] == 3 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
+            abi[mode] = folder
+        for name in ['base', 'object-motion', 'deforming']:
+            compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin')
+        for mode in ['cpu', 'gpu']:
+            row = report([binary/'codebrix_host_example_test', mode], 'example-'+mode)[0]
+            assert row['backend'] == (2 if mode == 'cpu' else 1) and row['progressEvents'] > 0
+            assert row['depthStatus'] == (0 if mode == 'cpu' else 1)
         assert inputs() == sources
         assert all(sha(Path(p)) == digest for p, digest in {**pins, **reference_hashes}.items())
         save(out/'invocation.json', dict(sourceSha256=sources, binarySha256=pins,
                                         referenceSha256=reference_hashes, commands=commands))
-        state.update(complete=True, passed=True, phase='complete', exportCount=38,
+        state.update(complete=True, passed=True, phase='complete', exportCount=48,
                      independentReferenceFilms=786, comparisons=len(comparisons), results=results,
                      maximumAbsoluteError=max(row['maximumAbsoluteError'] for row in comparisons),
                      practicalFailures=sum(row['practicalFailures'] for row in comparisons),

@@ -1,0 +1,33 @@
+[08:15:22] DECLARED build android-arm64 gates (before-fix sources) jobs=6 wallBudget=1800s
+[08:17:37] DECLARED device=pixel probe replays of Linux Phase C captures fc0/def0/inside (diagnostic) wallBudget=2400s perReplay=900s
+[08:22:54] DECLARED linux build_cycles.py (all host+gates) jobs=6 wallBudget=2400s
+[08:23:10] DECLARED linux probe_replay fc0 dumps 21-25 wallBudget=600s
+[09:10:31] DECLARED device=pixel serial=98271FFBA0048D corpus=lighting label=before wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=feature_combination replays=0
+[09:10:47] DECLARED linux gate-target build (feature_combination object_motion_render deforming_motion_render volume volume_render volume_boundary closed_volume_render camera) jobs=6 wallBudget=1800s
+[09:12:14] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=before wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=boundary-state,closed-inside replays=0
+[09:12:49] DECLARED linux gate-target build 2 (closest shader_data shadow normal image) jobs=6 wallBudget=900s
+[09:12:57] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=before wallBudget=1800s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=object-moving-images,object-stationary-images,deforming-moving-images,deforming-stationary-images replays=0
+[09:13:09] DECLARED linux lanes before: laneA feature_combination+object_motion+deforming_motion 2400s; laneB volume+volume_boundary 2400s; cold MESA_SHADER_CACHE_DIR under /home/jeremy/ClaudeHome/cycles-worktrees/e2-pixel/native/work/e2/linux/before
+[09:23:29] DECLARED android-arm64 rebuild (after-fix) jobs=6 wallBudget=1800s
+[09:23:29] DECLARED linux gate-target rebuild (after-fix) jobs=6 wallBudget=1800s
+[09:23:44] DECLARED linux lanes after: laneA feature_combination+object_motion+deforming_motion 2400s; laneB volume+volume_boundary 2400s; cold MESA_SHADER_CACHE_DIR under /home/jeremy/ClaudeHome/cycles-worktrees/e2-pixel/native/work/e2/linux/after
+[09:24:06] DECLARED pixel conservative-tier emulation replays (before WGSL, all entries workgroup 1) fc0/def0/inside wallBudget=2400s perReplay=900s
+[09:28:42] DECLARED device=pixel serial=98271FFBA0048D corpus=lighting label=after wallBudget=1500s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=lighting_mis,feature_combination replays=2
+[09:33:22] DECLARED linux all-lanes 29 targets (tools/linux_validate.py, build jobs 6, binary audit) cold MESA_SHADER_CACHE_DIR=linux/all-lanes-mesa wallBudget=2700s
+[09:35:12] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=after wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=boundary-state,closed-inside replays=1
+[09:44:00] DECLARED linux glass_render spec-off (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0) cold mesa wallBudget=900s (concurrent with all-lanes: 2 gates)
+[09:44:03] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=after wallBudget=2400s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=object-moving-images,object-stationary-images,deforming-moving-images,deforming-stationary-images,camera-static,camera-motion replays=2
+[09:55:29] DECLARED device=pixel serial=98271FFBA0048D corpus=arm-pixel label=after wallBudget=1800s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=glass_bounce,glass_render replays=0
+[10:14:42] DECLARED android-arm64 rebuild (final) jobs=6 wallBudget=1800s; linux gate-target rebuild jobs=6 wallBudget=1800s
+[10:15:22] DECLARED linux lanes final: laneA feature_combination+object_motion+deforming_motion 2400s; laneB volume+volume_boundary 2400s; cold MESA_SHADER_CACHE_DIR under /home/jeremy/ClaudeHome/cycles-worktrees/e2-pixel/native/work/e2/linux/final
+[10:15:47] DECLARED device=pixel serial=98271FFBA0048D corpus=lighting label=final wallBudget=1500s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=lighting_mis,feature_combination replays=2
+[10:21:30] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=final wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=boundary-state,closed-inside replays=1
+[10:25:10] DECLARED linux all-lanes FINAL 29 targets (tools/linux_validate.py, build jobs 6, binary audit) cold MESA_SHADER_CACHE_DIR=linux/all-lanes-final-mesa wallBudget=2700s
+[10:29:39] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=final wallBudget=2400s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=object-moving-images,object-stationary-images,deforming-moving-images,deforming-stationary-images,camera-static,camera-motion replays=2
+[10:47:23] DECLARED audits group (audit.py, notices --check, guard tests, git diff --check) wallBudget=600s
+[10:48:08] DECLARED linux glass_render spec-off FINAL build cold mesa wallBudget=900s
+[10:53:17] DECLARED device=pixel serial=98271FFBA0048D corpus=arm-pixel label=final wallBudget=1800s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=glass_bounce,glass_render replays=0
+[11:03:31] DECLARED device=pixel serial=98271FFBA0048D corpus=transparent label=final wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=transparent_shadow,transparent_lighting replays=0
+[11:10:54] DECLARED device=pixel serial=98271FFBA0048D corpus=ggx label=final wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=glass_svm,microfacet_svm,microfacet_bounce,shader_data,closest,shadow replays=0
+[11:20:22] DECLARED device=pixel serial=98271FFBA0048D corpus=transparent label=final-r2 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=transparent_shadow,transparent_lighting replays=0
+[11:27:06] DECLARED device=pixel serial=98271FFBA0048D corpus=ggx label=final-r2 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=glass_svm,microfacet_svm,microfacet_bounce,shader_data,closest,shadow replays=0

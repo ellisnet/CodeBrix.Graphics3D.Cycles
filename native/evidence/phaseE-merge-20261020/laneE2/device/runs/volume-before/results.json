@@ -1,0 +1,102 @@
+{
+  "boundary-state": {
+    "gate": "volume_boundary",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 12.3,
+    "pipelines": [
+      {
+        "module": "volume",
+        "entry": "shader_eval_volume_density",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_CLOSURE_VOLUME,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 174455,
+        "moduleMs": 25.888,
+        "pipelineMs": 6480.34,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "volume_stack",
+        "entry": "intersect_volume_stack",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_CLOSURE_VOLUME,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 85596,
+        "moduleMs": 12.8414,
+        "pipelineMs": 4770.73,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      }
+    ],
+    "maxPipelineMs": 6480.34,
+    "passed": false,
+    "error": [
+      "00:00.15 | WARNING: Maximum number of closures exceeded: 66 > 64",
+      "Closed volume stack=5 closures=64 film=15",
+      "case=0 volume_stack[0].object path=171 integer mismatch"
+    ]
+  },
+  "closed-inside": {
+    "gate": "closed_volume_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_VOLUME_CLOSED_COUNT": "4",
+      "CODEBRIX_VOLUME_CAMERA_INSIDE": "1"
+    },
+    "exit": 1,
+    "wallSeconds": 19.3,
+    "pipelines": [
+      {
+        "module": "volume",
+        "entry": "shader_eval_volume_density",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 175446,
+        "moduleMs": 24.9804,
+        "pipelineMs": 12531.3,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 53382,
+        "moduleMs": 7.43219,
+        "pipelineMs": 755.885,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "volume_stack",
+        "entry": "intersect_volume_stack",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 85596,
+        "moduleMs": 14.6812,
+        "pipelineMs": 4818.34,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      }
+    ],
+    "maxPipelineMs": 12531.3,
+    "passed": false,
+    "error": [
+      "Volume film stride=15 combined=0 scatter=4 transmit=7 majorant=13 count=14",
+      "State diagnostic actual bounce/kernel/pdf=0/2/0 expected=0/2/0 prim/object=-1/-1 actual D=-0.5678790212,-0.423653543,0.7057132125 expected D=-0.5678790212,-0.423653543,0.7057132125",
+      "stage 0 integer volume_stack[1].object path=0"
+    ]
+  }
+}

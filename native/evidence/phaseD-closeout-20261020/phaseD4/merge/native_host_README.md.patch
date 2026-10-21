@@ -1,0 +1,68 @@
+diff --git a/native/host/README.md b/native/host/README.md
+index 929d87ac..d15c9bb0 100644
+--- a/native/host/README.md
++++ b/native/host/README.md
+@@ -3,7 +3,9 @@
+ Copyright (c) 2026 Jeremy Ellis and contributors
+ 
+ This maintained implementation exposes native Cycles scene authoring and Session
+-control through 36 C functions in [cycles_host.h](cycles_host.h). The .NET 10
++control through 48 C functions in [cycles_host.h](cycles_host.h); the consumer
++reference (every export, struct, enum, error code, threading and ownership rule,
++the additive-only rule and the determinism statement) is [ABI.md](ABI.md). The .NET 10
+ wrapper is in [src/CodeBrix.Graphics3D.Cycles](../../src/CodeBrix.Graphics3D.Cycles).
+ The ABI remains experimental. These sources are part of the full nine-RID effort;
+ they are not a released NuGet package or a claim of full GPU feature coverage.
+@@ -63,6 +65,42 @@ OCIO configuration before creating hosts or after all host lifetimes and in-flig
+ calls finish. The generated Cycles overlay invalidates derived color caches by
+ full configuration identity. The pinned third-party snapshot remains unchanged.
+ 
++## Phase D ABI additions (maintainer notes)
++
++The P14 gaps were closed additively in ABI 1 (`host_api.inc`, included at the
++end of `cycles_host.cpp`). Where the native registry already covers a setting,
++it stays on the generic socket layer; new exports exist only for lifetime,
++buffers, callbacks and queries.
++
++| P14 gap | Resolution |
++| --- | --- |
++| Version | `cbc_host_version` (`CBCVersionInfo`); `targets.cmake` stamps `CBC_HOST_LIBRARY_VERSION` (`1.0.<UTC yyyyMMdd>.<CODEBRIX_HOST_BUILD_NUMBER>`) and reads `CBC_HOST_CYCLES_REVISION` from `third_party/cycles-import.json`; the symbol-version marker and `cbc_host_abi_version` are unchanged |
++| Backend-neutral selection | `CBC_HOST_GPU` (Metal in `WITH_METAL` builds, else WebGPU), `cbc_host_resolve_backend`, `cbc_host_backend` |
++| Capability queries | `cbc_host_capabilities_json` (binary and host level; embeds `device_report()`, the C3 tier report) |
++| Lights | generic layer: the five light node types `cbc_host_create_node` already accepted, their sockets and an object holder; no new export |
++| Cameras, integrator, film | generic layer on the singletons (projection types, panorama type, `motion`, `shuttertime`, exposure, filters, bounces) |
++| Object/camera motion | generic `motion` transform-array sockets |
++| Deformation motion | `cbc_host_motion_positions` (position attribute motion steps; Cycles regenerates motion normals); refuses meshes already baked by the static BVH (`transform_applied`) |
++| Deletion | `cbc_host_delete_node` with a reference scan over every scene node's node sockets; shader deletion drops its graph handles (Cycles keeps the shader allocated, as `Scene::delete_node(Shader)` does) |
++| Image updates | `cbc_host_image_update` swaps the `MemoryImageData` behind a handle and clears every bound slot's `ImageHandle`, so the next render re-adds the image |
++| Callbacks | `cbc_host_set_event_callback`; `Progress::set_update_callback` drives status/progress events under a per-host event mutex; a thread-local flag makes `boundary()` refuse reentry; nonzero return sets the cancellation flag polled by the existing cancel callback |
++| Passes/AOVs | `HostOutput` copies every named caller pass from the same complete tile as Combined; `cbc_host_pass_floats`, `cbc_host_render_passes_json` |
++
++Known limits found while closing them (see ABI.md): motion must exist before a
++mesh's first render (static BVH baking, pinned Cycles behaviour); a Cycles device
++error is permanent for the host; the WebGPU device writes only Combined, only
++supports the perspective camera and needs the integrator's denoising, adaptive
++sampling, guiding and light tree switched off. On this Linux Intel Mesa driver,
++compiling `shade_surface_light` for a spot light after a point light in one
++device lifetime crashed the driver compiler (reported, not worked around; the
++GPU ABI test renders only the point light).
++
++`native/tests/host/abi_consumer.c` (`codebrix_host_abi_test`) exercises every
++addition, malformed input, lifetime and struct-size rejection on the CPU
++reference and through `CBC_HOST_GPU`; `native/tests/host/example.c`
++(`codebrix_host_example_test`) is the ABI.md example. `targets.cmake` also builds
++the oracle runner as `codebrix_cycles_oracle` for native (non-cross) builds.
++
+ Run the maintained Linux validation from the repository root:
+ 
+ ```sh
+@@ -73,7 +111,8 @@ Use a new output directory for each run. The command rebuilds the targets,
+ generates 786 native CPU reference films in fresh processes, checks exact exports
+ and retained registry metadata, exercises C and managed lifetimes, runs six color
+ configuration rounds through both APIs, stresses concurrent native lifetimes,
+-and executes the additional C WebGPU lifecycle test. Reference executables compile
++executes the additional C WebGPU lifecycle test, runs the ABI test on both
++backends (comparing its GPU films with the CPU films) and runs the example. Reference executables compile
+ the original upstream colorspace implementation directly; link maps verify that
+ the corrected archive implementation is not used by those oracles. No fixture
+ assets or implementation sources are downloaded.

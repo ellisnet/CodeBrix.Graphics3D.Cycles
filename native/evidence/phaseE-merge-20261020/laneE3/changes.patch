@@ -1,0 +1,2534 @@
+--- a/AGENT-README.txt
++++ b/AGENT-README.txt
+@@ -100,8 +100,9 @@
+     CyclesHost Host            the by-name host this scene owns (tier 3)
+     Backend Backend            the concrete backend the native host reports
+                                (never Backend.Gpu)
+-    bool IsFaulted             a render failed with NativeStatus.Failed: the
+-                               device is dead for good; dispose and recreate
++    bool IsFaulted             the last render failed with NativeStatus.Failed;
++                               the next render recovers the device (see
++                               DEVICE ERRORS); cleared by a successful render
+     event EventHandler<RenderEvent> RenderEventReceived
+                                native status/progress/error events while a
+                                render runs (see CALLBACKS AND THREADING)
+@@ -389,22 +390,33 @@
+   - the classes listed in GetCapabilities().Scope.RenderTimeRejections.
+ The CPU reference backend renders all of these.
+ 
+-DEVICE ERRORS ARE PERMANENT. After a render fails with NativeStatus.Failed
+-(scene.IsFaulted), every later render on that scene fails with the same
+-message even after the cause is removed. Dispose the scene and build a new
+-one.
++DEVICE ERRORS. After a render fails with NativeStatus.Failed (scene.IsFaulted
++is true), remove the cause (for example the extra pass or the non-perspective
++camera) and render again: the native host recovers the WebGPU device, uploads
++the whole scene again and raises a RenderEventReceived status event that starts
++with "Device recovered"; a successful render clears IsFaulted. Only a device
++that cannot recover (a lost WebGPU device, or an error on the CPU or Metal
++device) keeps failing, with a message that starts with "Host faulted": then
++dispose the scene and build a new one.
+ 
+ MOTION
+ ------
+ Object motion is ObjectNode.Motion, camera motion CameraNode.Motion (with
+ CameraNode.Shuttertime), deformation MeshNode.SetMotionPositions(steps,
+ positions) (odd steps 3..129; the center step must equal the mesh positions
+-bit for bit); all need Integrator.MotionBlur = true. Configure motion BEFORE
+-the mesh's first render: the pinned Cycles static BVH bakes a mesh with its
+-object transform at its first render. SetMotionPositions afterwards throws
+-InvalidOperationException; object motion set afterwards is silently not
+-applied. To change motion later, Remove the object and mesh and create new
+-ones. ClearMotionPositions is always allowed.
++bit for bit); all need Integrator.MotionBlur = true. Motion can be set, changed
++or cleared before or after a render.
++
++EDITS AFTER A RENDER. Every edit made after a render (ObjectNode.Tfm and Motion,
++CameraNode.Motion, deformation motion, MotionBlur, material values, lights,
++SetTriangles, attributes, Smooth, new or removed objects) applies to the next
++render exactly as if the scene had been built with it: on the CPU reference the
++film is bit-identical to a new scene built with the edits. The native host
++restores a baked mesh's authored positions first (the pinned Cycles static BVH
++bakes single-user meshes with their object transform), so such an edit rebuilds
++the BVH. The one refused edit: a baked volume (voxel data), its object's Tfm,
++Motion or Geometry; that throws (NativeStatus.NotReady): remove and recreate the
++object and volume.
+ 
+ CALLBACKS AND THREADING
+ -----------------------
+@@ -588,23 +600,25 @@
+   native render loop; any scene call fails with NotReady. System.Progress<T>
+   posts reports to the thread pool, so they can arrive out of order; implement
+   IProgress<T> yourself when the order matters.
+-- ADDING MOTION AFTER THE FIRST RENDER. It is refused (deformation) or not
+-  applied (object motion); set motion before rendering or recreate the nodes.
+-- MOVING AN OBJECT AFTER ITS FIRST RENDER. Changing ObjectNode.Tfm after the
+-  mesh's first render is likely not applied (open item in docs/PARITY.md);
+-  remove and recreate the object and mesh to move it.
+-- REUSING A FAULTED SCENE. After a NativeStatus.Failed render, recreate the
+-  scene; the device stays failed.
++- RENDERING A FAULTED SCENE WITHOUT REMOVING THE CAUSE. After a
++  NativeStatus.Failed render, remove what the device rejected before rendering
++  again; the recovered device rejects the same scene again. A "Host faulted"
++  message means the device cannot recover: recreate the scene.
++- EDITING A BAKED VOLUME. Edits of a volume (or of its object's transform,
++  motion or geometry) after it was rendered throw; recreate them instead. Other
++  edits after a render are applied (EDITS AFTER A RENDER).
++- EXPECTING CHEAP EDITS OF SINGLE-USER MESHES. Moving, adding motion to or
++  editing the data of a rendered single-user mesh rebuilds the BVH on the next
++  render (the host keeps one extra copy of such meshes' authored attributes).
+ - ENABLING NON-COMBINED PASSES ON WEBGPU. The render fails; read extra passes
+   on the CPU reference backend.
+ - READING THE REGISTRY AS A FEATURE LIST. A node type being registered (and
+   generated) does not mean a GPU backend implements it; the CPU reference is
+   the complete implementation.
+-- SMOOTH MESHES WITH LIGHTS ON WEBGPU. The WebGPU backend does not implement
+-  the shadow-terminator geometry offset (ObjectNode default 0.1): a smooth-shaded
+-  mesh lit by a light fails with "invalid state/data". Set the object's
+-  ShadowTerminatorGeometryOffset = 0 (do the same on the CPU reference when you
+-  compare films).
++- SHADOW TERMINATOR SHADING OFFSETS ABOVE 1 ON WEBGPU. The WebGPU backend
++  implements ObjectNode.ShadowTerminatorGeometryOffset and
++  ShadowTerminatorShadingOffset in 0..1; a shading offset above 1 fails the
++  render with "shadow terminator shading offset outside [0, 1]".
+ - USING SOCKET NAMES FOR LINKS. On the low-level tiers, Connect takes socket
+   UI names ("Color", "BSDF"); the setters take native socket names ("color",
+   "value"). The typed tier handles both for you.
+@@ -626,9 +640,7 @@
+ approximated by a Diffuse BSDF mixed with a GGX Glossy BSDF by the metallic
+ factor, emission is added with Add Closure, and alpha uses a Transparent BSDF.
+ Textures need decoded pixels (CreateImage with raw RGBA): the example uses
+-base-colour factors only because Gltf2 does not decode images. Set each mesh
+-object's ShadowTerminatorGeometryOffset to 0 for smooth-shaded meshes on the
+-WebGPU backend (it does not implement that offset and fails otherwise).
++base-colour factors only because Gltf2 does not decode images.
+ 
+ 
+ WHAT THIS PACKAGE DOES NOT DO
+@@ -685,7 +697,7 @@
+ Passes:        scene.AddPass(PassType.Depth, "Depth"); scene.Render(s); scene.ReadPass("Depth");
+ Remove:        scene.Remove(obj); scene.Remove(mesh);   // referrers first
+ Re-upload:     img.Update<byte>(rgba8);
+-Motion:        mesh.SetMotionPositions(3, xyzSteps);    // before the first render
++Motion:        mesh.SetMotionPositions(3, xyzSteps);    // before or after a render
+ Catalogue:     NodeType.Find("principled_bsdf").Inputs
+ By name:       scene.Host.SetFloats(node.Handle, "socket", [..]);
+ Raw ABI:       CyclesAbi.Create(Backend.CpuReference, 1, out ulong host); ... CyclesAbi.Destroy(host);
+--- a/EXTRAS-README.txt
++++ b/EXTRAS-README.txt
+@@ -80,9 +80,8 @@
+ factors and warns once when a material has textures. Normal and occlusion maps,
+ dielectric specular, clearcoat, transmission, sheen, volume, KHR_texture_transform,
+ skins, morph targets, animations, orthographic cameras and light ranges are
+-ignored with a warning. Every object's shadow-terminator geometry offset is set
+-to 0, because the WebGPU backend does not implement it (a smooth-shaded mesh lit
+-by a light otherwise fails to render there). The tests in
++ignored with a warning. Objects keep the default shadow-terminator offsets,
++which both backends implement. The tests in
+ tests/CodeBrix.Graphics3D.Cycles.Tests/GltfSceneConverterTests.cs drive the
+ conversion on the procedural sample model.
+ 
+--- a/MAINTAINER-README.txt
++++ b/MAINTAINER-README.txt
+@@ -294,7 +294,8 @@
+     it). They cover the ABI 1 additions on the CPU reference backend: native
+     progress events, cancellation through the event callback's return value,
+     node deletion and its reference check, image re-upload, pass readback,
+-    the motion rule, the version structure and the capability report. The test
++    edits after a render (bit-identical to a scene built with them), the
++    version structure and the capability report. The test
+     project sets AllowUnsafeBlocks for the raw callback test in CyclesAbiTests; NodeTypeTests' generator check runs
+     `python3 tools/managed/generate_model.py --check` and skips when python3
+     is not available.
+@@ -306,7 +307,9 @@
+     (test output; `-showLiveOutput` when running the test assembly directly),
+     check progress events, cancellation and reuse on the GPU backend and the
+     capability report's tier decision. They skip with a reason when no WebGPU
+-    adapter is available. Run them once with a cold scratch
++    adapter is available. They also recover a scene after a rejected render
++    (a depth pass) and move an object after a render (Phase E3 semantics).
++    Run them once with a cold scratch
+     MESA_SHADER_CACHE_DIR after changing GPU code (the whole class takes about
+     a minute cold on the Intel UHD laptop).
+   - GltfSceneConverterTests drive the glTF example client
+@@ -557,8 +560,8 @@
+   cbc_host_delete_node -> CyclesScene.Remove (CBC_INVALID becomes
+   InvalidOperationException; the wrapper and, for a shader, its graph nodes
+   are marked removed); cbc_host_image_update -> CyclesImage.Update;
+-  cbc_host_motion_positions -> MeshNode.SetMotionPositions (CBC_NOT_READY
+-  becomes InvalidOperationException with the motion rule);
++  cbc_host_motion_positions -> MeshNode.SetMotionPositions (CBC_NOT_READY, a
++  refused edit of a baked volume, becomes InvalidOperationException);
+   cbc_host_set_event_callback -> CyclesScene.RenderEventReceived and
+   RenderAsync progress/cancellation; cbc_host_pass_floats and
+   cbc_host_render_passes_json -> AddPass, GetRenderedPasses, ReadPass.
+@@ -571,8 +574,11 @@
+   is cancelled or a handler threw (the exception is rethrown after the render).
+   RenderAsync still re-sends cbc_host_cancel every ProgressInterval while the
+   token is cancelled, for the window before the first native event.
+-- A Cycles device error is permanent for the host (ABI.md); CyclesScene sets
+-  IsFaulted on a CBC_FAILED render and documents recreation.
++- Device errors (ABI.md "Device errors"): the next render recovers a WebGPU
++  device that is intact and re-uploads the scene; CyclesScene sets IsFaulted on
++  a CBC_FAILED render and clears it on a successful one. Edits after a render
++  (ABI.md "Edits after a render", native/host/host_edits.inc) restore baked
++  geometry's authored attributes; native/tools/scene_edit_gate.py covers them.
+ 
+ 
+ ================================================================================
+--- a/THIRD-PARTY-NOTICES.txt
++++ b/THIRD-PARTY-NOTICES.txt
+@@ -830,9 +830,9 @@
+ Full BSD license: ../parity/licenses/BSD-3-Clause.txt.
+ Changes: selected closure sampling and mixture evaluation in WGSL, bounded
+ arena scratch, native path-state/counter updates, ray offsets and film writes.
+-The MIT-licensed shift_cos_in function in bsdf.h is not ported by this entry;
+-its unsupported shading-offset mode is explicitly rejected. Existing host
+-compilation and complete archived headers retain their MIT notices/licenses.
++The MIT-licensed shift_cos_in function in bsdf.h is not ported by this entry
++(see the shadow-terminator entry below). Existing host compilation and complete
++archived headers retain their MIT notices/licenses.
+ The CPU oracle calls the original integrator_shade_surface without replacing
+ its function bodies. The disk trigonometric adapter is original CodeBrix code,
+ reused from the earlier parity stage. No new runtime dependency was introduced.
+@@ -1354,6 +1354,31 @@
+  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
++
++native/shaders/wavefront_terminator.wgsl (Phase E3) adapts the object shadow
++terminator offsets from the same pinned Cycles revision:
++  src/kernel/light/sample.h (shadow_ray_smooth_surface_offset, shadow_ray_offset)
++  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
++  SPDX-License-Identifier: Apache-2.0
++  src/util/math_fast.h (fast_acosf)
++  SPDX-FileCopyrightText: 2004 NVIDIA Corporation
++  SPDX-FileCopyrightText: 2008-2014 Larry Gritz
++  SPDX-FileCopyrightText: 2009-2014 Sony Pictures Imageworks Inc., et al.
++  SPDX-License-Identifier: BSD-3-Clause
++  src/kernel/closure/bsdf.h (shift_cos_in, the shadow terminator workaround
++  Cycles took from Appleseed):
++  Copyright (c) 2019 Francois Beaune, The appleseedhq Organization
++  SPDX-License-Identifier: MIT
++Full licenses: ../third_party/licenses/Cycles-Apache-2.0.txt,
++../third_party/licenses/Cycles-BSD-3-Clause.txt and
++../third_party/licenses/Cycles-MIT.txt.
++Changes: WGSL with native table descriptors and the reviewed binary32 rounding
++adapters; the cosine of shift_cos_in uses the existing bounded Arm-derived
++native_disk_sincos adapter, so the device accepts shading offsets from 0 to 1
++(frequency multipliers up to 2) and rejects larger ones before dispatch. The
++callers in wavefront_surface.wgsl (BSDF evaluation and sampling) and
++wavefront_lighting.wgsl (shadow-ray origin and self-intersection skip) are
++scene-specialized regions. The CPU oracle calls the original kernels unchanged.
+ 
+ ======================================================================
+ parity/THIRD-PARTY-NOTICES.txt
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -67,9 +67,12 @@
+ ## Open items from the native ABI additions
+ 
+ These were found while closing the scene-host ABI gaps (native/host/ABI.md).
+-Both are OPEN; neither is fixed.
++Phase E3 closed them on Linux; the Android devices still need the confirmation
++runs listed in the Phase E3 report.
+ 
+ | Item | Status |
+ | --- | --- |
+-| Object `tfm` changed after a mesh's first render | OPEN. Likely not applied: the pinned Cycles static-BVH update path bakes a single-user mesh with its object transform at the first render (geometry `transform_applied` stays set and `cbc_host_mesh` does not clear it). The same mechanism is why motion must be configured before the first render. Changing it would alter existing semantics; it needs its own fix and its own gate. Until then, remove and recreate the object and mesh to move them. |
+-| A host is dead after a device error | OPEN. A Cycles device error is permanent for that device: after a render fails with `CBC_FAILED` (for example an unimplemented WebGPU feature), every later render on the same host fails with the same message even after the cause is removed (measured on Linux WebGPU). The host must be destroyed and recreated; the managed `CyclesScene.IsFaulted` reports it. |
++| Object `tfm` changed after a mesh's first render | CLOSED (Linux). Confirmed not applied before the fix (the static-BVH path bakes a single-user mesh with its object transform). The host now keeps the authored attributes of geometry a render may bake and restores them before a geometry edit or a render whose bake would differ, so Cycles' own update re-bakes or instances it (`native/host/host_edits.inc`). Object `tfm`, object/camera/deformation motion added or removed, motion blur, materials, lights, mesh replacement, instancing, attributes and `smooth` flags: `scene_edit_gate.py`, CPU bit-identical to a fresh host, WebGPU practical. Refused explicitly (`CBC_NOT_READY`): edits of a baked volume with voxel data. |
++| A host is dead after a device error | CLOSED (Linux). The next render recovers an intact WebGPU device (error cleared, scene fully re-uploaded, "Device recovered" status event); `scene_edit_gate.py` recovers after a rejected depth pass and an orthographic camera and matches a fresh CPU render. A device that cannot recover (lost WebGPU device, CPU or Metal device error) keeps failing with "Host faulted"; `CyclesScene.IsFaulted` is cleared by a successful render. |
++| WebGPU smooth shadow-terminator offsets | CLOSED (Linux). Object geometry offset (default 0.1) and shading offset 0 to 1 are implemented in WGSL under scene specialization (`SHADOW_TERMINATOR_GEOMETRY`, `SHADOW_TERMINATOR_SHADING`); `shadow_terminator_gate.py`: 10 sun/point, instanced and moving/deforming cases against the original CPU kernels, with replays. Shading offsets above 1 are rejected before dispatch. The managed validation scenes and the glTF tool keep the default offsets. |
++| Intel Mesa `shade_surface_light` compile crash (spot/area after point) | PARTLY MITIGATED (Linux Intel UHD, Mesa 25.0.7). Diagnosed as the known intermittent `brw_opt_combine_constants` driver bug (out-of-bounds read with a garbage register number), not a WGSL error. Spot after point adds no specialization bit and does not recompile; the GPU ABI test renders point, spot and sun again. The `LIGHT_AREA` recompile crashed 3 of 4 cold runs before and 0 of 7 after the area light's arcsine series became one loop; a further recompile after an area light (object motion) still crashed 2 of 4, so the GPU ABI test renders its area light on the CPU only. A driver fix or a smaller lamp stage remains open. |
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -913,8 +913,8 @@
+ kernels perform the rendering work.
+ 
+ Full forward/MIS, light trees, triangle/area/spot emitters, nonconstant light
+-shaders, transparent shadows and smooth shadow-terminator geometry offsets remain
+-explicitly unsupported. These remain required work. The direct-light contribution
++shaders and transparent shadows remain explicitly unsupported (smooth
++shadow-terminator offsets were added in Phase E3; see below). These remain required work. The direct-light contribution
+ is generated by native scene preparation and WGSL kernels without changing the
+ shipped WebGPU library.
+ 
+@@ -1449,10 +1449,9 @@
+ re-render on the same scene met the practical criterion. GPU render times are
+ dominated by first-use pipeline compiles (Samsung 40-48 s, HP 37-64 s, Pixel
+ 135-181 s per scene). The ARM64 CPU reference films are bit-identical between
+-the Samsung and the Pixel. Smooth-shaded objects in these scenes use a zero
+-shadow-terminator geometry offset: the WebGPU device does not implement that
+-offset (found on Linux; a smooth mesh lit by a sun otherwise fails with
+-"WebGPU scheduler kernel reported invalid data (mask 1)").
++the Samsung and the Pixel. Smooth-shaded objects in these scenes used a zero
++shadow-terminator geometry offset at the time; Phase E3 implemented the offsets
++and the scenes now keep the default (Android confirmation runs pending).
+ 
+ ## Open device items (2026-10-20)
+ 
+@@ -1489,3 +1488,22 @@
+ 
+ The emissive-triangle corpora (sampler, five-image triangle gate and their
+ replays) were therefore not rerun on devices after the device-tier merge.
++
++## Shadow terminator offsets (Phase E3)
++
++`native/shaders/wavefront_terminator.wgsl` implements the object
++`shadow_terminator_geometry_offset` exactly as `light/sample.h`
++`shadow_ray_offset`/`shadow_ray_smooth_surface_offset` (the shadow-ray origin of
++a smooth-shaded triangle is lifted along the interpolated normal by the local
++parabolic envelope, the ray then skips its own primitive only when the light is
++on the geometric normal's side, and the self-intersection offset applies to
++the lifted origin) and the `shadow_terminator_shading_offset` as
++`closure/bsdf.h` `shift_cos_in` (after the bump term in BSDF evaluation for
++`cos >= 0` and in sampling for every reflection). The cosine uses the existing
++`native_disk_sincos` adapter, so the device rejects shading offsets above 1
++(multiplier above 2) with "WebGPU shadow terminator shading offset outside [0,
++1] not implemented". Both are scene-specialized: `SHADOW_TERMINATOR_GEOMETRY`
++when direct lighting, a smooth triangle and an object with a positive geometry
++offset are uploaded, `SHADOW_TERMINATOR_SHADING` when an object's multiplier
++exceeds 1. Gate: `native/tools/shadow_terminator_gate.py`
++(`codebrix_cycles_shadow_terminator_gate`, a `lighting_gate.cpp` variant).
+--- a/native/THIRD-PARTY-NOTICES.txt
++++ b/native/THIRD-PARTY-NOTICES.txt
+@@ -224,9 +224,9 @@
+ Full BSD license: ../parity/licenses/BSD-3-Clause.txt.
+ Changes: selected closure sampling and mixture evaluation in WGSL, bounded
+ arena scratch, native path-state/counter updates, ray offsets and film writes.
+-The MIT-licensed shift_cos_in function in bsdf.h is not ported by this entry;
+-its unsupported shading-offset mode is explicitly rejected. Existing host
+-compilation and complete archived headers retain their MIT notices/licenses.
++The MIT-licensed shift_cos_in function in bsdf.h is not ported by this entry
++(see the shadow-terminator entry below). Existing host compilation and complete
++archived headers retain their MIT notices/licenses.
+ The CPU oracle calls the original integrator_shade_surface without replacing
+ its function bodies. The disk trigonometric adapter is original CodeBrix code,
+ reused from the earlier parity stage. No new runtime dependency was introduced.
+@@ -748,3 +748,28 @@
+  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
++
++native/shaders/wavefront_terminator.wgsl (Phase E3) adapts the object shadow
++terminator offsets from the same pinned Cycles revision:
++  src/kernel/light/sample.h (shadow_ray_smooth_surface_offset, shadow_ray_offset)
++  SPDX-FileCopyrightText: 2011-2022 Blender Foundation
++  SPDX-License-Identifier: Apache-2.0
++  src/util/math_fast.h (fast_acosf)
++  SPDX-FileCopyrightText: 2004 NVIDIA Corporation
++  SPDX-FileCopyrightText: 2008-2014 Larry Gritz
++  SPDX-FileCopyrightText: 2009-2014 Sony Pictures Imageworks Inc., et al.
++  SPDX-License-Identifier: BSD-3-Clause
++  src/kernel/closure/bsdf.h (shift_cos_in, the shadow terminator workaround
++  Cycles took from Appleseed):
++  Copyright (c) 2019 Francois Beaune, The appleseedhq Organization
++  SPDX-License-Identifier: MIT
++Full licenses: ../third_party/licenses/Cycles-Apache-2.0.txt,
++../third_party/licenses/Cycles-BSD-3-Clause.txt and
++../third_party/licenses/Cycles-MIT.txt.
++Changes: WGSL with native table descriptors and the reviewed binary32 rounding
++adapters; the cosine of shift_cos_in uses the existing bounded Arm-derived
++native_disk_sincos adapter, so the device accepts shading offsets from 0 to 1
++(frequency multipliers up to 2) and rejects larger ones before dispatch. The
++callers in wavefront_surface.wgsl (BSDF evaluation and sampling) and
++wavefront_lighting.wgsl (shadow-ray origin and self-intersection skip) are
++scene-specialized regions. The CPU oracle calls the original kernels unchanged.
+--- a/native/cycles/device.cpp
++++ b/native/cycles/device.cpp
+@@ -182,6 +182,8 @@
+     if(std::strcmp(mem.global_name(),"shaders")==0)copy(shader_records);
+     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
+     if(std::strcmp(mem.global_name(),"object_flag")==0)copy(object_flag_records);
++    if(std::strcmp(mem.global_name(),"tri_shader")==0){smooth_triangles=false;
++      for(size_t i=0;i<mem.memory_size()/sizeof(uint);i++)smooth_triangles|=(static_cast<const uint*>(mem.host_pointer)[i]&SHADER_SMOOTH_NORMAL)!=0;}
+     // Exact SVM program copy: selects the WGSL handlers this scene can reach.
+     if(std::strcmp(mem.global_name(),"svm_nodes")==0)copy(svm_node_words);
+     if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;
+@@ -202,6 +204,7 @@
+       if(std::strcmp(mem.global_name(),"shaders")==0)shader_records.clear();
+       if(std::strcmp(mem.global_name(),"objects")==0)object_records.clear();
+       if(std::strcmp(mem.global_name(),"object_flag")==0)object_flag_records.clear();
++      if(std::strcmp(mem.global_name(),"tri_shader")==0)smooth_triangles=false;
+       if(std::strcmp(mem.global_name(),"svm_nodes")==0)svm_node_words.clear();
+       if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;}
+     if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images.erase(image.image_info_id);
+@@ -236,7 +239,20 @@
+   wgpuComputePassEncoderSetPipeline(pass,pipeline?pipeline:controls.value);wgpuComputePassEncoderSetBindGroup(pass,0,group,0,nullptr);
+   wgpuComputePassEncoderDispatchWorkgroups(pass,uint32_t(groups),1,1);wgpuComputePassEncoderEnd(pass);dispatches++;
+ }
++bool WebGPUDevice::recover(std::string &reason){
++  std::lock_guard lock(mutex);
++  if(!have_error())return true;
++  try{gpu.check();}catch(const std::exception &e){reason=e.what();return false;}
++  // Drop commands encoded before the failure and clear the kernel error word,
++  // so the next render starts from a clean command stream and status.
++  try{encoder={};zero(error_word,4);flush();gpu.check();}catch(const std::exception &e){reason=e.what();return false;}
++  error_msg.clear();return true;
++}
+ // Host C API seams (native/host/cycles_host.cpp).
++bool webgpu_recover(Device *device,std::string &reason){
++  auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu){reason="not a WebGPU device";return false;}
++  return webgpu->recover(reason);
++}
+ void host_tier_config(uint32_t tier,bool record_off,bool read_only,bool canary,const char *directory){
+   DeviceTierConfig config;config.request=tier;config.record_off=record_off;config.record_read_only=read_only;config.canary=canary;
+   config.record_directory=directory?directory:"";set_device_tier_config(config);
+--- a/native/cycles/device.h
++++ b/native/cycles/device.h
+@@ -44,6 +44,8 @@
+   std::vector<KernelShader> shader_records;
+   std::vector<KernelObject> object_records;
+   std::vector<uint> object_flag_records;
++  // Any uploaded triangle with SHADER_SMOOTH_NORMAL (shadow terminator geometry offset).
++  bool smooth_triangles=false;
+   // Scene-driven WGSL specialization (pipelines.h). svm_node_words is the exact
+   // uploaded SVM program; svm_generation counts SVM, shader, light, light
+   // distribution, object-flag and KernelData uploads (features also cover
+@@ -143,6 +145,11 @@
+   void enqueue_surface(int,const DeviceKernelArguments&);
+   void update_state(const IntegratorStateGPU&);
+   uint32_t scene_tables();
++  // Host recovery (Phase E3, native/host ABI.md "Device errors"): clears a
++  // reported device error when the WebGPU device itself is intact. Returns
++  // false, with the reason, when the device has a fatal error (lost device,
++  // uncaptured validation error); such a device stays failed.
++  bool recover(std::string &reason);
+   template<class F>void guard(F f){std::lock_guard lock(mutex);try{gpu.check();f();}catch(const std::exception &e){set_error(e.what());}}
+ };
+ unique_ptr<Device> device_webgpu_create(const DeviceInfo&,Stats&,Profiler&,bool);
+--- a/native/cycles/lighting_gate.cpp
++++ b/native/cycles/lighting_gate.cpp
+@@ -38,6 +38,9 @@
+ #include "object_motion_fixture.h"
+ #include "deforming_motion_fixture.h"
+ #endif
++#ifdef CODEBRIX_SHADOW_TERMINATOR_GATE
++#include "shadow_terminator_fixture.h"
++#endif
+ constexpr unsigned width=32,height=24,samples=8;
+ #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+ #include "object_motion_fixture.h"
+@@ -47,6 +50,8 @@
+ constexpr int lighting_modes[lighting_cases]={0,1,2,3,5};
+ #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
+ constexpr int lighting_cases=12;
++#elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
++constexpr int lighting_cases=shadow_terminator_cases;
+ #else
+ constexpr int lighting_cases=8;
+ #endif
+@@ -73,6 +78,13 @@
+   scene.integrator->set_aa_samples(samples);scene.integrator->set_min_bounce(2);scene.integrator->set_max_bounce(3);scene.integrator->set_filter_glossy(0);
+   scene.film->set_use_sample_count(false);scene.camera->set_full_width(width);scene.camera->set_full_height(height);scene.camera->set_screen_size(width,height);
+   scene.camera->set_fov(.9f);scene.camera->set_matrix(transform_translate(make_float3(0,0,-7)));scene.camera->compute_auto_viewplane();
++#ifdef CODEBRIX_SHADOW_TERMINATOR_GATE
++  {(void)stationary;auto background=make_unique<ShaderGraph>();auto bg=background->create_node<BackgroundNode>();bg->set_color(make_float3(.05f,.06f,.08f));background->connect(bg->output("Background"),background->output()->input("Surface"));
++    auto world=scene.create_node<Shader>();world->set_graph(std::move(background));world->tag_update(&scene);scene.background->set_shader(world);
++    auto emission_graph=make_unique<ShaderGraph>();auto emission=emission_graph->create_node<EmissionNode>();emission->set_color(one_float3());emission->set_strength(1);
++    emission_graph->connect(emission->output("Emission"),emission_graph->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(emission_graph));emitter->tag_update(&scene);
++    shadow_terminator_fixture(scene,mode,emitter);for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);return;}
++#endif
+   auto diffuse=material(scene,0),mixed=material(scene,1);
+   quad(scene,diffuse,{make_float3(-4,-3,3),make_float3(4,-3,3),make_float3(4,3,3),make_float3(-4,3,3)});
+   quad(scene,mixed,{make_float3(-4,-2,-2),make_float3(4,-2,-2),make_float3(4,-2,3),make_float3(-4,-2,3)});
+@@ -239,6 +251,12 @@
+     require(data.integrator.use_direct_light&&data.integrator.transparent_shadows,"Unexpected native transparent-shadow configuration");
+ #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
+     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native broad-light configuration");
++#elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
++    require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native shadow-terminator configuration");
++    {bool smooth=false;for(size_t i=0;i<scene.dscene.tri_shader.size();i++)smooth|=(scene.dscene.tri_shader[i]&SHADER_SMOOTH_NORMAL)!=0;require(smooth,"Shadow-terminator fixture lacks smooth triangles");
++     unsigned offsets=0;for(size_t i=0;i<scene.dscene.objects.size();i++){const auto &o=scene.dscene.objects[i];
++       offsets+=o.shadow_terminator_geometry_offset==shadow_terminator_geometry(mode)&&o.shadow_terminator_shading_offset==1.0f/(1.0f-.5f*shadow_terminator_shading(mode));}
++     require(offsets>=(mode==8?2u:1u),"Native shadow terminator offsets not uploaded as authored");}
+ #else
+     require(data.integrator.use_direct_light&&(bool(data.integrator.use_light_mis)==(use_mis&&mode!=0&&mode!=3))&&!data.integrator.transparent_shadows,"Unexpected native light configuration");
+ #endif
+@@ -283,6 +301,8 @@
+     if(mode!=0)require(metrics.shadows>100&&metrics.visible>100,"Missing mesh direct lighting coverage");
+ #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
+     require(metrics.shadows>0&&metrics.visible>0,"Missing broad direct lighting coverage");
++#elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
++    require(metrics.shadows>100&&metrics.visible>100&&metrics.blocked>10,"Missing shadow-terminator direct lighting coverage");
+ #else
+     require(metrics.shadows>100&&metrics.visible>100,"Missing direct lighting coverage");if(mode!=6)require(metrics.blocked>10,"Missing occlusion coverage");
+ #endif
+@@ -304,7 +324,7 @@
+     bool rejected=false;try{device.validate_lighting(true);}catch(const std::exception &e){rejected=std::string(e.what()).find("static instanced triangle emitters")!=std::string::npos;}
+     require(rejected,"Unvalidated emitter configuration was accepted");total.unsupported_emitters++;
+   }
+-#else
++#elif !defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
+   if(use_mis)require(total.forward>100,"Missing forward point-light paths");
+ #endif
+   require(stats.mem_used==0,"Lighting test leaked native allocations");std::ofstream(out/"library.txt")<<device.gpu.library_path;std::ofstream(out/"adapter.txt")<<device.gpu.adapter_name;
+--- a/native/cycles/pipelines.cpp
++++ b/native/cycles/pipelines.cpp
+@@ -26,6 +26,7 @@
+     {"SVM_BSDF_TRANSPARENT",SF_BSDF_TRANSPARENT},{"SVM_BSDF_GLOSSY",SF_BSDF_GLOSSY},{"SVM_BSDF_GLASS",SF_BSDF_GLASS},
+     {"LIGHT_AREA",SF_LIGHT_AREA},{"MOTION_OBJECT",SF_MOTION_OBJECT},{"MOTION_CAMERA",SF_MOTION_CAMERA},
+     {"LIGHT_TRIANGLE",SF_LIGHT_TRIANGLE},
++    {"SHADOW_TERMINATOR_GEOMETRY",SF_TERMINATOR_GEOMETRY},{"SHADOW_TERMINATOR_SHADING",SF_TERMINATOR_SHADING},
+     // Region kept when either microfacet family is reachable.
+     {"SVM_BSDF_MICROFACET",SF_BSDF_GLOSSY|SF_BSDF_GLASS}};
+   return names;
+@@ -174,6 +175,10 @@
+     for(const KernelShader &shader:shader_records)if(shader.flags&(SD_MIS_FRONT|SD_MIS_BACK))enabled_features|=SF_LIGHT_TRIANGLE;
+     for(const uint flags:object_flag_records)if(flags&SD_OBJECT_MOTION)enabled_features|=SF_MOTION_OBJECT;
+     if(data.cam.num_motion_steps!=0)enabled_features|=SF_MOTION_CAMERA;
++    for(const KernelObject &object:object_records){
++      if(object.shadow_terminator_shading_offset>1.0f)enabled_features|=SF_TERMINATOR_SHADING;
++      if(object.shadow_terminator_geometry_offset>0.0f&&smooth_triangles&&data.integrator.use_direct_light)enabled_features|=SF_TERMINATOR_GEOMETRY;
++    }
+   }
+   return enabled_features;
+ }
+--- a/native/cycles/pipelines.h
++++ b/native/cycles/pipelines.h
+@@ -34,7 +34,11 @@
+   // Emissive-triangle sampling and forward-hit MIS: any triangle in the light
+   // distribution or any shader flagged as a MIS emitter (SD_MIS_FRONT/BACK).
+   SF_LIGHT_TRIANGLE=1ull<<29,
+-  SF_ALL=(1ull<<30)-1,
++  // Object shadow terminator offsets (Phase E3): the geometry offset on
++  // smooth-shaded triangles with direct lighting, the shading offset whenever
++  // an object's frequency multiplier exceeds 1.
++  SF_TERMINATOR_GEOMETRY=1ull<<30, SF_TERMINATOR_SHADING=1ull<<31,
++  SF_ALL=(1ull<<32)-1,
+ };
+ struct ShaderFeatureName {const char *name;uint64_t bit;};
+ const std::vector<ShaderFeatureName> &shader_feature_names();
+--- a/native/cycles/surface.cpp
++++ b/native/cycles/surface.cpp
+@@ -61,6 +61,14 @@
+   validate_geometry_motion();
+   validate_volume();
+   validate_lighting(data.integrator.use_direct_light);
++  // Shadow terminator: the shading multiplier 1/(1-offset/2) is implemented
++  // for offsets in [0,1] (multiplier at most 2, keeping shift_cos_in's cosine
++  // argument inside [0,pi]); larger offsets are rejected, never approximated.
++  for(const KernelObject &object:object_records){
++    require(std::isfinite(object.shadow_terminator_geometry_offset),"Invalid native shadow terminator geometry offset");
++    require(!(object.shadow_terminator_shading_offset>2.0f)&&!std::isnan(object.shadow_terminator_shading_offset),
++            "WebGPU shadow terminator shading offset outside [0, 1] not implemented");
++  }
+   require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO))&&
+           !data.integrator.has_shadow_catcher&&!data.integrator.use_caustics,"WebGPU surface optional integration features not implemented");
+   require(data.film.pass_flag==0,"WebGPU surface data passes not implemented");
+--- a/native/cycles/surface_gate.cpp
++++ b/native/cycles/surface_gate.cpp
+@@ -94,7 +94,8 @@
+     if(test==8)state.path.render_pixel_index=1;
+     if(test==9)state.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;
+     if(test==10)state.path.flag=PATH_RAY_SUBSURFACE;
+-    if(test==12){ds.objects[state.isect.object].shadow_terminator_shading_offset=2;ds.objects.copy_to_device();}
++    // Shading offsets above 1 (multiplier above 2) are rejected before dispatch.
++    if(test==12){ds.objects[state.isect.object].shadow_terminator_shading_offset=3;ds.objects.copy_to_device();reason="shadow terminator shading offset";}
+     if(test==13){data.integrator.distribution_pdf_triangles=-1;reason="Invalid native triangle selection probability";}
+     if(test==14){data.integrator.sampling_pattern=999;reason="tabulated Sobol";}
+     if(test==15)reason="Incomplete surface";
+--- a/native/host/ABI.md
++++ b/native/host/ABI.md
+@@ -71,17 +71,33 @@
+ | `CBC_UNSUPPORTED` | 2 | valid request this binary or device does not provide |
+ | `CBC_FAILED` | 3 | native failure (device error, render failure) |
+ | `CBC_CANCELLED` | 4 | the render was cancelled |
+-| `CBC_NOT_READY` | 5 | wrong state (host closing, nothing rendered yet, call from a callback, color config while hosts live, baked geometry) |
++| `CBC_NOT_READY` | 5 | wrong state (host closing, nothing rendered yet, call from a callback, color config while hosts live, an edit of a baked volume) |
+ | `CBC_SMALL_BUFFER` | 6 | output buffer too small; `required` holds the size |
+ 
+ `cbc_host_error()` copies the calling thread's last message (thread-local,
+ UTF-8, at most 2,047 bytes). A successful call clears it.
+ 
+-**Device errors.** A Cycles device error is permanent for that device: after a
+-render fails with `CBC_FAILED` because the device rejected the scene (for
+-example an unimplemented WebGPU feature), later renders on the same host fail
+-with the same message even after the cause is removed (measured on Linux
+-WebGPU by the host gate). Destroy the host and build a new one.
++**Device errors.** A render that fails with `CBC_FAILED` because the device
++rejected the scene (for example an unimplemented WebGPU feature such as a
++non-Combined pass or a non-perspective camera) leaves the error on the Cycles
++device. The next `cbc_host_render` on that host recovers it:
++
++- The WebGPU device clears the error when the device itself is intact (no lost
++  device and no uncaptured WebGPU error): it drops the commands encoded before
++  the failure and clears its kernel error word. The host then tags the whole
++  scene for a complete device update (every manager uploads its data again, as
++  for a new scene), emits a `CBC_EVENT_STATUS` event whose message starts with
++  `Device recovered`, and renders. The device-tier record and pipeline tier are
++  not touched. Remove the cause first; otherwise the render fails again.
++- A device that cannot recover (a lost or otherwise fatally failed WebGPU
++  device, or an error on the CPU or Metal device, which have no recovery path)
++  keeps the host faulted: every later render returns `CBC_FAILED` with a message
++  that starts with `Host faulted:` and names the original error. Destroy the
++  host and create a new one.
++
++Measured on Linux WebGPU (native/tools/scene_edit_gate.py): after a rejected
++depth pass or orthographic camera, removing the cause and rendering again on the
++same host meets the practical criterion against a fresh CPU render.
+ 
+ ## Threading and ownership
+ 
+@@ -154,7 +170,9 @@
+ pipelines). The report states what this source tree does today; scene features
+ it does not list as supported may still fail at render time with `CBC_FAILED`.
+ 
+-Facts measured for the current WebGPU device (Linux host gate): only the
++Facts measured for the current WebGPU device (Linux host gate): object shadow
++terminator offsets are implemented (geometry offset; shading offset 0 to 1, larger
++shading offsets are rejected at render time); only the
+ perspective camera; only `Combined` is written (data passes and light passes
+ fail with "surface data passes not implemented"); the integrator defaults
+ (denoising, adaptive sampling, light tree, guiding enabled) must be switched
+@@ -187,15 +205,36 @@
+ Object motion is the object's `motion` socket (an odd or even number of 3x4
+ transforms around `tfm`), camera motion the camera's `motion` socket, and
+ deformation `cbc_host_motion_positions` (odd step count 3..129, time-ordered
+-vertex arrays whose center equals the mesh positions). All need
+-`integrator.motion_blur` and a camera `shuttertime`.
+-
+-The pinned Cycles static-BVH update path bakes a single-user mesh with its
+-object transform at the mesh's first render. **Configure motion on a mesh and
+-its objects before their first render.** Adding motion later is not applied by
+-the renderer; `cbc_host_motion_positions` refuses it with `CBC_NOT_READY`
+-(removal, `steps == 1`, is always allowed). To change motion afterwards,
+-delete the object and mesh and create new ones.
++vertex arrays whose center equals the mesh's authored positions). All need
++`integrator.motion_blur` and a camera `shuttertime`. Motion may be set before
++or after a render (next section).
++
++### Edits after a render
++
++Every edit made through this ABI after a render applies to the next render
++exactly as if the scene had been built with it: the CPU reference renders the
++edited host bit for bit like a new host that applies the same calls before its
++first render (native/tools/scene_edit_gate.py: object `tfm`, object, camera and
++deformation motion added or removed, motion blur switched on, a material value,
++a light's strength and transform, a replaced mesh, a new instance, an attribute
++and the `smooth` flags; the WebGPU device meets the practical criterion).
++
++How: the pinned Cycles static-BVH update path bakes a single-user mesh, hair or
++point cloud with its object transform (it rewrites the geometry's positions,
++normals and radii in place). Before each render the host keeps a copy of the
++authored attributes of every geometry that render may bake. A later edit of
++the geometry itself (`cbc_host_mesh`, attributes, deformation motion, sockets)
++first restores those authored attributes; a render whose bake would differ from
++the existing one (the object's `tfm` or `motion`, motion blur, the number of
++objects using the geometry, or a shader edit that may add displacement or
++subsurface scattering) restores them before Cycles' own device update, which
++then bakes or instances the geometry as it would for a new scene. A restored
++geometry rebuilds the BVH; the authored copy costs one extra copy of each such
++geometry's attributes. `cbc_host_attribute_get_*` return the authored values.
++
++Refused: volume geometry with voxel data cannot be restored once baked; an edit
++of such a volume, or of its object's `tfm`, `motion` or `geometry`, returns
++`CBC_NOT_READY` (delete and recreate the object and volume instead).
+ 
+ ### Lifetime and deletion
+ 
+--- a/native/host/README.md
++++ b/native/host/README.md
+@@ -87,14 +87,38 @@
+ | Callbacks | `cbc_host_set_event_callback`; `Progress::set_update_callback` drives status/progress events under a per-host event mutex; a thread-local flag makes `boundary()` refuse reentry; nonzero return sets the cancellation flag polled by the existing cancel callback |
+ | Passes/AOVs | `HostOutput` copies every named caller pass from the same complete tile as Combined; `cbc_host_pass_floats`, `cbc_host_render_passes_json` |
+ 
+-Known limits found while closing them (see ABI.md): motion must exist before a
+-mesh's first render (static BVH baking, pinned Cycles behaviour); a Cycles device
+-error is permanent for the host; the WebGPU device writes only Combined, only
+-supports the perspective camera and needs the integrator's denoising, adaptive
+-sampling, guiding and light tree switched off. On this Linux Intel Mesa driver,
+-compiling `shade_surface_light` for a spot light after a point light in one
+-device lifetime crashed the driver compiler (reported, not worked around; the
+-GPU ABI test renders only the point light).
++Known limits found while closing them (see ABI.md): the WebGPU device writes
++only Combined, only supports the perspective camera and needs the integrator's
++denoising, adaptive sampling, guiding and light tree switched off.
++
++Phase E3 closed three of the original limits. Edits after a render apply as for
++a scene built with them (`host_edits.inc`: the host keeps the authored
++attributes of geometry the static BVH path may bake and restores them before a
++geometry edit or a render whose bake would differ; baked volumes are refused with
++`CBC_NOT_READY`). A render after a device error recovers an intact WebGPU device
++(`recover_device` in `cycles_host.cpp`, `WebGPUDevice::recover`); a device that
++cannot recover keeps the host faulted ("Host faulted"). The Intel Mesa 25.0.7
++compiler crash while creating `shade_surface_light` when a scene adds lights in
++one device lifetime is the known intermittent `brw_opt_combine_constants`
++driver bug (an out-of-bounds read with a garbage register number), not a WGSL
++error. Spot after point never recompiles (no specialization bit), and the GPU
++ABI test now renders point, spot and sun lights. Adding an area light recompiles
++`shade_surface_light` with `LIGHT_AREA`; running the area light's four arcsine
++series as one loop (`wavefront_emitters.wgsl`) took that compile from 3 of 4
++crashes to 0 of 7 in cold runs, but a later recompile in the same device
++lifetime (object motion after an area light) still crashed 2 of 4 times, so the
++GPU ABI test keeps the area light on the CPU and area lights stay covered by the
++broad- and transparent-lighting gates (phaseE3 report).
++
++`native/tests/host/scene_edit_consumer.c` (`codebrix_host_scene_edit_test`) and
++`native/tools/scene_edit_gate.py` check the edits (13 scenarios, CPU bit for bit
++against a fresh host, WebGPU with the practical criterion, each sequence replayed
++in a new host) and the recovery after a rejected depth pass and orthographic
++camera:
++
++```sh
++python3 native/tools/scene_edit_gate.py --output native/work/scene-edit-v1
++```
+ 
+ `native/tests/host/abi_consumer.c` (`codebrix_host_abi_test`) exercises every
+ addition, malformed input, lifetime and struct-size rejection on the CPU
+--- a/native/host/cycles_host.cpp
++++ b/native/host/cycles_host.cpp
+@@ -20,6 +20,9 @@
+ #include "scene/attribute.h"
+ #include "scene/image.h"
+ #include "scene/image_loader.h"
++#include "scene/procedural.h"
++#include "scene/scene_attributes.h"
++#include "scene/shader.h"
+ #include "util/image_metadata.h"
+ #include <OpenColorIO/OpenColorIO.h>
+ #include "session/output_driver.h"
+@@ -128,6 +131,10 @@
+   std::map<uint64_t, Entry> nodes;
+   std::map<Shader *, std::unique_ptr<Graph>> graphs;
+   std::map<CBCImage,std::shared_ptr<const MemoryImageData>> images;
++  // Scene edits after a render (host_edits.inc): authored attributes of
++  // geometry the static BVH path may bake, and shaders edited since the last render.
++  std::map<Geometry *, BakeRecord> bakes;
++  std::set<Shader *> edited_shaders;
+   Result result;
+   // Event callback state. The callback changes only under `operation`, which
+   // rendering holds, so a render sees one callback throughout.
+@@ -162,6 +169,7 @@
+   ~Host() {
+     if (session) {
+       session->cancel(true);
++      bakes.clear();
+       nodes.clear();
+       graphs.clear();
+       images.clear();
+@@ -186,7 +194,7 @@
+     entry.node->tag_modified();
+     if (entry.graph) { entry.graph->dirty = true; return; }
+     Scene *scene = session->scene.get();
+-    if (auto shader = dynamic_cast<Shader *>(entry.node)) shader->tag_update(scene);
++    if (auto shader = dynamic_cast<Shader *>(entry.node)) { edited_shaders.insert(shader); shader->tag_update(scene); }
+     else if (auto light = dynamic_cast<Light *>(entry.node)) light->tag_update(scene);
+     else if (auto geometry = dynamic_cast<Geometry *>(entry.node)) geometry->tag_update(scene, true);
+     else if (auto object = dynamic_cast<Object *>(entry.node)) object->tag_update(scene);
+@@ -235,7 +243,7 @@
+     for (auto &[id, host] : remaining) { host->closing = true; host->cancellation = true; } }
+   for (auto &[id, host] : remaining) {
+     std::lock_guard lock(host->operation);
+-    if (host->session) { host->session->cancel(true); host->nodes.clear(); host->graphs.clear(); host->images.clear(); host->session.reset(); }
++    if (host->session) { host->session->cancel(true); host->bakes.clear(); host->nodes.clear(); host->graphs.clear(); host->images.clear(); host->session.reset(); }
+   }
+ }
+ 
+@@ -296,6 +304,9 @@
+ #endif
+ }
+ }
++namespace {
++#include "host_edits.inc"
++}
+ #include "host_properties.inc"
+ #include "host_scene.inc"
+ 
+@@ -304,6 +315,7 @@
+ // Defined with the WebGPU device (native/cycles/device_tier.h, device.cpp).
+ void host_tier_config(uint32_t tier, bool record_off, bool read_only, bool canary, const char *directory);
+ std::string webgpu_device_report_json(Device *device);
++bool webgpu_recover(Device *device, std::string &reason);
+ }
+ #endif
+ extern "C" int cbc_host_tier_config(const CBCTierConfig *config, const char *directory) {
+@@ -336,6 +348,48 @@
+     out << (device->info.type == DEVICE_METAL ? "\"metal\"" : "\"cpu\"") << ",\"pipelines\":null";
+     out << '}';
+     return out.str();
++}
++}
++namespace {
++// Device-error recovery contract (ABI.md "Device errors"). A render that fails
++// with a device error leaves the error on the Cycles device. The next render
++// on the host asks the device to recover: the WebGPU device clears the error
++// when the device itself is intact (no lost device, no uncaptured WebGPU
++// error); the scene is then tagged for a complete device update, as
++// Scene::reset does without adding default shaders, so every manager uploads
++// its data again. The device record and pipeline tier are not touched. A
++// device that cannot recover (fatal WebGPU error, CPU or Metal device error)
++// keeps the host faulted: every later render fails with "Host faulted".
++void recover_device(Host &host) {
++  Device *device = host.session->device.get();
++  if (!device->have_error()) return;
++  const std::string previous = device->error_message();
++  std::string reason = "the device has no recovery path";
++#ifdef WITH_WEBGPU
++  const bool recovered = webgpu_recover(device, reason);
++#else
++  const bool recovered = false;
++#endif
++  if (!recovered)
++    throw Failure(CBC_FAILED, "Host faulted: the device cannot recover from an earlier error (" + previous + "; " + reason +
++                  "); destroy the host and create a new one");
++  Scene &scene = *host.session->scene;
++  scene.camera->tag_modified(); scene.dicing_camera->tag_modified(); scene.film->tag_modified(); scene.background->tag_modified();
++  scene.background->tag_update(&scene);
++  scene.integrator->tag_update(&scene, Integrator::UPDATE_ALL);
++  scene.scene_attribute->tag_update(&scene, SceneAttributes::UPDATE_ALL);
++  for (Shader *shader : scene.shaders) shader->tag_modified();
++  scene.shader_manager->tag_update(&scene, ShaderManager::UPDATE_ALL);
++  for (Geometry *geometry : scene.geometry) { geometry->tag_modified(); geometry->need_update_rebuild = true; }
++  for (Object *object : scene.objects) object->tag_modified();
++  scene.object_manager->tag_update(&scene, ObjectManager::UPDATE_ALL);
++  scene.geometry_manager->tag_update(&scene, GeometryManager::UPDATE_ALL);
++  scene.light_manager->tag_update(&scene, LightManager::UPDATE_ALL);
++  scene.particle_system_manager->tag_update(&scene);
++  scene.procedural_manager->tag_update();
++  scene.image_manager->tag_update();
++  std::lock_guard lock(host.event_mutex);
++  host.emit(CBC_EVENT_STATUS, 0, 0, "Device recovered after an earlier error (" + previous + "); scene data re-uploaded");
+ }
+ }
+ extern "C" int cbc_host_device_report_json(CBCHost handle, char *json, uint64_t capacity, uint64_t *required) {
+@@ -422,7 +476,7 @@
+       host = it->second; host->closing = true; host->cancellation = true; hosts.erase(it); }
+     std::lock_guard lock(host->operation);
+     host->session->cancel(true);
+-    host->nodes.clear(); host->graphs.clear(); host->images.clear(); host->session.reset();
++    host->bakes.clear(); host->nodes.clear(); host->graphs.clear(); host->images.clear(); host->session.reset();
+   });
+ }
+ extern "C" int cbc_host_cancel(CBCHost handle) {
+@@ -486,7 +540,7 @@
+   return edit(handle, [&](Host &host) {
+     count_ok(values, count); for (uint64_t i = 0; i < count; ++i) require(std::isfinite(values[i]), "Nonfinite socket value");
+     auto &entry = host.entry(id); auto &input = socket(entry, name); auto &node = *entry.node;
+-    stored_property(input);
++    stored_property(input); before_edit(host, entry, name);
+     if (input.type == SocketType::FLOAT) { require(count == 1, "Expected one float"); node.set(input, values[0]); }
+     else if (input.type == SocketType::POINT2) { require(count == 2, "Expected two floats"); node.set(input, make_float2(values[0], values[1])); }
+     else if (SocketType::is_float3(input.type)) { require(count == 3, "Expected three floats"); node.set(input, make_float3(values[0], values[1], values[2])); }
+@@ -513,7 +567,7 @@
+ extern "C" int cbc_host_set_ints(CBCHost handle, CBCNode id, const char *name, const int64_t *values, uint64_t count) {
+   return edit(handle, [&](Host &host) {
+     count_ok(values, count); auto &entry = host.entry(id); auto &input = socket(entry, name); auto &node = *entry.node;
+-    stored_property(input);
++    stored_property(input); before_edit(host, entry, name);
+     if (input.type == SocketType::BOOLEAN_ARRAY || input.type == SocketType::INT_ARRAY) {
+       if (input.type == SocketType::BOOLEAN_ARRAY) {
+         for (size_t i=0;i<count;++i) require(values[i]==0 || values[i]==1,"Boolean must be zero or one");
+@@ -538,7 +592,7 @@
+ extern "C" int cbc_host_set_string(CBCHost handle, CBCNode id, const char *name, const char *value) {
+   return edit(handle, [&](Host &host) {
+     require(value, "Missing string value"); auto &entry = host.entry(id); auto &input = socket(entry, name);
+-    stored_property(input);
++    stored_property(input); before_edit(host, entry, name);
+ #ifdef CBC_HOST_NO_IMAGE_FILES
+     // This build contains no image file readers; callers bind decoded pixels.
+     require(!*value || input.name != "filename" || !dynamic_cast<ImageSlotTextureNode *>(entry.node),
+@@ -563,7 +617,11 @@
+       auto node = values[i] ? host.entry(values[i]).node : nullptr;
+       require(node || input.type == SocketType::NODE, "Null array node reference");
+       require(!node || !input.node_type || node->is_a(input.node_type), "Node reference has the wrong type"); nodes[i] = node;
++      // A baked volume cannot gain users (host_edits.inc).
++      auto volume = dynamic_cast<Geometry *>(node);
++      if (volume && volume->is_volume() && volume->transform_applied && dynamic_cast<Object *>(entry.node)) throw Failure(CBC_NOT_READY, volume_refusal);
+     }
++    before_edit(host, entry, name);
+     if (input.type == SocketType::NODE) entry.node->set(input, nodes[0]); else entry.node->set(input, nodes);
+     host.changed(entry);
+   });
+@@ -574,6 +632,7 @@
+     auto &entry = host.entry(id); auto mesh = dynamic_cast<Mesh *>(entry.node); require(mesh, "Handle is not a mesh");
+     for (uint64_t i = 0; i < vertices * 3; ++i) require(std::isfinite(xyz[i]), "Mesh position is nonfinite");
+     for (uint64_t i = 0; i < triangles * 3; ++i) require(indices[i] < vertices, "Triangle index is outside the vertex array");
++    before_edit(host, entry, nullptr);
+     mesh->resize_mesh(int(vertices), int(triangles));
+     for (size_t i = 0; i < vertices; ++i) mesh->get_position_for_write()[i] = make_float3(xyz[3*i],xyz[3*i+1],xyz[3*i+2]);
+     for (size_t i = 0; i < triangles * 3; ++i) mesh->get_triangles()[i] = int(indices[i]);
+@@ -588,9 +647,14 @@
+     require(config->width && config->height && config->width <= 32768 && config->height <= 32768 && config->samples && config->samples <= INT_MAX, "Invalid render dimensions or sample count");
+     require(rgba && count == uint64_t(config->width) * config->height * 4 && count <= SIZE_MAX / sizeof(float), "Incorrect output buffer size");
+     validate_geometry(host);
++    // Restore baked geometry whose fresh-scene bake differs and capture the
++    // authored attributes of geometry this render may bake (host_edits.inc).
++    struct Prune { Host &host; ~Prune() { prune_bakes(host); } } prune{host};
++    reconcile_bakes(host);
+     host.prepare_graphs();
+     auto &session = *host.session; auto &scene = *session.scene;
+-    require(!session.device->have_error(), session.device->error_message().c_str(), CBC_FAILED);
++    host.requested_samples = config->samples;
++    recover_device(host);
+     scene.camera->set_full_width(int(config->width)); scene.camera->set_full_height(int(config->height));
+     scene.camera->set_screen_size(int(config->width), int(config->height)); scene.camera->compute_auto_viewplane();
+     auto params = session.params; params.samples = int(config->samples);
+--- a/native/host/host_api.inc
++++ b/native/host/host_api.inc
+@@ -185,7 +185,7 @@
+       if (object->get_geometry()) scene.delete_node(object);
+       else { scene.objects.erase_by_swap(object); scene.object_manager->tag_update(&scene, ObjectManager::OBJECT_REMOVED); }
+     } else if (auto light = dynamic_cast<Light *>(node)) scene.delete_node(light);
+-    else if (auto geometry = dynamic_cast<Geometry *>(node)) scene.delete_node(geometry);
++    else if (auto geometry = dynamic_cast<Geometry *>(node)) { host.bakes.erase(geometry); scene.delete_node(geometry); }
+     else if (auto particles = dynamic_cast<ParticleSystem *>(node)) scene.delete_node(particles);
+     else scene.delete_node(static_cast<Pass *>(node));
+   });
+@@ -202,6 +202,8 @@
+ extern "C" int cbc_host_motion_positions(CBCHost handle, CBCNode id, uint32_t steps, const float *xyz, uint64_t count) {
+   return edit(handle, [&](Host &host) {
+     auto &entry = host.entry(id); auto mesh = dynamic_cast<Mesh *>(entry.node); require(mesh && !entry.graph, "Handle is not a mesh");
++    // A mesh baked by an earlier render gets its authored positions back first (host_edits.inc).
++    before_edit(host, entry, nullptr);
+     require(steps == 1 || (steps >= 3 && steps % 2 == 1 && steps <= Geometry::MAX_MOTION_STEPS), "Motion steps must be 1 or odd from 3 to 129");
+     auto position = mesh->attributes.find(ATTR_STD_POSITION); require(position, "Mesh has no positions");
+     auto normal = mesh->attributes.find(ATTR_STD_VERTEX_NORMAL);
+@@ -213,9 +215,6 @@
+       const uint64_t vertices = mesh->num_verts();
+       require(vertices && count == uint64_t(steps) * vertices * 3 && xyz, "Expected steps * vertex_count * 3 positions");
+       for (uint64_t i = 0; i < count; ++i) require(std::isfinite(xyz[i]), "Motion position is nonfinite");
+-      // The static BVH path bakes single-user geometry with its object
+-      // transform at the first render; such positions cannot gain motion.
+-      require(!mesh->transform_applied, "Mesh was baked with its object transform by an earlier render; create the mesh and object with motion before their first render", CBC_NOT_READY);
+       const uint32_t center = (steps - 1) / 2; const packed_float3 *current = position->data<packed_float3>();
+       for (uint64_t v = 0; v < vertices; ++v) {
+         const float *p = xyz + (uint64_t(center) * vertices + v) * 3;
+--- a/native/host/host_properties.inc
++++ b/native/host/host_properties.inc
+@@ -131,7 +131,7 @@
+ }
+ extern "C" int cbc_host_set_uints(CBCHost handle,CBCNode id,const char *name,const uint64_t *values,uint64_t count) {
+   return edit(handle,[&](Host &host) {
+-    count_ok(values,count);require(count==1,"Expected one unsigned integer");auto &entry=host.entry(id);auto &input=socket(entry,name);stored_property(input);
++    count_ok(values,count);require(count==1,"Expected one unsigned integer");auto &entry=host.entry(id);auto &input=socket(entry,name);stored_property(input);before_edit(host,entry,name);
+     if(input.type==SocketType::UINT64)entry.node->set(input,values[0]);
+     else if(input.type==SocketType::UINT){require(values[0]<=UINT_MAX,"Unsigned socket out of range");entry.node->set(input,uint(values[0]));}
+     else throw Failure(CBC_INVALID,"Socket is not an unsigned integer");
+@@ -149,7 +149,7 @@
+ }
+ extern "C" int cbc_host_set_strings(CBCHost handle,CBCNode id,const char *name,const char *const *values,uint64_t count) {
+   return edit(handle,[&](Host &host) {
+-    count_ok(values,count);auto &entry=host.entry(id);auto &input=socket(entry,name);stored_property(input);
++    count_ok(values,count);auto &entry=host.entry(id);auto &input=socket(entry,name);stored_property(input);before_edit(host,entry,name);
+     require(input.type==SocketType::STRING_ARRAY,"Expected a string array socket");
+     for(size_t i=0;i<count;++i)require(values[i],"Null string array element");
+     array<ustring> copy;copy.resize(size_t(count));for(size_t i=0;i<count;++i)copy[i]=*values[i]?ustring(values[i]):ustring();entry.node->set(input,copy);host.changed(entry);
+--- a/native/host/host_scene.inc
++++ b/native/host/host_scene.inc
+@@ -82,7 +82,7 @@
+   return value;
+ }
+ Attribute &find_attribute(Host &host,CBCNode id,const char *name,uint32_t flags) {
+-  require(name&&*name,"Attribute name is required");auto &set=attribute_set(geometry(host,id),flags);
++  require(name&&*name,"Attribute name is required");auto &geom=geometry(host,id);auto &set=attribute_set(geom,flags);
+   auto value=set.find(ustring(name));require(value,"Unknown attribute");
+   require(!(flags&CBC_ATTR_STANDARD)||value->std!=ATTR_STD_NONE,"Attribute is not standard");return *value;
+ }
+@@ -110,7 +110,7 @@
+ extern "C" int cbc_host_attribute_floats(CBCHost handle,CBCNode id,const char *name,const CBCAttributeConfig *config,const float *values,uint64_t count) {
+   return edit(handle,[&](Host &host) {
+     count_ok(values,count);for(size_t i=0;i<count;++i)require(std::isfinite(values[i]),"Attribute contains a nonfinite value");
+-    auto target=attribute_target(host,id,name,config,count);require(!(target.element&ATTR_ELEMENT_IS_BYTE),"Use byte attribute input");
++    before_edit(host,host.entry(id),nullptr);auto target=attribute_target(host,id,name,config,count);require(!(target.element&ATTR_ELEMENT_IS_BYTE),"Use byte attribute input");
+     AttributeSet staged(&target.geom,target.set.prim);auto value=stage_attribute(staged,target,name);
+     const unsigned components=attribute_components(target.type,target.element);
+     for(size_t i=0;i<target.count;++i) {
+@@ -127,15 +127,23 @@
+ }
+ extern "C" int cbc_host_attribute_bytes(CBCHost handle,CBCNode id,const char *name,const CBCAttributeConfig *config,const uint8_t *values,uint64_t count) {
+   return edit(handle,[&](Host &host) {
+-    count_ok(values,count);auto target=attribute_target(host,id,name,config,count);require(target.element&ATTR_ELEMENT_IS_BYTE,"Expected byte corner colors");
++    count_ok(values,count);before_edit(host,host.entry(id),nullptr);auto target=attribute_target(host,id,name,config,count);require(target.element&ATTR_ELEMENT_IS_BYTE,"Expected byte corner colors");
+     AttributeSet staged(&target.geom,target.set.prim);auto value=stage_attribute(staged,target,name);
+     if(count)std::memcpy(value->data_for_write<uchar4>(),values,size_t(count));
+     target.set.add_from(std::move(*value));target.geom.tag_update(host.session->scene.get(),true);
+   });
+ }
++// Reads return authored values: a geometry baked by the static BVH path
++// answers from the attributes captured before the bake (host_edits.inc).
++Attribute &authored_attribute(Host &host,CBCNode id,const char *name,uint32_t flags) {
++  auto &attr=find_attribute(host,id,name,flags);auto &geom=geometry(host,id);
++  auto record=host.bakes.find(&geom);
++  if((flags&CBC_ATTR_SUBDIVISION)||!geom.transform_applied||record==host.bakes.end())return attr;
++  auto authored=record->second.attributes->find(ustring(name));require(authored,"Unknown attribute");return *authored;
++}
+ extern "C" int cbc_host_attribute_get_floats(CBCHost handle,CBCNode id,const char *name,uint32_t flags,float *values,uint64_t capacity,uint64_t *required) {
+   return edit(handle,[&](Host &host) {
+-    auto &attr=find_attribute(host,id,name,flags);require(!(attr.element&(ATTR_ELEMENT_IS_BYTE|ATTR_ELEMENT_VOXEL)),"Attribute does not contain float input");
++    auto &attr=authored_attribute(host,id,name,flags);require(!(attr.element&(ATTR_ELEMENT_IS_BYTE|ATTR_ELEMENT_VOXEL)),"Attribute does not contain float input");
+     std::vector<float> result;result.reserve(size_t(attr.size)*attribute_components(attr.type,attr.element));
+     for(int i=0;i<attr.size;++i) {
+       if(attr.element&ATTR_ELEMENT_IS_NORMAL){auto v=attr.data<packed_normal>()[i].decode();result.insert(result.end(),{v.x,v.y,v.z});}
+@@ -150,7 +158,7 @@
+ }
+ extern "C" int cbc_host_attribute_get_bytes(CBCHost handle,CBCNode id,const char *name,uint32_t flags,uint8_t *values,uint64_t capacity,uint64_t *required) {
+   return edit(handle,[&](Host &host) {
+-    auto &attr=find_attribute(host,id,name,flags);require(attr.element&ATTR_ELEMENT_IS_BYTE,"Attribute is not byte storage");
++    auto &attr=authored_attribute(host,id,name,flags);require(attr.element&ATTR_ELEMENT_IS_BYTE,"Attribute is not byte storage");
+     const size_t count=size_t(attr.size)*4;std::vector<uint8_t> result(count);
+     if(count)std::memcpy(result.data(),attr.data<uchar4>(),count);
+     copy_result(result,values,capacity,required);
+@@ -158,7 +166,7 @@
+ }
+ extern "C" int cbc_host_attribute_remove(CBCHost handle,CBCNode id,const char *name,uint32_t flags) {
+   return edit(handle,[&](Host &host) {
+-    auto &attr=find_attribute(host,id,name,flags);require(attr.std!=ATTR_STD_POSITION&&attr.std!=ATTR_STD_RADIUS,"Cannot remove required geometry storage");
++    before_edit(host,host.entry(id),nullptr);auto &attr=find_attribute(host,id,name,flags);require(attr.std!=ATTR_STD_POSITION&&attr.std!=ATTR_STD_RADIUS,"Cannot remove required geometry storage");
+     auto &geom=geometry(host,id);attribute_set(geom,flags).remove(&attr);geom.tag_update(host.session->scene.get(),true);
+   });
+ }
+--- a/native/host/host_scene_types.inc
++++ b/native/host/host_scene_types.inc
+@@ -33,3 +33,11 @@
+     auto image=dynamic_cast<const MemoryImageLoader *>(&other);return image && image->data->identity==data->identity;
+   }
+ };
++// Authored attributes of a geometry captured before the static BVH path may
++// bake it with its object transform, and the bake inputs (host_edits.inc).
++struct BakeRecord {
++  Object *object = nullptr;
++  Transform tfm;
++  bool to_motion = false;
++  std::unique_ptr<AttributeSet> attributes;
++};
+--- a/native/host/targets.cmake
++++ b/native/host/targets.cmake
+@@ -108,7 +108,7 @@
+       target_link_options(${reference} PRIVATE "LINKER:-Map,${CMAKE_BINARY_DIR}/${reference}.map")
+     endif()
+   endforeach()
+-  foreach(kind IN ITEMS cpu gpu reload concurrency tier abi example)
++  foreach(kind IN ITEMS cpu gpu reload concurrency tier abi example scene_edit)
+     if(kind STREQUAL "cpu")
+       set(source consumer.c)
+     elseif(kind STREQUAL "example")
+--- a/native/shaders/wavefront_emitters.wgsl
++++ b/native/shaders/wavefront_emitters.wgsl
+@@ -42,23 +42,30 @@
+     let a=abs(clamp(value,-1.0,1.0));let reduce=a>0.5;var z=vec2<f32>(a,0);var x=trig_product(a,a);
+     if(reduce){x=vec2<f32>((1.0-a)*0.5,0);let root=rounded_sqrt(x.x);z=vec2<f32>(root,0);
+       if(root>0.0){let product=trig_product(root,root);z.y=rounded_divide(rounded_add(rounded_add(x.x,-product.x),-product.y),2.0*root);}}
++    // Horner steps in a loop (the same 16 operations in order) rather than 16
++    // inlined copies; with area_rectangle's loop over its four arcsines this
++    // shrinks the area-light shade_surface_light module, whose cold compile
++    // crashed the Intel Mesa 25.0.7 compiler in 3 of 4 runs before and in none
++    // of 7 after (brw_opt_combine_constants driver bug, phaseE3 report).
++    var terms=array<vec2<f32>,16>(
++    vec2<f32>(0.0046601435169577599,-3.00426636972735e-11),
++    vec2<f32>(0.005153309553861618,1.284582861538591e-10),
++    vec2<f32>(0.0057400376535952091,1.7246714344731083e-11),
++    vec2<f32>(0.0064472104422748089,-1.30385160446167e-10),
++    vec2<f32>(0.0073125259950757027,-1.2147685755854067e-10),
++    vec2<f32>(0.0083903353661298752,4.4348694029308498e-10),
++    vec2<f32>(0.0097616091370582581,3.9213582089072777e-10),
++    vec2<f32>(0.011551801115274429,-2.1913472343893612e-10),
++    vec2<f32>(0.013964843936264515,-1.8626451492309571e-10),
++    vec2<f32>(0.017352763563394547,8.5968237656813406e-10),
++    vec2<f32>(0.022372158244252205,8.4665688601407135e-10),
++    vec2<f32>(0.0303819440305233,4.1392114427354598e-10),
++    vec2<f32>(0.0446428582072258,-1.064368656703404e-09),
++    vec2<f32>(0.075000002980232239,-2.9802322387695314e-09),
++    vec2<f32>(0.1666666716337204,-4.9670537312825518e-09),
++    vec2<f32>(1,0));
+     var polynomial=vec2<f32>(0.0042409072630107403,-1.6933137720281428e-10);
+-    polynomial=trig_coeff(vec2<f32>(0.0046601435169577599,-3.00426636972735e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.005153309553861618,1.284582861538591e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0057400376535952091,1.7246714344731083e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0064472104422748089,-1.30385160446167e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0073125259950757027,-1.2147685755854067e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0083903353661298752,4.4348694029308498e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0097616091370582581,3.9213582089072777e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.011551801115274429,-2.1913472343893612e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.013964843936264515,-1.8626451492309571e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.017352763563394547,8.5968237656813406e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.022372158244252205,8.4665688601407135e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0303819440305233,4.1392114427354598e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0446428582072258,-1.064368656703404e-09),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.075000002980232239,-2.9802322387695314e-09),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.1666666716337204,-4.9670537312825518e-09),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(1,0),trig_mul(polynomial,x));
++    for(var i=0u;i<16u;i++){polynomial=trig_coeff(terms[i],trig_mul(polynomial,x));}
+     var result=trig_mul(z,polynomial);if(reduce){result=trig_coeff(vec2<f32>(1.5707963705062866,-4.3711390001862426e-8),-2.0*result);}
+     let answer=rounded_add(result.x,result.y);return select(answer,-answer,value<0.0);
+ }
+@@ -100,7 +107,10 @@
+     var out=AreaRect(r.P,0.0);var Z=rounded_cross(r.U,r.V);let direction=r.P-P;var z0=rounded_dot(direction,Z);if(z0>0.0){Z= -Z;z0= -z0;}
+     let xc=rounded_dot(direction,r.U);let yc=rounded_dot(direction,r.V);let x0=rounded_add(xc,-0.5*r.len_u);let x1=rounded_add(xc,0.5*r.len_u);let y0=rounded_add(yc,-0.5*r.len_v);let y1=rounded_add(yc,0.5*r.len_v);
+     var nz=vec4<f32>(-y0,x1,y1,-x0);for(var i=0u;i<4u;i++){nz[i]=rounded_divide(nz[i],rounded_sqrt(rounded_add(nz[i]*nz[i],z0*z0)));}
+-    let g0=emitter_asin(-nz.x*nz.y);let g1=emitter_asin(-nz.y*nz.z);let g2=emitter_asin(-nz.z*nz.w);let g3=emitter_asin(-nz.w*nz.x);
++    // One emitter_asin body evaluated four times (see emitter_asin).
++    var asin_inputs=vec4<f32>(-nz.x*nz.y,-nz.y*nz.z,-nz.z*nz.w,-nz.w*nz.x);var angles:vec4<f32>;
++    for(var i=0u;i<4u;i++){angles[i]=emitter_asin(asin_inputs[i]);}
++    let g0=angles.x;let g1=angles.y;let g2=angles.z;let g3=angles.w;
+     let S= -rounded_add(rounded_add(rounded_add(g0,g1),g2),g3);
+     if(sample_coord){
+         let b0=nz.x;let b1=nz.z;let au=rounded_add(rounded_add(random.x*S,g2),g3);let sc=native_disk_sincos(au);var fu=0.0;if(sc.x!=0.0){fu=rounded_divide(rounded_add(sc.y*b0,b1),sc.x);}
+--- a/native/shaders/wavefront_lighting.wgsl
++++ b/native/shaders/wavefront_lighting.wgsl
+@@ -122,8 +122,17 @@
+     let probability=select(1.0,max(abs(bsdf.eval.x),max(abs(bsdf.eval.y),abs(bsdf.eval.z)))*rr,rr>0.0);
+     if(probability<1.0){let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
+         if(random>=probability){return;}let inverse=1.0/probability;bsdf.eval*=inverse;bsdf.diffuse*=inverse;bsdf.glossy*=inverse;}
+-    var direction=ls.D;var tmax=ls.t;if(ls.t!=bitcast<f32>(0x7f7fffffu)){let ray=light_normalize_len(ls.P-sd.P);direction=ray.xyz;tmax=ray.w;}
+-    let origin=surf_ray_offset(sd,direction);let allocator=load_word(p(7u)+S_next_shadow_path_index)/4u;var shadow:u32;
++    // Shadow terminator geometry offset (shadow_ray_offset) moves the origin of
++    // smooth-shaded triangles first; w=0 means the ray no longer skips its own
++    // primitive and takes no self-intersection offset (light/sample.h).
++    var start=vec4<f32>(sd.P,1.0);
++    if(terminator_geometry_active(sd)){
++//#if SHADOW_TERMINATOR_GEOMETRY else atomicOr(&heap[p(17u)/4u],2u);return;
++        start=terminator_shadow_origin(sd,ls.D);
++//#endif
++    }
++    var direction=ls.D;var tmax=ls.t;if(ls.t!=bitcast<f32>(0x7f7fffffu)){let ray=light_normalize_len(ls.P-start.xyz);direction=ray.xyz;tmax=ray.w;}
++    var origin=start.xyz;if(start.w!=0.0){origin=surf_ray_offset_at(sd,start.xyz,direction);}let allocator=load_word(p(7u)+S_next_shadow_path_index)/4u;var shadow:u32;
+     if(p(28u)!=0u){shadow=load_word(p(28u))+slot;if(shadow>=p(25u)){fail();return;}}
+     else{loop{shadow=atomicLoad(&heap[allocator]);if(shadow>=p(25u)){fail();return;}
+         if(atomicCompareExchangeWeak(&heap[allocator],shadow,shadow+1u).exchanged){break;}}}
+@@ -131,7 +140,7 @@
+     state_f32(S_shadow_ray_tmin,shadow,select(bitcast<f32>(0x7f7fffffu),0.0,(ls.shader&SHADER_CAST_SHADOW)!=0u));state_f32(S_shadow_ray_tmax,shadow,tmax);
+     state_f32(S_shadow_ray_time,shadow,sd.time);state_f32(S_shadow_ray_dP,shadow,sd.dP);
+     state_f32(S_shadow_ray_dD,shadow,select(sd.dI,max(sd.dI,sqrt(bsdf.roughness)),bsdf.roughness>0.0));
+-    state_u32(S_shadow_self_object,shadow,sd.object_id);state_u32(S_shadow_self_prim,shadow,sd.prim);
++    state_u32(S_shadow_self_object,shadow,select(NONE,sd.object_id,start.w!=0.0));state_u32(S_shadow_self_prim,shadow,select(NONE,sd.prim,start.w!=0.0));
+     state_u32(S_shadow_ray_self_light_object,shadow,ls.object_id);state_u32(S_shadow_ray_self_light_prim,shadow,ls.prim);
+     state_f32(S_shadow_path_bsdf_eval_average,shadow,(bsdf.eval.x+bsdf.eval.y+bsdf.eval.z)*(1.0/3.0));
+     state_u32(S_shadow_path_render_pixel_index,shadow,state_word(S_path_render_pixel_index,index));
+--- a/native/shaders/wavefront_surface.wgsl
++++ b/native/shaders/wavefront_surface.wgsl
+@@ -27,7 +27,20 @@
+     let nv=max(dot(c.N,wi),0.0);var t=dot(wo,wi)-nl*nv;if(t>0.0){t/=max(nl,nv)+1.1754943508222875e-38;}
+     let el=svm_oren_add(c.a*PI,c.b*svm_oren_g(nl));return nl*(vec3<f32>(c.a+c.b*t)+c.multiscatter*(1.0-el));
+ }
++// Shadow terminator shading offset (bsdf.h): eval *= shift_cos_in(dot(wo, N))
++// after the bump term when the object's frequency multiplier exceeds 1. Sample
++// evaluation applies it to every reflection; evaluation only for cosNO >= 0.
++fn surf_terminator(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>,value:vec3<f32>,is_eval:bool)->vec3<f32>{
++    let frequency=terminator_frequency(sd);if(frequency<=1.0){return value;}
++//#if SHADOW_TERMINATOR_SHADING else atomicOr(&heap[p(17u)/4u],2u);return value;
++    let cosNO=rounded_dot(wo,c.N);if(is_eval&&cosNO<0.0){return value;}
++    return value*terminator_shift_cos_in(cosNO,frequency);
++//#endif
++}
+ fn surf_evaluate(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
++    let e=surf_evaluate_closure(sd,c,wo);return vec4<f32>(surf_terminator(sd,c,wo,e.xyz,true),e.w);
++}
++fn surf_evaluate_closure(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
+     let bump=surf_bump(sd,c,wo,true);if(bump==0.0||c.kind==CLOSURE_BSDF_TRANSPARENT_ID){return vec4<f32>(0);}
+     if(surf_microfacet(c.kind)){
+ //#if SVM_BSDF_MICROFACET else atomicOr(&heap[p(17u)/4u],2u);return vec4<f32>(0);
+@@ -54,7 +67,7 @@
+         out=ggx_sample(sd,c,rand);value=out.eval;
+         if((out.label&LABEL_TRANSMIT)!=0u){let threshold=data_float(D_background_transparent_roughness_squared_threshold);
+             if(threshold>=0.0&&c.alpha_x*c.alpha_y<=threshold){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
+-        else{value*=surf_bump(sd,c,out.wo,false);}
++        else{value=surf_terminator(sd,c,out.wo,value,false);value*=surf_bump(sd,c,out.wo,false);}
+ //#endif
+     }
+     else{
+@@ -62,7 +75,7 @@
+         out.wo=sampled.xyz;out.pdf=sampled.w;out.label=LABEL_DIFFUSE|select(LABEL_REFLECT,LABEL_TRANSMIT,transmission);
+         let valid=select(dot(sd.Ng,out.wo)>0.0,dot(sd.Ng,out.wo)<0.0,transmission);
+         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
+-            if(!transmission){value*=surf_bump(sd,c,out.wo,false);}}
++            if(!transmission){value=surf_terminator(sd,c,out.wo,value,false);value*=surf_bump(sd,c,out.wo,false);}}
+         else{out.pdf=0.0;}
+     }
+     if(out.pdf==0.0){return out;}
+@@ -100,14 +113,17 @@
+     }else{for(var i=0u;i<(*r).count;i++){let c=svm_closure_read(*r,i);if(c.kind==CLOSURE_HOLDOUT_ID){weight+=c.weight;}}}
+     return weight;
+ }
+-fn surf_ray_offset(sd:SurfaceData,direction:vec3<f32>)->vec3<f32>{
+-    var pos=sd.P;var dir=direction;if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){pos=surface_object_point(sd,pos,true);dir=surface_object_direction(sd,dir,true);}
++fn surf_ray_offset(sd:SurfaceData,direction:vec3<f32>)->vec3<f32>{return surf_ray_offset_at(sd,sd.P,direction);}
++// integrate_surface_ray_offset for a ray starting at P (the hit point, or the
++// shadow-terminator-offset origin).
++fn surf_ray_offset_at(sd:SurfaceData,P:vec3<f32>,direction:vec3<f32>)->vec3<f32>{
++    var pos=P;var dir=direction;if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){pos=surface_object_point(sd,pos,true);dir=surface_object_direction(sd,dir,true);}
+     let vertices=native_triangle_vertices(sd.object_id,sd.prim,sd.primitive_type,sd.time);
+     let a=vertices.a-pos;let b=vertices.b-pos;let c=vertices.c-pos;
+     let u=c_ray_triangle_dot(c_ray_triangle_cross(c+a,c-a),dir);let v=c_ray_triangle_dot(c_ray_triangle_cross(a+b,a-b),dir);let w=c_ray_triangle_dot(c_ray_triangle_cross(b+c,b-c),dir);
+-    let eps=1.1920928955078125e-7*abs(u+v+w);if(min(u,min(v,w))>=eps||max(u,max(v,w))<=-eps){return sd.P;}
+-    let amount=vec3<i32>(256.0*sd.Ng);let bits=bitcast<vec3<i32>>(sd.P)+select(amount,-amount,sd.P<vec3<f32>(0));
+-    return select(bitcast<vec3<f32>>(bits),sd.P+(1.0/65536.0)*sd.Ng,abs(sd.P)<vec3<f32>(1.0/32.0));
++    let eps=1.1920928955078125e-7*abs(u+v+w);if(min(u,min(v,w))>=eps||max(u,max(v,w))<=-eps){return P;}
++    let amount=vec3<i32>(256.0*sd.Ng);let bits=bitcast<vec3<i32>>(P)+select(amount,-amount,P<vec3<f32>(0));
++    return select(bitcast<vec3<f32>>(bits),P+(1.0/65536.0)*sd.Ng,abs(P)<vec3<f32>(1.0/32.0));
+ }
+ fn surf_next(index:u32,label:u32,runtime:u32){
+     var flag=state_word(S_path_flag,index);let offset=state_half(S_path_rng_offset,index)+RNG_BOUNCE;state_u16(S_path_rng_offset,index,offset);
+@@ -155,8 +171,6 @@
+     let flag=state_word(S_path_flag,index);if((flag&SURFACE_UNSUPPORTED_FLAGS)!=0u){fail();return;}
+     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);if(pixel>=p(11u)/stride){fail();return;}let base=p(4u)+pixel*stride*4u;
+     var sd=surface_cached(id.x);if(sd.error!=0u){return;}let object=table_at(G_objects,sd.object_id,SIZE_objects);
+-    if(heap_float(object+O_shadow_terminator_shading_offset)>1.0){fail();return;}
+-    if(data_word(D_integrator_use_direct_light)!=0u&&(sd.shader&SHADER_SMOOTH_NORMAL)!=0u&&heap_float(object+O_shadow_terminator_geometry_offset)>0.0){fail();return;}
+     let group=load_word(object+O_lightgroup);let go=data_word(D_film_pass_lightgroup);if(group!=NONE&&go!=PASS_NONE&&(group>=stride/3u||go>stride-3u*(group+1u))){fail();return;}
+     if(volume_enabled()&&(sd.shader_flag&VS_HAS_VOLUME)!=0u){if(volume_stack_count(index)==NONE){return;}}
+     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){var empty:SvmResult;surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,empty);return;}
+--- a/native/tests/host/abi_consumer.c
++++ b/native/tests/host/abi_consumer.c
+@@ -174,11 +174,13 @@
+     nodes(holder, "geometry", light);
+     CHECK(cbc_host_set_floats(host, holder, "tfm", t, 12));
+     char type[64]; CHECK(cbc_host_node_type(host, light, type, sizeof(type), &required)); light_types++;
+-    /* GPU mode renders only the point light: on the Linux Intel/Mesa driver the
+-     * spot-light specialization of shade_surface_light crashed the driver's
+-     * compiler in this device lifetime (phaseD3 report); the other light types
+-     * are still created, configured and deleted. */
+-    if (k < 4 && (!gpu || k == 0)) { render(film_c); REQUIRE(!same(film_c, base)); lit_renders++; }
++    /* Point, spot and sun render on both backends in one device lifetime (the
++     * Phase D3 spot-after-point case). The area light renders on the CPU only:
++     * it adds the LIGHT_AREA specialization, and recompiling shade_surface_light
++     * with it intermittently crashes the Intel Mesa 25.0.7 compiler
++     * (brw_opt_combine_constants, phaseE3 report); area lights are validated on
++     * WebGPU by the broad-lighting and transparent-lighting gates. */
++    if (k < 4 && (!gpu || k != 2)) { render(film_c); REQUIRE(!same(film_c, base)); lit_renders++; }
+     /* Lifetime: a referenced light cannot be deleted; delete holder, then light, then emitter. */
+     REQUIRE(cbc_host_delete_node(host, light) == CBC_INVALID);
+     REQUIRE(cbc_host_delete_node(host, emitter) == CBC_INVALID);
+@@ -203,10 +205,10 @@
+   render(film_c); const int graph_rebuild_restores = same(film_c, base);
+   if (!gpu) REQUIRE(graph_rebuild_restores);
+ 
+-  /* Motion. The static BVH bakes single-user geometry with its object transform
+-   * at the first render, so motion is configured on a fresh mesh and object
+-   * before their first render (ABI.md "Motion"); this also exercises
+-   * delete/recreate lifetimes. Camera motion uses the generic "motion" socket. */
++  /* Motion. Edits after a render are applied (ABI.md "Edits after a render"):
++   * deformation motion added to an already rendered mesh is accepted; the
++   * rounds below also exercise delete/recreate lifetimes. Camera motion uses
++   * the generic "motion" socket. */
+   integer(integrator, "motion_blur", 1); scalar(camera, "shuttertime", .6f);
+   float cam3[36]; translate(cam3, -.2f, 0, -4); translate(cam3 + 12, 0, 0, -4); translate(cam3 + 24, .2f, 0, -4);
+   CHECK(cbc_host_set_floats(host, camera, "motion", cam3, 36));
+@@ -215,7 +217,7 @@
+   REQUIRE(cbc_host_motion_positions(host, mesh, 3, xyz, 9) == CBC_INVALID);
+   float motion[27]; memcpy(motion + 9, xyz, sizeof(xyz));
+   for (unsigned i = 0; i < 9; ++i) { motion[i] = xyz[i] + (i % 3 == 0 ? -.25f : 0); motion[18 + i] = xyz[i] + (i % 3 == 0 ? .25f : 0); }
+-  REQUIRE(cbc_host_motion_positions(host, mesh, 3, motion, 27) == CBC_NOT_READY);
++  CHECK(cbc_host_motion_positions(host, mesh, 3, motion, 27)); CHECK(cbc_host_motion_positions(host, mesh, 1, NULL, 0));
+   for (unsigned round = 0; round < 3; ++round) {
+     CHECK(cbc_host_delete_node(host, object)); CHECK(cbc_host_delete_node(host, mesh));
+     mesh = create("mesh"); nodes(mesh, "used_shaders", material); CHECK(cbc_host_mesh(host, mesh, xyz, 3, tri, 1));
+@@ -236,8 +238,8 @@
+       int64_t blur = 0; CHECK(cbc_host_get_ints(host, mesh, "use_motion_blur", &blur, 1, &required)); REQUIRE(blur == 1);
+       uint64_t motion_steps = 0; CHECK(cbc_host_get_uints(host, mesh, "motion_steps", &motion_steps, 1, &required)); REQUIRE(motion_steps == 3);
+       render(film_b); REQUIRE(!same(film_b, base)); save(prefix, "deforming.rgba.bin", film_b, sizeof(film_b));
+-      /* After its first render the mesh is baked; new motion is refused, removal is allowed. */
+-      REQUIRE(cbc_host_motion_positions(host, mesh, 3, motion, 27) == CBC_NOT_READY);
++      /* After a render, motion can be replaced and removed. */
++      CHECK(cbc_host_motion_positions(host, mesh, 3, motion, 27));
+       CHECK(cbc_host_motion_positions(host, mesh, 1, NULL, 0));
+     } else {
+       integer(integrator, "motion_blur", 0); scalar(camera, "shuttertime", 1);
+@@ -359,9 +361,9 @@
+   render(film_c);
+   if (gpu) {
+     /* Render-time device rejection: CBC_FAILED, one error event, output and
+-     * pass results untouched/cleared. A Cycles device error is permanent for
+-     * the device, so the next render fails even after removing the cause
+-     * (ABI.md "Errors": replace the host). */
++     * pass results untouched/cleared. After the cause is removed the next
++     * render recovers the device (ABI.md "Device errors") and reports it with
++     * a status event. */
+     Events failure = {0}; CHECK(cbc_host_set_event_callback(host, on_event, &failure));
+     CBCNode surface = create("shader"), bsdf = graph_node(surface, "diffuse_bsdf");
+     CHECK(cbc_host_connect(host, bsdf, "BSDF", output_of(surface), "Surface"));
+@@ -376,7 +378,8 @@
+     REQUIRE(cbc_host_render_passes_json(host, NULL, 0, &required) == CBC_NOT_READY);
+     CHECK(cbc_host_delete_node(host, depth));
+     after_failure = cbc_host_render(host, &pass_config, film_b, FLOATS);
+-    REQUIRE(after_failure == CBC_FAILED);
++    REQUIRE(after_failure == CBC_OK && failure.error == 1);
++    for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(isfinite(film_b[i]));
+     error_events = failure.error;
+   }
+   CHECK(cbc_host_destroy(host));
+--- a/native/tools/build_cycles.py
++++ b/native/tools/build_cycles.py
+@@ -63,7 +63,7 @@
+     film=(ROOT/'shaders/wavefront_background.wgsl').read_text().split('fn background_visible')[0]
+     sampling=(REPO/'parity/shaders/closures.wgsl').read_text()
+     sampling=sampling[:sampling.index('struct Closure')]+sampling[sampling.index('// Original numerical adapter:'):sampling.index('fn oren_g')]
+-    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_surface.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_lighting.wgsl'))
++    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_lighting.wgsl'))
+     (out/'surface_shader.inc').write_text('R"CBWGSL('+surface+')CBWGSL"\n')
+     volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_volume.wgsl'))
+     (out/'volume_shader.inc').write_text('R"CBWGSL('+volume+')CBWGSL"\n')
+--- a/native/tools/host_gate.py
++++ b/native/tools/host_gate.py
+@@ -182,7 +182,7 @@
+                 assert [(p['name'], p['components'], p['written']) for p in passes] == [
+                     ('Combined', 4, True), ('Depth', 1, True), ('Normal', 3, True), ('Mask', 1, True)]
+             else:
+-                assert row['litRenders'] == 1 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 3
++                assert row['litRenders'] == 3 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
+             abi[mode] = folder
+         for name in ['base', 'object-motion', 'deforming']:
+             compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin')
+--- a/native/tools/inject_cycles.cmake
++++ b/native/tools/inject_cycles.cmake
+@@ -152,6 +152,18 @@
+     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+   target_link_libraries(codebrix_cycles_broad_lighting_gate PRIVATE ${codebrix_device_libs})
+   target_compile_definitions(codebrix_cycles_broad_lighting_gate PRIVATE CODEBRIX_LIGHTING_MIS_GATE CODEBRIX_BROAD_LIGHT_GATE)
++  # Phase E3: object shadow terminator offsets on smooth triangles (lighting_gate.cpp variant).
++  add_executable(codebrix_cycles_shadow_terminator_gate "${CODEBRIX_NATIVE_ROOT}/cycles/lighting_gate.cpp"
++    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
++    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
++    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp")
++  target_compile_features(codebrix_cycles_shadow_terminator_gate PRIVATE cxx_std_20)
++  target_compile_options(codebrix_cycles_shadow_terminator_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
++  target_compile_definitions(codebrix_cycles_shadow_terminator_gate PRIVATE ${definitions})
++  target_include_directories(codebrix_cycles_shadow_terminator_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
++    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
++  target_link_libraries(codebrix_cycles_shadow_terminator_gate PRIVATE ${codebrix_device_libs})
++  target_compile_definitions(codebrix_cycles_shadow_terminator_gate PRIVATE CODEBRIX_LIGHTING_MIS_GATE CODEBRIX_SHADOW_TERMINATOR_GATE)
+   add_executable(codebrix_cycles_object_motion_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/lighting_gate.cpp"
+     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+     "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+--- a/src/CodeBrix.Graphics3D.Cycles/CyclesScene.cs
++++ b/src/CodeBrix.Graphics3D.Cycles/CyclesScene.cs
+@@ -36,8 +36,15 @@
+ /// Renders on one scene run one at a time. While a render runs, the native host raises
+ /// <see cref="RenderEventReceived"/> (and <see cref="RenderAsync(RenderSettings, IProgress{RenderProgress}, CancellationToken)"/>
+ /// progress) on a native render thread; those handlers must not call back into the scene. A render
+-/// that fails because the device rejected the scene (<see cref="NativeStatus.Failed"/>) leaves the
+-/// device failed for good (<see cref="IsFaulted"/>): dispose the scene and build a new one.
++/// that fails because the device rejected the scene (<see cref="NativeStatus.Failed"/>) sets
++/// <see cref="IsFaulted"/>; remove the cause and render again: the native host recovers the device
++/// and re-uploads the scene. Only a device that cannot recover keeps failing (see <see cref="IsFaulted"/>).
++/// </para>
++/// <para>
++/// Scene edits made after a render (object transforms, object, camera and deformation motion,
++/// materials, lights, geometry and attributes) apply to the next render exactly as if the scene
++/// had been built with them; the native host refuses the few it cannot apply with
++/// <see cref="InvalidOperationException"/> or <see cref="NativeFailure"/> (status 5).
+ /// </para>
+ /// </remarks>
+ public sealed class CyclesScene : IDisposable, IAsyncDisposable
+@@ -114,10 +121,13 @@
+     public Backend Backend { get; }
+ 
+     /// <summary>
+-    /// Gets a value indicating whether a render failed because the device rejected the scene
+-    /// (<see cref="NativeStatus.Failed"/>). A Cycles device error is permanent for the device: every
+-    /// later render on this scene fails too, even after the cause is removed. Dispose the scene and
+-    /// build a new one.
++    /// Gets a value indicating whether the last render failed with a device error
++    /// (<see cref="NativeStatus.Failed"/>); a later successful render clears it. The next render
++    /// recovers the device: on WebGPU the native host clears the error and re-uploads the scene when
++    /// the device itself is intact, and raises a status event that starts with "Device recovered".
++    /// Remove the cause of the failure first. When the device cannot recover (a lost WebGPU device,
++    /// or an error on the CPU or Metal device), every later render fails with a message that starts
++    /// with "Host faulted": dispose the scene and build a new one.
+     /// </summary>
+     public bool IsFaulted => faulted;
+ 
+@@ -601,6 +611,7 @@
+                 try
+                 {
+                     Host.Render(settings.Width, settings.Height, settings.Samples, destination);
++                    faulted = false;
+                 }
+                 catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.Failed)
+                 {
+@@ -687,7 +698,7 @@
+         }
+         catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.NotReady)
+         {
+-            throw new InvalidOperationException($"{mesh} was already rendered: the pinned Cycles static BVH bakes a mesh at its first render, so motion must be configured before the first render. Remove the object and mesh and create new ones to change motion. ({failure.Message})", failure);
++            throw new InvalidOperationException($"The native host refused the motion of {mesh}: {failure.Message}", failure);
+         }
+     }
+ 
+--- a/src/CodeBrix.Graphics3D.Cycles/Generated/Geometry/MeshNode.cs
++++ b/src/CodeBrix.Graphics3D.Cycles/Generated/Geometry/MeshNode.cs
+@@ -149,14 +149,13 @@
+     /// <summary>
+     /// Sets this mesh's deformation motion: <paramref name="steps"/> (odd, 3 to 129) time-ordered
+     /// position arrays whose center step equals the current positions bit for bit. Rendering it also
+-    /// needs <c>Integrator.MotionBlur</c> and a camera shutter time. Configure motion before the mesh's
+-    /// first render: the pinned Cycles static BVH bakes a mesh at its first render, so motion added
+-    /// later is refused. Call it again after <see cref="SetTriangles(ReadOnlySpan{float}, ReadOnlySpan{uint})"/> changes the vertex count.
++    /// needs <c>Integrator.MotionBlur</c> and a camera shutter time. It may be called before or after
++    /// the mesh's first render (the native host restores a baked mesh's authored positions first). Call it again after <see cref="SetTriangles(ReadOnlySpan{float}, ReadOnlySpan{uint})"/> changes the vertex count.
+     /// </summary>
+     /// <param name="steps">The number of time steps.</param>
+     /// <param name="positions">The positions of every step as x, y, z triples, step by step.</param>
+     /// <exception cref="NativeFailure">The step count or position count is invalid, or the center step differs from the current positions (status 1).</exception>
+-    /// <exception cref="InvalidOperationException">The mesh was already rendered.</exception>
++    /// <exception cref="InvalidOperationException">The native host refused the edit (status 5), for example on a baked volume.</exception>
+     public void SetMotionPositions(uint steps, ReadOnlySpan<float> positions) => Scene.SetMeshMotion(this, steps, positions);
+ 
+     /// <summary>
+@@ -166,7 +165,7 @@
+     /// <param name="steps">The number of time steps.</param>
+     /// <param name="positions">The positions of every step, step by step.</param>
+     /// <exception cref="NativeFailure">The input is invalid (status 1).</exception>
+-    /// <exception cref="InvalidOperationException">The mesh was already rendered.</exception>
++    /// <exception cref="InvalidOperationException">The native host refused the edit (status 5), for example on a baked volume.</exception>
+     public void SetMotionPositions(uint steps, ReadOnlySpan<Vector3> positions) => Scene.SetMeshMotion(this, steps, MemoryMarshal.Cast<Vector3, float>(positions));
+ 
+     /// <summary>
+--- a/src/CodeBrix.Graphics3D.Cycles/Interop/CyclesAbi.cs
++++ b/src/CodeBrix.Graphics3D.Cycles/Interop/CyclesAbi.cs
+@@ -514,7 +514,7 @@
+     /// <param name="mesh">The mesh node handle.</param>
+     /// <param name="steps">The odd number of time steps (3 to 129), or 1 to remove.</param>
+     /// <param name="positions">The time-ordered flattened positions.</param>
+-    /// <returns>The native status (<see cref="NativeStatus.NotReady"/> after the mesh's first render).</returns>
++    /// <returns>The native status (<see cref="NativeStatus.NotReady"/> when the host refuses the edit, for example on a baked volume).</returns>
+     public static NativeStatus MotionPositions(ulong host, ulong mesh, uint steps, ReadOnlySpan<float> positions)
+     {
+         fixed (float* xyz = positions) return (NativeStatus)Native.MotionPositions(host, mesh, steps, xyz, (ulong)positions.Length);
+--- a/src/CodeBrix.Graphics3D.Cycles/Interop/Native.cs
++++ b/src/CodeBrix.Graphics3D.Cycles/Interop/Native.cs
+@@ -540,7 +540,7 @@
+     /// <returns>The native status code.</returns>
+     [DllImport(Library, EntryPoint="cbc_host_image_update", CallingConvention=CallingConvention.Cdecl)] public static extern int UpdateImage(ulong host, ulong image, ref ImageConfig config, byte* pixels, ulong count);
+ 
+-    /// <summary><c>cbc_host_motion_positions</c>: sets (odd steps 3 to 129) or removes (steps 1, count 0) a mesh's deformation motion; refused with status 5 after the mesh's first render.</summary>
++    /// <summary><c>cbc_host_motion_positions</c>: sets (odd steps 3 to 129) or removes (steps 1, count 0) a mesh's deformation motion, before or after the mesh's first render.</summary>
+     /// <param name="host">The host handle.</param>
+     /// <param name="mesh">The mesh node handle.</param>
+     /// <param name="steps">The number of time steps.</param>
+--- a/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesSceneTests.cs
++++ b/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesSceneTests.cs
+@@ -559,25 +559,69 @@
+     }
+ 
+     [Fact]
+-    public void SetMotionPositions_is_refused_after_the_first_render_with_the_motion_rule()
+-    {
+-        //Arrange
+-        using CyclesScene scene = TestScenes.CreateCpuScene();
+-        (ShaderNode _, DiffuseBsdfNode _, MeshNode mesh) = TestScenes.BuildTyped(scene);
+-        float[] steps = [.. TestScenes.TrianglePositions.Select(v => v - .1f), .. TestScenes.TrianglePositions, .. TestScenes.TrianglePositions.Select(v => v + .1f)];
+-        MeshNode fresh = scene.CreateMesh(TestScenes.TrianglePositions, TestScenes.TriangleIndices);
+-        fresh.SetMotionPositions(3, steps);
+-        scene.Render(Small);
+-
+-        //Act
+-        Action late = () => mesh.SetMotionPositions(3, steps);
+-
+-        //Assert
+-        late.Should().Throw<InvalidOperationException>().WithMessage("*before the first render*");
+-        fresh.MotionSteps.Should().Be(3u);
+-        fresh.ClearMotionPositions();
+-        Action malformed = () => scene.CreateMesh(TestScenes.TrianglePositions, TestScenes.TriangleIndices).SetMotionPositions(2, steps);
++    public void SetMotionPositions_after_the_first_render_matches_a_scene_built_with_motion()
++    {
++        //Arrange
++        float[] steps = [.. SmallTriangle.Select(v => v - .1f), .. SmallTriangle, .. SmallTriangle.Select(v => v + .1f)];
++        using CyclesScene edited = TestScenes.CreateCpuScene();
++        using CyclesScene fresh = TestScenes.CreateCpuScene();
++        MeshNode late = MotionBlurScene(edited).Mesh;
++        MotionBlurScene(fresh).Mesh.SetMotionPositions(3, steps);
++        edited.Render(Small);
++
++        //Act
++        late.SetMotionPositions(3, steps);
++        FilmBuffer a = edited.Render(Small);
++        FilmBuffer b = fresh.Render(Small);
++
++        //Assert
++        late.MotionSteps.Should().Be(3u);
++        a.Span.SequenceEqual(b.Span).Should().BeTrue();
++        late.ClearMotionPositions();
++        Action malformed = () => edited.CreateMesh(SmallTriangle, TestScenes.TriangleIndices).SetMotionPositions(2, steps);
+         malformed.Should().Throw<NativeFailure>();
++    }
++
++    [Fact]
++    public void ObjectNode_Tfm_edited_after_a_render_matches_a_scene_built_with_it()
++        => RenderAfterEdit(scene => scene.Object.Tfm = Moved).Should().BeTrue();
++
++    [Fact]
++    public void ObjectNode_Motion_added_after_a_render_matches_a_scene_built_with_it()
++        => RenderAfterEdit(scene => scene.Object.Motion = [Transform3x4.CreateTranslation(-.3f, 0, 0), Transform3x4.Identity, Transform3x4.CreateTranslation(.3f, .1f, 0)]).Should().BeTrue();
++
++    [Fact]
++    public void CameraNode_Motion_added_after_a_render_matches_a_scene_built_with_it()
++        => RenderAfterEdit(scene => scene.Scene.Camera.Motion = [Transform3x4.CreateTranslation(-.2f, 0, -4), Transform3x4.CreateTranslation(0, 0, -4), Transform3x4.CreateTranslation(.2f, 0, -4)]).Should().BeTrue();
++
++    private static readonly float[] SmallTriangle = [-.5f, -.5f, -.5f, .5f, -.5f, -.5f, 0, .6f, -.5f];
++
++    private static readonly Transform3x4 Moved = new(.8f, 0, .3f, .4f, 0, 1.2f, 0, -.2f, -.3f, 0, .8f, .1f);
++
++    // A scene with motion blur and a second, single-user mesh object that the static BVH bakes.
++    private static (CyclesScene Scene, MeshNode Mesh, ObjectNode Object) MotionBlurScene(CyclesScene scene)
++    {
++        TestScenes.BuildTyped(scene);
++        scene.Integrator.MotionBlur = true;
++        scene.Camera.Shuttertime = .6f;
++        MeshNode mesh = scene.CreateMesh(SmallTriangle, TestScenes.TriangleIndices);
++        return (scene, mesh, scene.CreateObject(mesh));
++    }
++
++    // Renders, applies the edit, renders again and compares with a fresh scene that applies the
++    // same edit before its first render. True when the films are bit-identical (CPU reference).
++    private static bool RenderAfterEdit(Action<(CyclesScene Scene, MeshNode Mesh, ObjectNode Object)> edit)
++    {
++        using CyclesScene edited = TestScenes.CreateCpuScene();
++        using CyclesScene fresh = TestScenes.CreateCpuScene();
++        var target = MotionBlurScene(edited);
++        var reference = MotionBlurScene(fresh);
++        FilmBuffer before = edited.Render(Small);
++        edit(target);
++        edit(reference);
++        FilmBuffer after = edited.Render(Small);
++        FilmBuffer expected = fresh.Render(Small);
++        return !after.Span.SequenceEqual(before.Span) && after.Span.SequenceEqual(expected.Span);
+     }
+ 
+     // Records reports on the reporting thread, so the last report is known when the task completes.
+--- a/tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs
++++ b/tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs
+@@ -8,7 +8,10 @@
+ using System.Threading;
+ using System.Threading.Tasks;
+ using CodeBrix.Graphics3D.Cycles.Diagnostics;
++using CodeBrix.Graphics3D.Cycles.Generated.Scene;
++using CodeBrix.Graphics3D.Cycles.Generated.Shaders;
+ using CodeBrix.Graphics3D.Cycles.GltfRender;
++using CodeBrix.Graphics3D.Cycles.Nodes;
+ using CodeBrix.Graphics3D.Cycles.Rendering;
+ using CodeBrix.Graphics3D.Cycles.Validation;
+ using CodeBrix.Graphics3D.Gltf2.Schema2;
+@@ -126,6 +129,65 @@
+     }
+ 
+     [Fact]
++    public async Task gpu_scene_recovers_after_a_rejected_render_once_the_cause_is_removed()
++    {
++        //Arrange
++        using CyclesScene gpu = CreateGpuScene();
++        WebGpuValidationScenes.Build(gpu, WebGpuValidationScenes.DiffuseSun);
++        ConcurrentQueue<RenderEvent> events = new();
++        gpu.RenderEventReceived += (sender, e) => events.Enqueue(e);
++        PassNode depth = gpu.AddPass(PassType.Depth, "Depth");
++        Func<Task> rejected = () => gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
++        await rejected.Should().ThrowAsync<NativeFailure>();
++        bool faulted = gpu.IsFaulted;
++        gpu.Remove(depth);
++
++        //Act
++        FilmBuffer film = await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
++
++        //Assert
++        faulted.Should().BeTrue();
++        gpu.IsFaulted.Should().BeFalse();
++        events.Should().Contain(e => e.Kind == RenderEventKind.Error);
++        events.Should().Contain(e => e.Kind == RenderEventKind.Status && e.Message.StartsWith("Device recovered", StringComparison.Ordinal));
++        WebGpuValidationScenes.Compare(film.Span, RenderCpu(WebGpuValidationScenes.DiffuseSun).Span).Practical.Should().Be(0);
++    }
++
++    [Fact]
++    public async Task gpu_object_moved_after_a_render_matches_the_cpu_scene_built_with_it()
++    {
++        //Arrange
++        Transform3x4 moved = new(.7f, 0, .2f, -.6f, 0, .9f, 0, .3f, -.2f, 0, .7f, .4f);
++        using CyclesScene gpu = CreateGpuScene();
++        WebGpuValidationScenes.Build(gpu, WebGpuValidationScenes.DiffuseSun);
++        ObjectNode box = gpu.CreateObject(gpu.CreateMesh([-.4f, -.4f, 0, .4f, -.4f, 0, 0, .5f, 0], [0, 1, 2], Diffuse(gpu)));
++        await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
++        using CyclesScene cpu = TestScenes.CreateCpuScene();
++        WebGpuValidationScenes.Build(cpu, WebGpuValidationScenes.DiffuseSun);
++        cpu.CreateObject(cpu.CreateMesh([-.4f, -.4f, 0, .4f, -.4f, 0, 0, .5f, 0], [0, 1, 2], Diffuse(cpu)), moved);
++
++        //Act
++        box.Tfm = moved;
++        FilmBuffer film = await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
++        (double maximum, int practical, int strict) = WebGpuValidationScenes.Compare(film.Span, cpu.Render(WebGpuValidationScenes.Settings).Span);
++        output.WriteLine($"moved object: max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
++
++        //Assert
++        practical.Should().Be(0);
++    }
++
++    // A diffuse material (the Cycles default surface shader is not implemented on WebGPU).
++    private static ShaderNode Diffuse(CyclesScene scene)
++    {
++        ShaderNode material = scene.CreateShader();
++        DiffuseBsdfNode diffuse = material.Add<DiffuseBsdfNode>();
++        diffuse.Color = new System.Numerics.Vector3(.3f, .6f, .4f);
++        material.Connect(diffuse.BsdfOutput, material.Output.SurfaceInput);
++        material.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
++        return material;
++    }
++
++    [Fact]
+     public void gpu_capability_report_states_the_webgpu_tier_decision()
+     {
+         //Arrange
+--- a/third_party/dependencies.json
++++ b/third_party/dependencies.json
+@@ -842,7 +842,7 @@
+     "third_party/licenses/Cycles-BSD-3-Clause.txt": "78176499683c1e601241d901486dfdebcd0d511826e67905dd54881f5dc1d7e3",
+     "third_party/licenses/Cycles-MIT.txt": "7a91b4754c06385f87b319313871b064d4d9e0dc1570ca94928b09fe74ed03ee",
+     "third_party/licenses/Cycles-Zlib.txt": "52a1da7db7828498bb11719974c41f875e310ea241c97c8e27af7cda21887c19",
+-    "native/THIRD-PARTY-NOTICES.txt": "8d3a56f83d3494d56f5e8983f303e30968fcabc2eda9510ef85e8e464cd116d4",
++    "native/THIRD-PARTY-NOTICES.txt": "c33e59297ba85134cc6d3406cc16dc2a59499f4834e179d2269fa01a485c298c",
+     "parity/THIRD-PARTY-NOTICES.txt": "6d0d3b721f32aea3ed0f54569f5e9cee7c5e3ebaaf0229e77e9f4079bd9a2b4f",
+     "research/THIRD-PARTY-NOTICES.txt": "f773ade844c3e433707edc6642f82cb2c71bbc9b22704899bc9909f3614621d1",
+     "third_party/Cycles-file-notices.txt": "543b1434934bdb47cfe6f3b4ad70d7a657d277a1961a6b54ad249cdc7689800a",
+--- a/third_party/license-review-exceptions.json
++++ b/third_party/license-review-exceptions.json
+@@ -7,7 +7,7 @@
+       "reason": "Generated component attribution includes explicit system-runtime exceptions and historical inventory scope; not a license grant for excluded implementation."
+     },
+     "THIRD-PARTY-NOTICES.txt": {
+-      "sha256": "b2409bbfac6c0ee90bb7c74747f56b9618da1771502a357e2236b000a47cab53",
++      "sha256": "bc083d161c9d6b7fcf646510e2f2527a71ffa3a1036d5739fd8741b9a2d49766",
+       "reason": "Generated complete license/attribution texts, including historical inventories and permitted GCC/system-runtime terms. Excluded implementation bodies are not present."
+     },
+     "native/evidence/background-queue/linux-x64/validation.json": {
+@@ -567,7 +567,7 @@
+       "reason": "Import provenance and explicit excluded-path/license findings; excluded implementations are not imported."
+     },
+     "third_party/dependencies.json": {
+-      "sha256": "6ab22f3a82e1c85273920accfeec1137716d5a619699fa4e634c88fe447a193c",
++      "sha256": "6b8d7650b21ec6b36d08f4fea199cdd75692f607659277f7fa4b839126c0f100",
+       "reason": "Reviewed dependency/attribution manifest; explicit system runtime exceptions and historical notice documents."
+     },
+     "third_party/dependency-imports.json": {
+@@ -623,7 +623,7 @@
+       "reason": "Retained distribution copyright inventory: includes unused upstream/packaging licenses, allowed runtime exceptions or dual alternatives. Inventory text only; actual vendored inputs and current binary closure are reviewed separately."
+     },
+     "third_party/provenance.json": {
+-      "sha256": "7794296b0ef7b1776ac3b1d7f562a158d31df6000861cf6387d7bc5a71fca300",
++      "sha256": "e089df21b95ac3f6667a210eda21e57f1f8709cb311314bf64916f44ecf75e5b",
+       "reason": "Historical provenance and original license findings retained as evidence; current source/build status is separately recorded."
+     },
+     "tools/licensing/audit.py": {
+--- a/third_party/provenance.json
++++ b/third_party/provenance.json
+@@ -13220,5 +13220,25 @@
+     },
+     "newExternalImports": false,
+     "scope": "Native triangle solid-angle/area sampling, center-area CDF selection and forward-hit MIS; original CPU oracle includes unchanged pinned headers. Triangle-light-private motion interpolation copies adapt util/transform.h; the shared motion helpers are unchanged."
++  },
++  "nativeShadowTerminatorDerivations": {
++    "revision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
++    "implementations": [
++      "native/shaders/wavefront_terminator.wgsl",
++      "native/shaders/wavefront_surface.wgsl",
++      "native/shaders/wavefront_lighting.wgsl"
++    ],
++    "license": "Apache-2.0 AND BSD-3-Clause AND MIT",
++    "sourceSha256": {
++      "src/kernel/light/sample.h": "2dffdb7ccb2ce6b582b606aefdda4a07b02f1f9759181a2ec27cea1ebfd6a1a8",
++      "src/kernel/closure/bsdf.h": "aa6419b97c01f6a014fe97d711b19139ca47596a034ee55e856116d582d59051",
++      "src/util/math_fast.h": "8ae830fff8b3aee77144f855731fdb74c9fce94ea65dd5b609b507a514ac2157",
++      "src/kernel/geom/triangle.h": "0c44e107f9df069697a73e127801eef4b9c66387893d4099014cee740752d4e8",
++      "src/kernel/geom/motion_triangle.h": "16022c1ccba6fd0a00e24fc8ac29e5365f3577737cb5363e1ce0ddef51e8b446",
++      "src/kernel/integrator/shade_surface.h": "08bb71f7a70a366a7dc140aa3bc113f2fc1086b6a0b6212820cc38e4fec3a31d",
++      "src/scene/object.cpp": "409aad258a3511fef63477394c96446a661243893e7bf73897e24b353a6598f2"
++    },
++    "newExternalImports": false,
++    "scope": "Object shadow terminator geometry offset (shadow-ray origin lift and self-intersection skip on smooth triangles, static, instanced, moving and deforming) and shading offset (shift_cos_in from Appleseed via Cycles bsdf.h, MIT; fast_acosf from util/math_fast.h, BSD-3-Clause) in WGSL. The shift_cos_in cosine reuses the existing Arm-derived native_disk_sincos adapter. Shading offsets above 1 are rejected before dispatch."
+   }
+ }
+--- a/tools/gltf/CycleGltfRender/GltfSceneConverter.cs
++++ b/tools/gltf/CycleGltfRender/GltfSceneConverter.cs
+@@ -159,11 +159,7 @@
+                 : instancing.LocalTransforms.Select(local => local.Matrix * node.WorldMatrix);
+             foreach (Matrix4x4 world in transforms)
+             {
+-                ObjectNode instance = scene.CreateObject(mesh, Transform3x4.FromMatrix(world));
+-                // The WebGPU backend does not implement the smooth shadow-terminator geometry offset
+-                // (a smooth-shaded mesh lit by a light fails with "invalid state/data"); zero it on
+-                // every backend so CPU and GPU render the same scene.
+-                instance.ShadowTerminatorGeometryOffset = 0f;
++                scene.CreateObject(mesh, Transform3x4.FromMatrix(world));
+                 ++result.MeshObjects;
+                 for (int corner = 0; corner < 8; ++corner)
+                 {
+--- a/tools/hosttests/WebGpuScenes/WebGpuValidationScenes.cs
++++ b/tools/hosttests/WebGpuScenes/WebGpuValidationScenes.cs
+@@ -205,7 +205,7 @@
+         bool[] smooth = new bool[indices.Count / 3];
+         Array.Fill(smooth, true);
+         mesh.Smooth = smooth;
+-        ObjectNode instance = scene.CreateObject(mesh, Transform3x4.CreateTranslation(center.X, center.Y, center.Z));
+-        instance.ShadowTerminatorGeometryOffset = 0f;
++        // Default shadow-terminator offsets (geometry 0.1): the WebGPU backend implements them.
++        scene.CreateObject(mesh, Transform3x4.CreateTranslation(center.X, center.Y, center.Z));
+     }
+ }
+--- a/tools/managed/generate_model.py
++++ b/tools/managed/generate_model.py
+@@ -140,14 +140,13 @@
+     /// <summary>
+     /// Sets this mesh's deformation motion: <paramref name="steps"/> (odd, 3 to 129) time-ordered
+     /// position arrays whose center step equals the current positions bit for bit. Rendering it also
+-    /// needs <c>Integrator.MotionBlur</c> and a camera shutter time. Configure motion before the mesh's
+-    /// first render: the pinned Cycles static BVH bakes a mesh at its first render, so motion added
+-    /// later is refused. Call it again after <see cref="SetTriangles(ReadOnlySpan{float}, ReadOnlySpan{uint})"/> changes the vertex count.
++    /// needs <c>Integrator.MotionBlur</c> and a camera shutter time. It may be called before or after
++    /// the mesh's first render (the native host restores a baked mesh's authored positions first). Call it again after <see cref="SetTriangles(ReadOnlySpan{float}, ReadOnlySpan{uint})"/> changes the vertex count.
+     /// </summary>
+     /// <param name="steps">The number of time steps.</param>
+     /// <param name="positions">The positions of every step as x, y, z triples, step by step.</param>
+     /// <exception cref="NativeFailure">The step count or position count is invalid, or the center step differs from the current positions (status 1).</exception>
+-    /// <exception cref="InvalidOperationException">The mesh was already rendered.</exception>
++    /// <exception cref="InvalidOperationException">The native host refused the edit (status 5), for example on a baked volume.</exception>
+     public void SetMotionPositions(uint steps, ReadOnlySpan<float> positions) => Scene.SetMeshMotion(this, steps, positions);
+ 
+     /// <summary>
+@@ -157,7 +156,7 @@
+     /// <param name="steps">The number of time steps.</param>
+     /// <param name="positions">The positions of every step, step by step.</param>
+     /// <exception cref="NativeFailure">The input is invalid (status 1).</exception>
+-    /// <exception cref="InvalidOperationException">The mesh was already rendered.</exception>
++    /// <exception cref="InvalidOperationException">The native host refused the edit (status 5), for example on a baked volume.</exception>
+     public void SetMotionPositions(uint steps, ReadOnlySpan<Vector3> positions) => Scene.SetMeshMotion(this, steps, MemoryMarshal.Cast<Vector3, float>(positions));
+ 
+     /// <summary>
+--- /dev/null
++++ b/native/cycles/shadow_terminator_fixture.h
+@@ -0,0 +1,74 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++#pragma once
++#include "scene/scene.h"
++#include "scene/background.h"
++#include "scene/camera.h"
++#include "scene/integrator.h"
++#include "scene/light.h"
++#include "scene/mesh.h"
++#include "scene/object.h"
++#include "scene/shader_graph.h"
++#include "scene/shader_nodes.h"
++#include "object_motion_fixture.h"
++#include "deforming_motion_fixture.h"
++#include <cmath>
++namespace ccl {
++// Phase E3 shadow-terminator fixture: a coarse smooth-shaded UV sphere (the
++// terminator artifact needs few, large triangles) on a flat floor, lit by a
++// grazing sun (modes 0-3), a point light (4-7) or both (8-9). Object offsets:
++// geometry 0.1 or 0, shading 0.5 or 0 (modes 0-7 cover all four pairs per
++// light); mode 8 renders two instances of one sphere (non-uniform scale,
++// object-space offset) with geometry 0.3 and shading 1 (multiplier 2); mode 9
++// a moving, deforming sphere with geometry 0.1 and shading 0.5. The sphere is
++// diffuse under the sun (modes 0-3) and a diffuse/GGX mix otherwise. Native Cycles
++// generates the vertex normals, bounds and packed uploads.
++inline constexpr int shadow_terminator_cases=10;
++inline float shadow_terminator_geometry(int mode){return mode==8?.3f:mode==9?.1f:(mode%4==0||mode%4==2)?.1f:0.f;}
++inline float shadow_terminator_shading(int mode){return mode==8?1.f:mode==9?.5f:(mode%4==1||mode%4==2)?.5f:0.f;}
++inline Shader *shadow_terminator_material(Scene &scene,bool glossy_mix){
++  auto graph=make_unique<ShaderGraph>();auto diffuse=graph->create_node<DiffuseBsdfNode>();diffuse->set_color(make_float3(.7,.45,.25));diffuse->set_roughness(0);
++  ShaderOutput *surface=diffuse->output("BSDF");
++  if(glossy_mix){auto glossy=graph->create_node<GlossyBsdfNode>();glossy->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);glossy->set_color(make_float3(.3,.5,.8));glossy->set_roughness(.4f);
++    auto mix=graph->create_node<MixClosureNode>();mix->set_fac(.35f);graph->connect(surface,mix->input("Closure1"));graph->connect(glossy->output("BSDF"),mix->input("Closure2"));surface=mix->output("Closure");}
++  graph->connect(surface,graph->output()->input("Surface"));auto shader=scene.create_node<Shader>();shader->set_graph(std::move(graph));shader->tag_update(&scene);return shader;
++}
++inline Mesh *shadow_terminator_sphere(Scene &scene,Shader *shader){
++  constexpr int segments=9,rings=5;auto mesh=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(shader);mesh->set_used_shaders(slots);
++  const int vertices=2+segments*(rings-1),triangles=2*segments*(rings-1);mesh->resize_mesh(vertices,triangles);
++  auto P=mesh->get_position_for_write();P[0]=make_float3(0,1,0);P[1]=make_float3(0,-1,0);
++  for(int r=1;r<rings;r++)for(int s=0;s<segments;s++){const float theta=M_PI_F*r/rings,phi=2*M_PI_F*s/segments+.17f*r;
++    P[2+(r-1)*segments+s]=make_float3(std::sin(theta)*std::cos(phi),std::cos(theta),std::sin(theta)*std::sin(phi));}
++  auto &tri=mesh->get_triangles();int t=0;auto ring=[&](int r,int s){return 2+(r-1)*segments+(s%segments);};
++  for(int s=0;s<segments;s++){tri[3*t]=0;tri[3*t+1]=ring(1,s+1);tri[3*t+2]=ring(1,s);t++;}
++  for(int r=1;r+1<rings;r++)for(int s=0;s<segments;s++){
++    tri[3*t]=ring(r,s);tri[3*t+1]=ring(r,s+1);tri[3*t+2]=ring(r+1,s);t++;
++    tri[3*t]=ring(r,s+1);tri[3*t+1]=ring(r+1,s+1);tri[3*t+2]=ring(r+1,s);t++;}
++  for(int s=0;s<segments;s++){tri[3*t]=1;tri[3*t+1]=ring(rings-1,s);tri[3*t+2]=ring(rings-1,s+1);t++;}
++  std::ranges::fill(mesh->get_smooth(),true);std::ranges::fill(mesh->get_shader(),0);mesh->tag_triangles_modified();return mesh;
++}
++inline void shadow_terminator_fixture(Scene &scene,int mode,Shader *emitter){
++  auto sphere=shadow_terminator_sphere(scene,shadow_terminator_material(scene,mode>=4));
++  auto floor_material=shadow_terminator_material(scene,false);
++  auto floor=scene.create_node<Mesh>();{array<Node*> slots;slots.push_back_slow(floor_material);floor->set_used_shaders(slots);floor->resize_mesh(4,2);
++    const float3 corners[]={make_float3(-5,-1.25f,-3),make_float3(5,-1.25f,-3),make_float3(5,-1.25f,4),make_float3(-5,-1.25f,4)};
++    std::copy(std::begin(corners),std::end(corners),floor->get_position_for_write());const int indices[]={0,1,2,0,2,3};std::copy_n(indices,6,floor->get_triangles().data());
++    std::ranges::fill(floor->get_smooth(),false);std::ranges::fill(floor->get_shader(),0);floor->tag_triangles_modified();}
++  auto floor_object=scene.create_node<Object>();floor_object->set_geometry(floor);
++  std::vector<Object*> spheres;
++  auto add=[&](const Transform &tfm){auto object=scene.create_node<Object>();object->set_geometry(sphere);object->set_tfm(tfm);
++    object->set_shadow_terminator_geometry_offset(shadow_terminator_geometry(mode));object->set_shadow_terminator_shading_offset(shadow_terminator_shading(mode));spheres.push_back(object);};
++  if(mode==8){add(transform_translate(make_float3(-1.3f,-.2f,0))*transform_scale(make_float3(.9f,1.05f,.8f)));
++    add(transform_translate(make_float3(1.4f,-.35f,.6f))*transform_rotate(.6f,make_float3(0,1,0))*transform_scale(make_float3(.7f,.9f,1.2f)));}
++  else add(transform_rotate(.3f,make_float3(0,1,0))*transform_scale(make_float3(1.2f,1.15f,1.2f)));
++  if(mode==9){deforming_motion_fixture(scene,*spheres[0],0);object_motion_fixture(scene,*spheres[0],1);}
++  const bool sun=mode<4||mode>=8,point=mode>=4;
++  if(sun){auto light=scene.create_node<SunLight>();light->set_angle(.05f);light->set_normalize(false);light->set_strength(make_float3(2.5f,2.4f,2.2f));light->set_use_mis(true);
++    array<Node*> slots;slots.push_back_slow(emitter);light->set_used_shaders(slots);auto object=scene.create_node<Object>();object->set_geometry(light);
++    // Grazing light from the right: the terminator runs across the sphere's front.
++    object->set_tfm(transform_rotate(1.45f,make_float3(0,1,0))*transform_rotate(-.25f,make_float3(1,0,0)));}
++  if(point){auto light=scene.create_node<PointLight>();light->set_radius(.15f);light->set_is_sphere(true);light->set_strength(make_float3(180,170,150));light->set_use_mis(true);
++    array<Node*> slots;slots.push_back_slow(emitter);light->set_used_shaders(slots);auto object=scene.create_node<Object>();object->set_geometry(light);
++    object->set_tfm(transform_translate(make_float3(-3.2f,1.4f,1.2f)));}
++}
++}
+--- /dev/null
++++ b/native/host/host_edits.inc
+@@ -0,0 +1,130 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++// Phase E3: scene edits after a render.
++//
++// The pinned static-BVH update path (ObjectManager::apply_static_transforms)
++// bakes a single-user geometry with its object transform: it rewrites the
++// geometry's position/normal/radius attributes in place and sets
++// Geometry::transform_applied. Cycles has no inverse of that step; its
++// interactive hosts rebuild the geometry from their own data. This host keeps
++// the authored attributes of every geometry the next render may bake. Before
++// a geometry edit, and before a render whose fresh-scene bake would differ
++// from the existing one (object transform or motion, motion blur, users,
++// displacement/subsurface shaders), it restores those attributes and clears
++// the baked state, so Cycles' own device update re-bakes or instances the
++// geometry exactly as it does for a scene built from scratch. Volume
++// geometry (voxel attributes) cannot be restored; such edits are refused.
++// Included inside the private implementation namespace of cycles_host.cpp.
++bool bake_restorable(const Geometry *geometry) {
++  return geometry->is_mesh() || geometry->is_hair() || geometry->is_pointcloud();
++}
++// Copies every attribute (all motion steps) into `to`, whose geometry must
++// have the same element counts as `from` was captured with.
++void copy_attributes(const AttributeSet &from, AttributeSet &to) {
++  for (const Attribute &attribute : from.attributes) {
++    require(!(attribute.element & ATTR_ELEMENT_VOXEL), "Voxel attributes cannot be restored", CBC_FAILED);
++    Attribute &copy = to.copy(attribute);
++    copy.flags = attribute.flags;
++    require(copy.size == attribute.size && copy.motion.size() == attribute.motion.size(), "Authored attribute layout changed", CBC_FAILED);
++    const size_t bytes = size_t(attribute.size) * attribute.data_sizeof();
++    for (int step = 0; step <= int(attribute.motion.size()); ++step)
++      if (bytes) std::memcpy(copy.data_for_write(step), attribute.data(step), bytes);
++  }
++}
++// What a scene built from scratch would do with this geometry at the next
++// render: mirrors the apply conditions of ObjectManager::apply_static_transforms.
++struct ExpectedBake { bool apply = false; Object *object = nullptr; Transform tfm; bool to_motion = false; };
++ExpectedBake expected_bake(Scene &scene, Geometry *geometry) {
++  ExpectedBake result;
++  if (scene.params.bvh_type != BVH_TYPE_STATIC || geometry->is_light()) return result;
++  Object *user = nullptr; int users = 0;
++  for (Object *object : scene.objects) if (object->get_geometry() == geometry) { user = object; users++; }
++  if (users != 1) return result;
++  const Scene::MotionType motion = scene.need_motion();
++  bool apply = !geometry->has_surface_bssrdf && !geometry->has_true_displacement();
++  if (geometry->is_mesh()) apply = apply && static_cast<Mesh *>(geometry)->get_subdivision_type() == Mesh::SUBDIVISION_NONE;
++  else if (geometry->is_hair() || geometry->is_pointcloud()) { float scale; apply = apply && transform_uniform_scale(user->get_tfm(), scale); }
++  if (motion == Scene::MOTION_BLUR && user->use_motion()) apply = false;
++  result.apply = apply; result.object = user; result.tfm = user->get_tfm();
++  result.to_motion = motion != Scene::MOTION_PASS && motion != Scene::MOTION_PASS_INTERACTIVE;
++  return result;
++}
++bool same_transform(const Transform &a, const Transform &b) { return std::memcmp(&a, &b, sizeof(Transform)) == 0; }
++// A shader edit that may add true displacement or subsurface scattering
++// changes Geometry::has_true_displacement/has_surface_bssrdf, which decide
++// whether Cycles bakes the geometry.
++bool shader_may_change_bake(Host &host, Node *node) {
++  auto shader = static_cast<Shader *>(node);
++  auto it = host.graphs.find(shader);
++  if (it == host.graphs.end() || (!it->second->dirty && !host.edited_shaders.count(shader))) return false;
++  auto &graph = *it->second->authoring;
++  if (auto displacement = graph.output()->input("Displacement"); displacement && displacement->link) return true;
++  for (auto node : graph.nodes) {
++    const std::string name = node->type->name.string();
++    if (name == "subsurface_scattering" || name == "principled_bsdf") return true;
++  }
++  return false;
++}
++// Restores the authored attributes of a baked geometry and tags a rebuild.
++void unbake(Host &host, Geometry *geometry) {
++  auto it = host.bakes.find(geometry);
++  if (it == host.bakes.end()) return;
++  if (geometry->transform_applied) {
++    AttributeSet staged(geometry, geometry->attributes.prim);
++    copy_attributes(*it->second.attributes, staged);
++    geometry->attributes.update(std::move(staged));
++    geometry->transform_applied = false; geometry->transform_negative_scaled = false;
++    geometry->transform_normal = transform_identity();
++    geometry->tag_modified(); geometry->tag_update(host.session->scene.get(), true);
++  }
++  host.bakes.erase(it);
++}
++const char *const volume_refusal = "Volume geometry was baked with its object transform by an earlier render and cannot be restored; "
++                                   "delete the object and volume and create new ones to change its transform, motion, users or data";
++// Called by every host function that edits a node, before the edit. A baked
++// geometry gets its authored attributes back first, so the edit applies to
++// authored data; edits that would need a baked volume restored are refused.
++void before_edit(Host &host, Entry &entry, const char *socket_name) {
++  if (entry.graph) return;
++  if (auto geometry = dynamic_cast<Geometry *>(entry.node)) {
++    if (geometry->transform_applied && geometry->is_volume()) throw Failure(CBC_NOT_READY, volume_refusal);
++    if (geometry->transform_applied && bake_restorable(geometry)) unbake(host, geometry);
++  } else if (auto object = dynamic_cast<Object *>(entry.node)) {
++    const std::string name = socket_name ? socket_name : "";
++    Geometry *geometry = object->get_geometry();
++    if ((name == "tfm" || name == "motion" || name == "geometry") && geometry && geometry->is_volume() && geometry->transform_applied)
++      throw Failure(CBC_NOT_READY, volume_refusal);
++  }
++}
++// Before a render: restore every baked geometry whose fresh-scene bake would
++// differ, then capture the authored attributes of geometry this render may bake.
++void reconcile_bakes(Host &host) {
++  Scene &scene = *host.session->scene;
++  for (Geometry *geometry : scene.geometry) {
++    if (!geometry->transform_applied || geometry->is_light()) continue;
++    auto expected = expected_bake(scene, geometry);
++    auto record = host.bakes.find(geometry);
++    bool keep = record != host.bakes.end() && expected.apply && expected.object == record->second.object &&
++                same_transform(expected.tfm, record->second.tfm) && expected.to_motion == record->second.to_motion;
++    if (keep) for (Node *shader : geometry->get_used_shaders()) if (shader_may_change_bake(host, shader)) keep = false;
++    if (keep) continue;
++    if (geometry->is_volume()) throw Failure(CBC_NOT_READY, volume_refusal);
++    // A baked geometry without a record predates this host's capture (for
++    // example a shared geometry the device update baked); nothing to restore.
++    if (record != host.bakes.end()) unbake(host, geometry);
++  }
++  for (Geometry *geometry : scene.geometry) {
++    if (geometry->transform_applied || !bake_restorable(geometry)) continue;
++    auto expected = expected_bake(scene, geometry);
++    if (!expected.apply) { host.bakes.erase(geometry); continue; }
++    BakeRecord record; record.object = expected.object; record.tfm = expected.tfm; record.to_motion = expected.to_motion;
++    record.attributes = std::make_unique<AttributeSet>(geometry, geometry->attributes.prim);
++    copy_attributes(geometry->attributes, *record.attributes);
++    host.bakes[geometry] = std::move(record);
++  }
++  host.edited_shaders.clear();
++}
++// After a render (successful or not): drop captures Cycles did not bake.
++void prune_bakes(Host &host) noexcept {
++  for (auto it = host.bakes.begin(); it != host.bakes.end();) it = it->first->transform_applied ? std::next(it) : host.bakes.erase(it);
++}
+--- /dev/null
++++ b/native/shaders/wavefront_terminator.wgsl
+@@ -0,0 +1,96 @@
++// SPDX-FileCopyrightText: 2011-2022 Blender Foundation
++// SPDX-FileCopyrightText: 2004 NVIDIA Corporation
++// SPDX-FileCopyrightText: 2008-2014 Larry Gritz
++// SPDX-FileCopyrightText: 2009-2014 Sony Pictures Imageworks Inc., et al.
++// Copyright (c) 2019 Francois Beaune, The appleseedhq Organization
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause AND MIT
++// Modified from Cycles: object shadow terminator offsets in WGSL.
++// Geometry offset: kernel/light/sample.h shadow_ray_smooth_surface_offset and
++// shadow_ray_offset (Apache-2.0; shadow-ray origin lifted along the
++// interpolated normal). Shading offset: kernel/closure/bsdf.h shift_cos_in,
++// which Cycles took from Appleseed (MIT, notice above), and util/math_fast.h
++// fast_acosf (BSD-3-Clause, adapted from OpenImageIO). Floating
++// operations keep the native order with the reviewed binary32 adapters.
++// Scene specialization (pipelines.h SHADOW_TERMINATOR_*) removes the callers'
++// regions when no object needs an offset. See native/THIRD-PARTY-NOTICES.txt.
++fn terminator_object(sd:SurfaceData)->u32{return table_at(G_objects,sd.object_id,SIZE_objects);}
++// Native kobject.shadow_terminator_shading_offset is the frequency multiplier
++// 1/(1-offset/2); values above 1 enable the shading term.
++fn terminator_frequency(sd:SurfaceData)->f32{return heap_float(terminator_object(sd)+O_shadow_terminator_shading_offset);}
++fn terminator_fast_acos(x:f32)->f32{
++    let f=abs(x);
++    // Clamp and crush denormals: 1-(1-f), kept as two binary32 additions.
++    let m=select(1.0,rounded_add(1.0,-rounded_add(1.0,-f)),f<1.0);
++    let polynomial=rounded_add(1.5707963267,m*rounded_add(-0.213300989,m*rounded_add(0.077980478,m*-0.02164095)));
++    let a=rounded_sqrt(rounded_add(1.0,-m))*polynomial;
++    return select(a,rounded_add(3.1415927410125732,-a),x<0.0);
++}
++// shift_cos_in. Callers pass frequency in (1,2] (the device rejects larger
++// multipliers), so angle*frequency stays inside native_disk_sincos' [-pi,pi].
++fn terminator_shift_cos_in(cos_value:f32,frequency:f32)->f32{
++    let cos_in=min(cos_value,1.0);let angle=terminator_fast_acos(cos_in);
++    return rounded_divide(max(native_disk_sincos(angle*frequency).y,0.0),cos_in);
++}
++// Raw triangle normals for the offset: center frame, or the interpolated and
++// normalized pair of frames for deforming triangles (motion_triangle_normals).
++fn terminator_normals(sd:SurfaceData)->array<vec3<f32>,3>{
++    var normals:array<vec3<f32>,3>;let object=terminator_object(sd);
++    let vi_address=table_at(G_tri_vindex,sd.prim,SIZE_tri_vindex);
++    var ni=vec3<u32>(load_word(vi_address),load_word(vi_address+4u),load_word(vi_address+8u));
++    if((sd.object_flag&SD_OBJECT_HAS_CORNER_NORMALS)!=0u){ni=vec3<u32>(sd.prim*3u)+vec3<u32>(0,1,2);}
++    let offset=bitcast<i32>(load_word(object+O_normal_offset));let nc=table_count(G_attributes_normal);
++    var stride=load_word(object+O_numverts);if((sd.object_flag&SD_OBJECT_HAS_CORNER_NORMALS)!=0u){stride=3u*load_word(object+O_numprims);}
++    var frame:TriangleTime;if(sd.primitive_type==PRIMITIVE_MOTION_TRIANGLE){frame=triangle_motion_time(sd.object_id,sd.time);}
++    for(var j=0u;j<3u;j++){
++        let at=triangle_frame_index(ni[j],offset,frame.a,stride,nc);if(at==NONE){return normals;}
++        normals[j]=surface_decode_normal(load_word(table_at(G_attributes_normal,at,SIZE_attributes_normal)));
++        if(sd.primitive_type==PRIMITIVE_MOTION_TRIANGLE){
++            let next=triangle_frame_index(ni[j],offset,frame.b,stride,nc);if(next==NONE){return normals;}
++            let n=surface_decode_normal(load_word(table_at(G_attributes_normal,next,SIZE_attributes_normal)));
++            normals[j]=surface_native_normalize(rounded_add3((1.0-frame.t)*normals[j],frame.t*n));
++        }
++    }
++    return normals;
++}
++fn terminator_mix(a:vec3<f32>,b:vec3<f32>,c:vec3<f32>,u:f32,v:f32,w:f32)->vec3<f32>{return rounded_add3(rounded_add3(a*u,b*v),c*w);}
++// shadow_ray_smooth_surface_offset: local-space parabolic lift of the smooth
++// surface, returned along the (world-space) interpolated normal.
++fn terminator_smooth_offset(sd:SurfaceData,Ng:vec3<f32>)->vec3<f32>{
++    let vertices=native_triangle_vertices(sd.object_id,sd.prim,sd.primitive_type,sd.time);
++    let N=terminator_normals(sd);let V=array<vec3<f32>,3>(vertices.a,vertices.b,vertices.c);
++    let u=rounded_add(rounded_add(1.0,-sd.u),-sd.v);let v=sd.u;let w=sd.v;
++    let P=terminator_mix(V[0],V[1],V[2],u,v,w);var n=terminator_mix(N[0],N[1],N[2],u,v,w);
++    if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){n=surface_object_direction(sd,n,false);}
++    let a=rounded_dot(N[2]-N[0],V[0]-V[2]);let b=rounded_dot(N[2]-N[1],V[1]-V[2]);let c=rounded_dot(N[1]-N[0],V[1]-V[0]);
++    var h=rounded_add(rounded_add((a*u)*rounded_add(u,-1.0),((rounded_add(rounded_add(a,b),c))*u)*v),(b*v)*rounded_add(v,-1.0));
++    if(rounded_dot(n,Ng)>0.0){
++        var h0=max(max(rounded_dot(V[1]-V[0],N[0]),rounded_dot(V[2]-V[0],N[0])),0.0);
++        var h1=max(max(rounded_dot(V[0]-V[1],N[1]),rounded_dot(V[2]-V[1],N[1])),0.0);
++        var h2=max(max(rounded_dot(V[0]-V[2],N[2]),rounded_dot(V[1]-V[2],N[2])),0.0);
++        h0=max(rounded_add(rounded_dot(V[0]-P,N[0]),h0),0.0);h1=max(rounded_add(rounded_dot(V[1]-P,N[1]),h1),0.0);h2=max(rounded_add(rounded_dot(V[2]-P,N[2]),h2),0.0);
++        h=max(min(min(h0,h1),h2),h*0.5);
++    }else{
++        var h0=max(max(rounded_dot(V[0]-V[1],N[0]),rounded_dot(V[0]-V[2],N[0])),0.0);
++        var h1=max(max(rounded_dot(V[1]-V[0],N[1]),rounded_dot(V[1]-V[2],N[1])),0.0);
++        var h2=max(max(rounded_dot(V[2]-V[0],N[2]),rounded_dot(V[2]-V[1],N[2])),0.0);
++        h0=max(rounded_add(rounded_dot(P-V[0],N[0]),h0),0.0);h1=max(rounded_add(rounded_dot(P-V[1],N[1]),h1),0.0);h2=max(rounded_add(rounded_dot(P-V[2],N[2]),h2),0.0);
++        h=min(-min(min(h0,h1),h2),h*0.5);
++    }
++    return n*h;
++}
++// True when shadow_ray_offset applies the geometry offset to this hit.
++fn terminator_geometry_active(sd:SurfaceData)->bool{
++    return native_triangle_kind(sd.primitive_type)&&(sd.shader&SHADER_SMOOTH_NORMAL)!=0u&&heap_float(terminator_object(sd)+O_shadow_terminator_geometry_offset)>0.0;
++}
++// shadow_ray_offset: xyz is the shadow-ray origin, w is 1 when the ray keeps
++// skipping its own primitive (Cycles' skip_self).
++fn terminator_shadow_origin(sd:SurfaceData,L:vec3<f32>)->vec4<f32>{
++    let cutoff=heap_float(terminator_object(sd)+O_shadow_terminator_geometry_offset);
++    var NL=rounded_dot(sd.N,L);let transmit=NL<0.0;if(NL<0.0){NL=-NL;}
++    let Ng=select(sd.Ng,-sd.Ng,transmit);let NgL=rounded_dot(Ng,L);
++    let amount=select(clamp(rounded_add(1.0,-rounded_divide(NgL,cutoff)),0.0,1.0),
++                      clamp(rounded_add(2.0,-rounded_divide(rounded_add(NgL,NL),cutoff)),0.0,1.0),NL<cutoff);
++    if(amount>0.0){return vec4<f32>(rounded_add3(sd.P,terminator_smooth_offset(sd,Ng)*amount),select(0.0,1.0,NgL>0.0));}
++    return vec4<f32>(sd.P,1.0);
++}
+--- /dev/null
++++ b/native/tests/host/scene_edit_consumer.c
+@@ -0,0 +1,285 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++// Phase E3 scene-edit and device-recovery consumer for native/tools/scene_edit_gate.py.
++// Every scenario renders a base scene, edits it through the public C ABI after
++// that first render, renders again and saves the film. The same scenario runs
++// a second time in a new host ("replay"), and a fresh CPU host renders the
++// edited scene from scratch (built with the same node creation order) as the
++// oracle. argv: output prefix, "cpu" or "gpu". GPU mode also provokes the
++// known WebGPU render-time rejections (a non-Combined pass, a non-perspective
++// camera), removes the cause and renders again on the same host (recovery).
++// Prints one JSON line; the gate compares the saved films.
++#define _POSIX_C_SOURCE 200809L
++#include "cycles_host.h"
++#include <math.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#define W 48
++#define H 36
++#define SAMPLES 16
++enum { FLOATS = W * H * 4, SCENARIOS = 13 };
++static const char *names[SCENARIOS] = {
++  "object-tfm", "object-motion-added", "camera-motion-added", "material-value", "light-edit",
++  "deformation-motion-added", "mesh-replaced", "instance-added", "object-motion-removed", "tfm-round-trip",
++  "attribute-replaced", "smooth-toggled", "motion-blur-enabled"};
++
++static void check(int result, const char *call, int line) {
++  if (result == CBC_OK) return;
++  char error[4096]; uint64_t required = 0;
++  cbc_host_error(error, sizeof(error), &required);
++  fprintf(stderr, "line %d: %s returned %d: %s\n", line, call, result, error); exit(1);
++}
++#define CHECK(call) check((call), #call, __LINE__)
++#define REQUIRE(test) do { if (!(test)) { fprintf(stderr, "Failed at line %d: %s\n", __LINE__, #test); exit(1); } } while (0)
++
++typedef struct Params {
++  float subject_tfm[12];
++  int object_motion, camera_motion, deform, alternate_mesh, instance, smooth, motion_blur;
++  float color[3], light_strength, light_tfm[12], tint;
++} Params;
++typedef struct Scene {
++  CBCHost host;
++  CBCNode integrator, camera, value, subject_mesh, subject, floor_mesh, light, light_holder, instance;
++} Scene;
++
++static CBCNode create(CBCHost host, const char *type) { CBCNode node = 0; CHECK(cbc_host_create_node(host, type, &node)); return node; }
++static CBCNode singleton(CBCHost host, const char *name) { CBCNode node = 0; CHECK(cbc_host_scene_node(host, name, &node)); return node; }
++static CBCNode graph_node(CBCHost host, CBCNode shader, const char *type) { CBCNode node = 0; CHECK(cbc_host_shader_node(host, shader, type, &node)); return node; }
++static CBCNode output_of(CBCHost host, CBCNode shader) { CBCNode node = 0; CHECK(cbc_host_shader_output(host, shader, &node)); return node; }
++static void integer(CBCHost host, CBCNode node, const char *name, int64_t value) { CHECK(cbc_host_set_ints(host, node, name, &value, 1)); }
++static void scalar(CBCHost host, CBCNode node, const char *name, float value) { CHECK(cbc_host_set_floats(host, node, name, &value, 1)); }
++static void triple(CBCHost host, CBCNode node, const char *name, const float *v) { CHECK(cbc_host_set_floats(host, node, name, v, 3)); }
++static void nodes(CBCHost host, CBCNode node, const char *name, CBCNode value) { CHECK(cbc_host_set_nodes(host, node, name, &value, 1)); }
++static void matrix(float *m, float sx, float sy, float sz, float x, float y, float z, float angle) {
++  const float c = cosf(angle), s = sinf(angle);
++  float v[] = {c * sx, 0, s * sz, x, 0, sy, 0, y, -s * sx, 0, c * sz, z}; memcpy(m, v, sizeof(v));
++}
++
++/* Subject: a closed six-triangle bipyramid; alternate positions for mesh replacement. */
++static const float bipyramid[2][18] = {
++  {0,.9f,0, -.7f,0,-.4f, .7f,0,-.4f, 0,0,.7f, 0,-.6f,0, .1f,.2f,.1f},
++  {0,1.1f,.1f, -.8f,.1f,-.3f, .6f,-.1f,-.5f, .1f,0,.8f, 0,-.7f,.1f, .1f,.2f,.1f}};
++static const uint32_t bipyramid_triangles[] = {0,1,2, 0,2,3, 0,3,1, 4,2,1, 4,3,2, 4,1,3};
++static void subject_geometry(Scene *s, const Params *p) {
++  CHECK(cbc_host_mesh(s->host, s->subject_mesh, bipyramid[p->alternate_mesh], 5, bipyramid_triangles, 6));
++  int64_t smooth[6]; for (unsigned i = 0; i < 6; ++i) smooth[i] = p->smooth;
++  CHECK(cbc_host_set_ints(s->host, s->subject_mesh, "smooth", smooth, 6));
++}
++static void deformation(Scene *s, const Params *p) {
++  float steps[3 * 15]; const float *center = bipyramid[p->alternate_mesh];
++  for (unsigned i = 0; i < 15; ++i) { steps[i] = center[i] + (i % 3 == 0 ? -.15f : i % 3 == 1 ? .05f : 0); steps[15 + i] = center[i]; steps[30 + i] = center[i] + (i % 3 == 0 ? .15f : 0); }
++  CHECK(cbc_host_motion_positions(s->host, s->subject_mesh, 3, steps, 45));
++}
++static void object_motion(Scene *s, CBCNode object, const float *tfm, int enabled) {
++  if (!enabled) { CHECK(cbc_host_set_floats(s->host, object, "motion", NULL, 0)); return; }
++  float steps[36]; memcpy(steps, tfm, 48); memcpy(steps + 12, tfm, 48); memcpy(steps + 24, tfm, 48);
++  steps[3] -= .3f; steps[7] += .05f; steps[27] += .3f; steps[31] += .1f;
++  CHECK(cbc_host_set_floats(s->host, object, "motion", steps, 36));
++}
++static void camera_motion(Scene *s, int enabled) {
++  if (!enabled) { CHECK(cbc_host_set_floats(s->host, s->camera, "motion", NULL, 0)); return; }
++  float steps[36] = {1,0,0,-.2f, 0,1,0,1, 0,0,1,-5, 1,0,0,0, 0,1,0,1, 0,0,1,-5, 1,0,0,.25f, 0,1,0,1.1f, 0,0,1,-5};
++  CHECK(cbc_host_set_floats(s->host, s->camera, "motion", steps, 36));
++}
++static void floor_tint(Scene *s, float tint) {
++  float values[4 * 3]; for (unsigned v = 0; v < 4; ++v) { values[3 * v] = tint; values[3 * v + 1] = .5f + .1f * v; values[3 * v + 2] = 1 - tint; }
++  CBCAttributeConfig config = {sizeof(config), CBC_VALUE_COLOR, CBC_ATTR_VERTEX, 0, {0}};
++  CHECK(cbc_host_attribute_floats(s->host, s->floor_mesh, "tint", &config, values, 12));
++}
++
++/* Builds a scene in a fixed node creation order so a fresh host can rebuild any edited state. */
++static void build(Scene *s, uint32_t backend, const Params *p) {
++  CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, backend, 1, {0}};
++  CHECK(cbc_host_create(&config, &s->host)); CBCHost h = s->host;
++  s->integrator = singleton(h, "integrator"); s->camera = singleton(h, "camera");
++  integer(h, s->integrator, "use_guiding", 0); integer(h, s->integrator, "use_light_tree", 0);
++  integer(h, s->integrator, "use_adaptive_sampling", 0); integer(h, s->integrator, "use_denoise", 0);
++  integer(h, s->integrator, "caustics_reflective", 0); integer(h, s->integrator, "caustics_refractive", 0);
++  integer(h, s->integrator, "min_bounce", 2); integer(h, s->integrator, "max_bounce", 3); integer(h, s->integrator, "seed", 3);
++  CHECK(cbc_host_set_string(h, s->integrator, "sampling_pattern", "tabulated_sobol"));
++  integer(h, s->integrator, "motion_blur", p->motion_blur); scalar(h, s->camera, "shuttertime", .6f);
++  scalar(h, s->camera, "fov", .95f);
++  float cam[12] = {1,0,0,0, 0,1,0,1, 0,0,1,-5}; CHECK(cbc_host_set_floats(h, s->camera, "matrix", cam, 12));
++  camera_motion(s, p->camera_motion);
++  CBCNode world = create(h, "shader"), bg = graph_node(h, world, "background_shader");
++  const float sky[3] = {.2f, .3f, .45f}; triple(h, bg, "color", sky); scalar(h, bg, "strength", .5f);
++  CHECK(cbc_host_connect(h, bg, "Background", output_of(h, world), "Surface"));
++  CHECK(cbc_host_set_string(h, world, "emission_sampling_method", "none"));
++  nodes(h, singleton(h, "background"), "shader", world);
++  /* Subject material: diffuse whose color comes from an editable color node. */
++  CBCNode material = create(h, "shader"), diffuse = graph_node(h, material, "diffuse_bsdf");
++  s->value = graph_node(h, material, "color"); triple(h, s->value, "value", p->color); scalar(h, diffuse, "roughness", .2f);
++  CHECK(cbc_host_connect(h, s->value, "Color", diffuse, "Color"));
++  CHECK(cbc_host_connect(h, diffuse, "BSDF", output_of(h, material), "Surface"));
++  CHECK(cbc_host_set_string(h, material, "emission_sampling_method", "none"));
++  /* Floor material: diffuse tinted by the per-vertex "tint" attribute. */
++  CBCNode floor_material = create(h, "shader"), floor_diffuse = graph_node(h, floor_material, "diffuse_bsdf");
++  CBCNode attribute = graph_node(h, floor_material, "attribute");
++  CHECK(cbc_host_set_string(h, attribute, "attribute", "tint"));
++  CHECK(cbc_host_connect(h, attribute, "Color", floor_diffuse, "Color"));
++  CHECK(cbc_host_connect(h, floor_diffuse, "BSDF", output_of(h, floor_material), "Surface"));
++  CHECK(cbc_host_set_string(h, floor_material, "emission_sampling_method", "none"));
++  s->subject_mesh = create(h, "mesh"); nodes(h, s->subject_mesh, "used_shaders", material);
++  subject_geometry(s, p);
++  if (p->deform) deformation(s, p);
++  s->subject = create(h, "object"); nodes(h, s->subject, "geometry", s->subject_mesh);
++  CHECK(cbc_host_set_floats(h, s->subject, "tfm", p->subject_tfm, 12));
++  object_motion(s, s->subject, p->subject_tfm, p->object_motion);
++  s->floor_mesh = create(h, "mesh"); nodes(h, s->floor_mesh, "used_shaders", floor_material);
++  const float quad[] = {-4,-1,-3, 4,-1,-3, 4,-1,3, -4,-1,3}; const uint32_t quad_triangles[] = {0,1,2, 0,2,3};
++  CHECK(cbc_host_mesh(h, s->floor_mesh, quad, 4, quad_triangles, 2)); floor_tint(s, p->tint);
++  CBCNode floor = create(h, "object"); nodes(h, floor, "geometry", s->floor_mesh);
++  CBCNode emitter = create(h, "shader"), emission = graph_node(h, emitter, "emission");
++  const float white[3] = {1, 1, 1}; triple(h, emission, "color", white); scalar(h, emission, "strength", 1);
++  CHECK(cbc_host_connect(h, emission, "Emission", output_of(h, emitter), "Surface"));
++  s->light = create(h, "pointlight"); nodes(h, s->light, "used_shaders", emitter);
++  scalar(h, s->light, "radius", .25f); integer(h, s->light, "is_sphere", 1); integer(h, s->light, "use_mis", 1);
++  const float strength[3] = {p->light_strength, p->light_strength * .9f, p->light_strength * .8f}; triple(h, s->light, "strength", strength);
++  s->light_holder = create(h, "object"); nodes(h, s->light_holder, "geometry", s->light);
++  CHECK(cbc_host_set_floats(h, s->light_holder, "tfm", p->light_tfm, 12));
++  CBCNode sun = create(h, "sunlight"); nodes(h, sun, "used_shaders", emitter); scalar(h, sun, "angle", .1f);
++  const float sun_strength[3] = {.6f, .6f, .55f}; triple(h, sun, "strength", sun_strength);
++  CBCNode sun_holder = create(h, "object"); nodes(h, sun_holder, "geometry", sun);
++  float sun_tfm[12]; matrix(sun_tfm, 1, 1, 1, 0, 0, 0, 2.6f); sun_tfm[5] = .6f; sun_tfm[6] = -.8f; sun_tfm[9] = .8f; sun_tfm[10] = .6f;
++  CHECK(cbc_host_set_floats(h, sun_holder, "tfm", sun_tfm, 12));
++  s->instance = 0;
++  if (p->instance) {
++    s->instance = create(h, "object"); nodes(h, s->instance, "geometry", s->subject_mesh);
++    float t[12]; matrix(t, .6f, .7f, .6f, 1.6f, -.4f, .5f, .7f); CHECK(cbc_host_set_floats(h, s->instance, "tfm", t, 12));
++  }
++}
++static void base_params(Params *p, int scenario) {
++  memset(p, 0, sizeof(*p));
++  matrix(p->subject_tfm, 1, 1.1f, .9f, -.3f, 0, .2f, .4f);
++  matrix(p->light_tfm, 1, 1, 1, 1.8f, 2.2f, -1.5f, 0);
++  const float color[3] = {.7f, .25f, .1f}; memcpy(p->color, color, sizeof(color));
++  p->light_strength = 60; p->tint = .8f;
++  /* Motion scenarios start with motion blur enabled; scenario 12 enables it later. */
++  p->motion_blur = scenario == 1 || scenario == 2 || scenario == 5 || scenario == 8;
++  p->object_motion = scenario == 8;
++}
++/* The edited state, as a fresh host builds it. */
++static void edited_params(Params *p, int scenario) {
++  base_params(p, scenario);
++  switch (scenario) {
++    case 0: matrix(p->subject_tfm, .8f, 1.3f, 1, .4f, .1f, -.3f, -.6f); break;
++    case 1: p->object_motion = 1; break;
++    case 2: p->camera_motion = 1; break;
++    case 3: p->color[0] = .1f; p->color[1] = .6f; p->color[2] = .3f; break;
++    case 4: p->light_strength = 35; matrix(p->light_tfm, 1, 1, 1, -1.5f, 2.6f, -1, 0); break;
++    case 5: p->deform = 1; break;
++    case 6: p->alternate_mesh = 1; break;
++    case 7: p->instance = 1; break;
++    case 8: p->object_motion = 0; break;
++    case 9: break;
++    case 10: p->tint = .2f; break;
++    case 11: p->smooth = 1; break;
++    case 12: p->motion_blur = 1; p->object_motion = 1; break;
++  }
++}
++/* Applies scenario edits to a host that already rendered its base state. */
++static void edit(Scene *s, int scenario, float *scratch) {
++  Params p; edited_params(&p, scenario); CBCHost h = s->host;
++  switch (scenario) {
++    case 0: CHECK(cbc_host_set_floats(h, s->subject, "tfm", p.subject_tfm, 12)); break;
++    case 1: object_motion(s, s->subject, p.subject_tfm, 1); break;
++    case 2: camera_motion(s, 1); break;
++    case 3: triple(h, s->value, "value", p.color); break;
++    case 4: { const float strength[3] = {p.light_strength, p.light_strength * .9f, p.light_strength * .8f};
++              triple(h, s->light, "strength", strength); CHECK(cbc_host_set_floats(h, s->light_holder, "tfm", p.light_tfm, 12)); break; }
++    case 5: deformation(s, &p); break;
++    case 6: subject_geometry(s, &p); break;
++    case 7: { s->instance = create(h, "object"); nodes(h, s->instance, "geometry", s->subject_mesh);
++              float t[12]; matrix(t, .6f, .7f, .6f, 1.6f, -.4f, .5f, .7f); CHECK(cbc_host_set_floats(h, s->instance, "tfm", t, 12)); break; }
++    case 8: object_motion(s, s->subject, p.subject_tfm, 0); break;
++    case 9: { /* Render a moved state in between, then return to the base transform. */
++              float moved[12]; matrix(moved, 1.4f, .8f, 1, .5f, .3f, 0, 1.1f);
++              CHECK(cbc_host_set_floats(h, s->subject, "tfm", moved, 12));
++              CBCRenderConfig config = {sizeof(config), W, H, SAMPLES, {0}}; CHECK(cbc_host_render(h, &config, scratch, FLOATS));
++              CHECK(cbc_host_set_floats(h, s->subject, "tfm", p.subject_tfm, 12)); break; }
++    case 10: floor_tint(s, p.tint); break;
++    case 11: { int64_t smooth[6] = {1, 1, 1, 1, 1, 1}; CHECK(cbc_host_set_ints(h, s->subject_mesh, "smooth", smooth, 6)); break; }
++    case 12: integer(h, s->integrator, "motion_blur", 1); object_motion(s, s->subject, p.subject_tfm, 1); break;
++  }
++}
++static void save(const char *prefix, const char *name, const float *data) {
++  char path[4096]; REQUIRE(snprintf(path, sizeof(path), "%s.%s.rgba.bin", prefix, name) > 0);
++  FILE *file = fopen(path, "wb"); REQUIRE(file); REQUIRE(fwrite(data, sizeof(float), FLOATS, file) == FLOATS); REQUIRE(fclose(file) == 0);
++}
++static void render(CBCHost host, float *film) {
++  CBCRenderConfig config = {sizeof(config), W, H, SAMPLES, {0}};
++  CHECK(cbc_host_render(host, &config, film, FLOATS));
++  for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(isfinite(film[i]));
++}
++/* One edit sequence: base render, edit, edited render. */
++static void sequence(uint32_t backend, int scenario, float *before, float *after) {
++  Params p; base_params(&p, scenario); Scene s; build(&s, backend, &p);
++  render(s.host, before); float scratch[FLOATS]; edit(&s, scenario, scratch); render(s.host, after);
++  CHECK(cbc_host_destroy(s.host));
++}
++
++/* Device-error recovery events. */
++typedef struct Events { unsigned status, errors, recovered; } Events;
++static int on_event(void *data, const CBCEvent *event) {
++  Events *events = data;
++  if (event->kind == CBC_EVENT_STATUS) { events->status++; if (event->message && strstr(event->message, "recovered")) events->recovered++; }
++  if (event->kind == CBC_EVENT_ERROR) events->errors++;
++  return 0;
++}
++
++int main(int argc, char **argv) {
++  REQUIRE(argc == 3 && (strcmp(argv[2], "cpu") == 0 || strcmp(argv[2], "gpu") == 0));
++  const int gpu = strcmp(argv[2], "gpu") == 0; const char *prefix = argv[1];
++  const uint32_t backend = gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE;
++  static float before[FLOATS], after[FLOATS], replay_before[FLOATS], replay_after[FLOATS], fresh[FLOATS], base[FLOATS];
++  unsigned changed = 0;
++  for (int scenario = 0; scenario < SCENARIOS; ++scenario) {
++    fprintf(stderr, "scenario %d %s\n", scenario, names[scenario]);
++    char name[256];
++    sequence(backend, scenario, before, after);
++    sequence(backend, scenario, replay_before, replay_after);
++    Params p; edited_params(&p, scenario); Scene s; build(&s, CBC_HOST_CPU_REFERENCE, &p); render(s.host, fresh); CHECK(cbc_host_destroy(s.host));
++    base_params(&p, scenario); build(&s, CBC_HOST_CPU_REFERENCE, &p); render(s.host, base); CHECK(cbc_host_destroy(s.host));
++    snprintf(name, sizeof(name), "%s.before", names[scenario]); save(prefix, name, before);
++    snprintf(name, sizeof(name), "%s.edited", names[scenario]); save(prefix, name, after);
++    snprintf(name, sizeof(name), "%s.replay", names[scenario]); save(prefix, name, replay_after);
++    snprintf(name, sizeof(name), "%s.fresh-cpu", names[scenario]); save(prefix, name, fresh);
++    snprintf(name, sizeof(name), "%s.base-cpu", names[scenario]); save(prefix, name, base);
++    /* Every edit except the round trip must change the image. */
++    if (memcmp(base, fresh, sizeof(base)) != 0) changed++;
++    else REQUIRE(scenario == 9);
++  }
++  int failed_pass = -1, after_pass = -1, failed_camera = -1, after_camera = -1; Events events = {0};
++  if (gpu) {
++    /* Render-time WebGPU rejections on one host, each followed by recovery. */
++    Params p; base_params(&p, 0); Scene s; build(&s, backend, &p);
++    CHECK(cbc_host_set_event_callback(s.host, on_event, &events));
++    render(s.host, before);
++    CBCNode depth = create(s.host, "pass");
++    CHECK(cbc_host_set_string(s.host, depth, "type", "depth")); CHECK(cbc_host_set_string(s.host, depth, "name", "Depth"));
++    CBCRenderConfig config = {sizeof(config), W, H, SAMPLES, {0}};
++    for (unsigned i = 0; i < FLOATS; ++i) after[i] = -99;
++    failed_pass = cbc_host_render(s.host, &config, after, FLOATS);
++    for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(after[i] == -99);
++    CHECK(cbc_host_delete_node(s.host, depth));
++    after_pass = cbc_host_render(s.host, &config, after, FLOATS);
++    if (after_pass == CBC_OK) save(prefix, "recovery-pass", after);
++    CHECK(cbc_host_set_string(s.host, s.camera, "camera_type", "orthograph"));
++    failed_camera = cbc_host_render(s.host, &config, replay_after, FLOATS);
++    CHECK(cbc_host_set_string(s.host, s.camera, "camera_type", "perspective"));
++    after_camera = cbc_host_render(s.host, &config, replay_after, FLOATS);
++    if (after_camera == CBC_OK) save(prefix, "recovery-camera", replay_after);
++    CHECK(cbc_host_destroy(s.host));
++    build(&s, CBC_HOST_CPU_REFERENCE, &p); render(s.host, fresh); CHECK(cbc_host_destroy(s.host));
++    save(prefix, "recovery.fresh-cpu", fresh);
++  }
++  printf("{\"passed\":true,\"backend\":\"%s\",\"scenarios\":%d,\"changedScenarios\":%u,\"width\":%d,\"height\":%d,\"samples\":%d,"
++         "\"recoveryPassRejected\":%d,\"recoveryPassRender\":%d,\"recoveryCameraRejected\":%d,\"recoveryCameraRender\":%d,"
++         "\"recoveryErrorEvents\":%u,\"recoveredStatusEvents\":%u,\"names\":[",
++         gpu ? "gpu" : "cpu", SCENARIOS, changed, W, H, SAMPLES, failed_pass, after_pass, failed_camera, after_camera, events.errors, events.recovered);
++  for (int i = 0; i < SCENARIOS; ++i) printf("%s\"%s\"", i ? "," : "", names[i]);
++  printf("]}\n");
++  return 0;
++}
+--- /dev/null
++++ b/native/tools/scene_edit_gate.py
+@@ -0,0 +1,129 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Scene edits after a render and device-error recovery through the C ABI.
++
++native/tests/host/scene_edit_consumer.c renders a base scene, edits it after
++that render, renders again and saves the film; the same sequence runs again in
++a new host (replay), and a fresh CPU host renders the edited scene from scratch
++as the oracle. CPU: edited, replay and fresh films must be bit-identical. WebGPU:
++edited and replay films must meet the practical criterion against the fresh CPU
++film (strict differences are reported). WebGPU also provokes the render-time
++rejections of a depth pass and an orthographic camera, removes the cause and
++renders again on the same host (recovery).
++"""
++import argparse
++import json
++import math
++import os
++import struct
++import subprocess
++import sys
++from pathlib import Path
++from build import REPO, ROOT, WORK, PACKAGE
++from device_gate import sha, save
++from render_gate import inputs
++
++
++def film(path):
++    data = path.read_bytes()
++    values = struct.unpack('<%df' % (len(data)//4), data)
++    assert values and all(math.isfinite(v) for v in values), path
++    return data, values
++
++
++def compare(actual, reference):
++    a_bytes, a = film(actual)
++    b_bytes, b = film(reference)
++    assert len(a) == len(b)
++    errors = [abs(x-y) for x, y in zip(a, b)]
++    return dict(film=actual.name, reference=reference.name, bitwiseEqual=a_bytes == b_bytes,
++                maximumAbsoluteError=max(errors),
++                practicalFailures=sum(e > 5e-5+2e-4*abs(y) for e, y in zip(errors, b)),
++                strictDifferences=sum(e > 1e-7+1e-7*abs(y) for e, y in zip(errors, b)))
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument('--output', type=Path, required=True)
++    parser.add_argument('--skip-build', action='store_true')
++    parser.add_argument('--jobs', default='6')
++    args = parser.parse_args()
++    out = args.output.resolve()
++    out.mkdir(parents=True, exist_ok=False)
++    status = dict(complete=False, phase='prepare')
++    save(out/'status.json', status)
++    sources = inputs()
++    library = WORK/'cycles-build/lib/libcodebrix_cycles_host.so'
++    binary = WORK/'cycles-build/bin/codebrix_host_scene_edit_test'
++    runtime = PACKAGE/'runtimes/linux-x64/native/libcodebrix_wgpu.so'
++    environment = dict(os.environ)
++    environment.pop('OCIO', None)
++    environment['LD_LIBRARY_PATH'] = str(library.parent)
++    results = {}
++    try:
++        if not args.skip_build:
++            status['phase'] = 'build'
++            save(out/'status.json', status)
++            with (out/'build.log').open('w') as log:
++                subprocess.run([sys.executable, str(ROOT/'tools/build_cycles.py'), '--jobs', args.jobs,
++                                '--target', 'codebrix_cycles_host', '--target', 'codebrix_host_scene_edit_test'],
++                               stdout=log, stderr=subprocess.STDOUT, check=True)
++        pins = {str(p): sha(p) for p in [library, binary, runtime]}
++        save(out/'invocation.json', dict(productionSourceSha256=sources, fileSha256=pins))
++        for mode in ['cpu', 'gpu']:
++            status['phase'] = mode
++            save(out/'status.json', status)
++            folder = out/mode
++            folder.mkdir()
++            with (folder/'stdout.txt').open('w') as stdout, (folder/'stderr.txt').open('w') as stderr:
++                subprocess.run([str(binary), str(folder/'run'), mode], cwd=REPO, env=environment,
++                               stdout=stdout, stderr=stderr, check=True, timeout=900)
++            report = json.loads((folder/'stdout.txt').read_text())
++            assert report['passed'] and report['backend'] == mode and report['scenarios'] == 13
++            assert report['changedScenarios'] == 12
++            rows = {}
++            for name in report['names']:
++                path = lambda kind: folder/f'run.{name}.{kind}.rgba.bin'
++                row = dict(edited=compare(path('edited'), path('fresh-cpu')), replay=compare(path('replay'), path('fresh-cpu')),
++                           before=compare(path('before'), path('base-cpu')))
++                if mode == 'cpu':
++                    # The CPU reference renders the edited host bit for bit like a new host.
++                    assert row['edited']['bitwiseEqual'] and row['replay']['bitwiseEqual'] and row['before']['bitwiseEqual'], name
++                else:
++                    assert all(row[k]['practicalFailures'] == 0 for k in row), name
++                rows[name] = row
++            report['comparisons'] = rows
++            if mode == 'gpu':
++                assert report['recoveryPassRejected'] == 3 and report['recoveryPassRender'] == 0
++                assert report['recoveryCameraRejected'] == 3 and report['recoveryCameraRender'] == 0
++                assert report['recoveryErrorEvents'] == 2 and report['recoveredStatusEvents'] == 2
++                recovery = {name: compare(folder/f'run.{name}.rgba.bin', folder/'run.recovery.fresh-cpu.rgba.bin')
++                            for name in ['recovery-pass', 'recovery-camera']}
++                assert all(row['practicalFailures'] == 0 for row in recovery.values())
++                report['recovery'] = recovery
++            results[mode] = report
++            save(out/'results.json', results)
++        assert inputs() == sources and all(sha(Path(p)) == digest for p, digest in pins.items())
++        gpu = [row for rows in [results['gpu']['comparisons']] for value in rows.values() for row in value.values()]
++        status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
++                      scenarios=results['cpu']['names'],
++                      cpuBitIdentical=True,
++                      gpuMaximumAbsoluteError=max(row['maximumAbsoluteError'] for row in gpu),
++                      gpuPracticalFailures=sum(row['practicalFailures'] for row in gpu),
++                      gpuStrictDifferences=sum(row['strictDifferences'] for row in gpu),
++                      recovery=results['gpu']['recovery'],
++                      scope='Scene edits after a render (object tfm, object/camera/deformation motion, motion blur, '
++                            'material value, light, mesh replacement, instancing, attributes, smooth flags) through the '
++                            'C ABI versus a fresh CPU render of the edited scene; replay = the same edit sequence in a new '
++                            'host; WebGPU device-error recovery after a rejected depth pass and orthographic camera.')
++    except Exception as error:
++        status.update(complete=True, passed=False, error=repr(error))
++        raise
++    finally:
++        save(out/'status.json', status)
++    print(json.dumps({k: v for k, v in status.items() if k != 'recovery'}), flush=True)
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/native/tools/shadow_terminator_gate.py
+@@ -0,0 +1,110 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Object shadow terminator offsets: original CPU film oracles and native command replay.
++
++codebrix_cycles_shadow_terminator_gate (lighting_gate.cpp, CODEBRIX_SHADOW_TERMINATOR_GATE)
++renders a coarse smooth-shaded sphere lit by a grazing sun and by a point light
++with geometry offsets 0.1/0 and shading offsets 0.5/0, two instances with
++geometry 0.3 and shading 1, and a moving, deforming sphere, through native scene
++preparation and the native scheduler, against independent original CPU kernel
++images. The gate also checks that each offset changes the CPU image (it is
++exercised) and replays every captured command stream.
++"""
++import argparse
++import contextlib
++import json
++import struct
++import subprocess
++from pathlib import Path
++from build import REPO, WORK, PACKAGE
++from device_gate import sha, save
++from render_gate import inputs
++import render_replay
++
++CASES = 10
++# Pairs that differ only in one offset (same light and material): offset case, control.
++ISOLATED = {'sun-geometry': (0, 3), 'sun-shading': (1, 3), 'point-geometry': (4, 7), 'point-shading': (5, 7)}
++
++
++def floats(path):
++    data = path.read_bytes()
++    return struct.unpack('<%df' % (len(data)//4), data)
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument('--output', type=Path, required=True)
++    parser.add_argument('--skip-build', action='store_true')
++    parser.add_argument('--jobs', default='6')
++    args = parser.parse_args()
++    out = args.output.resolve()
++    out.mkdir(parents=True, exist_ok=False)
++    status = {'complete': False, 'phase': 'prepare'}
++    save(out/'status.json', status)
++    source = inputs()
++    runtime = PACKAGE/'runtimes/linux-x64/native/libcodebrix_wgpu.so'
++    binary = WORK/'cycles-build/bin/codebrix_cycles_shadow_terminator_gate'
++    reports = {}
++    try:
++        if not args.skip_build:
++            status['phase'] = 'build'
++            save(out/'status.json', status)
++            with (out/'build.log').open('w') as log:
++                subprocess.run(['python3', str(REPO/'native/tools/build_cycles.py'), '--jobs', args.jobs,
++                                '--target', 'codebrix_cycles_shadow_terminator_gate'], stdout=log, stderr=subprocess.STDOUT, check=True)
++            render_replay.build('linux-x64')
++        replay = render_replay.BASE/'linux-x64/render_replay'
++        pins = {str(p): sha(p) for p in [runtime, binary, replay]}
++        save(out/'invocation.json', {'productionSourceSha256': source, 'fileSha256': pins})
++        status['phase'] = 'render'
++        save(out/'status.json', status)
++        directory = out/'shadow_terminator'
++        directory.mkdir()
++        with (directory/'stdout.txt').open('w') as stdout, (directory/'stderr.txt').open('w') as stderr:
++            subprocess.run([str(binary), str(directory/'run')], stdout=stdout, stderr=stderr, check=True, timeout=900)
++        report = json.loads((directory/'stdout.txt').read_text())
++        assert report['passed'] and report['cyclesAllocationBytesAfterCleanup'] == 0
++        assert report['cases'] == CASES and report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage']
++        assert report['deformingSurfacePaths'] > 100 and report['blocked'] > 100
++        assert Path((directory/'run/library.txt').read_text().strip()).resolve() == runtime.resolve()
++        cases = {}
++        for case in range(CASES):
++            cases[case] = json.loads((directory/'run'/('case-'+str(case))/'result.json').read_text())
++        report['caseResults'] = cases
++        isolated = {}
++        for name, (offset, control) in ISOLATED.items():
++            a = floats(directory/'run'/('case-'+str(offset))/'run.cpu.film.bin')
++            b = floats(directory/'run'/('case-'+str(control))/'run.cpu.film.bin')
++            changed = sum(abs(x-y) > 1e-6 for x, y in zip(a, b))
++            assert changed > 10, name
++            isolated[name] = {'case': offset, 'control': control, 'changedComponents': changed}
++        report['offsetChangesCpuImage'] = isolated
++        reports['shadow_terminator'] = report
++        save(out/'results.json', reports)
++        status['phase'] = 'replay'
++        save(out/'status.json', status)
++        for case in range(CASES):
++            name = 'replay-'+str(case)
++            with (out/(name+'.log')).open('w') as log, contextlib.redirect_stdout(log):
++                render_replay.run('linux-x64', directory/'run'/('case-'+str(case)), out/name)
++            reports[name] = json.loads((out/name/'validation.json').read_text())
++            save(out/'results.json', reports)
++        assert source == inputs() and all(sha(Path(name)) == digest for name, digest in pins.items())
++        status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
++                      strictDifferences=report['strictDifferences'], maximumAbsoluteError=report['maximumAbsoluteError'],
++                      offsetChangesCpuImage=isolated,
++                      scope='Object shadow_terminator_geometry_offset (shadow-ray origin lift on smooth triangles, static, '
++                            'instanced, moving and deforming) and shadow_terminator_shading_offset (shift_cos_in in BSDF '
++                            'evaluation and sampling, offsets 0 to 1) under sun and point lights against original CPU '
++                            'images, with native command replays. Shading offsets above 1 are rejected before dispatch.')
++    except Exception as error:
++        status.update(complete=True, passed=False, error=repr(error))
++        raise
++    finally:
++        save(out/'status.json', status)
++    print(json.dumps(status), flush=True)
++
++
++if __name__ == '__main__':
++    main()

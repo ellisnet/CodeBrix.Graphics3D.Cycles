@@ -1,0 +1,49 @@
+Running tests from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|x64)
+failed CodeBrix.Graphics3D.Cycles.Tests.CyclesImageTests.Update_rejects_a_mismatched_component_type_and_a_released_image (44ms)
+  from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|x64)
+  Expected a <System.ArgumentException> to be thrown, but found <System.ObjectDisposedException>:
+  System.ObjectDisposedException: Cannot access a disposed object.
+  Object name: 'CodeBrix.Graphics3D.Cycles.CyclesImage'.
+     at CodeBrix.Graphics3D.Cycles.CyclesImage.Update[T](UInt32 width, UInt32 height, ImageFormat format, ReadOnlySpan`1 pixels) in /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/src/CodeBrix.Graphics3D.Cycles/CyclesImage.cs:line 82
+     at CodeBrix.Graphics3D.Cycles.CyclesImage.Update[T](ReadOnlySpan`1 pixels) in /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/src/CodeBrix.Graphics3D.Cycles/CyclesImage.cs:line 65
+     at CodeBrix.Graphics3D.Cycles.Tests.CyclesImageTests.<>c__DisplayClass2_0.<Update_rejects_a_mismatched_component_type_and_a_released_image>b__0() in /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesImageTests.cs:line 54
+     at SilverAssertions.Specialized.ActionAssertions.InvokeSubject()
+     at SilverAssertions.Specialized.DelegateAssertions`2.InvokeSubjectWithInterception().
+    at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+    at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+    at SilverAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+    at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+    at SilverAssertions.Specialized.DelegateAssertionsBase`2.ThrowInternal[TException](Exception exception, String because, Object[] becauseArgs)
+    at SilverAssertions.Specialized.DelegateAssertions`2.Throw[TException](String because, Object[] becauseArgs)
+    at CodeBrix.Graphics3D.Cycles.Tests.CyclesImageTests.Update_rejects_a_mismatched_component_type_and_a_released_image() in /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesImageTests.cs:60
+    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll (net10.0|x64) failed with 1 error(s) (729ms)
+Exit code: 2
+  Error output: [OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)
+  00:00.04 | WARNING: Image file  does not exist.
+  00:00.04 | ERROR: Failed to load 1 image files
+  00:00.05 | WARNING: Image file  does not exist.
+  00:00.05 | ERROR: Failed to load 1 image files
+  00:00.05 | WARNING: Image file  does not exist.
+  00:00.05 | ERROR: Failed to load 1 image files
+  00:00.06 | WARNING: Image file  does not exist.
+  00:00.06 | ERROR: Failed to load 1 image files
+  00:00.06 | WARNING: Image file  does not exist.
+  00:00.06 | ERROR: Failed to load 1 image files
+  00:00.06 | WARNING: Image file  does not exist.
+  00:00.06 | ERROR: Failed to load 1 image files
+  00:00.07 | WARNING: Image file  does not exist.
+  00:00.07 | ERROR: Failed to load 1 image files
+  00:00.07 | WARNING: Image file  does not exist.
+  00:00.07 | ERROR: Failed to load 1 image files
+
+Test run summary: Failed!
+  total: 142
+  failed: 1
+  succeeded: 141
+  skipped: 0
+  duration: 857ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

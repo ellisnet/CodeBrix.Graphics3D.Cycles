@@ -1,0 +1,251 @@
+{
+  "tool": "native/tools/libm_probe.c",
+  "libc": "glibc",
+  "libcVersion": "2.41",
+  "architecture": "x86_64",
+  "threads": 4,
+  "correctlyRoundedReference": "host binary64 function rounded once to binary32; inputs within 2^-50 relative of a binary32 midpoint counted as ambiguous",
+  "functions": [
+    {
+      "function": "acosf",
+      "domain": "every binary32 in [-1,1]",
+      "inputs": 2130706434,
+      "differFromCorrectlyRounded": 0,
+      "ambiguous": 10,
+      "maximumUlps": 0,
+      "resultDigest": "43d2f363907cd7f7",
+      "firstDifferences": []
+    },
+    {
+      "function": "asinf",
+      "domain": "every binary32 in [-1,1]",
+      "inputs": 2130706434,
+      "differFromCorrectlyRounded": 0,
+      "ambiguous": 8,
+      "maximumUlps": 0,
+      "resultDigest": "001cb01cd491bdcb",
+      "firstDifferences": []
+    },
+    {
+      "function": "atanf",
+      "domain": "every 16th finite binary32",
+      "inputs": 267386880,
+      "differFromCorrectlyRounded": 0,
+      "ambiguous": 0,
+      "maximumUlps": 0,
+      "resultDigest": "e2fe697dfc22d36b",
+      "firstDifferences": []
+    },
+    {
+      "function": "sinf",
+      "domain": "every 16th finite binary32",
+      "inputs": 267386880,
+      "differFromCorrectlyRounded": 1836020,
+      "ambiguous": 4,
+      "maximumUlps": 1,
+      "resultDigest": "164cf6434a099b73",
+      "firstDifferences": [
+        {
+          "x": "3a128600",
+          "host": "3a128600",
+          "correctlyRounded": "3a1285ff"
+        },
+        {
+          "x": "3acd4840",
+          "host": "3acd483b",
+          "correctlyRounded": "3acd483a"
+        },
+        {
+          "x": "3b6c2ba0",
+          "host": "3b6c2b7f",
+          "correctlyRounded": "3b6c2b7e"
+        },
+        {
+          "x": "3bc8e9d0",
+          "host": "3bc8e97e",
+          "correctlyRounded": "3bc8e97d"
+        }
+      ]
+    },
+    {
+      "function": "cosf",
+      "domain": "every 16th finite binary32",
+      "inputs": 267386880,
+      "differFromCorrectlyRounded": 1764666,
+      "ambiguous": 4,
+      "maximumUlps": 1,
+      "resultDigest": "025b40979f3bf87f",
+      "firstDifferences": [
+        {
+          "x": "3bad4060",
+          "host": "3f7fff16",
+          "correctlyRounded": "3f7fff15"
+        },
+        {
+          "x": "3be656e0",
+          "host": "3f7ffe62",
+          "correctlyRounded": "3f7ffe61"
+        },
+        {
+          "x": "3c449260",
+          "host": "3f7ffb49",
+          "correctlyRounded": "3f7ffb48"
+        },
+        {
+          "x": "3cd7bcd0",
+          "host": "3f7fe947",
+          "correctlyRounded": "3f7fe946"
+        }
+      ]
+    },
+    {
+      "function": "tanf",
+      "domain": "every 16th finite binary32",
+      "inputs": 267386880,
+      "differFromCorrectlyRounded": 0,
+      "ambiguous": 0,
+      "maximumUlps": 0,
+      "resultDigest": "108c9fee18e63b53",
+      "firstDifferences": []
+    },
+    {
+      "function": "expf",
+      "domain": "every 16th finite binary32",
+      "inputs": 267386880,
+      "differFromCorrectlyRounded": 10698,
+      "ambiguous": 1,
+      "maximumUlps": 1,
+      "resultDigest": "9685a85babcc15c0",
+      "firstDifferences": [
+        {
+          "x": "39ac50c0",
+          "host": "3f800ac6",
+          "correctlyRounded": "3f800ac5"
+        },
+        {
+          "x": "39d60cd0",
+          "host": "3f800d62",
+          "correctlyRounded": "3f800d61"
+        },
+        {
+          "x": "3a47d080",
+          "host": "3f8018fd",
+          "correctlyRounded": "3f8018fc"
+        },
+        {
+          "x": "3ac7f2f0",
+          "host": "3f803207",
+          "correctlyRounded": "3f803206"
+        }
+      ]
+    },
+    {
+      "function": "logf",
+      "domain": "every 16th positive finite binary32",
+      "inputs": 133693440,
+      "differFromCorrectlyRounded": 26322,
+      "ambiguous": 3,
+      "maximumUlps": 1,
+      "resultDigest": "461af4f0d73166ac",
+      "firstDifferences": [
+        {
+          "x": "001375d0",
+          "host": "c2b270bf",
+          "correctlyRounded": "c2b270be"
+        },
+        {
+          "x": "008a6370",
+          "host": "c2ae845c",
+          "correctlyRounded": "c2ae845b"
+        },
+        {
+          "x": "010b9180",
+          "host": "c2ad1d1f",
+          "correctlyRounded": "c2ad1d1e"
+        },
+        {
+          "x": "019ae180",
+          "host": "c2ab84ee",
+          "correctlyRounded": "c2ab84ed"
+        }
+      ]
+    },
+    {
+      "function": "sqrtf",
+      "domain": "every 16th positive finite binary32",
+      "inputs": 133693440,
+      "differFromCorrectlyRounded": 0,
+      "ambiguous": 0,
+      "maximumUlps": 0,
+      "resultDigest": "382b990a732afacb",
+      "firstDifferences": []
+    },
+    {
+      "function": "atan2f",
+      "domain": "2^24 pseudo-random (y,x) pairs in [-8,8]^2",
+      "inputs": 16777216,
+      "differFromCorrectlyRounded": 0,
+      "ambiguous": 0,
+      "maximumUlps": 0,
+      "resultDigest": "0ca1179c31ff793c",
+      "firstDifferences": []
+    },
+    {
+      "function": "powf",
+      "domain": "2^24 pseudo-random (x,y) pairs, x in (0,4], y in [-8,8]",
+      "inputs": 16777216,
+      "differFromCorrectlyRounded": 10435,
+      "ambiguous": 0,
+      "maximumUlps": 1,
+      "resultDigest": "a7f9d0473e75c71a",
+      "firstDifferences": [
+        {
+          "a": "401c67a6",
+          "b": "c0ce3172",
+          "host": "3b4efbaf",
+          "correctlyRounded": "3b4efbae"
+        },
+        {
+          "a": "3f16ab94",
+          "b": "c0ca05c4",
+          "host": "41e33b44",
+          "correctlyRounded": "41e33b45"
+        },
+        {
+          "a": "4023e76d",
+          "b": "c0dfa3b6",
+          "host": "3ab75597",
+          "correctlyRounded": "3ab75596"
+        },
+        {
+          "a": "400d09d2",
+          "b": "bff675f8",
+          "host": "3e5fa51e",
+          "correctlyRounded": "3e5fa51d"
+        }
+      ]
+    }
+  ],
+  "rid": "linux",
+  "host": {
+    "uname": "6.12.113+deb13-amd64",
+    "machine": "x86_64"
+  },
+  "build": {
+    "command": [
+      "gcc",
+      "-O2",
+      "-std=c11",
+      "-ffp-contract=off",
+      "-fno-fast-math",
+      "-o",
+      "/tmp/tmp375zutjg/libm_probe-linux",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/libm_probe.c",
+      "-lm",
+      "-lpthread"
+    ],
+    "compiler": "gcc (Debian 14.2.0-19) 14.2.0",
+    "binarySha256": "eec4d0e0f7faee8935b050f21a679b0ad5b2918b9b1f7d9713dbf6f0937f3405",
+    "sourceSha256": "faa19d1449f1f1c9efa87ba1253637769216e579ca09c0cc49eeceb50cc7cfb6"
+  }
+}

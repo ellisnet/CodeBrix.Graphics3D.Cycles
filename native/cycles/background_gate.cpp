@@ -56,7 +56,7 @@ static void compare(WebGPUDevice &d,const std::vector<Field> &layout,const std::
 static unsigned rejections(const DeviceInfo &info){
   unsigned count=0;
   for(unsigned test=0;test<12;test++){
-    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
+    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"background_gate device creation");
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);
     auto &data=scene.dscene.data;configure(data);d.const_copy_to("data",&data,sizeof(data));
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Negative background setup failed");
@@ -87,7 +87,7 @@ static unsigned rejections(const DeviceInfo &info){
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2,"Usage: background_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"background_gate device creation");Metrics m;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
     Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Background scene preparation failed");

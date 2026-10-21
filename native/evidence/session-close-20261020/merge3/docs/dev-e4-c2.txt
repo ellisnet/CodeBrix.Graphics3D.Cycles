@@ -1,0 +1,23 @@
+- the Pixel triangle sampler's garbage error mask (a GPU reset during one long dispatch; Phase E5);
+- static instanced triangle emitters on Linux and the HP (exact traversal), and on the Adreno 730
+  and 640 (Phase E4: ShaderData arithmetic and the reference oracle).
+
+1. **Triangle sampler on ARM64 (Samsung, Pixel 4 XL).** With the reference oracle's adapters
+   (Phase E4) the Samsung sampler fails in 2 values of 1 sample against the glibc reference
+   (sample 3133, object 4, prim 5: `P.y` 0.382186 against 0.379992, and `t`); it failed in 41
+   values (24 samples) on the deforming emitter before. The device CPU and glibc agree on that
+   sample, so the Adreno differs from both; not yet localised. The Pixel 4 XL sampler (Phase E5,
+   before E4) failed in 42 values (25 samples), all on the deforming emitter.
+2. **Static instanced emitters on the Adreno: resolved** (section "Static instanced emitters on the
+   Adreno: ShaderData arithmetic and the reference oracle"). Android ARM64 builds emit the x64
+   oracle's adapters, `NATIVE_TRIANGLE_ARITHMETIC` 1 included, only in gates judged against the
+   imported reference; elsewhere (lockstep and state gates, the product) they keep their own scalar
+   oracle (mode 0).
+3. **Adreno 640 GPU reset on long submissions (Pixel 4 XL).** The driver resets the GPU when one
+   submission runs for about 2 s; the device is then lost. The sampler gate now dispatches in slices
+   (see "Pixel 4 XL triangle sampler: GPU reset"). The renderer does not slice its own dispatches,
+   and a dispatch covers up to 4,096 paths (`num_concurrent_states`). The sampler probe, which does
+   about the work of `shade_surface_light` for an emissive-triangle sample, takes about 1 ms per
+   invocation on this GPU. A larger emissive-triangle render on the Pixel could therefore reach the
+   reset. This is an estimate from the probe; renders have not been timed per dispatch, and the
+   gate images (small films) pass.

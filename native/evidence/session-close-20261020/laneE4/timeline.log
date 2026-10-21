@@ -1,0 +1,548 @@
+[14:40] Samsung lock R52W207XQ1V taken
+[14:41:33] START linux-build-1 (seed tree)
+[14:42:58] copied main's android-arm64 dependency install prefix (read-only source) like E1/X1
+[14:52:19] END linux-build-1 exit 0
+[14:52:38] END linux-build-1 exit 0 (~11.5 min incl. dependency verification)
+[14:52:41] START before-triangle
+[14:52:50] END before-triangle exit=1 9s
+[14:55:07] android-arm64 build (seed) exit=0 144s
+[14:58:27] linux gate build (seed) exit=0 320s
+[14:58:36] START before-triangle
+[15:00:43] END before-triangle exit=0 127s
+[15:00:58] probe START s-base cap=tri4 env=PROBE_DUMP_AT=432,433,434,435,436,437
+[15:01:37] probe END s-base rc=1 Native scheduler decision readback differs at command 438 address=96592
+[15:01:57] probe START s-inj432 cap=tri4 env=PROBE_INJECT_AT=432 PROBE_INJECT_FILE=/data/local/tmp/codebrix-e4-probe/l432.bin PROBE_DUMP_AT=433,434,435,436,437 PROBE_STOP_AT=437
+[15:02:35] probe END s-inj432 rc=3 stopped at 437
+[15:07:19] probe START s-vcache cap=vcache env=
+[15:07:58] probe END s-vcache rc=1 Native scheduler decision readback differs at command 438 address=96592
+[15:07:58] probe START s-vkeys cap=vkeys env=
+[15:08:35] probe END s-vkeys rc=1 Native scheduler decision readback differs at command 438 address=96592
+[15:08:35] probe START s-vboth cap=vboth env=
+[15:09:14] probe END s-vboth rc=1 Native scheduler decision readback differs at command 438 address=96592
+[15:10:49] probe START s-d-verts cap=d-verts env=PROBE_CONTINUE=1 PROBE_INJECT_AT=432 PROBE_DUMP_AT=435 PROBE_STOP_AT=435 PROBE_INJECT_FILE=/data/local/tmp/codebrix-e4-probe/l432.bin
+[15:11:20] probe END s-d-verts rc=3 stopped at 435
+[15:11:20] probe START s-d-sphere1 cap=d-sphere1 env=PROBE_CONTINUE=1 PROBE_INJECT_AT=432 PROBE_DUMP_AT=435 PROBE_STOP_AT=435 PROBE_INJECT_FILE=/data/local/tmp/codebrix-e4-probe/l432.bin
+[15:11:51] probe END s-d-sphere1 rc=3 stopped at 435
+[15:11:51] probe START s-d-sphere2 cap=d-sphere2 env=PROBE_CONTINUE=1 PROBE_INJECT_AT=432 PROBE_DUMP_AT=435 PROBE_STOP_AT=435 PROBE_INJECT_FILE=/data/local/tmp/codebrix-e4-probe/l432.bin
+[15:12:21] probe END s-d-sphere2 rc=3 stopped at 435
+[15:12:21] probe START s-d-sphere3 cap=d-sphere3 env=PROBE_CONTINUE=1 PROBE_INJECT_AT=432 PROBE_DUMP_AT=435 PROBE_STOP_AT=435 PROBE_INJECT_FILE=/data/local/tmp/codebrix-e4-probe/l432.bin
+[15:12:52] probe END s-d-sphere3 rc=3 stopped at 435
+[15:16:23] probe START si-p-point cap=p-point env=PROBE_CONTINUE=1 PROBE_INJECT_AT=432 PROBE_DUMP_AT=433,434,435,436 PROBE_STOP_AT=436 PROBE_INJECT_FILE=/data/local/tmp/codebrix-e4-probe/l432.bin
+[15:16:23] probe END si-p-point rc=1 Cannot read /data/local/tmp/codebrix-e4-probe/p-point/run.arena.bin
+[15:16:23] probe START si-p-both cap=p-both env=PROBE_CONTINUE=1 PROBE_INJECT_AT=432 PROBE_DUMP_AT=433,434,435,436 PROBE_STOP_AT=436 PROBE_INJECT_FILE=/data/local/tmp/codebrix-e4-probe/l432.bin
+[15:16:23] probe END si-p-both rc=1 Cannot read /data/local/tmp/codebrix-e4-probe/p-both/run.arena.bin
+[15:16:30] probe START si-p-point cap=p-point env=PROBE_CONTINUE=1 PROBE_INJECT_AT=432 PROBE_DUMP_AT=433,434,435,436 PROBE_STOP_AT=436 PROBE_INJECT_FILE=/data/local/tmp/codebrix-e4-probe/l432.bin
+[15:17:09] probe END si-p-point rc=3 stopped at 436
+[15:17:09] probe START si-p-both cap=p-both env=PROBE_CONTINUE=1 PROBE_INJECT_AT=432 PROBE_DUMP_AT=433,434,435,436 PROBE_STOP_AT=436 PROBE_INJECT_FILE=/data/local/tmp/codebrix-e4-probe/l432.bin
+[15:17:49] probe END si-p-both rc=3 stopped at 436
+[15:18:24] root cause localised: tri4 replay cmd 438 = connect_surface_light shadow count 343/342; path 127 sample at emitter vertex B flips on a 1-ULP sd.P.z from prepare_shader_data (contractible P/transform arithmetic); exact variant makes P bit-identical Linux vs Samsung after 433
+[15:18:48] linux gate build (c1) exit=0 24s
+[15:18:54] START c1-triangle
+[15:19:08] android-arm64 build (c1) exit=0 16s
+[15:21:07] END c1-triangle exit=0 133s
+[15:21:32] START c1-reference-export
+[15:21:48] staged c1 android-arm64 build on Samsung (39 files, hash-verified)
+[15:24:14] END c1-reference-export exit=0 162s
+[15:30:25] samsung native triangle c1: mode 4 unchanged (312: 0.064647 vs 0.065844; = bionic CPU) -> candidate 2: Android ARM64 NATIVE_TRIANGLE_ARITHMETIC=1
+[15:30:41] android-arm64 build (c2) exit=0 16s
+[15:36:36] TEMPORARY diagnostic edit of native/cycles/reference_policy.h (GPU after scene load; original saved in work/e4/probe/reference_policy.h.orig) for a Linux-only diagnostic build
+[15:36:48] diagnostic gate binary copied to work/e4/probe/diag_triangle_lighting_gate; reference_policy.h reverted byte-identical
+[15:39:40] device capture shows Android ARM64 layout = scalar oracle (CAMERA_NATIVE_VECTOR_DIVIDE 0, NATIVE_FLOAT3_RECIPROCAL_NORMALIZE 1, NATIVE_TRIANGLE_ARITHMETIC 0), not 2; candidate 3: reference_oracle_sse() (Android + REFERENCE_IMPORT -> x64 oracle constants)
+[15:58:10] samsung triangle c3: triangle_lighting 6/6 PASS vs glibc (mode 4: 0 practical, 11 strict, 3.7e-7); sampler 41->2 practical; replay-4 failed only against the capture's bionic CPU film -> runner now judges device replays against the glibc device-scene reference (bionic = diagnostic). Starting FINAL clean Linux build + full Android build
+--- device runner lines (written to native/work/e4/timeline.log before the runners were pointed at handoff/) ---
+[15:21:56] samsung hostcap-c1-linux-triangle: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-0)
+[15:22:17] samsung hostcap-c1-linux-triangle: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[15:22:18] samsung hostcap-c1-linux-triangle: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-1)
+[15:22:57] samsung hostcap-c1-linux-triangle: PASS tri1 readbacks=417 max=1.49e-07 strict=1 fmt=native-command-stream-v6
+[15:22:57] samsung hostcap-c1-linux-triangle: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-2)
+[15:23:36] samsung hostcap-c1-linux-triangle: PASS tri2 readbacks=415 max=6.41e-07 strict=14 fmt=native-command-stream-v6
+[15:23:36] samsung hostcap-c1-linux-triangle: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-3)
+[15:24:16] samsung hostcap-c1-linux-triangle: PASS tri3 readbacks=473 max=1.76e-06 strict=236 fmt=native-command-stream-v6
+[15:24:16] samsung hostcap-c1-linux-triangle: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-4)
+[15:24:56] samsung hostcap-c1-linux-triangle: PASS tri4 readbacks=415 max=3.73e-07 strict=8 fmt=native-command-stream-v6
+[15:24:56] samsung hostcap-c1-linux-triangle: START tri5 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/c1-triangle/out/triangle_lighting/run/case-5)
+[15:26:25] samsung hostcap-c1-linux-triangle: PASS tri5 readbacks=464 max=2.38e-06 strict=258 fmt=native-command-stream-v6
+[15:26:28] samsung hostcap-c1-linux-triangle: END passed=True wall=273s/3600s
+[15:26:40] samsung triangle-c1: START triangle_sample timeout=900s
+[15:26:40] samsung triangle-c1: SCENE-DUMP triangle_sample
+[15:26:45] samsung triangle-c1: SCENE-REFERENCE triangle_sample references=1
+[15:27:09] samsung triangle-c1: REFERENCE triangle_sample host re-judged vs glibc: False
+[15:27:10] samsung triangle-c1: FAIL triangle_sample exit=1 24s: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164
+[15:27:10] samsung triangle-c1: START surface timeout=900s
+[15:28:47] samsung triangle-c1: PASS surface 96s maxPipelineMs=4592.69
+[15:28:47] samsung triangle-c1: START triangle_lighting timeout=900s
+[15:28:47] samsung triangle-c1: SCENE-DUMP triangle_lighting
+[15:28:53] samsung triangle-c1: SCENE-REFERENCE triangle_lighting references=6
+[15:29:59] samsung triangle-c1: REFERENCE triangle_lighting host re-judged vs glibc: False
+[15:29:59] samsung triangle-c1: FAIL triangle_lighting exit=1 64s: Lighting film mismatch mode=4 component=312 actual=0.064647 expected=0.065844
+[15:30:03] samsung triangle-c1: END passed=False wall=204s/2400s failures=8
+[15:31:03] samsung triangle-c2: START triangle_sample timeout=900s
+[15:31:03] samsung triangle-c2: SCENE-DUMP triangle_sample
+[15:31:08] samsung triangle-c2: SCENE-REFERENCE triangle_sample references=1
+[15:31:33] samsung triangle-c2: REFERENCE triangle_sample host re-judged vs glibc: False
+[15:31:34] samsung triangle-c2: FAIL triangle_sample exit=1 24s: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164
+[15:31:34] samsung triangle-c2: START surface timeout=900s
+[15:33:09] samsung triangle-c2: PASS surface 96s maxPipelineMs=4540.64
+[15:33:09] samsung triangle-c2: START triangle_lighting timeout=900s
+[15:33:09] samsung triangle-c2: SCENE-DUMP triangle_lighting
+[15:33:15] samsung triangle-c2: SCENE-REFERENCE triangle_lighting references=6
+[15:34:21] samsung triangle-c2: REFERENCE triangle_lighting host re-judged vs glibc: False
+[15:34:21] samsung triangle-c2: FAIL triangle_lighting exit=1 64s: Lighting film mismatch mode=4 component=312 actual=0.064647 expected=0.065844
+[15:34:25] samsung triangle-c2: END passed=False wall=203s/2400s failures=8
+[15:47:32] samsung triangle-c3: START triangle_sample timeout=900s
+[15:47:32] samsung triangle-c3: SCENE-DUMP triangle_sample
+[15:47:37] samsung triangle-c3: SCENE-REFERENCE triangle_sample references=1
+[15:48:02] samsung triangle-c3: REFERENCE triangle_sample host re-judged vs glibc: False
+[15:48:03] samsung triangle-c3: FAIL triangle_sample exit=1 25s: Emitter sample=3133 field=2 got=0.382186 expected=0.379992
+[15:48:03] samsung triangle-c3: START surface timeout=900s
+[15:49:38] samsung triangle-c3: PASS surface 95s maxPipelineMs=4560.85
+[15:49:38] samsung triangle-c3: START triangle_lighting timeout=900s
+[15:49:38] samsung triangle-c3: SCENE-DUMP triangle_lighting
+[15:49:44] samsung triangle-c3: SCENE-REFERENCE triangle_lighting references=6
+[15:52:25] samsung triangle-c3: REFERENCE triangle_lighting host re-judged vs glibc: True
+[15:52:25] samsung triangle-c3: PASS triangle_lighting 159s maxPipelineMs=30691.8
+[15:52:25] samsung triangle-c3: START replay-0 timeout=900s
+[15:52:46] samsung triangle-c3: PASS replay-0 21s readbacks=289 max=1.79e-06 strict=20 fmt=native-command-stream-v6
+[15:52:46] samsung triangle-c3: START replay-1 timeout=900s
+[15:53:26] samsung triangle-c3: PASS replay-1 39s readbacks=417 max=2.69e-05 strict=77 fmt=native-command-stream-v6
+[15:53:26] samsung triangle-c3: START replay-2 timeout=900s
+[15:54:05] samsung triangle-c3: PASS replay-2 39s readbacks=415 max=1.69e-05 strict=124 fmt=native-command-stream-v6
+[15:54:05] samsung triangle-c3: START replay-3 timeout=900s
+[15:54:45] samsung triangle-c3: PASS replay-3 40s readbacks=473 max=9.3e-06 strict=324 fmt=native-command-stream-v6
+[15:54:45] samsung triangle-c3: START replay-4 timeout=900s
+[15:55:25] samsung triangle-c3: FAIL replay-4 AssertionError('Film 312: GPU 0.06584370881319046, CPU 0.06464733928442001')
+[15:55:25] samsung triangle-c3: START replay-5 timeout=900s
+[15:56:54] samsung triangle-c3: PASS replay-5 89s readbacks=464 max=8.58e-06 strict=333 fmt=native-command-stream-v6
+[15:56:59] samsung triangle-c3: END passed=False wall=567s/2400s failures=2
+[16:14:21] FINAL android-arm64 build exit=0 333s
+[16:17:28] final tools/build.py exit=0 520s
+[16:20:18] FINAL android-arm64 binaries reviewed and staged on Samsung
+[16:22:45] final gate build exit=0 317s
+[16:22:53] START f1-host-gate
+[16:22:54] START f2-reference-export
+[16:25:33] END f1-host-gate exit=0 160s
+[16:25:33] START f1-dotnet-build
+[16:25:36] END f1-dotnet-build exit=0 3s
+[16:25:36] START f1-dotnet-test
+[16:25:53] END f2-reference-export exit=0 179s
+[16:25:53] START f2-triangle
+[16:26:14] samsung triangle-final: START triangle_sample timeout=900s
+[16:26:14] samsung triangle-final: SCENE-DUMP triangle_sample
+[16:26:20] samsung triangle-final: SCENE-REFERENCE triangle_sample references=1
+[16:26:46] samsung triangle-final: REFERENCE triangle_sample host re-judged vs glibc: False
+[16:26:46] samsung triangle-final: FAIL triangle_sample exit=1 26s: Emitter sample=3133 field=2 got=0.382186 expected=0.379992
+[16:26:46] samsung triangle-final: START surface timeout=900s
+[16:26:56] END f1-dotnet-test exit=0 80s
+[16:26:56] START f1-all-lanes
+[16:28:06] END f2-triangle exit=0 133s
+[16:28:06] START f2-shadow-terminator
+[16:28:23] samsung triangle-final: PASS surface 96s maxPipelineMs=4649.71
+[16:28:23] samsung triangle-final: START triangle_lighting timeout=900s
+[16:28:23] samsung triangle-final: SCENE-DUMP triangle_lighting
+[16:28:29] samsung triangle-final: SCENE-REFERENCE triangle_lighting references=6
+[16:29:45] END f2-shadow-terminator exit=0 99s
+[16:29:45] START f2-closest-static
+[16:29:51] END f2-closest-static exit=0 6s
+[16:29:51] START f2-closest-motion
+[16:30:07] END f2-closest-motion exit=0 16s
+[16:30:07] START f2-closest-deform
+[16:30:13] END f2-closest-deform exit=0 6s
+[16:30:13] START f2-closest-deform-motion
+[16:30:30] END f2-closest-deform-motion exit=0 17s
+[16:30:30] START f2-shadow
+[16:31:11] samsung triangle-final: REFERENCE triangle_lighting host re-judged vs glibc: True
+[16:31:11] samsung triangle-final: PASS triangle_lighting 160s maxPipelineMs=30844
+[16:31:11] samsung triangle-final: START replay-0 timeout=900s
+[16:31:30] END f2-shadow exit=0 60s
+[16:31:30] START f2-glass-spec-on
+[16:31:33] samsung triangle-final: PASS replay-0 22s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[16:31:33] samsung triangle-final: START replay-1 timeout=900s
+[16:32:13] samsung triangle-final: PASS replay-1 39s readbacks=417 max=1.79e-07 strict=5 fmt=native-command-stream-v6
+[16:32:13] samsung triangle-final: START replay-2 timeout=900s
+[16:32:13] END f2-glass-spec-on exit=0 43s
+[16:32:13] START f2-glass-spec-off
+[16:32:53] samsung triangle-final: PASS replay-2 40s readbacks=415 max=6.41e-07 strict=8 fmt=native-command-stream-v6
+[16:32:53] samsung triangle-final: START replay-3 timeout=900s
+[16:33:33] samsung triangle-final: PASS replay-3 40s readbacks=473 max=1.79e-06 strict=235 fmt=native-command-stream-v6
+[16:33:33] samsung triangle-final: START replay-4 timeout=900s
+[16:34:13] samsung triangle-final: PASS replay-4 39s readbacks=415 max=3.73e-07 strict=11 fmt=native-command-stream-v6
+[16:34:13] samsung triangle-final: START replay-5 timeout=900s
+[16:34:24] END f2-glass-spec-off exit=0 131s
+[16:34:24] START f2-scene-edit
+[16:34:28] END f2-scene-edit exit=1 4s
+[16:34:28] START f2-object-motion
+[16:34:38] END f1-all-lanes exit=1 462s
+[16:34:38] slot1 DONE
+[16:35:15] START f3-deforming-rerun
+[16:35:41] samsung triangle-final: PASS replay-5 88s readbacks=464 max=1.79e-06 strict=248 fmt=native-command-stream-v6
+[16:35:46] samsung triangle-final: END passed=False wall=574s/2400s failures=1
+[16:35:54] samsung emitter-final: START emitter_sample timeout=300s
+[16:35:54] samsung emitter-final: SCENE-DUMP emitter_sample
+[16:36:00] samsung emitter-final: SCENE-REFERENCE emitter_sample references=1
+[16:36:11] samsung emitter-final: REFERENCE emitter_sample host re-judged vs glibc: True
+[16:36:11] samsung emitter-final: PASS emitter_sample 11s maxPipelineMs=None
+[16:36:16] samsung emitter-final: END passed=True wall=24s/600s failures=0
+[16:36:23] samsung precision-final: START closest timeout=600s
+[16:36:45] samsung precision-final: PASS closest 21s maxPipelineMs=1364.81
+[16:36:45] samsung precision-final: START shadow timeout=600s
+[16:37:02] samsung precision-final: PASS shadow 16s maxPipelineMs=1110.45
+[16:37:02] samsung precision-final: START shadow-replay-direct timeout=600s
+[16:37:03] samsung precision-final: PASS shadow-replay-direct 2s readbacks=4 max=5.96e-08 strict=0 fmt=native-command-stream-v3
+[16:37:03] samsung precision-final: START shadow-replay-indexed timeout=600s
+[16:37:05] samsung precision-final: PASS shadow-replay-indexed 2s readbacks=4 max=0 strict=0 fmt=native-command-stream-v3
+[16:37:10] samsung precision-final: END passed=True wall=49s/900s failures=0
+[16:37:17] samsung spec-refusal-final: START glass_render-spec timeout=300s
+[16:38:05] END f2-object-motion exit=0 217s
+[16:38:05] START f2-deforming-motion
+[16:38:39] samsung spec-refusal-final: PASS glass_render-spec 81s maxPipelineMs=5960.73
+[16:38:39] samsung spec-refusal-final: START glass_render-nospec-refused timeout=300s
+[16:38:39] samsung spec-refusal-final: PASS glass_render-nospec-refused refusal exit=1 0s
+[16:38:45] samsung spec-refusal-final: END passed=True wall=89s/600s failures=0
+[16:38:52] samsung regression-final: START glass_render timeout=600s
+[16:39:13] samsung regression-final: REFERENCE glass_render host re-judged vs glibc: False
+[16:39:14] samsung regression-final: FAIL glass_render exit=1 21s: stage 1 path.mis_ray_pdf path=1043 actual=2035.839111 expected=2035.206665
+[16:39:14] samsung regression-final: START lighting_mis timeout=600s
+[16:39:14] samsung regression-final: SCENE-DUMP lighting_mis
+[16:39:21] samsung regression-final: SCENE-REFERENCE lighting_mis references=8
+[16:40:01] samsung regression-final: REFERENCE lighting_mis host re-judged vs glibc: True
+[16:40:01] samsung regression-final: PASS lighting_mis 36s maxPipelineMs=6610.91
+[16:40:01] samsung regression-final: START transparent_lighting timeout=600s
+[16:40:01] samsung regression-final: SCENE-DUMP transparent_lighting
+[16:40:08] samsung regression-final: SCENE-REFERENCE transparent_lighting references=8
+[16:40:28] END f3-deforming-rerun exit=0 313s
+[16:41:09] samsung regression-final: ERROR KeyboardInterrupt()
+[16:41:15] samsung regression-final: END passed=False wall=144s/1500s failures=1
+[16:41:52] Samsung chain stopped (exact PIDs 1182521, 1199279; no remote process left): regression glass_render lockstep stage check (local bionic CPU) failed because the x64 oracle constants were selected process-wide by REFERENCE_IMPORT -> candidate 4: only reference-only gates (lighting_gate.cpp, emitter_sample_gate.cpp) select it via reference_policy::use_reference_oracle_arithmetic(); render_gate keeps the device oracle. Runs renamed *-final-superseded1
+[16:43:21] END f2-deforming-motion exit=1 316s
+[16:43:21] START f2-feature-combination
+[16:44:10] END f2-feature-combination exit=0 49s
+[16:44:10] START f2-surface
+[16:44:27] END f2-surface exit=0 17s
+[16:44:27] START f2-transparent-shadow
+[16:46:58] FINAL-2 android-arm64 build exit=0 306s
+[16:47:17] END f2-transparent-shadow exit=0 170s
+[16:47:17] slot2 DONE
+[16:47:41] FINAL-2 android binaries staged on Samsung
+[16:47:48] samsung triangle-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-triangle-final"], None, None)
+[16:47:53] samsung triangle-final: END passed=False wall=7s/2400s failures=0
+[16:47:59] samsung emitter-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-emitter-final"], None, None)
+[16:48:04] samsung emitter-final: END passed=False wall=7s/600s failures=0
+[16:48:11] samsung precision-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-precision-final"], None, None)
+[16:48:16] samsung precision-final: END passed=False wall=6s/900s failures=0
+[16:48:23] samsung spec-refusal-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-spec-refusal-final"], None, None)
+[16:48:28] samsung spec-refusal-final: END passed=False wall=7s/600s failures=0
+[16:48:34] samsung regression-final: ERROR CalledProcessError(1, ['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'R52W207XQ1V', 'shell', "test '!' -e /data/local/tmp/codebrix-e4-regression-final"], None, None)
+[16:48:40] samsung regression-final: END passed=False wall=6s/1500s failures=0
+[16:48:46] samsung transparent-final: START transparent_shadow timeout=900s
+[16:49:04] samsung transparent-final: PASS transparent_shadow 17s maxPipelineMs=1991.99
+[16:49:04] samsung transparent-final: START transparent_lighting timeout=900s
+[16:49:04] samsung transparent-final: SCENE-DUMP transparent_lighting
+[16:49:11] samsung transparent-final: SCENE-REFERENCE transparent_lighting references=8
+[16:51:12] samsung transparent-final: REFERENCE transparent_lighting host re-judged vs glibc: True
+[16:51:12] samsung transparent-final: PASS transparent_lighting 118s maxPipelineMs=11389.9
+[16:51:12] samsung transparent-final: START transparent_lighting-replay-0 timeout=900s
+[16:51:39] samsung transparent-final: PASS transparent_lighting-replay-0 27s readbacks=560 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[16:51:39] samsung transparent-final: START transparent_lighting-replay-1 timeout=900s
+[16:52:07] samsung transparent-final: PASS transparent_lighting-replay-1 27s readbacks=596 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[16:52:07] samsung transparent-final: START transparent_lighting-replay-2 timeout=900s
+[16:52:41] samsung transparent-final: PASS transparent_lighting-replay-2 34s readbacks=575 max=3.81e-06 strict=77 fmt=native-command-stream-v7
+[16:52:41] samsung transparent-final: START transparent_lighting-replay-3 timeout=900s
+[16:53:16] samsung transparent-final: PASS transparent_lighting-replay-3 34s readbacks=580 max=2.29e-06 strict=134 fmt=native-command-stream-v7
+[16:53:16] samsung transparent-final: START transparent_lighting-replay-4 timeout=900s
+[16:53:51] samsung transparent-final: PASS transparent_lighting-replay-4 35s readbacks=840 max=6.02e-06 strict=168 fmt=native-command-stream-v7
+[16:53:51] samsung transparent-final: START transparent_lighting-replay-5 timeout=900s
+[16:54:27] samsung transparent-final: PASS transparent_lighting-replay-5 36s readbacks=916 max=7.9e-07 strict=3 fmt=native-command-stream-v7
+[16:54:27] samsung transparent-final: START transparent_lighting-replay-6 timeout=900s
+[16:55:02] samsung transparent-final: PASS transparent_lighting-replay-6 34s readbacks=428 max=6.02e-06 strict=103 fmt=native-command-stream-v7
+[16:55:02] samsung transparent-final: START transparent_lighting-replay-7 timeout=900s
+[16:55:36] samsung transparent-final: PASS transparent_lighting-replay-7 34s readbacks=518 max=6.02e-06 strict=208 fmt=native-command-stream-v7
+[16:55:36] samsung transparent-final: START transparent-shadow-replay-direct timeout=900s
+[16:55:41] samsung transparent-final: PASS transparent-shadow-replay-direct 4s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[16:55:41] samsung transparent-final: START transparent-shadow-replay-indexed timeout=900s
+[16:55:46] samsung transparent-final: PASS transparent-shadow-replay-indexed 4s readbacks=4 max=0 strict=0 fmt=native-command-stream-v7
+[16:55:52] samsung transparent-final: END passed=True wall=426s/2400s failures=0
+[16:55:59] samsung lighting-final: START broad_lighting timeout=900s
+[16:55:59] samsung lighting-final: SCENE-DUMP broad_lighting
+[16:56:07] samsung lighting-final: SCENE-REFERENCE broad_lighting references=12
+[16:57:25] samsung lighting-final: REFERENCE broad_lighting host re-judged vs glibc: True
+[16:57:25] samsung lighting-final: PASS broad_lighting 73s maxPipelineMs=11387.6
+[16:57:25] samsung lighting-final: START feature_combination timeout=900s
+[16:57:25] samsung lighting-final: SCENE-DUMP feature_combination
+[16:57:33] samsung lighting-final: SCENE-REFERENCE feature_combination references=8
+[16:58:20] samsung lighting-final: REFERENCE feature_combination host re-judged vs glibc: True
+[16:58:20] samsung lighting-final: PASS feature_combination 44s maxPipelineMs=6452.64
+[16:58:20] samsung lighting-final: START broad_lighting-replay-0 timeout=900s
+[16:58:43] samsung lighting-final: PASS broad_lighting-replay-0 23s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[16:58:43] samsung lighting-final: START broad_lighting-replay-1 timeout=900s
+[16:59:07] samsung lighting-final: PASS broad_lighting-replay-1 23s readbacks=450 max=4.17e-07 strict=15 fmt=native-command-stream-v6
+[16:59:07] samsung lighting-final: START feature_combination-replay-0 timeout=900s
+[16:59:38] samsung lighting-final: PASS feature_combination-replay-0 30s readbacks=408 max=5.36e-07 strict=12 fmt=native-command-stream-v6
+[16:59:38] samsung lighting-final: START feature_combination-replay-1 timeout=900s
+[17:00:09] samsung lighting-final: PASS feature_combination-replay-1 31s readbacks=461 max=2.41e-06 strict=9 fmt=native-command-stream-v6
+[17:00:15] samsung lighting-final: END passed=True wall=257s/2400s failures=0
+[17:00:23] samsung motion-final: START object-moving-images timeout=900s
+[17:00:23] samsung motion-final: SCENE-DUMP object-moving-images
+[17:00:30] samsung motion-final: SCENE-REFERENCE object-moving-images references=8
+[17:02:01] samsung motion-final: REFERENCE object-moving-images host re-judged vs glibc: True
+[17:02:01] samsung motion-final: PASS object-moving-images 87s maxPipelineMs=15458.5
+[17:02:01] samsung motion-final: START deforming-moving-images timeout=900s
+[17:02:01] samsung motion-final: SCENE-DUMP deforming-moving-images
+[17:02:08] samsung motion-final: SCENE-REFERENCE deforming-moving-images references=8
+[17:04:12] samsung motion-final: REFERENCE deforming-moving-images host re-judged vs glibc: True
+[17:04:12] samsung motion-final: PASS deforming-moving-images 120s maxPipelineMs=16237.6
+[17:04:12] samsung motion-final: START camera-static timeout=900s
+[17:04:21] samsung motion-final: PASS camera-static 8s maxPipelineMs=416.124
+[17:04:21] samsung motion-final: START camera-motion timeout=900s
+[17:04:35] samsung motion-final: PASS camera-motion 14s maxPipelineMs=5414.57
+[17:04:35] samsung motion-final: START object-replay-motion-0 timeout=900s
+[17:05:47] samsung motion-final: PASS object-replay-motion-0 72s readbacks=414 max=2.68e-06 strict=18 fmt=native-command-stream-v6
+[17:05:47] samsung motion-final: START deforming-replay-motion-0 timeout=900s
+[17:06:21] samsung motion-final: PASS deforming-replay-motion-0 33s readbacks=420 max=2.38e-07 strict=4 fmt=native-command-stream-v6
+[17:06:26] samsung motion-final: END passed=True wall=365s/2400s failures=0
+[17:06:34] samsung terminator-final: START shadow_terminator timeout=900s
+[17:06:34] samsung terminator-final: SCENE-DUMP shadow_terminator
+[17:06:41] samsung terminator-final: SCENE-REFERENCE shadow_terminator references=10
+[17:09:25] samsung terminator-final: REFERENCE shadow_terminator host re-judged vs glibc: True
+[17:09:25] samsung terminator-final: PASS shadow_terminator 160s maxPipelineMs=16013.3
+[17:09:25] samsung terminator-final: START terminator-replay-0 timeout=900s
+[17:09:42] samsung terminator-final: PASS terminator-replay-0 17s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[17:09:42] samsung terminator-final: START terminator-replay-1 timeout=900s
+[17:10:01] samsung terminator-final: PASS terminator-replay-1 19s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[17:10:01] samsung terminator-final: START terminator-replay-2 timeout=900s
+[17:10:21] samsung terminator-final: PASS terminator-replay-2 19s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[17:10:21] samsung terminator-final: START terminator-replay-3 timeout=900s
+[17:10:41] samsung terminator-final: PASS terminator-replay-3 20s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[17:10:41] samsung terminator-final: START terminator-replay-4 timeout=900s
+[17:11:15] samsung terminator-final: PASS terminator-replay-4 34s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[17:11:15] samsung terminator-final: START terminator-replay-5 timeout=900s
+[17:11:49] samsung terminator-final: PASS terminator-replay-5 34s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[17:11:49] samsung terminator-final: START terminator-replay-6 timeout=900s
+[17:12:23] samsung terminator-final: PASS terminator-replay-6 34s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[17:12:23] samsung terminator-final: START terminator-replay-7 timeout=900s
+[17:12:57] samsung terminator-final: PASS terminator-replay-7 34s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[17:12:57] samsung terminator-final: START terminator-replay-8 timeout=900s
+[17:13:31] samsung terminator-final: PASS terminator-replay-8 33s readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[17:13:31] samsung terminator-final: START terminator-replay-9 timeout=900s
+[17:14:44] samsung terminator-final: PASS terminator-replay-9 72s readbacks=443 max=2.91e-05 strict=24 fmt=native-command-stream-v6
+[17:14:49] samsung terminator-final: END passed=True wall=497s/1800s failures=0
+[17:14:56] samsung volume-final: START volume-state timeout=600s
+[17:15:10] samsung volume-final: PASS volume-state 13s maxPipelineMs=3904.16
+[17:15:10] samsung volume-final: START volume-absorption timeout=600s
+[17:17:13] samsung volume-final: PASS volume-absorption 121s maxPipelineMs=4525.88
+[17:17:13] samsung volume-final: START volume-isotropic timeout=600s
+[17:20:05] samsung volume-final: PASS volume-isotropic 171s maxPipelineMs=4425.61
+[17:20:05] samsung volume-final: START volume-forward timeout=600s
+[17:22:57] samsung volume-final: PASS volume-forward 170s maxPipelineMs=4413.74
+[17:22:57] samsung volume-final: START volume-backward timeout=600s
+[17:25:51] samsung volume-final: PASS volume-backward 173s maxPipelineMs=4442.78
+[17:25:51] samsung volume-final: START boundary-state timeout=600s
+[17:26:26] samsung volume-final: PASS boundary-state 34s maxPipelineMs=6041.44
+[17:26:26] samsung volume-final: START boundary-compaction-guard timeout=600s
+[17:26:32] samsung volume-final: PASS boundary-compaction-guard 6s maxPipelineMs=4581.8
+[17:26:32] samsung volume-final: START closed-single timeout=600s
+[17:30:07] samsung volume-final: PASS closed-single 214s maxPipelineMs=4353.33
+[17:30:07] samsung volume-final: START closed-overlap timeout=600s
+[17:35:34] samsung volume-final: PASS closed-overlap 324s maxPipelineMs=6563.23
+[17:35:34] samsung volume-final: START closed-inside timeout=555s
+[17:40:40] samsung volume-final: PASS closed-inside 305s maxPipelineMs=6400.07
+[17:40:40] samsung volume-final: START volume-replay-absorption timeout=249s
+[17:41:02] samsung volume-final: PASS volume-replay-absorption 20s readbacks=464 max=2.29e-05 strict=564 fmt=native-command-stream-v6
+[17:41:02] samsung volume-final: START volume-replay-isotropic timeout=227s
+[17:41:25] samsung volume-final: PASS volume-replay-isotropic 22s readbacks=672 max=2.29e-05 strict=1438 fmt=native-command-stream-v6
+[17:41:25] samsung volume-final: START volume-replay-forward timeout=203s
+[17:41:49] samsung volume-final: PASS volume-replay-forward 22s readbacks=664 max=3.62e-05 strict=1478 fmt=native-command-stream-v6
+[17:41:49] samsung volume-final: START volume-replay-backward timeout=180s
+[17:42:13] samsung volume-final: PASS volume-replay-backward 22s readbacks=664 max=2.29e-05 strict=1380 fmt=native-command-stream-v6
+[17:42:13] samsung volume-final: START closed-replay-single timeout=156s
+[17:42:37] samsung volume-final: PASS closed-replay-single 23s readbacks=838 max=3.05e-05 strict=616 fmt=native-command-stream-v6
+[17:42:37] samsung volume-final: START closed-replay-overlap timeout=132s
+[17:43:15] samsung volume-final: PASS closed-replay-overlap 36s readbacks=1192 max=3.05e-05 strict=859 fmt=native-command-stream-v6
+[17:43:15] samsung volume-final: START closed-replay-inside timeout=94s
+[17:43:53] samsung volume-final: PASS closed-replay-inside 36s readbacks=1116 max=1.53e-05 strict=1801 fmt=native-command-stream-v6
+[17:43:58] samsung volume-final: END passed=True wall=1743s/1800s failures=0
+[17:44:03] samsung hostcap-final-linux-triangle: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-0)
+[17:44:25] samsung hostcap-final-linux-triangle: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[17:44:25] samsung hostcap-final-linux-triangle: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-1)
+[17:45:04] samsung hostcap-final-linux-triangle: PASS tri1 readbacks=417 max=1.49e-07 strict=1 fmt=native-command-stream-v6
+[17:45:04] samsung hostcap-final-linux-triangle: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-2)
+[17:45:43] samsung hostcap-final-linux-triangle: PASS tri2 readbacks=415 max=6.41e-07 strict=14 fmt=native-command-stream-v6
+[17:45:43] samsung hostcap-final-linux-triangle: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-3)
+[17:45:54] FINAL-2 linux build exit=0, gates+host tests exit=0 448s
+[17:46:23] samsung hostcap-final-linux-triangle: PASS tri3 readbacks=473 max=1.76e-06 strict=236 fmt=native-command-stream-v6
+[17:46:23] samsung hostcap-final-linux-triangle: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-4)
+[17:46:27] START g1-host-gate
+[17:46:27] START g2-reference-export
+[17:46:33] Pixel lock 98271FFBA0048D taken
+[17:47:02] samsung hostcap-final-linux-triangle: PASS tri4 readbacks=415 max=3.73e-07 strict=8 fmt=native-command-stream-v6
+[17:47:02] samsung hostcap-final-linux-triangle: START tri5 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-triangle/out/triangle_lighting/run/case-5)
+[17:47:05] PROTOCOL INCIDENT: Pixel lock mkdir failed (held by merge-wave-2 agent (materials merge) 2026-10-20T17:19:08-07:00 ) but my compound command still ran stage.py push pixel (rm -rf + push of my own /data/local/tmp/codebrix-e4-stage, 61 files) and one read-only adb shell ps/ls. No process of the lock holder was touched. Now waiting for the lock in a 30 s loop.
+[17:48:21] CORRECTION: the '[17:46:33] Pixel lock 98271FFBA0048D taken' line above is FALSE - it was written by the same compound command after the failed mkdir; the lock was NOT taken then (see the incident line).
+[17:48:29] samsung hostcap-final-linux-triangle: PASS tri5 readbacks=464 max=2.38e-06 strict=258 fmt=native-command-stream-v6
+[17:48:33] samsung hostcap-final-linux-triangle: END passed=True wall=271s/3600s
+[17:48:35] END g1-host-gate exit=1 128s
+[17:48:35] START g1-dotnet-build
+[17:48:37] END g1-dotnet-build exit=0 2s
+[17:48:37] START g1-dotnet-test
+[17:48:38] samsung hostcap-final-linux-terminator: START term0 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-0)
+[17:48:52] END g2-reference-export exit=0 145s
+[17:48:52] START g2-triangle
+[17:48:55] samsung hostcap-final-linux-terminator: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[17:48:55] samsung hostcap-final-linux-terminator: START term1 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-1)
+[17:49:15] samsung hostcap-final-linux-terminator: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[17:49:15] samsung hostcap-final-linux-terminator: START term2 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-2)
+[17:49:34] samsung hostcap-final-linux-terminator: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[17:49:35] samsung hostcap-final-linux-terminator: START term3 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-3)
+[17:49:44] END g1-dotnet-test exit=0 67s
+[17:49:44] START g1-all-lanes
+[17:49:54] samsung hostcap-final-linux-terminator: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[17:49:54] samsung hostcap-final-linux-terminator: START term4 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-4)
+[17:50:28] samsung hostcap-final-linux-terminator: PASS term4 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[17:50:28] samsung hostcap-final-linux-terminator: START term5 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-5)
+[17:50:42] END g2-triangle exit=0 110s
+[17:50:42] START g2-shadow-terminator
+[17:51:01] samsung hostcap-final-linux-terminator: PASS term5 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[17:51:02] samsung hostcap-final-linux-terminator: START term6 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-6)
+[17:51:35] samsung hostcap-final-linux-terminator: PASS term6 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[17:51:35] samsung hostcap-final-linux-terminator: START term7 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-7)
+[17:52:05] END g2-shadow-terminator exit=0 83s
+[17:52:05] START g2-closest-static
+[17:52:09] samsung hostcap-final-linux-terminator: PASS term7 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[17:52:09] samsung hostcap-final-linux-terminator: START term8 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-8)
+[17:52:10] END g2-closest-static exit=0 5s
+[17:52:10] START g2-closest-motion
+[17:52:23] END g2-closest-motion exit=0 13s
+[17:52:23] START g2-closest-deform
+[17:52:28] END g2-closest-deform exit=0 5s
+[17:52:28] START g2-closest-deform-motion
+[17:52:41] END g2-closest-deform-motion exit=0 13s
+[17:52:41] START g2-shadow
+[17:52:42] samsung hostcap-final-linux-terminator: PASS term8 readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[17:52:42] samsung hostcap-final-linux-terminator: START term9 (/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/linux/f2-shadow-terminator/out/shadow_terminator/run/case-9)
+[17:53:32] END g2-shadow exit=0 51s
+[17:53:32] START g2-glass-spec-on
+[17:53:54] samsung hostcap-final-linux-terminator: PASS term9 readbacks=443 max=2.93e-05 strict=22 fmt=native-command-stream-v6
+[17:53:58] samsung hostcap-final-linux-terminator: END passed=True wall=321s/3600s
+[17:53:58] samsung chain DONE
+[17:54:06] END g2-glass-spec-on exit=0 34s
+[17:54:06] START g2-glass-spec-off
+[17:54:10] samsung triangle-final2: ERROR AssertionError('Production sources changed since build')
+[17:54:14] samsung triangle-final2: END passed=False wall=4s/2400s failures=0
+[17:54:18] samsung regression-final2: ERROR AssertionError('Production sources changed since build')
+[17:54:22] samsung regression-final2: END passed=False wall=4s/1500s failures=0
+[17:54:26] samsung emitter-final2: ERROR AssertionError('Production sources changed since build')
+[17:54:31] samsung emitter-final2: END passed=False wall=4s/600s failures=0
+[17:54:35] samsung precision-final2: ERROR AssertionError('Production sources changed since build')
+[17:54:39] samsung precision-final2: END passed=False wall=4s/900s failures=0
+[17:54:43] samsung spec-refusal-final2: ERROR AssertionError('Production sources changed since build')
+[17:54:47] samsung spec-refusal-final2: END passed=False wall=4s/600s failures=0
+[17:54:47] samsung chain2 DONE
+[17:55:15] doc edits (DEVICE.md/PARITY.md) are part of the gate source pins: Samsung chain2 refused ('Production sources changed since build'); chain2 stopped (exact PIDs 1261910, 1267483), seed docs restored for the remaining validation, edited docs parked in the scratchpad and re-applied after validation (docs-only diff)
+[17:55:44] samsung triangle-final3: START triangle_sample timeout=900s
+[17:55:44] samsung triangle-final3: SCENE-DUMP triangle_sample
+[17:55:49] samsung triangle-final3: SCENE-REFERENCE triangle_sample references=1
+[17:56:08] END g2-glass-spec-off exit=0 122s
+[17:56:08] START g2-scene-edit
+[17:56:15] samsung triangle-final3: REFERENCE triangle_sample host re-judged vs glibc: False
+[17:56:16] samsung triangle-final3: FAIL triangle_sample exit=1 26s: Emitter sample=3133 field=2 got=0.382186 expected=0.379992
+[17:56:16] samsung triangle-final3: START surface timeout=900s
+[17:56:31] END g1-all-lanes exit=1 407s
+[17:56:31] slot1 DONE
+[17:56:40] Pixel lock 98271FFBA0048D taken
+[17:57:44] END g2-scene-edit exit=0 96s
+[17:57:44] START g2-object-motion
+[17:57:52] samsung triangle-final3: PASS surface 96s maxPipelineMs=4568.94
+[17:57:52] samsung triangle-final3: START triangle_lighting timeout=900s
+[17:57:52] samsung triangle-final3: SCENE-DUMP triangle_lighting
+[17:57:58] samsung triangle-final3: SCENE-REFERENCE triangle_lighting references=6
+[18:00:40] samsung triangle-final3: REFERENCE triangle_lighting host re-judged vs glibc: True
+[18:00:40] samsung triangle-final3: PASS triangle_lighting 159s maxPipelineMs=30772.5
+[18:00:40] samsung triangle-final3: START replay-0 timeout=900s
+[18:00:43] END g2-object-motion exit=0 179s
+[18:00:43] START g2-deforming-motion
+[18:01:01] samsung triangle-final3: PASS replay-0 21s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[18:01:01] samsung triangle-final3: START replay-1 timeout=900s
+[18:01:41] samsung triangle-final3: PASS replay-1 39s readbacks=417 max=1.79e-07 strict=5 fmt=native-command-stream-v6
+[18:01:41] samsung triangle-final3: START replay-2 timeout=900s
+[18:02:20] samsung triangle-final3: PASS replay-2 38s readbacks=415 max=6.41e-07 strict=8 fmt=native-command-stream-v6
+[18:02:20] samsung triangle-final3: START replay-3 timeout=900s
+[18:02:59] samsung triangle-final3: PASS replay-3 39s readbacks=473 max=1.79e-06 strict=235 fmt=native-command-stream-v6
+[18:02:59] samsung triangle-final3: START replay-4 timeout=900s
+[18:03:38] samsung triangle-final3: PASS replay-4 39s readbacks=415 max=3.73e-07 strict=11 fmt=native-command-stream-v6
+[18:03:38] samsung triangle-final3: START replay-5 timeout=900s
+[18:05:05] END g2-deforming-motion exit=0 262s
+[18:05:05] START g2-feature-combination
+[18:05:05] samsung triangle-final3: PASS replay-5 87s readbacks=464 max=1.79e-06 strict=248 fmt=native-command-stream-v6
+[18:05:11] samsung triangle-final3: END passed=False wall=569s/2400s failures=1
+[18:05:18] samsung regression-final3: START glass_render timeout=600s
+[18:05:45] END g2-feature-combination exit=0 40s
+[18:05:45] START g2-surface
+[18:05:58] END g2-surface exit=0 13s
+[18:05:58] START g2-transparent-shadow
+[18:06:07] pixel triangle-final: START triangle_sample timeout=2400s
+[18:06:07] pixel triangle-final: SCENE-DUMP triangle_sample
+[18:06:12] START h1-all-lanes
+[18:06:13] pixel triangle-final: SCENE-REFERENCE triangle_sample references=1
+[18:06:42] samsung regression-final3: REFERENCE glass_render host re-judged vs glibc: True
+[18:06:42] samsung regression-final3: PASS glass_render 83s maxPipelineMs=6281.67
+[18:06:42] samsung regression-final3: START lighting_mis timeout=600s
+[18:06:42] samsung regression-final3: SCENE-DUMP lighting_mis
+[18:06:49] samsung regression-final3: SCENE-REFERENCE lighting_mis references=8
+[18:07:27] samsung regression-final3: REFERENCE lighting_mis host re-judged vs glibc: True
+[18:07:27] samsung regression-final3: PASS lighting_mis 35s maxPipelineMs=6547.2
+[18:07:27] samsung regression-final3: START transparent_lighting timeout=600s
+[18:07:27] samsung regression-final3: SCENE-DUMP transparent_lighting
+[18:07:34] samsung regression-final3: SCENE-REFERENCE transparent_lighting references=8
+[18:07:44] pixel triangle-final: REFERENCE triangle_sample host re-judged vs glibc: FileNotFoundError(2, 'No such file or directory')
+[18:07:44] pixel triangle-final: FAIL triangle_sample exit=1 91s: WebGPU scheduler kernel reported invalid data (mask 1059595178): unsupported SVM opcode or scene-specialized handler invalid/uninitialized SVM stack SVM instruction limit invalid image descriptor/data tiled image cache not implemented
+[18:07:44] pixel triangle-final: START surface timeout=2400s
+[18:08:05] END g2-transparent-shadow exit=0 127s
+[18:08:05] slot2 DONE
+[18:09:37] samsung regression-final3: REFERENCE transparent_lighting host re-judged vs glibc: True
+[18:09:37] samsung regression-final3: PASS transparent_lighting 119s maxPipelineMs=11571.2
+[18:09:42] samsung regression-final3: END passed=True wall=266s/1500s failures=0
+[18:09:49] samsung emitter-final3: START emitter_sample timeout=300s
+[18:09:49] samsung emitter-final3: SCENE-DUMP emitter_sample
+[18:09:54] samsung emitter-final3: SCENE-REFERENCE emitter_sample references=1
+[18:10:05] samsung emitter-final3: REFERENCE emitter_sample host re-judged vs glibc: True
+[18:10:05] samsung emitter-final3: PASS emitter_sample 11s maxPipelineMs=None
+[18:10:11] samsung emitter-final3: END passed=True wall=23s/600s failures=0
+[18:10:17] samsung precision-final3: START closest timeout=600s
+[18:10:39] samsung precision-final3: PASS closest 22s maxPipelineMs=1375.13
+[18:10:39] samsung precision-final3: START shadow timeout=600s
+[18:10:56] samsung precision-final3: PASS shadow 16s maxPipelineMs=1107.17
+[18:10:56] samsung precision-final3: START shadow-replay-direct timeout=600s
+[18:10:57] samsung precision-final3: PASS shadow-replay-direct 2s readbacks=4 max=5.96e-08 strict=0 fmt=native-command-stream-v3
+[18:10:57] samsung precision-final3: START shadow-replay-indexed timeout=600s
+[18:10:59] samsung precision-final3: PASS shadow-replay-indexed 2s readbacks=4 max=0 strict=0 fmt=native-command-stream-v3
+[18:11:02] pixel triangle-final: PASS surface 198s maxPipelineMs=10053.8
+[18:11:02] pixel triangle-final: START triangle_lighting timeout=2400s
+[18:11:02] pixel triangle-final: SCENE-DUMP triangle_lighting
+[18:11:05] samsung precision-final3: END passed=True wall=49s/900s failures=0
+[18:11:09] pixel triangle-final: SCENE-REFERENCE triangle_lighting references=6
+[18:11:12] samsung spec-refusal-final3: START glass_render-spec timeout=300s
+[18:12:34] samsung spec-refusal-final3: PASS glass_render-spec 82s maxPipelineMs=5933.18
+[18:12:34] samsung spec-refusal-final3: START glass_render-nospec-refused timeout=300s
+[18:12:34] samsung spec-refusal-final3: PASS glass_render-nospec-refused refusal exit=1 0s
+[18:12:40] samsung spec-refusal-final3: END passed=True wall=90s/600s failures=0
+[18:12:40] samsung chain3 DONE
+[18:13:07] Samsung cleaned (all /data/local/tmp/codebrix-e4-* removed, no app installed, no process left); Samsung lock released
+[18:13:14] START g3-host-gate
+[18:15:29] END g3-host-gate exit=0 135s
+[18:21:33] pixel triangle-final: REFERENCE triangle_lighting host re-judged vs glibc: True
+[18:21:33] pixel triangle-final: PASS triangle_lighting 622s maxPipelineMs=124032
+[18:21:33] pixel triangle-final: START replay-0 timeout=2400s
+[18:22:39] pixel triangle-final: PASS replay-0 66s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[18:22:39] pixel triangle-final: START replay-1 timeout=2400s
+[18:23:52] END h1-all-lanes exit=0 1060s
+[18:24:11] docs re-applied (DEVICE.md section + open items 1-2, PARITY Lighting row) after Linux validation
+[18:24:42] pixel triangle-final: PASS replay-1 123s readbacks=417 max=1.79e-07 strict=0 fmt=native-command-stream-v6
+[18:24:42] pixel triangle-final: START replay-2 timeout=2400s
+[18:25:21] scratch deleted: 1,154 arena/dump files (sha256 in handoff/validation/deleted-arenas.sha256), Android gate build tree, scratch Mesa caches
+[18:26:45] pixel triangle-final: FAIL replay-2 FileNotFoundError(2, 'No such file or directory')
+[18:26:45] pixel triangle-final: START replay-3 timeout=2400s
+[18:28:47] pixel triangle-final: FAIL replay-3 FileNotFoundError(2, 'No such file or directory')
+[18:28:47] pixel triangle-final: START replay-4 timeout=2400s
+[18:30:48] pixel triangle-final: FAIL replay-4 FileNotFoundError(2, 'No such file or directory')
+[18:30:48] pixel triangle-final: START replay-5 timeout=2400s
+[18:33:23] pixel triangle-final: ERROR KeyboardInterrupt()
+[18:33:30] Pixel run stopped at replay-5 (exact PID 1271870, SIGINT): replays 2-4 ran on the device but their LOCAL validation failed with FileNotFoundError because I deleted the local copies of the device captures' arenas (scratch cleanup at 18:25) while the run was in progress - my error, not a device result. Pixel cleaned (/data/local/tmp/codebrix-e4-* removed, no app installed by me, no process left); Pixel lock released

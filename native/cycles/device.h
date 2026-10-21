@@ -10,6 +10,8 @@
 #include <array>
 #include <map>
 #include <mutex>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace ccl {
@@ -44,6 +46,8 @@ class WebGPUDevice final:public Device {
   std::vector<KernelShader> shader_records;
   std::vector<KernelObject> object_records;
   std::vector<uint> object_flag_records;
+  // Any uploaded triangle with SHADER_SMOOTH_NORMAL (shadow terminator geometry offset).
+  bool smooth_triangles=false;
   // Scene-driven WGSL specialization (pipelines.h). svm_node_words is the exact
   // uploaded SVM program; svm_generation counts SVM, shader, light, light
   // distribution, object-flag and KernelData uploads (features also cover
@@ -53,6 +57,9 @@ class WebGPUDevice final:public Device {
   std::vector<uint32_t> svm_node_words;
   uint64_t svm_generation=0,census_generation=~uint64_t(0),enabled_features=0;
   SvmCensus census;
+  // Principled features refused at upload (pipelines.cpp shader_features).
+  uint64_t unsupported_generation=~uint64_t(0),principled_features=0;std::string unsupported_feature;
+  std::vector<uint32_t> tri_shader_words; // per-triangle shader words (Principled census roots)
   bool specialization_enabled=true;
   struct PipelineRecord {std::string module,entry;uint64_t features;size_t wgsl_bytes;double module_ms,pipeline_ms;};
   std::vector<PipelineRecord> pipeline_records;
@@ -143,8 +150,30 @@ class WebGPUDevice final:public Device {
   void enqueue_surface(int,const DeviceKernelArguments&);
   void update_state(const IntegratorStateGPU&);
   uint32_t scene_tables();
+  // Host recovery (Phase E3, native/host ABI.md "Device errors"): clears a
+  // reported device error when the WebGPU device itself is intact. Returns
+  // false, with the reason, when the device has a fatal error (lost device,
+  // uncaptured validation error); such a device stays failed.
+  bool recover(std::string &reason);
   template<class F>void guard(F f){std::lock_guard lock(mutex);try{gpu.check();f();}catch(const std::exception &e){set_error(e.what());}}
 };
 unique_ptr<Device> device_webgpu_create(const DeviceInfo&,Stats&,Profiler&,bool);
+// Gate binaries: when the WebGPU device cannot be created, the factory returns
+// Cycles' dummy device carrying the reason (device_webgpu_create). Stop with a
+// message that names the stage instead of dereferencing a failed cast; every
+// gate's main reports the exception and exits non-zero.
+inline WebGPUDevice &require_webgpu_device(Device *device,const char *stage){
+  auto *webgpu=dynamic_cast<WebGPUDevice*>(device);
+  if(!webgpu)throw std::runtime_error(std::string(stage)+": WebGPU device creation failed: "+
+    (device&&device->have_error()?device->error_message():std::string("no device was returned")));
+  return *webgpu;
+}
+// Gate probe modules (surface SVM, shader-data and image probes) compile the
+// scene-specialized module, like every renderer pipeline (module_wgsl), never the
+// whole unspecialized source: Intel Mesa 25.0.7 miscompiles the module-scope
+// svm_stack inside the large unspecialized SVM probe module (normal_gate SVM
+// error 8 after the materials merge; the withheld Gabor node hit the same class).
+// CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 still selects the unspecialized module.
+inline std::string gate_probe_wgsl(WebGPUDevice &device,const std::string &source){return device.module_wgsl(source);}
 void device_webgpu_info(vector<DeviceInfo>&);
 }

@@ -42,23 +42,30 @@ fn emitter_asin(value:f32)->f32{
     let a=abs(clamp(value,-1.0,1.0));let reduce=a>0.5;var z=vec2<f32>(a,0);var x=trig_product(a,a);
     if(reduce){x=vec2<f32>((1.0-a)*0.5,0);let root=rounded_sqrt(x.x);z=vec2<f32>(root,0);
       if(root>0.0){let product=trig_product(root,root);z.y=rounded_divide(rounded_add(rounded_add(x.x,-product.x),-product.y),2.0*root);}}
+    // Horner steps in a loop (the same 16 operations in order) rather than 16
+    // inlined copies; with area_rectangle's loop over its four arcsines this
+    // shrinks the area-light shade_surface_light module, whose cold compile
+    // crashed the Intel Mesa 25.0.7 compiler in 3 of 4 runs before and in none
+    // of 7 after (brw_opt_combine_constants driver bug, phaseE3 report).
+    var terms=array<vec2<f32>,16>(
+    vec2<f32>(0.0046601435169577599,-3.00426636972735e-11),
+    vec2<f32>(0.005153309553861618,1.284582861538591e-10),
+    vec2<f32>(0.0057400376535952091,1.7246714344731083e-11),
+    vec2<f32>(0.0064472104422748089,-1.30385160446167e-10),
+    vec2<f32>(0.0073125259950757027,-1.2147685755854067e-10),
+    vec2<f32>(0.0083903353661298752,4.4348694029308498e-10),
+    vec2<f32>(0.0097616091370582581,3.9213582089072777e-10),
+    vec2<f32>(0.011551801115274429,-2.1913472343893612e-10),
+    vec2<f32>(0.013964843936264515,-1.8626451492309571e-10),
+    vec2<f32>(0.017352763563394547,8.5968237656813406e-10),
+    vec2<f32>(0.022372158244252205,8.4665688601407135e-10),
+    vec2<f32>(0.0303819440305233,4.1392114427354598e-10),
+    vec2<f32>(0.0446428582072258,-1.064368656703404e-09),
+    vec2<f32>(0.075000002980232239,-2.9802322387695314e-09),
+    vec2<f32>(0.1666666716337204,-4.9670537312825518e-09),
+    vec2<f32>(1,0));
     var polynomial=vec2<f32>(0.0042409072630107403,-1.6933137720281428e-10);
-    polynomial=trig_coeff(vec2<f32>(0.0046601435169577599,-3.00426636972735e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.005153309553861618,1.284582861538591e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0057400376535952091,1.7246714344731083e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0064472104422748089,-1.30385160446167e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0073125259950757027,-1.2147685755854067e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0083903353661298752,4.4348694029308498e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0097616091370582581,3.9213582089072777e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.011551801115274429,-2.1913472343893612e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.013964843936264515,-1.8626451492309571e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.017352763563394547,8.5968237656813406e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.022372158244252205,8.4665688601407135e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0303819440305233,4.1392114427354598e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0446428582072258,-1.064368656703404e-09),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.075000002980232239,-2.9802322387695314e-09),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.1666666716337204,-4.9670537312825518e-09),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(1,0),trig_mul(polynomial,x));
+    for(var i=0u;i<16u;i++){polynomial=trig_coeff(terms[i],trig_mul(polynomial,x));}
     var result=trig_mul(z,polynomial);if(reduce){result=trig_coeff(vec2<f32>(1.5707963705062866,-4.3711390001862426e-8),-2.0*result);}
     let answer=rounded_add(result.x,result.y);return select(answer,-answer,value<0.0);
 }
@@ -100,7 +107,10 @@ fn area_rectangle(P:vec3<f32>,r:AreaRegion,random:vec2<f32>,sample_coord:bool)->
     var out=AreaRect(r.P,0.0);var Z=rounded_cross(r.U,r.V);let direction=r.P-P;var z0=rounded_dot(direction,Z);if(z0>0.0){Z= -Z;z0= -z0;}
     let xc=rounded_dot(direction,r.U);let yc=rounded_dot(direction,r.V);let x0=rounded_add(xc,-0.5*r.len_u);let x1=rounded_add(xc,0.5*r.len_u);let y0=rounded_add(yc,-0.5*r.len_v);let y1=rounded_add(yc,0.5*r.len_v);
     var nz=vec4<f32>(-y0,x1,y1,-x0);for(var i=0u;i<4u;i++){nz[i]=rounded_divide(nz[i],rounded_sqrt(rounded_add(nz[i]*nz[i],z0*z0)));}
-    let g0=emitter_asin(-nz.x*nz.y);let g1=emitter_asin(-nz.y*nz.z);let g2=emitter_asin(-nz.z*nz.w);let g3=emitter_asin(-nz.w*nz.x);
+    // One emitter_asin body evaluated four times (see emitter_asin).
+    var asin_inputs=vec4<f32>(-nz.x*nz.y,-nz.y*nz.z,-nz.z*nz.w,-nz.w*nz.x);var angles:vec4<f32>;
+    for(var i=0u;i<4u;i++){angles[i]=emitter_asin(asin_inputs[i]);}
+    let g0=angles.x;let g1=angles.y;let g2=angles.z;let g3=angles.w;
     let S= -rounded_add(rounded_add(rounded_add(g0,g1),g2),g3);
     if(sample_coord){
         let b0=nz.x;let b1=nz.z;let au=rounded_add(rounded_add(random.x*S,g2),g3);let sc=native_disk_sincos(au);var fu=0.0;if(sc.x!=0.0){fu=rounded_divide(rounded_add(sc.y*b0,b1),sc.x);}

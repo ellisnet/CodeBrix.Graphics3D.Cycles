@@ -53,12 +53,32 @@ static std::string probe_source(){
   s<<"}\n";
   s<<"}\n";return s.str();
 }
-static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &source){
+// The probe module is scene-specialized (gate_probe_wgsl, device.h) and follows
+// the uploaded programs like the renderer's pipelines: refresh_probe rebuilds it
+// before a dispatch whose programs reach a region the module was built without
+// (typed programs and rejection cases upload new programs after creation).
+static std::string probe_raw,probe_module;static uint64_t probe_features=0;
+static uint64_t probe_scene_features(WebGPUDevice &d){
+  // Native refusals (unsupported Principled features) keep the current module:
+  // the case under test then reports through the WGSL handler, as before.
+  // Glass records carry the canonical generalized-Schlick fields (model in
+  // roughness, f0 in multiscatter) only in modules with the Principled region;
+  // the probe compares those canonical records, so it keeps that region whenever
+  // glass is reachable (the arithmetic is identical either way; films match).
+  try{uint64_t f=d.shader_features();if(f&SF_BSDF_GLASS)f|=SF_BSDF_PRINCIPLED;return f;}
+  catch(const std::exception&){return probe_features;}
+}
+static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &probe){
+  probe_raw=probe;probe_features=probe_scene_features(d);probe_module=specialize_wgsl(probe,probe_features);
+  const std::string &source=probe_module;
   WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={source.data(),source.size()};
   WGPUShaderModuleDescriptor desc{};desc.nextInChain=&wgsl.chain;d.gpu.push_scope();
   cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&desc));d.gpu.pop_scope();
   d.surface_geometry=d.gpu.pipeline(module,d.pipeline_layout,"prepare_shader_data");
   return d.gpu.pipeline(module,d.pipeline_layout,"surface_svm_probe");
+}
+static void refresh_probe(WebGPUDevice &d,cbc::Pipeline &shader){
+  if(!probe_raw.empty()&&(probe_scene_features(d)&~probe_features)!=0)shader=pipeline(d,probe_raw);
 }
 // The prepass is executed by the GPU before every probe, including rejections.
 // Captures retain that GPU-generated cache, never CPU-derived ShaderData.
@@ -80,8 +100,9 @@ static void evaluate(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const st
   device_vector<uint> output(&d,"svm_surface_output",MEM_READ_WRITE);output.alloc(16+ids.size()*sizeof(SurfaceSvmRecord)/4);std::fill_n(output.data(),output.size(),0xa5a5a5a5u);output.copy_to_device();
   device_vector<uint> scratch(&d,"svm_surface_closures",MEM_READ_WRITE);scratch.alloc(16+ids.size()*MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);std::fill_n(scratch.data(),scratch.size(),0xa5a5a5a5u);std::fill(scratch.data()+8,scratch.data()+scratch.size()-8,0);scratch.copy_to_device();
   std::array<uint32_t,32> p{};p[1]=ids.size();p[2]=dense?0:selected.device_pointer;p[4]=output.device_pointer+32;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=states.size();p[14]=d.scene_tables();p[17]=d.error_word;p[21]=scene.dscene.svm_nodes.device_pointer;p[22]=scene.dscene.svm_nodes.size();p[23]=scratch.device_pointer+32;
-  PreparedSurfaceCache cache(d,p);
+  refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
   if(!capture.empty()){
+    std::ofstream(capture+".wgsl")<<probe_module;
     auto staging=d.gpu.buffer(d.arena_bytes,WGPUBufferUsage_CopyDst|WGPUBufferUsage_MapRead);wgpuCommandEncoderCopyBufferToBuffer(d.commands(),d.arena,0,staging,0,d.arena_bytes);d.flush();std::vector<uint8_t> arena(d.arena_bytes);d.gpu.read(staging,arena.data(),arena.size());
     std::ofstream(capture+".arena.bin",std::ios::binary).write(reinterpret_cast<const char*>(arena.data()),arena.size());std::ofstream(capture+".params.bin",std::ios::binary).write(reinterpret_cast<const char*>(p.data()),sizeof(p));std::ofstream(capture+".reference.bin",std::ios::binary).write(reinterpret_cast<const char*>(expected.data()),expected.size()*sizeof(SurfaceSvmRecord));
     std::ofstream info(capture+".capture.json");info<<"{\"entry\":\"surface_svm_probe\",\"recordSize\":"<<sizeof(SurfaceSvmRecord)<<",\"count\":"<<ids.size()<<",\"outputOffset\":"<<p[4]<<",\"errorOffset\":"<<p[17]<<",\"closureScratch\":{\"offset\":"<<p[23]<<",\"stride\":"<<MAX_CLOSURE*sizeof(SurfaceClosureRecord)<<",\"recordOffset\":"<<offsetof(SurfaceSvmRecord,closures)<<"},\"fields\":[";bool first=true;

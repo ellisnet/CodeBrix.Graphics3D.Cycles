@@ -1,0 +1,5 @@
+56c56,57
+< static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &source){
+---
+> static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &raw){
+>   const std::string source=d.module_wgsl(raw); // DIAG B: scene-specialized probe module

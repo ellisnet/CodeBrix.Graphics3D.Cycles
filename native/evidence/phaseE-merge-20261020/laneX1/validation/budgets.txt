@@ -1,0 +1,38 @@
+# Phase X1 budgets (declared before each run). Shared machine: --jobs 6, <=2 concurrent Linux gates.
+[09:36:51] linux build (cycles + 7 gate targets, --jobs 6): 30 min (fresh worktree, first configure)
+[09:36:51] android-arm64 build (7 gates, --jobs 6): 30 min (fresh build dir)
+[09:38:33] linux libm probe (CPU only, 4 threads): budget 600 s
+[09:40:05] libm probe samsung (CPU only, 4 threads): budget 900 s; then hp: 900 s
+[09:43:49] linux reference export (6 gate jobs sequential, cold scratch Mesa cache): budget 2400 s total, 900 s per job
+[09:45:29] android-arm64 rebuild (incremental, sources final) then android-x64 build (7 gates, --jobs 6): 10 min + 30 min
+[09:45:53] stage review android-arm64 (+render_replay build): budget 10 min
+[09:49:13] DECLARED device=samsung serial=R52W207XQ1V corpus=emitter label=r1 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[09:49:49] DECLARED device=samsung serial=R52W207XQ1V corpus=triangle label=r1 wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=5
+[09:50:02] stage review android-x64 (+render_replay build): budget 10 min; push to hp
+[09:50:45] DECLARED device=hp serial=192.168.86.225:5555 corpus=emitter label=r1 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[09:51:16] linux host gate (48 exports, builds default targets --jobs 6, cold scratch Mesa cache): 1800 s (Phase D ~20 min); output native/work/host-validation (also the app builder's Linux references)
+[09:51:16] android host builds for the app (tools/build_android.py --skip-dependencies --jobs 6, arm64 then x64): 1800 s each
+[09:51:38] DECLARED device=hp serial=192.168.86.225:5555 corpus=triangle label=r1 wallBudget=2400s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=5
+[09:54:18] DECLARED device=samsung serial=R52W207XQ1V corpus=regression label=r1 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[09:56:31] DECLARED device=hp serial=192.168.86.225:5555 corpus=regression label=r1 wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[09:58:54] DECLARED device=samsung serial=R52W207XQ1V corpus=hostcap label=linux-r1 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=5
+[10:00:57] DECLARED device=hp serial=192.168.86.225:5555 corpus=hostcap label=linux-r1 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=5
+[10:06:34] linux rebuild 7 gates (--jobs 6): 15 min
+[10:07:21] linux scene-exchange self-test (dump x2, load+export; CPU only): 600 s
+[10:09:16] linux flow self-test triangle_lighting (dump, scene-reference, import+verify full run): 900 s
+[10:09:56] code final for r2. linux reference export r2 (6 jobs, cold scratch Mesa cache): 2400 s; android arm64+x64 incremental builds (--jobs 6): 30 min each
+[10:10:16] linux managed CPU reference films (dotnet test, WebGpuRenderTests practical-criterion theory only, CODEBRIX_CYCLES_REFERENCE_EXPORT): 900 s
+[10:14:40] DECLARED device=samsung serial=R52W207XQ1V corpus=emitter label=r2 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[10:15:23] DECLARED device=samsung serial=R52W207XQ1V corpus=triangle label=r2 wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=5
+[10:15:54] android host builds for the app (tools/build_android.py --skip-dependencies --jobs 6, arm64 then x64): 1800 s each
+[10:15:54] DECLARED device=hp serial=192.168.86.225:5555 corpus=emitter label=r2 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[10:16:53] DECLARED device=hp serial=192.168.86.225:5555 corpus=triangle label=r2 wallBudget=2400s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=5
+[10:20:00] DECLARED device=samsung serial=R52W207XQ1V corpus=regression label=r2 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[10:22:20] DECLARED device=hp serial=192.168.86.225:5555 corpus=regression label=r2 wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[10:24:53] DECLARED device=samsung serial=R52W207XQ1V corpus=hostcap label=linux-r2 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=5
+[10:27:10] DECLARED device=hp serial=192.168.86.225:5555 corpus=hostcap label=linux-r2 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=5
+[10:30:47] android validation APK build (build_android_app.py, application id ...hostvalidation.x1): 900 s
+[10:32:26] managed app WebGPU mode on samsung + hp (android_app_gate.py --mode webgpu --linux-reference, result timeout 1500 s each, --uninstall): 1800 s
+[10:38:47] final tree linux: triangle_lighting_gate.py --skip-build (cold scratch Mesa): 900 s; broad_lighting_gate.py --jobs 6 (emitter gate; builds 4 targets): 1800 s (6 kinds incl. 12 broad images)
+[10:38:55] audits (audit.py, notices.py --check, guard tests, git diff --check): 600 s
+[10:42:39] final tree: host_gate.py (48 exports, cold scratch Mesa): 1800 s; dotnet test --solution (cold scratch Mesa): 1200 s

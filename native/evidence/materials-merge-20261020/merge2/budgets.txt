@@ -1,0 +1,158 @@
+[14:45:17] DECLARED v1-native-build (clean: removed native/work/cycles-build) budget=3600s
+[14:50:37] DECLARED v2 gate build (all codebrix targets, --jobs 6) budget=2400s
+[14:57:33] DECLARED android gate build android-arm64 (--jobs 6): budget 3600 s
+[14:57:33] DECLARED l1-all-lanes budget=2700s: python3 native/evidence/phaseC-closeout-20261020/closeout/tools/linux_validate.py --tree /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l1-all-lanes/out --skip-build
+[14:57:33] DECLARED l2-principled-gate budget=1200s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/principled_gate.py --skip-build --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-gate/out
+[15:01:01] DECLARED android gate build android-x64 (--jobs 6): budget 3600 s
+[15:02:11] DECLARED l2-nodes-gate budget=2400s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/nodes_gate.py --skip-build --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out
+[15:04:35] DECLARED l1-host-gate budget=1500s: python3 native/tools/host_gate.py --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l1-host-gate/out
+[15:04:35] DECLARED android host build android-x64 (tools/build_android.py --skip-dependencies --jobs 6): budget 2400 s
+[15:04:46] DECLARED hp staging push (stage.py push hp): budget 1200 s
+[15:05:52] DECLARED diag normal_gate --deform rerun budget=900s
+[15:07:44] DECLARED l1-dotnet-build budget=900s: dotnet build --configuration Release CodeBrix.Graphics3D.Cycles.slnx
+[15:07:49] DECLARED l1-dotnet-test budget=1500s: dotnet test --solution CodeBrix.Graphics3D.Cycles.slnx --configuration Release --no-build
+[15:08:14] DECLARED android host build android-arm64 (tools/build_android.py --skip-dependencies --jobs 6): budget 2400 s
+[15:09:19] DECLARED l1-dotnet-pack budget=600s: dotnet pack --configuration Release --no-build CodeBrix.Graphics3D.Cycles.slnx
+[15:09:39] DECLARED diag normal_gate --deform on llvmpipe (VK_ICD_FILENAMES=lvp) budget=1800s
+[15:10:15] DECLARED diag normal_gate static budget=900s
+[15:12:54] DECLARED diag normal_gate motion budget=900s
+[15:16:12] DECLARED diag android-x64 build of normal gate (build-diag-android-x64) budget=1800s
+[15:18:16] DECLARED l2-principled-render-on budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-on/run
+[15:18:28] DECLARED diag HP normal_gate static budget=1200s
+[15:19:18] DECLARED l2-principled-render-off budget=1800s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-off/run
+[15:19:32] DECLARED diag scratch-tree build (variant A: M3 wavefront_svm.wgsl = function-local stack) normal gate, --jobs 6 budget=2400s
+[15:21:29] DECLARED diag A normal_gate static budget=900s
+[15:23:58] DECLARED l2-principled-replay budget=900s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/tools/replay.py /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-on /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-replay/out
+[15:24:48] DECLARED l2-nodes-replay budget=900s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/tools/replay.py /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out/nodes_render /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-replay/out
+[15:25:04] DECLARED diag scope image gate budget=900s
+[15:25:26] DECLARED l2-glass-spec-on budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_glass_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-glass-spec-on/run
+[15:26:02] DECLARED l2-glass-spec-off budget=1800s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_glass_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-glass-spec-off/run
+[15:27:44] DECLARED diag scope attribute gate budget=900s
+[15:30:25] DECLARED diag scope shader_data gate budget=900s
+[15:30:27] DECLARED l2-principled-bench budget=2400s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-bench/run /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/render/bench/triangles.bin
+[15:30:35] DECLARED diag scope image_file gate budget=900s
+[15:30:55] DECLARED diag-rest volume_boundary_gate budget=1800s
+[15:31:08] DECLARED diag scratch build variant B (E2 stack + specialized probe) normal gate budget=2400s
+[15:31:10] DECLARED l2-svm-surface budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_svm_surface_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-svm-surface/run
+[15:33:51] DECLARED l2-svm-world budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_svm_world_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-svm-world/run
+[15:34:22] DECLARED l2-surface budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_surface_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-surface/run
+[15:34:36] DECLARED l2-libm-linux budget=900s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/libm_probe.py linux /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/reference/libm-linux-x64-glibc.json
+[15:34:59] DECLARED l2-reference-export budget=2400s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/android_reference.py export --bin /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin --libm-record /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/reference/libm-linux-x64-glibc.json --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/reference/linux-x64 --build-record /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build.json --job glass_render=glass_render --job principled_render=principled_render --job nodes_render=nodes_render
+[15:36:15] DECLARED diag-rest volume_gate budget=1800s
+[15:39:46] DECLARED diag-rest glass_gate budget=1800s
+[15:42:54] DECLARED diag-deform-rest closest-deform-motion budget=900s
+[15:43:09] DECLARED diag-deform-rest shader_data-deform-motion budget=900s
+[15:43:28] DECLARED diag-deform-rest shadow-deform-motion budget=900s
+[15:43:41] DECLARED diag-deform-rest normal-deform-motion budget=900s
+[15:44:48] DECLARED diag-rest camera_motion_gate budget=1800s
+[15:46:22] DECLARED diag-deform-rest closest-motion budget=900s
+[15:46:37] DECLARED diag-deform-rest shader_data-motion budget=900s
+[15:46:55] DECLARED diag-deform-rest shadow-motion budget=900s
+[15:47:08] DECLARED diag-deform-rest normal-motion budget=900s
+[15:49:34] DECLARED diag-deform-rest closest-static budget=900s
+[15:49:38] DECLARED diag-deform-rest shader_data-static budget=900s
+[15:49:47] DECLARED diag-deform-rest shadow-static budget=900s
+[15:49:51] DECLARED diag-deform-rest moving-images budget=900s
+[15:50:39] DECLARED diag-deform-rest stationary-images budget=900s
+[15:51:05] DECLARED diag-deform-rest object-motion-regression budget=900s
+[15:57:14] DECLARED v1-native-build (clean: removed native/work/cycles-build) budget=3600s
+[16:01:26] DECLARED v2 gate build (all codebrix targets, --jobs 6) budget=2400s
+[16:07:40] DECLARED l1-all-lanes budget=2700s: python3 native/evidence/phaseC-closeout-20261020/closeout/tools/linux_validate.py --tree /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l1-all-lanes/out --skip-build
+[16:07:40] DECLARED l2-principled-gate budget=1200s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/principled_gate.py --skip-build --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-gate/out
+[16:07:41] DECLARED android gate build android-arm64 (--jobs 6): budget 3600 s
+[16:08:17] DECLARED l2-nodes-gate budget=2400s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/nodes_gate.py --skip-build --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out
+[16:09:05] DECLARED l2-unspecialized-smoke budget=2400s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/unspecialized_compile_smoke.py --wgsl /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out/nodes_render-unspecialized/surface.wgsl --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-unspecialized-smoke/out
+[16:09:05] DECLARED l2-principled-render-on budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-on/run
+[16:09:45] DECLARED l1-host-gate budget=1500s: python3 native/tools/host_gate.py --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l1-host-gate/out
+[16:10:36] DECLARED l2-principled-render-off budget=1800s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-off/run
+[16:11:50] DECLARED android gate build android-x64 (--jobs 6): budget 3600 s
+[16:13:06] DECLARED l1-dotnet-build budget=900s: dotnet build --configuration Release CodeBrix.Graphics3D.Cycles.slnx
+[16:13:11] DECLARED l1-dotnet-test budget=1500s: dotnet test --solution CodeBrix.Graphics3D.Cycles.slnx --configuration Release --no-build
+[16:14:48] DECLARED l1-dotnet-pack budget=600s: dotnet pack --configuration Release --no-build CodeBrix.Graphics3D.Cycles.slnx
+[16:16:10] DECLARED l2-principled-replay budget=900s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/tools/replay.py /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-on /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-replay/out
+[16:17:04] DECLARED v1-native-build (clean: removed native/work/cycles-build) budget=3600s
+[16:21:56] DECLARED v2 gate build (all codebrix targets, --jobs 6) budget=2400s
+[16:28:55] DECLARED android gate build android-arm64 (--jobs 6): budget 3600 s
+[16:28:55] DECLARED l2-principled-gate budget=1200s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/principled_gate.py --skip-build --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-gate/out
+[16:28:55] DECLARED l1-all-lanes budget=2700s: python3 native/evidence/phaseC-closeout-20261020/closeout/tools/linux_validate.py --tree /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l1-all-lanes/out --skip-build
+[16:29:37] DECLARED l2-nodes-gate budget=2400s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/nodes_gate.py --skip-build --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out
+[16:29:58] DECLARED android gate build android-x64 (--jobs 6): budget 3600 s
+[16:30:25] DECLARED l2-unspecialized-smoke budget=2400s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/unspecialized_compile_smoke.py --wgsl /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out/nodes_render-unspecialized/surface.wgsl --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-unspecialized-smoke/out
+[16:30:25] DECLARED l2-principled-render-on budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-on/run
+[16:31:00] DECLARED android host build android-x64 (tools/build_android.py --skip-dependencies --jobs 6): budget 2400 s
+[16:31:13] DECLARED l1-host-gate budget=1500s: python3 native/tools/host_gate.py --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l1-host-gate/out
+[16:31:41] DECLARED l2-principled-render-off budget=1800s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-off/run
+[16:32:01] DECLARED l2-principled-replay budget=900s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/tools/replay.py /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-on /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-replay/out
+[16:32:01] DECLARED l1-dotnet-build budget=900s: dotnet build --configuration Release CodeBrix.Graphics3D.Cycles.slnx
+[16:32:03] DECLARED l1-dotnet-test budget=1500s: dotnet test --solution CodeBrix.Graphics3D.Cycles.slnx --configuration Release --no-build
+[16:32:59] DECLARED quick incremental build of probe gates budget=1800s
+[16:33:54] DECLARED quick svm_surface budget=900s
+[16:33:54] DECLARED quick nodes_svm budget=900s
+[16:34:05] DECLARED quick principled_svm budget=900s
+[16:35:34] DECLARED quick microfacet_svm budget=900s
+[16:36:18] DECLARED quick normal budget=900s
+[16:36:55] DECLARED quick glass_svm budget=900s
+[16:39:45] DECLARED quick2 microfacet_svm budget=900s
+[16:39:45] DECLARED quick2 glass_svm budget=900s
+[16:40:15] DECLARED quick2 normal budget=900s
+[16:40:41] DECLARED quick2 svm_surface budget=900s
+[16:40:52] DECLARED quick2 image budget=900s
+[16:40:53] DECLARED quick2 principled_svm budget=900s
+[16:41:21] DECLARED quick2 nodes_svm budget=900s
+[16:42:27] DECLARED quick2 attribute budget=900s
+[16:44:18] DECLARED v1-native-build (clean: removed native/work/cycles-build) budget=3600s
+[16:49:04] DECLARED v2 gate build (all codebrix targets, --jobs 6) budget=2400s
+[16:55:24] DECLARED android gate build android-arm64 (--jobs 6): budget 3600 s
+[16:55:24] DECLARED l2-principled-gate budget=1200s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/principled_gate.py --skip-build --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-gate/out
+[16:55:24] DECLARED l1-all-lanes budget=2700s: python3 native/evidence/phaseC-closeout-20261020/closeout/tools/linux_validate.py --tree /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l1-all-lanes/out --skip-build
+[16:56:34] DECLARED android gate build android-x64 (--jobs 6): budget 3600 s
+[16:57:44] DECLARED android host build android-x64 (tools/build_android.py --skip-dependencies --jobs 6): budget 2400 s
+[16:58:09] DECLARED hp staging push (stage.py push hp): budget 1200 s
+[16:58:43] DECLARED l2-nodes-gate budget=2400s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/nodes_gate.py --skip-build --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out
+[16:59:09] DECLARED device=hp serial=192.168.86.225:5555 corpus=materials label=mw2a wallBudget=2700s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=principled_svm,principled_bounce,nodes_svm,nodes_world replays=0
+[17:00:20] DECLARED android host build android-arm64 (tools/build_android.py --skip-dependencies --jobs 6): budget 2400 s
+[17:13:35] DECLARED l2-unspecialized-smoke budget=2400s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/unspecialized_compile_smoke.py --wgsl /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out/nodes_render-unspecialized/surface.wgsl --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-unspecialized-smoke/out
+[17:16:40] DECLARED l2-principled-render-on budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-on/run
+[17:17:48] DECLARED l2-principled-render-off budget=1800s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-off/run
+[17:19:03] DECLARED device=hp serial=192.168.86.225:5555 corpus=materials label=mw2b wallBudget=6000s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_bounce,nodes_svm,nodes_world replays=0
+[17:19:13] DECLARED pixel staging push (stage.py push pixel): budget 1200 s
+[17:19:38] DECLARED device=pixel serial=98271FFBA0048D corpus=materials label=mw2a wallBudget=9600s perJobTimeout=2400s pipelineBudgetMs=20000 jobs=principled_svm,principled_bounce,nodes_svm,nodes_world replays=0
+[17:20:42] DECLARED l1-host-gate budget=1500s: python3 native/tools/host_gate.py --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l1-host-gate/out
+[17:22:30] DECLARED l2-principled-replay budget=900s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/tools/replay.py /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-render-on /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-replay/out
+[17:23:23] DECLARED l2-nodes-replay budget=900s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/tools/replay.py /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out/nodes_render /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-replay/out
+[17:23:23] DECLARED l1-dotnet-build budget=900s: dotnet build --configuration Release CodeBrix.Graphics3D.Cycles.slnx
+[17:23:26] DECLARED l1-dotnet-test budget=1500s: dotnet test --solution CodeBrix.Graphics3D.Cycles.slnx --configuration Release --no-build
+[17:24:06] DECLARED l2-glass-spec-on budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_glass_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-glass-spec-on/run
+[17:24:42] DECLARED l1-dotnet-pack budget=600s: dotnet pack --configuration Release --no-build CodeBrix.Graphics3D.Cycles.slnx
+[17:24:44] DECLARED l2-glass-spec-off budget=1800s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_glass_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-glass-spec-off/run
+[17:29:02] DECLARED l2-principled-bench budget=2400s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_principled_render_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-principled-bench/run /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/render/bench/triangles.bin
+[17:29:43] DECLARED l2-svm-surface budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_svm_surface_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-svm-surface/run
+[17:29:54] DECLARED l2-svm-world budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_svm_world_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-svm-world/run
+[17:30:23] DECLARED android-arm64 gate build + feature_combination, lighting_mis (Pixel regression check) budget 3600 s
+[17:30:24] DECLARED l2-surface budget=900s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_surface_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-surface/run
+[17:30:38] DECLARED l2-probe-normal budget=1200s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_normal_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-probe-normal/run
+[17:31:14] DECLARED l2-probe-attribute budget=1200s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_attribute_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-probe-attribute/run
+[17:31:35] DECLARED l2-probe-image budget=1200s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_image_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-probe-image/run
+[17:32:01] DECLARED l2-probe-image_file budget=1200s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_image_file_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-probe-image_file/run
+[17:32:02] DECLARED l2-probe-shader_data budget=1200s: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_shader_data_gate /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-probe-shader_data/run
+[17:32:11] DECLARED l2-libm-linux budget=900s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/libm_probe.py linux /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/reference/libm-linux-x64-glibc.json
+[17:32:14] DECLARED device=pixel serial=98271FFBA0048D corpus=pixel-lighting label=mw2 wallBudget=4800s perJobTimeout=2400s pipelineBudgetMs=20000 jobs=lighting_mis,feature_combination replays=2
+[17:32:31] DECLARED validation APK build (build_android_app.py, application id com.codebrix.cycles.hostvalidation.mw2): budget 1200 s
+[17:32:34] DECLARED l2-reference-export budget=2400s: python3 /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/android_reference.py export --bin /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin --libm-record /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/reference/libm-linux-x64-glibc.json --output /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/reference/linux-x64 --build-record /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build.json --job glass_render=glass_render --job principled_render=principled_render --job nodes_render=nodes_render
+[17:34:38] DECLARED l2-reference-export-r4 budget=2400s: python3 native/tools/android_reference.py export --bin native/work/cycles-build/bin --libm-record native/work/merge2/reference/libm-linux-x64-glibc.json --output native/work/merge2/reference/linux-x64 --build-record native/work/cycles-build.json --job glass_render=glass_render --job principled_render=principled_render --job nodes_render=nodes_render
+[17:39:20] DECLARED device=pixel serial=98271FFBA0048D corpus=materials label=mw2r wallBudget=7200s perJobTimeout=2400s pipelineBudgetMs=20000 jobs=principled_render,nodes_render replays=2
+[17:44:13] DECLARED device=hp serial=192.168.86.225:5555 corpus=materials label=mw2r wallBudget=7200s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_render,nodes_render replays=2
+[17:45:37] DECLARED device=pixel serial=98271FFBA0048D corpus=spec-refusal label=mw2 wallBudget=1800s perJobTimeout=1200s pipelineBudgetMs=20000 jobs=glass_render-spec,glass_render-nospec-refused replays=0
+[17:48:11] DECLARED managed app WebGPU mode on pixel (--linux-reference, result timeout 2400 s, --uninstall): budget 2700 s
+[17:52:54] DECLARED device=hp serial=192.168.86.225:5555 corpus=spec-refusal label=mw2 wallBudget=1800s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=glass_render-spec,glass_render-nospec-refused replays=0
+[17:54:40] DECLARED hp compile probe nodes_render/prepare_surface (fresh process, cache disabled): budget 1200 s
+[17:55:21] DECLARED hp compile probe nodes_render/shade_surface_light (fresh process, cache disabled): budget 1200 s
+[17:55:27] DECLARED hp compile probe nodes_render-unspecialized/prepare_surface (fresh process, cache disabled): budget 1200 s
+[17:55:47] DECLARED hp compile probe nodes_render-unspecialized/shade_surface_light (fresh process, cache disabled): budget 1200 s
+[17:56:30] DECLARED managed app WebGPU mode on hp (--linux-reference, result timeout 2400 s, --uninstall): budget 2700 s
+[18:13:21] DECLARED samsung staging push (stage.py push samsung): budget 1200 s
+[18:13:43] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=mw2a wallBudget=7200s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_svm,principled_bounce,nodes_svm,nodes_world replays=0
+[18:25:01] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=mw2r wallBudget=7200s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_render,nodes_render replays=2
+[18:28:15] DECLARED device=samsung serial=R52W207XQ1V corpus=spec-refusal label=mw2 wallBudget=1800s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=glass_render-spec,glass_render-nospec-refused replays=0
+[18:30:02] DECLARED managed app WebGPU mode on samsung (--linux-reference, result timeout 2400 s, --uninstall): budget 2700 s
+[18:33:15] DECLARED l2-unspecialized-smoke budget=2400s: python3 native/tools/unspecialized_compile_smoke.py --wgsl native/work/merge2/validation/l2-nodes-gate/out/nodes_render-unspecialized/surface.wgsl --output native/work/merge2/validation/l2-unspecialized-smoke/out

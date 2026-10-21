@@ -1,0 +1,93 @@
+{
+  "scenes": {
+    "linux-gates/glass-render": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.0109314,
+          0.00838235
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "wgsl-linux-intel": {
+        "renderSeconds": [
+          15.9222,
+          0.243886
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "linux-gates/textured-plane": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.010179,
+          0.00620221
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "wgsl-linux-intel": {
+        "renderSeconds": [
+          14.8646,
+          0.314082
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "linux-gates/world-volume": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.0155031,
+          0.0117543
+        ],
+        "repeatBitwiseIdentical": true
+      }
+    },
+    "linux-gates/closed-volumes": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.0194518,
+          0.0139245
+        ],
+        "repeatBitwiseIdentical": true
+      }
+    }
+  },
+  "backends": [
+    "cpu-x64-linux",
+    "wgsl-linux-intel"
+  ],
+  "common": {
+    "machine": {
+      "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+      "cpu": "",
+      "gpu": {
+        "model": null,
+        "cores": null
+      },
+      "compiler": "Debian clang version 19.1.7 (3+b1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-19/bin",
+      "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+      "cmake": "cmake version 3.31.6",
+      "python": "3.13.5",
+      "repoCommit": "00a8f4aaa1793b366a35083c9146b850d25b3eb6",
+      "repoWorkingTreeClean": false,
+      "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+    },
+    "hostLibrarySha256": "09574b709e9240f3df176d2f51bcc26199dd78c6f4aa34d21f773d78a9d6a95b",
+    "runnerSha256": "28df582c1a1e21dd8e8f8adb88f2cf3891c1df3a346899eda1376265b1cae018",
+    "cpuKernelCompile": null
+  },
+  "kernelCompileSeconds": {},
+  "failures": {
+    "linux-gates/world-volume": {
+      "wgsl-linux-intel": "codebrix_cycles_oracle: cbc_host_render returned 3: WebGPU surface data passes not implemented"
+    },
+    "linux-gates/closed-volumes": {
+      "wgsl-linux-intel": "codebrix_cycles_oracle: cbc_host_render returned 3: WebGPU surface data passes not implemented"
+    }
+  },
+  "comparisonsPassed": {
+    "linux-gates/glass-render": true,
+    "linux-gates/textured-plane": true,
+    "linux-gates/world-volume": null,
+    "linux-gates/closed-volumes": null
+  }
+}

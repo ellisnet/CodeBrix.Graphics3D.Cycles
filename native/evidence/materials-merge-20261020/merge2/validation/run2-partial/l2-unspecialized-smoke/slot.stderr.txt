@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/unspecialized_compile_smoke.py", line 94, in <module>
+    if __name__ == '__main__': main()
+                               ~~~~^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/unspecialized_compile_smoke.py", line 70, in main
+    text = a.wgsl.read_text(); exe = build_probe(out)
+  File "/usr/lib/python3.13/pathlib/_local.py", line 548, in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/pathlib/_abc.py", line 632, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 539, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/validation/l2-nodes-gate/out/nodes_render-unspecialized/surface.wgsl'

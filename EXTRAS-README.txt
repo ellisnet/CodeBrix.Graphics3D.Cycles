@@ -4,8 +4,8 @@ Samples, tools and other content in this repository that is not part of a NuGet
 package
 ================================================================================
 
-This repository ships no sample applications or demos. Exactly one .NET project
-is packable - src/CodeBrix.Graphics3D.Cycles - and it is a thin wrapper over a
+This repository ships no sample applications. It has one example client (the
+glTF render tool below). Exactly one .NET project is packable - src/CodeBrix.Graphics3D.Cycles - and it is a thin wrapper over a
 native renderer whose source, build tooling, validation gates and evidence also
 live here. None of the content listed below is included in the
 CodeBrix.Graphics3D.Cycles.ApacheLicenseForever package.
@@ -19,9 +19,71 @@ TEST PROJECT
 ============
     tests/CodeBrix.Graphics3D.Cycles.Tests/
 
-The only non-package project in the solution. xUnit v3; run it as described in
-MAINTAINER-README.txt (TESTING). Its native-host tests skip with a reason when
-the native host has not been built in the working tree.
+xUnit v3; run it as described in MAINTAINER-README.txt (TESTING). Its
+native-host tests skip with a reason when the native host has not been built in
+the working tree, and its WebGPU tests (WebGpuRenderTests.cs) also skip with a
+reason when no WebGPU adapter is available.
+
+
+GLTF RENDER TOOL (EXAMPLE CLIENT)
+=================================
+    tools/gltf/CycleGltfRender/      project CodeBrix.Graphics3D.Cycles.GltfRender
+
+A console tool in the solution's Tools folder, never packed. It loads a .gltf or
+.glb file with the CodeBrix.Graphics3D.Gltf2.MitLicenseForever package (a
+dependency of this tool only, never of the library), converts it into a Cycles
+scene through the typed API and renders it on the GPU (WebGPU) or the explicit
+CPU reference backend:
+
+    dotnet run --project tools/gltf/CycleGltfRender -c Release -- \
+        MODEL.glb --output film.bin [--backend cpu|gpu] [--compare] \
+        [--width 64 --height 48 --samples 16] [--camera N | --default-camera] \
+        [--native-library PATH]
+    ... --write-sample sample.glb [--sample-sun]   (a procedural test model)
+
+It writes the raw film (film.bin: little-endian float32 RGBA, scene-linear,
+row 0 at the bottom) and a small header (film.bin.json: size, samples, backend,
+sha256); it encodes no images. --compare renders on both backends, writes
+film.cpu.bin and film.gpu.bin and prints the maximum error, practical failures
+and strict differences with the repository criteria (exit code 3 on a practical
+failure). --help prints the mapping below. The native host is found through
+--native-library, then CODEBRIX_CYCLES_NATIVE, then the in-tree Linux build.
+
+What it maps (the closest closures the WebGPU backend has today; the Principled
+BSDF is not available on that backend yet, so glTF materials are approximated):
+
+    glTF                         Cycles
+    baseColorFactor (rgb)        Diffuse BSDF (Lambert) colour
+    metallicFactor > 0           Mix Closure (fac = metallic) of Diffuse and a
+                                 GGX Glossy BSDF coloured by the base colour
+    roughnessFactor              Glossy roughness (both perceptual)
+    emissiveFactor (+ strength)  Emission, added with Add Closure; emission
+                                 sampling off (forward hits only)
+    KHR_materials_unlit          Emission (base colour, strength 1)
+    alphaMode BLEND / MASK       Mix Closure with a Transparent BSDF (fac =
+                                 alpha) / all-or-nothing at alphaCutoff
+    meshes, nodes                one Cycles mesh per glTF mesh (primitives as
+                                 per-face shaders), one object per node
+                                 instance; shared meshes and
+                                 EXT_mesh_gpu_instancing become instances
+    NORMAL, TEXCOORD_0           smooth shading with the vertex normals; "uv"
+                                 corner attribute with v flipped
+    KHR_lights_punctual          directional -> sun (strength = intensity),
+                                 point -> point, spot -> spot (strength =
+                                 intensity x 4 pi); a default sun when none
+    camera                       the first perspective camera (yfov); otherwise
+                                 a default camera framing the scene bounds
+
+Limits, stated plainly: textures are NOT used. Gltf2 carries image bytes but
+does not decode them and the library takes raw pixels only (it never decodes
+image files), so the tool uses base-colour, metallic, roughness and emissive
+factors and warns once when a material has textures. Normal and occlusion maps,
+dielectric specular, clearcoat, transmission, sheen, volume, KHR_texture_transform,
+skins, morph targets, animations, orthographic cameras and light ranges are
+ignored with a warning. Objects keep the default shadow-terminator offsets,
+which both backends implement. The tests in
+tests/CodeBrix.Graphics3D.Cycles.Tests/GltfSceneConverterTests.cs drive the
+conversion on the procedural sample model.
 
 
 NATIVE RENDERER SOURCE
@@ -66,10 +128,12 @@ HOST-GATE FIXTURES
 ------------------
     tools/hosttests/HostLifecycle/   tools/hosttests/ImageModes/
     tools/hosttests/ColorReload/     tools/hosttests/AndroidHost/
-    tools/hosttests/NuGet.Config
+    tools/hosttests/WebGpuScenes/    tools/hosttests/NuGet.Config
 
 Console fixtures and an Android app template that consume the .NET wrapper and
-the native host. They are driven by native/tools/host_gate.py,
+the native host. WebGpuScenes/WebGpuValidationScenes.cs holds the small WebGPU
+validation scenes (glass, diffuse with a sun, textured plane) compiled into
+both the test project and the Android app. They are driven by native/tools/host_gate.py,
 macos_host_gate.py and build_android_app.py, are not in the solution, and are
 not family tests. MAINTAINER-README.txt (HOST-GATE FIXTURES) describes them.
 

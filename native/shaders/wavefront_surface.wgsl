@@ -5,10 +5,16 @@
 // SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause
 // Modified from Cycles: selected surface integration, BSDF mixtures, native
 // path-state updates and film writes in WGSL. See native/THIRD-PARTY-NOTICES.txt.
-fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID;}
+//#if SVM_BSDF_PRINCIPLED else fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID;}
+// CLOSURE_IS_BSDF_DIFFUSE also covers the Principled sheen closure.
+fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID||kind==CLOSURE_BSDF_SHEEN_ID;}
+//#endif
 fn surf_glossy(kind:u32)->bool{return kind==CLOSURE_BSDF_MICROFACET_GGX_ID;}
 fn surf_glass(kind:u32)->bool{return kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;}
-fn surf_refraction(kind:u32)->bool{return kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;}
+//#if SVM_BSDF_THIN_WALL else fn surf_refraction(kind:u32)->bool{return kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;}
+// CLOSURE_IS_BSDF_TRANSMISSION also covers the thin-walled Principled transmission lobe.
+fn surf_refraction(kind:u32)->bool{return kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID||kind==CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID;}
+//#endif
 fn surf_microfacet(kind:u32)->bool{return surf_glossy(kind)||surf_glass(kind)||surf_refraction(kind);}
 fn surf_glossy_direction(c:SvmClosure,wo:vec3<f32>)->bool{return surf_glossy(c.kind)||(surf_glass(c.kind)&&dot(c.N,wo)>0.0);}
 fn surf_bsdf(kind:u32)->bool{return surf_diffuse(kind)||surf_microfacet(kind)||kind==CLOSURE_BSDF_TRANSPARENT_ID;}
@@ -27,13 +33,33 @@ fn surf_oren(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec3<f32>{
     let nv=max(dot(c.N,wi),0.0);var t=dot(wo,wi)-nl*nv;if(t>0.0){t/=max(nl,nv)+1.1754943508222875e-38;}
     let el=svm_oren_add(c.a*PI,c.b*svm_oren_g(nl));return nl*(vec3<f32>(c.a+c.b*t)+c.multiscatter*(1.0-el));
 }
+// Shadow terminator shading offset (bsdf.h): eval *= shift_cos_in(dot(wo, N))
+// after the bump term when the object's frequency multiplier exceeds 1. Sample
+// evaluation applies it to every reflection; evaluation only for cosNO >= 0.
+fn surf_terminator(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>,value:vec3<f32>,is_eval:bool)->vec3<f32>{
+    let frequency=terminator_frequency(sd);if(frequency<=1.0){return value;}
+//#if SHADOW_TERMINATOR_SHADING else atomicOr(&heap[p(17u)/4u],2u);return value;
+    let cosNO=rounded_dot(wo,c.N);if(is_eval&&cosNO<0.0){return value;}
+    return value*terminator_shift_cos_in(cosNO,frequency);
+//#endif
+}
 fn surf_evaluate(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
+    let e=surf_evaluate_closure(sd,c,wo);return vec4<f32>(surf_terminator(sd,c,wo,e.xyz,true),e.w);
+}
+fn surf_evaluate_closure(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
     let bump=surf_bump(sd,c,wo,true);if(bump==0.0||c.kind==CLOSURE_BSDF_TRANSPARENT_ID){return vec4<f32>(0);}
     if(surf_microfacet(c.kind)){
 //#if SVM_BSDF_MICROFACET else atomicOr(&heap[p(17u)/4u],2u);return vec4<f32>(0);
-        let value=ggx_evaluate(c,sd.wi,wo);return vec4<f32>(value.xyz*bump,value.w);
+//#if SVM_BSDF_THIN_WALL else         let value=ggx_evaluate(c,sd.wi,wo);return vec4<f32>(value.xyz*bump,value.w);
+        // bsdf_thin_glass_transmission_eval: GGX reflection of the mirrored incoming direction.
+        var g=c;var wi=sd.wi;if(c.kind==CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID){g.kind=CLOSURE_BSDF_MICROFACET_GGX_ID;wi=rounded_add3(sd.wi,-((2.0*c.N)*rounded_dot(sd.wi,c.N)));}
+        let value=ggx_evaluate(g,wi,wo);return vec4<f32>(value.xyz*bump,value.w);
+//#endif
 //#endif
     }
+//#if SVM_BSDF_PRINCIPLED
+    if(c.kind==CLOSURE_BSDF_SHEEN_ID){let value=sheen_evaluate(c,wo);return vec4<f32>(vec3<f32>(value*bump),value);}
+//#endif
     let cosine=select(dot(c.N,wo),-dot(c.N,wo),c.kind==CLOSURE_BSDF_TRANSLUCENT_ID);let pdf=max(cosine,0.0)*INV_PI;
     if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){if(cosine>0.0){return vec4<f32>(surf_oren(c,sd.wi,wo)*bump,pdf);}return vec4<f32>(0);}
     return vec4<f32>(vec3<f32>(pdf*bump),pdf);
@@ -51,18 +77,29 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
         if(data_float(D_background_transparent_roughness_squared_threshold)>=0.0){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
     else if(surf_microfacet(c.kind)){
 //#if SVM_BSDF_MICROFACET else atomicOr(&heap[p(17u)/4u],2u);return out;
-        out=ggx_sample(sd,c,rand);value=out.eval;
+//#if SVM_BSDF_THIN_WALL else         out=ggx_sample(sd,c,rand);value=out.eval;
+        // bsdf_thin_glass_transmission_sample: singular pass-through, or GGX on the
+        // mirrored direction against the flipped geometric normal.
+        let thin=c.kind==CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID;var g=c;var gs=sd;
+        if(thin){g.kind=CLOSURE_BSDF_MICROFACET_GGX_ID;gs.Ng=-sd.Ng;gs.wi=rounded_add3(sd.wi,-((2.0*c.N)*rounded_dot(sd.wi,c.N)));}
+        if(thin&&c.alpha_x*c.alpha_y<=2e-10){out.wo=-sd.wi;out.pdf=1e6;out.eval=vec3<f32>(1e6);out.label=LABEL_TRANSMIT|LABEL_SINGULAR;}
+        else{out=ggx_sample(gs,g,rand);if(thin&&out.label!=0u){out.label=LABEL_TRANSMIT|LABEL_GLOSSY;}}
+        value=out.eval;
+//#endif
         if((out.label&LABEL_TRANSMIT)!=0u){let threshold=data_float(D_background_transparent_roughness_squared_threshold);
             if(threshold>=0.0&&c.alpha_x*c.alpha_y<=threshold){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
-        else{value*=surf_bump(sd,c,out.wo,false);}
+        else{value=surf_terminator(sd,c,out.wo,value,false);value*=surf_bump(sd,c,out.wo,false);}
 //#endif
     }
+//#if SVM_BSDF_PRINCIPLED
+    else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(sd,c,rand.xy);value=surf_terminator(sd,c,out.wo,out.eval,false);value*=surf_bump(sd,c,out.wo,false);}
+//#endif
     else{
         let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=surface_cos_hemisphere(select(c.N,-c.N,transmission),random.xy);
         out.wo=sampled.xyz;out.pdf=sampled.w;out.label=LABEL_DIFFUSE|select(LABEL_REFLECT,LABEL_TRANSMIT,transmission);
         let valid=select(dot(sd.Ng,out.wo)>0.0,dot(sd.Ng,out.wo)<0.0,transmission);
         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
-            if(!transmission){value*=surf_bump(sd,c,out.wo,false);}}
+            if(!transmission){value=surf_terminator(sd,c,out.wo,value,false);value*=surf_bump(sd,c,out.wo,false);}}
         else{out.pdf=0.0;}
     }
     if(out.pdf==0.0){return out;}
@@ -100,14 +137,17 @@ fn surf_holdout(sd:SurfaceData,r:ptr<function,SvmResult>)->vec3<f32>{
     }else{for(var i=0u;i<(*r).count;i++){let c=svm_closure_read(*r,i);if(c.kind==CLOSURE_HOLDOUT_ID){weight+=c.weight;}}}
     return weight;
 }
-fn surf_ray_offset(sd:SurfaceData,direction:vec3<f32>)->vec3<f32>{
-    var pos=sd.P;var dir=direction;if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){pos=surface_object_point(sd,pos,true);dir=surface_object_direction(sd,dir,true);}
+fn surf_ray_offset(sd:SurfaceData,direction:vec3<f32>)->vec3<f32>{return surf_ray_offset_at(sd,sd.P,direction);}
+// integrate_surface_ray_offset for a ray starting at P (the hit point, or the
+// shadow-terminator-offset origin).
+fn surf_ray_offset_at(sd:SurfaceData,P:vec3<f32>,direction:vec3<f32>)->vec3<f32>{
+    var pos=P;var dir=direction;if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){pos=surface_object_point(sd,pos,true);dir=surface_object_direction(sd,dir,true);}
     let vertices=native_triangle_vertices(sd.object_id,sd.prim,sd.primitive_type,sd.time);
     let a=vertices.a-pos;let b=vertices.b-pos;let c=vertices.c-pos;
     let u=c_ray_triangle_dot(c_ray_triangle_cross(c+a,c-a),dir);let v=c_ray_triangle_dot(c_ray_triangle_cross(a+b,a-b),dir);let w=c_ray_triangle_dot(c_ray_triangle_cross(b+c,b-c),dir);
-    let eps=1.1920928955078125e-7*abs(u+v+w);if(min(u,min(v,w))>=eps||max(u,max(v,w))<=-eps){return sd.P;}
-    let amount=vec3<i32>(256.0*sd.Ng);let bits=bitcast<vec3<i32>>(sd.P)+select(amount,-amount,sd.P<vec3<f32>(0));
-    return select(bitcast<vec3<f32>>(bits),sd.P+(1.0/65536.0)*sd.Ng,abs(sd.P)<vec3<f32>(1.0/32.0));
+    let eps=1.1920928955078125e-7*abs(u+v+w);if(min(u,min(v,w))>=eps||max(u,max(v,w))<=-eps){return P;}
+    let amount=vec3<i32>(256.0*sd.Ng);let bits=bitcast<vec3<i32>>(P)+select(amount,-amount,P<vec3<f32>(0));
+    return select(bitcast<vec3<f32>>(bits),P+(1.0/65536.0)*sd.Ng,abs(P)<vec3<f32>(1.0/32.0));
 }
 fn surf_next(index:u32,label:u32,runtime:u32){
     var flag=state_word(S_path_flag,index);let offset=state_half(S_path_rng_offset,index)+RNG_BOUNCE;state_u16(S_path_rng_offset,index,offset);
@@ -155,8 +195,6 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
     let flag=state_word(S_path_flag,index);if((flag&SURFACE_UNSUPPORTED_FLAGS)!=0u){fail();return;}
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);if(pixel>=p(11u)/stride){fail();return;}let base=p(4u)+pixel*stride*4u;
     var sd=surface_cached(id.x);if(sd.error!=0u){return;}let object=table_at(G_objects,sd.object_id,SIZE_objects);
-    if(heap_float(object+O_shadow_terminator_shading_offset)>1.0){fail();return;}
-    if(data_word(D_integrator_use_direct_light)!=0u&&(sd.shader&SHADER_SMOOTH_NORMAL)!=0u&&heap_float(object+O_shadow_terminator_geometry_offset)>0.0){fail();return;}
     let group=load_word(object+O_lightgroup);let go=data_word(D_film_pass_lightgroup);if(group!=NONE&&go!=PASS_NONE&&(group>=stride/3u||go>stride-3u*(group+1u))){fail();return;}
     if(volume_enabled()&&(sd.shader_flag&VS_HAS_VOLUME)!=0u){if(volume_stack_count(index)==NONE){return;}}
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){var empty:SvmResult;surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,empty);return;}
@@ -174,12 +212,14 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
     let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=1u){return;}store_word(at,0u);
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;
-    var weight=1.0;if((r.runtime_flag&SR_EMISSION)!=0u){weight=triangle_light_forward_weight(index,sd);}
-    var ls:NativeLightSample;
-    let flag=state_word(S_path_flag,index);
-    if(data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
+    let flag=state_word(S_path_flag,index);let emission=(r.runtime_flag&SR_EMISSION)!=0u;
+    let sample=data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
        (sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u&&(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)==0u&&
-       heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0){ls=light_sample_native(index,sd,r);}
+       heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0;
+    triangle_light_prefill(index,sd,emission,sample);
+    var weight=1.0;if(emission){weight=triangle_light_forward_weight(index,sd);}
+    var ls:NativeLightSample;
+    if(sample){ls=light_sample_native(index,sd,r);}
     if(load_word(p(17u))!=0u){return;}
     store_word(at+304u,bitcast<u32>(weight));light_sample_write(at+308u,ls);store_word(at,3u);
 }

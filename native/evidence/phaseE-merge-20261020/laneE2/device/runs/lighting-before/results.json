@@ -1,0 +1,122 @@
+{
+  "feature_combination": {
+    "gate": "feature_combination",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 92.2,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,SVM_BSDF_GLASS,MOTION_CAMERA",
+        "wgslBytes": 53409,
+        "moduleMs": 8.66865,
+        "pipelineMs": 27535.1,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,SVM_BSDF_GLASS,MOTION_CAMERA",
+        "wgslBytes": 71577,
+        "moduleMs": 10.2666,
+        "pipelineMs": 1412.02,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,SVM_BSDF_GLASS,MOTION_CAMERA",
+        "wgslBytes": 188737,
+        "moduleMs": 29.3984,
+        "pipelineMs": 1674.62,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,SVM_BSDF_GLASS,MOTION_CAMERA",
+        "wgslBytes": 240552,
+        "moduleMs": 38.4199,
+        "pipelineMs": 2378.99,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,SVM_BSDF_GLASS,MOTION_CAMERA",
+        "wgslBytes": 240552,
+        "moduleMs": 37.3037,
+        "pipelineMs": 16768.9,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,SVM_BSDF_GLASS,MOTION_CAMERA",
+        "wgslBytes": 240552,
+        "moduleMs": 37.7262,
+        "pipelineMs": 10591.4,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,SVM_BSDF_GLASS,MOTION_CAMERA",
+        "wgslBytes": 240552,
+        "moduleMs": 46.06,
+        "pipelineMs": 5978.96,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,SVM_BSDF_GLASS,MOTION_CAMERA",
+        "wgslBytes": 240552,
+        "moduleMs": 44.6645,
+        "pipelineMs": 24878.2,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      }
+    ],
+    "maxPipelineMs": 27535.1,
+    "passed": false,
+    "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 24878 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "01:31.92 | ERROR: WebGPU scheduler kernel reported invalid data (mask 512):",
+      "Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 512):"
+    ]
+  }
+}

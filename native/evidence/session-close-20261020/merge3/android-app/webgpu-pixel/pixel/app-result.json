@@ -1,0 +1,110 @@
+{
+  "passed": true,
+  "mode": "webgpu",
+  "scenes": [
+    {
+      "name": "glass",
+      "width": 32,
+      "height": 24,
+      "samples": 16,
+      "cpuSha256": "79273169c898aab0b20f0ca1d62f1032068520d30db9452af67772c041fcd0cc",
+      "gpuSha256": "53afaab92d29d8dd9a3b078382b60973db6fcac5255e1802a660b8f3746e13e6",
+      "maximumAbsoluteError": 1.1563301086425781e-05,
+      "practicalFailures": 0,
+      "strictDifferences": 310,
+      "cpuSeconds": 0.1096497,
+      "gpuSeconds": 129.2833885,
+      "progressEvents": 3,
+      "progressReports": 5,
+      "errorEvents": 0,
+      "pipelineTier": "full",
+      "warnings": [
+        "pipeline 'shade_surface_light' took 63466 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'connect_surface_light' took 21653 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'shade_surface' took 23235 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+      ]
+    },
+    {
+      "name": "diffuse-sun",
+      "width": 32,
+      "height": 24,
+      "samples": 16,
+      "cpuSha256": "d69cde187fd5700aecaf8e90897c4a642a3b98c40d1762c004bdf2225bba8b16",
+      "gpuSha256": "81e7bc1c1cfb995968c7920b78f18ad5d2b895f4b042ceaf26faa9f0907cfc3d",
+      "maximumAbsoluteError": 4.172325134277344e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 543,
+      "cpuSeconds": 0.0357127,
+      "gpuSeconds": 84.5951642,
+      "progressEvents": 3,
+      "progressReports": 5,
+      "errorEvents": 0,
+      "pipelineTier": "full",
+      "warnings": [
+        "pipeline 'shade_surface_light' took 65547 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+      ]
+    },
+    {
+      "name": "textured-plane",
+      "width": 32,
+      "height": 24,
+      "samples": 16,
+      "cpuSha256": "ebc90df1aa300f9e596b24504db1068d1a43d5aad85a3285667b92d7c2989ce4",
+      "gpuSha256": "7f3d37a3346fcf3042b4e218d2361e0af8b478f8ee1ff06c7902f4d27dc16ff8",
+      "maximumAbsoluteError": 2.384185791015625e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 26,
+      "cpuSeconds": 0.0169113,
+      "gpuSeconds": 123.1750157,
+      "progressEvents": 4,
+      "progressReports": 6,
+      "errorEvents": 0,
+      "pipelineTier": "full",
+      "warnings": [
+        "pipeline 'prepare_surface' took 30302 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+        "pipeline 'shade_surface_light' took 66300 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+      ]
+    }
+  ],
+  "cancellation": {
+    "cancelled": true,
+    "secondsUntilCancelled": 0.0117573,
+    "faultedAfterCancel": false,
+    "reRenderMaximumAbsoluteError": 4.172325134277344e-07,
+    "reRenderPracticalFailures": 0,
+    "reRenderStrictDifferences": 544
+  },
+  "capability": {
+    "backendName": "webgpu",
+    "pipelineTier": "full",
+    "deviceDescription": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520\nDate: 11/30/20\nCompiler Version: EV031.31.04.01\nDriver Branch: promo490_3_Google\n",
+    "deviceId": "WEBGPU_Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520\nDate: 11/30/20\nCompiler Version: EV031.31.04.01\nDriver Branch: promo490_3_Google\n",
+    "warnings": [
+      "pipeline 'shade_surface_light' took 63466 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "pipeline 'connect_surface_light' took 21653 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "pipeline 'shade_surface' took 23235 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+    ],
+    "writtenPasses": [
+      "combined"
+    ],
+    "renderTimeRejections": [
+      "non-perspective or stereo cameras",
+      "light trees",
+      "surface data passes",
+      "volume light passes",
+      "background light MIS",
+      "nonconstant light emission",
+      "heterogeneous volumes",
+      "moving transparent shadows",
+      "curves and points",
+      "sparse or tiled images"
+    ],
+    "json": "{\"schemaVersion\":1,\"abiVersion\":1,\"libraryVersion\":\"1.0.20261021.0\",\"cyclesRevision\":\"a456b761034dda42c32eef9f4aae0fa5a5c9f604\",\"backends\":{\"compiled\":[\"cpu\",\"webgpu\"],\"gpu\":\"webgpu\",\"gpuFallbackToCpu\":false},\"backendScope\":{\"cpu\":{\"device\":\"Cycles CPU device (reference)\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\"],\"passes\":\"registered pass types written by the Cycles CPU device\"},\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\"],\"primitives\":[\"triangle\"],\"passes\":[\"combined\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"light trees\",\"surface data passes\",\"volume light passes\",\"background light MIS\",\"nonconstant light emission\",\"heterogeneous volumes\",\"moving transparent shadows\",\"curves and points\",\"sparse or tiled images\"],\"reference\":\"native/DEVICE.md\"}},\"optionalLibraries\":{\"osl\":false,\"embree\":false,\"openImageDenoise\":false,\"openVdb\":false},\"imageInput\":{\"formats\":[\"float\",\"float4\",\"half\",\"half4\",\"byte\",\"byte4\",\"ushort\",\"ushort4\"],\"origin\":\"lower-left\",\"fileReading\":\"development-only\"},\"output\":{\"format\":\"float32\",\"colorSpace\":\"scene-linear\",\"origin\":\"lower-left\",\"combinedComponents\":4,\"passReadback\":\"copied\"},\"passTypes\":[{\"name\":\"adaptive_aux_buffer\",\"value\":44},{\"name\":\"ao\",\"value\":4},{\"name\":\"aov_color\",\"value\":42},{\"name\":\"aov_value\",\"value\":43},{\"name\":\"background\",\"value\":3},{\"name\":\"bake_differential\",\"value\":98},{\"name\":\"bake_primitive\",\"value\":96},{\"name\":\"bake_seed\",\"value\":97},{\"name\":\"combined\",\"value\":1},{\"name\":\"cryptomatte\",\"value\":41},{\"name\":\"denoising_albedo\",\"value\":64},{\"name\":\"denoising_backward_motion\",\"value\":69},{\"name\":\"denoising_depth\",\"value\":68},{\"name\":\"denoising_normal\",\"value\":66},{\"name\":\"denoising_previous\",\"value\":128},{\"name\":\"denoising_roughness\",\"value\":67},{\"name\":\"denoising_specular_albedo\",\"value\":65},{\"name\":\"denoising_specular_motion\",\"value\":70},{\"name\":\"depth\",\"value\":32},{\"name\":\"diffuse\",\"value\":5},{\"name\":\"diffuse_color\",\"value\":46},{\"name\":\"diffuse_direct\",\"value\":6},{\"name\":\"diffuse_indirect\",\"value\":7},{\"name\":\"emission\",\"value\":2},{\"name\":\"glossy\",\"value\":8},{\"name\":\"glossy_color\",\"value\":47},{\"name\":\"glossy_direct\",\"value\":9},{\"name\":\"glossy_indirect\",\"value\":10},{\"name\":\"material_id\",\"value\":38},{\"name\":\"mist\",\"value\":49},{\"name\":\"motion\",\"value\":39},{\"name\":\"motion_weight\",\"value\":40},{\"name\":\"normal\",\"value\":34},{\"name\":\"object_id\",\"value\":37},{\"name\":\"position\",\"value\":33},{\"name\":\"render_time\",\"value\":50},{\"name\":\"roughness\",\"value\":35},{\"name\":\"sample_count\",\"value\":45},{\"name\":\"shadow_catcher\",\"value\":51},{\"name\":\"shadow_catcher_matte\",\"value\":53},{\"name\":\"shadow_catcher_sample_count\",\"value\":52},{\"name\":\"transmission\",\"value\":11},{\"name\":\"transmission_color\",\"value\":48},{\"name\":\"transmission_direct\",\"value\":12},{\"name\":\"transmission_indirect\",\"value\":13},{\"name\":\"uv\",\"value\":36},{\"name\":\"volume\",\"value\":14},{\"name\":\"volume_direct\",\"value\":15},{\"name\":\"volume_indirect\",\"value\":16},{\"name\":\"volume_majorant\",\"value\":57},{\"name\":\"volume_majorant_sample_count\",\"value\":58},{\"name\":\"volume_scatter\",\"value\":17},{\"name\":\"volume_transmit\",\"value\":18}],\"events\":[\"status\",\"progress\",\"error\"],\"limits\":{\"maxRenderWidth\":32768,\"maxRenderHeight\":32768,\"maxSamples\":2147483647,\"maxImageDimension\":2147483647,\"maxMotionSteps\":129,\"maxThreads\":1024,\"errorMessageBytes\":2048},\"determinism\":\"native/host/ABI.md#determinism\",\"host\":{\"backend\":\"webgpu\",\"deviceDescription\":\"Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520\\u000aDate: 11/30/20\\u000aCompiler Version: EV031.31.04.01\\u000aDriver Branch: promo490_3_Google\\u000a\",\"deviceId\":\"WEBGPU_Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520\\u000aDate: 11/30/20\\u000aCompiler Version: EV031.31.04.01\\u000aDriver Branch: promo490_3_Google\\u000a\",\"deviceReport\":{\"abiVersion\":1,\"backend\":\"webgpu\",\"pipelines\":{\"specialization\":true,\"tier\":\"full\",\"degraded\":true,\"budgetMs\":20000,\"warnings\":[\"pipeline 'shade_surface_light' took 63466 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver\",\"pipeline 'connect_surface_light' took 21653 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver\",\"pipeline 'shade_surface' took 23235 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver\"],\"enabledFeatures\":\"SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLASS,LIGHT_TRIANGLE,SHADOW_TERMINATOR_GEOMETRY\",\"svmDecodedNodes\":21,\"svmStoppedPaths\":0,\"budgetSource\":\"table\",\"decision\":{\"tier\":\"full\",\"reason\":\"table\",\"detail\":\"Pixel 4 XL Adreno 640: Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)\",\"adapter\":{\"vendor\":\"Qualcomm Technologies Inc. Adreno Vulkan Driver\",\"architecture\":\"\",\"device\":\"Adreno (TM) 640\",\"description\":\"Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google \",\"vendorId\":20803,\"deviceId\":100925441,\"simulated\":false,\"mobile\":true},\"runtime\":\"codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool\",\"shaderHash\":\"fnv1a64:3a79b87f57ee44c5\",\"knownAdapter\":{\"name\":\"Pixel 4 XL Adreno 640\",\"tier\":\"full\",\"budgetMs\":20000,\"evidence\":\"Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)\"},\"budgetSource\":\"table\",\"record\":{\"mode\":\"none\",\"path\":\"\",\"status\":\"none\",\"fullTierCompiles\":0,\"conservativeTierCompiles\":0,\"failures\":0,\"breadcrumbs\":[]},\"canary\":{\"enabled\":false,\"result\":\"not-run\",\"ms\":0,\"detail\":\"\"},\"overrides\":[],\"warnings\":[]},\"pipelines\":[{\"module\":\"camera\",\"entry\":\"init_camera\",\"wgslBytes\":53423,\"moduleMs\":11.3705,\"pipelineMs\":1118.43},{\"module\":\"closest\",\"entry\":\"intersect_closest\",\"wgslBytes\":76495,\"moduleMs\":11.336,\"pipelineMs\":4456.76},{\"module\":\"surface\",\"entry\":\"prepare_shader_data\",\"wgslBytes\":259728,\"moduleMs\":39.5333,\"pipelineMs\":3224.04},{\"module\":\"surface\",\"entry\":\"prepare_surface\",\"wgslBytes\":259728,\"moduleMs\":38.2778,\"pipelineMs\":6027.66},{\"module\":\"surface\",\"entry\":\"shade_surface_light\",\"wgslBytes\":259728,\"moduleMs\":40.082,\"pipelineMs\":63465.6},{\"module\":\"surface\",\"entry\":\"connect_surface_light\",\"wgslBytes\":259728,\"moduleMs\":38.8112,\"pipelineMs\":21653.4},{\"module\":\"surface\",\"entry\":\"shade_surface\",\"wgslBytes\":259728,\"moduleMs\":41.2315,\"pipelineMs\":23234.9},{\"module\":\"background\",\"entry\":\"shade_background\",\"wgslBytes\":195158,\"moduleMs\":29.587,\"pipelineMs\":1382.79},{\"module\":\"shadow\",\"entry\":\"intersect_shadow\",\"wgslBytes\":190433,\"moduleMs\":29.3326,\"pipelineMs\":1897.38},{\"module\":\"shadow\",\"entry\":\"shade_shadow\",\"wgslBytes\":190433,\"moduleMs\":29.3296,\"pipelineMs\":53.2496}]}}}}"
+  },
+  "practicalCriterion": "5e-5 + 2e-4*abs(cpu)",
+  "strictCriterion": "1e-7 + 1e-7*abs(cpu)",
+  "actualAndroidApp": true,
+  "architecture": "Arm64",
+  "apiLevel": 33,
+  "nativeDirectory": "/data/app/~~AffO2SWRDOTonlaK_VA6mw==/com.codebrix.cycles.hostvalidation.mw3-qJd1jdVUxsGXCYU2h9fezw==/lib/arm64"
+}

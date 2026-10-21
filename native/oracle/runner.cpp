@@ -173,7 +173,7 @@ struct Loader {
       if (value == values.end() || domain == domains.end()) fail("Unknown attribute value or domain for " + name);
       uint32_t flags = 0;
       if (auto f = attribute.find("flags")) for (auto &flag : f->items)
-        flags |= flag.string() == "standard" ? CBC_ATTR_STANDARD : flag.string() == "subdivision" ? CBC_ATTR_SUBDIVISION : (fail("Unknown attribute flag"), 0u);
+        flags |= flag.string() == "standard" ? uint32_t(CBC_ATTR_STANDARD) : flag.string() == "subdivision" ? uint32_t(CBC_ATTR_SUBDIVISION) : (fail("Unknown attribute flag"), 0u);
       CBCAttributeConfig config = {sizeof(config), value->second, domain->second, flags, {0}};
       if (auto data = attribute.find("data")) {
         std::vector<float> floats; for (auto &v : data->items) floats.push_back(v.as_float());
@@ -182,6 +182,14 @@ struct Loader {
         std::vector<uint8_t> bytes; for (auto &v : attribute.at("bytes").items) bytes.push_back(uint8_t(v.as_int()));
         check(cbc_host_attribute_bytes(host, target, name.c_str(), &config, bytes.data(), bytes.size()), "cbc_host_attribute_bytes(" + name + ")");
       }
+    }
+    // Optional deformation motion: steps time-ordered position arrays, the
+    // center step equal to "positions" (cbc_host_motion_positions).
+    if (auto motion = mesh.find("motion")) {
+      std::vector<float> positions;
+      for (auto &v : motion->at("positions").items) positions.push_back(v.as_float());
+      check(cbc_host_motion_positions(host, target, uint32_t(motion->at("steps").as_int()), positions.data(), positions.size()),
+            "cbc_host_motion_positions");
     }
   }
 

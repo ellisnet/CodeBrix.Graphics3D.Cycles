@@ -1,0 +1,66 @@
+{
+  "kind": "samples",
+  "run": "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/runs/samsung/triangle-c2/output/triangle_sample/run",
+  "reference": "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/runs/samsung/triangle-c2/device-scene-reference/references/triangle_sample",
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "passed": false,
+  "rows": [
+    {
+      "key": "samples",
+      "authoritative": {
+        "compared": 45056,
+        "bitwiseDiffering": 6691,
+        "nonFinite": 0,
+        "practicalFailures": 41,
+        "strictDifferences": 3674,
+        "maximumAbsoluteError": 0.7428510189056396,
+        "maximumPracticalRatio": 6783.485335707895,
+        "maximumUlps": 15520768,
+        "firstPracticalFailure": {
+          "index": 3830,
+          "actual": -0.20635581016540527,
+          "reference": -0.20616364479064941
+        },
+        "passed": false,
+        "validityDifferences": 0,
+        "validSamples": 4096
+      },
+      "diagnosticLocalVersusGlibc": {
+        "compared": 45056,
+        "bitwiseDiffering": 4620,
+        "nonFinite": 0,
+        "practicalFailures": 65,
+        "strictDifferences": 3517,
+        "maximumAbsoluteError": 0.7428510189056396,
+        "maximumPracticalRatio": 6783.485335707895,
+        "maximumUlps": 15520768,
+        "firstPracticalFailure": {
+          "index": 518,
+          "actual": 0.18177056312561035,
+          "reference": 0.18187665939331055
+        },
+        "passed": false,
+        "validityDifferences": 0,
+        "role": "diagnostic"
+      },
+      "diagnosticGpuVersusLocal": {
+        "compared": 45056,
+        "bitwiseDiffering": 4474,
+        "nonFinite": 0,
+        "practicalFailures": 24,
+        "strictDifferences": 2087,
+        "maximumAbsoluteError": 0.0015299320220947266,
+        "maximumPracticalRatio": 11.59614889464806,
+        "maximumUlps": 2186752,
+        "firstPracticalFailure": {
+          "index": 518,
+          "actual": 0.18187665939331055,
+          "reference": 0.18177056312561035
+        },
+        "passed": false,
+        "role": "diagnostic"
+      }
+    }
+  ]
+}

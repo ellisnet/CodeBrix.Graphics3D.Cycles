@@ -1,0 +1,93 @@
+[14:42:43] [14:41] started; Pixel lock 98271FFBA0048D taken at 14:41:13; read merge-wave-1, E1, E2, X1 reports
+[14:43:34] android-arm64 before build started
+[14:43:48] linux before build started
+[14:47:10] android before build done
+[14:47:50] probe START v0 wgsl=- env=
+[14:49:20] probe END v0 rc=1 90s WebGPU scheduler kernel reported invalid data (mask 1057423950): unsupported SVM opcode or scene-specialized handler SVM bytecode outside table invalid/uninitialized SVM stack invalid attribute map/data
+[14:49:39] probe START v0b wgsl=- env=
+[14:51:08] probe END v0b rc=134 89s Aborted 
+[14:51:55] probe START base wgsl=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/probe/base.wgsl env=
+[14:53:25] probe END base rc=134 90s Aborted 
+[14:53:25] probe START lim64 wgsl=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/probe/var/lim64.wgsl env=
+[14:54:51] probe END lim64 rc=1 86s Emitter sample=43 field=2 got=0.181877 expected=0.181771
+[14:54:51] probe START noprefill wgsl=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/probe/var/noprefill.wgsl env=
+[14:55:01] probe END noprefill rc=1 10s WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data
+[14:55:52] probe START chunk256 wgsl=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/probe/var/offset.wgsl env=E5_CHUNK=256
+[14:57:29] probe END chunk256 rc=1 97s Emitter sample=43 field=2 got=0.181877 expected=0.181771
+[14:58:33] probe START soa-c256 wgsl=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/probe/var/soa.wgsl env=E5_CHUNK=256
+[15:00:04] probe END soa-c256 rc=1 91s Emitter sample=43 field=2 got=0.181877 expected=0.181771
+[15:00:04] probe START nocache-c256 wgsl=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/probe/var/nocache.wgsl env=E5_CHUNK=256
+[15:01:49] probe END nocache-c256 rc=1 105s Emitter sample=43 field=2 got=0.181877 expected=0.181771
+[15:01:49] probe START base-c1024 wgsl=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/probe/var/offset.wgsl env=E5_CHUNK=1024
+[15:03:19] probe END base-c1024 rc=1 90s Emitter sample=43 field=2 got=0.181877 expected=0.181771
+[15:03:19] probe START base-c2048 wgsl=/home/jeremy/ClaudeHome/cycles-worktrees/e5-pixel-sampler/native/work/e5/probe/var/offset.wgsl env=E5_CHUNK=2048
+[15:04:50] probe END base-c2048 rc=1 91s Emitter sample=43 field=2 got=0.181877 expected=0.181771
+[15:05:26] [15:05] root cause confirmed (GPU watchdog/device lost on 4 s single dispatch, not an OOB store); fix applied to native/cycles/emitter_sample_gate.cpp (256-invocation slices for the triangle probe)
+[15:05:33] linux before build done (exit seen in log)
+[15:05:50] linux clean final build started (build dirs removed first)
+[15:09:20] android after build done
+[15:18:44] linux final build exit=0 774s
+[15:19:05] pixel triangle-e5final: START triangle_sample timeout=2400s
+[15:19:05] pixel triangle-e5final: SCENE-DUMP triangle_sample
+[15:19:09] pixel triangle-e5final: SCENE-REFERENCE triangle_sample references=1
+[15:19:15] START linux triangle
+[15:20:40] pixel triangle-e5final: REFERENCE triangle_sample host re-judged vs glibc: False
+[15:20:40] pixel triangle-e5final: FAIL triangle_sample exit=1 90s: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164
+[15:20:40] pixel triangle-e5final: START surface timeout=2400s
+[15:21:22] END linux triangle exit=0 127s
+[15:21:22] START linux emitter-sample
+[15:21:35] END linux emitter-sample exit=0 13s
+[15:21:35] START linux all-lanes
+[15:23:35] pixel triangle-e5final: PASS surface 176s maxPipelineMs=10140.6
+[15:23:35] pixel triangle-e5final: START triangle_lighting timeout=2400s
+[15:23:35] pixel triangle-e5final: SCENE-DUMP triangle_lighting
+[15:23:42] pixel triangle-e5final: SCENE-REFERENCE triangle_lighting references=6
+[15:26:54] pixel triangle-e5final: REFERENCE triangle_lighting host re-judged vs glibc: False
+[15:26:54] pixel triangle-e5final: FAIL triangle_lighting exit=1 190s: Lighting film mismatch mode=4 component=312 actual=0.064647 expected=0.065844
+[15:26:58] pixel triangle-e5final: END passed=False wall=474s/7200s failures=3
+[15:26:58] pixel corpus triangle e5final exit=0 478s
+[15:27:03] pixel emitter-e5final: START emitter_sample timeout=1195s
+[15:27:03] pixel emitter-e5final: SCENE-DUMP emitter_sample
+[15:27:07] pixel emitter-e5final: SCENE-REFERENCE emitter_sample references=1
+[15:27:28] pixel emitter-e5final: REFERENCE emitter_sample host re-judged vs glibc: True
+[15:27:28] pixel emitter-e5final: PASS emitter_sample 20s maxPipelineMs=None
+[15:27:32] pixel emitter-e5final: END passed=True wall=30s/1200s failures=0
+[15:27:32] pixel corpus emitter e5final exit=0 34s
+[15:27:36] pixel pixel-lighting-e5final: START feature_combination timeout=2395s
+[15:27:36] pixel pixel-lighting-e5final: SCENE-DUMP feature_combination
+[15:27:43] pixel pixel-lighting-e5final: SCENE-REFERENCE feature_combination references=8
+[15:29:42] pixel pixel-lighting-e5final: REFERENCE feature_combination host re-judged vs glibc: True
+[15:29:42] pixel pixel-lighting-e5final: PASS feature_combination 116s maxPipelineMs=27095.3
+[15:29:42] pixel pixel-lighting-e5final: START feature_combination-replay-0 timeout=2269s
+[15:31:12] pixel pixel-lighting-e5final: PASS feature_combination-replay-0 89s readbacks=408 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[15:31:16] pixel pixel-lighting-e5final: END passed=True wall=220s/2400s failures=0
+[15:31:16] pixel corpus pixel-lighting e5final exit=0 224s
+[15:31:21] pixel pixel-motion-e5final: START object-moving-images timeout=2395s
+[15:31:21] pixel pixel-motion-e5final: SCENE-DUMP object-moving-images
+[15:31:28] pixel pixel-motion-e5final: SCENE-REFERENCE object-moving-images references=8
+[15:37:11] pixel pixel-motion-e5final: REFERENCE object-moving-images host re-judged vs glibc: True
+[15:37:11] pixel pixel-motion-e5final: PASS object-moving-images 340s maxPipelineMs=85454.6
+[15:37:11] pixel pixel-motion-e5final: START object-replay-motion-0 timeout=2045s
+[15:40:40] END linux all-lanes exit=0 1145s
+[15:40:40] START linux glass-spec-on
+[15:41:15] END linux glass-spec-on exit=0 35s
+[15:41:15] START linux glass-spec-off
+[15:42:37] pixel pixel-motion-e5final: PASS object-replay-motion-0 325s readbacks=414 max=2.38e-07 strict=6 fmt=native-command-stream-v6
+[15:42:41] pixel pixel-motion-e5final: END passed=True wall=680s/2400s failures=0
+[15:42:41] pixel corpus pixel-motion e5final exit=0 685s
+[15:42:41] pixel chain DONE
+[15:42:56] Pixel cleaned (codebrix-e5-* removed, no app installed, no process left); Pixel lock 98271FFBA0048D released
+[15:43:20] END linux glass-spec-off exit=0 125s
+[15:43:20] START linux host-gate
+[15:45:39] END linux host-gate exit=1 139s
+[15:45:39] START linux dotnet-build
+[15:45:43] END linux dotnet-build exit=0 4s
+[15:45:43] START linux dotnet-test
+[15:47:02] END linux dotnet-test exit=0 79s
+[15:47:02] linux slot DONE
+[15:47:20] host gate r1 failed its end-of-run source-pin assertion: DEVICE.md/PARITY.md were edited during the run (docs edits 15:43-15:45); rerun on the final tree
+[15:47:20] START linux host-gate
+[15:49:32] END linux host-gate exit=0 132s
+[15:49:50] linux host gate rerun PASS (48 exports, 3,142 comparisons, max 1.19e-7, 0/0); audits after docs PASS
+[15:50:07] scratch deleted (Android build trees, probe binaries, copied Android prefix, 201 replay arenas; 414 files / 4.9 GB recorded by sha256 in scratch-deleted.json)
+[15:50:19] handoff resealed after cleanup; report written to agent-reports/phaseE5-pixel-sampler.md

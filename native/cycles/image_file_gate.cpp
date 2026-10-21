@@ -82,7 +82,8 @@ static const char probe_entry[] = R"WGSL(
  for(var i=0u;i<4u;i++){store_word(out+i*4u,bitcast<u32>(color[i]));}
 })WGSL";
 
-static cbc::Pipeline make_pipeline(WebGPUDevice &device, const std::string &source) {
+static cbc::Pipeline make_pipeline(WebGPUDevice &device, const std::string &probe) {
+  const std::string source=gate_probe_wgsl(device,probe);
   WGPUShaderSourceWGSL code{};code.chain.sType=WGPUSType_ShaderSourceWGSL;
   code.code={source.data(),source.size()};WGPUShaderModuleDescriptor desc{};desc.nextInChain=&code.chain;
   device.gpu.push_scope();
@@ -205,8 +206,8 @@ int main(int argc,char **argv) {
       files.push_back(write_image(directory/("jpeg-"+std::to_string(channels)+".jpg"),OIIO::TypeUInt8,channels,7,5,files.size()));
     auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
     Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);
-    auto pointer=dynamic_cast<WebGPUDevice*>(owner.get());require(pointer,"WebGPU device creation failed");auto &d=*pointer;
-    const std::string source=svm_surface_source()+probe_entry;auto pipeline=make_pipeline(d,source);
+    auto &d=require_webgpu_device(owner.get(),"image_file_gate device creation");
+    const std::string source=gate_probe_wgsl(d,svm_surface_source()+probe_entry);auto pipeline=make_pipeline(d,source);
     Checks checks;uint64_t capture_samples=0;unsigned duplicate_handles=0,replacements=0,missing_files=0,udim_tiles=0;
     std::set<unsigned> formats;unsigned parameter_variants=0;
     {

@@ -24,6 +24,9 @@ BACKENDS={
   'Cycles Metal device, MetalRT off (BVH2), generic kernels (PSO_GENERIC), fastMathEnabled as pinned'),
  'metal-m2pro-metalrt':('metal',{'CYCLES_METALRT':'1','CYCLES_METAL_SPECIALIZATION_LEVEL':'0'},
   'Cycles Metal device, MetalRT forced on (Apple ray-tracing API, software on M2), generic kernels; validation of the M3+ default path'),
+ # Linux x64 (native/host/targets.cmake builds the runner as codebrix_cycles_oracle).
+ 'cpu-x64-linux':('cpu',{},'Cycles CPU device, GCC x86-64 (-msse4.2 -ffp-contract=off host options)'),
+ 'wgsl-linux-intel':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)'),
 }
 
 
@@ -78,7 +81,9 @@ def render(args,scene,name,target,cache,extra_meta):
    bvhLayout='BVH_LAYOUT_METAL' if environment['CYCLES_METALRT']=='1' else 'BVH_LAYOUT_BVH2',fastMathEnabled=True,denoiser=None,
    kernelSource=str(Path(args.host_library).parent/'codebrix-cycles/source'),kernelCache=str(cache/'cycles'),
    systemMetalShaderCache='not cleared (macOS-managed)',optionNames=['CYCLES_METALRT','CYCLES_METAL_SPECIALIZATION_LEVEL','DeviceInfo::use_hardware_raytracing','DeviceInfo::kernel_optimization_level'])
- meta['deviceName']=f"{extra_meta['machine']['gpu']['model'] if backend=='metal' else extra_meta['machine']['cpu']} (the C API does not expose Cycles' DeviceInfo)"
+ meta['deviceName']=(f"{extra_meta['machine']['gpu']['model']} (the C API does not expose Cycles' DeviceInfo)" if backend=='metal' else
+  'WebGPU adapter: see machine.gpu and cbc_host_capabilities_json' if backend=='webgpu' else
+  f"{extra_meta['machine']['cpu']} (the C API does not expose Cycles' DeviceInfo)")
  (target/'meta.json').write_text(json.dumps(meta,indent=2)+'\n')
  if args.previews:
   subprocess.run([str(args.previews),'preview',str(target/'film-0.f32'),str(meta['width']),str(meta['height']),str(target/'film-0.png')],check=True)
@@ -89,7 +94,8 @@ def run(args):
  root=args.output.resolve()
  if root.exists() and any(root.iterdir()):raise SystemExit(f'{root} is not empty; use a new run directory')
  oracle=root/'oracle';oracle.mkdir(parents=True)
- scenes=[Path(s).resolve() for s in args.scene] or sorted((HERE/'scenes').rglob('*.json'))
+ # Scene-family manifest.json files list hashes; they are not scenes.
+ scenes=[Path(s).resolve() for s in args.scene] or sorted(p for p in (HERE/'scenes').rglob('*.json') if p.name!='manifest.json')
  backends=args.backend or list(BACKENDS)
  common=dict(machine=machine(),hostLibrarySha256=sha(args.host_library),runnerSha256=sha(args.runner),cpuKernelCompile=kernel_flags())
  record=dict(scenes={},backends=backends,common=common,kernelCompileSeconds={})
@@ -104,12 +110,17 @@ def run(args):
    identifier=json.loads(scene.read_text())['id'];target=oracle/identifier/name;target.parent.mkdir(parents=True,exist_ok=True)
    extra=dict(common,sceneFile=str(scene.relative_to(REPO)))
    if name in record['kernelCompileSeconds']:extra['kernelCompileSeconds']=record['kernelCompileSeconds'][name]['firstRenderSeconds']
-   meta=render(args,scene,name,target,cache,extra)
+   try:meta=render(args,scene,name,target,cache,extra)
+   except RuntimeError as error:
+    # A backend that rejects a scene is a recorded finding, not a run abort.
+    record.setdefault('failures',{}).setdefault(identifier,{})[name]=str(error).splitlines()[-1]
+    print(f'{identifier:<40} {name:<22} FAILED: {str(error).splitlines()[-1]}',flush=True);continue
    record['scenes'].setdefault(identifier,{})[name]=dict(renderSeconds=meta['renderSeconds'],repeatBitwiseIdentical=meta['repeatBitwiseIdentical'])
    print(f'{identifier:<40} {name:<22} {meta["renderSeconds"]}',flush=True)
  comparisons={}
  for identifier in record['scenes']:
-  directories=[oracle/identifier/name for name in backends]
+  directories=[oracle/identifier/name for name in backends if name in record['scenes'][identifier]]
+  if len(directories)<2:comparisons[identifier]=None;continue
   report=root/'comparisons'/(identifier.replace('/','__')+'.json');report.parent.mkdir(exist_ok=True)
   result=subprocess.run([sys.executable,str(HERE/'compare.py'),*map(str,directories),'--json',str(report)],capture_output=True,text=True)
   print(result.stdout,flush=True);comparisons[identifier]=json.loads(report.read_text())['passed'] if report.exists() else False

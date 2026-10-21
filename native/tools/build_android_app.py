@@ -97,15 +97,20 @@ def main():
     parser.add_argument('--templates',type=Path,default=REPO/'tools/hosttests/AndroidHost')
     parser.add_argument('--native-review',type=Path,help='Reuse a matching native binary review, or inspect current native builds when omitted')
     parser.add_argument('--references',type=Path,required=True)
+    parser.add_argument('--application-id',default='com.codebrix.cycles.hostvalidation',
+                        help='Android package id; a separate id leaves an installed validation app untouched')
     args=parser.parse_args();out=args.output.resolve();templates=args.templates.resolve();refs=args.references.resolve()
     out.mkdir(parents=True,exist_ok=False);app=out/'app';app.mkdir()
     source_pin=inputs();pins={str(Path(__file__).resolve()):sha(Path(__file__))}
     state=dict(complete=False,phase='staging');save(out/'status.json',state)
     try:
-        for name in ['AndroidHost.csproj','AndroidManifest.xml','MainActivity.cs','FilmComparison.cs']:
+        for name in ['AndroidHost.csproj','AndroidManifest.xml','MainActivity.cs','FilmComparison.cs','WebGpuChecks.cs']:
             path=templates/name
             assert path.is_file(),path
             shutil.copy2(path,app/path.name);pins[str(path)]=sha(path)
+        # WebGPU validation scenes shared with the Linux managed tests.
+        shared=REPO/'tools/hosttests/WebGpuScenes/WebGpuValidationScenes.cs'
+        shutil.copy2(shared,app/shared.name);pins[str(shared)]=sha(shared)
         for project,name in [('HostLifecycle','HostChecks'),('ImageModes','ImageChecks')]:
             source=REPO/'tools/hosttests'/project/'Program.cs'
             (app/(name+'.cs')).write_text(checks(source,name));pins[str(source)]=sha(source)
@@ -170,15 +175,15 @@ def main():
         staged={str(p):sha(p) for p in app.rglob('*') if p.is_file()}
         command=['dotnet','build',str(app/'AndroidHost.csproj'),'-c','Debug','--configfile',str(REPO/'tools/hosttests/NuGet.Config'),'--nologo',
             '-p:CodeBrixSourceRoot='+str(REPO),'-p:JavaSdkDirectory=/usr/lib/jvm/java-21-openjdk-amd64',
-            '-p:AndroidSdkDirectory='+str(Path.home()/'Android/Sdk')]
+            '-p:AndroidSdkDirectory='+str(Path.home()/'Android/Sdk'),'-p:ApplicationId='+args.application_id]
         save(out/'invocation.json',dict(sourceSha256=source_pin,inputSha256=pins,stagedSha256=staged,command=command))
         state['phase']='build';save(out/'status.json',state)
         with (out/'build.log').open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=600)
-        apk=app/'bin/Debug/net10.0-android/com.codebrix.cycles.hostvalidation-Signed.apk'
+        apk=app/'bin/Debug/net10.0-android'/(args.application_id+'-Signed.apk')
         state['phase']='inspect';save(out/'status.json',state);inspect(apk,app,payload,native,notices)
         assert inputs()==source_pin
         assert all(sha(Path(path))==digest for path,digest in {**pins,**staged}.items())
-        state.update(complete=True,passed=True,phase='complete',apk=str(apk),apkSha256=sha(apk),nativePayloads=len(native),noticeAssets=len(notices),references=len(payload['references']))
+        state.update(complete=True,passed=True,phase='complete',applicationId=args.application_id,apk=str(apk),apkSha256=sha(apk),nativePayloads=len(native),noticeAssets=len(notices),references=len(payload['references']))
         print(json.dumps(state),flush=True)
     except Exception as error:
         state.update(complete=True,passed=False,error=repr(error));raise

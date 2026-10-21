@@ -51,7 +51,7 @@ def main():
   assert all(sha(Path(path))==digest for path,digest in pins.items())
   library=build/'lib/libcodebrix_cycles_host.dylib'
   exported={line.split()[-1].lstrip('_') for line in tool('nm','-gU',str(library)).splitlines() if ' T ' in line}
-  expected=set(re.findall(r'\b(cbc_host_\w+)\(',(REPO/'native/host/cycles_host.h').read_text()));assert exported==expected and len(exported)==38
+  expected=set(re.findall(r'\b(cbc_host_\w+)\(',(REPO/'native/host/cycles_host.h').read_text()));assert exported==expected and len(exported)==48
   closure={};review=[]
   for path in [library,*[build/'bin'/name for name in ['codebrix_host_cpu_test','codebrix_host_gpu_test','codebrix_host_session_reference']]]:
    names=linked(path)

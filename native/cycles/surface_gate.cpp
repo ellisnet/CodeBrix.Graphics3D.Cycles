@@ -65,7 +65,7 @@ struct RejectionMetrics {unsigned cases=0;size_t zero_capacity_paths=0;};
 static RejectionMetrics rejections(const DeviceInfo &info){
   RejectionMetrics result;
   for(unsigned test=0;test<21;test++){
-    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
+    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"surface_gate device creation");
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);
     for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
     Progress progress;scene.device_update(&d,progress);healthy(d);auto &ds=scene.dscene;auto &data=ds.data;configure(data);d.const_copy_to("data",&data,sizeof(data));
@@ -94,7 +94,8 @@ static RejectionMetrics rejections(const DeviceInfo &info){
     if(test==8)state.path.render_pixel_index=1;
     if(test==9)state.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;
     if(test==10)state.path.flag=PATH_RAY_SUBSURFACE;
-    if(test==12){ds.objects[state.isect.object].shadow_terminator_shading_offset=2;ds.objects.copy_to_device();}
+    // Shading offsets above 1 (multiplier above 2) are rejected before dispatch.
+    if(test==12){ds.objects[state.isect.object].shadow_terminator_shading_offset=3;ds.objects.copy_to_device();reason="shadow terminator shading offset";}
     if(test==13){data.integrator.distribution_pdf_triangles=-1;reason="Invalid native triangle selection probability";}
     if(test==14){data.integrator.sampling_pattern=999;reason="tabulated Sobol";}
     if(test==15)reason="Incomplete surface";
@@ -120,7 +121,7 @@ static RejectionMetrics rejections(const DeviceInfo &info){
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2,"Usage: surface_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"surface_gate device creation");Metrics m;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
     Scene scene(params,&d);prepare(scene);for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Surface scene preparation failed");
@@ -129,7 +130,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=initialize_paths(scene,initial);
     std::ofstream(std::string(argv[1])+".wgsl")<<surface_source();
     evaluate(d,scene,layout,initial,ids,"Compiled materials",m);
-#ifdef CBC_GLASS_FIXTURE
+#if defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
     constexpr unsigned test_count=27;
 #elif defined(CBC_MICROFACET_FIXTURE)
     constexpr unsigned test_count=20;
@@ -154,13 +155,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       if(test==13)data.max_closures=1;
       if(test==14)data.film.light_pass_flag=0;
       if(test==15)data.background.transparent_roughness_squared_threshold=-1;
-#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE)
+#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
       if(test==16)data.integrator.filter_closures=FILTER_CLOSURE_GLOSSY;
       if(test==17){for(int i:ids){states[i].path.glossy_bounce=data.integrator.max_glossy_bounce-1;}}
       if(test==18||test==19){data.integrator.caustics_reflective=0;
         for(int i:ids)states[i].path.visibility=test==18?PATH_RAY_VISIBILITY_DIFFUSE:PATH_RAY_VISIBILITY_GLOSSY;}
 #endif
-#ifdef CBC_GLASS_FIXTURE
+#if defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
       if(test==20)data.integrator.filter_closures=FILTER_CLOSURE_TRANSMISSION;
       if(test==21)data.integrator.filter_closures=FILTER_CLOSURE_GLOSSY|FILTER_CLOSURE_TRANSMISSION;
       if(test>=22&&test<=25){data.integrator.caustics_reflective=(test-22)&1;data.integrator.caustics_refractive=((test-22)>>1)&1;for(int i:ids)states[i].path.visibility=PATH_RAY_VISIBILITY_DIFFUSE;}

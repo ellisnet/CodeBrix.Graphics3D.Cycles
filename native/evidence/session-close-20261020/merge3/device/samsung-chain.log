@@ -1,0 +1,86 @@
+samsung 67 files staged and verified
+[19:08:24] samsung triangle-mw3: START triangle_sample timeout=900s
+[19:08:24] samsung triangle-mw3: SCENE-DUMP triangle_sample
+[19:08:42] samsung triangle-mw3: SCENE-REFERENCE triangle_sample references=1
+samples          gpu-vs-glibc passed=False practical=2 strict=1069 max=0.002195 | local-vs-glibc differing=4620 maxUlps=15520768 practical=65
+[19:09:08] samsung triangle-mw3: REFERENCE triangle_sample host re-judged vs glibc: False
+[19:09:08] samsung triangle-mw3: FAIL triangle_sample exit=1 26s: Emitter sample=3133 field=2 got=0.382186 expected=0.379992
+[19:09:08] samsung triangle-mw3: START surface timeout=900s
+[19:10:46] samsung triangle-mw3: PASS surface 97s maxPipelineMs=4661.2
+[19:10:46] samsung triangle-mw3: START triangle_lighting timeout=900s
+[19:10:46] samsung triangle-mw3: SCENE-DUMP triangle_lighting
+[19:11:03] samsung triangle-mw3: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=12 max=4.768e-07 | local-vs-glibc differing=57 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=5 max=1.788e-07 | local-vs-glibc differing=929 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=8 max=6.407e-07 | local-vs-glibc differing=987 maxUlps=2273 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=235 max=1.788e-06 | local-vs-glibc differing=716 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=11 max=3.725e-07 | local-vs-glibc differing=933 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=248 max=1.788e-06 | local-vs-glibc differing=778 maxUlps=55 practical=0
+[19:13:44] samsung triangle-mw3: REFERENCE triangle_lighting host re-judged vs glibc: True
+[19:13:45] samsung triangle-mw3: PASS triangle_lighting 159s maxPipelineMs=31177.5
+[19:13:45] samsung triangle-mw3: START replay-0 timeout=900s
+[19:14:06] samsung triangle-mw3: PASS replay-0 21s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[19:14:06] samsung triangle-mw3: START replay-1 timeout=900s
+[19:14:46] samsung triangle-mw3: PASS replay-1 39s readbacks=417 max=1.79e-07 strict=5 fmt=native-command-stream-v6
+[19:14:46] samsung triangle-mw3: START replay-2 timeout=900s
+[19:15:25] samsung triangle-mw3: PASS replay-2 39s readbacks=415 max=6.41e-07 strict=8 fmt=native-command-stream-v6
+[19:15:25] samsung triangle-mw3: START replay-3 timeout=900s
+[19:16:05] samsung triangle-mw3: PASS replay-3 39s readbacks=473 max=1.79e-06 strict=235 fmt=native-command-stream-v6
+[19:16:05] samsung triangle-mw3: START replay-4 timeout=900s
+[19:16:45] samsung triangle-mw3: PASS replay-4 39s readbacks=415 max=3.73e-07 strict=11 fmt=native-command-stream-v6
+[19:16:45] samsung triangle-mw3: START replay-5 timeout=900s
+[19:18:12] samsung triangle-mw3: PASS replay-5 87s readbacks=464 max=1.79e-06 strict=248 fmt=native-command-stream-v6
+[19:18:28] samsung triangle-mw3: END passed=False wall=606s/2400s failures=1
+{"passed": false, "failures": ["triangle_sample: Emitter sample=3133 field=2 got=0.382186 expected=0.379992"], "error": null, "wallSeconds": 606.4}
+[19:18:46] samsung emitter-mw3: START emitter_sample timeout=300s
+[19:18:46] samsung emitter-mw3: SCENE-DUMP emitter_sample
+[19:19:02] samsung emitter-mw3: SCENE-REFERENCE emitter_sample references=1
+samples          gpu-vs-glibc passed=True practical=0 strict=135 max=9.06e-06 | local-vs-glibc differing=1192 maxUlps=3310 practical=1
+[19:19:13] samsung emitter-mw3: REFERENCE emitter_sample host re-judged vs glibc: True
+[19:19:13] samsung emitter-mw3: PASS emitter_sample 11s maxPipelineMs=None
+[19:19:29] samsung emitter-mw3: END passed=True wall=45s/600s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 44.9}
+[19:19:44] samsung hostcap-linux-triangle: START tri0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-triangle/out/triangle_lighting/run/case-0)
+[19:20:05] samsung hostcap-linux-triangle: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[19:20:06] samsung hostcap-linux-triangle: START tri1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-triangle/out/triangle_lighting/run/case-1)
+[19:20:46] samsung hostcap-linux-triangle: PASS tri1 readbacks=417 max=1.49e-07 strict=1 fmt=native-command-stream-v6
+[19:20:46] samsung hostcap-linux-triangle: START tri2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-triangle/out/triangle_lighting/run/case-2)
+[19:21:26] samsung hostcap-linux-triangle: PASS tri2 readbacks=415 max=6.41e-07 strict=14 fmt=native-command-stream-v6
+[19:21:26] samsung hostcap-linux-triangle: START tri3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-triangle/out/triangle_lighting/run/case-3)
+[19:22:06] samsung hostcap-linux-triangle: PASS tri3 readbacks=473 max=1.76e-06 strict=236 fmt=native-command-stream-v6
+[19:22:06] samsung hostcap-linux-triangle: START tri4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-triangle/out/triangle_lighting/run/case-4)
+[19:22:45] samsung hostcap-linux-triangle: PASS tri4 readbacks=415 max=3.73e-07 strict=8 fmt=native-command-stream-v6
+[19:22:46] samsung hostcap-linux-triangle: START tri5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-triangle/out/triangle_lighting/run/case-5)
+[19:24:14] samsung hostcap-linux-triangle: PASS tri5 readbacks=464 max=2.38e-06 strict=258 fmt=native-command-stream-v6
+[19:24:29] samsung hostcap-linux-triangle: END passed=True wall=285s/3600s
+[19:24:44] samsung hostcap-linux-terminator: START term0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-0)
+[19:25:01] samsung hostcap-linux-terminator: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[19:25:01] samsung hostcap-linux-terminator: START term1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-1)
+[19:25:21] samsung hostcap-linux-terminator: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[19:25:21] samsung hostcap-linux-terminator: START term2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-2)
+[19:25:41] samsung hostcap-linux-terminator: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[19:25:41] samsung hostcap-linux-terminator: START term3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-3)
+[19:26:00] samsung hostcap-linux-terminator: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[19:26:00] samsung hostcap-linux-terminator: START term4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-4)
+[19:26:34] samsung hostcap-linux-terminator: PASS term4 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[19:26:34] samsung hostcap-linux-terminator: START term5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-5)
+[19:27:08] samsung hostcap-linux-terminator: PASS term5 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[19:27:08] samsung hostcap-linux-terminator: START term6 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-6)
+[19:27:42] samsung hostcap-linux-terminator: PASS term6 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[19:27:42] samsung hostcap-linux-terminator: START term7 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-7)
+[19:28:16] samsung hostcap-linux-terminator: PASS term7 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[19:28:16] samsung hostcap-linux-terminator: START term8 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-8)
+[19:28:50] samsung hostcap-linux-terminator: PASS term8 readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[19:28:50] samsung hostcap-linux-terminator: START term9 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-shadow-terminator/out/shadow_terminator/run/case-9)
+[19:30:03] samsung hostcap-linux-terminator: PASS term9 readbacks=443 max=2.93e-05 strict=22 fmt=native-command-stream-v6
+[19:30:18] samsung hostcap-linux-terminator: END passed=True wall=334s/3600s
+[19:30:38] samsung materials-mw3: START nodes_svm timeout=2400s
+[19:45:19] samsung materials-mw3: FAIL nodes_svm exit=1 879s: Typed node noise 2d type 0 variant 2 22 float closures[0].weight path 28 component 0 actual=1.792859 expected=1.791512
+[19:45:19] samsung materials-mw3: START nodes_world timeout=2400s
+[19:53:49] samsung materials-mw3: PASS nodes_world 510s maxPipelineMs=109178
+[19:53:49] samsung materials-mw3: START nodes_render timeout=2400s
+image            gpu-vs-glibc passed=False practical=1 strict=3980 max=0.0004035 | local-vs-glibc differing=5976 maxUlps=6832 practical=1
+[19:56:23] samsung materials-mw3: REFERENCE nodes_render host re-judged vs glibc: False
+[19:56:23] samsung materials-mw3: FAIL nodes_render exit=1 153s: Independent CPU image 6720 actual=0.928481 expected=0.928078
+[19:56:40] samsung materials-mw3: END passed=False wall=1565s/7200s failures=3
+{"passed": false, "failures": ["nodes_svm: Typed node noise 2d type 0 variant 2 22 float closures[0].weight path 28 component 0 actual=1.792859 expected=1.791512", "nodes_render: Independent CPU image 6720 actual=0.928481 expected=0.928078", "nodes-replay: not run (source job failed)"], "error": null, "wallSeconds": 1564.9}

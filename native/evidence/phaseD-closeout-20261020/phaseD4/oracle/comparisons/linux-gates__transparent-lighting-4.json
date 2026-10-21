@@ -1,0 +1,51 @@
+{
+  "sceneId": "linux-gates/transparent-lighting-4",
+  "sceneSha256": "c74bb06ef7e1af40fc082f9b24460cab1b88d72d851d2af8fdba8f75aef568d8",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseD4/oracle/oracle/linux-gates/transparent-lighting-4/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/phaseD4/oracle/oracle/linux-gates/transparent-lighting-4/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.4901161193847656e-08,
+      "nonfiniteComponents": 0
+    }
+  ],
+  "pairs": [
+    {
+      "maxAbsoluteDifference": 9.685754776000977e-07,
+      "maxRelativeError": 1.5784303040785736e-05,
+      "rms": 8.255801196604412e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 210,
+      "worstPixel": {
+        "x": 21,
+        "y": 16,
+        "channel": "R",
+        "reference": 0.13356514275074005,
+        "candidate": 0.13356611132621765,
+        "absoluteDifference": 9.685754776000977e-07,
+        "criterionRatio": 0.012625958013988862
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "practicalPassed": true
+    }
+  ],
+  "problems": [],
+  "passed": true
+}

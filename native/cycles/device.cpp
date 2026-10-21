@@ -19,6 +19,14 @@ std::string controls_wgsl(){return control_source;}
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
 static size_t aligned(size_t n){require(n<=UINT32_MAX-15,"WebGPU virtual address overflow");return (n+15)&~size_t(15);}
 WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Device(i,s,p,h){
+#ifdef __ANDROID__
+  // The unspecialized (every-handler) modules are a desktop A/B diagnostic. On
+  // every Android test driver they crash the compiler or exhaust its memory
+  // (Adreno 730 SIGSEGV, Adreno 640 and Intel Mesa 24.0.8 Scudo out of memory),
+  // which ends the process; refuse before any pipeline compiles.
+  if(const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION");mode&&std::strcmp(mode,"0")==0)
+    throw std::runtime_error("CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 is a desktop-only diagnostic and is refused on Android: the unspecialized shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules.");
+#endif
   // The tier is decided before any pipeline is compiled (device_tier.h).
   select_tier();
   std::array<WGPUBindGroupLayoutEntry,2> entries{};
@@ -182,8 +190,11 @@ void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);requ
     if(std::strcmp(mem.global_name(),"shaders")==0)copy(shader_records);
     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
     if(std::strcmp(mem.global_name(),"object_flag")==0)copy(object_flag_records);
+    if(std::strcmp(mem.global_name(),"tri_shader")==0){smooth_triangles=false;
+      for(size_t i=0;i<mem.memory_size()/sizeof(uint);i++)smooth_triangles|=(static_cast<const uint*>(mem.host_pointer)[i]&SHADER_SMOOTH_NORMAL)!=0;}
     // Exact SVM program copy: selects the WGSL handlers this scene can reach.
     if(std::strcmp(mem.global_name(),"svm_nodes")==0)copy(svm_node_words);
+    if(std::strcmp(mem.global_name(),"tri_shader")==0){copy(tri_shader_words);svm_generation++;}
     if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;
   }
   if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images[image.image_info_id]=&image;
@@ -202,7 +213,9 @@ void WebGPUDevice::mem_free(device_memory &mem){std::lock_guard lock(mutex);try{
       if(std::strcmp(mem.global_name(),"shaders")==0)shader_records.clear();
       if(std::strcmp(mem.global_name(),"objects")==0)object_records.clear();
       if(std::strcmp(mem.global_name(),"object_flag")==0)object_flag_records.clear();
+      if(std::strcmp(mem.global_name(),"tri_shader")==0)smooth_triangles=false;
       if(std::strcmp(mem.global_name(),"svm_nodes")==0)svm_node_words.clear();
+      if(std::strcmp(mem.global_name(),"tri_shader")==0){tri_shader_words.clear();svm_generation++;}
       if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;}
     if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images.erase(image.image_info_id);
       globals.erase("image_pixels_"+std::to_string(image.image_info_id));image_info_dirty=true;}
@@ -236,7 +249,20 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
   wgpuComputePassEncoderSetPipeline(pass,pipeline?pipeline:controls.value);wgpuComputePassEncoderSetBindGroup(pass,0,group,0,nullptr);
   wgpuComputePassEncoderDispatchWorkgroups(pass,uint32_t(groups),1,1);wgpuComputePassEncoderEnd(pass);dispatches++;
 }
+bool WebGPUDevice::recover(std::string &reason){
+  std::lock_guard lock(mutex);
+  if(!have_error())return true;
+  try{gpu.check();}catch(const std::exception &e){reason=e.what();return false;}
+  // Drop commands encoded before the failure and clear the kernel error word,
+  // so the next render starts from a clean command stream and status.
+  try{encoder={};zero(error_word,4);flush();gpu.check();}catch(const std::exception &e){reason=e.what();return false;}
+  error_msg.clear();return true;
+}
 // Host C API seams (native/host/cycles_host.cpp).
+bool webgpu_recover(Device *device,std::string &reason){
+  auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu){reason="not a WebGPU device";return false;}
+  return webgpu->recover(reason);
+}
 void host_tier_config(uint32_t tier,bool record_off,bool read_only,bool canary,const char *directory){
   DeviceTierConfig config;config.request=tier;config.record_off=record_off;config.record_read_only=read_only;config.canary=canary;
   config.record_directory=directory?directory:"";set_device_tier_config(config);

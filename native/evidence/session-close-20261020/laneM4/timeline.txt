@@ -1,0 +1,15 @@
+[15:53] start; budget: full native build <=30min
+[15:54] coordinator: job 2 DROPPED (wave 2 implements scene-specialized probe module); Gabor stays withheld
+[16:01] full build done 6m27s exit 0 but contaminated by in-flight M4 edits (pipelines.h/svm_layout.cpp); M3 state restored (28 paths hash-verified vs M3 changes.json newSha256) for baseline rebuild
+[16:48] dev: nodes_svm unspecialized probe fails error mask 24 on unrelated graphs after 640 s (Mesa class); specialized probe (CODEBRIX_M4_PROBE_FEATURES) passes 65 graphs/529 cases in 110 s; nodes_world 23 worlds pass; principled_svm unspecialized passes (644 s vs 181 s baseline)
+[16:56] final validation started (slots A/B)
+[16:02] baseline rebuild (M3 state) 53 s; baseline binaries copied to native/work/m4/baseline-bin (sha256 in baseline-bin.sha256)
+[16:03-16:09] baseline: nodes_svm 196 s, nodes_render 58 s, principled_svm 181 s, nodes_world 127 s (all pass)
+[16:09-16:19] dev1: WGSL fixes (select on struct, safe_log); first full probe run hung in Mesa compile (>600 s), killed own PID 1152974
+[16:20] inlined-size diagnosis (wgsl_stats): probe 2.53 MB -> 4.11 MB; svm_texco shared call site, single object-normal call sites -> 3.05 MB
+[16:22-16:33] dev3: nodes_svm unspecialized probe fails (error mask 24, unrelated graphs, 640 s); nodes_world: world opcode table missing derivative ops (fixed)
+[16:37-16:48] dev4/dev5: CODEBRIX_M4_PROBE_FEATURES probe mask; nodes_svm passes (110 s) after bump filter width 2000 (conditioning); nodes_world 23 pass; principled_svm unspecialized passes (644 s)
+[16:49-16:56] FINAL build tools/build.py (exit 0) + 34 gate targets (4 m 53 s); audits run
+[17:17] nodes_gate: svm/world on+off and render (spec on) pass; render spec-off: prepare_surface compiled 648 s then the Vulkan driver terminated on shade_surface_light (SIGSEGV)
+[17:43] final: all-lanes 29 PASS 1815 s; host PASS; nodes_gate svm/world on+off + render on PASS; render spec-off FAIL (solo retry compiled 602+95 s then wrong film, stage 8 pixel 292: Mesa class); glass on PASS, glass spec-off FAIL (driver terminated on shade_surface_light); nodes replay PASS; principled_gate PASS 655 s (0 regressions vs M3); audits PASS; sealing
+[17:44] resealed 9d2fa055 (DEVICE.md spec-off note); done

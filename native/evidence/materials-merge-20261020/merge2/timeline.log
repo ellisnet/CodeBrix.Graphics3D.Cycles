@@ -1,0 +1,281 @@
+[14:42] step0 baseline check OK 47971/0/0/0; pre-merge.json written
+[14:44] merge: 14 single-owner via git apply --exclude (hashes OK), 14 shared merged (6 conflicts resolved), sheen terminator fix
+[14:50:37] v1 native build exit=0 320s
+[14:57:24] v2 gate build exit=0 407s
+[14:57:33] START l1-all-lanes
+[14:57:33] START l2-principled-gate
+[15:00:43] android gate build android-arm64 exit=0 190s
+[15:01:01] review android-arm64 exit=0
+[15:02:11] END l2-principled-gate exit=0 278s
+[15:02:11] START l2-nodes-gate
+[15:04:01] android gate build android-x64 exit=0 180s
+[15:04:19] review android-x64 exit=0
+[15:04:35] END l1-all-lanes exit=1 422s
+[15:04:35] START l1-host-gate
+[15:04:46] hp lock taken
+[15:07:44] END l1-host-gate exit=0 189s
+[15:07:44] START l1-dotnet-build
+[15:07:49] END l1-dotnet-build exit=0 5s
+[15:07:49] START l1-dotnet-test
+[15:08:14] android host build android-x64 exit=0 219s
+[15:09:19] END l1-dotnet-test exit=0 90s
+[15:09:19] START l1-dotnet-pack
+[15:09:20] END l1-dotnet-pack exit=0 1s
+[15:09:20] slot1 DONE
+[15:11:32] android host build android-arm64 exit=0 198s
+[15:18:16] END l2-nodes-gate exit=0 965s
+[15:18:16] START l2-principled-render-on
+[15:19:18] END l2-principled-render-on exit=0 62s
+[15:19:18] START l2-principled-render-off
+[15:23:58] END l2-principled-render-off exit=0 280s
+[15:23:58] START l2-principled-replay
+[15:24:48] END l2-principled-replay exit=0 50s
+[15:24:48] START l2-nodes-replay
+[15:25:26] END l2-nodes-replay exit=0 38s
+[15:25:26] START l2-glass-spec-on
+[15:26:02] END l2-glass-spec-on exit=0 36s
+[15:26:02] START l2-glass-spec-off
+[15:30:27] END l2-glass-spec-off exit=0 265s
+[15:30:27] START l2-principled-bench
+[15:30:51] hp: removed codebrix-mw2-stage/diag folders; lock released (merge stopped on all-lanes regression, see diag)
+[15:31:10] END l2-principled-bench exit=0 43s
+[15:31:10] START l2-svm-surface
+[15:33:51] END l2-svm-surface exit=0 161s
+[15:33:51] START l2-svm-world
+[15:34:22] END l2-svm-world exit=0 31s
+[15:34:22] START l2-surface
+[15:34:36] END l2-surface exit=0 14s
+[15:34:36] START l2-libm-linux
+[15:34:59] END l2-libm-linux exit=0 23s
+[15:34:59] START l2-reference-export
+[15:37:45] END l2-reference-export exit=0 166s
+[15:37:45] slot2 DONE
+[15:52] STOPPED: all-lanes regression (normal_gate SVM error 8, Intel Mesa 25.0.7 driver interaction E2 svm_stack x M3 module size); diag A/B pass; no device runs, no checkpoint, no baseline-merge2
+[15:57] coordinator decision: option 1 (scene-specialized probe modules in every whole-module probe gate) + unspecialized compile smoke; applied; clean rebuild
+[16:01:26] v1 native build exit=0 252s
+[16:07:32] v2 gate build exit=0 366s
+[16:07:40] START l1-all-lanes
+[16:07:40] START l2-principled-gate
+[16:08:17] END l2-principled-gate exit=1 37s
+[16:08:17] START l2-nodes-gate
+[16:09:05] END l2-nodes-gate exit=1 48s
+[16:09:05] START l2-unspecialized-smoke
+[16:09:05] END l2-unspecialized-smoke exit=1 0s
+[16:09:05] START l2-principled-render-on
+[16:09:45] END l1-all-lanes exit=1 125s
+[16:09:45] START l1-host-gate
+[16:10:36] END l2-principled-render-on exit=0 91s
+[16:10:36] START l2-principled-render-off
+[16:11:28] android gate build android-arm64 exit=0 227s
+[16:11:50] review android-arm64 exit=0
+[16:13:06] END l1-host-gate exit=0 201s
+[16:13:06] START l1-dotnet-build
+[16:13:11] END l1-dotnet-build exit=0 5s
+[16:13:11] START l1-dotnet-test
+[16:14:48] END l1-dotnet-test exit=0 97s
+[16:14:48] START l1-dotnet-pack
+[16:14:49] END l1-dotnet-pack exit=0 1s
+[16:14:49] slot1 DONE
+[16:15:42] android gate build android-x64 exit=0 232s
+[16:16:01] review android-x64 exit=0
+[16:16:10] END l2-principled-render-off exit=0 334s
+[16:16:10] START l2-principled-replay
+[16:17:02] END l2-principled-replay exit=0 52s
+[16:17] run 2 stopped: shader_data probe (no SVM interpreter) must stay unspecialized (its negative test 3 needs unspecialized regions); reverted shader_data_gate.cpp to pre-merge bytes; full rerun (run 3)
+[16:21:56] v1 native build exit=0 292s
+[16:28:46] v2 gate build exit=0 410s
+[16:28:55] START l1-all-lanes
+[16:28:55] START l2-principled-gate
+[16:29:37] END l2-principled-gate exit=1 42s
+[16:29:37] START l2-nodes-gate
+[16:29:40] android gate build android-arm64 exit=0 45s
+[16:29:58] review android-arm64 exit=0
+[16:30:25] END l2-nodes-gate exit=1 48s
+[16:30:25] START l2-unspecialized-smoke
+[16:30:25] END l2-unspecialized-smoke exit=1 0s
+[16:30:25] START l2-principled-render-on
+[16:30:41] android gate build android-x64 exit=0 43s
+[16:31:00] review android-x64 exit=0
+[16:31:13] END l1-all-lanes exit=1 138s
+[16:31:13] START l1-host-gate
+[16:31:41] END l2-principled-render-on exit=0 76s
+[16:31:41] START l2-principled-render-off
+[16:32:01] android host build android-x64 exit=143 61s
+[16:32:01] START l1-dotnet-build
+[16:32:01] START l2-principled-replay
+[16:32:03] END l1-dotnet-build exit=0 2s
+[16:32:03] START l1-dotnet-test
+[16:32] run 3 stopped: typed programs/rejections upload programs after probe creation (error 2); probe now follows the uploaded programs (refresh_probe); quick checks then clean rebuild (run 4)
+[16:44:18] run 4 start (probe refresh + glass canonical-record region)
+[16:49:04] v1 native build exit=0 286s
+[16:55:24] v2 gate build exit=0 380s
+[16:55:24] START l1-all-lanes
+[16:55:24] START l2-principled-gate
+[16:56:17] android gate build android-arm64 exit=0 53s
+[16:56:34] review android-arm64 exit=0
+[16:57:27] android gate build android-x64 exit=0 53s
+[16:57:44] review android-x64 exit=0
+[16:58:09] hp lock taken (run 4)
+[16:58:43] END l2-principled-gate exit=0 199s
+[16:58:43] START l2-nodes-gate
+[16:59:27] hp materials-mw2a: START principled_svm timeout=900s
+[17:00:20] android host build android-x64 exit=0 156s
+[17:02:56] hp materials-mw2a: PASS principled_svm 199s maxPipelineMs=None
+[17:02:56] hp materials-mw2a: START principled_bounce timeout=900s
+[17:03:29] android host build android-arm64 exit=0 189s
+[17:13:35] END l2-nodes-gate exit=0 892s
+[17:13:35] START l2-unspecialized-smoke
+[17:16:40] END l2-unspecialized-smoke exit=0 185s
+[17:16:40] START l2-principled-render-on
+[17:17:48] END l2-principled-render-on exit=0 68s
+[17:17:48] START l2-principled-render-off
+[17:17:57] hp materials-mw2a: TIMEOUT principled_bounce 901s; killed=False
+[17:18:13] hp materials-mw2a: END passed=False wall=1128s/2700s failures=1
+[17:19:13] pixel lock taken
+[17:19:18] hp materials-mw2b: START principled_bounce timeout=2400s
+[17:19:54] pixel materials-mw2a: START principled_svm timeout=2400s
+[17:20:42] END l1-all-lanes exit=0 1518s
+[17:20:42] START l1-host-gate
+[17:22:02] pixel materials-mw2a: FAIL principled_svm exit=1 126s: Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12
+[17:22:02] pixel materials-mw2a: START principled_bounce timeout=2400s
+[17:22:30] END l2-principled-render-off exit=0 282s
+[17:22:30] START l2-principled-replay
+[17:23:23] END l2-principled-replay exit=0 53s
+[17:23:23] START l2-nodes-replay
+[17:23:23] END l1-host-gate exit=0 161s
+[17:23:23] START l1-dotnet-build
+[17:23:26] END l1-dotnet-build exit=0 3s
+[17:23:26] START l1-dotnet-test
+[17:24:06] END l2-nodes-replay exit=0 43s
+[17:24:06] START l2-glass-spec-on
+[17:24:42] END l1-dotnet-test exit=0 76s
+[17:24:42] START l1-dotnet-pack
+[17:24:42] END l1-dotnet-pack exit=0 0s
+[17:24:42] slot1 DONE
+[17:24:44] END l2-glass-spec-on exit=0 38s
+[17:24:44] START l2-glass-spec-off
+[17:25:45] pixel materials-mw2a: FAIL principled_bounce exit=1 223s: Compiled materials: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[17:25:45] pixel materials-mw2a: START nodes_svm timeout=2400s
+[17:27:55] pixel materials-mw2a: FAIL nodes_svm exit=1 128s: Native compiled graphs SVM error mask=24 first incomplete path=287 shader=46
+[17:27:55] pixel materials-mw2a: START nodes_world timeout=2400s
+[17:28:02] pixel materials-mw2a: FAIL nodes_world exit=1 7s: Compiled world 0: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[17:28:16] pixel materials-mw2a: END passed=False wall=504s/9600s failures=4
+[17:29:02] END l2-glass-spec-off exit=0 258s
+[17:29:02] START l2-principled-bench
+[17:29:43] END l2-principled-bench exit=0 41s
+[17:29:43] START l2-svm-surface
+[17:29:54] END l2-svm-surface exit=0 11s
+[17:29:54] START l2-svm-world
+[17:30:24] END l2-svm-world exit=0 30s
+[17:30:24] START l2-surface
+[17:30:38] END l2-surface exit=0 14s
+[17:30:38] START l2-probe-normal
+[17:31:14] END l2-probe-normal exit=0 36s
+[17:31:14] START l2-probe-attribute
+[17:31:35] END l2-probe-attribute exit=0 21s
+[17:31:35] START l2-probe-image
+[17:31:45] android-arm64 extended build+review done
+[17:32:01] END l2-probe-image exit=0 26s
+[17:32:01] START l2-probe-image_file
+[17:32:02] END l2-probe-image_file exit=0 1s
+[17:32:02] START l2-probe-shader_data
+[17:32:11] END l2-probe-shader_data exit=0 9s
+[17:32:11] START l2-libm-linux
+[17:32:30] pixel pixel-lighting-mw2: START lighting_mis timeout=2400s
+[17:32:30] pixel pixel-lighting-mw2: SCENE-DUMP lighting_mis
+[17:32:34] END l2-libm-linux exit=0 23s
+[17:32:34] START l2-reference-export
+[17:32:34] END l2-reference-export exit=1 0s
+[17:32:34] slot2 DONE
+[17:32:34] run 4 Linux+Android DONE
+[17:32:49] pixel pixel-lighting-mw2: SCENE-REFERENCE lighting_mis references=8
+[17:34:10] pixel pixel-lighting-mw2: REFERENCE lighting_mis host re-judged vs glibc: True
+[17:34:10] pixel pixel-lighting-mw2: PASS lighting_mis 79s maxPipelineMs=21038.1
+[17:34:10] pixel pixel-lighting-mw2: START feature_combination timeout=2400s
+[17:34:10] pixel pixel-lighting-mw2: SCENE-DUMP feature_combination
+[17:34:19] APK build exit=0 108s
+[17:34:28] pixel pixel-lighting-mw2: SCENE-REFERENCE feature_combination references=8
+[17:34:38] START l2-reference-export-r4
+[17:35:38] hp materials-mw2b: PASS principled_bounce 979s maxPipelineMs=69844.1
+[17:35:38] hp materials-mw2b: START nodes_svm timeout=2400s
+[17:36:26] pixel pixel-lighting-mw2: REFERENCE feature_combination host re-judged vs glibc: True
+[17:36:26] pixel pixel-lighting-mw2: PASS feature_combination 116s maxPipelineMs=26681
+[17:36:26] pixel pixel-lighting-mw2: START lighting_mis-replay-0 timeout=2400s
+[17:37:19] pixel pixel-lighting-mw2: PASS lighting_mis-replay-0 53s readbacks=414 max=1.79e-07 strict=1 fmt=native-command-stream-v6
+[17:37:19] pixel pixel-lighting-mw2: START feature_combination-replay-0 timeout=2400s
+[17:37:53] END l2-reference-export-r4 exit=0 195s
+[17:38:50] pixel pixel-lighting-mw2: PASS feature_combination-replay-0 90s readbacks=408 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[17:39:05] pixel pixel-lighting-mw2: END passed=True wall=396s/4800s failures=0
+[17:39:35] pixel materials-mw2r: START principled_render timeout=2400s
+[17:40:08] hp materials-mw2b: PASS nodes_svm 265s maxPipelineMs=None
+[17:40:08] hp materials-mw2b: START nodes_world timeout=2400s
+[17:43:11] pixel materials-mw2r: REFERENCE principled_render host re-judged vs glibc: False
+[17:43:11] pixel materials-mw2r: FAIL principled_render exit=1 215s: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[17:43:11] pixel materials-mw2r: START nodes_render timeout=2400s
+[17:43:54] hp materials-mw2b: PASS nodes_world 225s maxPipelineMs=21865.3
+[17:44:09] hp materials-mw2b: END passed=True wall=1492s/6000s failures=0
+[17:44:30] hp materials-mw2r: START principled_render timeout=2400s
+[17:45:23] pixel materials-mw2r: REFERENCE nodes_render host re-judged vs glibc: False
+[17:45:23] pixel materials-mw2r: FAIL nodes_render exit=1 132s: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 24): invalid/uninitialized SVM stack unsupported SVM parameter
+[17:45:37] pixel materials-mw2r: END passed=False wall=363s/7200s failures=4
+[17:45:53] pixel spec-refusal-mw2: START glass_render-spec timeout=1200s
+[17:47:13] hp materials-mw2r: REFERENCE principled_render host re-judged vs glibc: True
+[17:47:13] hp materials-mw2r: PASS principled_render 160s maxPipelineMs=66742.5
+[17:47:13] hp materials-mw2r: START nodes_render timeout=2400s
+[17:47:56] pixel spec-refusal-mw2: PASS glass_render-spec 122s maxPipelineMs=26571.8
+[17:47:56] pixel spec-refusal-mw2: START glass_render-nospec-refused timeout=1200s
+[17:47:56] pixel spec-refusal-mw2: PASS glass_render-nospec-refused refusal exit=1 0s
+[17:48:11] pixel spec-refusal-mw2: END passed=True wall=139s/1800s failures=0
+[17:48:11] START pixel app-webgpu
+[17:49:06] hp materials-mw2r: REFERENCE nodes_render host re-judged vs glibc: True
+[17:49:06] hp materials-mw2r: PASS nodes_render 107s maxPipelineMs=39289.6
+[17:49:06] hp materials-mw2r: START principled-replay timeout=2400s
+[17:51:19] hp materials-mw2r: PASS principled-replay 128s readbacks=322 max=6.44e-06 strict=101 fmt=native-command-stream-v6
+[17:51:19] hp materials-mw2r: START nodes-replay timeout=2400s
+[17:52:38] hp materials-mw2r: PASS nodes-replay 73s readbacks=320 max=0.000303 strict=2903 fmt=native-command-stream-v6
+[17:52:54] hp materials-mw2r: END passed=True wall=505s/7200s failures=0
+[17:53:10] hp spec-refusal-mw2: START glass_render-spec timeout=1200s
+[17:54:24] hp spec-refusal-mw2: PASS glass_render-spec 71s maxPipelineMs=11141.1
+[17:54:24] hp spec-refusal-mw2: START glass_render-nospec-refused timeout=1200s
+[17:54:25] hp spec-refusal-mw2: PASS glass_render-nospec-refused refusal exit=1 0s
+[17:54:40] hp spec-refusal-mw2: END passed=True wall=91s/1800s failures=0
+[17:55:21] hp compile probe nodes_render/prepare_surface exit=0
+[17:55:27] hp compile probe nodes_render/shade_surface_light exit=0
+[17:55:33] pixel app-webgpu END exit=0 442s
+[17:55:33] pixel chain_dev DONE
+[17:55:47] hp compile probe nodes_render-unspecialized/prepare_surface exit=0
+[17:56:24] pixel cleaned (codebrix-mw2-* removed, app uninstalled), lock released
+[17:56:29] hp compile probe nodes_render-unspecialized/shade_surface_light exit=0
+[17:56:30] START hp app-webgpu
+[18:00:31] hp app-webgpu END exit=0 241s
+[18:00:31] hp chain_dev DONE
+[18:01:11] hp cleaned (codebrix-mw2-* removed, app uninstalled), lock released
+[18:13:21] samsung lock taken
+[18:13:58] samsung materials-mw2a: START principled_svm timeout=2400s
+[18:15:11] samsung materials-mw2a: FAIL principled_svm exit=1 71s:     Parent device is lost
+[18:15:11] samsung materials-mw2a: START principled_bounce timeout=2400s
+[18:15:38] samsung materials-mw2a: FAIL principled_bounce exit=1 26s:     Parent device is lost
+[18:15:38] samsung materials-mw2a: START nodes_svm timeout=2400s
+[18:19:39] samsung materials-mw2a: FAIL nodes_svm exit=1 240s: Typed node noise 2d type 0 variant 2 22 float closures[0].weight path 28 component 0 actual=1.792859 expected=1.791512
+[18:19:39] samsung materials-mw2a: START nodes_world timeout=2400s
+[18:24:47] samsung materials-mw2a: PASS nodes_world 307s maxPipelineMs=38314.6
+[18:25:01] samsung materials-mw2a: END passed=False wall=664s/7200s failures=3
+[18:25:16] samsung materials-mw2r: START principled_render timeout=2400s
+[18:25:45] samsung materials-mw2r: REFERENCE principled_render host re-judged vs glibc: False
+[18:25:45] samsung materials-mw2r: FAIL principled_render exit=1 29s:     Parent device is lost
+[18:25:45] samsung materials-mw2r: START nodes_render timeout=2400s
+[18:28:01] samsung materials-mw2r: REFERENCE nodes_render host re-judged vs glibc: False
+[18:28:01] samsung materials-mw2r: FAIL nodes_render exit=1 136s: Independent CPU image 6720 actual=0.928481 expected=0.928078
+[18:28:15] samsung materials-mw2r: END passed=False wall=181s/7200s failures=4
+[18:28:30] samsung spec-refusal-mw2: START glass_render-spec timeout=1200s
+[18:29:48] samsung spec-refusal-mw2: PASS glass_render-spec 77s maxPipelineMs=5150.14
+[18:29:48] samsung spec-refusal-mw2: START glass_render-nospec-refused timeout=1200s
+[18:29:48] samsung spec-refusal-mw2: PASS glass_render-nospec-refused refusal exit=1 0s
+[18:30:02] samsung spec-refusal-mw2: END passed=True wall=93s/1800s failures=0
+[18:30:02] START samsung app-webgpu
+[18:32:45] samsung app-webgpu END exit=0 163s
+[18:32:45] samsung chain_dev DONE
+[18:32:45] samsung cleaned (left: '')
+[18:32:45] samsung lock released
+[18:33:15] START l2-unspecialized-smoke
+[18:35:55] END l2-unspecialized-smoke exit=0 160s

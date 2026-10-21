@@ -1,0 +1,275 @@
+[12:35:52] hp spec-refusal-mw1: START glass_render-spec timeout=300s
+[12:37:05] hp spec-refusal-mw1: PASS glass_render-spec 68s maxPipelineMs=10659.9
+[12:37:05] hp spec-refusal-mw1: START glass_render-nospec-refused timeout=300s
+[12:37:06] hp spec-refusal-mw1: PASS glass_render-nospec-refused refusal exit=1 0s
+[12:37:21] hp spec-refusal-mw1: END passed=True wall=90s/600s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 90.1}
+[12:37:37] hp emitter-mw1: START emitter_sample timeout=300s
+[12:37:37] hp emitter-mw1: SCENE-DUMP emitter_sample
+[12:37:53] hp emitter-mw1: SCENE-REFERENCE emitter_sample references=1
+samples          gpu-vs-glibc passed=True practical=0 strict=235 max=0.005127 | local-vs-glibc differing=617 maxUlps=4096 practical=0
+[12:38:14] hp emitter-mw1: REFERENCE emitter_sample host re-judged vs glibc: True
+[12:38:14] hp emitter-mw1: PASS emitter_sample 20s maxPipelineMs=None
+[12:38:30] hp emitter-mw1: END passed=True wall=53s/600s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 53.1}
+[12:38:47] hp triangle-mw1: START triangle_sample timeout=900s
+[12:38:47] hp triangle-mw1: SCENE-DUMP triangle_sample
+[12:39:05] hp triangle-mw1: SCENE-REFERENCE triangle_sample references=1
+samples          gpu-vs-glibc passed=True practical=0 strict=865 max=0.0004883 | local-vs-glibc differing=1194 maxUlps=2186752 practical=32
+[12:39:29] hp triangle-mw1: REFERENCE triangle_sample host re-judged vs glibc: True
+[12:39:29] hp triangle-mw1: PASS triangle_sample 23s maxPipelineMs=None
+[12:39:29] hp triangle-mw1: START surface timeout=900s
+[12:41:30] hp triangle-mw1: PASS surface 121s maxPipelineMs=4709.36
+[12:41:30] hp triangle-mw1: START triangle_lighting timeout=900s
+[12:41:30] hp triangle-mw1: SCENE-DUMP triangle_lighting
+[12:41:49] hp triangle-mw1: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=9 max=4.768e-07 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=41 max=7.868e-06 | local-vs-glibc differing=90 maxUlps=6 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=37 max=6.407e-07 | local-vs-glibc differing=85 maxUlps=82 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=443 max=9.477e-06 | local-vs-glibc differing=20 maxUlps=7 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=77 max=3.311e-05 | local-vs-glibc differing=54 maxUlps=1530 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=432 max=1.204e-05 | local-vs-glibc differing=21 maxUlps=13 practical=0
+[12:44:17] hp triangle-mw1: REFERENCE triangle_lighting host re-judged vs glibc: True
+[12:44:17] hp triangle-mw1: PASS triangle_lighting 137s maxPipelineMs=28974.7
+[12:44:17] hp triangle-mw1: START replay-0 timeout=900s
+[12:44:55] hp triangle-mw1: PASS replay-0 36s readbacks=289 max=4.77e-07 strict=9 fmt=native-command-stream-v6
+[12:44:55] hp triangle-mw1: START replay-1 timeout=900s
+[12:45:52] hp triangle-mw1: PASS replay-1 55s readbacks=417 max=7.87e-06 strict=40 fmt=native-command-stream-v6
+[12:45:52] hp triangle-mw1: START replay-2 timeout=900s
+[12:46:49] hp triangle-mw1: PASS replay-2 55s readbacks=415 max=7e-07 strict=40 fmt=native-command-stream-v6
+[12:46:49] hp triangle-mw1: START replay-3 timeout=900s
+[12:47:47] hp triangle-mw1: PASS replay-3 55s readbacks=473 max=9.48e-06 strict=446 fmt=native-command-stream-v6
+[12:47:47] hp triangle-mw1: START replay-4 timeout=900s
+[12:48:45] hp triangle-mw1: PASS replay-4 56s readbacks=415 max=3.31e-05 strict=77 fmt=native-command-stream-v6
+[12:48:45] hp triangle-mw1: START replay-5 timeout=900s
+[12:50:27] hp triangle-mw1: PASS replay-5 100s readbacks=464 max=1.2e-05 strict=432 fmt=native-command-stream-v6
+[12:50:46] hp triangle-mw1: END passed=True wall=717s/2400s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 716.9}
+[12:51:06] hp precision-mw1: START closest timeout=600s
+[12:51:31] hp precision-mw1: PASS closest 25s maxPipelineMs=1792.9
+[12:51:31] hp precision-mw1: START shadow timeout=600s
+[12:51:49] hp precision-mw1: PASS shadow 15s maxPipelineMs=1512.11
+[12:51:49] hp precision-mw1: START shadow-replay-direct timeout=600s
+[12:51:52] hp precision-mw1: PASS shadow-replay-direct 2s readbacks=4 max=5.96e-08 strict=0 fmt=native-command-stream-v3
+[12:51:52] hp precision-mw1: START shadow-replay-indexed timeout=600s
+[12:51:55] hp precision-mw1: PASS shadow-replay-indexed 2s readbacks=4 max=7.45e-09 strict=0 fmt=native-command-stream-v3
+[12:52:15] hp precision-mw1: END passed=True wall=69s/900s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 69.3}
+[12:52:35] hp terminator-mw1: START shadow_terminator timeout=900s
+[12:52:35] hp terminator-mw1: SCENE-DUMP shadow_terminator
+[12:53:03] hp terminator-mw1: SCENE-REFERENCE shadow_terminator references=10
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=5.96e-08 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=5.96e-08 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=0 max=5.96e-08 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=0 max=5.96e-08 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=30 max=1.526e-05 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=25 max=1.526e-05 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=25 max=1.526e-05 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=30 max=1.526e-05 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-8.film      gpu-vs-glibc passed=True practical=0 strict=9 max=1.669e-06 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-9.film      gpu-vs-glibc passed=True practical=0 strict=13 max=1.103e-06 | local-vs-glibc differing=141 maxUlps=30 practical=0
+[12:56:08] hp terminator-mw1: REFERENCE shadow_terminator host re-judged vs glibc: True
+[12:56:08] hp terminator-mw1: PASS shadow_terminator 167s maxPipelineMs=32695.5
+[12:56:08] hp terminator-mw1: START terminator-replay-0 timeout=900s
+[12:56:43] hp terminator-mw1: PASS terminator-replay-0 31s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[12:56:43] hp terminator-mw1: START terminator-replay-1 timeout=900s
+[12:57:23] hp terminator-mw1: PASS terminator-replay-1 39s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[12:57:23] hp terminator-mw1: START terminator-replay-2 timeout=900s
+[12:58:02] hp terminator-mw1: PASS terminator-replay-2 38s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[12:58:02] hp terminator-mw1: START terminator-replay-3 timeout=900s
+[12:58:40] hp terminator-mw1: PASS terminator-replay-3 38s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[12:58:40] hp terminator-mw1: START terminator-replay-4 timeout=900s
+[12:59:47] hp terminator-mw1: PASS terminator-replay-4 65s readbacks=455 max=1.53e-05 strict=30 fmt=native-command-stream-v6
+[12:59:47] hp terminator-mw1: START terminator-replay-5 timeout=900s
+[13:00:53] hp terminator-mw1: PASS terminator-replay-5 65s readbacks=446 max=1.53e-05 strict=25 fmt=native-command-stream-v6
+[13:00:53] hp terminator-mw1: START terminator-replay-6 timeout=900s
+[13:02:00] hp terminator-mw1: PASS terminator-replay-6 65s readbacks=446 max=1.53e-05 strict=25 fmt=native-command-stream-v6
+[13:02:00] hp terminator-mw1: START terminator-replay-7 timeout=900s
+[13:03:08] hp terminator-mw1: PASS terminator-replay-7 67s readbacks=455 max=1.53e-05 strict=30 fmt=native-command-stream-v6
+[13:03:08] hp terminator-mw1: START terminator-replay-8 timeout=900s
+[13:04:17] hp terminator-mw1: PASS terminator-replay-8 66s readbacks=407 max=1.67e-06 strict=9 fmt=native-command-stream-v6
+[13:04:17] hp terminator-mw1: START terminator-replay-9 timeout=900s
+[13:06:03] hp terminator-mw1: PASS terminator-replay-9 103s readbacks=443 max=9.54e-07 strict=7 fmt=native-command-stream-v6
+[13:06:17] hp terminator-mw1: END passed=True wall=828s/1800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 827.6}
+[13:06:33] hp regression-mw1: START glass_render timeout=600s
+image            gpu-vs-glibc passed=True practical=0 strict=145 max=6.989e-05 | local-vs-glibc differing=168 maxUlps=2345 practical=0
+[13:07:47] hp regression-mw1: REFERENCE glass_render host re-judged vs glibc: True
+[13:07:47] hp regression-mw1: PASS glass_render 70s maxPipelineMs=11182.9
+[13:07:47] hp regression-mw1: START lighting_mis timeout=600s
+[13:07:47] hp regression-mw1: SCENE-DUMP lighting_mis
+[13:08:06] hp regression-mw1: SCENE-REFERENCE lighting_mis references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=1 max=1.788e-07 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=18 max=1.907e-06 | local-vs-glibc differing=2 maxUlps=1 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=698 max=5.007e-06 | local-vs-glibc differing=2 maxUlps=1 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=8 max=1.527e-07 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=668 max=8.345e-06 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=22 max=2.548e-06 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=690 max=8.285e-06 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=584 max=8.315e-06 | local-vs-glibc differing=2 maxUlps=2 practical=0
+[13:09:14] hp regression-mw1: REFERENCE lighting_mis host re-judged vs glibc: True
+[13:09:14] hp regression-mw1: PASS lighting_mis 51s maxPipelineMs=10885.1
+[13:09:14] hp regression-mw1: START transparent_lighting timeout=600s
+[13:09:14] hp regression-mw1: SCENE-DUMP transparent_lighting
+[13:09:31] hp regression-mw1: SCENE-REFERENCE transparent_lighting references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.788e-07 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=10 max=1.907e-06 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=132 max=2.861e-05 | local-vs-glibc differing=307 maxUlps=112 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=322 max=5.007e-06 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=436 max=7.749e-06 | local-vs-glibc differing=2 maxUlps=1 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=4 max=7.749e-07 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=299 max=6.557e-06 | local-vs-glibc differing=3 maxUlps=1 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=521 max=6.795e-06 | local-vs-glibc differing=3 maxUlps=2 practical=0
+[13:11:13] hp regression-mw1: REFERENCE transparent_lighting host re-judged vs glibc: True
+[13:11:13] hp regression-mw1: PASS transparent_lighting 78s maxPipelineMs=11191.4
+[13:11:26] hp regression-mw1: END passed=True wall=295s/1500s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 295.4}
+[13:11:41] hp transparent-mw1: START transparent_shadow timeout=900s
+[13:11:55] hp transparent-mw1: PASS transparent_shadow 12s maxPipelineMs=2352.66
+[13:11:55] hp transparent-mw1: START transparent_lighting timeout=900s
+[13:11:55] hp transparent-mw1: SCENE-DUMP transparent_lighting
+[13:12:12] hp transparent-mw1: SCENE-REFERENCE transparent_lighting references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.788e-07 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=10 max=1.907e-06 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=132 max=2.861e-05 | local-vs-glibc differing=307 maxUlps=112 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=322 max=5.007e-06 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=436 max=7.749e-06 | local-vs-glibc differing=2 maxUlps=1 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=4 max=7.749e-07 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=299 max=6.557e-06 | local-vs-glibc differing=3 maxUlps=1 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=521 max=6.795e-06 | local-vs-glibc differing=3 maxUlps=2 practical=0
+[13:13:45] hp transparent-mw1: REFERENCE transparent_lighting host re-judged vs glibc: True
+[13:13:45] hp transparent-mw1: PASS transparent_lighting 76s maxPipelineMs=11108.7
+[13:13:45] hp transparent-mw1: START transparent_lighting-replay-0 timeout=900s
+[13:14:27] hp transparent-mw1: PASS transparent_lighting-replay-0 40s readbacks=560 max=1.79e-07 strict=0 fmt=native-command-stream-v7
+[13:14:27] hp transparent-mw1: START transparent_lighting-replay-1 timeout=900s
+[13:15:11] hp transparent-mw1: PASS transparent_lighting-replay-1 42s readbacks=596 max=1.91e-06 strict=10 fmt=native-command-stream-v7
+[13:15:11] hp transparent-mw1: START transparent_lighting-replay-2 timeout=900s
+[13:16:00] hp transparent-mw1: PASS transparent_lighting-replay-2 46s readbacks=575 max=2.86e-05 strict=164 fmt=native-command-stream-v7
+[13:16:00] hp transparent-mw1: START transparent_lighting-replay-3 timeout=900s
+[13:16:49] hp transparent-mw1: PASS transparent_lighting-replay-3 47s readbacks=580 max=5.01e-06 strict=322 fmt=native-command-stream-v7
+[13:16:49] hp transparent-mw1: START transparent_lighting-replay-4 timeout=900s
+[13:17:39] hp transparent-mw1: PASS transparent_lighting-replay-4 48s readbacks=840 max=7.75e-06 strict=436 fmt=native-command-stream-v7
+[13:17:39] hp transparent-mw1: START transparent_lighting-replay-5 timeout=900s
+[13:18:28] hp transparent-mw1: PASS transparent_lighting-replay-5 48s readbacks=916 max=7.75e-07 strict=4 fmt=native-command-stream-v7
+[13:18:28] hp transparent-mw1: START transparent_lighting-replay-6 timeout=900s
+[13:19:18] hp transparent-mw1: PASS transparent_lighting-replay-6 48s readbacks=428 max=6.56e-06 strict=299 fmt=native-command-stream-v7
+[13:19:18] hp transparent-mw1: START transparent_lighting-replay-7 timeout=900s
+[13:20:09] hp transparent-mw1: PASS transparent_lighting-replay-7 48s readbacks=518 max=6.79e-06 strict=521 fmt=native-command-stream-v7
+[13:20:09] hp transparent-mw1: START transparent-shadow-replay-direct timeout=900s
+[13:20:14] hp transparent-mw1: PASS transparent-shadow-replay-direct 5s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[13:20:14] hp transparent-mw1: START transparent-shadow-replay-indexed timeout=900s
+[13:20:20] hp transparent-mw1: PASS transparent-shadow-replay-indexed 5s readbacks=4 max=7.45e-09 strict=0 fmt=native-command-stream-v7
+[13:20:34] hp transparent-mw1: END passed=True wall=533s/2400s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 533.3}
+[13:20:50] hp lighting-mw1: START broad_lighting timeout=900s
+[13:20:50] hp lighting-mw1: SCENE-DUMP broad_lighting
+[13:21:10] hp lighting-mw1: SCENE-REFERENCE broad_lighting references=12
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=1 max=1.788e-07 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=34 max=5.066e-07 | local-vs-glibc differing=3 maxUlps=1 practical=0
+case-10.film     gpu-vs-glibc passed=True practical=0 strict=48 max=4.578e-05 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-11.film     gpu-vs-glibc passed=True practical=0 strict=372 max=2.611e-05 | local-vs-glibc differing=36 maxUlps=23 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=422 max=5.007e-06 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=60 max=4.247e-07 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=97 max=4.143e-06 | local-vs-glibc differing=437 maxUlps=55 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=58 max=6.735e-06 | local-vs-glibc differing=3 maxUlps=2 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=46 max=7.868e-06 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=234 max=2.575e-05 | local-vs-glibc differing=62 maxUlps=38 practical=0
+case-8.film      gpu-vs-glibc passed=True practical=0 strict=229 max=8.583e-06 | local-vs-glibc differing=25 maxUlps=4 practical=0
+case-9.film      gpu-vs-glibc passed=True practical=0 strict=281 max=1.144e-05 | local-vs-glibc differing=10 maxUlps=5 practical=0
+[13:22:46] hp lighting-mw1: REFERENCE broad_lighting host re-judged vs glibc: True
+[13:22:46] hp lighting-mw1: PASS broad_lighting 68s maxPipelineMs=10841.2
+[13:22:46] hp lighting-mw1: START feature_combination timeout=900s
+[13:22:46] hp lighting-mw1: SCENE-DUMP feature_combination
+[13:23:05] hp lighting-mw1: SCENE-REFERENCE feature_combination references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=16 max=5.066e-07 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=22 max=2.384e-06 | local-vs-glibc differing=2 maxUlps=1 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=845 max=4.411e-06 | local-vs-glibc differing=1 maxUlps=1 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=4 max=1.658e-07 | local-vs-glibc differing=3 maxUlps=2 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=653 max=1.174e-05 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=31 max=3.04e-06 | local-vs-glibc differing=4 maxUlps=2 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=694 max=1.192e-05 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=532 max=1.174e-05 | local-vs-glibc differing=1 maxUlps=1 practical=0
+[13:24:27] hp lighting-mw1: REFERENCE feature_combination host re-judged vs glibc: True
+[13:24:27] hp lighting-mw1: PASS feature_combination 67s maxPipelineMs=13272.1
+[13:24:27] hp lighting-mw1: START broad_lighting-replay-0 timeout=900s
+[13:25:07] hp lighting-mw1: PASS broad_lighting-replay-0 38s readbacks=414 max=1.79e-07 strict=1 fmt=native-command-stream-v6
+[13:25:07] hp lighting-mw1: START broad_lighting-replay-1 timeout=900s
+[13:25:46] hp lighting-mw1: PASS broad_lighting-replay-1 38s readbacks=450 max=5.07e-07 strict=34 fmt=native-command-stream-v6
+[13:25:46] hp lighting-mw1: START feature_combination-replay-0 timeout=900s
+[13:26:42] hp lighting-mw1: PASS feature_combination-replay-0 55s readbacks=408 max=5.07e-07 strict=16 fmt=native-command-stream-v6
+[13:26:42] hp lighting-mw1: START feature_combination-replay-1 timeout=900s
+[13:27:39] hp lighting-mw1: PASS feature_combination-replay-1 56s readbacks=461 max=2.38e-06 strict=22 fmt=native-command-stream-v6
+[13:27:54] hp lighting-mw1: END passed=True wall=425s/2400s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 425.2}
+[13:28:09] hp volume-mw1: START volume-state timeout=600s
+[13:28:21] hp volume-mw1: PASS volume-state 12s maxPipelineMs=5373.82
+[13:28:21] hp volume-mw1: START volume-absorption timeout=600s
+[13:29:52] hp volume-mw1: PASS volume-absorption 81s maxPipelineMs=5345.31
+[13:29:52] hp volume-mw1: START volume-isotropic timeout=600s
+[13:31:48] hp volume-mw1: PASS volume-isotropic 109s maxPipelineMs=5346.45
+[13:31:48] hp volume-mw1: START volume-forward timeout=600s
+[13:33:46] hp volume-mw1: PASS volume-forward 110s maxPipelineMs=5481.41
+[13:33:46] hp volume-mw1: START volume-backward timeout=600s
+[13:35:43] hp volume-mw1: PASS volume-backward 109s maxPipelineMs=5362.86
+[13:35:43] hp volume-mw1: START boundary-state timeout=600s
+[13:36:30] hp volume-mw1: PASS boundary-state 47s maxPipelineMs=10966.9
+[13:36:30] hp volume-mw1: START boundary-compaction-guard timeout=600s
+[13:36:38] hp volume-mw1: PASS boundary-compaction-guard 8s maxPipelineMs=6897
+[13:36:38] hp volume-mw1: START closed-single timeout=600s
+[13:39:01] hp volume-mw1: PASS closed-single 135s maxPipelineMs=5428.81
+[13:39:01] hp volume-mw1: START closed-overlap timeout=600s
+[13:42:46] hp volume-mw1: PASS closed-overlap 212s maxPipelineMs=11071.4
+[13:42:46] hp volume-mw1: START closed-inside timeout=600s
+[13:46:19] hp volume-mw1: PASS closed-inside 204s maxPipelineMs=11452.6
+[13:46:19] hp volume-mw1: START volume-replay-absorption timeout=600s
+[13:46:53] hp volume-mw1: PASS volume-replay-absorption 26s readbacks=464 max=1.53e-05 strict=1495 fmt=native-command-stream-v6
+[13:46:53] hp volume-mw1: START volume-replay-isotropic timeout=600s
+[13:47:27] hp volume-mw1: PASS volume-replay-isotropic 26s readbacks=672 max=3.24e-05 strict=1791 fmt=native-command-stream-v6
+[13:47:27] hp volume-mw1: START volume-replay-forward timeout=600s
+[13:48:01] hp volume-mw1: PASS volume-replay-forward 26s readbacks=664 max=4.67e-05 strict=1877 fmt=native-command-stream-v6
+[13:48:01] hp volume-mw1: START volume-replay-backward timeout=593s
+[13:48:35] hp volume-mw1: PASS volume-replay-backward 26s readbacks=664 max=4.01e-05 strict=1794 fmt=native-command-stream-v6
+[13:48:35] hp volume-mw1: START closed-replay-single timeout=558s
+[13:49:09] hp volume-mw1: PASS closed-replay-single 27s readbacks=838 max=3.05e-05 strict=1126 fmt=native-command-stream-v6
+[13:49:09] hp volume-mw1: START closed-replay-overlap timeout=524s
+[13:50:19] hp volume-mw1: PASS closed-replay-overlap 54s readbacks=1192 max=4.58e-05 strict=1382 fmt=native-command-stream-v6
+[13:50:19] hp volume-mw1: START closed-replay-inside timeout=455s
+[13:51:22] hp volume-mw1: PASS closed-replay-inside 56s readbacks=1116 max=6.68e-05 strict=2446 fmt=native-command-stream-v6
+[13:51:36] hp volume-mw1: END passed=True wall=1408s/1800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 1407.8}
+[13:51:51] hp motion-mw1: START object-moving-images timeout=900s
+[13:51:51] hp motion-mw1: SCENE-DUMP object-moving-images
+[13:52:09] hp motion-mw1: SCENE-REFERENCE object-moving-images references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=17 max=2.98e-07 | local-vs-glibc differing=104 maxUlps=4980734 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=39 max=1.907e-06 | local-vs-glibc differing=158 maxUlps=18486756 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=729 max=5.007e-06 | local-vs-glibc differing=144 maxUlps=17520294 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=8 max=1.509e-07 | local-vs-glibc differing=142 maxUlps=23089248 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=653 max=8.345e-06 | local-vs-glibc differing=216 maxUlps=18313413 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=101 max=6.318e-06 | local-vs-glibc differing=186 maxUlps=821595863 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=697 max=8.285e-06 | local-vs-glibc differing=214 maxUlps=14412493 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=571 max=8.315e-06 | local-vs-glibc differing=190 maxUlps=17545871 practical=0
+[13:54:13] hp motion-mw1: REFERENCE object-moving-images host re-judged vs glibc: True
+[13:54:13] hp motion-mw1: PASS object-moving-images 109s maxPipelineMs=27771.3
+[13:54:13] hp motion-mw1: START deforming-moving-images timeout=900s
+[13:54:13] hp motion-mw1: SCENE-DUMP deforming-moving-images
+[13:54:31] hp motion-mw1: SCENE-REFERENCE deforming-moving-images references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=5 max=3.576e-07 | local-vs-glibc differing=0 maxUlps=0 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=38 max=1.907e-06 | local-vs-glibc differing=179 maxUlps=12 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=726 max=5.007e-06 | local-vs-glibc differing=2 maxUlps=1 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=8 max=1.49e-07 | local-vs-glibc differing=150 maxUlps=12 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=660 max=8.285e-06 | local-vs-glibc differing=3 maxUlps=1 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=82 max=3.815e-06 | local-vs-glibc differing=196 maxUlps=91 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=686 max=8.941e-06 | local-vs-glibc differing=2 maxUlps=1 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=587 max=8.315e-06 | local-vs-glibc differing=197 maxUlps=51 practical=0
+[13:56:38] hp motion-mw1: REFERENCE deforming-moving-images host re-judged vs glibc: True
+[13:56:38] hp motion-mw1: PASS deforming-moving-images 113s maxPipelineMs=26724
+[13:56:38] hp motion-mw1: START camera-static timeout=900s
+[13:56:48] hp motion-mw1: PASS camera-static 10s maxPipelineMs=1028.97
+[13:56:48] hp motion-mw1: START camera-motion timeout=900s
+[13:57:13] hp motion-mw1: PASS camera-motion 24s maxPipelineMs=13369.3
+[13:57:13] hp motion-mw1: START object-replay-motion-0 timeout=900s
+[13:58:51] hp motion-mw1: PASS object-replay-motion-0 96s readbacks=414 max=2.38e-07 strict=8 fmt=native-command-stream-v6
+[13:58:51] hp motion-mw1: START deforming-replay-motion-0 timeout=900s
+[13:59:54] hp motion-mw1: PASS deforming-replay-motion-0 62s readbacks=420 max=3.58e-07 strict=5 fmt=native-command-stream-v6
+[14:00:09] hp motion-mw1: END passed=True wall=498s/2400s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 498.5}

@@ -70,6 +70,9 @@ fn ggx_vndf(wi:vec3<f32>,ax:f32,ay:f32,random:vec2<f32>)->vec3<f32>{
 struct MicrofacetFresnel {reflection:vec3<f32>,transmission:vec3<f32>,cos_transmit:f32}
 fn ggx_fresnel(c:SvmClosure,cosine:f32)->MicrofacetFresnel{
     var f:MicrofacetFresnel;
+//#if SVM_BSDF_PRINCIPLED
+    if(c.roughness!=0.0){let p=principled_fresnel(c,cosine);f.reflection=p.reflection;f.transmission=p.transmission;f.cos_transmit=p.cos_transmit;return f;}
+//#endif
     if(c.kind==CLOSURE_BSDF_MICROFACET_GGX_ID){f.reflection=vec3<f32>(1);return f;}
     let dielectric=ggx_dielectric(cosine,c.ior);f.cos_transmit=dielectric.y;
     if(c.kind==CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID){f.transmission=select(vec3<f32>(1),vec3<f32>(0),dielectric.x==1.0);return f;}
@@ -115,3 +118,17 @@ fn ggx_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>)->SurfaceSample{
     }
     out.eval*=c.energy_scale;out.roughness=alpha2;out.label=select(LABEL_REFLECT,LABEL_TRANSMIT,transmit)|select(LABEL_GLOSSY,LABEL_SINGULAR,singular);return out;
 }
+//#if SVM_BSDF_PRINCIPLED
+// bsdf_sheen_eval / bsdf_sheen_sample (LTC; T, B and the transform in the record).
+fn sheen_value(c:SvmClosure,o:vec3<f32>,cosine:f32)->f32{
+    let x=c.a*o.x+c.b*o.z;let y=c.a*o.y;let length2=x*x+y*y+o.z*o.z;let r=c.a/length2;return INV_PI*cosine*(r*r);
+}
+fn sheen_evaluate(c:SvmClosure,wo:vec3<f32>)->f32{let o=vec3<f32>(rounded_dot(wo,c.T),rounded_dot(wo,c.multiscatter),rounded_dot(wo,c.N));return sheen_value(c,o,max(o.z,0.0));}
+fn sheen_sample(sd:SurfaceData,c:SvmClosure,random:vec2<f32>)->SurfaceSample{
+    var out:SurfaceSample;let disk=ggx_disk_sample(random);let z=ggx_unit_sqrt(rounded_add(disk.x*disk.x,disk.y*disk.y));
+    let o=surface_native_normalize(vec3<f32>(rounded_add(disk.x,-z*c.b),disk.y,z*c.a));
+    out.wo=rounded_add3(rounded_add3(o.x*c.T,o.y*c.multiscatter),o.z*c.N);out.label=LABEL_REFLECT|LABEL_DIFFUSE;
+    if(rounded_dot(sd.Ng,out.wo)<=0.0){return out;}
+    out.pdf=sheen_value(c,o,o.z);out.eval=vec3<f32>(out.pdf);return out;
+}
+//#endif

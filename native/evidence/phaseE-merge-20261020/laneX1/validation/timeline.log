@@ -1,0 +1,178 @@
+[09:36:00] X1 started 09:33:06; read E1/B2 reports, gate sources, run_corpus design
+[09:38:56] android dependency prefixes copied read-only from main native/work/android/<rid>/dependencies/install (as E1); android-arm64 build restarted, budget 30 min
+[09:40:05] libm probes start (samsung, hp)
+[09:42:13] libm probes done
+[09:43:49] linux reference export started
+[09:45:29] code changes final (gates, android_reference.py, libm_probe, app gate, test export); android builds restarted
+[09:46:06] push staged arm64 set to samsung
+[09:49:13] samsung chain start: emitter, triangle, regression (reference linux-x64-r1 imported) + Linux triangle captures
+[09:49:19] samsung emitter-r1: START emitter_sample timeout=300s
+[09:49:44] samsung emitter-r1: REFERENCE emitter_sample host re-judged vs glibc: True
+[09:49:44] samsung emitter-r1: PASS emitter_sample 25s maxPipelineMs=None
+[09:49:49] samsung emitter-r1: END passed=True wall=32s/600s failures=0
+[09:49:56] samsung triangle-r1: START triangle_sample timeout=900s
+[09:50:45] hp chain start: emitter, triangle, regression (reference imported) + Linux triangle captures
+[09:50:51] hp emitter-r1: START emitter_sample timeout=300s
+[09:51:16] linux host gate + android host builds started
+[09:51:20] samsung triangle-r1: REFERENCE triangle_sample host re-judged vs glibc: False
+[09:51:21] samsung triangle-r1: FAIL triangle_sample exit=1 84s: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164
+[09:51:21] samsung triangle-r1: START surface timeout=900s
+[09:51:32] hp emitter-r1: REFERENCE emitter_sample host re-judged vs glibc: False
+[09:51:32] hp emitter-r1: FAIL emitter_sample exit=1 41s: Emitter sample=342 field=8 got=587.602112 expected=587.437561
+[09:51:38] hp emitter-r1: END passed=False wall=47s/600s failures=1
+[09:51:47] hp triangle-r1: START triangle_sample timeout=900s
+[09:51:59] hp triangle-r1: REFERENCE triangle_sample host re-judged vs glibc: FileNotFoundError(2, 'No such file or directory')
+[09:51:59] hp triangle-r1: FAIL triangle_sample exit=139 12s: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'emitter_sample_probe'
+[09:51:59] hp triangle-r1: START surface timeout=900s
+[09:52:48] analysis: Samsung sampler vs glibc: static emitters 0 failures (bionic: 18 samples); deforming emitter (object 5) 46 fields/25 samples = ARM64 arithmetic (Samsung CPU==glibc 108/731 obj5 samples; HP x86 bionic 561/731). Re-judged E1 HP/Samsung sampler+emitter outputs vs glibc (runs/rejudge)
+[09:53:01] samsung triangle-r1: PASS surface 101s maxPipelineMs=4694.19
+[09:53:01] samsung triangle-r1: START triangle_lighting timeout=900s
+[09:54:12] samsung triangle-r1: REFERENCE triangle_lighting host re-judged vs glibc: False
+[09:54:13] samsung triangle-r1: FAIL triangle_lighting exit=1 70s: Lighting film mismatch mode=2 component=1484 actual=0.351310 expected=0.311020
+[09:54:18] samsung triangle-r1: END passed=False wall=264s/1800s failures=7
+[09:54:25] samsung regression-r1: START glass_render timeout=600s
+[09:54:26] hp triangle-r1: PASS surface 146s maxPipelineMs=5814.89
+[09:54:26] hp triangle-r1: START triangle_lighting timeout=900s
+[09:55:45] samsung regression-r1: REFERENCE glass_render host re-judged vs glibc: True
+[09:55:45] samsung regression-r1: PASS glass_render 79s maxPipelineMs=5314.53
+[09:55:45] samsung regression-r1: START lighting_mis timeout=600s
+[09:56:20] samsung regression-r1: REFERENCE lighting_mis host re-judged vs glibc: True
+[09:56:20] samsung regression-r1: PASS lighting_mis 32s maxPipelineMs=5282.53
+[09:56:20] samsung regression-r1: START transparent_lighting timeout=600s
+[09:56:27] hp triangle-r1: REFERENCE triangle_lighting host re-judged vs glibc: False
+[09:56:27] hp triangle-r1: FAIL triangle_lighting exit=134 112s: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'shade_surface_light'
+[09:56:31] hp triangle-r1: END passed=False wall=289s/2400s failures=7
+[09:56:38] hp regression-r1: START glass_render timeout=900s
+[09:58:02] hp regression-r1: REFERENCE glass_render host re-judged vs glibc: True
+[09:58:02] hp regression-r1: PASS glass_render 70s maxPipelineMs=10937.9
+[09:58:02] hp regression-r1: START lighting_mis timeout=900s
+[09:58:50] samsung regression-r1: REFERENCE transparent_lighting host re-judged vs glibc: True
+[09:58:50] samsung regression-r1: PASS transparent_lighting 146s maxPipelineMs=25523.5
+[09:58:54] samsung regression-r1: END passed=True wall=272s/1500s failures=0
+[09:58:59] samsung hostcap-linux-r1: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-0)
+[09:59:04] hp regression-r1: REFERENCE lighting_mis host re-judged vs glibc: True
+[09:59:04] hp regression-r1: PASS lighting_mis 48s maxPipelineMs=10765.2
+[09:59:04] hp regression-r1: START transparent_lighting timeout=900s
+[09:59:19] samsung hostcap-linux-r1: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[09:59:19] samsung hostcap-linux-r1: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-1)
+[10:00:09] samsung hostcap-linux-r1: PASS tri1 readbacks=417 max=1.1e-06 strict=40 fmt=native-command-stream-v6
+[10:00:09] samsung hostcap-linux-r1: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-2)
+[10:00:53] hp regression-r1: REFERENCE transparent_lighting host re-judged vs glibc: True
+[10:00:53] hp regression-r1: PASS transparent_lighting 94s maxPipelineMs=16548
+[10:00:57] hp regression-r1: END passed=True wall=261s/1800s failures=0
+[10:00:59] samsung hostcap-linux-r1: FAIL tri2 exit 1
+[10:00:59] samsung hostcap-linux-r1: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-3)
+[10:01:03] hp hostcap-linux-r1: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-0)
+[10:01:40] hp hostcap-linux-r1: PASS tri0 readbacks=289 max=4.77e-07 strict=9 fmt=native-command-stream-v6
+[10:01:40] hp hostcap-linux-r1: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-1)
+[10:01:49] samsung hostcap-linux-r1: PASS tri3 readbacks=473 max=2.68e-06 strict=281 fmt=native-command-stream-v6
+[10:01:49] samsung hostcap-linux-r1: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-4)
+[10:02:41] hp hostcap-linux-r1: PASS tri1 readbacks=417 max=7.99e-06 strict=80 fmt=native-command-stream-v6
+[10:02:42] hp hostcap-linux-r1: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-2)
+[10:03:41] hp hostcap-linux-r1: PASS tri2 readbacks=415 max=1.04e-05 strict=144 fmt=native-command-stream-v6
+[10:03:42] hp hostcap-linux-r1: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-3)
+[10:04:42] hp hostcap-linux-r1: PASS tri3 readbacks=473 max=9.42e-06 strict=467 fmt=native-command-stream-v6
+[10:04:42] hp hostcap-linux-r1: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1/runs/triangle_lighting/run/case-4)
+[10:05:33] hp hostcap-linux-r1: FAIL tri4 exit 134
+[10:05:38] hp hostcap-linux-r1: END passed=False wall=276s/1500s
+[10:06:03] samsung hostcap-linux-r1: PASS tri4 readbacks=464 max=2.74e-06 strict=293 fmt=native-command-stream-v6
+[10:06:07] samsung hostcap-linux-r1: END passed=False wall=429s/1500s
+[10:06:34] r1 chains done (Linux-prepared reference). Applied scene exchange (reference_policy.h, emitter/lighting gates, android_reference.py scene-reference, run_corpus --device-scene)
+[10:09:56] r2: linux export + android builds started
+[10:12:08] r2 arm64 staged + pushed to samsung
+[10:14:40] samsung r2 chain start (--device-scene, --reference linux-x64-r2): emitter, triangle, regression + Linux captures
+[10:14:46] samsung emitter-r2: START emitter_sample timeout=300s
+[10:14:46] samsung emitter-r2: SCENE-DUMP emitter_sample
+[10:14:52] samsung emitter-r2: SCENE-REFERENCE emitter_sample references=1
+[10:15:18] samsung emitter-r2: REFERENCE emitter_sample host re-judged vs glibc: True
+[10:15:18] samsung emitter-r2: PASS emitter_sample 26s maxPipelineMs=None
+[10:15:23] samsung emitter-r2: END passed=True wall=38s/600s failures=0
+[10:15:29] samsung triangle-r2: START triangle_sample timeout=900s
+[10:15:29] samsung triangle-r2: SCENE-DUMP triangle_sample
+[10:15:34] samsung triangle-r2: SCENE-REFERENCE triangle_sample references=1
+[10:15:54] hp r2 chain start (--device-scene, --reference linux-x64-r2)
+[10:16:00] hp emitter-r2: START emitter_sample timeout=300s
+[10:16:00] hp emitter-r2: SCENE-DUMP emitter_sample
+[10:16:06] hp emitter-r2: SCENE-REFERENCE emitter_sample references=1
+[10:16:48] hp emitter-r2: REFERENCE emitter_sample host re-judged vs glibc: True
+[10:16:48] hp emitter-r2: PASS emitter_sample 40s maxPipelineMs=None
+[10:16:53] hp emitter-r2: END passed=True wall=54s/600s failures=0
+[10:16:55] samsung triangle-r2: REFERENCE triangle_sample host re-judged vs glibc: False
+[10:16:56] samsung triangle-r2: FAIL triangle_sample exit=1 81s: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164
+[10:16:56] samsung triangle-r2: START surface timeout=900s
+[10:16:59] hp triangle-r2: START triangle_sample timeout=900s
+[10:16:59] hp triangle-r2: SCENE-DUMP triangle_sample
+[10:17:06] hp triangle-r2: SCENE-REFERENCE triangle_sample references=1
+[10:17:19] hp triangle-r2: REFERENCE triangle_sample host re-judged vs glibc: FileNotFoundError(2, 'No such file or directory')
+[10:17:19] hp triangle-r2: FAIL triangle_sample exit=134 12s: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'emitter_sample_probe'
+[10:17:19] hp triangle-r2: START surface timeout=900s
+[10:18:38] samsung triangle-r2: PASS surface 102s maxPipelineMs=4793.8
+[10:18:38] samsung triangle-r2: START triangle_lighting timeout=900s
+[10:18:38] samsung triangle-r2: SCENE-DUMP triangle_lighting
+[10:18:45] samsung triangle-r2: SCENE-REFERENCE triangle_lighting references=5
+[10:19:44] hp triangle-r2: PASS surface 145s maxPipelineMs=5808.53
+[10:19:44] hp triangle-r2: START triangle_lighting timeout=900s
+[10:19:44] hp triangle-r2: SCENE-DUMP triangle_lighting
+[10:19:52] hp triangle-r2: SCENE-REFERENCE triangle_lighting references=5
+[10:19:54] samsung triangle-r2: REFERENCE triangle_lighting host re-judged vs glibc: False
+[10:19:55] samsung triangle-r2: FAIL triangle_lighting exit=1 69s: Lighting film mismatch mode=2 component=1484 actual=0.351310 expected=0.311020
+[10:20:00] samsung triangle-r2: END passed=False wall=272s/1800s failures=7
+[10:20:07] samsung regression-r2: START glass_render timeout=600s
+[10:21:26] samsung regression-r2: REFERENCE glass_render host re-judged vs glibc: True
+[10:21:26] samsung regression-r2: PASS glass_render 79s maxPipelineMs=5258.04
+[10:21:26] samsung regression-r2: START lighting_mis timeout=600s
+[10:21:26] samsung regression-r2: SCENE-DUMP lighting_mis
+[10:21:34] samsung regression-r2: SCENE-REFERENCE lighting_mis references=8
+[10:22:10] samsung regression-r2: REFERENCE lighting_mis host re-judged vs glibc: True
+[10:22:10] samsung regression-r2: PASS lighting_mis 32s maxPipelineMs=5327.63
+[10:22:10] samsung regression-r2: START transparent_lighting timeout=600s
+[10:22:10] samsung regression-r2: SCENE-DUMP transparent_lighting
+[10:22:14] hp triangle-r2: REFERENCE triangle_lighting host re-judged vs glibc: False
+[10:22:14] hp triangle-r2: FAIL triangle_lighting exit=139 112s: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'shade_surface_light'
+[10:22:17] samsung regression-r2: SCENE-REFERENCE transparent_lighting references=8
+[10:22:20] hp triangle-r2: END passed=False wall=322s/2400s failures=7
+[10:22:26] hp regression-r2: START glass_render timeout=900s
+[10:23:45] hp regression-r2: REFERENCE glass_render host re-judged vs glibc: True
+[10:23:45] hp regression-r2: PASS glass_render 70s maxPipelineMs=10997.5
+[10:23:45] hp regression-r2: START lighting_mis timeout=900s
+[10:23:45] hp regression-r2: SCENE-DUMP lighting_mis
+[10:23:56] hp regression-r2: SCENE-REFERENCE lighting_mis references=8
+[10:24:49] samsung regression-r2: REFERENCE transparent_lighting host re-judged vs glibc: True
+[10:24:49] samsung regression-r2: PASS transparent_lighting 148s maxPipelineMs=26204.1
+[10:24:53] samsung regression-r2: END passed=True wall=288s/1500s failures=0
+[10:24:57] samsung hostcap-linux-r2: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-0)
+[10:25:02] hp regression-r2: REFERENCE lighting_mis host re-judged vs glibc: True
+[10:25:02] hp regression-r2: PASS lighting_mis 48s maxPipelineMs=10727
+[10:25:02] hp regression-r2: START transparent_lighting timeout=900s
+[10:25:02] hp regression-r2: SCENE-DUMP transparent_lighting
+[10:25:10] hp regression-r2: SCENE-REFERENCE transparent_lighting references=8
+[10:25:18] samsung hostcap-linux-r2: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[10:25:18] samsung hostcap-linux-r2: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-1)
+[10:26:08] samsung hostcap-linux-r2: PASS tri1 readbacks=417 max=1.1e-06 strict=40 fmt=native-command-stream-v6
+[10:26:09] samsung hostcap-linux-r2: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-2)
+[10:26:58] samsung hostcap-linux-r2: FAIL tri2 exit 1
+[10:26:58] samsung hostcap-linux-r2: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-3)
+[10:27:06] hp regression-r2: REFERENCE transparent_lighting host re-judged vs glibc: True
+[10:27:06] hp regression-r2: PASS transparent_lighting 93s maxPipelineMs=16445.9
+[10:27:10] hp regression-r2: END passed=True wall=286s/1800s failures=0
+[10:27:17] hp hostcap-linux-r2: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-0)
+[10:27:48] samsung hostcap-linux-r2: PASS tri3 readbacks=473 max=2.68e-06 strict=281 fmt=native-command-stream-v6
+[10:27:48] samsung hostcap-linux-r2: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-4)
+[10:27:55] hp hostcap-linux-r2: PASS tri0 readbacks=289 max=4.77e-07 strict=9 fmt=native-command-stream-v6
+[10:27:56] hp hostcap-linux-r2: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-1)
+[10:28:57] hp hostcap-linux-r2: PASS tri1 readbacks=417 max=7.99e-06 strict=80 fmt=native-command-stream-v6
+[10:28:59] hp hostcap-linux-r2: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-2)
+[10:29:59] hp hostcap-linux-r2: PASS tri2 readbacks=415 max=1.04e-05 strict=144 fmt=native-command-stream-v6
+[10:30:00] hp hostcap-linux-r2: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-3)
+[10:31:01] hp hostcap-linux-r2: PASS tri3 readbacks=473 max=9.42e-06 strict=467 fmt=native-command-stream-v6
+[10:31:02] hp hostcap-linux-r2: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r2/runs/triangle_lighting/run/case-4)
+[10:31:52] hp hostcap-linux-r2: FAIL tri4 exit 134
+[10:31:57] hp hostcap-linux-r2: END passed=False wall=283s/1500s
+[10:32:03] samsung hostcap-linux-r2: PASS tri4 readbacks=464 max=2.74e-06 strict=293 fmt=native-command-stream-v6
+[10:32:08] samsung hostcap-linux-r2: END passed=False wall=430s/1500s
+[10:32:26] managed app webgpu runs start
+[10:36:27] devices cleaned: /data/local/tmp/codebrix-x1-* removed on samsung and hp; no codebrix processes; x1 app uninstalled
+[10:38:32] docs applied: DEVICE.md policy section + open items, PARITY Lighting + Full parity decision, ABI Determinism libm sentence, AGENT-README pitfall, MAINTAINER-README app/libm paragraph
+[10:38:47] final linux triangle + broad (emitter) gates started
+[10:42:39] final host gate + dotnet test started
+[10:45:58] final linux: triangle gate PASS (=Phase C/E1 numbers), broad/emitter gate PASS, host gate PASS 48 exports 3,142 comparisons, dotnet test 157/157, audits PASS (run after docs). Sealing handoff.

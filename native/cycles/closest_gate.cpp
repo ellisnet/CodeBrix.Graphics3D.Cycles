@@ -5,6 +5,7 @@
 #include "scene/scene.h"
 #include "object_motion_fixture.h"
 #include "deforming_motion_fixture.h"
+#include "precision_fixture.h"
 #include "scene/mesh.h"
 #include "scene/object.h"
 #include "scene/camera.h"
@@ -93,6 +94,56 @@ static unsigned consume_sort_counters(WebGPUDevice &d,Scheduler &scheduler,const
     cases++;
   }
   return cases;
+}
+// Traversal precision: sliver triangles (with the Principled bench ray), mirrored
+// instances and an instanced emitter, edge-aimed and ULP-perturbed rays. Hits
+// must equal the CPU oracle bit for bit (t, u, v, prim, object, type).
+struct Precision {uint64_t paths=0,hits=0,instanced_hits=0,emitter_hits=0,bit_mismatches=0,decision_mismatches=0,strict=0;double maximum=0;bool bench_exact=false;};
+static Precision precision(const DeviceInfo &info){
+  Precision p;Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto *backend=dynamic_cast<WebGPUDevice*>(owner.get());require(backend,"Precision device creation failed");auto &d=*backend;
+  {
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
+    Scene scene(params,&d);
+    scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
+    scene.integrator->set_aa_samples(64);scene.integrator->set_seed(17);scene.film->set_use_sample_count(false);
+    scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();
+    precision_fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Precision scene update failed");
+    auto &data=scene.dscene.data;data.integrator.use_light_mis=0;data.integrator.use_caustics=0;d.const_copy_to("data",&data,sizeof(KernelData));
+    unsigned instances=0;for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)instances+=scene.dscene.bvh_leaf_nodes[i].x<0;
+    require(instances>=5,"Precision fixture lost its instances");
+    bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);
+    auto layout=fields(d);BufferParams bp;bp.width=64;bp.height=48;bp.pass_stride=data.film.pass_stride;
+    auto buffers=scheduler.get_render_buffers();buffers->reset(bp);buffers->zero();
+    const unsigned n=std::min(scheduler.capacity(),4096);const auto rays=precision_rays(scene,n,false);
+    for(unsigned round=0;round<2;round++){
+      scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Precision reset failed");
+      std::vector<IntegratorStateCPU> expected(scheduler.capacity());std::vector<int> indices;
+      for(unsigned i=0;i<n;i++){auto &s=expected[i];s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;
+        s.path.throughput=one_float3();s.path.continuation_probability=1;s.path.sample=i%64;s.path.render_pixel_index=i%3072;
+        s.ray.P=rays[i].P;s.ray.D=rays[i].D;s.ray.tmin=0;s.ray.tmax=rays[i].tmax;s.ray.time=.5f;s.isect.prim=PRIM_NONE;s.isect.object=OBJECT_NONE;
+        // Round 1 marks every other aimed triangle as the previous hit (self-hit skip).
+        if(round&&i%2){s.isect.object=rays[i].object;s.isect.prim=rays[i].prim;s.isect.type=PRIMITIVE_TRIANGLE;}
+        indices.push_back(int(i));}
+      upload(d,layout,expected);IntegratorQueueCounter counters{};counters.num_queued[DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST]=n;d.upload(uintptr_t(d.state.queue_counter),&counters,sizeof(counters));
+      scheduler.set_active(int(n));require(scheduler.update_queue_counter_and_cache(),"Precision counters failed");
+      std::vector<float> film(buffers->buffer.size());original_closest(scene.dscene,indices,expected,film);
+      scheduler.enqueue_path_iteration(DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);require(scheduler.update_queue_counter_and_cache(),"Precision closest failed: "+d.error_message());
+      auto actual=download(d,layout,n);
+      for(unsigned i=0;i<n;i++){const auto &e=expected[i].isect;const auto &a=actual[i].isect;p.paths++;
+        const bool same_hit=e.prim==a.prim&&e.object==a.object&&e.type==a.type;p.decision_mismatches+=!same_hit;
+        const bool bits=same_hit&&std::memcmp(&e.t,&a.t,4)==0&&std::memcmp(&e.u,&a.u,4)==0&&std::memcmp(&e.v,&a.v,4)==0;p.bit_mismatches+=!bits;
+        if(e.prim!=PRIM_NONE){p.hits++;p.instanced_hits+=e.object!=0;p.emitter_hits+=e.object>=3;}
+        if(same_hit)for(auto [ev,av]:{std::pair{e.t,a.t},std::pair{e.u,a.u},std::pair{e.v,a.v}}){double error=std::abs(double(av)-ev);p.maximum=std::max(p.maximum,error);p.strict+=error>1e-7+1e-7*std::abs(double(ev));}
+        if(round==0&&i==0)p.bench_exact=bits&&e.prim==0&&e.object==0;
+      }
+    }
+    std::cerr<<"precision paths="<<p.paths<<" hits="<<p.hits<<" instancedHits="<<p.instanced_hits<<" emitterHits="<<p.emitter_hits<<" decisionMismatches="<<p.decision_mismatches
+      <<" bitMismatches="<<p.bit_mismatches<<" strict="<<p.strict<<" max="<<p.maximum<<" benchExact="<<p.bench_exact<<"\n";
+    require(p.hits>1000&&p.hits<p.paths&&p.instanced_hits>500&&p.emitter_hits>100,"Missing precision coverage");
+    require(p.decision_mismatches==0&&p.bit_mismatches==0&&p.bench_exact,"Closest precision differs from the CPU oracle: decisions="+std::to_string(p.decision_mismatches)+" bitMismatches="+std::to_string(p.bit_mismatches));
+  }
+  require(stats.mem_used==0,"Precision closest leaked Cycles allocations");
+  return p;
 }
 static unsigned rejections(const DeviceInfo &info){
   unsigned rejected=0;
@@ -209,13 +260,14 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(m.object_hits.size()==5,"Not every instance/material object was hit");
   }
   require(stats.mem_used==0,"Closest test leaked Cycles allocations");const unsigned rejected=rejections(infos[0]);
+  const Precision exact=motion||deform?Precision{}:precision(infos[0]);
   std::string output=argv[1];std::ofstream(output+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(output+".library.txt")<<d.gpu.library_path;
   std::cout<<"{\"passed\":true,\"originalCameraToIntersectionScheduler\":true,\"nativeSceneTables\":true,\"nativeInstanceLeaves\":"<<m.instances<<",\"cases\":"<<m.cases
     <<",\"paths\":"<<m.paths<<",\"hits\":"<<m.hits<<",\"misses\":"<<m.misses<<",\"terminated\":"<<m.terminated<<",\"rouletteStates\":"<<m.rr<<",\"emissionTerminationStates\":"<<m.emission_termination
     <<",\"raytraceShaderStates\":"<<m.raytrace_states<<",\"hitObjects\":"<<m.object_hits.size()
     <<",\"originalSchedulerSortCases\":"<<m.sort_cases
     <<",\"directDispatchCases\":"<<m.direct_cases
-    <<",\"invalidCasesRejected\":"<<rejected
+    <<",\"invalidCasesRejected\":"<<rejected<<",\"precisionPaths\":"<<exact.paths<<",\"precisionHits\":"<<exact.hits<<",\"precisionInstancedHits\":"<<exact.instanced_hits<<",\"precisionEmitterHits\":"<<exact.emitter_hits<<",\"precisionBitMismatches\":"<<exact.bit_mismatches<<",\"precisionBenchRayExact\":"<<(exact.bench_exact?"true":"false")
     <<",\"exactStateChecks\":"<<m.exact_checks<<",\"floatChecks\":"<<m.float_checks<<",\"strictFloatFailures\":"<<m.strict_failures<<",\"maximumAbsoluteError\":"<<m.maximum_error
     <<",\"absoluteTolerance\":0.00005,\"relativeTolerance\":0.0002,\"strictAbsoluteTolerance\":0.0000001,\"strictRelativeTolerance\":0.0000001,\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

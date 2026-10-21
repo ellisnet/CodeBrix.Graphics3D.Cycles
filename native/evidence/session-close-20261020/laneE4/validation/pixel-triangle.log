@@ -1,0 +1,23 @@
+[18:06:07] pixel triangle-final: START triangle_sample timeout=2400s
+[18:06:07] pixel triangle-final: SCENE-DUMP triangle_sample
+[18:06:13] pixel triangle-final: SCENE-REFERENCE triangle_sample references=1
+[18:07:44] pixel triangle-final: REFERENCE triangle_sample host re-judged vs glibc: FileNotFoundError(2, 'No such file or directory')
+[18:07:44] pixel triangle-final: FAIL triangle_sample exit=1 91s: WebGPU scheduler kernel reported invalid data (mask 1059595178): unsupported SVM opcode or scene-specialized handler invalid/uninitialized SVM stack SVM instruction limit invalid image descriptor/data tiled image cache not implemented
+[18:07:44] pixel triangle-final: START surface timeout=2400s
+[18:11:02] pixel triangle-final: PASS surface 198s maxPipelineMs=10053.8
+[18:11:02] pixel triangle-final: START triangle_lighting timeout=2400s
+[18:11:02] pixel triangle-final: SCENE-DUMP triangle_lighting
+[18:11:09] pixel triangle-final: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=12 max=4.768e-07 | local-vs-glibc differing=56 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.788e-07 | local-vs-glibc differing=930 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=6 max=6.407e-07 | local-vs-glibc differing=983 maxUlps=2285 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=233 max=1.788e-06 | local-vs-glibc differing=715 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=8 max=3.576e-07 | local-vs-glibc differing=938 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=231 max=1.788e-06 | local-vs-glibc differing=777 maxUlps=55 practical=0
+[18:21:33] pixel triangle-final: REFERENCE triangle_lighting host re-judged vs glibc: True
+[18:21:33] pixel triangle-final: PASS triangle_lighting 622s maxPipelineMs=124032
+[18:21:33] pixel triangle-final: START replay-0 timeout=2400s
+[18:22:39] pixel triangle-final: PASS replay-0 66s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[18:22:39] pixel triangle-final: START replay-1 timeout=2400s
+[18:24:42] pixel triangle-final: PASS replay-1 123s readbacks=417 max=1.79e-07 strict=0 fmt=native-command-stream-v6
+[18:24:42] pixel triangle-final: START replay-2 timeout=2400s

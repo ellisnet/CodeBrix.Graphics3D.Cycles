@@ -1,0 +1,47 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "device": "hp",
+  "serial": "192.168.86.225:5555",
+  "corpus": "triangle",
+  "label": "r1",
+  "declaredBudgetSeconds": 2400,
+  "perJobTimeoutSeconds": 900,
+  "pipelineBudgetMs": null,
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "startedLocal": "09:51:38",
+  "deviceProperties": {
+    "api": "33",
+    "abi": "x86_64",
+    "model": "87FE",
+    "fingerprint": "Android-x86/bliss_x86_64/x86_64:13/TQ3A.230901.001.C1/152:userdebug/test-keys"
+  },
+  "stagedVerified": true,
+  "reference": {
+    "root": "/home/jeremy/ClaudeHome/cycles-worktrees/x1-android-reference/native/work/x1/reference/linux-x64-r1",
+    "oracleSha256": "ae651a23d30ed58b9f72add5e532ff139d0024b79a4656354b705ce8bc07833f",
+    "libc": "glibc 2.41",
+    "provenanceSha256": "832bcc11a17d706cd3a4ff27d122fc17db2225f9c2109f00d15d1b0378d26361"
+  },
+  "referenceImported": [
+    "triangle_lighting",
+    "triangle_sample"
+  ],
+  "passed": false,
+  "failures": [
+    "triangle_sample: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'emitter_sample_probe'",
+    "triangle_lighting: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'shade_surface_light'",
+    "replay-0: not run (source job failed)",
+    "replay-1: not run (source job failed)",
+    "replay-2: not run (source job failed)",
+    "replay-3: not run (source job failed)",
+    "replay-4: not run (source job failed)"
+  ],
+  "wallSeconds": 289.0,
+  "withinBudget": true,
+  "remoteProcessesAfter": [],
+  "productionSourcesUnchanged": true,
+  "binaryInputsUnchanged": true,
+  "inputsUnchanged": true
+}

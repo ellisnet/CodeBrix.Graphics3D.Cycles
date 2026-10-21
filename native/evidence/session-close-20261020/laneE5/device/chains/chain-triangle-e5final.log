@@ -1,0 +1,21 @@
+[15:19:05] pixel triangle-e5final: START triangle_sample timeout=2400s
+[15:19:05] pixel triangle-e5final: SCENE-DUMP triangle_sample
+[15:19:09] pixel triangle-e5final: SCENE-REFERENCE triangle_sample references=1
+samples          gpu-vs-glibc passed=False practical=42 strict=3637 max=0.7429 | local-vs-glibc differing=4775 maxUlps=15520768 practical=72
+[15:20:40] pixel triangle-e5final: REFERENCE triangle_sample host re-judged vs glibc: False
+[15:20:40] pixel triangle-e5final: FAIL triangle_sample exit=1 90s: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164
+[15:20:40] pixel triangle-e5final: START surface timeout=2400s
+[15:23:35] pixel triangle-e5final: PASS surface 176s maxPipelineMs=10140.6
+[15:23:35] pixel triangle-e5final: START triangle_lighting timeout=2400s
+[15:23:35] pixel triangle-e5final: SCENE-DUMP triangle_lighting
+[15:23:42] pixel triangle-e5final: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=18 max=1.49e-06 | local-vs-glibc differing=56 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=80 max=2.694e-05 | local-vs-glibc differing=930 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=123 max=1.692e-05 | local-vs-glibc differing=983 maxUlps=2285 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=315 max=9.775e-06 | local-vs-glibc differing=715 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=False practical=9 strict=225 max=0.01274 | local-vs-glibc differing=938 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[15:26:54] pixel triangle-e5final: REFERENCE triangle_lighting host re-judged vs glibc: False
+[15:26:54] pixel triangle-e5final: FAIL triangle_lighting exit=1 190s: Lighting film mismatch mode=4 component=312 actual=0.064647 expected=0.065844
+[15:26:58] pixel triangle-e5final: END passed=False wall=474s/7200s failures=3
+{"passed": false, "failures": ["triangle_sample: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164", "triangle_lighting: Lighting film mismatch mode=4 component=312 actual=0.064647 expected=0.065844", "replay-0: not run (source job failed)"], "error": null, "wallSeconds": 474.1}

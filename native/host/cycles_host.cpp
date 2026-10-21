@@ -20,6 +20,9 @@
 #include "scene/attribute.h"
 #include "scene/image.h"
 #include "scene/image_loader.h"
+#include "scene/procedural.h"
+#include "scene/scene_attributes.h"
+#include "scene/shader.h"
 #include "util/image_metadata.h"
 #include <OpenColorIO/OpenColorIO.h>
 #include "session/output_driver.h"
@@ -46,10 +49,17 @@
 #include <sstream>
 #include <iomanip>
 #include <locale>
+#include <functional>
+
+#if !defined(CBC_HOST_LIBRARY_VERSION) || !defined(CBC_HOST_CYCLES_REVISION)
+#  error "targets.cmake stamps CBC_HOST_LIBRARY_VERSION and CBC_HOST_CYCLES_REVISION"
+#endif
 
 namespace {
 using namespace ccl;
 thread_local char last_error[2048] = {};
+// Set while an event callback runs on this thread; host calls are refused.
+thread_local bool in_callback = false;
 void store_error(const char *message) noexcept {
   std::strncpy(last_error, message, sizeof(last_error) - 1); last_error[sizeof(last_error) - 1] = 0;
 }
@@ -61,6 +71,7 @@ void require(bool ok, const char *message, int code = CBC_INVALID) {
   if (!ok) throw Failure(code, message);
 }
 template<class Function> int boundary(Function &&function) noexcept {
+  if (in_callback) { store_error("Host functions cannot be called from an event callback"); return CBC_NOT_READY; }
   try { function(); last_error[0] = 0; return CBC_OK; }
   catch (const Failure &error) { store_error(error.what()); return error.code; }
   catch (const std::exception &error) { store_error(error.what()); return CBC_FAILED; }
@@ -81,11 +92,21 @@ struct Graph {
   std::map<ImageSlotTextureNode *,std::shared_ptr<const MemoryImageData>> images;
 };
 struct Entry { Node *node; Graph *graph = nullptr; };
+struct PassResult {
+  std::string name;
+  int type = 0;
+  unsigned components = 0;
+  std::vector<float> pixels;
+  bool written = false;
+};
 struct Result {
   std::vector<float> pixels;
   int width = 0, height = 0;
   unsigned writes = 0;
   bool valid = false;
+  // Named caller passes, read from the same complete tile as Combined.
+  std::vector<PassResult> passes;
+  bool complete = false;
 };
 class HostOutput final : public OutputDriver {
   Result &result;
@@ -96,6 +117,9 @@ class HostOutput final : public OutputDriver {
     result.valid = tile.offset.x == 0 && tile.offset.y == 0 &&
       tile.size.x == result.width && tile.size.y == result.height &&
       tile.get_pass_pixels("Combined", 4, result.pixels.data());
+    if (!result.valid) return;
+    for (auto &pass : result.passes)
+      pass.written = tile.get_pass_pixels(pass.name, int(pass.components), pass.pixels.data());
   }
 };
 std::mutex configuration_mutex;
@@ -107,11 +131,45 @@ struct Host {
   std::map<uint64_t, Entry> nodes;
   std::map<Shader *, std::unique_ptr<Graph>> graphs;
   std::map<CBCImage,std::shared_ptr<const MemoryImageData>> images;
+  // Scene edits after a render (host_edits.inc): authored attributes of
+  // geometry the static BVH path may bake, and shaders edited since the last render.
+  std::map<Geometry *, BakeRecord> bakes;
+  std::set<Shader *> edited_shaders;
   Result result;
+  // Event callback state. The callback changes only under `operation`, which
+  // rendering holds, so a render sees one callback throughout.
+  CBCEventCallback callback = nullptr;
+  void *user_data = nullptr;
+  std::mutex event_mutex;
+  std::string last_status;
+  int64_t last_sample = -1;
+  uint64_t requested_samples = 0;
+  uint32_t backend = 0;
+  void emit(uint32_t kind, uint64_t done, double elapsed, const std::string &message) {
+    if (!callback || closing.load()) return;
+    CBCEvent event{sizeof(CBCEvent), kind, done, requested_samples, elapsed, message.c_str()};
+    in_callback = true;
+    int stop = 0;
+    try { stop = callback(user_data, &event); } catch (...) { stop = 1; }
+    in_callback = false;
+    if (stop) cancellation = true;
+  }
+  void progress_event() {
+    if (!callback || !rendering.load() || closing.load() || !session) return;
+    std::lock_guard lock(event_mutex);
+    auto &progress = session->progress;
+    std::string status, substatus; progress.get_status(status, substatus);
+    if (!substatus.empty()) status += ": " + substatus;
+    double total = 0, render = 0; progress.get_time(total, render);
+    const int64_t sample = progress.get_current_sample();
+    if (status != last_status) { last_status = status; emit(CBC_EVENT_STATUS, uint64_t(std::max<int64_t>(sample, 0)), total, status); }
+    if (sample != last_sample) { last_sample = sample; emit(CBC_EVENT_PROGRESS, uint64_t(std::max<int64_t>(sample, 0)), total, status); }
+  }
   Host() { live_hosts.fetch_add(1); }
   ~Host() {
     if (session) {
       session->cancel(true);
+      bakes.clear();
       nodes.clear();
       graphs.clear();
       images.clear();
@@ -136,7 +194,7 @@ struct Host {
     entry.node->tag_modified();
     if (entry.graph) { entry.graph->dirty = true; return; }
     Scene *scene = session->scene.get();
-    if (auto shader = dynamic_cast<Shader *>(entry.node)) shader->tag_update(scene);
+    if (auto shader = dynamic_cast<Shader *>(entry.node)) { edited_shaders.insert(shader); shader->tag_update(scene); }
     else if (auto light = dynamic_cast<Light *>(entry.node)) light->tag_update(scene);
     else if (auto geometry = dynamic_cast<Geometry *>(entry.node)) geometry->tag_update(scene, true);
     else if (auto object = dynamic_cast<Object *>(entry.node)) object->tag_update(scene);
@@ -185,7 +243,7 @@ void shutdown_hosts() noexcept {
     for (auto &[id, host] : remaining) { host->closing = true; host->cancellation = true; } }
   for (auto &[id, host] : remaining) {
     std::lock_guard lock(host->operation);
-    if (host->session) { host->session->cancel(true); host->nodes.clear(); host->graphs.clear(); host->images.clear(); host->session.reset(); }
+    if (host->session) { host->session->cancel(true); host->bakes.clear(); host->nodes.clear(); host->graphs.clear(); host->images.clear(); host->session.reset(); }
   }
 }
 
@@ -235,6 +293,20 @@ void initialize_paths() {
 #endif
 }
 
+namespace {
+uint32_t gpu_backend() {
+#ifdef WITH_METAL
+  return CBC_HOST_METAL;
+#elif defined(WITH_WEBGPU)
+  return CBC_HOST_WEBGPU;
+#else
+  return 0;
+#endif
+}
+}
+namespace {
+#include "host_edits.inc"
+}
 #include "host_properties.inc"
 #include "host_scene.inc"
 
@@ -243,6 +315,7 @@ namespace ccl {
 // Defined with the WebGPU device (native/cycles/device_tier.h, device.cpp).
 void host_tier_config(uint32_t tier, bool record_off, bool read_only, bool canary, const char *directory);
 std::string webgpu_device_report_json(Device *device);
+bool webgpu_recover(Device *device, std::string &reason);
 }
 #endif
 extern "C" int cbc_host_tier_config(const CBCTierConfig *config, const char *directory) {
@@ -259,9 +332,8 @@ extern "C" int cbc_host_tier_config(const CBCTierConfig *config, const char *dir
 #endif
   });
 }
-extern "C" int cbc_host_device_report_json(CBCHost handle, char *json, uint64_t capacity, uint64_t *required) {
-  return edit(handle, [&](Host &host) {
-    require(required && (!capacity || json), "Invalid result buffer or size pointer");
+namespace {
+std::string device_report(Host &host) {
     std::ostringstream out; out.imbue(std::locale::classic());
     Device *device = host.session ? host.session->device.get() : nullptr;
     require(device != nullptr, "Host has no device", CBC_FAILED);
@@ -275,7 +347,55 @@ extern "C" int cbc_host_device_report_json(CBCHost handle, char *json, uint64_t 
 #endif
     out << (device->info.type == DEVICE_METAL ? "\"metal\"" : "\"cpu\"") << ",\"pipelines\":null";
     out << '}';
-    copy_text(out.str(), json, capacity, required);
+    return out.str();
+}
+}
+namespace {
+// Device-error recovery contract (ABI.md "Device errors"). A render that fails
+// with a device error leaves the error on the Cycles device. The next render
+// on the host asks the device to recover: the WebGPU device clears the error
+// when the device itself is intact (no lost device, no uncaptured WebGPU
+// error); the scene is then tagged for a complete device update, as
+// Scene::reset does without adding default shaders, so every manager uploads
+// its data again. The device record and pipeline tier are not touched. A
+// device that cannot recover (fatal WebGPU error, CPU or Metal device error)
+// keeps the host faulted: every later render fails with "Host faulted".
+void recover_device(Host &host) {
+  Device *device = host.session->device.get();
+  if (!device->have_error()) return;
+  const std::string previous = device->error_message();
+  std::string reason = "the device has no recovery path";
+#ifdef WITH_WEBGPU
+  const bool recovered = webgpu_recover(device, reason);
+#else
+  const bool recovered = false;
+#endif
+  if (!recovered)
+    throw Failure(CBC_FAILED, "Host faulted: the device cannot recover from an earlier error (" + previous + "; " + reason +
+                  "); destroy the host and create a new one");
+  Scene &scene = *host.session->scene;
+  scene.camera->tag_modified(); scene.dicing_camera->tag_modified(); scene.film->tag_modified(); scene.background->tag_modified();
+  scene.background->tag_update(&scene);
+  scene.integrator->tag_update(&scene, Integrator::UPDATE_ALL);
+  scene.scene_attribute->tag_update(&scene, SceneAttributes::UPDATE_ALL);
+  for (Shader *shader : scene.shaders) shader->tag_modified();
+  scene.shader_manager->tag_update(&scene, ShaderManager::UPDATE_ALL);
+  for (Geometry *geometry : scene.geometry) { geometry->tag_modified(); geometry->need_update_rebuild = true; }
+  for (Object *object : scene.objects) object->tag_modified();
+  scene.object_manager->tag_update(&scene, ObjectManager::UPDATE_ALL);
+  scene.geometry_manager->tag_update(&scene, GeometryManager::UPDATE_ALL);
+  scene.light_manager->tag_update(&scene, LightManager::UPDATE_ALL);
+  scene.particle_system_manager->tag_update(&scene);
+  scene.procedural_manager->tag_update();
+  scene.image_manager->tag_update();
+  std::lock_guard lock(host.event_mutex);
+  host.emit(CBC_EVENT_STATUS, 0, 0, "Device recovered after an earlier error (" + previous + "); scene data re-uploaded");
+}
+}
+extern "C" int cbc_host_device_report_json(CBCHost handle, char *json, uint64_t capacity, uint64_t *required) {
+  return edit(handle, [&](Host &host) {
+    require(required && (!capacity || json), "Invalid result buffer or size pointer");
+    copy_text(device_report(host), json, capacity, required);
   });
 }
 
@@ -292,18 +412,21 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
     require(config && out && config->struct_size == sizeof(*config) && config->abi_version == CBC_HOST_ABI, "Invalid host configuration");
     require(std::all_of(std::begin(config->reserved), std::end(config->reserved), [](auto v) { return v == 0; }), "Unknown configuration flags");
     require(config->threads <= 1024, "Invalid thread count");
-    require(config->backend == CBC_HOST_WEBGPU || config->backend == CBC_HOST_CPU_REFERENCE || config->backend == CBC_HOST_METAL,
-            "Explicit backend selection required");
+    require(config->backend == CBC_HOST_WEBGPU || config->backend == CBC_HOST_CPU_REFERENCE || config->backend == CBC_HOST_METAL ||
+            config->backend == CBC_HOST_GPU, "Explicit backend selection required");
+    const uint32_t backend = config->backend == CBC_HOST_GPU ? gpu_backend() : config->backend;
+    require(backend != 0, "This binary has no GPU backend", CBC_UNSUPPORTED);
 #ifdef __APPLE__
     require(supported_macos(), "This library requires macOS 15.0 or later", CBC_UNSUPPORTED);
     initialize_paths();
 #endif
 #ifndef WITH_METAL
-    require(config->backend != CBC_HOST_METAL, "The Metal backend exists only in Apple Silicon builds", CBC_UNSUPPORTED);
+    require(backend != CBC_HOST_METAL, "The Metal backend exists only in Apple Silicon builds", CBC_UNSUPPORTED);
 #endif
     std::lock_guard configuration_lock(configuration_mutex);
     auto host = std::make_shared<Host>();
-    auto type = config->backend == CBC_HOST_WEBGPU ? DEVICE_WEBGPU : config->backend == CBC_HOST_METAL ? DEVICE_METAL : DEVICE_CPU;
+    auto type = backend == CBC_HOST_WEBGPU ? DEVICE_WEBGPU : backend == CBC_HOST_METAL ? DEVICE_METAL : DEVICE_CPU;
+    host->backend = backend;
     auto devices = Device::available_devices(DeviceTypeMask(1 << type));
     require(!devices.empty(), "Requested device is unavailable", CBC_UNSUPPORTED);
     SessionParams params; params.device = devices[0];
@@ -327,6 +450,7 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
     host->session->progress.set_cancel_callback([raw] {
       if (raw->cancellation.load() || raw->closing.load()) raw->session->progress.set_cancel("Cancelled by caller");
     });
+    host->session->progress.set_update_callback([raw] { raw->progress_event(); });
     for (auto pass : host->session->scene->passes) if (pass->get_type() == PASS_COMBINED) pass->set_name(ustring("Combined"));
     // Register cleanup after native registry and scheduler initialization, so
     // live contexts close before those process-level services are destroyed.
@@ -352,7 +476,7 @@ extern "C" int cbc_host_destroy(CBCHost handle) {
       host = it->second; host->closing = true; host->cancellation = true; hosts.erase(it); }
     std::lock_guard lock(host->operation);
     host->session->cancel(true);
-    host->nodes.clear(); host->graphs.clear(); host->images.clear(); host->session.reset();
+    host->bakes.clear(); host->nodes.clear(); host->graphs.clear(); host->images.clear(); host->session.reset();
   });
 }
 extern "C" int cbc_host_cancel(CBCHost handle) {
@@ -416,7 +540,7 @@ extern "C" int cbc_host_set_floats(CBCHost handle, CBCNode id, const char *name,
   return edit(handle, [&](Host &host) {
     count_ok(values, count); for (uint64_t i = 0; i < count; ++i) require(std::isfinite(values[i]), "Nonfinite socket value");
     auto &entry = host.entry(id); auto &input = socket(entry, name); auto &node = *entry.node;
-    stored_property(input);
+    stored_property(input); before_edit(host, entry, name);
     if (input.type == SocketType::FLOAT) { require(count == 1, "Expected one float"); node.set(input, values[0]); }
     else if (input.type == SocketType::POINT2) { require(count == 2, "Expected two floats"); node.set(input, make_float2(values[0], values[1])); }
     else if (SocketType::is_float3(input.type)) { require(count == 3, "Expected three floats"); node.set(input, make_float3(values[0], values[1], values[2])); }
@@ -443,7 +567,7 @@ extern "C" int cbc_host_set_floats(CBCHost handle, CBCNode id, const char *name,
 extern "C" int cbc_host_set_ints(CBCHost handle, CBCNode id, const char *name, const int64_t *values, uint64_t count) {
   return edit(handle, [&](Host &host) {
     count_ok(values, count); auto &entry = host.entry(id); auto &input = socket(entry, name); auto &node = *entry.node;
-    stored_property(input);
+    stored_property(input); before_edit(host, entry, name);
     if (input.type == SocketType::BOOLEAN_ARRAY || input.type == SocketType::INT_ARRAY) {
       if (input.type == SocketType::BOOLEAN_ARRAY) {
         for (size_t i=0;i<count;++i) require(values[i]==0 || values[i]==1,"Boolean must be zero or one");
@@ -468,7 +592,7 @@ extern "C" int cbc_host_set_ints(CBCHost handle, CBCNode id, const char *name, c
 extern "C" int cbc_host_set_string(CBCHost handle, CBCNode id, const char *name, const char *value) {
   return edit(handle, [&](Host &host) {
     require(value, "Missing string value"); auto &entry = host.entry(id); auto &input = socket(entry, name);
-    stored_property(input);
+    stored_property(input); before_edit(host, entry, name);
 #ifdef CBC_HOST_NO_IMAGE_FILES
     // This build contains no image file readers; callers bind decoded pixels.
     require(!*value || input.name != "filename" || !dynamic_cast<ImageSlotTextureNode *>(entry.node),
@@ -493,7 +617,11 @@ extern "C" int cbc_host_set_nodes(CBCHost handle, CBCNode id, const char *name, 
       auto node = values[i] ? host.entry(values[i]).node : nullptr;
       require(node || input.type == SocketType::NODE, "Null array node reference");
       require(!node || !input.node_type || node->is_a(input.node_type), "Node reference has the wrong type"); nodes[i] = node;
+      // A baked volume cannot gain users (host_edits.inc).
+      auto volume = dynamic_cast<Geometry *>(node);
+      if (volume && volume->is_volume() && volume->transform_applied && dynamic_cast<Object *>(entry.node)) throw Failure(CBC_NOT_READY, volume_refusal);
     }
+    before_edit(host, entry, name);
     if (input.type == SocketType::NODE) entry.node->set(input, nodes[0]); else entry.node->set(input, nodes);
     host.changed(entry);
   });
@@ -504,6 +632,7 @@ extern "C" int cbc_host_mesh(CBCHost handle, CBCNode id, const float *xyz, uint6
     auto &entry = host.entry(id); auto mesh = dynamic_cast<Mesh *>(entry.node); require(mesh, "Handle is not a mesh");
     for (uint64_t i = 0; i < vertices * 3; ++i) require(std::isfinite(xyz[i]), "Mesh position is nonfinite");
     for (uint64_t i = 0; i < triangles * 3; ++i) require(indices[i] < vertices, "Triangle index is outside the vertex array");
+    before_edit(host, entry, nullptr);
     mesh->resize_mesh(int(vertices), int(triangles));
     for (size_t i = 0; i < vertices; ++i) mesh->get_position_for_write()[i] = make_float3(xyz[3*i],xyz[3*i+1],xyz[3*i+2]);
     for (size_t i = 0; i < triangles * 3; ++i) mesh->get_triangles()[i] = int(indices[i]);
@@ -518,9 +647,14 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
     require(config->width && config->height && config->width <= 32768 && config->height <= 32768 && config->samples && config->samples <= INT_MAX, "Invalid render dimensions or sample count");
     require(rgba && count == uint64_t(config->width) * config->height * 4 && count <= SIZE_MAX / sizeof(float), "Incorrect output buffer size");
     validate_geometry(host);
+    // Restore baked geometry whose fresh-scene bake differs and capture the
+    // authored attributes of geometry this render may bake (host_edits.inc).
+    struct Prune { Host &host; ~Prune() { prune_bakes(host); } } prune{host};
+    reconcile_bakes(host);
     host.prepare_graphs();
     auto &session = *host.session; auto &scene = *session.scene;
-    require(!session.device->have_error(), session.device->error_message().c_str(), CBC_FAILED);
+    host.requested_samples = config->samples;
+    recover_device(host);
     scene.camera->set_full_width(int(config->width)); scene.camera->set_full_height(int(config->height));
     scene.camera->set_screen_size(int(config->width), int(config->height)); scene.camera->compute_auto_viewplane();
     auto params = session.params; params.samples = int(config->samples);
@@ -531,15 +665,35 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
     buffers.height = buffers.full_height = buffers.window_height = int(config->height);
     host.result = Result{}; host.result.width = buffers.width; host.result.height = buffers.height;
     host.result.pixels.assign(size_t(count), -1000.0f); host.cancellation = false;
+    // Caller-created passes with a name are captured for cbc_host_pass_floats.
+    for (auto &[id, entry] : host.nodes) if (auto pass = dynamic_cast<Pass *>(entry.node)) {
+      const std::string name = pass->get_name().string();
+      if (name.empty() || name == "Combined" || pass->get_type() == PASS_COMBINED) continue;
+      if (std::any_of(host.result.passes.begin(), host.result.passes.end(), [&](auto &p) { return p.name == name; })) continue;
+      PassResult value; value.name = name; value.type = int(pass->get_type());
+      value.components = unsigned(std::max(1, pass->get_info().num_components));
+      value.pixels.assign(size_t(config->width) * config->height * value.components, 0.0f);
+      host.result.passes.push_back(std::move(value));
+    }
+    host.requested_samples = config->samples; host.last_sample = -1; host.last_status.clear();
     struct Active { Host &host; Active(Host &h) : host(h) { host.rendering = true; } ~Active() { host.rendering = false; } } active(host);
     session.progress.reset();
     session.reset(params, buffers); session.start(); session.wait();
-    require(!host.cancellation && !host.closing, "Render cancelled", CBC_CANCELLED);
-    require(!session.progress.get_error(), session.progress.get_error_message().c_str(), CBC_FAILED);
-    require(!session.device->have_error(), session.device->error_message().c_str(), CBC_FAILED);
-    require(!session.progress.get_cancel(), "Render cancelled", CBC_CANCELLED);
-    require(host.result.writes == 1 && host.result.valid, "Missing complete Combined output", CBC_FAILED);
-    require(std::all_of(host.result.pixels.begin(), host.result.pixels.end(), [](float value) { return std::isfinite(value); }), "Nonfinite Combined output", CBC_FAILED);
+    try {
+      require(!host.cancellation && !host.closing, "Render cancelled", CBC_CANCELLED);
+      require(!session.progress.get_error(), session.progress.get_error_message().c_str(), CBC_FAILED);
+      require(!session.device->have_error(), session.device->error_message().c_str(), CBC_FAILED);
+      require(!session.progress.get_cancel(), "Render cancelled", CBC_CANCELLED);
+      require(host.result.writes == 1 && host.result.valid, "Missing complete Combined output", CBC_FAILED);
+      require(std::all_of(host.result.pixels.begin(), host.result.pixels.end(), [](float value) { return std::isfinite(value); }), "Nonfinite Combined output", CBC_FAILED);
+    } catch (const Failure &failure) {
+      if (failure.code == CBC_FAILED) { std::lock_guard lock(host.event_mutex); host.emit(CBC_EVENT_ERROR, 0, 0, failure.what()); }
+      host.result.passes.clear();
+      throw;
+    }
     std::copy(host.result.pixels.begin(), host.result.pixels.end(), rgba);
+    host.result.complete = true;
   });
 }
+
+#include "host_api.inc"

@@ -7,6 +7,7 @@
 #include "scene/scene.h"
 #include "object_motion_fixture.h"
 #include "deforming_motion_fixture.h"
+#include "precision_fixture.h"
 #include "scene/mesh.h"
 #include "scene/object.h"
 #include "scene/integrator.h"
@@ -110,9 +111,44 @@ static States initial(int count,int variant,bool motion=false){
   }
   return states;
 }
+// Traversal precision: near-tangent shadow rays toward sliver triangles and an
+// instanced emissive quad (light self-exclusion on the aimed emitter triangle,
+// grazing its diagonal neighbour), tmax within 1e-6 of the target, inputs
+// perturbed by 0-2 ULP. Blocked decisions must equal the CPU oracle exactly.
+struct ShadowPrecision {uint64_t paths=0,blocked=0,clear=0,emitter_paths=0;unsigned instances=0;};
+static ShadowPrecision shadow_precision(const DeviceInfo &info){
+  ShadowPrecision p;Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shadow_gate device creation");
+  {
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
+    Scene scene(params,&d);scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
+    precision_fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
+    for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)p.instances+=scene.dscene.bvh_leaf_nodes[i].x<0;require(p.instances>=5,"Shadow precision fixture lost its instances");
+    d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));bool cancel=false;ShadowScheduler scheduler(&d,scene.film,&scene.dscene,&cancel);
+    scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
+    const int n=std::min(scheduler.capacity(),4096);const auto rays=precision_rays(scene,n,true);
+    scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Shadow precision reset failed");
+    auto expected=initial(n,0);std::vector<int> indices;
+    for(int i=0;i<n;i++){auto &s=expected[i];s.shadow_path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW;
+      s.shadow_ray.P=rays[i].P;s.shadow_ray.D=rays[i].D;s.shadow_ray.tmin=0;s.shadow_ray.tmax=rays[i].tmax;s.shadow_ray.time=.5f;
+      const bool emitter=rays[i].object>=3;p.emitter_paths+=emitter;
+      if(emitter||i%2){s.shadow_ray.self_light_object=rays[i].object;s.shadow_ray.self_light_prim=rays[i].prim;}
+      indices.push_back(i);}
+    upload(d,layout,expected);IntegratorQueueCounter counter{};counter.num_queued[DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW]=n;d.upload(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));
+    scheduler.active(n);require(scheduler.update_queue_counter_and_cache(),"Shadow precision counters failed");
+    std::vector<float> film(48);original_shadow(scene.dscene,DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,indices,expected,film);
+    scheduler.enqueue_path_iteration(DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW);require(scheduler.update_queue_counter_and_cache(),"Shadow precision intersect failed: "+d.error_message());
+    std::vector<uint16_t> queued(n);d.download(uintptr_t(d.state.shadow_path.queued_kernel),queued.data(),queued.size()*2);uint64_t mismatches=0;
+    for(int i=0;i<n;i++){mismatches+=queued[i]!=expected[i].shadow_path.queued_kernel;if(expected[i].shadow_path.queued_kernel)p.clear++;else p.blocked++;}
+    p.paths=n;std::cerr<<"shadow precision paths="<<p.paths<<" blocked="<<p.blocked<<" unblocked="<<p.clear<<" emitterPaths="<<p.emitter_paths<<" decisionMismatches="<<mismatches<<"\n";
+    require(mismatches==0,"Shadow precision decisions differ from the CPU oracle: "+std::to_string(mismatches));
+    Metrics full;compare(d,layout,expected,full); // every state field and queue counter, bit for bit
+    require(p.blocked>200&&p.clear>200&&p.emitter_paths>200,"Missing shadow precision coverage");
+  }
+  require(stats.mem_used==0,"Shadow precision leaked Cycles allocations");return p;
+}
 static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
   for(int test=0;test<18;test++){
-    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
+    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shadow_gate device creation");
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
     Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
     d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));bool cancel=false;ShadowScheduler scheduler(&d,scene.film,&scene.dscene,&cancel);
@@ -148,7 +184,7 @@ static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: shadow_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shadow_gate device creation");Metrics m;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
     Scene scene(params,&d);prepare(scene);if(motion){for(size_t i=0;i<scene.objects.size();i++)object_motion_fixture(scene,*scene.objects[i],unsigned(i));}if(deform)for(size_t i=0;i<scene.objects.size();i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
@@ -201,9 +237,10 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(m.blocked>100&&m.clear>100&&m.excluded>50,"Insufficient shadow occlusion/self-light coverage");
   }
   require(stats.mem_used==0,"Shadow gate leaked Cycles allocations");auto rejected=rejections(infos[0]);
+  const ShadowPrecision exact=motion||deform?ShadowPrecision{}:shadow_precision(infos[0]);
   std::ofstream(prefix+".library.txt")<<d.gpu.library_path;std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".wgsl")<<shadow_source();
   std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuShadowKernels\":true,\"originalGpuScheduler\":true,\"transparentShadowsProven\":false,\"directLightingProven\":false,\"cases\":"<<m.cases
     <<",\"paths\":"<<m.paths<<",\"blocked\":"<<m.blocked<<",\"unoccluded\":"<<m.clear<<",\"selfOrLightExclusions\":"<<m.excluded<<",\"nativeInstanceLeaves\":"<<m.instances
     <<",\"directDispatchCases\":"<<m.direct<<",\"exactStateChecks\":"<<m.exact<<",\"filmFloatChecks\":"<<m.floats<<",\"strictDifferences\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum
-    <<",\"recordedShadowCases\":2,\"invalidCasesRejected\":"<<rejected<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+    <<",\"recordedShadowCases\":2,\"invalidCasesRejected\":"<<rejected<<",\"precisionPaths\":"<<exact.paths<<",\"precisionBlocked\":"<<exact.blocked<<",\"precisionUnblocked\":"<<exact.clear<<",\"precisionEmitterPaths\":"<<exact.emitter_paths<<",\"precisionDecisionMismatches\":0,\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

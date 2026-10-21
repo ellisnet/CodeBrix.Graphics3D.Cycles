@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "wavefront_test.h"
 #include "render_capture.h"
+#include "reference_policy.h"
 #include "camera_reference.h"
 #include "closest_reference.h"
 #include "surface_reference.h"
@@ -38,15 +39,20 @@ using namespace wavefront_test;
 #include "object_motion_fixture.h"
 #include "deforming_motion_fixture.h"
 #endif
+#ifdef CODEBRIX_SHADOW_TERMINATOR_GATE
+#include "shadow_terminator_fixture.h"
+#endif
 constexpr unsigned width=32,height=24,samples=8;
 #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
 #include "object_motion_fixture.h"
 #include "deforming_motion_fixture.h"
-constexpr int lighting_cases=5;
-// Image modes; mode 4 (static instanced emitter) is checked for rejection.
-constexpr int lighting_modes[lighting_cases]={0,1,2,3,5};
+constexpr int lighting_cases=6;
+// Image modes; mode 4 is the static instanced emitter.
+constexpr int lighting_modes[lighting_cases]={0,1,2,3,4,5};
 #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
 constexpr int lighting_cases=12;
+#elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
+constexpr int lighting_cases=shadow_terminator_cases;
 #else
 constexpr int lighting_cases=8;
 #endif
@@ -73,6 +79,13 @@ static void fixture(Scene &scene,int mode,bool stationary=false){
   scene.integrator->set_aa_samples(samples);scene.integrator->set_min_bounce(2);scene.integrator->set_max_bounce(3);scene.integrator->set_filter_glossy(0);
   scene.film->set_use_sample_count(false);scene.camera->set_full_width(width);scene.camera->set_full_height(height);scene.camera->set_screen_size(width,height);
   scene.camera->set_fov(.9f);scene.camera->set_matrix(transform_translate(make_float3(0,0,-7)));scene.camera->compute_auto_viewplane();
+#ifdef CODEBRIX_SHADOW_TERMINATOR_GATE
+  {(void)stationary;auto background=make_unique<ShaderGraph>();auto bg=background->create_node<BackgroundNode>();bg->set_color(make_float3(.05f,.06f,.08f));background->connect(bg->output("Background"),background->output()->input("Surface"));
+    auto world=scene.create_node<Shader>();world->set_graph(std::move(background));world->tag_update(&scene);scene.background->set_shader(world);
+    auto emission_graph=make_unique<ShaderGraph>();auto emission=emission_graph->create_node<EmissionNode>();emission->set_color(one_float3());emission->set_strength(1);
+    emission_graph->connect(emission->output("Emission"),emission_graph->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(emission_graph));emitter->tag_update(&scene);
+    shadow_terminator_fixture(scene,mode,emitter);for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);return;}
+#endif
   auto diffuse=material(scene,0),mixed=material(scene,1);
   quad(scene,diffuse,{make_float3(-4,-3,3),make_float3(4,-3,3),make_float3(4,3,3),make_float3(-4,3,3)});
   quad(scene,mixed,{make_float3(-4,-2,-2),make_float3(4,-2,-2),make_float3(4,-2,3),make_float3(-4,-2,3)});
@@ -214,6 +227,7 @@ static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &metr
   }
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+  reference_policy::use_reference_oracle_arithmetic();
   #ifdef CODEBRIX_OBJECT_MOTION_GATE
   require(argc==2||(argc==3&&std::string(argv[2])=="--stationary"),"Usage: object_motion_render_gate OUTPUT_DIRECTORY [--stationary]");const bool stationary=argc==3;
 #else
@@ -221,7 +235,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #endif
   const std::filesystem::path out=argv[1];std::filesystem::create_directories(out);
   auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;
-  auto owner=Device::create(infos[0],stats,profiler,true);auto &device=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics total;
+  auto owner=Device::create(infos[0],stats,profiler,true);auto &device=require_webgpu_device(owner.get(),"lighting_gate device creation");Metrics total;
   for(int image=0;image<lighting_cases;image++){
 #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
     const int mode=lighting_modes[image];
@@ -239,6 +253,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(data.integrator.use_direct_light&&data.integrator.transparent_shadows,"Unexpected native transparent-shadow configuration");
 #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native broad-light configuration");
+#elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
+    require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native shadow-terminator configuration");
+    {bool smooth=false;for(size_t i=0;i<scene.dscene.tri_shader.size();i++)smooth|=(scene.dscene.tri_shader[i]&SHADER_SMOOTH_NORMAL)!=0;require(smooth,"Shadow-terminator fixture lacks smooth triangles");
+     unsigned offsets=0;for(size_t i=0;i<scene.dscene.objects.size();i++){const auto &o=scene.dscene.objects[i];
+       offsets+=o.shadow_terminator_geometry_offset==shadow_terminator_geometry(mode)&&o.shadow_terminator_shading_offset==1.0f/(1.0f-.5f*shadow_terminator_shading(mode));}
+     require(offsets>=(mode==8?2u:1u),"Native shadow terminator offsets not uploaded as authored");}
 #else
     require(data.integrator.use_direct_light&&(bool(data.integrator.use_light_mis)==(use_mis&&mode!=0&&mode!=3))&&!data.integrator.transparent_shadows,"Unexpected native light configuration");
 #endif
@@ -255,10 +275,18 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #ifdef CODEBRIX_FEATURE_COMBINATION_GATE
     require(data.cam.num_motion_steps>=2&&data.cam.shuttertime!=-1,"Combined scene requires camera motion");
 #endif
+    // Scene exchange (reference_policy.h): a dump pass stops here; a reference pass continues on
+    // the loaded device-prepared tables to the CPU reference and then skips the GPU.
+    const bool exchange_only=reference_policy::exchange_scene(scene.dscene,"case-"+std::to_string(image),{});
+    if(exchange_only){std::vector<float> local(width*height*4);cpu_render(scene.dscene,local,metrics);
+      RenderCapture::file(prefix+".cpu.film.bin",local.data(),local.size()*4);reference_policy::record_local("case-"+std::to_string(image)+".film",local);
+      reference_policy::resolve("case-"+std::to_string(image)+".film",local,(out/"reference-diagnostic.jsonl").string());continue;}
     require(data.film.pass_stride==4,"Lighting combined-only film expected");bool cancelled=false;Scheduler scheduler(&device,scene.film,&scene.dscene,&cancelled);
     scheduler.alloc_work_memory();scheduler.init_execution();healthy(device);auto buffers=scheduler.get_render_buffers();BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=4;buffers->reset(bp);
-    std::vector<float> reference(width*height*4),first;cpu_render(scene.dscene,reference,metrics);
-    RenderCapture::file(prefix+".cpu.film.bin",reference.data(),reference.size()*4);
+    std::vector<float> local(width*height*4),first;cpu_render(scene.dscene,local,metrics);reference_policy::record_local("case-"+std::to_string(image)+".film",local);
+    RenderCapture::file(prefix+".cpu.film.bin",local.data(),local.size()*4);
+    // Pass/fail reference: local, or the imported correctly rounded one (reference_policy.h).
+    const auto reference=reference_policy::resolve("case-"+std::to_string(image)+".film",local,(out/"reference-diagnostic.jsonl").string());
     for(unsigned repeat=0;repeat<2;repeat++){
       buffers->zero();std::unique_ptr<RenderCapture> capture;if(repeat==1)capture=std::make_unique<RenderCapture>(device,prefix);
       for(unsigned sample=0;sample<samples;sample++){
@@ -283,12 +311,16 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(mode!=0)require(metrics.shadows>100&&metrics.visible>100,"Missing mesh direct lighting coverage");
 #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
     require(metrics.shadows>0&&metrics.visible>0,"Missing broad direct lighting coverage");
+#elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
+    require(metrics.shadows>100&&metrics.visible>100&&metrics.blocked>10,"Missing shadow-terminator direct lighting coverage");
 #else
     require(metrics.shadows>100&&metrics.visible>100,"Missing direct lighting coverage");if(mode!=6)require(metrics.blocked>10,"Missing occlusion coverage");
 #endif
     auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"mode\":"<<mode<<",\"transparentSurfaceHits\":"<<metrics.transparent_hits<<",\"maximumShadowHitCount\":"<<metrics.max_shadow_hits<<",\"forwardLightPaths\":"<<metrics.forward<<",\"meshMisPaths\":"<<metrics.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<metrics.deforming_paths<<",\"shadows\":"<<metrics.shadows<<",\"blocked\":"<<metrics.blocked<<",\"visible\":"<<metrics.visible<<",\"stages\":"<<metrics.stages<<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat_differences<<",\"repeatMaximumError\":"<<metrics.repeat_maximum<<"}\n";};
     std::ofstream details(folder/"result.json");report(details);report(std::cerr);total.mesh_mis_paths+=metrics.mesh_mis_paths;total.deforming_paths+=metrics.deforming_paths;total.transparent_hits+=metrics.transparent_hits;total.max_shadow_hits=std::max(total.max_shadow_hits,metrics.max_shadow_hits);total.transmissions+=metrics.transmissions;total.forward+=metrics.forward;total.shadows+=metrics.shadows;total.blocked+=metrics.blocked;total.visible+=metrics.visible;total.stages+=metrics.stages;total.floats+=metrics.floats;total.strict+=metrics.strict;total.maximum=std::max(total.maximum,metrics.maximum);total.repeat_differences+=metrics.repeat_differences;
   }
+  const bool exchange_only=reference_policy::prepare_only()||reference_policy::reference_only();
+  if(!exchange_only){
 #ifdef CODEBRIX_FEATURE_COMBINATION_GATE
   require(total.transmissions>100,"Combined scene did not exercise transmission");
 #endif
@@ -297,16 +329,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #endif
 #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
   require(total.mesh_mis_paths>10,"Missing forward emissive triangle MIS paths");
-  for(int mode:{4}){
-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;
-    Scene scene(params,&device);fixture(scene,mode);Progress progress;scene.device_update(&device,progress);healthy(device);
-    require(!progress.get_error(),"Unsupported emitter fixture preparation failed");
-    bool rejected=false;try{device.validate_lighting(true);}catch(const std::exception &e){rejected=std::string(e.what()).find("static instanced triangle emitters")!=std::string::npos;}
-    require(rejected,"Unvalidated emitter configuration was accepted");total.unsupported_emitters++;
-  }
-#else
+#elif !defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
   if(use_mis)require(total.forward>100,"Missing forward point-light paths");
 #endif
+  }
   require(stats.mem_used==0,"Lighting test leaked native allocations");std::ofstream(out/"library.txt")<<device.gpu.library_path;std::ofstream(out/"adapter.txt")<<device.gpu.adapter_name;
-  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentOriginalCpuImage\":true,\"fullLightingMisProven\":false,\"cases\":"<<lighting_cases<<",\"pointSunMisEnabled\":"<<(use_mis?"true":"false")<<",\"transparentSurfaceHits\":"<<total.transparent_hits<<",\"maximumShadowHitCount\":"<<total.max_shadow_hits<<",\"forwardLightPaths\":"<<total.forward<<",\"unsupportedEmitterConfigurationsRejected\":"<<total.unsupported_emitters<<",\"meshMisPaths\":"<<total.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<total.deforming_paths<<",\"transmissionPaths\":"<<total.transmissions<<",\"shadowPaths\":"<<total.shadows<<",\"blocked\":"<<total.blocked<<",\"visible\":"<<total.visible<<",\"filmChecks\":"<<total.floats<<",\"strictDifferences\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum<<",\"repeatBitwiseDifferences\":"<<total.repeat_differences<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+  if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cases\":"<<lighting_cases<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentOriginalCpuImage\":true,\"fullLightingMisProven\":false,\"cases\":"<<lighting_cases<<",\"pointSunMisEnabled\":"<<(use_mis?"true":"false")<<",\"transparentSurfaceHits\":"<<total.transparent_hits<<",\"maximumShadowHitCount\":"<<total.max_shadow_hits<<",\"forwardLightPaths\":"<<total.forward<<",\"unsupportedEmitterConfigurationsRejected\":"<<total.unsupported_emitters<<",\"meshMisPaths\":"<<total.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<total.deforming_paths<<",\"transmissionPaths\":"<<total.transmissions<<",\"shadowPaths\":"<<total.shadows<<",\"blocked\":"<<total.blocked<<",\"visible\":"<<total.visible<<",\"filmChecks\":"<<total.floats<<",\"strictDifferences\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum<<",\"repeatBitwiseDifferences\":"<<total.repeat_differences<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &error){std::cerr<<error.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

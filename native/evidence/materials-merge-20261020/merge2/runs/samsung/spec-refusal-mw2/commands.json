@@ -1,0 +1,144 @@
+[
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.build.version.sdk"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.product.cpu.abi"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.product.model"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.build.fingerprint"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "ps -A -o PID,ARGS"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "sha256sum /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_feature_combination_gate /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_glass_render_gate /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_lighting_mis_gate /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_nodes_render_gate /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_nodes_svm_gate /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_nodes_world_gate /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_principled_bounce_gate /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_principled_render_gate /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_principled_svm_gate /data/local/tmp/codebrix-mw2-stage/lib/libIex-3_1.so /data/local/tmp/codebrix-mw2-stage/lib/libIex.so /data/local/tmp/codebrix-mw2-stage/lib/libIlmThread-3_1.so /data/local/tmp/codebrix-mw2-stage/lib/libIlmThread.so /data/local/tmp/codebrix-mw2-stage/lib/libImath-3_1.so /data/local/tmp/codebrix-mw2-stage/lib/libImath.so /data/local/tmp/codebrix-mw2-stage/lib/libOpenColorIO.so /data/local/tmp/codebrix-mw2-stage/lib/libOpenEXR-3_1.so /data/local/tmp/codebrix-mw2-stage/lib/libOpenEXR.so /data/local/tmp/codebrix-mw2-stage/lib/libOpenEXRCore-3_1.so /data/local/tmp/codebrix-mw2-stage/lib/libOpenEXRCore.so /data/local/tmp/codebrix-mw2-stage/lib/libOpenEXRUtil-3_1.so /data/local/tmp/codebrix-mw2-stage/lib/libOpenEXRUtil.so /data/local/tmp/codebrix-mw2-stage/lib/libOpenImageIO.so /data/local/tmp/codebrix-mw2-stage/lib/libOpenImageIO_Util.so /data/local/tmp/codebrix-mw2-stage/lib/libboost_chrono.so /data/local/tmp/codebrix-mw2-stage/lib/libboost_date_time.so /data/local/tmp/codebrix-mw2-stage/lib/libboost_filesystem.so /data/local/tmp/codebrix-mw2-stage/lib/libboost_iostreams.so /data/local/tmp/codebrix-mw2-stage/lib/libboost_regex.so /data/local/tmp/codebrix-mw2-stage/lib/libboost_system.so /data/local/tmp/codebrix-mw2-stage/lib/libboost_thread.so /data/local/tmp/codebrix-mw2-stage/lib/libc++_shared.so /data/local/tmp/codebrix-mw2-stage/lib/libcodebrix_wgpu.so /data/local/tmp/codebrix-mw2-stage/lib/libexpat.so /data/local/tmp/codebrix-mw2-stage/lib/libjpeg.so /data/local/tmp/codebrix-mw2-stage/lib/libpng.so /data/local/tmp/codebrix-mw2-stage/lib/libpng16.so /data/local/tmp/codebrix-mw2-stage/lib/libpugixml.so /data/local/tmp/codebrix-mw2-stage/lib/libtbb.so /data/local/tmp/codebrix-mw2-stage/lib/libtiff.so /data/local/tmp/codebrix-mw2-stage/lib/libtiffxx.so /data/local/tmp/codebrix-mw2-stage/lib/libz.so /data/local/tmp/codebrix-mw2-stage/lib/libzstd.so /data/local/tmp/codebrix-mw2-stage/bin/render_replay"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "test '!' -e /data/local/tmp/codebrix-mw2-spec-refusal-mw2"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-mw2-spec-refusal-mw2"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-spec; echo $$ > /data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-spec/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-mw2-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-spec/pipelines.jsonl /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_glass_render_gate /data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-spec/run"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "rm -rf /data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-spec/mesa-cache"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-spec",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/runs/samsung/spec-refusal-mw2/output"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-nospec-refused; echo $$ > /data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-nospec-refused/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-mw2-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-nospec-refused/pipelines.jsonl CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 /data/local/tmp/codebrix-mw2-stage/bin/codebrix_cycles_glass_render_gate /data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-nospec-refused/run"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "rm -rf /data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-nospec-refused/mesa-cache"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-mw2-spec-refusal-mw2/glass_render-nospec-refused",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge2/runs/samsung/spec-refusal-mw2/output"
+    ],
+    "timeout": 900
+  }
+]

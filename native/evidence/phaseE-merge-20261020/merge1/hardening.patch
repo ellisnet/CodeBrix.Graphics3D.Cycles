@@ -1,0 +1,272 @@
+--- ./native/cycles/attribute_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/attribute_gate.cpp	2026-10-20 12:05:47.228989710 -0700
+@@ -125,7 +125,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2,"Usage: attribute_gate OUTPUT_PREFIX");std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;unsigned rejected=0,typed=0,negative_offsets=0,chains=0;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"attribute_gate device creation");Metrics m;unsigned rejected=0,typed=0,negative_offsets=0,chains=0;
+   {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare_attributes(scene);
+     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Attribute scene update failed");auto &ds=scene.dscene;
+     ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;ds.data.max_closures=MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
+--- ./native/cycles/background_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/background_gate.cpp	2026-10-20 12:05:47.228989710 -0700
+@@ -56,7 +56,7 @@
+ static unsigned rejections(const DeviceInfo &info){
+   unsigned count=0;
+   for(unsigned test=0;test<12;test++){
+-    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
++    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"background_gate device creation");
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);
+     auto &data=scene.dscene.data;configure(data);d.const_copy_to("data",&data,sizeof(data));
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Negative background setup failed");
+@@ -87,7 +87,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2,"Usage: background_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"background_gate device creation");Metrics m;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
+     Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Background scene preparation failed");
+--- ./native/cycles/device.h	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/device.h	2026-10-20 12:05:47.228989710 -0700
+@@ -10,6 +10,8 @@
+ #include <array>
+ #include <map>
+ #include <mutex>
++#include <stdexcept>
++#include <string>
+ #include <vector>
+ 
+ namespace ccl {
+@@ -153,5 +155,15 @@
+   template<class F>void guard(F f){std::lock_guard lock(mutex);try{gpu.check();f();}catch(const std::exception &e){set_error(e.what());}}
+ };
+ unique_ptr<Device> device_webgpu_create(const DeviceInfo&,Stats&,Profiler&,bool);
++// Gate binaries: when the WebGPU device cannot be created, the factory returns
++// Cycles' dummy device carrying the reason (device_webgpu_create). Stop with a
++// message that names the stage instead of dereferencing a failed cast; every
++// gate's main reports the exception and exits non-zero.
++inline WebGPUDevice &require_webgpu_device(Device *device,const char *stage){
++  auto *webgpu=dynamic_cast<WebGPUDevice*>(device);
++  if(!webgpu)throw std::runtime_error(std::string(stage)+": WebGPU device creation failed: "+
++    (device&&device->have_error()?device->error_message():std::string("no device was returned")));
++  return *webgpu;
++}
+ void device_webgpu_info(vector<DeviceInfo>&);
+ }
+--- ./native/cycles/emitter_sample_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/emitter_sample_gate.cpp	2026-10-20 12:05:47.228989710 -0700
+@@ -72,7 +72,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2,"Usage: emitter_sample_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics metrics;bool exchange_only=false;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"emitter_sample_gate device creation");Metrics metrics;bool exchange_only=false;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Emitter scene preparation failed");
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
+--- ./native/cycles/gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -207,9 +207,7 @@
+   require(argc==2,"Usage: codebrix_cycles_device_gate OUTPUT_PREFIX");std::string output=argv[1];
+   require(Device::type_from_string("WEBGPU")==DEVICE_WEBGPU&&Device::string_from_type(DEVICE_WEBGPU)=="WEBGPU","Device type registration missing");
+   auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Registered WebGPU adapter missing");
+-  Stats stats;Profiler profiler;auto device=Device::create(infos[0],stats,profiler,true);auto *backend=dynamic_cast<WebGPUDevice*>(device.get());
+-  if(!backend)throw std::runtime_error("Device factory: "+device->error_message());
+-  auto &d=*backend;healthy(d);
++  Stats stats;Profiler profiler;auto device=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(device.get(),"gate device creation");healthy(d);
+   unsigned scene_tables=scene_and_scheduler(d);require(stats.mem_used==0,"Scene/scheduler leaked Cycles allocations");
+   allocation_ordering(d);require(stats.mem_used==0,"Allocation-order tests leaked Cycles allocations");
+   const unsigned rejected=rejections(infos[0]);
+--- ./native/cycles/image_file_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/image_file_gate.cpp	2026-10-20 12:05:47.228989710 -0700
+@@ -205,7 +205,7 @@
+       files.push_back(write_image(directory/("jpeg-"+std::to_string(channels)+".jpg"),OIIO::TypeUInt8,channels,7,5,files.size()));
+     auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+     Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);
+-    auto pointer=dynamic_cast<WebGPUDevice*>(owner.get());require(pointer,"WebGPU device creation failed");auto &d=*pointer;
++    auto &d=require_webgpu_device(owner.get(),"image_file_gate device creation");
+     const std::string source=svm_surface_source()+probe_entry;auto pipeline=make_pipeline(d,source);
+     Checks checks;uint64_t capture_samples=0;unsigned duplicate_handles=0,replacements=0,missing_files=0,udim_tiles=0;
+     std::set<unsigned> formats;unsigned parameter_variants=0;
+--- ./native/cycles/image_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/image_gate.cpp	2026-10-20 12:05:47.228989710 -0700
+@@ -97,7 +97,7 @@
+   return probes.size();
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+-  require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: image_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;uint64_t samples=0,strict=0;double maximum=0;unsigned rejected=0,typed=0;std::set<unsigned> formats;
++  require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: image_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"image_gate device creation");Metrics m;uint64_t samples=0,strict=0;double maximum=0;unsigned rejected=0,typed=0;std::set<unsigned> formats;
+   {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);auto handles=prepare_images(scene);if(motion)object_motion_fixture(scene,*scene.objects[0],4);if(deform)deforming_motion_fixture(scene,*scene.objects[0],1);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Image scene preparation failed");
+     for(auto &[id,image]:d.images){formats.insert(image->info.data_type);}require(formats.size()==8&&d.images.size()==IMAGE_COUNT,"Native ImageManager format/texture coverage changed");
+     samples=sample_gate(d,scene,handles,prefix,maximum,strict,rejected);
+--- ./native/cycles/lighting_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/lighting_gate.cpp	2026-10-20 12:05:47.228989710 -0700
+@@ -234,7 +234,7 @@
+ #endif
+   const std::filesystem::path out=argv[1];std::filesystem::create_directories(out);
+   auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;
+-  auto owner=Device::create(infos[0],stats,profiler,true);auto &device=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics total;
++  auto owner=Device::create(infos[0],stats,profiler,true);auto &device=require_webgpu_device(owner.get(),"lighting_gate device creation");Metrics total;
+   for(int image=0;image<lighting_cases;image++){
+ #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+     const int mode=lighting_modes[image];
+--- ./native/cycles/light_state_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/light_state_gate.cpp	2026-10-20 12:05:47.228989710 -0700
+@@ -83,7 +83,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2,"Usage: light_state_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics metrics;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"light_state_gate device creation");Metrics metrics;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Light state scene preparation failed");
+     auto &data=scene.dscene.data;film_layout(data);require(scene.dscene.lights.size()==4,"Expected two points and two suns");
+--- ./native/cycles/normal_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/normal_gate.cpp	2026-10-20 12:05:47.228989710 -0700
+@@ -94,7 +94,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: normal_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;unsigned typed=0,rejected=0;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"normal_gate device creation");Metrics m;unsigned typed=0,rejected=0;
+   {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare_normals(scene);if(motion)for(size_t i=0;i<scene.objects.size();i++)object_motion_fixture(scene,*scene.objects[i],unsigned(i));if(deform)for(size_t i=0;i<scene.objects.size();i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));
+     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Normal scene update failed");auto &ds=scene.dscene;
+     ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;ds.data.max_closures=MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
+--- ./native/cycles/render_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/render_gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -178,7 +178,7 @@
+   const char *asset=argc>=3&&!attribute_mode&&!motion_mode?argv[2]:nullptr;const bool preview_mode=argc==7;
+   const unsigned width=preview_mode?std::stoul(argv[4]):64,height=preview_mode?std::stoul(argv[5]):48,samples=preview_mode?std::stoul(argv[6]):8;
+   require(width>0&&height>0&&width<=2048&&height<=2048&&samples>0&&samples<=1024,"Invalid render dimensions/samples");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;Metrics image;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"render_gate device creation");Metrics m;Metrics image;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene,asset,attribute_mode,image_mode,normal_mode);scene.camera->set_full_width(width);scene.camera->set_full_height(height);scene.camera->set_screen_size(width,height);scene.camera->compute_auto_viewplane();scene.integrator->set_aa_samples(samples);if(motion_mode)camera_motion_fixture(scene,scene.camera->get_matrix(),motion_case);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Render scene preparation failed");
+     if(motion_mode)require(scene.dscene.data.cam.num_motion_steps>=2&&scene.dscene.data.cam.shuttertime!=-1,"Motion render preparation failed");
+--- ./native/cycles/shader_data_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/shader_data_gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -178,7 +178,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: shader_data_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];capture_prefix=prefix;auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;unsigned invalid=0;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shader_data_gate device creation");Metrics m;unsigned invalid=0;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);if(motion){for(size_t i=0;i<scene.objects.size();i++)if(i%3<2)object_motion_fixture(scene,*scene.objects[i],unsigned(i));}if(deform)for(size_t i=0;i<scene.objects.size();i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Scene update failed");
+     scene.dscene.data.integrator.use_light_mis=0;scene.dscene.data.integrator.use_caustics=0;d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));
+--- ./native/cycles/shadow_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/shadow_gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -117,7 +117,7 @@
+ // perturbed by 0-2 ULP. Blocked decisions must equal the CPU oracle exactly.
+ struct ShadowPrecision {uint64_t paths=0,blocked=0,clear=0,emitter_paths=0;unsigned instances=0;};
+ static ShadowPrecision shadow_precision(const DeviceInfo &info){
+-  ShadowPrecision p;Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
++  ShadowPrecision p;Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shadow_gate device creation");
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
+     Scene scene(params,&d);scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
+@@ -148,7 +148,7 @@
+ }
+ static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
+   for(int test=0;test<18;test++){
+-    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
++    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shadow_gate device creation");
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
+     Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
+     d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));bool cancel=false;ShadowScheduler scheduler(&d,scene.film,&scene.dscene,&cancel);
+@@ -184,7 +184,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--deform"||std::string(argv[2])=="--deform-motion")),"Usage: shadow_gate OUTPUT_PREFIX [--motion|--deform|--deform-motion]");const bool deform=argc==3&&std::string(argv[2])!="--motion";const bool motion=argc==3&&std::string(argv[2])!="--deform";std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"shadow_gate device creation");Metrics m;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
+     Scene scene(params,&d);prepare(scene);if(motion){for(size_t i=0;i<scene.objects.size();i++)object_motion_fixture(scene,*scene.objects[i],unsigned(i));}if(deform)for(size_t i=0;i<scene.objects.size();i++)deforming_motion_fixture(scene,*scene.objects[i],unsigned(i));Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
+--- ./native/cycles/surface_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/surface_gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -65,7 +65,7 @@
+ static RejectionMetrics rejections(const DeviceInfo &info){
+   RejectionMetrics result;
+   for(unsigned test=0;test<21;test++){
+-    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());
++    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"surface_gate device creation");
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);
+     for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
+     Progress progress;scene.device_update(&d,progress);healthy(d);auto &ds=scene.dscene;auto &data=ds.data;configure(data);d.const_copy_to("data",&data,sizeof(data));
+@@ -121,7 +121,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2,"Usage: surface_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"surface_gate device creation");Metrics m;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
+     Scene scene(params,&d);prepare(scene);for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Surface scene preparation failed");
+--- ./native/cycles/svm_surface_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/svm_surface_gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -58,7 +58,7 @@
+   }ds.data=original;return rejection_count;
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+-  require(argc==2,"Usage: svm_surface_gate OUTPUT_PREFIX");std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;unsigned invalid=0;
++  require(argc==2,"Usage: svm_surface_gate OUTPUT_PREFIX");std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"svm_surface_gate device creation");Metrics m;unsigned invalid=0;
+   {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Surface SVM scene update failed");
+     auto &ds=scene.dscene;ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;
+     auto limit=[&](int n){ds.data.max_closures=n;d.const_copy_to("data",&ds.data,sizeof(KernelData));};limit(MAX_CLOSURE);
+--- ./native/cycles/svm_world_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/svm_world_gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -117,7 +117,7 @@
+ }
+ static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
+   for(unsigned test=0;test<10;test++){
+-    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);graph_scene(scene,0);prepare_device(scene,d);
++    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"svm_world_gate device creation");SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);graph_scene(scene,0);prepare_device(scene,d);
+     Program code(scene.dscene);uint mask=0;
+     if(test==0){code.words.push_back(NODE_NUM);mask=2;}
+     if(test==1){code.words.push_back(NODE_MATH);mask=4;}
+@@ -143,7 +143,7 @@
+   }return rejected;
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+-  require(argc==2,"Usage: svm_world_gate OUTPUT_PREFIX");const std::string output=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
++  require(argc==2,"Usage: svm_world_gate OUTPUT_PREFIX");const std::string output=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"svm_world_gate device creation");Metrics m;
+   for(unsigned test=0;test<20;test++){
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);graph_scene(scene,test);prepare_device(scene,d);
+     require(!(scene.dscene.shaders[scene.dscene.data.background.surface_shader&SHADER_MASK].flags&SD_HAS_CONSTANT_EMISSION),"World unexpectedly constant-folded");inspect_program(scene.dscene,m);
+--- ./native/cycles/transparent_shadow_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/transparent_shadow_gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -114,7 +114,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2,"Usage: shadow_gate OUTPUT_PREFIX");std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"transparent_shadow_gate device creation");Metrics m;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
+     Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
+--- ./native/cycles/volume_boundary_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/volume_boundary_gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -108,7 +108,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2,"Usage: volume_boundary_gate OUTPUT_PREFIX");const std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"volume_boundary_gate device creation");Metrics m;
+   {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);
+     scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.integrator->set_aa_samples(16);scene.film->set_use_sample_count(false);
+     scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();auto fixture=add_volume_boundaries(scene);
+--- ./native/cycles/volume_gate.cpp	2026-10-20 12:06:05.045408445 -0700
++++ ../../../.././native/cycles/volume_gate.cpp	2026-10-20 12:05:47.236989900 -0700
+@@ -104,7 +104,7 @@
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2,"Usage: volume_gate OUTPUT_PREFIX");const std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics m;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"volume_gate device creation");Metrics m;
+   const float gs[]={0,.0009f,.001f,-.001f,.45f,-.7f,.999f,-.999f,1.5f,-1.5f};
+   for(unsigned test=0;test<24;test++){
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);

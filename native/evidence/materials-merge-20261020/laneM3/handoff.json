@@ -1,0 +1,48 @@
+{
+ "lane": "M3 materials: M1+M2 reconciliation and procedural opcodes (Gabor, wavelength, wireframe)",
+ "worktree": "/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural",
+ "baselineManifest": "/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json",
+ "baselineHead": "01eb27b6",
+ "patchSha256": "00895dfae46f32f4f9a406fb02b6997739dbcabdd18426d3e44c39f0fd6d53a7",
+ "changedPaths": 28,
+ "runtime": "CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 (unchanged)",
+ "m1PatchSha256": "b2072d45e257675c923172af566369179aab9d9f236b6acad20a86c1567dae13",
+ "m2PatchSha256": "88b9d42f74a0bea0d7dc82949af5812850ac8722690c83eb8b77ebefb6c9b5a6",
+ "seedManifest": "native/work/materials-seed.json",
+ "seed": {
+  "baseline": "/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/baseline-materials.json",
+  "head": "01eb27b6",
+  "dependencyInstallCopiedFrom": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/dependencies/install"
+ },
+ "featureBits": {
+  "reservedE3": [
+   30,
+   31
+  ],
+  "SVM_BSDF_PRINCIPLED": 32,
+  "SVM_BSDF_THIN_FILM": 33,
+  "SVM_BSDF_THIN_WALL": 34,
+  "SVM_NODE_TEX_NOISE..SVM_NODE_TEX_VORONOI": "35-52",
+  "SVM_NODE_WAVELENGTH": 53,
+  "SVM_NODE_WIREFRAME": 54,
+  "SF_ALL": "(1<<55)-1"
+ },
+ "opcodesAdded": [
+  "NODE_WAVELENGTH",
+  "NODE_WIREFRAME"
+ ],
+ "opcodesWithheld": {
+  "NODE_TEX_GABOR": "ported and node-gated, withheld: breaks principled_svm through the unspecialized probe module on Intel Mesa 25.0.7"
+ },
+ "validation": {
+  "principled_gate": "PASS, identical to sealed M1 (108 fields)",
+  "nodes_gate": "PASS spec on/off identical; 63 graphs/417 cases/31392 evals max 9.67e-5; 22 worlds max 6.10e-5 (M2 20 world images byte-identical); render stage max 7.34e-5 image max 1.75e-4",
+  "all_lanes": "29 targets PASS; only atomic-order nondeterministic counters/replay rms differ (1e-14 level)",
+  "glass_render": "a8e69a34 spec on/off",
+  "principled_render": "6fa85969 spec on/off; replay v6 PASS",
+  "nodes_render_replay": "PASS v6 1061 commands",
+  "host_gate": "PASS 786 reference films, 3139 comparisons",
+  "audits": "audit, notices --check, compatibility 12, guards 7, git diff --check PASS"
+ },
+ "report": "/home/jeremy/ClaudeHome/cycles-wgsl-2026-10-19/agent-reports/m3-procedural.md"
+}

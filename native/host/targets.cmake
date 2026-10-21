@@ -1,7 +1,29 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 # Included after the Cycles targets and reviewed dependencies exist.
+# Native library version, the single source for cbc_host_version():
+# "<major>.<minor>.<yyyyMMdd>.<build>". major.minor is set here; the date is the
+# UTC configure date (CMake honours SOURCE_DATE_EPOCH for reproducible builds);
+# build is CODEBRIX_HOST_BUILD_NUMBER. The Cycles revision is read from the
+# pinned import record. See ABI.md "Versioning".
+set(CODEBRIX_HOST_VERSION_MAJOR_MINOR "1.0")
+set(CODEBRIX_HOST_BUILD_NUMBER "0" CACHE STRING "Fourth component of the native library version")
+if(NOT CODEBRIX_HOST_BUILD_NUMBER MATCHES "^[0-9]+$")
+  message(FATAL_ERROR "CODEBRIX_HOST_BUILD_NUMBER must be a decimal integer")
+endif()
+string(TIMESTAMP codebrix_host_date "%Y%m%d" UTC)
+set(CODEBRIX_HOST_LIBRARY_VERSION "${CODEBRIX_HOST_VERSION_MAJOR_MINOR}.${codebrix_host_date}.${CODEBRIX_HOST_BUILD_NUMBER}")
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../../third_party/cycles-import.json" codebrix_revision_line
+  REGEX "^  \"revision\": \"[0-9a-f]+\"" LIMIT_COUNT 1)
+string(REGEX REPLACE "^.*\"([0-9a-f]+)\".*$" "\\1" CODEBRIX_CYCLES_REVISION "${codebrix_revision_line}")
+string(LENGTH "${CODEBRIX_CYCLES_REVISION}" codebrix_revision_length)
+if(NOT codebrix_revision_length EQUAL 40)
+  message(FATAL_ERROR "Cannot read the pinned Cycles revision from third_party/cycles-import.json")
+endif()
+message(STATUS "CodeBrix Cycles host ${CODEBRIX_HOST_LIBRARY_VERSION}, Cycles ${CODEBRIX_CYCLES_REVISION}")
 add_library(codebrix_cycles_host SHARED "${CMAKE_CURRENT_LIST_DIR}/cycles_host.cpp")
+target_compile_definitions(codebrix_cycles_host PRIVATE
+  CBC_HOST_LIBRARY_VERSION="${CODEBRIX_HOST_LIBRARY_VERSION}" CBC_HOST_CYCLES_REVISION="${CODEBRIX_CYCLES_REVISION}")
 target_compile_features(codebrix_cycles_host PRIVATE cxx_std_20)
 target_compile_definitions(codebrix_cycles_host PRIVATE ${definitions})
 target_include_directories(codebrix_cycles_host PRIVATE "${PROJECT_SOURCE_DIR}/src")
@@ -86,9 +108,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
       target_link_options(${reference} PRIVATE "LINKER:-Map,${CMAKE_BINARY_DIR}/${reference}.map")
     endif()
   endforeach()
-  foreach(kind IN ITEMS cpu gpu reload concurrency tier)
+  foreach(kind IN ITEMS cpu gpu reload concurrency tier abi example scene_edit)
     if(kind STREQUAL "cpu")
       set(source consumer.c)
+    elseif(kind STREQUAL "example")
+      set(source example.c)
     else()
       set(source "${kind}_consumer.c")
     endif()
@@ -101,4 +125,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
     target_compile_definitions(codebrix_host_gpu_test PRIVATE
       CBC_TEST_GPU_BACKEND=${CODEBRIX_HOST_GPU_TEST_BACKEND} CBC_TEST_GPU_NAME="${CODEBRIX_HOST_GPU_TEST_NAME}")
   endif()
+endif()
+
+# The oracle runner (native/oracle) uses only the public C API; this in-tree
+# target builds it against the host so the Linux gates can render the corpus.
+if(NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(codebrix_cycles_oracle "${CODEBRIX_NATIVE_ROOT}/oracle/runner.cpp")
+  target_compile_features(codebrix_cycles_oracle PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_oracle PRIVATE -Wall -Wextra -Werror)
+  target_link_libraries(codebrix_cycles_oracle PRIVATE codebrix_cycles_host)
 endif()

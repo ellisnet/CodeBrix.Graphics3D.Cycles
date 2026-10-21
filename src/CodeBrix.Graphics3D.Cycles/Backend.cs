@@ -19,5 +19,12 @@ public enum Backend : uint
     /// The native Metal device. It is available only in the osx-arm64 build; other builds reject it
     /// as unsupported.
     /// </summary>
-    Metal = 3
+    Metal = 3,
+
+    /// <summary>
+    /// The backend-neutral GPU request (<c>CBC_HOST_GPU</c>): the native host resolves it to Cycles'
+    /// Metal device in macOS builds and to WebGPU in every other build. A host never reports it as its
+    /// concrete backend; <see cref="CyclesHost.GetBackend"/> returns what was chosen.
+    /// </summary>
+    Gpu = 4
 }

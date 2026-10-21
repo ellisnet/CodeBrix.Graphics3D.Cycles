@@ -4,7 +4,9 @@
 #include "kernel/svm/types.h"
 #include "kernel/svm/node_types.h"
 #include "kernel/types.h"
+#include <algorithm>
 #include <cstddef>
+#include <cstring>
 #include <cstdlib>
 #include <mutex>
 #include <sstream>
@@ -26,8 +28,28 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SVM_BSDF_TRANSPARENT",SF_BSDF_TRANSPARENT},{"SVM_BSDF_GLOSSY",SF_BSDF_GLOSSY},{"SVM_BSDF_GLASS",SF_BSDF_GLASS},
     {"LIGHT_AREA",SF_LIGHT_AREA},{"MOTION_OBJECT",SF_MOTION_OBJECT},{"MOTION_CAMERA",SF_MOTION_CAMERA},
     {"LIGHT_TRIANGLE",SF_LIGHT_TRIANGLE},
-    // Region kept when either microfacet family is reachable.
-    {"SVM_BSDF_MICROFACET",SF_BSDF_GLOSSY|SF_BSDF_GLASS}};
+    {"SHADOW_TERMINATOR_GEOMETRY",SF_TERMINATOR_GEOMETRY},{"SHADOW_TERMINATOR_SHADING",SF_TERMINATOR_SHADING},
+    {"SVM_NODE_TEX_NOISE",SF_TEX_NOISE},{"SVM_NODE_TEX_WHITE_NOISE",SF_TEX_WHITE_NOISE},{"SVM_NODE_TEX_WAVE",SF_TEX_WAVE},
+    {"SVM_NODE_TEX_MAGIC",SF_TEX_MAGIC},{"SVM_NODE_TEX_BRICK",SF_TEX_BRICK},{"SVM_NODE_MAPPING",SF_MAPPING},
+    {"SVM_NODE_MAP_RANGE",SF_MAP_RANGE},{"SVM_NODE_MIX",SF_MIX},{"SVM_NODE_HSV",SF_HSV},{"SVM_NODE_COLOR_SEPCOMB",SF_COLOR_SEPCOMB},
+    {"SVM_NODE_RAMP",SF_RAMP},{"SVM_NODE_FRESNEL",SF_FRESNEL},{"SVM_NODE_VECTOR_ROTATE",SF_VECTOR_ROTATE},
+    {"SVM_NODE_BLACKBODY",SF_BLACKBODY},{"SVM_NODE_NORMAL",SF_NORMAL},{"SVM_NODE_SHADING_INFO",SF_SHADING_INFO},{"SVM_NODE_LIGHT_PATH",SF_LIGHT_PATH},
+    {"SVM_NODE_TEX_VORONOI",SF_TEX_VORONOI},{"SVM_NODE_WAVELENGTH",SF_WAVELENGTH},{"SVM_NODE_WIREFRAME",SF_WIREFRAME},
+    {"SVM_NODE_BUMP",SF_BUMP},{"SVM_NODE_BUMP_STATE",SF_BUMP_STATE},{"SVM_NODE_GEOMETRY_DERIVATIVE",SF_GEOMETRY_DERIVATIVE},
+    {"SVM_NODE_TEX_COORD_DERIVATIVE",SF_TEX_COORD_DERIVATIVE},{"SVM_NODE_VALUE_DERIVATIVE",SF_VALUE_DERIVATIVE},
+    {"SVM_NODE_VECTOR_MATH_DERIVATIVE",SF_VECTOR_MATH_DERIVATIVE},{"SVM_NODE_MAPPING_DERIVATIVE",SF_MAPPING_DERIVATIVE},
+    // Dual-number helpers shared by the derivative variants (wavefront_svm_derivatives.wgsl).
+    {"SVM_DERIVATIVE_ANY",SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE},
+    // Helper regions shared by several node families (wavefront_svm_nodes.wgsl).
+    {"SVM_NODES_ANY",SF_TEX_NOISE|SF_TEX_WHITE_NOISE|SF_TEX_WAVE|SF_TEX_MAGIC|SF_TEX_BRICK|SF_MAPPING|SF_MAP_RANGE|SF_MIX|SF_HSV|SF_COLOR_SEPCOMB|SF_RAMP|
+      SF_FRESNEL|SF_VECTOR_ROTATE|SF_BLACKBODY|SF_NORMAL|SF_SHADING_INFO|SF_LIGHT_PATH|SF_TEX_VORONOI|SF_WAVELENGTH|SF_WIREFRAME|SF_MAPPING_DERIVATIVE},
+    {"SVM_NODES_DOT",SF_MAPPING|SF_FRESNEL|SF_VECTOR_ROTATE|SF_BLACKBODY|SF_NORMAL|SF_SHADING_INFO|SF_WAVELENGTH|SF_WIREFRAME|SF_MAPPING_DERIVATIVE},
+    {"SVM_NODES_HASH",SF_TEX_NOISE|SF_TEX_WHITE_NOISE|SF_TEX_WAVE|SF_TEX_BRICK|SF_TEX_VORONOI},
+    {"SVM_NODES_FMOD",SF_TEX_NOISE|SF_TEX_WAVE|SF_TEX_MAGIC},{"SVM_NODES_NOISE",SF_TEX_NOISE|SF_TEX_WAVE},
+    {"SVM_NODES_TRANSFORM",SF_MAPPING|SF_VECTOR_ROTATE|SF_MAPPING_DERIVATIVE},{"SVM_NODES_HSV",SF_MIX|SF_HSV|SF_COLOR_SEPCOMB},
+    // Region kept when any microfacet family is reachable.
+    {"SVM_BSDF_MICROFACET",SF_BSDF_GLOSSY|SF_BSDF_GLASS|SF_BSDF_PRINCIPLED},
+    {"SVM_BSDF_PRINCIPLED",SF_BSDF_PRINCIPLED},{"SVM_BSDF_THIN_FILM",SF_BSDF_THIN_FILM},{"SVM_BSDF_THIN_WALL",SF_BSDF_THIN_WALL}};
   return names;
 }
 std::string shader_feature_list(uint64_t features){
@@ -60,6 +82,25 @@ OpInfo op_info(uint32_t op){
     OP(NODE_CLOSURE_EMISSION,ClosureEmission,0) OP(NODE_EMISSION_WEIGHT,EmissionWeight,0) OP(NODE_MIX_CLOSURE,MixClosure,0)
     OP(NODE_TEX_CHECKER,TexChecker,SF_TEX_CHECKER) OP(NODE_TEX_GRADIENT,TexGradient,SF_TEX_GRADIENT)
     OP(NODE_GAMMA,Gamma,SF_GAMMA) OP(NODE_INVERT,Invert,SF_INVERT) OP(NODE_BRIGHTCONTRAST,BrightContrast,SF_BRIGHTCONTRAST)
+    OP(NODE_TEX_NOISE,TexNoise,SF_TEX_NOISE) OP(NODE_TEX_VORONOI,TexVoronoi,SF_TEX_VORONOI) OP(NODE_TEX_WHITE_NOISE,TexWhiteNoise,SF_TEX_WHITE_NOISE)
+    OP(NODE_TEX_WAVE,TexWave,SF_TEX_WAVE) OP(NODE_TEX_MAGIC,TexMagic,SF_TEX_MAGIC) OP(NODE_TEX_BRICK,TexBrick,SF_TEX_BRICK)
+    OP(NODE_MAPPING,Mapping,SF_MAPPING) OP(NODE_TEXTURE_MAPPING,TextureMapping,SF_MAPPING) OP(NODE_MIN_MAX,MinMax,SF_MAPPING)
+    OP(NODE_MAP_RANGE,MapRange,SF_MAP_RANGE) OP(NODE_VECTOR_MAP_RANGE,VectorMapRange,SF_MAP_RANGE)
+    OP(NODE_MIX,Mix,SF_MIX) OP(NODE_MIX_COLOR,MixColor,SF_MIX) OP(NODE_MIX_FLOAT,MixFloat,SF_MIX)
+    OP(NODE_MIX_VECTOR,MixVector,SF_MIX) OP(NODE_MIX_VECTOR_NON_UNIFORM,MixVectorNonUniform,SF_MIX)
+    OP(NODE_HSV,HSV,SF_HSV) OP(NODE_SEPARATE_COLOR,SeparateColor,SF_COLOR_SEPCOMB) OP(NODE_COMBINE_COLOR,CombineColor,SF_COLOR_SEPCOMB)
+    OP(NODE_RGB_RAMP,RGBRamp,SF_RAMP) OP(NODE_CURVES,Curves,SF_RAMP) OP(NODE_FLOAT_CURVE,FloatCurve,SF_RAMP)
+    OP(NODE_FRESNEL,Fresnel,SF_FRESNEL) OP(NODE_LAYER_WEIGHT,LayerWeight,SF_FRESNEL) OP(NODE_VECTOR_ROTATE,VectorRotate,SF_VECTOR_ROTATE)
+    OP(NODE_BLACKBODY,Blackbody,SF_BLACKBODY) OP(NODE_NORMAL,Normal,SF_NORMAL)
+    OP(NODE_OBJECT_INFO,ObjectInfo,SF_SHADING_INFO) OP(NODE_CAMERA,Camera,SF_SHADING_INFO) OP(NODE_SCENE_TIME,SceneTime,SF_SHADING_INFO)
+    OP(NODE_VECTOR_TRANSFORM,VectorTransform,SF_SHADING_INFO) OP(NODE_LIGHT_PATH,LightPath,SF_LIGHT_PATH)
+    OP(NODE_WAVELENGTH,Wavelength,SF_WAVELENGTH) OP(NODE_WIREFRAME,Wireframe,SF_WIREFRAME)
+    OP(NODE_SET_BUMP,SetBump,SF_BUMP) OP(NODE_ENTER_BUMP_EVAL,EnterBumpEval,SF_BUMP_STATE) OP(NODE_LEAVE_BUMP_EVAL,LeaveBumpEval,SF_BUMP_STATE)
+    OP(NODE_GEOMETRY_DERIVATIVE,Geometry,SF_GEOMETRY_DERIVATIVE) OP(NODE_TEX_COORD_DERIVATIVE,TexCoord,SF_TEX_COORD|SF_TEX_COORD_DERIVATIVE)
+    OP(NODE_VALUE_F_DERIVATIVE,ValueF,SF_VALUE_DERIVATIVE) OP(NODE_VALUE_V_DERIVATIVE,ValueV,SF_VALUE_DERIVATIVE)
+    OP(NODE_CONVERT_DERIVATIVE,Convert,SF_VALUE_DERIVATIVE) OP(NODE_SEPARATE_VECTOR_DERIVATIVE,SeparateVector,SF_VALUE_DERIVATIVE)
+    OP(NODE_COMBINE_VECTOR_DERIVATIVE,CombineVector,SF_VALUE_DERIVATIVE) OP(NODE_VECTOR_MATH_DERIVATIVE,VectorMath,SF_VECTOR_MATH_DERIVATIVE)
+    OP(NODE_MAPPING_DERIVATIVE,Mapping,SF_MAPPING_DERIVATIVE) OP(NODE_TEXTURE_MAPPING_DERIVATIVE,TextureMapping,SF_MAPPING_DERIVATIVE)
     default:return {0,0};
   }
 #undef OP
@@ -73,19 +114,37 @@ OpInfo bsdf_info(uint32_t kind){
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:return {uint32_t(sizeof(SVMNodeRefractionBsdfData)),SF_BSDF_GLASS};
     case CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:return {uint32_t(sizeof(SVMNodeGlassBsdfData)),SF_BSDF_GLASS};
     case CLOSURE_BSDF_MICROFACET_GGX_ID:case CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID:return {uint32_t(sizeof(SVMNodeGlossyBsdfData)),SF_BSDF_GLOSSY};
+    case CLOSURE_BSDF_PRINCIPLED_ID:return {uint32_t(sizeof(SVMNodePrincipledBsdfData)),SF_BSDF_PRINCIPLED};
     default:return {0,0};
   }
 }
 uint32_t byte_at(const std::vector<uint32_t> &w,size_t word,size_t offset){
   const size_t index=word+offset/4;return index<w.size()?(w[index]>>(8*(offset%4)))&255u:0u;
 }
+// Principled record census: optional thin-film/thin-wall handlers, and the
+// subsurface lobe the WebGPU device does not implement. A linked input may
+// enable a feature at run time, so it counts like an enabling constant.
+struct PrincipledCensus {uint64_t features=0;const char *unsupported=nullptr;};
+PrincipledCensus principled_census(const std::vector<uint32_t> &w,size_t data){
+  PrincipledCensus out;auto field=[&](size_t offset){return w[data+offset/4];};
+  auto linked=[](uint32_t bits){return (bits>>8)==(SVM_INPUT_STACK_OFFSET_MASK>>8);};
+  auto above=[&](size_t offset,float cutoff,bool saturate){const uint32_t bits=field(offset);if(linked(bits))return true;float v;std::memcpy(&v,&bits,4);
+    if(saturate)v=std::min(std::max(v,0.f),1.f);return v>cutoff;};
+  if(above(offsetof(SVMNodePrincipledBsdfData,thin_film_thickness),THINFILM_THICKNESS_CUTOFF,false))out.features|=SF_BSDF_THIN_FILM;
+  const size_t wall=data+offsetof(SVMNodePrincipledBsdfData,thin_wall)/4;
+  if((w[wall]!=0||byte_at(w,wall,offsetof(SVMInputInt,offset))!=SVM_STACK_INVALID)&&above(offsetof(SVMNodePrincipledBsdfData,transmission_weight),CLOSURE_WEIGHT_CUTOFF,true))
+    out.features|=SF_BSDF_THIN_WALL;
+  if(above(offsetof(SVMNodePrincipledBsdfData,subsurface_weight),CLOSURE_WEIGHT_CUTOFF,true))
+    out.unsupported="Unsupported feature: Principled BSDF subsurface scattering (subsurface weight above 0 or linked) is not implemented by the WebGPU device; the scene is rejected, not approximated";
+  return out;
+}
 }
 
-SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count){
+SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const std::vector<uint32_t> *roots){
   SvmCensus out;const uint64_t n=w.size();
   constexpr uint32_t header=1+sizeof(SVMNodeShaderJump)/4;
   std::vector<uint32_t> work;std::unordered_set<uint32_t> started,decoded;
-  for(size_t shader=0;shader<shader_count;shader++)work.push_back(uint32_t(shader*header));
+  for(size_t shader=0;shader<shader_count;shader++)if(!roots||std::find(roots->begin(),roots->end(),uint32_t(shader))!=roots->end())work.push_back(uint32_t(shader*header));
   // svm_take(bytes): fails when pc>count or count(bytes)>count-pc (word units).
   auto take=[&](uint64_t &pc,uint32_t bytes)->bool{const uint64_t words=bytes/4;if(pc>n||words>n-pc)return false;pc+=words;return true;};
   while(!work.empty()){
@@ -107,11 +166,20 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count){
         work.push_back(uint32_t(pc)+w[node+field/4]);  // u32 wrap, as in WGSL.
       }
       if(op==NODE_CLOSURE_BSDF){
-        const OpInfo data=bsdf_info(w[node+offsetof(SVMNodeClosureBsdf,closure_type)/4]);
+        const uint32_t kind=w[node+offsetof(SVMNodeClosureBsdf,closure_type)/4];const uint64_t data_at=pc;
+        const OpInfo data=bsdf_info(kind);
         if(!data.bytes||!take(pc,data.bytes)){out.stopped_paths++;break;}
         out.features|=data.feature;
+        if(kind==CLOSURE_BSDF_PRINCIPLED_ID){const auto principled=principled_census(w,data_at);out.features|=principled.features;
+          if(principled.unsupported&&out.unsupported.empty())out.unsupported=principled.unsupported;}
       }
-      if(op==NODE_TEX_COORD&&byte_at(w,node,offsetof(SVMNodeTexCoord,texco_type))==NODE_TEXCO_OBJECT_WITH_TRANSFORM){
+      // Ramp and curve tables follow their record (svm_ramp_node: size>=2, sizes it decodes).
+      if(op==NODE_RGB_RAMP||op==NODE_CURVES||op==NODE_FLOAT_CURVE){
+        const size_t field=op==NODE_RGB_RAMP?offsetof(SVMNodeRGBRamp,table_size):op==NODE_CURVES?offsetof(SVMNodeCurves,table_size):offsetof(SVMNodeFloatCurve,table_size);
+        const uint32_t size=w[node+field/4];const uint64_t words=uint64_t(size)*(op==NODE_FLOAT_CURVE?1:4);
+        if(size<2||size>0x0fffffffu||!take(pc,uint32_t(words*4))){out.stopped_paths++;break;}
+      }
+      if((op==NODE_TEX_COORD||op==NODE_TEX_COORD_DERIVATIVE)&&byte_at(w,node,offsetof(SVMNodeTexCoord,texco_type))==NODE_TEXCO_OBJECT_WITH_TRANSFORM){
         if(!take(pc,sizeof(PackedTransform))){out.stopped_paths++;break;}
       }
     }
@@ -164,16 +232,33 @@ static std::string json_text(const std::string &text){
   std::string out;for(char c:text){if(c=='"'||c=='\\'){out+='\\';out+=c;}else if(uint8_t(c)<0x20){out+=' ';}else out+=c;}return out;
 }
 uint64_t WebGPUDevice::shader_features(){
+  // Unimplemented Principled features are refused for every module, with or
+  // without specialization, before any pipeline or dispatch uses the scene.
+  // Principled handlers count only from shaders the scene references (triangles,
+  // lights, world): Cycles' default surface shader is itself a Principled BSDF
+  // and would otherwise compile Principled into every scene.
+  if(unsupported_generation!=svm_generation){
+    std::vector<uint32_t> roots;for(uint32_t s:tri_shader_words)roots.push_back(s&SHADER_MASK);
+    for(const KernelLight &light:light_records)roots.push_back(uint32_t(light.shader_id)&SHADER_MASK);
+    roots.push_back(uint32_t(data.background.surface_shader)&SHADER_MASK);roots.push_back(uint32_t(data.background.volume_shader)&SHADER_MASK);
+    std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
+    const SvmCensus referenced=svm_census(svm_node_words,shader_records.size(),&roots);
+    unsupported_feature=referenced.unsupported;principled_features=referenced.features&SF_PRINCIPLED_ALL;unsupported_generation=svm_generation;}
+  if(!unsupported_feature.empty())throw std::runtime_error(unsupported_feature);
   if(!specialization_enabled)return SF_ALL;
   if(census_generation!=svm_generation){
     census=svm_census(svm_node_words,shader_records.size());census_generation=svm_generation;
-    enabled_features|=census.features;
+    enabled_features|=(census.features&~uint64_t(SF_PRINCIPLED_ALL))|principled_features;
     for(const KernelLight &light:light_records)if(light.type==LIGHT_AREA)enabled_features|=SF_LIGHT_AREA;
     // The last distribution entry is the CDF end marker (prim 0), not an emitter.
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0)enabled_features|=SF_LIGHT_TRIANGLE;
     for(const KernelShader &shader:shader_records)if(shader.flags&(SD_MIS_FRONT|SD_MIS_BACK))enabled_features|=SF_LIGHT_TRIANGLE;
     for(const uint flags:object_flag_records)if(flags&SD_OBJECT_MOTION)enabled_features|=SF_MOTION_OBJECT;
     if(data.cam.num_motion_steps!=0)enabled_features|=SF_MOTION_CAMERA;
+    for(const KernelObject &object:object_records){
+      if(object.shadow_terminator_shading_offset>1.0f)enabled_features|=SF_TERMINATOR_SHADING;
+      if(object.shadow_terminator_geometry_offset>0.0f&&smooth_triangles&&data.integrator.use_direct_light)enabled_features|=SF_TERMINATOR_GEOMETRY;
+    }
   }
   return enabled_features;
 }

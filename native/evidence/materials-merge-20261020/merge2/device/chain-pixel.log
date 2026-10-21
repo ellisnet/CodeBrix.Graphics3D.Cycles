@@ -1,0 +1,16 @@
+[17:39:35] pixel materials-mw2r: START principled_render timeout=2400s
+image            gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[17:43:11] pixel materials-mw2r: REFERENCE principled_render host re-judged vs glibc: False
+[17:43:11] pixel materials-mw2r: FAIL principled_render exit=1 215s: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[17:43:11] pixel materials-mw2r: START nodes_render timeout=2400s
+image            gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[17:45:23] pixel materials-mw2r: REFERENCE nodes_render host re-judged vs glibc: False
+[17:45:23] pixel materials-mw2r: FAIL nodes_render exit=1 132s: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 24): invalid/uninitialized SVM stack unsupported SVM parameter
+[17:45:37] pixel materials-mw2r: END passed=False wall=363s/7200s failures=4
+{"passed": false, "failures": ["principled_render: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack", "nodes_render: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 24): invalid/uninitialized SVM stack unsupported SVM parameter", "principled-replay: not run (source job failed)", "nodes-replay: not run (source job failed)"], "error": null, "wallSeconds": 363.3}
+[17:45:53] pixel spec-refusal-mw2: START glass_render-spec timeout=1200s
+[17:47:56] pixel spec-refusal-mw2: PASS glass_render-spec 122s maxPipelineMs=26571.8
+[17:47:56] pixel spec-refusal-mw2: START glass_render-nospec-refused timeout=1200s
+[17:47:56] pixel spec-refusal-mw2: PASS glass_render-nospec-refused refusal exit=1 0s
+[17:48:11] pixel spec-refusal-mw2: END passed=True wall=139s/1800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 138.9}

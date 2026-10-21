@@ -1,0 +1,40 @@
+# M1 Principled agent: declared budgets (Linux, shared machine; build --jobs 6 max; <=2 concurrent gate runs)
+[07:08] build-baseline: python3 native/tools/build_cycles.py --jobs 6 (unchanged tree 01eb27b6, for before-measurements) budget 40 min (cold host+all gates build; justified: first build in a fresh worktree)
+[07:12] baseline-glass-render (specialized, cold MESA cache native/work/m1/mesa-baseline-glass, pipeline log) budget 15 min
+[07:12] build-baseline-29targets: build_cycles.py --jobs 6 with the 29 Phase C gate targets, budget 30 min
+[07:17] baseline-glass-render (rerun; specialized; cold cache) budget 15 min
+[07:22] build-iter1: principled/glass/microfacet/svm_surface targets, --jobs 6, budget 25 min
+[07:23] principled_svm iter1 (cold) budget 15 min
+[07:25] principled_bounce iter1 (cold) budget 15 min
+[07:25] principled_svm iter2 (cold) budget 15 min
+[07:26] principled_render iter1 + principled_bench iter1 (concurrent, cold) budget 15 min each
+[07:28] principled_bench iter2 diagnostic budget 15 min
+[07:35] build-iter5 principled 3 targets budget 25 min
+[07:35] principled_svm iter3 + bounce iter2 concurrently, budget 15 min each
+[07:38] principled_svm iter5 + bounce iter3 budget 15 min
+[07:42] principled_bounce iter5 budget 15
+[07:44] experiment bounce (case18 aniso 0, NOT kept) budget 15
+[07:45] experiment bounce no-throw diagnostic (NOT kept) budget 15
+[07:49] principled_bounce iter6 budget 15
+[07:51] principled_bounce iter7 PASS; principled_svm iter6 + principled_render iter2 concurrently budget 15 each
+[07:54] replay principled_render-2 capture (linux) + principled_bench iter4, budget 15 each
+[07:55] principled_render specialization OFF (cold) budget 15 min; concurrently full build (default + 29 + 3 principled targets) --jobs 6 budget 30 min
+[08:02] all-lanes 29-target corpus (linux_validate.py --skip-build, cold MESA cache) budget 45 min
+[08:02] after-glass-render specialized (cold) budget 15 min (concurrent with all-lanes)
+[08:04] all-lanes-1 terminated by me after ~6 min: census change required (default_surface Principled enabled the region in every scene); rerun later
+[08:04] full rebuild after census-root fix, budget 30 min
+[08:11] after-glass-render (cold) budget 15
+[08:12] FINAL principled_svm + principled_bounce (cold) budget 15 each
+[08:14] FINAL all-lanes 29-target corpus (--skip-build, cold MESA cache) budget 45 min
+[08:14] FINAL principled_render, specoff render, bench (sequential, second slot) budget 15 each
+[08:23] FINAL replay of principled_render capture (linux) budget 15
+[08:37] all-lanes-final (candidate A, pre-restructure) PASS 29 targets, sources unchanged; candidate A saved
+[08:37] restructure build (3 principled targets) budget 25
+[08:38] restructure principled_svm + bounce budget 15 each
+[08:40] restructure: full rebuild (default+32) budget 30
+[08:41] FINAL2 render, glass-render (both cold, concurrent) budget 15
+[08:42] FINAL2 all-lanes 29-target corpus (--skip-build, cold) budget 45 min
+[08:42] FINAL2 second slot: principled_render specoff, glass_render specoff, bench, svm, bounce, replay (sequential) budget 15 each
+[09:06] all-lanes-final2 PASS (29 targets, sources unchanged). Clean sequential cold compile measurements: glass, principled_render, principled_bench, budget 15 each
+[09:09] docs edited (PARITY rows, DEVICE.md section); running audits
+[09:09] principled_gate.py (new tree gate script) --skip-build, cold, budget 15

@@ -1,0 +1,72 @@
+[18:06:07] pixel triangle-final: START triangle_sample timeout=2400s
+[18:06:07] pixel triangle-final: SCENE-DUMP triangle_sample
+[18:06:13] pixel triangle-final: SCENE-REFERENCE triangle_sample references=1
+[18:07:44] pixel triangle-final: REFERENCE triangle_sample host re-judged vs glibc: FileNotFoundError(2, 'No such file or directory')
+[18:07:44] pixel triangle-final: FAIL triangle_sample exit=1 91s: WebGPU scheduler kernel reported invalid data (mask 1059595178): unsupported SVM opcode or scene-specialized handler invalid/uninitialized SVM stack SVM instruction limit invalid image descriptor/data tiled image cache not implemented
+[18:07:44] pixel triangle-final: START surface timeout=2400s
+[18:11:02] pixel triangle-final: PASS surface 198s maxPipelineMs=10053.8
+[18:11:02] pixel triangle-final: START triangle_lighting timeout=2400s
+[18:11:02] pixel triangle-final: SCENE-DUMP triangle_lighting
+[18:11:09] pixel triangle-final: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=12 max=4.768e-07 | local-vs-glibc differing=56 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.788e-07 | local-vs-glibc differing=930 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=6 max=6.407e-07 | local-vs-glibc differing=983 maxUlps=2285 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=233 max=1.788e-06 | local-vs-glibc differing=715 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=8 max=3.576e-07 | local-vs-glibc differing=938 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=231 max=1.788e-06 | local-vs-glibc differing=777 maxUlps=55 practical=0
+[18:21:33] pixel triangle-final: REFERENCE triangle_lighting host re-judged vs glibc: True
+[18:21:33] pixel triangle-final: PASS triangle_lighting 622s maxPipelineMs=124032
+[18:21:33] pixel triangle-final: START replay-0 timeout=2400s
+[18:22:39] pixel triangle-final: PASS replay-0 66s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[18:22:39] pixel triangle-final: START replay-1 timeout=2400s
+[18:24:42] pixel triangle-final: PASS replay-1 123s readbacks=417 max=1.79e-07 strict=0 fmt=native-command-stream-v6
+[18:24:42] pixel triangle-final: START replay-2 timeout=2400s
+[18:26:45] pixel triangle-final: FAIL replay-2 FileNotFoundError(2, 'No such file or directory')
+[18:26:45] pixel triangle-final: START replay-3 timeout=2400s
+[18:28:47] pixel triangle-final: FAIL replay-3 FileNotFoundError(2, 'No such file or directory')
+[18:28:47] pixel triangle-final: START replay-4 timeout=2400s
+[18:30:48] pixel triangle-final: FAIL replay-4 FileNotFoundError(2, 'No such file or directory')
+[18:30:48] pixel triangle-final: START replay-5 timeout=2400s
+[18:33:23] pixel triangle-final: ERROR KeyboardInterrupt()
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 410, in <module>
+    code, stdout = call(['shell', command], 'replay-'+name, timeout, False)
+                   ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 225, in call
+    r = subprocess.run(command, stdout=so, stderr=se, timeout=timeout)
+  File "/usr/lib/python3.13/subprocess.py", line 556, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 1222, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 2154, in _communicate
+    self.wait(timeout=self._remaining_time(endtime))
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 1280, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 2060, in _wait
+    time.sleep(delay)
+    ~~~~~~~~~~^^^^^^^
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 453, in <module>
+    state['binaryInputsUnchanged'] = all(sha(Path(p)) == d for p, d in pins.items())
+                                     ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/tools/run_corpus.py", line 453, in <genexpr>
+    state['binaryInputsUnchanged'] = all(sha(Path(p)) == d for p, d in pins.items())
+                                         ~~~^^^^^^^^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/tools/device_gate.py", line 15, in sha
+    def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+                                        ~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/pathlib/_abc.py", line 625, in read_bytes
+    with self.open(mode='rb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 539, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/jeremy/ClaudeHome/cycles-worktrees/e4-mode4-adreno/native/work/e4/build-android-arm64/android/android-arm64/host/build/bin/codebrix_cycles_broad_light_state_gate'

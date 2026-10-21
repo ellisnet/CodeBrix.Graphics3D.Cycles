@@ -1,0 +1,51 @@
+{
+  "sceneId": "linux-gates/transparent-lighting-6",
+  "sceneSha256": "a65f5f2737a068884218bc8e8d44fd12305971098fe3f7b925c5d6303214a6bc",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/work/d3/oracle-dev/oracle/linux-gates/transparent-lighting-6/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/work/d3/oracle-dev/oracle/linux-gates/transparent-lighting-6/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 7.450580596923828e-09,
+      "nonfiniteComponents": 0
+    }
+  ],
+  "pairs": [
+    {
+      "maxAbsoluteDifference": 8.195638656616211e-07,
+      "maxRelativeError": 2.7833917795903624e-05,
+      "rms": 7.853252568595767e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 177,
+      "worstPixel": {
+        "x": 21,
+        "y": 19,
+        "channel": "R",
+        "reference": 0.07333564013242722,
+        "candidate": 0.07333645224571228,
+        "absoluteDifference": 8.121132850646973e-07,
+        "criterionRatio": 0.012558363265059234
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "practicalPassed": true
+    }
+  ],
+  "problems": [],
+  "passed": true
+}

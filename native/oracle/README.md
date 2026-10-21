@@ -11,7 +11,11 @@ buffers; disagreements between reference backends are findings, never tuned away
 
 The runner (`runner.cpp`, with `json.h` and `sha256.h`) links only the host
 library. On macOS, `python3 tools/build_macos.py` builds it with the Metal host
-at `native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle`. Elsewhere:
+at `native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle`. On Linux
+the host build also produces it as the CMake target `codebrix_cycles_oracle`
+(`python3 native/tools/build_cycles.py --target codebrix_cycles_oracle`, output
+`native/work/cycles-build/bin/codebrix_cycles_oracle`). Standalone, against any
+built host library:
 
 ```sh
 cmake -S native/oracle -B native/work/oracle-build -DCMAKE_BUILD_TYPE=Release \
@@ -34,8 +38,12 @@ Each node entry has a unique `handle` and either `scene` (a singleton:
 - `graph`: `nodes` (`handle`, Cycles shader node `type`, optional `set`) and
   `connect` as `[from, output, to, input]`; `output` is the shader output node.
   Handles inside a graph shadow scene handles.
-- `mesh`: `positions`, `indices` and optional `attributes`
-  (`name`, `value`, `domain`, `flags`, then `data` floats or `bytes`).
+- `mesh`: `positions`, `indices`, optional `attributes`
+  (`name`, `value`, `domain`, `flags`, then `data` floats or `bytes`) and
+  optional `motion` (`steps`, odd, and `positions`: `steps` time-ordered vertex
+  arrays whose center equals `positions`; `cbc_host_motion_positions`). Face
+  material indices and smoothing are the mesh sockets `shader` and `smooth` in
+  `set`; object and camera motion are their `motion` transform arrays.
 - `set`: socket names and values exactly as Cycles registers them (see
   `cbc_host_registry_json`). The loader picks the setter from
   `cbc_host_property_info`: numbers, booleans, strings or enum labels, flat or
@@ -49,6 +57,21 @@ bottom row first, in one of `float`, `float4`, `half`, `half4`, `byte`, `byte4`,
 `ushort`, `ushort4`. Anything the loader cannot express fails with the socket named.
 To reproduce a scene exactly across backends, set every integrator, film and
 camera control the result depends on; do not rely on defaults.
+
+## Linux gate corpus (`scenes/linux-gates/`)
+
+`python3 native/oracle/export_scenes.py` regenerates the corpus byte for byte:
+the maintained Linux gate fixtures re-expressed through the C ABI, each with
+`sourceFixture` naming the gate source and case. It holds glass-render (the 20
+GGX refraction/glass graphs), textured-plane (13x9 byte4 cubic texture from the
+image fixture formula), world-volume and closed-volumes, triangle-lighting
+modes 0, 1, 2, 3 and 5, broad-lighting 0-11, transparent-lighting 0-7,
+object-motion 0-7 and deforming-motion 0-7. `scenes/linux-gates/manifest.json`
+lists the SHA-256 of every scene and pixel file. The gates render their
+fixtures with their own scheduler and override some kernel data directly, so
+these scenes are compared backend against backend (CPU, WebGPU, Metal), never
+with the gates' films. Integrator controls a gate leaves at their defaults stay
+at the pinned Cycles defaults; Session-only denoising is disabled.
 
 ## Run, compare and bundle
 
@@ -66,6 +89,10 @@ repeat statistics, render times, host library and runner hashes, repository
 commit, OS, CPU, GPU, compiler, Xcode, CMake, CPU kernel flags and, for Metal,
 the fixed settings. The runner refuses a non-empty output directory, so films
 are never overwritten.
+
+Linux backends: `cpu-x64-linux` and `wgsl-linux-intel` (WebGPU). A backend
+that rejects a scene is recorded under `failures` in `run.json` and the run
+continues; such a scene is compared only among the backends that rendered it.
 
 macOS backends: `cpu-arm64-macos`; `metal-m2pro` (MetalRT off, so BVH2, and
 generic kernels, through `CYCLES_METALRT=0` and

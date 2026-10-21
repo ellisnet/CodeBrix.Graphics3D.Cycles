@@ -1,0 +1,885 @@
+{
+  "passed": true,
+  "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+  "results": {
+    "camera-static": {
+      "passed": true,
+      "originalSchedulerTileDispatch": true,
+      "directNativeSceneTables": true,
+      "originalCpuCameraOracle": true,
+      "rayDifferentials": true,
+      "cases": 24,
+      "initializedPaths": 22972,
+      "retryPaths": 65,
+      "integerAndGuardChecks": 3422188,
+      "floatChecks": 254276,
+      "untouchedGuardBytes": 11734032,
+      "strictFloatFailures": 15,
+      "maximumRayErrorExcludingTmax": 9.53674e-07,
+      "maximumDifferentialError": 6.23986e-08,
+      "cameraMotionCases": 0,
+      "maximumTmaxError": 0.000244141,
+      "invalidCasesRejected": 12,
+      "absoluteTolerance": 5e-05,
+      "relativeTolerance": 0.0002,
+      "strictAbsoluteTolerance": 1e-07,
+      "strictRelativeTolerance": 1e-07,
+      "cyclesAllocationBytesAfterCleanup": 0
+    },
+    "camera-motion": {
+      "passed": true,
+      "originalSchedulerTileDispatch": true,
+      "directNativeSceneTables": true,
+      "originalCpuCameraOracle": true,
+      "rayDifferentials": true,
+      "cases": 24,
+      "initializedPaths": 22964,
+      "retryPaths": 65,
+      "integerAndGuardChecks": 3422251,
+      "floatChecks": 254177,
+      "untouchedGuardBytes": 11735364,
+      "strictFloatFailures": 3533,
+      "maximumRayErrorExcludingTmax": 2.86102e-06,
+      "maximumDifferentialError": 8.56817e-08,
+      "cameraMotionCases": 24,
+      "maximumTmaxError": 0.000244141,
+      "invalidCasesRejected": 19,
+      "absoluteTolerance": 5e-05,
+      "relativeTolerance": 0.0002,
+      "strictAbsoluteTolerance": 1e-07,
+      "strictRelativeTolerance": 1e-07,
+      "cyclesAllocationBytesAfterCleanup": 0
+    },
+    "render-static": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 157,
+      "paths": 136344,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 3,
+      "surfaceShaders": 21,
+      "integerChecks": 12218368,
+      "floatChecks": 17362944,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 12372,
+      "maximumStageError": 1.52587890625e-05,
+      "maximumStageErrorField": "Stage 120 film 7356 pixel=1839 offset=0",
+      "maximumStageErrorActual": 151.4493865966797,
+      "maximumStageErrorExpected": 151.44940185546875,
+      "maximumStagePracticalToleranceRatio": 0.07964544733501872,
+      "strictImageFailures": 875,
+      "maximumImageError": 3.0517578125e-05,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 3996.08,
+        "maxPipelineMs": 2884.83,
+        "maxPipelineEntry": "prepare_surface",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+          "adapter": {
+            "vendor": "Intel open-source Mesa driver",
+            "architecture": "",
+            "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+            "description": "Mesa 25.0.7-2+deb13u1",
+            "vendorId": 32902,
+            "deviceId": 18056,
+            "simulated": false,
+            "mobile": false
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:19673b17f839dc77",
+          "knownAdapter": {
+            "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "Phase C1 2026-10-19 Linux validation"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "render-motion-0": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 159,
+      "paths": 135649,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 3,
+      "surfaceShaders": 21,
+      "integerChecks": 12374016,
+      "floatChecks": 17584128,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 12172,
+      "maximumStageError": 2.47955322265625e-05,
+      "maximumStageErrorField": "stage 44 isect.t path=1485",
+      "maximumStageErrorActual": 8.080279350280762,
+      "maximumStageErrorExpected": 8.080304145812988,
+      "maximumStagePracticalToleranceRatio": 0.11662595609579536,
+      "strictImageFailures": 896,
+      "maximumImageError": 3.2901763916015625e-05,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 20.8711,
+        "maxPipelineMs": 3.79012,
+        "maxPipelineEntry": "shade_surface_light",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+          "adapter": {
+            "vendor": "Intel open-source Mesa driver",
+            "architecture": "",
+            "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+            "description": "Mesa 25.0.7-2+deb13u1",
+            "vendorId": 32902,
+            "deviceId": 18056,
+            "simulated": false,
+            "mobile": false
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:19673b17f839dc77",
+          "knownAdapter": {
+            "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "Phase C1 2026-10-19 Linux validation"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "render-motion-1": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 158,
+      "paths": 136017,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 3,
+      "surfaceShaders": 21,
+      "integerChecks": 12296192,
+      "floatChecks": 17473536,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 12072,
+      "maximumStageError": 1.52587890625e-05,
+      "maximumStageErrorField": "Stage 122 film 7360 pixel=1840 offset=0",
+      "maximumStageErrorActual": 162.91697692871094,
+      "maximumStageErrorExpected": 162.9169921875,
+      "maximumStagePracticalToleranceRatio": 0.10974226416088706,
+      "strictImageFailures": 844,
+      "maximumImageError": 3.0517578125e-05,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 20.1085,
+        "maxPipelineMs": 3.81364,
+        "maxPipelineEntry": "shade_surface_light",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+          "adapter": {
+            "vendor": "Intel open-source Mesa driver",
+            "architecture": "",
+            "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+            "description": "Mesa 25.0.7-2+deb13u1",
+            "vendorId": 32902,
+            "deviceId": 18056,
+            "simulated": false,
+            "mobile": false
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:19673b17f839dc77",
+          "knownAdapter": {
+            "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "Phase C1 2026-10-19 Linux validation"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "render-motion-2": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 160,
+      "paths": 133278,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 3,
+      "surfaceShaders": 21,
+      "integerChecks": 12451840,
+      "floatChecks": 17694720,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 11968,
+      "maximumStageError": 2.3245811462402344e-05,
+      "maximumStageErrorField": "stage 109 isect.t path=270",
+      "maximumStageErrorActual": 1.8462201356887817,
+      "maximumStageErrorExpected": 1.8461968898773193,
+      "maximumStagePracticalToleranceRatio": 0.13741045947632757,
+      "strictImageFailures": 948,
+      "maximumImageError": 0.00019550323486328125,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 19.9996,
+        "maxPipelineMs": 3.2321,
+        "maxPipelineEntry": "shade_surface_light",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+          "adapter": {
+            "vendor": "Intel open-source Mesa driver",
+            "architecture": "",
+            "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+            "description": "Mesa 25.0.7-2+deb13u1",
+            "vendorId": 32902,
+            "deviceId": 18056,
+            "simulated": false,
+            "mobile": false
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:19673b17f839dc77",
+          "knownAdapter": {
+            "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "Phase C1 2026-10-19 Linux validation"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "render-motion-3": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 161,
+      "paths": 133606,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 4,
+      "surfaceShaders": 21,
+      "integerChecks": 12529664,
+      "floatChecks": 17805312,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 12028,
+      "maximumStageError": 2.9325485229492188e-05,
+      "maximumStageErrorField": "stage 107 isect.v path=1278",
+      "maximumStageErrorActual": 0.30105364322662354,
+      "maximumStageErrorExpected": 0.301082968711853,
+      "maximumStagePracticalToleranceRatio": 0.26607141659666966,
+      "strictImageFailures": 1057,
+      "maximumImageError": 4.2438507080078125e-05,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 18.8169,
+        "maxPipelineMs": 3.22989,
+        "maxPipelineEntry": "shade_surface_light",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+          "adapter": {
+            "vendor": "Intel open-source Mesa driver",
+            "architecture": "",
+            "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+            "description": "Mesa 25.0.7-2+deb13u1",
+            "vendorId": 32902,
+            "deviceId": 18056,
+            "simulated": false,
+            "mobile": false
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:19673b17f839dc77",
+          "knownAdapter": {
+            "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "Phase C1 2026-10-19 Linux validation"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "render-motion-4": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 156,
+      "paths": 126197,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 3,
+      "surfaceShaders": 21,
+      "integerChecks": 12140544,
+      "floatChecks": 17252352,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 10760,
+      "maximumStageError": 7.62939453125e-06,
+      "maximumStageErrorField": "stage 25 isect.t path=1679",
+      "maximumStageErrorActual": 10.004051208496094,
+      "maximumStageErrorExpected": 10.004043579101562,
+      "maximumStagePracticalToleranceRatio": 0.08818976283491119,
+      "strictImageFailures": 864,
+      "maximumImageError": 4.482269287109375e-05,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 18.7543,
+        "maxPipelineMs": 3.05251,
+        "maxPipelineEntry": "shade_surface_light",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+          "adapter": {
+            "vendor": "Intel open-source Mesa driver",
+            "architecture": "",
+            "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+            "description": "Mesa 25.0.7-2+deb13u1",
+            "vendorId": 32902,
+            "deviceId": 18056,
+            "simulated": false,
+            "mobile": false
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:19673b17f839dc77",
+          "knownAdapter": {
+            "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "Phase C1 2026-10-19 Linux validation"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "render-motion-5": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 161,
+      "paths": 126203,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 3,
+      "surfaceShaders": 21,
+      "integerChecks": 12529664,
+      "floatChecks": 17805312,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 10522,
+      "maximumStageError": 1.621246337890625e-05,
+      "maximumStageErrorField": "stage 41 isect.t path=1524",
+      "maximumStageErrorActual": 10.513708114624023,
+      "maximumStageErrorExpected": 10.513724327087402,
+      "maximumStagePracticalToleranceRatio": 0.0932363467083949,
+      "strictImageFailures": 869,
+      "maximumImageError": 0.0005235671997070312,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 18.2251,
+        "maxPipelineMs": 3.26138,
+        "maxPipelineEntry": "shade_surface_light",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+          "adapter": {
+            "vendor": "Intel open-source Mesa driver",
+            "architecture": "",
+            "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+            "description": "Mesa 25.0.7-2+deb13u1",
+            "vendorId": 32902,
+            "deviceId": 18056,
+            "simulated": false,
+            "mobile": false
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:19673b17f839dc77",
+          "knownAdapter": {
+            "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "Phase C1 2026-10-19 Linux validation"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "render-motion-6": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 155,
+      "paths": 127257,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 3,
+      "surfaceShaders": 21,
+      "integerChecks": 12062720,
+      "floatChecks": 17141760,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 10972,
+      "maximumStageError": 1.52587890625e-05,
+      "maximumStageErrorField": "stage 26 isect.t path=1134",
+      "maximumStageErrorActual": 11.100205421447754,
+      "maximumStageErrorExpected": 11.100190162658691,
+      "maximumStagePracticalToleranceRatio": 0.07336166186948,
+      "strictImageFailures": 926,
+      "maximumImageError": 5.0067901611328125e-05,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 20.5221,
+        "maxPipelineMs": 3.38197,
+        "maxPipelineEntry": "shade_surface_light",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+          "adapter": {
+            "vendor": "Intel open-source Mesa driver",
+            "architecture": "",
+            "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+            "description": "Mesa 25.0.7-2+deb13u1",
+            "vendorId": 32902,
+            "deviceId": 18056,
+            "simulated": false,
+            "mobile": false
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:19673b17f839dc77",
+          "knownAdapter": {
+            "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "Phase C1 2026-10-19 Linux validation"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "render-motion-7": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 156,
+      "paths": 126197,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 3,
+      "surfaceShaders": 21,
+      "integerChecks": 12140544,
+      "floatChecks": 17252352,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 10777,
+      "maximumStageError": 7.62939453125e-06,
+      "maximumStageErrorField": "stage 25 isect.t path=1679",
+      "maximumStageErrorActual": 10.004051208496094,
+      "maximumStageErrorExpected": 10.004043579101562,
+      "maximumStagePracticalToleranceRatio": 0.08818976283491119,
+      "strictImageFailures": 867,
+      "maximumImageError": 4.482269287109375e-05,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 20.5548,
+        "maxPipelineMs": 3.64024,
+        "maxPipelineEntry": "shade_surface_light",
+        "warnings": [],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+          "adapter": {
+            "vendor": "Intel open-source Mesa driver",
+            "architecture": "",
+            "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+            "description": "Mesa 25.0.7-2+deb13u1",
+            "vendorId": 32902,
+            "deviceId": 18056,
+            "simulated": false,
+            "mobile": false
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:19673b17f839dc77",
+          "knownAdapter": {
+            "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "Phase C1 2026-10-19 Linux validation"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    }
+  },
+  "stationaryComparison": {
+    "render-motion-0": {
+      "cpu": {
+        "differentComponentsFromStationary": 6782,
+        "maximumFilmDifference": 115.1322250366211
+      },
+      "gpu": {
+        "differentComponentsFromStationary": 6782,
+        "maximumFilmDifference": 115.13222694396973
+      }
+    },
+    "render-motion-1": {
+      "cpu": {
+        "differentComponentsFromStationary": 7802,
+        "maximumFilmDifference": 118.17522811889648
+      },
+      "gpu": {
+        "differentComponentsFromStationary": 7803,
+        "maximumFilmDifference": 118.17521858215332
+      }
+    },
+    "render-motion-2": {
+      "cpu": {
+        "differentComponentsFromStationary": 8303,
+        "maximumFilmDifference": 206.34533500671387
+      },
+      "gpu": {
+        "differentComponentsFromStationary": 8303,
+        "maximumFilmDifference": 206.34530377388
+      }
+    },
+    "render-motion-3": {
+      "cpu": {
+        "differentComponentsFromStationary": 8350,
+        "maximumFilmDifference": 207.2499396800995
+      },
+      "gpu": {
+        "differentComponentsFromStationary": 8350,
+        "maximumFilmDifference": 207.24990916252136
+      }
+    },
+    "render-motion-4": {
+      "cpu": {
+        "differentComponentsFromStationary": 8234,
+        "maximumFilmDifference": 205.2815456390381
+      },
+      "gpu": {
+        "differentComponentsFromStationary": 8234,
+        "maximumFilmDifference": 205.28151512145996
+      }
+    },
+    "render-motion-5": {
+      "cpu": {
+        "differentComponentsFromStationary": 7911,
+        "maximumFilmDifference": 194.0939041376114
+      },
+      "gpu": {
+        "differentComponentsFromStationary": 7911,
+        "maximumFilmDifference": 194.09388887882233
+      }
+    },
+    "render-motion-6": {
+      "cpu": {
+        "differentComponentsFromStationary": 7919,
+        "maximumFilmDifference": 155.62500393390656
+      },
+      "gpu": {
+        "differentComponentsFromStationary": 7919,
+        "maximumFilmDifference": 155.6250038743019
+      }
+    },
+    "render-motion-7": {
+      "cpu": {
+        "differentComponentsFromStationary": 8234,
+        "maximumFilmDifference": 205.2815456390381
+      },
+      "gpu": {
+        "differentComponentsFromStationary": 8234,
+        "maximumFilmDifference": 205.28151512145996
+      }
+    }
+  },
+  "unchangedSourceBinaryAndRuntime": true,
+  "scope": "Perspective pinhole camera transform/FOV motion, shutter CDF and top rolling shutter; static triangle geometry. Object/deformation motion is validated separately by deforming_motion_gate.py. Other cameras and depth of field remain unsupported."
+}

@@ -1,0 +1,27 @@
+samsung 44 files staged and verified
+[18:13:58] samsung materials-mw2a: START principled_svm timeout=2400s
+[18:15:11] samsung materials-mw2a: FAIL principled_svm exit=1 71s:     Parent device is lost
+[18:15:11] samsung materials-mw2a: START principled_bounce timeout=2400s
+[18:15:38] samsung materials-mw2a: FAIL principled_bounce exit=1 26s:     Parent device is lost
+[18:15:38] samsung materials-mw2a: START nodes_svm timeout=2400s
+[18:19:39] samsung materials-mw2a: FAIL nodes_svm exit=1 240s: Typed node noise 2d type 0 variant 2 22 float closures[0].weight path 28 component 0 actual=1.792859 expected=1.791512
+[18:19:39] samsung materials-mw2a: START nodes_world timeout=2400s
+[18:24:47] samsung materials-mw2a: PASS nodes_world 307s maxPipelineMs=38314.6
+[18:25:01] samsung materials-mw2a: END passed=False wall=664s/7200s failures=3
+{"passed": false, "failures": ["principled_svm:     Parent device is lost", "principled_bounce:     Parent device is lost", "nodes_svm: Typed node noise 2d type 0 variant 2 22 float closures[0].weight path 28 component 0 actual=1.792859 expected=1.791512"], "error": null, "wallSeconds": 664.1}
+[18:25:16] samsung materials-mw2r: START principled_render timeout=2400s
+image            gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[18:25:45] samsung materials-mw2r: REFERENCE principled_render host re-judged vs glibc: False
+[18:25:45] samsung materials-mw2r: FAIL principled_render exit=1 29s:     Parent device is lost
+[18:25:45] samsung materials-mw2r: START nodes_render timeout=2400s
+image            gpu-vs-glibc passed=False practical=1 strict=3994 max=0.0004035 | local-vs-glibc differing=5976 maxUlps=6832 practical=1
+[18:28:01] samsung materials-mw2r: REFERENCE nodes_render host re-judged vs glibc: False
+[18:28:01] samsung materials-mw2r: FAIL nodes_render exit=1 136s: Independent CPU image 6720 actual=0.928481 expected=0.928078
+[18:28:15] samsung materials-mw2r: END passed=False wall=181s/7200s failures=4
+{"passed": false, "failures": ["principled_render:     Parent device is lost", "nodes_render: Independent CPU image 6720 actual=0.928481 expected=0.928078", "principled-replay: not run (source job failed)", "nodes-replay: not run (source job failed)"], "error": null, "wallSeconds": 180.7}
+[18:28:30] samsung spec-refusal-mw2: START glass_render-spec timeout=1200s
+[18:29:48] samsung spec-refusal-mw2: PASS glass_render-spec 77s maxPipelineMs=5150.14
+[18:29:48] samsung spec-refusal-mw2: START glass_render-nospec-refused timeout=1200s
+[18:29:48] samsung spec-refusal-mw2: PASS glass_render-nospec-refused refusal exit=1 0s
+[18:30:02] samsung spec-refusal-mw2: END passed=True wall=93s/1800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 92.8}

@@ -1,0 +1,158 @@
+-- Not using precompiled libraries
+-- Attempting to use system libraries instead
+CMake Warning (dev) at src/cmake/external_libs.cmake:443 (find_package):
+  Policy CMP0167 is not set: The FindBoost module is removed.  Run "cmake
+  --help-policy CMP0167" for policy details.  Use the cmake_policy command to
+  set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  CMakeLists.txt:257 (include)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- CodeBrix Cycles host 1.0.20261020.0, Cycles a456b761034dda42c32eef9f4aae0fa5a5c9f604
+-- Configuring done (0.1s)
+-- Generating done (0.2s)
+-- Build files have been written to: /home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/work/cycles-build
+[  2%] Built target extern_libc_compat
+[  4%] Built target extern_sky
+[ 17%] Built target cycles_util
+[ 22%] Built target cycles_graph
+[ 22%] Built target cycles_kernel_cpu
+[ 22%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/work/cycles-overlay/device/device.cpp.o
+[ 22%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/device.cpp.o
+/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/device.cpp: In instantiation of ‘ccl::WebGPUDevice::mem_copy_to(ccl::device_memory&)::<lambda()>::<lambda(auto:42&)> [with auto:42 = std::vector<ccl::KernelObject>]’:
+/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/device.cpp:183:56:   required from here
+  183 |     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
+      |                                                    ~~~~^~~~~~~~~~~~~~~~
+/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/device.cpp:179:39: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  179 |       if(mem.memory_size())std::memcpy(records.data(),mem.host_pointer,mem.memory_size());};
+      |                            ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/third_party/cycles/src/device/../bvh/params.h:13,
+                 from /home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/device.h:4,
+                 from /home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/device.cpp:3:
+/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/third_party/cycles/src/device/../kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+[ 22%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/camera.cpp.o
+[ 22%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/closest.cpp.o
+[ 22%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/shadow.cpp.o
+[ 22%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/background.cpp.o
+[ 22%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/surface.cpp.o
+[ 22%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/volume.cpp.o
+[ 24%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/svm_layout.cpp.o
+[ 24%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/shader_data.cpp.o
+[ 24%] Linking CXX static library ../../lib/libcycles_device.a
+[ 46%] Built target cycles_device
+[ 51%] Built target cycles_session
+[ 64%] Built target cycles_integrator
+[ 66%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Linking CXX executable bin/codebrix_cycles_transparent_shadow_gate
+[100%] Built target codebrix_cycles_transparent_shadow_gate
+[  2%] Built target extern_sky
+[  4%] Built target extern_libc_compat
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 44%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 61%] Built target cycles_integrator
+[ 63%] Built target cycles_subd
+[ 87%] Built target cycles_scene
+[ 95%] Built target cycles_bvh
+[ 97%] Linking CXX executable bin/codebrix_cycles_transparent_lighting_gate
+[100%] Built target codebrix_cycles_transparent_lighting_gate
+[  2%] Built target extern_sky
+[  4%] Built target extern_libc_compat
+[ 17%] Built target cycles_util
+[ 20%] Built target cycles_graph
+[ 22%] Built target cycles_kernel_cpu
+[ 46%] Built target cycles_device
+[ 51%] Built target cycles_session
+[ 64%] Built target cycles_integrator
+[ 66%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Linking CXX executable bin/codebrix_cycles_shadow_gate
+[100%] Built target codebrix_cycles_shadow_gate
+[  2%] Built target extern_sky
+[  4%] Built target extern_libc_compat
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 61%] Built target cycles_integrator
+[ 63%] Built target cycles_subd
+[ 87%] Built target cycles_scene
+[ 95%] Built target cycles_bvh
+[ 95%] Linking CXX executable bin/codebrix_cycles_broad_lighting_gate
+[100%] Built target codebrix_cycles_broad_lighting_gate
+[  2%] Built target extern_sky
+[  4%] Built target extern_libc_compat
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 45%] Built target cycles_device
+[ 50%] Built target cycles_session
+[ 63%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[100%] Linking CXX executable bin/codebrix_cycles_shader_data_gate
+[100%] Built target codebrix_cycles_shader_data_gate
+[  2%] Built target extern_libc_compat
+[  4%] Built target extern_sky
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 45%] Built target cycles_device
+[ 50%] Built target cycles_session
+[ 63%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Linking CXX executable bin/codebrix_cycles_svm_surface_gate
+[100%] Built target codebrix_cycles_svm_surface_gate
+[  2%] Built target extern_libc_compat
+[  4%] Built target extern_sky
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 45%] Built target cycles_device
+[ 50%] Built target cycles_session
+[ 63%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_device_gate.dir/home/jeremy/ClaudeHome/cycles-worktrees/e3-host-edits/native/cycles/control_reference.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_device_gate
+[100%] Built target codebrix_cycles_device_gate
+[  2%] Built target extern_libc_compat
+[  4%] Built target extern_sky
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 61%] Built target cycles_integrator
+[ 63%] Built target cycles_subd
+[ 87%] Built target cycles_scene
+[ 95%] Built target cycles_bvh
+[ 95%] Linking CXX executable bin/codebrix_cycles_lighting_mis_gate
+[100%] Built target codebrix_cycles_lighting_mis_gate
+[  2%] Built target extern_libc_compat
+[  4%] Built target extern_sky
+[ 17%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 61%] Built target cycles_integrator
+[ 63%] Built target cycles_subd
+[ 87%] Built target cycles_scene
+[ 95%] Built target cycles_bvh
+[ 95%] Linking CXX executable bin/codebrix_cycles_feature_combination_gate
+[100%] Built target codebrix_cycles_feature_combination_gate

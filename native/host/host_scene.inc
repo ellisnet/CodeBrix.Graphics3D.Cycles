@@ -82,7 +82,7 @@ Attribute *stage_attribute(AttributeSet &staged,const AttributeTarget &target,co
   return value;
 }
 Attribute &find_attribute(Host &host,CBCNode id,const char *name,uint32_t flags) {
-  require(name&&*name,"Attribute name is required");auto &set=attribute_set(geometry(host,id),flags);
+  require(name&&*name,"Attribute name is required");auto &geom=geometry(host,id);auto &set=attribute_set(geom,flags);
   auto value=set.find(ustring(name));require(value,"Unknown attribute");
   require(!(flags&CBC_ATTR_STANDARD)||value->std!=ATTR_STD_NONE,"Attribute is not standard");return *value;
 }
@@ -110,7 +110,7 @@ void validate_geometry(Host &host) {
 extern "C" int cbc_host_attribute_floats(CBCHost handle,CBCNode id,const char *name,const CBCAttributeConfig *config,const float *values,uint64_t count) {
   return edit(handle,[&](Host &host) {
     count_ok(values,count);for(size_t i=0;i<count;++i)require(std::isfinite(values[i]),"Attribute contains a nonfinite value");
-    auto target=attribute_target(host,id,name,config,count);require(!(target.element&ATTR_ELEMENT_IS_BYTE),"Use byte attribute input");
+    before_edit(host,host.entry(id),nullptr);auto target=attribute_target(host,id,name,config,count);require(!(target.element&ATTR_ELEMENT_IS_BYTE),"Use byte attribute input");
     AttributeSet staged(&target.geom,target.set.prim);auto value=stage_attribute(staged,target,name);
     const unsigned components=attribute_components(target.type,target.element);
     for(size_t i=0;i<target.count;++i) {
@@ -127,15 +127,23 @@ extern "C" int cbc_host_attribute_floats(CBCHost handle,CBCNode id,const char *n
 }
 extern "C" int cbc_host_attribute_bytes(CBCHost handle,CBCNode id,const char *name,const CBCAttributeConfig *config,const uint8_t *values,uint64_t count) {
   return edit(handle,[&](Host &host) {
-    count_ok(values,count);auto target=attribute_target(host,id,name,config,count);require(target.element&ATTR_ELEMENT_IS_BYTE,"Expected byte corner colors");
+    count_ok(values,count);before_edit(host,host.entry(id),nullptr);auto target=attribute_target(host,id,name,config,count);require(target.element&ATTR_ELEMENT_IS_BYTE,"Expected byte corner colors");
     AttributeSet staged(&target.geom,target.set.prim);auto value=stage_attribute(staged,target,name);
     if(count)std::memcpy(value->data_for_write<uchar4>(),values,size_t(count));
     target.set.add_from(std::move(*value));target.geom.tag_update(host.session->scene.get(),true);
   });
 }
+// Reads return authored values: a geometry baked by the static BVH path
+// answers from the attributes captured before the bake (host_edits.inc).
+Attribute &authored_attribute(Host &host,CBCNode id,const char *name,uint32_t flags) {
+  auto &attr=find_attribute(host,id,name,flags);auto &geom=geometry(host,id);
+  auto record=host.bakes.find(&geom);
+  if((flags&CBC_ATTR_SUBDIVISION)||!geom.transform_applied||record==host.bakes.end())return attr;
+  auto authored=record->second.attributes->find(ustring(name));require(authored,"Unknown attribute");return *authored;
+}
 extern "C" int cbc_host_attribute_get_floats(CBCHost handle,CBCNode id,const char *name,uint32_t flags,float *values,uint64_t capacity,uint64_t *required) {
   return edit(handle,[&](Host &host) {
-    auto &attr=find_attribute(host,id,name,flags);require(!(attr.element&(ATTR_ELEMENT_IS_BYTE|ATTR_ELEMENT_VOXEL)),"Attribute does not contain float input");
+    auto &attr=authored_attribute(host,id,name,flags);require(!(attr.element&(ATTR_ELEMENT_IS_BYTE|ATTR_ELEMENT_VOXEL)),"Attribute does not contain float input");
     std::vector<float> result;result.reserve(size_t(attr.size)*attribute_components(attr.type,attr.element));
     for(int i=0;i<attr.size;++i) {
       if(attr.element&ATTR_ELEMENT_IS_NORMAL){auto v=attr.data<packed_normal>()[i].decode();result.insert(result.end(),{v.x,v.y,v.z});}
@@ -150,7 +158,7 @@ extern "C" int cbc_host_attribute_get_floats(CBCHost handle,CBCNode id,const cha
 }
 extern "C" int cbc_host_attribute_get_bytes(CBCHost handle,CBCNode id,const char *name,uint32_t flags,uint8_t *values,uint64_t capacity,uint64_t *required) {
   return edit(handle,[&](Host &host) {
-    auto &attr=find_attribute(host,id,name,flags);require(attr.element&ATTR_ELEMENT_IS_BYTE,"Attribute is not byte storage");
+    auto &attr=authored_attribute(host,id,name,flags);require(attr.element&ATTR_ELEMENT_IS_BYTE,"Attribute is not byte storage");
     const size_t count=size_t(attr.size)*4;std::vector<uint8_t> result(count);
     if(count)std::memcpy(result.data(),attr.data<uchar4>(),count);
     copy_result(result,values,capacity,required);
@@ -158,14 +166,13 @@ extern "C" int cbc_host_attribute_get_bytes(CBCHost handle,CBCNode id,const char
 }
 extern "C" int cbc_host_attribute_remove(CBCHost handle,CBCNode id,const char *name,uint32_t flags) {
   return edit(handle,[&](Host &host) {
-    auto &attr=find_attribute(host,id,name,flags);require(attr.std!=ATTR_STD_POSITION&&attr.std!=ATTR_STD_RADIUS,"Cannot remove required geometry storage");
+    before_edit(host,host.entry(id),nullptr);auto &attr=find_attribute(host,id,name,flags);require(attr.std!=ATTR_STD_POSITION&&attr.std!=ATTR_STD_RADIUS,"Cannot remove required geometry storage");
     auto &geom=geometry(host,id);attribute_set(geom,flags).remove(&attr);geom.tag_update(host.session->scene.get(),true);
   });
 }
-extern "C" int cbc_host_image_create(CBCHost handle,const CBCImageConfig *config,const void *pixels,uint64_t bytes,CBCImage *image) {
-  if(image)*image=0;
-  return edit(handle,[&](Host &host) {
-    require(image&&config&&config->struct_size==sizeof(*config),"Invalid image configuration");
+// Validates and copies caller pixels; shared by image creation and update.
+static std::shared_ptr<MemoryImageData> image_data(const CBCImageConfig *config,const void *pixels,uint64_t bytes) {
+    require(config&&config->struct_size==sizeof(*config),"Invalid image configuration");
     require(std::all_of(std::begin(config->reserved),std::end(config->reserved),[](auto x){return x==0;}),"Unknown image options");
     require(config->width&&config->height&&config->width<=INT_MAX&&config->height<=INT_MAX,"Invalid image dimensions");
     ImageDataType type;unsigned channels,component_bytes;
@@ -188,7 +195,13 @@ extern "C" int cbc_host_image_create(CBCHost handle,const CBCImageConfig *config
       else if(type==IMAGE_DATA_TYPE_HALF||type==IMAGE_DATA_TYPE_HALF4){uint16_t value;std::memcpy(&value,data+offset,2);require((value&0x7c00)!=0x7c00,"Nonfinite half image value");}
     }
     auto copy=std::make_shared<MemoryImageData>();copy->identity=new_id();copy->width=config->width;copy->height=config->height;copy->type=type;copy->channels=channels;
-    copy->pixels.assign(data,data+size_t(bytes));host.images.emplace(copy->identity,copy);*image=copy->identity;
+    copy->pixels.assign(data,data+size_t(bytes));return copy;
+}
+extern "C" int cbc_host_image_create(CBCHost handle,const CBCImageConfig *config,const void *pixels,uint64_t bytes,CBCImage *image) {
+  if(image)*image=0;
+  return edit(handle,[&](Host &host) {
+    require(image,"Invalid image configuration");
+    auto copy=image_data(config,pixels,bytes);host.images.emplace(copy->identity,copy);*image=copy->identity;
   });
 }
 extern "C" int cbc_host_image_bind(CBCHost handle,CBCNode id,CBCImage image) {

@@ -14,10 +14,26 @@ fn inverse_direction(d:vec3<f32>)->vec3<f32>{
     // Approximate reciprocal can reject a slab exactly at ray.tmin/tmax.
     return vec3<f32>(rounded_divide(1.0,d.x),rounded_divide(1.0,d.y),rounded_divide(1.0,d.z));
 }
+// Instance push (kernel/geom/object.h bvh_instance_push, util/transform.h
+// transform_point/direction) with the originating oracle's grouping and every
+// product rounded before its sum. SSE builds transpose and accumulate
+// ((w+z)+y)+x (directions start from the z product); scalar builds take the
+// float4 dot (x+y)+(z+w) with w=1 for points and w*0 (signed zero) otherwise.
+fn exact_transform_row(t:vec4<f32>,v:vec3<f32>,point:bool)->f32{
+    if(NATIVE_TRIANGLE_ARITHMETIC==0u){
+        let w=select(bitcast<f32>(bitcast<u32>(t.w)&0x80000000u),t.w,point);
+        return rounded_add(rounded_add(v.x*t.x,v.y*t.y),rounded_add(v.z*t.z,w));
+    }
+    var sum=v.z*t.z;if(point){sum=rounded_add(t.w,sum);}
+    return rounded_add(rounded_add(sum,v.y*t.y),v.x*t.x);
+}
+fn transform_rows(x:vec4<f32>,y:vec4<f32>,z:vec4<f32>,v:vec3<f32>,point:bool)->vec3<f32>{
+    let rows=array<vec4<f32>,3>(x,y,z);var result:vec3<f32>;
+    for(var i=0u;i<3u;i++){result[i]=exact_transform_row(rows[i],v,point);}
+    return result;
+}
 fn transform_vector(a:u32,v:vec3<f32>,point:bool)->vec3<f32>{
-    let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
-    var result=vec3<f32>(x.x,y.x,z.x)*v.x+(vec3<f32>(x.y,y.y,z.y)*v.y+vec3<f32>(x.z,y.z,z.z)*v.z);
-    if(point){result+=vec3<f32>(x.w,y.w,z.w);}return result;
+    return transform_rows(heap_vec4(a),heap_vec4(a+16u),heap_vec4(a+32u),v,point);
 }
 fn bounds_hit(origin:vec3<f32>,inv:vec3<f32>,tmin:f32,tmax:f32,node:u32,visibility:u32)->vec3<f32>{
     let a=table_at(G_bvh_nodes,node,SIZE_bvh_nodes);
@@ -80,7 +96,7 @@ fn trace_native_filtered(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,
                 let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
                 if((flags&SD_OBJECT_MOTION)!=0u){
 //#if MOTION_OBJECT else atomicOr(&heap[p(17u)/4u],2u);return result;
-                    let inverse=motion_inverse(motion_object(object,time));pos=motion_point(inverse,origin);dir=clamp_direction(motion_direction(inverse,direction));
+                    let inverse=motion_inverse(motion_object(object,time));pos=transform_rows(inverse.x,inverse.y,inverse.z,origin,true);dir=clamp_direction(transform_rows(inverse.x,inverse.y,inverse.z,direction,false));
 //#endif
                 }
                 else{pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));}
@@ -113,12 +129,17 @@ fn intersect_point_lights(index:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
         if(state_word(S_isect_prim,index)==lamp&&state_word(S_isect_object,index)==object&&state_word(S_isect_type,index)==PRIMITIVE_LAMP){continue;}
         let position=heap_vec3(light+L_co);var t=0.0;
         if(light_kind==LIGHT_AREA){
-            let N=heap_vec3(light+L_area_dir);let invarea=abs(heap_float(light+L_area_invarea));if(invarea==0.0||dot(direction,N)>=0.0){continue;}
-            t=rounded_divide(-(dot(origin,N)-dot(position,N)),dot(direction,N));if(!(t>tmin&&t<tmax)){continue;}
-            let plane=origin+t*direction-position;let u=dot(plane,heap_vec3(light+L_area_axis_u)/heap_float(light+L_area_len_u));let v=dot(plane,heap_vec3(light+L_area_axis_v)/heap_float(light+L_area_len_v));
-            if(u< -0.5||u>0.5||v< -0.5||v>0.5){continue;}if(heap_float(light+L_area_invarea)<0.0&&u*u+v*v>0.25){continue;}
+            // area_light_intersect + ray_quad_intersect with rounded products, sums and quotients.
+            let N=heap_vec3(light+L_area_dir);let invarea=abs(heap_float(light+L_area_invarea));let facing=rounded_dot(direction,N);if(invarea==0.0||facing>=0.0){continue;}
+            t=rounded_divide(-rounded_add(rounded_dot(origin,N),-rounded_dot(position,N)),facing);if(!(t>tmin&&t<tmax)){continue;}
+            let plane=rounded_add3(origin,t*direction)-position;
+            let axis_u=heap_vec3(light+L_area_axis_u);let len_u=heap_float(light+L_area_len_u);let axis_v=heap_vec3(light+L_area_axis_v);let len_v=heap_float(light+L_area_len_v);
+            let u=rounded_dot(plane,vec3<f32>(rounded_divide(axis_u.x,len_u),rounded_divide(axis_u.y,len_u),rounded_divide(axis_u.z,len_u)));
+            if(u< -0.5||u>0.5){continue;}
+            let v=rounded_dot(plane,vec3<f32>(rounded_divide(axis_v.x,len_v),rounded_divide(axis_v.y,len_v),rounded_divide(axis_v.z,len_v)));
+            if(v< -0.5||v>0.5){continue;}if(heap_float(light+L_area_invarea)<0.0&&rounded_add(u*u,v*v)>0.25){continue;}
         }else{
-        if(light_kind==LIGHT_SPOT&&dot(direction,origin-position)>=0.0){continue;}
+        if(light_kind==LIGHT_SPOT&&rounded_dot(direction,origin-position)>=0.0){continue;}
         let radius=heap_float(light+L_radius);if(radius==0.0){continue;}
         if(load_word(light+L_is_sphere)!=0u){
             let delta=position-origin;let r2=radius*radius;let d2=rounded_dot(delta,delta);let cosine=rounded_dot(delta,direction);

@@ -1,0 +1,51 @@
+{
+  "sceneId": "linux-gates/object-motion-3",
+  "sceneSha256": "4daa98a97b53784e0f9ecde15c30d13dea3522ab9951b1399ecf9f7716e6097f",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/work/d3/validation/oracle/oracle/linux-gates/object-motion-3/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/home/jeremy/ClaudeHome/cycles-worktrees/d3-native-abi/native/work/d3/validation/oracle/oracle/linux-gates/object-motion-3/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 4.656612873077393e-10,
+      "nonfiniteComponents": 0
+    }
+  ],
+  "pairs": [
+    {
+      "maxAbsoluteDifference": 2.584420144557953e-08,
+      "maxRelativeError": 1.4497346734215508,
+      "rms": 7.653015776902573e-10,
+      "practicalFailures": 0,
+      "strictDifferences": 0,
+      "worstPixel": {
+        "x": 16,
+        "y": 7,
+        "channel": "B",
+        "reference": 0.002536636544391513,
+        "candidate": 0.0025366623885929585,
+        "absoluteDifference": 2.584420144557953e-08,
+        "criterionRatio": 0.0005116921211753878
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "practicalPassed": true
+    }
+  ],
+  "problems": [],
+  "passed": true
+}

@@ -1,0 +1,1046 @@
+diff --git a/compatibility/opcodes.json b/compatibility/opcodes.json
+index ed1d21b..cd2b8c4 100644
+--- a/compatibility/opcodes.json
++++ b/compatibility/opcodes.json
+@@ -218,8 +218,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -252,8 +252,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -286,8 +286,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -320,8 +320,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -354,8 +354,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -751,8 +751,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -785,8 +785,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -802,8 +802,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -972,8 +972,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -1142,8 +1142,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -1176,8 +1176,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -1733,8 +1733,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+@@ -1767,8 +1767,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+diff --git a/docs/PARITY.md b/docs/PARITY.md
+index 64b69ee..aca8f33 100644
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -28,13 +28,13 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Device integration | Registered `ccl::WebGPUDevice`/`DeviceQueue` executes original scheduler camera → closest intersection → constant or selected SVM background → native film on Linux. Twelve control kernels cover 123 state fields; closest checks 36,226 paths, background/film 55,681, and SVM worlds 102,817. Strict float differences remain. Selected surface shading and repeated complete native-scheduler images now pass independent CPU comparisons. Full native command replay passes on four GPUs; direct light/shadow shading and full Session lifecycle remain unfinished. Separate snapshot library image/lifecycle gate still passes on four devices. See `native/DEVICE.md` |
+ | Geometry | Registered closest stage now traverses native BVH2 static triangles and instances with visibility/self-hit rules; 3 instances and all 5 fixture objects verified. Motion, curves, points, volumes and displacement pending. Earlier three Gltf2 models up to 40,553 triangles use the separate snapshot renderer and flattened rigid transforms |
+ | Surface shader data | Native static-triangle setup matches original CPU output for 12,066 hits across 9 objects: vertex/corner packed normals, signed offsets, instance/applied/mirrored transforms, backfaces and compact/UV differentials. A 1,314-hit GPU replay passes on Linux, Pixel API 33, Samsung API 36 and HP Android x64 API 33 with unchanged runtimes. Strict float differences remain; selected surface-bounce integration now passes a separate original-CPU and complete-render gate |
+-| Surface SVM evaluation | Twenty Cycles-compiled surface graphs and fourteen typed programs match original CPU evaluation at existing tolerances on Linux: 8,874 evaluations, five closure families, emission, allocation limits and special path modes. Near-Lambert Oren-Nayar cancellation requires an explicit rounding adapter. A 1,020-evaluation replay passes on Linux and all three Android devices with unchanged binaries, using GPU-buffer closure storage after local-array compilation failed on Adreno. Strict float differences remain. Selected surface-bounce queue entry now passes 19 cases / 18,360 paths and 20 rejection cases, plus complete native renders. Texture, colour and utility nodes (34 opcodes: noise, Voronoi, white noise, wave, magic, brick, mapping, map range, five mix forms, HSV, colour separate/combine, ramps/curves, Fresnel/layer weight, vector rotate/transform, blackbody, wavelength, wireframe, normal, object info, camera, scene time, light path) have a separate Linux gate (`native/tools/nodes_gate.py`): 63 compiled graphs and typed programs for every opcode against the original CPU kernels, 32 rejections, 22 compiled worlds and an independent-CPU-image render with bitwise repeat; specialized and unspecialized results are identical. Linux only; Android and ARM64 device runs of these nodes are pending |
++| Surface SVM evaluation | Twenty Cycles-compiled surface graphs and fourteen typed programs match original CPU evaluation at existing tolerances on Linux: 8,874 evaluations, five closure families, emission, allocation limits and special path modes. Near-Lambert Oren-Nayar cancellation requires an explicit rounding adapter. A 1,020-evaluation replay passes on Linux and all three Android devices with unchanged binaries, using GPU-buffer closure storage after local-array compilation failed on Adreno. Strict float differences remain. Selected surface-bounce queue entry now passes 19 cases / 18,360 paths and 20 rejection cases, plus complete native renders. Texture, colour and utility nodes (34 opcodes: noise, Voronoi, white noise, wave, magic, brick, mapping, map range, five mix forms, HSV, colour separate/combine, ramps/curves, Fresnel/layer weight, vector rotate/transform, blackbody, wavelength, wireframe, normal, object info, camera, scene time, light path), the bump stages (set bump, enter/leave bump evaluation) and every derivative variant (geometry, texture coordinate, value, conversion, separate/combine vector, vector math, mapping, texture mapping) have a separate Linux gate (`native/tools/nodes_gate.py`): 65 compiled graphs (two bump-mapped) and typed programs for every opcode against the original CPU kernels, 32 rejections, 23 compiled worlds and an independent-CPU-image render with bitwise repeat; specialized and unspecialized results are identical. Linux only; Android and ARM64 device runs of these nodes are pending |
+ | Native attributes | Static-triangle object/mesh/face/vertex/corner tables, signed offsets, map chains, scalar/vector/RGBA data, packed normals, UVs, byte-color conversion and attribute derivatives now pass original CPU comparisons: 48 compiled graphs plus 328 typed programs, 5,088 evaluations and seven rejection cases. A 1,152-evaluation graph capture and native UV-checker render have four-GPU replay gates. Motion/curve/point/voxel/matrix consumers and general bump state remain pending. See `native/evidence/native-attributes` for the original checkpoint; fresh regressions accompany subsequent implementation checkpoints |
+ | Native resident images | Native ImageManager/device transport and WGSL software sampling cover eight formats, four filters and four extension modes in a 115,650-case original-CPU corpus. 128 compiled graphs and 176 typed projection/derivative programs cover 1,824 evaluations; 14 malformed inputs reject. The sampler, native graphs and complete image-textured render pass four-GPU replay. Typed projections/derivatives currently execute on Linux only. The native render repeats bitwise and its independent CPU-film maximum error across devices is 3.67164612e-5. See `native/evidence/native-images`. Strict differences, tiled/mipmap cache, sparse 3D images, production color/decoder/edit stress and original asset materials remain open |
+ | Native file images and updates | PNG/JPEG/OpenEXR native file loading now passes a Linux gate with 18 fixtures, 450 channel/alpha/color variants, native UDIM mappings, 16 queued-read/replacement cycles and 34,483 independent known lossless texels. The serialized OCIO matrix configuration is tested. A 116,352-case final snapshot has a four-GPU replay gate; actual decoding/lifecycle tests currently execute on Linux only. The original file-image checkpoint preserved earlier renderer/executable identity; renderer edits require the fresh normal-gate regression chain. TIFF/LZW compatibility, other formats, production color/cache/animation stress and native platform hosts remain required. See `native/tools/image_file_gate.py` |
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+-| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Surface and world interpreters additionally cover the procedural textures (noise in every dimension and fractal type, Voronoi with every feature/metric/dimension, white noise, wave, magic, brick), mapping/map range/mix/ramp/curve/colour utilities, Fresnel/layer weight, object info, camera, scene time, vector transform and light path (ray-type flags in every stage; bounce depths in the surface and background stages) on Linux; see `native/DEVICE.md`. Wavelength and wireframe nodes have the same Linux gates. Deferred SVM nodes: derivative variants, bump/displacement, AO/bevel/raycast, sky, Gabor (ported, withheld: its code in the unspecialized probe module breaks Principled evaluation on Intel Mesa), radial tiling, IES, light falloff, particle/hair/point info and AOV output. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, multi-GGX glass nodes, hair, Principled subsurface and heterogeneous volumes pending. The Principled BSDF (all lobes except subsurface, including thin film, thin wall and multiscatter GGX) passes its Linux SVM, bounce and image gates; its ForestCommunity bench variant stops on a pre-existing closest-intersection difference on a sliver triangle. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL passes glass bounce/render but fails feature combination (microfacet lookup-table bounds error 512). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP; the Pixel 4 XL fails the volume-boundary state test, the camera-inside closed volume and the object/deforming motion images |
++| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Surface and world interpreters additionally cover the procedural textures (noise in every dimension and fractal type, Voronoi with every feature/metric/dimension, white noise, wave, magic, brick), mapping/map range/mix/ramp/curve/colour utilities, Fresnel/layer weight, object info, camera, scene time, vector transform and light path (ray-type flags in every stage; bounce depths in the surface and background stages) on Linux; see `native/DEVICE.md`. Wavelength and wireframe nodes have the same Linux gates. Bump mapping (bump node, bump state, all derivative variants) has the same Linux gates; the SVM gate compiles a probe module restricted to the features its fixture reaches, because Intel Mesa mis-evaluates the whole unspecialized probe once these handlers are present. Deferred SVM nodes: displacement, AO/bevel/raycast, sky, Gabor (ported, withheld: its code in the unspecialized probe module breaks Principled evaluation on Intel Mesa), radial tiling, IES, light falloff, particle/hair/point info and AOV output. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, multi-GGX glass nodes, hair, Principled subsurface and heterogeneous volumes pending. The Principled BSDF (all lobes except subsurface, including thin film, thin wall and multiscatter GGX) passes its Linux SVM, bounce and image gates; its ForestCommunity bench variant stops on a pre-existing closest-intersection difference on a sliver triangle. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL passes glass bounce/render but fails feature combination (microfacet lookup-table bounds error 512). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP; the Pixel 4 XL fails the volume-boundary state test, the camera-inside closed volume and the object/deforming motion images |
+ | Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; emissive triangles fail the ARM64 oracle (sampler and one image mode) and remain unvalidated on ARM64. Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light and transparent shadows; emissive triangle lights fail on the HP compiler (memory) for moving emitters and the sampler probe; static triangle images 0-3 pass. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS). Cold compiles: Samsung specialized pipelines at most 32.6 s, except the emissive-triangle entry with object motion at 205 s; HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 25 s with triangle lights), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 70 s |
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index daa5617..9a9361d 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -590,6 +590,56 @@ paths (SVM stack error 8, wrong closure values or a lost device in
+ stays deferred with `NODE_RADIAL_TILING`; AOV output needs a render-buffer
+ path from the SVM evaluation.
+ 
++### Bump stages and derivative variants (M4, 2026-10-20, Linux)
++
++The bump node and the dual-number derivative variants run in the same
++interpreter (`wavefront_svm_derivatives.wgsl`; mapping variants in
++`wavefront_svm_nodes.wgsl`), each in its own specialization region after the
++M3 table: `SVM_NODE_BUMP` bit 55, `SVM_NODE_BUMP_STATE` 56,
++`SVM_NODE_GEOMETRY_DERIVATIVE` 57, `SVM_NODE_TEX_COORD_DERIVATIVE` 58,
++`SVM_NODE_VALUE_DERIVATIVE` 59 (value f/v, conversion, separate/combine
++vector), `SVM_NODE_VECTOR_MATH_DERIVATIVE` 60, `SVM_NODE_MAPPING_DERIVATIVE` 61;
++`SVM_DERIVATIVE_ANY` holds the shared dual helpers. `SF_ALL=(1<<62)-1`; bits 62
++and 63 are the last free bits of the 64-bit mask.
++
++- `NODE_SET_BUMP` (`displace.h`): the surface normal is perturbed from the
++  centre/dx/dy heights with `differential_from_compact(Ng, dP)` (or the saved
++  full differential), strength, distance, invert and object space. Background
++  evaluation stores zero, as the host background node mask has no bump feature.
++- `NODE_ENTER/LEAVE_BUMP_EVAL` (`bump.h`) save and restore P and dP. The
++  undisplaced-position branch needs true displacement and reports
++  unsupported (16).
++- Derivative variants keep (value, d/dx, d/dy) in adjacent stack slots and
++  apply the first-order bump offsets. Geometry: P/N/Ng/I/uv (tangent reports
++  16). Texture coordinates: object, normal (smooth `triangle_smooth_normal`
++  with the du/dv taps; motion-triangle smooth normals report 16), reflection,
++  camera, window, object-with-transform and dupli outputs; the plain and
++  derivative opcodes share one `svm_texco` call site. Vector math: all 28
++  operations with the `math_dual.h` product, quotient and chain rules.
++
++`native/tools/nodes_gate.py` now covers 65 compiled graphs (graphs 63/64:
++procedural bump from a geometry-position height and from an object-coordinate
++height with linked normal, invert and object space), 112 new typed programs
++(geometry 30, texture coordinate 32, value/conversion 3, vector math 28,
++mapping 6, set bump 10, bump state 1) and 23 compiled worlds (world 22: bump
++in a background). The render variant is unchanged.
++
++Intel Mesa 25.0.7: with these handlers present the whole unspecialized SVM
++probe module (which the SVM gate compiles) compiles for about 9 minutes and
++then mis-evaluates unrelated graphs (SVM error mask 24 on the noise graphs) —
++the class seen with Gabor in M3. `principled_svm` still passes unspecialized
++(identical counts, compile 644 s instead of 181 s). The nodes SVM gate
++therefore sets `CODEBRIX_M4_PROBE_FEATURES` (a probe-only feature mask, default
++off) to drop the image, attribute, normal-map, tangent, vertex-colour, volume,
++glossy/glass, light, motion and Principled regions its fixture never reaches;
++the scene-specialized probe module of merge wave 2 supersedes this hook.
++Unspecialized render modules (`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`) are
++affected in the same way: `prepare_surface` compiles for about 600 s and
++`shade_surface_light` either terminates the driver (glass and node renders) or
++mis-evaluates (node render stage 8). Specialized renders, the default and the
++only Android mode, compile the M3 code unchanged and pass. Spec-off renders with
++these handlers are an open item.
++
+ ## Build and reproduce
+ 
+ Use the pinned source/dependency setup from the prototype instructions, then:
+diff --git a/native/cycles/nodes_fixture.h b/native/cycles/nodes_fixture.h
+index d94e15e..2526520 100644
+--- a/native/cycles/nodes_fixture.h
++++ b/native/cycles/nodes_fixture.h
+@@ -5,7 +5,7 @@
+ // and utility nodes: procedural noise in every dimension and fractal type, white
+ // noise, wave, magic, brick, mapping/texture mapping, map range, every mix blend
+ // mode, HSV, colour separate/combine, ramps/curves, Fresnel/layer weight, vector
+-// rotate, blackbody, normal, wavelength and wireframe. Inputs vary per path (world position) so nothing
++// rotate, blackbody, normal, wavelength, wireframe and bump. Inputs vary per path (world position) so nothing
+ // constant-folds; the primary output drives the diffuse colour, the secondary
+ // scalar the emission strength.
+ // The render variant keeps M2's 60-triangle scene (geometry, light distribution
+@@ -15,7 +15,7 @@
+ #ifdef CBC_NODES_RENDER
+ static constexpr unsigned NODES_GRAPH_COUNT=60;
+ #else
+-static constexpr unsigned NODES_GRAPH_COUNT=63;
++static constexpr unsigned NODES_GRAPH_COUNT=65;
+ #endif
+ // The render gate (CBC_NODES_RENDER) also compares an independent CPU image of
+ // whole paths, where hit points legitimately differ in the last bits. There the
+@@ -154,6 +154,24 @@ static ShaderOutput *nodes_material(ShaderGraph &g,unsigned test){
+     auto size=g.create_node<MathNode>();size->set_math_type(NODE_MATH_MULTIPLY_ADD);size->set_value2(test==62?60.f:.6f);size->set_value3(test==62?2.f:.05f);g.connect(fy,size->input("Value1"));
+     auto w2=g.create_node<WireframeNode>();w2->set_use_pixel_size(test==62);g.connect(size->output("Value"),w2->input("Size"));
+     auto comb=g.create_node<CombineXYZNode>();g.connect(w->output("Fac"),comb->input("X"));g.connect(w2->output("Fac"),comb->input("Y"));g.connect(fx,comb->input("Z"));color=comb->output("Vector");value=w->output("Fac");}
++  else if(test==63||test==64){
++    // Bump mapping (SVM gate only): the height sub-graph is copied for the dx/dy
++    // taps, so its geometry/texture-coordinate nodes compile to the derivative
++    // variants with bump offsets. Heights are smooth, well-conditioned functions
++    // of the unquantized hit point and the filter width is large, so a last-bit
++    // difference in the shared shading point stays far inside the tolerance (the
++    // bump normal of a linear height does not depend on the width; rounding does).
++    auto bump=g.create_node<BumpNode>();bump->set_filter_width(2000.f);ShaderOutput *height;
++    if(test==63){auto dot=g.create_node<VectorMathNode>();dot->set_math_type(NODE_VECTOR_MATH_DOT_PRODUCT);
++      dot->set_vector2(make_float3(.7f,-1.3f,.4f));g.connect(raw,dot->input("Vector1"));height=dot->output("Value");bump->set_strength(.8f);bump->set_distance(1.f);}
++    else{auto tc=g.create_node<TextureCoordinateNode>();auto len=g.create_node<VectorMathNode>();len->set_math_type(NODE_VECTOR_MATH_LENGTH);g.connect(tc->output("Object"),len->input("Vector1"));
++      height=len->output("Value");bump->set_invert(true);bump->set_use_object_space(true);bump->set_strength(1.4f);bump->set_distance(.6f);
++      auto n=g.create_node<GeometryNode>();g.connect(n->output("Normal"),bump->input("Normal"));}
++    g.connect(height,bump->input("Height"));
++    auto diffuse=g.create_node<DiffuseBsdfNode>();diffuse->set_roughness(.43f);g.connect(unit,diffuse->input("Color"));g.connect(bump->output("Normal"),diffuse->input("Normal"));
++    auto emission=g.create_node<EmissionNode>();emission->set_color(make_float3(.3,.5,.7));g.connect(fx,emission->input("Strength"));
++    auto add=g.create_node<AddClosureNode>();g.connect(diffuse->output("BSDF"),add->input("Closure1"));g.connect(emission->output("Emission"),add->input("Closure2"));
++    return add->output("Closure");}
+   else{auto n=g.create_node<NormalNode>();n->set_direction(make_float3(.3f,-.5f,.8f));g.connect(vmath(NODE_VECTOR_MATH_SUBTRACT,unit,make_float3(.5f,.5f,.5f)),n->input("Normal"));
+     color=vmath(NODE_VECTOR_MATH_ABSOLUTE,n->output("Normal"),zero_float3());value=n->output("Dot");}
+   auto diffuse=g.create_node<DiffuseBsdfNode>();diffuse->set_roughness(.43f);g.connect(color,diffuse->input("Color"));
+diff --git a/native/cycles/pipelines.cpp b/native/cycles/pipelines.cpp
+index 705d52e..9f53dda 100644
+--- a/native/cycles/pipelines.cpp
++++ b/native/cycles/pipelines.cpp
+@@ -34,13 +34,18 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
+     {"SVM_NODE_RAMP",SF_RAMP},{"SVM_NODE_FRESNEL",SF_FRESNEL},{"SVM_NODE_VECTOR_ROTATE",SF_VECTOR_ROTATE},
+     {"SVM_NODE_BLACKBODY",SF_BLACKBODY},{"SVM_NODE_NORMAL",SF_NORMAL},{"SVM_NODE_SHADING_INFO",SF_SHADING_INFO},{"SVM_NODE_LIGHT_PATH",SF_LIGHT_PATH},
+     {"SVM_NODE_TEX_VORONOI",SF_TEX_VORONOI},{"SVM_NODE_WAVELENGTH",SF_WAVELENGTH},{"SVM_NODE_WIREFRAME",SF_WIREFRAME},
++    {"SVM_NODE_BUMP",SF_BUMP},{"SVM_NODE_BUMP_STATE",SF_BUMP_STATE},{"SVM_NODE_GEOMETRY_DERIVATIVE",SF_GEOMETRY_DERIVATIVE},
++    {"SVM_NODE_TEX_COORD_DERIVATIVE",SF_TEX_COORD_DERIVATIVE},{"SVM_NODE_VALUE_DERIVATIVE",SF_VALUE_DERIVATIVE},
++    {"SVM_NODE_VECTOR_MATH_DERIVATIVE",SF_VECTOR_MATH_DERIVATIVE},{"SVM_NODE_MAPPING_DERIVATIVE",SF_MAPPING_DERIVATIVE},
++    // Dual-number helpers shared by the derivative variants (wavefront_svm_derivatives.wgsl).
++    {"SVM_DERIVATIVE_ANY",SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE},
+     // Helper regions shared by several node families (wavefront_svm_nodes.wgsl).
+     {"SVM_NODES_ANY",SF_TEX_NOISE|SF_TEX_WHITE_NOISE|SF_TEX_WAVE|SF_TEX_MAGIC|SF_TEX_BRICK|SF_MAPPING|SF_MAP_RANGE|SF_MIX|SF_HSV|SF_COLOR_SEPCOMB|SF_RAMP|
+-      SF_FRESNEL|SF_VECTOR_ROTATE|SF_BLACKBODY|SF_NORMAL|SF_SHADING_INFO|SF_LIGHT_PATH|SF_TEX_VORONOI|SF_WAVELENGTH|SF_WIREFRAME},
+-    {"SVM_NODES_DOT",SF_MAPPING|SF_FRESNEL|SF_VECTOR_ROTATE|SF_BLACKBODY|SF_NORMAL|SF_SHADING_INFO|SF_WAVELENGTH|SF_WIREFRAME},
++      SF_FRESNEL|SF_VECTOR_ROTATE|SF_BLACKBODY|SF_NORMAL|SF_SHADING_INFO|SF_LIGHT_PATH|SF_TEX_VORONOI|SF_WAVELENGTH|SF_WIREFRAME|SF_MAPPING_DERIVATIVE},
++    {"SVM_NODES_DOT",SF_MAPPING|SF_FRESNEL|SF_VECTOR_ROTATE|SF_BLACKBODY|SF_NORMAL|SF_SHADING_INFO|SF_WAVELENGTH|SF_WIREFRAME|SF_MAPPING_DERIVATIVE},
+     {"SVM_NODES_HASH",SF_TEX_NOISE|SF_TEX_WHITE_NOISE|SF_TEX_WAVE|SF_TEX_BRICK|SF_TEX_VORONOI},
+     {"SVM_NODES_FMOD",SF_TEX_NOISE|SF_TEX_WAVE|SF_TEX_MAGIC},{"SVM_NODES_NOISE",SF_TEX_NOISE|SF_TEX_WAVE},
+-    {"SVM_NODES_TRANSFORM",SF_MAPPING|SF_VECTOR_ROTATE},{"SVM_NODES_HSV",SF_MIX|SF_HSV|SF_COLOR_SEPCOMB},
++    {"SVM_NODES_TRANSFORM",SF_MAPPING|SF_VECTOR_ROTATE|SF_MAPPING_DERIVATIVE},{"SVM_NODES_HSV",SF_MIX|SF_HSV|SF_COLOR_SEPCOMB},
+     // Region kept when any microfacet family is reachable.
+     {"SVM_BSDF_MICROFACET",SF_BSDF_GLOSSY|SF_BSDF_GLASS|SF_BSDF_PRINCIPLED},
+     {"SVM_BSDF_PRINCIPLED",SF_BSDF_PRINCIPLED},{"SVM_BSDF_THIN_FILM",SF_BSDF_THIN_FILM},{"SVM_BSDF_THIN_WALL",SF_BSDF_THIN_WALL}};
+@@ -89,6 +94,12 @@ OpInfo op_info(uint32_t op){
+     OP(NODE_OBJECT_INFO,ObjectInfo,SF_SHADING_INFO) OP(NODE_CAMERA,Camera,SF_SHADING_INFO) OP(NODE_SCENE_TIME,SceneTime,SF_SHADING_INFO)
+     OP(NODE_VECTOR_TRANSFORM,VectorTransform,SF_SHADING_INFO) OP(NODE_LIGHT_PATH,LightPath,SF_LIGHT_PATH)
+     OP(NODE_WAVELENGTH,Wavelength,SF_WAVELENGTH) OP(NODE_WIREFRAME,Wireframe,SF_WIREFRAME)
++    OP(NODE_SET_BUMP,SetBump,SF_BUMP) OP(NODE_ENTER_BUMP_EVAL,EnterBumpEval,SF_BUMP_STATE) OP(NODE_LEAVE_BUMP_EVAL,LeaveBumpEval,SF_BUMP_STATE)
++    OP(NODE_GEOMETRY_DERIVATIVE,Geometry,SF_GEOMETRY_DERIVATIVE) OP(NODE_TEX_COORD_DERIVATIVE,TexCoord,SF_TEX_COORD|SF_TEX_COORD_DERIVATIVE)
++    OP(NODE_VALUE_F_DERIVATIVE,ValueF,SF_VALUE_DERIVATIVE) OP(NODE_VALUE_V_DERIVATIVE,ValueV,SF_VALUE_DERIVATIVE)
++    OP(NODE_CONVERT_DERIVATIVE,Convert,SF_VALUE_DERIVATIVE) OP(NODE_SEPARATE_VECTOR_DERIVATIVE,SeparateVector,SF_VALUE_DERIVATIVE)
++    OP(NODE_COMBINE_VECTOR_DERIVATIVE,CombineVector,SF_VALUE_DERIVATIVE) OP(NODE_VECTOR_MATH_DERIVATIVE,VectorMath,SF_VECTOR_MATH_DERIVATIVE)
++    OP(NODE_MAPPING_DERIVATIVE,Mapping,SF_MAPPING_DERIVATIVE) OP(NODE_TEXTURE_MAPPING_DERIVATIVE,TextureMapping,SF_MAPPING_DERIVATIVE)
+     default:return {0,0};
+   }
+ #undef OP
+@@ -167,7 +178,7 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
+         const uint32_t size=w[node+field/4];const uint64_t words=uint64_t(size)*(op==NODE_FLOAT_CURVE?1:4);
+         if(size<2||size>0x0fffffffu||!take(pc,uint32_t(words*4))){out.stopped_paths++;break;}
+       }
+-      if(op==NODE_TEX_COORD&&byte_at(w,node,offsetof(SVMNodeTexCoord,texco_type))==NODE_TEXCO_OBJECT_WITH_TRANSFORM){
++      if((op==NODE_TEX_COORD||op==NODE_TEX_COORD_DERIVATIVE)&&byte_at(w,node,offsetof(SVMNodeTexCoord,texco_type))==NODE_TEXCO_OBJECT_WITH_TRANSFORM){
+         if(!take(pc,sizeof(PackedTransform))){out.stopped_paths++;break;}
+       }
+     }
+diff --git a/native/cycles/pipelines.h b/native/cycles/pipelines.h
+index 3f19f8f..45f4698 100644
+--- a/native/cycles/pipelines.h
++++ b/native/cycles/pipelines.h
+@@ -48,7 +48,12 @@ enum ShaderFeatureBit : uint64_t {
+   SF_TEX_VORONOI=1ull<<52,
+   // Wavelength and wireframe handlers (wavefront_svm_nodes.wgsl).
+   SF_WAVELENGTH=1ull<<53, SF_WIREFRAME=1ull<<54,
+-  SF_ALL=(1ull<<55)-1,
++  // Bump stages and dual-number derivative variants (wavefront_svm_derivatives.wgsl;
++  // mapping variants in wavefront_svm_nodes.wgsl). Bits 62 and 63 stay free.
++  SF_BUMP=1ull<<55, SF_BUMP_STATE=1ull<<56, SF_GEOMETRY_DERIVATIVE=1ull<<57,
++  SF_TEX_COORD_DERIVATIVE=1ull<<58, SF_VALUE_DERIVATIVE=1ull<<59,
++  SF_VECTOR_MATH_DERIVATIVE=1ull<<60, SF_MAPPING_DERIVATIVE=1ull<<61,
++  SF_ALL=(1ull<<62)-1,
+   SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL,
+ };
+ struct ShaderFeatureName {const char *name;uint64_t bit;};
+diff --git a/native/cycles/svm_layout.cpp b/native/cycles/svm_layout.cpp
+index da6b30e..b149228 100644
+--- a/native/cycles/svm_layout.cpp
++++ b/native/cycles/svm_layout.cpp
+@@ -31,6 +31,13 @@ std::string svm_layout(bool surface){
+   SHARED_FIELD(id) SHARED_FIELD(flags) SHARED_FIELD(co) SHARED_FIELD(out_offset) SHARED_FIELD(alpha_offset)
+ #undef SHARED_FIELD
+   static_assert(offsetof(SVMNodeTexImage,projection)==offsetof(SVMNodeTexEnvironment,projection));
++  // Bump stages (wavefront_svm_derivatives.wgsl): emitted only for scenes that reach them.
++  source<<"//#if SVM_NODE_BUMP\n";
++  SIZE(SetBump);FIELD(SetBump,scale);FIELD(SetBump,strength);FIELD(SetBump,bump_filter_width);FIELD(SetBump,normal_offset);FIELD(SetBump,invert);
++  FIELD(SetBump,use_object_space);FIELD(SetBump,center_offset);FIELD(SetBump,dx_offset);FIELD(SetBump,dy_offset);FIELD(SetBump,out_offset);FIELD(SetBump,bump_state_offset);
++  source<<"//#endif\n//#if SVM_NODE_BUMP_STATE\n";
++  SIZE(EnterBumpEval);FIELD(EnterBumpEval,state_offset);SIZE(LeaveBumpEval);FIELD(LeaveBumpEval,state_offset);
++  source<<"//#endif\n";
+   SIZE(VertexColor);FIELD(VertexColor,layer_id);FIELD(VertexColor,color_offset);FIELD(VertexColor,alpha_offset);FIELD(VertexColor,bump_offset);FIELD(VertexColor,bump_filter_width);
+   SIZE(VectorMath);FIELD(VectorMath,math_type);FIELD(VectorMath,a);FIELD(VectorMath,b);FIELD(VectorMath,c);FIELD(VectorMath,param1);FIELD(VectorMath,value_offset);FIELD(VectorMath,vector_offset);
+   SIZE(SeparateVector);FIELD(SeparateVector,vector);FIELD(SeparateVector,vector_index);FIELD(SeparateVector,out_offset);
+diff --git a/native/cycles/svm_surface_gate.cpp b/native/cycles/svm_surface_gate.cpp
+index 0dbb1e1..19ff0a8 100644
+--- a/native/cycles/svm_surface_gate.cpp
++++ b/native/cycles/svm_surface_gate.cpp
+@@ -1,5 +1,6 @@
+ // Copyright (c) 2026 Jeremy Ellis and contributors
+ // SPDX-License-Identifier: Apache-2.0
++#include "pipelines.h"
+ #include "surface_svm_test.h"
+ #include "surface_fixture.h"
+ #ifdef CBC_PRINCIPLED_FIXTURE
+@@ -137,7 +138,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     auto &ds=scene.dscene;ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;
+     auto limit=[&](int n){ds.data.max_closures=n;d.const_copy_to("data",&ds.data,sizeof(KernelData));};limit(MAX_CLOSURE);
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&ds,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();auto layout=fields(d);std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=states_for(scene,initial);
+-    auto source=probe_source();std::ofstream(prefix+".wgsl")<<source;auto shader=pipeline(d,source);
++    auto source=probe_source();
++    // M4 diagnostic (default off): CODEBRIX_M4_PROBE_FEATURES=<hex mask> specializes the
++    // probe module to the given feature bits. Intel Mesa 25.0.7 mis-evaluates the whole
++    // unspecialized probe once it grows past the M3 size (SVM error 8, see native/DEVICE.md);
++    // merge wave 2's scene-specialized probe module supersedes this hook.
++    if(const char *mask=std::getenv("CODEBRIX_M4_PROBE_FEATURES"))source=specialize_wgsl(source,std::stoull(mask,nullptr,16));
++    std::ofstream(prefix+".wgsl")<<source;auto shader=pipeline(d,source);
+     evaluate(d,scene,shader,layout,initial,ids,"Native compiled graphs",m,prefix);
+     for(int cap:{0,1,2}){limit(cap);evaluate(d,scene,shader,layout,initial,ids,"Closure limit "+std::to_string(cap),m);}limit(MAX_CLOSURE);
+     for(unsigned mode=0;mode<3;mode++){auto states=initial;for(int i:ids){if(mode==0)states[i].path.flag=PATH_RAY_TERMINATE;if(mode==1)states[i].path.flag=PATH_RAY_EMISSION;if(mode==2)states[i].path.visibility=PATH_RAY_VISIBILITY_SHADOW;}evaluate(d,scene,shader,layout,states,ids,"Evaluation mode "+std::to_string(mode),m);}
+@@ -333,6 +340,107 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+       p.add(NODE_NORMAL,SVMNodeNormal{.in_normal=variant?color(.1f,.2f,.3f):stack_in3(3),.out_normal_offset=10,.out_dot_offset=13,.direction_x=.3f,.direction_y=-.5f,.direction_z=variant?0.f:.8f});
+       finish(p,"normal "+std::to_string(variant));
+     }
++    // Bump stages and derivative variants. Slot 20 holds a dual point: derivatives
++    // from GEOMETRY_DERIVATIVE, value replaced by the bit-identical slot 3 (so
++    // discontinuous operations see exact inputs). acc3/acc1 accumulate |value|
++    // and 1000*|derivative| into the colour (10..12) and value (13) weights.
++    auto dbegin=[&](Program &p){begin(p);
++      p.add(NODE_GEOMETRY_DERIVATIVE,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.bump_offset=NODE_BUMP_OFFSET_CENTER,.store_derivatives=1,.out_offset=20,.bump_filter_width=1});
++      p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_ADD,.a=stack_in3(3),.b=color(0,0,0),.c=color(0,0,0),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=20});
++      p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=10,.value=make_float3(.1f,.1f,.1f)});p.add(NODE_VALUE_F,SVMNodeValueF{.value=.1f,.out_offset=13});};
++    auto acc3=[&](Program &p,unsigned slot,float k){
++      p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_ABSOLUTE,.a=stack_in3(slot),.b=color(0,0,0),.c=color(0,0,0),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=200});
++      p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_MULTIPLY_ADD,.a=stack_in3(200),.b=color(k,k,k),.c=stack_in3(10),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=10});};
++    auto acc1=[&](Program &p,unsigned slot,float k){
++      p.add(NODE_MATH,SVMNodeMath{.math_type=NODE_MATH_ABSOLUTE,.value1=stack_in(slot),.value2=value(0),.value3=value(0),.result_offset=203});
++      p.add(NODE_MATH,SVMNodeMath{.math_type=NODE_MATH_MULTIPLY_ADD,.value1=stack_in(203),.value2=value(k),.value3=stack_in(13),.result_offset=13});};
++    auto dual3=[&](Program &p,unsigned slot){acc3(p,slot,.1f);acc3(p,slot+3,1000);acc3(p,slot+6,1000);};
++    auto dual1=[&](Program &p,unsigned slot){acc1(p,slot,.1f);acc1(p,slot+1,1000);acc1(p,slot+2,1000);};
++    for(NodeGeometry kind:{NODE_GEOM_P,NODE_GEOM_N,NODE_GEOM_Ng,NODE_GEOM_I,NODE_GEOM_uv})for(unsigned bump=0;bump<3;bump++)for(uint8_t store=0;store<2;store++){
++      Program p(ds);dbegin(p);
++      p.add(NODE_GEOMETRY_DERIVATIVE,SVMNodeGeometry{.geom_type=kind,.bump_offset=NodeBumpOffset(bump),.store_derivatives=store,.out_offset=30,.bump_filter_width=37.5f});
++      if(store)dual3(p,30);else acc3(p,30,.5f);
++      finish(p,"geometry derivative "+std::to_string(kind)+"/"+std::to_string(bump)+"/"+std::to_string(store));
++    }
++    for(NodeTexCoord kind:{NODE_TEXCO_OBJECT,NODE_TEXCO_NORMAL,NODE_TEXCO_REFLECTION,NODE_TEXCO_CAMERA,NODE_TEXCO_WINDOW,NODE_TEXCO_OBJECT_WITH_TRANSFORM,NODE_TEXCO_DUPLI_GENERATED,NODE_TEXCO_DUPLI_UV})
++      for(unsigned bump=0;bump<4;bump++){
++        Program p(ds);dbegin(p);const uint8_t store=bump<3;
++        p.add(NODE_TEX_COORD_DERIVATIVE,SVMNodeTexCoord{.texco_type=kind,.bump_offset=NodeBumpOffset(bump%3),.store_derivatives=store,.out_offset=30,.bump_filter_width=37.5f});
++        if(kind==NODE_TEXCO_OBJECT_WITH_TRANSFORM){auto b=std::bit_cast<std::array<uint,sizeof(PackedTransform)/4>>(PackedTransform(transform_translate(make_float3(.3,.2,.1))*transform_rotate(.4f,make_float3(.2,.9,.1))*transform_scale(make_float3(.4,.5,.6))));
++          p.words.insert(p.words.end(),b.begin(),b.end());}
++        if(store)dual3(p,30);else acc3(p,30,.5f);
++        finish(p,"tex coord derivative "+std::to_string(kind)+"/"+std::to_string(bump));
++      }
++    for(unsigned component=0;component<3;component++){
++      // Value, conversion and separate/combine derivative variants.
++      Program p(ds);dbegin(p);
++      p.add(NODE_SEPARATE_VECTOR_DERIVATIVE,SVMNodeSeparateVector{.vector=stack_in3(20),.vector_index=uint8_t(component),.out_offset=30});
++      for(unsigned k=0;k<3;k++)p.add(NODE_COMBINE_VECTOR_DERIVATIVE,SVMNodeCombineVector{.in=k==component?stack_in(30):value(.25f*k-.3f),.vector_index=uint8_t(k),.out_offset=40});
++      p.add(NODE_CONVERT_DERIVATIVE,SVMNodeConvert{.convert_type=NODE_CONVERT_VF,.from_offset=20,.to_offset=50});
++      p.add(NODE_CONVERT_DERIVATIVE,SVMNodeConvert{.convert_type=NODE_CONVERT_FV,.from_offset=30,.to_offset=53});
++      p.add(NODE_CONVERT_DERIVATIVE,SVMNodeConvert{.convert_type=NODE_CONVERT_CF,.from_offset=20,.to_offset=62});
++      p.add(NODE_VALUE_F_DERIVATIVE,SVMNodeValueF{.value=.35f+component,.out_offset=65});
++      p.add(NODE_VALUE_V_DERIVATIVE,SVMNodeValueV{.out_offset=68,.value=make_float3(.2f,-.4f,.6f*component)});
++      p.add(NODE_CONVERT_DERIVATIVE,SVMNodeConvert{.convert_type=NODE_CONVERT_FI,.from_offset=30,.to_offset=77});
++      p.add(NODE_CONVERT_DERIVATIVE,SVMNodeConvert{.convert_type=NODE_CONVERT_IF,.from_offset=77,.to_offset=78});
++      p.add(NODE_CONVERT_DERIVATIVE,SVMNodeConvert{.convert_type=NODE_CONVERT_IV,.from_offset=77,.to_offset=81});
++      p.add(NODE_CONVERT_DERIVATIVE,SVMNodeConvert{.convert_type=NODE_CONVERT_CI,.from_offset=20,.to_offset=90});
++      p.add(NODE_CONVERT_DERIVATIVE,SVMNodeConvert{.convert_type=NODE_CONVERT_VI,.from_offset=20,.to_offset=91});
++      p.add(NODE_CONVERT,SVMNodeConvert{.convert_type=NODE_CONVERT_IF,.from_offset=90,.to_offset=92});p.add(NODE_CONVERT,SVMNodeConvert{.convert_type=NODE_CONVERT_IF,.from_offset=91,.to_offset=93});
++      dual1(p,30);dual3(p,40);dual1(p,50);dual3(p,53);dual1(p,62);dual1(p,65);dual3(p,68);dual1(p,78);dual3(p,81);acc1(p,92,.1f);acc1(p,93,.1f);
++      finish(p,"value/convert/sepcomb derivative "+std::to_string(component));
++    }
++    for(unsigned kind=0;kind<=NODE_VECTOR_MATH_ROUND;kind++){
++      // Smooth operations read duals with derivatives; discontinuous ones read
++      // exact constant b/c (their derivatives are still carried through a).
++      Program p(ds);dbegin(p);const NodeVectorMathType type=NodeVectorMathType(kind);
++      const bool step=type==NODE_VECTOR_MATH_SNAP||type==NODE_VECTOR_MATH_FLOOR||type==NODE_VECTOR_MATH_CEIL||type==NODE_VECTOR_MATH_MODULO||type==NODE_VECTOR_MATH_FRACTION||
++        type==NODE_VECTOR_MATH_ABSOLUTE||type==NODE_VECTOR_MATH_MINIMUM||type==NODE_VECTOR_MATH_MAXIMUM||type==NODE_VECTOR_MATH_WRAP||type==NODE_VECTOR_MATH_FACEFORWARD||
++        type==NODE_VECTOR_MATH_SIGN||type==NODE_VECTOR_MATH_ROUND;
++      const bool small_a=type==NODE_VECTOR_MATH_SINE||type==NODE_VECTOR_MATH_COSINE||type==NODE_VECTOR_MATH_TANGENT||type==NODE_VECTOR_MATH_POWER;
++      p.add(NODE_VECTOR_MATH_DERIVATIVE,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_MULTIPLY_ADD,.a=stack_in3(20),.b=color(.3f,-.7f,1.1f),.c=color(.5f,.2f,-.4f),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=40});
++      p.add(NODE_VECTOR_MATH_DERIVATIVE,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_SCALE,.a=stack_in3(20),.b=color(0,0,0),.c=color(0,0,0),.param1=value(-.6f),.value_offset=SVM_STACK_INVALID,.vector_offset=50});
++      p.add(NODE_SEPARATE_VECTOR_DERIVATIVE,SVMNodeSeparateVector{.vector=stack_in3(40),.vector_index=1,.out_offset=60});
++      p.add(NODE_VALUE_V_DERIVATIVE,SVMNodeValueV{.out_offset=70,.value=make_float3(.75f,-1.25f,2.5f)});
++      p.add(NODE_VALUE_V_DERIVATIVE,SVMNodeValueV{.out_offset=80,.value=make_float3(-.5f,.25f,-1.5f)});
++      unsigned a=20;
++      if(small_a){p.add(NODE_VECTOR_MATH_DERIVATIVE,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_SCALE,.a=stack_in3(20),.b=color(0,0,0),.c=color(0,0,0),.param1=value(.05f),.value_offset=SVM_STACK_INVALID,.vector_offset=150});a=150;}
++      if(type==NODE_VECTOR_MATH_POWER){
++        p.add(NODE_VECTOR_MATH_DERIVATIVE,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_ABSOLUTE,.a=stack_in3(150),.b=color(0,0,0),.c=color(0,0,0),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=160});
++        p.add(NODE_VECTOR_MATH_DERIVATIVE,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_MULTIPLY_ADD,.a=stack_in3(160),.b=color(1,1,1),.c=color(.5f,.5f,.5f),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=150});}
++      p.add(NODE_VECTOR_MATH_DERIVATIVE,SVMNodeVectorMath{.math_type=type,.a=stack_in3(a),.b=stack_in3(step||type==NODE_VECTOR_MATH_POWER?70:40),.c=stack_in3(step?80:50),
++        .param1=type==NODE_VECTOR_MATH_REFRACT?value(.7f):stack_in(60),.value_offset=110,.vector_offset=120});
++      const bool scalar=type==NODE_VECTOR_MATH_DOT_PRODUCT||type==NODE_VECTOR_MATH_DISTANCE||type==NODE_VECTOR_MATH_LENGTH;
++      if(scalar)dual1(p,110);else dual3(p,120);
++      finish(p,"vector math derivative "+std::to_string(kind));
++    }
++    for(unsigned kind=0;kind<6;kind++){
++      Program p(ds);dbegin(p);
++      if(kind<5){const float3 scale=kind==4?make_float3(1.5f,0,.5f):make_float3(1.5f,-.8f,.5f);
++        p.add(NODE_MAPPING_DERIVATIVE,SVMNodeMapping{.mapping_type=NodeMappingType(kind%4),.vector=stack_in3(20),.location=color(.3f,-.2f,.5f),.rotation=color(.4f,-.7f,1.3f),
++          .scale=color(scale.x,scale.y,scale.z),.result_offset=30});}
++      else{SVMNodeTextureMapping n{.vec_offset=20,.out_offset=30};n.tfm=PackedTransform(transform_translate(make_float3(.2,-.3,.1))*transform_rotate(.7f,make_float3(.3,.1,.9))*transform_scale(make_float3(1.5,.7,1.1)));
++        p.add(NODE_TEXTURE_MAPPING_DERIVATIVE,n);}
++      dual3(p,30);finish(p,"mapping derivative "+std::to_string(kind));
++    }
++    for(unsigned variant=0;variant<10;variant++){
++      // Bump: heights of three point taps (centre, +dx and +dy offsets).
++      Program p(ds);dbegin(p);const float strength[]={.3f,1,2,-.5f};const float width=variant==9?0.f:2000.f;
++      for(unsigned tap=0;tap<3;tap++){p.add(NODE_GEOMETRY_DERIVATIVE,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.bump_offset=NodeBumpOffset(tap),.store_derivatives=0,.out_offset=SVMStackOffset(110+3*tap),.bump_filter_width=width});
++        p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_DOT_PRODUCT,.a=stack_in3(110+3*tap),.b=color(.7f,-1.3f,.4f),.c=color(0,0,0),.param1=value(1),.value_offset=SVMStackOffset(119+tap),.vector_offset=SVM_STACK_INVALID});}
++      p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=30,.value=normalize(make_float3(.2f,-.3f,.93f))});
++      p.add(NODE_SET_BUMP,SVMNodeSetBump{.scale=value(variant==8?0.f:.7f),.strength=value(strength[variant%4]),.bump_filter_width=width,.normal_offset=SVMStackOffset(variant%2?30:SVM_STACK_INVALID),
++        .invert=uint8_t(variant/2%2),.use_object_space=uint8_t(variant/4%2),.center_offset=119,.dx_offset=120,.dy_offset=121,.out_offset=122,.bump_state_offset=SVM_STACK_INVALID});
++      acc3(p,122,1);p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=10});p.diffuse(0,122);
++      p.add(NODE_CONVERT,SVMNodeConvert{.convert_type=NODE_CONVERT_FV,.from_offset=13,.to_offset=14});p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=14});p.simple(CLOSURE_BSDF_TRANSLUCENT_ID,122);
++      p.install(ds);evaluate(d,scene,shader,layout,initial,small,"Typed node set bump "+std::to_string(variant)+" "+std::to_string(node_typed++),m);
++    }
++    {
++      // Bump state: enter saves P and dP, leave restores them.
++      Program p(ds);dbegin(p);p.add(NODE_ENTER_BUMP_EVAL,SVMNodeEnterBumpEval{.state_offset=130});acc3(p,130,.1f);acc1(p,133,1000);
++      p.add(NODE_LEAVE_BUMP_EVAL,SVMNodeLeaveBumpEval{.state_offset=130});p.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=140});acc3(p,140,.1f);
++      finish(p,"bump state");
++    }
+ #endif
+ #ifdef CBC_MICROFACET_FIXTURE
+     unsigned typed=0;
+diff --git a/native/cycles/svm_world_gate.cpp b/native/cycles/svm_world_gate.cpp
+index 171c8d5..b9e987f 100644
+--- a/native/cycles/svm_world_gate.cpp
++++ b/native/cycles/svm_world_gate.cpp
+@@ -36,6 +36,10 @@ static unsigned node_size(uint op){switch(op){
+   NODE(NODE_FRESNEL,Fresnel);NODE(NODE_LAYER_WEIGHT,LayerWeight);NODE(NODE_VECTOR_ROTATE,VectorRotate);NODE(NODE_BLACKBODY,Blackbody);NODE(NODE_NORMAL,Normal);
+   NODE(NODE_OBJECT_INFO,ObjectInfo);NODE(NODE_CAMERA,Camera);NODE(NODE_SCENE_TIME,SceneTime);NODE(NODE_VECTOR_TRANSFORM,VectorTransform);NODE(NODE_LIGHT_PATH,LightPath);
+   NODE(NODE_WAVELENGTH,Wavelength);NODE(NODE_WIREFRAME,Wireframe);
++  // Bump stage and derivative variants (world 22).
++  NODE(NODE_SET_BUMP,SetBump);NODE(NODE_GEOMETRY_DERIVATIVE,Geometry);NODE(NODE_TEX_COORD_DERIVATIVE,TexCoord);NODE(NODE_VALUE_F_DERIVATIVE,ValueF);
++  NODE(NODE_VALUE_V_DERIVATIVE,ValueV);NODE(NODE_CONVERT_DERIVATIVE,Convert);NODE(NODE_VECTOR_MATH_DERIVATIVE,VectorMath);NODE(NODE_MAPPING_DERIVATIVE,Mapping);
++  NODE(NODE_TEXTURE_MAPPING_DERIVATIVE,TextureMapping);NODE(NODE_SEPARATE_VECTOR_DERIVATIVE,SeparateVector);NODE(NODE_COMBINE_VECTOR_DERIVATIVE,CombineVector);
+ #undef NODE
+   case NODE_END:return 0;default:throw std::runtime_error("Fixture contains unsupported opcode "+std::to_string(op));}}
+ static SVMInputFloat value(float f){return {std::bit_cast<uint>(f)};}
+@@ -78,7 +82,7 @@ static void graph_scene(Scene &scene,unsigned test){
+ #ifdef CBC_NODES_FIXTURE
+ // Compiled worlds for the texture, colour and utility nodes. World inputs are
+ // the GPU camera directions read by both sides, so they are bit-identical.
+-static constexpr unsigned WORLD_COUNT=22;
++static constexpr unsigned WORLD_COUNT=23;
+ static void nodes_world(Scene &scene,unsigned test){
+   base_scene(scene);auto graph=make_unique<ShaderGraph>();auto &g=*graph;auto geo=g.create_node<GeometryNode>();auto bg=g.create_node<BackgroundNode>();bg->set_strength(.7f);
+   ShaderOutput *dir=geo->output("Position");ShaderOutput *color=dir;
+@@ -129,6 +133,15 @@ static void nodes_world(Scene &scene,unsigned test){
+     // Wireframe has no primitive in a world evaluation (0, as on the host).
+     auto wire=g.create_node<WireframeNode>();wire->set_use_pixel_size(true);wire->set_size(3.f);auto n=noise(3,NODE_NOISE_FBM,1.5f,0);
+     auto comb=g.create_node<CombineXYZNode>();g.connect(wire->output("Fac"),comb->input("X"));g.connect(n->output("Fac"),comb->input("Y"));g.connect(component(dir,"Z"),comb->input("Z"));color=comb->output("Vector");}
++  if(test==22){
++    // Bump in a world: the derivative variants of the copied height sub-graph run,
++    // and the background node mask has no BUMP feature, so the host bump normal is
++    // zero; the texture-coordinate tap reads the world direction.
++    auto bump=g.create_node<BumpNode>();bump->set_filter_width(20.f);auto tc=g.create_node<TextureCoordinateNode>();auto sum=g.create_node<VectorMathNode>();sum->set_math_type(NODE_VECTOR_MATH_ADD);
++    g.connect(dir,sum->input("Vector1"));g.connect(tc->output("Object"),sum->input("Vector2"));auto dot=g.create_node<VectorMathNode>();dot->set_math_type(NODE_VECTOR_MATH_DOT_PRODUCT);dot->set_vector2(make_float3(.6f,-.9f,1.2f));
++    g.connect(sum->output("Vector"),dot->input("Vector1"));g.connect(dot->output("Value"),bump->input("Height"));
++    auto add=g.create_node<VectorMathNode>();add->set_math_type(NODE_VECTOR_MATH_ADD);g.connect(bump->output("Normal"),add->input("Vector1"));g.connect(vmath(NODE_VECTOR_MATH_ABSOLUTE,dir,zero_float3()),add->input("Vector2"));
++    color=add->output("Vector");}
+   if(test==7){
+     // Is Camera Ray selects between two backgrounds (camera rays at bounce 0 here).
+     auto lp=g.create_node<LightPathNode>();auto other=g.create_node<BackgroundNode>();other->set_color(make_float3(.8,.1,.2));g.connect(noise(3,NODE_NOISE_MULTIFRACTAL,2,0)->output("Color"),bg->input("Color"));
+diff --git a/native/shaders/wavefront_svm.wgsl b/native/shaders/wavefront_svm.wgsl
+index 66dcbe6..e9db765 100644
+--- a/native/shaders/wavefront_svm.wgsl
++++ b/native/shaders/wavefront_svm.wgsl
+@@ -281,6 +281,33 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
+ //#endif
+ //#if SVM_NODE_WIREFRAME
+             case NODE_WIREFRAME:{size=SZ_Wireframe;}
++//#endif
++//#if SVM_NODE_BUMP
++            case NODE_SET_BUMP:{size=SZ_SetBump;}
++//#endif
++//#if SVM_NODE_BUMP_STATE
++            case NODE_ENTER_BUMP_EVAL:{size=SZ_EnterBumpEval;}
++            case NODE_LEAVE_BUMP_EVAL:{size=SZ_LeaveBumpEval;}
++//#endif
++//#if SVM_NODE_GEOMETRY_DERIVATIVE
++            case NODE_GEOMETRY_DERIVATIVE:{size=SZ_Geometry;}
++//#endif
++//#if SVM_NODE_TEX_COORD_DERIVATIVE
++            case NODE_TEX_COORD_DERIVATIVE:{size=SZ_TexCoord;}
++//#endif
++//#if SVM_NODE_VALUE_DERIVATIVE
++            case NODE_VALUE_F_DERIVATIVE:{size=SZ_ValueF;}
++            case NODE_VALUE_V_DERIVATIVE:{size=SZ_ValueV;}
++            case NODE_CONVERT_DERIVATIVE:{size=SZ_Convert;}
++            case NODE_SEPARATE_VECTOR_DERIVATIVE:{size=SZ_SeparateVector;}
++            case NODE_COMBINE_VECTOR_DERIVATIVE:{size=SZ_CombineVector;}
++//#endif
++//#if SVM_NODE_VECTOR_MATH_DERIVATIVE
++            case NODE_VECTOR_MATH_DERIVATIVE:{size=SZ_VectorMath;}
++//#endif
++//#if SVM_NODE_MAPPING_DERIVATIVE
++            case NODE_MAPPING_DERIVATIVE:{size=SZ_Mapping;}
++            case NODE_TEXTURE_MAPPING_DERIVATIVE:{size=SZ_TextureMapping;}
+ //#endif
+             default:{svm_error(&s,2u);return s.output;}
+         }
+@@ -309,9 +336,16 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
+                 svm_store3(&s,svm_byte(node+N_Geometry_out_offset),v);
+ //#endif
+             }
+-            case NODE_TEX_COORD:{
++//#if SVM_NODE_TEX_COORD_DERIVATIVE else             case NODE_TEX_COORD:{
++            // One svm_texco call site for both variants (drivers inline every call).
++            case NODE_TEX_COORD,NODE_TEX_COORD_DERIVATIVE:{
++//#endif
+ //#if SVM_NODE_TEX_COORD else svm_error(&s,2u);
+-                svm_store3(&s,svm_byte(node+N_TexCoord_out_offset),svm_texco(&s,node,index));
++//#if SVM_NODE_TEX_COORD_DERIVATIVE else                 svm_store3(&s,svm_byte(node+N_TexCoord_out_offset),svm_texco(&s,node,index));
++                let transform_address=p(21u)+s.pc*4u;let texco=svm_texco(&s,node,index);
++                if(opcode==NODE_TEX_COORD_DERIVATIVE){svm_tex_coord_derivative(&s,node,index,texco,transform_address);}
++                else{svm_store3(&s,svm_byte(node+N_TexCoord_out_offset),texco);}
++//#endif
+ //#endif
+             }
+             // One call site for all image layouts: drivers inline every WGSL call,
+@@ -550,6 +584,36 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
+             case NODE_WIREFRAME:{
+                 svm_wireframe(&s,node);
+             }
++//#endif
++//#if SVM_NODE_BUMP
++            case NODE_SET_BUMP:{
++                svm_set_bump(&s,node);
++            }
++//#endif
++//#if SVM_NODE_BUMP_STATE
++            case NODE_ENTER_BUMP_EVAL,NODE_LEAVE_BUMP_EVAL:{
++                svm_bump_state(&s,node,opcode==NODE_ENTER_BUMP_EVAL);
++            }
++//#endif
++//#if SVM_NODE_GEOMETRY_DERIVATIVE
++            case NODE_GEOMETRY_DERIVATIVE:{
++                svm_geometry_derivative(&s,node);
++            }
++//#endif
++//#if SVM_NODE_VALUE_DERIVATIVE
++            case NODE_VALUE_F_DERIVATIVE,NODE_VALUE_V_DERIVATIVE,NODE_CONVERT_DERIVATIVE,NODE_SEPARATE_VECTOR_DERIVATIVE,NODE_COMBINE_VECTOR_DERIVATIVE:{
++                svm_value_derivative(&s,node,opcode);
++            }
++//#endif
++//#if SVM_NODE_VECTOR_MATH_DERIVATIVE
++            case NODE_VECTOR_MATH_DERIVATIVE:{
++                svm_vector_math_derivative(&s,node);
++            }
++//#endif
++//#if SVM_NODE_MAPPING_DERIVATIVE
++            case NODE_MAPPING_DERIVATIVE,NODE_TEXTURE_MAPPING_DERIVATIVE:{
++                svm_mapping_derivative(&s,node,opcode);
++            }
+ //#endif
+             default:{svm_error(&s,2u);}
+         }
+diff --git a/b/native/shaders/wavefront_svm_derivatives.wgsl b/native/shaders/wavefront_svm_derivatives.wgsl
+new file mode 100644
+index 0000000..e71e187
+--- /dev/null
++++ b/native/shaders/wavefront_svm_derivatives.wgsl
+@@ -0,0 +1,320 @@
++// SPDX-FileCopyrightText: 2011-2025 Blender Foundation
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++// Modified from pinned Cycles svm/displace.h (svm_node_set_bump), svm/bump.h,
++// svm/geometry.h, svm/tex_coord.h, svm/value.h, svm/convert.h,
++// svm/sepcomb_vector.h, svm/math.h, svm/math_util.h, svm/util.h,
++// geom/triangle.h (triangle_smooth_normal), kernel/util/differential.h and
++// util/math_dual.h. Dual numbers are explicit (value, d/dx, d/dy) records:
++// NormalDual for dual3 and vec3<f32>(value, dx, dy) for dual1. Derivative
++// variants keep derivatives in the adjacent stack slots, as the CPU kernel does.
++// Each handler has its own feature region and a single call site.
++//#if SVM_NODE_BUMP
++// displace.h svm_node_set_bump. Background evaluation has no BUMP node feature
++// on the host (KERNEL_FEATURE_NODE_MASK_SURFACE_BACKGROUND): it stores zero.
++fn svm_set_bump(s:ptr<function,SvmState>,node:u32){
++    let out=svm_byte(node+N_SetBump_out_offset);
++    if(!SVM_SURFACE){svm_store3(s,out,vec3<f32>(0));return;}
++    let invert=svm_byte(node+N_SetBump_invert);let object_space=svm_byte(node+N_SetBump_use_object_space);
++    if(invert>1u||object_space>1u){svm_error(s,16u);return;}
++    let sd=(*s).geometry;let normal_index=svm_byte(node+N_SetBump_normal_offset);
++    var n=sd.N;if(normal_index!=SVM_STACK_INVALID){n=svm_load3(s,normal_index);}
++    // differential_from_compact(Ng, dP), or the full differential saved by enter_bump_eval.
++    let state=svm_byte(node+N_SetBump_bump_state_offset);var dPdx:vec3<f32>;var dPdy:vec3<f32>;
++    if(state==SVM_STACK_INVALID){let tangent=surface_orthogonal(sd.Ng);dPdx=sd.dP*tangent;dPdy=sd.dP*cross(sd.Ng,tangent);}
++    else{dPdx=svm_load3(s,state+4u);dPdy=svm_load3(s,state+7u);}
++    let h_c=svm_load(s,svm_byte(node+N_SetBump_center_offset));
++    let h_x=svm_load(s,svm_byte(node+N_SetBump_dx_offset));
++    let h_y=svm_load(s,svm_byte(node+N_SetBump_dy_offset));
++    var strength=svm_input(s,node+N_SetBump_strength);var scale=svm_input(s,node+N_SetBump_scale);
++    if((*s).error!=0u){return;}
++    let transform=object_space!=0u&&sd.object_id!=NONE;
++    if(transform){dPdx=surface_object_direction(sd,dPdx,true);dPdy=surface_object_direction(sd,dPdy,true);}
++    // Pass 0 takes the input normal to object space; pass 1 takes the result back
++    // (one object normal transform call site: drivers inline every call).
++    var inverse=true;
++    loop{
++        if(transform){n=surface_object_normal(sd,n,inverse);}
++        if(!inverse){break;}
++        let normal_in=n;let Rx=cross(dPdy,normal_in);let Ry=cross(normal_in,dPdx);
++        let det=dot(dPdx,Rx);let surfgrad=(h_x-h_c)*Rx+(h_y-h_c)*Ry;let absdet=abs(det);
++        if(invert!=0u){scale*=-1.0;}
++        strength=max(strength,0.0);
++        let sign=select(1.0,-1.0,det<0.0);
++        n=surface_normalize(heap_float(node+N_SetBump_bump_filter_width)*absdet*normal_in-scale*sign*surfgrad);
++        if(all(n==vec3<f32>(0))){n=normal_in;}
++        else{n=surface_native_normalize(strength*n+(1.0-strength)*normal_in);}
++        inverse=false;
++    }
++    svm_store3(s,out,n);
++}
++//#endif
++//#if SVM_NODE_BUMP_STATE
++// bump.h enter/leave_bump_eval: save and restore P and the compact dP. The
++// undisplaced-position branch needs true displacement, which this device does
++// not implement: such a scene reports unsupported (16), never an approximation.
++fn svm_bump_state(s:ptr<function,SvmState>,node:u32,enter:bool){
++    if(!SVM_SURFACE){return;}
++    if(enter){
++        let offset=svm_byte(node+N_EnterBumpEval_state_offset);
++        svm_store3(s,offset,(*s).geometry.P);svm_store(s,offset+3u,(*s).geometry.dP);
++        let desc=attribute_find(s,ATTR_STD_POSITION_UNDISPLACED,0u);if(desc.found){svm_error(s,16u);}
++    }else{
++        let offset=svm_byte(node+N_LeaveBumpEval_state_offset);
++        let P=svm_load3(s,offset);let dP=svm_load(s,offset+3u);if((*s).error!=0u){return;}
++        (*s).geometry.P=P;(*s).geometry.dP=dP;
++    }
++}
++//#endif
++//#if SVM_DERIVATIVE_ANY
++fn svmd_load3(s:ptr<function,SvmState>,index:u32)->NormalDual{return NormalDual(svm_load3(s,index),svm_load3(s,index+3u),svm_load3(s,index+6u));}
++fn svmd_store3(s:ptr<function,SvmState>,index:u32,d:NormalDual){svm_store3(s,index,d.value);svm_store3(s,index+3u,d.dx);svm_store3(s,index+6u,d.dy);}
++fn svmd_load1(s:ptr<function,SvmState>,index:u32)->vec3<f32>{return vec3<f32>(svm_load(s,index),svm_load(s,index+1u),svm_load(s,index+2u));}
++fn svmd_store1(s:ptr<function,SvmState>,index:u32,d:vec3<f32>){svm_store(s,index,d.x);svm_store(s,index+1u,d.y);svm_store(s,index+2u,d.z);}
++fn svmd_linked(bits:u32)->bool{return (bits>>8u)==(SVM_INPUT_STACK_OFFSET_MASK>>8u);}
++fn svmd_input3(s:ptr<function,SvmState>,address:u32)->NormalDual{
++    let bits=load_word(address);if(svmd_linked(bits)){return svmd_load3(s,bits&255u);}
++    return NormalDual(heap_vec3(address),vec3<f32>(0),vec3<f32>(0));
++}
++fn svmd_input1(s:ptr<function,SvmState>,address:u32)->vec3<f32>{
++    let bits=load_word(address);if(svmd_linked(bits)){return svmd_load1(s,bits&255u);}
++    return vec3<f32>(bitcast<f32>(bits),0,0);
++}
++// util/svm/util.h dPdx/dPdy and shading_position/shading_incoming.
++fn svmd_position(sd:SurfaceData)->NormalDual{return NormalDual(sd.P,sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x,sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y);}
++fn svmd_incoming(sd:SurfaceData)->NormalDual{let a=surface_orthogonal(sd.wi);return NormalDual(sd.wi,sd.dI*a,sd.dI*cross(sd.wi,a));}
++fn svmd_const(v:vec3<f32>)->NormalDual{return NormalDual(v,vec3<f32>(0),vec3<f32>(0));}
++// First-order bump offset, then the full dual or only its value.
++fn svmd_output(s:ptr<function,SvmState>,data_in:NormalDual,bump:u32,width:f32,store:u32,out:u32,normalize:bool){
++    var data=data_in;
++    if(bump==NODE_BUMP_OFFSET_DX){data.value+=data.dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){data.value+=data.dy*width;}
++    if(normalize){data=svmd_safe_normalize(data);}
++    if(store!=0u){svmd_store3(s,out,data);}else{svm_store3(s,out,data.value);}
++}
++fn svmd_mul(a:NormalDual,b:NormalDual)->NormalDual{return NormalDual(a.value*b.value,a.value*b.dx+a.dx*b.value,a.value*b.dy+a.dy*b.value);}
++// dual3 * dual1 (product rule).
++fn svmd_scale(a:NormalDual,f:vec3<f32>)->NormalDual{return NormalDual(a.value*f.x,a.value*f.y+a.dx*f.x,a.value*f.z+a.dy*f.x);}
++fn svmd_add(a:NormalDual,b:NormalDual)->NormalDual{return NormalDual(a.value+b.value,a.dx+b.dx,a.dy+b.dy);}
++fn svmd_sub(a:NormalDual,b:NormalDual)->NormalDual{return NormalDual(a.value-b.value,a.dx-b.dx,a.dy-b.dy);}
++fn svmd_neg(a:NormalDual)->NormalDual{return NormalDual(-a.value,-a.dx,-a.dy);}
++fn svmd_reduce(a:vec3<f32>)->f32{return (a.x+a.y)+a.z;}
++fn svmd_dot(a:NormalDual,b:NormalDual)->vec3<f32>{let m=svmd_mul(a,b);return vec3<f32>(svmd_reduce(m.value),svmd_reduce(m.dx),svmd_reduce(m.dy));}
++fn svmd_mul1(u:vec3<f32>,v:vec3<f32>)->vec3<f32>{return vec3<f32>(u.x*v.x,u.x*v.y+u.y*v.x,u.x*v.z+u.z*v.x);}
++fn svmd_div1(u:vec3<f32>,v:vec3<f32>)->vec3<f32>{let inv=1.0/v.x;let q=u.x/v.x;return vec3<f32>(q,(u.y-q*v.y)*inv,(u.z-q*v.z)*inv);}
++fn svmd_sqrt1(u:vec3<f32>)->vec3<f32>{let f=sqrt(u.x);let k=0.5/f;return vec3<f32>(f,k*u.y,k*u.z);}
++fn svmd_inversesqrt1(u:vec3<f32>)->vec3<f32>{
++    var f=0.0;if(u.x>0.0){f=1.0/sqrt(u.x);}
++    var q=0.0;if(u.x!=0.0){q=f/u.x;}let k=-0.5*q;return vec3<f32>(f,k*u.y,k*u.z);
++}
++fn svmd_safe_normalize(a:NormalDual)->NormalDual{
++    let len_sq=svmd_dot(a,a);if(len_sq.x==0.0){return svmd_const(vec3<f32>(0));}
++    return svmd_scale(a,svmd_inversesqrt1(len_sq));
++}
++fn svmd_select(mask:vec3<bool>,a:NormalDual,b:NormalDual)->NormalDual{return NormalDual(select(b.value,a.value,mask),select(b.dx,a.dx,mask),select(b.dy,a.dy,mask));}
++fn svmd_zero_if(mask:vec3<bool>,a:NormalDual)->NormalDual{return svmd_select(mask,svmd_const(vec3<f32>(0)),a);}
++fn svmd_floor(a:NormalDual)->NormalDual{return svmd_const(floor(a.value));}
++//#endif
++//#if SVM_NODE_GEOMETRY_DERIVATIVE
++// geometry.h svm_node_geometry<dual3>. The tangent output (primitive_tangent)
++// is not ported for derivatives and reports unsupported (16).
++fn svm_geometry_derivative(s:ptr<function,SvmState>,node:u32){
++    let sd=(*s).geometry;let kind=svm_byte(node+N_Geometry_geom_type);var data=svmd_const(vec3<f32>(0));
++    switch(kind){
++        case NODE_GEOM_P:{data=svmd_position(sd);}
++        case NODE_GEOM_N:{data=svmd_const(sd.N);}
++        case NODE_GEOM_Ng:{data=svmd_const(sd.Ng);}
++        case NODE_GEOM_I:{data=svmd_incoming(sd);}
++        case NODE_GEOM_uv:{data=NormalDual(vec3<f32>(1.0-sd.u-sd.v,sd.u,0),vec3<f32>(-sd.du.x-sd.dv.x,sd.du.x,0),vec3<f32>(-sd.du.y-sd.dv.y,sd.du.y,0));}
++        default:{svm_error(s,16u);return;}
++    }
++    let bump=svm_byte(node+N_Geometry_bump_offset);let store=svm_byte(node+N_Geometry_store_derivatives);
++    if(bump>NODE_BUMP_OFFSET_DY||store>1u){svm_error(s,16u);return;}
++    svmd_output(s,data,bump,heap_float(node+N_Geometry_bump_filter_width),store,svm_byte(node+N_Geometry_out_offset),false);
++}
++//#endif
++//#if SVM_NODE_TEX_COORD_DERIVATIVE
++// tex_coord.h svm_node_tex_coord_derivative. Values reuse svm_texco (the
++// non-derivative evaluation of the same coordinate); derivatives follow
++// svm_node_tex_coord_eval<dual3>. Smooth normals use triangle_smooth_normal
++// with the du/dv offsets; motion-triangle is_smooth normals report unsupported (16).
++fn svmd_smooth_normal(s:ptr<function,SvmState>)->NormalDual{
++    let sd=(*s).geometry;var v:array<vec3<f32>,3>;v[0]=sd.N;var count=1u;
++    let is_smooth=(sd.primitive_type&PRIMITIVE_TRIANGLE)!=0u&&(sd.shader&SHADER_SMOOTH_NORMAL)!=0u;
++    var transform=sd.object_id!=NONE;
++    if(is_smooth){
++        if(sd.primitive_type!=PRIMITIVE_TRIANGLE){svm_error(s,16u);return svmd_const(sd.N);}
++        let object=table_at(G_objects,sd.object_id,SIZE_objects);var indices:vec3<u32>;
++        if((sd.object_flag&SD_OBJECT_HAS_CORNER_NORMALS)!=0u){
++            if(sd.prim>(0xffffffffu-2u)/3u){svm_error(s,64u);return svmd_const(sd.N);}
++            indices=vec3<u32>(3u*sd.prim)+vec3<u32>(0,1,2);
++        }else{
++            if(sd.prim>=table_count(G_tri_vindex)){svm_error(s,64u);return svmd_const(sd.N);}
++            let at=table_at(G_tri_vindex,sd.prim,SIZE_tri_vindex);
++            indices=vec3<u32>(load_word(at),load_word(at+4u),load_word(at+8u));
++        }
++        let desc=AttributeDesc(ATTR_ELEMENT_VERTEX_NORMAL,NODE_ATTR_FLOAT3,bitcast<i32>(load_word(object+O_normal_offset)),true);
++        var n:array<vec3<f32>,3>;for(var j=0u;j<3u;j++){n[j]=attribute_fetch(s,desc,indices[j]).xyz;}
++        // triangle_smooth_normal at (u,v), (u+du.dx,v+dv.dx) and (u+du.dy,v+dv.dy).
++        let uv=array<vec2<f32>,3>(vec2<f32>(sd.u,sd.v),vec2<f32>(sd.u+sd.du.x,sd.v+sd.dv.x),vec2<f32>(sd.u+sd.du.y,sd.v+sd.dv.y));
++        for(var j=0u;j<3u;j++){
++            var r=surface_normalize(((1.0-uv[j].x)-uv[j].y)*n[0]+uv[j].x*n[1]+uv[j].y*n[2]);
++            if(all(r==vec3<f32>(0))){r=sd.Ng;}
++            if((sd.runtime_flag&SR_BACKFACING)!=0u){r=-r;}
++            v[j]=r;
++        }
++        count=3u;transform=(sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
++    }
++    if(transform){for(var j=0u;j<count;j++){v[j]=surface_object_normal(sd,v[j],true);}}
++    if(!is_smooth){return svmd_const(v[0]);}
++    return NormalDual(v[0],v[1]-v[0],v[2]-v[0]);
++}
++fn svm_tex_coord_derivative(s:ptr<function,SvmState>,node:u32,index:u32,value:vec3<f32>,transform_address:u32){
++    let sd=(*s).geometry;let kind=svm_byte(node+N_TexCoord_texco_type);let world=sd.object_id==NONE;
++    var data:NormalDual;
++    switch(kind){
++        case NODE_TEXCO_NORMAL:{data=svmd_smooth_normal(s);}
++        case NODE_TEXCO_OBJECT,NODE_TEXCO_VOLUME_GENERATED:{
++            data=svmd_position(sd);data.value=value;
++            if(!world&&kind==NODE_TEXCO_OBJECT){data.dx=surface_object_direction(sd,data.dx,true);data.dy=surface_object_direction(sd,data.dy,true);}
++        }
++        case NODE_TEXCO_OBJECT_WITH_TRANSFORM:{
++            data=svmd_position(sd);data.value=value;data.dx=surface_transform_direction(transform_address,data.dx);data.dy=surface_transform_direction(transform_address,data.dy);
++        }
++        case NODE_TEXCO_CAMERA:{
++            data=svmd_position(sd);data.value=value;let tfm=p(6u)+D_cam_worldtocamera;
++            data.dx=surface_transform_direction(tfm,data.dx);data.dy=surface_transform_direction(tfm,data.dy);
++        }
++        case NODE_TEXCO_WINDOW:{
++            data=svmd_const(value);
++            let camera_ray=world&&data_word(D_cam_type)==CAMERA_ORTHOGRAPHIC&&(state_byte(S_path_visibility,index)&VIS_CAMERA)!=0u;
++            if(!camera_ray){data.dx.x=1.0/heap_float(p(6u)+D_cam_width);data.dy.y=1.0/heap_float(p(6u)+D_cam_height);}
++        }
++        case NODE_TEXCO_REFLECTION:{
++            let I=svmd_incoming(sd);data=I;data.value=value;
++            if(!world){
++                // -reflect(I, N): I - N * dot(I, N) * 2, negated.
++                let d=svmd_dot(I,svmd_const(sd.N));data.dx=-(I.dx-sd.N*d.y*2.0);data.dy=-(I.dy-sd.N*d.z*2.0);
++            }
++        }
++        case NODE_TEXCO_DUPLI_GENERATED,NODE_TEXCO_DUPLI_UV:{data=svmd_const(value);}
++        default:{svm_error(s,16u);return;}
++    }
++    if((*s).error!=0u){return;}
++    let bump=svm_byte(node+N_TexCoord_bump_offset);let store=svm_byte(node+N_TexCoord_store_derivatives);
++    if(bump>NODE_BUMP_OFFSET_DY||store>1u){svm_error(s,16u);return;}
++    svmd_output(s,data,bump,heap_float(node+N_TexCoord_bump_filter_width),store,svm_byte(node+N_TexCoord_out_offset),kind==NODE_TEXCO_NORMAL);
++}
++//#endif
++//#if SVM_NODE_VALUE_DERIVATIVE
++// value.h, convert.h and sepcomb_vector.h with dual1/dual3: constants have zero
++// derivatives; integer conversions keep the plain behaviour, as on the host.
++fn svm_value_derivative(s:ptr<function,SvmState>,node:u32,opcode:u32){
++    switch(opcode){
++        case NODE_VALUE_F_DERIVATIVE:{svmd_store1(s,svm_byte(node+N_ValueF_out_offset),vec3<f32>(bitcast<f32>(load_word(node+N_ValueF_value)),0,0));}
++        case NODE_VALUE_V_DERIVATIVE:{svmd_store3(s,svm_byte(node+N_ValueV_out_offset),svmd_const(heap_vec3(node+N_ValueV_value)));}
++        case NODE_SEPARATE_VECTOR_DERIVATIVE:{
++            let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(s,16u);return;}
++            let v=svmd_input3(s,node+N_SeparateVector_vector);let out=svm_byte(node+N_SeparateVector_out_offset);
++            if(out!=SVM_STACK_INVALID){svmd_store1(s,out,vec3<f32>(v.value[component],v.dx[component],v.dy[component]));}
++        }
++        case NODE_COMBINE_VECTOR_DERIVATIVE:{
++            let component=svm_byte(node+N_CombineVector_vector_index);let out=svm_byte(node+N_CombineVector_out_offset);if(component>2u){svm_error(s,16u);return;}
++            let f=svmd_input1(s,node+N_CombineVector_in);
++            if(out!=SVM_STACK_INVALID){svm_store(s,out+component,f.x);svm_store(s,out+component+3u,f.y);svm_store(s,out+component+6u,f.z);}
++        }
++        default:{
++            let kind=load_word(node+N_Convert_convert_type);let source_index=svm_byte(node+N_Convert_from_offset);let dest=svm_byte(node+N_Convert_to_offset);
++            switch(kind){
++                case NODE_CONVERT_FI:{svm_store_bits(s,dest,svm_int(s,svm_load(s,source_index)));}
++                case NODE_CONVERT_FV:{let f=svmd_load1(s,source_index);svmd_store3(s,dest,NormalDual(vec3<f32>(f.x),vec3<f32>(f.y),vec3<f32>(f.z)));}
++                case NODE_CONVERT_CF:{let rgb=heap_vec3(p(6u)+D_film_rgb_to_y);let d=svmd_dot(svmd_load3(s,source_index),svmd_const(rgb));svmd_store1(s,dest,d);}
++                case NODE_CONVERT_VF:{let v=svmd_load3(s,source_index);svmd_store1(s,dest,vec3<f32>(svmd_reduce(v.value),svmd_reduce(v.dx),svmd_reduce(v.dy))*(1.0/3.0));}
++                case NODE_CONVERT_CI,NODE_CONVERT_VI:{
++                    let v=svm_load3(s,source_index);var f=(v.x+v.y+v.z)*(1.0/3.0);
++                    if(kind==NODE_CONVERT_CI){f=dot(v,heap_vec3(p(6u)+D_film_rgb_to_y));}
++                    svm_store_bits(s,dest,svm_int(s,f));
++                }
++                case NODE_CONVERT_IF:{svmd_store1(s,dest,vec3<f32>(f32(bitcast<i32>(svm_load_bits(s,source_index))),0,0));}
++                case NODE_CONVERT_IV:{svmd_store3(s,dest,svmd_const(vec3<f32>(f32(bitcast<i32>(svm_load_bits(s,source_index))))));}
++                default:{svm_error(s,16u);}
++            }
++        }
++    }
++}
++//#endif
++//#if SVM_NODE_VECTOR_MATH_DERIVATIVE
++// math.h svm_node_vector_math<dual3> with math_util.h svm_vector_math and the
++// util/math_dual.h operators (product, quotient and chain rules).
++fn svm_vector_math_derivative(s:ptr<function,SvmState>,node:u32){
++    let kind=load_word(node+N_VectorMath_math_type);
++    let a=svmd_input3(s,node+N_VectorMath_a);let b=svmd_input3(s,node+N_VectorMath_b);let c=svmd_input3(s,node+N_VectorMath_c);
++    let param1=svmd_input1(s,node+N_VectorMath_param1);
++    var v=svmd_const(vec3<f32>(0));var value=vec3<f32>(0);let zero=svmd_const(vec3<f32>(0));
++    switch(kind){
++        case NODE_VECTOR_MATH_ADD:{v=svmd_add(a,b);}
++        case NODE_VECTOR_MATH_SUBTRACT:{v=svmd_sub(a,b);}
++        case NODE_VECTOR_MATH_MULTIPLY:{v=svmd_mul(a,b);}
++        case NODE_VECTOR_MATH_DIVIDE:{
++            let inv=1.0/b.value;let q=a.value/b.value;
++            v=svmd_zero_if(b.value==vec3<f32>(0),NormalDual(q,(a.dx-q*b.dx)*inv,(a.dy-q*b.dy)*inv));
++        }
++        case NODE_VECTOR_MATH_CROSS_PRODUCT:{v=NormalDual(cross(a.value,b.value),cross(a.value,b.dx)+cross(a.dx,b.value),cross(a.value,b.dy)+cross(a.dy,b.value));}
++        case NODE_VECTOR_MATH_PROJECT:{
++            let len_sq=svmd_dot(b,b);if(len_sq.x!=0.0){v=svmd_scale(b,svmd_div1(svmd_dot(a,b),len_sq));}
++        }
++        case NODE_VECTOR_MATH_REFLECT:{
++            let n=svmd_safe_normalize(b);let d=svmd_dot(a,n);
++            v=svmd_sub(a,NormalDual(n.value*d.x*2.0,(n.value*d.y+n.dx*d.x)*2.0,(n.value*d.z+n.dy*d.x)*2.0));
++        }
++        case NODE_VECTOR_MATH_REFRACT:{
++            let n=svmd_safe_normalize(b);let NI=svmd_dot(a,n);let eta=param1;
++            let one_minus=vec3<f32>(1.0-svmd_mul1(NI,NI).x,-svmd_mul1(NI,NI).y,-svmd_mul1(NI,NI).z);
++            let e2=svmd_mul1(eta,eta);let t=svmd_mul1(e2,one_minus);let k=vec3<f32>(1.0-t.x,-t.y,-t.z);
++            if(k.x>=0.0){v=svmd_sub(svmd_scale(a,eta),svmd_scale(n,svmd_mul1(eta,NI)+svmd_sqrt1(k)));}
++        }
++        case NODE_VECTOR_MATH_FACEFORWARD:{if(svmd_dot(c,b).x<0.0){v=a;}else{v=svmd_neg(a);}}
++        case NODE_VECTOR_MATH_MULTIPLY_ADD:{v=svmd_add(svmd_mul(a,b),c);}
++        case NODE_VECTOR_MATH_DOT_PRODUCT:{value=svmd_dot(a,b);}
++        case NODE_VECTOR_MATH_DISTANCE:{let d=svmd_sub(a,b);value=svmd_sqrt1(svmd_dot(d,d));}
++        case NODE_VECTOR_MATH_LENGTH:{value=svmd_sqrt1(svmd_dot(a,a));}
++        case NODE_VECTOR_MATH_SCALE:{v=svmd_scale(a,param1);}
++        case NODE_VECTOR_MATH_NORMALIZE:{v=svmd_safe_normalize(a);}
++        case NODE_VECTOR_MATH_SNAP:{
++            let inv=1.0/b.value;let q=a.value/b.value;
++            let divided=svmd_zero_if(b.value==vec3<f32>(0),NormalDual(q,(a.dx-q*b.dx)*inv,(a.dy-q*b.dy)*inv));
++            v=svmd_mul(svmd_floor(divided),b);
++        }
++        case NODE_VECTOR_MATH_ROUND:{v=svmd_const(floor(a.value+vec3<f32>(0.5)));}
++        case NODE_VECTOR_MATH_FLOOR:{v=svmd_floor(a);}
++        case NODE_VECTOR_MATH_CEIL:{v=svmd_const(ceil(a.value));}
++        case NODE_VECTOR_MATH_MODULO:{v=NormalDual(vec3<f32>(c_safe_modulo(a.value.x,b.value.x),c_safe_modulo(a.value.y,b.value.y),c_safe_modulo(a.value.z,b.value.z)),a.dx,a.dy);}
++        case NODE_VECTOR_MATH_WRAP:{
++            // wrap(value, max, min) = safe_floored_fmod(value - min, max - min) + min.
++            let x=svmd_sub(a,c);let r=svmd_sub(b,c);
++            let m=svmd_zero_if(r.value==vec3<f32>(0),svmd_sub(x,svmd_mul(svmd_const(floor(x.value/r.value)),r)));
++            v=NormalDual(m.value+c.value,m.dx+c.dx,m.dy+c.dy);
++        }
++        case NODE_VECTOR_MATH_FRACTION:{v=NormalDual(a.value-floor(a.value),a.dx,a.dy);}
++        case NODE_VECTOR_MATH_ABSOLUTE:{v=svmd_select(a.value>vec3<f32>(0),a,svmd_neg(a));}
++        case NODE_VECTOR_MATH_POWER:{
++            let pm1=vec3<f32>(c_safe_powf(a.value.x,b.value.x-1.0),c_safe_powf(a.value.y,b.value.y-1.0),c_safe_powf(a.value.z,b.value.z-1.0));
++            let f=a.value*pm1;let dfdu=b.value*pm1;
++            let dfdv=f*select(vec3<f32>(0),log(a.value),a.value>vec3<f32>(0));
++            v=NormalDual(f,dfdu*a.dx+dfdv*b.dx,dfdu*a.dy+dfdv*b.dy);
++        }
++        case NODE_VECTOR_MATH_SIGN:{v=svmd_const(vec3<f32>(c_compatible_signf(a.value.x),c_compatible_signf(a.value.y),c_compatible_signf(a.value.z)));}
++        case NODE_VECTOR_MATH_MINIMUM:{v=svmd_select(a.value<b.value,a,b);}
++        case NODE_VECTOR_MATH_MAXIMUM:{v=svmd_select(a.value>b.value,a,b);}
++        case NODE_VECTOR_MATH_SINE:{let k=cos(a.value);v=NormalDual(sin(a.value),k*a.dx,k*a.dy);}
++        case NODE_VECTOR_MATH_COSINE:{let k=-sin(a.value);v=NormalDual(cos(a.value),k*a.dx,k*a.dy);}
++        case NODE_VECTOR_MATH_TANGENT:{
++            let co=cos(a.value);let sec=select(vec3<f32>(0),vec3<f32>(1)/co,co!=vec3<f32>(0));let k=sec*sec;
++            v=NormalDual(tan(a.value),k*a.dx,k*a.dy);
++        }
++        default:{svm_error(s,16u);}
++    }
++    let value_offset=svm_byte(node+N_VectorMath_value_offset);let vector_offset=svm_byte(node+N_VectorMath_vector_offset);
++    if(value_offset!=SVM_STACK_INVALID){svmd_store1(s,value_offset,value);}
++    if(vector_offset!=SVM_STACK_INVALID){svmd_store3(s,vector_offset,v);}
++}
++//#endif
+diff --git a/native/shaders/wavefront_svm_nodes.wgsl b/native/shaders/wavefront_svm_nodes.wgsl
+index 71ba5e0..cd458e1 100644
+--- a/native/shaders/wavefront_svm_nodes.wgsl
++++ b/native/shaders/wavefront_svm_nodes.wgsl
+@@ -1030,4 +1030,37 @@ fn svm_wireframe(s:ptr<function,SvmState>,node:u32){
+     svm_optional_store(s,svm_byte(node+N_Wireframe_out_fac_offset),f);
+ }
+ //#endif
++//#if SVM_NODE_MAPPING_DERIVATIVE
++// mapping.h svm_node_mapping<dual3> and svm_node_texture_mapping<dual3> with the
++// util/math_dual.h operators: dual / float3 multiplies by the reciprocal.
++fn svmn_dual_direction(t:mat3x3<f32>,a:NormalDual)->NormalDual{return NormalDual(svmn_direction(t,a.value),svmn_direction(t,a.dx),svmn_direction(t,a.dy));}
++fn svmn_dual_divide(a:NormalDual,b:vec3<f32>)->NormalDual{
++    let inv=vec3<f32>(1)/b;let zero=b==vec3<f32>(0);
++    return NormalDual(select(a.value*inv,vec3<f32>(0),zero),select(a.dx*inv,vec3<f32>(0),zero),select(a.dy*inv,vec3<f32>(0),zero));
++}
++fn svm_mapping_derivative(s:ptr<function,SvmState>,node:u32,opcode:u32){
++    if(opcode==NODE_TEXTURE_MAPPING_DERIVATIVE){
++        let index=svm_byte(node+N_TextureMapping_vec_offset);let v=NormalDual(svm_load3(s,index),svm_load3(s,index+3u),svm_load3(s,index+6u));
++        let a=node+N_TextureMapping_tfm;let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
++        let cx=vec3<f32>(x.x,y.x,z.x);let cy=vec3<f32>(x.y,y.y,z.y);let cz=vec3<f32>(x.z,y.z,z.z);
++        let r=NormalDual(vec3<f32>(x.w,y.w,z.w)+v.value.z*cz+v.value.y*cy+v.value.x*cx,v.dx.z*cz+v.dx.y*cy+v.dx.x*cx,v.dy.z*cz+v.dy.y*cy+v.dy.x*cx);
++        let out=svm_byte(node+N_TextureMapping_out_offset);svm_store3(s,out,r.value);svm_store3(s,out+3u,r.dx);svm_store3(s,out+6u,r.dy);return;
++    }
++    let kind=load_word(node+N_Mapping_mapping_type);let v=svmd_input3(s,node+N_Mapping_vector);let location=svm_input3(s,node+N_Mapping_location);
++    let scale=svm_input3(s,node+N_Mapping_scale);let rotation=svmn_euler(svm_input3(s,node+N_Mapping_rotation));var r=NormalDual(vec3<f32>(0),vec3<f32>(0),vec3<f32>(0));
++    switch(kind){
++        case NODE_MAPPING_TYPE_POINT,NODE_MAPPING_TYPE_VECTOR:{
++            r=svmn_dual_direction(rotation,NormalDual(v.value*scale,v.dx*scale,v.dy*scale));
++            if(kind==NODE_MAPPING_TYPE_POINT){r.value+=location;}
++        }
++        case NODE_MAPPING_TYPE_NORMAL:{r=svmd_safe_normalize(svmn_dual_direction(rotation,svmn_dual_divide(v,scale)));}
++        case NODE_MAPPING_TYPE_TEXTURE:{
++            let shifted=v.value-location;
++            r=svmn_dual_divide(NormalDual(svmn_transposed(rotation,shifted),svmn_transposed(rotation,v.dx),svmn_transposed(rotation,v.dy)),scale);
++        }
++        default:{svm_error(s,16u);return;}
++    }
++    let out=svm_byte(node+N_Mapping_result_offset);svm_store3(s,out,r.value);svm_store3(s,out+3u,r.dx);svm_store3(s,out+6u,r.dy);
++}
++//#endif
+ //#endif
+diff --git a/native/tools/build_cycles.py b/native/tools/build_cycles.py
+index 15191c1..773db67 100644
+--- a/native/tools/build_cycles.py
++++ b/native/tools/build_cycles.py
+@@ -52,7 +52,7 @@ def overlay(out=None):
+     if translated.count(depth_division)!=1:raise RuntimeError('Triangle depth translation anchor changed')
+     translated=translated.replace(depth_division,'var v_t: f32 = rounded_divide(v_T, v_den);')
+     translated=translated.replace('fn c_ray_triangle_dot(', 'fn c_ray_triangle_dot_scalar(')+(ROOT/'shaders/wavefront_triangle.wgsl').read_text()
+-    svm=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm.wgsl','wavefront_attributes.wgsl','wavefront_images.wgsl','wavefront_normals.wgsl','wavefront_svm_nodes.wgsl'))
++    svm=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm.wgsl','wavefront_attributes.wgsl','wavefront_images.wgsl','wavefront_normals.wgsl','wavefront_svm_nodes.wgsl','wavefront_svm_derivatives.wgsl'))
+     closures=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm_closures.wgsl','wavefront_svm_microfacet.wgsl'))
+     enum_pattern=r'\b(?:NODE_[A-Za-z0-9_]+|ATTR_[A-Za-z0-9_]+|IMAGE_[A-Za-z0-9_]+|INTERPOLATION_[A-Za-z0-9_]+|EXTENSION_[A-Za-z0-9_]+|KERNEL_(?:IMAGE_NONE|TILE_LOAD_NONE)|SVM_(?:STACK_SIZE|STACK_INVALID|INPUT_STACK_OFFSET_MASK)|CAMERA_(?:PERSPECTIVE|ORTHOGRAPHIC))\b'
+     # Enum constants used only by the texture/colour/utility node regions are
+diff --git a/native/tools/nodes_gate.py b/native/tools/nodes_gate.py
+index 6ccf2c0..0679564 100644
+--- a/native/tools/nodes_gate.py
++++ b/native/tools/nodes_gate.py
+@@ -16,10 +16,16 @@ from device_gate import sha,save
+ from render_gate import inputs
+ 
+ KINDS=['nodes_svm','nodes_world','nodes_render']
++# Intel Mesa 25.0.7 mis-evaluates the whole unspecialized SVM probe module once the
++# bump/derivative handlers are present (SVM error 8 on unrelated graphs; see
++# native/DEVICE.md). Until the scene-specialized probe module lands, the SVM probe
++# keeps every feature this fixture reaches and drops image, attribute, normal-map,
++# tangent, vertex-colour, volume, glossy/glass, light, motion and Principled regions.
++PROBE_FEATURES={'nodes_svm':'3ffffff8c0ffdf83'}
+ 
+-def run(binary,folder,specialized):
++def run(binary,folder,specialized,kind=None):
+     folder.mkdir(parents=True)
+-    env=dict(os.environ,CODEBRIX_CYCLES_SHADER_SPECIALIZATION='1' if specialized else '0',
++    env=dict(os.environ,**({'CODEBRIX_M4_PROBE_FEATURES':PROBE_FEATURES[kind]} if kind in PROBE_FEATURES else {}),CODEBRIX_CYCLES_SHADER_SPECIALIZATION='1' if specialized else '0',
+              CODEBRIX_CYCLES_PIPELINE_LOG=str(folder/'pipelines.jsonl'),MESA_SHADER_CACHE_DIR=str(folder/'shader-cache'))
+     with (folder/'stdout.txt').open('w') as stdout,(folder/'stderr.txt').open('w') as stderr:
+         subprocess.run([str(binary),str(folder/'run')],stdout=stdout,stderr=stderr,check=True,timeout=900,env=env)
+@@ -55,11 +61,11 @@ def main():
+             binary=WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate')
+             for specialized in (True,False):
+                 name=kind+('' if specialized else '-unspecialized');status['phase']=name;save(out/'status.json',status)
+-                report=run(binary,out/name,specialized);reports[name]=report;save(out/'results.json',reports)
++                report=run(binary,out/name,specialized,kind);reports[name]=report;save(out/'results.json',reports)
+                 assert Path((out/name/'run.library.txt').read_text().strip()).resolve()==runtime.resolve()
+                 if kind=='nodes_svm':
+-                    assert report['originalCpuSurfaceSvm'] and report['compiledGraphs']==63 and report['closureFamilies']==5 and report['invalidCasesRejected']==32
+-                if kind=='nodes_world':assert report['compiledWorlds']==22
++                    assert report['originalCpuSurfaceSvm'] and report['compiledGraphs']==65 and report['closureFamilies']==5 and report['invalidCasesRejected']==32
++                if kind=='nodes_world':assert report['compiledWorlds']==23
+                 if kind=='nodes_render':assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
+         identical={}
+         for kind in ('nodes_world','nodes_render'):

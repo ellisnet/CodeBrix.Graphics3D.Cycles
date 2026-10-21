@@ -1,0 +1,21 @@
+[15:26:40] samsung triangle-c1: START triangle_sample timeout=900s
+[15:26:40] samsung triangle-c1: SCENE-DUMP triangle_sample
+[15:26:45] samsung triangle-c1: SCENE-REFERENCE triangle_sample references=1
+samples          gpu-vs-glibc passed=False practical=41 strict=3674 max=0.7429 | local-vs-glibc differing=4620 maxUlps=15520768 practical=65
+[15:27:09] samsung triangle-c1: REFERENCE triangle_sample host re-judged vs glibc: False
+[15:27:10] samsung triangle-c1: FAIL triangle_sample exit=1 24s: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164
+[15:27:10] samsung triangle-c1: START surface timeout=900s
+[15:28:47] samsung triangle-c1: PASS surface 96s maxPipelineMs=4592.69
+[15:28:47] samsung triangle-c1: START triangle_lighting timeout=900s
+[15:28:47] samsung triangle-c1: SCENE-DUMP triangle_lighting
+[15:28:53] samsung triangle-c1: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=18 max=1.49e-06 | local-vs-glibc differing=57 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=82 max=2.694e-05 | local-vs-glibc differing=929 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=125 max=1.69e-05 | local-vs-glibc differing=987 maxUlps=2273 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=315 max=9.775e-06 | local-vs-glibc differing=716 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=False practical=9 strict=226 max=0.01274 | local-vs-glibc differing=933 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[15:29:59] samsung triangle-c1: REFERENCE triangle_lighting host re-judged vs glibc: False
+[15:29:59] samsung triangle-c1: FAIL triangle_lighting exit=1 64s: Lighting film mismatch mode=4 component=312 actual=0.064647 expected=0.065844
+[15:30:03] samsung triangle-c1: END passed=False wall=204s/2400s failures=8
+{"passed": false, "failures": ["triangle_sample: Emitter sample=319 field=2 got=-0.206356 expected=-0.206164", "triangle_lighting: Lighting film mismatch mode=4 component=312 actual=0.064647 expected=0.065844", "replay-0: not run (source job failed)", "replay-1: not run (source job failed)", "replay-2: not run (source job failed)", "replay-3: not run (source job failed)", "replay-4: not run (source job failed)", "replay-5: not run (source job failed)"], "error": null, "wallSeconds": 204.0}

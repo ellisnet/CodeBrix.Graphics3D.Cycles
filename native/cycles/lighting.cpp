@@ -9,11 +9,7 @@ namespace ccl {
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
 std::string lighting_layout(){
   std::ostringstream out;auto constant=[&](const char *name,size_t value){out<<"const "<<name<<":u32="<<value<<"u;\n";};
-#ifdef __KERNEL_SSE__
-  constant("TRIANGLE_LIGHT_NATIVE_SSE",1);
-#else
-  constant("TRIANGLE_LIGHT_NATIVE_SSE",0);
-#endif
+  constant("TRIANGLE_LIGHT_NATIVE_SSE",reference_oracle_sse()?1:0);
 #define DATA(member) constant("D_integrator_" #member,offsetof(KernelData,integrator.member))
   DATA(use_direct_light);DATA(use_light_mis);DATA(num_lights);DATA(num_distribution);DATA(distribution_pdf_lights);DATA(distribution_pdf_triangles);DATA(light_inv_rr_threshold);
 #undef DATA
@@ -86,14 +82,10 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
           data.integrator.distribution_pdf_triangles>0,"Invalid native triangle light distribution");
         require(size_t(entry.object_id)<object_flag_records.size(),"Invalid native triangle object flags");
         const auto flags=object_flag_records[entry.object_id];
-        // Moving/deforming emitters pass their independent image. The static
-        // instanced image still differs at two pixels: the emitter sample and
-        // shadow match the original CPU at identical inputs, but the shading
-        // point's barycentrics differ by ULPs (closest-hit FMA contraction and
-        // the oracle's SSE reciprocal), flipping edge-grazing samples. Keep
-        // that configuration closed until its image passes (native/work/b1).
-        require((flags&(SD_OBJECT_TRANSFORM_APPLIED|SD_OBJECT_MOTION|SD_OBJECT_HAS_VERTEX_MOTION))!=0,
-          "WebGPU static instanced triangle emitters are not validated");
+        // Static instanced emitters pass their independent image since the
+        // closest/shadow traversal reproduces the CPU oracle's arithmetic
+        // exactly (contraction-proof sums, SSE grouping, RCPSS model; X2).
+        (void)flags;
       }
     }
   }

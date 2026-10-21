@@ -1,0 +1,122 @@
+[08:13:40] Started Phase E1 in worktree e1-triangle-arm (detached 01eb27b6 + Phase D2-D5 seed). Read reports B1/B2/B3/C/C2-arm64/C2-x64, DEVICE.md, PARITY Lighting row, pinned triangle.h/area.h/math_float3.h/optimization.h/math_fast.h.
+[08:19:00] Linux baseline build launched (default targets, --jobs 6) -> logs/build-baseline-default.log.
+[08:19:30] Evidence re-analysis (read-only main phaseC/phaseC2 bins): the emitter-probe failure (sample 4093, prim 2) is BROAD area light 2 (not a sun); triangle failures keep identical pdf (solid angle) but different D/P.
+[08:20:10] libm scan (libm/libm_probe.c, every binary32 in [-1,1]): Linux glibc acosf/asinf = correctly rounded (2 double-rounding artefacts of the probe's own reference); Samsung bionic arm64 acosf differs from CR at 5,387,136 inputs, asinf at 682,540; HP bionic x86_64 acosf 5,717,766, asinf 4,220,748, with digests different from the Samsung's (libm/samsung.txt, libm/hp.txt).
+[08:21:20] area_s_probe (emitter sample 4093): host asinf on Samsung moves g0 by 2 ulp; pdf/4 = 920.712097 (ARM oracle) vs CR 920.510071 (x64 oracle, GPU) - exact attribution.
+[08:22:10] tri_alpha_probe: at failing triangle samples 3880/940/662/2640 bionic acosf(cos_alpha) != correctly rounded acosf; glibc == CR. Root cause of item 1 = oracle C library (bionic) transcendental rounding, not SSE-vs-scalar float3 arithmetic.
+[08:23:19] Item 5: device.cpp refuses CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 on __ANDROID__ with a clear message before any pipeline compiles (desktop A/B unchanged).
+[08:24:30] Item 3 premise check: the triangle sampler probe module is already scene-specialized (C1 fix is in emitter_sample_gate.cpp; phaseC2 x64 probe-inputs/triangle-sample-probe-hp.wgsl differs from the mode-5 surface module only by removed glossy/GGX handlers). Its HP OOM is the same emissive-triangle+motion sampling load as item 4.
+[08:25:01] Linux baseline default build rc=0; launched remaining gate targets build.
+[08:26:00] Static attribution (tools/attrib_parent.py, B3 wgsl_stats call graph): mode-5 shade_surface_light inlines 3.35 MB; 4 call sites of triangle_light_vertices = 2.17 MB (motion compose + 30-step double-word acos + motion_sincos per site); non-motion triangle 1.60 MB; probe 2.15 MB; glass 0.64 MB.
+[08:27:49] Draft (work/e1/draft): acos Horner loop (same ops/order), single vertex call site via triangle_light_prefill + private cache read back by (object,prim,time), light_select shared by light_sample_native and the prefill; probe calls the prefill.
+[08:29:44] Item 2: diagnostic replay copy (work/e1/replay-diag) of the Linux r2 case-2 capture on the Samsung: command 574 = readback after intersect_shadow, word 15 actual 330 expected 331 (one shadow-path decision). 39,599 arena words already differ by ULPs before it (plain-arithmetic GPU divergence accumulates over bounces).
+[08:32:00] Item 2 films: at component 1484 the ARM64 CPU oracle (0.311020) equals the x64 oracle and the Linux GPU; only the Adreno GPU differs (0.351310). Item 2 is GPU-side, not oracle libm.
+[08:33:20] Built compile_probe (linux-x64, android-x64, android-arm64) from the C2 x64 probe tools (copied into tools/).
+[08:34:30] HP probe of offline-constructed draft1 mode-5 surface module: shade_surface_light compiles 34.9 s / 2.88 GB (baseline: Scudo OOM at 2.25 GB). Samsung draft1: 38.1 s (baseline replay 204.8 s).
+[08:35:08] HP probes: baseline mode-1 shade_surface_light 24.9 s / 2.61 GB; draft1 mode-1 20.4 s / 1.84 GB.
+[08:35:25] Linux baseline (cold) triangle gate PASS (sampler 2,079 strict max 4.8828e-4; images 5, 2,344 strict, max 1.0423e-5; 5 replays) and emitter_sample PASS (165 strict, 1.9226e-3) = Phase C numbers.
+[08:36:12] draft2 (+ private motion_sincos with one disk-sincos call site): HP mode-5 30.4 s / 2.32 GB.
+[08:36:40] draft3 (+ private looped disk sine/cosine) applied to the tree; Linux candidate build v1 rc=0 (08:37:31).
+[08:37:57] HP draft3: mode-5 shade_surface_light 27.4 s / 2.08 GB; triangle probe emitter_sample_probe 22.1 s / 1.99 GB (baseline OOM at 1.85 GB). Samsung draft3: 29.1 s / 0.49 GB and 24.1 s.
+[08:38:48] Android arm64 build (7 gates) launched into work/e1/build-android-arm64.
+[08:39:00] Linux v1 (cold): emitter_sample and triangle sampler .actual/.reference bins byte-identical to baseline.
+[08:40:30] Linux v1 (cold) triangle images: all five cases' gpu/cpu/repeat films and command streams byte-identical to baseline. Linux cold shade_surface_light: mode-5 (MOTION_OBJECT+LIGHT_TRIANGLE) 75.3 s -> 24.3 s; triangle without motion 14.9 s -> 14.7 s.
+[08:40:00] Device tooling: copied C2 arm64 run_corpus.py/stage.py/replay_host_captures.py into tools/, generalised to samsung(arm64)+hp(x64), remote prefix codebrix-e1-*, added expected-refusal jobs (spec-refusal corpus) and the regression corpus.
+[08:42:00] 18 of 18 failing triangle-sampler samples on static emitters (objects 0-4): bionic arm64 acosf(cos_alpha) differs from the correctly rounded value; glibc equals it for all 18 (libm/tri_alpha_all.c, libm/tri-alpha-all.txt). Ran the 7 KB CPU-only probe on the Samsung while its compile-table probe was running (CPU only, no GPU; noted).
+[08:42:33] Android arm64 build rc=0; android-x64 build launched.
+[08:47:38] Linux close set (cold): broad_lighting 12/5,046 strict 1.087e-4 (replay 450), transparent_lighting 8/3,838 2.575e-5 (596), object motion 8/5,762 8.34e-6 (454), deforming 8/5,804 8.70e-6 (454), camera-motion PASS = Phase C numbers; legacy-v5 replay not run: its capture lives only in main's native/work (absent in this worktree; it was a cold driver crash in Phase C anyway).
+[08:49:47] Compile tables (one cold pipeline per process) complete on HP and Samsung (logs/probe-table-*.jsonl).
+[08:51:15] samsung triangle-r1: START triangle_sample timeout=900s
+[08:51:16] hp triangle-r1: START triangle_sample timeout=900s
+[08:51:38] hp triangle-r1: FAIL triangle_sample exit=1 22s: Emitter sample=43 field=2 got=0.181877 expected=0.181771
+[08:51:38] hp triangle-r1: START surface timeout=900s
+[08:51:39] samsung triangle-r1: FAIL triangle_sample exit=1 23s: Emitter sample=43 field=2 got=0.181877 expected=0.181771
+[08:51:39] samsung triangle-r1: START surface timeout=900s
+[08:53:19] samsung triangle-r1: PASS surface 100s maxPipelineMs=4955.26
+[08:53:19] samsung triangle-r1: START triangle_lighting timeout=900s
+[08:51:02] Android arm64 + x64 builds reviewed (42 files each: ELF machine, NEEDED closure, no GLIBC; staged-binaries-<rid>.json), staged and hash-verified on the Samsung and the HP. Device chains launched (triangle, emitter, regression, spec-refusal, Linux v1 triangle captures).
+[08:51:38] HP triangle sampler now COMPILES (22 s) and fails exactly like the Samsung: sample 43 P.y got 0.181877 expected 0.181771 against the HP's bionic x86_64 (SSE) oracle. Confirms item 1 is the Android C library (bionic), not ARM arithmetic.
+[08:53:19] Samsung surface gate PASS (100 s).
+[08:53:53] Linux glass_render with specialization off (cold): PASS, GPU film a8e69a3424036a797160ad074aca1a5435f0d232e7b3298e5509cf8ef7349602 (= Phase C).
+[08:54:06] hp triangle-r1: PASS surface 148s maxPipelineMs=5928.66
+[08:54:06] hp triangle-r1: START triangle_lighting timeout=900s
+[08:54:15] samsung triangle-r1: FAIL triangle_lighting exit=1 55s: Lighting film mismatch mode=2 component=1484 actual=0.351310 expected=0.311020
+[08:54:21] samsung triangle-r1: END passed=False wall=187s/1800s failures=7
+[08:54:26] samsung emitter-r1: START emitter_sample timeout=300s
+[08:54:51] samsung emitter-r1: FAIL emitter_sample exit=1 24s: Emitter sample=4093 field=8 got=920.510071 expected=920.712097
+[08:54:56] samsung emitter-r1: END passed=False wall=31s/600s failures=1
+[08:55:02] samsung regression-r1: START glass_render timeout=600s
+[08:56:20] samsung regression-r1: PASS glass_render 77s maxPipelineMs=5164.33
+[08:56:20] samsung regression-r1: START lighting_mis timeout=600s
+[08:56:24] hp triangle-r1: PASS triangle_lighting 128s maxPipelineMs=27843.1
+[08:56:24] hp triangle-r1: START replay-0 timeout=900s
+[08:56:55] samsung regression-r1: PASS lighting_mis 32s maxPipelineMs=5274.53
+[08:56:55] samsung regression-r1: START transparent_lighting timeout=600s
+[08:57:02] hp triangle-r1: PASS replay-0 36s readbacks=289 max=4.77e-07 strict=9 fmt=native-command-stream-v6
+[08:57:02] hp triangle-r1: START replay-1 timeout=900s
+[08:57:57] hp triangle-r1: PASS replay-1 54s readbacks=417 max=7.99e-06 strict=82 fmt=native-command-stream-v6
+[08:57:57] hp triangle-r1: START replay-2 timeout=900s
+[08:58:52] hp triangle-r1: PASS replay-2 53s readbacks=415 max=1.04e-05 strict=144 fmt=native-command-stream-v6
+[08:58:52] hp triangle-r1: START replay-3 timeout=900s
+[08:59:25] samsung regression-r1: PASS transparent_lighting 147s maxPipelineMs=25419.4
+[08:59:29] samsung regression-r1: END passed=True wall=268s/1500s failures=0
+[08:59:35] samsung spec-refusal-r1: START glass_render-spec timeout=600s
+[08:59:48] hp triangle-r1: PASS replay-3 54s readbacks=473 max=9.42e-06 strict=463 fmt=native-command-stream-v6
+[08:59:48] hp triangle-r1: START replay-4 timeout=900s
+[09:00:52] samsung spec-refusal-r1: PASS glass_render-spec 77s maxPipelineMs=5244.15
+[09:00:52] samsung spec-refusal-r1: START glass_render-nospec-refused timeout=600s
+[09:00:53] samsung spec-refusal-r1: FAIL glass_render-nospec-refused refusal exit=139 1s
+[09:00:58] samsung spec-refusal-r1: END passed=False wall=84s/900s failures=1
+[09:01:03] samsung hostcap-linux-v1-r1: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-0)
+[09:01:23] hp triangle-r1: PASS replay-4 93s readbacks=464 max=1.03e-05 strict=464 fmt=native-command-stream-v6
+[09:01:23] samsung hostcap-linux-v1-r1: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[09:01:23] samsung hostcap-linux-v1-r1: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-1)
+[09:01:27] hp triangle-r1: END passed=False wall=614s/2400s failures=1
+[09:01:32] hp emitter-r1: START emitter_sample timeout=300s
+[09:01:59] samsung hostcap-linux-v1-r1: PASS tri1 readbacks=417 max=1.1e-06 strict=40 fmt=native-command-stream-v6
+[09:02:00] samsung hostcap-linux-v1-r1: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-2)
+[09:02:12] hp emitter-r1: PASS emitter_sample 40s maxPipelineMs=None
+[09:02:17] hp emitter-r1: END passed=True wall=45s/600s failures=0
+[09:02:23] hp regression-r1: START glass_render timeout=900s
+[09:02:35] samsung hostcap-linux-v1-r1: FAIL tri2 exit 1
+[09:02:35] samsung hostcap-linux-v1-r1: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-3)
+[09:01:27] HP triangle corpus: surface PASS, triangle_lighting PASS (all 5 images incl. mode 5 moving/deforming emitter and the static-instanced rejection; shade_surface_light max 27.8 s), 5 replays PASS (289/417/415/473/464 readbacks); sampler FAIL vs the HP bionic oracle (32 practical in 30 samples, worst sample 3880 ratio 11.6 - same oracle value as the Samsung's).
+[09:01:23] Samsung: triangle sampler FAIL (24/22, unchanged from C2), surface PASS, triangle_lighting FAIL mode 2 component 1484 (unchanged); emitter FAIL sample 4093 pdf (unchanged); regression glass_render/lighting_mis/transparent_lighting PASS; glass_render-spec PASS; spec-off refusal job exit 139: the device factory catches the refusal and returns Cycles' dummy device with the message (the product path, which the host reports through have_error()), but the gate binaries dereference dynamic_cast<WebGPUDevice*> unchecked. Validated instead with codebrix_host_gpu_test (host API), see below.
+[09:02:17] HP emitter_sample PASS (40 s).
+[09:03:11] samsung hostcap-linux-v1-r1: PASS tri3 readbacks=473 max=2.68e-06 strict=281 fmt=native-command-stream-v6
+[09:03:11] samsung hostcap-linux-v1-r1: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-4)
+[09:03:38] hp regression-r1: PASS glass_render 71s maxPipelineMs=11172
+[09:03:38] hp regression-r1: START lighting_mis timeout=900s
+[09:04:30] samsung hostcap-linux-v1-r1: PASS tri4 readbacks=464 max=2.74e-06 strict=293 fmt=native-command-stream-v6
+[09:04:34] samsung hostcap-linux-v1-r1: END passed=False wall=212s/1500s
+[09:04:40] hp regression-r1: PASS lighting_mis 49s maxPipelineMs=10897
+[09:04:40] hp regression-r1: START transparent_lighting timeout=900s
+[09:06:31] hp regression-r1: PASS transparent_lighting 94s maxPipelineMs=16569.6
+[09:06:35] hp regression-r1: END passed=True wall=253s/1800s failures=0
+[09:06:40] hp spec-refusal-r1: START glass_render-spec timeout=600s
+[09:07:55] hp spec-refusal-r1: PASS glass_render-spec 70s maxPipelineMs=10777.1
+[09:07:55] hp spec-refusal-r1: START glass_render-nospec-refused timeout=600s
+[09:07:55] hp spec-refusal-r1: FAIL glass_render-nospec-refused refusal exit=139 0s
+[09:07:59] hp spec-refusal-r1: END passed=False wall=80s/900s failures=1
+[09:08:04] hp hostcap-linux-v1-r1: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-0)
+[09:08:42] hp hostcap-linux-v1-r1: PASS tri0 readbacks=289 max=4.77e-07 strict=9 fmt=native-command-stream-v6
+[09:08:43] hp hostcap-linux-v1-r1: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-1)
+[09:09:39] hp hostcap-linux-v1-r1: PASS tri1 readbacks=417 max=7.99e-06 strict=80 fmt=native-command-stream-v6
+[09:09:39] hp hostcap-linux-v1-r1: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-2)
+[09:10:35] hp hostcap-linux-v1-r1: PASS tri2 readbacks=415 max=1.04e-05 strict=144 fmt=native-command-stream-v6
+[09:10:36] hp hostcap-linux-v1-r1: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-3)
+[09:11:31] hp hostcap-linux-v1-r1: PASS tri3 readbacks=473 max=9.42e-06 strict=467 fmt=native-command-stream-v6
+[09:11:32] hp hostcap-linux-v1-r1: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/e1-triangle-arm/native/work/e1/runs/v1-triangle/triangle_lighting/run/case-4)
+[09:13:06] hp hostcap-linux-v1-r1: PASS tri4 readbacks=464 max=2.32e-06 strict=472 fmt=native-command-stream-v6
+[09:13:10] hp hostcap-linux-v1-r1: END passed=True wall=307s/1500s
+[09:03:53] Linux all-lanes 29 (cold): PASS, sources and binaries unchanged; broad_lighting 12/5,048 strict, lighting_mis 5,544, feature_combination 5,659 (3.3855e-5), transparent_lighting 3,838, transparent_shadow 0, emitter_sample 165 (1.9226e-3), glass_render 121 image strict with GPU film a8e69a34... (= spec-off film). Phase C numbers within atomic run-to-run variation.
+[09:04:35] Samsung Linux-v1 triangle captures: tri0/1/3/4 PASS (tri4 = mode 5: shade_surface_light compiled in 29.3 s on the Adreno, was 204.8 s), tri2 FAIL (scheduler readback, unchanged item 2).
+[09:05:00] Samsung host-API refusal check: codebrix_host_gpu_test with CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 -> cbc_host_create returned 3 with the refusal message, exit 1 (no driver crash).
+[09:06:35] HP regression (glass_render, lighting_mis, transparent_lighting) PASS.
+[09:07:01] Linux host gate (cold): PASS, 48 exports, 3,142 comparisons, max 1.19e-7, 0 practical, 0 strict.
+[09:13:10] HP Linux-v1 triangle captures: all 5 PASS including tri2 (Intel to Intel) and tri4 (mode 5).
+[09:13:30] HP host-API refusal check: same refusal message, exit 1.
+[09:14:50] dotnet test --solution (cold scratch Mesa cache): 157 passed, 0 failed, 0 skipped. Audits: audit.py PASS (0 errors), notices.py --check PASS (34 components), guard tests OK, git diff --check clean.
+[09:15:30] Item 2 isolated (tools/shadow_diff.py on the replay arenas dumped after command 573, intersect_shadow): one bounce-0 shadow ray, pixel 504 sample 4, toward the instanced emitter (light object 3, prim 7). Its origin, direction and tmax already differ by 1-2 ulp between Adreno and Intel (inputs come from plain-arithmetic closest-hit/ShaderData stages); Intel finds it unoccluded (queued shade_shadow), the Adreno terminates it as occluded. Same family as the static-instanced rejection (B1): ulp-level shading-point divergence flipping an edge-grazing visibility test. Fixing it needs contraction-proof traversal/intersection in the shared stages, which would change Linux results; not done.
+[09:16:00] Devices cleaned: every /data/local/tmp/codebrix-e1-* folder removed on the Samsung and the HP (all outputs pulled first); no codebrix/render_replay/compile_probe processes.
+[09:18:22] Report written (agent-reports/phaseE1-triangle-arm.md); sealing handoff.

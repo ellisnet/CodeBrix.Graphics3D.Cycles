@@ -11,10 +11,12 @@
 #include "scene/scene.h"
 #include "wavefront.h"
 #include "svm_surface_reference.h"
+#include <stdexcept>
 std::vector<ccl::SurfaceSvmRecord> original_surface_svm(ccl::DeviceScene &scene,
     const std::vector<int> &indices,const std::vector<ccl::IntegratorStateCPU> &states){
   using namespace ccl;
   static_assert((sizeof(FresnelGeneralizedSchlick)+sizeof(ShaderClosure)-1)/sizeof(ShaderClosure)==1);
+  static_assert((sizeof(FresnelF82Tint)+sizeof(ShaderClosure)-1)/sizeof(ShaderClosure)==1);
   KernelGlobalsCPU base;base.data=scene.data;
   auto images=original_image_info(scene);base.image_info.data=images.data();base.image_info.width=images.size();
 #define TABLE(name,type) base.name.data=reinterpret_cast<decltype(base.name.data)>(scene.name.data());base.name.width=int(scene.name.size());
@@ -40,7 +42,20 @@ std::vector<ccl::SurfaceSvmRecord> original_surface_svm(ccl::DeviceScene &scene,
         r.roughness=p.roughness;r.a=p.a;r.b=p.b;r.multiscatter=p.multiscatter_term;}
       if(CLOSURE_IS_BSDF_MICROFACET(c.type)){auto &p=*reinterpret_cast<const MicrofacetBsdf*>(&c);
         r.alpha_x=p.alpha_x;r.alpha_y=p.alpha_y;r.ior=p.ior;r.energy_scale=p.energy_scale;r.T=p.T;
-        if(p.fresnel_type==MicrofacetFresnel::GENERALIZED_SCHLICK){auto &f=*reinterpret_cast<const FresnelGeneralizedSchlick*>(p.fresnel);r.fresnel_f0=f.f0.x;r.reflection_tint=f.reflection_tint;r.transmission_tint=f.transmission_tint;}}
+        // Canonical Fresnel encoding (surface_closure.h); only the models the
+        // WebGPU device implements are representable.
+        if(!(p.fresnel_type==MicrofacetFresnel::NONE||p.fresnel_type==MicrofacetFresnel::DIELECTRIC||
+             p.fresnel_type==MicrofacetFresnel::GENERALIZED_SCHLICK||p.fresnel_type==MicrofacetFresnel::F82_TINT))throw std::runtime_error("Unrepresentable reference Fresnel model");
+        r.roughness=float(p.fresnel_type);
+        if(p.fresnel_type==MicrofacetFresnel::GENERALIZED_SCHLICK){auto &f=*reinterpret_cast<const FresnelGeneralizedSchlick*>(p.fresnel);
+          if(!(f.exponent<0&&isequal(f.f90,one_spectrum())))throw std::runtime_error("Unrepresentable generalized Schlick reference");
+          if(f.thin_film.thickness>THINFILM_THICKNESS_CUTOFF){r.a=f.thin_film.thickness;r.b=f.thin_film.ior;}
+          r.fresnel_f0=f.f0.x;r.multiscatter=f.f0;r.reflection_tint=f.reflection_tint;r.transmission_tint=f.transmission_tint;}
+        if(p.fresnel_type==MicrofacetFresnel::F82_TINT){auto &f=*reinterpret_cast<const FresnelF82Tint*>(p.fresnel);
+          if(f.thin_film.thickness>THINFILM_THICKNESS_CUTOFF){r.a=f.thin_film.thickness;r.b=f.thin_film.ior;}
+          r.multiscatter=f.f0;r.reflection_tint=f.b;}}
+      if(c.type==CLOSURE_BSDF_SHEEN_ID){auto &p=*reinterpret_cast<const SheenBsdf*>(&c);
+        r.roughness=p.roughness;r.a=p.transformA;r.b=p.transformB;r.T=p.T;r.multiscatter=p.B;}
     }
     out.push_back(result);
   }

@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural/native/tools/principled_gate.py", line 53, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural/native/tools/principled_gate.py", line 36, in main
+    subprocess.run([str(WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate')),str(prefix)],stdout=stdout,stderr=stderr,check=True,timeout=900)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural/native/work/cycles-build/bin/codebrix_cycles_principled_svm_gate', '/home/jeremy/ClaudeHome/cycles-worktrees/m3-procedural/native/work/m3/validation/final/principled-gate/principled_svm/run']' returned non-zero exit status 1.

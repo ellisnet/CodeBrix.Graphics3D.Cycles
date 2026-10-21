@@ -6,8 +6,18 @@
 // Node layouts/enums come from the compiled
 // Cycles ABI; scalar math/gamma functions are generated from upstream AST.
 // Background emission accumulation also derives from closure/emissive.h (BSD).
+// The value stack (words 0..254) and its initialization mask (words 255..262)
+// share one module-scope private array instead of two arrays inside the
+// function-local SvmState. On the Pixel 4 XL's Adreno 640 (driver
+// EV031.31.04.01) dynamic indexing into arrays held in the large SvmState
+// corrupted other live values: a lookup-table address lost its low 16 bits
+// (error 512) and the closure budget read as zero (no closures, black motion
+// images); two separate private arrays lost mask bits (error 8). Evaluations
+// never nest and each one clears the mask first, so reads, errors and results
+// are unchanged.
+var<private> svm_stack:array<u32,263>;
 struct SvmState {
-    stack:array<u32,255>, initialized:array<u32,8>, pc:u32, error:u32,
+    pc:u32, error:u32,
     volume:bool, weight:vec3<f32>, geometry:SurfaceData, output:SvmResult,
 }
 // Error bits: 2 unsupported opcode; 4 bytecode bounds; 8 invalid/uninitialized
@@ -24,13 +34,13 @@ fn svm_take(s:ptr<function,SvmState>,bytes:u32)->u32{
 fn svm_byte(address:u32)->u32{return (load_word(address)>>(8u*(address%4u)))&255u;}
 fn svm_load_bits(s:ptr<function,SvmState>,index:u32)->u32{
     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return 0u;}
-    if(((*s).initialized[index/32u]&(1u<<(index%32u)))==0u){svm_error(s,8u);return 0u;}
-    return (*s).stack[index];
+    if((svm_stack[255u+index/32u]&(1u<<(index%32u)))==0u){svm_error(s,8u);return 0u;}
+    return svm_stack[index];
 }
 fn svm_load(s:ptr<function,SvmState>,index:u32)->f32{return bitcast<f32>(svm_load_bits(s,index));}
 fn svm_store_bits(s:ptr<function,SvmState>,index:u32,value:u32){
     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return;}
-    (*s).stack[index]=value;(*s).initialized[index/32u]|=1u<<(index%32u);
+    svm_stack[index]=value;svm_stack[255u+index/32u]|=1u<<(index%32u);
 }
 fn svm_store(s:ptr<function,SvmState>,index:u32,value:f32){svm_store_bits(s,index,bitcast<u32>(value));}
 fn svm_load3(s:ptr<function,SvmState>,index:u32)->vec3<f32>{return vec3<f32>(svm_load(s,index),svm_load(s,index+1u),svm_load(s,index+2u));}
@@ -129,6 +139,7 @@ fn svm_gradient(s:ptr<function,SvmState>,kind:u32,v:vec3<f32>)->f32{
     }
 }
 fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,flag:u32,visibility:u32,lcg:u32,volume:bool,previous:SvmResult)->SvmResult{
+    svm_stack[255]=0u;svm_stack[256]=0u;svm_stack[257]=0u;svm_stack[258]=0u;svm_stack[259]=0u;svm_stack[260]=0u;svm_stack[261]=0u;svm_stack[262]=0u;
     var s:SvmState;s.output=previous;s.volume=volume;s.geometry=geometry;s.pc=(geometry.shader&SHADER_MASK)*(1u+SZ_ShaderJump/4u);
     s.output.runtime_flag=geometry.runtime_flag;s.output.N=geometry.N;s.output.lcg_state=lcg;
     if(closure_limit>SVM_CLOSURE_CAPACITY){svm_error(&s,16u);return s.output;}
@@ -180,6 +191,135 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             case NODE_GAMMA:{size=SZ_Gamma;}
             case NODE_INVERT:{size=SZ_Invert;}
             case NODE_BRIGHTCONTRAST:{size=SZ_BrightContrast;}
+//#if SVM_NODE_TEX_NOISE
+            case NODE_TEX_NOISE:{size=SZ_TexNoise;}
+//#endif
+//#if SVM_NODE_TEX_VORONOI
+            case NODE_TEX_VORONOI:{size=SZ_TexVoronoi;}
+//#endif
+//#if SVM_NODE_TEX_WHITE_NOISE
+            case NODE_TEX_WHITE_NOISE:{size=SZ_TexWhiteNoise;}
+//#endif
+//#if SVM_NODE_TEX_WAVE
+            case NODE_TEX_WAVE:{size=SZ_TexWave;}
+//#endif
+//#if SVM_NODE_TEX_MAGIC
+            case NODE_TEX_MAGIC:{size=SZ_TexMagic;}
+//#endif
+//#if SVM_NODE_TEX_BRICK
+            case NODE_TEX_BRICK:{size=SZ_TexBrick;}
+//#endif
+//#if SVM_NODE_MAPPING
+            case NODE_MAPPING:{size=SZ_Mapping;}
+//#endif
+//#if SVM_NODE_MAPPING
+            case NODE_TEXTURE_MAPPING:{size=SZ_TextureMapping;}
+//#endif
+//#if SVM_NODE_MAPPING
+            case NODE_MIN_MAX:{size=SZ_MinMax;}
+//#endif
+//#if SVM_NODE_MAP_RANGE
+            case NODE_MAP_RANGE:{size=SZ_MapRange;}
+//#endif
+//#if SVM_NODE_MAP_RANGE
+            case NODE_VECTOR_MAP_RANGE:{size=SZ_VectorMapRange;}
+//#endif
+//#if SVM_NODE_MIX
+            case NODE_MIX:{size=SZ_Mix;}
+//#endif
+//#if SVM_NODE_MIX
+            case NODE_MIX_COLOR:{size=SZ_MixColor;}
+//#endif
+//#if SVM_NODE_MIX
+            case NODE_MIX_FLOAT:{size=SZ_MixFloat;}
+//#endif
+//#if SVM_NODE_MIX
+            case NODE_MIX_VECTOR:{size=SZ_MixVector;}
+//#endif
+//#if SVM_NODE_MIX
+            case NODE_MIX_VECTOR_NON_UNIFORM:{size=SZ_MixVectorNonUniform;}
+//#endif
+//#if SVM_NODE_HSV
+            case NODE_HSV:{size=SZ_HSV;}
+//#endif
+//#if SVM_NODE_COLOR_SEPCOMB
+            case NODE_SEPARATE_COLOR:{size=SZ_SeparateColor;}
+//#endif
+//#if SVM_NODE_COLOR_SEPCOMB
+            case NODE_COMBINE_COLOR:{size=SZ_CombineColor;}
+//#endif
+//#if SVM_NODE_RAMP
+            case NODE_RGB_RAMP:{size=SZ_RGBRamp;}
+//#endif
+//#if SVM_NODE_RAMP
+            case NODE_CURVES:{size=SZ_Curves;}
+//#endif
+//#if SVM_NODE_RAMP
+            case NODE_FLOAT_CURVE:{size=SZ_FloatCurve;}
+//#endif
+//#if SVM_NODE_FRESNEL
+            case NODE_FRESNEL:{size=SZ_Fresnel;}
+//#endif
+//#if SVM_NODE_FRESNEL
+            case NODE_LAYER_WEIGHT:{size=SZ_LayerWeight;}
+//#endif
+//#if SVM_NODE_VECTOR_ROTATE
+            case NODE_VECTOR_ROTATE:{size=SZ_VectorRotate;}
+//#endif
+//#if SVM_NODE_BLACKBODY
+            case NODE_BLACKBODY:{size=SZ_Blackbody;}
+//#endif
+//#if SVM_NODE_NORMAL
+            case NODE_NORMAL:{size=SZ_Normal;}
+//#endif
+//#if SVM_NODE_SHADING_INFO
+            case NODE_OBJECT_INFO:{size=SZ_ObjectInfo;}
+//#endif
+//#if SVM_NODE_SHADING_INFO
+            case NODE_CAMERA:{size=SZ_Camera;}
+//#endif
+//#if SVM_NODE_SHADING_INFO
+            case NODE_SCENE_TIME:{size=SZ_SceneTime;}
+//#endif
+//#if SVM_NODE_SHADING_INFO
+            case NODE_VECTOR_TRANSFORM:{size=SZ_VectorTransform;}
+//#endif
+//#if SVM_NODE_LIGHT_PATH
+            case NODE_LIGHT_PATH:{size=SZ_LightPath;}
+//#endif
+//#if SVM_NODE_WAVELENGTH
+            case NODE_WAVELENGTH:{size=SZ_Wavelength;}
+//#endif
+//#if SVM_NODE_WIREFRAME
+            case NODE_WIREFRAME:{size=SZ_Wireframe;}
+//#endif
+//#if SVM_NODE_BUMP
+            case NODE_SET_BUMP:{size=SZ_SetBump;}
+//#endif
+//#if SVM_NODE_BUMP_STATE
+            case NODE_ENTER_BUMP_EVAL:{size=SZ_EnterBumpEval;}
+            case NODE_LEAVE_BUMP_EVAL:{size=SZ_LeaveBumpEval;}
+//#endif
+//#if SVM_NODE_GEOMETRY_DERIVATIVE
+            case NODE_GEOMETRY_DERIVATIVE:{size=SZ_Geometry;}
+//#endif
+//#if SVM_NODE_TEX_COORD_DERIVATIVE
+            case NODE_TEX_COORD_DERIVATIVE:{size=SZ_TexCoord;}
+//#endif
+//#if SVM_NODE_VALUE_DERIVATIVE
+            case NODE_VALUE_F_DERIVATIVE:{size=SZ_ValueF;}
+            case NODE_VALUE_V_DERIVATIVE:{size=SZ_ValueV;}
+            case NODE_CONVERT_DERIVATIVE:{size=SZ_Convert;}
+            case NODE_SEPARATE_VECTOR_DERIVATIVE:{size=SZ_SeparateVector;}
+            case NODE_COMBINE_VECTOR_DERIVATIVE:{size=SZ_CombineVector;}
+//#endif
+//#if SVM_NODE_VECTOR_MATH_DERIVATIVE
+            case NODE_VECTOR_MATH_DERIVATIVE:{size=SZ_VectorMath;}
+//#endif
+//#if SVM_NODE_MAPPING_DERIVATIVE
+            case NODE_MAPPING_DERIVATIVE:{size=SZ_Mapping;}
+            case NODE_TEXTURE_MAPPING_DERIVATIVE:{size=SZ_TextureMapping;}
+//#endif
             default:{svm_error(&s,2u);return s.output;}
         }
         let node=svm_take(&s,size);if(s.error!=0u){return s.output;}
@@ -207,9 +347,16 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 svm_store3(&s,svm_byte(node+N_Geometry_out_offset),v);
 //#endif
             }
-            case NODE_TEX_COORD:{
+//#if SVM_NODE_TEX_COORD_DERIVATIVE else             case NODE_TEX_COORD:{
+            // One svm_texco call site for both variants (drivers inline every call).
+            case NODE_TEX_COORD,NODE_TEX_COORD_DERIVATIVE:{
+//#endif
 //#if SVM_NODE_TEX_COORD else svm_error(&s,2u);
-                svm_store3(&s,svm_byte(node+N_TexCoord_out_offset),svm_texco(&s,node,index));
+//#if SVM_NODE_TEX_COORD_DERIVATIVE else                 svm_store3(&s,svm_byte(node+N_TexCoord_out_offset),svm_texco(&s,node,index));
+                let transform_address=p(21u)+s.pc*4u;let texco=svm_texco(&s,node,index);
+                if(opcode==NODE_TEX_COORD_DERIVATIVE){svm_tex_coord_derivative(&s,node,index,texco,transform_address);}
+                else{svm_store3(&s,svm_byte(node+N_TexCoord_out_offset),texco);}
+//#endif
 //#endif
             }
             // One call site for all image layouts: drivers inline every WGSL call,
@@ -349,6 +496,136 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 svm_optional_store3(&s,svm_byte(node+N_BrightContrast_out_offset),max((1.0+contrast)*color+vec3<f32>(bright-contrast*0.5),vec3<f32>(0)));
 //#endif
             }
+//#if SVM_NODE_TEX_NOISE
+            case NODE_TEX_NOISE:{
+                svm_noise_texture(&s,node);
+            }
+//#endif
+//#if SVM_NODE_TEX_VORONOI
+            case NODE_TEX_VORONOI:{
+                svm_voronoi_texture(&s,node);
+            }
+//#endif
+//#if SVM_NODE_TEX_WHITE_NOISE
+            case NODE_TEX_WHITE_NOISE:{
+                svm_white_noise(&s,node);
+            }
+//#endif
+//#if SVM_NODE_TEX_WAVE
+            case NODE_TEX_WAVE:{
+                svm_wave_texture(&s,node);
+            }
+//#endif
+//#if SVM_NODE_TEX_MAGIC
+            case NODE_TEX_MAGIC:{
+                svm_magic_texture(&s,node);
+            }
+//#endif
+//#if SVM_NODE_TEX_BRICK
+            case NODE_TEX_BRICK:{
+                svm_brick_texture(&s,node);
+            }
+//#endif
+//#if SVM_NODE_MAPPING
+            case NODE_MAPPING,NODE_TEXTURE_MAPPING,NODE_MIN_MAX:{
+                svm_mapping(&s,node,opcode);
+            }
+//#endif
+//#if SVM_NODE_MAP_RANGE
+            case NODE_MAP_RANGE,NODE_VECTOR_MAP_RANGE:{
+                svm_map_range(&s,node,opcode);
+            }
+//#endif
+//#if SVM_NODE_MIX
+            case NODE_MIX,NODE_MIX_COLOR,NODE_MIX_FLOAT,NODE_MIX_VECTOR,NODE_MIX_VECTOR_NON_UNIFORM:{
+                svm_mix_node(&s,node,opcode);
+            }
+//#endif
+//#if SVM_NODE_HSV
+            case NODE_HSV:{
+                svm_hsv(&s,node);
+            }
+//#endif
+//#if SVM_NODE_COLOR_SEPCOMB
+            case NODE_SEPARATE_COLOR,NODE_COMBINE_COLOR:{
+                svm_color_sepcomb(&s,node,opcode);
+            }
+//#endif
+//#if SVM_NODE_RAMP
+            case NODE_RGB_RAMP,NODE_CURVES,NODE_FLOAT_CURVE:{
+                svm_ramp_node(&s,node,opcode);
+            }
+//#endif
+//#if SVM_NODE_FRESNEL
+            case NODE_FRESNEL,NODE_LAYER_WEIGHT:{
+                svm_fresnel_node(&s,node,opcode);
+            }
+//#endif
+//#if SVM_NODE_VECTOR_ROTATE
+            case NODE_VECTOR_ROTATE:{
+                svm_vector_rotate(&s,node);
+            }
+//#endif
+//#if SVM_NODE_BLACKBODY
+            case NODE_BLACKBODY:{
+                svm_blackbody(&s,node);
+            }
+//#endif
+//#if SVM_NODE_NORMAL
+            case NODE_NORMAL:{
+                svm_normal_node(&s,node);
+            }
+//#endif
+//#if SVM_NODE_SHADING_INFO
+            case NODE_OBJECT_INFO,NODE_CAMERA,NODE_SCENE_TIME,NODE_VECTOR_TRANSFORM:{
+                svm_shading_info(&s,node,opcode);
+            }
+//#endif
+//#if SVM_NODE_LIGHT_PATH
+            case NODE_LIGHT_PATH:{
+                svm_light_path(&s,node,index,flag,visibility);
+            }
+//#endif
+//#if SVM_NODE_WAVELENGTH
+            case NODE_WAVELENGTH:{
+                svm_wavelength(&s,node);
+            }
+//#endif
+//#if SVM_NODE_WIREFRAME
+            case NODE_WIREFRAME:{
+                svm_wireframe(&s,node);
+            }
+//#endif
+//#if SVM_NODE_BUMP
+            case NODE_SET_BUMP:{
+                svm_set_bump(&s,node);
+            }
+//#endif
+//#if SVM_NODE_BUMP_STATE
+            case NODE_ENTER_BUMP_EVAL,NODE_LEAVE_BUMP_EVAL:{
+                svm_bump_state(&s,node,opcode==NODE_ENTER_BUMP_EVAL);
+            }
+//#endif
+//#if SVM_NODE_GEOMETRY_DERIVATIVE
+            case NODE_GEOMETRY_DERIVATIVE:{
+                svm_geometry_derivative(&s,node);
+            }
+//#endif
+//#if SVM_NODE_VALUE_DERIVATIVE
+            case NODE_VALUE_F_DERIVATIVE,NODE_VALUE_V_DERIVATIVE,NODE_CONVERT_DERIVATIVE,NODE_SEPARATE_VECTOR_DERIVATIVE,NODE_COMBINE_VECTOR_DERIVATIVE:{
+                svm_value_derivative(&s,node,opcode);
+            }
+//#endif
+//#if SVM_NODE_VECTOR_MATH_DERIVATIVE
+            case NODE_VECTOR_MATH_DERIVATIVE:{
+                svm_vector_math_derivative(&s,node);
+            }
+//#endif
+//#if SVM_NODE_MAPPING_DERIVATIVE
+            case NODE_MAPPING_DERIVATIVE,NODE_TEXTURE_MAPPING_DERIVATIVE:{
+                svm_mapping_derivative(&s,node,opcode);
+            }
+//#endif
             default:{svm_error(&s,2u);}
         }
         if(s.error!=0u){return s.output;}

@@ -25,15 +25,23 @@ fn light_cone(n:vec3<f32>,angle:f32,random:vec2<f32>)->vec4<f32>{
     xy*=sqrt(max(angle*(2.0-angle*r2),0.0));let b=light_basis(n);
     return vec4<f32>(xy.x*b.X+xy.y*b.Y+cosine*n,(0.5*INV_PI)/angle);
 }
-fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
-    var ls:NativeLightSample;
+// Light CDF selection (shared with triangle_light_prefill).
+struct LightSelection {random:vec3<f32>,distribution:u32,prim:i32}
+fn light_select(index:u32)->LightSelection{
     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
     let n=data_word(D_integrator_num_distribution);var first=0u;var length=n+1u;
     loop{let half_count=length>>1u;let middle=first+half_count;
         if(random.z<heap_float(table_at(G_light_distribution,middle,SIZE_light_distribution)+LD_totarea)){length=half_count;}
         else{first=middle+1u;length-=half_count+1u;}if(length==0u){break;}}
     let emitter=u32(clamp(i32(first)-1,0,i32(n)-1));
-    let distribution=table_at(G_light_distribution,emitter,SIZE_light_distribution);let prim=bitcast<i32>(load_word(distribution+LD_prim));
+    let distribution=table_at(G_light_distribution,emitter,SIZE_light_distribution);
+    return LightSelection(random,distribution,bitcast<i32>(load_word(distribution+LD_prim)));
+}
+// Emissive-triangle vertices come from triangle_light_prefill, which the caller
+// runs first for the same invocation.
+fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
+    var ls:NativeLightSample;
+    let selection=light_select(index);let random=selection.random;let distribution=selection.distribution;let prim=selection.prim;
     if(prim>=0){
         // Removed by scene specialization when no emissive triangle is in the light
         // distribution (pipelines.h); a reached removed handler reports error 2.
@@ -122,8 +130,17 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     let probability=select(1.0,max(abs(bsdf.eval.x),max(abs(bsdf.eval.y),abs(bsdf.eval.z)))*rr,rr>0.0);
     if(probability<1.0){let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
         if(random>=probability){return;}let inverse=1.0/probability;bsdf.eval*=inverse;bsdf.diffuse*=inverse;bsdf.glossy*=inverse;}
-    var direction=ls.D;var tmax=ls.t;if(ls.t!=bitcast<f32>(0x7f7fffffu)){let ray=light_normalize_len(ls.P-sd.P);direction=ray.xyz;tmax=ray.w;}
-    let origin=surf_ray_offset(sd,direction);let allocator=load_word(p(7u)+S_next_shadow_path_index)/4u;var shadow:u32;
+    // Shadow terminator geometry offset (shadow_ray_offset) moves the origin of
+    // smooth-shaded triangles first; w=0 means the ray no longer skips its own
+    // primitive and takes no self-intersection offset (light/sample.h).
+    var start=vec4<f32>(sd.P,1.0);
+    if(terminator_geometry_active(sd)){
+//#if SHADOW_TERMINATOR_GEOMETRY else atomicOr(&heap[p(17u)/4u],2u);return;
+        start=terminator_shadow_origin(sd,ls.D);
+//#endif
+    }
+    var direction=ls.D;var tmax=ls.t;if(ls.t!=bitcast<f32>(0x7f7fffffu)){let ray=light_normalize_len(ls.P-start.xyz);direction=ray.xyz;tmax=ray.w;}
+    var origin=start.xyz;if(start.w!=0.0){origin=surf_ray_offset_at(sd,start.xyz,direction);}let allocator=load_word(p(7u)+S_next_shadow_path_index)/4u;var shadow:u32;
     if(p(28u)!=0u){shadow=load_word(p(28u))+slot;if(shadow>=p(25u)){fail();return;}}
     else{loop{shadow=atomicLoad(&heap[allocator]);if(shadow>=p(25u)){fail();return;}
         if(atomicCompareExchangeWeak(&heap[allocator],shadow,shadow+1u).exchanged){break;}}}
@@ -131,7 +148,7 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     state_f32(S_shadow_ray_tmin,shadow,select(bitcast<f32>(0x7f7fffffu),0.0,(ls.shader&SHADER_CAST_SHADOW)!=0u));state_f32(S_shadow_ray_tmax,shadow,tmax);
     state_f32(S_shadow_ray_time,shadow,sd.time);state_f32(S_shadow_ray_dP,shadow,sd.dP);
     state_f32(S_shadow_ray_dD,shadow,select(sd.dI,max(sd.dI,sqrt(bsdf.roughness)),bsdf.roughness>0.0));
-    state_u32(S_shadow_self_object,shadow,sd.object_id);state_u32(S_shadow_self_prim,shadow,sd.prim);
+    state_u32(S_shadow_self_object,shadow,select(NONE,sd.object_id,start.w!=0.0));state_u32(S_shadow_self_prim,shadow,select(NONE,sd.prim,start.w!=0.0));
     state_u32(S_shadow_ray_self_light_object,shadow,ls.object_id);state_u32(S_shadow_ray_self_light_prim,shadow,ls.prim);
     state_f32(S_shadow_path_bsdf_eval_average,shadow,(bsdf.eval.x+bsdf.eval.y+bsdf.eval.z)*(1.0/3.0));
     state_u32(S_shadow_path_render_pixel_index,shadow,state_word(S_path_render_pixel_index,index));

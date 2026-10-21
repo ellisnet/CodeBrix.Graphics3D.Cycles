@@ -51,11 +51,31 @@ def overlay(out=None):
     depth_division='var v_t: f32 = (v_T / v_den);'
     if translated.count(depth_division)!=1:raise RuntimeError('Triangle depth translation anchor changed')
     translated=translated.replace(depth_division,'var v_t: f32 = rounded_divide(v_T, v_den);')
+    # The AST intersection stays as reviewed translation evidence; renderer
+    # modules call the contraction-proof, oracle-ordered adapter instead.
+    if translated.count('fn c_ray_triangle_intersect(')!=1:raise RuntimeError('Triangle intersection translation anchor changed')
+    translated=translated.replace('fn c_ray_triangle_intersect(', 'fn c_ray_triangle_intersect_ast(')
     translated=translated.replace('fn c_ray_triangle_dot(', 'fn c_ray_triangle_dot_scalar(')+(ROOT/'shaders/wavefront_triangle.wgsl').read_text()
-    svm=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm.wgsl','wavefront_attributes.wgsl','wavefront_images.wgsl','wavefront_normals.wgsl'))
+    svm=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm.wgsl','wavefront_attributes.wgsl','wavefront_images.wgsl','wavefront_normals.wgsl','wavefront_svm_nodes.wgsl','wavefront_svm_derivatives.wgsl'))
     closures=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm_closures.wgsl','wavefront_svm_microfacet.wgsl'))
-    enum_names=sorted(set(re.findall(r'\b(?:NODE_[A-Za-z0-9_]+|ATTR_[A-Za-z0-9_]+|IMAGE_[A-Za-z0-9_]+|INTERPOLATION_[A-Za-z0-9_]+|EXTENSION_[A-Za-z0-9_]+|KERNEL_(?:IMAGE_NONE|TILE_LOAD_NONE)|SVM_(?:STACK_SIZE|STACK_INVALID|INPUT_STACK_OFFSET_MASK)|CAMERA_(?:PERSPECTIVE|ORTHOGRAPHIC))\b',svm+closures)))
+    enum_pattern=r'\b(?:NODE_[A-Za-z0-9_]+|ATTR_[A-Za-z0-9_]+|IMAGE_[A-Za-z0-9_]+|INTERPOLATION_[A-Za-z0-9_]+|EXTENSION_[A-Za-z0-9_]+|KERNEL_(?:IMAGE_NONE|TILE_LOAD_NONE)|SVM_(?:STACK_SIZE|STACK_INVALID|INPUT_STACK_OFFSET_MASK)|CAMERA_(?:PERSPECTIVE|ORTHOGRAPHIC))\b'
+    # Enum constants used only by the texture/colour/utility node regions are
+    # emitted inside their SVM_NODES_ANY layout region (svm_nodes_enums.inc).
+    nodes_text=(ROOT/'shaders/wavefront_svm_nodes.wgsl').read_text()
+    node_features=set(re.findall(r'^//#if (\w+)',nodes_text,re.M))
+    def without_node_regions(text):
+        kept,stack=[],[]
+        for line in text.split('\n'):
+            m=re.match(r'//#if (\w+)',line)
+            if m:stack.append(m.group(1) in node_features);continue
+            if line.startswith('//#endif'):stack.pop();continue
+            if not any(stack):kept.append(line)
+        return '\n'.join(kept)
+    base_names=set(re.findall(enum_pattern,without_node_regions(svm.replace(nodes_text,''))+closures))
+    enum_names=sorted(base_names)
+    node_enum_names=sorted(set(re.findall(enum_pattern,svm+closures))-base_names)
     (out/'svm_enums.inc').write_text(''.join('  ENUM('+name+');\n' for name in enum_names))
+    (out/'svm_nodes_enums.inc').write_text(''.join('  ENUM('+name+');\n' for name in node_enum_names))
     (out/'svm_shader.inc').write_text('R"CBWGSL('+translated+closures+svm+')CBWGSL"\n')
     emitter_math=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_emitters.wgsl'))
     background=shader_data+translated+closures+svm+emitter_math+(ROOT/'shaders/wavefront_background.wgsl').read_text()+(ROOT/'shaders/wavefront_light_eval.wgsl').read_text()
@@ -63,7 +83,7 @@ def overlay(out=None):
     film=(ROOT/'shaders/wavefront_background.wgsl').read_text().split('fn background_visible')[0]
     sampling=(REPO/'parity/shaders/closures.wgsl').read_text()
     sampling=sampling[:sampling.index('struct Closure')]+sampling[sampling.index('// Original numerical adapter:'):sampling.index('fn oren_g')]
-    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_surface.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_lighting.wgsl'))
+    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_lighting.wgsl'))
     (out/'surface_shader.inc').write_text('R"CBWGSL('+surface+')CBWGSL"\n')
     volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_volume.wgsl'))
     (out/'volume_shader.inc').write_text('R"CBWGSL('+volume+')CBWGSL"\n')

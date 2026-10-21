@@ -1,0 +1,145 @@
+{
+ "phase": "D5",
+ "complete": true,
+ "passed": true,
+ "agent": "Phase D5 (Opus 5.5, no sub-agents), directly in main",
+ "started": "07:25:24",
+ "finished": null,
+ "deliverables": {
+  "gltfClient": {
+   "project": "tools/gltf/CycleGltfRender/CodeBrix.Graphics3D.Cycles.GltfRender.csproj",
+   "packable": false,
+   "solutionFolder": "/Tools/",
+   "package": "CodeBrix.Graphics3D.Gltf2.MitLicenseForever 1.0.290.996 (already recorded in third_party/dependencies.json / THIRD-PARTY-NOTICES)",
+   "linuxCompare": {
+    "sample.glb (default sun)": {
+     "max": 9.53674e-07,
+     "practical": 0,
+     "strict": 750,
+     "floats": 12288
+    },
+    "sample-sun.glb": {
+     "max": 1.07288e-06,
+     "practical": 0,
+     "strict": 700,
+     "floats": 12288
+    }
+   },
+   "tests": "GltfSceneConverterTests (8, CPU) + WebGpuRenderTests.gltf_sample_renders_on_the_gpu_within_the_practical_criterion"
+  },
+  "linuxWebGpuTests": {
+   "tests": 15,
+   "coldMesaRuns": 2,
+   "secondsCold": [
+    62.5,
+    68.0
+   ],
+   "adapter": "Intel(R) UHD Graphics (ADL-S GT1) / Mesa 25.0.7-2+deb13u1",
+   "tier": "full",
+   "warnings": [],
+   "scenes": {
+    "glass": {
+     "max": 4.52995e-06,
+     "practical": 0,
+     "strict": 306
+    },
+    "diffuse-sun": {
+     "max": 4.17233e-07,
+     "practical": 0,
+     "strict": 554
+    },
+    "textured-plane": {
+     "max": 2.98023e-07,
+     "practical": 0,
+     "strict": 27
+    },
+    "gltf-sample 48x32": {
+     "max": 9.53674e-07,
+     "practical": 0,
+     "strict": 176
+    }
+   }
+  },
+  "android": {
+   "nativeBuild": "both RIDs rebuilt from main (second attempt; first failed its own source-pin check because tools/ was edited during the build)",
+   "hostGate": {
+    "output": "native/work/phaseD5/android/host-gate",
+    "passed": true,
+    "exports": 48,
+    "samsung": {
+     "films": 1579,
+     "practical": 0,
+     "requiredStrict": 0
+    },
+    "hp": {
+     "films": 1579,
+     "practical": 0,
+     "requiredStrict": 0
+    },
+    "seconds": 165
+   },
+   "appWebGpu": {
+    "output": "native/work/phaseD5/android/app-webgpu",
+    "applicationId": "com.codebrix.cycles.hostvalidation.webgpu",
+    "apkSha256": "78e13d0270796d66f443e5cd86ead2de853b0bd4d81d63a1b21961983c71276f",
+    "samsung": {
+     "practical": 0,
+     "strict": 880,
+     "max": 2.3245811462402344e-06,
+     "tier": "full (table, 60 s budget)",
+     "warnings": [],
+     "appSeconds": 177.9
+    },
+    "hp": {
+     "practical": 0,
+     "strict": 918,
+     "max": 3.713369369506836e-05,
+     "tier": "full (table, 60 s budget)",
+     "warnings": [],
+     "appSeconds": 195.2
+    },
+    "pixel": {
+     "optional": true,
+     "output": "native/work/phaseD5/android/app-webgpu-pixel",
+     "practical": 0,
+     "strict": 887,
+     "max": 2.2649765014648438e-06,
+     "tier": "full (table, 20 s budget)",
+     "warnings": "compile-budget only: shade_surface_light 121-125 s, shade_surface 24 s, prepare_surface 25 s, shade_background 21 s",
+     "appSeconds": 640.9
+    }
+   },
+   "devicesClean": true
+  }
+ },
+ "closeout": {
+  "buildRelease": "0 warnings",
+  "buildDebug": "0 warnings",
+  "testRelease": "157/157",
+  "testDebug": "157/157",
+  "pack": "CodeBrix.Graphics3D.Cycles.ApacheLicenseForever.1.0.293.901.nupkg (not published)",
+  "hostGate": {
+   "output": "native/work/phaseD5/host-gate",
+   "passed": true,
+   "exports": 48,
+   "films": 786,
+   "comparisons": 3142,
+   "max": 1.1920928955078125e-07,
+   "practical": 0,
+   "strict": 0,
+   "seconds": 217,
+   "coldMesa": true
+  },
+  "audit": "passed",
+  "notices": "OK (34)",
+  "compatibilityGuard": "OK",
+  "licensingGuard": "OK",
+  "generatorCheck": "up to date (185 files)",
+  "gitDiffCheck": "clean",
+  "step8": "native/work/phaseD5/step8.txt"
+ },
+ "findings": [
+  "WebGPU: a smooth-shaded mesh (vertex normals + smooth) lit by a light fails with \"WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data\" unless the object shadow_terminator_geometry_offset is 0 (the device does not implement the smooth shadow-terminator geometry offset; documented as unsupported in DEVICE.md). Not fixed in native code (out of scope); the glTF client and validation scenes set the offset to 0; AGENT-README pitfall added."
+ ],
+ "checkpoint": "native/evidence/phaseD-closeout-20261020 (pending at the time this copy was frozen)"
+}

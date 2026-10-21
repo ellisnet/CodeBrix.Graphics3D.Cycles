@@ -74,7 +74,7 @@ def main():
   library=build/'lib/libcodebrix_cycles_host.so'
   exported=subprocess.check_output(['aarch64-linux-gnu-nm','-D','--defined-only',str(library)],text=True)
   actual={line.split()[-1].split('@')[0] for line in exported.splitlines()}-{'CBC_HOST_EXPERIMENT_1'}
-  expected=set(re.findall(r'\b(cbc_host_\w+)\(', (REPO/'native/host/cycles_host.h').read_text()));assert actual==expected and len(actual)==38
+  expected=set(re.findall(r'\b(cbc_host_\w+)\(', (REPO/'native/host/cycles_host.h').read_text()));assert actual==expected and len(actual)==48
   for kind in ['session','session64','image']:
    link=(build/('codebrix_host_'+kind+'_reference.map')).read_text()
    assert 'CMakeFiles/codebrix_host_reference_color.dir/src/util/colorspace.cpp.o' in link

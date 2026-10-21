@@ -1,0 +1,1252 @@
+diff --git a/AGENT-README.txt b/AGENT-README.txt
+index b8339fd..f594fd2 100644
+--- a/AGENT-README.txt
++++ b/AGENT-README.txt
+@@ -605,6 +605,14 @@ COMMON PITFALLS TO AVOID
+   mesh lit by a light fails with "invalid state/data". Set the object's
+   ShadowTerminatorGeometryOffset = 0 (do the same on the CPU reference when you
+   compare films).
++- JUDGING ANDROID GPU OUTPUT AGAINST AN ON-DEVICE CPU RENDER. Android's C
++  library (bionic) does not round acosf/asinf/atan2f/tanf correctly; the GPU
++  backend follows correctly rounded math. A CyclesBackend.CpuReference render
++  made on the Android device can therefore differ from the GPU film by more than
++  the practical criterion in a few samples (emissive triangles, area lights)
++  although the GPU is right. Compare against a CPU reference rendered on a
++  platform with a correctly rounded C library (Linux glibc), or treat the
++  on-device CPU film as a diagnostic.
+ - USING SOCKET NAMES FOR LINKS. On the low-level tiers, Connect takes socket
+   UI names ("Color", "BSDF"); the setters take native socket names ("color",
+   "value"). The typed tier handles both for you.
+diff --git a/MAINTAINER-README.txt b/MAINTAINER-README.txt
+index 5468723..4b6dfe6 100644
+--- a/MAINTAINER-README.txt
++++ b/MAINTAINER-README.txt
+@@ -465,6 +465,22 @@ capability-report.json per device. The source-tree pins of the native build,
+ the app build and both gates must match: do not edit pinned sources between the
+ Android native build and the device runs.
+ 
++Validation reference policy (native/DEVICE.md): add `--linux-reference DIR` to
++judge each device GPU film against the Linux x64 (glibc) CPU film of the same
++scene; the in-app CPU film (Android's bionic C library) is then recorded as a
++diagnostic. Produce DIR on Linux with
++
++    CODEBRIX_CYCLES_REFERENCE_EXPORT=$PWD/native/work/managed-reference \
++      dotnet test --project tests/CodeBrix.Graphics3D.Cycles.Tests/CodeBrix.Graphics3D.Cycles.Tests.csproj \
++      -c Release --filter-method "*gpu_film_matches_the_cpu_reference_with_the_practical_criterion*"
++
++The native device gates follow the same policy through
++native/tools/android_reference.py (Linux export, device-scene reference and
++host-side comparison) and the CODEBRIX_CYCLES_REFERENCE_* and
++CODEBRIX_CYCLES_SCENE_* variables documented in
++native/cycles/reference_policy.h; native/tools/libm_probe.py measures a device
++C library against correctly rounded results.
++
+ The app tests registry and property readback, cancellation/reuse, disposal
+ during rendering, three lifecycle films and six A/B/C/A/B/C configuration
+ rounds totaling 1,560 image films. Cross-platform films retain
+diff --git a/docs/PARITY.md b/docs/PARITY.md
+index 3002dc3..aba03d5 100644
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -35,11 +35,11 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+ | Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, Principled, multi-GGX, thin film, hair, subsurface and heterogeneous volumes pending. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL passes glass bounce/render but fails feature combination (microfacet lookup-table bounds error 512). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP; the Pixel 4 XL fails the volume-boundary state test, the camera-inside closed volume and the object/deforming motion images |
+-| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; emissive triangles fail the ARM64 oracle (sampler and one image mode) and remain unvalidated on ARM64. Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light and transparent shadows; emissive triangle lights fail on the HP compiler (memory) for moving emitters and the sampler probe; static triangle images 0-3 pass. Open device items are listed in `native/DEVICE.md` |
++| Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming emitters, pass independent CPU images and replay on Linux. Static instanced triangle emitters remain rejected (1-3 ULP closest-hit barycentric divergence). Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. ARM64 Android (Samsung Adreno 730): point/sun/spot/area NEE+MIS, broad lighting and feature combination validated natively with replays; device results are judged against the correctly rounded (Linux x64 glibc) CPU reference computed from the device's own prepared scene, with the on-device (bionic) CPU reference a diagnostic (`native/DEVICE.md`, "Validation reference policy"): the emitter-sample probe and static emissive triangles pass on the Samsung, triangle image mode 2 diverges on the Adreno 730 (open) and the deforming triangle emitter's sampler fails on ARM64 float3 arithmetic (open, to be checked against a Linux ARM64 glibc reference). Android x64 (HP Intel) passes spot/area, point/sun MIS, forward light, transparent shadows, the emitter probe and static triangle images 0-3 against that reference; the moving-emitter image and the sampler probe exhaust the HP compiler's memory on this tree. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS). Cold compiles: Samsung specialized pipelines at most 32.6 s, except the emissive-triangle entry with object motion at 205 s; HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 25 s with triangle lights), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 70 s |
+ | Platforms/delivery | Full Linux host. The .NET typed API renders on the WebGPU backend and the CPU reference backend on Linux x64 (Intel UHD, Mesa 25.0.7) and inside the Android validation app on the Samsung SM-X700, the HP Android x64 and the Pixel 4 XL (glass, diffuse with a sun, textured plane: practical criterion met, strict differences reported; progress and cancellation checked); the Android host gate passes with 48 exports on the Samsung and the HP. A glTF example client (tools/gltf) converts glTF factor-only materials to the closures the WebGPU backend has. The package still carries no native runtime assets; other host builds and remaining GPU backends/RIDs pending |
+-| Full parity decision | Open. A small matching render cannot establish this. Unsupported features must be reported explicitly, never silently approximated |
++| Full parity decision | Open. A small matching render cannot establish this. Unsupported features must be reported explicitly, never silently approximated. The authority for device comparisons is a correctly rounded CPU reference (today the Linux x64 glibc CPU oracle; Linux ARM64 glibc and macOS are to confirm it in Phase F), not a CPU render made with a C library that does not round correctly, such as Android's bionic, whose deviation is reported as a diagnostic |
+ 
+ Material-driven, multi-bounce image comparisons now exist for a limited scene.
+ WGSL camera/sampling now feeds those paths without native per-path inputs.
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index e14ab97..c68cd56 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1252,9 +1252,9 @@ Outputs are in `native/work/phaseC2/arm64/`.
+   (`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`) crashes the Adreno 730 driver and exhausts memory on the Adreno 640.
+   Bit-identity between specialized and unspecialized modules is therefore established on Linux only.
+ - Open on ARM64 (also listed under "Open device items" below):
+-  - Emissive-triangle sampling and the emitter-sample probe follow the x64 oracle's arithmetic rather than the
+-    ARM64 oracle's. The triangle sampler gate fails by up to 11.6 times the tolerance, and the probe by 1.1 times
+-    on one sun pdf.
++  - Emissive-triangle sampling and the emitter-sample probe failed against the on-device (bionic) oracle. Under the
++    validation reference policy (below) the probe passes and only the deforming emitter still fails the sampler
++    gate.
+   - Triangle image mode 2 diverges by one path decision on Adreno 730, even when replaying the x64 capture.
+   - Emissive triangles are therefore not yet validated on ARM64.
+   - On the Pixel 4 XL, these fail and are not supported there yet: object/deforming motion images (zero radiance
+@@ -1454,23 +1454,128 @@ shadow-terminator geometry offset: the WebGPU device does not implement that
+ offset (found on Linux; a smooth mesh lit by a sun otherwise fails with
+ "WebGPU scheduler kernel reported invalid data (mask 1)").
+ 
++## Validation reference policy (2026-10-20)
++
++Decision (2026-10-20): Android device validation judges the device GPU against a **correctly
++rounded CPU reference**. Today that is the Linux x64 glibc CPU oracle; Linux ARM64 glibc (a
++Raspberry Pi 5) and macOS are planned to confirm it in Phase F. The CPU reference a gate computes on
++the Android device itself, with Android's bionic C library, is kept as a **diagnostic** column: its
++deviation from the glibc reference is reported per gate and it never decides pass or fail. No libm
++code is imported or emulated.
++
++**Why bionic is a diagnostic.** Cycles calls the C library's binary32 functions (`safe_acosf` and
++`safe_asinf` in light and emitter sampling, `atan2f`/`sinf`/`cosf`/`tanf`/`expf`/`logf`/`powf` in
++closures, camera, SVM nodes and scene preparation). glibc 2.41 returns the correctly rounded
++`acosf`, `asinf`, `atanf`, `atan2f`, `tanf` and `sqrtf`, and the WGSL kernels reproduce those values.
++bionic does not, and arm64 and x86_64 bionic differ from each other. Measured with
++`native/tools/libm_probe.py` (records in `native/work/x1/libm/`):
++
++| Function (domain) | Linux x64 glibc 2.41 | Samsung SM-X700 bionic arm64 | HP 87FE bionic x86_64 |
++| --- | --- | --- | --- |
++| `acosf` (all 2,130,706,434 binary32 in [-1,1]) | 0 | 5,387,132 | 5,717,762 |
++| `asinf` (same) | 0 | 682,532 | 4,220,746 |
++| `atanf` (every 16th binary32, 267,386,880) | 0 | 394,660 | 394,660 |
++| `tanf` (same) | 0 | 18,985,998 | 18,985,998 |
++| `atan2f` (2^24 pairs in [-8,8]^2) | 0 | 2,708,169 | 2,708,169 |
++| `sinf` / `cosf` (every 16th binary32) | 1,836,020 / 1,764,666 | same values as glibc | 1,836,018 / 1,764,664 (other results) |
++| `expf` / `logf` / `powf` | 10,698 / 26,322 / 10,435 | same values as glibc | same values as glibc |
++| `sqrtf` | 0 | 0 | 0 |
++
++Counts are inputs whose result differs from the correctly rounded one (at most 1 ulp everywhere);
++inputs within 2^-50 of a rounding midpoint are counted separately as undecidable (at most 10 per
++function). glibc's own `sinf`/`cosf`/`expf`/`logf`/`powf` are not correctly rounded either; for those
++the Linux reference is glibc's result, which the Samsung's bionic matches bit for bit. The decisive
++functions for the earlier Android failures are `acosf`/`asinf`: all 18 static-emitter triangle-sampler
++failures and the emitter-probe area-light pdf are 1-ulp bionic errors (Phase E1).
++
++**Two routes by which the device C library reaches a result.** The device's CPU *kernels* (the local
++reference) call bionic, and the device's *scene preparation* (light records, transforms and motion
++decompositions, BVH, lookup tables, the gates' own fixed inputs) runs on the device too and is what the
++GPU consumes. A reference prepared on Linux therefore differs from the GPU's inputs: on the HP the
++emitter probe's light records differ in 8 words and the GPU result follows them (24 practical
++differences against a Linux-prepared reference, 0 against the reference computed from the HP's own
++scene). The authoritative comparison is therefore the **device-scene flow**:
++
++1. the device runs the gate once with `CODEBRIX_CYCLES_SCENE_DUMP` (no GPU work): it writes the scene
++   tables it prepared, `KernelData`, the gate's fixed inputs and its local CPU reference;
++2. Linux x64 runs the same gate binary with `CODEBRIX_CYCLES_SCENE_LOAD` (CPU only) and exports the
++   glibc reference computed from exactly that scene (`native/tools/android_reference.py
++   scene-reference`, which also records per table how the device-prepared inputs differ from Linux's);
++3. the reference is pushed beside the staged binaries and the device runs the gate with
++   `CODEBRIX_CYCLES_REFERENCE_IMPORT` and `CODEBRIX_CYCLES_SCENE_VERIFY` (its local reference must equal
++   the dump pass's bit for bit, so the imported reference belongs to these inputs); the gate compares
++   its GPU output with the imported reference and appends the local-versus-glibc deviation to
++   `reference-diagnostic.jsonl`;
++4. the host recomputes every comparison from the pulled files (`android_reference.py compare`):
++   GPU versus glibc (authoritative, must agree with the device's verdict), local versus glibc and GPU
++   versus local (diagnostics, the latter being the comparison used before this policy).
++
++Provenance per reference: Linux gate binary SHA-256, glibc version, source pins, device and Linux scene
++SHA-256, every reference file's SHA-256 and the set digest (`oracleSha256`). Without any of these
++environment variables every gate behaves exactly as before (Linux results unchanged).
++
++Reference data flow per Android gate:
++
++| Gate (Android) | Before | After |
++| --- | --- | --- |
++| `triangle_sample`, `emitter_sample` (sampler arrays) | on-device bionic CPU | device-scene glibc reference; bionic diagnostic |
++| Image gates from `lighting_gate.cpp` (`lighting`, `lighting_mis`, `broad_lighting`, `transparent_lighting`, `triangle_lighting`, `feature_combination`, `object_motion_render`, `deforming_motion_render`) | on-device bionic CPU film | device-scene glibc film; bionic film diagnostic |
++| `render_gate.cpp` independent image (`glass_render`, `microfacet_render`, `render`, volume renders) | on-device bionic CPU film | Linux-prepared glibc film (`android_reference.py export`); no scene exchange yet |
++| `render_gate.cpp` lockstep stage checks; state gates (`surface`, `closest`, `shadow`, `shader_data`, glass/microfacet `svm`/`bounce`, `camera`, `volume`, `volume_boundary`, `light_state`, `transparent_shadow`, `svm_surface`) | on-device bionic CPU | **unchanged (local)**: the stage checks' CPU input is the device's own GPU state; the state gates are not yet routed through the policy |
++| Command replays of the device's own captures and of Linux captures (`render_replay`) | the capture's recorded readbacks and film | unchanged: no CPU reference on the device; the Linux captures carry the Linux x64 film |
++| `android_host_gate.py` (host API films) | Linux reference run (`host_gate.py`) | unchanged: already a Linux reference |
++| `android_app_gate.py` CPU suite | Linux references packaged in the APK | unchanged |
++| `android_app_gate.py --mode webgpu` (managed API) | in-app CPU film (device scene, bionic) | `--linux-reference`: Linux glibc CPU films rendered by `WebGpuRenderTests` with `CODEBRIX_CYCLES_REFERENCE_EXPORT` (Linux-prepared scene; the managed API has no scene exchange); in-app CPU film diagnostic |
++
++Results under the policy (worktree `x1-android-reference`, unchanged 1.0.290.1433 runtime; evidence
++`native/work/x1/runs/`; strict counts are of the reached cases):
++
++| Device / gate | GPU vs glibc reference (authoritative) | Local bionic CPU vs glibc (diagnostic) | Before (GPU vs local bionic) |
++| --- | --- | --- | --- |
++| Samsung `emitter_sample` | **PASS**, 135 strict, max 9.06e-6 | 1,192 floats differ, 1 practical (the area-light pdf) | FAIL (sample 4093 pdf) |
++| Samsung `triangle_sample` | **FAIL**: 0 failures on the static emitters; 41 practical in 24 samples, all on the deforming emitter | 4,620 floats differ, 65 practical | FAIL, 24 practical in 22 samples (18 static, libm) |
++| Samsung `triangle_lighting` | modes 0-1 PASS; **mode 2 FAIL** (component 1484, 0.351310 vs 0.311020: open item 2); modes 3-5 not reached | 1,973 floats differ, 0 practical | same mode-2 failure |
++| Samsung `glass_render` / `lighting_mis` / `transparent_lighting` | PASS: 98 image strict / 1,162 / 974 | 2,280 / 4,509 / 5,108 floats differ, 0 practical | PASS; glass film `8199ad80...` bit for bit as C2/E1 |
++| HP `emitter_sample` | **PASS**, 235 strict, max 5.1e-3 | 617 floats differ, 0 practical | PASS |
++| HP `triangle_sample` | not reached: compiler memory (open item 3) | - | same |
++| HP `triangle_lighting` | modes 0-3 PASS (699 strict); mode 5 not reached (open item 3) | 195 floats differ, 0 practical | same |
++| HP `glass_render` / `lighting_mis` / `transparent_lighting` | PASS: 152 image strict / 2,769 / 1,933 | 168 / 10 / 317 floats differ, 0 practical | PASS; glass film `bafd466d...` bit for bit as C2/E1 |
++| Linux v6 triangle captures replayed | Samsung tri0/1/3/4 PASS, tri2 FAIL (open item 2); HP tri0-3 PASS, tri4 compiler memory | - | same |
++| Managed WebGPU mode (glass, diffuse+sun, textured plane) | Samsung and HP PASS against Linux films, 0 practical (max 2.8e-5 / 2.3e-6) | in-app CPU films differ from Linux's (up to 41 strict differences per film), 0 practical | PASS against the in-app film |
++
++The Samsung's remaining sampler failures are on the deforming emitter only. There the Samsung's own CPU
++reference and the glibc reference computed from the Samsung's scene disagree in 44 fields, and against
++the Linux-prepared reference the HP's x86_64 bionic CPU agrees bit for bit on 561 of the emitter's 731
++samples where the Samsung's agrees on 108: it is ARM64
++float3 arithmetic (the `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE` class from B2), not libm, which an x64
++reference cannot reproduce. Re-judged against glibc, Phase E1's HP sampler run (with E1's compile
++fix, not in this tree) has no static-emitter failure either; it keeps 5 practical differences on the
++deforming emitter. The Linux ARM64 glibc reference (Pi 5, Phase F) is the lane that confirms or
++refutes this; macOS confirms the libm part on a second correctly rounded library.
++
++Reproduce: `python3 native/tools/libm_probe.py android-arm64 OUT.json --serial SERIAL` (or
++`android-x64`, `linux`); `python3 native/tools/android_reference.py export|scene-reference|compare
++--help`. The device runner used for these results is `native/work/x1/tools/run_corpus.py
++--device-scene --reference <export>`.
++
+ ## Open device items (2026-10-20)
+ 
+ These device failures from the integrated-tree runs are open. Each is
+ deterministic on its device and needs a code change; no tolerance was relaxed.
+ 
+-1. **Samsung SM-X700: emissive-triangle sampler and emitter-sample probe follow
+-   the x64 oracle.** At every failing sample the Adreno 730 output equals the x64
+-   CPU oracle (and the Intel GPU) bit for bit, while the ARM64 CPU oracle differs:
+-   the triangle sampler gate has 24 practical failures in 22 of 4,096 samples (up
+-   to 11.6 times the tolerance) and the emitter-sample probe one sun-light pdf at
+-   1.1 times. This is the same class as the ShaderData normal rounding fixed for
+-   ARM64 (`NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`), now in light and emitter sampling.
++1. **Samsung SM-X700: triangle sampler on the deforming emitter.** Resolved for
++   the libm part by the validation reference policy above: judged against the
++   correctly rounded (glibc) reference, the emitter-sample probe passes and the 18
++   static-emitter sampler failures (bionic `acosf`/`asinf`) are gone. Open: 41
++   practical differences in 24 samples on the deforming emitter, from ARM64 float3
++   arithmetic that the x64 reference does not share; to be confirmed against the
++   Linux ARM64 glibc reference (Pi 5, Phase F).
+ 2. **Samsung SM-X700: triangle image mode 2 diverges on the GPU.** One pixel is
+    off by 0.040; replaying the Linux x64 mode-2 capture on the device also fails
+    (scheduler decision readback differs at command 574), so the Adreno takes a
+    different path decision from Intel with identical inputs and WGSL.
+-3. **HP Android x64: three cold compiles exhaust compiler memory.** Scudo's
++3. **HP Android x64: three cold compiles exhaust compiler memory** (fixed for the
++   first two in the Phase E1 worktree, not yet merged; X1 reproduced them on this tree). Scudo's
+    per-size-class regions run out inside the Intel Mesa 24.0.8 compiler and the
+    process aborts, every time, for `shade_surface_light` specialized with
+    `MOTION_OBJECT` + `LIGHT_TRIANGLE` (triangle image mode 5), the triangle
+@@ -1487,5 +1592,6 @@ deterministic on its device and needs a code change; no tolerance was relaxed.
+ 7. **Pixel 4 XL: volume_boundary state test and camera-inside closed volume**
+    fail with integer volume-stack mismatches.
+ 
+-The emissive-triangle corpora (sampler, five-image triangle gate and their
+-replays) were therefore not rerun on devices after the device-tier merge.
++The emissive-triangle corpora (sampler, five-image triangle gate and the Linux
++triangle captures) were rerun on the Samsung and the HP under the validation
++reference policy (section above); items 1-3 record what remains.
+diff --git a/native/cycles/emitter_sample_gate.cpp b/native/cycles/emitter_sample_gate.cpp
+index b666138..de5e05b 100644
+--- a/native/cycles/emitter_sample_gate.cpp
++++ b/native/cycles/emitter_sample_gate.cpp
+@@ -5,6 +5,7 @@
+ #include "background_reference.h"
+ #include "light_reference.h"
+ #include "wavefront.h"
++#include "reference_policy.h"
+ #include "scene/scene.h"
+ #include "scene/background.h"
+ #include "scene/camera.h"
+@@ -71,7 +72,7 @@ static void fixture(Scene &scene){
+ }
+ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(argc==2,"Usage: emitter_sample_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics metrics;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=*dynamic_cast<WebGPUDevice*>(owner.get());Metrics metrics;bool exchange_only=false;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Emitter scene preparation failed");
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
+@@ -80,7 +81,19 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+       s.path.flag=(i%2)?PATH_RAY_MIS_HAD_TRANSMISSION:0;s.ray.time=float(i%17)/16.f;
+       s.ray.P=make_float3(float(i%23)-5.f,float((i/23)%17)*.5f-4.f,4.f-(.1f+float(i%31)*.2f));
+       s.ray.D=normalize(make_float3(.3f*(int(i%5)-2),.2f*(int(i%7)-3),i%11?1.f:-1.f));}
+-    upload(d,layout,states);auto expected=original_light_samples(scene.dscene,states);
++    // Scene exchange (reference_policy.h): dump or load the prepared tables and the path-state
++    // fields set above (the directions carry this host's float3 normalization).
++    struct PathInput {uint32_t sample,rng_pixel,rng_offset,bounce,flag;float time,P[3],D[3];};
++    std::vector<PathInput> inputs(count);
++    for(unsigned i=0;i<count;i++){const auto &s=states[i];inputs[i]={s.path.sample,s.path.rng_pixel,s.path.rng_offset,uint32_t(s.path.bounce),s.path.flag,s.ray.time,{s.ray.P.x,s.ray.P.y,s.ray.P.z},{s.ray.D.x,s.ray.D.y,s.ray.D.z}};}
++    exchange_only=reference_policy::exchange_scene(scene.dscene,"samples",{{"paths",inputs.data(),inputs.size()*sizeof(PathInput)}});
++    if(reference_policy::reference_only())for(unsigned i=0;i<count;i++){auto &s=states[i];const auto &in=inputs[i];
++      s.path.sample=in.sample;s.path.rng_pixel=in.rng_pixel;s.path.rng_offset=in.rng_offset;s.path.bounce=in.bounce;s.path.flag=in.flag;s.ray.time=in.time;
++      s.ray.P=make_float3(in.P[0],in.P[1],in.P[2]);s.ray.D=make_float3(in.D[0],in.D[1],in.D[2]);}
++    if(!exchange_only)upload(d,layout,states);const auto local=original_light_samples(scene.dscene,states);reference_policy::record_local("samples",local);
++    // Pass/fail reference: local, or the imported correctly rounded one (reference_policy.h).
++    const auto expected=reference_policy::resolve("samples",local,std::string(argv[1])+".reference-diagnostic.jsonl");
++    if(!exchange_only){
+     device_vector<float> output(&d,"emitter_samples",MEM_READ_WRITE);output.alloc(expected.size()+16);std::fill_n(output.data(),output.size(),-1234.f);output.copy_to_device();
+ #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
+     constexpr unsigned probe_group_size=1;
+@@ -103,7 +116,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     std::array<uint32_t,32> p{};p[1]=count;p[4]=output.device_pointer+32;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[9]=scene.dscene.sample_pattern_lut.device_pointer;p[14]=d.scene_tables();p[17]=d.error_word;
+     d.dispatch(p,count,shader,probe_group_size);d.sync();output.copy_from_device();healthy(d);uint error=0;d.download(d.error_word,&error,4);require(error==0,"Emitter shader error");
+     auto save=[&](const char *suffix,const float *data,size_t count){std::ofstream f(std::string(argv[1])+suffix,std::ios::binary);f.write(reinterpret_cast<const char*>(data),count*4);};
+-    save(".reference.bin",expected.data(),expected.size());save(".actual.bin",output.data()+8,expected.size());
++    save(".reference.bin",local.data(),local.size());save(".actual.bin",output.data()+8,expected.size());
+     unsigned valid=0;for(unsigned i=0;i<count;i++){const auto at=i*12;require(output[at+8]==expected[at],"Emitter validity differs index="+std::to_string(i));metrics.exact++;if(!expected[at])continue;valid++;
+       for(unsigned j=1;j<12;j++)numeric(output[at+j+8],expected[at+j],metrics,"Emitter sample="+std::to_string(i)+" field="+std::to_string(j));}
+     for(unsigned i=0;i<8;i++)require(output[i]==-1234.f&&output[output.size()-1-i]==-1234.f,"Emitter sample output guard overwritten");require(valid>100,"Insufficient valid emitter samples");metrics.paths=count;metrics.lamp_hits=valid;
+@@ -136,7 +149,9 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+       require(rejected,"Emitter guard did not reject case="+std::to_string(bad));metrics.guards++;
+     }d.light_records=saved;
+ #endif
++    }
+   }
+   require(stats.mem_used==0,"Emitter test leaked allocations");std::ofstream(std::string(argv[1])+".library.txt")<<d.gpu.library_path;
+-  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"samples\":"<<metrics.paths<<",\"guardCases\":"<<metrics.guards<<",\"valid\":"<<metrics.lamp_hits<<",\"numericChecks\":"<<metrics.numeric<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
++  if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
++  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"samples\":"<<metrics.paths<<",\"guardCases\":"<<metrics.guards<<",\"valid\":"<<metrics.lamp_hits<<",\"numericChecks\":"<<metrics.numeric<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+ }catch(const std::exception &error){std::cerr<<error.what()<<'\n';status=1;}TaskScheduler::exit();return status;}
+diff --git a/native/cycles/lighting_gate.cpp b/native/cycles/lighting_gate.cpp
+index 42048ff..7cb029a 100644
+--- a/native/cycles/lighting_gate.cpp
++++ b/native/cycles/lighting_gate.cpp
+@@ -2,6 +2,7 @@
+ // SPDX-License-Identifier: Apache-2.0
+ #include "wavefront_test.h"
+ #include "render_capture.h"
++#include "reference_policy.h"
+ #include "camera_reference.h"
+ #include "closest_reference.h"
+ #include "surface_reference.h"
+@@ -255,10 +256,18 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+ #ifdef CODEBRIX_FEATURE_COMBINATION_GATE
+     require(data.cam.num_motion_steps>=2&&data.cam.shuttertime!=-1,"Combined scene requires camera motion");
+ #endif
++    // Scene exchange (reference_policy.h): a dump pass stops here; a reference pass continues on
++    // the loaded device-prepared tables to the CPU reference and then skips the GPU.
++    const bool exchange_only=reference_policy::exchange_scene(scene.dscene,"case-"+std::to_string(image),{});
++    if(exchange_only){std::vector<float> local(width*height*4);cpu_render(scene.dscene,local,metrics);
++      RenderCapture::file(prefix+".cpu.film.bin",local.data(),local.size()*4);reference_policy::record_local("case-"+std::to_string(image)+".film",local);
++      reference_policy::resolve("case-"+std::to_string(image)+".film",local,(out/"reference-diagnostic.jsonl").string());continue;}
+     require(data.film.pass_stride==4,"Lighting combined-only film expected");bool cancelled=false;Scheduler scheduler(&device,scene.film,&scene.dscene,&cancelled);
+     scheduler.alloc_work_memory();scheduler.init_execution();healthy(device);auto buffers=scheduler.get_render_buffers();BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=4;buffers->reset(bp);
+-    std::vector<float> reference(width*height*4),first;cpu_render(scene.dscene,reference,metrics);
+-    RenderCapture::file(prefix+".cpu.film.bin",reference.data(),reference.size()*4);
++    std::vector<float> local(width*height*4),first;cpu_render(scene.dscene,local,metrics);reference_policy::record_local("case-"+std::to_string(image)+".film",local);
++    RenderCapture::file(prefix+".cpu.film.bin",local.data(),local.size()*4);
++    // Pass/fail reference: local, or the imported correctly rounded one (reference_policy.h).
++    const auto reference=reference_policy::resolve("case-"+std::to_string(image)+".film",local,(out/"reference-diagnostic.jsonl").string());
+     for(unsigned repeat=0;repeat<2;repeat++){
+       buffers->zero();std::unique_ptr<RenderCapture> capture;if(repeat==1)capture=std::make_unique<RenderCapture>(device,prefix);
+       for(unsigned sample=0;sample<samples;sample++){
+@@ -289,6 +298,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"mode\":"<<mode<<",\"transparentSurfaceHits\":"<<metrics.transparent_hits<<",\"maximumShadowHitCount\":"<<metrics.max_shadow_hits<<",\"forwardLightPaths\":"<<metrics.forward<<",\"meshMisPaths\":"<<metrics.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<metrics.deforming_paths<<",\"shadows\":"<<metrics.shadows<<",\"blocked\":"<<metrics.blocked<<",\"visible\":"<<metrics.visible<<",\"stages\":"<<metrics.stages<<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat_differences<<",\"repeatMaximumError\":"<<metrics.repeat_maximum<<"}\n";};
+     std::ofstream details(folder/"result.json");report(details);report(std::cerr);total.mesh_mis_paths+=metrics.mesh_mis_paths;total.deforming_paths+=metrics.deforming_paths;total.transparent_hits+=metrics.transparent_hits;total.max_shadow_hits=std::max(total.max_shadow_hits,metrics.max_shadow_hits);total.transmissions+=metrics.transmissions;total.forward+=metrics.forward;total.shadows+=metrics.shadows;total.blocked+=metrics.blocked;total.visible+=metrics.visible;total.stages+=metrics.stages;total.floats+=metrics.floats;total.strict+=metrics.strict;total.maximum=std::max(total.maximum,metrics.maximum);total.repeat_differences+=metrics.repeat_differences;
+   }
++  const bool exchange_only=reference_policy::prepare_only()||reference_policy::reference_only();
++  if(!exchange_only){
+ #ifdef CODEBRIX_FEATURE_COMBINATION_GATE
+   require(total.transmissions>100,"Combined scene did not exercise transmission");
+ #endif
+@@ -307,6 +318,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+ #else
+   if(use_mis)require(total.forward>100,"Missing forward point-light paths");
+ #endif
++  }
+   require(stats.mem_used==0,"Lighting test leaked native allocations");std::ofstream(out/"library.txt")<<device.gpu.library_path;std::ofstream(out/"adapter.txt")<<device.gpu.adapter_name;
+-  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentOriginalCpuImage\":true,\"fullLightingMisProven\":false,\"cases\":"<<lighting_cases<<",\"pointSunMisEnabled\":"<<(use_mis?"true":"false")<<",\"transparentSurfaceHits\":"<<total.transparent_hits<<",\"maximumShadowHitCount\":"<<total.max_shadow_hits<<",\"forwardLightPaths\":"<<total.forward<<",\"unsupportedEmitterConfigurationsRejected\":"<<total.unsupported_emitters<<",\"meshMisPaths\":"<<total.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<total.deforming_paths<<",\"transmissionPaths\":"<<total.transmissions<<",\"shadowPaths\":"<<total.shadows<<",\"blocked\":"<<total.blocked<<",\"visible\":"<<total.visible<<",\"filmChecks\":"<<total.floats<<",\"strictDifferences\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum<<",\"repeatBitwiseDifferences\":"<<total.repeat_differences<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
++  if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cases\":"<<lighting_cases<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
++  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentOriginalCpuImage\":true,\"fullLightingMisProven\":false,\"cases\":"<<lighting_cases<<",\"pointSunMisEnabled\":"<<(use_mis?"true":"false")<<",\"transparentSurfaceHits\":"<<total.transparent_hits<<",\"maximumShadowHitCount\":"<<total.max_shadow_hits<<",\"forwardLightPaths\":"<<total.forward<<",\"unsupportedEmitterConfigurationsRejected\":"<<total.unsupported_emitters<<",\"meshMisPaths\":"<<total.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<total.deforming_paths<<",\"transmissionPaths\":"<<total.transmissions<<",\"shadowPaths\":"<<total.shadows<<",\"blocked\":"<<total.blocked<<",\"visible\":"<<total.visible<<",\"filmChecks\":"<<total.floats<<",\"strictDifferences\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum<<",\"repeatBitwiseDifferences\":"<<total.repeat_differences<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+ }catch(const std::exception &error){std::cerr<<error.what()<<'\n';status=1;}TaskScheduler::exit();return status;}
+diff --git a/b/native/cycles/reference_policy.h b/native/cycles/reference_policy.h
+new file mode 100644
+index 0000000..3c42536
+--- /dev/null
++++ b/native/cycles/reference_policy.h
+@@ -0,0 +1,171 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// SPDX-License-Identifier: Apache-2.0
++#pragma once
++// Validation reference policy (native/DEVICE.md, "Validation reference policy").
++//
++// A gate's pass/fail comparison uses a correctly rounded CPU reference. The Linux x64
++// glibc build is that reference today: glibc's acosf/asinf (and the other libm functions
++// the pinned Cycles code calls) are correctly rounded, and the WGSL kernels reproduce them.
++// Android's bionic libm is not correctly rounded, so a CPU reference computed on an
++// Android device differs from the correctly rounded one by bionic's error.
++//
++// Without either environment variable the gate behaves exactly as before: it compares the
++// GPU with the CPU reference computed in the same process.
++//
++//   CODEBRIX_CYCLES_REFERENCE_EXPORT=DIR  write each independent CPU reference this gate
++//                                         computes to DIR/<key>.f32 (a Linux x64 run).
++//   CODEBRIX_CYCLES_REFERENCE_IMPORT=DIR  read DIR/<key>.f32 (produced by the Linux export
++//                                         from the same sources and inputs) and use it as the
++//                                         comparison reference. The locally computed CPU
++//                                         reference is kept as a diagnostic only: its
++//                                         deviation from the imported reference is written to
++//                                         the diagnostic file and never decides pass/fail.
++//
++// Only references that are independent of the GPU (fixed inputs, whole CPU renders) are
++// routed through here. Lockstep checks whose CPU input is the device's own GPU state cannot
++// be produced elsewhere in advance and stay local (DEVICE.md lists them).
++//
++// The GPU consumes the scene tables the device's own host code prepared (light records,
++// motion decompositions, camera data: Cycles' scene preparation also calls libm), so the
++// reference must start from those same tables. The scene exchange moves them to Linux:
++//
++//   CODEBRIX_CYCLES_SCENE_DUMP=DIR    (device pass) write DIR/<key>.scene, the prepared scene
++//                                     tables, KernelData and any fixed gate inputs, plus the
++//                                     local CPU reference DIR/<key>.local.f32, then skip all
++//                                     GPU work (prepare_only()).
++//   CODEBRIX_CYCLES_SCENE_LOAD=DIR    (Linux pass, with ..._REFERENCE_EXPORT) replace the
++//                                     locally prepared tables with DIR/<key>.scene before the
++//                                     CPU reference runs, and skip all GPU work
++//                                     (reference_only()).
++//   CODEBRIX_CYCLES_SCENE_VERIFY=DIR  (device pass, with ..._REFERENCE_IMPORT) require this
++//                                     run's local CPU reference to equal DIR/<key>.local.f32
++//                                     bit for bit: the scene this run prepared feeds the
++//                                     reference exactly as the dumped one did, so the imported
++//                                     reference belongs to these inputs. (Raw table bytes are
++//                                     not compared: some Cycles records carry uninitialized
++//                                     padding.)
++#include <algorithm>
++#include <cmath>
++#include <cstdint>
++#include <cstdlib>
++#include <cstring>
++#include <filesystem>
++#include <fstream>
++#include <iomanip>
++#include <limits>
++#include <sstream>
++#include <stdexcept>
++#include <string>
++#include <vector>
++#include "wavefront.h"
++#include "scene/devicescene.h"
++namespace reference_policy {
++inline const char *environment(const char *name){const char *value=std::getenv(name);return value&&*value?value:nullptr;}
++inline int64_t ordered(float value){int32_t bits;std::memcpy(&bits,&value,4);return bits<0?int64_t(INT32_MIN)-bits:bits;}
++// Units in the last place between two finite floats (0 for equal bits; +0/-0 count as equal).
++inline uint64_t ulps(float a,float b){if(a==b)return 0;const int64_t d=ordered(a)-ordered(b);return uint64_t(d<0?-d:d);}
++inline std::string escape(const std::string &text){std::string out;for(char c:text){if(c=='"'||c=='\\')out+='\\';out+=c;}return out;}
++inline std::string read_file(const std::filesystem::path &path){
++  std::ifstream file(path,std::ios::binary);if(!file)throw std::runtime_error("Missing scene exchange file "+path.string());
++  std::ostringstream text;text<<file.rdbuf();return text.str();
++}
++// Returns the reference the gate must compare against for KEY. DIAGNOSTIC is the file that
++// receives the local-versus-imported record in import mode (one JSON object per key, appended).
++inline std::vector<float> resolve(const std::string &key,const std::vector<float> &local,const std::string &diagnostic){
++  const char *exported=environment("CODEBRIX_CYCLES_REFERENCE_EXPORT"),*imported=environment("CODEBRIX_CYCLES_REFERENCE_IMPORT");
++  if(exported&&imported)throw std::runtime_error("Reference export and import are mutually exclusive");
++  if(exported){
++    std::filesystem::create_directories(exported);
++    std::ofstream file(std::filesystem::path(exported)/(key+".f32"),std::ios::binary);
++    file.write(reinterpret_cast<const char*>(local.data()),std::streamsize(local.size()*4));
++    if(!file)throw std::runtime_error("Could not export reference "+key);
++    return local;
++  }
++  if(!imported)return local;
++  if(const char *verify=environment("CODEBRIX_CYCLES_SCENE_VERIFY")){
++    const auto dumped=read_file(std::filesystem::path(verify)/(key+".local.f32"));
++    if(dumped.size()!=local.size()*4||std::memcmp(dumped.data(),local.data(),dumped.size()))
++      throw std::runtime_error("Local CPU reference differs from the scene-dump pass; the imported reference does not belong to this run's inputs: "+key);
++  }
++  const auto path=std::filesystem::path(imported)/(key+".f32");
++  std::ifstream file(path,std::ios::binary);
++  if(!file)throw std::runtime_error("Missing imported reference "+path.string());
++  std::vector<float> reference(local.size());
++  file.read(reinterpret_cast<char*>(reference.data()),std::streamsize(reference.size()*4));
++  if(!file||file.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Imported reference size differs from the local reference: "+key);
++  uint64_t differing=0,nonfinite=0,practical=0,strict=0,maximum_ulps=0;double maximum=0,maximum_ratio=0;size_t at=0;
++  for(size_t i=0;i<local.size();i++){
++    const float a=local[i],e=reference[i];
++    if(std::memcmp(&a,&e,4)==0)continue;
++    differing++;
++    if(!std::isfinite(a)||!std::isfinite(e)){nonfinite++;continue;}
++    const double error=std::abs(double(a)-e),bound=5e-5+2e-4*std::abs(double(e));
++    practical+=error>bound;strict+=error>1e-7+1e-7*std::abs(double(e));
++    maximum_ulps=std::max(maximum_ulps,ulps(a,e));
++    if(error>maximum){maximum=error;at=i;}
++    maximum_ratio=std::max(maximum_ratio,error/bound);
++  }
++  std::ofstream out(diagnostic,std::ios::app);
++  out<<std::setprecision(17)<<"{\"key\":\""<<escape(key)<<"\",\"role\":\"diagnostic\",\"comparison\":\"local CPU reference (this device's C library) versus imported correctly rounded reference\""
++     <<",\"importedReference\":\""<<escape(path.string())<<"\",\"floats\":"<<local.size()<<",\"bitwiseDiffering\":"<<differing<<",\"nonFinite\":"<<nonfinite
++     <<",\"practicalExceedances\":"<<practical<<",\"strictDifferences\":"<<strict<<",\"maximumAbsoluteDeviation\":"<<maximum<<",\"maximumUlps\":"<<maximum_ulps
++     <<",\"maximumPracticalRatio\":"<<maximum_ratio<<",\"maximumAt\":"<<at<<"}\n";
++  if(!out)throw std::runtime_error("Could not write reference diagnostic "+diagnostic);
++  return reference;
++}
++inline bool prepare_only(){return environment("CODEBRIX_CYCLES_SCENE_DUMP")!=nullptr;}
++// Dump pass: keep the local CPU reference beside the scene (checked by ..._SCENE_VERIFY).
++inline void record_local(const std::string &key,const std::vector<float> &local){
++  const char *dump=environment("CODEBRIX_CYCLES_SCENE_DUMP");if(!dump)return;
++  std::ofstream file(std::filesystem::path(dump)/(key+".local.f32"),std::ios::binary);
++  file.write(reinterpret_cast<const char*>(local.data()),std::streamsize(local.size()*4));
++  if(!file)throw std::runtime_error("Could not write local reference "+key);
++}
++inline bool reference_only(){return environment("CODEBRIX_CYCLES_SCENE_LOAD")!=nullptr;}
++// Fixed gate inputs that travel with the scene (for example the emitter probe's path states,
++// whose directions are normalized with the host's float3 arithmetic).
++struct Input {std::string name;void *data;size_t bytes;};
++inline void put(std::string &out,const std::string &name,const void *data,uint64_t element,uint64_t count){
++  const uint64_t header[]={name.size(),element,count};out.append(reinterpret_cast<const char*>(header),sizeof(header));out+=name;
++  out.append(static_cast<const char*>(data),size_t(element*count));
++}
++inline std::string serialize(ccl::DeviceScene &scene,const std::vector<Input> &inputs){
++  std::string out="CBCSCENE1";
++#define CBC_EXCHANGE_TABLE(name,type) put(out,#name,scene.name.data(),sizeof(*scene.name.data()),scene.name.size());
++  CBC_SCENE_TABLES(CBC_EXCHANGE_TABLE) CBC_EXCHANGE_TABLE(svm_nodes,uint) CBC_EXCHANGE_TABLE(sample_pattern_lut,float)
++#undef CBC_EXCHANGE_TABLE
++  put(out,"KernelData",&scene.data,sizeof(scene.data),1);
++  for(auto &input:inputs)put(out,"input."+input.name,input.data,1,input.bytes);
++  return out;
++}
++// Call once per case after scene.device_update and before the CPU reference (and before the
++// fixed INPUTS are uploaded to the GPU). Returns true when the gate must skip all GPU work.
++inline bool exchange_scene(ccl::DeviceScene &scene,const std::string &key,const std::vector<Input> &inputs){
++  const char *dump=environment("CODEBRIX_CYCLES_SCENE_DUMP"),*load=environment("CODEBRIX_CYCLES_SCENE_LOAD");
++  if(dump&&load)throw std::runtime_error("Scene dump and load are mutually exclusive");
++  if(dump){
++    std::filesystem::create_directories(dump);const auto bytes=serialize(scene,inputs);
++    std::ofstream file(std::filesystem::path(dump)/(key+".scene"),std::ios::binary);file.write(bytes.data(),std::streamsize(bytes.size()));
++    if(!file)throw std::runtime_error("Could not write scene exchange "+key);
++    return true;
++  }
++  if(!load)return false;
++  const auto bytes=read_file(std::filesystem::path(load)/(key+".scene"));size_t at=9;
++  if(bytes.compare(0,9,"CBCSCENE1"))throw std::runtime_error("Not a scene exchange file: "+key);
++  auto take=[&](const std::string &name,void *target,uint64_t element,auto &&resize){
++    uint64_t header[3];if(at+sizeof(header)>bytes.size())throw std::runtime_error("Truncated scene exchange "+key);
++    std::memcpy(header,bytes.data()+at,sizeof(header));at+=sizeof(header);
++    if(bytes.compare(at,header[0],name)||header[0]!=name.size())throw std::runtime_error("Scene exchange order differs at "+name);
++    at+=header[0];if(header[1]!=element)throw std::runtime_error("Scene exchange element size differs for "+name);
++    const uint64_t size=header[1]*header[2];if(at+size>bytes.size())throw std::runtime_error("Truncated scene exchange "+key);
++    void *data=resize(header[2]);if(!data)data=target;if(size)std::memcpy(data,bytes.data()+at,size_t(size));at+=size;
++  };
++#define CBC_EXCHANGE_TABLE(name,type) take(#name,nullptr,sizeof(*scene.name.data()),[&](uint64_t count)->void*{if(scene.name.size()!=count)scene.name.alloc(count);return count?static_cast<void*>(scene.name.data()):nullptr;});
++  CBC_SCENE_TABLES(CBC_EXCHANGE_TABLE) CBC_EXCHANGE_TABLE(svm_nodes,uint) CBC_EXCHANGE_TABLE(sample_pattern_lut,float)
++#undef CBC_EXCHANGE_TABLE
++  take("KernelData",&scene.data,sizeof(scene.data),[](uint64_t count)->void*{if(count!=1)throw std::runtime_error("KernelData count");return nullptr;});
++  for(auto &input:inputs)take("input."+input.name,input.data,1,[&](uint64_t count)->void*{if(count!=input.bytes)throw std::runtime_error("Scene exchange input size differs: "+input.name);return nullptr;});
++  if(at!=bytes.size())throw std::runtime_error("Scene exchange has trailing data: "+key);
++  return true;
++}
++}
+diff --git a/native/cycles/render_gate.cpp b/native/cycles/render_gate.cpp
+index 36c04f2..fd43488 100644
+--- a/native/cycles/render_gate.cpp
++++ b/native/cycles/render_gate.cpp
+@@ -6,6 +6,7 @@
+ #include "image_fixture.h"
+ #include "../../parity/native/import_triangles.h"
+ #include "camera_reference.h"
++#include "reference_policy.h"
+ #include "camera_motion_fixture.h"
+ #include "closest_reference.h"
+ #include "surface_reference.h"
+@@ -238,7 +239,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+       }
+       if(capture)capture->finish(prefix,buffers->buffer.device_pointer,buffers->buffer.memory_size(),uintptr_t(d.state.path.queued_kernel),scheduler.capacity(),width,height,samples,data.film.pass_stride);
+       buffers->buffer.copy_from_device();healthy(d);std::vector<float> result(buffers->buffer.data(),buffers->buffer.data()+buffers->buffer.size());
+-      if(repeat==0){first=result;write_image(prefix+".gpu",result,samples,width,height,data.film.pass_stride);write_image(prefix+".cpu",gold,samples,width,height,data.film.pass_stride);for(size_t i=0;i<result.size();i++)number(result[i],gold[i],"Independent CPU image "+std::to_string(i),image);}
++      if(repeat==0){first=result;write_image(prefix+".gpu",result,samples,width,height,data.film.pass_stride);write_image(prefix+".cpu",gold,samples,width,height,data.film.pass_stride);
++        // Pass/fail reference for the independent image: local, or the imported correctly rounded one
++        // (reference_policy.h). The lockstep stage checks above keep the local oracle: their input is this GPU's state.
++        const auto reference=reference_policy::resolve("image",gold,prefix+".reference-diagnostic.jsonl");
++        for(size_t i=0;i<result.size();i++)number(result[i],reference[i],"Independent CPU image "+std::to_string(i),image);}
+       else require(!std::memcmp(first.data(),result.data(),result.size()*4),"GPU render repeat differs");
+     }
+ #ifdef CBC_VOLUME_FIXTURE
+diff --git a/native/host/ABI.md b/native/host/ABI.md
+index d270360..ad4a364 100644
+--- a/native/host/ABI.md
++++ b/native/host/ABI.md
+@@ -324,6 +324,14 @@ What varies:
+ - CPU references differ between architectures: the ARM64 and x64 CPU oracles
+   differ by ULPs (NEON versus SSE grouping and contraction); a GPU can match the
+   x64 oracle bit for bit where the ARM64 oracle differs.
++- CPU references depend on the platform's C library. Cycles calls libm
++  (`acosf`, `asinf`, `atan2f`, `sinf`, `cosf`, `tanf`, ...) in its kernels and in
++  scene preparation. glibc rounds `acosf`/`asinf`/`atanf`/`atan2f`/`tanf`
++  correctly and the GPU kernels follow the correctly rounded results; on a
++  platform whose C library is not correctly rounded (Android's bionic), CPU
++  reference renders differ from the GPU by that library's error (1 ulp per call,
++  amplified by sampling). The correctly rounded reference is the authority; see
++  native/DEVICE.md, "Validation reference policy".
+ - Metal's hardware bilinear filtering is not bit-exact with Cycles' CPU texture
+   interpolation and exceeded the practical criterion in 4 components of the
+   linearly filtered byte4 starter texture (worst 1.16 times the tolerance). The
+diff --git a/native/tools/android_app_gate.py b/native/tools/android_app_gate.py
+index a2eb077..58623bb 100644
+--- a/native/tools/android_app_gate.py
++++ b/native/tools/android_app_gate.py
+@@ -20,6 +20,9 @@ def main():
+     parser.add_argument('--adb',default=str(Path.home()/'Android/Sdk/platform-tools/adb'))
+     parser.add_argument('--mode',choices=['cpu','webgpu'],default='cpu',
+                         help='cpu: the CPU reference suite; webgpu: GPU versus CPU reference films rendered in the app')
++    parser.add_argument('--linux-reference',type=Path,help='webgpu mode: folder of <scene>.cpu.rgba.bin films rendered on Linux x64 '
++                        '(glibc) by WebGpuRenderTests with CODEBRIX_CYCLES_REFERENCE_EXPORT; the device GPU film is judged '
++                        'against them and the in-app CPU film becomes a diagnostic (native/DEVICE.md, "Validation reference policy")')
+     parser.add_argument('--result-timeout',type=int,default=600,help='Seconds to wait for the app result')
+     parser.add_argument('--uninstall',action='store_true',help='Uninstall the app after its evidence is extracted')
+     args=parser.parse_args();root=args.build_output.resolve();out=args.output.resolve();app=root/'app'
+@@ -34,7 +37,8 @@ def main():
+     assert all(len(d)==3 and d[1] in TARGETS and d[0].isalnum() for d in devices)
+     assert len({d[0] for d in devices})==len({d[2] for d in devices})==len(devices)
+     save(out/'invocation.json',dict(sourceSha256=sources,runnerSha256=sha(Path(__file__)),apkSha256=sha(apk),
+-        inspectionSha256=sha(app/'apk-inspection.json'),devices=devices,mode=args.mode,resultTimeoutSeconds=args.result_timeout))
++        inspectionSha256=sha(app/'apk-inspection.json'),devices=devices,mode=args.mode,resultTimeoutSeconds=args.result_timeout,
++        linuxReferenceSha256={p.name:sha(p) for p in sorted(args.linux_reference.glob('*.cpu.rgba.bin'))} if args.linux_reference else None))
+     save(out/'status.json',dict(complete=False,phase='devices'))
+ 
+     def run(label,rid,serial):
+@@ -148,6 +152,21 @@ def main():
+                 cpuSeconds=scene['cpuSeconds'],progressEvents=scene['progressEvents'],pipelineTier=scene['pipelineTier'],warnings=scene['warnings'])
+             assert row['gpuSha256']==scene['gpuSha256'] and row['cpuSha256']==scene['cpuSha256']
+             assert row['practicalFailures']==scene['practicalFailures'] and row['strictDifferences']==scene['strictDifferences']
++            if args.linux_reference:
++                # Authoritative: device GPU versus the Linux glibc CPU film. The in-app CPU film (this
++                # device's C library) and the in-app GPU-versus-CPU numbers above are diagnostics.
++                linux=args.linux_reference/(scene['name']+'.cpu.rgba.bin');c=struct.unpack('<%df'%count,linux.read_bytes())
++                assert all(math.isfinite(x) for x in c)
++                def judge(x,y):
++                    e=[abs(p-q) for p,q in zip(x,y)]
++                    return dict(maximumAbsoluteError=max(e),practicalFailures=sum(d>5e-5+2e-4*abs(q) for d,q in zip(e,y)),
++                                strictDifferences=sum(d>1e-7+1e-7*abs(q) for d,q in zip(e,y)),bitwiseEqual=list(x)==list(y))
++                row['diagnosticInAppGpuVersusInAppCpu']=dict(maximumAbsoluteError=row['maximumAbsoluteError'],
++                    practicalFailures=row['practicalFailures'],strictDifferences=row['strictDifferences'],role='diagnostic')
++                row['diagnosticInAppCpuVersusLinux']=dict(judge(b,c),role='diagnostic')
++                row.update(judge(a,c),reference='linux-glibc',linuxReferenceSha256=sha(linux))
++            else:
++                row['reference']='in-app-cpu'
+             rows.append(row)
+         save(folder/'comparisons.json',rows)
+         capability=report['capability']
+@@ -156,7 +175,7 @@ def main():
+             strictDifferences=sum(r['strictDifferences'] for r in rows),maximumAbsoluteError=max(r['maximumAbsoluteError'] for r in rows),
+             pipelineTier=capability['pipelineTier'],deviceDescription=capability['deviceDescription'],
+             capabilityWarnings=capability['warnings'],cancellation=report['cancellation'],perScene=rows)
+-        assert report['passed'],report
++        if not args.linux_reference:assert report['passed'],report
+         assert len(rows)==3 and state['practicalFailures']==0
+         assert report['cancellation']['cancelled'] and not report['cancellation']['faultedAfterCancel']
+         assert report['cancellation']['reRenderPracticalFailures']==0
+diff --git a/b/native/tools/android_reference.py b/native/tools/android_reference.py
+new file mode 100644
+index 0000000..72abc25
+--- /dev/null
++++ b/native/tools/android_reference.py
+@@ -0,0 +1,327 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Correctly rounded validation references for Android device gates (native/DEVICE.md,
++"Validation reference policy").
++
++export   Runs Linux x64 (glibc) gate binaries with CODEBRIX_CYCLES_REFERENCE_EXPORT so each
++         independent CPU reference (sampler arrays, whole CPU films) is written beside the
++         run, and records provenance: gate binary SHA-256, glibc version, source pins,
++         every reference file's SHA-256 and the set digest ("oracle hash"). The Linux run
++         itself must pass (it is also the Linux gate result for those binaries).
++scene-reference
++         The authoritative flow for device jobs. A device pass of the gate wrote the scene
++         tables its own host code prepared (CODEBRIX_CYCLES_SCENE_DUMP); this runs the Linux
++         x64 gate binary on exactly those tables (CODEBRIX_CYCLES_SCENE_LOAD, CPU only) and
++         exports the correctly rounded reference for them, so the device GPU is judged on its
++         own inputs. It also dumps the scene Linux prepares itself and records, per table, how
++         the device-prepared inputs differ (diagnostic: the device C library and arithmetic
++         reach the GPU through scene preparation).
++compare  Recomputes, on the host, a device job's comparisons from the files the job
++         pulled back: the device GPU against the imported glibc reference (authoritative,
++         must agree with the device's own verdict), the device's local CPU reference
++         against the glibc reference (diagnostic: the device C library's deviation) and
++         the device GPU against its local CPU reference (diagnostic: the comparison the
++         gate used before this policy).
++
++Usage:
++  android_reference.py export --bin DIR --output DIR --job LABEL=GATE[:ARG,...][@ENV=VALUE;...] ...
++  android_reference.py scene-reference --bin DIR --scenes DIR --output DIR --label LABEL --gate GATE [--arg A ...]
++  android_reference.py compare --kind samples|lighting|render --run DIR --reference DIR --output FILE
++"""
++import argparse
++import array
++import datetime
++import hashlib
++import json
++import math
++import os
++import platform
++import struct
++import subprocess
++import sys
++import time
++from pathlib import Path
++
++HERE = Path(__file__).resolve().parent
++PRACTICAL = '5e-5 + 2e-4*abs(reference)'
++STRICT = '1e-7 + 1e-7*abs(reference)'
++
++
++def sha(path):
++    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++def floats(path):
++    values = array.array('f')
++    values.frombytes(Path(path).read_bytes())
++    return values
++
++
++def ordered(value):
++    bits = struct.unpack('<i', struct.pack('<f', value))[0]
++    return -2**31-bits if bits < 0 else bits
++
++
++def compare_arrays(actual, reference, mask=None):
++    """Practical/strict comparison of ACTUAL against REFERENCE (mask: indices to compare)."""
++    if len(actual) != len(reference):
++        raise RuntimeError('Length differs: %d versus %d' % (len(actual), len(reference)))
++    indices = range(len(actual)) if mask is None else mask
++    count = differing = practical = strict = nonfinite = max_ulps = 0
++    maximum = ratio = 0.0
++    first = None
++    for i in indices:
++        a, e = actual[i], reference[i]
++        count += 1
++        if struct.pack('<f', a) == struct.pack('<f', e):
++            continue
++        differing += 1
++        if not (math.isfinite(a) and math.isfinite(e)):
++            nonfinite += 1
++            first = first or dict(index=i, actual=a, reference=e)
++            continue
++        error = abs(a-e)
++        bound = 5e-5+2e-4*abs(e)
++        if error > bound:
++            practical += 1
++            first = first or dict(index=i, actual=a, reference=e)
++        strict += error > 1e-7+1e-7*abs(e)
++        maximum = max(maximum, error)
++        ratio = max(ratio, error/bound)
++        max_ulps = max(max_ulps, abs(ordered(a)-ordered(e)))
++    return dict(compared=count, bitwiseDiffering=differing, nonFinite=nonfinite, practicalFailures=practical,
++                strictDifferences=strict, maximumAbsoluteError=maximum, maximumPracticalRatio=ratio,
++                maximumUlps=max_ulps, firstPracticalFailure=first,
++                passed=practical == 0 and nonfinite == 0)
++
++
++def glibc_version():
++    try:
++        return os.confstr('CS_GNU_LIBC_VERSION')
++    except (ValueError, OSError):
++        return None
++
++
++def export(args):
++    sys.path.insert(0, str(HERE))
++    from render_gate import inputs
++    out = args.output.resolve()
++    out.mkdir(parents=True, exist_ok=False)
++    sources = inputs()
++    libm = None
++    if args.libm_record:
++        record = json.loads(args.libm_record.read_text())
++        libm = dict(path=str(args.libm_record), sha256=sha(args.libm_record), libc=record['libc'],
++                    libcVersion=record['libcVersion'],
++                    correctlyRounded={r['function']: r['differFromCorrectlyRounded'] == 0 for r in record['functions']})
++    jobs = {}
++    for spec in args.job:
++        label, rest = spec.split('=', 1)
++        rest, _, env_text = rest.partition('@')
++        gate, _, extra = rest.partition(':')
++        env = dict(item.split('=', 1) for item in env_text.split(';') if item)
++        binary = args.bin/('codebrix_cycles_'+gate+'_gate')
++        folder = out/'runs'/label
++        folder.mkdir(parents=True)
++        references = out/'references'/label
++        command = [str(binary), str(folder/'run'), *[x for x in extra.split(',') if x]]
++        environment = {**os.environ, **env, 'CODEBRIX_CYCLES_REFERENCE_EXPORT': str(references)}
++        environment.pop('CODEBRIX_CYCLES_REFERENCE_IMPORT', None)
++        started = time.time()
++        with (folder/'stdout.txt').open('w') as stdout, (folder/'stderr.txt').open('w') as stderr:
++            try:
++                code = subprocess.run(command, stdout=stdout, stderr=stderr, env=environment,
++                                      timeout=args.budget).returncode
++            except subprocess.TimeoutExpired:
++                code = None
++        report = None
++        try:
++            report = json.loads((folder/'stdout.txt').read_text())
++        except ValueError:
++            pass
++        files = {p.name: sha(p) for p in sorted(references.glob('*.f32'))} if references.exists() else {}
++        jobs[label] = dict(gate=gate, command=command, env=env, exit=code, seconds=round(time.time()-started, 1),
++                           passed=code == 0 and bool(report and report.get('passed')), report=report,
++                           gateBinarySha256=sha(binary), referenceSha256=files)
++        print('%s exit=%s passed=%s references=%d %.0fs' % (label, code, jobs[label]['passed'], len(files),
++                                                           jobs[label]['seconds']), flush=True)
++    digest = hashlib.sha256(json.dumps({k: v['referenceSha256'] for k, v in sorted(jobs.items())},
++                                       sort_keys=True).encode()).hexdigest()
++    provenance = dict(created=datetime.datetime.now().isoformat(timespec='seconds'), role='authoritative',
++                      policy='native/DEVICE.md "Validation reference policy"',
++                      platform=dict(system=platform.system(), machine=platform.machine(), kernel=platform.release(),
++                                    libc=glibc_version()),
++                      linuxBuild=dict(binDirectory=str(args.bin),
++                                      buildRecordSha256=sha(args.build_record) if args.build_record else None),
++                      sourceSha256=sources, libmRecord=libm, oracleSha256=digest, jobs=jobs,
++                      passed=all(j['passed'] for j in jobs.values()))
++    (out/'provenance.json').write_text(json.dumps(provenance, indent=2)+'\n')
++    print('oracleSha256', digest, 'passed', provenance['passed'])
++    return 0 if provenance['passed'] else 1
++
++
++def scene_tables(path):
++    """Parse a reference_policy.h scene exchange file into {name: (element_size, bytes)}."""
++    data = Path(path).read_bytes()
++    if data[:9] != b'CBCSCENE1':
++        raise RuntimeError('Not a scene exchange file: '+str(path))
++    at, tables = 9, {}
++    while at < len(data):
++        length, element, count = struct.unpack_from('<QQQ', data, at)
++        at += 24
++        name = data[at:at+length].decode()
++        at += length
++        tables[name] = (element, data[at:at+element*count])
++        at += element*count
++    return tables
++
++
++def scene_diff(device_path, linux_path, linux_repeat_path):
++    """Per-table 32-bit words where the device-prepared scene differs from Linux's. Words that
++    differ between two Linux preparations of the same scene are uninitialized record padding and
++    are excluded (approximate: padding that happens to repeat on Linux is still counted)."""
++    device, linux, repeat = scene_tables(device_path), scene_tables(linux_path), scene_tables(linux_repeat_path)
++    rows = {}
++    for name in sorted(set(device) | set(linux)):
++        a, b = device.get(name, (0, b''))[1], linux.get(name, (0, b''))[1]
++        c = repeat.get(name, (0, b''))[1]
++        if a == b:
++            continue
++        words = min(len(a), len(b), len(c))//4
++        noise = {i for i in range(words) if b[4*i:4*i+4] != c[4*i:4*i+4]}
++        differing = sum(a[4*i:4*i+4] != b[4*i:4*i+4] for i in range(words) if i not in noise)
++        if differing or len(a) != len(b):
++            rows[name] = dict(deviceBytes=len(a), linuxBytes=len(b), differing32BitWords=differing,
++                              excludedPaddingWords=len(noise))
++    return rows
++
++
++def scene_reference(args):
++    sys.path.insert(0, str(HERE))
++    from render_gate import inputs
++    out = args.output.resolve()
++    references, linux_scenes, folder = out/'references'/args.label, out/'linux-scenes'/args.label, out/'runs'/args.label
++    linux_repeat = out/'linux-scenes-repeat'/args.label
++    folder.mkdir(parents=True, exist_ok=False)
++    binary = args.bin/('codebrix_cycles_'+args.gate+'_gate')
++    scenes = sorted(args.scenes.resolve().glob('*.scene'))
++    if not scenes:
++        raise RuntimeError('No device scene exchange files in '+str(args.scenes))
++    rows = {}
++    for mode, env in [('reference', {'CODEBRIX_CYCLES_SCENE_LOAD': str(args.scenes.resolve()),
++                                     'CODEBRIX_CYCLES_REFERENCE_EXPORT': str(references)}),
++                      ('linux-scene', {'CODEBRIX_CYCLES_SCENE_DUMP': str(linux_scenes)}),
++                      ('linux-scene-repeat', {'CODEBRIX_CYCLES_SCENE_DUMP': str(linux_repeat)})]:
++        environment = {k: v for k, v in os.environ.items() if not k.startswith('CODEBRIX_CYCLES_SCENE_') and
++                       not k.startswith('CODEBRIX_CYCLES_REFERENCE_')}
++        environment.update(env)
++        command = [str(binary), str(folder/(mode+'-run')), *args.arg]
++        started = time.time()
++        result = subprocess.run(command, capture_output=True, text=True, env=environment, timeout=args.budget)
++        (folder/(mode+'.stdout.txt')).write_text(result.stdout)
++        (folder/(mode+'.stderr.txt')).write_text(result.stderr)
++        report = json.loads(result.stdout) if result.returncode == 0 else None
++        rows[mode] = dict(command=command, exit=result.returncode, seconds=round(time.time()-started, 1), report=report)
++        if result.returncode or not report.get('passed'):
++            raise RuntimeError(mode+' pass failed: '+result.stderr.strip()[-300:])
++    files = {p.name: sha(p) for p in sorted(references.glob('*.f32'))}
++    provenance = dict(created=datetime.datetime.now().isoformat(timespec='seconds'), role='authoritative',
++                      policy='native/DEVICE.md "Validation reference policy"', label=args.label, gate=args.gate, args=args.arg,
++                      platform=dict(system=platform.system(), machine=platform.machine(), kernel=platform.release(),
++                                    libc=glibc_version()),
++                      gateBinarySha256=sha(binary), sourceSha256=inputs(), runs=rows,
++                      deviceSceneSha256={p.name: sha(p) for p in scenes},
++                      linuxSceneSha256={p.name: sha(p) for p in sorted(linux_scenes.glob('*.scene'))},
++                      inputDeviationDiagnostic={p.name: scene_diff(p, linux_scenes/p.name, linux_repeat/p.name) for p in scenes},
++                      referenceSha256=files,
++                      oracleSha256=hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest(), passed=bool(files))
++    (out/(args.label+'.provenance.json')).write_text(json.dumps(provenance, indent=2)+'\n')
++    print(args.label, 'references', len(files), 'oracleSha256', provenance['oracleSha256'])
++    for name, diff in provenance['inputDeviationDiagnostic'].items():
++        print('  input deviation', name, {k: v['differing32BitWords'] for k, v in diff.items()})
++    return 0 if provenance['passed'] else 1
++
++
++def compare(args):
++    run, ref = args.run.resolve(), args.reference.resolve()
++    rows = []
++    if args.kind == 'samples':
++        glibc = floats(ref/'samples.f32')
++        gpu, local = floats(run.parent/(run.name+'.actual.bin')), floats(run.parent/(run.name+'.reference.bin'))
++        valid = [i for i in range(0, len(glibc), 12) if glibc[i]]
++        validity = sum(gpu[i] != glibc[i] for i in range(0, len(glibc), 12))
++        local_validity = sum(local[i] != glibc[i] for i in range(0, len(glibc), 12))
++        fields = [i+j for i in valid for j in range(1, 12)]
++        authoritative = compare_arrays(gpu, glibc, fields)
++        authoritative.update(validityDifferences=validity, validSamples=len(valid))
++        authoritative['passed'] = authoritative['passed'] and validity == 0
++        local_fields = [i+j for i in valid if local[i] for j in range(1, 12)]
++        rows.append(dict(key='samples', authoritative=authoritative,
++                         diagnosticLocalVersusGlibc=dict(compare_arrays(local, glibc, local_fields),
++                                                         validityDifferences=local_validity, role='diagnostic'),
++                         diagnosticGpuVersusLocal=dict(compare_arrays(gpu, local, local_fields), role='diagnostic')))
++    else:
++        cases = sorted(ref.glob('*.f32'))
++        for reference in cases:
++            key = reference.stem
++            if args.kind == 'lighting':
++                folder = run/key.replace('.film', '')
++                gpu_path, local_path = folder/'run.gpu.film.bin', folder/'run.cpu.film.bin'
++            else:
++                gpu_path, local_path = run.parent/(run.name+'.gpu.film.bin'), run.parent/(run.name+'.cpu.film.bin')
++            glibc = floats(reference)
++            row = dict(key=key, referenceSha256=sha(reference))
++            if local_path.exists():
++                local = floats(local_path)
++                row['diagnosticLocalVersusGlibc'] = dict(compare_arrays(local, glibc), role='diagnostic')
++            if gpu_path.exists():
++                gpu = floats(gpu_path)
++                row['authoritative'] = compare_arrays(gpu, glibc)
++                if local_path.exists():
++                    row['diagnosticGpuVersusLocal'] = dict(compare_arrays(gpu, local), role='diagnostic')
++            else:
++                row['authoritative'] = dict(passed=False, notReached=True)
++            rows.append(row)
++    result = dict(kind=args.kind, run=str(run), reference=str(ref), practicalCriterion=PRACTICAL, strictCriterion=STRICT,
++                  passed=bool(rows) and all(r['authoritative']['passed'] for r in rows), rows=rows)
++    args.output.write_text(json.dumps(result, indent=2)+'\n')
++    for r in rows:
++        a = r['authoritative']
++        d = r.get('diagnosticLocalVersusGlibc', {})
++        print('%-16s gpu-vs-glibc passed=%s practical=%s strict=%s max=%.4g | local-vs-glibc differing=%s maxUlps=%s practical=%s' % (
++            r['key'], a.get('passed'), a.get('practicalFailures'), a.get('strictDifferences'), a.get('maximumAbsoluteError', float('nan')),
++            d.get('bitwiseDiffering'), d.get('maximumUlps'), d.get('practicalFailures')))
++    return 0 if result['passed'] else 1
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    sub = parser.add_subparsers(dest='action', required=True)
++    e = sub.add_parser('export')
++    e.add_argument('--bin', type=Path, required=True)
++    e.add_argument('--output', type=Path, required=True)
++    e.add_argument('--job', action='append', required=True)
++    e.add_argument('--budget', type=float, default=900)
++    e.add_argument('--libm-record', type=Path)
++    e.add_argument('--build-record', type=Path, help='The Linux build record (native/work/cycles-build.json)')
++    s = sub.add_parser('scene-reference')
++    s.add_argument('--bin', type=Path, required=True)
++    s.add_argument('--scenes', type=Path, required=True)
++    s.add_argument('--output', type=Path, required=True)
++    s.add_argument('--label', required=True)
++    s.add_argument('--gate', required=True)
++    s.add_argument('--arg', action='append', default=[])
++    s.add_argument('--budget', type=float, default=900)
++    c = sub.add_parser('compare')
++    c.add_argument('--kind', choices=['samples', 'lighting', 'render'], required=True)
++    c.add_argument('--run', type=Path, required=True,
++                   help='samples/render: the job output prefix (.../run); lighting: the job output directory')
++    c.add_argument('--reference', type=Path, required=True)
++    c.add_argument('--output', type=Path, required=True)
++    args = parser.parse_args()
++    return {'export': export, 'scene-reference': scene_reference, 'compare': compare}[args.action](args)
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())
+diff --git a/b/native/tools/libm_probe.c b/native/tools/libm_probe.c
+new file mode 100644
+index 0000000..e0ff65b
+--- /dev/null
++++ b/native/tools/libm_probe.c
+@@ -0,0 +1,149 @@
++/* Copyright (c) 2026 Jeremy Ellis and contributors
++ * SPDX-License-Identifier: Apache-2.0
++ *
++ * libm deviation probe (diagnostic tool, never linked into the product or a gate).
++ *
++ * Measures how often the host C library's binary32 functions that the pinned Cycles
++ * kernel code calls differ from the correctly rounded result, and prints one JSON
++ * object. The correctly rounded value is the host's binary64 function rounded once to
++ * binary32; inputs whose binary64 result lies within 2^-50 (relative) of a binary32
++ * rounding midpoint cannot be decided that way and are counted as "ambiguous" instead
++ * of as differences. Each function also gets a digest of the host's raw results, in a
++ * fixed order, so two hosts can be compared bit for bit.
++ *
++ * Domains: acosf and asinf every binary32 in [-1, 1] (the arguments Cycles' safe_acosf
++ * and safe_asinf pass); the other unary functions every 16th binary32 bit pattern over
++ * their finite domain; atan2f and powf 2^24 deterministic pseudo-random pairs.
++ *
++ * Usage: libm_probe [THREADS]   (writes JSON to stdout)
++ */
++#include <math.h>
++#include <pthread.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#if defined(__GLIBC__)
++#include <gnu/libc-version.h>
++#endif
++
++#define CHUNKS 256u
++static float bits_to_float(uint32_t u){float x;memcpy(&x,&u,4);return x;}
++static uint32_t float_to_bits(float x){uint32_t u;memcpy(&u,&x,4);return u;}
++static int64_t ordered(float x){int32_t b;memcpy(&b,&x,4);return b<0?(int64_t)INT32_MIN-b:b;}
++
++typedef float (*unary_f)(float);typedef double (*unary_d)(double);
++typedef float (*binary_f)(float,float);typedef double (*binary_d)(double,double);
++
++/* Correctly rounded candidate from the binary64 result; *ambiguous set near a midpoint. */
++static float rounded(double y,int *ambiguous){
++  float r=(float)y;*ambiguous=0;
++  if(!isfinite(y)||y==0.0||!isfinite(r))return r;
++  float n=nextafterf(r,y>(double)r?INFINITY:-INFINITY);
++  if(!isfinite(n))return r;
++  double mid=((double)r+(double)n)*0.5;
++  if(fabs(y-mid)<=fabs(y)*0x1p-50)*ambiguous=1;
++  return r;
++}
++static int same(float a,float b){return float_to_bits(a)==float_to_bits(b)||(isnan(a)&&isnan(b));}
++
++typedef struct {
++  const char *name,*domain;unary_f f;unary_d d;binary_f bf;binary_d bd;
++  uint32_t low,high,stride;int sign_both;uint32_t pairs;float a_low,a_high,b_low,b_high;
++  uint64_t total[CHUNKS],differ[CHUNKS],ambiguous[CHUNKS],hash[CHUNKS],max_ulps[CHUNKS];
++  uint32_t first_input[CHUNKS],first_input_b[CHUNKS],first_host[CHUNKS],first_cr[CHUNKS];int has_first[CHUNKS];
++} Probe;
++
++static float f_acos(float x){return acosf(x);} static double d_acos(double x){return acos(x);}
++static float f_asin(float x){return asinf(x);} static double d_asin(double x){return asin(x);}
++static float f_atan(float x){return atanf(x);} static double d_atan(double x){return atan(x);}
++static float f_sin(float x){return sinf(x);} static double d_sin(double x){return sin(x);}
++static float f_cos(float x){return cosf(x);} static double d_cos(double x){return cos(x);}
++static float f_tan(float x){return tanf(x);} static double d_tan(double x){return tan(x);}
++static float f_exp(float x){return expf(x);} static double d_exp(double x){return exp(x);}
++static float f_log(float x){return logf(x);} static double d_log(double x){return log(x);}
++static float f_sqrt(float x){return sqrtf(x);} static double d_sqrt(double x){return sqrt(x);}
++static float f_atan2(float y,float x){return atan2f(y,x);} static double d_atan2(double y,double x){return atan2(y,x);}
++static float f_pow(float x,float y){return powf(x,y);} static double d_pow(double x,double y){return pow(x,y);}
++
++static Probe probes[]={
++  {"acosf","every binary32 in [-1,1]",f_acos,d_acos,0,0,0u,0x3f800000u,1u,1},
++  {"asinf","every binary32 in [-1,1]",f_asin,d_asin,0,0,0u,0x3f800000u,1u,1},
++  {"atanf","every 16th finite binary32",f_atan,d_atan,0,0,0u,0x7f7fffffu,16u,1},
++  {"sinf","every 16th finite binary32",f_sin,d_sin,0,0,0u,0x7f7fffffu,16u,1},
++  {"cosf","every 16th finite binary32",f_cos,d_cos,0,0,0u,0x7f7fffffu,16u,1},
++  {"tanf","every 16th finite binary32",f_tan,d_tan,0,0,0u,0x7f7fffffu,16u,1},
++  {"expf","every 16th finite binary32",f_exp,d_exp,0,0,0u,0x7f7fffffu,16u,1},
++  {"logf","every 16th positive finite binary32",f_log,d_log,0,0,0u,0x7f7fffffu,16u,0},
++  {"sqrtf","every 16th positive finite binary32",f_sqrt,d_sqrt,0,0,0u,0x7f7fffffu,16u,0},
++  {"atan2f","2^24 pseudo-random (y,x) pairs in [-8,8]^2",0,0,f_atan2,d_atan2,0,0,0,0,1u<<24,-8.f,8.f,-8.f,8.f},
++  {"powf","2^24 pseudo-random (x,y) pairs, x in (0,4], y in [-8,8]",0,0,f_pow,d_pow,0,0,0,0,1u<<24,0.f,4.f,-8.f,8.f},
++};
++#define PROBES (sizeof(probes)/sizeof(probes[0]))
++
++static void note(Probe *p,unsigned c,float a,float b,float host,float cr){
++  int64_t d=ordered(host)-ordered(cr);uint64_t u=(uint64_t)(d<0?-d:d);
++  if(isfinite(host)&&isfinite(cr)&&u>p->max_ulps[c])p->max_ulps[c]=u;
++  if(!p->has_first[c]){p->has_first[c]=1;p->first_input[c]=float_to_bits(a);p->first_input_b[c]=float_to_bits(b);p->first_host[c]=float_to_bits(host);p->first_cr[c]=float_to_bits(cr);}
++}
++static uint32_t lcg(uint64_t *s){*s=*s*6364136223846793005ull+1442695040888963407ull;return (uint32_t)(*s>>32);}
++static void run_chunk(Probe *p,unsigned c){
++  uint64_t total=0,differ=0,amb=0,hash=1469598103934665603ull;
++  if(p->f){
++    const uint64_t count=((uint64_t)p->high-p->low)/p->stride+1,begin=count*c/CHUNKS,end=count*(c+1)/CHUNKS;
++    for(int sign=0;sign<(p->sign_both?2:1);sign++)for(uint64_t i=begin;i<end;i++){
++      const uint32_t bits=(uint32_t)(p->low+i*p->stride)|(sign?0x80000000u:0u);const float x=bits_to_float(bits);
++      const float host=p->f(x);int a;const float cr=rounded(p->d((double)x),&a);total++;
++      hash=(hash^float_to_bits(host))*1099511628211ull;
++      if(a){amb++;continue;}
++      if(!same(host,cr)){differ++;note(p,c,x,0.f,host,cr);}
++    }
++  }else{
++    const uint64_t begin=(uint64_t)p->pairs*c/CHUNKS,end=(uint64_t)p->pairs*(c+1)/CHUNKS;
++    uint64_t state=0x9e3779b97f4a7c15ull^(uint64_t)c;
++    for(uint64_t i=begin;i<end;i++){
++      const float a=p->a_low+(p->a_high-p->a_low)*(float)(lcg(&state)>>8)*0x1p-24f;
++      const float b=p->b_low+(p->b_high-p->b_low)*(float)(lcg(&state)>>8)*0x1p-24f;
++      const float host=p->bf(a,b);int am;const float cr=rounded(p->bd((double)a,(double)b),&am);total++;
++      hash=(hash^float_to_bits(host))*1099511628211ull;
++      if(am){amb++;continue;}
++      if(!same(host,cr)){differ++;note(p,c,a,b,host,cr);}
++    }
++  }
++  p->total[c]=total;p->differ[c]=differ;p->ambiguous[c]=amb;p->hash[c]=hash;
++}
++static unsigned next_job=0;static pthread_mutex_t lock=PTHREAD_MUTEX_INITIALIZER;
++static void *worker(void *unused){(void)unused;
++  for(;;){pthread_mutex_lock(&lock);unsigned job=next_job++;pthread_mutex_unlock(&lock);
++    if(job>=PROBES*CHUNKS)return 0;run_chunk(&probes[job/CHUNKS],job%CHUNKS);}
++}
++int main(int argc,char **argv){
++  unsigned threads=argc>1?(unsigned)atoi(argv[1]):4;if(threads<1)threads=1;if(threads>64)threads=64;
++  pthread_t ids[64];for(unsigned i=0;i<threads;i++)pthread_create(&ids[i],0,worker,0);for(unsigned i=0;i<threads;i++)pthread_join(ids[i],0);
++#if defined(__GLIBC__)
++  const char *libc="glibc";const char *version=gnu_get_libc_version();
++#elif defined(__BIONIC__)
++  const char *libc="bionic";char version[32];snprintf(version,sizeof version,"API %d",__ANDROID_API__);
++#else
++  const char *libc="other";const char *version="";
++#endif
++#if defined(__aarch64__)
++  const char *arch="aarch64";
++#elif defined(__x86_64__)
++  const char *arch="x86_64";
++#else
++  const char *arch="other";
++#endif
++  printf("{\"tool\":\"native/tools/libm_probe.c\",\"libc\":\"%s\",\"libcVersion\":\"%s\",\"architecture\":\"%s\",\"threads\":%u,"
++         "\"correctlyRoundedReference\":\"host binary64 function rounded once to binary32; inputs within 2^-50 relative of a binary32 midpoint counted as ambiguous\",\"functions\":[",libc,version,arch,threads);
++  for(unsigned i=0;i<PROBES;i++){Probe *p=&probes[i];uint64_t total=0,differ=0,amb=0,max_ulps=0,digest=1469598103934665603ull;int shown=0;
++    for(unsigned c=0;c<CHUNKS;c++){total+=p->total[c];differ+=p->differ[c];amb+=p->ambiguous[c];if(p->max_ulps[c]>max_ulps)max_ulps=p->max_ulps[c];digest=(digest^p->hash[c])*1099511628211ull;}
++    printf("%s{\"function\":\"%s\",\"domain\":\"%s\",\"inputs\":%llu,\"differFromCorrectlyRounded\":%llu,\"ambiguous\":%llu,\"maximumUlps\":%llu,\"resultDigest\":\"%016llx\",\"firstDifferences\":[",
++           i?",":"",p->name,p->domain,(unsigned long long)total,(unsigned long long)differ,(unsigned long long)amb,(unsigned long long)max_ulps,(unsigned long long)digest);
++    for(unsigned c=0;c<CHUNKS&&shown<4;c++)if(p->has_first[c]){
++      if(p->f)printf("%s{\"x\":\"%08x\",\"host\":\"%08x\",\"correctlyRounded\":\"%08x\"}",shown?",":"",p->first_input[c],p->first_host[c],p->first_cr[c]);
++      else printf("%s{\"a\":\"%08x\",\"b\":\"%08x\",\"host\":\"%08x\",\"correctlyRounded\":\"%08x\"}",shown?",":"",p->first_input[c],p->first_input_b[c],p->first_host[c],p->first_cr[c]);
++      shown++;}
++    printf("]}");}
++  printf("]}\n");return 0;
++}
+diff --git a/b/native/tools/libm_probe.py b/native/tools/libm_probe.py
+new file mode 100644
+index 0000000..da7093f
+--- /dev/null
++++ b/native/tools/libm_probe.py
+@@ -0,0 +1,103 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Build and run the libm deviation probe (libm_probe.c) on Linux or an attached Android device.
++
++Writes OUTPUT (JSON): the probe's own record plus the build/run provenance (compiler,
++binary SHA-256, device properties). Diagnostic only; it never decides a gate.
++
++  libm_probe.py linux OUTPUT.json
++  libm_probe.py android-arm64|android-x64 OUTPUT.json --serial SERIAL [--adb PATH]
++
++On a device the probe runs from /data/local/tmp/codebrix-libm-probe-<pid>, which is
++removed afterwards (also on failure). Android binaries use the reviewed NDK at API 33.
++"""
++import argparse
++import hashlib
++import json
++import os
++import shlex
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++
++HERE = Path(__file__).resolve().parent
++REPO = HERE.parents[1]
++SOURCE = HERE/'libm_probe.c'
++FLAGS = ['-O2', '-std=c11', '-ffp-contract=off', '-fno-fast-math']
++
++
++def sha(path):
++    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++def build(rid, folder):
++    binary = Path(folder)/('libm_probe-'+rid)
++    if rid == 'linux':
++        compiler = ['gcc']
++        command = [*compiler, *FLAGS, '-o', str(binary), str(SOURCE), '-lm', '-lpthread']
++        version = subprocess.check_output(['gcc', '--version'], text=True).splitlines()[0]
++    else:
++        sys.path.insert(0, str(REPO/'tools'))
++        from android_toolchain import AndroidToolchain
++        toolchain = AndroidToolchain(rid)
++        clang = toolchain.bin/'clang'
++        command = [str(clang), '--target='+toolchain.triple+'33', *FLAGS, '-o', str(binary), str(SOURCE), '-lm']
++        version = subprocess.check_output([str(clang), '--version'], text=True).splitlines()[0]
++    subprocess.run(command, check=True)
++    return binary, dict(command=command, compiler=version, binarySha256=sha(binary), sourceSha256=sha(SOURCE))
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument('rid', choices=['linux', 'android-arm64', 'android-x64'])
++    parser.add_argument('output', type=Path)
++    parser.add_argument('--serial')
++    parser.add_argument('--adb', default=os.path.expanduser('~/Android/Sdk/platform-tools/adb'))
++    parser.add_argument('--threads', type=int, default=4)
++    parser.add_argument('--timeout', type=int, default=900)
++    args = parser.parse_args()
++    with tempfile.TemporaryDirectory() as folder:
++        binary, provenance = build(args.rid, folder)
++        if args.rid == 'linux':
++            result = subprocess.run([str(binary), str(args.threads)], capture_output=True, text=True,
++                                    timeout=args.timeout, check=True)
++            host = dict(uname=os.uname().release, machine=os.uname().machine)
++        else:
++            if not args.serial:
++                parser.error('--serial is required for a device')
++            adb = [args.adb, '-s', args.serial]
++            remote = '/data/local/tmp/codebrix-libm-probe-'+str(os.getpid())
++            props = {k: subprocess.check_output([*adb, 'shell', 'getprop', v], text=True).strip() for k, v in
++                     dict(model='ro.product.model', abi='ro.product.cpu.abi', api='ro.build.version.sdk',
++                          fingerprint='ro.build.fingerprint').items()}
++            expected = {'android-arm64': 'arm64-v8a', 'android-x64': 'x86_64'}[args.rid]
++            if props['abi'] != expected:
++                raise RuntimeError('Device ABI '+props['abi']+' does not match '+args.rid)
++            try:
++                subprocess.run([*adb, 'shell', 'mkdir -p '+remote], check=True)
++                subprocess.run([*adb, 'push', str(binary), remote+'/libm_probe'], check=True, capture_output=True)
++                pushed = subprocess.check_output([*adb, 'shell', 'sha256sum '+remote+'/libm_probe'], text=True).split()[0]
++                if pushed != provenance['binarySha256']:
++                    raise RuntimeError('Pushed probe hash differs')
++                result = subprocess.run([*adb, 'shell', shlex.join(['chmod', '755', remote+'/libm_probe'])+' && '+
++                                         shlex.join([remote+'/libm_probe', str(args.threads)])],
++                                        capture_output=True, text=True, timeout=args.timeout, check=True)
++            finally:
++                subprocess.run([*adb, 'shell', 'rm -rf '+remote], check=False)
++                left = subprocess.run([*adb, 'shell', 'ls -d '+remote], capture_output=True, text=True)
++                provenance['deviceCleaned'] = left.returncode != 0
++            host = dict(serial=args.serial, **props)
++    record = json.loads(result.stdout)
++    record.update(rid=args.rid, host=host, build=provenance)
++    args.output.parent.mkdir(parents=True, exist_ok=True)
++    args.output.write_text(json.dumps(record, indent=2)+'\n')
++    for row in record['functions']:
++        print('%-7s inputs=%d differ=%d ambiguous=%d maxUlps=%d digest=%s' % (
++            row['function'], row['inputs'], row['differFromCorrectlyRounded'], row['ambiguous'],
++            row['maximumUlps'], row['resultDigest']))
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs b/tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs
+index 8b79429..1250451 100644
+--- a/tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs
++++ b/tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs
+@@ -5,6 +5,7 @@ using System;
+ using System.Collections.Concurrent;
+ using System.IO;
+ using System.Linq;
++using System.Runtime.InteropServices;
+ using System.Threading;
+ using System.Threading.Tasks;
+ using CodeBrix.Graphics3D.Cycles.Diagnostics;
+@@ -56,6 +57,17 @@ public class WebGpuRenderTests(ITestOutputHelper output)
+         return scene.Render(WebGpuValidationScenes.Settings);
+     }
+ 
++    // Validation reference policy (native/DEVICE.md): with CODEBRIX_CYCLES_REFERENCE_EXPORT set, the
++    // CPU reference film rendered here (Linux x64, glibc) is written for the Android app gate's
++    // --linux-reference comparison. Without the variable nothing is written.
++    private static void ExportReference(string name, FilmBuffer film)
++    {
++        string folder = Environment.GetEnvironmentVariable("CODEBRIX_CYCLES_REFERENCE_EXPORT");
++        if (string.IsNullOrEmpty(folder)) return;
++        Directory.CreateDirectory(folder);
++        File.WriteAllBytes(Path.Combine(folder, name + ".cpu.rgba.bin"), MemoryMarshal.AsBytes(film.Span).ToArray());
++    }
++
+     [Theory]
+     [InlineData(WebGpuValidationScenes.Glass)]
+     [InlineData(WebGpuValidationScenes.DiffuseSun)]
+@@ -66,6 +78,7 @@ public class WebGpuRenderTests(ITestOutputHelper output)
+         using CyclesScene gpu = CreateGpuScene();
+         WebGpuValidationScenes.Build(gpu, name);
+         FilmBuffer reference = RenderCpu(name);
++        ExportReference(name, reference);
+ 
+         //Act
+         FilmBuffer film = await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);

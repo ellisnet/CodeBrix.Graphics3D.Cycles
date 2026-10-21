@@ -1,0 +1,47 @@
+[08:17:02] full native build (tools/build.py --jobs 6 --skip-dependencies), cold worktree: budget 40 min (cold Cycles+prototype compile; justified as first build of the worktree)
+[08:26:19] build scene_edit_test+abi_test (pre-change baseline probe): budget 10 min
+[08:27:28] incremental host build + scene_edit cpu probe: budget 10 min
+[08:27:58] scene_edit gpu probe (cold cache native/work/e3/mesa-probe1): budget 15 min
+[08:35:36] build host+shadow_terminator_gate+surface_gate+scene_edit: budget 15 min
+[08:36:16] shadow_terminator_gate dev run (cold cache native/work/e3/mesa-st1): budget 15 min
+[08:40:05] build host+scene_edit (recovery): budget 10 min
+[08:40:31] scene_edit gpu probe 2 (warm cache mesa-probe1): budget 15 min
+[08:41:27] abi_test gpu spot repro (cold cache mesa-spot1): budget 15 min
+[08:46:10] BASELINE gate build (baseline sources swapped in temporarily): budget 20 min
+[08:49:09] BASELINE image gates x9 (lighting, lighting_mis, broad_lighting, transparent_lighting, feature_combination, triangle_lighting, object_motion_render, deforming_motion_render, glass_render) cold cache mesa-base: budget 40 min total (justified: 9 gates cold, 900 s cap each)
+[08:49:42] spot/area crash repro x2 cold (abi_test gpu, mesa-spot2/3): budget 6 min
+[08:53:31] build host+abi_test (lamp dedupe): budget 10 min
+[08:54:13] BASELINE glass_render rerun: budget 5 min
+[08:54:41] abi_test gpu cold x3 with lamp dedupe (mesa-dd1..3): budget 8 min
+[09:00:51] build host+abi (asin loops) + abi_test gpu cold x3 (mesa-lp1..3): budget 12 min
+[09:08:48] build 9 image gates (mine) : budget 15 min
+[09:11:40] MINE image gates x9 cold (mesa-mine1): budget 40 min total (900 s cap each)
+[09:13:50] dotnet build Release (dev check): budget 10 min
+[09:14:00] managed CyclesSceneTests (CPU): budget 5 min
+[09:16:32] dev: scene_edit_gate (cold mesa-seg1) 15 min + shadow_terminator_gate (cold mesa-stg1) 15 min, concurrently (2 gates)
+[09:23:47] VALIDATION 1: clean full native build (rm cycles-build; tools/build.py --jobs 6 --skip-dependencies): budget 30 min
+[09:28:30] VALIDATION 2: build gate targets (scene_edit_test, abi, shadow_terminator, surface + 9 image gates): budget 20 min
+[09:31:08] VALIDATION 3: host gate cold (MESA_SHADER_CACHE_DIR=native/work/e3/validation/mesa-host): budget 20 min
+[09:35:59] VALIDATION 3b: host gate rerun cold (mesa-host2) after abi GPU area change: budget 20 min
+[09:39:39] baseline host lib build via temporary source swap (native/ files only): budget 15 min
+[09:40:15] motion_repro cold x4 baseline lib + x4 mine (2 concurrent): budget 20 min
+[09:48:02] REDO baseline build (swap with touched mtimes): host lib + 9 image gates; then restore and rebuild: budget 25 min
+[09:54:30] baseline2 motion_repro x4 cold + baseline2 9 image gates (cold mesa-base2), concurrently: budget 25 min
+[10:02:57] experiment: revert lamp disk dedupe, rebuild host, motion_repro x4 cold: budget 15 min
+[10:07:33] area+motion repro x4 cold, current (loops, no dedupe) lib; baseline2 lib x2 for comparison: budget 15 min
+[10:13:15] area+motion repro x4 cold baseline2 lib: budget 12 min
+[10:17:36] v1-native-build: budget 1800 s
+[10:20:29] v1-gate-build: budget 1200 s
+[10:20:42] v2-host-gate: budget 1200 s
+[10:23:54] v3-dotnet-build: budget 900 s
+[10:23:57] v3-dotnet-test: budget 1200 s
+[10:25:10] v3-dotnet-pack: budget 600 s
+[10:25:11] v4-scene-edit-gate: budget 900 s
+[10:25:11] v4-shadow-terminator-gate: budget 900 s
+[10:27:49] v5-image-gates: budget 1800 s
+[10:27:49] v5-transparent-shadow-gate: budget 1800 s
+[10:31:50] v6-glass-unspecialized: budget 900 s
+[10:34:55] v6-surface-gate: budget 900 s
+[10:35:23] v3b dotnet build+test (cold mesa-dotnet2) 20 min; v5b transparent_shadow_gate rerun (cold mesa-ts2) 30 min + baseline2 image gates (cold mesa-base2) 30 min
+[10:41:07] v7 all-lanes 29 targets (copy of phaseC closeout linux_validate.py, --skip-build, cold mesa-all): budget 45 min
+[10:43:11] v7 all-lanes rerun WITH build (29 targets; previous --skip-build lacked binaries after the clean build), cold mesa-all2: budget 45 min

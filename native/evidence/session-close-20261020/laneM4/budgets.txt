@@ -1,0 +1,11 @@
+[15:53:56] full native build tools/build.py --jobs 6 --skip-dependencies (reviewed prefix copied) | 30 min | first build in worktree
+[16:01:56] BASELINE rebuild (M3 state restored; my edits parked in native/work/m4/mine): build_cycles.py default + nodes_{svm,world,render} + principled_svm | 15 min | the first full build picked up early M4 edits mid-build
+[16:03:04] BASELINE slot A: nodes_svm then nodes_world (spec on, copied M3-state binaries) | 15 min each; slot B: nodes_render then principled_svm | 15 min each
+[16:08:08] DEV1 build: build_cycles.py default + nodes_{svm,world,render} + principled_svm | 15 min
+[16:09:14] DEV1 nodes_svm spec on | 15 min
+[16:22:47] DEV3 nodes_svm + nodes_world concurrent (spec on) | 15 min each
+[16:35:11] DEV4 slot A nodes_svm with CODEBRIX_M4_PROBE_FEATURES (specialized probe) | 15 min; slot B nodes_world then principled_svm (unspecialized probe) | 15 min each
+[16:38:44] DEV5 nodes_svm specialized probe (fw 2000) | 15 min
+[16:48:48] FINAL build: tools/build.py --jobs 6 --skip-dependencies, then build_cycles.py all gate targets (29 all-lanes + nodes + principled + glass_render) | 30 min
+[16:56:46] FINAL slot A: all-lanes 29 targets (cold Mesa cache) 45 min then host_gate 40 min; slot B: nodes_gate on/off 25 min, glass_render on/off 15 min, nodes replay 15 min, principled_gate 35 min
+[17:29:15] FINAL slot A2: nodes_render unspecialized retry (alone in slot A; glass spec-off in B) | 20 min

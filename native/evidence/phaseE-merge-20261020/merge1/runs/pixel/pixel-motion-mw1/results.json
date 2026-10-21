@@ -1,0 +1,572 @@
+{
+  "object-moving-images": {
+    "gate": "object_motion_render",
+    "args": [],
+    "env": {},
+    "exit": 0,
+    "wallSeconds": 337.6,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 53423,
+        "moduleMs": 7.35526,
+        "pipelineMs": 739.754,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 76671,
+        "moduleMs": 10.7179,
+        "pipelineMs": 86169.5,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 193168,
+        "moduleMs": 30.9573,
+        "pipelineMs": 4684.97,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 257318,
+        "moduleMs": 40.9503,
+        "pipelineMs": 50285,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 257318,
+        "moduleMs": 39.651,
+        "pipelineMs": 50390.6,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 257318,
+        "moduleMs": 40.41,
+        "pipelineMs": 10319.6,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 257318,
+        "moduleMs": 40.6753,
+        "pipelineMs": 5721.85,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 257318,
+        "moduleMs": 40.2042,
+        "pipelineMs": 25328.8,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "shadow",
+        "entry": "intersect_shadow",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 188619,
+        "moduleMs": 29.9064,
+        "pipelineMs": 73893.5,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "shadow",
+        "entry": "shade_shadow",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 188619,
+        "moduleMs": 30.0721,
+        "pipelineMs": 53.6274,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "background",
+        "entry": "shade_light_forward",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 193168,
+        "moduleMs": 90.6796,
+        "pipelineMs": 255.842,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      }
+    ],
+    "maxPipelineMs": 86169.5,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "flow": "device-scene",
+      "oracleSha256": "930690a2bf2e5a2ad507b58d6a34197abc6408273d679358fc9e6ce50c9e78b3",
+      "hostRejudgedPassed": true,
+      "rows": [
+        {
+          "key": "case-0.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 914,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 32,
+            "maximumAbsoluteError": 3.5762786865234375e-07,
+            "maximumPracticalRatio": 0.003324242023878326,
+            "maximumUlps": 15479417,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 802,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 22,
+            "maximumAbsoluteError": 3.5762786865234375e-07,
+            "maximumPracticalRatio": 0.0031395619114406408,
+            "maximumUlps": 10598835,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 841,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 6,
+            "maximumAbsoluteError": 2.384185791015625e-07,
+            "maximumPracticalRatio": 0.001429837038613035,
+            "maximumUlps": 15717331,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-1.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 948,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 33,
+            "maximumAbsoluteError": 1.9073486328125e-06,
+            "maximumPracticalRatio": 0.0032315723324248978,
+            "maximumUlps": 16728143,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 827,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 27,
+            "maximumAbsoluteError": 2.9206275939941406e-06,
+            "maximumPracticalRatio": 0.027800267116896073,
+            "maximumUlps": 16742559,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 897,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 17,
+            "maximumAbsoluteError": 2.9206275939941406e-06,
+            "maximumPracticalRatio": 0.02737436158621665,
+            "maximumUlps": 18929014,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-2.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 1000,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 322,
+            "maximumAbsoluteError": 3.516674041748047e-06,
+            "maximumPracticalRatio": 0.02755115422805523,
+            "maximumUlps": 14138770,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 599,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 57,
+            "maximumAbsoluteError": 3.874301910400391e-06,
+            "maximumPracticalRatio": 0.018700826536254198,
+            "maximumUlps": 23747911,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 977,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 290,
+            "maximumAbsoluteError": 2.428889274597168e-06,
+            "maximumPracticalRatio": 0.02755115422805523,
+            "maximumUlps": 23525783,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-3.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 988,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 0,
+            "maximumAbsoluteError": 6.891787052154541e-08,
+            "maximumPracticalRatio": 0.0012725921565839213,
+            "maximumUlps": 17407466,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 544,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 1,
+            "maximumAbsoluteError": 1.0803341865539551e-07,
+            "maximumPracticalRatio": 0.001975570059767057,
+            "maximumUlps": 13735593,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 844,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 1,
+            "maximumAbsoluteError": 1.0244548320770264e-07,
+            "maximumPracticalRatio": 0.0018733861417043582,
+            "maximumUlps": 9474421,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-4.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 991,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 343,
+            "maximumAbsoluteError": 6.079673767089844e-06,
+            "maximumPracticalRatio": 0.04252220367735353,
+            "maximumUlps": 21133507,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 648,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 115,
+            "maximumAbsoluteError": 2.9802322387695312e-06,
+            "maximumPracticalRatio": 0.019778216837067562,
+            "maximumUlps": 17330727,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 948,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 287,
+            "maximumAbsoluteError": 6.079673767089844e-06,
+            "maximumPracticalRatio": 0.04252220367735353,
+            "maximumUlps": 14820611,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-5.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 714,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 83,
+            "maximumAbsoluteError": 4.291534423828125e-06,
+            "maximumPracticalRatio": 0.024787363679122185,
+            "maximumUlps": 864739374,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 551,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 62,
+            "maximumAbsoluteError": 2.4586915969848633e-06,
+            "maximumPracticalRatio": 0.02540319880158485,
+            "maximumUlps": 839689964,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 683,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 59,
+            "maximumAbsoluteError": 4.5299530029296875e-06,
+            "maximumPracticalRatio": 0.019162727072327454,
+            "maximumUlps": 856744622,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-6.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 998,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 377,
+            "maximumAbsoluteError": 6.079673767089844e-06,
+            "maximumPracticalRatio": 0.04252220367735353,
+            "maximumUlps": 16310010,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 667,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 117,
+            "maximumAbsoluteError": 3.5762786865234375e-06,
+            "maximumPracticalRatio": 0.017043089489810023,
+            "maximumUlps": 23287332,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 963,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 336,
+            "maximumAbsoluteError": 6.079673767089844e-06,
+            "maximumPracticalRatio": 0.04252220367735353,
+            "maximumUlps": 25079275,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-7.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 963,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 267,
+            "maximumAbsoluteError": 6.020069122314453e-06,
+            "maximumPracticalRatio": 0.042866373375788865,
+            "maximumUlps": 44457676,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 576,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 79,
+            "maximumAbsoluteError": 2.9802322387695312e-06,
+            "maximumPracticalRatio": 0.015288908878317667,
+            "maximumUlps": 810849054,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 927,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 241,
+            "maximumAbsoluteError": 6.020069122314453e-06,
+            "maximumPracticalRatio": 0.042866373375788865,
+            "maximumUlps": 810849055,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        }
+      ]
+    },
+    "passed": true,
+    "report": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentOriginalCpuImage": true,
+      "fullLightingMisProven": false,
+      "cases": 8,
+      "pointSunMisEnabled": true,
+      "transparentSurfaceHits": 0,
+      "maximumShadowHitCount": 0,
+      "forwardLightPaths": 1608,
+      "unsupportedEmitterConfigurationsRejected": 0,
+      "meshMisPaths": 0,
+      "deformingSurfacePaths": 0,
+      "transmissionPaths": 0,
+      "shadowPaths": 29794,
+      "blocked": 2751,
+      "visible": 27043,
+      "filmChecks": 49152,
+      "strictDifferences": 2914,
+      "maximumAbsoluteError": 6.079673767089844e-06,
+      "repeatBitwiseDifferences": 0,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": true,
+        "pipelines": 11,
+        "totalPipelineMs": 307843,
+        "maxPipelineMs": 86169.5,
+        "maxPipelineEntry": "intersect_closest",
+        "warnings": [
+          "pipeline 'intersect_closest' took 86170 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+          "pipeline 'prepare_shader_data' took 50285 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+          "pipeline 'prepare_surface' took 50391 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+          "pipeline 'shade_surface' took 25329 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+          "pipeline 'intersect_shadow' took 73894 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+        ],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Pixel 4 XL Adreno 640: Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)",
+          "adapter": {
+            "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+            "architecture": "",
+            "device": "Adreno (TM) 640",
+            "description": "Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google ",
+            "vendorId": 20803,
+            "deviceId": 100925441,
+            "simulated": false,
+            "mobile": true
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:ce0ea8c896b286f6",
+          "knownAdapter": {
+            "name": "Pixel 4 XL Adreno 640",
+            "tier": "full",
+            "budgetMs": 20000,
+            "evidence": "Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)"
+          },
+          "budgetSource": "environment",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "pipelineReportPresent": true
+  }
+}
