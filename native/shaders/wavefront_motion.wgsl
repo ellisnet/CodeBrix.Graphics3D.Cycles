@@ -24,6 +24,12 @@ fn motion_normalize4(a:vec4<f32>)->vec4<f32>{
     let norm=rounded_sqrt(motion_dot4(a,a));
     return vec4<f32>(rounded_divide(a.x,norm),rounded_divide(a.y,norm),rounded_divide(a.z,norm),rounded_divide(a.w,norm));
 }
+// The Horner steps run as loops over the coefficient pairs (lane L, 2026-10-22):
+// the same operations in the same order as the unrolled form, so results are
+// bit-identical, but each call site inlines one step instead of all of them.
+// This keeps the entry points that use the precise trigonometry inside the Intel
+// Mesa 25.0.7 backend's 16-bit instruction/register range (native/DEVICE.md,
+// "Linux reference fixes on the updated Mesa").
 fn motion_acos(value:f32)->f32{
     let absolute=abs(clamp(value,-1.0,1.0));let high=rounded_add(1.0,-absolute);
     let low=rounded_add(rounded_add(1.0,-high),-absolute);
@@ -33,35 +39,38 @@ fn motion_acos(value:f32)->f32{
     let residual=rounded_add(rounded_add(x.x,-product.x),rounded_add(x.y,-product.y));
     let z=vec2<f32>(root,rounded_divide(residual,2.0*root));
     var polynomial=vec2<f32>(0.0017680810997262597,2.0789158589051837e-11);
-    polynomial=trig_coeff(vec2<f32>(0.0018622264033183455,3.0847819958157441e-12),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0019650335889309645,2.7346319219495596e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0020776609890162945,4.3501873110696199e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0022014740388840437,-6.5173905335058624e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0023380918428301811,4.9281793923494632e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0024894487578421831,-7.9595299535412112e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0026578705292195082,1.0898778190701619e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0028461783658713102,3.5237631822865323e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0030578216537833214,-4.5252907324155878e-12),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0032970595639199018,-6.0446416969006656e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0035692052915692329,1.0225670180399882e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0038809645920991898,-3.3261520707844605e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0042409072630107403,-1.6933137704511214e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0046601435169577599,-3.004266366929409e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.005153309553861618,1.2845828654267644e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0057400376535952091,1.7246714473229119e-11),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0064472104422748089,-1.3038516013391677e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0073125259950757027,-1.2147685721913826e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0083903353661298752,4.4348693988005561e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0097616091370582581,3.9213582034292038e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.011551801115274429,-2.1913472425527658e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.013964843936264515,-1.8626451422920631e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.017352763563394547,8.5968237736877562e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.022372158244252205,8.4665688696028418e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0303819440305233,4.139211438880519e-10),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.0446428582072258,-1.0643686557121335e-09),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.075000002980232239,-2.9802322415450888e-09),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(0.1666666716337204,-4.9670537405344106e-09),trig_mul(polynomial,x));
-    polynomial=trig_coeff(vec2<f32>(1,0),trig_mul(polynomial,x));
+    // 29 Horner steps as one loop over the same coefficients (same operations, same order).
+    var polynomial_terms=array<vec2<f32>,29>(
+        vec2<f32>(0.0018622264033183455,3.0847819958157441e-12),
+        vec2<f32>(0.0019650335889309645,2.7346319219495596e-11),
+        vec2<f32>(0.0020776609890162945,4.3501873110696199e-11),
+        vec2<f32>(0.0022014740388840437,-6.5173905335058624e-11),
+        vec2<f32>(0.0023380918428301811,4.9281793923494632e-11),
+        vec2<f32>(0.0024894487578421831,-7.9595299535412112e-11),
+        vec2<f32>(0.0026578705292195082,1.0898778190701619e-10),
+        vec2<f32>(0.0028461783658713102,3.5237631822865323e-11),
+        vec2<f32>(0.0030578216537833214,-4.5252907324155878e-12),
+        vec2<f32>(0.0032970595639199018,-6.0446416969006656e-11),
+        vec2<f32>(0.0035692052915692329,1.0225670180399882e-10),
+        vec2<f32>(0.0038809645920991898,-3.3261520707844605e-11),
+        vec2<f32>(0.0042409072630107403,-1.6933137704511214e-10),
+        vec2<f32>(0.0046601435169577599,-3.004266366929409e-11),
+        vec2<f32>(0.005153309553861618,1.2845828654267644e-10),
+        vec2<f32>(0.0057400376535952091,1.7246714473229119e-11),
+        vec2<f32>(0.0064472104422748089,-1.3038516013391677e-10),
+        vec2<f32>(0.0073125259950757027,-1.2147685721913826e-10),
+        vec2<f32>(0.0083903353661298752,4.4348693988005561e-10),
+        vec2<f32>(0.0097616091370582581,3.9213582034292038e-10),
+        vec2<f32>(0.011551801115274429,-2.1913472425527658e-10),
+        vec2<f32>(0.013964843936264515,-1.8626451422920631e-10),
+        vec2<f32>(0.017352763563394547,8.5968237736877562e-10),
+        vec2<f32>(0.022372158244252205,8.4665688696028418e-10),
+        vec2<f32>(0.0303819440305233,4.139211438880519e-10),
+        vec2<f32>(0.0446428582072258,-1.0643686557121335e-09),
+        vec2<f32>(0.075000002980232239,-2.9802322415450888e-09),
+        vec2<f32>(0.1666666716337204,-4.9670537405344106e-09),
+        vec2<f32>(1,0));
+    for(var step=0u;step<29u;step++){polynomial=trig_coeff(polynomial_terms[step],trig_mul(polynomial,x));}
     let result=2.0*trig_mul(z,polynomial);
     if(value<0.0){return rounded_add(rounded_add(3.1415927410125732,-result.x),rounded_add(-8.742278000372485e-8,-result.y));}
     return rounded_add(result.x,result.y);

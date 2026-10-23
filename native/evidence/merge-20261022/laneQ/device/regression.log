@@ -1,0 +1,32 @@
+[14:24:05] s20 regression-q: START glass_render timeout=600s
+image            gpu-vs-glibc passed=True practical=0 strict=100 max=1.907e-06 | local-vs-glibc differing=2283 maxUlps=11 practical=0
+[14:25:42] s20 regression-q: REFERENCE glass_render host re-judged vs glibc: True
+[14:25:42] s20 regression-q: PASS glass_render 96s maxPipelineMs=16073.3
+[14:25:42] s20 regression-q: START lighting_mis timeout=600s
+[14:25:42] s20 regression-q: SCENE-DUMP lighting_mis
+[14:25:49] s20 regression-q: SCENE-REFERENCE lighting_mis references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=780 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=787 maxUlps=78 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=278 max=2.399e-06 | local-vs-glibc differing=509 maxUlps=169 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=0 max=4.936e-08 | local-vs-glibc differing=515 maxUlps=75 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=267 max=6.05e-06 | local-vs-glibc differing=526 maxUlps=154 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=11 max=1.431e-06 | local-vs-glibc differing=416 maxUlps=165 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=285 max=6.08e-06 | local-vs-glibc differing=534 maxUlps=154 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=216 max=6.02e-06 | local-vs-glibc differing=442 maxUlps=99 practical=0
+[14:26:57] s20 regression-q: REFERENCE lighting_mis host re-judged vs glibc: True
+[14:26:57] s20 regression-q: PASS lighting_mis 63s maxPipelineMs=18455.3
+[14:26:57] s20 regression-q: START transparent_lighting timeout=600s
+[14:26:57] s20 regression-q: SCENE-DUMP transparent_lighting
+[14:27:04] s20 regression-q: SCENE-REFERENCE transparent_lighting references=8
+case-0.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=780 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-2.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-3.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-4.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-5.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-6.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-7.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[14:27:52] s20 regression-q: REFERENCE transparent_lighting host re-judged vs glibc: False
+[14:27:52] s20 regression-q: FAIL transparent_lighting exit=134 47s: note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[14:27:59] s20 regression-q: END passed=False wall=236s/2100s failures=1
+{"passed": false, "failures": ["transparent_lighting: note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"], "error": null, "wallSeconds": 235.5}

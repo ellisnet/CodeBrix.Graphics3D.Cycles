@@ -1,0 +1,59 @@
+{
+  "nodes_world": {
+    "gate": "nodes_world",
+    "args": [],
+    "env": {},
+    "extraEnv": [],
+    "cutoffSeconds": 1529,
+    "exit": 1,
+    "wallSeconds": 6.8,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_SEPARATE_VECTOR,LIGHT_TRIANGLE,SVM_NODE_TEX_NOISE",
+        "wgslBytes": 53423,
+        "moduleMs": 7.42109,
+        "pipelineMs": 702.572,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_SEPARATE_VECTOR,LIGHT_TRIANGLE,SVM_NODE_TEX_NOISE",
+        "wgslBytes": 76495,
+        "moduleMs": 12.1041,
+        "pipelineMs": 3092.33,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_SEPARATE_VECTOR,LIGHT_TRIANGLE,SVM_NODE_TEX_NOISE",
+        "wgslBytes": 219324,
+        "moduleMs": 32.6101,
+        "pipelineMs": 2434.64,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      }
+    ],
+    "maxPipelineMs": 3092.33,
+    "passed": false,
+    "error": [
+      "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)",
+      "00:06.58 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+      "Compiled world 0: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+    ]
+  }
+}

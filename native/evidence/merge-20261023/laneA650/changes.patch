@@ -1,0 +1,365 @@
+diff --git a/AGENT-README.txt b/AGENT-README.txt
+index 2ef3c673..e5917a0b 100644
+--- a/AGENT-README.txt
++++ b/AGENT-README.txt
+@@ -732,6 +732,10 @@ WHAT THIS PACKAGE DOES NOT DO
+ - It does not render passes other than Combined, non-perspective cameras,
+   light trees, denoising, adaptive sampling or path guiding on the WebGPU
+   device (the CPU reference backend does).
++- It does not render texture, colour and utility shader nodes (noise, Voronoi,
++  wave, magic, brick and Gabor textures, ramps, mixing, mapping and similar) on
++  Adreno 650 GPUs (for example the Samsung Galaxy S20); such scenes are refused
++  with an error message before rendering starts.
+ - It does not yet ship the native host library inside the package.
+ 
+ 
+diff --git a/docs/PARITY.md b/docs/PARITY.md
+index 66c046e5..0a478589 100644
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -34,7 +34,7 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Native file images and updates | PNG/JPEG/OpenEXR native file loading now passes a Linux gate with 18 fixtures, 450 channel/alpha/color variants, native UDIM mappings, 16 queued-read/replacement cycles and 34,483 independent known lossless texels. The serialized OCIO matrix configuration is tested. A 116,352-case final snapshot has a four-GPU replay gate; actual decoding/lifecycle tests currently execute on Linux only. The original file-image checkpoint preserved earlier renderer/executable identity; renderer edits require the fresh normal-gate regression chain. TIFF/LZW compatibility, other formats, production color/cache/animation stress and native platform hosts remain required. See `native/tools/image_file_gate.py` |
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+-| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Surface and world interpreters additionally cover the procedural textures (noise in every dimension and fractal type, Voronoi with every feature/metric/dimension, white noise, wave, magic, brick), mapping/map range/mix/ramp/curve/colour utilities, Fresnel/layer weight, object info, camera, scene time, vector transform and light path (ray-type flags in every stage; bounce depths in the surface and background stages) on Linux; see `native/DEVICE.md`. Wavelength and wireframe nodes have the same Linux gates. Bump mapping (bump node, bump state, all derivative variants) has the same Linux gates and passes the node gates on the HP. The Gabor texture (2D and 3D; lane L, 2026-10-22) passes the node SVM (typed programs and compiled graphs), world and 68-triangle node render gates on Linux and the HP and is compiled only into scene-specialized modules that reach it (on the Samsung SM-X700 a module containing it mis-evaluates Fresnel/Layer Weight, `native/DEVICE.md` open item 3); its earlier withholding was the Intel Mesa 25.0.7 16-bit instruction/register limit (see the Intel row below). Deferred SVM nodes: displacement, AO/bevel/raycast, sky, radial tiling, IES, light falloff, particle/hair/point info and AOV output. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, multi-GGX glass nodes, hair, Principled subsurface and heterogeneous volumes pending. The Principled BSDF (all lobes except subsurface, including thin film, thin wall and multiscatter GGX) passes its Linux SVM, bounce and image gates; its ForestCommunity bench variant passes with exact traversal. On Android the HP passes the Principled SVM, bounce and image gates (image against the glibc reference, with on-device replay). On the Samsung SM-X700 the Principled SVM and bounce gates pass since the SVM value stack moved to a per-invocation arena slot (lane S; the Adreno 730 could not link the private stack), node worlds pass, and the Principled render (one lockstep stage), the node SVM probe and one node-render pixel remain open; on the HP every Principled and node gate passes, Gabor included. Principled and node materials are not supported on the Pixel 4 XL (Adreno 640) under the device reference policy; see `native/DEVICE.md`. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL (Adreno 640) passes glass bounce/render and feature combination; feature combination needed the SVM value stack moved out of the function-local SvmState (an Adreno 640 dynamic-indexing miscompile). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP, and on the Pixel 4 XL after the same Adreno 640 fix plus volume-stack hits kept as scalar arrays (volume-boundary state test, camera-inside closed volume, object/deforming motion images) |
++| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Surface and world interpreters additionally cover the procedural textures (noise in every dimension and fractal type, Voronoi with every feature/metric/dimension, white noise, wave, magic, brick), mapping/map range/mix/ramp/curve/colour utilities, Fresnel/layer weight, object info, camera, scene time, vector transform and light path (ray-type flags in every stage; bounce depths in the surface and background stages) on Linux; see `native/DEVICE.md`. Wavelength and wireframe nodes have the same Linux gates. Bump mapping (bump node, bump state, all derivative variants) has the same Linux gates and passes the node gates on the HP. The Gabor texture (2D and 3D; lane L, 2026-10-22) passes the node SVM (typed programs and compiled graphs), world and 68-triangle node render gates on Linux and the HP and is compiled only into scene-specialized modules that reach it (on the Samsung SM-X700 a module containing it mis-evaluates Fresnel/Layer Weight, `native/DEVICE.md` open item 3); its earlier withholding was the Intel Mesa 25.0.7 16-bit instruction/register limit (see the Intel row below). Deferred SVM nodes: displacement, AO/bevel/raycast, sky, radial tiling, IES, light falloff, particle/hair/point info and AOV output. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, multi-GGX glass nodes, hair, Principled subsurface and heterogeneous volumes pending. The Principled BSDF (all lobes except subsurface, including thin film, thin wall and multiscatter GGX) passes its Linux SVM, bounce and image gates; its ForestCommunity bench variant passes with exact traversal. On Android the HP passes the Principled SVM, bounce and image gates (image against the glibc reference, with on-device replay). On the Samsung SM-X700 the Principled SVM and bounce gates pass since the SVM value stack moved to a per-invocation arena slot (lane S; the Adreno 730 could not link the private stack), node worlds pass, and the Principled render (one lockstep stage), the node SVM probe and one node-render pixel remain open; on the HP every Principled and node gate passes, Gabor included. Principled and node materials are not supported on the Pixel 4 XL (Adreno 640) under the device reference policy; see `native/DEVICE.md`. On the Adreno 650 (Samsung Galaxy S20 FE, not a reference device) scenes with texture, colour and utility nodes are refused before compiling, because its shader compiler miscompiles or fails to link those interpreters; transparent shadows and lighting and object/deformation motion images pass there (`native/DEVICE.md`, "Adreno 650 lane"). The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL (Adreno 640) passes glass bounce/render and feature combination; feature combination needed the SVM value stack moved out of the function-local SvmState (an Adreno 640 dynamic-indexing miscompile). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP, and on the Pixel 4 XL after the same Adreno 640 fix plus volume-stack hits kept as scalar arrays (volume-boundary state test, camera-inside closed volume, object/deforming motion images) |
+ | Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming and static instanced emitters, pass independent CPU images and replay on Linux; closest-hit and shadow traversal reproduce the CPU oracle's ray/triangle and instance arithmetic bit for bit on Linux x64. Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. Android results are judged against the correctly rounded (Linux x64 glibc) CPU reference computed from the device's own prepared scene, with the on-device (bionic) CPU reference a diagnostic (`native/DEVICE.md`, "Validation reference policy"). Android x64 (HP Intel) passes lamps with MIS and forward light, transparent shadows, the emitter probe and every emissive-triangle gate (sampler, six images including moving/deforming and static instanced emitters, replays). ARM64 Android (Samsung Adreno 730): lamps, broad lighting, feature combination, the emitter probe and all six emissive-triangle images, static instanced emitters included, pass with replays (Phase E4: contraction-proof ShaderData position/object transform, and the x64 reference oracle's arithmetic adapters in the gates judged against the imported reference); the triangle sampler still differs in one sample (`native/DEVICE.md` open item 1). The Pixel 4 XL passes lamps, the emitter probe, all six emissive-triangle images with their replays and the triangle sampler (dispatched in slices, since the Adreno 640 resets on submissions of about 2 s); object and deformation motion are not supported on the Adreno 640 under the device reference policy (`native/DEVICE.md`, "Pixel 4 XL triage"); the Samsung passes the object-moving images with both oracles. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit and holds the per-invocation SVM value stacks (4,096 slots of 263 words, about 4.3 MB per device; lane S). Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS), so `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is refused on Android. Cold compiles: Samsung specialized pipelines at most 32.6 s (the emissive-triangle entry with object motion now 29-30 s, was 205 s); HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 20 s with triangle lights, 27.6 s with triangle lights and object motion, which previously ran out of compiler memory), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 87 s (`intersect_closest` with object motion; 20 s budget, warnings only) |
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index 25970ff0..34516516 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -1469,6 +1469,7 @@ WebGPU adapter device name and driver description):
+ | --- | --- | --- | --- |
+ | Pixel 4 XL Adreno 640 | `Adreno (TM) 640` | any | full tier, 20 s compile budget, not a reference device, verdicts per the device reference policy |
+ | Samsung SM-X700 Adreno 730 | `Adreno (TM) 730` | any | full |
++| Samsung Galaxy S20 FE Adreno 650 | `Adreno (TM) 650` | any | full tier, 20 s compile budget (warnings only), not a reference device; refuses the texture, colour and utility node region `SVM_NODES_ANY` ("Adreno 650 lane") |
+ | HP Intel Xe (Android x64) | `Intel(R) Xe Graphics` | `Mesa 24.0.8` | full |
+ | Linux Intel UHD ADL-S | `Intel(R) UHD Graphics (ADL-S GT1)` | `Mesa 25.0.7` | full |
+ 
+@@ -1480,6 +1481,13 @@ tier meets the practical criterion there and the conservative tier was not
+ faster (see below). No table entry selects the conservative tier; it remains a
+ reactive fallback after a crash breadcrumb or a creation failure, or an explicit
+ opt-in. An explicit `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS` replaces any budget.
++A table entry may also name one shader feature region the adapter refuses
++(`refused_region`, a name from `shader_feature_names()`): a scene whose referenced
++shaders reach it is refused in `shader_features()` before any pipeline compiles,
++with a message naming the GPU and the features (as unimplemented Principled
++features are), and the tier report's `knownAdapter` carries `refusedRegion` and
++`refused`. Only the Adreno 650 entry uses it. `CODEBRIX_CYCLES_TEST_ADAPTER`
++applies it too, so the refusal can be exercised on Linux.
+ 
+ **Persisted record.** Enabled only when the application supplies a writable
+ directory (`cbc_host_tier_config`, or `CODEBRIX_CYCLES_DEVICE_RECORD_DIR`); missing
+@@ -2617,7 +2625,7 @@ max(600 s, 3 x this merge's Samsung wall)); the results are added to the lane Q
+ 
+ One list for the reference devices (Samsung SM-X700, Linux x64, HP). None is masked, and no tolerance was relaxed.
+ Old numbers (session close, 2026-10-20) are given in brackets. The Adreno 650 (S20) results are not open items of the
+-reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" at the end (a separate Adreno 650 lane follows).
++reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno 650 lane" at the end.
+ 
+ 1. **Samsung triangle sampler** [1]. 2 values of 1 sample differ from the glibc reference (sample 3133 on the
+    deforming emitter, object 5, prim 4: `P.y` 0.382186 against 0.379992, and `t`; the device CPU gives 0.380744). The
+@@ -3022,3 +3030,91 @@ Record only; nothing was fixed. Evidence: `native/work/merge4/runs/s20/`.
+ 
+ principled_svm now passes on the S20 (it failed in lane Q's sweep on 3392df3d; the merged tree adds lane S's arena
+ stack). The SVM-stack (mask 8) failures of motion and node worlds remain on the merged tree.
++
++## Adreno 650 lane (Samsung Galaxy S20 FE 5G, 2026-10-22)
++
++The S20 is not a reference device. Its standard is: fix, or degrade gracefully (an explicit refusal that names the GPU
++class and the feature; never a silent wrong image, a lost device or a hang). Tolerances, the runtime
++(CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433) and the other table entries are unchanged.
++
++**Device and adapter (as the host reports it).** SM-G781U1, Android 13 / API 33, Snapdragon 865. WebGPU adapter:
++vendor `Qualcomm Technologies Inc. Adreno Vulkan Driver` (vendor id 20803 = 0x5143), device `Adreno (TM) 650` (device
++id 100990978 = 0x6050002), description `Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler
++Version: EV031.32.02.10`. Tier report now: reason `table`, entry "Samsung Galaxy S20 FE Adreno 650", full tier,
++20 s compile budget (`budgetSource` `table`, warnings only), `refusedRegion` `SVM_NODES_ANY`. Before this lane the
++adapter was unknown to the table (full tier, unknown-mobile 20 s budget), so compile behaviour is unchanged.
++
++**Root causes.** Each was localised on the S20 with instrumented builds of the failing gate; the Adreno 730 compiler
++(EV031.36) compiles the same WGSL correctly. All four are miscompiles of the EV031.32 shader compiler in large entry
++points; the first three have fixes with unchanged arithmetic, the fourth is refused.
++1. **Dynamic vector component (error 8 in node worlds).** In `NODE_SEPARATE_VECTOR`, `v[component]` (component read
++   from the bytecode) made the store to the node's output slot disappear: the decoded output offset (3) and component
++   (2) were right, the slot stayed unwritten, and the next node read an uninitialized stack slot. Fix: a select chain
++   (`svm_component`, `wavefront_svm.wgsl`; also the derivative variant).
++2. **Second traversal stack (transparent shadows: mask 1; transparent lighting: lost device).** `intersect_shadow`
++   inlines the opaque and the shadow-all traversal, each with a 192-entry private stack. The shadow-all traversal lost
++   the pushed instance sentinel: with distinct failure codes per check, the failing check was `object!=NONE` on an
++   instance leaf. With 63 or more transparent layers the stage reported invalid state; in the lit transparent renders
++   the GPU faulted (`IOCTL_KGSL_GPU_COMMAND ... errno 35`, device lost). Fix: the shadow-all stack lives in the
++   invocation's SVM arena slot (words 0-191; `intersect_shadow` evaluates no SVM program), pushes, pops and bounds
++   unchanged (`wavefront_shadow_traversal.wgsl`).
++3. **Per-component normalize (error 8 in motion images, x64 oracle arithmetic).** Android images judged against the
++   imported glibc reference compile the x64 oracle's arithmetic (`CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2`).
++   With it, object and deformation motion images lost an SVM store in the light stage. Overriding the five oracle
++   constants one at a time showed that only `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE=0` (per-component division) triggers
++   it: every normalize then inlines the integer `rounded_divide` three times. Fix: `surface_native_normalize` runs the
++   three divisions through one `rounded_divide` body, in a loop whose bound the compiler cannot see (header word 3 after
++   the error word, always 0); same quotients (`wavefront_shader_data.wgsl`).
++4. **Texture, colour and utility node interpreters (refused).** At these module sizes the compiler fails in more than
++   one way. (a) `Failed to link shaders ... Assertion failed: false && "PSEUDOIMUL32 must not be seen here"` (device
++   lost) for the node render `prepare_surface` and the node SVM probe. Reproduced with `native/tools/compile_probe.cpp`
++   on the Linux-dumped module in 11 s; a case-by-case bisection kept 12 handlers that are all needed together (a size
++   or register-pressure threshold, not one construct); workgroup sizes 1 and 32 fail alike. (b) Silent wrong code in
++   the world interpreter: after fix 1 and an fBM loop restructure, worlds 0-4 passed, but world 5's ramp took the error
++   branch of `size<2||size>0x0fffffff` with size 256 (the same condition evaluated inside the branch is false); the
++   conservative tier fails the same way. A compiler that takes false branches cannot be patched site by site, so these
++   scenes are refused on this GPU class.
++
++**Degradation.** The known-adapter table entry for `Adreno (TM) 650` names the feature region `SVM_NODES_ANY`
++(noise, white noise, wave, magic, brick, Voronoi and Gabor textures; mapping, map range, mix, HSV, colour
++separate/combine, ramps and curves, Fresnel/layer weight, vector rotate, blackbody, normal, object info/camera/scene
++time/vector transform, light path, wavelength, wireframe, mapping derivatives). `shader_features()` refuses a scene
++whose referenced shaders reach it before any pipeline compiles (as for unimplemented Principled features), with:
++"WebGPU: texture, colour and utility shader nodes are not supported on Adreno (TM) 650 GPUs (this scene uses ...):
++the shader compiler of this GPU class miscompiles or fails to link their shader programs; render the scene on another
++GPU or on the CPU device". The WebGPU capability scope lists "texture, colour and utility shader nodes on Adreno 650
++GPUs" under `renderTimeRejections`. On Linux the refusal is exercised with `CODEBRIX_CYCLES_TEST_ADAPTER` (simulated
++Adreno 650: node world refused, glass render unaffected); the real Linux adapter is unaffected.
++
++**Per-job results on the S20.** Device-scene flow (glibc x64 reference from the S20's own dumped scene), practical
++`5e-5 + 2e-4*abs(ref)`, strict `1e-7 + 1e-7*abs(ref)` counted. Before = the merge-wave-4 rerun above; after = this
++lane's final tree. Walls are the gate run itself.
++
++| Job | Before | After |
++| --- | --- | --- |
++| transparent_shadow | FAIL, invalid data (mask 1), 11.0 s | PASS, 21.9 s (state gate: strict 0, max 1.19e-07) |
++| transparent_lighting | FAIL, device lost, 47.5 s (8 replays not run) | PASS, 274 s: 0 practical, 683 strict, max 6.02e-06; 8/8 replays PASS |
++| transparent-shadow replays (2) | not run | PASS 2/2 |
++| object-moving-images | FAIL, mask 8, 110.9 s | PASS, 141 s: 0 practical, 1,276 strict, max 6.08e-06; 8/8 replays PASS |
++| deforming-moving-images | FAIL, mask 8, 82.7 s | PASS, 222 s (final tree; 318 s in the separate replay run): 0 practical, 1,213 strict, max 6.08e-06; 8/8 replays PASS |
++| nodes_world | FAIL, mask 8 at world 0, 6.2 s | refused (exit 1, message, no pipeline compiled), 0 s |
++| nodes_svm | FAIL, device lost creating the probe | refused (exit 1, message, no pipeline compiled), 1 s |
++| nodes_render | FAIL, device lost creating `prepare_surface`, 17.2 s | refused (exit 1, message, no pipeline compiled), 1 s |
++| principled_bounce | stopped at 915 s | PASS, 1,631 s against the device CPU, as on the Samsung (strict 3,259; max 0.125 on `path.mis_ray_pdf` 840718.4, practical ratio 0.126); slow (5.3 x the Samsung's 305 s; compiles up to 125 s), not a failure under the S20 standard |
++| principled_render | FAIL, stage 40 `path.mis_ray_pdf` | unchanged: FAIL, stage 40 `path.mis_ray_pdf` 1751.469 against 1747.274, 174 s (the Samsung's open item 2) |
++| principled_svm | PASS, 401 s | not rerun |
++
++Targeted regression set on the final tree: triangle_sample PASS 115 s (0 practical, 865 strict, max 4.88e-04),
++surface PASS 213 s (state gate, strict 1,244, max 3.81e-06), glass_render PASS 133 s (0 practical, 100 strict, max
++1.91e-06), lighting_mis PASS 87 s (0 practical, 1,057 strict, max 6.08e-06).
++
++**Linux (reference) on the final tree.** Fresh Linux build; all-lanes PASS (1,274 s), host gate PASS, device-tier
++gate PASS (31 scenarios), transparent-shadow gate PASS, node gate PASS (1,797 s; all 176 films bit-identical to merge
++wave 4, node render `b9d1da3f...`), Principled gate PASS (802 s; all 44 films bit-identical, `fd3a7f2b...`); glass film `db8e84f9...` unchanged; in all-lanes 263 films are
++bit-identical to merge wave 4 and 17 differ, all in atomic-accumulation cases whose own repeat differs within a run.
++Intel compile envelope on the transparent-lighting and node-render modules: worst 46,790 (`prepare_surface`, node
++render; it was 48,438 before fix 3), every entry below 60,000.
++
++Evidence (lane worktree `native/work/a650-s20/`): `runs/s20/*-v3*` and `runs/s20/pixel-motion-v4def` (final S20
++runs), `runs/s20/*-v1*` (first fix set), `diag/quick/` (instrumented runs, `index.txt`), `diag/probe-results.jsonl`
++and `diag/bisect-nr/` (compile bisection), `validation/v2-*` (Linux).
+diff --git a/native/cycles/device_tier.cpp b/native/cycles/device_tier.cpp
+index c0b1f9a4..6c098f80 100644
+--- a/native/cycles/device_tier.cpp
++++ b/native/cycles/device_tier.cpp
+@@ -55,6 +55,13 @@ const std::vector<KnownAdapter> &known_adapters(){
+     {"Pixel 4 XL Adreno 640","Adreno (TM) 640","","full",20000,
+      "Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)"},
+     {"Samsung SM-X700 Adreno 730","Adreno (TM) 730","","full",0,"full-fidelity proof device (2026-10-19 policy)"},
++    // Not a reference device (fix-or-degrade standard). The EV031.32 compiler
++    // miscompiles (wrong branches, error 16 on valid programs) or fails to link
++    // (device lost) the texture, colour and utility node interpreters; those
++    // scenes are refused instead (native/DEVICE.md, "Adreno 650 lane").
++    {"Samsung Galaxy S20 FE Adreno 650","Adreno (TM) 650","","full",20000,
++     "Adreno 650 lane 2026-10-22: full tier with a 20 s compile budget (warnings only); texture, colour and utility shader nodes refused",
++     "SVM_NODES_ANY","texture, colour and utility shader nodes"},
+     {"HP Intel Xe (Mesa 24.0.8, Android x64)","Intel(R) Xe Graphics","Mesa 24.0.8","full",0,
+      "B3 2026-10-19: every specialized and all-handler stage compiles"},
+     {"Linux Intel UHD ADL-S (Mesa 25.0.7)","Intel(R) UHD Graphics (ADL-S GT1)","Mesa 25.0.7","full",0,
+@@ -283,7 +290,9 @@ std::string DeviceTierPolicy::report_json() const{
+    <<",\"description\":"<<quoted(identity.description)<<",\"vendorId\":"<<identity.vendor_id<<",\"deviceId\":"<<identity.device_id
+    <<",\"simulated\":"<<(identity.simulated?"true":"false")<<",\"mobile\":"<<(mobile_adapter(identity)?"true":"false")<<"},\"runtime\":"<<quoted(runtime)
+    <<",\"shaderHash\":"<<quoted(shader_hash)<<",\"knownAdapter\":";
+-  if(table)o<<"{\"name\":"<<quoted(table->name)<<",\"tier\":"<<quoted(table->tier)<<",\"budgetMs\":"<<table->budget_ms<<",\"evidence\":"<<quoted(table->evidence)<<'}';
++  if(table){o<<"{\"name\":"<<quoted(table->name)<<",\"tier\":"<<quoted(table->tier)<<",\"budgetMs\":"<<table->budget_ms<<",\"evidence\":"<<quoted(table->evidence);
++    if(table->refused_region)o<<",\"refusedRegion\":"<<quoted(table->refused_region)<<",\"refused\":"<<quoted(table->refused_text);
++    o<<'}';}
+   else o<<"null";
+   o<<",\"budgetSource\":"<<quoted(budget_source)<<",\"record\":{\"mode\":"<<quoted(record_mode)<<",\"path\":"<<quoted(record_path)
+    <<",\"status\":"<<quoted(record_status)<<",\"fullTierCompiles\":"<<tier_compiles(record,"full")<<",\"conservativeTierCompiles\":"<<tier_compiles(record,"conservative")
+diff --git a/native/cycles/device_tier.h b/native/cycles/device_tier.h
+index 604c5e2f..23de3e61 100644
+--- a/native/cycles/device_tier.h
++++ b/native/cycles/device_tier.h
+@@ -46,7 +46,11 @@ struct AdapterIdentity {
+ };
+ // Measured devices. device/driver are substrings of the adapter device name and
+ // driver description (empty driver: any). budget_ms 0 keeps the default.
+-struct KnownAdapter {const char *name,*device,*driver,*tier;double budget_ms;const char *evidence;};
++// refused_region (optional) names a shader feature region of
++// shader_feature_names() (pipelines.cpp) that scenes may not use on this adapter;
++// such a scene is refused before any pipeline compiles, with refused_text.
++struct KnownAdapter {const char *name,*device,*driver,*tier;double budget_ms;const char *evidence;
++                     const char *refused_region=nullptr,*refused_text=nullptr;};
+ const std::vector<KnownAdapter> &known_adapters();
+ const KnownAdapter *match_known_adapter(const AdapterIdentity &identity);
+ // Mobile GPU vendors (Qualcomm, ARM, Imagination, Samsung, Apple) or an
+@@ -89,6 +93,7 @@ class DeviceTierPolicy {
+   void canary_result(const std::string &result,double ms,const std::string &detail);
+   void switch_conservative(const std::string &reason,const std::string &detail);
+   std::string report_json() const;
++  const KnownAdapter *known_adapter() const{return table;}
+ 
+   bool conservative=false;
+   std::string reason="default",detail;
+diff --git a/native/cycles/pipelines.cpp b/native/cycles/pipelines.cpp
+index a9690d59..2696c6dc 100644
+--- a/native/cycles/pipelines.cpp
++++ b/native/cycles/pipelines.cpp
+@@ -321,7 +321,16 @@ uint64_t WebGPUDevice::shader_features(){
+     roots.push_back(uint32_t(data.background.surface_shader)&SHADER_MASK);roots.push_back(uint32_t(data.background.volume_shader)&SHADER_MASK);
+     std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
+     const SvmCensus referenced=svm_census(svm_node_words,shader_records.size(),&roots);
+-    unsupported_feature=referenced.unsupported;principled_features=referenced.features&SF_PRINCIPLED_ALL;unsupported_generation=svm_generation;}
++    unsupported_feature=referenced.unsupported;principled_features=referenced.features&SF_PRINCIPLED_ALL;unsupported_generation=svm_generation;
++    // Adapter-class refusal from the known-adapter table (device_tier.cpp), for
++    // example texture, colour and utility nodes on the Adreno 650.
++    const KnownAdapter *known=tier_policy.known_adapter();
++    if(unsupported_feature.empty()&&known&&known->refused_region){
++      uint64_t region=0;for(auto &n:shader_feature_names())if(std::strcmp(n.name,known->refused_region)==0)region=n.bit;
++      if(const uint64_t refused=referenced.features&region)
++        unsupported_feature=std::string("WebGPU: ")+known->refused_text+" are not supported on "+known->device+" GPUs (this scene uses "+
++          shader_feature_list(refused)+"): the shader compiler of this GPU class miscompiles or fails to link their shader programs; render the scene on another GPU or on the CPU device";
++    }}
+   if(!unsupported_feature.empty())throw std::runtime_error(unsupported_feature);
+   if(specialization_mode==SpecializationMode::Off)return SF_ALL;
+   if(census_generation!=svm_generation){
+diff --git a/native/host/host_api.inc b/native/host/host_api.inc
+index 6fcc3e62..f494c4b7 100644
+--- a/native/host/host_api.inc
++++ b/native/host/host_api.inc
+@@ -92,7 +92,7 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
+     out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\"],\"primitives\":[\"triangle\"],"
+            "\"passes\":[\"combined\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"light trees\",\"surface data passes\","
+            "\"volume light passes\",\"background light MIS\",\"nonconstant light emission\",\"heterogeneous volumes\",\"moving transparent shadows\","
+-           "\"curves and points\",\"sparse or tiled images\"],\"reference\":\"native/DEVICE.md\"}";
++           "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
+ #endif
+ #ifdef WITH_METAL
+     out << ",\"metal\":{\"device\":\"Cycles Metal device\",\"reference\":\"native/host/MACOS_ARM64.md\"}";
+diff --git a/native/shaders/wavefront_shader_data.wgsl b/native/shaders/wavefront_shader_data.wgsl
+index f224d712..05e5a3e2 100644
+--- a/native/shaders/wavefront_shader_data.wgsl
++++ b/native/shaders/wavefront_shader_data.wgsl
+@@ -20,7 +20,17 @@ fn surface_normalize(v:vec3<f32>)->vec3<f32>{return rounded_safe_normalize(v);}
+ // by the generated NATIVE_FLOAT3_RECIPROCAL_NORMALIZE of the originating host.
+ fn surface_native_normalize(v:vec3<f32>)->vec3<f32>{
+     if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,rounded_sqrt(rounded_dot(v,v)));}
+-    return rounded_normalize(v);
++    // rounded_normalize(v) with its three divisions through one rounded_divide
++    // body: the loop bound is opaque to the compiler (header word 3 after the
++    // error word, always 0). Inlined three times at every per-component normalize,
++    // the Adreno 650 compiler (EV031.32.02.10) dropped an SVM store in the light
++    // stage (error 8, object and deformation motion images). Same quotients.
++    let norm=rounded_sqrt(rounded_dot(v,v));var out=vec3<f32>(0);let count=3u|load_word(p(17u)+12u);
++    for(var k=0u;k<count;k++){
++        let q=rounded_divide(select(select(v.z,v.y,k==1u),v.x,k==0u),norm);
++        out=select(out,vec3<f32>(q),vec3<u32>(0u,1u,2u)==vec3<u32>(k));
++    }
++    return out;
+ }
+ fn surface_orthogonal(n:vec3<f32>)->vec3<f32>{
+     if(n.x!=n.y||n.x!=n.z){return surface_normalize(vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x));}
+diff --git a/native/shaders/wavefront_shadow_traversal.wgsl b/native/shaders/wavefront_shadow_traversal.wgsl
+index a164ba66..52107ee4 100644
+--- a/native/shaders/wavefront_shadow_traversal.wgsl
++++ b/native/shaders/wavefront_shadow_traversal.wgsl
+@@ -25,7 +25,16 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
+     var result=ShadowTrace(false,0u);var record_index=0u;var farthest=tmax;
+     if(table_count(G_prim_index)==0u){return result;}
+     var pos=origin;var dir=clamp_direction(direction);var inv=inverse_direction(dir);
+-    var stack:array<i32,192>;stack[0]=0x76543210i;var sp=0i;
++    // The traversal stack lives in this invocation's SVM arena slot (words
++    // 0..191; intersect_shadow evaluates no SVM program, wavefront_svm.wgsl).
++    // As a second 192-entry private array next to the opaque traversal's in
++    // intersect_shadow, the Adreno 650 compiler (EV031.32.02.10) lost pushed
++    // entries (the instance sentinel: invalid state, mask 1; and lost devices in
++    // transparent lighting renders). Pushes, pops and bounds are unchanged.
++    let stack_slots=load_word(p(17u)+8u);let stack_region=load_word(p(17u)+4u);
++    if(svm_slot>=stack_slots||stack_region==0u){fail();return result;}
++    let st=stack_region+svm_slot*(SVM_STACK_WORDS*4u);
++    store_word(st,0x76543210u);var sp=0i;
+     var node=bitcast<i32>(data_word(D_bvh_root));var object=NONE;var visits=0u;
+     loop{
+         // Malformed cycles in a scene table must fail instead of hanging a GPU.
+@@ -36,16 +45,16 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
+             let a=table_at(G_bvh_nodes,u32(node),SIZE_bvh_nodes);
+             node=bitcast<i32>(load_word(a+8u));var other=bitcast<i32>(load_word(a+12u));let mask=u32(bounds.x);
+             if(mask==3u){if(bounds.z<bounds.y){let tmp=node;node=other;other=tmp;}
+-                sp++;if(sp>=192){fail();return result;}stack[u32(sp)]=other;
++                sp++;if(sp>=192){fail();return result;}store_word(st+u32(sp)*4u,bitcast<u32>(other));
+             }else if(mask==2u){node=other;}
+-            else if(mask==0u){if(sp<0){fail();return result;}node=stack[u32(sp)];sp--;}
++            else if(mask==0u){if(sp<0){fail();return result;}node=bitcast<i32>(load_word(st+u32(sp)*4u));sp--;}
+         }
+         if(node<0){
+             let a=table_at(G_bvh_leaf_nodes,u32(-node-1),SIZE_bvh_leaf_nodes);
+             let first=bitcast<i32>(load_word(a));let end=load_word(a+4u);let kind=load_word(a+12u);
+             if(first>=0){
+                 if(end>table_count(G_prim_index)||u32(first)>end){fail();return result;}
+-                if(sp<0){fail();return result;}node=stack[u32(sp)];sp--;
++                if(sp<0){fail();return result;}node=bitcast<i32>(load_word(st+u32(sp)*4u));sp--;
+                 if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return result;}
+                 for(var index=u32(first);index<end;index++){
+                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
+@@ -80,7 +89,7 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
+                 object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));
+                 let obj=table_at(G_objects,object,SIZE_objects);
+                 pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));inv=inverse_direction(dir);
+-                sp++;if(sp>=192){fail();return result;}stack[u32(sp)]=0x76543210i;
++                sp++;if(sp>=192){fail();return result;}store_word(st+u32(sp)*4u,bitcast<u32>(0x76543210i));
+                 node=bitcast<i32>(load_word(table_at(G_object_node,object,SIZE_object_node)));
+             }
+         }
+@@ -88,7 +97,7 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
+             if(sp<0){break;}
+             if(object==NONE){fail();return result;}
+             pos=origin;dir=clamp_direction(direction);inv=inverse_direction(dir);object=NONE;
+-            node=stack[u32(sp)];sp--;if(node==0x76543210i){break;}
++            node=bitcast<i32>(load_word(st+u32(sp)*4u));sp--;if(node==0x76543210i){break;}
+         }
+     }
+     return result;
+diff --git a/native/shaders/wavefront_svm.wgsl b/native/shaders/wavefront_svm.wgsl
+index 2cda1bd0..a385e109 100644
+--- a/native/shaders/wavefront_svm.wgsl
++++ b/native/shaders/wavefront_svm.wgsl
+@@ -43,6 +43,11 @@ fn svm_take(s:ptr<function,SvmState>,bytes:u32)->u32{
+     if((*s).pc>p(22u)||count>p(22u)-(*s).pc){svm_error(s,4u);return 0u;}
+     let address=p(21u)+(*s).pc*4u;(*s).pc+=count;return address;
+ }
++// v[i] for a bytecode-supplied component without dynamic vector indexing: on
++// the Adreno 650 compiler (EV031.32.02.10) v[component] corrupted the separate
++// vector's output offset, so the store was skipped and a later read reported
++// error 8. The select chain reads the same component.
++fn svm_component(v:vec3<f32>,i:u32)->f32{return select(select(v.z,v.y,i==1u),v.x,i==0u);}
+ fn svm_byte(address:u32)->u32{return (load_word(address)>>(8u*(address%4u)))&255u;}
+ fn svm_load_bits(s:ptr<function,SvmState>,index:u32)->u32{
+     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return 0u;}
+@@ -446,7 +451,7 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
+             }
+             case NODE_SEPARATE_VECTOR:{
+ //#if SVM_NODE_SEPARATE_VECTOR else svm_error(&s,2u);
+-                let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(&s,16u);}else{let v=svm_input3(&s,node+N_SeparateVector_vector);svm_optional_store(&s,svm_byte(node+N_SeparateVector_out_offset),v[component]);}
++                let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(&s,16u);}else{let v=svm_input3(&s,node+N_SeparateVector_vector);svm_optional_store(&s,svm_byte(node+N_SeparateVector_out_offset),svm_component(v,component));}
+ //#endif
+             }
+             case NODE_COMBINE_VECTOR:{
+diff --git a/native/shaders/wavefront_svm_derivatives.wgsl b/native/shaders/wavefront_svm_derivatives.wgsl
+index e71e187e..5bd6bfcf 100644
+--- a/native/shaders/wavefront_svm_derivatives.wgsl
++++ b/native/shaders/wavefront_svm_derivatives.wgsl
+@@ -215,7 +215,7 @@ fn svm_value_derivative(s:ptr<function,SvmState>,node:u32,opcode:u32){
+         case NODE_SEPARATE_VECTOR_DERIVATIVE:{
+             let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(s,16u);return;}
+             let v=svmd_input3(s,node+N_SeparateVector_vector);let out=svm_byte(node+N_SeparateVector_out_offset);
+-            if(out!=SVM_STACK_INVALID){svmd_store1(s,out,vec3<f32>(v.value[component],v.dx[component],v.dy[component]));}
++            if(out!=SVM_STACK_INVALID){svmd_store1(s,out,vec3<f32>(svm_component(v.value,component),svm_component(v.dx,component),svm_component(v.dy,component)));}
+         }
+         case NODE_COMBINE_VECTOR_DERIVATIVE:{
+             let component=svm_byte(node+N_CombineVector_vector_index);let out=svm_byte(node+N_CombineVector_out_offset);if(component>2u){svm_error(s,16u);return;}

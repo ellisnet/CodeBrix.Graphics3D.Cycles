@@ -29,7 +29,7 @@ static unsigned node_size(uint op){switch(op){
   NODE(NODE_CLOSURE_BACKGROUND,ClosureBackground);NODE(NODE_CLOSURE_EMISSION,ClosureEmission);NODE(NODE_EMISSION_WEIGHT,EmissionWeight);NODE(NODE_MIX_CLOSURE,MixClosure);
   NODE(NODE_TEX_CHECKER,TexChecker);NODE(NODE_TEX_GRADIENT,TexGradient);NODE(NODE_GAMMA,Gamma);NODE(NODE_INVERT,Invert);NODE(NODE_BRIGHTCONTRAST,BrightContrast);
   // Texture, colour and utility nodes (ramp/curve tables are added by inspect_program).
-  NODE(NODE_TEX_NOISE,TexNoise);NODE(NODE_TEX_VORONOI,TexVoronoi);NODE(NODE_TEX_WHITE_NOISE,TexWhiteNoise);NODE(NODE_TEX_WAVE,TexWave);NODE(NODE_TEX_MAGIC,TexMagic);NODE(NODE_TEX_BRICK,TexBrick);
+  NODE(NODE_TEX_NOISE,TexNoise);NODE(NODE_TEX_VORONOI,TexVoronoi);NODE(NODE_TEX_GABOR,TexGabor);NODE(NODE_TEX_WHITE_NOISE,TexWhiteNoise);NODE(NODE_TEX_WAVE,TexWave);NODE(NODE_TEX_MAGIC,TexMagic);NODE(NODE_TEX_BRICK,TexBrick);
   NODE(NODE_MAPPING,Mapping);NODE(NODE_TEXTURE_MAPPING,TextureMapping);NODE(NODE_MIN_MAX,MinMax);NODE(NODE_MAP_RANGE,MapRange);NODE(NODE_VECTOR_MAP_RANGE,VectorMapRange);
   NODE(NODE_MIX,Mix);NODE(NODE_MIX_COLOR,MixColor);NODE(NODE_MIX_FLOAT,MixFloat);NODE(NODE_MIX_VECTOR,MixVector);NODE(NODE_MIX_VECTOR_NON_UNIFORM,MixVectorNonUniform);
   NODE(NODE_HSV,HSV);NODE(NODE_SEPARATE_COLOR,SeparateColor);NODE(NODE_COMBINE_COLOR,CombineColor);NODE(NODE_RGB_RAMP,RGBRamp);NODE(NODE_CURVES,Curves);NODE(NODE_FLOAT_CURVE,FloatCurve);
@@ -82,7 +82,7 @@ static void graph_scene(Scene &scene,unsigned test){
 #ifdef CBC_NODES_FIXTURE
 // Compiled worlds for the texture, colour and utility nodes. World inputs are
 // the GPU camera directions read by both sides, so they are bit-identical.
-static constexpr unsigned WORLD_COUNT=23;
+static constexpr unsigned WORLD_COUNT=24;
 static void nodes_world(Scene &scene,unsigned test){
   base_scene(scene);auto graph=make_unique<ShaderGraph>();auto &g=*graph;auto geo=g.create_node<GeometryNode>();auto bg=g.create_node<BackgroundNode>();bg->set_strength(.7f);
   ShaderOutput *dir=geo->output("Position");ShaderOutput *color=dir;
@@ -142,6 +142,11 @@ static void nodes_world(Scene &scene,unsigned test){
     g.connect(sum->output("Vector"),dot->input("Vector1"));g.connect(dot->output("Value"),bump->input("Height"));
     auto add=g.create_node<VectorMathNode>();add->set_math_type(NODE_VECTOR_MATH_ADD);g.connect(bump->output("Normal"),add->input("Vector1"));g.connect(vmath(NODE_VECTOR_MATH_ABSOLUTE,dir,zero_float3()),add->input("Vector2"));
     color=add->output("Vector");}
+  if(test==23){
+    // Gabor in a world (3D, anisotropic): value, phase and intensity of the direction.
+    auto n=g.create_node<GaborTextureNode>();n->set_type(NODE_GABOR_TYPE_3D);n->set_scale(2.6f);n->set_frequency(1.8f);n->set_anisotropy(.7f);n->set_orientation_3d(make_float3(-.4f,.2f,.9f));
+    g.connect(dir,n->input("Vector"));auto comb=g.create_node<CombineXYZNode>();g.connect(n->output("Value"),comb->input("X"));g.connect(n->output("Phase"),comb->input("Y"));
+    g.connect(n->output("Intensity"),comb->input("Z"));color=comb->output("Vector");}
   if(test==7){
     // Is Camera Ray selects between two backgrounds (camera rays at bounce 0 here).
     auto lp=g.create_node<LightPathNode>();auto other=g.create_node<BackgroundNode>();other->set_color(make_float3(.8,.1,.2));g.connect(noise(3,NODE_NOISE_MULTIFRACTAL,2,0)->output("Color"),bg->input("Color"));

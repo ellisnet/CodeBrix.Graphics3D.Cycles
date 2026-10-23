@@ -104,7 +104,7 @@ static SVMInputFloat stack_in(unsigned i){return {SVM_INPUT_STACK_OFFSET_MASK|i}
 static SVMInputFloat3 stack_in3(unsigned i){return {stack_in(i),{},{}};}
 static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
   auto &ds=scene.dscene;const auto original=ds.data;constexpr unsigned count=21;
-  const uint expected[count]={2,2,2,2,16,16,16,4,16,16,16,16,16,2,2,2,2,2,2,2,2};
+  const uint expected[count]={2,2,2,2,16,16,16,4,16,16,16,16,16,2,2,2,2,2,2,2,16};
   for(unsigned test=0;test<count;test++){
     Program program(ds);program.weight(.2,.4,.6);program.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
     const uint deferred[]={NODE_RAYCAST,NODE_LIGHT_FALLOFF,NODE_IES,NODE_AOV_START};
@@ -120,7 +120,9 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
     if(test==12)program.add(NODE_MAP_RANGE,SVMNodeMapRange{.range_type=NodeMapRangeType(9),.value=stack_in(0),.from_min=value(0),.from_max=value(1),.to_min=value(0),.to_max=value(1),.steps=value(4),.result_offset=3});
     const uint more[]={NODE_AMBIENT_OCCLUSION,NODE_BEVEL,NODE_PARTICLE_INFO,NODE_HAIR_INFO,NODE_TEX_SKY,NODE_RADIAL_TILING,NODE_POINT_INFO};
     if(test>=13&&test<20)program.words.push_back(more[test-13]);
-    if(test==20)program.words.push_back(NODE_TEX_GABOR);
+    // Gabor is implemented: an invalid Gabor type reports 16.
+    if(test==20)program.add(NODE_TEX_GABOR,SVMNodeTexGabor{.gabor_type=NodeGaborType(2),.orientation_3d=color(1,0,0),.scale=value(1),.frequency=value(2),.anisotropy=value(1),
+      .orientation_2d=value(0),.coordinates=0,.value_offset=3,.phase_offset=SVM_STACK_INVALID,.intensity_offset=SVM_STACK_INVALID});
     program.diffuse(0);program.install(ds);ds.data.max_closures=MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
     device_vector<uint> out(&d,"invalid_node_svm",MEM_READ_WRITE);out.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(out.data(),out.size(),0xa5a5a5a5u);out.copy_to_device();
     device_vector<uint> scratch(&d,"invalid_node_closures",MEM_READ_WRITE);scratch.alloc(MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);scratch.zero_to_device();
@@ -285,6 +287,17 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         p.add(NODE_WAVELENGTH,SVMNodeWavelength{.wavelength=stack_in(13),.color_offset=10});}
       else p.add(NODE_WAVELENGTH,SVMNodeWavelength{.wavelength=value(lambda[variant]),.color_offset=10});
       p.add(NODE_VALUE_F,SVMNodeValueF{.value=.5f,.out_offset=13});finish(p,"wavelength "+std::to_string(variant));
+    }
+    // Gabor: 2D and 3D, anisotropic, partly isotropic and isotropic, constant and
+    // per-path inputs (scale, frequency, anisotropy, orientations), unused outputs.
+    for(unsigned three=0;three<2;three++)for(unsigned variant=0;variant<6;variant++){
+      Program p(ds);begin(p);const float anisotropy[]={1,.5f,0,1,.25f,0};
+      p.add(NODE_TEX_GABOR,SVMNodeTexGabor{.gabor_type=three?NODE_GABOR_TYPE_3D:NODE_GABOR_TYPE_2D,.orientation_3d=variant==4?stack_in3(6):color(.3f,-.8f,variant==5?0.f:.5f),
+        .scale=variant==1?stack_in(9):value(variant<3?1.7f:4.1f),.frequency=value(variant==3?.0004f:variant==2?3.3f:1.9f),.anisotropy=variant==4?stack_in(9):value(anisotropy[variant]),
+        .orientation_2d=variant==0?stack_in(9):value(variant==3?-2.4f:.8f),.coordinates=3,.value_offset=13,.phase_offset=variant==5?SVMStackOffset(SVM_STACK_INVALID):SVMStackOffset(10),
+        .intensity_offset=11});
+      if(variant==5)p.add(NODE_VALUE_F,SVMNodeValueF{.value=.25f,.out_offset=10});
+      p.add(NODE_VALUE_F,SVMNodeValueF{.value=.5f,.out_offset=12});finish(p,"gabor "+std::to_string(three?3:2)+"d variant "+std::to_string(variant));
     }
     // Wireframe: object/pixel units, bump offsets (centre, dx, dy), constant and
     // per-path sizes, unused output.
@@ -485,10 +498,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       evaluate(d,scene,shader,layout,initial,small,"Typed glass/refraction "+std::to_string(typed++),m);
     }
 #endif
+    // The scene-exchange passes (reference_policy.h) do no GPU work; the rejections run in the import pass.
+    if(!svm_exchange_mode()){
     invalid=rejections(d,scene,shader);
 #ifdef CBC_NODES_FIXTURE
     invalid+=node_rejections(d,scene,shader);
 #endif
+    }
 #ifdef CBC_PRINCIPLED_FIXTURE
     // Native-layer rejection before any pipeline or dispatch: a clear
     // unsupported-feature message, never an approximation.
@@ -515,5 +531,6 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(m.closures.size()==5,"Missing closure families");
 #endif
   std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
-  std::cout<<"{\"passed\":true,\"originalCpuSurfaceSvm\":true,\"compiledGraphs\":"<<GRAPH_COUNT<<",\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"closureFamilies\":"<<m.closures.size()<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"stateChecks\":"<<m.state_checks<<",\"untouchedGuardBytes\":"<<m.guards<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"invalidCasesRejected\":"<<invalid<<",\"nativeUnsupportedFeatureRejections\":"<<host_rejections<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+  if(svm_exchange_mode()){std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cases\":"<<m.cases<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";}
+  else std::cout<<"{\"passed\":true,\"originalCpuSurfaceSvm\":true,\"compiledGraphs\":"<<GRAPH_COUNT<<",\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"closureFamilies\":"<<m.closures.size()<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"stateChecks\":"<<m.state_checks<<",\"untouchedGuardBytes\":"<<m.guards<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"invalidCasesRejected\":"<<invalid<<",\"nativeUnsupportedFeatureRejections\":"<<host_rejections<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

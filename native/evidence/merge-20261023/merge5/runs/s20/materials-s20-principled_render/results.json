@@ -1,0 +1,199 @@
+{
+  "principled_render": {
+    "gate": "principled_render",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 213.6,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 53776,
+        "inlinedBytes": 219303,
+        "moduleMs": 5.84021,
+        "pipelineMs": 668.428,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 76848,
+        "inlinedBytes": 250014,
+        "moduleMs": 8.86109,
+        "pipelineMs": 2706.05,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 295966,
+        "inlinedBytes": 393257,
+        "moduleMs": 33.7243,
+        "pipelineMs": 2492.4,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 295966,
+        "inlinedBytes": 879794,
+        "moduleMs": 32.3892,
+        "pipelineMs": 87582.2,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 295966,
+        "inlinedBytes": 639542,
+        "moduleMs": 33.5956,
+        "pipelineMs": 6851.92,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 295966,
+        "inlinedBytes": 480046,
+        "moduleMs": 33.4859,
+        "pipelineMs": 11545.8,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 295966,
+        "inlinedBytes": 950819,
+        "moduleMs": 33.5047,
+        "pipelineMs": 47877.1,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 227900,
+        "inlinedBytes": 934139,
+        "moduleMs": 26.9758,
+        "pipelineMs": 1920.59,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 87582.2,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "flow": "device-scene",
+      "oracleSha256": "963444c0fccc0e5c0cc242ecd85e4b2194e8f855dc69e5a1a90b4c890a38eee8",
+      "hostRejudgedPassed": false,
+      "rows": [
+        {
+          "key": "image",
+          "authoritative": {
+            "compared": 12288,
+            "bitwiseDiffering": 2520,
+            "nonFinite": 0,
+            "practicalFailures": 2,
+            "strictDifferences": 262,
+            "maximumAbsoluteError": 0.0009543895721435547,
+            "maximumPracticalRatio": 2.6569932553656592,
+            "maximumUlps": 8006,
+            "firstPracticalFailure": {
+              "index": 9114,
+              "actual": 1.546949863433838,
+              "reference": 1.5459954738616943
+            },
+            "passed": false
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 12288,
+            "bitwiseDiffering": 2307,
+            "nonFinite": 0,
+            "practicalFailures": 2,
+            "strictDifferences": 240,
+            "maximumAbsoluteError": 0.0009545087814331055,
+            "maximumPracticalRatio": 2.657325130616142,
+            "maximumUlps": 8007,
+            "firstPracticalFailure": {
+              "index": 9114,
+              "actual": 1.5469499826431274,
+              "reference": 1.5459954738616943
+            },
+            "passed": false,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 12288,
+            "bitwiseDiffering": 1349,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 31,
+            "maximumAbsoluteError": 1.9073486328125e-06,
+            "maximumPracticalRatio": 0.0019881369571881973,
+            "maximumUlps": 7,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        }
+      ]
+    },
+    "passed": false,
+    "error": [
+      "Rendered repeat=0 sample=6 stages=127",
+      "Rendered repeat=0 sample=7 stages=145",
+      "Independent CPU image 9114 actual=1.546950 expected=1.545995"
+    ]
+  },
+  "principled-replay": {
+    "passed": false,
+    "notRun": "source job failed"
+  }
+}

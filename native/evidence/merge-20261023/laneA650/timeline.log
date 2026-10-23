@@ -1,0 +1,287 @@
+[18:27:44] start lane A650; read plan/reports
+[18:28:47] s20 lock taken
+[18:28:53] android build started pid 288406
+[18:33:35] android-arm64 build done (18:32:57)
+[18:35:54] nodes_render PSEUDOIMUL32 link failure reproduced with compile_probe on Linux-dumped surface.wgsl (11 s); case bisection running (ddmin)
+[18:35:54] stage review 49 files; staged baseline pushed to codebrix-a650-stage
+[18:47:50] s20 materials-before-nw: START nodes_world timeout=600s
+[18:47:57] s20 materials-before-nw: FAIL nodes_world exit=1 6s: Compiled world 0: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[18:48:03] s20 materials-before-nw: END passed=False wall=13s/900s failures=1
+[18:48:29] DIAG1 (temporary) mask-8 cause bits in svm_load_bits; DECLARED android incremental build nodes_world: budget 900 s
+[19:04:28] H (separate-vector select) fixes nodes_world mask 8 (now film mismatch world 0) and object motion images PASS locally (135 s)
+[19:09:26] transparent_shadow PASS locally with trace_shadow_all BVH stack in the invocation's arena slot
+[19:13:04] checkpoint 1 written
+[19:35:28] fix set v1: separate-vector select, shadow-all stack in arena slot, Adreno 650 table row refusing SVM_NODES_ANY; DECLARED android build 14 gates: budget 1800 s
+[19:38:40] linux build exit=0 1s
+[19:39:33] seeded linux build tree moved to native/work/cycles-build.seeded (cache pointed at main); DECLARED fresh linux build 59 targets --jobs 6: budget 2400 s
+[19:40:33] s20 transparent-v1: START transparent_shadow timeout=600s
+[19:40:50] s20 transparent-v1: PASS transparent_shadow 16s maxPipelineMs=5313.82
+[19:40:50] s20 transparent-v1: START transparent_lighting timeout=600s
+[19:40:50] s20 transparent-v1: SCENE-DUMP transparent_lighting
+[19:40:59] s20 transparent-v1: SCENE-REFERENCE transparent_lighting references=8
+[19:44:22] s20 transparent-v1: REFERENCE transparent_lighting host re-judged vs glibc: True
+[19:44:22] s20 transparent-v1: PASS transparent_lighting 197s maxPipelineMs=18597.5
+[19:44:22] s20 transparent-v1: START transparent_lighting-replay-0 timeout=600s
+[19:45:14] s20 transparent-v1: PASS transparent_lighting-replay-0 52s readbacks=560 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[19:45:14] s20 transparent-v1: START transparent_lighting-replay-1 timeout=600s
+[19:46:07] s20 transparent-v1: PASS transparent_lighting-replay-1 52s readbacks=596 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[19:46:07] s20 transparent-v1: START transparent_lighting-replay-2 timeout=600s
+[19:47:09] s20 transparent-v1: PASS transparent_lighting-replay-2 62s readbacks=575 max=3.81e-06 strict=72 fmt=native-command-stream-v7
+[19:47:09] s20 transparent-v1: START transparent_lighting-replay-3 timeout=600s
+[19:48:13] s20 transparent-v1: PASS transparent_lighting-replay-3 63s readbacks=580 max=1.55e-06 strict=133 fmt=native-command-stream-v7
+[19:48:13] s20 transparent-v1: START transparent_lighting-replay-4 timeout=600s
+[19:49:17] s20 transparent-v1: PASS transparent_lighting-replay-4 63s readbacks=840 max=6.02e-06 strict=167 fmt=native-command-stream-v7
+[19:49:17] s20 transparent-v1: START transparent_lighting-replay-5 timeout=600s
+[19:49:30] linux build exit=0 597s
+[19:50:21] s20 transparent-v1: PASS transparent_lighting-replay-5 64s readbacks=916 max=7.9e-07 strict=3 fmt=native-command-stream-v7
+[19:50:21] s20 transparent-v1: START transparent_lighting-replay-6 timeout=600s
+[19:51:25] s20 transparent-v1: PASS transparent_lighting-replay-6 63s readbacks=428 max=6.02e-06 strict=103 fmt=native-command-stream-v7
+[19:51:25] s20 transparent-v1: START transparent_lighting-replay-7 timeout=600s
+[19:52:28] s20 transparent-v1: PASS transparent_lighting-replay-7 63s readbacks=518 max=6.02e-06 strict=205 fmt=native-command-stream-v7
+[19:52:28] s20 transparent-v1: START transparent-shadow-replay-direct timeout=600s
+[19:52:40] s20 transparent-v1: PASS transparent-shadow-replay-direct 11s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[19:52:40] s20 transparent-v1: START transparent-shadow-replay-indexed timeout=600s
+[19:52:44] START transparent-shadow
+[19:52:51] s20 transparent-v1: PASS transparent-shadow-replay-indexed 11s readbacks=4 max=0 strict=0 fmt=native-command-stream-v7
+[19:52:57] s20 transparent-v1: END passed=True wall=745s/1800s failures=0
+[19:52:57] s20 corpus transparent-v1 exit=0 751s
+[19:53:00] checkpoint 2 written
+[19:53:02] s20 pixel-motion-v1: ERROR AssertionError('not staged: codebrix_cycles_camera_gate')
+[19:53:09] s20 pixel-motion-v1: END passed=False wall=5s/2400s failures=0
+[19:53:09] s20 corpus pixel-motion-v1 exit=0 12s
+[19:53:15] s20 a650-refusals-v1: START nodes_world-refused timeout=300s
+[19:53:16] s20 a650-refusals-v1: PASS nodes_world-refused refusal exit=1 0s
+[19:53:16] s20 a650-refusals-v1: START nodes_svm-refused timeout=300s
+[19:53:17] s20 a650-refusals-v1: PASS nodes_svm-refused refusal exit=1 0s
+[19:53:17] s20 a650-refusals-v1: START nodes_render-refused timeout=300s
+[19:53:17] s20 a650-refusals-v1: PASS nodes_render-refused refusal exit=1 0s
+[19:53:23] s20 a650-refusals-v1: END passed=True wall=9s/600s failures=0
+[19:53:23] s20 corpus a650-refusals-v1 exit=0 14s
+[19:53:30] s20 triangle-v1reg: START triangle_sample timeout=600s
+[19:53:30] s20 triangle-v1reg: SCENE-DUMP triangle_sample
+[19:53:37] s20 triangle-v1reg: SCENE-REFERENCE triangle_sample references=1
+[19:54:22] END transparent-shadow exit=0 98s
+[19:54:22] START dump-transparent
+[19:54:56] s20 triangle-v1reg: REFERENCE triangle_sample host re-judged vs glibc: True
+[19:54:56] s20 triangle-v1reg: PASS triangle_sample 79s maxPipelineMs=None
+[19:54:56] s20 triangle-v1reg: START surface timeout=600s
+[19:54:59] END dump-transparent exit=0 37s
+[19:54:59] START dump-nodes-render
+[19:55:50] END dump-nodes-render exit=0 51s
+[19:55:50] START envelope
+[19:57:21] s20 triangle-v1reg: PASS surface 146s maxPipelineMs=6929.07
+[19:57:28] s20 triangle-v1reg: END passed=True wall=238s/1200s failures=0
+[19:57:28] s20 corpus triangle-v1reg exit=0 245s
+[19:57:35] s20 regression-v1reg: START glass_render timeout=600s
+[19:57:35] s20 regression-v1reg: SCENE-DUMP glass_render
+[19:57:36] END envelope exit=0 106s
+[19:57:36] START envelope-nodes
+[19:57:41] s20 regression-v1reg: SCENE-REFERENCE glass_render references=1
+[19:58:23] END envelope-nodes exit=0 47s
+[19:58:23] START sim650-nodes-world
+[19:58:24] END sim650-nodes-world exit=1 1s
+[19:58:24] START sim650-glass-render
+[19:58:57] END sim650-glass-render exit=0 33s
+[19:58:57] START host-gate
+[19:59:18] s20 regression-v1reg: REFERENCE glass_render host re-judged vs glibc: True
+[19:59:18] s20 regression-v1reg: PASS glass_render 96s maxPipelineMs=16263
+[19:59:18] s20 regression-v1reg: START lighting_mis timeout=600s
+[19:59:18] s20 regression-v1reg: SCENE-DUMP lighting_mis
+[19:59:27] s20 regression-v1reg: SCENE-REFERENCE lighting_mis references=8
+[20:00:36] s20 regression-v1reg: REFERENCE lighting_mis host re-judged vs glibc: True
+[20:00:36] s20 regression-v1reg: PASS lighting_mis 65s maxPipelineMs=18331.8
+[20:00:43] s20 regression-v1reg: END passed=True wall=189s/1200s failures=0
+[20:00:43] s20 corpus regression-v1reg exit=0 195s
+[20:00:50] s20 materials-v1pr: START principled_render timeout=600s
+[20:00:50] s20 materials-v1pr: SCENE-DUMP principled_render
+[20:00:51] END host-gate exit=0 114s
+[20:00:51] START tier-gate
+[20:00:57] s20 materials-v1pr: SCENE-REFERENCE principled_render references=1
+[20:01:12] END tier-gate exit=0 21s
+[20:01:12] START all-lanes
+[20:03:45] s20 materials-v1pr: REFERENCE principled_render host re-judged vs glibc: False
+[20:03:45] s20 materials-v1pr: FAIL principled_render exit=1 168s: stage 40 path.mis_ray_pdf path=2441 actual=1751.469238 expected=1747.274414
+[20:03:52] s20 materials-v1pr: END passed=False wall=183s/900s failures=2
+[20:03:52] s20 corpus materials-v1pr exit=0 189s
+[20:03:52] chain_v1 done
+[20:04:05] s20 pixel-motion-v2: START object-moving-images timeout=600s
+[20:04:05] s20 pixel-motion-v2: SCENE-DUMP object-moving-images
+[20:04:13] s20 pixel-motion-v2: SCENE-REFERENCE object-moving-images references=8
+[20:06:04] s20 pixel-motion-v2: REFERENCE object-moving-images host re-judged vs glibc: False
+[20:06:04] s20 pixel-motion-v2: FAIL object-moving-images exit=1 110s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[20:06:04] s20 pixel-motion-v2: START deforming-moving-images timeout=600s
+[20:06:04] s20 pixel-motion-v2: SCENE-DUMP deforming-moving-images
+[20:06:12] s20 pixel-motion-v2: SCENE-REFERENCE deforming-moving-images references=8
+[20:07:36] s20 pixel-motion-v2: REFERENCE deforming-moving-images host re-judged vs glibc: False
+[20:07:36] s20 pixel-motion-v2: FAIL deforming-moving-images exit=1 82s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[20:07:42] s20 pixel-motion-v2: END passed=False wall=218s/2400s failures=18
+[20:07:42] s20 corpus pixel-motion-v2 exit=0 224s
+[20:07:49] s20 materials-v2pb: START principled_bounce timeout=2400s
+[20:08:30] stopped my principled_bounce run (v2pb) after ~1 min to free the S20 for motion diagnosis; rerun at the end with the 40-min budget
+[20:11:53] END all-lanes exit=1 641s
+[20:11:53] START nodes-gate
+[20:23:50] stopped my Linux slot (all-lanes failed 'inputs changed' because my temporary diagnostic edits of camera/lighting/surface.cpp landed during the run; rerun after restore)
+[20:36:39] fix set v2 = v1 + surface_native_normalize single-body loop (x64-oracle variant motion PASS quick); DECLARED android build 14 gates: budget 1800 s; then linux incremental rebuild budget 1800 s
+[20:37:41] s20 pixel-motion-v3: START object-moving-images timeout=600s
+[20:37:41] s20 pixel-motion-v3: SCENE-DUMP object-moving-images
+[20:37:49] s20 pixel-motion-v3: SCENE-REFERENCE object-moving-images references=8
+[20:37:52] linux v2 slot started (incremental rebuild + gates); no source/doc edits until it ends
+[20:38:22] linux build (v2 incremental) exit=0 30s
+[20:38:22] START v2-transparent-shadow
+[20:39:53] END v2-transparent-shadow exit=0 91s
+[20:39:53] START v2-dump-transparent
+[20:40:14] s20 pixel-motion-v3: REFERENCE object-moving-images host re-judged vs glibc: True
+[20:40:14] s20 pixel-motion-v3: PASS object-moving-images 141s maxPipelineMs=41237.9
+[20:40:14] s20 pixel-motion-v3: START deforming-moving-images timeout=600s
+[20:40:14] s20 pixel-motion-v3: SCENE-DUMP deforming-moving-images
+[20:40:22] s20 pixel-motion-v3: SCENE-REFERENCE deforming-moving-images references=8
+[20:40:30] END v2-dump-transparent exit=0 37s
+[20:40:30] START v2-dump-nodes-render
+[20:41:18] END v2-dump-nodes-render exit=0 48s
+[20:41:18] START v2-envelope
+[20:42:57] END v2-envelope exit=0 99s
+[20:42:57] START v2-envelope-nodes
+[20:43:40] END v2-envelope-nodes exit=0 43s
+[20:43:40] START v2-sim650-nodes-world
+[20:43:40] END v2-sim650-nodes-world exit=1 0s
+[20:43:40] START v2-sim650-glass-render
+[20:44:10] s20 pixel-motion-v3: REFERENCE deforming-moving-images host re-judged vs glibc: True
+[20:44:10] s20 pixel-motion-v3: PASS deforming-moving-images 222s maxPipelineMs=40944.5
+[20:44:10] s20 pixel-motion-v3: START object-replay-motion-0 timeout=600s
+[20:44:12] END v2-sim650-glass-render exit=0 32s
+[20:44:12] START v2-host-gate
+[20:45:47] END v2-host-gate exit=0 95s
+[20:45:47] START v2-tier-gate
+[20:46:07] END v2-tier-gate exit=0 20s
+[20:46:07] START v2-all-lanes
+[20:46:11] s20 pixel-motion-v3: PASS object-replay-motion-0 121s readbacks=414 max=2.56e-06 strict=12 fmt=native-command-stream-v6
+[20:46:11] s20 pixel-motion-v3: START object-replay-motion-1 timeout=600s
+[20:48:12] s20 pixel-motion-v3: PASS object-replay-motion-1 120s readbacks=454 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[20:48:12] s20 pixel-motion-v3: START object-replay-motion-2 timeout=600s
+[20:50:46] s20 pixel-motion-v3: PASS object-replay-motion-2 153s readbacks=456 max=3.52e-06 strict=301 fmt=native-command-stream-v6
+[20:50:46] s20 pixel-motion-v3: START object-replay-motion-3 timeout=600s
+[20:53:40] s20 pixel-motion-v3: PASS object-replay-motion-3 173s readbacks=412 max=9.31e-09 strict=0 fmt=native-command-stream-v6
+[20:53:40] s20 pixel-motion-v3: START object-replay-motion-4 timeout=600s
+[20:56:34] s20 pixel-motion-v3: PASS object-replay-motion-4 174s readbacks=457 max=6.08e-06 strict=294 fmt=native-command-stream-v6
+[20:56:34] s20 pixel-motion-v3: START object-replay-motion-5 timeout=600s
+[20:59:31] s20 pixel-motion-v3: PASS object-replay-motion-5 176s readbacks=417 max=4.05e-06 strict=70 fmt=native-command-stream-v6
+[20:59:31] s20 pixel-motion-v3: START object-replay-motion-6 timeout=600s
+[21:02:27] s20 pixel-motion-v3: PASS object-replay-motion-6 176s readbacks=460 max=6.08e-06 strict=338 fmt=native-command-stream-v6
+[21:02:27] s20 pixel-motion-v3: START object-replay-motion-7 timeout=600s
+[21:05:24] s20 pixel-motion-v3: PASS object-replay-motion-7 176s readbacks=354 max=6.02e-06 strict=249 fmt=native-command-stream-v6
+[21:05:24] s20 pixel-motion-v3: START deforming-replay-motion-0 timeout=600s
+[21:05:44] checkpoint 3 written
+[21:07:21] END v2-all-lanes exit=0 1274s
+[21:07:21] START v2-nodes-gate
+[21:07:26] s20 pixel-motion-v3: PASS deforming-replay-motion-0 122s readbacks=420 max=2.38e-07 strict=2 fmt=native-command-stream-v6
+[21:07:26] s20 pixel-motion-v3: START deforming-replay-motion-1 timeout=600s
+[21:10:24] s20 pixel-motion-v3: PASS deforming-replay-motion-1 177s readbacks=454 max=5.96e-07 strict=19 fmt=native-command-stream-v6
+[21:10:24] s20 pixel-motion-v3: START deforming-replay-motion-2 timeout=430s
+[21:13:19] s20 pixel-motion-v3: PASS deforming-replay-motion-2 175s readbacks=460 max=2.4e-06 strict=304 fmt=native-command-stream-v6
+[21:13:19] s20 pixel-motion-v3: START deforming-replay-motion-3 timeout=254s
+[21:16:15] s20 pixel-motion-v3: PASS deforming-replay-motion-3 175s readbacks=412 max=9.31e-09 strict=0 fmt=native-command-stream-v6
+[21:16:15] s20 pixel-motion-v3: START deforming-replay-motion-4 timeout=78s
+[21:17:34] s20 pixel-motion-v3: TIMEOUT deforming-replay-motion-4
+[21:17:41] s20 pixel-motion-v3: END passed=False wall=2400s/2400s failures=1
+[21:17:41] s20 corpus pixel-motion-v3 exit=0 2407s
+[21:17:50] s20 transparent-v3: START transparent_shadow timeout=600s
+[21:18:12] s20 transparent-v3: PASS transparent_shadow 22s maxPipelineMs=8107.32
+[21:18:12] s20 transparent-v3: START transparent_lighting timeout=600s
+[21:18:12] s20 transparent-v3: SCENE-DUMP transparent_lighting
+[21:18:22] s20 transparent-v3: SCENE-REFERENCE transparent_lighting references=8
+[21:23:02] s20 transparent-v3: REFERENCE transparent_lighting host re-judged vs glibc: True
+[21:23:02] s20 transparent-v3: PASS transparent_lighting 274s maxPipelineMs=26456.1
+[21:23:02] s20 transparent-v3: START transparent_lighting-replay-0 timeout=600s
+[21:24:16] s20 transparent-v3: PASS transparent_lighting-replay-0 74s readbacks=560 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[21:24:16] s20 transparent-v3: START transparent_lighting-replay-1 timeout=600s
+[21:25:31] s20 transparent-v3: PASS transparent_lighting-replay-1 74s readbacks=596 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[21:25:31] s20 transparent-v3: START transparent_lighting-replay-2 timeout=600s
+[21:27:00] s20 transparent-v3: PASS transparent_lighting-replay-2 89s readbacks=575 max=3.81e-06 strict=72 fmt=native-command-stream-v7
+[21:27:00] s20 transparent-v3: START transparent_lighting-replay-3 timeout=600s
+[21:28:30] s20 transparent-v3: PASS transparent_lighting-replay-3 89s readbacks=580 max=1.55e-06 strict=133 fmt=native-command-stream-v7
+[21:28:30] s20 transparent-v3: START transparent_lighting-replay-4 timeout=600s
+[21:30:00] s20 transparent-v3: PASS transparent_lighting-replay-4 90s readbacks=840 max=6.02e-06 strict=167 fmt=native-command-stream-v7
+[21:30:00] s20 transparent-v3: START transparent_lighting-replay-5 timeout=600s
+[21:31:30] s20 transparent-v3: PASS transparent_lighting-replay-5 89s readbacks=916 max=7.9e-07 strict=3 fmt=native-command-stream-v7
+[21:31:30] s20 transparent-v3: START transparent_lighting-replay-6 timeout=600s
+[21:32:59] s20 transparent-v3: PASS transparent_lighting-replay-6 88s readbacks=428 max=6.02e-06 strict=103 fmt=native-command-stream-v7
+[21:32:59] s20 transparent-v3: START transparent_lighting-replay-7 timeout=600s
+[21:34:28] s20 transparent-v3: PASS transparent_lighting-replay-7 88s readbacks=518 max=6.02e-06 strict=205 fmt=native-command-stream-v7
+[21:34:28] s20 transparent-v3: START transparent-shadow-replay-direct timeout=600s
+[21:34:44] s20 transparent-v3: PASS transparent-shadow-replay-direct 16s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[21:34:44] s20 transparent-v3: START transparent-shadow-replay-indexed timeout=600s
+[21:35:01] s20 transparent-v3: PASS transparent-shadow-replay-indexed 17s readbacks=4 max=0 strict=0 fmt=native-command-stream-v7
+[21:35:08] s20 transparent-v3: END passed=True wall=1040s/1800s failures=0
+[21:35:08] s20 corpus transparent-v3 exit=0 1047s
+[21:35:16] s20 a650-refusals-v3: START nodes_world-refused timeout=300s
+[21:35:17] s20 a650-refusals-v3: PASS nodes_world-refused refusal exit=1 0s
+[21:35:17] s20 a650-refusals-v3: START nodes_svm-refused timeout=300s
+[21:35:18] s20 a650-refusals-v3: PASS nodes_svm-refused refusal exit=1 1s
+[21:35:18] s20 a650-refusals-v3: START nodes_render-refused timeout=300s
+[21:35:19] s20 a650-refusals-v3: PASS nodes_render-refused refusal exit=1 1s
+[21:35:26] s20 a650-refusals-v3: END passed=True wall=11s/600s failures=0
+[21:35:26] s20 corpus a650-refusals-v3 exit=0 18s
+[21:35:34] s20 triangle-v3reg: START triangle_sample timeout=600s
+[21:35:34] s20 triangle-v3reg: SCENE-DUMP triangle_sample
+[21:35:41] s20 triangle-v3reg: SCENE-REFERENCE triangle_sample references=1
+[21:37:18] END v2-nodes-gate exit=0 1797s
+[21:37:18] START v2-principled-gate
+[21:37:36] s20 triangle-v3reg: REFERENCE triangle_sample host re-judged vs glibc: True
+[21:37:36] s20 triangle-v3reg: PASS triangle_sample 115s maxPipelineMs=None
+[21:37:36] s20 triangle-v3reg: START surface timeout=600s
+[21:41:09] s20 triangle-v3reg: PASS surface 213s maxPipelineMs=9715.62
+[21:41:16] s20 triangle-v3reg: END passed=True wall=344s/1200s failures=0
+[21:41:16] s20 corpus triangle-v3reg exit=0 350s
+[21:41:24] s20 regression-v3reg: START glass_render timeout=600s
+[21:41:24] s20 regression-v3reg: SCENE-DUMP glass_render
+[21:41:31] s20 regression-v3reg: SCENE-REFERENCE glass_render references=1
+[21:43:45] s20 regression-v3reg: REFERENCE glass_render host re-judged vs glibc: True
+[21:43:45] s20 regression-v3reg: PASS glass_render 133s maxPipelineMs=24146.8
+[21:43:45] s20 regression-v3reg: START lighting_mis timeout=600s
+[21:43:45] s20 regression-v3reg: SCENE-DUMP lighting_mis
+[21:43:54] s20 regression-v3reg: SCENE-REFERENCE lighting_mis references=8
+[21:45:27] s20 regression-v3reg: REFERENCE lighting_mis host re-judged vs glibc: True
+[21:45:27] s20 regression-v3reg: PASS lighting_mis 87s maxPipelineMs=26045.9
+[21:45:33] s20 regression-v3reg: END passed=True wall=251s/1200s failures=0
+[21:45:33] s20 corpus regression-v3reg exit=0 257s
+[21:45:41] s20 materials-v3pr: START principled_render timeout=600s
+[21:45:41] s20 materials-v3pr: SCENE-DUMP principled_render
+[21:45:48] s20 materials-v3pr: SCENE-REFERENCE principled_render references=1
+[21:48:43] s20 materials-v3pr: REFERENCE principled_render host re-judged vs glibc: False
+[21:48:43] s20 materials-v3pr: FAIL principled_render exit=1 174s: stage 40 path.mis_ray_pdf path=2441 actual=1751.469238 expected=1747.274414
+[21:48:49] s20 materials-v3pr: END passed=False wall=190s/900s failures=2
+[21:48:49] s20 corpus materials-v3pr exit=0 196s
+[21:48:56] s20 materials-v3pb: START principled_bounce timeout=2400s
+[21:50:40] END v2-principled-gate exit=0 802s
+[21:50:40] linux_gates DONE
+[22:16:08] s20 materials-v3pb: PASS principled_bounce 1631s maxPipelineMs=125334
+[22:16:14] s20 materials-v3pb: END passed=True wall=1639s/2700s failures=0
+[22:16:14] s20 corpus materials-v3pb exit=0 1645s
+[22:16:14] chain_v3 done
+[22:16:26] s20 pixel-motion-v4def: START deforming-moving-images timeout=600s
+[22:16:26] s20 pixel-motion-v4def: SCENE-DUMP deforming-moving-images
+[22:16:35] s20 pixel-motion-v4def: SCENE-REFERENCE deforming-moving-images references=8
+[22:16:55] principled_bounce PASS 1631 s (gate-local vs device CPU, strict 3259, max 0.125 at 840718); deforming replay rerun (v4def) running
+[22:21:58] s20 pixel-motion-v4def: REFERENCE deforming-moving-images host re-judged vs glibc: True
+[22:21:58] s20 pixel-motion-v4def: PASS deforming-moving-images 318s maxPipelineMs=59431.7
+[22:21:58] s20 pixel-motion-v4def: START deforming-replay-motion-0 timeout=600s
+[22:23:59] s20 pixel-motion-v4def: PASS deforming-replay-motion-0 121s readbacks=420 max=2.38e-07 strict=2 fmt=native-command-stream-v6
+[22:23:59] s20 pixel-motion-v4def: START deforming-replay-motion-1 timeout=600s
+[22:26:54] s20 pixel-motion-v4def: PASS deforming-replay-motion-1 174s readbacks=454 max=5.96e-07 strict=19 fmt=native-command-stream-v6
+[22:26:54] s20 pixel-motion-v4def: START deforming-replay-motion-2 timeout=600s
+[22:29:47] s20 pixel-motion-v4def: PASS deforming-replay-motion-2 172s readbacks=460 max=2.4e-06 strict=304 fmt=native-command-stream-v6
+[22:29:47] s20 pixel-motion-v4def: START deforming-replay-motion-3 timeout=600s
+[22:32:42] s20 pixel-motion-v4def: PASS deforming-replay-motion-3 175s readbacks=412 max=9.31e-09 strict=0 fmt=native-command-stream-v6
+[22:32:42] s20 pixel-motion-v4def: START deforming-replay-motion-4 timeout=600s
+[22:35:37] s20 pixel-motion-v4def: PASS deforming-replay-motion-4 174s readbacks=460 max=6.08e-06 strict=280 fmt=native-command-stream-v6
+[22:35:37] s20 pixel-motion-v4def: START deforming-replay-motion-5 timeout=600s
+[22:38:32] s20 pixel-motion-v4def: PASS deforming-replay-motion-5 174s readbacks=426 max=4.17e-06 strict=49 fmt=native-command-stream-v6
+[22:38:32] s20 pixel-motion-v4def: START deforming-replay-motion-6 timeout=600s
+[22:41:27] s20 pixel-motion-v4def: PASS deforming-replay-motion-6 174s readbacks=460 max=6.08e-06 strict=300 fmt=native-command-stream-v6
+[22:41:27] s20 pixel-motion-v4def: START deforming-replay-motion-7 timeout=600s
+[22:44:23] s20 pixel-motion-v4def: PASS deforming-replay-motion-7 175s readbacks=359 max=6.02e-06 strict=259 fmt=native-command-stream-v6
+[22:44:29] s20 pixel-motion-v4def: END passed=True wall=1685s/2400s failures=0
+[22:44:29] s20 corpus pixel-motion-v4def exit=0 1691s
+[22:44:29] chain_v4 done
+[22:45:03] S20 cleaned (no codebrix-a650*), s20 lock released
+[22:47:21] sealed (patch 04431d452498bdd6...); report written

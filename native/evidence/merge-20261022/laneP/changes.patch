@@ -1,0 +1,302 @@
+diff --git a/AGENT-README.txt b/AGENT-README.txt
+index 8d385cdd..af18925f 100644
+--- a/AGENT-README.txt
++++ b/AGENT-README.txt
+@@ -660,6 +660,63 @@ Textures need decoded pixels (CreateImage with raw RGBA): the example uses
+ base-colour factors only because Gltf2 does not decode images.
+ 
+ 
++NOT SUPPORTED ON ADRENO 640 (PIXEL 4 XL CLASS DEVICES)
++======================================================
++Android devices with a Qualcomm Adreno 640 GPU (for example the Pixel 4 XL) are
++not reference devices for this package. The ARM64 Android reference is an
++Adreno 730 device. The policy:
++- functionality that works on the reference device but fails on an Adreno 640
++  is not supported there;
++- functionality that takes more than three times as long as on the reference
++  device is treated as a failure and is not supported there either.
++The package does not block these features on an Adreno 640. They may render
++wrongly, stop with a WebGPU error or a lost device, or take too long. Do not
++build a product that depends on them on this GPU. Maintainers: the evidence is
++in native/DEVICE.md, "Pixel 4 XL triage under the device reference policy".
++This list says nothing about other GPU families (Mali, other Adreno
++generations).
++
++Not supported (fails on the Adreno 640):
++- Transparent shadows and Transparent BSDF lighting. The transparent-shadow
++  stage reports invalid data, and renders with transparent surfaces lose the
++  device.
++- Object motion blur (moving objects). It either fails or takes more than three
++  times the reference device's time.
++- Deformation motion blur (vertex motion). The render reports an invalid SVM
++  stack.
++- World (background) shaders built from texture, colour or utility nodes. The
++  world evaluation reports an invalid SVM stack.
++
++Not supported (more than three times the reference device's time):
++- Emissive mesh (triangle) lights, for rendering and for light sampling.
++- Point, sun and mesh lighting mixed with transmission and forward-hit MIS in
++  one scene.
++- Shadow terminator geometry and shading offsets.
++- Scenes with motion-blur-capable objects or deforming meshes, even when
++  rendered without motion.
++- Managed .NET WebGPU rendering of simple scenes (glass, diffuse sun, textured
++  plane) is more than three times slower than on the reference device.
++  Pipeline compilation accounts for most of the difference.
++
++Provisional (the reference device also fails these today; they will be
++re-judged once it passes, and may move to either list):
++- Principled BSDF materials. Their evaluation reports an invalid SVM stack, and
++  bounces and renders take more than three times the reference time.
++- Texture, colour and utility nodes in surface shaders. Creating their shaders
++  can lose the device, and renders report an invalid SVM stack.
++
++Supported on the Adreno 640 within the policy:
++- perspective cameras, static and with camera motion;
++- closest-hit and shadow ray traversal;
++- glass;
++- point, sun, spot and area lighting with MIS;
++- point-lamp emission;
++- homogeneous volumes: absorption, isotropic, forward and backward scattering,
++  closed and overlapping volumes, and a camera inside a volume.
++Pipeline compilation is still much slower than on the reference device. Expect
++compile-time warnings over the 20 s mobile budget.
++
++
+ WHAT THIS PACKAGE DOES NOT DO
+ =============================
+ - It does not encode or decode image or video files (PNG, JPEG, JPEG XL, TIFF,
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index d933c633..b9aca648 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -2326,7 +2326,11 @@ above:
+ 1. **Samsung triangle sampler.** 2 values of 1 sample differ from the glibc reference (sample 3133, object 4,
+    prim 5: `P.y` 0.382186 against 0.379992, and `t`). The device CPU and glibc agree on that sample, so the
+    Adreno 730 differs from both; not yet localised. The Pixel 4 XL and the HP pass.
+-2. **Pixel 4 XL object motion with the reference oracle's arithmetic.** The object-moving motion images report
++2. **Closed under the device reference policy (not supported on Adreno 640).** Lane P (2026-10-22): the imported
++   reference flow and the explicit `CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2` run both fail with SVM error 8
++   (253 s and 252 s). The device-oracle run reached its 255 s cutoff, 3 x the Samsung 84.9 s, without finishing, so
++   object motion is not supported on this GPU with either oracle. No gate or adapter change was made. Original text:
++   **Pixel 4 XL object motion with the reference oracle's arithmetic.** The object-moving motion images report
+    SVM error 8 when the x64 oracle's adapter constants are selected (imported reference, Phase E4); with the
+    device's own oracle they pass ("Session close: the E4/E5/M4 merge on the devices"). Either the adapters'
+    WGSL meets an Adreno 640 compiler defect, or the gate should keep the device oracle on this GPU; undecided.
+@@ -2343,11 +2347,17 @@ above:
+    light_state, transparent_shadow, svm_surface and the SVM node gates) compare against the device's own CPU.
+    `render_gate.cpp` images use a Linux-prepared reference without scene exchange, and the managed-API scenes
+    have no scene dump.
+-6. **Remaining function-scope arrays** (Adreno 640 candidates): `array<i32,192>` BVH stacks; the
++6. **Closed under the device reference policy (not supported on Adreno 640).** Lane P (2026-10-22), not fixed.
++   These jobs fail with SVM error 8, the signature of the array class's lost `svm_stack` mask bits:
++   object motion (x64 oracle), deformation motion, nodes_world, principled_svm and nodes_render (error 24). The
++   failures were not localised. Transparent shadow (mask 1) and transparent lighting (device lost) show other
++   signatures. Original text: **Remaining function-scope arrays** (Adreno 640 candidates): `array<i32,192>` BVH stacks; the
+    `array<vec3<f32>,2|3>` locals in shader data, motion triangles, `wavefront_svm_nodes.wgsl` and the
+    smooth-normal derivative in `wavefront_svm_derivatives.wgsl` (plus its `array<vec2<f32>,3>`);
+    `array<u32,13>` in light-sample packing.
+-7. **Pixel 4 XL compile time.** Over the 20 s budget, as warnings: motion `intersect_closest` and
++7. **Closed under the device reference policy (3x rule).** Lane P (2026-10-22): compile time counts in each job's
++   wall time against 3 x the Samsung wall. See the lane-P table and compile list. Original text:
++   **Pixel 4 XL compile time.** Over the 20 s budget, as warnings: motion `intersect_closest` and
+    `intersect_shadow` (74-87 s), emissive-triangle `shade_surface_light` (up to about 120 s),
+    node-render `prepare_surface` (about 120 s) and `prepare_surface`/`prepare_shader_data` with motion
+    (about 50-60 s). Every run stayed on the full tier and inside its wall budget.
+@@ -2356,7 +2366,10 @@ above:
+ 9. **Texture nodes on the Adreno 730 (Samsung).** The typed 2D fBM noise program (1.792859 against 1.791512)
+    and node-render image component 6720 exceed the practical criterion. Contraction or precision in the noise
+    chain is suspected. Node worlds pass.
+-10. **Materials on the Adreno 640 (Pixel 4 XL).** Every Principled and node gate fails: SVM error 8 (24 with
++10. **Partly closed under the device reference policy; the rest is PROVISIONAL.** Lane P (2026-10-22): node worlds
++    fail with SVM error 8 while the Samsung passes, so they are not supported on Adreno 640 (definitive). The
++    Principled and surface-node verdicts stay provisional until lane S fixes items 8 and 9; rerun them at merge.
++    Original text: **Materials on the Adreno 640 (Pixel 4 XL).** Every Principled and node gate fails: SVM error 8 (24 with
+     16 in node renders) in worlds and renders, and the node SVM probe loses the device when its pipeline is
+     created. Lamps, glass, feature combination and the triangle gates pass. Candidates are the Adreno 640
+     array class (item 6) and the module-scope `svm_stack` with the larger interpreter.
+@@ -2381,3 +2394,184 @@ above:
+ 16. **Contractible ShaderData differentials.** `du`, `dv` and `dP` still differ by ULPs between Intel and
+     the Adreno; no current film depends on them. Make them contraction-proof if a texture-filtering gate
+     needs exact differentials.
++
++## Pixel 4 XL triage under the device reference policy (lane P, 2026-10-22)
++
++Under the device reference policy (2026-10-22), the Pixel 4 XL (Adreno 640, API 33) is not a reference device.
++The ARM64 reference is the Samsung SM-X700 (Adreno 730). A job that fails on the Pixel 4 XL, or takes more than
++three times its Samsung wall time, is not supported on the Adreno 640. There is no Pixel-only investigation or fix.
++The consumer-facing list is the AGENT-README section "NOT SUPPORTED ON ADRENO 640 (PIXEL 4 XL CLASS DEVICES)".
++The merged Pixel-specific fixes stay in place: the module-scope `svm_stack`, the volume-stack scalar arrays and the
++sliced sampler dispatch. The known-adapter table and the device-tier code are unchanged.
++
++Method. The tree is 3392df3d. The Android arm64 gates, render_replay and the validation APK were built from that
++tree, with the runtime unchanged (`libcodebrix_wgpu.so` hash-verified before every job). Each job ran alone on the
++device, with the same flags as the merge-wave-3 Pixel chain:
++- image and sampler gates: the device-scene glibc reference flow;
++- materials: the exported Linux references;
++- every gate: `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS=20000`, compile-budget overruns as warnings only;
++- the full tier, chosen by the table.
++
++The per-job hard timeout is the cutoff, 3 x the Samsung wall (minimum 5 s for adb launch latency). Samsung walls
++come from:
++- `native/work/merge3`, else `merge2`, else `merge1` device runs (in main);
++- for four jobs with no Samsung record, one lane-P timing session on the Samsung: object and deforming stationary
++  images, and lighting_mis replays 0 and 1.
++
++A job still running at its cutoff was stopped and recorded as `FAIL (3x cutoff at N s)`. The gate process ended
++with its adb session, and the post-cutoff process lists show no codebrix process. Replays of a device capture run
++only when their source job passed. The Linux triangle and terminator captures were regenerated in the lane-P tree,
++because merge 3 had deleted their arenas. The Pixel walls are single runs. Evidence: lane P handoff `device/`
++(per-job `runs/pixel/<corpus>-p-<step>-<n>/`, the logs, and `triage-table.{json,md}`).
++
++| Corpus | Job | Samsung wall (s) | Pixel wall (s) | Cutoff (s) | Pixel result | Verdict |
++| --- | --- | --- | --- | --- | --- | --- |
++| triangle | triangle_sample | 25.8 (fails) | 77.3 | 77.0 | FAIL (3x cutoff at 77 s) | NOT SUPPORTED (3x) |
++| triangle | surface | 97.4 | 199.7 | 292.0 | PASS | SUPPORTED |
++| triangle | triangle_lighting | 159.0 | 477.2 | 477.0 | FAIL (3x cutoff at 477 s) | NOT SUPPORTED (3x) |
++| triangle | replay-0 | 21.4 | - | 64.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| triangle | replay-1 | 39.1 | - | 117.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| triangle | replay-2 | 39.2 | - | 118.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| triangle | replay-3 | 39.4 | - | 118.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| triangle | replay-4 | 39.0 | - | 117.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| triangle | replay-5 | 87.0 | - | 261.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| emitter | emitter_sample | 11.3 | 21.4 | 34.0 | PASS | SUPPORTED |
++| hostcap-linux-triangle | tri0 | 21.7 | 61.4 | 65.0 | PASS | SUPPORTED |
++| hostcap-linux-triangle | tri1 | 40.0 | 120.0 | 120.0 | FAIL (3x cutoff at 120 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-triangle | tri2 | 40.0 | 120.1 | 120.0 | FAIL (3x cutoff at 120 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-triangle | tri3 | 40.0 | 120.0 | 120.0 | FAIL (3x cutoff at 120 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-triangle | tri4 | 39.1 | 117.1 | 117.0 | FAIL (3x cutoff at 117 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-triangle | tri5 | 87.9 | 264.1 | 264.0 | FAIL (3x cutoff at 264 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-terminator | term0 | 17.2 | 39.2 | 52.0 | PASS | SUPPORTED |
++| hostcap-linux-terminator | term1 | 19.6 | 51.5 | 59.0 | PASS | SUPPORTED |
++| hostcap-linux-terminator | term2 | 19.5 | 51.2 | 58.0 | PASS | SUPPORTED |
++| hostcap-linux-terminator | term3 | 19.4 | 50.6 | 58.0 | PASS | SUPPORTED |
++| hostcap-linux-terminator | term4 | 33.7 | 101.1 | 101.0 | FAIL (3x cutoff at 101 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-terminator | term5 | 33.7 | 101.1 | 101.0 | FAIL (3x cutoff at 101 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-terminator | term6 | 33.5 | 100.1 | 100.0 | FAIL (3x cutoff at 100 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-terminator | term7 | 33.7 | 101.1 | 101.0 | FAIL (3x cutoff at 101 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-terminator | term8 | 33.7 | 101.1 | 101.0 | FAIL (3x cutoff at 101 s) | NOT SUPPORTED (3x) |
++| hostcap-linux-terminator | term9 | 72.8 | 218.0 | 218.0 | FAIL (3x cutoff at 218 s) | NOT SUPPORTED (3x) |
++| materials | nodes_svm | 879.2 (fails) | 158.3 | 2638.0 | FAIL: device lost | PROVISIONAL (NOT SUPPORTED (fails)) |
++| materials | nodes_world | 509.8 | 6.8 | 1529.0 | FAIL: SVM error 8 | NOT SUPPORTED (fails) |
++| materials | nodes_render | 153.2 (fails) | 143.1 | 460.0 | FAIL: SVM error 24 (8+16) | PROVISIONAL (NOT SUPPORTED (fails)) |
++| materials | nodes-replay | - (fails) | - | - | not run (no Samsung baseline, deferred to merge) | NO BASELINE |
++| materials | principled_svm | 71.2 (fails) | 115.0 | 214.0 | FAIL: SVM error 8 (probe) | PROVISIONAL (NOT SUPPORTED (fails)) |
++| materials | principled_bounce | 26.3 (fails) | 79.2 | 79.0 | FAIL (3x cutoff at 79 s) | PROVISIONAL (NOT SUPPORTED (3x)) |
++| materials | principled_render | 28.7 (fails) | 86.2 | 86.0 | FAIL (3x cutoff at 86 s) | PROVISIONAL (NOT SUPPORTED (3x)) |
++| materials | principled-replay | - (fails) | - | - | not run (no Samsung baseline, deferred to merge) | NO BASELINE |
++| lighting | broad_lighting | 68.3 | 203.7 | 205.0 | PASS | SUPPORTED |
++| lighting | broad_lighting-replay-0 | 20.3 | 61.1 | 61.0 | FAIL (3x cutoff at 61 s) | NOT SUPPORTED (3x) |
++| lighting | broad_lighting-replay-1 | 20.4 | 61.1 | 61.0 | FAIL (3x cutoff at 61 s) | NOT SUPPORTED (3x) |
++| lighting | feature_combination | 42.8 | 128.2 | 128.0 | FAIL (3x cutoff at 128 s) | NOT SUPPORTED (3x) |
++| lighting | feature_combination-replay-0 | 27.6 | - | 83.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| lighting | feature_combination-replay-1 | 27.9 | - | 84.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| lighting | lighting_mis | 33.4 | 96.4 | 100.0 | PASS | SUPPORTED |
++| lighting | lighting_mis-replay-0 | 15.6 | 47.2 | 47.0 | FAIL (3x cutoff at 47 s) | NOT SUPPORTED (3x) |
++| lighting | lighting_mis-replay-1 | 16.0 | 48.2 | 48.0 | FAIL (3x cutoff at 48 s) | NOT SUPPORTED (3x) |
++| regression | glass_render | 79.9 | 121.4 | 240.0 | PASS | SUPPORTED |
++| regression | lighting_mis | 33.4 | 96.4 | 100.0 | PASS | SUPPORTED |
++| regression | transparent_lighting | 107.5 | 64.7 | 322.0 | FAIL: device lost | NOT SUPPORTED (fails) |
++| transparent | transparent_shadow | 16.1 | 13.9 | 48.0 | FAIL: invalid state/data (mask 1) | NOT SUPPORTED (fails) |
++| transparent | transparent_lighting | 106.9 | 64.7 | 321.0 | FAIL: device lost | NOT SUPPORTED (fails) |
++| transparent | transparent_lighting-replay-0 | 23.7 | - | 71.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| transparent | transparent_lighting-replay-1 | 23.7 | - | 71.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| transparent | transparent_lighting-replay-2 | 30.5 | - | 92.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| transparent | transparent_lighting-replay-3 | 30.9 | - | 93.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| transparent | transparent_lighting-replay-4 | 31.4 | - | 94.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| transparent | transparent_lighting-replay-5 | 31.9 | - | 96.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| transparent | transparent_lighting-replay-6 | 30.2 | - | 91.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| transparent | transparent_lighting-replay-7 | 30.8 | - | 92.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| transparent | transparent-shadow-replay-direct | 3.9 | - | 12.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| transparent | transparent-shadow-replay-indexed | 4.0 | - | 12.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | shadow_terminator | 147.4 | 442.3 | 442.0 | FAIL (3x cutoff at 442 s) | NOT SUPPORTED (3x) |
++| terminator | terminator-replay-0 | 15.3 | - | 46.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | terminator-replay-1 | 17.5 | - | 52.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | terminator-replay-2 | 17.6 | - | 53.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | terminator-replay-3 | 17.6 | - | 53.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | terminator-replay-4 | 29.8 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | terminator-replay-5 | 29.8 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | terminator-replay-6 | 29.8 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | terminator-replay-7 | 29.6 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | terminator-replay-8 | 29.9 | - | 90.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| terminator | terminator-replay-9 | 67.7 | - | 203.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| spec-refusal | glass_render-spec | 76.8 | 121.4 | 230.0 | PASS | SUPPORTED |
++| spec-refusal | glass_render-nospec-refused | 0.3 | 0.9 | 5.0 | PASS | SUPPORTED |
++| motion | object-moving-images | 84.9 | 252.9 | 255.0 | FAIL: SVM error 8 | NOT SUPPORTED (fails) |
++| motion | object-replay-motion-0 | 66.8 | - | 200.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| motion | object-stationary-images | 36.2 | 109.2 | 109.0 | FAIL (3x cutoff at 109 s) | NOT SUPPORTED (3x) |
++| motion | deforming-moving-images | 110.8 | 116.0 | 332.0 | FAIL: SVM error 8 | NOT SUPPORTED (fails) |
++| motion | deforming-replay-motion-0 | 29.6 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
++| motion | deforming-stationary-images | 36.3 | 109.2 | 109.0 | FAIL (3x cutoff at 109 s) | NOT SUPPORTED (3x) |
++| motion | camera-static | 7.9 | 10.0 | 24.0 | PASS | SUPPORTED |
++| motion | camera-motion | 14.2 | 37.3 | 43.0 | PASS | SUPPORTED |
++| precision | closest | 21.4 | 40.4 | 64.0 | PASS | SUPPORTED |
++| precision | shadow | 16.2 | 16.7 | 49.0 | PASS | SUPPORTED |
++| precision | shadow-replay-direct | 1.5 | 2.0 | 5.0 | PASS | SUPPORTED |
++| precision | shadow-replay-indexed | 1.5 | 2.0 | 5.0 | PASS | SUPPORTED |
++| volume | volume-state | 13.2 | 24.9 | 40.0 | PASS | SUPPORTED |
++| volume | volume-absorption | 120.8 | 140.1 | 362.0 | PASS | SUPPORTED |
++| volume | volume-isotropic | 172.0 | 179.2 | 516.0 | PASS | SUPPORTED |
++| volume | volume-forward | 170.8 | 180.4 | 512.0 | PASS | SUPPORTED |
++| volume | volume-backward | 171.7 | 182.8 | 515.0 | PASS | SUPPORTED |
++| volume | boundary-state | 32.4 | 81.0 | 97.0 | PASS | SUPPORTED |
++| volume | boundary-compaction-guard | 6.4 | 19.2 | 19.0 | FAIL (3x cutoff at 19 s) | NOT SUPPORTED (3x) |
++| volume | closed-single | 214.4 | 219.4 | 643.0 | PASS | SUPPORTED |
++| volume | closed-overlap | 319.9 | 345.9 | 960.0 | PASS | SUPPORTED |
++| volume | closed-inside | 302.9 | 337.5 | 909.0 | PASS | SUPPORTED |
++| volume | volume-replay-absorption | 19.5 | 50.1 | 58.0 | PASS | SUPPORTED |
++| volume | volume-replay-isotropic | 20.6 | 50.5 | 62.0 | PASS | SUPPORTED |
++| volume | volume-replay-forward | 20.5 | 50.3 | 62.0 | PASS | SUPPORTED |
++| volume | volume-replay-backward | 20.7 | 54.8 | 62.0 | PASS | SUPPORTED |
++| volume | closed-replay-single | 21.5 | 54.1 | 64.0 | PASS | SUPPORTED |
++| volume | closed-replay-overlap | 33.9 | 102.1 | 102.0 | FAIL (3x cutoff at 102 s) | NOT SUPPORTED (3x) |
++| volume | closed-replay-inside | 34.1 | 102.2 | 102.0 | FAIL (3x cutoff at 102 s) | NOT SUPPORTED (3x) |
++| app | managed-app-3-scenes | 134.4 | >403 (result timeout) | 403.0 | FAIL (3x cutoff at 403 s) | NOT SUPPORTED (3x) |
++| motion (item 2) | object-moving-images, device oracle, no reference import | 84.9 | 255.3 | 255.0 | FAIL (3x cutoff at 255 s) | NOT SUPPORTED (3x) |
++| motion (item 2) | object-moving-images, CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2, no reference import | 84.9 | 251.8 | 255.0 | FAIL: SVM error 8 | NOT SUPPORTED (fails) |
++
++Summary:
++- Supported (within 3x): the point-lamp emitter probe; surface state; perspective camera, static and with motion;
++  the closest and shadow precision fixtures and their replays; lighting_mis and broad lighting; the specialized
++  glass render; the specialization-off refusal; every homogeneous and closed volume render (including camera
++  inside) with most volume replays; Linux capture replays tri0 and term0-3.
++- Fails on the Adreno 640:
++  - SVM error 8: object motion (with the x64 reference oracle's arithmetic), deformation motion and node worlds;
++  - mask 1 (invalid state): transparent shadow;
++  - device lost at queue submit: transparent lighting.
++  The two transparent gates passed on this device in earlier sessions; they fail in this single run, and under the
++  policy they were not investigated.
++- More than 3x:
++  - the emissive-triangle sampler and images;
++  - feature_combination and shadow_terminator;
++  - stationary motion-capable scenes;
++  - the managed validation app (result not delivered within 403 s);
++  - device replays of lighting captures, overlapping closed volumes and most Linux triangle and terminator captures;
++  - the volume compaction guard case.
++- Provisional, because the Samsung also fails today (items 8 and 9, lane S): principled_svm (SVM error 8),
++  principled_bounce and principled_render (3x), nodes_svm (device lost creating the pipeline), and nodes_render
++  (SVM error 24). The materials and node replays have no Samsung baseline (their source jobs fail there) and were
++  not run. Rerun these at merge, after lane S.
++
++Diagnostic-only results (maintainer material; not in the consumer AGENT-README):
++- **The x64 reference-oracle import is not supported on Adreno 640.** This is
++  `CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2`, which the image gates select when they import a glibc
++  reference. Object motion fails with SVM error 8 under it (item 2).
++- **On-device replays of captured command streams exceed 3x** for these captures: lighting (lighting_mis,
++  broad_lighting), overlapping and camera-inside closed volumes, Linux triangle captures tri1-5 and Linux terminator
++  captures term4-9. These pass on the Pixel: the precision shadow replays, the volume replays (absorption, isotropic,
++  forward, backward, closed-single), tri0 and term0-3.
++- **The volume-boundary malformed-input (compaction) guard case exceeds 3x:** 19.2 s against a 19 s cutoff
++  (`CODEBRIX_VOLUME_COMPACTION_CASE=1`). The volume-boundary state checks pass.
++
++Compile times on the Pixel (recorded jobs; item 7). Every job stayed on the full tier, and the slow entries were
++warnings only:
++- node-render `prepare_surface`: 119.7 s;
++- object motion: `intersect_closest` 85 s, `prepare_shader_data` 58 s, `prepare_surface` 56 s;
++- deformation motion: `prepare_surface` 54 s;
++- lighting: `shade_surface` 27-32 s;
++- closed volumes: `shade_volume` 29-30 s;
++- glass: `shade_surface` 24 s;
++- camera motion: `init_camera` 27 s.
++Jobs stopped at the cutoff left no pulled pipeline log. Under the 3x rule, the compile time is part of each job's
++wall time.

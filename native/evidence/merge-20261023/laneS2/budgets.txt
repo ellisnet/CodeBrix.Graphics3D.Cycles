@@ -1,0 +1,66 @@
+[18:27:02] DECLARED android-arm64 gate build (--jobs 6, 9 gates): budget 900 s
+[18:30:19] DECLARED samsung staging push: budget 1200 s; nodes_svm corpus (graph-44 capture): budget 900 s
+[18:30:37] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=g44 wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=nodes_svm replays=0
+[18:40:00] DECLARED samsung arena replays batch1 (orig vA vB vC vD vE vF vH): budget 1500 s
+[19:00:38] DECLARED samsung arena replays batch2+3 (vA1-5, pEta pCos pIor pBf): budget 1800 s
+[19:23:03] DECLARED samsung arena replays F1 F3: budget 600 s
+[19:29:00] DECLARED android-arm64 incremental gate build (9 gates, item1 fix + capture stage): budget 900 s
+[19:30:01] DECLARED samsung staging push + nodes_svm corpus (item1 fix; dump+ref+import): budget 2400 s
+[19:30:21] DECLARED linux incremental build, all codebrix targets (--jobs 6): budget 1200 s
+[19:30:21] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=f1 wallBudget=2400s perJobTimeout=2000s pipelineBudgetMs=default(60000) jobs=nodes_svm replays=0
+[19:31:04] DECLARED linux full build into native/work/s2-tablet/linux-work (all 59 codebrix targets, --jobs 6): budget 1500 s
+[19:32:45] DECLARED linux build 2 (all targets, linux-work): budget 1500 s
+[19:41:50] DECLARED linux nodes_gate.py --skip-build (item1 fix): budget 2400 s
+[19:53:48] DECLARED android-arm64 incremental build 3 (diag captures) + stage: budget 900 s
+[19:54:55] DECLARED chain1: materials-pr40 900 s, materials-refor 1500 s, triangle-cap 600 s
+[19:54:55] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=pr40 wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=principled_render replays=1
+[19:56:06] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=refor wallBudget=1500s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=principled_render,nodes_render replays=2
+[20:01:15] DECLARED device=samsung serial=R52W207XQ1V corpus=triangle label=cap wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=triangle_sample replays=0
+[20:08:43] DECLARED linux build (principled_render, triangle_sample) + android build 4 + stage: budget 900 s
+[20:10:24] DECLARED samsung triangle-cap2: budget 600 s
+[20:10:24] DECLARED device=samsung serial=R52W207XQ1V corpus=triangle label=cap2 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=triangle_sample replays=0
+[20:20:34] DECLARED samsung tri replays (tri.wgsl, dbg.wgsl): budget 600 s
+[20:33:29] DECLARED linux build nodes_svm + run with probe dump: budget 900 s
+[20:40:28] DECLARED samsung compile probes (probe-5,6,7): budget 600 s
+[20:44:14] DECLARED samsung compile variants m1-m4 (+6-a): budget 1200 s
+[21:04:54] DECLARED android build 5 + stage: budget 600 s
+[21:05:49] DECLARED chain2: materials-final 4200 s, triangle-final 900 s, regression-final 600 s
+[21:05:49] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=final wallBudget=4200s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_svm,principled_bounce,principled_render,nodes_svm,nodes_world,nodes_render replays=0
+[21:05:55] DECLARED linux build 5 (all targets, final sources): budget 1200 s
+[21:09:01] DECLARED f-principled-gate budget=2700s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/gate_s2.py principled_gate --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-principled-gate/out
+[21:09:01] DECLARED f-nodes-gate budget=3900s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/gate_s2.py nodes_gate --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-nodes-gate/out
+[21:10:52] DECLARED android build 6 (principled_render capture entry; no push until chain2 ends): budget 600 s
+[21:23:01] DECLARED f-glass-superset budget=1800s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/superset_dump.py glass_render /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-glass-superset/out 900
+[21:27:29] DECLARED f-nodes-render-superset budget=1800s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/superset_dump.py nodes_render /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-nodes-render-superset/out 900
+[21:29:43] DECLARED f-principled-superset budget=2400s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/superset_dump.py principled_render /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-principled-superset/out 900
+[21:42:06] DECLARED f-triangle-sample budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_cycles_triangle_sample_gate /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-triangle-sample/run
+[21:42:21] DECLARED f-surface budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_cycles_surface_gate /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-surface/run
+[21:42:35] DECLARED f-svm-surface budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_cycles_svm_surface_gate /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-svm-surface/run
+[21:42:45] DECLARED f-svm-world budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_cycles_svm_world_gate /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-svm-world/run
+[21:43:14] DECLARED f-abi-dump budget=600s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_host_abi_test /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-abi-dump/run gpu
+[21:43:16] DECLARED f-host-gate budget=3000s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/gate_s2.py host_gate_s2 --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-host-gate/out
+[21:44:06] DECLARED f-envelope-abi budget=3600s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/tools/intel_compile_envelope.py --dump /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-abi-dump/dump --debug-file-directory /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4/debug --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-envelope-abi/out
+[21:46:42] DECLARED f-envelope-materials budget=5400s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/tools/intel_compile_envelope.py --dump /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/envelope-set --debug-file-directory /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4/debug --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-envelope-materials/out --modules surface,background --entries prepare_surface,shade_surface,shade_background,shade_surface_light,shade_surface_light_triangle,connect_surface_light
+[21:55:40] DECLARED device=samsung serial=R52W207XQ1V corpus=triangle label=final wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface replays=0
+[21:57:36] DECLARED device=samsung serial=R52W207XQ1V corpus=regression label=final wallBudget=600s perJobTimeout=400s pipelineBudgetMs=default(60000) jobs=glass_render replays=0
+[21:59:06] DECLARED samsung tri replay fP + stage + principled prepare capture: budget 900 s
+[21:59:56] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=prep wallBudget=600s perJobTimeout=400s pipelineBudgetMs=default(60000) jobs=principled_render replays=1
+[22:04:38] DECLARED android build 7 + linux build 6 (final sources): budget 900 s
+[22:06:22] DECLARED chain3: materials-f3a 1200 s, triangle-f3 900 s, regression-f3 600 s, materials-f3b 3000 s
+[22:06:22] DECLARED f-nodes-gate budget=3900s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/gate_s2.py nodes_gate --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-nodes-gate/out
+[22:06:22] DECLARED f-principled-gate budget=2700s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/gate_s2.py principled_gate --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-principled-gate/out
+[22:06:22] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=f3a wallBudget=1200s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=principled_svm,principled_bounce,principled_render replays=0
+[22:16:33] DECLARED device=samsung serial=R52W207XQ1V corpus=triangle label=f3 wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface replays=0
+[22:18:30] DECLARED device=samsung serial=R52W207XQ1V corpus=regression label=f3 wallBudget=600s perJobTimeout=400s pipelineBudgetMs=default(60000) jobs=glass_render replays=0
+[22:19:52] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=f3b wallBudget=3000s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=nodes_svm,nodes_world,nodes_render replays=0
+[22:20:31] DECLARED f-glass-superset budget=1800s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/superset_dump.py glass_render /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-glass-superset/out 900
+[22:24:47] DECLARED f-nodes-render-superset budget=1800s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/superset_dump.py nodes_render /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-nodes-render-superset/out 900
+[22:26:51] DECLARED f-principled-superset budget=2400s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/superset_dump.py principled_render /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-principled-superset/out 900
+[22:38:26] DECLARED f-host-gate budget=3000s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/tools/gate_s2.py host_gate_s2 --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-host-gate/out
+[22:39:33] DECLARED f-triangle-sample budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_cycles_triangle_sample_gate /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-triangle-sample/run
+[22:39:46] DECLARED f-surface budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_cycles_surface_gate /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-surface/run
+[22:39:59] DECLARED f-svm-surface budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_cycles_svm_surface_gate /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-svm-surface/run
+[22:40:09] DECLARED f-svm-world budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_cycles_svm_world_gate /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-svm-world/run
+[22:40:34] DECLARED f-abi-dump budget=600s: /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/linux-work/cycles-build/bin/codebrix_host_abi_test /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-abi-dump/run gpu
+[22:41:19] DECLARED f-envelope-abi budget=3600s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/tools/intel_compile_envelope.py --dump /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-abi-dump/dump --debug-file-directory /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4/debug --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-envelope-abi/out
+[22:43:44] DECLARED f-envelope-materials budget=5400s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/tools/intel_compile_envelope.py --dump /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/envelope-set --debug-file-directory /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4/debug --output /home/jeremy/ClaudeHome/cycles-worktrees/s2-tablet/native/work/s2-tablet/validation/f-envelope-materials/out --modules surface,background --entries prepare_surface,shade_surface,shade_background,shade_surface_light,shade_surface_light_triangle,connect_surface_light

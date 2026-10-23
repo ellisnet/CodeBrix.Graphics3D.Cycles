@@ -29,29 +29,44 @@ fn trig_coeff(a:vec2<f32>,b:vec2<f32>)->vec2<f32>{
     let residual=rounded_add(b.x,rounded_add(a.x,-high));
     return vec2<f32>(high,(residual+a.y)+b.y);
 }
-fn precise_disk_sincos(angle:f32)->vec2<f32>{
-    if(angle==0.0){return vec2<f32>(angle,1);}
-    var x=vec2<f32>(angle,0);let swap=angle>0.7853981633974483;
-    if(swap){x=vec2<f32>(rounded_add(1.5707963705062866,-angle),-4.3711390001862426e-8);}
+// The Horner steps run as loops over the coefficient pairs (lane L, 2026-10-22):
+// the same operations in the same order as the unrolled form, so results are
+// bit-identical, but each call site inlines one step instead of all of them.
+// This keeps the entry points that use the precise trigonometry inside the Intel
+// Mesa 25.0.7 backend's 16-bit instruction/register range (native/DEVICE.md,
+// "Linux reference fixes on the updated Mesa").
+fn precise_disk_sincos(angle:f32)->vec2<f32>{return precise_disk_sincos_pair(vec2<f32>(angle,0));}
+// The same evaluation for a two-component angle (high part plus a small residual), so a caller's
+// quadrant reduction keeps its residual (lane S2: principled_rotate lost one ULP of cos there).
+fn precise_disk_sincos_pair(angle_pair:vec2<f32>)->vec2<f32>{
+    let angle=angle_pair.x;if(angle==0.0&&angle_pair.y==0.0){return vec2<f32>(angle,1);}
+    var x=angle_pair;let swap=angle>0.7853981633974483;
+    if(swap){x=vec2<f32>(rounded_add(1.5707963705062866,-angle),rounded_add(-4.3711390001862426e-8,-angle_pair.y));}
     if(abs(x.x)<0.000244140625){return select(vec2<f32>(rounded_add(x.x,x.y),1),vec2<f32>(1,rounded_add(x.x,x.y)),swap);}
     let z=trig_mul(x,x);
     var s=vec2<f32>(-7.647163609812713e-13,-1.2200710471178288e-20);
-    s=trig_coeff(vec2<f32>(1.6059044372074283e-10,-5.352526511562726e-18),trig_mul(s,z));
-    s=trig_coeff(vec2<f32>(-2.5052107943679403e-08,-4.4176230446483665e-16),trig_mul(s,z));
-    s=trig_coeff(vec2<f32>(2.7557318844628753e-06,3.793571224297229e-14),trig_mul(s,z));
-    s=trig_coeff(vec2<f32>(-0.00019841270113829523,2.725596874933456e-12),trig_mul(s,z));
-    s=trig_coeff(vec2<f32>(0.008333333767950535,-4.34617203337595e-10),trig_mul(s,z));
-    s=trig_coeff(vec2<f32>(-0.1666666716337204,4.967053879312289e-09),trig_mul(s,z));
-    s=trig_coeff(vec2<f32>(1.0,0.0),trig_mul(s,z));
+    // 7 Horner steps as one loop over the same coefficients (same operations, same order).
+    var s_terms=array<vec2<f32>,7>(
+        vec2<f32>(1.6059044372074283e-10,-5.352526511562726e-18),
+        vec2<f32>(-2.5052107943679403e-08,-4.4176230446483665e-16),
+        vec2<f32>(2.7557318844628753e-06,3.793571224297229e-14),
+        vec2<f32>(-0.00019841270113829523,2.725596874933456e-12),
+        vec2<f32>(0.008333333767950535,-4.34617203337595e-10),
+        vec2<f32>(-0.1666666716337204,4.967053879312289e-09),
+        vec2<f32>(1.0,0.0));
+    for(var step=0u;step<7u;step++){s=trig_coeff(s_terms[step],trig_mul(s,z));}
     var c=vec2<f32>(4.7794772561329454e-14,7.62544404448643e-22);
-    c=trig_coeff(vec2<f32>(-1.147074536050896e-11,-2.372207689231238e-19),trig_mul(c,z));
-    c=trig_coeff(vec2<f32>(2.0876755879584152e-09,1.1082839809204342e-16),trig_mul(c,z));
-    c=trig_coeff(vec2<f32>(-2.755731998149713e-07,7.575112209051195e-15),trig_mul(c,z));
-    c=trig_coeff(vec2<f32>(2.4801587642286904e-05,-3.40699609366682e-13),trig_mul(c,z));
-    c=trig_coeff(vec2<f32>(-0.0013888889225199819,3.3631094437103215e-11),trig_mul(c,z));
-    c=trig_coeff(vec2<f32>(0.0416666679084301,-1.2417634698280722e-09),trig_mul(c,z));
-    c=trig_coeff(vec2<f32>(-0.5,0.0),trig_mul(c,z));
-    c=trig_coeff(vec2<f32>(1.0,0.0),trig_mul(c,z));
+    // 8 Horner steps as one loop over the same coefficients (same operations, same order).
+    var c_terms=array<vec2<f32>,8>(
+        vec2<f32>(-1.147074536050896e-11,-2.372207689231238e-19),
+        vec2<f32>(2.0876755879584152e-09,1.1082839809204342e-16),
+        vec2<f32>(-2.755731998149713e-07,7.575112209051195e-15),
+        vec2<f32>(2.4801587642286904e-05,-3.40699609366682e-13),
+        vec2<f32>(-0.0013888889225199819,3.3631094437103215e-11),
+        vec2<f32>(0.0416666679084301,-1.2417634698280722e-09),
+        vec2<f32>(-0.5,0.0),
+        vec2<f32>(1.0,0.0));
+    for(var step=0u;step<8u;step++){c=trig_coeff(c_terms[step],trig_mul(c,z));}
     s=trig_mul(s,x);
     let sine=rounded_add(s.x,s.y);let cosine=rounded_add(c.x,c.y);
     return select(vec2<f32>(sine,cosine),vec2<f32>(cosine,sine),swap);

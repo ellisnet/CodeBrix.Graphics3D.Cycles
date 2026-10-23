@@ -24,6 +24,15 @@ MAINTAINER AND EXTRAS
   EXTRAS-README.txt
       Native source, tools, host-gate fixtures and other non-package content
       in this repository.
+  docs/TESTING-MACOS-ARM64.md
+      Test procedure for Apple Silicon Macs: the Metal product binary, the
+      macOS host gate and the CPU-arm64 and Metal oracle bundle.
+  docs/TESTING-MACOS-X64.md
+      Test procedure for Intel Macs: WGSL on the shipped WebGPU runtime's
+      Metal route.
+  docs/TESTING-LINUX-ARM64.md
+      Test procedure for the Raspberry Pi 5: WGSL on the V3D GPU and the glibc
+      ARM64 reference.
 
 GENERAL
 -------

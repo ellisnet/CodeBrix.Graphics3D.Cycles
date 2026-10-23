@@ -83,4 +83,23 @@ public class CapabilityReportTests
         report.LibraryVersion.Should().BeNull();
         report.CompiledBackends.Should().BeEmpty();
     }
+
+    [Fact]
+    public void parse_carries_the_pipeline_size_guard_warning_in_warnings()
+    {
+        //Arrange: the device report shape of a WebGPU build whose entry crossed the size guard
+        // (pipelines.h); the guard warns without marking the device degraded.
+        const string warning = "pipeline 'prepare_surface' (surface module) inlines to 1250000 bytes of WGSL, at or above the 1200000-byte size guard: "
+            + "about 62500 backend instructions estimated (56561 to 73964); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile "
+            + "or crash above 65,535; the compiled variant and results are unchanged";
+        const string json = "{\"abiVersion\":1,\"backend\":\"webgpu\",\"pipelines\":{\"tier\":\"full\",\"degraded\":false,\"warnings\":[\"" + warning
+            + "\"],\"sizeGuard\":{\"thresholdBytes\":1200000,\"largestEntryBytes\":1250000,\"largestEntry\":\"prepare_surface\",\"estimatedInstructions\":62500,\"warnings\":1}}}";
+
+        //Act
+        CapabilityReport report = CapabilityReport.Parse(json);
+
+        //Assert
+        report.PipelineTier.Should().Be("full");
+        report.Warnings.Single().Should().Be(warning);
+    }
 }

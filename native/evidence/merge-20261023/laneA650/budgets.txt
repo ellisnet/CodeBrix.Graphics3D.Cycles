@@ -1,0 +1,70 @@
+[18:28:53] DECLARED android-arm64 gate build (14 gates, --jobs 6): budget 1800 s
+[18:29:16] DECLARED linux WGSL dumps 7 gates x 90 s: budget 700 s
+[18:30:43] DECLARED compile_probe single compiles on S20: budget 300 s each
+[18:33:30] DECLARED ddmin nodes_render prepare_surface on S20: budget 1500 s
+[18:34:54] DECLARED stage push s20: budget 600 s
+[18:47:44] DECLARED corpus materials before-nw (nodes_world, device-scene): budget 900 s
+[18:47:44] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=before-nw wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=nodes_world replays=0
+[19:01:56] DECLARED quick object_motion_render H: budget 400 s
+[19:09:43] DECLARED quick transparent_lighting: budget 400 s
+[19:18:59] DECLARED quick nodes_world V: budget 900 s
+[19:35:28] fix set v1: separate-vector select, shadow-all stack in arena slot, Adreno 650 table row refusing SVM_NODES_ANY; DECLARED android build 14 gates: budget 1800 s
+[19:38:39] DECLARED linux rebuild all codebrix targets --jobs 6: budget 2400 s
+[19:39:33] seeded linux build tree moved to native/work/cycles-build.seeded (cache pointed at main); DECLARED fresh linux build 59 targets --jobs 6: budget 2400 s
+[19:40:26] DECLARED s20 corpus transparent-v1: budget 1800 s (job timeout 600 s)
+[19:40:26] DECLARED device=s20 serial=RFCRB0MPHYH corpus=transparent label=v1 wallBudget=1800s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=transparent_shadow,transparent_lighting replays=10
+[19:52:44] DECLARED transparent-shadow budget=900s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/transparent_shadow_gate.py --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/transparent-shadow/out
+[19:52:57] DECLARED s20 corpus pixel-motion-v1: budget 2400 s (job timeout 600 s)
+[19:52:57] DECLARED device=s20 serial=RFCRB0MPHYH corpus=pixel-motion label=v1 wallBudget=2400s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=object-moving-images,object-stationary-images,deforming-moving-images,deforming-stationary-images,camera-static,camera-motion replays=16
+[19:53:09] DECLARED s20 corpus a650-refusals-v1: budget 600 s (job timeout 300 s)
+[19:53:09] DECLARED device=s20 serial=RFCRB0MPHYH corpus=a650-refusals label=v1 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=nodes_world-refused,nodes_svm-refused,nodes_render-refused replays=0
+[19:53:23] DECLARED s20 corpus triangle-v1reg: budget 1200 s (job timeout 600 s)
+[19:53:23] DECLARED device=s20 serial=RFCRB0MPHYH corpus=triangle label=v1reg wallBudget=1200s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface replays=0
+[19:54:22] DECLARED dump-transparent budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/cycles-build/bin/codebrix_cycles_transparent_lighting_gate /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/dump-transparent/run
+[19:54:59] DECLARED dump-nodes-render budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/cycles-build/bin/codebrix_cycles_nodes_render_gate /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/dump-nodes-render/run
+[19:55:50] DECLARED envelope budget=3600s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/intel_compile_envelope.py --dump /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/dump-transparent/dump --debug-file-directory /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4/debug --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/envelope/transparent
+[19:57:28] DECLARED s20 corpus regression-v1reg: budget 1200 s (job timeout 600 s)
+[19:57:28] DECLARED device=s20 serial=RFCRB0MPHYH corpus=regression label=v1reg wallBudget=1200s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis replays=0
+[19:57:36] DECLARED envelope-nodes budget=3600s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/intel_compile_envelope.py --dump /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/dump-nodes-render/dump --debug-file-directory /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4/debug --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/envelope/nodes-render --modules surface,background
+[19:58:23] DECLARED sim650-nodes-world budget=300s: /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/cycles-build/bin/codebrix_cycles_nodes_world_gate /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/sim650-nodes-world/run
+[19:58:24] DECLARED sim650-glass-render budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/cycles-build/bin/codebrix_cycles_glass_render_gate /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/sim650-glass-render/run
+[19:58:57] DECLARED host-gate budget=1500s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/host_gate.py --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/host-gate/out
+[20:00:43] DECLARED s20 corpus materials-v1pr: budget 900 s (job timeout 600 s)
+[20:00:43] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=v1pr wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=principled_render replays=1
+[20:00:51] DECLARED tier-gate budget=1800s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/tier_gate.py --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/tier-gate/out
+[20:01:12] DECLARED all-lanes budget=2700s: python3 native/evidence/phaseC-closeout-20261020/closeout/tools/linux_validate.py --tree /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20 --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/all-lanes/out --skip-build
+[20:03:58] DECLARED s20 corpus pixel-motion-v2: budget 2400 s (job timeout 600 s)
+[20:03:58] DECLARED device=s20 serial=RFCRB0MPHYH corpus=pixel-motion label=v2 wallBudget=2400s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=object-moving-images,deforming-moving-images replays=16
+[20:07:42] DECLARED s20 corpus materials-v2pb: budget 2700 s (job timeout 2400 s)
+[20:07:42] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=v2pb wallBudget=2700s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_bounce replays=0
+[20:11:53] DECLARED nodes-gate budget=3600s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/nodes_gate.py --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/nodes-gate/out
+[20:23:18] DECLARED constbisect 4 quick motion runs: budget 1000 s
+[20:36:39] fix set v2 = v1 + surface_native_normalize single-body loop (x64-oracle variant motion PASS quick); DECLARED android build 14 gates: budget 1800 s; then linux incremental rebuild budget 1800 s
+[20:37:34] DECLARED s20 corpus pixel-motion-v3: budget 2400 s (job timeout 600 s)
+[20:37:34] DECLARED device=s20 serial=RFCRB0MPHYH corpus=pixel-motion label=v3 wallBudget=2400s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=object-moving-images,deforming-moving-images replays=16
+[20:38:22] DECLARED v2-transparent-shadow budget=900s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/transparent_shadow_gate.py --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-transparent-shadow/out
+[20:39:53] DECLARED v2-dump-transparent budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/cycles-build/bin/codebrix_cycles_transparent_lighting_gate /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-dump-transparent/run
+[20:40:30] DECLARED v2-dump-nodes-render budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/cycles-build/bin/codebrix_cycles_nodes_render_gate /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-dump-nodes-render/run
+[20:41:18] DECLARED v2-envelope budget=3600s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/intel_compile_envelope.py --dump /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-dump-transparent/dump --debug-file-directory /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4/debug --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-envelope/transparent
+[20:42:57] DECLARED v2-envelope-nodes budget=3600s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/intel_compile_envelope.py --dump /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-dump-nodes-render/dump --debug-file-directory /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4/debug --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-envelope/nodes-render --modules surface,background
+[20:43:40] DECLARED v2-sim650-nodes-world budget=300s: /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/cycles-build/bin/codebrix_cycles_nodes_world_gate /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-sim650-nodes-world/run
+[20:43:40] DECLARED v2-sim650-glass-render budget=900s: /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/cycles-build/bin/codebrix_cycles_glass_render_gate /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-sim650-glass-render/run
+[20:44:12] DECLARED v2-host-gate budget=1500s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/host_gate.py --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-host-gate/out
+[20:45:47] DECLARED v2-tier-gate budget=1800s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/tier_gate.py --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-tier-gate/out
+[20:46:07] DECLARED v2-all-lanes budget=2700s: python3 native/evidence/phaseC-closeout-20261020/closeout/tools/linux_validate.py --tree /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20 --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-all-lanes/out --skip-build
+[21:07:21] DECLARED v2-nodes-gate budget=3600s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/nodes_gate.py --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-nodes-gate/out
+[21:17:41] DECLARED s20 corpus transparent-v3: budget 1800 s (job timeout 600 s)
+[21:17:41] DECLARED device=s20 serial=RFCRB0MPHYH corpus=transparent label=v3 wallBudget=1800s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=transparent_shadow,transparent_lighting replays=10
+[21:35:08] DECLARED s20 corpus a650-refusals-v3: budget 600 s (job timeout 300 s)
+[21:35:08] DECLARED device=s20 serial=RFCRB0MPHYH corpus=a650-refusals label=v3 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=nodes_world-refused,nodes_svm-refused,nodes_render-refused replays=0
+[21:35:26] DECLARED s20 corpus triangle-v3reg: budget 1200 s (job timeout 600 s)
+[21:35:26] DECLARED device=s20 serial=RFCRB0MPHYH corpus=triangle label=v3reg wallBudget=1200s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface replays=0
+[21:37:18] DECLARED v2-principled-gate budget=2700s: python3 /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/tools/principled_gate.py --skip-build --output /home/jeremy/ClaudeHome/cycles-worktrees/a650-s20/native/work/a650-s20/validation/v2-principled-gate/out
+[21:41:16] DECLARED s20 corpus regression-v3reg: budget 1200 s (job timeout 600 s)
+[21:41:16] DECLARED device=s20 serial=RFCRB0MPHYH corpus=regression label=v3reg wallBudget=1200s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis replays=0
+[21:45:33] DECLARED s20 corpus materials-v3pr: budget 900 s (job timeout 600 s)
+[21:45:33] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=v3pr wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=principled_render replays=1
+[21:48:49] DECLARED s20 corpus materials-v3pb: budget 2700 s (job timeout 2400 s)
+[21:48:49] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=v3pb wallBudget=2700s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_bounce replays=0
+[22:16:18] DECLARED s20 corpus pixel-motion-v4def: budget 2400 s (job timeout 600 s)
+[22:16:18] DECLARED device=s20 serial=RFCRB0MPHYH corpus=pixel-motion label=v4def wallBudget=2400s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=deforming-moving-images replays=8

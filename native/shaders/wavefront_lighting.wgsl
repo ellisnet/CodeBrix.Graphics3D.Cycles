@@ -40,16 +40,27 @@ fn light_select(index:u32)->LightSelection{
 // Emissive-triangle vertices come from triangle_light_prefill, which the caller
 // runs first for the same invocation.
 fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
-    var ls:NativeLightSample;
-    let selection=light_select(index);let random=selection.random;let distribution=selection.distribution;let prim=selection.prim;
-    if(prim>=0){
+    let selection=light_select(index);
+    if(selection.prim>=0){
         // Removed by scene specialization when no emissive triangle is in the light
         // distribution (pipelines.h); a reached removed handler reports error 2.
-//#if LIGHT_TRIANGLE else atomicOr(&heap[p(17u)/4u],2u);return ls;
-        ls=triangle_light_sample_native(load_word(distribution+LD_object),u32(prim),sd.time,sd.P,random.xy);
-        ls.shader|=load_word(distribution+LD_visibility);return ls;
+//#if LIGHT_TRIANGLE else var none:NativeLightSample;atomicOr(&heap[p(17u)/4u],2u);return none;
+        return light_sample_triangle(sd,selection);
 //#endif
     }
+    return light_sample_lamp(index,sd,r,selection);
+}
+// The emissive triangle chosen by light_select (selection.prim >= 0).
+fn light_sample_triangle(sd:SurfaceData,selection:LightSelection)->NativeLightSample{
+    var ls=triangle_light_sample_native(load_word(selection.distribution+LD_object),u32(selection.prim),sd.time,sd.P,selection.random.xy);
+    ls.shader|=load_word(selection.distribution+LD_visibility);return ls;
+}
+// The lamp chosen by light_select (selection.prim < 0). With emissive triangles in
+// the scene, shade_surface_light calls this directly and the triangle work runs in
+// shade_surface_light_triangle, so neither entry inlines both samplers.
+fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelection)->NativeLightSample{
+    var ls:NativeLightSample;
+    let random=selection.random;let prim=selection.prim;
     ls.is_light=true;ls.prim=~bitcast<u32>(prim);
     let light=table_at(G_lights,ls.prim,SIZE_lights);
     if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return ls;}

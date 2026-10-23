@@ -1,0 +1,29 @@
+--- a/native/src/webgpu_device.cpp	2026-10-22 18:44:03.087632980 -0700
++++ b/native/src/webgpu_device.cpp	2026-10-22 18:44:03.095633085 -0700
+@@ -45,9 +45,15 @@
+   if(wgpuCodebrixGetApiVersion()!=WGPU_CODEBRIX_API_VERSION)throw Error(CBC_BACKEND_GPU_ERROR,"WebGPU ABI mismatch");
+   Dl_info loaded{};if(!dladdr(reinterpret_cast<void*>(&wgpuCodebrixGetApiVersion),&loaded))throw Error(CBC_BACKEND_GPU_ERROR,"Cannot identify WebGPU library");
+   library_path=loaded.dli_fname;
+-  WGPUInstanceExtras extra{};extra.chain.sType=static_cast<WGPUSType>(WGPUSType_InstanceExtras);extra.backends=WGPUInstanceBackend_Vulkan;
++#ifdef __APPLE__
++  // The shipped runtime's macOS builds contain only wgpu's Metal backend.
++  const WGPUInstanceBackend backend_flag=WGPUInstanceBackend_Metal;const std::string backend_name="Metal";
++#else
++  const WGPUInstanceBackend backend_flag=WGPUInstanceBackend_Vulkan;const std::string backend_name="Vulkan";
++#endif
++  WGPUInstanceExtras extra{};extra.chain.sType=static_cast<WGPUSType>(WGPUSType_InstanceExtras);extra.backends=backend_flag;
+   WGPUInstanceDescriptor desc{};desc.nextInChain=&extra.chain;instance=Handle<WGPUInstance,wgpuInstanceRelease>(wgpuCreateInstance(&desc));
+-  if(!instance.value)throw Error(CBC_BACKEND_GPU_ERROR,"Cannot create Vulkan WebGPU instance");
++  if(!instance.value)throw Error(CBC_BACKEND_GPU_ERROR,"Cannot create "+backend_name+" WebGPU instance");
+   std::vector<WGPUAdapter> candidates(wgpuInstanceEnumerateAdapters(instance,nullptr,nullptr));
+   wgpuInstanceEnumerateAdapters(instance,nullptr,candidates.data());
+   for(auto a:candidates){WGPUAdapterInfo info{};
+@@ -58,7 +64,7 @@
+       adapter_vendor_id=info.vendorID;adapter_device_id=info.deviceID;adapter_type=uint32_t(info.adapterType);adapter_backend=uint32_t(info.backendType);}
+     else wgpuAdapterRelease(a);wgpuAdapterInfoFreeMembers(info);
+   }
+-  if(!adapter.value)throw Error(CBC_BACKEND_GPU_ERROR,"No hardware Vulkan adapter");
++  if(!adapter.value)throw Error(CBC_BACKEND_GPU_ERROR,"No hardware "+backend_name+" adapter");
+   WGPUDeviceDescriptor dd{};
+   dd.uncapturedErrorCallbackInfo.userdata1=this;
+   dd.uncapturedErrorCallbackInfo.callback=[](WGPUDevice const*,WGPUErrorType,WGPUStringView msg,void *data,void*){

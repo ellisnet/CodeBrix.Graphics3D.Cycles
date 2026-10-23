@@ -1,0 +1,61 @@
+[13:29:24] DECLARED linux native build (tools/build.py --jobs 6 --skip-dependencies) timeout=3600s
+[13:29:25] DECLARED android gate build android-arm64 (--jobs 6) timeout=3600s
+[13:29:57] DECLARED android gate build android-arm64 (--jobs 6) timeout=3600s
+[13:38:08] DECLARED linux gate build (all codebrix targets, --jobs 6) timeout=2400s
+[13:39:16] DECLARED android host build android-arm64 (tools/build_android.py --skip-dependencies --jobs 6) timeout=2400s
+[13:44:00] DECLARED android host build android-x64 (tools/build_android.py --skip-dependencies --jobs 6) timeout=2400s
+[13:44:16] DECLARED s20 staging push (stage.py push s20) timeout=1200s
+[13:44:42] DECLARED s20 android_host_gate.py (48 exports, --gpu-timeout 600, references /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l1-host-gate/out; tablet wall 62 s) timeout=600s
+[13:47:32] DECLARED s20 staging push (stage.py push s20) timeout=1200s
+[13:47:58] DECLARED s20 canary: run_corpus.py s20 canary q budget=900 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene timeout=1200s
+[13:47:58] DECLARED device=s20 serial=RFCRB0MPHYH corpus=canary label=q wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=canary-glass_render replays=0
+[13:48:41] DECLARED validation APK build (build_android_app.py, application id com.codebrix.cycles.hostvalidation.q) timeout=1200s
+[13:49:53] DECLARED s20 triangle: run_corpus.py s20 triangle q budget=6000 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene timeout=6300s
+[13:49:53] DECLARED device=s20 serial=RFCRB0MPHYH corpus=triangle label=q wallBudget=6000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=6
+[14:15:02] DECLARED s20 emitter: run_corpus.py s20 emitter q budget=900 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene timeout=1200s
+[14:15:02] DECLARED device=s20 serial=RFCRB0MPHYH corpus=emitter label=q wallBudget=900s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[14:15:46] DECLARED s20 lighting: run_corpus.py s20 lighting q budget=4200 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene --jobs lighting_mis,broad_lighting --replays perjob2 timeout=4500s
+[14:15:46] DECLARED device=s20 serial=RFCRB0MPHYH corpus=lighting label=q wallBudget=4200s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=lighting_mis,broad_lighting replays=4
+[14:23:57] DECLARED s20 regression: run_corpus.py s20 regression q budget=2100 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene timeout=2400s
+[14:23:57] DECLARED device=s20 serial=RFCRB0MPHYH corpus=regression label=q wallBudget=2100s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[14:27:59] DECLARED s20 transparent: run_corpus.py s20 transparent q budget=7800 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene timeout=8100s
+[14:27:59] DECLARED device=s20 serial=RFCRB0MPHYH corpus=transparent label=q wallBudget=7800s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=transparent_shadow,transparent_lighting replays=10
+[14:29:20] DECLARED s20 terminator: run_corpus.py s20 terminator q budget=7200 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene timeout=7500s
+[14:29:20] DECLARED device=s20 serial=RFCRB0MPHYH corpus=terminator label=q wallBudget=7200s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=shadow_terminator replays=10
+[14:54:54] DECLARED s20 spec-refusal: run_corpus.py s20 spec-refusal q budget=1500 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene timeout=1800s
+[14:54:54] DECLARED device=s20 serial=RFCRB0MPHYH corpus=spec-refusal label=q wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render-spec,glass_render-nospec-refused replays=0
+[14:56:52] DECLARED s20 feature_combination: run_corpus.py s20 lighting fc budget=2100 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene --jobs feature_combination --replays perjob2 timeout=2400s
+[14:56:53] DECLARED device=s20 serial=RFCRB0MPHYH corpus=lighting label=fc wallBudget=2100s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=feature_combination replays=2
+[15:01:15] DECLARED s20 motion: run_corpus.py s20 motion q budget=4200 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene --jobs object-moving-images,deforming-moving-images,camera-static,camera-motion --replays perjob1 timeout=4500s
+[15:01:15] DECLARED device=s20 serial=RFCRB0MPHYH corpus=motion label=q wallBudget=4200s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=object-moving-images,deforming-moving-images,camera-static,camera-motion replays=2
+[15:07:03] DECLARED s20 precision: run_corpus.py s20 precision q budget=2700 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene timeout=3000s
+[15:07:03] DECLARED device=s20 serial=RFCRB0MPHYH corpus=precision label=q wallBudget=2700s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=closest,shadow replays=2
+[15:08:08] DECLARED s20 volume: run_corpus.py s20 volume q budget=7200 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene --jobs volume-state,volume-absorption,volume-isotropic,volume-forward,volume-backward,boundary-state,boundary-compaction-guard timeout=7500s
+[15:08:08] DECLARED device=s20 serial=RFCRB0MPHYH corpus=volume label=q wallBudget=7200s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=volume-state,volume-absorption,volume-isotropic,volume-forward,volume-backward,boundary-state,boundary-compaction-guard replays=4
+[15:26:42] DECLARED s20 closed-single: run_corpus.py s20 volume cs budget=1600 jobTimeout=643 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene --jobs closed-single timeout=1900s
+[15:26:42] DECLARED device=s20 serial=RFCRB0MPHYH corpus=volume label=cs wallBudget=1600s perJobTimeout=643s pipelineBudgetMs=default(60000) jobs=closed-single replays=1
+[15:30:57] DECLARED s20 closed-overlap: run_corpus.py s20 volume co budget=2100 jobTimeout=960 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene --jobs closed-overlap timeout=2400s
+[15:30:57] DECLARED device=s20 serial=RFCRB0MPHYH corpus=volume label=co wallBudget=2100s perJobTimeout=960s pipelineBudgetMs=default(60000) jobs=closed-overlap replays=1
+[15:37:21] DECLARED s20 closed-inside: run_corpus.py s20 volume ci budget=2100 jobTimeout=909 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --device-scene --jobs closed-inside timeout=2400s
+[15:37:21] DECLARED device=s20 serial=RFCRB0MPHYH corpus=volume label=ci wallBudget=2100s perJobTimeout=909s pipelineBudgetMs=default(60000) jobs=closed-inside replays=1
+[15:43:31] DECLARED device=s20 serial=RFCRB0MPHYH corpus=hostcap label=linux-triangle wallBudget=7000s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=6
+[15:43:41] DECLARED device=s20 serial=RFCRB0MPHYH corpus=hostcap label=linux-terminator wallBudget=7000s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=10
+[15:43:52] DECLARED s20 managed app WebGPU mode (--linux-reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/managed-linux-x64, --result-timeout 600, --uninstall; tablet 173 s) timeout=900s
+[15:44:14] DECLARED linux capture re-record triangle_lighting (native/tools/triangle_lighting_gate.py --skip-build; merge3 capture arenas were deleted at its scratch cleanup) timeout=900s
+[15:46:30] DECLARED linux capture re-record shadow_terminator (native/tools/shadow_terminator_gate.py --skip-build; merge3 capture arenas were deleted at its scratch cleanup) timeout=900s
+[15:50:12] DECLARED s20 principled: run_corpus.py s20 materials pr budget=2700 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --jobs principled_svm,principled_bounce,principled_render timeout=3000s
+[15:50:12] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=pr wallBudget=2700s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=principled_svm,principled_bounce,principled_render replays=1
+[16:01:55] DECLARED s20 staging push (stage.py push s20) timeout=1200s
+[16:02:21] DECLARED device=s20 serial=RFCRB0MPHYH corpus=hostcap label=linux-triangle-q2 wallBudget=7000s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=6
+[16:15:52] DECLARED device=s20 serial=RFCRB0MPHYH corpus=hostcap label=linux-terminator-q2 wallBudget=7000s perJobTimeout=600s pipelineBudgetMs=default(60000) replays=10
+[16:35:54] DECLARED s20 nodes_svm: run_corpus.py s20 materials nsvm budget=2900 jobTimeout=2638 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --jobs nodes_svm timeout=3200s
+[16:35:54] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=nsvm wallBudget=2900s perJobTimeout=2638s pipelineBudgetMs=default(60000) jobs=nodes_svm replays=0
+[16:36:29] DECLARED s20 nodes_world: run_corpus.py s20 materials nw budget=1800 jobTimeout=1529 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --jobs nodes_world timeout=2100s
+[16:36:29] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=nw wallBudget=1800s perJobTimeout=1529s pipelineBudgetMs=default(60000) jobs=nodes_world replays=0
+[16:36:50] DECLARED s20 nodes_render: run_corpus.py s20 materials nr budget=1500 jobTimeout=600 --reference /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/reference/linux-x64 --jobs nodes_render timeout=1800s
+[16:36:50] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=nr wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=nodes_render replays=1
+[16:37:50] DECLARED s20 staging push (stage.py push s20) timeout=1200s
+[16:39:14] DECLARED s20 transparent_shadow-iso: run_corpus.py s20 transparent iso budget=1500 jobTimeout=600 timeout=1800s
+[16:39:14] DECLARED device=s20 serial=RFCRB0MPHYH corpus=transparent label=iso wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=transparent_shadow replays=2
+[16:40:39] DECLARED s20 nodes_world-iso: run_corpus.py s20 materials nwiso budget=1800 jobTimeout=1529 timeout=2100s
+[16:40:39] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=nwiso wallBudget=1800s perJobTimeout=1529s pipelineBudgetMs=default(60000) jobs=nodes_world replays=0

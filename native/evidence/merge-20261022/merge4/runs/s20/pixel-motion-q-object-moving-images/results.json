@@ -1,0 +1,254 @@
+{
+  "object-moving-images": {
+    "gate": "object_motion_render",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 110.9,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 53405,
+        "moduleMs": 5.64141,
+        "pipelineMs": 949.528,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 76653,
+        "moduleMs": 8.79698,
+        "pipelineMs": 19962.4,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 196793,
+        "moduleMs": 21.5848,
+        "pipelineMs": 3099.63,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 263208,
+        "moduleMs": 30.6508,
+        "pipelineMs": 13169.1,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 263208,
+        "moduleMs": 29.6204,
+        "pipelineMs": 41733.5,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 263208,
+        "moduleMs": 30.0014,
+        "pipelineMs": 7652.95,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 263208,
+        "moduleMs": 29.9983,
+        "pipelineMs": 4520.97,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_NORMAL_MAP,SVM_NODE_VECTOR_MATH,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY,MOTION_OBJECT",
+        "wgslBytes": 263208,
+        "moduleMs": 30.8672,
+        "pipelineMs": 19127.7,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 41733.5,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "flow": "device-scene",
+      "oracleSha256": "930690a2bf2e5a2ad507b58d6a34197abc6408273d679358fc9e6ce50c9e78b3",
+      "hostRejudgedPassed": false,
+      "rows": [
+        {
+          "key": "case-0.film",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 802,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 22,
+            "maximumAbsoluteError": 3.5762786865234375e-07,
+            "maximumPracticalRatio": 0.0031395619114406408,
+            "maximumUlps": 10598835,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": null
+        },
+        {
+          "key": "case-1.film",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        },
+        {
+          "key": "case-2.film",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        },
+        {
+          "key": "case-3.film",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        },
+        {
+          "key": "case-4.film",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        },
+        {
+          "key": "case-5.film",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        },
+        {
+          "key": "case-6.film",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        },
+        {
+          "key": "case-7.film",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        }
+      ]
+    },
+    "passed": false,
+    "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 41734 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "01:50.69 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+      "Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+    ]
+  },
+  "object-replay-motion-0": {
+    "passed": false,
+    "notRun": "source job failed"
+  },
+  "object-replay-motion-1": {
+    "passed": false,
+    "notRun": "source job failed"
+  },
+  "object-replay-motion-2": {
+    "passed": false,
+    "notRun": "source job failed"
+  },
+  "object-replay-motion-3": {
+    "passed": false,
+    "notRun": "source job failed"
+  },
+  "object-replay-motion-4": {
+    "passed": false,
+    "notRun": "source job failed"
+  },
+  "object-replay-motion-5": {
+    "passed": false,
+    "notRun": "source job failed"
+  },
+  "object-replay-motion-6": {
+    "passed": false,
+    "notRun": "source job failed"
+  },
+  "object-replay-motion-7": {
+    "passed": false,
+    "notRun": "source job failed"
+  }
+}

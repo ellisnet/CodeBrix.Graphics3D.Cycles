@@ -1,0 +1,225 @@
+{
+  "principled_svm": {
+    "gate": "principled_svm",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 152.0,
+    "pipelines": [],
+    "maxPipelineMs": null,
+    "passed": false,
+    "error": [
+      "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)",
+      "Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12"
+    ]
+  },
+  "principled_bounce": {
+    "gate": "principled_bounce",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 251.6,
+    "pipelines": [
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 53.4272,
+        "pipelineMs": 3833.25,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 52.0899,
+        "pipelineMs": 152452,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 53.2778,
+        "pipelineMs": 9352.64,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 53.7597,
+        "pipelineMs": 16407.8,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 53.005,
+        "pipelineMs": 68434.2,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 152452,
+    "passed": false,
+    "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 68434 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "04:11.22 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+      "Compiled materials: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+    ]
+  },
+  "principled_render": {
+    "gate": "principled_render",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 255.9,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 53423,
+        "moduleMs": 9.53333,
+        "pipelineMs": 1033.57,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 76495,
+        "moduleMs": 14.0015,
+        "pipelineMs": 4164.4,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 53.2504,
+        "pipelineMs": 3786.78,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 52.1502,
+        "pipelineMs": 151176,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 52.8389,
+        "pipelineMs": 9282.2,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 52.8473,
+        "pipelineMs": 16547.7,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 290251,
+        "moduleMs": 54.9862,
+        "pipelineMs": 68308.2,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 151176,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "flow": "linux-prepared",
+      "oracleSha256": "1d215d564e7b2172fa6cb825f5e1cac44a9a3b9cffe60628bed08aeed43323b1",
+      "hostRejudgedPassed": false,
+      "rows": [
+        {
+          "key": "image",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        }
+      ]
+    },
+    "passed": false,
+    "error": [
+      "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 68308 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+      "04:15.59 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+      "Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+    ]
+  },
+  "principled-replay": {
+    "passed": false,
+    "notRun": "source job failed"
+  }
+}

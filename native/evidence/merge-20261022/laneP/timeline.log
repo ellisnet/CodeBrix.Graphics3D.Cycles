@@ -1,0 +1,471 @@
+[11:05:20] lane P start; worktree 3392df3d clean; adb: pixel, samsung, HP present; locks dir empty
+[11:07:25] copied reviewed android-arm64 dependency prefix from main (read-only source) into worktree
+[11:15:01] linux native build exit=0 452s
+[11:23:51] android gate build android-arm64 exit=0 406s
+[11:27:31] linux gate build exit=0 189s
+[11:27:53] stage review exit=0 10s
+[11:29:27] samsung-timing lock taken
+[11:29:52] samsung-timing staged exit=0
+[11:29:59] samsung motion-timing: START object-stationary-images timeout=300s
+[11:29:59] samsung motion-timing: SCENE-DUMP object-stationary-images
+[11:30:06] samsung motion-timing: SCENE-REFERENCE object-stationary-images references=8
+[11:30:46] samsung motion-timing: REFERENCE object-stationary-images host re-judged vs glibc: True
+[11:30:46] samsung motion-timing: PASS object-stationary-images 36s maxPipelineMs=6979.9
+[11:30:46] samsung motion-timing: START deforming-stationary-images timeout=300s
+[11:30:46] samsung motion-timing: SCENE-DUMP deforming-stationary-images
+[11:30:53] samsung motion-timing: SCENE-REFERENCE deforming-stationary-images references=8
+[11:31:32] samsung motion-timing: REFERENCE deforming-stationary-images host re-judged vs glibc: True
+[11:31:32] samsung motion-timing: PASS deforming-stationary-images 36s maxPipelineMs=7071.59
+[11:31:38] samsung motion-timing: END passed=True wall=100s/1155s failures=0
+[11:31:38] samsung-timing motion stationary exit=0
+[11:31:45] samsung pixel-lighting-timing: START lighting_mis timeout=300s
+[11:31:45] samsung pixel-lighting-timing: SCENE-DUMP lighting_mis
+[11:31:52] samsung pixel-lighting-timing: SCENE-REFERENCE lighting_mis references=8
+[11:31:56] pixel lock taken for batch: item2-chain item2-device-oracle item2-x64-oracle principled_svm principled_bounce principled_render nodes_svm nodes_world nodes_render
+[11:32:22] pixel staged exit=0 pixel 67 files staged and verified
+[11:32:22] pixel START step item2-chain (p-item2-chain-1792693942)
+[11:32:24] samsung pixel-lighting-timing: REFERENCE lighting_mis host re-judged vs glibc: True
+[11:32:24] samsung pixel-lighting-timing: PASS lighting_mis 29s maxPipelineMs=4246.8
+[11:32:24] samsung pixel-lighting-timing: START lighting_mis-replay-0 timeout=300s
+[11:32:30] pixel motion-p-item2-chain-1792693942: START object-moving-images timeout=255s
+[11:32:30] pixel motion-p-item2-chain-1792693942: SCENE-DUMP object-moving-images
+[11:32:38] pixel motion-p-item2-chain-1792693942: SCENE-REFERENCE object-moving-images references=8
+[11:32:40] samsung pixel-lighting-timing: PASS lighting_mis-replay-0 16s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[11:32:40] samsung pixel-lighting-timing: START lighting_mis-replay-1 timeout=300s
+[11:32:56] samsung pixel-lighting-timing: PASS lighting_mis-replay-1 16s readbacks=450 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[11:33:03] samsung pixel-lighting-timing: END passed=True wall=78s/1049s failures=0
+[11:33:03] samsung-timing lighting_mis exit=0
+[11:33:05] samsung-timing cleaned (left: '')
+[11:33:05] samsung-timing lock released
+[11:35:47] android host build android-arm64 exit=0 223s
+[11:36:31] APK build exit=1 25s
+[11:36:52] pixel motion-p-item2-chain-1792693942: REFERENCE object-moving-images host re-judged vs glibc: False
+[11:36:52] pixel motion-p-item2-chain-1792693942: FAIL object-moving-images exit=1 253s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[11:36:58] pixel motion-p-item2-chain-1792693942: END passed=False wall=270s/1655s failures=2
+[11:36:59] pixel END step item2-chain exit=0
+[11:36:59] pixel START step item2-device-oracle (p-item2-device-oracle-1792693942)
+[11:37:07] pixel motion-p-item2-device-oracle-1792693942: START object-moving-images timeout=255s
+[11:40:20] android host build android-x64 exit=0 222s
+[11:40:20] APK build exit=1 0s
+[11:41:18] APK build exit=1 47s
+[11:41:22] pixel motion-p-item2-device-oracle-1792693942: CUTOFF object-moving-images FAIL (3x cutoff at 255 s) after 255s; killed=False
+[11:41:28] pixel motion-p-item2-device-oracle-1792693942: END passed=False wall=263s/1455s failures=1
+[11:41:28] pixel END step item2-device-oracle exit=0
+[11:41:28] pixel START step item2-x64-oracle (p-item2-x64-oracle-1792693942)
+[11:41:38] pixel motion-p-item2-x64-oracle-1792693942: START object-moving-images timeout=255s
+[11:43:00] APK build exit=0 87s
+[11:43:10] APK ready; Samsung baselines timed (object/deforming-stationary 36.2/36.3 s, lighting_mis replays 15.6/16.0 s); plan.json regenerated
+[11:45:50] pixel motion-p-item2-x64-oracle-1792693942: FAIL object-moving-images exit=1 252s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[11:45:56] pixel motion-p-item2-x64-oracle-1792693942: END passed=False wall=262s/1455s failures=1
+[11:45:56] pixel END step item2-x64-oracle exit=0
+[11:45:56] pixel START step principled_svm (p-principled_svm-1792693942)
+[11:46:06] pixel materials-p-principled_svm-1792693942: START principled_svm timeout=214s
+[11:48:02] pixel materials-p-principled_svm-1792693942: FAIL principled_svm exit=1 115s: Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12
+[11:48:08] pixel materials-p-principled_svm-1792693942: END passed=False wall=126s/1414s failures=1
+[11:48:08] pixel END step principled_svm exit=0
+[11:48:08] pixel START step principled_bounce (p-principled_bounce-1792693942)
+[11:48:16] pixel materials-p-principled_bounce-1792693942: START principled_bounce timeout=79s
+[11:49:35] pixel materials-p-principled_bounce-1792693942: CUTOFF principled_bounce FAIL (3x cutoff at 79 s) after 79s; killed=False
+[11:49:41] pixel materials-p-principled_bounce-1792693942: END passed=False wall=87s/1279s failures=1
+[11:49:41] pixel END step principled_bounce exit=0
+[11:49:41] pixel START step principled_render (p-principled_render-1792693942)
+[11:49:49] pixel materials-p-principled_render-1792693942: START principled_render timeout=86s
+[11:51:16] pixel materials-p-principled_render-1792693942: CUTOFF principled_render FAIL (3x cutoff at 86 s) after 86s; killed=False
+[11:51:22] pixel materials-p-principled_render-1792693942: END passed=False wall=94s/1372s failures=2
+[11:51:22] pixel END step principled_render exit=0
+[11:51:22] pixel START step nodes_svm (p-nodes_svm-1792693942)
+[11:51:30] pixel materials-p-nodes_svm-1792693942: START nodes_svm timeout=2638s
+[11:54:08] pixel materials-p-nodes_svm-1792693942: FAIL nodes_svm exit=1 158s:     Parent device is lost
+[11:54:14] pixel materials-p-nodes_svm-1792693942: END passed=False wall=166s/3838s failures=1
+[11:54:14] pixel END step nodes_svm exit=0
+[11:54:15] pixel START step nodes_world (p-nodes_world-1792693942)
+[11:54:22] pixel materials-p-nodes_world-1792693942: START nodes_world timeout=1529s
+[11:54:29] pixel materials-p-nodes_world-1792693942: FAIL nodes_world exit=1 7s: Compiled world 0: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[11:54:35] pixel materials-p-nodes_world-1792693942: END passed=False wall=15s/2729s failures=1
+[11:54:35] pixel END step nodes_world exit=0
+[11:54:35] pixel START step nodes_render (p-nodes_render-1792693942)
+[11:54:42] pixel materials-p-nodes_render-1792693942: START nodes_render timeout=460s
+[11:57:05] pixel materials-p-nodes_render-1792693942: REFERENCE nodes_render host re-judged vs glibc: False
+[11:57:05] pixel materials-p-nodes_render-1792693942: FAIL nodes_render exit=1 143s: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 24): invalid/uninitialized SVM stack unsupported SVM parameter
+[11:57:12] pixel materials-p-nodes_render-1792693942: END passed=False wall=150s/2120s failures=2
+[11:57:12] pixel END step nodes_render exit=0
+[11:57:12] pixel cleaned (left: 'package:com.codebrix.samples.pintabrix
+package:com.codebrix.cycles.sceneexperiment
+package:com.codebrix.samples.paindiagram
+package:com.codebrix.hellopaste
+package:com.codebrix.audio.vorbis.diagnostics
+package:com.codebrix.samples.simplecbxvideoplayer
+package:com.codebrix.samples.pdfsidebyside
+package:com.codebrix.samples.inannarosette
+package:com.codebrix.cycles.hostvalidation
+package:com.codebrix.samples.polyhavenviewer
+package:net.ellis.codebrix.trimprobe
+package:com.codebrix.audio.flacwriter.diagnostics
+package:com.codebrix.samples.polyhavenbrowser
+package:com.codebrix.videoprocessing.diagnostics
+package:com.codebrix.cycles.imagemodesexperiment
+package:com.codebrix.webgpumodelviewer
+package:com.codebrix.webgpudemo
+package:com.codebrix.samples.picoscopebrix
+package:com.codebrix.samples.wikipediapublisher
+package:com.codebrix.samples.justbetweenus
+package:com.codebrix.musicgenprobe
+package:com.codebrix.samples.mediaplayerdemo
+package:com.codebrix.samples.notiondocumentcreator
+package:com.codebrix.samples.kenneyassetbrowser
+package:com.codebrix.videoplayback.authoringproof
+package:com.codebrix.videoencoding.av1.diagnostics
+package:com.codebrix.cycles.hostexperiment
+package:com.codebrix.samples.githubissuefinder
+package:com.codebrix.hellopaste.andc')
+[11:57:12] pixel lock released
+[11:57:15] pixel lock taken for batch: triangle_sample surface triangle_lighting emitter_sample feature_combination lighting_mis broad_lighting spec-refusal transparent_shadow transparent_lighting shadow_terminator object-stationary-images deforming-moving-images deforming-stationary-images camera-static camera-motion closest shadow hostcap-triangle hostcap-terminator app
+[11:57:39] pixel staged exit=0 pixel 67 files staged and verified
+[11:57:39] pixel START step triangle_sample (p-triangle_sample-1792695459)
+[11:57:46] pixel triangle-p-triangle_sample-1792695459: START triangle_sample timeout=77s
+[11:57:46] pixel triangle-p-triangle_sample-1792695459: SCENE-DUMP triangle_sample
+[11:57:53] pixel triangle-p-triangle_sample-1792695459: SCENE-REFERENCE triangle_sample references=1
+[11:59:10] pixel triangle-p-triangle_sample-1792695459: CUTOFF triangle_sample FAIL (3x cutoff at 77 s) after 77s; killed=False
+[11:59:16] pixel triangle-p-triangle_sample-1792695459: END passed=False wall=91s/1277s failures=1
+[11:59:16] pixel END step triangle_sample exit=0
+[11:59:16] pixel START step surface (p-surface-1792695459)
+[11:59:24] pixel triangle-p-surface-1792695459: START surface timeout=292s
+[12:02:43] pixel triangle-p-surface-1792695459: PASS surface 200s maxPipelineMs=10057.9
+[12:02:50] pixel triangle-p-surface-1792695459: END passed=True wall=207s/1492s failures=0
+[12:02:50] pixel END step surface exit=0
+[12:02:50] pixel START step triangle_lighting (p-triangle_lighting-1792695459)
+[12:02:59] pixel triangle-p-triangle_lighting-1792695459: START triangle_lighting timeout=477s
+[12:02:59] pixel triangle-p-triangle_lighting-1792695459: SCENE-DUMP triangle_lighting
+[12:03:06] pixel triangle-p-triangle_lighting-1792695459: SCENE-REFERENCE triangle_lighting references=6
+[12:11:04] pixel triangle-p-triangle_lighting-1792695459: CUTOFF triangle_lighting FAIL (3x cutoff at 477 s) after 477s; killed=False
+[12:11:12] pixel triangle-p-triangle_lighting-1792695459: END passed=False wall=496s/2472s failures=7
+[12:11:12] pixel END step triangle_lighting exit=0
+[12:11:12] pixel START step emitter_sample (p-emitter_sample-1792695459)
+[12:11:20] pixel emitter-p-emitter_sample-1792695459: START emitter_sample timeout=34s
+[12:11:20] pixel emitter-p-emitter_sample-1792695459: SCENE-DUMP emitter_sample
+[12:11:26] pixel emitter-p-emitter_sample-1792695459: SCENE-REFERENCE emitter_sample references=1
+[12:11:48] pixel emitter-p-emitter_sample-1792695459: REFERENCE emitter_sample host re-judged vs glibc: True
+[12:11:48] pixel emitter-p-emitter_sample-1792695459: PASS emitter_sample 21s maxPipelineMs=None
+[12:11:54] pixel emitter-p-emitter_sample-1792695459: END passed=True wall=36s/1234s failures=0
+[12:11:54] pixel END step emitter_sample exit=0
+[12:11:54] pixel START step feature_combination (p-feature_combination-1792695459)
+[12:12:02] pixel lighting-p-feature_combination-1792695459: START feature_combination timeout=128s
+[12:12:02] pixel lighting-p-feature_combination-1792695459: SCENE-DUMP feature_combination
+[12:12:10] pixel lighting-p-feature_combination-1792695459: SCENE-REFERENCE feature_combination references=8
+[12:14:18] pixel lighting-p-feature_combination-1792695459: CUTOFF feature_combination FAIL (3x cutoff at 128 s) after 128s; killed=False
+[12:14:26] pixel lighting-p-feature_combination-1792695459: END passed=False wall=145s/1495s failures=3
+[12:14:26] pixel END step feature_combination exit=0
+[12:14:26] pixel START step lighting_mis (p-lighting_mis-1792695459)
+[12:14:34] pixel lighting-p-lighting_mis-1792695459: START lighting_mis timeout=100s
+[12:14:34] pixel lighting-p-lighting_mis-1792695459: SCENE-DUMP lighting_mis
+[12:14:42] pixel lighting-p-lighting_mis-1792695459: SCENE-REFERENCE lighting_mis references=8
+[12:16:21] pixel lighting-p-lighting_mis-1792695459: REFERENCE lighting_mis host re-judged vs glibc: True
+[12:16:21] pixel lighting-p-lighting_mis-1792695459: PASS lighting_mis 96s maxPipelineMs=26921.1
+[12:16:21] pixel lighting-p-lighting_mis-1792695459: START lighting_mis-replay-0 timeout=47s
+[12:17:09] pixel lighting-p-lighting_mis-1792695459: CUTOFF lighting_mis-replay-0 FAIL (3x cutoff at 47 s); killed=False
+[12:17:09] pixel lighting-p-lighting_mis-1792695459: START lighting_mis-replay-1 timeout=48s
+[12:17:57] pixel lighting-p-lighting_mis-1792695459: CUTOFF lighting_mis-replay-1 FAIL (3x cutoff at 48 s); killed=False
+[12:18:03] pixel lighting-p-lighting_mis-1792695459: END passed=False wall=210s/1395s failures=2
+[12:18:03] pixel END step lighting_mis exit=0
+[12:18:03] pixel START step broad_lighting (p-broad_lighting-1792695459)
+[12:18:10] pixel lighting-p-broad_lighting-1792695459: START broad_lighting timeout=205s
+[12:18:10] pixel lighting-p-broad_lighting-1792695459: SCENE-DUMP broad_lighting
+[12:18:19] pixel lighting-p-broad_lighting-1792695459: SCENE-REFERENCE broad_lighting references=12
+[12:21:48] pixel lighting-p-broad_lighting-1792695459: REFERENCE broad_lighting host re-judged vs glibc: True
+[12:21:48] pixel lighting-p-broad_lighting-1792695459: PASS broad_lighting 204s maxPipelineMs=32173.9
+[12:21:48] pixel lighting-p-broad_lighting-1792695459: START broad_lighting-replay-0 timeout=61s
+[12:22:49] pixel lighting-p-broad_lighting-1792695459: CUTOFF broad_lighting-replay-0 FAIL (3x cutoff at 61 s); killed=False
+[12:22:49] pixel lighting-p-broad_lighting-1792695459: START broad_lighting-replay-1 timeout=61s
+[12:23:50] pixel lighting-p-broad_lighting-1792695459: CUTOFF broad_lighting-replay-1 FAIL (3x cutoff at 61 s); killed=False
+[12:23:56] pixel lighting-p-broad_lighting-1792695459: END passed=False wall=347s/1527s failures=2
+[12:23:56] pixel END step broad_lighting exit=0
+[12:23:56] pixel START step spec-refusal job glass_render-spec cutoff 230s
+[12:24:03] pixel spec-refusal-p-spec-refusal-1792695459-glass_render-spec: START glass_render-spec timeout=230s
+[12:26:05] pixel spec-refusal-p-spec-refusal-1792695459-glass_render-spec: PASS glass_render-spec 121s maxPipelineMs=24025.5
+[12:26:11] pixel spec-refusal-p-spec-refusal-1792695459-glass_render-spec: END passed=True wall=129s/1430s failures=0
+[12:26:11] pixel END step spec-refusal job glass_render-spec exit=0
+[12:26:11] pixel START step spec-refusal job glass_render-nospec-refused cutoff 5s
+[12:26:19] pixel spec-refusal-p-spec-refusal-1792695459-glass_render-nospec-refused: START glass_render-nospec-refused timeout=5s
+[12:26:20] pixel spec-refusal-p-spec-refusal-1792695459-glass_render-nospec-refused: PASS glass_render-nospec-refused refusal exit=1 1s
+[12:26:26] pixel spec-refusal-p-spec-refusal-1792695459-glass_render-nospec-refused: END passed=True wall=9s/1205s failures=0
+[12:26:26] pixel END step spec-refusal job glass_render-nospec-refused exit=0
+[12:26:26] pixel START step transparent_shadow (p-transparent_shadow-1792695459)
+[12:26:33] pixel transparent-p-transparent_shadow-1792695459: START transparent_shadow timeout=48s
+[12:26:47] pixel transparent-p-transparent_shadow-1792695459: FAIL transparent_shadow exit=1 14s: Transparent intersect failed: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data
+[12:26:53] pixel transparent-p-transparent_shadow-1792695459: END passed=False wall=21s/1272s failures=3
+[12:26:53] pixel END step transparent_shadow exit=0
+[12:26:53] pixel START step transparent_lighting (p-transparent_lighting-1792695459)
+[12:27:00] pixel transparent-p-transparent_lighting-1792695459: START transparent_lighting timeout=321s
+[12:27:00] pixel transparent-p-transparent_lighting-1792695459: SCENE-DUMP transparent_lighting
+[12:27:08] pixel transparent-p-transparent_lighting-1792695459: SCENE-REFERENCE transparent_lighting references=8
+[12:28:13] pixel transparent-p-transparent_lighting-1792695459: REFERENCE transparent_lighting host re-judged vs glibc: False
+[12:28:13] pixel transparent-p-transparent_lighting-1792695459: FAIL transparent_lighting exit=134 65s: note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[12:28:19] pixel transparent-p-transparent_lighting-1792695459: END passed=False wall=80s/2221s failures=9
+[12:28:19] pixel END step transparent_lighting exit=0
+[12:28:19] pixel START step shadow_terminator (p-shadow_terminator-1792695459)
+[12:28:26] pixel terminator-p-shadow_terminator-1792695459: START shadow_terminator timeout=442s
+[12:28:26] pixel terminator-p-shadow_terminator-1792695459: SCENE-DUMP shadow_terminator
+[12:28:34] pixel terminator-p-shadow_terminator-1792695459: SCENE-REFERENCE shadow_terminator references=10
+[12:35:56] pixel terminator-p-shadow_terminator-1792695459: CUTOFF shadow_terminator FAIL (3x cutoff at 442 s) after 442s; killed=False
+[12:36:05] pixel terminator-p-shadow_terminator-1792695459: END passed=False wall=459s/2495s failures=11
+[12:36:05] pixel END step shadow_terminator exit=0
+[12:36:05] pixel START step object-stationary-images (p-object-stationary-images-1792695459)
+[12:36:12] pixel motion-p-object-stationary-images-1792695459: START object-stationary-images timeout=109s
+[12:36:12] pixel motion-p-object-stationary-images-1792695459: SCENE-DUMP object-stationary-images
+[12:36:19] pixel motion-p-object-stationary-images-1792695459: SCENE-REFERENCE object-stationary-images references=8
+[12:38:09] pixel motion-p-object-stationary-images-1792695459: CUTOFF object-stationary-images FAIL (3x cutoff at 109 s) after 109s; killed=False
+[12:38:15] pixel motion-p-object-stationary-images-1792695459: END passed=False wall=124s/1309s failures=1
+[12:38:15] pixel END step object-stationary-images exit=0
+[12:38:15] pixel START step deforming-moving-images (p-deforming-moving-images-1792695459)
+[12:38:22] pixel motion-p-deforming-moving-images-1792695459: START deforming-moving-images timeout=332s
+[12:38:22] pixel motion-p-deforming-moving-images-1792695459: SCENE-DUMP deforming-moving-images
+[12:38:29] pixel motion-p-deforming-moving-images-1792695459: SCENE-REFERENCE deforming-moving-images references=8
+[12:40:26] pixel motion-p-deforming-moving-images-1792695459: REFERENCE deforming-moving-images host re-judged vs glibc: False
+[12:40:26] pixel motion-p-deforming-moving-images-1792695459: FAIL deforming-moving-images exit=1 116s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[12:40:32] pixel motion-p-deforming-moving-images-1792695459: END passed=False wall=131s/1621s failures=2
+[12:40:32] pixel END step deforming-moving-images exit=0
+[12:40:32] pixel START step deforming-stationary-images (p-deforming-stationary-images-1792695459)
+[12:40:39] pixel motion-p-deforming-stationary-images-1792695459: START deforming-stationary-images timeout=109s
+[12:40:39] pixel motion-p-deforming-stationary-images-1792695459: SCENE-DUMP deforming-stationary-images
+[12:40:47] pixel motion-p-deforming-stationary-images-1792695459: SCENE-REFERENCE deforming-stationary-images references=8
+[12:42:36] pixel motion-p-deforming-stationary-images-1792695459: CUTOFF deforming-stationary-images FAIL (3x cutoff at 109 s) after 109s; killed=False
+[12:42:42] pixel motion-p-deforming-stationary-images-1792695459: END passed=False wall=124s/1309s failures=1
+[12:42:42] pixel END step deforming-stationary-images exit=0
+[12:42:43] pixel START step camera-static (p-camera-static-1792695459)
+[12:42:50] pixel motion-p-camera-static-1792695459: START camera-static timeout=24s
+[12:43:00] pixel motion-p-camera-static-1792695459: PASS camera-static 10s maxPipelineMs=754.782
+[12:43:06] pixel motion-p-camera-static-1792695459: END passed=True wall=17s/1224s failures=0
+[12:43:06] pixel END step camera-static exit=0
+[12:43:06] pixel START step camera-motion (p-camera-motion-1792695459)
+[12:43:13] pixel motion-p-camera-motion-1792695459: START camera-motion timeout=43s
+[12:43:50] pixel motion-p-camera-motion-1792695459: PASS camera-motion 37s maxPipelineMs=26996.6
+[12:43:57] pixel motion-p-camera-motion-1792695459: END passed=True wall=44s/1243s failures=0
+[12:43:57] pixel END step camera-motion exit=0
+[12:43:57] pixel START step closest (p-closest-1792695459)
+[12:44:04] pixel precision-p-closest-1792695459: START closest timeout=64s
+[12:44:44] pixel precision-p-closest-1792695459: PASS closest 40s maxPipelineMs=4041.28
+[12:44:51] pixel precision-p-closest-1792695459: END passed=True wall=47s/1264s failures=0
+[12:44:51] pixel END step closest exit=0
+[12:44:51] pixel START step shadow (p-shadow-1792695459)
+[12:44:58] pixel precision-p-shadow-1792695459: START shadow timeout=49s
+[12:45:15] pixel precision-p-shadow-1792695459: PASS shadow 17s maxPipelineMs=1900.82
+[12:45:15] pixel precision-p-shadow-1792695459: START shadow-replay-direct timeout=5s
+[12:45:17] pixel precision-p-shadow-1792695459: PASS shadow-replay-direct 2s readbacks=4 max=5.96e-08 strict=0 fmt=native-command-stream-v3
+[12:45:17] pixel precision-p-shadow-1792695459: START shadow-replay-indexed timeout=5s
+[12:45:20] pixel precision-p-shadow-1792695459: PASS shadow-replay-indexed 2s readbacks=4 max=0 strict=0 fmt=native-command-stream-v3
+[12:45:26] pixel precision-p-shadow-1792695459: END passed=True wall=29s/1259s failures=0
+[12:45:26] pixel END step shadow exit=0
+[12:45:26] pixel START step hostcap-triangle (p-hostcap-triangle-1792695459)
+[12:45:35] pixel hostcap-linux-triangle-1792695459: END passed=False wall=5s/1706s
+[12:45:36] pixel END step hostcap-triangle exit=1
+[12:45:36] pixel START step hostcap-terminator (p-hostcap-terminator-1792695459)
+[12:45:45] pixel hostcap-linux-terminator-1792695459: END passed=False wall=5s/1849s
+[12:45:45] pixel END step hostcap-terminator exit=1
+[12:45:45] pixel START step app (p-app-1792695459)
+[12:52:52] pixel END step app exit=1
+[12:52:52] pixel cleaned (left: 'package:com.codebrix.samples.pintabrix
+package:com.codebrix.cycles.sceneexperiment
+package:com.codebrix.samples.paindiagram
+package:com.codebrix.hellopaste
+package:com.codebrix.audio.vorbis.diagnostics
+package:com.codebrix.samples.simplecbxvideoplayer
+package:com.codebrix.samples.pdfsidebyside
+package:com.codebrix.samples.inannarosette
+package:com.codebrix.cycles.hostvalidation
+package:com.codebrix.samples.polyhavenviewer
+package:net.ellis.codebrix.trimprobe
+package:com.codebrix.audio.flacwriter.diagnostics
+package:com.codebrix.samples.polyhavenbrowser
+package:com.codebrix.videoprocessing.diagnostics
+package:com.codebrix.cycles.imagemodesexperiment
+package:com.codebrix.webgpumodelviewer
+package:com.codebrix.webgpudemo
+package:com.codebrix.samples.picoscopebrix
+package:com.codebrix.samples.wikipediapublisher
+package:com.codebrix.samples.justbetweenus
+package:com.codebrix.musicgenprobe
+package:com.codebrix.samples.mediaplayerdemo
+package:com.codebrix.samples.notiondocumentcreator
+package:com.codebrix.samples.kenneyassetbrowser
+package:com.codebrix.videoplayback.authoringproof
+package:com.codebrix.videoencoding.av1.diagnostics
+package:com.codebrix.cycles.hostexperiment
+package:com.codebrix.samples.githubissuefinder
+package:com.codebrix.hellopaste.andc')
+[12:52:52] pixel lock released
+[12:52:54] pixel lock taken for batch: volume-state boundary-state boundary-compaction-guard volume-absorption volume-isotropic volume-forward volume-backward closed-single closed-overlap closed-inside
+[12:53:19] pixel staged exit=0 pixel 67 files staged and verified
+[12:53:19] pixel START step volume-state (p-volume-state-1792698799)
+[12:53:27] pixel volume-p-volume-state-1792698799: START volume-state timeout=40s
+[12:53:43] hostcap steps failed at push: merge3 Linux captures lost run.arena.bin in the merge3 scratch deletion; regenerating Linux captures (triangle_lighting_gate.py, shadow_terminator_gate.py) in this worktree
+[12:53:52] pixel volume-p-volume-state-1792698799: PASS volume-state 25s maxPipelineMs=15539.9
+[12:53:58] pixel volume-p-volume-state-1792698799: END passed=True wall=33s/1240s failures=0
+[12:53:58] pixel END step volume-state exit=0
+[12:53:58] pixel START step boundary-state (p-boundary-state-1792698799)
+[12:54:06] pixel volume-p-boundary-state-1792698799: START boundary-state timeout=97s
+[12:54:13] linux triangle gate exit=0 30s
+[12:55:13] linux shadow terminator gate exit=0 54s
+[12:55:26] hostcap inputs now native/work/p/linux/{l2-triangle,l2-shadow-terminator} (regenerated, with arenas); stale arena-less copies removed
+[12:55:27] pixel volume-p-boundary-state-1792698799: PASS boundary-state 81s maxPipelineMs=23886.5
+[12:55:33] pixel volume-p-boundary-state-1792698799: END passed=True wall=89s/1297s failures=0
+[12:55:33] pixel END step boundary-state exit=0
+[12:55:33] pixel START step boundary-compaction-guard (p-boundary-compaction-guard-1792698799)
+[12:55:42] pixel volume-p-boundary-compaction-guard-1792698799: START boundary-compaction-guard timeout=19s
+[12:56:01] pixel volume-p-boundary-compaction-guard-1792698799: CUTOFF boundary-compaction-guard FAIL (3x cutoff at 19 s) after 19s; killed=False
+[12:56:07] pixel volume-p-boundary-compaction-guard-1792698799: END passed=False wall=28s/1219s failures=1
+[12:56:07] pixel END step boundary-compaction-guard exit=0
+[12:56:07] pixel START step volume-absorption (p-volume-absorption-1792698799)
+[12:56:14] pixel volume-p-volume-absorption-1792698799: START volume-absorption timeout=362s
+[12:58:36] pixel volume-p-volume-absorption-1792698799: PASS volume-absorption 140s maxPipelineMs=15770.2
+[12:58:36] pixel volume-p-volume-absorption-1792698799: START volume-replay-absorption timeout=58s
+[12:59:27] pixel volume-p-volume-absorption-1792698799: PASS volume-replay-absorption 50s readbacks=464 max=2.29e-05 strict=552 fmt=native-command-stream-v6
+[12:59:34] pixel volume-p-volume-absorption-1792698799: END passed=True wall=200s/1620s failures=0
+[12:59:34] pixel END step volume-absorption exit=0
+[12:59:34] pixel START step volume-isotropic (p-volume-isotropic-1792698799)
+[12:59:43] pixel volume-p-volume-isotropic-1792698799: START volume-isotropic timeout=516s
+[13:02:43] pixel volume-p-volume-isotropic-1792698799: PASS volume-isotropic 179s maxPipelineMs=15950.6
+[13:02:43] pixel volume-p-volume-isotropic-1792698799: START volume-replay-isotropic timeout=62s
+[13:03:35] pixel volume-p-volume-isotropic-1792698799: PASS volume-replay-isotropic 50s readbacks=672 max=2.29e-05 strict=1439 fmt=native-command-stream-v6
+[13:03:42] pixel volume-p-volume-isotropic-1792698799: END passed=True wall=241s/1778s failures=0
+[13:03:42] pixel END step volume-isotropic exit=0
+[13:03:42] pixel START step volume-forward (p-volume-forward-1792698799)
+[13:03:51] pixel volume-p-volume-forward-1792698799: START volume-forward timeout=512s
+[13:06:53] pixel volume-p-volume-forward-1792698799: PASS volume-forward 180s maxPipelineMs=15754.5
+[13:06:53] pixel volume-p-volume-forward-1792698799: START volume-replay-forward timeout=62s
+[13:07:45] pixel volume-p-volume-forward-1792698799: PASS volume-replay-forward 50s readbacks=664 max=3.62e-05 strict=1472 fmt=native-command-stream-v6
+[13:07:51] pixel volume-p-volume-forward-1792698799: END passed=True wall=243s/1774s failures=0
+[13:07:51] pixel END step volume-forward exit=0
+[13:07:51] pixel START step volume-backward (p-volume-backward-1792698799)
+[13:07:59] pixel volume-p-volume-backward-1792698799: START volume-backward timeout=515s
+[13:11:04] pixel volume-p-volume-backward-1792698799: PASS volume-backward 183s maxPipelineMs=16468.7
+[13:11:04] pixel volume-p-volume-backward-1792698799: START volume-replay-backward timeout=62s
+[13:12:00] pixel volume-p-volume-backward-1792698799: PASS volume-replay-backward 55s readbacks=664 max=2.29e-05 strict=1382 fmt=native-command-stream-v6
+[13:12:06] pixel volume-p-volume-backward-1792698799: END passed=True wall=249s/1777s failures=0
+[13:12:06] pixel END step volume-backward exit=0
+[13:12:06] pixel START step closed-single (p-closed-single-1792698799)
+[13:12:15] pixel volume-p-closed-single-1792698799: START closed-single timeout=643s
+[13:15:56] pixel volume-p-closed-single-1792698799: PASS closed-single 219s maxPipelineMs=16388.3
+[13:15:56] pixel volume-p-closed-single-1792698799: START closed-replay-single timeout=64s
+[13:16:51] pixel volume-p-closed-single-1792698799: PASS closed-replay-single 54s readbacks=838 max=3.05e-05 strict=608 fmt=native-command-stream-v6
+[13:16:57] pixel volume-p-closed-single-1792698799: END passed=True wall=285s/1907s failures=0
+[13:16:57] pixel END step closed-single exit=0
+[13:16:57] pixel START step closed-overlap (p-closed-overlap-1792698799)
+[13:17:06] pixel volume-p-closed-overlap-1792698799: START closed-overlap timeout=960s
+[13:22:54] pixel volume-p-closed-overlap-1792698799: PASS closed-overlap 346s maxPipelineMs=30007.2
+[13:22:54] pixel volume-p-closed-overlap-1792698799: START closed-replay-overlap timeout=102s
+[13:24:36] pixel volume-p-closed-overlap-1792698799: CUTOFF closed-replay-overlap FAIL (3x cutoff at 102 s); killed=False
+[13:24:42] pixel volume-p-closed-overlap-1792698799: END passed=False wall=459s/2262s failures=1
+[13:24:42] pixel END step closed-overlap exit=0
+[13:24:43] pixel START step closed-inside (p-closed-inside-1792698799)
+[13:24:51] pixel volume-p-closed-inside-1792698799: START closed-inside timeout=909s
+[13:30:30] pixel volume-p-closed-inside-1792698799: PASS closed-inside 338s maxPipelineMs=29359.2
+[13:30:30] pixel volume-p-closed-inside-1792698799: START closed-replay-inside timeout=102s
+[13:32:12] pixel volume-p-closed-inside-1792698799: CUTOFF closed-replay-inside FAIL (3x cutoff at 102 s); killed=False
+[13:32:21] pixel volume-p-closed-inside-1792698799: END passed=False wall=450s/2211s failures=1
+[13:32:21] pixel END step closed-inside exit=0
+[13:32:21] pixel cleaned (left: 'package:com.codebrix.samples.pintabrix
+package:com.codebrix.cycles.sceneexperiment
+package:com.codebrix.samples.paindiagram
+package:com.codebrix.hellopaste
+package:com.codebrix.audio.vorbis.diagnostics
+package:com.codebrix.samples.simplecbxvideoplayer
+package:com.codebrix.samples.pdfsidebyside
+package:com.codebrix.samples.inannarosette
+package:com.codebrix.cycles.hostvalidation
+package:com.codebrix.samples.polyhavenviewer
+package:net.ellis.codebrix.trimprobe
+package:com.codebrix.audio.flacwriter.diagnostics
+package:com.codebrix.samples.polyhavenbrowser
+package:com.codebrix.videoprocessing.diagnostics
+package:com.codebrix.cycles.imagemodesexperiment
+package:com.codebrix.webgpumodelviewer
+package:com.codebrix.webgpudemo
+package:com.codebrix.samples.picoscopebrix
+package:com.codebrix.samples.wikipediapublisher
+package:com.codebrix.samples.justbetweenus
+package:com.codebrix.musicgenprobe
+package:com.codebrix.samples.mediaplayerdemo
+package:com.codebrix.samples.notiondocumentcreator
+package:com.codebrix.samples.kenneyassetbrowser
+package:com.codebrix.videoplayback.authoringproof
+package:com.codebrix.videoencoding.av1.diagnostics
+package:com.codebrix.cycles.hostexperiment
+package:com.codebrix.samples.githubissuefinder
+package:com.codebrix.hellopaste.andc')
+[13:32:21] pixel lock released
+[13:32:27] pixel lock taken for batch: hostcap-triangle hostcap-terminator
+[13:32:53] pixel staged exit=0 pixel 67 files staged and verified
+[13:32:53] pixel START step hostcap-triangle (p-hostcap-triangle-1792701173)
+[13:33:00] pixel hostcap-linux-triangle-1792701173: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-triangle/triangle_lighting/run/case-0)
+[13:34:02] pixel hostcap-linux-triangle-1792701173: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[13:34:02] pixel hostcap-linux-triangle-1792701173: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-triangle/triangle_lighting/run/case-1)
+[13:36:02] pixel hostcap-linux-triangle-1792701173: CUTOFF tri1 FAIL (3x cutoff at 120 s)
+[13:36:02] pixel hostcap-linux-triangle-1792701173: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-triangle/triangle_lighting/run/case-2)
+[13:38:02] pixel hostcap-linux-triangle-1792701173: CUTOFF tri2 FAIL (3x cutoff at 120 s)
+[13:38:02] pixel hostcap-linux-triangle-1792701173: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-triangle/triangle_lighting/run/case-3)
+[13:40:02] pixel hostcap-linux-triangle-1792701173: CUTOFF tri3 FAIL (3x cutoff at 120 s)
+[13:40:03] pixel hostcap-linux-triangle-1792701173: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-triangle/triangle_lighting/run/case-4)
+[13:42:00] pixel hostcap-linux-triangle-1792701173: CUTOFF tri4 FAIL (3x cutoff at 117 s)
+[13:42:00] pixel hostcap-linux-triangle-1792701173: START tri5 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-triangle/triangle_lighting/run/case-5)
+[13:46:24] pixel hostcap-linux-triangle-1792701173: CUTOFF tri5 FAIL (3x cutoff at 264 s)
+[13:46:29] pixel hostcap-linux-triangle-1792701173: END passed=False wall=811s/1706s
+[13:46:29] pixel END step hostcap-triangle exit=0
+[13:46:29] pixel START step hostcap-terminator (p-hostcap-terminator-1792701173)
+[13:46:35] pixel hostcap-linux-terminator-1792701173: START term0 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-0)
+[13:47:14] pixel hostcap-linux-terminator-1792701173: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[13:47:14] pixel hostcap-linux-terminator-1792701173: START term1 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-1)
+[13:48:06] pixel hostcap-linux-terminator-1792701173: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[13:48:06] pixel hostcap-linux-terminator-1792701173: START term2 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-2)
+[13:48:57] pixel hostcap-linux-terminator-1792701173: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[13:48:57] pixel hostcap-linux-terminator-1792701173: START term3 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-3)
+[13:49:48] pixel hostcap-linux-terminator-1792701173: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[13:49:48] pixel hostcap-linux-terminator-1792701173: START term4 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-4)
+[13:51:29] pixel hostcap-linux-terminator-1792701173: CUTOFF term4 FAIL (3x cutoff at 101 s)
+[13:51:29] pixel hostcap-linux-terminator-1792701173: START term5 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-5)
+[13:53:10] pixel hostcap-linux-terminator-1792701173: CUTOFF term5 FAIL (3x cutoff at 101 s)
+[13:53:10] pixel hostcap-linux-terminator-1792701173: START term6 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-6)
+[13:54:51] pixel hostcap-linux-terminator-1792701173: CUTOFF term6 FAIL (3x cutoff at 100 s)
+[13:54:51] pixel hostcap-linux-terminator-1792701173: START term7 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-7)
+[13:56:32] pixel hostcap-linux-terminator-1792701173: CUTOFF term7 FAIL (3x cutoff at 101 s)
+[13:56:32] pixel hostcap-linux-terminator-1792701173: START term8 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-8)
+[13:58:13] pixel hostcap-linux-terminator-1792701173: CUTOFF term8 FAIL (3x cutoff at 101 s)
+[13:58:13] pixel hostcap-linux-terminator-1792701173: START term9 (/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/linux/l2-shadow-terminator/shadow_terminator/run/case-9)
+[14:01:51] pixel hostcap-linux-terminator-1792701173: CUTOFF term9 FAIL (3x cutoff at 218 s)
+[14:01:56] pixel hostcap-linux-terminator-1792701173: END passed=False wall=922s/1849s
+[14:01:56] pixel END step hostcap-terminator exit=0
+[14:01:56] pixel cleaned (left: 'package:com.codebrix.samples.pintabrix
+package:com.codebrix.cycles.sceneexperiment
+package:com.codebrix.samples.paindiagram
+package:com.codebrix.hellopaste
+package:com.codebrix.audio.vorbis.diagnostics
+package:com.codebrix.samples.simplecbxvideoplayer
+package:com.codebrix.samples.pdfsidebyside
+package:com.codebrix.samples.inannarosette
+package:com.codebrix.cycles.hostvalidation
+package:com.codebrix.samples.polyhavenviewer
+package:net.ellis.codebrix.trimprobe
+package:com.codebrix.audio.flacwriter.diagnostics
+package:com.codebrix.samples.polyhavenbrowser
+package:com.codebrix.videoprocessing.diagnostics
+package:com.codebrix.cycles.imagemodesexperiment
+package:com.codebrix.webgpumodelviewer
+package:com.codebrix.webgpudemo
+package:com.codebrix.samples.picoscopebrix
+package:com.codebrix.samples.wikipediapublisher
+package:com.codebrix.samples.justbetweenus
+package:com.codebrix.musicgenprobe
+package:com.codebrix.samples.mediaplayerdemo
+package:com.codebrix.samples.notiondocumentcreator
+package:com.codebrix.samples.kenneyassetbrowser
+package:com.codebrix.videoplayback.authoringproof
+package:com.codebrix.videoencoding.av1.diagnostics
+package:com.codebrix.cycles.hostexperiment
+package:com.codebrix.samples.githubissuefinder
+package:com.codebrix.hellopaste.andc')
+[14:01:56] pixel lock released
+[14:02:17] all Pixel batches done; Pixel clean (no codebrix-p-* folders, no lane P processes; com.codebrix.cycles.hostvalidation.p uninstalled; other codebrix packages pre-existing, not lane P); pixel lock released
+[14:02:27] AGENT-README.txt: added section NOT SUPPORTED ON ADRENO 640 (PIXEL 4 XL CLASS DEVICES)
+[14:03:20] native/DEVICE.md: lane P section appended; open items 2, 6, 7 closed and 10 partly closed under the policy
+[14:03:51] scratch deleted after hashing (p/deleted-scratch-sha256.txt): android gate build tree, Android dependency/host trees, APK build tree, run arenas
+[14:05:26] report written; lane P sealed
+[14:06:50] revision: AGENT-README section made consumer-only; diagnostics moved to DEVICE.md; patch/changes/handoff regenerated; resealed

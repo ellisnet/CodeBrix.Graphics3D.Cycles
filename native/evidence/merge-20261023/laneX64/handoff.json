@@ -1,0 +1,116 @@
+{
+  "lane": "x64-osx-tooling",
+  "patchSha256": "6618d29b94dbfce681812f77af6ae5b24f421f64227c84fd802fc2c6fdb32703",
+  "premise": {
+    "runtimeOsxX64Payload": "present",
+    "file": "runtimes/osx-x64/native/libcodebrix_wgpu.dylib",
+    "sha256": "3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483",
+    "machO": "x86_64 thin, install name @rpath/libcodebrix_wgpu.dylib, minos 11.0, sdk 27.0, ad-hoc signed, links Metal+QuartzCore+Foundation+CoreFoundation+libobjc+libiconv+libSystem",
+    "blockingFinding": "native/src/webgpu_device.cpp requests WGPUInstanceBackend_Vulkan only; macOS runtime has no Vulkan backend -> every osx-x64 GPU step fails until a Metal selection under __APPLE__ is approved (proposed-apple-metal-instance.patch, not applied)"
+  },
+  "deliverables": {
+    "1-build-recipe": {
+      "files": [
+        "tools/dependencies/build_macos_x64.py",
+        "native/tools/build_cycles_macos_x64.py",
+        "native/tools/inject_cycles_macos_x64.cmake",
+        "tools/build_macos_x64.py"
+      ],
+      "untested": [
+        "entire build on an Intel Mac"
+      ],
+      "unknown": [
+        "Apple Clang default search reaching /usr/local/include",
+        "depfile count for Makefile builds",
+        "overlay identity under Apple Clang AST dump",
+        "any x86_64-macOS Cycles adaptation",
+        "FMT_CONSTEVAL need"
+      ],
+      "missing": []
+    },
+    "2-host-gate": {
+      "files": [
+        "native/tools/macos_x64_host_gate.py"
+      ],
+      "untested": [
+        "all phases"
+      ],
+      "unknown": [
+        "adapter routing/selection (iGPU vs dGPU)",
+        "GPU timeouts/walls",
+        "initialize_paths codebrix-cycles dir absence"
+      ],
+      "missing": [
+        "Metal instance selection in WGSL device (blocking GPU)",
+        "osx-x64 drivers for WGSL device gates (diagnostic only provided)"
+      ]
+    },
+    "3-staging": {
+      "files": [
+        "native/tools/stage_macos_x64_binaries.py"
+      ],
+      "untested": [
+        "staging, Mach-O review, standalone render"
+      ],
+      "unknown": [],
+      "missing": []
+    },
+    "4-oracle-runner": {
+      "files": [
+        "tools/build_macos_x64.py",
+        "native/oracle/render_oracles.py",
+        "native/oracle/README.md"
+      ],
+      "untested": [
+        "runner build and corpus run"
+      ],
+      "unknown": [
+        "AVX2 kernel dispatch on the CPU"
+      ],
+      "missing": [],
+      "note": "No Metal oracle on Intel: pinned Cycles Metal device skips Intel/AMD GPUs by name (device/metal/util.mm); speculative path documented"
+    },
+    "5-MACOS_X64.md": {
+      "files": [
+        "native/host/MACOS_X64.md"
+      ]
+    },
+    "6-TESTING-MACOS-X64.md": {
+      "files": [
+        "docs/TESTING-MACOS-X64.md"
+      ],
+      "untested": [
+        "every macOS step in docs/TESTING-MACOS-X64.md (steps 1-12) is marked UNTESTED inline"
+      ]
+    },
+    "found-along-the-way": {
+      "files": [
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesAbiTests.cs"
+      ],
+      "note": "expected Metal on any macOS; osx-x64 resolves Gpu to WebGPU; now Apple Silicon only (matches CyclesSceneTests)"
+    }
+  },
+  "checksRunHere": [
+    "python3 -m py_compile on every new and touched script (and the unchanged osx-arm64 scripts)",
+    "--help of every new and touched script; Linux run of each new script prints a clear refusal (exit 1)",
+    "build_cycles_macos_x64.py --write-overlay-hashes on the main repo Linux overlay (18 files); fresh overlay generated in a scratch dir compared identical (path-independence of the comparison)",
+    "render_oracles.py: DEFAULT_BACKENDS equals the previous list(BACKENDS); previous BACKENDS entries unchanged; INTEL_MAC False and kernel_flags() None on Linux",
+    "compare.py --self-test",
+    "Linux-reference path remap logic of macos_x64_host_gate.py exercised on a synthetic directory",
+    "Mach-O parse (here, in Python) of the shipped osx-x64 and osx-arm64 runtime dylibs; byte search for backend strings across RIDs",
+    "dotnet build slnx -c Release and -c Debug --no-incremental: 0 warnings, 0 errors; dotnet test -c Release: 162/162",
+    "tools/licensing/audit.py passed (0 errors); tools/licensing/notices.py --check exit 0",
+    "git diff --check clean; changes.patch git apply --check on main; proposed-apple-metal-instance.patch git apply --check on main (not applied)",
+    "reseal: git diff --check clean; changes.patch git apply --check on main"
+  ],
+  "notTouched": [
+    "MAINTAINER-README.txt",
+    "README-INDEX.txt",
+    "AGENT-README.txt",
+    "README.md",
+    "native/DEVICE.md",
+    "every osx-arm64 and Linux recipe/gate/stager script",
+    "native/src/webgpu_device.cpp"
+  ],
+  "gateEdit": "maintainer wording replaces the personal name in docs/TESTING-MACOS-X64.md and native/host/MACOS_X64.md; coordinator answers reflected (macOS payload rule holds for osx-x64; Intel Mac evidence only; no multi-GPU rule, record first-listed adapter identity)"
+}

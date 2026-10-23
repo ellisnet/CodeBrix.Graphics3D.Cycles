@@ -25,7 +25,16 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
     var result=ShadowTrace(false,0u);var record_index=0u;var farthest=tmax;
     if(table_count(G_prim_index)==0u){return result;}
     var pos=origin;var dir=clamp_direction(direction);var inv=inverse_direction(dir);
-    var stack:array<i32,192>;stack[0]=0x76543210i;var sp=0i;
+    // The traversal stack lives in this invocation's SVM arena slot (words
+    // 0..191; intersect_shadow evaluates no SVM program, wavefront_svm.wgsl).
+    // As a second 192-entry private array next to the opaque traversal's in
+    // intersect_shadow, the Adreno 650 compiler (EV031.32.02.10) lost pushed
+    // entries (the instance sentinel: invalid state, mask 1; and lost devices in
+    // transparent lighting renders). Pushes, pops and bounds are unchanged.
+    let stack_slots=load_word(p(17u)+8u);let stack_region=load_word(p(17u)+4u);
+    if(svm_slot>=stack_slots||stack_region==0u){fail();return result;}
+    let st=stack_region+svm_slot*(SVM_STACK_WORDS*4u);
+    store_word(st,0x76543210u);var sp=0i;
     var node=bitcast<i32>(data_word(D_bvh_root));var object=NONE;var visits=0u;
     loop{
         // Malformed cycles in a scene table must fail instead of hanging a GPU.
@@ -36,16 +45,16 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
             let a=table_at(G_bvh_nodes,u32(node),SIZE_bvh_nodes);
             node=bitcast<i32>(load_word(a+8u));var other=bitcast<i32>(load_word(a+12u));let mask=u32(bounds.x);
             if(mask==3u){if(bounds.z<bounds.y){let tmp=node;node=other;other=tmp;}
-                sp++;if(sp>=192){fail();return result;}stack[u32(sp)]=other;
+                sp++;if(sp>=192){fail();return result;}store_word(st+u32(sp)*4u,bitcast<u32>(other));
             }else if(mask==2u){node=other;}
-            else if(mask==0u){if(sp<0){fail();return result;}node=stack[u32(sp)];sp--;}
+            else if(mask==0u){if(sp<0){fail();return result;}node=bitcast<i32>(load_word(st+u32(sp)*4u));sp--;}
         }
         if(node<0){
             let a=table_at(G_bvh_leaf_nodes,u32(-node-1),SIZE_bvh_leaf_nodes);
             let first=bitcast<i32>(load_word(a));let end=load_word(a+4u);let kind=load_word(a+12u);
             if(first>=0){
                 if(end>table_count(G_prim_index)||u32(first)>end){fail();return result;}
-                if(sp<0){fail();return result;}node=stack[u32(sp)];sp--;
+                if(sp<0){fail();return result;}node=bitcast<i32>(load_word(st+u32(sp)*4u));sp--;
                 if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return result;}
                 for(var index=u32(first);index<end;index++){
                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
@@ -80,7 +89,7 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
                 object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));
                 let obj=table_at(G_objects,object,SIZE_objects);
                 pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));inv=inverse_direction(dir);
-                sp++;if(sp>=192){fail();return result;}stack[u32(sp)]=0x76543210i;
+                sp++;if(sp>=192){fail();return result;}store_word(st+u32(sp)*4u,bitcast<u32>(0x76543210i));
                 node=bitcast<i32>(load_word(table_at(G_object_node,object,SIZE_object_node)));
             }
         }
@@ -88,7 +97,7 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
             if(sp<0){break;}
             if(object==NONE){fail();return result;}
             pos=origin;dir=clamp_direction(direction);inv=inverse_direction(dir);object=NONE;
-            node=stack[u32(sp)];sp--;if(node==0x76543210i){break;}
+            node=bitcast<i32>(load_word(st+u32(sp)*4u));sp--;if(node==0x76543210i){break;}
         }
     }
     return result;

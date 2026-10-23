@@ -55,7 +55,8 @@ def registration_overlay(out):
             after[name]='// Copyright (c) 2026 Jeremy Ellis and contributors\n// CodeBrix WebGPU registration additions; upstream notices follow.\n'+after[name]
     patch=''.join(''.join(difflib.unified_diff(before[name].splitlines(True),after[name].splitlines(True),
                      fromfile='a/src/'+name,tofile='b/src/'+name)) for name in before)
-    (out.parent/'cycles-registration.patch').write_text(patch)
+    if not (out.parent/'cycles-registration.patch').exists() or (out.parent/'cycles-registration.patch').read_text()!=patch:
+        (out.parent/'cycles-registration.patch').write_text(patch)
     for name,source in after.items():
         path=out/name;path.parent.mkdir(parents=True,exist_ok=True)
         if not path.exists() or path.read_text()!=source:path.write_text(source)

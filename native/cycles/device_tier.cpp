@@ -55,6 +55,13 @@ const std::vector<KnownAdapter> &known_adapters(){
     {"Pixel 4 XL Adreno 640","Adreno (TM) 640","","full",20000,
      "Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)"},
     {"Samsung SM-X700 Adreno 730","Adreno (TM) 730","","full",0,"full-fidelity proof device (2026-10-19 policy)"},
+    // Not a reference device (fix-or-degrade standard). The EV031.32 compiler
+    // miscompiles (wrong branches, error 16 on valid programs) or fails to link
+    // (device lost) the texture, colour and utility node interpreters; those
+    // scenes are refused instead (native/DEVICE.md, "Adreno 650 lane").
+    {"Samsung Galaxy S20 FE Adreno 650","Adreno (TM) 650","","full",20000,
+     "Adreno 650 lane 2026-10-22: full tier with a 20 s compile budget (warnings only); texture, colour and utility shader nodes refused",
+     "SVM_NODES_ANY","texture, colour and utility shader nodes"},
     {"HP Intel Xe (Mesa 24.0.8, Android x64)","Intel(R) Xe Graphics","Mesa 24.0.8","full",0,
      "B3 2026-10-19: every specialized and all-handler stage compiles"},
     {"Linux Intel UHD ADL-S (Mesa 25.0.7)","Intel(R) UHD Graphics (ADL-S GT1)","Mesa 25.0.7","full",0,
@@ -283,7 +290,9 @@ std::string DeviceTierPolicy::report_json() const{
    <<",\"description\":"<<quoted(identity.description)<<",\"vendorId\":"<<identity.vendor_id<<",\"deviceId\":"<<identity.device_id
    <<",\"simulated\":"<<(identity.simulated?"true":"false")<<",\"mobile\":"<<(mobile_adapter(identity)?"true":"false")<<"},\"runtime\":"<<quoted(runtime)
    <<",\"shaderHash\":"<<quoted(shader_hash)<<",\"knownAdapter\":";
-  if(table)o<<"{\"name\":"<<quoted(table->name)<<",\"tier\":"<<quoted(table->tier)<<",\"budgetMs\":"<<table->budget_ms<<",\"evidence\":"<<quoted(table->evidence)<<'}';
+  if(table){o<<"{\"name\":"<<quoted(table->name)<<",\"tier\":"<<quoted(table->tier)<<",\"budgetMs\":"<<table->budget_ms<<",\"evidence\":"<<quoted(table->evidence);
+    if(table->refused_region)o<<",\"refusedRegion\":"<<quoted(table->refused_region)<<",\"refused\":"<<quoted(table->refused_text);
+    o<<'}';}
   else o<<"null";
   o<<",\"budgetSource\":"<<quoted(budget_source)<<",\"record\":{\"mode\":"<<quoted(record_mode)<<",\"path\":"<<quoted(record_path)
    <<",\"status\":"<<quoted(record_status)<<",\"fullTierCompiles\":"<<tier_compiles(record,"full")<<",\"conservativeTierCompiles\":"<<tier_compiles(record,"conservative")

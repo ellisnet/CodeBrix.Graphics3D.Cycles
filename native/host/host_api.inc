@@ -92,7 +92,7 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
     out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\"],\"primitives\":[\"triangle\"],"
            "\"passes\":[\"combined\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"light trees\",\"surface data passes\","
            "\"volume light passes\",\"background light MIS\",\"nonconstant light emission\",\"heterogeneous volumes\",\"moving transparent shadows\","
-           "\"curves and points\",\"sparse or tiled images\"],\"reference\":\"native/DEVICE.md\"}";
+           "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL
     out << ",\"metal\":{\"device\":\"Cycles Metal device\",\"reference\":\"native/host/MACOS_ARM64.md\"}";

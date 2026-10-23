@@ -38,7 +38,9 @@ struct SurfaceDispatchCapture final:ccl::WebGPUCommandObserver {
   void clear(uint32_t,size_t)override{}
   void readback(uint32_t,const void*,size_t)override{}
   void dispatch(const std::array<uint32_t,32> &p,uint32_t n,unsigned entry,uint32_t group_size)override{
-    if(entry!=4||!before.empty())return;
+    // CODEBRIX_SURFACE_DISPATCH_ENTRY selects the recorder entry (default 4, shade_surface; 5 is prepare_surface).
+    const char *wanted=std::getenv("CODEBRIX_SURFACE_DISPATCH_ENTRY");
+    if(entry!=(wanted?unsigned(std::stoul(wanted)):4u)||!before.empty())return;
     params=p;work=n;workgroup_size=group_size;before=snapshot();
     file(prefix+".arena.bin",before.data(),before.size());
     file(prefix+".params.bin",params.data(),sizeof(params));

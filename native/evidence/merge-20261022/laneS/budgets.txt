@@ -1,0 +1,55 @@
+[11:05:02] DECLARED s-native-build (python3 tools/build.py --jobs 6 --skip-dependencies; fresh tree) budget=1800s
+[11:12:24] DECLARED s-gate-build (all codebrix targets, --jobs 6) budget=2400s
+[11:19:10] DECLARED android gate build android-arm64 (--jobs 6, 25 gate targets) budget=1800s
+[11:25:40] DECLARED s-reference-export (android_reference.py export, 8 jobs) budget=1200s
+[11:32:58] DECLARED diag principled_render linux budget=600s
+[11:34:25] DECLARED samsung diag compile prepare_surface (principled render) budget=300s
+[11:35:22] DECLARED samsung compile bisect batch1 (4 variants) budget=600s
+[11:43:35] DECLARED s-build principled targets budget=600s
+[12:04:45] DECLARED s-gate-build-2 (all targets after SVM stack change) budget=1200s
+[12:13:06] DECLARED quick linux: principled_render + glass_render (2 concurrent) budget=900s
+[12:14:20] DECLARED android gate build 2 android-arm64 budget=1200s
+[12:19:22] DECLARED samsung staging push budget=1200s
+[12:19:49] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=prin1 wallBudget=3600s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_svm,principled_bounce,principled_render replays=1
+[12:29:27] DECLARED s-gate-build-3 (all targets) budget=1200s
+[12:31:43] DECLARED android gate build 3 budget=1200s
+[12:33:05] DECLARED linux exchange smoke: nodes_render dump+load, film check budget=600s
+[12:33:14] DECLARED linux svm exchange smoke nodes_svm dump+load budget=900s
+[12:34:02] DECLARED linux nodes_svm normal budget=900s
+[12:40:57] DECLARED linux svm exchange cycle nodes_svm dump/load/import budget=1500s
+[12:42:39] DECLARED linux nodes_svm import-verify pass budget=900s
+[12:42:43] DECLARED android gate build 4 budget=1200s
+[12:43:55] DECLARED device=samsung serial=R52W207XQ1V corpus=triangle label=s1 wallBudget=2400s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=6
+[12:52:02] DECLARED s-gate-build-4 + android build 5 budget=1800s
+[12:54:00] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=s2 wallBudget=7200s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_render,nodes_svm,nodes_world,nodes_render replays=2
+[12:54:04] DECLARED linux principled_render+glass_render after p4 budget=900s
+[12:55:02] DECLARED linux principled_render+glass_render after p4 budget=900s
+[13:17:55] DECLARED final builds: linux all targets + linux package (tools/build.py --skip-dependencies) + android budget=2400s
+[13:19:53] DECLARED l1-all-lanes budget=2700s: linux_validate.py --skip-build
+[13:19:55] DECLARED l1-host-gate budget=1800s
+[13:19:58] DECLARED device=samsung serial=R52W207XQ1V corpus=pixel-motion label=own wallBudget=4800s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=object-moving-images,object-stationary-images replays=8
+[13:28:44] DECLARED device=samsung serial=R52W207XQ1V corpus=pixel-motion label=x64 wallBudget=4800s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=object-moving-images,object-stationary-images replays=8
+[13:32:12] DECLARED l1-dotnet build+test budget=1800s
+[13:35:39] DECLARED linux principled_render capture for timing budget=600s
+[13:38:32] DECLARED samsung dispatch timing (3 captures) budget=1800s
+[13:44:42] DECLARED l2-principled-gate + l2-nodes-gate (2 concurrent) budget=2400s
+[13:55:28] DECLARED l2-triangle + l2-shadow-terminator (2 concurrent) budget=1800s
+[13:55:31] DECLARED device=samsung serial=R52W207XQ1V corpus=emitter label=c wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[13:55:40] DECLARED device=samsung serial=R52W207XQ1V corpus=regression label=c wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[13:55:50] DECLARED device=samsung serial=R52W207XQ1V corpus=transparent label=c wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=transparent_shadow,transparent_lighting replays=10
+[13:55:59] DECLARED device=samsung serial=R52W207XQ1V corpus=terminator label=c wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=shadow_terminator replays=10
+[13:56:09] DECLARED device=samsung serial=R52W207XQ1V corpus=lighting label=c wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=lighting_mis,broad_lighting replays=4
+[13:57:56] DECLARED device=samsung serial=R52W207XQ1V corpus=emitter label=c2 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[13:58:21] DECLARED device=samsung serial=R52W207XQ1V corpus=regression label=c2 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[14:01:57] DECLARED device=samsung serial=R52W207XQ1V corpus=transparent label=c2 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=transparent_shadow,transparent_lighting replays=10
+[14:07:39] DECLARED device=samsung serial=R52W207XQ1V corpus=terminator label=c2 wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=shadow_terminator replays=10
+[14:13:55] DECLARED device=samsung serial=R52W207XQ1V corpus=lighting label=c2 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=lighting_mis,broad_lighting replays=4
+[14:17:06] DECLARED device=samsung serial=R52W207XQ1V corpus=hostcap label=linux-triangle wallBudget=3600s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=6
+[14:20:46] DECLARED device=samsung serial=R52W207XQ1V corpus=hostcap label=linux-terminator wallBudget=3600s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=10
+[14:25:51] DECLARED linux nodes_svm capture case 45 budget=200s
+[14:30:34] DECLARED samsung arena replay case 45 budget=300s
+[14:34:16] DECLARED samsung arena variants A,B,C budget=1200s
+[14:41:42] DECLARED samsung arena variants B1,B2,D budget=1200s
+[14:49:59] DECLARED rebuild linux targets + android budget=1800s
+[14:58:23] DECLARED l2-nodes-gate-fade budget=1800s
+[15:00:25] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=fade wallBudget=2900s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=nodes_svm,nodes_world,nodes_render replays=1

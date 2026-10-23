@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/l-linux-mesa/native/tools/nodes_gate.py", line 98, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/l-linux-mesa/native/tools/nodes_gate.py", line 87, in main
+    identical[kind]=specialization_check.check(binary,out/kind,out/(kind+suffix),args.off_mode,timeout=1800)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/l-linux-mesa/native/tools/specialization_check.py", line 51, in check
+    folder=off/f'group-{group}';_,log=_run(binary,folder,f'superset:{group}',timeout,extra_args)
+                                      ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/l-linux-mesa/native/tools/specialization_check.py", line 32, in _run
+    subprocess.run([str(binary),str(folder/'run'),*extra_args],stdout=stdout,stderr=stderr,check=True,timeout=timeout,env=env)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/home/jeremy/ClaudeHome/cycles-worktrees/l-linux-mesa/native/work/cycles-build/bin/codebrix_cycles_nodes_world_gate', '/home/jeremy/ClaudeHome/cycles-worktrees/l-linux-mesa/native/work/l/validation/v2-nodes-gate/out/nodes_world-superset/group-1/run']' returned non-zero exit status 1.

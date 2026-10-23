@@ -167,7 +167,13 @@ eight formats, origin, whether texture filenames are read), `output`,
 (`backend`, `deviceDescription`, `deviceId`, `deviceReport`: the
 `cbc_host_device_report_json` object with the WebGPU tier decision, adapter
 identity, record/canary status, compile budget, warnings and compiled
-pipelines). The report states what this source tree does today; scene features
+pipelines). The device report's `warnings` also carries the pipeline-build size
+guard's warnings, and its `sizeGuard` object states the guard's threshold
+(`thresholdBytes`, 0 when disabled), the largest inlined entry compiled so far
+(`largestEntryBytes`, `largestEntry`), its instruction estimate
+(`estimatedInstructions`) and the number of size warnings (`warnings`); each
+pipeline row adds `inlinedBytes`. A size warning never sets `degraded` and never
+changes the compiled variant (native/cycles/pipelines.h, size guard). The report states what this source tree does today; scene features
 it does not list as supported may still fail at render time with `CBC_FAILED`.
 
 Facts measured for the current WebGPU device (Linux host gate): object shadow
@@ -343,13 +349,15 @@ Bit-identical (measured):
   across processes on one machine (host gate: C and .NET consumers, 1,560
   color-reload films, deleting/recreating nodes and images back to an earlier
   scene state).
-- WebGPU scene specialization on versus off (`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`)
-  gives the same film on Linux x64 Intel (glass_render, film
-  `db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6`; the node
-  render also matches). The unspecialized module does not compile on the
-  Android test devices, so this is shown on Linux only, and since the bump and
-  derivative opcodes it is not reliable for every scene even there (the
-  Principled render mis-evaluates unspecialized; native/DEVICE.md, open item 11).
+- WebGPU scene specialization on versus off gives the same film on Linux x64
+  Intel (glass_render, film
+  `db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6`; the
+  Principled and node renders also match). "Off" is the superset mode
+  (`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:G`, every group): the whole
+  unspecialized module (`=0`, a diagnostic) exceeds the Intel Mesa 25.0.7
+  backend's 16-bit instruction/register range (native/DEVICE.md, "Linux
+  reference fixes on the updated Mesa"). Both are desktop-only and refused on
+  Android, so this is shown on Linux only.
 - Full versus conservative pipeline tier gave a bit-identical glass_render film
   on the Pixel 4 XL. On Linux Intel the conservative tier (workgroup size 1) can
   change last bits; it must and does meet the practical criterion.

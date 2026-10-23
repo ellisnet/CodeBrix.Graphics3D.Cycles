@@ -55,15 +55,20 @@ class WebGPUDevice final:public Device {
   // enabled_features only grows during a device lifetime, so
   // a scene update that reaches a new handler recompiles affected pipelines.
   std::vector<uint32_t> svm_node_words;
-  uint64_t svm_generation=0,census_generation=~uint64_t(0),enabled_features=0;
+  uint64_t svm_generation=0,census_generation=~uint64_t(0);ShaderFeatures enabled_features;
   SvmCensus census;
   // Principled features refused at upload (pipelines.cpp shader_features).
-  uint64_t unsupported_generation=~uint64_t(0),principled_features=0;std::string unsupported_feature;
+  uint64_t unsupported_generation=~uint64_t(0);ShaderFeatures principled_features;std::string unsupported_feature;
   std::vector<uint32_t> tri_shader_words; // per-triangle shader words (Principled census roots)
-  bool specialization_enabled=true;
-  struct PipelineRecord {std::string module,entry;uint64_t features;size_t wgsl_bytes;double module_ms,pipeline_ms;};
+  bool specialization_enabled=true; // false only for SpecializationMode::Off
+  SpecializationMode specialization_mode=SpecializationMode::Scene;
+  // Superset mode (pipelines.h): requested group, the scene features the groups
+  // were computed for, and the groups.
+  unsigned superset_group=0;ShaderFeatures superset_scene=~SF_NONE;SupersetGroups superset;
+  std::string superset_json() const;
+  struct PipelineRecord {std::string module,entry;ShaderFeatures features;size_t wgsl_bytes,inlined_bytes;double module_ms,pipeline_ms;};
   std::vector<PipelineRecord> pipeline_records;
-  std::map<std::string,uint64_t> pipeline_features;
+  std::map<std::string,ShaderFeatures> pipeline_features;
   // Pipeline tier (pipelines.h). "full" by default; "conservative" (workgroup
   // size 1, same algorithm; last-bit differences observed on Linux Intel) only
   // after a non-fatal creation failure, when forced, or after a budget overrun
@@ -77,9 +82,13 @@ class WebGPUDevice final:public Device {
   void select_tier();
   void run_canary();
   std::vector<std::string> pipeline_warnings;
+  // Pipeline-build size guard (pipelines.h): threshold read at construction,
+  // warnings (reported with pipeline_warnings, never "degraded") and the largest entry.
+  size_t size_warning_bytes=pipeline_size_warning_bytes(),max_inlined_bytes=0;std::string max_inlined_entry;
+  std::vector<std::string> size_warnings;
   std::map<std::string,uint32_t> pipeline_workgroups;
   uint32_t workgroup(const char *entry) const;
-  uint64_t shader_features();
+  ShaderFeatures shader_features();
   std::string module_wgsl(const std::string &source);
   bool pipeline_current(const cbc::Pipeline &pipeline,const char *entry);
   std::vector<cbc::Pipeline> build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries);
@@ -89,6 +98,14 @@ class WebGPUDevice final:public Device {
   void validate_volume() const;
   IntegratorStateGPU state{};
   uint32_t fields=0,field_count=0,error_word=0;
+  // SVM value stacks (wavefront_svm.wgsl): one slot of svm_stack_words words per
+  // invocation of a dispatch; the header after the error word holds the region's
+  // address and slot count; header word 3 stays 0 (the noise fade's ordering barrier,
+  // wavefront_svm_nodes.wgsl svmn_order). Path kernels dispatch at most num_concurrent_states
+  // (4,096) invocations; a larger SVM dispatch reports error 1.
+  static constexpr uint32_t svm_stack_words=SVM_STACK_SIZE+(SVM_STACK_SIZE+31)/32,svm_stack_slots=4096;
+  static_assert(svm_stack_words==263,"wavefront_svm.wgsl SVM_STACK_WORDS");
+  uint32_t svm_stack_region=0;
   cbc::BindLayout bind_layout;
   cbc::PipelineLayout pipeline_layout;
   cbc::Pipeline controls;
@@ -109,6 +126,8 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline surface_geometry;
   cbc::Pipeline surface_prepare;
   cbc::Pipeline surface_light;
+  // Emissive-triangle half of the light stage (LIGHT_TRIANGLE scenes only; surface.cpp).
+  cbc::Pipeline surface_light_triangle;
   cbc::Pipeline surface_connect;
   uint32_t surface_closures=0;size_t surface_closure_bytes=0;
   std::map<uint32_t,device_image*> images;

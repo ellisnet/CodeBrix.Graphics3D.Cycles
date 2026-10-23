@@ -146,9 +146,12 @@ COMPATIBILITY, PARITY AND RESEARCH
     prototype/          the original native scene-to-image prototype and its
                         evidence
     research/           kernel feasibility research and its evidence
-    docs/               PARITY.md (the parity ledger) and
+    docs/               PARITY.md (the parity ledger),
                         RELEASE-LICENSE-PLAN.md (publication and license
-                        readiness)
+                        readiness), TESTING-MACOS-ARM64.md (test procedure
+                        for Apple Silicon Macs), TESTING-MACOS-X64.md (test
+                        procedure for Intel Macs) and TESTING-LINUX-ARM64.md
+                        (test procedure for the Raspberry Pi 5)
 
 MAINTAINER-README.txt (MAP OF THE NATIVE DOCUMENTATION) lists the document that
 describes each of these areas.

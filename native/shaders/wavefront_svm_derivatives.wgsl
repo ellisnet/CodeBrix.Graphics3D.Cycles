@@ -215,7 +215,7 @@ fn svm_value_derivative(s:ptr<function,SvmState>,node:u32,opcode:u32){
         case NODE_SEPARATE_VECTOR_DERIVATIVE:{
             let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(s,16u);return;}
             let v=svmd_input3(s,node+N_SeparateVector_vector);let out=svm_byte(node+N_SeparateVector_out_offset);
-            if(out!=SVM_STACK_INVALID){svmd_store1(s,out,vec3<f32>(v.value[component],v.dx[component],v.dy[component]));}
+            if(out!=SVM_STACK_INVALID){svmd_store1(s,out,vec3<f32>(svm_component(v.value,component),svm_component(v.dx,component),svm_component(v.dy,component)));}
         }
         case NODE_COMBINE_VECTOR_DERIVATIVE:{
             let component=svm_byte(node+N_CombineVector_vector_index);let out=svm_byte(node+N_CombineVector_out_offset);if(component>2u){svm_error(s,16u);return;}

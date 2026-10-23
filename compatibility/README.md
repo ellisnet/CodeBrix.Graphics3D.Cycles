@@ -47,10 +47,11 @@ by a successful inventory check.
 - `reviews.json` contains deliberate symbol classifications and bounded coverage
   observations. Generic classifications are provisional; only rows with
   `classificationReviewed: true` have an explicit classification review.
-- `evidence.json` links 51 immutable reports from `native-normals`: new normal/
-  tangent captures and full render, plus fresh image, file-image, attribute and
-  earlier renderer regressions. Every native source pin refers to the current
-  tested implementation. The earlier checkpoints remain unchanged. Report hashes,
+- `evidence.json` links immutable reports in frozen checkpoints: Linux native-host
+  gate reports re-recorded on the Step zero tree (`native/evidence/step-zero-20261022`)
+  and device command replays recorded on the merge wave 4 tree
+  (`native/evidence/merge-20261022`). Every source pin refers to the current
+  tested implementation. Earlier checkpoints remain unchanged. Report hashes,
   explicit assertions and current source hashes are checked; regeneration cannot
   silently refresh stale evidence.
 - The file-image collector accepts a source-matching fresh image/attribute/render
@@ -62,10 +63,10 @@ by a successful inventory check.
 
 Each declaration retains its source, stable ID, native value or element size,
 work-item assignment, test strategy, status and evidence links. Existing tests
-are attached to 16 registered kernel entries, five closure families, four
-attribute opcodes, six image/environment opcodes, three normal/tangent opcodes,
-fourteen normal/tangent modes and thirteen image storage/alpha
-mode entries. Their
+are attached to the reviewed rows in `reviews.json` (registered kernels, closure
+families, attribute, image, normal/tangent and texture/colour/utility/bump
+opcodes, and image and normal/tangent modes; the tested-row count is in docs/PARITY.md).
+Their
 coverage remains partial, with restrictions stated on each row. No row claims
 `fullRequirementVerified: true`. The initial generator rejects such claims;
 a future completion workflow must implement the full requirement audit before

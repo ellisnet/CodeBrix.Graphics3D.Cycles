@@ -106,6 +106,8 @@ std::string svm_layout(bool surface){
   SIZE(TexVoronoi);FIELD(TexVoronoi,dimensions);FIELD(TexVoronoi,feature);FIELD(TexVoronoi,metric);FIELD(TexVoronoi,w);FIELD(TexVoronoi,scale);FIELD(TexVoronoi,detail);
   FIELD(TexVoronoi,roughness);FIELD(TexVoronoi,lacunarity);FIELD(TexVoronoi,smoothness);FIELD(TexVoronoi,exponent);FIELD(TexVoronoi,randomness);FIELD(TexVoronoi,normalize);
   FIELD(TexVoronoi,coord);FIELD(TexVoronoi,distance_offset);FIELD(TexVoronoi,color_offset);FIELD(TexVoronoi,position_offset);FIELD(TexVoronoi,w_out_offset);FIELD(TexVoronoi,radius_offset);
+  SIZE(TexGabor);FIELD(TexGabor,gabor_type);FIELD(TexGabor,orientation_3d);FIELD(TexGabor,scale);FIELD(TexGabor,frequency);FIELD(TexGabor,anisotropy);
+  FIELD(TexGabor,orientation_2d);FIELD(TexGabor,coordinates);FIELD(TexGabor,value_offset);FIELD(TexGabor,phase_offset);FIELD(TexGabor,intensity_offset);
   SIZE(Wavelength);FIELD(Wavelength,wavelength);FIELD(Wavelength,color_offset);
   SIZE(Wireframe);FIELD(Wireframe,in_size);FIELD(Wireframe,bump_filter_width);FIELD(Wireframe,use_pixel_size);FIELD(Wireframe,bump_offset);FIELD(Wireframe,out_fac_offset);
   source<<"//#endif\n";

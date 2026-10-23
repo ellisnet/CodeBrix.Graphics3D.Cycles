@@ -5,17 +5,18 @@
 // and utility nodes: procedural noise in every dimension and fractal type, white
 // noise, wave, magic, brick, mapping/texture mapping, map range, every mix blend
 // mode, HSV, colour separate/combine, ramps/curves, Fresnel/layer weight, vector
-// rotate, blackbody, normal, wavelength, wireframe and bump. Inputs vary per path (world position) so nothing
+// rotate, blackbody, normal, wavelength, wireframe, bump and Gabor. Inputs vary per path (world position) so nothing
 // constant-folds; the primary output drives the diffuse colour, the secondary
 // scalar the emission strength.
-// The render variant keeps M2's 60-triangle scene (geometry, light distribution
-// and BVH unchanged): graph 60 (wavelength) takes the slot of a repeated noise
-// variant and the wireframe graphs stay out (a step function of the hit point,
-// which the independent CPU image reproduces only to the last bits).
+// The render variant has 68 triangles (lane L, 2026-10-22; M2-M4 kept 60): graph
+// 60 (wavelength) takes the slot of a repeated noise variant, the two Gabor graphs
+// (65, 66) and six repeated continuous graphs follow M2's 60 slots, and the
+// wireframe graphs stay out (a step function of the hit point, which the
+// independent CPU image reproduces only to the last bits).
 #ifdef CBC_NODES_RENDER
-static constexpr unsigned NODES_GRAPH_COUNT=60;
+static constexpr unsigned NODES_GRAPH_COUNT=68;
 #else
-static constexpr unsigned NODES_GRAPH_COUNT=65;
+static constexpr unsigned NODES_GRAPH_COUNT=67;
 #endif
 // The render gate (CBC_NODES_RENDER) also compares an independent CPU image of
 // whole paths, where hit points legitimately differ in the last bits. There the
@@ -26,7 +27,7 @@ static ShaderOutput *nodes_material(ShaderGraph &g,unsigned test){
 #ifdef CBC_NODES_RENDER
   constexpr bool render=true;
   static constexpr unsigned order[NODES_GRAPH_COUNT]={0,52,24,30,36,40,53,60,25,31,37,43,54,2,26,32,38,44,55,3,28,33,39,45,56,48,49,50,51,57,46,47,41,42,58,34,35,29,27,59,
-    4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,1};
+    4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,1,65,66,31,37,32,38,33,39};
   test=order[test];if(test>=20&&test<24)test-=16;
 #else
   constexpr bool render=false;
@@ -172,6 +173,14 @@ static ShaderOutput *nodes_material(ShaderGraph &g,unsigned test){
     auto emission=g.create_node<EmissionNode>();emission->set_color(make_float3(.3,.5,.7));g.connect(fx,emission->input("Strength"));
     auto add=g.create_node<AddClosureNode>();g.connect(diffuse->output("BSDF"),add->input("Closure1"));g.connect(emission->output("Emission"),add->input("Closure2"));
     return add->output("Closure");}
+  else if(test==65||test==66){
+    // Gabor noise: 2D with a per-path orientation and partial anisotropy, and 3D
+    // isotropic (random impulse orientations) with an explicit base orientation.
+    auto n=g.create_node<GaborTextureNode>();n->set_type(test==65?NODE_GABOR_TYPE_2D:NODE_GABOR_TYPE_3D);
+    n->set_scale(test==65?3.1f:1.7f);n->set_frequency(test==65?2.2f:1.4f);n->set_anisotropy(test==65?.6f:0.f);n->set_orientation_3d(make_float3(.3f,-.8f,.5f));
+    g.connect(pos,n->input("Vector"));if(test==65)g.connect(fx,n->input("Orientation 2D"));
+    auto comb=g.create_node<CombineXYZNode>();g.connect(n->output("Value"),comb->input("X"));g.connect(n->output("Phase"),comb->input("Y"));g.connect(n->output("Intensity"),comb->input("Z"));
+    color=comb->output("Vector");value=n->output("Value");}
   else{auto n=g.create_node<NormalNode>();n->set_direction(make_float3(.3f,-.5f,.8f));g.connect(vmath(NODE_VECTOR_MATH_SUBTRACT,unit,make_float3(.5f,.5f,.5f)),n->input("Normal"));
     color=vmath(NODE_VECTOR_MATH_ABSOLUTE,n->output("Normal"),zero_float3());value=n->output("Dot");}
   auto diffuse=g.create_node<DiffuseBsdfNode>();diffuse->set_roughness(.43f);g.connect(color,diffuse->input("Color"));

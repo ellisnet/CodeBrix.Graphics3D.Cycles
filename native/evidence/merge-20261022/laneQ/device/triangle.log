@@ -1,0 +1,33 @@
+[13:50:01] s20 triangle-q: START triangle_sample timeout=600s
+[13:50:01] s20 triangle-q: SCENE-DUMP triangle_sample
+[13:50:08] s20 triangle-q: SCENE-REFERENCE triangle_sample references=1
+samples          gpu-vs-glibc passed=True practical=0 strict=865 max=0.0004883 | local-vs-glibc differing=4775 maxUlps=15520768 practical=72
+[13:51:28] s20 triangle-q: REFERENCE triangle_sample host re-judged vs glibc: True
+[13:51:28] s20 triangle-q: PASS triangle_sample 80s maxPipelineMs=None
+[13:51:28] s20 triangle-q: START surface timeout=600s
+[13:53:50] s20 triangle-q: PASS surface 141s maxPipelineMs=6651.45
+[13:53:50] s20 triangle-q: START triangle_lighting timeout=600s
+[13:53:50] s20 triangle-q: SCENE-DUMP triangle_lighting
+[13:53:57] s20 triangle-q: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=12 max=4.768e-07 | local-vs-glibc differing=56 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.788e-07 | local-vs-glibc differing=930 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=6 max=6.407e-07 | local-vs-glibc differing=983 maxUlps=2285 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=233 max=1.788e-06 | local-vs-glibc differing=715 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=8 max=3.576e-07 | local-vs-glibc differing=938 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=231 max=1.788e-06 | local-vs-glibc differing=777 maxUlps=55 practical=0
+[14:01:53] s20 triangle-q: REFERENCE triangle_lighting host re-judged vs glibc: True
+[14:01:53] s20 triangle-q: PASS triangle_lighting 473s maxPipelineMs=106879
+[14:01:53] s20 triangle-q: START replay-0 timeout=600s
+[14:02:37] s20 triangle-q: PASS replay-0 43s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[14:02:37] s20 triangle-q: START replay-1 timeout=600s
+[14:04:12] s20 triangle-q: PASS replay-1 95s readbacks=417 max=1.79e-07 strict=0 fmt=native-command-stream-v6
+[14:04:12] s20 triangle-q: START replay-2 timeout=600s
+[14:05:48] s20 triangle-q: PASS replay-2 95s readbacks=415 max=6.41e-07 strict=6 fmt=native-command-stream-v6
+[14:05:48] s20 triangle-q: START replay-3 timeout=600s
+[14:07:23] s20 triangle-q: PASS replay-3 96s readbacks=473 max=1.79e-06 strict=233 fmt=native-command-stream-v6
+[14:07:23] s20 triangle-q: START replay-4 timeout=600s
+[14:09:00] s20 triangle-q: PASS replay-4 96s readbacks=415 max=3.58e-07 strict=8 fmt=native-command-stream-v6
+[14:09:00] s20 triangle-q: START replay-5 timeout=600s
+[14:14:56] s20 triangle-q: PASS replay-5 356s readbacks=464 max=1.79e-06 strict=231 fmt=native-command-stream-v6
+[14:15:02] s20 triangle-q: END passed=True wall=1503s/6000s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 1503.1}

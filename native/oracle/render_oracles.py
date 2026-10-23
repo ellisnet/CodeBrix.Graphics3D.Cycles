@@ -7,6 +7,7 @@
         --runner <codebrix_cycles_oracle> --host-library <libcodebrix_cycles_host> \\
         [--backend cpu-arm64-macos] [--scene native/oracle/scenes/starter/x.json] [--previews <tool>]
     python3 native/oracle/render_oracles.py --bundle native/work/oracles/<run>   # also writes native/evidence/cycles-oracles-macos-<date>/
+    (on an Intel Mac the bundle and evidence directory are named cycles-oracles-macos-x64-<date>)
 
 Films are written once and never adjusted. Metal backends run Cycles with
 MetalRT and kernel specialization fixed by environment, each with a fresh
@@ -27,7 +28,14 @@ BACKENDS={
  # Linux x64 (native/host/targets.cmake builds the runner as codebrix_cycles_oracle).
  'cpu-x64-linux':('cpu',{},'Cycles CPU device, GCC x86-64 (-msse4.2 -ffp-contract=off host options)'),
  'wgsl-linux-intel':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)'),
+ # macOS x64 (Intel Mac; tools/build_macos_x64.py builds the runner in oracle-build).
+ 'cpu-x64-macos':('cpu',{},'Cycles CPU device, Apple Clang x86-64, Cycles default kernel dispatch (AVX2 kernels where the CPU has AVX2)'),
+ 'cpu-x64-macos-sse42':('cpu',{'CYCLES_CPU_NO_AVX2':'1'},'Cycles CPU device, Apple Clang x86-64, SSE4.2 kernels forced by CYCLES_CPU_NO_AVX2'),
+ 'wgsl-macos-x64':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native osx-x64 runtime (Metal)'),
 }
+# Without --backend, a run renders the backends listed before the macOS x64 ones.
+DEFAULT_BACKENDS=['cpu-arm64-macos','metal-m2pro','metal-m2pro-metalrt','cpu-x64-linux','wgsl-linux-intel']
+INTEL_MAC=platform.system()=='Darwin' and platform.machine()=='x86_64'
 
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -50,7 +58,7 @@ def machine():
 
 def kernel_flags():
  """CPU kernel compile flags from the macOS build's compile database."""
- database=REPO/'native/work/macos/osx-arm64/host/build/compile_commands.json'
+ database=REPO/'native/work/macos'/('osx-x64' if INTEL_MAC else 'osx-arm64')/'host/build/compile_commands.json'
  if not database.exists():return None
  for row in json.loads(database.read_text()):
   if row['file'].endswith('kernel/device/cpu/kernel.cpp'):
@@ -64,6 +72,8 @@ def render(args,scene,name,target,cache,extra_meta):
  backend,environment,description=BACKENDS[name]
  env=dict(os.environ)
  for key in ['CYCLES_METALRT','CYCLES_METAL_SPECIALIZATION_LEVEL','OCIO','DYLD_LIBRARY_PATH']:env.pop(key,None)
+ # The macOS x64 CPU backends fix the kernel dispatch themselves.
+ if name.startswith('cpu-x64-macos'):env.pop('CYCLES_CPU_NO_AVX2',None)
  env.update(environment);env['XDG_CACHE_HOME']=str(cache)
  command=[str(args.runner),'--scene',str(scene),'--backend',backend,'--label',name,'--output',str(target),'--threads',str(args.threads)]
  started=time.time()
@@ -96,7 +106,7 @@ def run(args):
  oracle=root/'oracle';oracle.mkdir(parents=True)
  # Scene-family manifest.json files list hashes; they are not scenes.
  scenes=[Path(s).resolve() for s in args.scene] or sorted(p for p in (HERE/'scenes').rglob('*.json') if p.name!='manifest.json')
- backends=args.backend or list(BACKENDS)
+ backends=args.backend or list(DEFAULT_BACKENDS)
  common=dict(machine=machine(),hostLibrarySha256=sha(args.host_library),runnerSha256=sha(args.runner),cpuKernelCompile=kernel_flags())
  record=dict(scenes={},backends=backends,common=common,kernelCompileSeconds={})
  for name in backends:
@@ -134,7 +144,8 @@ def bundle(root):
  """Pack the run with a manifest, verify a fresh extraction, and publish that
  extraction as new repository evidence. Existing evidence is never overwritten."""
  root=root.resolve();files=sorted(p for p in root.rglob('*') if p.is_file() and p.name!='manifest.json' and 'bundle' not in p.parts)
- manifest=dict(bundle=f'cycles-oracles-macos-{time.strftime("%Y%m%d")}',created=time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+ name='cycles-oracles-macos-x64' if INTEL_MAC else 'cycles-oracles-macos'
+ manifest=dict(bundle=f'{name}-{time.strftime("%Y%m%d")}',created=time.strftime('%Y-%m-%dT%H:%M:%S%z'),
   files={str(p.relative_to(root)):sha(p) for p in files})
  (root/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
  target=root/'bundle';target.mkdir(exist_ok=True);tar=target/(manifest['bundle']+'.tar')

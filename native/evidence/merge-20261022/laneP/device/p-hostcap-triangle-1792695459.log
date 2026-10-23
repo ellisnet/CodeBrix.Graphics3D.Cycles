@@ -1,0 +1,9 @@
+[12:45:35] pixel hostcap-linux-triangle-1792695459: END passed=False wall=5s/1706s
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/tools/replay_host_captures.py", line 46, in <module>
+    for f in render_replay.inputs(cap): subprocess.run(adb+['push', str(cap/f), rd+'/'+f], check=True, capture_output=True, timeout=600)
+                                        ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', '98271FFBA0048D', 'push', '/home/jeremy/ClaudeHome/cycles-worktrees/p-pixel-triage/native/work/p/hostcap/triangle/case-0/run.arena.bin', '/data/local/tmp/codebrix-p-hostcap-linux-triangle-1792695459/tri0/run.arena.bin']' returned non-zero exit status 1.

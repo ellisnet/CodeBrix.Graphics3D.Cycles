@@ -1,0 +1,78 @@
+{
+  "lane": "L (l-linux-mesa)",
+  "baseCommit": "3392df3d",
+  "worktree": "/home/jeremy/ClaudeHome/cycles-worktrees/l-linux-mesa",
+  "patchSha256": "4962eacc84e2051253a174806424f45234d2fa9c817b0462f7c825cff3dd01c9",
+  "patchVerified": [
+    "git apply --check -R in the worktree",
+    "git apply --check and full apply on a clean git archive of 3392df3d; all 37 sha256After match"
+  ],
+  "driver": {
+    "identity": "Intel(R) UHD Graphics (ADL-S GT1) / Mesa 25.0.7-2+deb13u1 (driverVersion 25.0.7, apiVersion 1.4.305)",
+    "changedSinceSessionClose": false,
+    "libvulkan_intel.so.sha256": "c40c2c5002eda54fbe4106339fbc64784a03c6b0b1f6291c0e10386e1c298f85"
+  },
+  "rootCause": "Mesa 25.0.7 brw_opt_combine_constants keeps VGRF nr and first/last_use_ip in uint16_t (upstream fix b7e1ac830984, mesa#9489); entries above 65,535 backend instructions/VGRFs crash or miscompile",
+  "items": {
+    "4": {
+      "status": "FIXED",
+      "fix": "light stage split for LIGHT_TRIANGLE scenes (shade_surface_light_triangle, recorder v8 entry 17) + Horner loops; ABI test area light back on WebGPU, host gate compares the 4 light films",
+      "evidence": [
+        "validation/env-abi/out/envelope.json",
+        "validation/f4-host-gate",
+        "validation/f3-abi-*",
+        "validation/f3-emit-*",
+        "validation/f3-triangle"
+      ]
+    },
+    "11": {
+      "status": "FIXED",
+      "fix": "superset specialization-off mode in size-bounded groups (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:G), default on/off check in glass/principled/nodes gates; =0 kept as diagnostic",
+      "evidence": [
+        "validation/s-glass-superset",
+        "validation/v2-principled-gate",
+        "validation/f3-nodes-gate",
+        "validation/env-materials"
+      ]
+    },
+    "12": {
+      "status": "FIXED",
+      "fix": "Gabor shipped on the scene-specialized path, feature bit 63, gates (typed 12, graphs 2, world 1, render 2)",
+      "evidence": [
+        "validation/f3-nodes-gate"
+      ]
+    },
+    "13": {
+      "status": "FIXED",
+      "fix": "node render gate scene 68 triangles; passes against the independent CPU image (root cause of the M3 failure attributed by inference to pre-X2/E4 arithmetic)",
+      "evidence": [
+        "validation/f3-nodes-gate/out/nodes_render"
+      ]
+    }
+  },
+  "filmHashes": {
+    "glass": "db8e84f9990299d2 (unchanged)",
+    "principled": "fd3a7f2baa685d64 (unchanged)",
+    "nodes_render": "b9d1da3fe595962c... (was 94848a0c; scene changed to 68 triangles)"
+  },
+  "validation": {
+    "allLanes": "PASS f3-all-lanes",
+    "hostGate": "PASS f4-host-gate (f3-host-gate FAIL before the light-film strict rule, see report)",
+    "triangle": "PASS",
+    "terminator": "PASS",
+    "sceneEdit": "PASS f4-scene-edit",
+    "principledGate": "PASS + 8 superset groups",
+    "nodesGate": "PASS + superset",
+    "glassSuperset": "PASS 4 groups",
+    "envelope": "PASS 111 entries, worst 52,509",
+    "dotnet": "build 0 warnings, test 162/162, pack OK",
+    "audits": "PASS"
+  },
+  "featureBits": {
+    "used": "0-61 and 63 (SF_TEX_GABOR)",
+    "free": [
+      62
+    ],
+    "note": "SF_ALL=((1<<62)-1)|SF_TEX_GABOR; a lane adding bit 62 must add it to SF_ALL"
+  }
+}

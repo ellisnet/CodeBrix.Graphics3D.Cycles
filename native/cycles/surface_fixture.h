@@ -63,10 +63,11 @@ static void prepare(Scene &scene){
 }
 [[maybe_unused]] static std::vector<int> states_for(Scene &scene,std::vector<IntegratorStateCPU> &states){
   // The node fixture has more graphs; fewer rays per triangle keep it within capacity.
-  // Graphs 60+ (wavelength/wireframe) follow every earlier graph, so the paths
-  // of graphs 0-59 keep their state indices.
+  // Graphs 60+ (wavelength, wireframe, bump, Gabor) follow every earlier graph, so
+  // the paths of graphs 0-59 keep their state indices. With the two Gabor graphs
+  // (65, 66) the late graphs take 5 rays each (7 before) to stay within capacity.
 #ifdef CBC_NODES_FIXTURE
-  constexpr unsigned rays=7,first_graphs=60,late_rays=7;
+  constexpr unsigned rays=7,first_graphs=60,late_rays=5;
 #else
   constexpr unsigned rays=17,first_graphs=GRAPH_COUNT,late_rays=0;
 #endif

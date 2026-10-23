@@ -1,0 +1,9 @@
+[15:43:41] s20 hostcap-linux-triangle: END passed=False wall=5s/7000s
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/tools/replay_host_captures.py", line 46, in <module>
+    for f in render_replay.inputs(cap): subprocess.run(adb+['push', str(cap/f), rd+'/'+f], check=True, capture_output=True, timeout=600)
+                                        ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/home/jeremy/Android/Sdk/platform-tools/adb', '-s', 'RFCRB0MPHYH', 'push', '/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge3/validation/l2-triangle/out/triangle_lighting/run/case-0/run.arena.bin', '/data/local/tmp/codebrix-q-hostcap-linux-triangle/tri0/run.arena.bin']' returned non-zero exit status 1.

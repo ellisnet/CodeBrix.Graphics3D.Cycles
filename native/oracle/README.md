@@ -101,6 +101,16 @@ forces MetalRT on to validate the path M3 and later GPUs use by default. Each
 Metal backend gets a fresh Cycles kernel cache in the run directory, and its
 first render is recorded as `kernelCompileSeconds`.
 
+macOS x64 (Intel Mac) backends: `cpu-x64-macos` (Cycles' default CPU kernel
+dispatch, which picks the AVX2 kernels on CPUs that have AVX2),
+`cpu-x64-macos-sse42` (SSE4.2 kernels forced through `CYCLES_CPU_NO_AVX2=1`) and
+`wgsl-macos-x64` (the CodeBrix WGSL device on the shipped runtime's Metal route).
+`python3 tools/build_macos_x64.py` builds the runner at
+`native/work/macos/osx-x64/oracle-build/codebrix_cycles_oracle`; see
+[MACOS_X64.md](../host/MACOS_X64.md). On an Intel Mac the bundle and its
+evidence directory are named `cycles-oracles-macos-x64-<date>`. Without
+`--backend`, a run renders the Apple Silicon and Linux backends only.
+
 `compare.py` treats the earlier directory as the reference `b`. The practical
 criterion `abs(a - b) <= 5e-5 + 2e-4 * abs(b)` must hold for every component;
 strict differences (`1e-7 + 1e-7 * abs(b)`) are reported. NaN/Inf, shape or

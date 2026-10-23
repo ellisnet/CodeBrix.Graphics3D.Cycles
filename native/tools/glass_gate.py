@@ -9,11 +9,14 @@ from pathlib import Path
 from build import REPO,WORK,PACKAGE
 from device_gate import sha,save
 from render_gate import inputs
+import specialization_check
 
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--skip-build',action='store_true')
+    parser.add_argument('--off-mode',choices=['superset','unspecialized','none'],default='superset',
+                        help='specialization-off identity check of glass_render (default: superset mode)')
     args=parser.parse_args();out=args.output.resolve();out.mkdir(parents=True,exist_ok=False)
     status={'complete':False,'phase':'prepare'};save(out/'status.json',status)
     sources=inputs();runtime=PACKAGE/'runtimes/linux-x64/native/libcodebrix_wgpu.so'
@@ -39,6 +42,10 @@ def main():
             if kind=='glass_svm':assert report['originalCpuSurfaceSvm'] and report['compiledGraphs']==20 and report['closureFamilies']==7 and report['invalidCasesRejected']==17
             if kind=='glass_bounce':assert report['originalCpuSurfaceIntegrator'] and report['cases']==29 and report['invalidCasesRejected']==21
             reports[kind]=report;save(out/'results.json',reports)
+        if args.off_mode!='none':
+            status['phase']='glass_render-'+args.off_mode;save(out/'status.json',status)
+            reports['glass_render-'+args.off_mode]=specialization_check.check(WORK/'cycles-build/bin'/'codebrix_cycles_glass_render_gate',
+                out/'glass_render',out/('glass_render-'+args.off_mode),args.off_mode);save(out/'results.json',reports)
         assert sources==inputs() and all(sha(Path(name))==digest for name,digest in pins.items())
         status.update(complete=True,passed=True,phase='complete',inputsUnchanged=True,
                       scope='Native single-scatter GGX refraction and glass, Fresnel reflection/transmission, TIR, mixtures and independent original-Cycles images. Thin film, multi-GGX glass and Principled remain unsupported.')

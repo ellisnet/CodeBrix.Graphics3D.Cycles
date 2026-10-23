@@ -1,0 +1,201 @@
+[11:04:25] lane L start; worktree clean at 3392df3d; 147G free
+[11:05:50] driver identity: UNCHANGED vs session close (Mesa 25.0.7-2+deb13u1); recorded validation/driver-identity/identity.txt
+[11:07:03] build0 start (baseline)
+[11:10:29] ROOT-CAUSE CANDIDATE item 4 (+11/12): Mesa 25.0.7 brw_opt_combine_constants struct imm uses uint16_t nr/first_use_ip/last_use_ip; upstream fix b7e1ac830984 (2025-09-18, mesa#9489, MR 37482) widened to uint32 - 'In very large shaders ... can overflow 16 bits'. deallocate_slots loop then never matches -> unreachable() UB -> reads past calloc'd regs (heap-layout dependent crash) or silently miscompiles. Plan: measure VGRF count/end_ip at combine_constants via gdb+cached debuginfo.
+[11:14:26] build0 end exit=0
+[11:14:41] build0 done 7m22s exit 0
+[11:16:54] START i4-emitter-gdb-0
+[11:27:21] START i4-gdbtest
+[11:27:35] END i4-gdbtest exit=134 14s
+[11:28:03] START i4-gdbtest2
+[11:28:16] END i4-gdbtest2 exit=1 13s
+[11:28:40] checkpoint written (0 bytes)
+[11:29:18] START i4-abi0-1
+[11:29:18] START i4-emit0-1
+[11:29:30] END i4-emit0-1 exit=0 12s
+[11:29:30] START i4-emit0-2
+[11:29:43] END i4-emit0-2 exit=0 13s
+[11:29:43] START i4-emit0-3
+[11:29:56] END i4-emit0-3 exit=0 13s
+[11:29:56] START i4-emit0-4
+[11:30:08] END i4-emit0-4 exit=0 12s
+[11:30:08] START i4-emit0-5
+[11:30:20] END i4-emit0-5 exit=0 12s
+[11:30:20] START i4-emit0-6
+[11:30:32] END i4-emit0-6 exit=0 12s
+[11:30:32] START i4-emit0-7
+[11:30:44] END i4-emit0-7 exit=0 12s
+[11:30:44] START i4-emit0-8
+[11:30:56] END i4-emit0-8 exit=0 12s
+[11:30:56] START i4-emit0-9
+[11:30:59] END i4-abi0-1 exit=0 101s
+[11:30:59] START i4-abi0-2
+[11:31:08] END i4-emit0-9 exit=0 12s
+[11:31:08] START i4-emit0-10
+[11:31:20] END i4-emit0-10 exit=0 12s
+[11:31:52] START i4-abi-gdb
+[11:32:37] END i4-abi0-2 exit=0 98s
+[11:32:38] START i4-abi0-3
+[11:33:42] END i4-abi-gdb exit=1 110s
+[11:34:21] FINDING: ABI gpu seq (area on GPU) has compiles with end_ip 75734 and 85885 (>65535) -> uint16 truncation in combine_constants; E3 crash reg_nr=13056 = 78592-65536 consistent with truncated VGRF nr. emitter probe 0/10 crashes, alloc 30k/ip 44k. abi area-on-GPU run 1 passed (no crash).
+[11:34:27] END i4-abi0-3 exit=0 109s
+[11:34:27] START i4-abi0-4
+[11:34:30] START i4-abi-gdb2
+[11:36:09] END i4-abi0-4 exit=0 102s
+[11:36:09] START i4-abi0-5
+[11:36:14] END i4-abi-gdb2 exit=1 104s
+[11:36:24] START i4-emit-gdb3
+[11:36:37] END i4-emit-gdb3 exit=1 13s
+[11:36:46] START i4-abi-gdb3
+[11:37:54] END i4-abi0-5 exit=0 105s
+[11:37:54] START i4-abi0-6
+[11:38:35] END i4-abi-gdb3 exit=1 109s
+[11:39:28] START i4-abi-plog
+[11:39:35] END i4-abi0-6 exit=0 101s
+[11:39:35] START i4-abi0-7
+[11:41:11] END i4-abi-plog exit=0 103s
+[11:41:17] END i4-abi0-7 exit=0 102s
+[11:41:17] START i4-abi0-8
+[11:42:54] END i4-abi0-8 exit=0 97s
+[11:42:54] START i4-abi0-9
+[11:44:29] END i4-abi0-9 exit=0 95s
+[11:44:29] START i4-abi0-10
+[11:46:02] END i4-abi0-10 exit=0 93s
+[11:46:15] i4 re-establishment: abi area-on-GPU 0/10 crashes, emitter probe 0/10 crashes (cold). Latent: shade_surface_light end_ip 75734 (+area) / 85885 (+motion) > 65535
+[11:46:15] START i4-abi-cpu
+[11:46:15] END i4-abi-cpu exit=0 0s
+[11:49:00] build-targets exit=0
+[11:49:09] i11 principled_render superset under gdb probe (baseline WGSL)
+[11:49:09] START i11-principled-superset-gdb
+[11:49:09] START i4-abi-dump
+[11:50:45] END i4-abi-dump exit=0 96s
+[11:53:19] END i11-principled-superset-gdb exit=134 250s
+[11:55:05] item4 FIX implemented: light stage split (lamp vs triangle entries) + recorder v8 entry 17; probe measurement: lamp 44.4k ip, triangle 41.8k ip vs combined 85.9k
+[11:58:13] build-targets exit=0
+[11:58:24] START i4-fix-abi-gdb
+[11:59:22] END i4-fix-abi-gdb exit=1 58s
+[12:05:48] build-targets exit=0
+[12:06:23] START v1-triangle
+[12:06:23] START v1-terminator
+[12:06:24] checkpoint written (54714 bytes)
+[12:06:26] END v1-terminator exit=1 3s
+[12:07:31] START v1b-terminator
+[12:08:03] END v1-triangle exit=0 100s
+[12:08:57] END v1b-terminator exit=0 86s
+[12:20:30] build-targets exit=0
+[12:20:41] START i12-nodes-render-gdb
+[12:20:41] START i12-nodes-world
+[12:21:50] END i12-nodes-render-gdb exit=134 69s
+[12:23:07] END i12-nodes-world exit=0 146s
+[12:23:18] START i12-nodes-svm
+[12:23:18] END i12-nodes-svm exit=1 0s
+[12:25:30] build-targets exit=0
+[12:25:39] START i12-nodes-svm
+[12:30:06] build-targets exit=0
+[12:30:06] built: Gabor shipped (bit 63) + Horner loops (motion_acos, precise_disk_sincos) + 68-triangle node render
+[12:30:24] START f-glass-on
+[12:30:59] END f-glass-on exit=1 35s
+[12:30:59] START f-principled-on
+[12:34:05] END i12-nodes-svm exit=0 506s
+[12:40:49] checkpoint written (93946 bytes)
+[12:51:57] END f-principled-on exit=137 1258s
+[12:52:00] killed own hung gdb PID 100057 (f-principled-on, child defunct; timeout TERM ignored)
+[13:03:29] build-targets exit=0
+[13:03:29] START s-glass-on
+[13:04:02] END s-glass-on exit=0 33s
+[13:07:58] checkpoint written (108498 bytes)
+[13:07:58] START v2-principled-gate
+[13:07:58] START v2-nodes-gate
+[13:09:35] reverted 3 pinned doc/tool edits (saved in native/work/l/docs-pending) so running gates' source pins hold; re-apply before final validation
+[13:19:15] END v2-principled-gate exit=0 677s
+[13:19:55] START m-unspec-prepare
+[13:24:36] END v2-nodes-gate exit=1 998s
+[13:26:17] build-targets exit=0
+[13:26:40] checkpoint written (146312 bytes)
+[13:26:56] final validation launched (A and B)
+[13:26:56] START f3-host-gate
+[13:26:56] START f3-nodes-gate
+[13:28:56] END f3-host-gate exit=1 120s
+[13:28:56] START f3-dotnet-build
+[13:28:59] END f3-dotnet-build exit=0 3s
+[13:28:59] START f3-dotnet-test
+[13:30:00] END f3-dotnet-test exit=0 61s
+[13:30:00] START f3-dotnet-pack
+[13:30:01] END f3-dotnet-pack exit=0 1s
+[13:30:01] START f3-emit-1
+[13:30:17] END f3-emit-1 exit=0 16s
+[13:30:17] START f3-emit-2
+[13:30:35] END f3-emit-2 exit=0 18s
+[13:30:35] START f3-emit-3
+[13:30:53] END f3-emit-3 exit=0 18s
+[13:30:53] START f3-emit-4
+[13:31:11] END f3-emit-4 exit=0 18s
+[13:31:11] START f3-emit-5
+[13:31:28] END f3-emit-5 exit=0 17s
+[13:31:28] START f3-emit-6
+[13:31:44] END f3-emit-6 exit=0 16s
+[13:31:44] START f3-emit-7
+[13:32:00] END f3-emit-7 exit=0 16s
+[13:32:00] START f3-emit-8
+[13:32:19] END f3-emit-8 exit=0 19s
+[13:32:19] START f3-emit-9
+[13:32:37] END f3-emit-9 exit=0 18s
+[13:32:37] START f3-emit-10
+[13:32:56] END f3-emit-10 exit=0 19s
+[13:32:56] START f3-abi-1
+[13:34:19] END f3-abi-1 exit=0 83s
+[13:34:19] START f3-abi-2
+[13:35:34] END f3-abi-2 exit=0 75s
+[13:35:34] START f3-abi-3
+[13:36:46] END f3-abi-3 exit=0 72s
+[13:36:46] START f3-abi-4
+[13:37:58] END f3-abi-4 exit=0 72s
+[13:37:58] START f3-abi-5
+[13:39:13] END f3-abi-5 exit=0 75s
+[13:39:13] START f3-abi-6
+[13:39:14] host gate FAIL: area light film 1 strict diff (atomic-order nondeterminism); host_gate now requires practical + records strict for the 4 new light films; rerun host gate
+[13:40:28] END f3-abi-6 exit=0 75s
+[13:40:28] START f3-abi-7
+[13:40:32] END m-unspec-prepare exit=0 1237s
+[13:40:47] START m-principled-spec-prepare
+[13:41:12] END m-principled-spec-prepare exit=0 25s
+[13:41:12] START m-principled-superset-g0-prepare
+[13:41:42] END f3-abi-7 exit=0 74s
+[13:41:42] START f3-abi-8
+[13:41:43] END m-principled-superset-g0-prepare exit=0 31s
+[13:42:48] END f3-abi-8 exit=0 66s
+[13:42:48] START f3-abi-9
+[13:43:48] END f3-abi-9 exit=0 60s
+[13:43:48] START f3-abi-10
+[13:44:52] END f3-abi-10 exit=0 64s
+[13:44:52] START f3-abi-dump
+[13:46:08] END f3-abi-dump exit=0 76s
+[13:46:08] final_b DONE
+[13:47:05] START env-abi
+[13:48:44] END env-abi exit=0 99s
+[13:48:44] START env-materials
+[13:58:34] checkpoint written (146312 bytes)
+[14:00:58] END env-materials exit=0 734s
+[14:00:58] envelope runs DONE
+[14:05:12] END f3-nodes-gate exit=0 2296s
+[14:05:12] START f3-all-lanes
+[14:26:08] END f3-all-lanes exit=0 1256s
+[14:26:08] START f3-triangle
+[14:27:32] END f3-triangle exit=0 84s
+[14:27:32] START f3-terminator
+[14:28:44] END f3-terminator exit=0 72s
+[14:28:44] START f3-scene-edit
+[14:28:48] END f3-scene-edit exit=1 4s
+[14:28:48] final_a DONE
+[14:29:02] START x-bls-1
+[14:29:10] END x-bls-1 exit=0 8s
+[14:29:10] START x-bls-2
+[14:29:19] END x-bls-2 exit=0 9s
+[14:29:28] START f4-host-gate
+[14:31:04] END f4-host-gate exit=0 96s
+[14:31:16] START f4-scene-edit
+[14:32:26] END f4-scene-edit exit=0 70s
+[14:34:04] handoff sealed: changes.patch sha256 4962eacc84e2051253a174806424f45234d2fa9c817b0462f7c825cff3dd01c9 (37 files)
+[14:35:20] lane L DONE; report written; no processes running
+[14:35:39] END i4-emitter-gdb-0 exit=137 11925s
+[14:35:41] killed own hung gdb PID 28361 (i4-emitter-gdb-0 from 11:16; tree 28359->28360->28361)

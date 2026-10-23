@@ -1,0 +1,596 @@
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index d933c633..e8395443 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -2310,6 +2310,86 @@ others). The compile smoke step measured the unspecialized node-render surface m
+ 
+ Both are warnings only. Restoring a reliable specialization-off check is open item 11.
+ 
++## Samsung reference fixes (lane S, 2026-10-22)
++
++Device reference policy (2026-10-22): the Samsung SM-X700 (Adreno 730) is the ARM64/Adreno reference device. This lane
++worked on open items 1, 8 and 9, reran the object-moving motion images on the Samsung and measured item 3 there. Runtime
++unchanged (shipped `libcodebrix_wgpu.so` arm64 `8113cbfa...` hash-verified before every corpus); full tier by table.
++
++**Item 8, Principled pipelines on the Adreno 730: root cause and fix.** Creating `prepare_surface` (and the Principled
++SVM probe) failed in the Adreno driver (`AdrenoVK-0: Failed to link shaders` in logcat; wgpu then reports `Parent device
++is lost`). A compile-only probe on the Samsung (`native/tools/compile_probe.cpp` built for android-arm64) reproduces it
++in 16 s from the specialized Principled render module. Bisection (about 45 variants): the failure needs the thin-film
++Fresnel path and the thin-wall path to be live at the same time, but it is not module size (removing the Glass handler or
++anisotropy still fails), not workgroup size (64/32/16/1 all fail), not WGSL runtime checks, not dynamic vector indexing
++and not loop nesting. It is per-invocation private memory: with the 263-word module-scope `svm_stack` shrunk to 128 words
++the module links, at 160 words it fails, and with the stack in storage memory it links. The register spills of the large
++Principled handler plus the private SVM stack exceed what the driver can allocate per invocation.
++
++Fix: the SVM value stack and its initialization mask now live in a per-invocation slot of the device arena
++(`wavefront_svm.wgsl`). `WebGPUDevice` allocates 4,096 slots of 263 words (`num_concurrent_states` is at most 4,096) and
++writes the region address and slot count after the error word (`p(17)+4`, `p(17)+8`). Every entry point of the modules
++that contain the SVM interpreter (background, light forward, shadow, surface, volume, the SVM and emitter probes) names
++its invocation first (`svm_invocation(id.x)`); an evaluation without a valid slot reports error 1 rather than sharing
++memory. Reads, mask checks, error codes and results are unchanged: on Linux the glass film (`db8e84f9...`) and the
++Principled film (`fd3a7f2b...`) are bit-identical. This also keeps the large stack out of private memory, the class of
++the Adreno 640 function-scope array defect.
++
++Results on the Samsung: `principled_svm` PASS (126 s) and `principled_bounce` PASS (320 s, against the device CPU as
++before). `principled_render` now compiles and runs, but fails a local lockstep stage check: stage 40, path 2441,
++`path.mis_ray_pdf` 1751.469 against the device CPU's 1747.274 (open item 8 below). Making the GGX masking terms, the sheen
++LTC value, `principled_rotate` and the anisotropy aspect contraction-proof (rounded products before sums, operation
++order as the pinned sources) leaves the Samsung value unchanged and makes Linux produce the same 1751.470 and fail the same
++check: the Adreno computes the unfused arithmetic, and Linux agrees with the CPU only because Intel Mesa fuses those
++products. That experiment was reverted (Linux films unchanged); the mismatch is a WGSL-versus-CPU difference to localise
++on Linux with the contraction-proof forms applied.
++
++**Device-scene references for render and SVM probe gates.** `render_gate.cpp` images and the SVM probe gates
++(`surface_svm_test.h`, all `svm_surface_gate.cpp` variants) now follow the device-scene flow of the validation reference
++policy when the `CODEBRIX_CYCLES_SCENE_*`/`CODEBRIX_CYCLES_REFERENCE_*` variables are set (no change without them). The
++SVM probes exchange one key per evaluated case (`svm-N`): the scene tables other than the program are written once per
++distinct content (`svm-base-N.scene`), each case file carries the program, `KernelData`, the selected path indices and
++their path/ray/intersection state; the dump and Linux passes do no GPU work and skip the GPU-only rejection checks. The
++device-prepared Principled scene differs from the Linux-prepared one in the BVH, 1,143 lookup-table words, 54 vertex words
++and the object records, so Linux-prepared references are not valid inputs for the Samsung.
++
++**Item 9 under the device-scene flow.** `nodes_world` PASS (23 worlds, 378 s). `nodes_svm` against the glibc records of
++the Samsung's own scene: the same typed 2D noise program (case `svm-45`, "noise 2d type 0 variant 2") fails at path 48
++(0.566344 against 0.567463); the device CPU (scalar ARM64 noise branch) also differs from glibc in that case (6 practical,
++max 1.35e-3). `nodes_render` against the glibc film of the Samsung's own scene: component 6720 0.928481 against 0.928078,
++the same glibc value as the Linux-prepared film, while the Samsung GPU and the Samsung CPU agree (0.928481/0.928485): the
++pixel follows the device-own arithmetic adapters that `render_gate.cpp` keeps for its local lockstep checks, not the
++scene preparation.
++
++**Item 9 localised: the Adreno 730 reassociates the Perlin fade products.** The failing typed noise case was captured
++on Linux (arena, parameters, specialized probe module) and replayed with `arena_replay` on both GPUs: from identical
++inputs Intel reproduces the CPU record bit for bit (path 48: 0.5674633) and the Adreno gives 0.5663444 (41 of 51 paths
++differ). Replaying WGSL variants on the Samsung with opaque ordering barriers (an XOR with a word that is always zero)
++around single expressions isolates it to `svmn_perlin`'s fade, `(t*t)*(t*inner)`: with only that expression ordered the
++Samsung matches the CPU at path 48 and every value of the case is within 0.001 of the practical bound (before: 6 values
++above it, ratio up to 6.8). The fade now goes through `svmn_order` with header word 3 after the error word, which the
++device keeps at zero. Linux node gates and the glass film are unchanged (`db8e84f9...`). On the Samsung the nodes_svm gate (device-scene glibc reference) now passes 512 cases, including the formerly failing typed 2D noise case, and then stops: the Vulkan driver terminates (SIGSEGV) while creating the probe pipeline for the case after "vector math derivative 29" (case 489): the cumulative scene-specialized probe module, never reached on the Samsung before (open). nodes_world passes (376 s); nodes_render still fails at component 6720 (render_gate's device-own adapters, see above).
++
++**Item 1.** Rounding the motion step fraction (`time*(steps-1)-step`, contractible in three places) does not change sample
++3133; reverted. The failing sample is on the deforming emitter (object 5, prim 4): GPU P.y 0.382186, glibc 0.379992, device
++CPU 0.380744 (the device CPU is itself a practical failure there); the pdf differs by 1 ulp, so the spherical-triangle
++sampling amplifies a one-ulp difference upstream of the sample.
++
++**Object-moving motion images on the Samsung (session-close "not rerun").** Both pass, with all eight on-device replays:
++with the device's own oracle against the device CPU (moving and stationary images, 521 s corpus), and with the reference
++oracle's arithmetic against the glibc reference of the Samsung's own scene (host re-judged PASS, 567 s corpus).
++
++**Item 3 measured on the Adreno 730.** `dispatch_timing` (a copy of `render_replay` in the lane's work folder that submits
++every dispatch alone and waits for it) replayed the Samsung's triangle mode-4 and mode-5 captures and a Linux Principled
++render capture on the Samsung. Longest single submissions: 12.4 ms (mode 4, `shade_surface_light`, 415 invocations), 22.4
++ms (mode 5, `shade_surface_light`, 399 invocations, about 0.056 ms per invocation), 29.3 ms (Principled `shade_surface`,
++2,543 invocations); no reset or timeout. At 0.056 ms per invocation a full 4,096-path `shade_surface_light` dispatch is
++about 0.23 s, roughly an order of magnitude below the Adreno 640's 2 s reset; no slicing is needed on the Adreno 730.
++
++Evidence: lane S handoff (`native/work/s/handoff/` in the lane worktree; device and validation records, compile bisection
++log, per-dispatch timings).
++
++
+ ## Open device items (session close, 2026-10-20)
+ 
+ These items are open. None is masked, and no tolerance was relaxed. Resolved items are covered in the sections
+@@ -2323,14 +2403,15 @@ above:
+ - static instanced triangle emitters (mode 4) on every device (exact traversal; Phase E4 on the Adreno);
+ - the deforming-emitter sampler on the Pixel 4 XL (reference oracle's arithmetic, Phase E4).
+ 
+-1. **Samsung triangle sampler.** 2 values of 1 sample differ from the glibc reference (sample 3133, object 4,
+-   prim 5: `P.y` 0.382186 against 0.379992, and `t`). The device CPU and glibc agree on that sample, so the
+-   Adreno 730 differs from both; not yet localised. The Pixel 4 XL and the HP pass.
++1. **Samsung triangle sampler.** 2 values of 1 sample differ from the glibc reference (sample 3133 on the deforming
++   emitter, object 5, prim 4: `P.y` 0.382186 against 0.379992, and `t`; the device CPU gives 0.380744, itself a practical
++   difference). The pdf differs by one ulp, so the spherical-triangle sampling amplifies an upstream one-ulp difference;
++   rounding the motion step fraction did not change it (lane S). Not yet localised. The Pixel 4 XL and the HP pass.
+ 2. **Pixel 4 XL object motion with the reference oracle's arithmetic.** The object-moving motion images report
+    SVM error 8 when the x64 oracle's adapter constants are selected (imported reference, Phase E4); with the
+    device's own oracle they pass ("Session close: the E4/E5/M4 merge on the devices"). Either the adapters'
+    WGSL meets an Adreno 640 compiler defect, or the gate should keep the device oracle on this GPU; undecided.
+-3. **Adreno 640 GPU reset on long submissions.** The driver resets the GPU when one submission runs for about
++3. **Adreno 640 GPU reset on long submissions.** (Measured on the Adreno 730: longest submission 29 ms, no reset; lane S.) The driver resets the GPU when one submission runs for about
+    2 s. The sampler gate dispatches in slices of 256 invocations. The renderer does not slice its dispatches,
+    and one dispatch covers up to 4,096 paths (`num_concurrent_states`); the sampler probe needs about 1 ms per
+    invocation on this GPU, so a larger emissive-triangle render could reach the reset (an estimate from the
+@@ -2351,11 +2432,15 @@ above:
+    `intersect_shadow` (74-87 s), emissive-triangle `shade_surface_light` (up to about 120 s),
+    node-render `prepare_surface` (about 120 s) and `prepare_surface`/`prepare_shader_data` with motion
+    (about 50-60 s). Every run stayed on the full tier and inside its wall budget.
+-8. **Principled BSDF on the Adreno 730 (Samsung).** Creating the Principled probe or `prepare_surface`
+-   pipeline loses the device.
+-9. **Texture nodes on the Adreno 730 (Samsung).** The typed 2D fBM noise program (1.792859 against 1.791512)
+-   and node-render image component 6720 exceed the practical criterion. Contraction or precision in the noise
+-   chain is suspected. Node worlds pass.
++8. **Principled BSDF on the Adreno 730 (Samsung).** The device loss is fixed (SVM stack moved out of private memory,
++   "Samsung reference fixes (lane S, 2026-10-22)"); `principled_svm` and `principled_bounce` pass. `principled_render` fails a
++   local lockstep check (stage 40, path 2441, `path.mis_ray_pdf` 1751.469 against 1747.274); Linux reproduces the Samsung value
++   when the GGX/sheen/rotation arithmetic is made contraction-proof, so the WGSL form differs from the CPU there. Not yet localised.
++9. **Texture nodes on the Adreno 730 (Samsung).** The typed 2D noise failure is fixed (the Adreno reassociated the Perlin
++   fade products; lane S). Open: `nodes_svm` then stops at case 489 with a Vulkan driver termination (SIGSEGV) while creating
++   the cumulative specialized probe module (first time this part of the gate ran on the Samsung); node-render component 6720
++   fails against the glibc reference with the GPU equal to the device CPU (the device-own arithmetic adapters of
++   `render_gate.cpp`). Node worlds pass.
+ 10. **Materials on the Adreno 640 (Pixel 4 XL).** Every Principled and node gate fails: SVM error 8 (24 with
+     16 in node renders) in worlds and renders, and the node SVM probe loses the device when its pipeline is
+     created. Lamps, glass, feature combination and the triangle gates pass. Candidates are the Adreno 640
+diff --git a/native/cycles/device.cpp b/native/cycles/device.cpp
+index 0b58a0ca..922a0909 100644
+--- a/native/cycles/device.cpp
++++ b/native/cycles/device.cpp
+@@ -39,7 +39,9 @@ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Devi
+   WGPUShaderSourceWGSL source{};source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={control_source,sizeof(control_source)-1};
+   WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;gpu.push_scope();
+   cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
+-  controls=gpu.pipeline(shader,pipeline_layout,"control");error_word=allocate(4);zero(error_word,4);
++  controls=gpu.pipeline(shader,pipeline_layout,"control");error_word=allocate(16);zero(error_word,16);
++  svm_stack_region=allocate(size_t(svm_stack_slots)*svm_stack_words*4);
++  {const uint32_t header[]={svm_stack_region,svm_stack_slots};upload(error_word+4,header,sizeof(header));}
+   // Diagnostic override: CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 compiles every
+   // handler (the unspecialized modules) for A/B verification.
+   if(const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION"))specialization_enabled=std::strcmp(mode,"0")!=0;
+diff --git a/native/cycles/device.h b/native/cycles/device.h
+index 7f743919..3b47e61a 100644
+--- a/native/cycles/device.h
++++ b/native/cycles/device.h
+@@ -89,6 +89,14 @@ class WebGPUDevice final:public Device {
+   void validate_volume() const;
+   IntegratorStateGPU state{};
+   uint32_t fields=0,field_count=0,error_word=0;
++  // SVM value stacks (wavefront_svm.wgsl): one slot of svm_stack_words words per
++  // invocation of a dispatch; the header after the error word holds the region's
++  // address and slot count; header word 3 stays 0 (the noise fade's ordering barrier,
++  // wavefront_svm_nodes.wgsl svmn_order). Path kernels dispatch at most num_concurrent_states
++  // (4,096) invocations; a larger SVM dispatch reports error 1.
++  static constexpr uint32_t svm_stack_words=SVM_STACK_SIZE+(SVM_STACK_SIZE+31)/32,svm_stack_slots=4096;
++  static_assert(svm_stack_words==263,"wavefront_svm.wgsl SVM_STACK_WORDS");
++  uint32_t svm_stack_region=0;
+   cbc::BindLayout bind_layout;
+   cbc::PipelineLayout pipeline_layout;
+   cbc::Pipeline controls;
+diff --git a/native/cycles/emitter_sample_gate.cpp b/native/cycles/emitter_sample_gate.cpp
+index 652fba0d..3cad94c7 100644
+--- a/native/cycles/emitter_sample_gate.cpp
++++ b/native/cycles/emitter_sample_gate.cpp
+@@ -114,7 +114,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     // sampling crashed the Intel Mesa 25.0.7 compiler on every cold compile.
+     const std::string source=d.module_wgsl(surface_source())+"const EMITTER_PROBE_GROUP_SIZE:u32="+std::to_string(probe_group_size)+"u;\n"+R"WGSL(
+ @compute @workgroup_size(EMITTER_PROBE_GROUP_SIZE) fn emitter_sample_probe(@builtin(global_invocation_id) invocation:vec3<u32>){
+- let id=vec3<u32>(invocation.x+p(30u),invocation.y,invocation.z);if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
++ svm_invocation(invocation.x);let id=vec3<u32>(invocation.x+p(30u),invocation.y,invocation.z);if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
+  if((state_word(S_path_flag,id.x)&PATH_RAY_MIS_HAD_TRANSMISSION)!=0u){r.runtime_flag=SR_BSDF_HAS_TRANSMISSION;}
+  triangle_light_prefill(id.x,sd,false,true);let ls=light_sample_native(id.x,sd,r);let at=p(4u)+id.x*48u;let valid=ls.pdf>0.0;store_word(at,bitcast<u32>(select(0.0,1.0,valid)));
+  if(valid){let values=array<f32,11>(ls.P.x,ls.P.y,ls.P.z,ls.D.x,ls.D.y,ls.D.z,ls.t,ls.pdf,ls.eval_fac,f32(ls.prim),f32(ls.object_id));
+diff --git a/native/cycles/render_gate.cpp b/native/cycles/render_gate.cpp
+index 29a374b5..57f98364 100644
+--- a/native/cycles/render_gate.cpp
++++ b/native/cycles/render_gate.cpp
+@@ -208,7 +208,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   const char *asset=argc>=3&&!attribute_mode&&!motion_mode?argv[2]:nullptr;const bool preview_mode=argc==7;
+   const unsigned width=preview_mode?std::stoul(argv[4]):64,height=preview_mode?std::stoul(argv[5]):48,samples=preview_mode?std::stoul(argv[6]):8;
+   require(width>0&&height>0&&width<=2048&&height<=2048&&samples>0&&samples<=1024,"Invalid render dimensions/samples");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"render_gate device creation");Metrics m;Metrics image;
++  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"render_gate device creation");Metrics m;Metrics image;bool exchange_only=false;
+   {
+     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene,asset,attribute_mode,image_mode,normal_mode);scene.camera->set_full_width(width);scene.camera->set_full_height(height);scene.camera->set_screen_size(width,height);scene.camera->compute_auto_viewplane();scene.integrator->set_aa_samples(samples);if(motion_mode)camera_motion_fixture(scene,scene.camera->get_matrix(),motion_case);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Render scene preparation failed");
+     if(motion_mode)require(scene.dscene.data.cam.num_motion_steps>=2&&scene.dscene.data.cam.shuttertime!=-1,"Motion render preparation failed");
+@@ -220,12 +220,16 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     require(data.kernel_features&KERNEL_FEATURE_VOLUME,"Missing native world volume feature");
+     std::cerr<<"Volume film stride="<<data.film.pass_stride<<" combined="<<data.film.pass_combined<<" scatter="<<data.film.pass_volume_scatter<<" transmit="<<data.film.pass_volume_transmit<<" majorant="<<data.film.pass_volume_majorant<<" count="<<data.film.pass_volume_majorant_sample_count<<'\n';
+ #endif
++    // Validation reference policy, device-scene flow (reference_policy.h): the dump pass writes the scene this
++    // device prepared and its local CPU image; the Linux pass loads that scene and exports the glibc image.
++    // Both passes run the CPU render only. The lockstep stage checks stay local (their input is the GPU state).
++    exchange_only=!preview_mode&&reference_policy::exchange_scene(scene.dscene,"image",{});
+     d.const_copy_to("data",&data,sizeof(data));
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);auto layout=fields(d);
+     BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=data.film.pass_stride;auto buffers=scheduler.get_render_buffers();buffers->reset(bp);
+     if(preview_mode){preview_render(d,scheduler,buffers,prefix,width,height,samples);}else{
+     std::vector<float> gold(buffers->buffer.size()),first;std::vector<IntegratorStateCPU> cpu(scheduler.capacity());
+-    for(unsigned repeat=0;repeat<2;repeat++){
++    for(unsigned repeat=0;repeat<(exchange_only?1u:2u);repeat++){
+       buffers->zero();upload(d,layout,std::vector<IntegratorStateCPU>(scheduler.capacity()));
+       std::unique_ptr<RenderCapture> capture;if(repeat==1)capture=std::make_unique<RenderCapture>(d,prefix);
+       for(unsigned sample=0;sample<samples;sample++){
+@@ -240,6 +244,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+ #endif
+           }
+         }}
++        if(exchange_only)continue;
+         scheduler.enqueue_work_tiles(DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA,&tile,1,0,0);require(scheduler.update_queue_counter_and_cache(),"Render camera failed: "+d.error_message());
+         for(unsigned step=0;step<100;step++){
+           auto kernel=scheduler.get_most_queued_kernel();if(kernel==DEVICE_KERNEL_NUM)break;require(step<99,"GPU render did not terminate");
+@@ -267,15 +272,17 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+         }
+         std::cerr<<"Rendered repeat="<<repeat<<" sample="<<sample<<" stages="<<m.stages<<'\n';
+       }
++      if(exchange_only){reference_policy::record_local("image",gold);reference_policy::resolve("image",gold,prefix+".reference-diagnostic.jsonl");break;}
+       if(capture)capture->finish(prefix,buffers->buffer.device_pointer,buffers->buffer.memory_size(),uintptr_t(d.state.path.queued_kernel),scheduler.capacity(),width,height,samples,data.film.pass_stride);
+       buffers->buffer.copy_from_device();healthy(d);std::vector<float> result(buffers->buffer.data(),buffers->buffer.data()+buffers->buffer.size());
+       if(repeat==0){first=result;write_image(prefix+".gpu",result,samples,width,height,data.film.pass_stride);write_image(prefix+".cpu",gold,samples,width,height,data.film.pass_stride);
+         // Pass/fail reference for the independent image: local, or the imported correctly rounded one
+         // (reference_policy.h). The lockstep stage checks above keep the local oracle: their input is this GPU's state.
+-        const auto reference=reference_policy::resolve("image",gold,prefix+".reference-diagnostic.jsonl");
++        reference_policy::record_local("image",gold);const auto reference=reference_policy::resolve("image",gold,prefix+".reference-diagnostic.jsonl");
+         for(size_t i=0;i<result.size();i++)number(result[i],reference[i],"Independent CPU image "+std::to_string(i),image);}
+       else require(!std::memcmp(first.data(),result.data(),result.size()*4),"GPU render repeat differs");
+     }
++    if(!exchange_only){
+ #ifdef CBC_VOLUME_FIXTURE
+     require(m.kernels[DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME]>0&&m.volume_transmit>0,"Missing volume transmission coverage");
+     require(std::getenv("CODEBRIX_VOLUME_ABSORPTION_ONLY")?m.volume_scatter==0:m.volume_scatter>0,"Incorrect volume scattering coverage");
+@@ -285,10 +292,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     require((m.kernels[DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK]>0)==(std::getenv("CODEBRIX_VOLUME_CAMERA_INSIDE")!=nullptr),"Incorrect native camera-inside volume initialization coverage");
+ #endif
+     require(m.max_bounce>=3,"Missing multiple bounce coverage");if(!asset){require(m.max_transparent>=1,"Missing transparent bounce coverage");require(m.shaders.size()>=10,"Insufficient compiled shader coverage");}
+-    }
++    }}
+   }
+   require(stats.mem_used==0,"Render Cycles allocation leak");std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
+   {std::ofstream edges(prefix+".shared-edges.json");edges<<'[';for(size_t i=0;i<m.edge_records.size();i++){if(i)edges<<',';edges<<m.edge_records[i];}edges<<"]\n";}
+-  if(preview_mode)std::cout<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"highResolutionPreviewOnly\":true,\"materialSubstitution\":\"rough diffuse clay\",\"width\":"<<width<<",\"height\":"<<height<<",\"samples\":"<<samples<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
++  if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
++  else if(preview_mode)std::cout<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"highResolutionPreviewOnly\":true,\"materialSubstitution\":\"rough diffuse clay\",\"width\":"<<width<<",\"height\":"<<height<<",\"samples\":"<<samples<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+   else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentCpuImage\":true,\"repeatBitwiseIdentical\":true,\"nativeImageTextures\":"<<(image_mode?"true":"false")<<",\"nativeNormalMaps\":"<<(normal_mode?"true":"false")<<",\"width\":64,\"height\":48,\"samples\":"<<samples<<",\"stages\":"<<m.stages<<",\"paths\":"<<m.paths<<",\"volumeScatterEvents\":"<<m.volume_scatter<<",\"volumeTransmitEvents\":"<<m.volume_transmit<<",\"volumeTerminatedEvents\":"<<m.volume_terminated<<",\"volumeStackInitializations\":"<<m.kernels[DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK]<<",\"maxVolumeBoundaryBounce\":"<<m.max_volume_bounds<<",\"maxBounce\":"<<m.max_bounce<<",\"maxTransparentBounce\":"<<m.max_transparent<<",\"surfaceShaders\":"<<m.shaders.size()<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"equivalentSharedEdgeComparisons\":"<<m.equivalent_edge_hits<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<m.maximum<<",\"maximumStageErrorField\":\""<<m.maximum_field<<"\",\"maximumStageErrorActual\":"<<m.maximum_actual<<",\"maximumStageErrorExpected\":"<<m.maximum_expected<<",\"maximumStagePracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"strictImageFailures\":"<<image.strict<<",\"maximumImageError\":"<<image.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+ }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}
+diff --git a/native/cycles/surface_svm_test.h b/native/cycles/surface_svm_test.h
+index c7c60339..04ec2733 100644
+--- a/native/cycles/surface_svm_test.h
++++ b/native/cycles/surface_svm_test.h
+@@ -4,6 +4,9 @@
+ #include "wavefront_test.h"
+ #include "wavefront.h"
+ #include "svm_surface_reference.h"
++#include "reference_policy.h"
++#include <filesystem>
++#include <map>
+ #include "kernel/svm/node_types.h"
+ #include "scene/scene.h"
+ #include "scene/mesh.h"
+@@ -40,7 +43,7 @@ static std::vector<OutputField> output_fields(){
+ static std::string probe_source(){
+   std::ostringstream s;s<<svm_surface_source();
+   s<<"@compute @workgroup_size(64) fn surface_svm_probe(@builtin(global_invocation_id) id:vec3<u32>){\n"
+-      "if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}\n"
++      "svm_invocation(id.x);if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}\n"
+       "let sd=surface_cached(id.x);if(sd.error!=0u){return;}let r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}\n"
+       "let base=p(4u)+id.x*"<<sizeof(SurfaceSvmRecord)<<"u;\n";
+   const char *components[]={".x",".y",".z"};
+@@ -93,9 +96,81 @@ struct PreparedSurfaceCache {
+   void verify(){storage.copy_from_device();for(unsigned i=0;i<8;i++)require(storage[i]==0xa5a5a5a5u&&storage[storage.size()-1-i]==0xa5a5a5a5u,"ShaderData cache guard");}
+ };
+ struct Metrics {unsigned cases=0;uint64_t paths=0,integers=0,floats=0,state_checks=0,guards=0,strict=0;double maximum=0;std::set<uint> closures;};
++// Validation reference policy, device-scene flow (reference_policy.h), one exchange key per evaluated case
++// ("svm-N", in evaluation order): the dump pass writes the scene tables this device prepared, the selected
++// path states and its local CPU records; the Linux pass loads them and exports the glibc records; the
++// import pass compares the GPU with the imported records (the local records are a diagnostic). The dump
++// and Linux passes do no GPU work. A probe gate evaluates hundreds of programs on one scene, so the
++// tables other than the program and KernelData are written once per distinct content
++// (svm-base-N.scene, CBCSCENE1 records) and each case file (svm-N.case) names its base and carries the
++// program, KernelData, the selected path indices and their path, ray and intersection state (what the
++// CPU reference reads; the other state members are the same zero-initialized values on both sides).
++// Without the variables nothing changes.
++static bool svm_exchange_mode(){return reference_policy::prepare_only()||reference_policy::reference_only();}
++struct SvmExchangeRecord {uint64_t element;std::string data;};
++struct SvmExchangeState {decltype(IntegratorStateCPU::path) path;decltype(IntegratorStateCPU::ray) ray;decltype(IntegratorStateCPU::isect) isect;};
++static std::map<std::string,SvmExchangeRecord> svm_exchange_read(const std::string &bytes,const std::string &magic){
++  if(bytes.compare(0,magic.size(),magic))throw std::runtime_error("Not an SVM exchange file ("+magic+")");
++  std::map<std::string,SvmExchangeRecord> out;size_t at=magic.size();
++  while(at<bytes.size()){uint64_t h[3];if(at+sizeof(h)>bytes.size())throw std::runtime_error("Truncated SVM exchange file");std::memcpy(h,bytes.data()+at,sizeof(h));at+=sizeof(h);
++    if(at+h[0]>bytes.size()||h[1]*h[2]>bytes.size()-at-h[0])throw std::runtime_error("Truncated SVM exchange file");
++    std::string name=bytes.substr(at,h[0]);at+=h[0];out[name]={h[1],bytes.substr(at,h[1]*h[2])};at+=h[1]*h[2];}
++  return out;
++}
++template<class V>static void svm_exchange_apply(V &table,const std::map<std::string,SvmExchangeRecord> &records,const std::string &name){
++  auto it=records.find(name);if(it==records.end())throw std::runtime_error("SVM exchange table missing: "+name);
++  const size_t element=sizeof(*table.data());if(it->second.element!=element)throw std::runtime_error("SVM exchange element size differs: "+name);
++  const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
++}
++static std::string svm_exchange_tables(DeviceScene &s){
++  std::string out="CBCSCENE1";
++#define CBC_SVM_TABLE(name,type) reference_policy::put(out,#name,s.name.data(),sizeof(*s.name.data()),s.name.size());
++  CBC_SCENE_TABLES(CBC_SVM_TABLE) CBC_SVM_TABLE(sample_pattern_lut,float)
++#undef CBC_SVM_TABLE
++  return out;
++}
++static std::vector<SurfaceSvmRecord> svm_reference_records(Scene &scene,const std::vector<IntegratorStateCPU> &states,const std::vector<int> &ids,bool &exchange_only){
++  static unsigned exchange_case=0,bases=0;static std::string last_tables,loaded_base;
++  const std::string key="svm-"+std::to_string(exchange_case++);DeviceScene &ds=scene.dscene;
++  std::vector<SurfaceSvmRecord> local;exchange_only=svm_exchange_mode();
++  if(const char *dump=std::getenv("CODEBRIX_CYCLES_SCENE_DUMP")){
++    std::filesystem::create_directories(dump);const std::string tables=svm_exchange_tables(ds);
++    if(tables!=last_tables){last_tables=tables;std::ofstream(std::filesystem::path(dump)/("svm-base-"+std::to_string(bases++)+".scene"),std::ios::binary)<<tables;}
++    const std::string base="svm-base-"+std::to_string(bases-1);std::vector<SvmExchangeState> selected;for(int i:ids)selected.push_back({states[i].path,states[i].ray,states[i].isect});
++    std::string out="CBCSVMCASE1";reference_policy::put(out,"base",base.data(),1,base.size());reference_policy::put(out,"svm_nodes",ds.svm_nodes.data(),4,ds.svm_nodes.size());
++    reference_policy::put(out,"KernelData",&ds.data,sizeof(ds.data),1);reference_policy::put(out,"ids",ids.data(),sizeof(int),ids.size());
++    reference_policy::put(out,"states",selected.data(),sizeof(SvmExchangeState),selected.size());
++    std::ofstream file(std::filesystem::path(dump)/(key+".case"),std::ios::binary);file<<out;if(!file)throw std::runtime_error("Could not write SVM exchange case "+key);
++    local=original_surface_svm(ds,ids,states);
++  }else if(const char *load=std::getenv("CODEBRIX_CYCLES_SCENE_LOAD")){
++    const auto records=svm_exchange_read(reference_policy::read_file(std::filesystem::path(load)/(key+".case")),"CBCSVMCASE1");
++    const std::string base=records.at("base").data;
++    if(base!=loaded_base){const auto tables=svm_exchange_read(reference_policy::read_file(std::filesystem::path(load)/(base+".scene")),"CBCSCENE1");
++#define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
++      CBC_SCENE_TABLES(CBC_SVM_TABLE) CBC_SVM_TABLE(sample_pattern_lut,float)
++#undef CBC_SVM_TABLE
++      loaded_base=base;}
++    svm_exchange_apply(ds.svm_nodes,records,"svm_nodes");
++    const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(&ds.data,kernel.data.data(),sizeof(ds.data));
++    const auto &indices=records.at("ids");const auto &blob=records.at("states");
++    if(indices.data.size()!=ids.size()*sizeof(int)||(!ids.empty()&&std::memcmp(indices.data.data(),ids.data(),indices.data.size()))||blob.data.size()!=ids.size()*sizeof(SvmExchangeState))
++      throw std::runtime_error("SVM exchange path selection differs: "+key);
++    auto loaded=states;for(size_t k=0;k<ids.size();k++){SvmExchangeState e;std::memcpy(static_cast<void*>(&e),blob.data.data()+k*sizeof(e),sizeof(e));loaded[ids[k]].path=e.path;loaded[ids[k]].ray=e.ray;loaded[ids[k]].isect=e.isect;}
++    local=original_surface_svm(ds,ids,loaded);
++  }else local=original_surface_svm(ds,ids,states);
++  std::vector<float> words(local.size()*sizeof(SurfaceSvmRecord)/4);if(!local.empty())std::memcpy(words.data(),local.data(),words.size()*4);
++  reference_policy::record_local(key,words);
++  const char *diagnostic=std::getenv("CODEBRIX_CYCLES_REFERENCE_DIAGNOSTIC");
++  const auto reference=reference_policy::resolve(key,words,diagnostic?diagnostic:"svm-reference-diagnostic.jsonl");
++  if(!local.empty())std::memcpy(static_cast<void*>(local.data()),reference.data(),reference.size()*4);
++  return local;
++}
+ static void evaluate(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const std::vector<Field> &layout,
+     const std::vector<IntegratorStateCPU> &states,const std::vector<int> &ids,const std::string &label,Metrics &m,const std::string &capture="",bool dense=false){
+-  auto expected=original_surface_svm(scene.dscene,ids,states);upload(d,layout,states);
++  bool exchange_only=false;auto expected=svm_reference_records(scene,states,ids,exchange_only);
++  if(exchange_only){for(size_t i=0;i<ids.size();i++)for(unsigned j=0;j<expected[i].count&&j<MAX_CLOSURE;j++)m.closures.insert(expected[i].closures[j].kind);
++    m.cases++;m.paths+=ids.size();std::cerr<<"Exchanged "<<label<<" ("<<ids.size()<<" paths)\n";return;}
++  upload(d,layout,states);
+   device_vector<int> selected(&d,"svm_surface_indices",MEM_READ_WRITE);selected.alloc(ids.size());std::copy(ids.begin(),ids.end(),selected.data());selected.copy_to_device();
+   device_vector<uint> output(&d,"svm_surface_output",MEM_READ_WRITE);output.alloc(16+ids.size()*sizeof(SurfaceSvmRecord)/4);std::fill_n(output.data(),output.size(),0xa5a5a5a5u);output.copy_to_device();
+   device_vector<uint> scratch(&d,"svm_surface_closures",MEM_READ_WRITE);scratch.alloc(16+ids.size()*MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);std::fill_n(scratch.data(),scratch.size(),0xa5a5a5a5u);std::fill(scratch.data()+8,scratch.data()+scratch.size()-8,0);scratch.copy_to_device();
+diff --git a/native/cycles/svm_surface_gate.cpp b/native/cycles/svm_surface_gate.cpp
+index 0b6bfe4b..c8b65edd 100644
+--- a/native/cycles/svm_surface_gate.cpp
++++ b/native/cycles/svm_surface_gate.cpp
+@@ -485,10 +485,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+       evaluate(d,scene,shader,layout,initial,small,"Typed glass/refraction "+std::to_string(typed++),m);
+     }
+ #endif
++    // The scene-exchange passes (reference_policy.h) do no GPU work; the rejections run in the import pass.
++    if(!svm_exchange_mode()){
+     invalid=rejections(d,scene,shader);
+ #ifdef CBC_NODES_FIXTURE
+     invalid+=node_rejections(d,scene,shader);
+ #endif
++    }
+ #ifdef CBC_PRINCIPLED_FIXTURE
+     // Native-layer rejection before any pipeline or dispatch: a clear
+     // unsupported-feature message, never an approximation.
+@@ -515,5 +518,6 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+   require(m.closures.size()==5,"Missing closure families");
+ #endif
+   std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
+-  std::cout<<"{\"passed\":true,\"originalCpuSurfaceSvm\":true,\"compiledGraphs\":"<<GRAPH_COUNT<<",\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"closureFamilies\":"<<m.closures.size()<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"stateChecks\":"<<m.state_checks<<",\"untouchedGuardBytes\":"<<m.guards<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"invalidCasesRejected\":"<<invalid<<",\"nativeUnsupportedFeatureRejections\":"<<host_rejections<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
++  if(svm_exchange_mode()){std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cases\":"<<m.cases<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";}
++  else std::cout<<"{\"passed\":true,\"originalCpuSurfaceSvm\":true,\"compiledGraphs\":"<<GRAPH_COUNT<<",\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"closureFamilies\":"<<m.closures.size()<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"stateChecks\":"<<m.state_checks<<",\"untouchedGuardBytes\":"<<m.guards<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"invalidCasesRejected\":"<<invalid<<",\"nativeUnsupportedFeatureRejections\":"<<host_rejections<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+ }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}
+diff --git a/native/shaders/wavefront_background.wgsl b/native/shaders/wavefront_background.wgsl
+index 0885226e..50e93011 100644
+--- a/native/shaders/wavefront_background.wgsl
++++ b/native/shaders/wavefront_background.wgsl
+@@ -20,6 +20,7 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
+         ((shader&SHADER_EXCLUDE_CAMERA)!=0u&&(visibility&VIS_CAMERA)!=0u));
+ }
+ @compute @workgroup_size(64) fn shade_background(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)){fail();return;}
+     if(state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND){fail();return;}
+diff --git a/native/shaders/wavefront_light_eval.wgsl b/native/shaders/wavefront_light_eval.wgsl
+index 62916368..9a782e5b 100644
+--- a/native/shaders/wavefront_light_eval.wgsl
++++ b/native/shaders/wavefront_light_eval.wgsl
+@@ -67,6 +67,7 @@ fn integrate_suns(index:u32,base:u32){
+     }
+ }
+ @compute @workgroup_size(64) fn shade_light_forward(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD){fail();return;}
+     let flag=state_word(S_path_flag,index);let visibility=state_byte(S_path_visibility,index);
+diff --git a/native/shaders/wavefront_shadow.wgsl b/native/shaders/wavefront_shadow.wgsl
+index 11d0d826..c6c18dea 100644
+--- a/native/shaders/wavefront_shadow.wgsl
++++ b/native/shaders/wavefront_shadow.wgsl
+@@ -11,6 +11,7 @@ fn shadow_transition(index:u32,current:u32,next:u32){
+     state_u16(S_shadow_path_queued_kernel,index,next);
+ }
+ @compute @workgroup_size(64) fn intersect_shadow(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)){fail();return;}
+     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||(state_word(S_shadow_path_flag,index)&SHADOW_UNSUPPORTED_FLAGS)!=0u){fail();return;}
+@@ -58,6 +59,7 @@ fn shadow_write_film(index:u32){
+     shadow_transition(index,K_SHADOW_SHADE,0u);
+ }
+ @compute @workgroup_size(64) fn shade_shadow(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)){fail();return;}
+     let flag=state_word(S_shadow_path_flag,index);
+@@ -70,6 +72,7 @@ fn shadow_write_film(index:u32){
+ // intermittently crashed the Intel Mesa 25.0.7 backend (brw_opt_combine_constants)
+ // in cold compiles; the split entries compiled every probe (native/work/b1).
+ @compute @workgroup_size(64) fn prepare_shadow_shader_data(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)){fail();return;}let count=state_half(S_shadow_path_packed_num_hits,index);
+     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||count>4095u){return;}
+@@ -85,6 +88,7 @@ fn shadow_write_film(index:u32){
+ // Bound compiler pressure from the SVM path with one invocation per workgroup.
+ // Static transparent triangles remain the supported scope; tuning is pending.
+ @compute @workgroup_size(1) fn shade_shadow_transparent(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)){fail();return;}let flag=state_word(S_shadow_path_flag,index);let count=state_half(S_shadow_path_packed_num_hits,index);
+     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||(flag&SHADOW_UNSUPPORTED_FLAGS)!=0u||count>4095u){fail();return;}
+diff --git a/native/shaders/wavefront_surface.wgsl b/native/shaders/wavefront_surface.wgsl
+index 91571175..12f09d65 100644
+--- a/native/shaders/wavefront_surface.wgsl
++++ b/native/shaders/wavefront_surface.wgsl
+@@ -190,6 +190,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
+ }
+ // Preparation validates inputs and evaluates closures without changing path or film state.
+ @compute @workgroup_size(64) fn prepare_surface(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}store_word(p(24u)+id.x*SURFACE_STAGE_BYTES,0u);var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)){fail();return;}if(state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){fail();return;}
+     let flag=state_word(S_path_flag,index);if((flag&SURFACE_UNSUPPORTED_FLAGS)!=0u){fail();return;}
+@@ -208,6 +209,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
+ // BSDF evaluation caused multi-minute, multi-GB driver compilation (and lost the
+ // Pixel's device); records remain GPU-private and native scheduling is unchanged.
+ @compute @workgroup_size(1) fn shade_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}
+     let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=1u){return;}store_word(at,0u);
+     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+@@ -225,6 +227,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
+ }
+ // Size 1 retains the verified Linux sampling layout; broader tuning remains open.
+ @compute @workgroup_size(1) fn connect_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=3u){return;}store_word(at,0u);
+     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     let stage=surface_stage_read(at);var sd=stage.sd;var r=stage.r;
+@@ -254,6 +257,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
+ // Lighting and continuation share GPU records, with no native queue transition.
+ // The continuation runs only after successful lighting/roulette preparation.
+ @compute @workgroup_size(1) fn shade_surface(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=2u){return;}
+     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;
+diff --git a/native/shaders/wavefront_svm.wgsl b/native/shaders/wavefront_svm.wgsl
+index 5e70f580..03c2dc00 100644
+--- a/native/shaders/wavefront_svm.wgsl
++++ b/native/shaders/wavefront_svm.wgsl
+@@ -7,15 +7,27 @@
+ // Cycles ABI; scalar math/gamma functions are generated from upstream AST.
+ // Background emission accumulation also derives from closure/emissive.h (BSD).
+ // The value stack (words 0..254) and its initialization mask (words 255..262)
+-// share one module-scope private array instead of two arrays inside the
+-// function-local SvmState. On the Pixel 4 XL's Adreno 640 (driver
+-// EV031.31.04.01) dynamic indexing into arrays held in the large SvmState
+-// corrupted other live values: a lookup-table address lost its low 16 bits
+-// (error 512) and the closure budget read as zero (no closures, black motion
+-// images); two separate private arrays lost mask bits (error 8). Evaluations
++// live in a per-invocation slot of the device arena (SVM_STACK_WORDS words),
++// not in private memory. The Adreno 730 driver (EV031.36.08.33) fails to link
++// prepare_surface ("Failed to link shaders", device lost) once the private
++// stack and the register spills of large handlers (Principled thin film with
++// thin wall) exceed its per-invocation private memory; a 263-word private
++// array left too little room. Earlier, on the Pixel 4 XL's Adreno 640 (driver
++// EV031.31.04.01), dynamic indexing into arrays held in the large SvmState
++// corrupted other live values (error 512, black motion images, lost mask bits,
++// error 8), which is why the stack is one array outside SvmState. The arena
++// header after the error word (p(17)) holds the slot region's byte address and
++// slot count (WebGPUDevice); every entry point that can evaluate SVM programs
++// names its invocation with svm_invocation(id.x) first, and an evaluation
++// without a valid slot reports error 1 instead of sharing memory. Evaluations
+ // never nest and each one clears the mask first, so reads, errors and results
+ // are unchanged.
+-var<private> svm_stack:array<u32,263>;
++const SVM_STACK_WORDS:u32=263u;
++var<private> svm_slot:u32=0xffffffffu;
++var<private> svm_stack_at:u32=0u;
++fn svm_invocation(id:u32){svm_slot=id;}
++fn svm_stack_get(word:u32)->u32{return load_word(svm_stack_at+word*4u);}
++fn svm_stack_set(word:u32,value:u32){store_word(svm_stack_at+word*4u,value);}
+ struct SvmState {
+     pc:u32, error:u32,
+     volume:bool, weight:vec3<f32>, geometry:SurfaceData, output:SvmResult,
+@@ -34,13 +46,13 @@ fn svm_take(s:ptr<function,SvmState>,bytes:u32)->u32{
+ fn svm_byte(address:u32)->u32{return (load_word(address)>>(8u*(address%4u)))&255u;}
+ fn svm_load_bits(s:ptr<function,SvmState>,index:u32)->u32{
+     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return 0u;}
+-    if((svm_stack[255u+index/32u]&(1u<<(index%32u)))==0u){svm_error(s,8u);return 0u;}
+-    return svm_stack[index];
++    if((svm_stack_get(255u+index/32u)&(1u<<(index%32u)))==0u){svm_error(s,8u);return 0u;}
++    return svm_stack_get(index);
+ }
+ fn svm_load(s:ptr<function,SvmState>,index:u32)->f32{return bitcast<f32>(svm_load_bits(s,index));}
+ fn svm_store_bits(s:ptr<function,SvmState>,index:u32,value:u32){
+     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return;}
+-    svm_stack[index]=value;svm_stack[255u+index/32u]|=1u<<(index%32u);
++    svm_stack_set(index,value);svm_stack_set(255u+index/32u,svm_stack_get(255u+index/32u)|(1u<<(index%32u)));
+ }
+ fn svm_store(s:ptr<function,SvmState>,index:u32,value:f32){svm_store_bits(s,index,bitcast<u32>(value));}
+ fn svm_load3(s:ptr<function,SvmState>,index:u32)->vec3<f32>{return vec3<f32>(svm_load(s,index),svm_load(s,index+1u),svm_load(s,index+2u));}
+@@ -139,9 +151,13 @@ fn svm_gradient(s:ptr<function,SvmState>,kind:u32,v:vec3<f32>)->f32{
+     }
+ }
+ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,flag:u32,visibility:u32,lcg:u32,volume:bool,previous:SvmResult)->SvmResult{
+-    svm_stack[255]=0u;svm_stack[256]=0u;svm_stack[257]=0u;svm_stack[258]=0u;svm_stack[259]=0u;svm_stack[260]=0u;svm_stack[261]=0u;svm_stack[262]=0u;
+     var s:SvmState;s.output=previous;s.volume=volume;s.geometry=geometry;s.pc=(geometry.shader&SHADER_MASK)*(1u+SZ_ShaderJump/4u);
+     s.output.runtime_flag=geometry.runtime_flag;s.output.N=geometry.N;s.output.lcg_state=lcg;
++    // This invocation's stack slot (header after the error word: region address, slot count).
++    let stack_region=load_word(p(17u)+4u);let stack_slots=load_word(p(17u)+8u);let arena_bytes=arrayLength(&heap)*4u;
++    if(svm_slot>=stack_slots||stack_region==0u||stack_region%4u!=0u||stack_region>arena_bytes||stack_slots>(arena_bytes-stack_region)/(SVM_STACK_WORDS*4u)){svm_error(&s,1u);return s.output;}
++    svm_stack_at=stack_region+svm_slot*(SVM_STACK_WORDS*4u);
++    svm_stack_set(255u,0u);svm_stack_set(256u,0u);svm_stack_set(257u,0u);svm_stack_set(258u,0u);svm_stack_set(259u,0u);svm_stack_set(260u,0u);svm_stack_set(261u,0u);svm_stack_set(262u,0u);
+     if(closure_limit>SVM_CLOSURE_CAPACITY){svm_error(&s,16u);return s.output;}
+     s.output.closure_base=closure_base;
+     if(closure_base!=0u){let bytes=arrayLength(&heap)*4u;let required=SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES;
+diff --git a/native/shaders/wavefront_svm_nodes.wgsl b/native/shaders/wavefront_svm_nodes.wgsl
+index cd458e18..8efa1f92 100644
+--- a/native/shaders/wavefront_svm_nodes.wgsl
++++ b/native/shaders/wavefront_svm_nodes.wgsl
+@@ -62,11 +62,18 @@ fn svmn_fmod(a:f32,b:f32,sse:bool)->f32{
+ //#if SVM_NODES_NOISE
+ // noise.h perlin_1d (scalar) and perlin_2d/3d/4d (SSE): lattice gradients are
+ // combined along x, then y, z and w with mix(a,b,t)=a+t*(b-a), as the SSE lanes.
++// The fade products keep the oracle's grouping through svmn_order: the Adreno 730
++// driver (EV031.36.08.33) reassociated (t*t)*(t*inner), which moved high-octave
++// noise by up to 7 times the practical bound (nodes_svm typed 2D noise, lane S).
++// The order word is header word 3 after the error word (WebGPUDevice), always 0:
++// the XOR is the identity, but the compiler cannot see through it.
++fn svmn_order(x:f32,order:u32)->f32{return bitcast<f32>(bitcast<u32>(x)^order);}
++fn svmn_order_word()->u32{return load_word(p(17u)+12u);}
+ fn svmn_perlin(p:vec4<f32>,dims:u32)->f32{
+-    let lattice=floor(p);let cell=vec4<i32>(lattice);let fr=p-lattice;var fade=vec4<f32>(0);
++    let lattice=floor(p);let cell=vec4<i32>(lattice);let fr=p-lattice;var fade=vec4<f32>(0);let order=svmn_order_word();
+     for(var d=0u;d<dims;d++){
+-        let t=fr[d];let inner=rounded_add(t*rounded_add(t*6.0,-15.0),10.0);
+-        fade[d]=select((t*t)*(t*inner),((t*t)*t)*inner,dims==1u);
++        let t=fr[d];let inner=rounded_add(t*rounded_add(t*6.0,-15.0),10.0);let tt=svmn_order(t*t,order);
++        fade[d]=svmn_order(select(svmn_order(tt*svmn_order(t*inner,order),order),svmn_order(svmn_order(tt*t,order)*inner,order),dims==1u),order);
+     }
+     var partial=vec4<f32>(0);var result=0.0;let corners=1u<<dims;
+     for(var c=0u;c<corners;c++){
+diff --git a/native/shaders/wavefront_volume.wgsl b/native/shaders/wavefront_volume.wgsl
+index 0c69ed69..17c58ed4 100644
+--- a/native/shaders/wavefront_volume.wgsl
++++ b/native/shaders/wavefront_volume.wgsl
+@@ -56,6 +56,7 @@ fn volume_after(index:u32){
+     volume_finish(index,next);
+ }
+ @compute @workgroup_size(64) fn shade_volume(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME){fail();return;}
+     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);if(pixel>=p(11u)/stride){fail();return;}let base=p(4u)+pixel*stride*4u;
+@@ -142,6 +143,7 @@ fn volume_after(index:u32){
+ // Native homogeneous branch of kernel_volume_density_evaluate. The shader's
+ // spatially constant coefficient makes voxel position sampling unnecessary.
+ @compute @workgroup_size(64) fn shader_eval_volume_density(@builtin(global_invocation_id) id:vec3<u32>){
++    svm_invocation(id.x);
+     if(id.x>=p(1u)){return;}let offset=id.x+p(3u);let input=p(2u)+offset*VD_INPUT_SIZE*2u;
+     let shader=load_word(input+VD_INPUT_SIZE+VD_INPUT_OBJECT);if(shader==NONE){return;}
+     let object=load_word(input+VD_INPUT_OBJECT);let flags=load_word(table_at(G_shaders,shader&SHADER_MASK,SIZE_shaders)+SH_flags);

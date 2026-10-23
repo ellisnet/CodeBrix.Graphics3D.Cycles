@@ -1,0 +1,840 @@
+[23:09:07] merge wave 5 part 1 start; cap 02:09
+[23:09:56] manifest check vs baseline ff0580bd: 91601/91601, 0 missing/extra/changed; pre-merge.json written
+[23:10:59] zc, f, x64 applied (after-hashes match); z0 applied: 49 single-owner after-hash match (incl. 30 evidence files step-zero-20261022), AGENT-README + DEVICE.md clean three-way, MAINTAINER-README 1 conflict resolved by hand (z0 size-guard/mask text continues the envelope paragraph, then f's TESTING paragraph)
+[23:11:03] s2 applied: 6 single-owner after-hash match; AGENT-README, PARITY, DEVICE.md, surface_svm_test.h clean three-way
+[23:13:30] a650 applied: 7 single-owner after-hash match; AGENT-README + pipelines.cpp clean three-way; PARITY (a650 sentence inserted into S2's rewritten Material row) and DEVICE.md (both appended at EOF: ZC then A650) resolved by hand; pipelines.cpp refusal ported to ShaderFeatures; Metal instance patch (4442054b) applied; macOS x64 docs reworded (UNTESTED kept, +2 markers)
+[23:16:05] b1 Linux build exit=1 15s
+[23:16:37] b1 build FAILED (15 s): surface_svm_test.h:78 S2 probe dump streamed probe_features (now ShaderFeatures, z0) -> semantic S2xZ0 conflict; ported (hex of words from the highest non-zero down; identical text for masks within bits 0-63); <iomanip> added
+[23:24:16] b2 Linux build exit=0 459s
+[23:25:55] END bounce-before-surface exit=0 15s
+[23:26:03] END bounce-before-microfacet_bounce exit=0 23s
+[23:26:04] END bounce-before-glass_bounce exit=0 24s
+[23:26:27] END bounce-before-principled_bounce exit=0 47s
+[23:27:22] b3 Linux build exit=0 77s
+[23:27:46] END bounce-after-surface exit=0 13s
+[23:27:55] END bounce-after-microfacet_bounce exit=0 22s
+[23:27:56] END bounce-after-glass_bounce exit=0 23s
+[23:28:17] END bounce-after-principled_bounce exit=0 44s
+[23:28:57] principled_bounce shared device: before (b2 binaries) vs after (b3) on surface, microfacet_bounce, glass_bounce, principled_bounce: every stdout field except pipelineReport equal, output files equal, stderr equal; pipelines 40 -> 10 per gate (main 5 + rejection 5); bounce/compare.json
+[23:29:37] inventory.py check on merged tree: FAILS (expected) - 18 evidence entries pin sources changed after step zero by S2/A650/merge5 (render_gate.cpp, surface_gate.cpp, surface_svm_test.h, wavefront_shader_data/svm/svm_derivatives/svm_nodes.wgsl, pipelines.cpp/.h, webgpu_device.cpp); re-recording is part 2's checkpoint (no evidence written here)
+[23:29:56] checkpoint written (4367cd956d41b37e)
+[23:31:39] START a-all-lanes
+[23:31:39] START b-nodes-gate
+[23:31:39] START c-glass-superset
+[23:36:32] END c-glass-superset exit=0 293s
+[23:36:32] START c-principled-superset
+[23:37:39] android gate build android-arm64 exit=0 437s
+[23:38:03] review android-arm64 exit=0
+[23:45:41] android gate build android-x64 exit=0 458s
+[23:46:05] review android-x64 exit=0
+[23:49:11] android host build android-x64 exit=0 186s
+[23:52:15] android host build android-arm64 exit=0 184s
+[23:52:15] android builds DONE
+[23:52:22] END c-principled-superset exit=0 950s
+[23:52:22] START c-nodes-render-superset
+[23:52:41] checkpoint written (4367cd956d41b37e)
+[23:54:34] END c-nodes-render-superset exit=0 132s
+[23:54:34] START c-abi-dump
+[23:55:25] END c-abi-dump exit=0 51s
+[23:55:25] START c-transparent-dump
+[23:56:05] END c-transparent-dump exit=0 40s
+[23:56:05] START c-envelope-abi
+[23:58:22] END c-envelope-abi exit=1 137s
+[23:58:22] START c-envelope-materials
+[23:59:00] END a-all-lanes exit=0 1641s
+[23:59:00] START a-host-gate
+[00:01:01] END a-host-gate exit=0 121s
+[00:01:01] START a-dotnet-build
+[00:01:04] END a-dotnet-build exit=0 3s
+[00:01:04] START a-dotnet-test
+[00:01:57] END a-dotnet-test exit=0 53s
+[00:01:57] START a-dotnet-pack
+[00:01:58] END a-dotnet-pack exit=0 1s
+[00:01:58] START a-dotnet-build-debug
+[00:02:00] END a-dotnet-build-debug exit=0 2s
+[00:02:00] START a-dotnet-test-debug
+[00:02:54] END a-dotnet-test-debug exit=0 54s
+[00:02:54] START a-dotnet-pack-debug
+[00:02:55] END a-dotnet-pack-debug exit=0 1s
+[00:02:55] slotA DONE
+[00:03:00] APK build exit=0 114s
+[00:03:02] END c-envelope-materials exit=1 280s
+[00:03:02] START c-libm-linux
+[00:03:24] END c-libm-linux exit=0 22s
+[00:03:24] START c-reference-export
+[00:03:55] END b-nodes-gate exit=0 1936s
+[00:03:55] START b-principled-gate
+[00:03:56] c-envelope-abi/materials exit 1 = no measurement (empty --debug-file-directory, gdb had no Mesa symbols: maxEndIp null for every entry); rerun as slot D with native/work/merge4/debug
+[00:04:00] START d-envelope-abi
+[00:06:39] END d-envelope-abi exit=0 159s
+[00:06:39] START d-envelope-materials
+[00:07:28] END c-reference-export exit=0 244s
+[00:07:28] START c-triangle
+[00:09:23] END c-triangle exit=0 115s
+[00:09:23] START c-shadow-terminator
+[00:11:05] END c-shadow-terminator exit=0 102s
+[00:11:05] START c-surface
+[00:11:18] END c-surface exit=0 13s
+[00:11:18] slotC DONE
+[00:11:35] END d-envelope-materials exit=0 296s
+[00:11:35] slotD DONE
+[00:19:20] END b-principled-gate exit=0 925s
+[00:19:20] START b-tier-gate
+[00:19:39] END b-tier-gate exit=0 19s
+[00:19:39] START b-transparent-shadow
+[00:21:36] END b-transparent-shadow exit=0 117s
+[00:21:36] START b-sim650-nodes-world
+[00:21:36] END b-sim650-nodes-world exit=1 0s
+[00:21:36] START b-sim650-glass-render
+[00:22:08] END b-sim650-glass-render exit=0 32s
+[00:22:08] START b-size-guard
+[00:23:11] END b-size-guard exit=0 63s
+[00:23:11] START b-triangle-sample
+[00:23:24] END b-triangle-sample exit=0 13s
+[00:23:24] START b-svm-surface
+[00:23:34] END b-svm-surface exit=0 10s
+[00:23:34] START b-svm-world
+[00:23:58] END b-svm-world exit=0 24s
+[00:23:58] START b-probe-normal
+[00:24:28] END b-probe-normal exit=0 31s
+[00:24:29] START b-probe-attribute
+[00:24:47] END b-probe-attribute exit=0 18s
+[00:24:47] START b-probe-image
+[00:25:10] END b-probe-image exit=0 23s
+[00:25:10] START b-probe-image_file
+[00:25:11] END b-probe-image_file exit=0 1s
+[00:25:11] START b-probe-shader_data
+[00:25:16] END b-probe-shader_data exit=0 5s
+[00:25:16] slotB DONE
+[00:26:08] checkpoint written (4367cd956d41b37e)
+[00:26:23] scratch: removed bounce/*/*/shader-cache (Mesa scratch caches, no file over 5 MB); build trees, reference export, captures and validation outputs KEPT for part 2
+[00:27:41] DOC FIX after the gates: on the merged tree node render shade_background = 1,095,718 bytes (z0 measured 1,126,723 before S2/A650), so no gate warns at 1,110,000; my earlier wording (pipelines.h comment, MAINTAINER-README, DEVICE.md) said it warns -> corrected. pipelines.h comment edit keeps the line count; Linux + Android rebuilt to refresh build records, binaries hash-compared
+[00:33:38] android gate build android-arm64 exit=0 348s
+[00:34:00] review android-arm64 exit=0
+[00:36:14] b4 Linux build exit=0 504s
+[00:36:42] b4 (after doc fix): 57/57 Linux binaries byte-identical to b3 (validation/linux-bin-sha256-b3.txt vs -b4.txt), so every Linux gate result above stands for the final tree
+[00:39:25] android gate build android-x64 exit=0 325s
+[00:39:46] review android-x64 exit=0
+[00:42:14] android host build android-x64 exit=0 148s
+[00:44:43] android host build android-arm64 exit=0 149s
+[00:44:43] android builds DONE
+[00:45:25] Android rebuild after doc fix: staged arm64 67/67 and x64 67/67 binaries byte-identical to the first build (validation/staged-binaries-*.pre-docfix.json); host builds redone (exit 0)
+[00:47:12] APK rebuild exit=0 107s
+[00:47:29] APK rebuilt on the final tree: android-app/validation-m5b (apk d6b0b510..., 56 native payloads byte-identical to validation-m5; the APK file differs by packaging/signing); validation-m5b is the one for part 2
+[00:48:38] checkpoint written (82098bbc78773d17)
+[00:50:57] SEALED: reconciliation.md, post-merge.json (fff21328...), handoff/wave5.patch (82098bbc...), report ~/ClaudeHome/cycles-wgsl-2026-10-22/agent-reports/merge-wave-5-merge.md; git status 68 M / 16 ??
+[00:50:59] checkpoint written (82098bbc78773d17)
+[00:59:23] part 2 (evidence agent) start; cap 07:59 (7 h)
+[00:59:23] linux gate binaries 57/57 hash-verified against validation/linux-bin-sha256-b4.txt; staged-binaries lists arm64 36c4c9d8, x64 53d66797 verified against part 1 report
+[00:59:26] samsung lock taken
+[00:59:28] hp lock taken
+[01:00:02] samsung staged exit=0
+[01:00:21] samsung materials-m5: START principled_svm timeout=2400s
+[01:00:21] samsung materials-m5: SCENE-DUMP principled_svm
+[01:00:21] START e-all-lanes
+[01:00:22] START e-nodes-gate
+[01:00:23] START e-glass-superset
+[01:00:24] START ev-render
+[01:00:54] END ev-render exit=0 30s
+[01:00:54] START ev-device
+[01:00:54] END ev-device exit=0 0s
+[01:00:54] START ev-camera
+[01:00:58] END ev-camera exit=0 4s
+[01:00:58] START ev-background
+[01:01:05] END ev-background exit=0 7s
+[01:01:05] START ev-closest
+[01:01:11] hp staged exit=0
+[01:01:11] END ev-closest exit=0 6s
+[01:01:11] START ev-svm_world
+[01:01:21] checkpoint-2 status written
+[01:01:33] hp materials-m5: START principled_svm timeout=2400s
+[01:01:33] hp materials-m5: SCENE-DUMP principled_svm
+[01:01:37] samsung materials-m5: SCENE-REFERENCE principled_svm references=237
+[01:01:43] END ev-svm_world exit=0 32s
+[01:01:43] START ev-svm_surface
+[01:01:54] END ev-svm_surface exit=0 11s
+[01:01:54] START ev-attribute
+[01:02:17] END ev-attribute exit=0 23s
+[01:02:17] START ev-image
+[01:02:47] END ev-image exit=0 30s
+[01:02:47] START ev-image_file
+[01:02:48] END ev-image_file exit=0 1s
+[01:02:48] START ev-normal
+[01:03:14] hp materials-m5: SCENE-REFERENCE principled_svm references=237
+[01:03:23] END ev-normal exit=0 35s
+[01:03:23] START ev-render-attributes
+[01:03:42] samsung materials-m5: PASS principled_svm 119s maxPipelineMs=None
+[01:03:42] samsung materials-m5: START principled_bounce timeout=2400s
+[01:03:57] END ev-render-attributes exit=0 34s
+[01:03:57] START ev-render-images
+[01:04:35] END ev-render-images exit=0 38s
+[01:04:35] START ev-render-normals
+[01:05:07] samsung materials-m5: PASS principled_bounce 85s maxPipelineMs=17071.3
+[01:05:07] samsung materials-m5: START principled_render timeout=2400s
+[01:05:07] samsung materials-m5: SCENE-DUMP principled_render
+[01:05:13] END e-glass-superset exit=0 290s
+[01:05:13] START e-principled-superset
+[01:05:24] END ev-render-normals exit=0 49s
+[01:05:24] START ev-nodes_svm
+[01:05:27] samsung materials-m5: SCENE-REFERENCE principled_render references=1
+[01:06:33] hp materials-m5: PASS principled_svm 169s maxPipelineMs=None
+[01:06:33] hp materials-m5: START principled_bounce timeout=2400s
+[01:06:49] samsung materials-m5: REFERENCE principled_render host re-judged vs glibc: False
+[01:06:49] samsung materials-m5: FAIL principled_render exit=1 81s: Independent CPU image 9114 actual=1.546950 expected=1.545995
+[01:06:49] samsung materials-m5: START nodes_svm timeout=2400s
+[01:06:49] samsung materials-m5: SCENE-DUMP nodes_svm
+[01:10:29] hp materials-m5: PASS principled_bounce 236s maxPipelineMs=58966
+[01:10:29] hp materials-m5: START principled_render timeout=2400s
+[01:10:29] hp materials-m5: SCENE-DUMP principled_render
+[01:10:52] hp materials-m5: SCENE-REFERENCE principled_render references=1
+[01:11:04] samsung materials-m5: SCENE-REFERENCE nodes_svm references=541
+[01:12:05] END ev-nodes_svm exit=0 401s
+[01:12:05] START ev-nodes_world
+[01:13:29] hp materials-m5: REFERENCE principled_render host re-judged vs glibc: True
+[01:13:29] hp materials-m5: PASS principled_render 152s maxPipelineMs=59345.9
+[01:13:29] hp materials-m5: START nodes_svm timeout=2400s
+[01:13:29] hp materials-m5: SCENE-DUMP nodes_svm
+[01:14:22] END ev-nodes_world exit=0 137s
+[01:16:54] hp materials-m5: SCENE-REFERENCE nodes_svm references=541
+[01:20:43] END e-principled-superset exit=0 930s
+[01:20:43] START e-nodes-render-superset
+[01:22:55] END e-nodes-render-superset exit=0 132s
+[01:22:55] START e-abi-dump
+[01:23:45] END e-abi-dump exit=0 50s
+[01:23:45] START e-transparent-dump
+[01:24:28] END e-transparent-dump exit=0 43s
+[01:24:28] START e-envelope-abi
+[01:27:12] END e-envelope-abi exit=0 164s
+[01:27:12] START e-envelope-materials
+[01:27:34] END e-all-lanes exit=0 1633s
+[01:27:34] START e-host-gate
+[01:29:41] END e-host-gate exit=0 127s
+[01:29:41] START e-dotnet-test
+[01:30:34] END e-dotnet-test exit=0 53s
+[01:30:34] START e-dotnet-test-debug
+[01:31:24] hp materials-m5: PASS nodes_svm 813s maxPipelineMs=None
+[01:31:24] hp materials-m5: START nodes_world timeout=2400s
+[01:31:26] END e-dotnet-test-debug exit=0 52s
+[01:31:26] slotE_A DONE
+[01:31:26] checkpoint-2 status written
+[01:31:59] END e-nodes-gate exit=0 1897s
+[01:31:59] START e-principled-gate
+[01:32:02] START e-principled-replay
+[01:32:04] END e-envelope-materials exit=0 292s
+[01:32:04] START e-libm-linux
+[01:32:26] END e-libm-linux exit=0 22s
+[01:32:26] START e-reference-export
+[01:32:47] END e-principled-replay exit=0 45s
+[01:32:47] START e-nodes-replay
+[01:33:26] END e-nodes-replay exit=0 39s
+[01:33:26] slotE_D DONE
+[01:35:42] hp materials-m5: PASS nodes_world 258s maxPipelineMs=31571.2
+[01:35:42] hp materials-m5: START nodes_render timeout=2400s
+[01:35:42] hp materials-m5: SCENE-DUMP nodes_render
+[01:36:02] hp materials-m5: SCENE-REFERENCE nodes_render references=1
+[01:36:16] samsung materials-m5: PASS nodes_svm 1500s maxPipelineMs=None
+[01:36:16] samsung materials-m5: START nodes_world timeout=2400s
+[01:36:29] END e-reference-export exit=0 243s
+[01:36:29] START e-triangle
+[01:37:53] hp materials-m5: REFERENCE nodes_render host re-judged vs glibc: True
+[01:37:53] hp materials-m5: PASS nodes_render 106s maxPipelineMs=36456.4
+[01:37:53] hp materials-m5: START principled-replay timeout=2400s
+[01:38:20] END e-triangle exit=0 111s
+[01:38:20] START e-shadow-terminator
+[01:39:58] hp materials-m5: PASS principled-replay 121s readbacks=322 max=6.44e-06 strict=94 fmt=native-command-stream-v6
+[01:39:58] hp materials-m5: START nodes-replay timeout=2400s
+[01:40:02] END e-shadow-terminator exit=0 102s
+[01:40:02] START e-surface
+[01:40:13] END e-surface exit=0 11s
+[01:40:13] slotE_C DONE
+[01:41:15] hp materials-m5: PASS nodes-replay 74s readbacks=320 max=0.000103 strict=1849 fmt=native-command-stream-v6
+[01:41:33] hp materials-m5: END passed=True wall=2405s/7200s failures=0
+[01:41:33] hp corpus materials-m5 exit=0
+[01:41:52] hp triangle-m5: START triangle_sample timeout=1200s
+[01:41:52] hp triangle-m5: SCENE-DUMP triangle_sample
+[01:42:11] hp triangle-m5: SCENE-REFERENCE triangle_sample references=1
+[01:42:35] hp triangle-m5: REFERENCE triangle_sample host re-judged vs glibc: True
+[01:42:35] hp triangle-m5: PASS triangle_sample 23s maxPipelineMs=None
+[01:42:35] hp triangle-m5: START surface timeout=1200s
+[01:43:14] hp triangle-m5: PASS surface 39s maxPipelineMs=5118.26
+[01:43:14] hp triangle-m5: START triangle_lighting timeout=1200s
+[01:43:14] hp triangle-m5: SCENE-DUMP triangle_lighting
+[01:43:35] hp triangle-m5: SCENE-REFERENCE triangle_lighting references=6
+[01:44:31] samsung materials-m5: PASS nodes_world 495s maxPipelineMs=95776.8
+[01:44:31] samsung materials-m5: START nodes_render timeout=2400s
+[01:44:31] samsung materials-m5: SCENE-DUMP nodes_render
+[01:44:50] samsung materials-m5: SCENE-REFERENCE nodes_render references=1
+[01:45:20] hp triangle-m5: REFERENCE triangle_lighting host re-judged vs glibc: True
+[01:45:20] hp triangle-m5: PASS triangle_lighting 88s maxPipelineMs=12151.5
+[01:45:20] hp triangle-m5: START replay-0 timeout=1200s
+[01:46:00] hp triangle-m5: PASS replay-0 37s readbacks=289 max=4.77e-07 strict=9 fmt=native-command-stream-v6
+[01:46:00] hp triangle-m5: START replay-1 timeout=1200s
+[01:46:48] hp triangle-m5: PASS replay-1 45s readbacks=417 max=1.19e-07 strict=0 fmt=native-command-stream-v8
+[01:46:48] hp triangle-m5: START replay-2 timeout=1200s
+[01:47:03] samsung materials-m5: REFERENCE nodes_render host re-judged vs glibc: False
+[01:47:04] samsung materials-m5: FAIL nodes_render exit=1 133s: Independent CPU image 6720 actual=0.928481 expected=0.928078
+[01:47:13] END e-principled-gate exit=0 914s
+[01:47:13] START e-tier-gate
+[01:47:21] samsung materials-m5: END passed=False wall=2822s/7200s failures=4
+[01:47:21] samsung corpus materials-m5 exit=0
+[01:47:33] END e-tier-gate exit=0 20s
+[01:47:33] START e-transparent-shadow
+[01:47:35] hp triangle-m5: PASS replay-2 45s readbacks=415 max=6.41e-07 strict=14 fmt=native-command-stream-v8
+[01:47:35] hp triangle-m5: START replay-3 timeout=1200s
+[01:47:42] samsung triangle-m5: START triangle_sample timeout=1200s
+[01:47:42] samsung triangle-m5: SCENE-DUMP triangle_sample
+[01:48:01] samsung triangle-m5: SCENE-REFERENCE triangle_sample references=1
+[01:48:22] samsung triangle-m5: REFERENCE triangle_sample host re-judged vs glibc: False
+[01:48:22] samsung triangle-m5: FAIL triangle_sample exit=1 21s: Emitter sample=3133 field=2 got=0.382186 expected=0.379992
+[01:48:22] samsung triangle-m5: START surface timeout=1200s
+[01:48:24] hp triangle-m5: PASS replay-3 46s readbacks=473 max=2.32e-06 strict=427 fmt=native-command-stream-v8
+[01:48:24] hp triangle-m5: START replay-4 timeout=1200s
+[01:48:47] samsung triangle-m5: PASS surface 24s maxPipelineMs=3563.56
+[01:48:47] samsung triangle-m5: START triangle_lighting timeout=1200s
+[01:48:47] samsung triangle-m5: SCENE-DUMP triangle_lighting
+[01:49:06] samsung triangle-m5: SCENE-REFERENCE triangle_lighting references=6
+[01:49:12] hp triangle-m5: PASS replay-4 46s readbacks=415 max=3.73e-07 strict=10 fmt=native-command-stream-v8
+[01:49:12] hp triangle-m5: START replay-5 timeout=1200s
+[01:49:44] END e-transparent-shadow exit=0 131s
+[01:49:45] START e-sim650-nodes-world
+[01:49:45] END e-sim650-nodes-world exit=1 0s
+[01:49:45] START e-sim650-glass-render
+[01:50:16] END e-sim650-glass-render exit=0 31s
+[01:50:17] START e-size-guard
+[01:50:19] hp triangle-m5: PASS replay-5 64s readbacks=464 max=2.26e-06 strict=427 fmt=native-command-stream-v8
+[01:50:28] samsung triangle-m5: REFERENCE triangle_lighting host re-judged vs glibc: True
+[01:50:28] samsung triangle-m5: PASS triangle_lighting 79s maxPipelineMs=8990.73
+[01:50:28] samsung triangle-m5: START replay-0 timeout=1200s
+[01:50:37] hp triangle-m5: END passed=True wall=526s/2400s failures=0
+[01:50:37] hp corpus triangle-m5 exit=0
+[01:50:44] samsung triangle-m5: PASS replay-0 16s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[01:50:44] samsung triangle-m5: START replay-1 timeout=1200s
+[01:50:56] hp emitter-m5: START emitter_sample timeout=300s
+[01:50:56] hp emitter-m5: SCENE-DUMP emitter_sample
+[01:51:06] samsung triangle-m5: PASS replay-1 21s readbacks=417 max=1.79e-07 strict=5 fmt=native-command-stream-v8
+[01:51:06] samsung triangle-m5: START replay-2 timeout=1200s
+[01:51:16] hp emitter-m5: SCENE-REFERENCE emitter_sample references=1
+[01:51:21] END e-size-guard exit=0 64s
+[01:51:21] START e-triangle-sample
+[01:51:27] samsung triangle-m5: PASS replay-2 21s readbacks=415 max=6.41e-07 strict=8 fmt=native-command-stream-v8
+[01:51:27] samsung triangle-m5: START replay-3 timeout=1200s
+[01:51:34] END e-triangle-sample exit=0 13s
+[01:51:34] START e-svm-surface
+[01:51:37] hp emitter-m5: REFERENCE emitter_sample host re-judged vs glibc: True
+[01:51:37] hp emitter-m5: PASS emitter_sample 20s maxPipelineMs=None
+[01:51:43] END e-svm-surface exit=0 9s
+[01:51:43] START e-svm-world
+[01:51:50] samsung triangle-m5: PASS replay-3 22s readbacks=473 max=1.79e-06 strict=235 fmt=native-command-stream-v8
+[01:51:50] samsung triangle-m5: START replay-4 timeout=1200s
+[01:51:56] hp emitter-m5: END passed=True wall=60s/600s failures=0
+[01:51:56] hp corpus emitter-m5 exit=0
+[01:52:09] END e-svm-world exit=0 26s
+[01:52:09] START e-probe-normal
+[01:52:12] samsung triangle-m5: PASS replay-4 21s readbacks=415 max=3.73e-07 strict=11 fmt=native-command-stream-v8
+[01:52:12] samsung triangle-m5: START replay-5 timeout=1200s
+[01:52:15] hp lighting-m5: START lighting_mis timeout=1200s
+[01:52:15] hp lighting-m5: SCENE-DUMP lighting_mis
+[01:52:37] hp lighting-m5: SCENE-REFERENCE lighting_mis references=8
+[01:52:40] END e-probe-normal exit=0 31s
+[01:52:40] START e-probe-attribute
+[01:52:48] samsung triangle-m5: PASS replay-5 35s readbacks=464 max=1.79e-06 strict=248 fmt=native-command-stream-v8
+[01:53:00] END e-probe-attribute exit=0 20s
+[01:53:00] START e-probe-image
+[01:53:06] samsung triangle-m5: END passed=False wall=326s/2400s failures=1
+[01:53:06] samsung corpus triangle-m5 exit=0
+[01:53:23] END e-probe-image exit=0 23s
+[01:53:23] START e-probe-image_file
+[01:53:23] END e-probe-image_file exit=0 0s
+[01:53:23] START e-probe-shader_data
+[01:53:26] samsung emitter-m5: START emitter_sample timeout=300s
+[01:53:26] samsung emitter-m5: SCENE-DUMP emitter_sample
+[01:53:29] END e-probe-shader_data exit=0 6s
+[01:53:29] slotE_B DONE
+[01:53:44] samsung emitter-m5: SCENE-REFERENCE emitter_sample references=1
+[01:53:46] hp lighting-m5: REFERENCE lighting_mis host re-judged vs glibc: True
+[01:53:46] hp lighting-m5: PASS lighting_mis 48s maxPipelineMs=12122
+[01:53:46] hp lighting-m5: START broad_lighting timeout=1200s
+[01:53:46] hp lighting-m5: SCENE-DUMP broad_lighting
+[01:53:52] samsung emitter-m5: REFERENCE emitter_sample host re-judged vs glibc: True
+[01:53:52] samsung emitter-m5: PASS emitter_sample 8s maxPipelineMs=None
+[01:54:09] hp lighting-m5: SCENE-REFERENCE broad_lighting references=12
+[01:54:11] samsung emitter-m5: END passed=True wall=46s/600s failures=0
+[01:54:11] samsung corpus emitter-m5 exit=0
+[01:54:30] samsung lighting-m5: START lighting_mis timeout=1200s
+[01:54:30] samsung lighting-m5: SCENE-DUMP lighting_mis
+[01:54:50] samsung lighting-m5: SCENE-REFERENCE lighting_mis references=8
+[01:55:24] samsung lighting-m5: REFERENCE lighting_mis host re-judged vs glibc: True
+[01:55:24] samsung lighting-m5: PASS lighting_mis 29s maxPipelineMs=4282.55
+[01:55:24] samsung lighting-m5: START broad_lighting timeout=1200s
+[01:55:24] samsung lighting-m5: SCENE-DUMP broad_lighting
+[01:55:45] samsung lighting-m5: SCENE-REFERENCE broad_lighting references=12
+[01:55:50] hp lighting-m5: REFERENCE broad_lighting host re-judged vs glibc: True
+[01:55:50] hp lighting-m5: PASS broad_lighting 69s maxPipelineMs=12144.4
+[01:55:50] hp lighting-m5: START lighting_mis-replay-0 timeout=1200s
+[01:56:30] hp lighting-m5: PASS lighting_mis-replay-0 38s readbacks=414 max=1.79e-07 strict=3 fmt=native-command-stream-v6
+[01:56:30] hp lighting-m5: START lighting_mis-replay-1 timeout=1200s
+[01:56:49] samsung lighting-m5: REFERENCE broad_lighting host re-judged vs glibc: True
+[01:56:49] samsung lighting-m5: PASS broad_lighting 56s maxPipelineMs=8178.67
+[01:56:49] samsung lighting-m5: START lighting_mis-replay-0 timeout=1200s
+[01:57:06] samsung lighting-m5: PASS lighting_mis-replay-0 16s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[01:57:06] samsung lighting-m5: START lighting_mis-replay-1 timeout=1200s
+[01:57:11] hp lighting-m5: PASS lighting_mis-replay-1 38s readbacks=450 max=1.91e-06 strict=11 fmt=native-command-stream-v6
+[01:57:11] hp lighting-m5: START broad_lighting-replay-0 timeout=1200s
+[01:57:23] samsung lighting-m5: PASS lighting_mis-replay-1 17s readbacks=450 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[01:57:23] samsung lighting-m5: START broad_lighting-replay-0 timeout=1200s
+[01:57:41] samsung lighting-m5: PASS broad_lighting-replay-0 17s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[01:57:41] samsung lighting-m5: START broad_lighting-replay-1 timeout=1200s
+[01:57:52] hp lighting-m5: PASS broad_lighting-replay-0 39s readbacks=414 max=1.79e-07 strict=1 fmt=native-command-stream-v6
+[01:57:52] hp lighting-m5: START broad_lighting-replay-1 timeout=1200s
+[01:57:58] samsung lighting-m5: PASS broad_lighting-replay-1 17s readbacks=450 max=4.17e-07 strict=15 fmt=native-command-stream-v6
+[01:58:16] samsung lighting-m5: END passed=True wall=227s/2400s failures=0
+[01:58:16] samsung corpus lighting-m5 exit=0
+[01:58:34] hp lighting-m5: PASS broad_lighting-replay-1 39s readbacks=450 max=5.07e-07 strict=26 fmt=native-command-stream-v6
+[01:58:35] samsung regression-m5: START glass_render timeout=600s
+[01:58:35] samsung regression-m5: SCENE-DUMP glass_render
+[01:58:51] hp lighting-m5: END passed=True wall=398s/2400s failures=0
+[01:58:51] hp corpus lighting-m5 exit=0
+[01:58:54] samsung regression-m5: SCENE-REFERENCE glass_render references=1
+[01:59:11] hp regression-m5: START glass_render timeout=600s
+[01:59:11] hp regression-m5: SCENE-DUMP glass_render
+[01:59:29] hp regression-m5: SCENE-REFERENCE glass_render references=1
+[01:59:58] samsung regression-m5: REFERENCE glass_render host re-judged vs glibc: True
+[01:59:58] samsung regression-m5: PASS glass_render 63s maxPipelineMs=4150.3
+[01:59:58] samsung regression-m5: START lighting_mis timeout=600s
+[01:59:58] samsung regression-m5: SCENE-DUMP lighting_mis
+[02:00:17] samsung regression-m5: SCENE-REFERENCE lighting_mis references=8
+[02:00:44] hp regression-m5: REFERENCE glass_render host re-judged vs glibc: True
+[02:00:44] hp regression-m5: PASS glass_render 70s maxPipelineMs=12162.1
+[02:00:44] hp regression-m5: START lighting_mis timeout=600s
+[02:00:44] hp regression-m5: SCENE-DUMP lighting_mis
+[02:00:52] samsung regression-m5: REFERENCE lighting_mis host re-judged vs glibc: True
+[02:00:52] samsung regression-m5: PASS lighting_mis 30s maxPipelineMs=4410.44
+[02:00:52] samsung regression-m5: START transparent_lighting timeout=600s
+[02:00:52] samsung regression-m5: SCENE-DUMP transparent_lighting
+[02:01:05] hp regression-m5: SCENE-REFERENCE lighting_mis references=8
+[02:01:12] samsung regression-m5: SCENE-REFERENCE transparent_lighting references=8
+[02:01:26] checkpoint-2 status written
+[02:02:15] hp regression-m5: REFERENCE lighting_mis host re-judged vs glibc: True
+[02:02:15] hp regression-m5: PASS lighting_mis 50s maxPipelineMs=12275.3
+[02:02:15] hp regression-m5: START transparent_lighting timeout=600s
+[02:02:15] hp regression-m5: SCENE-DUMP transparent_lighting
+[02:02:37] hp regression-m5: SCENE-REFERENCE transparent_lighting references=8
+[02:02:48] samsung regression-m5: REFERENCE transparent_lighting host re-judged vs glibc: True
+[02:02:48] samsung regression-m5: PASS transparent_lighting 91s maxPipelineMs=8461.4
+[02:03:06] samsung regression-m5: END passed=True wall=272s/1500s failures=0
+[02:03:06] samsung corpus regression-m5 exit=0
+[02:03:26] samsung transparent-m5: START transparent_shadow timeout=1200s
+[02:03:45] samsung transparent-m5: PASS transparent_shadow 18s maxPipelineMs=3498.92
+[02:03:45] samsung transparent-m5: START transparent_lighting timeout=1200s
+[02:03:45] samsung transparent-m5: SCENE-DUMP transparent_lighting
+[02:04:04] samsung transparent-m5: SCENE-REFERENCE transparent_lighting references=8
+[02:04:15] hp regression-m5: REFERENCE transparent_lighting host re-judged vs glibc: True
+[02:04:15] hp regression-m5: PASS transparent_lighting 78s maxPipelineMs=11914.1
+[02:04:33] hp regression-m5: END passed=True wall=324s/1500s failures=0
+[02:04:33] hp corpus regression-m5 exit=0
+[02:04:52] hp transparent-m5: START transparent_shadow timeout=1200s
+[02:05:08] hp transparent-m5: PASS transparent_shadow 13s maxPipelineMs=2947.97
+[02:05:08] hp transparent-m5: START transparent_lighting timeout=1200s
+[02:05:08] hp transparent-m5: SCENE-DUMP transparent_lighting
+[02:05:30] hp transparent-m5: SCENE-REFERENCE transparent_lighting references=8
+[02:05:39] samsung transparent-m5: REFERENCE transparent_lighting host re-judged vs glibc: True
+[02:05:39] samsung transparent-m5: PASS transparent_lighting 90s maxPipelineMs=8220.45
+[02:05:39] samsung transparent-m5: START transparent_lighting-replay-0 timeout=1200s
+[02:05:59] samsung transparent-m5: PASS transparent_lighting-replay-0 19s readbacks=560 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[02:05:59] samsung transparent-m5: START transparent_lighting-replay-1 timeout=1200s
+[02:06:19] samsung transparent-m5: PASS transparent_lighting-replay-1 20s readbacks=596 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[02:06:19] samsung transparent-m5: START transparent_lighting-replay-2 timeout=1200s
+[02:06:45] samsung transparent-m5: PASS transparent_lighting-replay-2 25s readbacks=575 max=3.81e-06 strict=77 fmt=native-command-stream-v7
+[02:06:45] samsung transparent-m5: START transparent_lighting-replay-3 timeout=1200s
+[02:07:10] hp transparent-m5: REFERENCE transparent_lighting host re-judged vs glibc: True
+[02:07:10] hp transparent-m5: PASS transparent_lighting 79s maxPipelineMs=12108
+[02:07:10] hp transparent-m5: START transparent_lighting-replay-0 timeout=1200s
+[02:07:11] samsung transparent-m5: PASS transparent_lighting-replay-3 25s readbacks=580 max=2.29e-06 strict=134 fmt=native-command-stream-v7
+[02:07:11] samsung transparent-m5: START transparent_lighting-replay-4 timeout=1200s
+[02:07:37] samsung transparent-m5: PASS transparent_lighting-replay-4 26s readbacks=840 max=6.02e-06 strict=168 fmt=native-command-stream-v7
+[02:07:37] samsung transparent-m5: START transparent_lighting-replay-5 timeout=1200s
+[02:07:55] hp transparent-m5: PASS transparent_lighting-replay-0 42s readbacks=560 max=1.49e-07 strict=1 fmt=native-command-stream-v7
+[02:07:55] hp transparent-m5: START transparent_lighting-replay-1 timeout=1200s
+[02:08:05] samsung transparent-m5: PASS transparent_lighting-replay-5 26s readbacks=916 max=7.9e-07 strict=3 fmt=native-command-stream-v7
+[02:08:05] samsung transparent-m5: START transparent_lighting-replay-6 timeout=1200s
+[02:08:30] samsung transparent-m5: PASS transparent_lighting-replay-6 25s readbacks=428 max=6.02e-06 strict=103 fmt=native-command-stream-v7
+[02:08:30] samsung transparent-m5: START transparent_lighting-replay-7 timeout=1200s
+[02:08:40] hp transparent-m5: PASS transparent_lighting-replay-1 43s readbacks=596 max=1.91e-06 strict=8 fmt=native-command-stream-v7
+[02:08:40] hp transparent-m5: START transparent_lighting-replay-2 timeout=1200s
+[02:08:56] samsung transparent-m5: PASS transparent_lighting-replay-7 25s readbacks=518 max=6.02e-06 strict=208 fmt=native-command-stream-v7
+[02:08:56] samsung transparent-m5: START transparent-shadow-replay-direct timeout=1200s
+[02:09:03] samsung transparent-m5: PASS transparent-shadow-replay-direct 6s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[02:09:03] samsung transparent-m5: START transparent-shadow-replay-indexed timeout=1200s
+[02:09:10] samsung transparent-m5: PASS transparent-shadow-replay-indexed 6s readbacks=4 max=0 strict=0 fmt=native-command-stream-v7
+[02:09:27] samsung transparent-m5: END passed=True wall=363s/2400s failures=0
+[02:09:27] samsung corpus transparent-m5 exit=0
+[02:09:31] hp transparent-m5: PASS transparent_lighting-replay-2 48s readbacks=575 max=1.91e-06 strict=93 fmt=native-command-stream-v7
+[02:09:31] hp transparent-m5: START transparent_lighting-replay-3 timeout=1200s
+[02:09:46] samsung terminator-m5: START shadow_terminator timeout=900s
+[02:09:46] samsung terminator-m5: SCENE-DUMP shadow_terminator
+[02:10:06] samsung terminator-m5: SCENE-REFERENCE shadow_terminator references=10
+[02:10:21] hp transparent-m5: PASS transparent_lighting-replay-3 48s readbacks=580 max=5.01e-06 strict=323 fmt=native-command-stream-v7
+[02:10:21] hp transparent-m5: START transparent_lighting-replay-4 timeout=1200s
+[02:11:13] hp transparent-m5: PASS transparent_lighting-replay-4 49s readbacks=840 max=7.75e-06 strict=435 fmt=native-command-stream-v7
+[02:11:13] hp transparent-m5: START transparent_lighting-replay-5 timeout=1200s
+[02:11:46] samsung terminator-m5: REFERENCE shadow_terminator host re-judged vs glibc: True
+[02:11:46] samsung terminator-m5: PASS shadow_terminator 96s maxPipelineMs=8644.19
+[02:11:46] samsung terminator-m5: START terminator-replay-0 timeout=900s
+[02:11:59] samsung terminator-m5: PASS terminator-replay-0 13s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:11:59] samsung terminator-m5: START terminator-replay-1 timeout=900s
+[02:12:05] hp transparent-m5: PASS transparent_lighting-replay-5 49s readbacks=916 max=7.75e-07 strict=4 fmt=native-command-stream-v7
+[02:12:05] hp transparent-m5: START transparent_lighting-replay-6 timeout=1200s
+[02:12:14] samsung terminator-m5: PASS terminator-replay-1 14s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:12:14] samsung terminator-m5: START terminator-replay-2 timeout=900s
+[02:12:29] samsung terminator-m5: PASS terminator-replay-2 14s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:12:29] samsung terminator-m5: START terminator-replay-3 timeout=900s
+[02:12:44] samsung terminator-m5: PASS terminator-replay-3 14s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:12:44] samsung terminator-m5: START terminator-replay-4 timeout=900s
+[02:12:55] hp transparent-m5: PASS transparent_lighting-replay-6 48s readbacks=428 max=6.56e-06 strict=299 fmt=native-command-stream-v7
+[02:12:55] hp transparent-m5: START transparent_lighting-replay-7 timeout=1200s
+[02:13:09] samsung terminator-m5: PASS terminator-replay-4 25s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[02:13:09] samsung terminator-m5: START terminator-replay-5 timeout=900s
+[02:13:34] samsung terminator-m5: PASS terminator-replay-5 25s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[02:13:34] samsung terminator-m5: START terminator-replay-6 timeout=900s
+[02:13:47] hp transparent-m5: PASS transparent_lighting-replay-7 49s readbacks=518 max=6.79e-06 strict=519 fmt=native-command-stream-v7
+[02:13:47] hp transparent-m5: START transparent-shadow-replay-direct timeout=1200s
+[02:13:54] hp transparent-m5: PASS transparent-shadow-replay-direct 6s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[02:13:54] hp transparent-m5: START transparent-shadow-replay-indexed timeout=1200s
+[02:13:59] samsung terminator-m5: PASS terminator-replay-6 25s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[02:13:59] samsung terminator-m5: START terminator-replay-7 timeout=900s
+[02:14:01] hp transparent-m5: PASS transparent-shadow-replay-indexed 6s readbacks=4 max=7.45e-09 strict=0 fmt=native-command-stream-v7
+[02:14:19] hp transparent-m5: END passed=True wall=568s/2400s failures=0
+[02:14:19] hp corpus transparent-m5 exit=0
+[02:14:24] samsung terminator-m5: PASS terminator-replay-7 25s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[02:14:24] samsung terminator-m5: START terminator-replay-8 timeout=900s
+[02:14:38] hp terminator-m5: START shadow_terminator timeout=900s
+[02:14:38] hp terminator-m5: SCENE-DUMP shadow_terminator
+[02:14:50] samsung terminator-m5: PASS terminator-replay-8 25s readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[02:14:50] samsung terminator-m5: START terminator-replay-9 timeout=900s
+[02:15:01] hp terminator-m5: SCENE-REFERENCE shadow_terminator references=10
+[02:15:24] samsung terminator-m5: PASS terminator-replay-9 33s readbacks=443 max=2.91e-05 strict=24 fmt=native-command-stream-v6
+[02:15:42] samsung terminator-m5: END passed=True wall=357s/1800s failures=0
+[02:15:42] samsung corpus terminator-m5 exit=0
+[02:16:01] samsung spec-refusal-m5: START glass_render-spec timeout=1200s
+[02:16:01] samsung spec-refusal-m5: SCENE-DUMP glass_render-spec
+[02:16:20] samsung spec-refusal-m5: SCENE-REFERENCE glass_render-spec references=1
+[02:17:23] samsung spec-refusal-m5: REFERENCE glass_render-spec host re-judged vs glibc: True
+[02:17:23] samsung spec-refusal-m5: PASS glass_render-spec 63s maxPipelineMs=4090.86
+[02:17:23] samsung spec-refusal-m5: START glass_render-nospec-refused timeout=1200s
+[02:17:24] samsung spec-refusal-m5: PASS glass_render-nospec-refused refusal exit=1 0s
+[02:17:24] samsung spec-refusal-m5: START glass_render-superset-refused timeout=1200s
+[02:17:24] samsung spec-refusal-m5: PASS glass_render-superset-refused refusal exit=1 0s
+[02:17:42] samsung spec-refusal-m5: END passed=True wall=102s/1800s failures=0
+[02:17:42] samsung corpus spec-refusal-m5 exit=0
+[02:17:49] hp terminator-m5: REFERENCE shadow_terminator host re-judged vs glibc: True
+[02:17:49] hp terminator-m5: PASS shadow_terminator 152s maxPipelineMs=35700.7
+[02:17:49] hp terminator-m5: START terminator-replay-0 timeout=900s
+[02:18:00] samsung hostcap-linux-triangle: START tri0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-0)
+[02:18:15] samsung hostcap-linux-triangle: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[02:18:15] samsung hostcap-linux-triangle: START tri1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-1)
+[02:18:22] hp terminator-m5: PASS terminator-replay-0 32s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:18:22] hp terminator-m5: START terminator-replay-1 timeout=900s
+[02:18:36] samsung hostcap-linux-triangle: PASS tri1 readbacks=417 max=1.49e-07 strict=1 fmt=native-command-stream-v8
+[02:18:36] samsung hostcap-linux-triangle: START tri2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-2)
+[02:18:57] samsung hostcap-linux-triangle: PASS tri2 readbacks=415 max=6.41e-07 strict=14 fmt=native-command-stream-v8
+[02:18:58] samsung hostcap-linux-triangle: START tri3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-3)
+[02:19:04] hp terminator-m5: PASS terminator-replay-1 40s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:19:04] hp terminator-m5: START terminator-replay-2 timeout=900s
+[02:19:19] samsung hostcap-linux-triangle: PASS tri3 readbacks=473 max=1.76e-06 strict=236 fmt=native-command-stream-v8
+[02:19:19] samsung hostcap-linux-triangle: START tri4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-4)
+[02:19:41] samsung hostcap-linux-triangle: PASS tri4 readbacks=415 max=3.73e-07 strict=8 fmt=native-command-stream-v8
+[02:19:41] samsung hostcap-linux-triangle: START tri5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-5)
+[02:19:46] hp terminator-m5: PASS terminator-replay-2 40s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:19:46] hp terminator-m5: START terminator-replay-3 timeout=900s
+[02:20:16] samsung hostcap-linux-triangle: PASS tri5 readbacks=464 max=2.38e-06 strict=258 fmt=native-command-stream-v8
+[02:20:27] hp terminator-m5: PASS terminator-replay-3 40s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:20:27] hp terminator-m5: START terminator-replay-4 timeout=900s
+[02:20:32] samsung hostcap-linux-triangle: END passed=True wall=154s/3600s
+[02:20:32] samsung hostcap triangle exit=0
+[02:20:50] samsung hostcap-linux-terminator: START term0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-0)
+[02:21:02] samsung hostcap-linux-terminator: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:21:02] samsung hostcap-linux-terminator: START term1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-1)
+[02:21:16] samsung hostcap-linux-terminator: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:21:17] samsung hostcap-linux-terminator: START term2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-2)
+[02:21:31] samsung hostcap-linux-terminator: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:21:31] samsung hostcap-linux-terminator: START term3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-3)
+[02:21:36] hp terminator-m5: PASS terminator-replay-4 68s readbacks=455 max=1.53e-05 strict=22 fmt=native-command-stream-v6
+[02:21:36] hp terminator-m5: START terminator-replay-5 timeout=900s
+[02:21:46] samsung hostcap-linux-terminator: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:21:46] samsung hostcap-linux-terminator: START term4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-4)
+[02:22:11] samsung hostcap-linux-terminator: PASS term4 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[02:22:11] samsung hostcap-linux-terminator: START term5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-5)
+[02:22:36] samsung hostcap-linux-terminator: PASS term5 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[02:22:37] samsung hostcap-linux-terminator: START term6 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-6)
+[02:22:45] hp terminator-m5: PASS terminator-replay-5 68s readbacks=446 max=1.53e-05 strict=18 fmt=native-command-stream-v6
+[02:22:45] hp terminator-m5: START terminator-replay-6 timeout=900s
+[02:23:02] samsung hostcap-linux-terminator: PASS term6 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[02:23:02] samsung hostcap-linux-terminator: START term7 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-7)
+[02:23:27] samsung hostcap-linux-terminator: PASS term7 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[02:23:27] samsung hostcap-linux-terminator: START term8 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-8)
+[02:23:53] samsung hostcap-linux-terminator: PASS term8 readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[02:23:53] samsung hostcap-linux-terminator: START term9 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-9)
+[02:23:54] hp terminator-m5: PASS terminator-replay-6 68s readbacks=446 max=1.53e-05 strict=18 fmt=native-command-stream-v6
+[02:23:54] hp terminator-m5: START terminator-replay-7 timeout=900s
+[02:24:26] samsung hostcap-linux-terminator: PASS term9 readbacks=443 max=2.93e-05 strict=22 fmt=native-command-stream-v6
+[02:24:43] samsung hostcap-linux-terminator: END passed=True wall=234s/3600s
+[02:24:43] samsung hostcap terminator exit=0
+[02:25:03] samsung pixel-motion-own: START object-moving-images timeout=2400s
+[02:25:03] hp terminator-m5: PASS terminator-replay-7 67s readbacks=455 max=1.53e-05 strict=22 fmt=native-command-stream-v6
+[02:25:03] hp terminator-m5: START terminator-replay-8 timeout=900s
+[02:25:52] samsung pixel-motion-own: PASS object-moving-images 45s maxPipelineMs=7219.62
+[02:25:52] samsung pixel-motion-own: START object-stationary-images timeout=2400s
+[02:26:13] hp terminator-m5: PASS terminator-replay-8 67s readbacks=407 max=2.38e-07 strict=5 fmt=native-command-stream-v6
+[02:26:13] hp terminator-m5: START terminator-replay-9 timeout=900s
+[02:26:32] samsung pixel-motion-own: PASS object-stationary-images 36s maxPipelineMs=7068.1
+[02:26:32] samsung pixel-motion-own: START object-replay-motion-0 timeout=2400s
+[02:27:03] samsung pixel-motion-own: PASS object-replay-motion-0 30s readbacks=414 max=3.58e-07 strict=10 fmt=native-command-stream-v6
+[02:27:03] samsung pixel-motion-own: START object-replay-motion-1 timeout=2400s
+[02:27:35] samsung pixel-motion-own: PASS object-replay-motion-1 31s readbacks=454 max=2.86e-06 strict=26 fmt=native-command-stream-v6
+[02:27:35] samsung pixel-motion-own: START object-replay-motion-2 timeout=2400s
+[02:27:35] hp terminator-m5: PASS terminator-replay-9 80s readbacks=443 max=1.1e-06 strict=12 fmt=native-command-stream-v6
+[02:27:53] hp terminator-m5: END passed=True wall=797s/1800s failures=0
+[02:27:53] hp corpus terminator-m5 exit=0
+[02:28:07] samsung pixel-motion-own: PASS object-replay-motion-2 31s readbacks=456 max=2.4e-06 strict=290 fmt=native-command-stream-v6
+[02:28:07] samsung pixel-motion-own: START object-replay-motion-3 timeout=2400s
+[02:28:12] hp spec-refusal-m5: START glass_render-spec timeout=1200s
+[02:28:12] hp spec-refusal-m5: SCENE-DUMP glass_render-spec
+[02:28:31] hp spec-refusal-m5: SCENE-REFERENCE glass_render-spec references=1
+[02:28:41] samsung pixel-motion-own: PASS object-replay-motion-3 33s readbacks=412 max=1.02e-07 strict=1 fmt=native-command-stream-v6
+[02:28:41] samsung pixel-motion-own: START object-replay-motion-4 timeout=2400s
+[02:29:13] samsung pixel-motion-own: PASS object-replay-motion-4 32s readbacks=457 max=6.08e-06 strict=295 fmt=native-command-stream-v6
+[02:29:13] samsung pixel-motion-own: START object-replay-motion-5 timeout=2400s
+[02:29:45] samsung pixel-motion-own: PASS object-replay-motion-5 32s readbacks=417 max=4.53e-06 strict=59 fmt=native-command-stream-v6
+[02:29:45] samsung pixel-motion-own: START object-replay-motion-6 timeout=2400s
+[02:29:46] hp spec-refusal-m5: REFERENCE glass_render-spec host re-judged vs glibc: True
+[02:29:46] hp spec-refusal-m5: PASS glass_render-spec 70s maxPipelineMs=12199.8
+[02:29:46] hp spec-refusal-m5: START glass_render-nospec-refused timeout=1200s
+[02:29:46] hp spec-refusal-m5: PASS glass_render-nospec-refused refusal exit=1 0s
+[02:29:46] hp spec-refusal-m5: START glass_render-superset-refused timeout=1200s
+[02:29:46] hp spec-refusal-m5: PASS glass_render-superset-refused refusal exit=1 0s
+[02:30:05] hp spec-refusal-m5: END passed=True wall=113s/1800s failures=0
+[02:30:05] hp corpus spec-refusal-m5 exit=0
+[02:30:18] samsung pixel-motion-own: PASS object-replay-motion-6 32s readbacks=460 max=6.08e-06 strict=342 fmt=native-command-stream-v6
+[02:30:18] samsung pixel-motion-own: START object-replay-motion-7 timeout=2400s
+[02:30:24] hp hostcap-linux-triangle: START tri0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-0)
+[02:30:50] samsung pixel-motion-own: PASS object-replay-motion-7 32s readbacks=354 max=6.02e-06 strict=246 fmt=native-command-stream-v6
+[02:31:03] hp hostcap-linux-triangle: PASS tri0 readbacks=289 max=4.77e-07 strict=9 fmt=native-command-stream-v6
+[02:31:03] hp hostcap-linux-triangle: START tri1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-1)
+[02:31:08] samsung pixel-motion-own: END passed=True wall=367s/4800s failures=0
+[02:31:08] samsung corpus pixel-motion-own exit=0
+[02:31:27] checkpoint-2 status written
+[02:31:27] samsung pixel-motion-x64: START object-moving-images timeout=2400s
+[02:31:27] samsung pixel-motion-x64: SCENE-DUMP object-moving-images
+[02:31:47] samsung pixel-motion-x64: SCENE-REFERENCE object-moving-images references=8
+[02:31:51] hp hostcap-linux-triangle: PASS tri1 readbacks=417 max=1.19e-07 strict=0 fmt=native-command-stream-v8
+[02:31:52] hp hostcap-linux-triangle: START tri2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-2)
+[02:32:38] samsung pixel-motion-x64: REFERENCE object-moving-images host re-judged vs glibc: True
+[02:32:38] samsung pixel-motion-x64: PASS object-moving-images 46s maxPipelineMs=7219.61
+[02:32:38] samsung pixel-motion-x64: START object-stationary-images timeout=2400s
+[02:32:38] samsung pixel-motion-x64: SCENE-DUMP object-stationary-images
+[02:32:40] hp hostcap-linux-triangle: PASS tri2 readbacks=415 max=6.41e-07 strict=14 fmt=native-command-stream-v8
+[02:32:40] hp hostcap-linux-triangle: START tri3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-3)
+[02:32:57] samsung pixel-motion-x64: SCENE-REFERENCE object-stationary-images references=8
+[02:33:28] hp hostcap-linux-triangle: PASS tri3 readbacks=473 max=2.32e-06 strict=430 fmt=native-command-stream-v8
+[02:33:28] hp hostcap-linux-triangle: START tri4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-4)
+[02:33:39] samsung pixel-motion-x64: REFERENCE object-stationary-images host re-judged vs glibc: True
+[02:33:39] samsung pixel-motion-x64: PASS object-stationary-images 37s maxPipelineMs=6981.37
+[02:33:39] samsung pixel-motion-x64: START object-replay-motion-0 timeout=2400s
+[02:34:11] samsung pixel-motion-x64: PASS object-replay-motion-0 31s readbacks=414 max=2.68e-06 strict=18 fmt=native-command-stream-v6
+[02:34:11] samsung pixel-motion-x64: START object-replay-motion-1 timeout=2400s
+[02:34:17] hp hostcap-linux-triangle: PASS tri4 readbacks=415 max=3.73e-07 strict=10 fmt=native-command-stream-v8
+[02:34:17] hp hostcap-linux-triangle: START tri5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-5)
+[02:34:44] samsung pixel-motion-x64: PASS object-replay-motion-1 32s readbacks=454 max=4.77e-07 strict=16 fmt=native-command-stream-v6
+[02:34:44] samsung pixel-motion-x64: START object-replay-motion-2 timeout=2400s
+[02:35:17] samsung pixel-motion-x64: PASS object-replay-motion-2 32s readbacks=456 max=3.52e-06 strict=303 fmt=native-command-stream-v6
+[02:35:17] samsung pixel-motion-x64: START object-replay-motion-3 timeout=2400s
+[02:35:24] hp hostcap-linux-triangle: PASS tri5 readbacks=464 max=2.26e-06 strict=425 fmt=native-command-stream-v8
+[02:35:40] hp hostcap-linux-triangle: END passed=True wall=319s/3600s
+[02:35:40] hp hostcap triangle exit=0
+[02:35:50] samsung pixel-motion-x64: PASS object-replay-motion-3 32s readbacks=412 max=9.08e-09 strict=0 fmt=native-command-stream-v6
+[02:35:50] samsung pixel-motion-x64: START object-replay-motion-4 timeout=2400s
+[02:35:59] hp hostcap-linux-terminator: START term0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-0)
+[02:36:23] samsung pixel-motion-x64: PASS object-replay-motion-4 33s readbacks=457 max=6.08e-06 strict=302 fmt=native-command-stream-v6
+[02:36:23] samsung pixel-motion-x64: START object-replay-motion-5 timeout=2400s
+[02:36:32] hp hostcap-linux-terminator: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:36:33] hp hostcap-linux-terminator: START term1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-1)
+[02:36:56] samsung pixel-motion-x64: PASS object-replay-motion-5 33s readbacks=417 max=4.29e-06 strict=72 fmt=native-command-stream-v6
+[02:36:56] samsung pixel-motion-x64: START object-replay-motion-6 timeout=2400s
+[02:37:14] hp hostcap-linux-terminator: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:37:14] hp hostcap-linux-terminator: START term2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-2)
+[02:37:30] samsung pixel-motion-x64: PASS object-replay-motion-6 33s readbacks=460 max=6.08e-06 strict=344 fmt=native-command-stream-v6
+[02:37:30] samsung pixel-motion-x64: START object-replay-motion-7 timeout=2400s
+[02:37:55] hp hostcap-linux-terminator: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:37:56] hp hostcap-linux-terminator: START term3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-3)
+[02:38:03] samsung pixel-motion-x64: PASS object-replay-motion-7 33s readbacks=354 max=6.02e-06 strict=251 fmt=native-command-stream-v6
+[02:38:22] samsung pixel-motion-x64: END passed=True wall=415s/4800s failures=0
+[02:38:22] samsung corpus pixel-motion-x64 exit=0
+[02:38:22] samsung START android-host-gate run1
+[02:38:37] hp hostcap-linux-terminator: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:38:37] hp hostcap-linux-terminator: START term4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-4)
+[02:39:46] hp hostcap-linux-terminator: PASS term4 readbacks=455 max=1.53e-05 strict=22 fmt=native-command-stream-v6
+[02:39:46] hp hostcap-linux-terminator: START term5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-5)
+[02:40:08] samsung android-host-gate run1 END exit=0 106s
+[02:40:08] samsung START app-webgpu
+[02:40:55] hp hostcap-linux-terminator: PASS term5 readbacks=446 max=1.53e-05 strict=18 fmt=native-command-stream-v6
+[02:40:56] hp hostcap-linux-terminator: START term6 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-6)
+[02:41:57] samsung app-webgpu END exit=0 109s
+[02:41:58] samsung cleaned (left: '')
+[02:41:58] samsung lock released
+[02:42:04] hp hostcap-linux-terminator: PASS term6 readbacks=446 max=1.53e-05 strict=18 fmt=native-command-stream-v6
+[02:42:05] hp hostcap-linux-terminator: START term7 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-7)
+[02:42:07] s20 lock taken
+[02:42:44] s20 staged exit=0
+[02:42:51] checkpoint-2 status written
+[02:43:05] s20 a650-refusals-m5: START nodes_world-refused timeout=300s
+[02:43:05] s20 a650-refusals-m5: PASS nodes_world-refused refusal exit=1 1s
+[02:43:05] s20 a650-refusals-m5: START nodes_svm-refused timeout=300s
+[02:43:06] s20 a650-refusals-m5: PASS nodes_svm-refused refusal exit=1 0s
+[02:43:06] s20 a650-refusals-m5: START nodes_render-refused timeout=300s
+[02:43:06] samsung leftover cleanup: removed codebrix-arm-trig-probe, codebrix-b2-samsung-{baseline-repro,candidate2-a,candidate3}, codebrix-color-concurrency-v1-android-arm64 (listing in device/samsung-leftovers-listing.txt); lock taken and released
+[02:43:07] s20 a650-refusals-m5: PASS nodes_render-refused refusal exit=1 1s
+[02:43:14] hp hostcap-linux-terminator: PASS term7 readbacks=455 max=1.53e-05 strict=22 fmt=native-command-stream-v6
+[02:43:15] hp hostcap-linux-terminator: START term8 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-8)
+[02:43:25] s20 a650-refusals-m5: END passed=True wall=22s/600s failures=0
+[02:43:25] s20 corpus a650-refusals-m5 exit=0
+[02:43:46] s20 triangle-s20-triangle_sample: START triangle_sample timeout=600s
+[02:43:46] s20 triangle-s20-triangle_sample: SCENE-DUMP triangle_sample
+[02:44:04] s20 triangle-s20-triangle_sample: SCENE-REFERENCE triangle_sample references=1
+[02:44:25] hp hostcap-linux-terminator: PASS term8 readbacks=407 max=2.38e-07 strict=5 fmt=native-command-stream-v6
+[02:44:25] hp hostcap-linux-terminator: START term9 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-9)
+[02:45:23] s20 triangle-s20-triangle_sample: REFERENCE triangle_sample host re-judged vs glibc: True
+[02:45:23] s20 triangle-s20-triangle_sample: PASS triangle_sample 78s maxPipelineMs=None
+[02:45:41] s20 triangle-s20-triangle_sample: END passed=True wall=117s/3000s failures=0
+[02:45:41] s20 corpus triangle-s20-triangle_sample (triangle_sample) exit=0 timeout=600s
+[02:45:49] hp hostcap-linux-terminator: PASS term9 readbacks=443 max=1.07e-06 strict=17 fmt=native-command-stream-v6
+[02:46:01] s20 regression-s20-glass_render: START glass_render timeout=600s
+[02:46:01] s20 regression-s20-glass_render: SCENE-DUMP glass_render
+[02:46:05] hp hostcap-linux-terminator: END passed=True wall=608s/3600s
+[02:46:05] hp hostcap terminator exit=0
+[02:46:05] hp START android-host-gate run1
+[02:46:20] s20 regression-s20-glass_render: SCENE-REFERENCE glass_render references=1
+[02:47:57] s20 regression-s20-glass_render: REFERENCE glass_render host re-judged vs glibc: True
+[02:47:57] s20 regression-s20-glass_render: PASS glass_render 96s maxPipelineMs=16310.3
+[02:48:16] s20 regression-s20-glass_render: END passed=True wall=136s/3000s failures=0
+[02:48:16] s20 corpus regression-s20-glass_render (glass_render) exit=0 timeout=600s
+[02:48:16] hp android-host-gate run1 END exit=0 131s
+[02:48:16] hp START android-host-gate run2
+[02:48:36] s20 regression-s20-lighting_mis: START lighting_mis timeout=600s
+[02:48:36] s20 regression-s20-lighting_mis: SCENE-DUMP lighting_mis
+[02:48:56] s20 regression-s20-lighting_mis: SCENE-REFERENCE lighting_mis references=8
+[02:50:05] s20 regression-s20-lighting_mis: REFERENCE lighting_mis host re-judged vs glibc: True
+[02:50:05] s20 regression-s20-lighting_mis: PASS lighting_mis 63s maxPipelineMs=17951.2
+[02:50:19] hp android-host-gate run2 END exit=0 123s
+[02:50:19] hp START app-webgpu
+[02:50:24] s20 regression-s20-lighting_mis: END passed=True wall=109s/3000s failures=0
+[02:50:24] s20 corpus regression-s20-lighting_mis (lighting_mis) exit=0 timeout=600s
+[02:50:43] s20 triangle-s20-surface: START surface timeout=600s
+[02:51:29] s20 triangle-s20-surface: PASS surface 45s maxPipelineMs=6821.63
+[02:51:47] s20 triangle-s20-surface: END passed=True wall=65s/3000s failures=0
+[02:51:47] s20 corpus triangle-s20-surface (surface) exit=0 timeout=600s
+[02:52:08] s20 transparent-s20-transparent_lighting: START transparent_lighting timeout=600s
+[02:52:08] s20 transparent-s20-transparent_lighting: SCENE-DUMP transparent_lighting
+[02:52:28] s20 transparent-s20-transparent_lighting: SCENE-REFERENCE transparent_lighting references=8
+[02:53:40] hp app-webgpu END exit=0 201s
+[02:53:40] hp cleaned (left: '')
+[02:53:40] hp lock released
+[02:54:00] make_evidence5.py run: 18 ledger entries re-recorded into native/work/merge5/ledger + compatibility/evidence.json rewritten (backup evidence.json.before-wave5); freeze/generate/check pending S20 end
+[02:55:47] s20 transparent-s20-transparent_lighting: REFERENCE transparent_lighting host re-judged vs glibc: True
+[02:55:47] s20 transparent-s20-transparent_lighting: PASS transparent_lighting 194s maxPipelineMs=18729.9
+[02:55:47] s20 transparent-s20-transparent_lighting: START transparent_lighting-replay-0 timeout=600s
+[02:56:38] s20 transparent-s20-transparent_lighting: PASS transparent_lighting-replay-0 50s readbacks=560 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[02:56:38] s20 transparent-s20-transparent_lighting: START transparent_lighting-replay-1 timeout=600s
+[02:57:29] s20 transparent-s20-transparent_lighting: PASS transparent_lighting-replay-1 50s readbacks=596 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[02:57:29] s20 transparent-s20-transparent_lighting: START transparent_lighting-replay-2 timeout=600s
+[02:58:30] s20 transparent-s20-transparent_lighting: PASS transparent_lighting-replay-2 60s readbacks=575 max=3.81e-06 strict=72 fmt=native-command-stream-v7
+[02:58:30] s20 transparent-s20-transparent_lighting: START transparent_lighting-replay-3 timeout=600s
+[02:59:32] s20 transparent-s20-transparent_lighting: PASS transparent_lighting-replay-3 61s readbacks=580 max=1.55e-06 strict=133 fmt=native-command-stream-v7
+[02:59:32] s20 transparent-s20-transparent_lighting: START transparent_lighting-replay-4 timeout=600s
+[03:00:35] s20 transparent-s20-transparent_lighting: PASS transparent_lighting-replay-4 62s readbacks=840 max=6.02e-06 strict=167 fmt=native-command-stream-v7
+[03:00:35] s20 transparent-s20-transparent_lighting: START transparent_lighting-replay-5 timeout=600s
+[03:01:27] checkpoint-2 status written
+[03:01:37] s20 transparent-s20-transparent_lighting: PASS transparent_lighting-replay-5 62s readbacks=916 max=7.9e-07 strict=3 fmt=native-command-stream-v7
+[03:01:37] s20 transparent-s20-transparent_lighting: START transparent_lighting-replay-6 timeout=600s
+[03:02:39] s20 transparent-s20-transparent_lighting: PASS transparent_lighting-replay-6 61s readbacks=428 max=6.02e-06 strict=103 fmt=native-command-stream-v7
+[03:02:39] s20 transparent-s20-transparent_lighting: START transparent_lighting-replay-7 timeout=600s
+[03:03:41] s20 transparent-s20-transparent_lighting: PASS transparent_lighting-replay-7 61s readbacks=518 max=6.02e-06 strict=205 fmt=native-command-stream-v7
+[03:03:59] s20 transparent-s20-transparent_lighting: END passed=True wall=713s/3000s failures=0
+[03:03:59] s20 corpus transparent-s20-transparent_lighting (transparent_lighting) exit=0 timeout=600s
+[03:04:20] s20 transparent-s20-transparent_shadow: START transparent_shadow timeout=600s
+[03:04:37] s20 transparent-s20-transparent_shadow: PASS transparent_shadow 16s maxPipelineMs=5402.2
+[03:04:37] s20 transparent-s20-transparent_shadow: START transparent-shadow-replay-direct timeout=600s
+[03:04:48] s20 transparent-s20-transparent_shadow: PASS transparent-shadow-replay-direct 11s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[03:04:48] s20 transparent-s20-transparent_shadow: START transparent-shadow-replay-indexed timeout=600s
+[03:05:00] s20 transparent-s20-transparent_shadow: PASS transparent-shadow-replay-indexed 11s readbacks=4 max=0 strict=0 fmt=native-command-stream-v7
+[03:05:19] s20 transparent-s20-transparent_shadow: END passed=True wall=61s/3000s failures=0
+[03:05:19] s20 corpus transparent-s20-transparent_shadow (transparent_shadow) exit=0 timeout=600s
+[03:05:39] s20 materials-s20-principled_render: START principled_render timeout=600s
+[03:05:39] s20 materials-s20-principled_render: SCENE-DUMP principled_render
+[03:05:58] s20 materials-s20-principled_render: SCENE-REFERENCE principled_render references=1
+[03:09:32] s20 materials-s20-principled_render: REFERENCE principled_render host re-judged vs glibc: False
+[03:09:32] s20 materials-s20-principled_render: FAIL principled_render exit=1 214s: Independent CPU image 9114 actual=1.546950 expected=1.545995
+[03:09:51] s20 materials-s20-principled_render: END passed=False wall=254s/3000s failures=2
+[03:09:51] s20 corpus materials-s20-principled_render (principled_render) exit=0 timeout=600s
+[03:10:11] s20 materials-s20-principled_svm: START principled_svm timeout=600s
+[03:10:11] s20 materials-s20-principled_svm: SCENE-DUMP principled_svm
+[03:12:24] s20 materials-s20-principled_svm: SCENE-REFERENCE principled_svm references=237
+[03:13:57] s20 materials-s20-principled_svm: FAIL principled_svm exit=1 85s: Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12
+[03:14:16] s20 materials-s20-principled_svm: END passed=False wall=246s/3000s failures=1
+[03:14:16] s20 corpus materials-s20-principled_svm (principled_svm) exit=0 timeout=600s
+[03:14:36] s20 pixel-motion-s20-object-moving-images: START object-moving-images timeout=600s
+[03:14:36] s20 pixel-motion-s20-object-moving-images: SCENE-DUMP object-moving-images
+[03:14:56] s20 pixel-motion-s20-object-moving-images: SCENE-REFERENCE object-moving-images references=8
+[03:17:21] s20 pixel-motion-s20-object-moving-images: REFERENCE object-moving-images host re-judged vs glibc: True
+[03:17:21] s20 pixel-motion-s20-object-moving-images: PASS object-moving-images 140s maxPipelineMs=40210.2
+[03:17:21] s20 pixel-motion-s20-object-moving-images: START object-replay-motion-0 timeout=600s
+[03:19:19] s20 pixel-motion-s20-object-moving-images: PASS object-replay-motion-0 118s readbacks=414 max=2.56e-06 strict=12 fmt=native-command-stream-v6
+[03:19:19] s20 pixel-motion-s20-object-moving-images: START object-replay-motion-1 timeout=600s
+[03:21:20] s20 pixel-motion-s20-object-moving-images: PASS object-replay-motion-1 120s readbacks=454 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[03:21:20] s20 pixel-motion-s20-object-moving-images: START object-replay-motion-2 timeout=600s
+[03:23:21] s20 pixel-motion-s20-object-moving-images: PASS object-replay-motion-2 120s readbacks=456 max=3.52e-06 strict=301 fmt=native-command-stream-v6
+[03:23:21] s20 pixel-motion-s20-object-moving-images: START object-replay-motion-3 timeout=600s
+[03:25:19] s20 pixel-motion-s20-object-moving-images: PASS object-replay-motion-3 118s readbacks=412 max=9.31e-09 strict=0 fmt=native-command-stream-v6
+[03:25:19] s20 pixel-motion-s20-object-moving-images: START object-replay-motion-4 timeout=600s
+[03:27:21] s20 pixel-motion-s20-object-moving-images: PASS object-replay-motion-4 121s readbacks=457 max=6.08e-06 strict=294 fmt=native-command-stream-v6
+[03:27:21] s20 pixel-motion-s20-object-moving-images: START object-replay-motion-5 timeout=600s
+[03:29:21] s20 pixel-motion-s20-object-moving-images: PASS object-replay-motion-5 120s readbacks=417 max=4.05e-06 strict=70 fmt=native-command-stream-v6
+[03:29:21] s20 pixel-motion-s20-object-moving-images: START object-replay-motion-6 timeout=600s
+[03:31:24] s20 pixel-motion-s20-object-moving-images: PASS object-replay-motion-6 122s readbacks=460 max=6.08e-06 strict=338 fmt=native-command-stream-v6
+[03:31:24] s20 pixel-motion-s20-object-moving-images: START object-replay-motion-7 timeout=600s
+[03:31:27] checkpoint-2 status written
+[03:34:05] s20 pixel-motion-s20-object-moving-images: PASS object-replay-motion-7 161s readbacks=354 max=6.02e-06 strict=249 fmt=native-command-stream-v6
+[03:34:24] s20 pixel-motion-s20-object-moving-images: END passed=True wall=1190s/3000s failures=0
+[03:34:24] s20 corpus pixel-motion-s20-object-moving-images (object-moving-images) exit=0 timeout=600s
+[03:34:46] s20 pixel-motion-s20-deforming-moving-images: START deforming-moving-images timeout=600s
+[03:34:46] s20 pixel-motion-s20-deforming-moving-images: SCENE-DUMP deforming-moving-images
+[03:35:06] s20 pixel-motion-s20-deforming-moving-images: SCENE-REFERENCE deforming-moving-images references=8
+[03:40:27] s20 pixel-motion-s20-deforming-moving-images: REFERENCE deforming-moving-images host re-judged vs glibc: True
+[03:40:27] s20 pixel-motion-s20-deforming-moving-images: PASS deforming-moving-images 315s maxPipelineMs=59113
+[03:40:27] s20 pixel-motion-s20-deforming-moving-images: START deforming-replay-motion-0 timeout=600s
+[03:41:53] s20 pixel-motion-s20-deforming-moving-images: PASS deforming-replay-motion-0 85s readbacks=420 max=2.38e-07 strict=2 fmt=native-command-stream-v6
+[03:41:53] s20 pixel-motion-s20-deforming-moving-images: START deforming-replay-motion-1 timeout=600s
+[03:43:53] s20 pixel-motion-s20-deforming-moving-images: PASS deforming-replay-motion-1 119s readbacks=454 max=5.96e-07 strict=19 fmt=native-command-stream-v6
+[03:43:53] s20 pixel-motion-s20-deforming-moving-images: START deforming-replay-motion-2 timeout=600s
+[03:45:53] s20 pixel-motion-s20-deforming-moving-images: PASS deforming-replay-motion-2 119s readbacks=460 max=2.4e-06 strict=304 fmt=native-command-stream-v6
+[03:45:53] s20 pixel-motion-s20-deforming-moving-images: START deforming-replay-motion-3 timeout=600s
+[03:47:53] s20 pixel-motion-s20-deforming-moving-images: PASS deforming-replay-motion-3 119s readbacks=412 max=9.31e-09 strict=0 fmt=native-command-stream-v6
+[03:47:53] s20 pixel-motion-s20-deforming-moving-images: START deforming-replay-motion-4 timeout=600s
+[03:49:54] s20 pixel-motion-s20-deforming-moving-images: PASS deforming-replay-motion-4 120s readbacks=460 max=6.08e-06 strict=280 fmt=native-command-stream-v6
+[03:49:54] s20 pixel-motion-s20-deforming-moving-images: START deforming-replay-motion-5 timeout=600s
+[03:51:54] s20 pixel-motion-s20-deforming-moving-images: PASS deforming-replay-motion-5 120s readbacks=426 max=4.17e-06 strict=49 fmt=native-command-stream-v6
+[03:51:54] s20 pixel-motion-s20-deforming-moving-images: START deforming-replay-motion-6 timeout=600s
+[03:54:04] s20 pixel-motion-s20-deforming-moving-images: PASS deforming-replay-motion-6 129s readbacks=460 max=6.08e-06 strict=300 fmt=native-command-stream-v6
+[03:54:04] s20 pixel-motion-s20-deforming-moving-images: START deforming-replay-motion-7 timeout=600s
+[03:56:55] s20 pixel-motion-s20-deforming-moving-images: PASS deforming-replay-motion-7 170s readbacks=359 max=6.02e-06 strict=259 fmt=native-command-stream-v6
+[03:57:12] s20 pixel-motion-s20-deforming-moving-images: END passed=True wall=1351s/3000s failures=0
+[03:57:12] s20 corpus pixel-motion-s20-deforming-moving-images (deforming-moving-images) exit=0 timeout=600s
+[03:57:34] s20 materials-s20-principled_bounce: START principled_bounce timeout=2400s
+[04:01:27] checkpoint-2 status written
+[04:05:10] s20 materials-s20-principled_bounce: PASS principled_bounce 455s maxPipelineMs=130993
+[04:05:29] s20 materials-s20-principled_bounce: END passed=True wall=477s/6600s failures=0
+[04:05:29] s20 corpus materials-s20-principled_bounce (principled_bounce) exit=0 timeout=2400s
+[04:05:29] s20 cleaned (left: '')
+[04:05:29] s20 lock released
+[04:05:54] all device chains done (samsung 02:41, hp 02:53, s20 04:05); starting summary/tables/docs/freeze
+[04:06:03] apply_device_docs.py: appended '## Merge wave 5: device tables' to native/DEVICE.md (backup native/work/merge5/DEVICE.md.before-part2)
+[04:06:13] START freeze

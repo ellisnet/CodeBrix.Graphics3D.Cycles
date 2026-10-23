@@ -24,8 +24,8 @@ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Devi
   // every Android test driver they crash the compiler or exhaust its memory
   // (Adreno 730 SIGSEGV, Adreno 640 and Intel Mesa 24.0.8 Scudo out of memory),
   // which ends the process; refuse before any pipeline compiles.
-  if(const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION");mode&&std::strcmp(mode,"0")==0)
-    throw std::runtime_error("CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 is a desktop-only diagnostic and is refused on Android: the unspecialized shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules.");
+  if(specialization_mode_from_environment()!=SpecializationMode::Scene)
+    throw std::runtime_error("CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 or =superset is a desktop-only diagnostic and is refused on Android: the unspecialized and superset shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules.");
 #endif
   // The tier is decided before any pipeline is compiled (device_tier.h).
   select_tier();
@@ -39,10 +39,14 @@ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Devi
   WGPUShaderSourceWGSL source{};source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={control_source,sizeof(control_source)-1};
   WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;gpu.push_scope();
   cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
-  controls=gpu.pipeline(shader,pipeline_layout,"control");error_word=allocate(4);zero(error_word,4);
-  // Diagnostic override: CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 compiles every
-  // handler (the unspecialized modules) for A/B verification.
-  if(const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION"))specialization_enabled=std::strcmp(mode,"0")!=0;
+  controls=gpu.pipeline(shader,pipeline_layout,"control");error_word=allocate(16);zero(error_word,16);
+  svm_stack_region=allocate(size_t(svm_stack_slots)*svm_stack_words*4);
+  {const uint32_t header[]={svm_stack_region,svm_stack_slots};upload(error_word+4,header,sizeof(header));}
+  // Diagnostic overrides (pipelines.h SpecializationMode):
+  // CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset compiles every handler except
+  // the scene-only regions the scene does not reach (the on/off identity check);
+  // =0 compiles every handler (the unspecialized modules).
+  specialization_mode=specialization_mode_from_environment(&superset_group);specialization_enabled=specialization_mode!=SpecializationMode::Off;
   if(const char *budget=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_MS")){pipeline_budget_ms=std::strtod(budget,nullptr);tier_policy.budget_source="environment";}
   if(const char *action=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION"))budget_conservative=std::strcmp(action,"conservative")==0;
   if(conservative){
@@ -75,7 +79,7 @@ void WebGPUDevice::run_canary(){
   if(conservative){tier_policy.canary_result("skipped",0,"conservative tier already selected");return;}
   double budget=canary_default_budget_ms;
   if(const char *value=std::getenv("CODEBRIX_CYCLES_PIPELINE_CANARY_BUDGET_MS"))budget=std::strtod(value,nullptr);
-  std::string code=specialize_wgsl(surface_source(),0);
+  std::string code=specialize_wgsl(surface_source(),SF_NONE);
   // Gate hook: a module the WebGPU front end rejects, as a failing compiler would.
   if(const char *test=std::getenv("CODEBRIX_CYCLES_TEST_CANARY"))if(std::strcmp(test,"fail")==0)code+="\nfn codebrix_canary_invalid( {\n";
   using clock=std::chrono::steady_clock;const auto t0=clock::now();
@@ -237,8 +241,8 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
   require(work>0&&groups<=gpu.limits.maxComputeWorkgroupsPerDimension,"Dispatch exceeds device limits");
   if(observer){
     const WGPUComputePipeline actual=pipeline?pipeline:controls.value;
-    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:17;
-    require(entry<17,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:18;
+    require(entry<18,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
   }
   auto uniform=gpu.buffer(sizeof(params),WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params.data());
   std::array<WGPUBindGroupEntry,2> entries{};entries[0].binding=0;entries[0].buffer=arena;entries[0].size=arena_bytes;

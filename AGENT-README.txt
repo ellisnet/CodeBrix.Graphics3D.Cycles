@@ -226,6 +226,9 @@ native report states, nothing inferred)
     string DeterminismReference, string Json (the full native report)
 BackendScope: Device, CameraTypes, Primitives, WrittenPasses, PassesNote,
     RenderTimeRejections, Reference
+Warnings also carries a notice when a scene compiles to an unusually large GPU
+program that some older Intel graphics drivers may fail to compile; the notice
+never changes the rendered result.
 
 Transform3x4(M11..M34)    readonly record struct; Cycles 3x4 row-major,
                           translation in the 4th column
@@ -392,8 +395,9 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
     Principled BSDF subsurface scattering";
   - shader nodes the WebGPU device does not implement (for example true
     displacement, ambient occlusion, bevel, sky, IES and AOV output nodes; the
-    bump node is implemented, but tangent and motion-triangle smooth-normal
-    derivatives inside a bump height are rejected);
+    bump node and the Gabor texture (GaborTextureNode, 2D and 3D) are
+    implemented, but tangent and motion-triangle smooth-normal derivatives
+    inside a bump height are rejected);
   - the classes listed in GetCapabilities().Scope.RenderTimeRejections.
 The CPU reference backend renders all of these.
 
@@ -660,6 +664,64 @@ Textures need decoded pixels (CreateImage with raw RGBA): the example uses
 base-colour factors only because Gltf2 does not decode images.
 
 
+NOT SUPPORTED ON ADRENO 640 (PIXEL 4 XL CLASS DEVICES)
+======================================================
+The Adreno 640 class is below this package's performance floor. The lists
+below are what a triage on one such device found; anything not listed is
+untested there, not supported.
+Android devices with a Qualcomm Adreno 640 GPU (for example the Pixel 4 XL) are
+not reference devices for this package. The ARM64 Android reference is an
+Adreno 730 device. The policy:
+- functionality that works on the reference device but fails on an Adreno 640
+  is not supported there;
+- functionality that takes more than three times as long as on the reference
+  device is treated as a failure and is not supported there either.
+The package does not block these features on an Adreno 640. They may render
+wrongly, stop with a WebGPU error or a lost device, or take too long. Do not
+build a product that depends on them on this GPU. Maintainers: the evidence is
+in native/DEVICE.md, "Pixel 4 XL triage under the device reference policy".
+This list says nothing about other GPU families (Mali, other Adreno
+generations).
+
+Not supported (fails on the Adreno 640):
+- Transparent shadows and Transparent BSDF lighting. The transparent-shadow
+  stage reports invalid data, and renders with transparent surfaces lose the
+  device.
+- Object motion blur (moving objects). It either fails or takes more than three
+  times the reference device's time.
+- Deformation motion blur (vertex motion). The render reports an invalid SVM
+  stack.
+- World (background) shaders built from texture, colour or utility nodes. The
+  world evaluation reports an invalid SVM stack.
+- Texture, colour and utility nodes in surface shaders. Renders report an
+  invalid SVM stack, and evaluating their shader programs takes more than three
+  times the reference device's time.
+
+Not supported (more than three times the reference device's time):
+- Emissive mesh (triangle) lights, for rendering and for light sampling.
+- Point, sun and mesh lighting mixed with transmission and forward-hit MIS in
+  one scene.
+- Shadow terminator geometry and shading offsets.
+- Principled BSDF materials: shader evaluation, bounces and renders each take
+  more than three times the reference device's time.
+- Scenes with motion-blur-capable objects or deforming meshes, even when
+  rendered without motion.
+- Managed .NET WebGPU rendering of simple scenes (glass, diffuse sun, textured
+  plane) is more than three times slower than on the reference device.
+  Pipeline compilation accounts for most of the difference.
+
+Supported on the Adreno 640 within the policy:
+- perspective cameras, static and with camera motion;
+- closest-hit and shadow ray traversal;
+- glass;
+- point, sun, spot and area lighting with MIS;
+- point-lamp emission;
+- homogeneous volumes: absorption, isotropic, forward and backward scattering,
+  closed and overlapping volumes, and a camera inside a volume.
+Pipeline compilation is still much slower than on the reference device. Expect
+compile-time warnings over the 20 s mobile budget.
+
+
 WHAT THIS PACKAGE DOES NOT DO
 =============================
 - It does not encode or decode image or video files (PNG, JPEG, JPEG XL, TIFF,
@@ -670,7 +732,21 @@ WHAT THIS PACKAGE DOES NOT DO
 - It does not render passes other than Combined, non-perspective cameras,
   light trees, denoising, adaptive sampling or path guiding on the WebGPU
   device (the CPU reference backend does).
+- It does not render texture, colour and utility shader nodes (noise, Voronoi,
+  wave, magic, brick and Gabor textures, ramps, mixing, mapping and similar) on
+  Adreno 650 GPUs (for example the Samsung Galaxy S20); such scenes are refused
+  with an error message before rendering starts.
 - It does not yet ship the native host library inside the package.
+- It does not keep a persistent cache of compiled GPU pipelines; the WebGPU
+  runtime it uses offers none. The first GPU render in each process compiles
+  the pipelines its scene needs (seconds to a minute per material on the GPUs
+  tested). Whether a later process starts warm depends only on the GPU driver:
+  on Linux with the Mesa driver, Mesa's own shader cache (default
+  ~/.cache/mesa_shader_cache_db; MESA_SHADER_CACHE_DIR moves it) makes later
+  runs of an unchanged scene compile almost instantly; on the Android devices
+  tested, every process compiles again. Within one process, repeated renders
+  of a scene reuse its compiled pipelines unless an edit makes the scene use
+  shader features it did not use before.
 
 
 WORKING EXAMPLES ON GITHUB

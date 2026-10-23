@@ -1,0 +1,324 @@
+[13:28:26] lane Q start; worktree /home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep at 3392df3d
+[13:29:26] android gate build arm64 exit=1 1s
+[13:29:57] copied reviewed Android dependency prefixes (arm64, x64) from main native/work/android/*/dependencies/install (read-only source)
+[13:38:08] linux native build exit=0 524s
+[13:39:01] android gate build arm64 exit=0 544s
+[13:39:16] review arm64 exit=0
+[13:44:00] android host build android-arm64 exit=0 284s
+[13:44:16] lock s20 taken (pid 178425)
+[13:44:42] staged exit=0
+[13:44:42] START android-host-gate
+[13:45:59] linux gate build exit=0 471s
+[13:46:58] END android-host-gate exit=0 136s
+[13:46:59] device cleaned (left: '')
+[13:46:59] lock s20 released
+[13:47:32] lock s20 taken (pid 184174)
+[13:47:58] staged exit=0
+[13:47:58] START canary
+[13:48:07] s20 canary-q: START canary-glass_render timeout=600s
+[13:48:33] android host build android-x64 exit=0 273s
+[13:49:46] s20 canary-q: PASS canary-glass_render 98s maxPipelineMs=16529.7
+[13:49:53] s20 canary-q: END passed=True wall=108s/900s failures=0
+[13:49:53] END canary exit=0 115s
+[13:49:53] START triangle
+[13:50:01] s20 triangle-q: START triangle_sample timeout=600s
+[13:50:01] s20 triangle-q: SCENE-DUMP triangle_sample
+[13:50:08] s20 triangle-q: SCENE-REFERENCE triangle_sample references=1
+[13:50:14] APK build exit=0 93s
+[13:50:22] canary: adapter Adreno (TM) 650 / EV031.32.02.10 (Driver Build db7e7066a2, 05/11/25); tier full, reason default (unknown adapter, knownAdapter null), budget unknown-mobile 20 s; canary passed 1586 ms; device record written
+[13:51:28] s20 triangle-q: REFERENCE triangle_sample host re-judged vs glibc: True
+[13:51:28] s20 triangle-q: PASS triangle_sample 80s maxPipelineMs=None
+[13:51:28] s20 triangle-q: START surface timeout=600s
+[13:53:50] s20 triangle-q: PASS surface 141s maxPipelineMs=6651.45
+[13:53:50] s20 triangle-q: START triangle_lighting timeout=600s
+[13:53:50] s20 triangle-q: SCENE-DUMP triangle_lighting
+[13:53:57] s20 triangle-q: SCENE-REFERENCE triangle_lighting references=6
+[14:01:53] s20 triangle-q: REFERENCE triangle_lighting host re-judged vs glibc: True
+[14:01:53] s20 triangle-q: PASS triangle_lighting 473s maxPipelineMs=106879
+[14:01:53] s20 triangle-q: START replay-0 timeout=600s
+[14:02:37] s20 triangle-q: PASS replay-0 43s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[14:02:37] s20 triangle-q: START replay-1 timeout=600s
+[14:04:12] s20 triangle-q: PASS replay-1 95s readbacks=417 max=1.79e-07 strict=0 fmt=native-command-stream-v6
+[14:04:12] s20 triangle-q: START replay-2 timeout=600s
+[14:05:48] s20 triangle-q: PASS replay-2 95s readbacks=415 max=6.41e-07 strict=6 fmt=native-command-stream-v6
+[14:05:48] s20 triangle-q: START replay-3 timeout=600s
+[14:07:23] s20 triangle-q: PASS replay-3 96s readbacks=473 max=1.79e-06 strict=233 fmt=native-command-stream-v6
+[14:07:23] s20 triangle-q: START replay-4 timeout=600s
+[14:09:00] s20 triangle-q: PASS replay-4 96s readbacks=415 max=3.58e-07 strict=8 fmt=native-command-stream-v6
+[14:09:00] s20 triangle-q: START replay-5 timeout=600s
+[14:14:56] s20 triangle-q: PASS replay-5 356s readbacks=464 max=1.79e-06 strict=231 fmt=native-command-stream-v6
+[14:15:02] s20 triangle-q: END passed=True wall=1503s/6000s failures=0
+[14:15:02] END triangle exit=0 1509s
+[14:15:02] START emitter
+[14:15:11] s20 emitter-q: START emitter_sample timeout=600s
+[14:15:11] s20 emitter-q: SCENE-DUMP emitter_sample
+[14:15:17] s20 emitter-q: SCENE-REFERENCE emitter_sample references=1
+[14:15:40] s20 emitter-q: REFERENCE emitter_sample host re-judged vs glibc: True
+[14:15:40] s20 emitter-q: PASS emitter_sample 22s maxPipelineMs=None
+[14:15:46] s20 emitter-q: END passed=True wall=38s/900s failures=0
+[14:15:46] END emitter exit=0 44s
+[14:15:46] START lighting
+[14:15:55] s20 lighting-q: START lighting_mis timeout=600s
+[14:15:55] s20 lighting-q: SCENE-DUMP lighting_mis
+[14:16:03] s20 lighting-q: SCENE-REFERENCE lighting_mis references=8
+[14:17:34] s20 lighting-q: REFERENCE lighting_mis host re-judged vs glibc: True
+[14:17:34] s20 lighting-q: PASS lighting_mis 87s maxPipelineMs=26596.2
+[14:17:34] s20 lighting-q: START broad_lighting timeout=600s
+[14:17:34] s20 lighting-q: SCENE-DUMP broad_lighting
+[14:17:43] s20 lighting-q: SCENE-REFERENCE broad_lighting references=12
+[14:20:43] s20 lighting-q: REFERENCE broad_lighting host re-judged vs glibc: True
+[14:20:43] s20 lighting-q: PASS broad_lighting 175s maxPipelineMs=27038.6
+[14:20:43] s20 lighting-q: START lighting_mis-replay-0 timeout=600s
+[14:21:33] s20 lighting-q: PASS lighting_mis-replay-0 49s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[14:21:33] s20 lighting-q: START lighting_mis-replay-1 timeout=600s
+[14:22:19] s20 lighting-q: PASS lighting_mis-replay-1 46s readbacks=450 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[14:22:19] s20 lighting-q: START broad_lighting-replay-0 timeout=600s
+[14:23:04] s20 lighting-q: PASS broad_lighting-replay-0 45s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[14:23:04] s20 lighting-q: START broad_lighting-replay-1 timeout=600s
+[14:23:51] s20 lighting-q: PASS broad_lighting-replay-1 46s readbacks=450 max=4.17e-07 strict=13 fmt=native-command-stream-v6
+[14:23:57] s20 lighting-q: END passed=True wall=484s/4200s failures=0
+[14:23:57] END lighting exit=0 491s
+[14:23:57] START regression
+[14:24:05] s20 regression-q: START glass_render timeout=600s
+[14:25:42] s20 regression-q: REFERENCE glass_render host re-judged vs glibc: True
+[14:25:42] s20 regression-q: PASS glass_render 96s maxPipelineMs=16073.3
+[14:25:42] s20 regression-q: START lighting_mis timeout=600s
+[14:25:42] s20 regression-q: SCENE-DUMP lighting_mis
+[14:25:49] s20 regression-q: SCENE-REFERENCE lighting_mis references=8
+[14:26:57] s20 regression-q: REFERENCE lighting_mis host re-judged vs glibc: True
+[14:26:57] s20 regression-q: PASS lighting_mis 63s maxPipelineMs=18455.3
+[14:26:57] s20 regression-q: START transparent_lighting timeout=600s
+[14:26:57] s20 regression-q: SCENE-DUMP transparent_lighting
+[14:27:04] s20 regression-q: SCENE-REFERENCE transparent_lighting references=8
+[14:27:52] s20 regression-q: REFERENCE transparent_lighting host re-judged vs glibc: False
+[14:27:52] s20 regression-q: FAIL transparent_lighting exit=134 47s: note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[14:27:59] s20 regression-q: END passed=False wall=236s/2100s failures=1
+[14:27:59] END regression exit=0 242s
+[14:27:59] START transparent
+[14:28:07] s20 transparent-q: START transparent_shadow timeout=600s
+[14:28:18] s20 transparent-q: FAIL transparent_shadow exit=1 10s: Transparent intersect failed: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data
+[14:28:18] s20 transparent-q: START transparent_lighting timeout=600s
+[14:28:18] s20 transparent-q: SCENE-DUMP transparent_lighting
+[14:28:26] s20 transparent-q: SCENE-REFERENCE transparent_lighting references=8
+[14:29:14] s20 transparent-q: REFERENCE transparent_lighting host re-judged vs glibc: False
+[14:29:14] s20 transparent-q: FAIL transparent_lighting exit=134 47s: note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[14:29:20] s20 transparent-q: END passed=False wall=75s/7800s failures=12
+[14:29:20] END transparent exit=0 81s
+[14:29:20] START terminator
+[14:29:28] s20 terminator-q: START shadow_terminator timeout=600s
+[14:29:28] s20 terminator-q: SCENE-DUMP shadow_terminator
+[14:29:36] s20 terminator-q: SCENE-REFERENCE shadow_terminator references=10
+[14:36:40] s20 terminator-q: REFERENCE shadow_terminator host re-judged vs glibc: True
+[14:36:40] s20 terminator-q: PASS shadow_terminator 421s maxPipelineMs=74987.3
+[14:36:40] s20 terminator-q: START terminator-replay-0 timeout=600s
+[14:37:09] s20 terminator-q: PASS terminator-replay-0 28s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[14:37:09] s20 terminator-q: START terminator-replay-1 timeout=600s
+[14:37:46] s20 terminator-q: PASS terminator-replay-1 36s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[14:37:46] s20 terminator-q: START terminator-replay-2 timeout=600s
+[14:38:22] s20 terminator-q: PASS terminator-replay-2 36s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[14:38:22] s20 terminator-q: START terminator-replay-3 timeout=600s
+[14:38:58] s20 terminator-q: PASS terminator-replay-3 36s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[14:38:58] s20 terminator-q: START terminator-replay-4 timeout=600s
+[14:40:29] s20 terminator-q: PASS terminator-replay-4 91s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[14:40:29] s20 terminator-q: START terminator-replay-5 timeout=600s
+[14:42:24] s20 terminator-q: PASS terminator-replay-5 114s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[14:42:24] s20 terminator-q: START terminator-replay-6 timeout=600s
+[14:44:27] s20 terminator-q: PASS terminator-replay-6 123s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[14:44:27] s20 terminator-q: START terminator-replay-7 timeout=600s
+[14:46:29] s20 terminator-q: PASS terminator-replay-7 122s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[14:46:29] s20 terminator-q: START terminator-replay-8 timeout=600s
+[14:48:31] s20 terminator-q: PASS terminator-replay-8 121s readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[14:48:31] s20 terminator-q: START terminator-replay-9 timeout=600s
+[14:54:47] s20 terminator-q: PASS terminator-replay-9 376s readbacks=443 max=2.91e-05 strict=20 fmt=native-command-stream-v6
+[14:54:53] s20 terminator-q: END passed=True wall=1526s/7200s failures=0
+[14:54:53] END terminator exit=0 1533s
+[14:54:54] START spec-refusal
+[14:55:03] s20 spec-refusal-q: START glass_render-spec timeout=600s
+[14:56:45] s20 spec-refusal-q: PASS glass_render-spec 101s maxPipelineMs=16069.6
+[14:56:45] s20 spec-refusal-q: START glass_render-nospec-refused timeout=600s
+[14:56:45] s20 spec-refusal-q: PASS glass_render-nospec-refused refusal exit=1 0s
+[14:56:52] s20 spec-refusal-q: END passed=True wall=112s/1500s failures=0
+[14:56:52] END spec-refusal exit=0 118s
+[14:56:52] START feature_combination
+[14:57:00] s20 lighting-fc: START feature_combination timeout=600s
+[14:57:00] s20 lighting-fc: SCENE-DUMP feature_combination
+[14:57:08] s20 lighting-fc: SCENE-REFERENCE feature_combination references=8
+[14:58:43] s20 lighting-fc: REFERENCE feature_combination host re-judged vs glibc: True
+[14:58:43] s20 lighting-fc: PASS feature_combination 91s maxPipelineMs=22186.3
+[14:58:43] s20 lighting-fc: START feature_combination-replay-0 timeout=600s
+[14:59:56] s20 lighting-fc: PASS feature_combination-replay-0 72s readbacks=408 max=5.36e-07 strict=12 fmt=native-command-stream-v6
+[14:59:56] s20 lighting-fc: START feature_combination-replay-1 timeout=600s
+[15:01:09] s20 lighting-fc: PASS feature_combination-replay-1 72s readbacks=461 max=2.41e-06 strict=9 fmt=native-command-stream-v6
+[15:01:15] s20 lighting-fc: END passed=True wall=256s/2100s failures=0
+[15:01:15] END feature_combination exit=0 263s
+[15:01:15] START motion
+[15:01:23] s20 motion-q: START object-moving-images timeout=600s
+[15:01:23] s20 motion-q: SCENE-DUMP object-moving-images
+[15:01:30] s20 motion-q: SCENE-REFERENCE object-moving-images references=8
+[15:04:45] s20 motion-q: REFERENCE object-moving-images host re-judged vs glibc: False
+[15:04:45] s20 motion-q: FAIL object-moving-images exit=1 194s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[15:04:45] s20 motion-q: START deforming-moving-images timeout=600s
+[15:04:45] s20 motion-q: SCENE-DUMP deforming-moving-images
+[15:04:53] s20 motion-q: SCENE-REFERENCE deforming-moving-images references=8
+[15:06:18] s20 motion-q: REFERENCE deforming-moving-images host re-judged vs glibc: False
+[15:06:18] s20 motion-q: FAIL deforming-moving-images exit=1 84s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[15:06:18] s20 motion-q: START camera-static timeout=600s
+[15:06:27] s20 motion-q: PASS camera-static 9s maxPipelineMs=670.427
+[15:06:27] s20 motion-q: START camera-motion timeout=600s
+[15:06:57] s20 motion-q: PASS camera-motion 29s maxPipelineMs=20315.8
+[15:07:03] s20 motion-q: END passed=False wall=342s/4200s failures=4
+[15:07:03] END motion exit=0 348s
+[15:07:03] START precision
+[15:07:11] s20 precision-q: START closest timeout=600s
+[15:07:44] s20 precision-q: PASS closest 33s maxPipelineMs=2780.43
+[15:07:44] s20 precision-q: START shadow timeout=600s
+[15:07:57] s20 precision-q: PASS shadow 13s maxPipelineMs=1436.74
+[15:07:57] s20 precision-q: START shadow-replay-direct timeout=600s
+[15:07:59] s20 precision-q: PASS shadow-replay-direct 2s readbacks=4 max=5.96e-08 strict=0 fmt=native-command-stream-v3
+[15:07:59] s20 precision-q: START shadow-replay-indexed timeout=600s
+[15:08:02] s20 precision-q: PASS shadow-replay-indexed 2s readbacks=4 max=0 strict=0 fmt=native-command-stream-v3
+[15:08:08] s20 precision-q: END passed=True wall=58s/2700s failures=0
+[15:08:08] END precision exit=0 65s
+[15:08:08] START volume
+[15:08:15] s20 volume-q: START volume-state timeout=600s
+[15:08:35] s20 volume-q: PASS volume-state 19s maxPipelineMs=11022.1
+[15:08:35] s20 volume-q: START volume-absorption timeout=600s
+[15:10:41] s20 volume-q: PASS volume-absorption 124s maxPipelineMs=10144
+[15:10:41] s20 volume-q: START volume-isotropic timeout=600s
+[15:13:41] s20 volume-q: PASS volume-isotropic 179s maxPipelineMs=10059.9
+[15:13:41] s20 volume-q: START volume-forward timeout=600s
+[15:17:23] s20 volume-q: PASS volume-forward 221s maxPipelineMs=15400.5
+[15:17:23] s20 volume-q: START volume-backward timeout=600s
+[15:21:04] s20 volume-q: PASS volume-backward 219s maxPipelineMs=15056.5
+[15:21:04] s20 volume-q: START boundary-state timeout=600s
+[15:22:28] s20 volume-q: PASS boundary-state 83s maxPipelineMs=23491.8
+[15:22:28] s20 volume-q: START boundary-compaction-guard timeout=600s
+[15:22:49] s20 volume-q: PASS boundary-compaction-guard 22s maxPipelineMs=19650.9
+[15:22:49] s20 volume-q: START volume-replay-absorption timeout=600s
+[15:23:47] s20 volume-q: PASS volume-replay-absorption 56s readbacks=464 max=2.29e-05 strict=552 fmt=native-command-stream-v6
+[15:23:47] s20 volume-q: START volume-replay-isotropic timeout=600s
+[15:24:43] s20 volume-q: PASS volume-replay-isotropic 55s readbacks=672 max=2.29e-05 strict=1439 fmt=native-command-stream-v6
+[15:24:43] s20 volume-q: START volume-replay-forward timeout=600s
+[15:25:40] s20 volume-q: PASS volume-replay-forward 55s readbacks=664 max=3.62e-05 strict=1472 fmt=native-command-stream-v6
+[15:25:40] s20 volume-q: START volume-replay-backward timeout=600s
+[15:26:36] s20 volume-q: PASS volume-replay-backward 55s readbacks=664 max=2.29e-05 strict=1382 fmt=native-command-stream-v6
+[15:26:42] s20 volume-q: END passed=True wall=1108s/7200s failures=0
+[15:26:42] END volume exit=0 1114s
+[15:26:42] START closed-single
+[15:26:51] s20 volume-cs: START closed-single timeout=643s
+[15:30:09] s20 volume-cs: PASS closed-single 196s maxPipelineMs=10240.7
+[15:30:09] s20 volume-cs: START closed-replay-single timeout=643s
+[15:30:50] s20 volume-cs: PASS closed-replay-single 40s readbacks=838 max=3.05e-05 strict=608 fmt=native-command-stream-v6
+[15:30:56] s20 volume-cs: END passed=True wall=248s/1600s failures=0
+[15:30:56] END closed-single exit=0 254s
+[15:30:57] START closed-overlap
+[15:31:05] s20 volume-co: START closed-overlap timeout=960s
+[15:36:01] s20 volume-co: PASS closed-overlap 294s maxPipelineMs=20392.8
+[15:36:01] s20 volume-co: START closed-replay-overlap timeout=960s
+[15:37:15] s20 volume-co: PASS closed-replay-overlap 71s readbacks=1192 max=3.05e-05 strict=857 fmt=native-command-stream-v6
+[15:37:21] s20 volume-co: END passed=True wall=378s/2100s failures=0
+[15:37:21] END closed-overlap exit=0 384s
+[15:37:21] START closed-inside
+[15:37:29] s20 volume-ci: START closed-inside timeout=909s
+[15:42:12] s20 volume-ci: PASS closed-inside 282s maxPipelineMs=21052.4
+[15:42:12] s20 volume-ci: START closed-replay-inside timeout=909s
+[15:43:25] s20 volume-ci: PASS closed-replay-inside 72s readbacks=1116 max=1.53e-05 strict=1788 fmt=native-command-stream-v6
+[15:43:31] s20 volume-ci: END passed=True wall=364s/2100s failures=0
+[15:43:31] END closed-inside exit=0 370s
+[15:43:31] START hostcap-linux-triangle
+[15:43:41] s20 hostcap-linux-triangle: END passed=False wall=5s/7000s
+[15:43:41] END hostcap-linux-triangle exit=1 10s
+[15:43:41] START hostcap-linux-terminator
+[15:43:51] s20 hostcap-linux-terminator: END passed=False wall=5s/7000s
+[15:43:51] END hostcap-linux-terminator exit=1 10s
+[15:43:52] START app-webgpu
+[15:46:30] linux capture re-record triangle_lighting exit=0 136s
+[15:48:13] linux capture re-record shadow_terminator exit=0 103s
+[15:50:11] END app-webgpu exit=0 379s
+[15:50:12] START principled
+[15:50:22] s20 materials-pr: START principled_svm timeout=600s
+[15:50:51] hostcap (merge3 captures) not run: merge3 capture arenas (run.arena.bin) were deleted at merge3 scratch cleanup -> harness input missing, not a device result; captures re-recorded on Linux in this worktree (native/work/q/validation/linux-*), replays to run as step hostcap2 after the main chain
+[15:51:16] stopped chain bash pid 184174 (own PID) so that the Linux-capture replays (hostcap2) run before the remaining materials, as in the commissioned order; run_corpus materials-pr (pid 235066 under timeout) continues to completion; lock kept
+[15:52:56] s20 materials-pr: FAIL principled_svm exit=1 152s: Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12
+[15:52:56] s20 materials-pr: START principled_bounce timeout=600s
+[15:57:08] s20 materials-pr: FAIL principled_bounce exit=1 252s: Compiled materials: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[15:57:08] s20 materials-pr: START principled_render timeout=600s
+[16:01:24] s20 materials-pr: REFERENCE principled_render host re-judged vs glibc: False
+[16:01:24] s20 materials-pr: FAIL principled_render exit=1 256s: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[16:01:31] s20 materials-pr: END passed=False wall=672s/2700s failures=4
+[16:01:54] lock s20 released (own, after stopped chain) for chain_s20b
+[16:01:55] lock s20 taken (pid 248444)
+[16:02:21] staged exit=0
+[16:02:21] START hostcap-linux-triangle-q2
+[16:02:27] s20 hostcap-linux-triangle-q2: START tri0 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-triangle_lighting/out/triangle_lighting/run/case-0)
+[16:03:11] s20 hostcap-linux-triangle-q2: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[16:03:11] s20 hostcap-linux-triangle-q2: START tri1 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-triangle_lighting/out/triangle_lighting/run/case-1)
+[16:04:46] s20 hostcap-linux-triangle-q2: PASS tri1 readbacks=417 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[16:04:46] s20 hostcap-linux-triangle-q2: START tri2 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-triangle_lighting/out/triangle_lighting/run/case-2)
+[16:06:24] s20 hostcap-linux-triangle-q2: PASS tri2 readbacks=415 max=6.41e-07 strict=12 fmt=native-command-stream-v6
+[16:06:24] s20 hostcap-linux-triangle-q2: START tri3 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-triangle_lighting/out/triangle_lighting/run/case-3)
+[16:08:01] s20 hostcap-linux-triangle-q2: PASS tri3 readbacks=473 max=1.76e-06 strict=233 fmt=native-command-stream-v6
+[16:08:02] s20 hostcap-linux-triangle-q2: START tri4 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-triangle_lighting/out/triangle_lighting/run/case-4)
+[16:09:39] s20 hostcap-linux-triangle-q2: PASS tri4 readbacks=415 max=2.53e-07 strict=5 fmt=native-command-stream-v6
+[16:09:39] s20 hostcap-linux-triangle-q2: START tri5 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-triangle_lighting/out/triangle_lighting/run/case-5)
+[16:15:46] s20 hostcap-linux-triangle-q2: PASS tri5 readbacks=464 max=1.79e-06 strict=237 fmt=native-command-stream-v6
+[16:15:51] s20 hostcap-linux-triangle-q2: END passed=True wall=806s/7000s
+[16:15:51] END hostcap-linux-triangle-q2 exit=0 810s
+[16:15:52] START hostcap-linux-terminator-q2
+[16:15:57] s20 hostcap-linux-terminator-q2: START term0 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-0)
+[16:16:39] s20 hostcap-linux-terminator-q2: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[16:16:39] s20 hostcap-linux-terminator-q2: START term1 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-1)
+[16:17:32] s20 hostcap-linux-terminator-q2: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[16:17:32] s20 hostcap-linux-terminator-q2: START term2 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-2)
+[16:18:25] s20 hostcap-linux-terminator-q2: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[16:18:26] s20 hostcap-linux-terminator-q2: START term3 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-3)
+[16:19:19] s20 hostcap-linux-terminator-q2: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[16:19:19] s20 hostcap-linux-terminator-q2: START term4 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-4)
+[16:21:23] s20 hostcap-linux-terminator-q2: PASS term4 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[16:21:23] s20 hostcap-linux-terminator-q2: START term5 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-5)
+[16:23:28] s20 hostcap-linux-terminator-q2: PASS term5 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[16:23:28] s20 hostcap-linux-terminator-q2: START term6 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-6)
+[16:25:32] s20 hostcap-linux-terminator-q2: PASS term6 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[16:25:32] s20 hostcap-linux-terminator-q2: START term7 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-7)
+[16:27:36] s20 hostcap-linux-terminator-q2: PASS term7 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[16:27:36] s20 hostcap-linux-terminator-q2: START term8 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-8)
+[16:29:41] s20 hostcap-linux-terminator-q2: PASS term8 readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[16:29:41] s20 hostcap-linux-terminator-q2: START term9 (/home/jeremy/ClaudeHome/cycles-worktrees/q-s20-sweep/native/work/q/validation/linux-shadow_terminator/out/shadow_terminator/run/case-9)
+[16:35:49] s20 hostcap-linux-terminator-q2: PASS term9 readbacks=443 max=2.93e-05 strict=21 fmt=native-command-stream-v6
+[16:35:54] s20 hostcap-linux-terminator-q2: END passed=True wall=1198s/7000s
+[16:35:54] END hostcap-linux-terminator-q2 exit=0 1202s
+[16:35:54] skip principled (already run)
+[16:35:54] START nodes_svm
+[16:36:02] s20 materials-nsvm: START nodes_svm timeout=2638s
+[16:36:22] s20 materials-nsvm: FAIL nodes_svm exit=1 19s:     Parent device is lost
+[16:36:28] s20 materials-nsvm: END passed=False wall=28s/2900s failures=1
+[16:36:28] END nodes_svm exit=0 34s
+[16:36:29] START nodes_world
+[16:36:37] s20 materials-nw: START nodes_world timeout=1529s
+[16:36:43] s20 materials-nw: FAIL nodes_world exit=1 6s: Compiled world 0: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[16:36:50] s20 materials-nw: END passed=False wall=15s/1800s failures=1
+[16:36:50] END nodes_world exit=0 21s
+[16:36:50] START nodes_render
+[16:36:58] s20 materials-nr: START nodes_render timeout=600s
+[16:37:12] s20 materials-nr: REFERENCE nodes_render host re-judged vs glibc: False
+[16:37:13] s20 materials-nr: FAIL nodes_render exit=1 14s:     Parent device is lost
+[16:37:19] s20 materials-nr: END passed=False wall=22s/1500s failures=2
+[16:37:19] END nodes_render exit=0 29s
+[16:37:20] device cleaned (left: '')
+[16:37:20] lock s20 released
+[16:37:50] lock s20 taken (pid 263880) for isolated reruns
+[16:38:14] staged exit=0
+[16:39:14] START transparent_shadow-iso
+[16:39:21] s20 transparent-iso: START transparent_shadow timeout=600s
+[16:39:32] s20 transparent-iso: FAIL transparent_shadow exit=1 10s: Transparent intersect failed: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data
+[16:39:39] s20 transparent-iso: END passed=False wall=18s/1500s failures=3
+[16:39:39] END transparent_shadow-iso exit=0
+[16:40:39] START nodes_world-iso
+[16:40:46] s20 materials-nwiso: START nodes_world timeout=1529s
+[16:40:53] s20 materials-nwiso: FAIL nodes_world exit=1 6s: Compiled world 0: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[16:40:59] s20 materials-nwiso: END passed=False wall=14s/1800s failures=1
+[16:40:59] END nodes_world-iso exit=0
+[16:40:59] device cleaned (left: '')
+[16:40:59] lock s20 released
+[16:43:03] deleted scratch native/work/q/build-android-arm64 (2.8 GB; sha256 of files >1 MB in deleted-scratch-sha256.txt; staged binaries' sha256 in staged-binaries-android-arm64.json)
+[16:44:13] SEALED: sweep complete; report /home/jeremy/ClaudeHome/cycles-wgsl-2026-10-22/agent-reports/q-s20-sweep.md

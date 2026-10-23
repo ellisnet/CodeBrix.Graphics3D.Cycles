@@ -1,0 +1,733 @@
+-- Not using precompiled libraries
+-- Attempting to use system libraries instead
+CMake Warning (dev) at src/cmake/external_libs.cmake:443 (find_package):
+  Policy CMP0167 is not set: The FindBoost module is removed.  Run "cmake
+  --help-policy CMP0167" for policy details.  Use the cmake_policy command to
+  set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  CMakeLists.txt:257 (include)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- CodeBrix Cycles host 1.0.20261023.0, Cycles a456b761034dda42c32eef9f4aae0fa5a5c9f604
+-- Configuring done (0.1s)
+-- Generating done (0.2s)
+-- Build files have been written to: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 19%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/queue.cpp.o
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/camera.cpp.o
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/shadow.cpp.o
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.cpp.o
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/background.cpp.o
+[ 23%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/lighting.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/volume.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/pipelines.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/closest.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device_tier.cpp.o
+[ 26%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/shader_data.cpp.o
+[ 28%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_layout.cpp.o
+[ 28%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp.o
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/pipelines.cpp: In lambda function:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/pipelines.cpp:141:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  141 |     if(saturate)v=std::min(std::max(v,0.f),1.f);return v>cutoff;};
+      |     ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/pipelines.cpp:141:49: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  141 |     if(saturate)v=std::min(std::max(v,0.f),1.f);return v>cutoff;};
+      |                                                 ^~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp: In constructor ‘cbc::Device::Device()’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:65:5: warning: this ‘else’ clause does not guard... [-Wmisleading-indentation]
+   65 |     else wgpuAdapterRelease(a);wgpuAdapterInfoFreeMembers(info);
+      |     ^~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:65:32: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘else’
+   65 |     else wgpuAdapterRelease(a);wgpuAdapterInfoFreeMembers(info);
+      |                                ^~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp: In member function ‘cbc::Buffer cbc::Device::buffer(size_t, WGPUBufferUsage, const void*)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:93:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   93 |   if(data&&out.value)wgpuQueueWriteBuffer(queue,out,0,data,bytes);pop_scope();
+      |   ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:93:67: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   93 |   if(data&&out.value)wgpuQueueWriteBuffer(queue,out,0,data,bytes);pop_scope();
+      |                                                                   ^~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:94:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   94 |   if(!out.value)throw Error(CBC_BACKEND_GPU_ERROR,"Buffer allocation failed");++buffer_creations;return out;
+      |   ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:94:79: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   94 |   if(!out.value)throw Error(CBC_BACKEND_GPU_ERROR,"Buffer allocation failed");++buffer_creations;return out;
+      |                                                                               ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp: In function ‘void cbc::{anonymous}::crash_breadcrumb(int)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:110:5: warning: this ‘while’ clause does not guard... [-Wmisleading-indentation]
+  110 |     while(d)line[n++]=digits[--d];line[n++]='\n';
+      |     ^~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:110:35: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘while’
+  110 |     while(d)line[n++]=digits[--d];line[n++]='\n';
+      |                                   ^~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp: In member function ‘cbc::Pipeline cbc::Device::pipeline(WGPUShaderModule, WGPUPipelineLayout, const char*, const char*, int)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:141:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  141 |   if(!result.value)throw Error(CBC_BACKEND_GPU_ERROR,std::string("Pipeline '")+entry+"' creation failed");++pipeline_creations;return result;
+      |   ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:141:107: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  141 |   if(!result.value)throw Error(CBC_BACKEND_GPU_ERROR,std::string("Pipeline '")+entry+"' creation failed");++pipeline_creations;return result;
+      |                                                                                                           ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp: In lambda function:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:146:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  146 |     if(s!=WGPUMapAsyncStatus_Success)p->error="Readback: "+text(msg);p->done.store(true,std::memory_order_release);};
+      |     ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/src/webgpu_device.cpp:146:70: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  146 |     if(s!=WGPUMapAsyncStatus_Success)p->error="Readback: "+text(msg);p->done.store(true,std::memory_order_release);};
+      |                                                                      ^
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp: In instantiation of ‘ccl::WebGPUDevice::mem_copy_to(ccl::device_memory&)::<lambda()>::<lambda(auto:42&)> [with auto:42 = std::vector<ccl::KernelObject>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:195:56:   required from here
+  195 |     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
+      |                                                    ~~~~^~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:191:39: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  191 |       if(mem.memory_size())std::memcpy(records.data(),mem.host_pointer,mem.memory_size());};
+      |                            ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/../bvh/params.h:13,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:3:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/../kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+[ 30%] Linking CXX static library ../../lib/libcycles_device.a
+[ 47%] Built target cycles_device
+[ 52%] Built target cycles_session
+[ 64%] Built target cycles_integrator
+[ 69%] Built target cycles_subd
+[ 92%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Linking CXX executable bin/codebrix_cycles_atomic_film_gate
+[100%] Built target codebrix_cycles_atomic_film_gate
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 16%] Built target cycles_util
+[ 20%] Built target cycles_graph
+[ 20%] Built target cycles_kernel_cpu
+[ 46%] Built target cycles_device
+[ 51%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 90%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_attribute_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/attribute_gate.cpp.o
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_attribute_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_reference.cpp.o
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/attribute_gate.cpp:3:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In function ‘cbc::Pipeline pipeline(ccl::WebGPUDevice&, const std::string&)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:92: error: no match for ‘operator<<’ (operand types are ‘std::basic_ofstream<char>’ and ‘ccl::ShaderFeatures’)
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+      |                                                                                  |           |
+      |                                                                                  |           ccl::ShaderFeatures
+      |                                                                                  std::basic_ofstream<char>
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:92: note: candidate: ‘operator<<(int, int)’ (built-in)
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:92: note:   no known conversion for argument 2 from ‘ccl::ShaderFeatures’ to ‘int’
+In file included from /usr/include/c++/14/bits/unique_ptr.h:43,
+                 from /usr/include/c++/14/memory:78,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/guarded_allocator.h:10,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/vector.h:10,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:11,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/wavefront_test.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:4:
+/usr/include/c++/14/ostream:116:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(__ostream_type& (*)(__ostream_type&)) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  116 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:116:36: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘std::basic_ostream<char>::__ostream_type& (*)(std::basic_ostream<char>::__ostream_type&)’ {aka ‘std::basic_ostream<char>& (*)(std::basic_ostream<char>&)’}
+  116 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))
+      |                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:125:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(__ios_type& (*)(__ios_type&)) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>; __ios_type = std::basic_ios<char>]’
+  125 |       operator<<(__ios_type& (*__pf)(__ios_type&))
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:125:32: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘std::basic_ostream<char>::__ios_type& (*)(std::basic_ostream<char>::__ios_type&)’ {aka ‘std::basic_ios<char>& (*)(std::basic_ios<char>&)’}
+  125 |       operator<<(__ios_type& (*__pf)(__ios_type&))
+      |                  ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:135:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::ios_base& (*)(std::ios_base&)) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  135 |       operator<<(ios_base& (*__pf) (ios_base&))
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:135:30: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘std::ios_base& (*)(std::ios_base&)’
+  135 |       operator<<(ios_base& (*__pf) (ios_base&))
+      |                  ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:174:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  174 |       operator<<(long __n)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:174:23: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘long int’
+  174 |       operator<<(long __n)
+      |                  ~~~~~^~~
+/usr/include/c++/14/ostream:178:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  178 |       operator<<(unsigned long __n)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:178:32: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘long unsigned int’
+  178 |       operator<<(unsigned long __n)
+      |                  ~~~~~~~~~~~~~~^~~
+/usr/include/c++/14/ostream:182:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(bool) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  182 |       operator<<(bool __n)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:182:23: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘bool’
+  182 |       operator<<(bool __n)
+      |                  ~~~~~^~~
+In file included from /usr/include/c++/14/ostream:1022:
+/usr/include/c++/14/bits/ostream.tcc:96:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(short int) [with _CharT = char; _Traits = std::char_traits<char>]’
+   96 |     basic_ostream<_CharT, _Traits>::
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/14/bits/ostream.tcc:97:22: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘short int’
+   97 |     operator<<(short __n)
+      |                ~~~~~~^~~
+/usr/include/c++/14/ostream:189:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(short unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  189 |       operator<<(unsigned short __n)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:189:33: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘short unsigned int’
+  189 |       operator<<(unsigned short __n)
+      |                  ~~~~~~~~~~~~~~~^~~
+/usr/include/c++/14/bits/ostream.tcc:110:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(int) [with _CharT = char; _Traits = std::char_traits<char>]’
+  110 |     basic_ostream<_CharT, _Traits>::
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/14/bits/ostream.tcc:111:20: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘int’
+  111 |     operator<<(int __n)
+      |                ~~~~^~~
+/usr/include/c++/14/ostream:200:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  200 |       operator<<(unsigned int __n)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:200:31: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘unsigned int’
+  200 |       operator<<(unsigned int __n)
+      |                  ~~~~~~~~~~~~~^~~
+/usr/include/c++/14/ostream:211:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  211 |       operator<<(long long __n)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:211:28: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘long long int’
+  211 |       operator<<(long long __n)
+      |                  ~~~~~~~~~~^~~
+/usr/include/c++/14/ostream:215:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  215 |       operator<<(unsigned long long __n)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:215:37: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘long long unsigned int’
+  215 |       operator<<(unsigned long long __n)
+      |                  ~~~~~~~~~~~~~~~~~~~^~~
+/usr/include/c++/14/ostream:231:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(double) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  231 |       operator<<(double __f)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:231:25: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘double’
+  231 |       operator<<(double __f)
+      |                  ~~~~~~~^~~
+/usr/include/c++/14/ostream:235:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(float) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  235 |       operator<<(float __f)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:235:24: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘float’
+  235 |       operator<<(float __f)
+      |                  ~~~~~~^~~
+/usr/include/c++/14/ostream:243:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long double) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  243 |       operator<<(long double __f)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:243:30: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘long double’
+  243 |       operator<<(long double __f)
+      |                  ~~~~~~~~~~~~^~~
+/usr/include/c++/14/ostream:301:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(const void*) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>]’
+  301 |       operator<<(const void* __p)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:301:30: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘const void*’
+  301 |       operator<<(const void* __p)
+      |                  ~~~~~~~~~~~~^~~
+/usr/include/c++/14/ostream:306:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::nullptr_t) [with _CharT = char; _Traits = std::char_traits<char>; __ostream_type = std::basic_ostream<char>; std::nullptr_t = std::nullptr_t]’
+  306 |       operator<<(nullptr_t)
+      |       ^~~~~~~~
+/usr/include/c++/14/ostream:306:18: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘std::nullptr_t’
+  306 |       operator<<(nullptr_t)
+      |                  ^~~~~~~~~
+/usr/include/c++/14/bits/ostream.tcc:124:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(__streambuf_type*) [with _CharT = char; _Traits = std::char_traits<char>; __streambuf_type = std::basic_streambuf<char>]’
+  124 |     basic_ostream<_CharT, _Traits>::
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/14/bits/ostream.tcc:125:34: note:   no known conversion for argument 1 from ‘ccl::ShaderFeatures’ to ‘std::basic_ostream<char>::__streambuf_type*’ {aka ‘std::basic_streambuf<char>*’}
+  125 |     operator<<(__streambuf_type* __sbin)
+      |                ~~~~~~~~~~~~~~~~~~^~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/queue.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:5:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/kernel.h:27:15: note: candidate: ‘std::ostream& ccl::operator<<(std::ostream&, DeviceKernel)’
+   27 | std::ostream &operator<<(std::ostream &os, DeviceKernel kernel);
+      |               ^~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/kernel.h:27:57: note:   no known conversion for argument 2 from ‘ccl::ShaderFeatures’ to ‘ccl::DeviceKernel’
+   27 | std::ostream &operator<<(std::ostream &os, DeviceKernel kernel);
+      |                                            ~~~~~~~~~~~~~^~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/queue.h:10:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/log.h:165:15: note: candidate: ‘std::ostream& ccl::operator<<(std::ostream&, const int2&)’
+  165 | std::ostream &operator<<(std::ostream &os, const int2 &value);
+      |               ^~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/log.h:165:56: note:   no known conversion for argument 2 from ‘ccl::ShaderFeatures’ to ‘const ccl::int2&’
+  165 | std::ostream &operator<<(std::ostream &os, const int2 &value);
+      |                                            ~~~~~~~~~~~~^~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/log.h:166:15: note: candidate: ‘std::ostream& ccl::operator<<(std::ostream&, const float3&)’
+  166 | std::ostream &operator<<(std::ostream &os, const float3 &value);
+      |               ^~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/log.h:166:58: note:   no known conversion for argument 2 from ‘ccl::ShaderFeatures’ to ‘const ccl::float3&’
+  166 | std::ostream &operator<<(std::ostream &os, const float3 &value);
+      |                                            ~~~~~~~~~~~~~~^~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/log.h:167:15: note: candidate: ‘std::ostream& ccl::operator<<(std::ostream&, const float4&)’
+  167 | std::ostream &operator<<(std::ostream &os, const float4 &value);
+      |               ^~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/log.h:167:58: note:   no known conversion for argument 2 from ‘ccl::ShaderFeatures’ to ‘const ccl::float4&’
+  167 | std::ostream &operator<<(std::ostream &os, const float4 &value);
+      |                                            ~~~~~~~~~~~~~~^~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/integrator/pass_accessor.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/integrator/path_trace_work.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/integrator/path_trace_work_gpu.h:13,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/wavefront_test.h:5:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/scene/pass.h:25:15: note: candidate: ‘std::ostream& ccl::operator<<(std::ostream&, PassMode)’
+   25 | std::ostream &operator<<(std::ostream &os, PassMode mode);
+      |               ^~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/scene/pass.h:25:53: note:   no known conversion for argument 2 from ‘ccl::ShaderFeatures’ to ‘ccl::PassMode’
+   25 | std::ostream &operator<<(std::ostream &os, PassMode mode);
+      |                                            ~~~~~~~~~^~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/scene/pass.h:98:15: note: candidate: ‘std::ostream& ccl::operator<<(std::ostream&, const Pass&)’
+   98 | std::ostream &operator<<(std::ostream &os, const Pass &pass);
+      |               ^~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/scene/pass.h:98:56: note:   no known conversion for argument 2 from ‘ccl::ShaderFeatures’ to ‘const ccl::Pass&’
+   98 | std::ostream &operator<<(std::ostream &os, const Pass &pass);
+      |                                            ~~~~~~~~~~~~^~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/integrator/work_tile_scheduler.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/integrator/path_trace_work_gpu.h:14:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/integrator/tile.h:34:15: note: candidate: ‘std::ostream& ccl::operator<<(std::ostream&, const TileSize&)’
+   34 | std::ostream &operator<<(std::ostream &os, const TileSize &tile_size);
+      |               ^~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/integrator/tile.h:34:60: note:   no known conversion for argument 2 from ‘ccl::ShaderFeatures’ to ‘const ccl::TileSize&’
+   34 | std::ostream &operator<<(std::ostream &os, const TileSize &tile_size);
+      |                                            ~~~~~~~~~~~~~~~~^~~~~~~~~
+In file included from /usr/include/c++/14/bits/memory_resource.h:38,
+                 from /usr/include/c++/14/unordered_map:59,
+                 from /usr/include/c++/14/functional:63,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:10:
+/usr/include/c++/14/cstddef:125:5: note: candidate: ‘template<class _IntegerType> constexpr std::__byte_op_t<_IntegerType> std::operator<<(byte, _IntegerType)’
+  125 |     operator<<(byte __b, _IntegerType __shift) noexcept
+      |     ^~~~~~~~
+/usr/include/c++/14/cstddef:125:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:82: note:   cannot convert ‘std::operator<< <basic_ofstream<char>, ios_base&(ios_base&)>(std::basic_ofstream<char>(std::operator+(const __cxx11::basic_string<_CharT, _Traits, _Allocator>&, const _CharT*) [with _CharT = char; _Traits = char_traits<char>; _Alloc = allocator<char>](((const char*)".features.txt")), ((std::ios_base::openmode)std::ios_base::out)), std::hex)’ (type ‘std::basic_ofstream<char>’) to type ‘std::byte’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~
+In file included from /usr/include/c++/14/bits/basic_string.h:47,
+                 from /usr/include/c++/14/string:54,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/system.h:10,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/transform.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:11,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:10:
+/usr/include/c++/14/string_view:763:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, basic_string_view<_CharT, _Traits>)’
+  763 |     operator<<(basic_ostream<_CharT, _Traits>& __os,
+      |     ^~~~~~~~
+/usr/include/c++/14/string_view:763:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘ccl::ShaderFeatures’ is not derived from ‘std::basic_string_view<_CharT, _Traits>’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/bits/basic_string.h:4077:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const __cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 4077 |     operator<<(basic_ostream<_CharT, _Traits>& __os,
+      |     ^~~~~~~~
+/usr/include/c++/14/bits/basic_string.h:4077:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘ccl::ShaderFeatures’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+In file included from /usr/include/c++/14/bits/ios_base.h:46,
+                 from /usr/include/c++/14/ios:44,
+                 from /usr/include/c++/14/ostream:40:
+/usr/include/c++/14/system_error:339:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const error_code&)’
+  339 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)
+      |     ^~~~~~~~
+/usr/include/c++/14/system_error:339:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘const std::error_code&’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:563:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _CharT)’
+  563 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:563:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   deduced conflicting types for parameter ‘_CharT’ (‘char’ and ‘ccl::ShaderFeatures’)
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:573:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, char)’
+  573 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:573:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:579:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char)’
+  579 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:579:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:590:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, signed char)’
+  590 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:590:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘signed char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:595:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, unsigned char)’
+  595 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:595:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘unsigned char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:604:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, wchar_t)’ (deleted)
+  604 |     operator<<(basic_ostream<char, _Traits>&, wchar_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:604:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘wchar_t’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:609:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char8_t)’ (deleted)
+  609 |     operator<<(basic_ostream<char, _Traits>&, char8_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:609:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘char8_t’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:614:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char16_t)’ (deleted)
+  614 |     operator<<(basic_ostream<char, _Traits>&, char16_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:614:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘char16_t’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:618:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, char32_t)’ (deleted)
+  618 |     operator<<(basic_ostream<char, _Traits>&, char32_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:618:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘char32_t’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:624:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, char8_t)’ (deleted)
+  624 |     operator<<(basic_ostream<wchar_t, _Traits>&, char8_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:624:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   mismatched types ‘wchar_t’ and ‘char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘std::basic_ofstream<char>’ is not derived from ‘std::basic_ostream<wchar_t, _Traits>’
+/usr/include/c++/14/ostream:629:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, char16_t)’ (deleted)
+  629 |     operator<<(basic_ostream<wchar_t, _Traits>&, char16_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:629:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   mismatched types ‘wchar_t’ and ‘char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘std::basic_ofstream<char>’ is not derived from ‘std::basic_ostream<wchar_t, _Traits>’
+/usr/include/c++/14/ostream:633:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, char32_t)’ (deleted)
+  633 |     operator<<(basic_ostream<wchar_t, _Traits>&, char32_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:633:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   mismatched types ‘wchar_t’ and ‘char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘std::basic_ofstream<char>’ is not derived from ‘std::basic_ostream<wchar_t, _Traits>’
+/usr/include/c++/14/ostream:654:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const _CharT*)’
+  654 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:654:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   mismatched types ‘const _CharT*’ and ‘ccl::ShaderFeatures’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/bits/ostream.tcc:307:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const char*)’
+  307 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)
+      |     ^~~~~~~~
+/usr/include/c++/14/bits/ostream.tcc:307:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘const char*’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:671:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char*)’
+  671 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:671:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘const char*’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:684:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const signed char*)’
+  684 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:684:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘const signed char*’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:689:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const unsigned char*)’
+  689 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:689:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘const unsigned char*’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:698:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const wchar_t*)’ (deleted)
+  698 |     operator<<(basic_ostream<char, _Traits>&, const wchar_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:698:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘const wchar_t*’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:703:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char8_t*)’ (deleted)
+  703 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:703:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘const char8_t*’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:708:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char16_t*)’ (deleted)
+  708 |     operator<<(basic_ostream<char, _Traits>&, const char16_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:708:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘const char16_t*’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:712:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(basic_ostream<char, _Traits>&, const char32_t*)’ (deleted)
+  712 |     operator<<(basic_ostream<char, _Traits>&, const char32_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:712:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘const char32_t*’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:718:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*)’ (deleted)
+  718 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:718:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   mismatched types ‘wchar_t’ and ‘char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘std::basic_ofstream<char>’ is not derived from ‘std::basic_ostream<wchar_t, _Traits>’
+/usr/include/c++/14/ostream:723:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*)’ (deleted)
+  723 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:723:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   mismatched types ‘wchar_t’ and ‘char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘std::basic_ofstream<char>’ is not derived from ‘std::basic_ostream<wchar_t, _Traits>’
+/usr/include/c++/14/ostream:727:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*)’ (deleted)
+  727 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:727:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   mismatched types ‘wchar_t’ and ‘char’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘std::basic_ofstream<char>’ is not derived from ‘std::basic_ostream<wchar_t, _Traits>’
+/usr/include/c++/14/ostream:810:5: note: candidate: ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&)’
+  810 |     operator<<(_Ostream&& __os, const _Tp& __x)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:810:5: note:   template argument deduction/substitution failed:
+/usr/include/c++/14/ostream: In substitution of ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ofstream<char>; _Tp = ccl::ShaderFeatures]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94:   required from here
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:810:5: error: template constraint failure for ‘template<class _Os, class _Tp>  requires (__derived_from_ios_base<_Os>) && requires(_Os& __os, const _Tp& __t) {__os << __t;} using std::__rvalue_stream_insertion_t = _Os&&’
+  810 |     operator<<(_Ostream&& __os, const _Tp& __x)
+      |     ^~~~~~~~
+/usr/include/c++/14/ostream:810:5: note: constraints not satisfied
+/usr/include/c++/14/ostream: In substitution of ‘template<class _Os, class _Tp>  requires (__derived_from_ios_base<_Os>) && requires(_Os& __os, const _Tp& __t) {__os << __t;} using std::__rvalue_stream_insertion_t = _Os&& [with _Os = std::basic_ofstream<char>; _Tp = ccl::ShaderFeatures]’:
+/usr/include/c++/14/ostream:810:5:   required by substitution of ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ofstream<char>; _Tp = ccl::ShaderFeatures]’
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94:   required from here
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/ostream:784:11:   required by the constraints of ‘template<class _Os, class _Tp>  requires (__derived_from_ios_base<_Os>) && requires(_Os& __os, const _Tp& __t) {__os << __t;} using std::__rvalue_stream_insertion_t = _Os&&’
+/usr/include/c++/14/ostream:783:10:   in requirements with ‘_Os& __os’, ‘const _Tp& __t’ [with _Os = std::basic_ofstream<char, std::char_traits<char> >; _Tp = ccl::ShaderFeatures]
+/usr/include/c++/14/ostream:783:54: note: the required expression ‘(__os << __t)’ is invalid
+  783 |       && requires (_Os& __os, const _Tp& __t) { __os << __t; }
+      |                                                 ~~~~~^~~~~~
+/usr/include/c++/14/ostream: In substitution of ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ofstream<char>; _Tp = ccl::ShaderFeatures]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94:   required from here
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+cc1plus: note: set ‘-fconcepts-diagnostics-depth=’ to at least 2 for more detail
+/usr/include/c++/14/bits/unique_ptr.h:1149:5: note: candidate: ‘template<class _CharT, class _Traits, class _Tp, class _Dp> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const unique_ptr<_Up, _Ep>&) requires requires{std::operator<<::__os << std::operator<<::__p->get();}’
+ 1149 |     operator<<(basic_ostream<_CharT, _Traits>& __os,
+      |     ^~~~~~~~
+/usr/include/c++/14/bits/unique_ptr.h:1149:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘ccl::ShaderFeatures’ is not derived from ‘const std::unique_ptr<_Up, _Ep>’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+In file included from /usr/include/c++/14/memory:80:
+/usr/include/c++/14/bits/shared_ptr.h:70:5: note: candidate: ‘template<class _Ch, class _Tr, class _Tp, __gnu_cxx::_Lock_policy _Lp> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const __shared_ptr<_Tp, _Lp>&)’
+   70 |     operator<<(std::basic_ostream<_Ch, _Tr>& __os,
+      |     ^~~~~~~~
+/usr/include/c++/14/bits/shared_ptr.h:70:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘ccl::ShaderFeatures’ is not derived from ‘const std::__shared_ptr<_Tp, _Lp>’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/graph/node_type.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/graph/node.h:9,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/denoise.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:14:
+/usr/include/c++/14/bitset:1687:5: note: candidate: ‘template<class _CharT, class _Traits, long unsigned int _Nb> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, const bitset<_Nb>&)’
+ 1687 |     operator<<(std::basic_ostream<_CharT, _Traits>& __os,
+      |     ^~~~~~~~
+/usr/include/c++/14/bitset:1687:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘ccl::ShaderFeatures’ is not derived from ‘const std::bitset<_Nb>’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/thread.h:14,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/graph/node_type.h:14:
+/usr/include/c++/14/thread:105:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, thread::id)’
+  105 |     operator<<(basic_ostream<_CharT, _Traits>& __out, thread::id __id)
+      |     ^~~~~~~~
+/usr/include/c++/14/thread:105:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘std::thread::id’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+In file included from /usr/include/c++/14/bits/fs_path.h:38,
+                 from /usr/include/c++/14/filesystem:52,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/reference_policy.h:52,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:7:
+/usr/include/c++/14/iomanip:84:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _Resetiosflags)’
+   84 |     operator<<(basic_ostream<_CharT, _Traits>& __os, _Resetiosflags __f)
+      |     ^~~~~~~~
+/usr/include/c++/14/iomanip:84:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘std::_Resetiosflags’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/iomanip:114:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _Setiosflags)’
+  114 |     operator<<(basic_ostream<_CharT, _Traits>& __os, _Setiosflags __f)
+      |     ^~~~~~~~
+/usr/include/c++/14/iomanip:114:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘std::_Setiosflags’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/iomanip:148:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _Setbase)’
+  148 |     operator<<(basic_ostream<_CharT, _Traits>& __os, _Setbase __f)
+      |     ^~~~~~~~
+/usr/include/c++/14/iomanip:148:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘std::_Setbase’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/iomanip:185:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _Setfill<_CharT>)’
+  185 |     operator<<(basic_ostream<_CharT, _Traits>& __os, _Setfill<_CharT> __f)
+      |     ^~~~~~~~
+/usr/include/c++/14/iomanip:185:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘ccl::ShaderFeatures’ is not derived from ‘std::_Setfill<_CharT>’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/iomanip:215:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _Setprecision)’
+  215 |     operator<<(basic_ostream<_CharT, _Traits>& __os, _Setprecision __f)
+      |     ^~~~~~~~
+/usr/include/c++/14/iomanip:215:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘std::_Setprecision’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/iomanip:245:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _Setw)’
+  245 |     operator<<(basic_ostream<_CharT, _Traits>& __os, _Setw __f)
+      |     ^~~~~~~~
+/usr/include/c++/14/iomanip:245:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   cannot convert ‘probe_features’ (type ‘ccl::ShaderFeatures’) to type ‘std::_Setw’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/iomanip:318:5: note: candidate: ‘template<class _CharT, class _Traits, class _MoneyT> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _Put_money<_MoneyT>)’
+  318 |     operator<<(basic_ostream<_CharT, _Traits>& __os, _Put_money<_MoneyT> __f)
+      |     ^~~~~~~~
+/usr/include/c++/14/iomanip:318:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘ccl::ShaderFeatures’ is not derived from ‘std::_Put_money<_MoneyT>’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+/usr/include/c++/14/iomanip:370:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(basic_ostream<_CharT, _Traits>&, _Put_time<_CharT>)’
+  370 |     operator<<(basic_ostream<_CharT, _Traits>& __os, _Put_time<_CharT> __f)
+      |     ^~~~~~~~
+/usr/include/c++/14/iomanip:370:5: note:   template argument deduction/substitution failed:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:78:94: note:   ‘ccl::ShaderFeatures’ is not derived from ‘std::_Put_time<_CharT>’
+   78 |     std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+      |                                                                                              ^~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_normal.h:9,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:29,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:10:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math_int4.h:56:24: note: candidate: ‘ccl::int4 ccl::operator<<(int4, int)’
+   56 | ccl_device_inline int4 operator<<(const int4 a, const int i)
+      |                        ^~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math_int4.h:56:46: note:   no known conversion for argument 1 from ‘std::basic_ofstream<char>’ to ‘ccl::int4’
+   56 | ccl_device_inline int4 operator<<(const int4 a, const int i)
+      |                                   ~~~~~~~~~~~^
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math.h:14:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math_int8.h:55:25: note: candidate: ‘ccl::vint8 ccl::operator<<(vint8, int)’
+   55 | ccl_device_inline vint8 operator<<(const vint8 a, const int i)
+      |                         ^~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math_int8.h:55:48: note:   no known conversion for argument 1 from ‘std::basic_ofstream<char>’ to ‘ccl::vint8’
+   55 | ccl_device_inline vint8 operator<<(const vint8 a, const int i)
+      |                                    ~~~~~~~~~~~~^
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In function ‘std::vector<ccl::SurfaceSvmRecord> svm_reference_records(ccl::Scene&, const std::vector<ccl::IntegratorStateCPU>&, const std::vector<int>&, bool&)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:157:197: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelData’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  157 |     const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(&ds.data,kernel.data.data(),sizeof(ds.data));
+      |                                                                                                                                                                                          ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:13:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1365:22: note: ‘struct ccl::KernelData’ declared here
+ 1365 | struct ccl_align(16) KernelData {
+      |                      ^~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::int4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:153:7:   required from here
+  152 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:126:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::int4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  126 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:15:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_int4.h:13:26: note: ‘struct ccl::int4’ declared here
+   13 | struct ccl_try_align(16) int4 {
+      |                          ^~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelObject>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:153:7:   required from here
+  152 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:126:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  126 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::float4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:153:7:   required from here
+  152 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:126:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::float4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  126 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:26:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_float4.h:16:26: note: ‘struct ccl::float4’ declared here
+   16 | struct ccl_try_align(16) float4 {
+      |                          ^~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelImageTexture>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:153:7:   required from here
+  152 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:126:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelImageTexture’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  126 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/memory.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:15:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_image.h:145:8: note: ‘struct ccl::KernelImageTexture’ declared here
+  145 | struct KernelImageTexture {
+      |        ^~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::DecomposedTransform>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:153:7:   required from here
+  152 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:126:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::DecomposedTransform’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  126 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/transform.h:71:8: note: ‘struct ccl::DecomposedTransform’ declared here
+   71 | struct DecomposedTransform {
+      |        ^~~~~~~~~~~~~~~~~~~
+gmake[3]: *** [CMakeFiles/codebrix_cycles_attribute_gate.dir/build.make:79: CMakeFiles/codebrix_cycles_attribute_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/attribute_gate.cpp.o] Error 1
+gmake[3]: *** Waiting for unfinished jobs....
+gmake[2]: *** [CMakeFiles/Makefile2:3060: CMakeFiles/codebrix_cycles_attribute_gate.dir/all] Error 2
+gmake[1]: *** [CMakeFiles/Makefile2:3067: CMakeFiles/codebrix_cycles_attribute_gate.dir/rule] Error 2
+gmake: *** [Makefile:1024: codebrix_cycles_attribute_gate] Error 2
+Traceback (most recent call last):
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles.py", line 147, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles.py", line 138, in main
+    for command in commands:subprocess.run(command,check=True)
+                            ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['cmake', '--build', '/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build', '--target', 'codebrix_cycles_atomic_film_gate', 'codebrix_cycles_attribute_gate', 'codebrix_cycles_background_gate', 'codebrix_cycles_broad_lighting_gate', 'codebrix_cycles_broad_light_state_gate', 'codebrix_cycles_camera_gate', 'codebrix_cycles_closed_volume_render_gate', 'codebrix_cycles_closest_gate', 'codebrix_cycles_deforming_motion_render_gate', 'codebrix_cycles_device_gate', 'codebrix_cycles_emitter_sample_gate', 'codebrix_cycles_feature_combination_gate', 'codebrix_cycles_glass_bounce_gate', 'codebrix_cycles_glass_render_gate', 'codebrix_cycles_glass_svm_gate', 'codebrix_cycles_host', 'codebrix_cycles_image_file_gate', 'codebrix_cycles_image_gate', 'codebrix_cycles_lighting_gate', 'codebrix_cycles_lighting_mis_gate', 'codebrix_cycles_light_state_gate', 'codebrix_cycles_microfacet_bounce_gate', 'codebrix_cycles_microfacet_render_gate', 'codebrix_cycles_microfacet_svm_gate', 'codebrix_cycles_nodes_render_gate', 'codebrix_cycles_nodes_svm_gate', 'codebrix_cycles_nodes_world_gate', 'codebrix_cycles_normal_gate', 'codebrix_cycles_object_motion_render_gate', 'codebrix_cycles_oracle', 'codebrix_cycles_principled_bounce_gate', 'codebrix_cycles_principled_render_gate', 'codebrix_cycles_principled_svm_gate', 'codebrix_cycles_render_gate', 'codebrix_cycles_shader_data_gate', 'codebrix_cycles_shadow_gate', 'codebrix_cycles_shadow_terminator_gate', 'codebrix_cycles_surface_gate', 'codebrix_cycles_svm_surface_gate', 'codebrix_cycles_svm_world_gate', 'codebrix_cycles_transparent_lighting_gate', 'codebrix_cycles_transparent_shadow_gate', 'codebrix_cycles_triangle_lighting_gate', 'codebrix_cycles_triangle_sample_gate', 'codebrix_cycles_volume_boundary_gate', 'codebrix_cycles_volume_gate', 'codebrix_cycles_volume_render_gate', 'codebrix_host_abi_test', 'codebrix_host_concurrency_test', 'codebrix_host_cpu_test', 'codebrix_host_example_test', 'codebrix_host_gpu_test', 'codebrix_host_image_reference', 'codebrix_host_reference_color', 'codebrix_host_reload_test', 'codebrix_host_scene_edit_test', 'codebrix_host_session64_reference', 'codebrix_host_session_reference', 'codebrix_host_tier_test', '--parallel', '16']' returned non-zero exit status 2.

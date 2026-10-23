@@ -1,0 +1,1839 @@
+diff --git a/AGENT-README.txt b/AGENT-README.txt
+index 8d385cdd..7ae88905 100644
+--- a/AGENT-README.txt
++++ b/AGENT-README.txt
+@@ -392,8 +392,9 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
+     Principled BSDF subsurface scattering";
+   - shader nodes the WebGPU device does not implement (for example true
+     displacement, ambient occlusion, bevel, sky, IES and AOV output nodes; the
+-    bump node is implemented, but tangent and motion-triangle smooth-normal
+-    derivatives inside a bump height are rejected);
++    bump node and the Gabor texture (GaborTextureNode, 2D and 3D) are
++    implemented, but tangent and motion-triangle smooth-normal derivatives
++    inside a bump height are rejected);
+   - the classes listed in GetCapabilities().Scope.RenderTimeRejections.
+ The CPU reference backend renders all of these.
+ 
+diff --git a/MAINTAINER-README.txt b/MAINTAINER-README.txt
+index 2fedcb14..e696c23e 100644
+--- a/MAINTAINER-README.txt
++++ b/MAINTAINER-README.txt
+@@ -330,14 +330,20 @@ ABI.md example (example.c), and checks the 48 exports:
+ 
+ Use a new output folder for each run (allow about 20 minutes). The other gates
+ in native/tools/ are documented in the native documents listed above. The SVM
+-probe gates compile scene-specialized modules, like the renderer. Render gates
+-are validated with specialization on; the unspecialized modules now exceed what
+-Intel Mesa 25.0.7 compiles reliably, so the specialization-off on/off film check
+-is run only where it still completes (nodes_gate.py --unspecialized, and the
+-glass and node renders with CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0), and
+-native/tools/unspecialized_compile_smoke.py records the module size and cold
+-compile time as warnings only (native/DEVICE.md, "Session close:
+-specialization-off status" and open item 11). Licensing and source checks:
++probe gates compile scene-specialized modules, like the renderer. The
++specialization on/off film check uses the superset mode
++(CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:G, size-bounded groups):
++glass_gate.py, principled_gate.py and nodes_gate.py (nodes_world and
++nodes_render) run every group by default and require bit-identical films
++(--off-mode unspecialized selects the whole unspecialized module, a diagnostic
++that exceeds the Intel Mesa 25.0.7 16-bit instruction/register range;
++--off-mode none skips the check). native/tools/unspecialized_compile_smoke.py
++records the unspecialized module size and cold compile time as warnings only.
++After a WGSL change, dump the modules a gate compiles
++(CODEBRIX_CYCLES_WGSL_DUMP=DIR) and run native/tools/intel_compile_envelope.py
++on them: every entry point must stay below 60,000 backend instructions and
++registers (native/DEVICE.md, "Linux reference fixes on the updated Mesa").
++Licensing and source checks:
+ 
+     python3 tools/licensing/audit.py
+     python3 tools/licensing/notices.py --check
+diff --git a/compatibility/opcodes.json b/compatibility/opcodes.json
+index cd2b8c46..a33f2bd0 100644
+--- a/compatibility/opcodes.json
++++ b/compatibility/opcodes.json
+@@ -1362,8 +1362,8 @@
+       "workItems": [
+         "P05-01"
+       ],
+-      "status": "unassessed",
+-      "coverage": "unassessed",
++      "status": "integrated-tested",
++      "coverage": "partial",
+       "fullRequirementVerified": false,
+       "testStrategy": "native-graph-and-typed-program",
+       "evidence": [],
+diff --git a/docs/PARITY.md b/docs/PARITY.md
+index caac1f9d..ac746d88 100644
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -34,7 +34,7 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Native file images and updates | PNG/JPEG/OpenEXR native file loading now passes a Linux gate with 18 fixtures, 450 channel/alpha/color variants, native UDIM mappings, 16 queued-read/replacement cycles and 34,483 independent known lossless texels. The serialized OCIO matrix configuration is tested. A 116,352-case final snapshot has a four-GPU replay gate; actual decoding/lifecycle tests currently execute on Linux only. The original file-image checkpoint preserved earlier renderer/executable identity; renderer edits require the fresh normal-gate regression chain. TIFF/LZW compatibility, other formats, production color/cache/animation stress and native platform hosts remain required. See `native/tools/image_file_gate.py` |
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+-| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Surface and world interpreters additionally cover the procedural textures (noise in every dimension and fractal type, Voronoi with every feature/metric/dimension, white noise, wave, magic, brick), mapping/map range/mix/ramp/curve/colour utilities, Fresnel/layer weight, object info, camera, scene time, vector transform and light path (ray-type flags in every stage; bounce depths in the surface and background stages) on Linux; see `native/DEVICE.md`. Wavelength and wireframe nodes have the same Linux gates. Bump mapping (bump node, bump state, all derivative variants) has the same Linux gates and passes the node gates on the HP. Deferred SVM nodes: displacement, AO/bevel/raycast, sky, Gabor (ported, withheld: its code in the unspecialized probe module breaks Principled evaluation on Intel Mesa), radial tiling, IES, light falloff, particle/hair/point info and AOV output. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, multi-GGX glass nodes, hair, Principled subsurface and heterogeneous volumes pending. The Principled BSDF (all lobes except subsurface, including thin film, thin wall and multiscatter GGX) passes its Linux SVM, bounce and image gates; its ForestCommunity bench variant passes with exact traversal. On Android the HP passes the Principled SVM, bounce and image gates (image against the glibc reference, with on-device replay). On the Samsung SM-X700 creating the Principled pipelines loses the device, and the Pixel 4 XL reports SVM error 8; see `native/DEVICE.md`. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL (Adreno 640) passes glass bounce/render and feature combination; feature combination needed the SVM value stack moved out of the function-local SvmState (an Adreno 640 dynamic-indexing miscompile). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP, and on the Pixel 4 XL after the same Adreno 640 fix plus volume-stack hits kept as scalar arrays (volume-boundary state test, camera-inside closed volume, object/deforming motion images) |
++| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Surface and world interpreters additionally cover the procedural textures (noise in every dimension and fractal type, Voronoi with every feature/metric/dimension, white noise, wave, magic, brick), mapping/map range/mix/ramp/curve/colour utilities, Fresnel/layer weight, object info, camera, scene time, vector transform and light path (ray-type flags in every stage; bounce depths in the surface and background stages) on Linux; see `native/DEVICE.md`. Wavelength and wireframe nodes have the same Linux gates. Bump mapping (bump node, bump state, all derivative variants) has the same Linux gates and passes the node gates on the HP. The Gabor texture (2D and 3D; lane L, 2026-10-22) passes the node SVM (typed programs and compiled graphs), world and 68-triangle node render gates on Linux and is compiled only into scene-specialized modules that reach it; its earlier withholding was the Intel Mesa 25.0.7 16-bit instruction/register limit (see the Intel row below). Deferred SVM nodes: displacement, AO/bevel/raycast, sky, radial tiling, IES, light falloff, particle/hair/point info and AOV output. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, multi-GGX glass nodes, hair, Principled subsurface and heterogeneous volumes pending. The Principled BSDF (all lobes except subsurface, including thin film, thin wall and multiscatter GGX) passes its Linux SVM, bounce and image gates; its ForestCommunity bench variant passes with exact traversal. On Android the HP passes the Principled SVM, bounce and image gates (image against the glibc reference, with on-device replay). On the Samsung SM-X700 creating the Principled pipelines loses the device, and the Pixel 4 XL reports SVM error 8; see `native/DEVICE.md`. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL (Adreno 640) passes glass bounce/render and feature combination; feature combination needed the SVM value stack moved out of the function-local SvmState (an Adreno 640 dynamic-indexing miscompile). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP, and on the Pixel 4 XL after the same Adreno 640 fix plus volume-stack hits kept as scalar arrays (volume-boundary state test, camera-inside closed volume, object/deforming motion images) |
+ | Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming and static instanced emitters, pass independent CPU images and replay on Linux; closest-hit and shadow traversal reproduce the CPU oracle's ray/triangle and instance arithmetic bit for bit on Linux x64. Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. Android results are judged against the correctly rounded (Linux x64 glibc) CPU reference computed from the device's own prepared scene, with the on-device (bionic) CPU reference a diagnostic (`native/DEVICE.md`, "Validation reference policy"). Android x64 (HP Intel) passes lamps with MIS and forward light, transparent shadows, the emitter probe and every emissive-triangle gate (sampler, six images including moving/deforming and static instanced emitters, replays). ARM64 Android (Samsung Adreno 730): lamps, broad lighting, feature combination, the emitter probe and all six emissive-triangle images, static instanced emitters included, pass with replays (Phase E4: contraction-proof ShaderData position/object transform, and the x64 reference oracle's arithmetic adapters in the gates judged against the imported reference); the triangle sampler still differs in one sample (`native/DEVICE.md` open item 1). The Pixel 4 XL passes lamps, the emitter probe, all six emissive-triangle images with their replays and the triangle sampler (dispatched in slices, since the Adreno 640 resets on submissions of about 2 s); its object-moving motion images fail with SVM error 8 under the reference oracle's arithmetic adapters and pass with its own oracle (`native/DEVICE.md` open item 2). Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit. Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS), so `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is refused on Android. Cold compiles: Samsung specialized pipelines at most 32.6 s (the emissive-triangle entry with object motion now 29-30 s, was 205 s); HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 20 s with triangle lights, 27.6 s with triangle lights and object motion, which previously ran out of compiler memory), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 87 s (`intersect_closest` with object motion; 20 s budget, warnings only) |
+@@ -76,4 +76,5 @@ edits after a render and device recovery are validated on Linux.
+ | Object `tfm` changed after a mesh's first render | CLOSED (Linux). Confirmed not applied before the fix (the static-BVH path bakes a single-user mesh with its object transform). The host now keeps the authored attributes of geometry a render may bake and restores them before a geometry edit or a render whose bake would differ, so Cycles' own update re-bakes or instances it (`native/host/host_edits.inc`). Object `tfm`, object/camera/deformation motion added or removed, motion blur, materials, lights, mesh replacement, instancing, attributes and `smooth` flags: `scene_edit_gate.py`, CPU bit-identical to a fresh host, WebGPU practical. Refused explicitly (`CBC_NOT_READY`): edits of a baked volume with voxel data. |
+ | A host is dead after a device error | CLOSED (Linux). The next render recovers an intact WebGPU device (error cleared, scene fully re-uploaded, "Device recovered" status event); `scene_edit_gate.py` recovers after a rejected depth pass and an orthographic camera and matches a fresh CPU render. A device that cannot recover (lost WebGPU device, CPU or Metal device error) keeps failing with "Host faulted"; `CyclesScene.IsFaulted` is cleared by a successful render. |
+ | WebGPU smooth shadow-terminator offsets | CLOSED (Linux). Object geometry offset (default 0.1) and shading offset 0 to 1 are implemented in WGSL under scene specialization (`SHADOW_TERMINATOR_GEOMETRY`, `SHADOW_TERMINATOR_SHADING`); `shadow_terminator_gate.py`: 10 sun/point, instanced and moving/deforming cases against the original CPU kernels, with replays. Shading offsets above 1 are rejected before dispatch. The managed validation scenes and the glTF tool keep the default offsets. |
+-| Intel Mesa `shade_surface_light` compile crash (spot/area after point) | PARTLY MITIGATED (Linux Intel UHD, Mesa 25.0.7). Diagnosed as the known intermittent `brw_opt_combine_constants` driver bug (out-of-bounds read with a garbage register number), not a WGSL error. Spot after point adds no specialization bit and does not recompile; the GPU ABI test renders point, spot and sun again. The `LIGHT_AREA` recompile crashed 3 of 4 cold runs before and 0 of 7 after the area light's arcsine series became one loop; a further recompile after an area light (object motion) still crashed 2 of 4, so the GPU ABI test renders its area light on the CPU only. A driver fix or a smaller lamp stage remains open. |
++| Intel Mesa `shade_surface_light` compile crash (spot/area after point) | CLOSED (Linux Intel UHD, Mesa 25.0.7; lane L, 2026-10-22). Root cause: Mesa 25.0.7's `brw_opt_combine_constants` stores VGRF numbers and instruction IPs in 16-bit fields (fixed upstream in Mesa b7e1ac830984, issue #9489, not in 25.0.7); an entry point above 65,535 backend instructions or registers crashes the compiler or is miscompiled. The area-light-plus-motion light stage reached 85,885 instructions. With emissive triangles the light stage is now two entry points (`shade_surface_light` for lamps, `shade_surface_light_triangle`, recorder v8 entry 17; at most 44,485), and the precise arccosine/sine-cosine Horner steps run as loops (same operations, bit-identical films). The GPU ABI test renders its area light on WebGPU again and the host gate compares it with the CPU film. `native/tools/intel_compile_envelope.py` measures every compiled entry against the limit. |
++| WebGPU specialization on/off identity on Intel Mesa | CLOSED (Linux; lane L, 2026-10-22). The whole unspecialized module (about 130,000 to 190,000 backend instructions for `prepare_surface`) exceeds the Mesa 25.0.7 16-bit range, so the on/off film check uses the superset mode (`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:G`): every region except the bump/derivative and Gabor regions a scene does not reach, compiled in size-bounded groups next to the scene. glass_gate.py, principled_gate.py and nodes_gate.py run every group by default and require bit-identical films; `=0` stays a diagnostic. |
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index d933c633..8040fbfc 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -588,9 +588,11 @@ bits (it is gated by the SVM gate on identical hit inputs and the world gate).
+ but with its code present the unspecialized SVM probe module (which every SVM
+ gate compiles whole) made the Intel Mesa 25.0.7 driver mis-evaluate Principled
+ paths (SVM stack error 8, wrong closure values or a lost device in
+-`principled_svm`; a stubbed Gabor body passes). It is therefore not shipped and
+-stays deferred with `NODE_RADIAL_TILING`; AOV output needs a render-buffer
+-path from the SVM evaluation.
++`principled_svm`; a stubbed Gabor body passes). It was therefore not shipped.
++Update (lane L, 2026-10-22): the cause is the Intel Mesa 25.0.7 16-bit
++instruction/register limit, and Gabor now ships on the scene-specialized path
++("Linux reference fixes on the updated Mesa"). `NODE_RADIAL_TILING` stays
++deferred; AOV output needs a render-buffer path from the SVM evaluation.
+ 
+ ### Bump stages and derivative variants (M4, 2026-10-20, Linux)
+ 
+@@ -641,8 +643,9 @@ SVM probe gates therefore use the scene-specialized probe module ("Materials on
+ the devices and scene-specialized probe modules" below): `nodes_svm` compiles
+ only the regions its uploaded programs reach, and `refresh_probe` rebuilds the
+ module when typed programs reach a further region. The specialized results equal
+-those of the earlier probe feature mask. Unspecialized modules are an open item
+-(see "Session close: specialization-off status" below).
++those of the earlier probe feature mask. Unspecialized modules were an open item
++(see "Session close: specialization-off status" below); the superset mode of lane
++L replaces them for the on/off check ("Linux reference fixes on the updated Mesa").
+ 
+ ## Build and reproduce
+ 
+@@ -2308,7 +2311,178 @@ others). The compile smoke step measured the unspecialized node-render surface m
+ - `prepare_surface`: 3,447,736 inlined bytes (2.3 MB is the Intel Android danger zone), 604 s cold, 10.0 GB peak;
+ - `shade_surface_light`: 1,578,630 bytes, 24 s.
+ 
+-Both are warnings only. Restoring a reliable specialization-off check is open item 11.
++Both are warnings only. Restoring a reliable specialization-off check was open item 11; lane L restored it
++with the superset groups ("Linux reference fixes on the updated Mesa").
++
++## Linux reference fixes on the updated Mesa (lane L, 2026-10-22)
++
++Linux x64 is a reference device (device reference policy, 2026-10-22): every
++item must work there, with no driver exception. Lane L resolved open items 4,
++11, 12 and 13 on Linux.
++
++**Driver identity.** `vulkaninfo`: `Intel(R) UHD Graphics (ADL-S GT1)`, driverInfo
++`Mesa 25.0.7-2+deb13u1`, driverVersion 25.0.7, apiVersion 1.4.305. This is the
++identity recorded at session close (2026-10-20, every `adapter.txt` of the merge
++runs). The package `mesa-vulkan-drivers 25.0.7-2+deb13u1` was installed on
++2026-07-11; the apt run of 2026-10-22 changed no Mesa package.
++`libvulkan_intel.so` sha256 `c40c2c5002eda54fbe4106339fbc64784a03c6b0b1f6291c0e10386e1c298f85`.
++Kernel 6.12.113 (also the session-close kernel).
++
++**Root cause (items 4, 11 and 12).** Mesa 25.0.7's Intel backend pass
++`brw_opt_combine_constants` stores a promoted constant's virtual register (VGRF)
++number and its first and last use instruction numbers (IPs) in 16-bit fields.
++Upstream Mesa widened them to 32 bits in commit b7e1ac830984 (2025-09-18, issue
++#9489, "In very large shaders, first_use_ip, last_use_ip, and even (register) nr
++can overflow 16 bits"); 25.0.7 does not have it.
++- When the VGRF number wraps, `deallocate_slots` finds no matching register and
++  reaches `unreachable()`. In a release build it then reads past its array. It
++  crashes when the read hits unmapped memory and corrupts register bookkeeping
++  when it does not. This is the "intermittent" SIGSEGV of item 4: the E3 crash
++  register number 13,056 is 78,592 modulo 65,536.
++- When the IPs wrap, the constant's load can be placed after some of its uses
++  (wrong code without a crash).
++- Every entry point whose backend IR has more than 65,535 instructions or
++  virtual registers when the pass runs is therefore at risk.
++
++Measurement: gdb with a breakpoint on `brw_opt_combine_constants` (Mesa debug
++information from the debuginfod cache) records the VGRF count and the last
++instruction IP of every compile. `native/tools/intel_compile_envelope.py` does
++this for every entry point of the modules a gate dumps
++(`CODEBRIX_CYCLES_WGSL_DUMP=DIR`, a new diagnostic). The inlined WGSL size
++(`unspecialized_compile_smoke.py` `inlined_bytes`) is about 15.5 to 19.5 bytes per
++backend instruction.
++
++| Entry (scene) | Before (IP / VGRF) | After (IP / VGRF) |
++| --- | --- | --- |
++| `shade_surface_light` (ABI test, point + triangle MIS) | 60,590 / 41,024 | 44,485 / 30,340 (lamp) and 42,065 / 28,213 (triangle stage) |
++| `shade_surface_light` (+ area light) | 75,734 / 51,344 | as above |
++| `shade_surface_light` (+ area light + object motion) | 85,885 / 58,120 | as above |
++| `emitter_sample_probe` | 44,416 / 30,347 | unchanged |
++| `prepare_surface`, node render with Gabor (68 triangles) | 64,996 / 40,956 | 51,579 / 31,892 |
++| `prepare_surface`, Principled render | not measured | 43,235 / 28,044 |
++| `shade_surface`, Principled render | not measured | 52,509 / 35,763 |
++| `prepare_surface`, superset of item 11 compiled whole (Principled scene) | 136,293 / 86,119 | replaced by superset groups |
++| `prepare_surface`, unspecialized | about 190,000 (3.47 MB inlined) | diagnostic only |
++
++**Fixes.**
++- *Light-stage split (item 4).* With emissive triangles in the scene
++  (`LIGHT_TRIANGLE`), `shade_surface_light` samples only a selected lamp (record
++  state 1 -> 5). A new entry, `shade_surface_light_triangle`, dispatched next,
++  prefills the triangle vertices, computes the forward-hit MIS weight and samples
++  a selected triangle (5 -> 3).
++  - Both recompute the same inputs from the unchanged stage record and path
++    state, and call the same functions as the combined path, which scenes
++    without emissive triangles still use.
++  - Recorder v8 adds pipeline entry 17. `render_replay` accepts v1 to v8.
++  - The triangle lighting gate gives every numeric field of the session-close
++    run (sampler, six images, six replays); only the new entry's dispatch counts
++    are added.
++- *Horner loops.* The 29-step `motion_acos` and the 7- and 8-step
++  `precise_disk_sincos` polynomials run as loops over their coefficient pairs:
++  the same operations in the same order, so results are bit-identical. The glass
++  film `db8e84f9...` and the Principled film `fd3a7f2b...` are unchanged.
++- *ABI test.* The GPU ABI test renders the area light on WebGPU again (point,
++  spot, area and sun in one device lifetime; the area light is followed by the
++  object-motion recompile). The host gate compares the four light films with the
++  CPU films. The practical criterion is required and strict differences are
++  recorded:
++  - point and spot: about 125 and 22 (sphere-light sampling in the last bits);
++  - area: 0 or 1 (the WebGPU film's atomic accumulation order varies between
++    runs);
++  - sun: 0.
++- *Superset specialization-off mode (item 11).*
++  `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:G` selects every region except
++  the bump/derivative and Gabor regions the scene does not reach
++  (`SF_SUPERSET_SCENE_ONLY`). Compiled whole, that superset is about twice the
++  16-bit range for `prepare_surface`. The device therefore compiles it in
++  groups:
++  - Group G is the scene plus the G-th greedy fill of the remaining superset
++    regions (ascending bit order).
++  - Each fill keeps every surface and background entry within 1,000,000 inlined
++    bytes (`CODEBRIX_CYCLES_SUPERSET_BUDGET_BYTES`), or within the scene's own
++    size when that is larger.
++  - Regions that do not fit next to the scene are reported as `supersetUnfit`.
++    Other gate scenes cover them.
++  - Pipeline logs and reports carry `specializationMode`, `supersetGroup`,
++    `supersetGroups`, `supersetGroupAdded` and `supersetUnfit`.
++
++  `native/tools/specialization_check.py` runs every group and requires every film
++  to be bit-identical to the specialized run. glass_gate.py and
++  principled_gate.py (their render kinds) and nodes_gate.py (nodes_world,
++  nodes_render) use it by default (`--off-mode superset`; `unspecialized` keeps
++  the whole-module diagnostic, `none` skips). `=0` and `superset` are refused on
++  Android like `=0` before.
++- *Gabor (item 12).* `NODE_TEX_GABOR` ships on the scene-specialized path:
++  - Feature bit 63 (`SF_TEX_GABOR`; only bit 62 stays free). It is a scene-only
++    region in the superset mode.
++  - The M3 precise-trigonometry WGSL body, census and layout.
++  - Node SVM gate: compiled graphs 65 (2D, per-path orientation, anisotropy 0.6)
++    and 66 (3D isotropic); 12 typed programs (2D and 3D; anisotropic, partly
++    isotropic and isotropic; constant and per-path inputs; frequency clamp;
++    unused outputs); rejection 20 is now an invalid Gabor type (16).
++  - World gate: world 23 (3D anisotropic).
++  - The late graphs of the node SVM fixture take 5 rays each (7 before) to stay
++    within the state capacity.
++  - With Gabor present the node-render `prepare_surface` was at 64,996 backend
++    instructions, 0.8% below the 16-bit range, which is why its large modules
++    mis-evaluated. The Horner loops bring it to 51,579.
++- *Node render scene (item 13).* The render gate scene has 68 triangles again:
++  the two Gabor graphs and six repeated continuous graphs follow M2's 60 slots.
++  - It passes against the independent CPU image. The worst image component is at
++    0.126 of the practical bound (component 3162), the same component and value
++    as the 60-triangle scene.
++  - The M3 failure (one pixel at 1.25 times the bound) was measured on a tree
++    without the exact traversal (X2) and the contraction-proof ShaderData (E4).
++    On the current tree the extra triangles move no visible component near the
++    bound. (Inference: the original pixel's path took a last-bit hit-point
++    difference that X2/E4 removed; that tree's arithmetic no longer exists to
++    re-isolate.)
++  - The node render film changes with the scene: `94848a0cddf9c42a...` (60
++    triangles) becomes `b9d1da3fe595962cadc02925ab10378c099db2bec1c4f80993a3bb1012c419ce`.
++    Its image maximum error stays at 1.03e-4.
++
++**Results (Linux, cold Mesa caches).**
++
++| Check | Result | Folder (`native/work/l/validation/`) |
++| --- | --- | --- |
++| Envelope, ABI modules (28 entries) | every entry below 60,000; worst 44,485 instructions / 30,340 VGRFs | `env-abi` |
++| Envelope, material and superset modules (83 entries) | every entry below 60,000; worst 52,509 / 35,763 | `env-materials` |
++| All-lanes coordinator (29 targets) | PASS, 1,256 s. 1,729 of 1,918 report fields equal session close. The rest: the new entry-17 dispatch counts, the superset records, and run-to-run atomic-order counters (broad lighting strict 3,572 to 3,569; broad_light_state strict 13 at session close, 11 here, 12 and 12 on two reruns) | `f3-all-lanes` |
++| Host gate | PASS: 48 exports, 786 reference films, 3,146 comparisons (4 new light films), 0 practical failures, 148 strict differences (point/spot light films), max 1.53e-5 | `f4-host-gate` |
++| Triangle lighting gate | PASS; every report field equal to session close | `f3-triangle` |
++| Shadow terminator gate | PASS; every field equal to session close | `f3-terminator` |
++| Scene-edit gate | PASS. GPU strict counts vary run to run, as within one run (the identical "before" scenes give 371 to 375) | `f4-scene-edit` |
++| principled_gate.py (+ 8 superset groups) | PASS; every field equal to session close; film `fd3a7f2b...` | `v2-principled-gate` |
++| nodes_gate.py (+ superset nodes_world 6 groups, nodes_render 1) | PASS: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render image max 1.03e-4 | `f3-nodes-gate` |
++| Glass superset (4 groups) | bit-identical; glass film `db8e84f9...` unchanged | `s-glass-superset`, `f3-all-lanes/out/glass_gate` |
++| ABI test GPU, 10 cold runs (area light on WebGPU) / emitter probe, 10 cold runs | 10/10 / 10/10 | `f3-abi-*`, `f3-emit-*` |
++| dotnet build / test / pack | 0 warnings, 0 errors / 162 of 162 / package created | `f3-dotnet-*` |
++| audit.py, notices.py --check, inventory, guards | PASS | `f3-audits` |
++
++**Compile time and memory** (one fresh process per entry, cold cache, peak RSS
++from `compile_probe`):
++
++| Module / entry | Instructions / VGRFs | Cold pipeline | Peak RSS |
++| --- | --- | --- | --- |
++| Principled render, scene-specialized `prepare_surface` | 43,235 / 28,044 | 25.2 s | 1.27 GB |
++| Principled superset group 0 `prepare_surface` | 48,577 / 31,160 | 30.6 s | 1.45 GB |
++| Unspecialized `prepare_surface` | about 190,000 (estimate) | 1,237 s (with two gates running; 604 s at session close) | 10.26 GB |
++| Item-11 superset compiled whole, `prepare_surface` | 136,293 / 86,119 | 143 s (in the render, under gdb) | not measured |
++
++A whole superset render group compiles in 19 to 67 s (its largest pipeline takes 16.5 to 21.3 s). Glass needs
++4 groups, Principled 8, nodes_world 6 (over its 24 worlds) and nodes_render 1. Together the groups place
++every superset region next to at least one gate scene: the glass groups leave no region unfit.
++
++**Re-establishment on 2026-10-22 (same driver).**
++- Item 4: 0 of 10 cold ABI runs (area light on WebGPU, baseline WGSL) and 0 of 10
++  cold emitter-probe runs crashed. The baseline light stage nevertheless compiled
++  at 75,734 and 85,885 instructions, inside the overflow range. The crash
++  depends on heap contents, so its absence in 10 runs is not a fix; the split is.
++- Item 11: the item-11 superset compiled whole passed the Principled render once
++  (143 s `prepare_surface`), but at 136,293 instructions it is inside the
++  overflow range, like the unspecialized modules.
++- Item 13: the 68-triangle scene passes on the current tree (before any lane-L
++  arithmetic change).
+ 
+ ## Open device items (session close, 2026-10-20)
+ 
+@@ -2335,9 +2509,10 @@ above:
+    and one dispatch covers up to 4,096 paths (`num_concurrent_states`); the sampler probe needs about 1 ms per
+    invocation on this GPU, so a larger emissive-triangle render could reach the reset (an estimate from the
+    probe; the gate images pass). A production fix is dispatch slicing in the scheduler or a per-tier path cap.
+-4. **Intel Mesa 25.0.7 cold-compile crash** (`brw_opt_combine_constants`, intermittent; Linux): a recompile
+-   after an area light (object motion) and the exact-traversal emitter probe module. Not hit in the
+-   session-close runs. A driver fix or a smaller lamp stage remains open.
++4. **Intel Mesa 25.0.7 cold-compile crash** (`brw_opt_combine_constants`, intermittent; Linux). RESOLVED
++   (lane L, 2026-10-22): 16-bit VGRF/IP fields in that pass; light stage split for emissive-triangle
++   scenes, Horner loops; the GPU ABI test renders its area light on WebGPU again ("Linux reference fixes
++   on the updated Mesa").
+ 5. **Checks not yet on the glibc reference.** `render_gate.cpp` lockstep stage checks and the state gates
+    (surface, closest, shadow, shader_data, glass/microfacet SVM and bounce, camera, volume, volume_boundary,
+    light_state, transparent_shadow, svm_surface and the SVM node gates) compare against the device's own CPU.
+@@ -2360,24 +2535,25 @@ above:
+     16 in node renders) in worlds and renders, and the node SVM probe loses the device when its pipeline is
+     created. Lamps, glass, feature combination and the triangle gates pass. Candidates are the Adreno 640
+     array class (item 6) and the module-scope `svm_stack` with the larger interpreter.
+-11. **Unspecialized modules exceed the Intel driver's reliable size** (as of the bump/derivative opcodes;
++11. RESOLVED on Linux (lane L, 2026-10-22: superset groups; "Linux reference fixes on the updated Mesa").
++    **Unspecialized modules exceed the Intel driver's reliable size** (as of the bump/derivative opcodes;
+     "Session close: specialization-off status"). On Linux, glass and node renders still give bit-identical
+     on/off films after a 10-minute `prepare_surface` compile; the Principled render mis-evaluates; the
+     unspecialized SVM probe mis-evaluates node graphs. On the HP the unspecialized `prepare_surface` compile
+     terminates the driver. Specialization is required on Android, so this affects the desktop diagnostic
+     path and the on/off check. The next session restores the check with a "superset" mode (every handler
+     except the bump/derivative regions a scene does not use).
+-12. **Gabor texture withheld.** Ported; with its code in a large unspecialized module Intel Mesa 25.0.7
++12. RESOLVED (lane L, 2026-10-22: Gabor ships on the scene-specialized path). **Gabor texture withheld.** Ported; with its code in a large unspecialized module Intel Mesa 25.0.7
+     mis-evaluates Principled paths. Scene-specialized modules would compile it only for scenes that use it;
+     the choice is between shipping it on that mechanism, a much smaller body, or a Mesa issue.
+-13. **Node render scene limit.** A 68-triangle node render scene failed one pixel at 1.25 times the
++13. RESOLVED (lane L, 2026-10-22: the node render gate scene has 68 triangles and passes). **Node render scene limit.** A 68-triangle node render scene failed one pixel at 1.25 times the
+     practical bound (not isolated), so the gate keeps 60 triangles.
+ 14. **Not yet ported:** true displacement (`NODE_SET_DISPLACEMENT`, displacement and vector displacement) and
+     the bump-state branch that needs the undisplaced position; tangent and motion-triangle smooth-normal
+     derivatives (rejected, error 16); `NODE_RADIAL_TILING`; AOV output; sky, IES, light falloff, AO, bevel,
+     raycast, volume coefficient and particle/hair/point info nodes.
+-15. **Feature mask nearly full.** Bits 0-61 are used; only 62 and 63 are free. The next lane that needs more
+-    than two specialization bits must widen the 64-bit mask.
++15. **Feature mask nearly full.** Bits 0-61 and 63 (Gabor, lane L) are used; only 62 is free. The next lane
++    that needs more than one specialization bit must widen the 64-bit mask.
+ 16. **Contractible ShaderData differentials.** `du`, `dv` and `dP` still differ by ULPs between Intel and
+     the Adreno; no current film depends on them. Make them contraction-proof if a texture-filtering gate
+     needs exact differentials.
+diff --git a/native/cycles/device.cpp b/native/cycles/device.cpp
+index 0b58a0ca..c30f192d 100644
+--- a/native/cycles/device.cpp
++++ b/native/cycles/device.cpp
+@@ -24,8 +24,8 @@ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Devi
+   // every Android test driver they crash the compiler or exhaust its memory
+   // (Adreno 730 SIGSEGV, Adreno 640 and Intel Mesa 24.0.8 Scudo out of memory),
+   // which ends the process; refuse before any pipeline compiles.
+-  if(const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION");mode&&std::strcmp(mode,"0")==0)
+-    throw std::runtime_error("CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 is a desktop-only diagnostic and is refused on Android: the unspecialized shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules.");
++  if(specialization_mode_from_environment()!=SpecializationMode::Scene)
++    throw std::runtime_error("CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 or =superset is a desktop-only diagnostic and is refused on Android: the unspecialized and superset shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules.");
+ #endif
+   // The tier is decided before any pipeline is compiled (device_tier.h).
+   select_tier();
+@@ -40,9 +40,11 @@ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Devi
+   WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;gpu.push_scope();
+   cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
+   controls=gpu.pipeline(shader,pipeline_layout,"control");error_word=allocate(4);zero(error_word,4);
+-  // Diagnostic override: CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 compiles every
+-  // handler (the unspecialized modules) for A/B verification.
+-  if(const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION"))specialization_enabled=std::strcmp(mode,"0")!=0;
++  // Diagnostic overrides (pipelines.h SpecializationMode):
++  // CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset compiles every handler except
++  // the scene-only regions the scene does not reach (the on/off identity check);
++  // =0 compiles every handler (the unspecialized modules).
++  specialization_mode=specialization_mode_from_environment(&superset_group);specialization_enabled=specialization_mode!=SpecializationMode::Off;
+   if(const char *budget=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_MS")){pipeline_budget_ms=std::strtod(budget,nullptr);tier_policy.budget_source="environment";}
+   if(const char *action=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION"))budget_conservative=std::strcmp(action,"conservative")==0;
+   if(conservative){
+@@ -237,8 +239,8 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
+   require(work>0&&groups<=gpu.limits.maxComputeWorkgroupsPerDimension,"Dispatch exceeds device limits");
+   if(observer){
+     const WGPUComputePipeline actual=pipeline?pipeline:controls.value;
+-    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:17;
+-    require(entry<17,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
++    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:18;
++    require(entry<18,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+   }
+   auto uniform=gpu.buffer(sizeof(params),WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params.data());
+   std::array<WGPUBindGroupEntry,2> entries{};entries[0].binding=0;entries[0].buffer=arena;entries[0].size=arena_bytes;
+diff --git a/native/cycles/device.h b/native/cycles/device.h
+index 7f743919..e61cdb3c 100644
+--- a/native/cycles/device.h
++++ b/native/cycles/device.h
+@@ -60,7 +60,12 @@ class WebGPUDevice final:public Device {
+   // Principled features refused at upload (pipelines.cpp shader_features).
+   uint64_t unsupported_generation=~uint64_t(0),principled_features=0;std::string unsupported_feature;
+   std::vector<uint32_t> tri_shader_words; // per-triangle shader words (Principled census roots)
+-  bool specialization_enabled=true;
++  bool specialization_enabled=true; // false only for SpecializationMode::Off
++  SpecializationMode specialization_mode=SpecializationMode::Scene;
++  // Superset mode (pipelines.h): requested group, the scene features the groups
++  // were computed for, and the groups.
++  unsigned superset_group=0;uint64_t superset_scene=~uint64_t(0);SupersetGroups superset;
++  std::string superset_json() const;
+   struct PipelineRecord {std::string module,entry;uint64_t features;size_t wgsl_bytes;double module_ms,pipeline_ms;};
+   std::vector<PipelineRecord> pipeline_records;
+   std::map<std::string,uint64_t> pipeline_features;
+@@ -109,6 +114,8 @@ class WebGPUDevice final:public Device {
+   cbc::Pipeline surface_geometry;
+   cbc::Pipeline surface_prepare;
+   cbc::Pipeline surface_light;
++  // Emissive-triangle half of the light stage (LIGHT_TRIANGLE scenes only; surface.cpp).
++  cbc::Pipeline surface_light_triangle;
+   cbc::Pipeline surface_connect;
+   uint32_t surface_closures=0;size_t surface_closure_bytes=0;
+   std::map<uint32_t,device_image*> images;
+diff --git a/native/cycles/nodes_fixture.h b/native/cycles/nodes_fixture.h
+index 25265204..e3a1df28 100644
+--- a/native/cycles/nodes_fixture.h
++++ b/native/cycles/nodes_fixture.h
+@@ -5,17 +5,18 @@
+ // and utility nodes: procedural noise in every dimension and fractal type, white
+ // noise, wave, magic, brick, mapping/texture mapping, map range, every mix blend
+ // mode, HSV, colour separate/combine, ramps/curves, Fresnel/layer weight, vector
+-// rotate, blackbody, normal, wavelength, wireframe and bump. Inputs vary per path (world position) so nothing
++// rotate, blackbody, normal, wavelength, wireframe, bump and Gabor. Inputs vary per path (world position) so nothing
+ // constant-folds; the primary output drives the diffuse colour, the secondary
+ // scalar the emission strength.
+-// The render variant keeps M2's 60-triangle scene (geometry, light distribution
+-// and BVH unchanged): graph 60 (wavelength) takes the slot of a repeated noise
+-// variant and the wireframe graphs stay out (a step function of the hit point,
+-// which the independent CPU image reproduces only to the last bits).
++// The render variant has 68 triangles (lane L, 2026-10-22; M2-M4 kept 60): graph
++// 60 (wavelength) takes the slot of a repeated noise variant, the two Gabor graphs
++// (65, 66) and six repeated continuous graphs follow M2's 60 slots, and the
++// wireframe graphs stay out (a step function of the hit point, which the
++// independent CPU image reproduces only to the last bits).
+ #ifdef CBC_NODES_RENDER
+-static constexpr unsigned NODES_GRAPH_COUNT=60;
++static constexpr unsigned NODES_GRAPH_COUNT=68;
+ #else
+-static constexpr unsigned NODES_GRAPH_COUNT=65;
++static constexpr unsigned NODES_GRAPH_COUNT=67;
+ #endif
+ // The render gate (CBC_NODES_RENDER) also compares an independent CPU image of
+ // whole paths, where hit points legitimately differ in the last bits. There the
+@@ -26,7 +27,7 @@ static ShaderOutput *nodes_material(ShaderGraph &g,unsigned test){
+ #ifdef CBC_NODES_RENDER
+   constexpr bool render=true;
+   static constexpr unsigned order[NODES_GRAPH_COUNT]={0,52,24,30,36,40,53,60,25,31,37,43,54,2,26,32,38,44,55,3,28,33,39,45,56,48,49,50,51,57,46,47,41,42,58,34,35,29,27,59,
+-    4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,1};
++    4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,1,65,66,31,37,32,38,33,39};
+   test=order[test];if(test>=20&&test<24)test-=16;
+ #else
+   constexpr bool render=false;
+@@ -172,6 +173,14 @@ static ShaderOutput *nodes_material(ShaderGraph &g,unsigned test){
+     auto emission=g.create_node<EmissionNode>();emission->set_color(make_float3(.3,.5,.7));g.connect(fx,emission->input("Strength"));
+     auto add=g.create_node<AddClosureNode>();g.connect(diffuse->output("BSDF"),add->input("Closure1"));g.connect(emission->output("Emission"),add->input("Closure2"));
+     return add->output("Closure");}
++  else if(test==65||test==66){
++    // Gabor noise: 2D with a per-path orientation and partial anisotropy, and 3D
++    // isotropic (random impulse orientations) with an explicit base orientation.
++    auto n=g.create_node<GaborTextureNode>();n->set_type(test==65?NODE_GABOR_TYPE_2D:NODE_GABOR_TYPE_3D);
++    n->set_scale(test==65?3.1f:1.7f);n->set_frequency(test==65?2.2f:1.4f);n->set_anisotropy(test==65?.6f:0.f);n->set_orientation_3d(make_float3(.3f,-.8f,.5f));
++    g.connect(pos,n->input("Vector"));if(test==65)g.connect(fx,n->input("Orientation 2D"));
++    auto comb=g.create_node<CombineXYZNode>();g.connect(n->output("Value"),comb->input("X"));g.connect(n->output("Phase"),comb->input("Y"));g.connect(n->output("Intensity"),comb->input("Z"));
++    color=comb->output("Vector");value=n->output("Value");}
+   else{auto n=g.create_node<NormalNode>();n->set_direction(make_float3(.3f,-.5f,.8f));g.connect(vmath(NODE_VECTOR_MATH_SUBTRACT,unit,make_float3(.5f,.5f,.5f)),n->input("Normal"));
+     color=vmath(NODE_VECTOR_MATH_ABSOLUTE,n->output("Normal"),zero_float3());value=n->output("Dot");}
+   auto diffuse=g.create_node<DiffuseBsdfNode>();diffuse->set_roughness(.43f);g.connect(color,diffuse->input("Color"));
+diff --git a/native/cycles/pipelines.cpp b/native/cycles/pipelines.cpp
+index d3cbad17..a9690d59 100644
+--- a/native/cycles/pipelines.cpp
++++ b/native/cycles/pipelines.cpp
+@@ -10,7 +10,10 @@
+ #include <cstdlib>
+ #include <mutex>
+ #include <sstream>
++#include <cctype>
++#include <functional>
+ #include <stdexcept>
++#include <unordered_map>
+ #include <unordered_set>
+ 
+ namespace ccl {
+@@ -35,6 +38,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
+     {"SVM_NODE_RAMP",SF_RAMP},{"SVM_NODE_FRESNEL",SF_FRESNEL},{"SVM_NODE_VECTOR_ROTATE",SF_VECTOR_ROTATE},
+     {"SVM_NODE_BLACKBODY",SF_BLACKBODY},{"SVM_NODE_NORMAL",SF_NORMAL},{"SVM_NODE_SHADING_INFO",SF_SHADING_INFO},{"SVM_NODE_LIGHT_PATH",SF_LIGHT_PATH},
+     {"SVM_NODE_TEX_VORONOI",SF_TEX_VORONOI},{"SVM_NODE_WAVELENGTH",SF_WAVELENGTH},{"SVM_NODE_WIREFRAME",SF_WIREFRAME},
++    {"SVM_NODE_TEX_GABOR",SF_TEX_GABOR},
+     {"SVM_NODE_BUMP",SF_BUMP},{"SVM_NODE_BUMP_STATE",SF_BUMP_STATE},{"SVM_NODE_GEOMETRY_DERIVATIVE",SF_GEOMETRY_DERIVATIVE},
+     {"SVM_NODE_TEX_COORD_DERIVATIVE",SF_TEX_COORD_DERIVATIVE},{"SVM_NODE_VALUE_DERIVATIVE",SF_VALUE_DERIVATIVE},
+     {"SVM_NODE_VECTOR_MATH_DERIVATIVE",SF_VECTOR_MATH_DERIVATIVE},{"SVM_NODE_MAPPING_DERIVATIVE",SF_MAPPING_DERIVATIVE},
+@@ -42,9 +46,9 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
+     {"SVM_DERIVATIVE_ANY",SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE},
+     // Helper regions shared by several node families (wavefront_svm_nodes.wgsl).
+     {"SVM_NODES_ANY",SF_TEX_NOISE|SF_TEX_WHITE_NOISE|SF_TEX_WAVE|SF_TEX_MAGIC|SF_TEX_BRICK|SF_MAPPING|SF_MAP_RANGE|SF_MIX|SF_HSV|SF_COLOR_SEPCOMB|SF_RAMP|
+-      SF_FRESNEL|SF_VECTOR_ROTATE|SF_BLACKBODY|SF_NORMAL|SF_SHADING_INFO|SF_LIGHT_PATH|SF_TEX_VORONOI|SF_WAVELENGTH|SF_WIREFRAME|SF_MAPPING_DERIVATIVE},
++      SF_FRESNEL|SF_VECTOR_ROTATE|SF_BLACKBODY|SF_NORMAL|SF_SHADING_INFO|SF_LIGHT_PATH|SF_TEX_VORONOI|SF_WAVELENGTH|SF_WIREFRAME|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR},
+     {"SVM_NODES_DOT",SF_MAPPING|SF_FRESNEL|SF_VECTOR_ROTATE|SF_BLACKBODY|SF_NORMAL|SF_SHADING_INFO|SF_WAVELENGTH|SF_WIREFRAME|SF_MAPPING_DERIVATIVE},
+-    {"SVM_NODES_HASH",SF_TEX_NOISE|SF_TEX_WHITE_NOISE|SF_TEX_WAVE|SF_TEX_BRICK|SF_TEX_VORONOI},
++    {"SVM_NODES_HASH",SF_TEX_NOISE|SF_TEX_WHITE_NOISE|SF_TEX_WAVE|SF_TEX_BRICK|SF_TEX_VORONOI|SF_TEX_GABOR},
+     {"SVM_NODES_FMOD",SF_TEX_NOISE|SF_TEX_WAVE|SF_TEX_MAGIC},{"SVM_NODES_NOISE",SF_TEX_NOISE|SF_TEX_WAVE},
+     {"SVM_NODES_TRANSFORM",SF_MAPPING|SF_VECTOR_ROTATE|SF_MAPPING_DERIVATIVE},{"SVM_NODES_HSV",SF_MIX|SF_HSV|SF_COLOR_SEPCOMB},
+     // Region kept when any microfacet family is reachable.
+@@ -94,7 +98,7 @@ OpInfo op_info(uint32_t op){
+     OP(NODE_BLACKBODY,Blackbody,SF_BLACKBODY) OP(NODE_NORMAL,Normal,SF_NORMAL)
+     OP(NODE_OBJECT_INFO,ObjectInfo,SF_SHADING_INFO) OP(NODE_CAMERA,Camera,SF_SHADING_INFO) OP(NODE_SCENE_TIME,SceneTime,SF_SHADING_INFO)
+     OP(NODE_VECTOR_TRANSFORM,VectorTransform,SF_SHADING_INFO) OP(NODE_LIGHT_PATH,LightPath,SF_LIGHT_PATH)
+-    OP(NODE_WAVELENGTH,Wavelength,SF_WAVELENGTH) OP(NODE_WIREFRAME,Wireframe,SF_WIREFRAME)
++    OP(NODE_WAVELENGTH,Wavelength,SF_WAVELENGTH) OP(NODE_WIREFRAME,Wireframe,SF_WIREFRAME) OP(NODE_TEX_GABOR,TexGabor,SF_TEX_GABOR)
+     OP(NODE_SET_BUMP,SetBump,SF_BUMP) OP(NODE_ENTER_BUMP_EVAL,EnterBumpEval,SF_BUMP_STATE) OP(NODE_LEAVE_BUMP_EVAL,LeaveBumpEval,SF_BUMP_STATE)
+     OP(NODE_GEOMETRY_DERIVATIVE,Geometry,SF_GEOMETRY_DERIVATIVE) OP(NODE_TEX_COORD_DERIVATIVE,TexCoord,SF_TEX_COORD|SF_TEX_COORD_DERIVATIVE)
+     OP(NODE_VALUE_F_DERIVATIVE,ValueF,SF_VALUE_DERIVATIVE) OP(NODE_VALUE_V_DERIVATIVE,ValueV,SF_VALUE_DERIVATIVE)
+@@ -209,6 +213,78 @@ std::string specialize_wgsl(const std::string &source,uint64_t enabled){
+   return out.str();
+ }
+ 
++const char *specialization_mode_name(SpecializationMode mode){
++  return mode==SpecializationMode::Scene?"scene":mode==SpecializationMode::Superset?"superset":"off";
++}
++SpecializationMode specialization_mode_from_environment(unsigned *superset_group){
++  const char *mode=std::getenv("CODEBRIX_CYCLES_SHADER_SPECIALIZATION");if(superset_group)*superset_group=0;
++  if(!mode||!*mode||std::strcmp(mode,"1")==0)return SpecializationMode::Scene;
++  if(std::strcmp(mode,"superset")==0)return SpecializationMode::Superset;
++  if(std::strncmp(mode,"superset:",9)==0&&mode[9]>='0'&&mode[9]<='9'){
++    char *end=nullptr;const unsigned long group=std::strtoul(mode+9,&end,10);
++    if(end&&!*end&&group<1000){if(superset_group)*superset_group=unsigned(group);return SpecializationMode::Superset;}
++  }
++  if(std::strcmp(mode,"0")==0)return SpecializationMode::Off;
++  throw std::runtime_error(std::string("CODEBRIX_CYCLES_SHADER_SPECIALIZATION must be 1, superset or 0, not '")+mode+"'");
++}
++
++size_t wgsl_inlined_bytes(const std::string &source,const std::string &entry){
++  // Function bodies without line comments; each call to a defined function adds
++  // that function's inlined size (recursion is impossible in WGSL).
++  std::string text;text.reserve(source.size());
++  for(size_t i=0;i<source.size();){
++    if(source.compare(i,2,"//")==0){while(i<source.size()&&source[i]!='\n')i++;continue;}
++    text+=source[i++];
++  }
++  auto ident=[](char c){return std::isalnum(static_cast<unsigned char>(c))||c=='_';};
++  std::unordered_map<std::string,std::pair<size_t,size_t>> bodies; // name -> [start of "fn", end of body]
++  for(size_t at=text.find("fn ");at!=std::string::npos;at=text.find("fn ",at+3)){
++    if(at>0&&ident(text[at-1]))continue;
++    size_t n=at+3;while(n<text.size()&&text[n]==' ')n++;size_t e=n;while(e<text.size()&&ident(text[e]))e++;
++    if(e==n||e>=text.size()||text[e]!='(')continue;
++    const size_t open=text.find('{',e);if(open==std::string::npos)break;
++    int depth=0;size_t j=open;for(;j<text.size();j++){if(text[j]=='{')depth++;else if(text[j]=='}'&&--depth==0)break;}
++    bodies[text.substr(n,e-n)]={at,j+1};
++  }
++  std::unordered_map<std::string,size_t> memo;
++  std::function<size_t(const std::string&,unsigned)> size=[&](const std::string &name,unsigned depth)->size_t{
++    if(auto m=memo.find(name);m!=memo.end())return m->second;
++    const auto [start,stop]=bodies.at(name);size_t total=stop-start;
++    if(depth<64){const size_t open=text.find('{',start);
++      for(size_t i=open;i<stop;){
++        if(!ident(text[i])||(i>open&&ident(text[i-1]))){i++;continue;}
++        size_t e=i;while(e<stop&&ident(text[e]))e++;size_t k=e;while(k<stop&&text[k]==' ')k++;
++        if(k<stop&&text[k]=='('){const std::string call=text.substr(i,e-i);if(call!=name&&bodies.count(call))total+=size(call,depth+1);}
++        i=e;
++      }}
++    memo[name]=total;return total;
++  };
++  return bodies.count(entry)?size(entry,0):0;
++}
++static size_t max_entry_bytes(const std::vector<std::string> &sources,uint64_t features){
++  size_t best=0;
++  for(const std::string &source:sources){
++    const std::string text=specialize_wgsl(source,features);
++    for(size_t at=text.find("@compute");at!=std::string::npos;at=text.find("@compute",at+8)){
++      const size_t fn=text.find(" fn ",at);if(fn==std::string::npos)break;const size_t paren=text.find('(',fn+4);
++      best=std::max(best,wgsl_inlined_bytes(text,text.substr(fn+4,paren-fn-4)));
++    }
++  }
++  return best;
++}
++SupersetGroups superset_groups(const std::vector<std::string> &sources,uint64_t scene,uint64_t candidates,size_t budget){
++  SupersetGroups out;out.scene_bytes=max_entry_bytes(sources,scene);const size_t limit=std::max(budget,out.scene_bytes);
++  std::vector<uint64_t> todo;for(unsigned b=0;b<64;b++)if((candidates&~scene)>>b&1)todo.push_back(1ull<<b);
++  while(!todo.empty()){
++    uint64_t current=scene,placed=0;size_t bytes=out.scene_bytes;std::vector<uint64_t> rest;
++    for(uint64_t bit:todo){const size_t trial=max_entry_bytes(sources,current|bit);
++      if(trial<=limit){current|=bit;placed|=bit;bytes=trial;}else rest.push_back(bit);}
++    if(!placed){for(uint64_t bit:rest)out.unfit|=bit;break;}
++    out.groups.push_back(current);out.group_bytes.push_back(bytes);todo.swap(rest);
++  }
++  return out;
++}
++
+ std::string conservative_wgsl(const std::string &source){
+   static const std::string from="@workgroup_size(64)",to="@workgroup_size(1)";
+   std::string out=source;for(size_t at=out.find(from);at!=std::string::npos;at=out.find(from,at+to.size()))out.replace(at,from.size(),to);
+@@ -222,6 +298,8 @@ uint32_t declared_workgroup_size(const std::string &source,const char *entry){
+ }
+ 
+ #include "device.h"
++#include "wavefront.h"
++#include <atomic>
+ #include <chrono>
+ #include <cstdlib>
+ #include <cstring>
+@@ -245,7 +323,7 @@ uint64_t WebGPUDevice::shader_features(){
+     const SvmCensus referenced=svm_census(svm_node_words,shader_records.size(),&roots);
+     unsupported_feature=referenced.unsupported;principled_features=referenced.features&SF_PRINCIPLED_ALL;unsupported_generation=svm_generation;}
+   if(!unsupported_feature.empty())throw std::runtime_error(unsupported_feature);
+-  if(!specialization_enabled)return SF_ALL;
++  if(specialization_mode==SpecializationMode::Off)return SF_ALL;
+   if(census_generation!=svm_generation){
+     census=svm_census(svm_node_words,shader_records.size());census_generation=svm_generation;
+     enabled_features|=(census.features&~uint64_t(SF_PRINCIPLED_ALL))|principled_features;
+@@ -260,6 +338,19 @@ uint64_t WebGPUDevice::shader_features(){
+       if(object.shadow_terminator_geometry_offset>0.0f&&smooth_triangles&&data.integrator.use_direct_light)enabled_features|=SF_TERMINATOR_GEOMETRY;
+     }
+   }
++  if(specialization_mode==SpecializationMode::Superset){
++    if(superset_scene!=enabled_features){
++      size_t budget=superset_default_budget_bytes;
++      if(const char *value=std::getenv("CODEBRIX_CYCLES_SUPERSET_BUDGET_BYTES"))budget=size_t(std::strtoull(value,nullptr,10));
++      superset=superset_groups({surface_source(),background_wgsl()},enabled_features,uint64_t(SF_ALL)&~uint64_t(SF_SUPERSET_SCENE_ONLY),budget);
++      superset_scene=enabled_features;
++    }
++    // A process can render several scenes with different group counts (the
++    // world gate renders 24): a group index past this scene's last group uses its
++    // last group, so every requested group still compiles a superset of the scene.
++    if(superset.groups.empty())return enabled_features;
++    return superset.groups[std::min<size_t>(superset_group,superset.groups.size()-1)];
++  }
+   return enabled_features;
+ }
+ std::string WebGPUDevice::module_wgsl(const std::string &source){return specialize_wgsl(source,shader_features());}
+@@ -290,6 +381,14 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
+     auto &process=process_pipelines();std::lock_guard lock(process.mutex);process.warnings.push_back(message);
+   };
+   std::vector<cbc::Pipeline> out;
++  // Optional capture of every module as compiled (maintainer measurements, for
++  // example native/tools/intel_compile_envelope.py): CODEBRIX_CYCLES_WGSL_DUMP=DIR
++  // writes DIR/<sequence>-<module>.wgsl before the entries are created.
++  if(const char *dir=std::getenv("CODEBRIX_CYCLES_WGSL_DUMP");dir&&*dir){
++    static std::atomic<unsigned> sequence{0};char name[64];std::snprintf(name,sizeof(name),"/%03u-%s.wgsl",sequence++,module);
++    std::ofstream(std::string(dir)+name)<<(conservative?conservative_wgsl(specialized):specialized);
++    std::snprintf(name,sizeof(name),"/source-%s.wgsl",module);std::ofstream(std::string(dir)+name)<<source;
++  }
+   for(const char *entry:entries){
+     for(int attempt=0;;attempt++){
+       const std::string code=conservative?conservative_wgsl(specialized):specialized;
+@@ -327,6 +426,7 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
+       if(const char *path=std::getenv("CODEBRIX_CYCLES_PIPELINE_LOG")){
+         std::ofstream log(path,std::ios::app);const auto &r=pipeline_records.back();
+         log<<"{\"module\":\""<<r.module<<"\",\"entry\":\""<<r.entry<<"\",\"specialized\":"<<(specialization_enabled?"true":"false")
++           <<",\"specializationMode\":\""<<specialization_mode_name(specialization_mode)<<"\""<<superset_json()
+            <<",\"tier\":\""<<(conservative?"conservative":"full")<<"\",\"tierReason\":\""<<json_text(tier_policy.reason)<<"\",\"workgroupSize\":"<<size
+            <<",\"features\":\""<<shader_feature_list(r.features)<<"\",\"wgslBytes\":"<<r.wgsl_bytes<<",\"moduleMs\":"<<r.module_ms
+            <<",\"pipelineMs\":"<<r.pipeline_ms<<",\"adapter\":\""<<json_text(gpu.adapter_name)<<"\"}\n";
+@@ -348,8 +448,17 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
+ static std::string json_list(const std::vector<std::string> &items){
+   std::string out="[";for(size_t i=0;i<items.size();i++){if(i)out+=',';out+='"'+json_text(items[i])+'"';}return out+"]";
+ }
++std::string WebGPUDevice::superset_json() const{
++  if(specialization_mode!=SpecializationMode::Superset||superset_scene==~uint64_t(0))return "";
++  const size_t used=superset.groups.empty()?0:std::min<size_t>(superset_group,superset.groups.size()-1);
++  std::ostringstream o;o<<",\"supersetGroup\":"<<superset_group<<",\"supersetGroups\":"<<superset.groups.size()
++    <<",\"supersetGroupUsed\":"<<used<<",\"supersetSceneBytes\":"<<superset.scene_bytes<<",\"supersetGroupBytes\":"<<(used<superset.group_bytes.size()?superset.group_bytes[used]:superset.scene_bytes)
++    <<",\"supersetGroupAdded\":\""<<shader_feature_list(used<superset.groups.size()?superset.groups[used]&~superset_scene:0)
++    <<"\",\"supersetUnfit\":\""<<shader_feature_list(superset.unfit)<<'"';
++  return o.str();
++}
+ std::string WebGPUDevice::pipeline_report_json() const{
+-  std::ostringstream o;o<<"{\"specialization\":"<<(specialization_enabled?"true":"false")<<",\"tier\":\""<<(conservative?"conservative":"full")
++  std::ostringstream o;o<<"{\"specialization\":"<<(specialization_enabled?"true":"false")<<",\"specializationMode\":\""<<specialization_mode_name(specialization_mode)<<"\""<<superset_json()<<",\"tier\":\""<<(conservative?"conservative":"full")
+     <<"\",\"degraded\":"<<(pipeline_warnings.empty()?"false":"true")<<",\"budgetMs\":"<<pipeline_budget_ms<<",\"warnings\":"<<json_list(pipeline_warnings)
+     <<",\"enabledFeatures\":\""<<shader_feature_list(enabled_features)<<"\",\"svmDecodedNodes\":"<<census.decoded_nodes
+     <<",\"svmStoppedPaths\":"<<census.stopped_paths<<",\"budgetSource\":\""<<json_text(tier_policy.budget_source)<<"\",\"decision\":"<<tier_policy.report_json()<<",\"pipelines\":[";
+diff --git a/native/cycles/pipelines.h b/native/cycles/pipelines.h
+index 407beb48..81f9e268 100644
+--- a/native/cycles/pipelines.h
++++ b/native/cycles/pipelines.h
+@@ -51,13 +51,48 @@ enum ShaderFeatureBit : uint64_t {
+   // Wavelength and wireframe handlers (wavefront_svm_nodes.wgsl).
+   SF_WAVELENGTH=1ull<<53, SF_WIREFRAME=1ull<<54,
+   // Bump stages and dual-number derivative variants (wavefront_svm_derivatives.wgsl;
+-  // mapping variants in wavefront_svm_nodes.wgsl). Bits 62 and 63 stay free.
++  // mapping variants in wavefront_svm_nodes.wgsl). Bit 62 stays free.
+   SF_BUMP=1ull<<55, SF_BUMP_STATE=1ull<<56, SF_GEOMETRY_DERIVATIVE=1ull<<57,
+   SF_TEX_COORD_DERIVATIVE=1ull<<58, SF_VALUE_DERIVATIVE=1ull<<59,
+   SF_VECTOR_MATH_DERIVATIVE=1ull<<60, SF_MAPPING_DERIVATIVE=1ull<<61,
+-  SF_ALL=(1ull<<62)-1,
++  // Gabor texture (wavefront_svm_nodes.wgsl; lane L, 2026-10-22). Only bit 62 of
++  // the 64-bit mask is still free.
++  SF_TEX_GABOR=1ull<<63,
++  SF_ALL=((1ull<<62)-1)|SF_TEX_GABOR,
+   SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL,
++  // Superset specialization mode (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset,
++  // desktop diagnostic): every handler is compiled in except these regions, which
++  // are kept only when the uploaded scene reaches them. They are the regions that
++  // pushed the unspecialized entry points past what Intel Mesa 25.0.7 compiles
++  // correctly (native/DEVICE.md, "Linux reference fixes on the updated Mesa").
++  SF_SUPERSET_SCENE_ONLY=SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
++    SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR,
+ };
++// Specialization modes: Scene (default, only the regions the scene reaches),
++// Superset (the on/off identity check) and Off (every region; diagnostic).
++//
++// The superset is every region except the scene-only regions above that the
++// scene does not reach. Compiled whole it exceeds the Intel Mesa 25.0.7 backend's
++// 16-bit instruction/register range (twice over for prepare_surface), so it is
++// compiled in groups: group g is the scene plus the g-th greedy fill of the
++// remaining superset regions (ascending bit order) that keeps every entry point
++// of the surface and background modules within the inlined-size budget
++// (wgsl_inlined_bytes; default superset_default_budget_bytes, override with
++// CODEBRIX_CYCLES_SUPERSET_BUDGET_BYTES). The groups together cover the whole
++// superset except regions that do not fit next to the scene ("unfit", reported).
++enum class SpecializationMode {Scene,Superset,Off};
++const char *specialization_mode_name(SpecializationMode mode);
++// Parses CODEBRIX_CYCLES_SHADER_SPECIALIZATION: unset or "1" Scene, "superset" or
++// "superset:G" Superset group G (default 0), "0" Off; anything else throws.
++SpecializationMode specialization_mode_from_environment(unsigned *superset_group=nullptr);
++// Inlined size of a WGSL entry point (every call inlined, as Vulkan drivers do),
++// in bytes of WGSL text without comments. Intel Mesa 25.0.7 emits about one
++// backend instruction per 15-20 such bytes (measured, lane L 2026-10-22).
++size_t wgsl_inlined_bytes(const std::string &source,const std::string &entry);
++inline constexpr size_t superset_default_budget_bytes=1000000;
++struct SupersetGroups {std::vector<uint64_t> groups;uint64_t unfit=0;size_t scene_bytes=0;std::vector<size_t> group_bytes;};
++// Greedy grouping of `candidates` next to `scene` for the given module sources.
++SupersetGroups superset_groups(const std::vector<std::string> &sources,uint64_t scene,uint64_t candidates,size_t budget);
+ struct ShaderFeatureName {const char *name;uint64_t bit;};
+ const std::vector<ShaderFeatureName> &shader_feature_names();
+ std::string shader_feature_list(uint64_t features);
+diff --git a/native/cycles/render_capture.h b/native/cycles/render_capture.h
+index b62bf609..edf4f466 100644
+--- a/native/cycles/render_capture.h
++++ b/native/cycles/render_capture.h
+@@ -11,7 +11,7 @@
+ // subsequent native scheduling; it may not inject those CPU decisions as data.
+ struct RenderCapture final:ccl::WebGPUCommandObserver {
+   ccl::WebGPUDevice &device;std::ofstream commands;size_t arena_size;uint64_t count=0;bool sized_dispatch=false;
+-  std::array<uint64_t,17> pipeline_dispatches{};
++  std::array<uint64_t,18> pipeline_dispatches{};
+   static void file(const std::string &name,const void *data,size_t bytes){std::ofstream out(name,std::ios::binary);out.write(static_cast<const char*>(data),bytes);if(!out)throw std::runtime_error("Capture write failed: "+name);}
+   void header(uint32_t kind,uint32_t address,uint32_t bytes){uint32_t h[]={kind,address,bytes};commands.write(reinterpret_cast<const char*>(h),sizeof(h));count++;}
+   RenderCapture(ccl::WebGPUDevice &d,const std::string &prefix):device(d),commands(prefix+".commands.bin",std::ios::binary),arena_size(d.arena_bytes){
+@@ -29,7 +29,8 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
+   void dispatch(const std::array<uint32_t,32>&params,uint32_t work,unsigned entry,uint32_t workgroup_size)override{
+     if(entry>=pipeline_dispatches.size())throw std::runtime_error("Unknown capture pipeline");
+     // Entry 15 (connect_surface_light) is recorder v6; entry 16
+-    // (prepare_shadow_shader_data) is recorder v7. Both follow the v5 slots 9-14.
++    // (prepare_shadow_shader_data) is recorder v7; entry 17
++    // (shade_surface_light_triangle) is recorder v8. All follow the v5 slots 9-14.
+     pipeline_dispatches[entry]++;
+     // Kind 3 retains the original implicit size 64. Kind 5 stores the explicit
+     // size before the same 128-byte parameter block, preserving old captures.
+@@ -44,7 +45,7 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
+     device.observer=nullptr;commands.close();if(!commands)throw std::runtime_error("Capture command write failed");
+     if(device.arena_bytes!=arena_size)throw std::runtime_error("Capture arena grew; prewarm the complete workload before recording");
+     if(!width||!height||!film_stride||uint64_t(width)*height*film_stride*4!=film_bytes)throw std::runtime_error("Capture film layout mismatch");
+-    std::ofstream meta(prefix+".capture.json");meta<<"{\"format\":\"native-command-stream-v"<<(pipeline_dispatches[16]?7:pipeline_dispatches[15]?6:((pipeline_dispatches[9]||pipeline_dispatches[10]||pipeline_dispatches[11]||pipeline_dispatches[12]||pipeline_dispatches[13]||pipeline_dispatches[14])?5:(pipeline_dispatches[8]?4:((pipeline_dispatches[6]||pipeline_dispatches[7])?3:(sized_dispatch?2:1)))))<<"\",\"commands\":"<<count<<",\"arenaBytes\":"<<arena_size<<",\"filmOffset\":"<<film<<",\"filmBytes\":"<<film_bytes<<",\"errorOffset\":"<<device.error_word<<",\"queuedKernelOffset\":"<<queued<<",\"queuedKernelElementBytes\":2,\"pathCapacity\":"<<capacity<<",\"width\":"<<width<<",\"height\":"<<height<<",\"samples\":"<<samples<<",\"filmStride\":"<<film_stride<<",\"workload\":\""<<workload<<"\",\"pipelineDispatches\":[";
++    std::ofstream meta(prefix+".capture.json");meta<<"{\"format\":\"native-command-stream-v"<<(pipeline_dispatches[17]?8:pipeline_dispatches[16]?7:pipeline_dispatches[15]?6:((pipeline_dispatches[9]||pipeline_dispatches[10]||pipeline_dispatches[11]||pipeline_dispatches[12]||pipeline_dispatches[13]||pipeline_dispatches[14])?5:(pipeline_dispatches[8]?4:((pipeline_dispatches[6]||pipeline_dispatches[7])?3:(sized_dispatch?2:1)))))<<"\",\"commands\":"<<count<<",\"arenaBytes\":"<<arena_size<<",\"filmOffset\":"<<film<<",\"filmBytes\":"<<film_bytes<<",\"errorOffset\":"<<device.error_word<<",\"queuedKernelOffset\":"<<queued<<",\"queuedKernelElementBytes\":2,\"pathCapacity\":"<<capacity<<",\"width\":"<<width<<",\"height\":"<<height<<",\"samples\":"<<samples<<",\"filmStride\":"<<film_stride<<",\"workload\":\""<<workload<<"\",\"pipelineDispatches\":[";
+     for(size_t i=0;i<pipeline_dispatches.size();i++){if(i)meta<<',';meta<<pipeline_dispatches[i];}meta<<']';
+     if(device.state.shadow_path.queued_kernel){auto shadow=uint32_t(uintptr_t(device.state.shadow_path.queued_kernel));
+       meta<<",\"shadowQueuedKernelOffset\":"<<shadow<<",\"shadowPathCapacity\":"<<device.remaining(shadow)/sizeof(uint16_t);}
+diff --git a/native/cycles/surface.cpp b/native/cycles/surface.cpp
+index 8470374c..c97ac595 100644
+--- a/native/cycles/surface.cpp
++++ b/native/cycles/surface.cpp
+@@ -145,10 +145,21 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
+   p[24]=surface_closures+uint32_t(closure_bytes);
+   p[26]=p[24]+4;p[27]=surface_stage_bytes;
+   if(reserve_shadow)p[28]=surface_closures+uint32_t(records_bytes);
+-  if(!pipeline_current(surface,"shade_surface")){
+-    auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","connect_surface_light","shade_surface"});
+-    surface_geometry=std::move(built[0]);surface_prepare=std::move(built[1]);surface_light=std::move(built[2]);
+-    surface_connect=std::move(built[3]);surface=std::move(built[4]);
++  // With emissive triangles (LIGHT_TRIANGLE) the light stage is two entries
++  // (wavefront_surface.wgsl): shade_surface_light samples a lamp and
++  // shade_surface_light_triangle does the triangle work, which keeps each entry
++  // inside the Intel Mesa 25.0.7 backend's 16-bit instruction/register range.
++  const bool triangle_stage=(shader_features()&SF_LIGHT_TRIANGLE)!=0;
++  if(!pipeline_current(surface,"shade_surface")||(triangle_stage&&!surface_light_triangle.value)){
++    if(triangle_stage){
++      auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","shade_surface_light_triangle","connect_surface_light","shade_surface"});
++      surface_geometry=std::move(built[0]);surface_prepare=std::move(built[1]);surface_light=std::move(built[2]);
++      surface_light_triangle=std::move(built[3]);surface_connect=std::move(built[4]);surface=std::move(built[5]);
++    }else{
++      auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","connect_surface_light","shade_surface"});
++      surface_geometry=std::move(built[0]);surface_prepare=std::move(built[1]);surface_light=std::move(built[2]);
++      surface_connect=std::move(built[3]);surface=std::move(built[4]);surface_light_triangle={};
++    }
+   }
+   // Dispatch ordering makes the GPU-private preparation records visible to the
+   // sampling stage without a CPU readback or a native scheduler queue transition.
+@@ -165,6 +176,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
+   // Sizes follow the compiled declarations. Light sampling and BSDF/shadow
+   // connection are separate dispatches to bound compiler pressure.
+   dispatch(p,uint32_t(work),surface_light,workgroup("shade_surface_light"));
++  if(triangle_stage)dispatch(p,uint32_t(work),surface_light_triangle,workgroup("shade_surface_light_triangle"));
+   dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
+   dispatch(p,uint32_t(work),surface,workgroup("shade_surface"));
+ }
+diff --git a/native/cycles/surface_fixture.h b/native/cycles/surface_fixture.h
+index 99e363ba..eeee4642 100644
+--- a/native/cycles/surface_fixture.h
++++ b/native/cycles/surface_fixture.h
+@@ -63,10 +63,11 @@ static void prepare(Scene &scene){
+ }
+ [[maybe_unused]] static std::vector<int> states_for(Scene &scene,std::vector<IntegratorStateCPU> &states){
+   // The node fixture has more graphs; fewer rays per triangle keep it within capacity.
+-  // Graphs 60+ (wavelength/wireframe) follow every earlier graph, so the paths
+-  // of graphs 0-59 keep their state indices.
++  // Graphs 60+ (wavelength, wireframe, bump, Gabor) follow every earlier graph, so
++  // the paths of graphs 0-59 keep their state indices. With the two Gabor graphs
++  // (65, 66) the late graphs take 5 rays each (7 before) to stay within capacity.
+ #ifdef CBC_NODES_FIXTURE
+-  constexpr unsigned rays=7,first_graphs=60,late_rays=7;
++  constexpr unsigned rays=7,first_graphs=60,late_rays=5;
+ #else
+   constexpr unsigned rays=17,first_graphs=GRAPH_COUNT,late_rays=0;
+ #endif
+diff --git a/native/cycles/svm_layout.cpp b/native/cycles/svm_layout.cpp
+index b1492287..688608a0 100644
+--- a/native/cycles/svm_layout.cpp
++++ b/native/cycles/svm_layout.cpp
+@@ -106,6 +106,8 @@ std::string svm_layout(bool surface){
+   SIZE(TexVoronoi);FIELD(TexVoronoi,dimensions);FIELD(TexVoronoi,feature);FIELD(TexVoronoi,metric);FIELD(TexVoronoi,w);FIELD(TexVoronoi,scale);FIELD(TexVoronoi,detail);
+   FIELD(TexVoronoi,roughness);FIELD(TexVoronoi,lacunarity);FIELD(TexVoronoi,smoothness);FIELD(TexVoronoi,exponent);FIELD(TexVoronoi,randomness);FIELD(TexVoronoi,normalize);
+   FIELD(TexVoronoi,coord);FIELD(TexVoronoi,distance_offset);FIELD(TexVoronoi,color_offset);FIELD(TexVoronoi,position_offset);FIELD(TexVoronoi,w_out_offset);FIELD(TexVoronoi,radius_offset);
++  SIZE(TexGabor);FIELD(TexGabor,gabor_type);FIELD(TexGabor,orientation_3d);FIELD(TexGabor,scale);FIELD(TexGabor,frequency);FIELD(TexGabor,anisotropy);
++  FIELD(TexGabor,orientation_2d);FIELD(TexGabor,coordinates);FIELD(TexGabor,value_offset);FIELD(TexGabor,phase_offset);FIELD(TexGabor,intensity_offset);
+   SIZE(Wavelength);FIELD(Wavelength,wavelength);FIELD(Wavelength,color_offset);
+   SIZE(Wireframe);FIELD(Wireframe,in_size);FIELD(Wireframe,bump_filter_width);FIELD(Wireframe,use_pixel_size);FIELD(Wireframe,bump_offset);FIELD(Wireframe,out_fac_offset);
+   source<<"//#endif\n";
+diff --git a/native/cycles/svm_surface_gate.cpp b/native/cycles/svm_surface_gate.cpp
+index 0b6bfe4b..def1abe2 100644
+--- a/native/cycles/svm_surface_gate.cpp
++++ b/native/cycles/svm_surface_gate.cpp
+@@ -104,7 +104,7 @@ static SVMInputFloat stack_in(unsigned i){return {SVM_INPUT_STACK_OFFSET_MASK|i}
+ static SVMInputFloat3 stack_in3(unsigned i){return {stack_in(i),{},{}};}
+ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
+   auto &ds=scene.dscene;const auto original=ds.data;constexpr unsigned count=21;
+-  const uint expected[count]={2,2,2,2,16,16,16,4,16,16,16,16,16,2,2,2,2,2,2,2,2};
++  const uint expected[count]={2,2,2,2,16,16,16,4,16,16,16,16,16,2,2,2,2,2,2,2,16};
+   for(unsigned test=0;test<count;test++){
+     Program program(ds);program.weight(.2,.4,.6);program.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
+     const uint deferred[]={NODE_RAYCAST,NODE_LIGHT_FALLOFF,NODE_IES,NODE_AOV_START};
+@@ -120,7 +120,9 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
+     if(test==12)program.add(NODE_MAP_RANGE,SVMNodeMapRange{.range_type=NodeMapRangeType(9),.value=stack_in(0),.from_min=value(0),.from_max=value(1),.to_min=value(0),.to_max=value(1),.steps=value(4),.result_offset=3});
+     const uint more[]={NODE_AMBIENT_OCCLUSION,NODE_BEVEL,NODE_PARTICLE_INFO,NODE_HAIR_INFO,NODE_TEX_SKY,NODE_RADIAL_TILING,NODE_POINT_INFO};
+     if(test>=13&&test<20)program.words.push_back(more[test-13]);
+-    if(test==20)program.words.push_back(NODE_TEX_GABOR);
++    // Gabor is implemented: an invalid Gabor type reports 16.
++    if(test==20)program.add(NODE_TEX_GABOR,SVMNodeTexGabor{.gabor_type=NodeGaborType(2),.orientation_3d=color(1,0,0),.scale=value(1),.frequency=value(2),.anisotropy=value(1),
++      .orientation_2d=value(0),.coordinates=0,.value_offset=3,.phase_offset=SVM_STACK_INVALID,.intensity_offset=SVM_STACK_INVALID});
+     program.diffuse(0);program.install(ds);ds.data.max_closures=MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
+     device_vector<uint> out(&d,"invalid_node_svm",MEM_READ_WRITE);out.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(out.data(),out.size(),0xa5a5a5a5u);out.copy_to_device();
+     device_vector<uint> scratch(&d,"invalid_node_closures",MEM_READ_WRITE);scratch.alloc(MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);scratch.zero_to_device();
+@@ -286,6 +288,17 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+       else p.add(NODE_WAVELENGTH,SVMNodeWavelength{.wavelength=value(lambda[variant]),.color_offset=10});
+       p.add(NODE_VALUE_F,SVMNodeValueF{.value=.5f,.out_offset=13});finish(p,"wavelength "+std::to_string(variant));
+     }
++    // Gabor: 2D and 3D, anisotropic, partly isotropic and isotropic, constant and
++    // per-path inputs (scale, frequency, anisotropy, orientations), unused outputs.
++    for(unsigned three=0;three<2;three++)for(unsigned variant=0;variant<6;variant++){
++      Program p(ds);begin(p);const float anisotropy[]={1,.5f,0,1,.25f,0};
++      p.add(NODE_TEX_GABOR,SVMNodeTexGabor{.gabor_type=three?NODE_GABOR_TYPE_3D:NODE_GABOR_TYPE_2D,.orientation_3d=variant==4?stack_in3(6):color(.3f,-.8f,variant==5?0.f:.5f),
++        .scale=variant==1?stack_in(9):value(variant<3?1.7f:4.1f),.frequency=value(variant==3?.0004f:variant==2?3.3f:1.9f),.anisotropy=variant==4?stack_in(9):value(anisotropy[variant]),
++        .orientation_2d=variant==0?stack_in(9):value(variant==3?-2.4f:.8f),.coordinates=3,.value_offset=13,.phase_offset=variant==5?SVMStackOffset(SVM_STACK_INVALID):SVMStackOffset(10),
++        .intensity_offset=11});
++      if(variant==5)p.add(NODE_VALUE_F,SVMNodeValueF{.value=.25f,.out_offset=10});
++      p.add(NODE_VALUE_F,SVMNodeValueF{.value=.5f,.out_offset=12});finish(p,"gabor "+std::to_string(three?3:2)+"d variant "+std::to_string(variant));
++    }
+     // Wireframe: object/pixel units, bump offsets (centre, dx, dy), constant and
+     // per-path sizes, unused output.
+     for(unsigned pixel=0;pixel<2;pixel++)for(unsigned bump=0;bump<3;bump++)for(unsigned variant=0;variant<2;variant++){
+diff --git a/native/cycles/svm_world_gate.cpp b/native/cycles/svm_world_gate.cpp
+index bd2d0a4d..c51743c9 100644
+--- a/native/cycles/svm_world_gate.cpp
++++ b/native/cycles/svm_world_gate.cpp
+@@ -29,7 +29,7 @@ static unsigned node_size(uint op){switch(op){
+   NODE(NODE_CLOSURE_BACKGROUND,ClosureBackground);NODE(NODE_CLOSURE_EMISSION,ClosureEmission);NODE(NODE_EMISSION_WEIGHT,EmissionWeight);NODE(NODE_MIX_CLOSURE,MixClosure);
+   NODE(NODE_TEX_CHECKER,TexChecker);NODE(NODE_TEX_GRADIENT,TexGradient);NODE(NODE_GAMMA,Gamma);NODE(NODE_INVERT,Invert);NODE(NODE_BRIGHTCONTRAST,BrightContrast);
+   // Texture, colour and utility nodes (ramp/curve tables are added by inspect_program).
+-  NODE(NODE_TEX_NOISE,TexNoise);NODE(NODE_TEX_VORONOI,TexVoronoi);NODE(NODE_TEX_WHITE_NOISE,TexWhiteNoise);NODE(NODE_TEX_WAVE,TexWave);NODE(NODE_TEX_MAGIC,TexMagic);NODE(NODE_TEX_BRICK,TexBrick);
++  NODE(NODE_TEX_NOISE,TexNoise);NODE(NODE_TEX_VORONOI,TexVoronoi);NODE(NODE_TEX_GABOR,TexGabor);NODE(NODE_TEX_WHITE_NOISE,TexWhiteNoise);NODE(NODE_TEX_WAVE,TexWave);NODE(NODE_TEX_MAGIC,TexMagic);NODE(NODE_TEX_BRICK,TexBrick);
+   NODE(NODE_MAPPING,Mapping);NODE(NODE_TEXTURE_MAPPING,TextureMapping);NODE(NODE_MIN_MAX,MinMax);NODE(NODE_MAP_RANGE,MapRange);NODE(NODE_VECTOR_MAP_RANGE,VectorMapRange);
+   NODE(NODE_MIX,Mix);NODE(NODE_MIX_COLOR,MixColor);NODE(NODE_MIX_FLOAT,MixFloat);NODE(NODE_MIX_VECTOR,MixVector);NODE(NODE_MIX_VECTOR_NON_UNIFORM,MixVectorNonUniform);
+   NODE(NODE_HSV,HSV);NODE(NODE_SEPARATE_COLOR,SeparateColor);NODE(NODE_COMBINE_COLOR,CombineColor);NODE(NODE_RGB_RAMP,RGBRamp);NODE(NODE_CURVES,Curves);NODE(NODE_FLOAT_CURVE,FloatCurve);
+@@ -82,7 +82,7 @@ static void graph_scene(Scene &scene,unsigned test){
+ #ifdef CBC_NODES_FIXTURE
+ // Compiled worlds for the texture, colour and utility nodes. World inputs are
+ // the GPU camera directions read by both sides, so they are bit-identical.
+-static constexpr unsigned WORLD_COUNT=23;
++static constexpr unsigned WORLD_COUNT=24;
+ static void nodes_world(Scene &scene,unsigned test){
+   base_scene(scene);auto graph=make_unique<ShaderGraph>();auto &g=*graph;auto geo=g.create_node<GeometryNode>();auto bg=g.create_node<BackgroundNode>();bg->set_strength(.7f);
+   ShaderOutput *dir=geo->output("Position");ShaderOutput *color=dir;
+@@ -142,6 +142,11 @@ static void nodes_world(Scene &scene,unsigned test){
+     g.connect(sum->output("Vector"),dot->input("Vector1"));g.connect(dot->output("Value"),bump->input("Height"));
+     auto add=g.create_node<VectorMathNode>();add->set_math_type(NODE_VECTOR_MATH_ADD);g.connect(bump->output("Normal"),add->input("Vector1"));g.connect(vmath(NODE_VECTOR_MATH_ABSOLUTE,dir,zero_float3()),add->input("Vector2"));
+     color=add->output("Vector");}
++  if(test==23){
++    // Gabor in a world (3D, anisotropic): value, phase and intensity of the direction.
++    auto n=g.create_node<GaborTextureNode>();n->set_type(NODE_GABOR_TYPE_3D);n->set_scale(2.6f);n->set_frequency(1.8f);n->set_anisotropy(.7f);n->set_orientation_3d(make_float3(-.4f,.2f,.9f));
++    g.connect(dir,n->input("Vector"));auto comb=g.create_node<CombineXYZNode>();g.connect(n->output("Value"),comb->input("X"));g.connect(n->output("Phase"),comb->input("Y"));
++    g.connect(n->output("Intensity"),comb->input("Z"));color=comb->output("Vector");}
+   if(test==7){
+     // Is Camera Ray selects between two backgrounds (camera rays at bounce 0 here).
+     auto lp=g.create_node<LightPathNode>();auto other=g.create_node<BackgroundNode>();other->set_color(make_float3(.8,.1,.2));g.connect(noise(3,NODE_NOISE_MULTIFRACTAL,2,0)->output("Color"),bg->input("Color"));
+diff --git a/native/host/ABI.md b/native/host/ABI.md
+index 9f4073ee..e716f0cd 100644
+--- a/native/host/ABI.md
++++ b/native/host/ABI.md
+@@ -343,13 +343,15 @@ Bit-identical (measured):
+   across processes on one machine (host gate: C and .NET consumers, 1,560
+   color-reload films, deleting/recreating nodes and images back to an earlier
+   scene state).
+-- WebGPU scene specialization on versus off (`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0`)
+-  gives the same film on Linux x64 Intel (glass_render, film
+-  `db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6`; the node
+-  render also matches). The unspecialized module does not compile on the
+-  Android test devices, so this is shown on Linux only, and since the bump and
+-  derivative opcodes it is not reliable for every scene even there (the
+-  Principled render mis-evaluates unspecialized; native/DEVICE.md, open item 11).
++- WebGPU scene specialization on versus off gives the same film on Linux x64
++  Intel (glass_render, film
++  `db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6`; the
++  Principled and node renders also match). "Off" is the superset mode
++  (`CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:G`, every group): the whole
++  unspecialized module (`=0`, a diagnostic) exceeds the Intel Mesa 25.0.7
++  backend's 16-bit instruction/register range (native/DEVICE.md, "Linux
++  reference fixes on the updated Mesa"). Both are desktop-only and refused on
++  Android, so this is shown on Linux only.
+ - Full versus conservative pipeline tier gave a bit-identical glass_render film
+   on the Pixel 4 XL. On Linux Intel the conservative tier (workgroup size 1) can
+   change last bits; it must and does meet the practical criterion.
+diff --git a/native/shaders/wavefront_lighting.wgsl b/native/shaders/wavefront_lighting.wgsl
+index 0a5d9f0e..50b2f7ae 100644
+--- a/native/shaders/wavefront_lighting.wgsl
++++ b/native/shaders/wavefront_lighting.wgsl
+@@ -40,16 +40,27 @@ fn light_select(index:u32)->LightSelection{
+ // Emissive-triangle vertices come from triangle_light_prefill, which the caller
+ // runs first for the same invocation.
+ fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
+-    var ls:NativeLightSample;
+-    let selection=light_select(index);let random=selection.random;let distribution=selection.distribution;let prim=selection.prim;
+-    if(prim>=0){
++    let selection=light_select(index);
++    if(selection.prim>=0){
+         // Removed by scene specialization when no emissive triangle is in the light
+         // distribution (pipelines.h); a reached removed handler reports error 2.
+-//#if LIGHT_TRIANGLE else atomicOr(&heap[p(17u)/4u],2u);return ls;
+-        ls=triangle_light_sample_native(load_word(distribution+LD_object),u32(prim),sd.time,sd.P,random.xy);
+-        ls.shader|=load_word(distribution+LD_visibility);return ls;
++//#if LIGHT_TRIANGLE else var none:NativeLightSample;atomicOr(&heap[p(17u)/4u],2u);return none;
++        return light_sample_triangle(sd,selection);
+ //#endif
+     }
++    return light_sample_lamp(index,sd,r,selection);
++}
++// The emissive triangle chosen by light_select (selection.prim >= 0).
++fn light_sample_triangle(sd:SurfaceData,selection:LightSelection)->NativeLightSample{
++    var ls=triangle_light_sample_native(load_word(selection.distribution+LD_object),u32(selection.prim),sd.time,sd.P,selection.random.xy);
++    ls.shader|=load_word(selection.distribution+LD_visibility);return ls;
++}
++// The lamp chosen by light_select (selection.prim < 0). With emissive triangles in
++// the scene, shade_surface_light calls this directly and the triangle work runs in
++// shade_surface_light_triangle, so neither entry inlines both samplers.
++fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelection)->NativeLightSample{
++    var ls:NativeLightSample;
++    let random=selection.random;let prim=selection.prim;
+     ls.is_light=true;ls.prim=~bitcast<u32>(prim);
+     let light=table_at(G_lights,ls.prim,SIZE_lights);
+     if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return ls;}
+diff --git a/native/shaders/wavefront_motion.wgsl b/native/shaders/wavefront_motion.wgsl
+index 9e498f7c..29fddb1d 100644
+--- a/native/shaders/wavefront_motion.wgsl
++++ b/native/shaders/wavefront_motion.wgsl
+@@ -24,6 +24,12 @@ fn motion_normalize4(a:vec4<f32>)->vec4<f32>{
+     let norm=rounded_sqrt(motion_dot4(a,a));
+     return vec4<f32>(rounded_divide(a.x,norm),rounded_divide(a.y,norm),rounded_divide(a.z,norm),rounded_divide(a.w,norm));
+ }
++// The Horner steps run as loops over the coefficient pairs (lane L, 2026-10-22):
++// the same operations in the same order as the unrolled form, so results are
++// bit-identical, but each call site inlines one step instead of all of them.
++// This keeps the entry points that use the precise trigonometry inside the Intel
++// Mesa 25.0.7 backend's 16-bit instruction/register range (native/DEVICE.md,
++// "Linux reference fixes on the updated Mesa").
+ fn motion_acos(value:f32)->f32{
+     let absolute=abs(clamp(value,-1.0,1.0));let high=rounded_add(1.0,-absolute);
+     let low=rounded_add(rounded_add(1.0,-high),-absolute);
+@@ -33,35 +39,38 @@ fn motion_acos(value:f32)->f32{
+     let residual=rounded_add(rounded_add(x.x,-product.x),rounded_add(x.y,-product.y));
+     let z=vec2<f32>(root,rounded_divide(residual,2.0*root));
+     var polynomial=vec2<f32>(0.0017680810997262597,2.0789158589051837e-11);
+-    polynomial=trig_coeff(vec2<f32>(0.0018622264033183455,3.0847819958157441e-12),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0019650335889309645,2.7346319219495596e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0020776609890162945,4.3501873110696199e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0022014740388840437,-6.5173905335058624e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0023380918428301811,4.9281793923494632e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0024894487578421831,-7.9595299535412112e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0026578705292195082,1.0898778190701619e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0028461783658713102,3.5237631822865323e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0030578216537833214,-4.5252907324155878e-12),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0032970595639199018,-6.0446416969006656e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0035692052915692329,1.0225670180399882e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0038809645920991898,-3.3261520707844605e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0042409072630107403,-1.6933137704511214e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0046601435169577599,-3.004266366929409e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.005153309553861618,1.2845828654267644e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0057400376535952091,1.7246714473229119e-11),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0064472104422748089,-1.3038516013391677e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0073125259950757027,-1.2147685721913826e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0083903353661298752,4.4348693988005561e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0097616091370582581,3.9213582034292038e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.011551801115274429,-2.1913472425527658e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.013964843936264515,-1.8626451422920631e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.017352763563394547,8.5968237736877562e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.022372158244252205,8.4665688696028418e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0303819440305233,4.139211438880519e-10),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.0446428582072258,-1.0643686557121335e-09),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.075000002980232239,-2.9802322415450888e-09),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(0.1666666716337204,-4.9670537405344106e-09),trig_mul(polynomial,x));
+-    polynomial=trig_coeff(vec2<f32>(1,0),trig_mul(polynomial,x));
++    // 29 Horner steps as one loop over the same coefficients (same operations, same order).
++    var polynomial_terms=array<vec2<f32>,29>(
++        vec2<f32>(0.0018622264033183455,3.0847819958157441e-12),
++        vec2<f32>(0.0019650335889309645,2.7346319219495596e-11),
++        vec2<f32>(0.0020776609890162945,4.3501873110696199e-11),
++        vec2<f32>(0.0022014740388840437,-6.5173905335058624e-11),
++        vec2<f32>(0.0023380918428301811,4.9281793923494632e-11),
++        vec2<f32>(0.0024894487578421831,-7.9595299535412112e-11),
++        vec2<f32>(0.0026578705292195082,1.0898778190701619e-10),
++        vec2<f32>(0.0028461783658713102,3.5237631822865323e-11),
++        vec2<f32>(0.0030578216537833214,-4.5252907324155878e-12),
++        vec2<f32>(0.0032970595639199018,-6.0446416969006656e-11),
++        vec2<f32>(0.0035692052915692329,1.0225670180399882e-10),
++        vec2<f32>(0.0038809645920991898,-3.3261520707844605e-11),
++        vec2<f32>(0.0042409072630107403,-1.6933137704511214e-10),
++        vec2<f32>(0.0046601435169577599,-3.004266366929409e-11),
++        vec2<f32>(0.005153309553861618,1.2845828654267644e-10),
++        vec2<f32>(0.0057400376535952091,1.7246714473229119e-11),
++        vec2<f32>(0.0064472104422748089,-1.3038516013391677e-10),
++        vec2<f32>(0.0073125259950757027,-1.2147685721913826e-10),
++        vec2<f32>(0.0083903353661298752,4.4348693988005561e-10),
++        vec2<f32>(0.0097616091370582581,3.9213582034292038e-10),
++        vec2<f32>(0.011551801115274429,-2.1913472425527658e-10),
++        vec2<f32>(0.013964843936264515,-1.8626451422920631e-10),
++        vec2<f32>(0.017352763563394547,8.5968237736877562e-10),
++        vec2<f32>(0.022372158244252205,8.4665688696028418e-10),
++        vec2<f32>(0.0303819440305233,4.139211438880519e-10),
++        vec2<f32>(0.0446428582072258,-1.0643686557121335e-09),
++        vec2<f32>(0.075000002980232239,-2.9802322415450888e-09),
++        vec2<f32>(0.1666666716337204,-4.9670537405344106e-09),
++        vec2<f32>(1,0));
++    for(var step=0u;step<29u;step++){polynomial=trig_coeff(polynomial_terms[step],trig_mul(polynomial,x));}
+     let result=2.0*trig_mul(z,polynomial);
+     if(value<0.0){return rounded_add(rounded_add(3.1415927410125732,-result.x),rounded_add(-8.742278000372485e-8,-result.y));}
+     return rounded_add(result.x,result.y);
+diff --git a/native/shaders/wavefront_surface.wgsl b/native/shaders/wavefront_surface.wgsl
+index 91571175..eda336e0 100644
+--- a/native/shaders/wavefront_surface.wgsl
++++ b/native/shaders/wavefront_surface.wgsl
+@@ -207,15 +207,34 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
+ // light's BSDF/MIS/shadow setup (state 3 -> 2). Combining emitter sampling with
+ // BSDF evaluation caused multi-minute, multi-GB driver compilation (and lost the
+ // Pixel's device); records remain GPU-private and native scheduling is unchanged.
+-@compute @workgroup_size(1) fn shade_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
+-    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}
+-    let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=1u){return;}store_word(at,0u);
++//
++// With emissive triangles in the scene (LIGHT_TRIANGLE) the sampling itself is
++// split once more: shade_surface_light samples only a selected lamp (state
++// 1 -> 5) and shade_surface_light_triangle, dispatched next, prefills the
++// triangle vertices, computes the forward-hit MIS weight and samples a selected
++// triangle (state 5 -> 3). Both recompute the same inputs from the unchanged
++// stage record and path state, and call the same functions as the combined path,
++// so the stored weight and sample are identical. One entry inlining both samplers
++// with area lights and object motion passed 65,535 backend instructions, where
++// the Intel Mesa 25.0.7 constant-combining pass truncates instruction and
++// register numbers to 16 bits (crash or wrong code; native/DEVICE.md, "Linux
++// reference fixes on the updated Mesa").
++struct SurfaceLightInputs {at:u32,index:u32,sd:SurfaceData,r:SvmResult,emission:bool,sample:bool}
++fn surface_light_inputs(id:vec3<u32>,state:u32)->SurfaceLightInputs{
++    var li:SurfaceLightInputs;li.at=NONE;
++    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return li;}
++    let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=state){return li;}store_word(at,0u);
+     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+     let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;
+     let flag=state_word(S_path_flag,index);let emission=(r.runtime_flag&SR_EMISSION)!=0u;
+     let sample=data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
+        (sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u&&(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)==0u&&
+        heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0;
++    return SurfaceLightInputs(at,index,sd,r,emission,sample);
++}
++// The combined light stage (no emissive triangle in the scene).
++fn surface_light_combined(li:SurfaceLightInputs){
++    let index=li.index;let sd=li.sd;let r=li.r;let emission=li.emission;let sample=li.sample;let at=li.at;
+     triangle_light_prefill(index,sd,emission,sample);
+     var weight=1.0;if(emission){weight=triangle_light_forward_weight(index,sd);}
+     var ls:NativeLightSample;
+@@ -223,6 +242,26 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
+     if(load_word(p(17u))!=0u){return;}
+     store_word(at+304u,bitcast<u32>(weight));light_sample_write(at+308u,ls);store_word(at,3u);
+ }
++@compute @workgroup_size(1) fn shade_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
++    let li=surface_light_inputs(id,1u);if(li.at==NONE){return;}
++//#if LIGHT_TRIANGLE else surface_light_combined(li);return;
++    var ls:NativeLightSample;
++    if(li.sample){let selection=light_select(li.index);if(selection.prim<0){ls=light_sample_lamp(li.index,li.sd,li.r,selection);}}
++    if(load_word(p(17u))!=0u){return;}
++    light_sample_write(li.at+308u,ls);store_word(li.at,5u);
++//#endif
++}
++//#if LIGHT_TRIANGLE
++@compute @workgroup_size(1) fn shade_surface_light_triangle(@builtin(global_invocation_id) id:vec3<u32>){
++    let li=surface_light_inputs(id,5u);if(li.at==NONE){return;}
++    triangle_light_prefill(li.index,li.sd,li.emission,li.sample);
++    var weight=1.0;if(li.emission){weight=triangle_light_forward_weight(li.index,li.sd);}
++    if(li.sample){let selection=light_select(li.index);if(selection.prim>=0){
++        let ls=light_sample_triangle(li.sd,selection);if(load_word(p(17u))!=0u){return;}light_sample_write(li.at+308u,ls);}}
++    if(load_word(p(17u))!=0u){return;}
++    store_word(li.at+304u,bitcast<u32>(weight));store_word(li.at,3u);
++}
++//#endif
+ // Size 1 retains the verified Linux sampling layout; broader tuning remains open.
+ @compute @workgroup_size(1) fn connect_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
+     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=3u){return;}store_word(at,0u);
+diff --git a/native/shaders/wavefront_svm.wgsl b/native/shaders/wavefront_svm.wgsl
+index 5e70f580..417399ec 100644
+--- a/native/shaders/wavefront_svm.wgsl
++++ b/native/shaders/wavefront_svm.wgsl
+@@ -287,6 +287,9 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
+ //#if SVM_NODE_LIGHT_PATH
+             case NODE_LIGHT_PATH:{size=SZ_LightPath;}
+ //#endif
++//#if SVM_NODE_TEX_GABOR
++            case NODE_TEX_GABOR:{size=SZ_TexGabor;}
++//#endif
+ //#if SVM_NODE_WAVELENGTH
+             case NODE_WAVELENGTH:{size=SZ_Wavelength;}
+ //#endif
+@@ -586,6 +589,11 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
+                 svm_light_path(&s,node,index,flag,visibility);
+             }
+ //#endif
++//#if SVM_NODE_TEX_GABOR
++            case NODE_TEX_GABOR:{
++                svm_gabor_texture(&s,node);
++            }
++//#endif
+ //#if SVM_NODE_WAVELENGTH
+             case NODE_WAVELENGTH:{
+                 svm_wavelength(&s,node);
+diff --git a/native/shaders/wavefront_svm_nodes.wgsl b/native/shaders/wavefront_svm_nodes.wgsl
+index cd458e18..fd834274 100644
+--- a/native/shaders/wavefront_svm_nodes.wgsl
++++ b/native/shaders/wavefront_svm_nodes.wgsl
+@@ -5,8 +5,8 @@
+ // Modified from Cycles: kernel/svm/{noise,fractal_noise,noisetex,voronoi,white_noise,wave,
+ // magic,brick,mapping,mapping_util,map_range,mix,color_util,hsv,sepcomb_color,ramp,
+ // fresnel,vector_rotate,blackbody,normal,geometry,camera,scene_time,vector_transform,
+-// light_path,wavelength,wireframe}.h, closure/bsdf_util.h, util/hash.h,
+-// util/color.h, util/transform.h, kernel/util/colorspace.h,
++// light_path,gabor,wavelength,wireframe}.h, closure/bsdf_util.h, util/hash.h,
++// util/color.h, util/transform.h, util/projection.h, kernel/util/colorspace.h,
+ // kernel/util/differential.h and kernel/tables.h (blackbody fit, CIE colour
+ // matching rows), translated to WGSL for the SVM interpreter.
+ // The x86-64 CPU oracle compiles the SSE4.2 branches of noise.h/util: vector fade
+@@ -893,6 +893,108 @@ fn svm_voronoi_texture(s:ptr<function,SvmState>,node:u32){
+     svm_optional_store(s,svm_byte(node+N_TexVoronoi_radius_offset),radius);
+ }
+ //#endif
++//#if SVM_NODE_TEX_GABOR
++// Shipped through scene specialization only (lane L, 2026-10-22): the region is
++// compiled into a module only when an uploaded program reaches NODE_TEX_GABOR
++// (and is scene-only in the superset mode, pipelines.h).
++// gabor.h: 2D and 3D Gabor noise (8 impulses per cell, 3x3 / 3x3x3 cell
++// neighbourhoods, x fastest as the nested host loops), phasor value, phase and
++// intensity. The 2D form runs as 3D with a zero third lane: every dot product,
++// distance and frequency vector is then the host's 2D arithmetic plus exact
++// zero terms. Seeds hash exact integer cell coordinates; the kernel window is
++// zero at the unit-distance cutoff, so the sum is continuous there.
++// spherical_to_direction angles span about [-pi,2pi): quadrant reduction with a
++// two-component pi/2 (residual of n*pi/2 kept) feeding the bounded precise
++// sine/cosine adapter; the inclination/azimuth use the precise arccosine.
++// Driver acos/sin/cos differed from libm by up to 2e-3 relative on Intel; the
++// kernel phasor/window use it too (driver sin/cos at |angle| up to ~40 rad).
++fn svmn_sincos(angle:f32)->vec2<f32>{
++    let n=i32(floor(angle*0.6366197723675814+0.5));let product=trig_product(f32(n),1.5707963705062866);
++    let r=rounded_add(rounded_add(angle,-product.x),rounded_add(-product.y,f32(n)*4.3711390001862426e-8));
++    let sc=precise_disk_sincos(r);let q=((n%4)+4)%4;
++    if(q==1){return vec2<f32>(sc.y,-sc.x);}
++    if(q==2){return vec2<f32>(-sc.x,-sc.y);}
++    if(q==3){return vec2<f32>(-sc.y,sc.x);}
++    return sc;
++}
++fn svm_gabor_texture(s:ptr<function,SvmState>,node:u32){
++    let kind=load_word(node+N_TexGabor_gabor_type);if(kind>NODE_GABOR_TYPE_3D){svm_error(s,16u);return;}
++    let coordinates=svm_load3(s,svm_byte(node+N_TexGabor_coordinates));let scale=svm_input(s,node+N_TexGabor_scale);
++    let frequency=max(0.001,svm_input(s,node+N_TexGabor_frequency));let isotropy=1.0-clamp(svm_input(s,node+N_TexGabor_anisotropy),0.0,1.0);
++    let orientation_2d=svm_input(s,node+N_TexGabor_orientation_2d);let orientation_3d=svm_input3(s,node+N_TexGabor_orientation_3d);
++    if((*s).error!=0u){return;}
++    let three=kind==NODE_GABOR_TYPE_3D;
++    var scaled=coordinates*scale;if(!three){scaled.z=0.0;}
++    let cell_position=floor(scaled);let local_position=scaled-cell_position;
++    // compute_3d_orientation: spherical angles of the normalized base orientation.
++    var base=vec3<f32>(0);var inclination=0.0;var azimuth=0.0;
++    if(three){
++        base=surface_native_normalize(orientation_3d);
++        var arc=vec2<f32>(0);for(var k=0u;k<2u;k++){arc[k]=motion_acos(select(base.z,base.x/sqrt(base.x*base.x+base.y*base.y),k==1u));}
++        inclination=arc.x;azimuth=select(1.0,-1.0,base.y<0.0)*arc.y;
++    }
++    var sum=vec2<f32>(0);
++    for(var c=0u;c<select(9u,27u,three);c++){
++        let offset=vec3<f32>(f32(i32(c%3u)-1),f32(i32((c/3u)%3u)-1),select(0.0,f32(i32(c/9u)-1),three));
++        let cell=cell_position+offset;let position=local_position-offset;var noise=vec2<f32>(0);
++        for(var i=0u;i<8u;i++){
++            // Seeds: hash_float3_to_float(2) keys (cell.xy, 3i+k) in 2D,
++            // hash_float4_to_float(2/3) keys (cell, 3i+k) in 3D.
++            var key=vec4<f32>(cell.x,cell.y,f32(3u*i),0);var n=3u;if(three){key=vec4<f32>(cell,f32(3u*i));n=4u;}
++            let lane=select(vec4<f32>(0,0,1,0),vec4<f32>(0,0,0,1),three);let center_key=key+lane;
++            // Every seed hash through one call site: kernel centre (2 or 3), weight,
++            // then the orientation keys (computed even when the impulse is skipped;
++            // the values are the host's, only unused).
++            var h=vec4<f32>(0);var h_orientation=vec2<f32>(0);
++            for(var k=0u;k<6u;k++){
++                var hk=center_key;
++                if(k==1u){hk=select(center_key.zxyw,center_key.zxwy,three);}
++                else if(k==2u){if(!three){continue;}hk=center_key.wzyx;}
++                else if(k==3u){hk=key+2.0*lane;}
++                else if(k==4u){hk=key;}
++                else if(k==5u){if(!three){continue;}hk=key.zxwy;}
++                if(k>=4u&&three&&isotropy==0.0){continue;}
++                let value=svmn_hash_float(hk,n);if(k<4u){h[k]=value;}else{h_orientation[k-4u]=value;}
++            }
++            let center=vec3<f32>(h[0],h[1],select(0.0,h[2],three));
++            let p=position-center;let distance_squared=(p.x*p.x+p.y*p.y)+p.z*p.z;
++            if(distance_squared>=1.0){continue;}
++            let weight=select(1.0,-1.0,h[3]<0.5);
++            // Orientation (2D angle, or 3D inclination/azimuth when isotropic), Hann
++            // window and phasor angle share one precise sine/cosine call site.
++            var angles=vec2<f32>(0);
++            if(three&&isotropy!=0.0){angles=h_orientation*3.1415927;}
++            var orientation_trig=vec4<f32>(0);var window_trig=vec2<f32>(0);var phasor_trig=vec2<f32>(0);var frequency_vector=frequency*base;
++            for(var k=select(2u,0u,!three||isotropy!=0.0);k<4u;k++){
++                if(k==1u&&!three){continue;}
++                var argument=3.1415927*distance_squared;
++                if(k==0u){
++                    argument=inclination+angles.x*isotropy;
++                    if(!three){argument=orientation_2d+((h_orientation.x-0.5)*3.1415927)*isotropy;}
++                }
++                if(k==1u){argument=azimuth+angles.y*isotropy;}
++                if(k==3u){
++                    if(!three){frequency_vector=vec3<f32>(frequency*orientation_trig.y,frequency*orientation_trig.x,0);}
++                    else if(isotropy!=0.0){frequency_vector=frequency*vec3<f32>(orientation_trig.x*orientation_trig.w,orientation_trig.x*orientation_trig.z,orientation_trig.y);}
++                    argument=6.2831855*((p.x*frequency_vector.x+p.y*frequency_vector.y)+p.z*frequency_vector.z);
++                }
++                let value=svmn_sincos(argument);
++                if(k==0u){orientation_trig=vec4<f32>(value,orientation_trig.zw);}else if(k==1u){orientation_trig=vec4<f32>(orientation_trig.xy,value);}
++                else if(k==2u){window_trig=value;}else{phasor_trig=value;}
++            }
++            // compute_2d/3d_gabor_kernel: Hann-windowed Gaussian times the phasor.
++            let envelope=exp(-3.1415927*distance_squared)*(0.5+0.5*window_trig.y);
++            noise+=weight*vec2<f32>(envelope*phasor_trig.y,envelope*phasor_trig.x);
++        }
++        sum+=noise;
++    }
++    // 6 * compute_{2d,3d}_gabor_standard_deviation() (binary32 host constants).
++    let normalization=select(6.0,bitcast<f32>(0x40a173beu),three);
++    svm_optional_store(s,svm_byte(node+N_TexGabor_value_offset),(sum.y/normalization)*0.5+0.5);
++    svm_optional_store(s,svm_byte(node+N_TexGabor_phase_offset),(atan2(sum.y,sum.x)+3.1415927)/6.2831855);
++    svm_optional_store(s,svm_byte(node+N_TexGabor_intensity_offset),sqrt(sum.x*sum.x+sum.y*sum.y)/normalization);
++}
++//#endif
+ //#if SVM_NODE_WAVELENGTH
+ // wavelength.h and math_util.h svm_math_wavelength_color_xyz with the
+ // tables.h cie_color_match rows as constants (no private array).
+diff --git a/native/shaders/wavefront_trig.wgsl b/native/shaders/wavefront_trig.wgsl
+index 6fc64a9b..2fc0f566 100644
+--- a/native/shaders/wavefront_trig.wgsl
++++ b/native/shaders/wavefront_trig.wgsl
+@@ -29,6 +29,12 @@ fn trig_coeff(a:vec2<f32>,b:vec2<f32>)->vec2<f32>{
+     let residual=rounded_add(b.x,rounded_add(a.x,-high));
+     return vec2<f32>(high,(residual+a.y)+b.y);
+ }
++// The Horner steps run as loops over the coefficient pairs (lane L, 2026-10-22):
++// the same operations in the same order as the unrolled form, so results are
++// bit-identical, but each call site inlines one step instead of all of them.
++// This keeps the entry points that use the precise trigonometry inside the Intel
++// Mesa 25.0.7 backend's 16-bit instruction/register range (native/DEVICE.md,
++// "Linux reference fixes on the updated Mesa").
+ fn precise_disk_sincos(angle:f32)->vec2<f32>{
+     if(angle==0.0){return vec2<f32>(angle,1);}
+     var x=vec2<f32>(angle,0);let swap=angle>0.7853981633974483;
+@@ -36,22 +42,28 @@ fn precise_disk_sincos(angle:f32)->vec2<f32>{
+     if(abs(x.x)<0.000244140625){return select(vec2<f32>(rounded_add(x.x,x.y),1),vec2<f32>(1,rounded_add(x.x,x.y)),swap);}
+     let z=trig_mul(x,x);
+     var s=vec2<f32>(-7.647163609812713e-13,-1.2200710471178288e-20);
+-    s=trig_coeff(vec2<f32>(1.6059044372074283e-10,-5.352526511562726e-18),trig_mul(s,z));
+-    s=trig_coeff(vec2<f32>(-2.5052107943679403e-08,-4.4176230446483665e-16),trig_mul(s,z));
+-    s=trig_coeff(vec2<f32>(2.7557318844628753e-06,3.793571224297229e-14),trig_mul(s,z));
+-    s=trig_coeff(vec2<f32>(-0.00019841270113829523,2.725596874933456e-12),trig_mul(s,z));
+-    s=trig_coeff(vec2<f32>(0.008333333767950535,-4.34617203337595e-10),trig_mul(s,z));
+-    s=trig_coeff(vec2<f32>(-0.1666666716337204,4.967053879312289e-09),trig_mul(s,z));
+-    s=trig_coeff(vec2<f32>(1.0,0.0),trig_mul(s,z));
++    // 7 Horner steps as one loop over the same coefficients (same operations, same order).
++    var s_terms=array<vec2<f32>,7>(
++        vec2<f32>(1.6059044372074283e-10,-5.352526511562726e-18),
++        vec2<f32>(-2.5052107943679403e-08,-4.4176230446483665e-16),
++        vec2<f32>(2.7557318844628753e-06,3.793571224297229e-14),
++        vec2<f32>(-0.00019841270113829523,2.725596874933456e-12),
++        vec2<f32>(0.008333333767950535,-4.34617203337595e-10),
++        vec2<f32>(-0.1666666716337204,4.967053879312289e-09),
++        vec2<f32>(1.0,0.0));
++    for(var step=0u;step<7u;step++){s=trig_coeff(s_terms[step],trig_mul(s,z));}
+     var c=vec2<f32>(4.7794772561329454e-14,7.62544404448643e-22);
+-    c=trig_coeff(vec2<f32>(-1.147074536050896e-11,-2.372207689231238e-19),trig_mul(c,z));
+-    c=trig_coeff(vec2<f32>(2.0876755879584152e-09,1.1082839809204342e-16),trig_mul(c,z));
+-    c=trig_coeff(vec2<f32>(-2.755731998149713e-07,7.575112209051195e-15),trig_mul(c,z));
+-    c=trig_coeff(vec2<f32>(2.4801587642286904e-05,-3.40699609366682e-13),trig_mul(c,z));
+-    c=trig_coeff(vec2<f32>(-0.0013888889225199819,3.3631094437103215e-11),trig_mul(c,z));
+-    c=trig_coeff(vec2<f32>(0.0416666679084301,-1.2417634698280722e-09),trig_mul(c,z));
+-    c=trig_coeff(vec2<f32>(-0.5,0.0),trig_mul(c,z));
+-    c=trig_coeff(vec2<f32>(1.0,0.0),trig_mul(c,z));
++    // 8 Horner steps as one loop over the same coefficients (same operations, same order).
++    var c_terms=array<vec2<f32>,8>(
++        vec2<f32>(-1.147074536050896e-11,-2.372207689231238e-19),
++        vec2<f32>(2.0876755879584152e-09,1.1082839809204342e-16),
++        vec2<f32>(-2.755731998149713e-07,7.575112209051195e-15),
++        vec2<f32>(2.4801587642286904e-05,-3.40699609366682e-13),
++        vec2<f32>(-0.0013888889225199819,3.3631094437103215e-11),
++        vec2<f32>(0.0416666679084301,-1.2417634698280722e-09),
++        vec2<f32>(-0.5,0.0),
++        vec2<f32>(1.0,0.0));
++    for(var step=0u;step<8u;step++){c=trig_coeff(c_terms[step],trig_mul(c,z));}
+     s=trig_mul(s,x);
+     let sine=rounded_add(s.x,s.y);let cosine=rounded_add(c.x,c.y);
+     return select(vec2<f32>(sine,cosine),vec2<f32>(cosine,sine),swap);
+diff --git a/native/tests/host/abi_consumer.c b/native/tests/host/abi_consumer.c
+index 1166a64b..c82461a0 100644
+--- a/native/tests/host/abi_consumer.c
++++ b/native/tests/host/abi_consumer.c
+@@ -174,13 +174,14 @@ int main(int argc, char **argv) {
+     nodes(holder, "geometry", light);
+     CHECK(cbc_host_set_floats(host, holder, "tfm", t, 12));
+     char type[64]; CHECK(cbc_host_node_type(host, light, type, sizeof(type), &required)); light_types++;
+-    /* Point, spot and sun render on both backends in one device lifetime (the
+-     * Phase D3 spot-after-point case). The area light renders on the CPU only:
+-     * it adds the LIGHT_AREA specialization, and recompiling shade_surface_light
+-     * with it intermittently crashes the Intel Mesa 25.0.7 compiler
+-     * (brw_opt_combine_constants, phaseE3 report); area lights are validated on
+-     * WebGPU by the broad-lighting and transparent-lighting gates. */
+-    if (k < 4 && (!gpu || k != 2)) { render(film_c); REQUIRE(!same(film_c, base)); lit_renders++; }
++    /* Point, spot, area and sun render on both backends in one device lifetime
++     * (the Phase D3 spot-after-point case; the area light adds the LIGHT_AREA
++     * specialization and recompiles the light stage). Each film is saved and
++     * the host gate compares the WebGPU film with the CPU film. */
++    if (k < 4) {
++      render(film_c); REQUIRE(!same(film_c, base)); lit_renders++;
++      char name[64]; snprintf(name, sizeof(name), "light-%s.rgba.bin", kinds[k]); save(prefix, name, film_c, sizeof(film_c));
++    }
+     /* Lifetime: a referenced light cannot be deleted; delete holder, then light, then emitter. */
+     REQUIRE(cbc_host_delete_node(host, light) == CBC_INVALID);
+     REQUIRE(cbc_host_delete_node(host, emitter) == CBC_INVALID);
+diff --git a/native/tests/render_replay.cpp b/native/tests/render_replay.cpp
+index 311685c8..c323fecc 100644
+--- a/native/tests/render_replay.cpp
++++ b/native/tests/render_replay.cpp
+@@ -22,12 +22,12 @@ int main(int argc,char **argv){try{
+   std::array<WGPUBindGroupLayoutEntry,2> entries{};for(unsigned i=0;i<2;i++){entries[i].binding=i;entries[i].visibility=WGPUShaderStage_Compute;entries[i].buffer.type=i?WGPUBufferBindingType_Uniform:WGPUBufferBindingType_Storage;}
+   WGPUBindGroupLayoutDescriptor bd{};bd.entryCount=2;bd.entries=entries.data();d.push_scope();cbc::BindLayout layout(wgpuDeviceCreateBindGroupLayout(d.get(),&bd));d.pop_scope();
+   WGPUPipelineLayoutDescriptor pd{};pd.bindGroupLayoutCount=1;pd.bindGroupLayouts=&layout.value;d.push_scope();cbc::PipelineLayout pl(wgpuDeviceCreatePipelineLayout(d.get(),&pd));d.pop_scope();
+-  const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","surface","shadow"};const char *entry[]={"control","init_camera","intersect_closest","shade_background","shade_surface","prepare_surface","intersect_shadow","shade_shadow","shade_light_forward","prepare_shader_data","intersect_volume_stack","shade_volume","shade_shadow_transparent","shade_surface_light","shader_eval_volume_density","connect_surface_light","prepare_shadow_shader_data"};std::array<cbc::Pipeline,17> pipelines;
+-  std::array<uint64_t,17> pipeline_dispatches{};
++  const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","surface","shadow","surface"};const char *entry[]={"control","init_camera","intersect_closest","shade_background","shade_surface","prepare_surface","intersect_shadow","shade_shadow","shade_light_forward","prepare_shader_data","intersect_volume_stack","shade_volume","shade_shadow_transparent","shade_surface_light","shader_eval_volume_density","connect_surface_light","prepare_shadow_shader_data","shade_surface_light_triangle"};std::array<cbc::Pipeline,18> pipelines;
++  std::array<uint64_t,18> pipeline_dispatches{};
+   // Compile-latency report (same declared budget as the native device). Replay
+   // never rewrites captured modules: recorded workgroup sizes must match.
+   double budget_ms=60000;if(const char *b=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_MS"))budget_ms=std::strtod(b,nullptr);
+-  std::array<double,17> pipeline_ms{};std::vector<std::string> warnings;
++  std::array<double,18> pipeline_ms{};std::vector<std::string> warnings;
+   cbc::Handle<WGPUCommandEncoder,wgpuCommandEncoderRelease> encoder;
+   auto encode=[&](){if(!encoder.value)encoder=decltype(encoder)(wgpuDeviceCreateCommandEncoder(d.get(),nullptr));return encoder.value;};
+   auto flush=[&](){if(!encoder.value)return;d.push_scope();cbc::Handle<WGPUCommandBuffer,wgpuCommandBufferRelease> command(wgpuCommandEncoderFinish(encoder,nullptr));d.pop_scope();wgpuQueueSubmit(d.get_queue(),1,&command.value);encoder={};d.check();};
+diff --git a/native/tools/deforming_motion_gate.py b/native/tools/deforming_motion_gate.py
+index dc1b0681..97992b93 100644
+--- a/native/tools/deforming_motion_gate.py
++++ b/native/tools/deforming_motion_gate.py
+@@ -93,7 +93,7 @@ def main():
+         for mode in range(8):
+             capture=out/'moving-images/images'/('case-'+str(mode))
+             meta=json.loads((capture/'run.capture.json').read_text())
+-            assert meta['format'] in ('native-command-stream-v5','native-command-stream-v6','native-command-stream-v7') and meta['pipelineDispatches'][9]>0 and (meta['format']=='native-command-stream-v5' or meta['pipelineDispatches'][15]>0)
++            assert meta['format'] in ('native-command-stream-v5','native-command-stream-v6','native-command-stream-v7','native-command-stream-v8') and meta['pipelineDispatches'][9]>0 and (meta['format']=='native-command-stream-v5' or meta['pipelineDispatches'][15]>0)
+             replay=out/('replay-motion-'+str(mode))
+             render_replay.run('linux-x64',capture,replay,None,timeout=900)
+             results['replay-motion-'+str(mode)]=json.loads((replay/'validation.json').read_text())
+diff --git a/native/tools/glass_gate.py b/native/tools/glass_gate.py
+index 2c0e6b9d..c08fc6cb 100644
+--- a/native/tools/glass_gate.py
++++ b/native/tools/glass_gate.py
+@@ -9,11 +9,14 @@ from pathlib import Path
+ from build import REPO,WORK,PACKAGE
+ from device_gate import sha,save
+ from render_gate import inputs
++import specialization_check
+ 
+ def main():
+     parser=argparse.ArgumentParser()
+     parser.add_argument('--output',type=Path,required=True)
+     parser.add_argument('--skip-build',action='store_true')
++    parser.add_argument('--off-mode',choices=['superset','unspecialized','none'],default='superset',
++                        help='specialization-off identity check of glass_render (default: superset mode)')
+     args=parser.parse_args();out=args.output.resolve();out.mkdir(parents=True,exist_ok=False)
+     status={'complete':False,'phase':'prepare'};save(out/'status.json',status)
+     sources=inputs();runtime=PACKAGE/'runtimes/linux-x64/native/libcodebrix_wgpu.so'
+@@ -39,6 +42,10 @@ def main():
+             if kind=='glass_svm':assert report['originalCpuSurfaceSvm'] and report['compiledGraphs']==20 and report['closureFamilies']==7 and report['invalidCasesRejected']==17
+             if kind=='glass_bounce':assert report['originalCpuSurfaceIntegrator'] and report['cases']==29 and report['invalidCasesRejected']==21
+             reports[kind]=report;save(out/'results.json',reports)
++        if args.off_mode!='none':
++            status['phase']='glass_render-'+args.off_mode;save(out/'status.json',status)
++            reports['glass_render-'+args.off_mode]=specialization_check.check(WORK/'cycles-build/bin'/'codebrix_cycles_glass_render_gate',
++                out/'glass_render',out/('glass_render-'+args.off_mode),args.off_mode);save(out/'results.json',reports)
+         assert sources==inputs() and all(sha(Path(name))==digest for name,digest in pins.items())
+         status.update(complete=True,passed=True,phase='complete',inputsUnchanged=True,
+                       scope='Native single-scatter GGX refraction and glass, Fresnel reflection/transmission, TIR, mixtures and independent original-Cycles images. Thin film, multi-GGX glass and Principled remain unsupported.')
+diff --git a/native/tools/host_gate.py b/native/tools/host_gate.py
+index 67187099..5766cdf6 100644
+--- a/native/tools/host_gate.py
++++ b/native/tools/host_gate.py
+@@ -53,7 +53,7 @@ def main():
+         results[name] = rows
+         return rows
+ 
+-    def compare(actual, reference, bitwise=False):
++    def compare(actual, reference, bitwise=False, strict=True):
+         a_bytes, b_bytes = actual.read_bytes(), reference.read_bytes()
+         a, b = struct.unpack('<3072f', a_bytes), struct.unpack('<3072f', b_bytes)
+         assert all(math.isfinite(v) for v in a+b)
+@@ -64,7 +64,9 @@ def main():
+                    practicalFailures=sum(e > 5e-5+2e-4*abs(y) for e, y in zip(errors, b)),
+                    strictDifferences=sum(e > 1e-7+1e-7*abs(y) for e, y in zip(errors, b)))
+         comparisons.append(row)
+-        assert row['practicalFailures'] == 0 and row['strictDifferences'] == 0
++        # strict=False (the ABI light films only): the practical criterion is
++        # required and strict differences are recorded in the row, as for the render gates.
++        assert row['practicalFailures'] == 0 and (row['strictDifferences'] == 0 or not strict)
+         if bitwise:
+             assert row['bitwiseEqual'], str(actual)
+ 
+@@ -182,10 +184,17 @@ def main():
+                 assert [(p['name'], p['components'], p['written']) for p in passes] == [
+                     ('Combined', 4, True), ('Depth', 1, True), ('Normal', 3, True), ('Mask', 1, True)]
+             else:
+-                assert row['litRenders'] == 3 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
++                assert row['litRenders'] == 4 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
+             abi[mode] = folder
+         for name in ['base', 'object-motion', 'deforming']:
+             compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin')
++        # The four light films (point, spot, area and sun in one device lifetime):
++        # the practical criterion is required and strict differences are recorded.
++        # Sphere point and spot sampling differs from the CPU in the last bits (about
++        # 125 and 22 strict differences), and the WebGPU film's atomic accumulation
++        # order varies between runs (the area film had 0 or 1 strict difference).
++        for name in ['light-pointlight', 'light-spotlight', 'light-arealight', 'light-sunlight']:
++            compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin', strict=False)
+         for mode in ['cpu', 'gpu']:
+             row = report([binary/'codebrix_host_example_test', mode], 'example-'+mode)[0]
+             assert row['backend'] == (2 if mode == 'cpu' else 1) and row['progressEvents'] > 0
+diff --git a/native/tools/intel_compile_envelope.py b/native/tools/intel_compile_envelope.py
+new file mode 100644
+index 00000000..d3d8b8f7
+--- /dev/null
++++ b/native/tools/intel_compile_envelope.py
+@@ -0,0 +1,88 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Intel Mesa 25.0.7 compile-envelope check (Linux maintainer tool).
++
++Mesa 25.0.7's brw_opt_combine_constants keeps a constant's VGRF number and its
++first/last-use instruction IPs in 16-bit fields (fixed upstream in Mesa commit
++b7e1ac830984, issue #9489, not in 25.0.7). An entry point whose backend IR has more
++than 65,535 instructions or virtual registers when that pass runs is miscompiled
++or crashes the compiler (native/DEVICE.md, "Linux reference fixes on the updated
++Mesa"). This tool compiles every entry point of the WGSL modules a gate dumped
++(CODEBRIX_CYCLES_WGSL_DUMP=DIR) in a fresh process with a cold Mesa cache, under gdb
++with a breakpoint on brw_opt_combine_constants, and records the largest
++instruction IP and VGRF count per entry. It fails when any value reaches --limit
++(default 60,000, about 8% below the 16-bit range).
++
++Prerequisites: gdb and the Mesa debug information for the installed
++libvulkan_intel.so (for example a debuginfod cache), exposed through
++--debug-file-directory (a directory with .build-id/ and .dwz/ links).
++Usage: intel_compile_envelope.py --dump DIR --debug-file-directory DIR --output DIR [--limit N]
++"""
++import argparse, json, os, re, subprocess, sys, tempfile
++from pathlib import Path
++import unspecialized_compile_smoke as smoke
++
++GDB_SCRIPT = '''set pagination off
++set confirm off
++set print thread-events off
++set breakpoint pending on
++set libthread-db-search-path /nonexistent
++set debug-file-directory {debug}
++handle SIGPIPE nostop noprint pass
++break brw_opt_combine_constants
++commands
++silent
++printf "CCPROBE alloc=%u end_ip=%d simd=%u name=%s\\n", s.alloc.count, s.cfg->blocks[s.cfg->num_blocks-1]->end_ip, s.dispatch_width, ((nir_function*)s.nir->functions.head_sentinel.next)->name
++continue
++end
++run
++quit
++'''
++
++def probe(exe, script, wgsl, entry, scratch, timeout):
++    env = dict(os.environ, MESA_SHADER_CACHE_DIR=tempfile.mkdtemp(dir=scratch))
++    proc = subprocess.Popen(['gdb', '-q', '-batch', '-x', str(script), '--args', str(exe), str(wgsl), entry],
++                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, start_new_session=True)
++    try:
++        out, _ = proc.communicate(timeout=timeout)
++    except subprocess.TimeoutExpired:
++        proc.kill(); out, _ = proc.communicate()
++    rows = [dict(alloc=int(a), endIp=int(b), simd=int(c)) for a, b, c, n in
++            re.findall(r'CCPROBE alloc=(\d+) end_ip=(\d+) simd=(\d+) name=(\S+)', out) if n == entry]
++    return rows, ('Pipeline created' in out or 'pipelineMs' in out or bool(rows)), out[-2000:]
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument('--dump', type=Path, required=True); ap.add_argument('--output', type=Path, required=True)
++    ap.add_argument('--debug-file-directory', type=Path, required=True)
++    ap.add_argument('--limit', type=int, default=60000); ap.add_argument('--timeout', type=int, default=1200)
++    ap.add_argument('--modules', default='', help='comma-separated module names to check (default: all dumped modules)')
++    ap.add_argument('--entries', default='', help='comma-separated entry points to check (default: all)')
++    args = ap.parse_args(); out = args.output.resolve(); out.mkdir(parents=True, exist_ok=False)
++    script = out/'probe.gdb'; script.write_text(GDB_SCRIPT.format(debug=args.debug_file_directory.resolve()))
++    exe = smoke.build_probe(out); scratch = out/'mesa'; scratch.mkdir()
++    results = []; seen = {}
++    modules = {m for m in args.modules.split(',') if m}; wanted = {e for e in args.entries.split(',') if e}
++    for wgsl in sorted(args.dump.rglob('[0-9]*-*.wgsl')):
++        if modules and wgsl.stem.split('-', 1)[1] not in modules: continue
++        text = wgsl.read_text()
++        for entry in re.findall(r'@compute @workgroup_size\(\d+\) fn (\w+)\(', text):
++            if wanted and entry not in wanted: continue
++            key = (entry, hash(text))
++            if key in seen: continue
++            seen[key] = True
++            rows, ok, tail = probe(exe, script, wgsl, entry, scratch, args.timeout)
++            row = dict(module=str(wgsl.relative_to(args.dump)), entry=entry, inlinedBytes=smoke.inlined_bytes(text, entry),
++                       maxEndIp=max((r['endIp'] for r in rows), default=None), maxAlloc=max((r['alloc'] for r in rows), default=None), variants=rows)
++            row['withinLimit'] = row['maxEndIp'] is not None and row['maxEndIp'] < args.limit and row['maxAlloc'] < args.limit
++            if row['maxEndIp'] is None: row['probeTail'] = tail
++            results.append(row); print(json.dumps({k: row[k] for k in ('module', 'entry', 'inlinedBytes', 'maxEndIp', 'maxAlloc', 'withinLimit')}), flush=True)
++    passed = bool(results) and all(r['withinLimit'] for r in results)
++    (out/'envelope.json').write_text(json.dumps(dict(passed=passed, limit=args.limit, entries=results), indent=2)+'\n')
++    for p in sorted(scratch.rglob('*'), reverse=True): p.unlink() if p.is_file() else p.rmdir()
++    print(json.dumps(dict(passed=passed, entries=len(results), worstEndIp=max((r['maxEndIp'] or 0) for r in results) if results else None)))
++    sys.exit(0 if passed else 1)
++
++if __name__ == '__main__':
++    main()
+diff --git a/native/tools/nodes_gate.py b/native/tools/nodes_gate.py
+index fd337bd8..627458da 100644
+--- a/native/tools/nodes_gate.py
++++ b/native/tools/nodes_gate.py
+@@ -3,8 +3,11 @@
+ # SPDX-License-Identifier: Apache-2.0
+ """Texture, colour and utility SVM node gates: original-CPU surface SVM
+ evaluation (compiled graphs, typed programs, rejections), compiled worlds and an
+-independent-CPU-image render, each with scene-driven specialization on and off
+-(films and world images must be bit-identical between the two)."""
++independent-CPU-image render, with scene-driven specialization on and, for the
++kinds selected, off (films and world images must be bit-identical between the
++two). "Off" is the superset mode by default (every handler except the bump and
++derivative regions the scene does not reach); --off-mode unspecialized selects
++the fully unspecialized diagnostic modules."""
+ import argparse
+ import hashlib
+ import json
+@@ -14,18 +17,21 @@ from pathlib import Path
+ from build import REPO,WORK,PACKAGE
+ from device_gate import sha,save
+ from render_gate import inputs
++import specialization_check
+ 
+ KINDS=['nodes_svm','nodes_world','nodes_render']
+-# Specialization-off runs (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0). Since the bump and
+-# derivative handlers (M4), the unspecialized SVM probe and render modules exceed what
+-# Intel Mesa 25.0.7 compiles reliably (native/DEVICE.md, open items), so by default only
+-# the kinds listed here also run unspecialized and are compared on/off. --unspecialized
+-# selects others for a measurement; it never relaxes a check.
+-UNSPECIALIZED_DEFAULT='nodes_world'
++# Specialization-off runs. The default off mode is the superset mode
++# (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset); the fully unspecialized modules
++# (=0, --off-mode unspecialized) exceed what Intel Mesa 25.0.7 compiles correctly
++# since the bump and derivative handlers (native/DEVICE.md, "Linux reference fixes on
++# the updated Mesa"). nodes_svm is not in the default list: its typed programs reach
++# every region, so its superset module is the unspecialized module.
++UNSPECIALIZED_DEFAULT='nodes_world,nodes_render'
++OFF_MODES={'superset':'superset','unspecialized':'0'}
+ 
+-def run(binary,folder,specialized):
++def run(binary,folder,specialized,off_mode='superset'):
+     folder.mkdir(parents=True)
+-    env=dict(os.environ,CODEBRIX_CYCLES_SHADER_SPECIALIZATION='1' if specialized else '0',
++    env=dict(os.environ,CODEBRIX_CYCLES_SHADER_SPECIALIZATION='1' if specialized else OFF_MODES[off_mode],
+              CODEBRIX_CYCLES_PIPELINE_LOG=str(folder/'pipelines.jsonl'),MESA_SHADER_CACHE_DIR=str(folder/'shader-cache'))
+     with (folder/'stdout.txt').open('w') as stdout,(folder/'stderr.txt').open('w') as stderr:
+         subprocess.run([str(binary),str(folder/'run')],stdout=stdout,stderr=stderr,check=True,timeout=900,env=env)
+@@ -45,7 +51,8 @@ def main():
+     parser.add_argument('--skip-build',action='store_true')
+     parser.add_argument('--jobs',default='6')
+     parser.add_argument('--unspecialized',default=UNSPECIALIZED_DEFAULT,help='comma-separated kinds that also run with specialization off')
+-    args=parser.parse_args();unspecialized=[k for k in args.unspecialized.split(',') if k]
++    parser.add_argument('--off-mode',choices=sorted(OFF_MODES),default='superset',help='specialization-off mode for those kinds')
++    args=parser.parse_args();unspecialized=[k for k in args.unspecialized.split(',') if k];suffix='-'+args.off_mode
+     assert all(k in KINDS for k in unspecialized),unspecialized
+     out=args.output.resolve();out.mkdir(parents=True,exist_ok=False)
+     status={'complete':False,'phase':'prepare'};save(out/'status.json',status)
+@@ -62,23 +69,27 @@ def main():
+         save(out/'invocation.json',{'productionSourceSha256':sources,'fileSha256':pins})
+         for kind in KINDS:
+             binary=WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate')
+-            for specialized in ((True,False) if kind in unspecialized else (True,)):
+-                name=kind+('' if specialized else '-unspecialized');status['phase']=name;save(out/'status.json',status)
+-                report=run(binary,out/name,specialized);reports[name]=report;save(out/'results.json',reports)
++            for specialized in (True,):
++                name=kind;status['phase']=name;save(out/'status.json',status)
++                report=run(binary,out/name,specialized,args.off_mode);reports[name]=report;save(out/'results.json',reports)
+                 assert Path((out/name/'run.library.txt').read_text().strip()).resolve()==runtime.resolve()
+                 if kind=='nodes_svm':
+-                    assert report['originalCpuSurfaceSvm'] and report['compiledGraphs']==65 and report['closureFamilies']==5 and report['invalidCasesRejected']==32
+-                if kind=='nodes_world':assert report['compiledWorlds']==23
++                    assert report['originalCpuSurfaceSvm'] and report['compiledGraphs']==67 and report['closureFamilies']==5 and report['invalidCasesRejected']==32
++                if kind=='nodes_world':assert report['compiledWorlds']==24
+                 if kind=='nodes_render':assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
++        # Specialization off (superset groups by default): every film/image must be
++        # bit-identical to the specialized run (specialization_check.py).
+         identical={}
+-        for kind in ('nodes_world','nodes_render'):
++        for kind in KINDS:
+             if kind not in unspecialized:continue
+-            on,off=images(out/kind),images(out/(kind+'-unspecialized'))
+-            assert on and on==off,kind+' differs with specialization on/off';identical[kind]=on
+-        save(out/'specialization-identical.json',{'unspecializedKinds':unspecialized,'identical':identical})
++            status['phase']=kind+suffix;save(out/'status.json',status)
++            binary=WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate')
++            identical[kind]=specialization_check.check(binary,out/kind,out/(kind+suffix),args.off_mode,timeout=1800)
++            reports[kind+suffix]=identical[kind];save(out/'results.json',reports)
++        save(out/'specialization-identical.json',{'unspecializedKinds':unspecialized,'offMode':args.off_mode,'identical':identical})
+         assert sources==inputs() and all(sha(Path(name))==digest for name,digest in pins.items())
+         status.update(complete=True,passed=True,phase='complete',inputsUnchanged=True,
+-                      scope='Native texture, colour and utility SVM nodes against the unmodified CPU kernels: compiled graphs (including wavelength and wireframe), typed programs and rejections; compiled worlds; and an independent-CPU-image render with repeat and capture. Specialized and unspecialized films/images are bit-identical for the kinds run unspecialized ('+','.join(unspecialized)+').',unspecializedKinds=unspecialized)
++                      scope='Native texture, colour and utility SVM nodes against the unmodified CPU kernels: compiled graphs (including Gabor, wavelength and wireframe), typed programs and rejections; compiled worlds; and an independent-CPU-image render with repeat and capture. Specialized and specialization-off ('+args.off_mode+') films/images are bit-identical for the kinds run with specialization off ('+','.join(unspecialized)+').',unspecializedKinds=unspecialized,offMode=args.off_mode)
+     except Exception as error:
+         status.update(complete=True,passed=False,error=repr(error));raise
+     finally:save(out/'status.json',status)
+diff --git a/native/tools/object_motion_gate.py b/native/tools/object_motion_gate.py
+index 556e8b8f..f8381139 100644
+--- a/native/tools/object_motion_gate.py
++++ b/native/tools/object_motion_gate.py
+@@ -89,7 +89,7 @@ def main():
+         for mode in range(8):
+             capture=out/'moving-images/images'/('case-'+str(mode))
+             meta=json.loads((capture/'run.capture.json').read_text())
+-            assert meta['format'] in ('native-command-stream-v5','native-command-stream-v6','native-command-stream-v7') and meta['pipelineDispatches'][9]>0 and (meta['format']=='native-command-stream-v5' or meta['pipelineDispatches'][15]>0)
++            assert meta['format'] in ('native-command-stream-v5','native-command-stream-v6','native-command-stream-v7','native-command-stream-v8') and meta['pipelineDispatches'][9]>0 and (meta['format']=='native-command-stream-v5' or meta['pipelineDispatches'][15]>0)
+             replay=out/('replay-motion-'+str(mode))
+             render_replay.run('linux-x64',capture,replay,None,timeout=900)
+             results['replay-motion-'+str(mode)]=json.loads((replay/'validation.json').read_text())
+diff --git a/native/tools/principled_gate.py b/native/tools/principled_gate.py
+index 711695c0..7fac9a27 100755
+--- a/native/tools/principled_gate.py
++++ b/native/tools/principled_gate.py
+@@ -9,11 +9,14 @@ from pathlib import Path
+ from build import REPO,WORK,PACKAGE
+ from device_gate import sha,save
+ from render_gate import inputs
++import specialization_check
+ 
+ def main():
+     parser=argparse.ArgumentParser()
+     parser.add_argument('--output',type=Path,required=True)
+     parser.add_argument('--skip-build',action='store_true')
++    parser.add_argument('--off-mode',choices=['superset','unspecialized','none'],default='superset',
++                        help='specialization-off identity check of principled_render (default: superset mode)')
+     args=parser.parse_args();out=args.output.resolve();out.mkdir(parents=True,exist_ok=False)
+     status={'complete':False,'phase':'prepare'};save(out/'status.json',status)
+     sources=inputs();runtime=PACKAGE/'runtimes/linux-x64/native/libcodebrix_wgpu.so'
+@@ -42,6 +45,10 @@ def main():
+             if kind=='principled_bounce':assert report['originalCpuSurfaceIntegrator'] and report['cases']==29 and report['invalidCasesRejected']==21
+             if kind=='principled_render':assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
+             reports[kind]=report;save(out/'results.json',reports)
++        if args.off_mode!='none':
++            status['phase']='principled_render-'+args.off_mode;save(out/'status.json',status)
++            reports['principled_render-'+args.off_mode]=specialization_check.check(WORK/'cycles-build/bin'/'codebrix_cycles_principled_render_gate',
++                out/'principled_render',out/('principled_render-'+args.off_mode),args.off_mode);save(out/'results.json',reports)
+         assert sources==inputs() and all(sha(Path(name))==digest for name,digest in pins.items())
+         status.update(complete=True,passed=True,phase='complete',inputsUnchanged=True,
+                       scope='Native Principled BSDF: sheen, coat, emission, F82-tint metallic, generalized-Schlick transmission and specular, thin wall, thin film, diffuse/Oren-Nayar, both GGX distributions, mixtures, independent original-Cycles images. Subsurface is rejected.')
+diff --git a/native/tools/render_replay.py b/native/tools/render_replay.py
+index 61a6189d..17a02d7d 100644
+--- a/native/tools/render_replay.py
++++ b/native/tools/render_replay.py
+@@ -29,12 +29,16 @@ def inputs(capture):
+     # captures need no shadow source; v3 records add IDs 6 and 7.
+     assert meta['format'] in ('native-command-stream-v1', 'native-command-stream-v2',
+                               'native-command-stream-v3', 'native-command-stream-v4', 'native-command-stream-v5',
+-                              'native-command-stream-v6', 'native-command-stream-v7'), 'Unknown command stream format'
+-    if meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7'):
++                              'native-command-stream-v6', 'native-command-stream-v7',
++                              'native-command-stream-v8'), 'Unknown command stream format'
++    if meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7',
++                          'native-command-stream-v8'):
+         # v6 adds entry 15 (connect_surface_light in surface.wgsl); v7 adds
+-        # entry 16 (prepare_shadow_shader_data in shadow.wgsl).
++        # entry 16 (prepare_shadow_shader_data in shadow.wgsl); v8 adds entry 17
++        # (shade_surface_light_triangle in surface.wgsl).
+         names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
+-                 'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow']
++                 'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow',
++                 'surface']
+         counts = meta['pipelineDispatches']
+         assert len(counts) <= len(names) and all(isinstance(n, int) and n >= 0 for n in counts), 'Unknown pipeline metadata'
+         assert all(names[i] is not None for i, count in enumerate(counts) if count), 'Reserved pipeline metadata'
+diff --git a/native/tools/specialization_check.py b/native/tools/specialization_check.py
+new file mode 100644
+index 00000000..29f3f64c
+--- /dev/null
++++ b/native/tools/specialization_check.py
+@@ -0,0 +1,71 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Specialization on/off film identity for the render gates.
++
++A render gate binary that already ran with scene specialization (folder ON) runs
++again with specialization off and every film/image it writes must be bit-identical.
++
++"Off" is the superset mode by default (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:G):
++every region except the bump/derivative and Gabor regions the scene does not reach,
++compiled in size-bounded groups (pipelines.h) because the whole superset exceeds the
++Intel Mesa 25.0.7 backend's 16-bit instruction/register range. Group 0 reports the
++group count; every group runs and must be bit-identical. Regions that do not fit
++next to the scene are listed as "unfit" in the record (other gate scenes cover them).
++"unspecialized" (=0) compiles every handler in one module and is a diagnostic only
++(native/DEVICE.md, "Linux reference fixes on the updated Mesa")."""
++import hashlib
++import json
++import os
++import subprocess
++from pathlib import Path
++
++def films(folder):
++    return {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(Path(folder).iterdir())
++            if p.name.endswith(('.ppm','.film.bin'))}
++
++def _run(binary,folder,value,timeout,extra_args):
++    folder.mkdir(parents=True)
++    env=dict(os.environ,CODEBRIX_CYCLES_SHADER_SPECIALIZATION=value,
++             CODEBRIX_CYCLES_PIPELINE_LOG=str(folder/'pipelines.jsonl'),MESA_SHADER_CACHE_DIR=str(folder/'shader-cache'))
++    with (folder/'stdout.txt').open('w') as stdout,(folder/'stderr.txt').open('w') as stderr:
++        subprocess.run([str(binary),str(folder/'run'),*extra_args],stdout=stdout,stderr=stderr,check=True,timeout=timeout,env=env)
++    for path in sorted((folder/'shader-cache').rglob('*'),reverse=True):
++        path.unlink() if path.is_file() else path.rmdir()
++    if (folder/'shader-cache').exists():(folder/'shader-cache').rmdir()
++    report=json.loads((folder/'stdout.txt').read_text())
++    assert report['passed'] and report['cyclesAllocationBytesAfterCleanup']==0
++    log=[json.loads(line) for line in (folder/'pipelines.jsonl').read_text().splitlines()] if (folder/'pipelines.jsonl').exists() else []
++    return report,log
++
++def check(binary,on_folder,off_folder,mode='superset',timeout=1800,extra_args=()):
++    """Runs BINARY with specialization off into OFF_FOLDER (one sub-folder per
++    superset group) and compares its films with ON_FOLDER. Returns the record;
++    raises AssertionError on any difference."""
++    off=Path(off_folder);off.mkdir(parents=True);on_films=films(on_folder);runs=[]
++    if mode=='unspecialized':
++        _,log=_run(binary,off/'unspecialized','0',timeout,extra_args);runs.append(('unspecialized',off/'unspecialized',log))
++    else:
++        group=0;count=1
++        while group<count:
++            folder=off/f'group-{group}';_,log=_run(binary,folder,f'superset:{group}',timeout,extra_args)
++            assert log and all(r.get('specializationMode')=='superset' and r.get('supersetGroup')==group for r in log),folder
++            # Scenes in one process can have different group counts; run up to the largest.
++            count=max(r['supersetGroups'] for r in log);runs.append((f'superset:{group}',folder,log));group+=1
++    record={'mode':mode,'binary':str(binary),'on':on_films,'runs':[]}
++    for value,folder,log in runs:
++        off_films=films(folder);entry={'value':value,'films':off_films,'identical':bool(on_films) and on_films==off_films,
++              'maxWgslBytes':max((r['wgslBytes'] for r in log),default=0)}
++        if log and 'supersetGroups' in log[0]:
++            entry.update({k:log[0][k] for k in ('supersetGroups','supersetSceneBytes','supersetGroupBytes','supersetGroupAdded','supersetUnfit')})
++            entry['maxSupersetGroupBytes']=max(r['supersetGroupBytes'] for r in log)
++            entry['added']=sorted({f for r in log for f in r['supersetGroupAdded'].split(',') if f})
++            entry['unfitAll']=sorted({f for r in log for f in r['supersetUnfit'].split(',') if f})
++        record['runs'].append(entry)
++    record['identical']=all(r['identical'] for r in record['runs'])
++    if mode!='unspecialized':
++        record['covered']=sorted({f for r in record['runs'] for f in r['added']})
++        record['unfit']=sorted(set(record['runs'][0]['unfitAll'])-set(record['covered']))
++    (off/'specialization-identical.json').write_text(json.dumps(record,indent=2)+'\n')
++    assert record['identical'],f'{Path(binary).name}: films differ with specialization on/{mode}'
++    return record
+diff --git a/native/tools/unspecialized_compile_smoke.py b/native/tools/unspecialized_compile_smoke.py
+index 470558c4..be26f928 100755
+--- a/native/tools/unspecialized_compile_smoke.py
++++ b/native/tools/unspecialized_compile_smoke.py
+@@ -5,9 +5,10 @@
+ 
+ Scene specialization is the production path and every probe gate compiles
+ scene-specialized modules; the unspecialized module (every handler, the
+-CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 desktop diagnostic) is checked for
+-correctness by the specialization-off render gates (glass_render,
+-principled_render, nodes_render on/off bit-identity). This step only measures
++CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 desktop diagnostic) exceeds the Intel
++Mesa 25.0.7 backend's 16-bit instruction/register range; the on/off
++bit-identity of the render gates uses the superset groups instead
++(specialization_check.py). This step only measures
+ it: for prepare_surface and shade_surface_light it records the module size, the
+ largest inlined entry size (drivers inline every WGSL call) and the cold
+ pipeline-creation time and peak memory, each in a fresh process with a fresh
+diff --git a/native/tools/volume_boundary_gate.py b/native/tools/volume_boundary_gate.py
+index eedd28c8..d5dd0da1 100644
+--- a/native/tools/volume_boundary_gate.py
++++ b/native/tools/volume_boundary_gate.py
+@@ -19,7 +19,7 @@ import render_replay
+ 
+ def image_values(folder):
+     meta = json.loads((folder/'run.capture.json').read_text())
+-    assert meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7')
++    assert meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7', 'native-command-stream-v8')
+     assert meta['pipelineDispatches'][11] > 0
+     stride = meta['filmStride']
+     film = [v[0] for v in struct.iter_unpack('<f', (folder/'run.gpu.film.bin').read_bytes())]
+diff --git a/native/tools/volume_gate.py b/native/tools/volume_gate.py
+index 72295805..fa8806bf 100644
+--- a/native/tools/volume_gate.py
++++ b/native/tools/volume_gate.py
+@@ -19,7 +19,7 @@ import render_replay
+ 
+ def image_values(folder):
+     meta = json.loads((folder/'run.capture.json').read_text())
+-    assert meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7')
++    assert meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7', 'native-command-stream-v8')
+     assert meta['pipelineDispatches'][11] > 0
+     stride = meta['filmStride']
+     film = [v[0] for v in struct.iter_unpack('<f', (folder/'run.gpu.film.bin').read_bytes())]

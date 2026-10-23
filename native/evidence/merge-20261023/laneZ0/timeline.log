@@ -1,0 +1,114 @@
+[18:30:04] lane z0 start; worktree HEAD 3392df3d + staged merge wave 4; git diff empty=yes
+[18:31:26] START before-glass_render
+[18:31:26] START before-principled_render
+[18:31:26] START before-nodes_render
+[18:33:29] END before-nodes_render exit=0 123s
+[18:36:14] END before-glass_render exit=0 288s
+[18:39:00] rebase proof: building scratch root /home/jeremy/ClaudeHome/cycles-worktrees/z0-step-zero/native/work/z0-step-zero/rebase-proof/root
+[18:39:11] START rebase-proof-noop
+[18:41:45] rebase proof attempt 1 STOPPED by me: object files of out-of-tree sources live under build/<target>.dir/<abs source path>, so the tool must also move those object directories
+[18:42:08] rebase proof: scratch root re-created
+[18:42:13] START rebase-proof-noop
+[18:42:33] END rebase-proof-noop exit=1 20s
+[18:43:32] START rebase-proof-noop2
+[18:43:38] END before-principled_render exit=0 732s
+[18:44:03] END rebase-proof-noop2 exit=0 31s
+[18:44:13] START rebase-proof-noop3
+[18:44:40] END rebase-proof-noop3 exit=0 27s
+[18:45:12] rebase proof gen2: root2 seeded from consistent root (copy of build trees with times, fresh sources)
+[18:45:21] START rebase-proof-gen2-noop
+[18:45:50] END rebase-proof-gen2-noop exit=0 29s
+[18:46:14] START rebase-proof-edit-cpp
+[18:46:44] END rebase-proof-edit-cpp exit=0 30s
+[18:46:44] START rebase-proof-edit-wgsl
+[18:47:19] END rebase-proof-edit-wgsl exit=0 35s
+[18:47:35] rebase proof DONE (gen2 no-op 0 compiles/0 links, 58 binaries identical; cpp edit 1+1; wgsl edit 1 compile); scratch roots deleted
+[18:47:49] START build1
+[18:56:16] END build1 exit=0 507s
+[18:56:30] START after-host-gate
+[18:56:30] START after-principled_render
+[18:56:30] START after-nodes_render
+[18:56:30] START after-glass_render
+[18:57:07] moved new native/tools/pipeline_size_guard_check.py aside until after-host-gate ends (gate pins native/ inputs)
+[18:57:42] END after-host-gate exit=0 72s
+[18:58:12] END after-nodes_render exit=0 102s
+[18:58:13] restored native/tools/pipeline_size_guard_check.py
+[18:58:28] START after-host-gate-2
+[18:59:18] END after-host-gate-2 exit=0 50s
+[19:00:18] checkpoint written (82160 bytes)
+[19:00:32] START dotnet-build-release
+[19:00:33] END dotnet-build-release exit=0 1s
+[19:00:48] START dotnet-test-release
+[19:00:50] END after-glass_render exit=0 260s
+[19:00:54] END dotnet-test-release exit=0 6s
+[19:01:01] START size-guard-check
+[19:02:09] END size-guard-check exit=0 68s
+[19:03:37] START android-x64-build
+[19:06:03] END android-x64-build exit=0 146s
+[19:06:47] HP lock taken
+[19:06:57] START hp-hostgate
+[19:07:40] END after-principled_render exit=0 670s
+[19:08:40] END hp-hostgate exit=0 103s
+[19:09:06] START hp-hostgate-2
+[19:10:47] END hp-hostgate-2 exit=1 101s
+[19:11:13] START android-x64-gates
+[19:11:59] END android-x64-gates exit=0 46s
+[19:12:04] START hp-materials
+[19:13:42] END hp-materials exit=1 98s
+[19:13:54] START hp-materials-2
+[19:20:01] END hp-materials-2 exit=0 367s
+[19:20:27] HP cleaned (no codebrix-z0* / codebrix-maintained-host-z0* folders, no codebrix processes, no z0 packages); HP lock released
+[19:20:51] START envelope-materials
+[19:22:21] START ev-attribute
+[19:22:21] START ev-render
+[19:22:21] START ev-closest
+[19:22:25] END ev-closest exit=0 4s
+[19:22:25] START ev-svm_world
+[19:22:41] END ev-render exit=0 20s
+[19:22:41] START ev-device
+[19:22:42] END ev-device exit=0 1s
+[19:22:42] START ev-camera
+[19:22:43] END ev-attribute exit=0 22s
+[19:22:43] START ev-image
+[19:22:44] END ev-camera exit=0 2s
+[19:22:44] START ev-background
+[19:22:49] END ev-background exit=0 5s
+[19:22:53] END ev-image exit=0 10s
+[19:22:53] START ev-image_file
+[19:22:54] END ev-svm_world exit=0 29s
+[19:22:54] START ev-svm_surface
+[19:22:54] END ev-image_file exit=0 1s
+[19:22:54] START ev-normal
+[19:23:00] END ev-svm_surface exit=0 6s
+[19:23:16] END ev-normal exit=0 22s
+[19:23:16] evidence probes DONE
+[19:23:27] START ev-render-attributes
+[19:23:48] END ev-render-attributes exit=0 21s
+[19:23:48] START ev-render-images
+[19:24:13] END ev-render-images exit=0 25s
+[19:24:13] START ev-render-normals
+[19:24:38] END envelope-materials exit=0 227s
+[19:24:45] END ev-render-normals exit=0 32s
+[19:25:40] job 4: evidence frozen into native/evidence/step-zero-20261022, compatibility/evidence.json rewritten
+[19:25:53] START inventory-generate
+[19:25:55] END inventory-generate exit=0 2s
+[19:26:33] START ev-nodes_svm
+[19:26:33] START ev-nodes_world
+[19:27:28] END ev-nodes_world exit=0 55s
+[19:27:38] checkpoint written (465487 bytes)
+[19:28:41] START dotnet-build-debug
+[19:28:44] END dotnet-build-debug exit=0 3s
+[19:28:44] START dotnet-test-debug
+[19:28:50] END dotnet-test-debug exit=0 6s
+[19:28:50] START audits
+[19:29:33] END audits exit=0 43s
+[19:31:25] END ev-nodes_svm exit=0 292s
+[19:32:02] START inventory-generate-2
+[19:32:04] END inventory-generate-2 exit=0 2s
+[19:32:04] START inventory-check
+[19:32:06] END inventory-check exit=0 2s
+[19:32:13] job 4 DONE: inventory generate+check PASS, test_inventory OK
+[19:32:49] START audits-final
+[19:33:32] END audits-final exit=0 43s
+[19:33:40] deleted 80 scratch files >5 MB (hashes in deleted-scratch-sha256.txt)
+[19:35:42] report written; lane sealed

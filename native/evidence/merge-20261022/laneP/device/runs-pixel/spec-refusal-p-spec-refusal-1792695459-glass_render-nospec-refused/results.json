@@ -1,0 +1,20 @@
+{
+  "glass_render-nospec-refused": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_SHADER_SPECIALIZATION": "0"
+    },
+    "extraEnv": [],
+    "cutoffSeconds": 5,
+    "exit": 1,
+    "wallSeconds": 0.9,
+    "pipelines": [],
+    "maxPipelineMs": null,
+    "passed": true,
+    "expectedRefusal": "refused on Android",
+    "stderr": [
+      "render_gate device creation: WebGPU device creation failed: CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 is a desktop-only diagnostic and is refused on Android: the unspecialized shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules."
+    ]
+  }
+}

@@ -143,13 +143,17 @@ fn principled_average(v:vec3<f32>)->f32{return (v.x+v.y+v.z)*(1.0/3.0);}
 // pi/2 and the bounded precise_disk_sincos adapter (driver sin/cos are only
 // accurate to about 2^-11, which visibly turns sharp anisotropic GGX lobes).
 fn principled_rotate(p:vec3<f32>,axis:vec3<f32>,angle:f32)->vec3<f32>{
-    let k=round(angle*0.6366197723675814);let r=rounded_add(rounded_add(angle,-k*1.5707963705062866),k*4.3711390001862426e-8);
-    let q=precise_disk_sincos(r);let quadrant=u32(i32(k)&3);var s=q.x;var c=q.y;
+    // Exact quadrant reduction (trig_product keeps k*pi/2's rounding residual); the reduced angle stays two-part.
+    let k=round(angle*0.6366197723675814);let product=trig_product(k,1.5707963705062866);
+    let q=precise_disk_sincos_pair(vec2<f32>(rounded_add(angle,-product.x),rounded_add(-product.y,k*4.3711390001862426e-8)));let quadrant=u32(i32(k)&3);var s=q.x;var c=q.y;
     if(quadrant==1u){s=q.y;c=-q.x;}if(quadrant==2u){s=-q.x;c=-q.y;}if(quadrant==3u){s=-q.y;c=q.x;}
-    let m=1.0-c;
-    return vec3<f32>((c+m*axis.x*axis.x)*p.x+(m*axis.x*axis.y-axis.z*s)*p.y+(m*axis.x*axis.z+axis.y*s)*p.z,
-        (m*axis.x*axis.y+axis.z*s)*p.x+(c+m*axis.y*axis.y)*p.y+(m*axis.y*axis.z-axis.x*s)*p.z,
-        (m*axis.x*axis.z-axis.y*s)*p.x+(m*axis.y*axis.z+axis.x*s)*p.y+(c+m*axis.z*axis.z)*p.z);
+    // util/math_float3.h rotate_around_axis in its operation order, every product rounded before its sum
+    // (rounded_add), so neither the Intel nor the Adreno compiler contracts it (lane S2, principled_render stage 40).
+    let m=1.0-c;let xx=rounded_add(c,(m*axis.x)*axis.x);let yy=rounded_add(c,(m*axis.y)*axis.y);let zz=rounded_add(c,(m*axis.z)*axis.z);
+    let xy=(m*axis.x)*axis.y;let xz=(m*axis.x)*axis.z;let yz=(m*axis.y)*axis.z;
+    return vec3<f32>(rounded_add(rounded_add(xx*p.x,rounded_add(xy,-(axis.z*s))*p.y),rounded_add(xz,axis.y*s)*p.z),
+        rounded_add(rounded_add(rounded_add(xy,axis.z*s)*p.x,yy*p.y),rounded_add(yz,-(axis.x*s))*p.z),
+        rounded_add(rounded_add(rounded_add(xz,-(axis.y*s))*p.x,rounded_add(yz,axis.x*s)*p.y),zz*p.z));
 }
 fn principled_new(kind:u32,weight:vec3<f32>)->SvmClosure{
     var c:SvmClosure;c.kind=kind;c.weight=max(weight,vec3<f32>(0));c.sample_weight=abs(principled_average(c.weight));return c;

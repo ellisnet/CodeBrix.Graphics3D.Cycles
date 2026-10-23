@@ -1,0 +1,328 @@
+samsung 67 files staged and verified
+[01:00:21] samsung materials-m5: START principled_svm timeout=2400s
+[01:00:21] samsung materials-m5: SCENE-DUMP principled_svm
+[01:01:37] samsung materials-m5: SCENE-REFERENCE principled_svm references=237
+[01:03:42] samsung materials-m5: PASS principled_svm 119s maxPipelineMs=None
+[01:03:42] samsung materials-m5: START principled_bounce timeout=2400s
+[01:05:07] samsung materials-m5: PASS principled_bounce 85s maxPipelineMs=17071.3
+[01:05:07] samsung materials-m5: START principled_render timeout=2400s
+[01:05:07] samsung materials-m5: SCENE-DUMP principled_render
+[01:05:27] samsung materials-m5: SCENE-REFERENCE principled_render references=1
+image            gpu-vs-glibc passed=False practical=2 strict=267 max=0.0009544 | local-vs-glibc differing=2305 maxUlps=8007 practical=2
+[01:06:49] samsung materials-m5: REFERENCE principled_render host re-judged vs glibc: False
+[01:06:49] samsung materials-m5: FAIL principled_render exit=1 81s: Independent CPU image 9114 actual=1.546950 expected=1.545995
+[01:06:49] samsung materials-m5: START nodes_svm timeout=2400s
+[01:06:49] samsung materials-m5: SCENE-DUMP nodes_svm
+[01:11:04] samsung materials-m5: SCENE-REFERENCE nodes_svm references=541
+[01:36:16] samsung materials-m5: PASS nodes_svm 1500s maxPipelineMs=None
+[01:36:16] samsung materials-m5: START nodes_world timeout=2400s
+[01:44:31] samsung materials-m5: PASS nodes_world 495s maxPipelineMs=95776.8
+[01:44:31] samsung materials-m5: START nodes_render timeout=2400s
+[01:44:31] samsung materials-m5: SCENE-DUMP nodes_render
+[01:44:50] samsung materials-m5: SCENE-REFERENCE nodes_render references=1
+image            gpu-vs-glibc passed=False practical=1 strict=3998 max=0.0004035 | local-vs-glibc differing=5987 maxUlps=9928 practical=1
+[01:47:03] samsung materials-m5: REFERENCE nodes_render host re-judged vs glibc: False
+[01:47:04] samsung materials-m5: FAIL nodes_render exit=1 133s: Independent CPU image 6720 actual=0.928481 expected=0.928078
+[01:47:21] samsung materials-m5: END passed=False wall=2822s/7200s failures=4
+{"passed": false, "failures": ["principled_render: Independent CPU image 9114 actual=1.546950 expected=1.545995", "nodes_render: Independent CPU image 6720 actual=0.928481 expected=0.928078", "principled-replay: not run (source job failed)", "nodes-replay: not run (source job failed)"], "error": null, "wallSeconds": 2821.6}
+[01:47:42] samsung triangle-m5: START triangle_sample timeout=1200s
+[01:47:42] samsung triangle-m5: SCENE-DUMP triangle_sample
+[01:48:01] samsung triangle-m5: SCENE-REFERENCE triangle_sample references=1
+samples          gpu-vs-glibc passed=False practical=2 strict=1069 max=0.002195 | local-vs-glibc differing=4620 maxUlps=15520768 practical=65
+[01:48:22] samsung triangle-m5: REFERENCE triangle_sample host re-judged vs glibc: False
+[01:48:22] samsung triangle-m5: FAIL triangle_sample exit=1 21s: Emitter sample=3133 field=2 got=0.382186 expected=0.379992
+[01:48:22] samsung triangle-m5: START surface timeout=1200s
+[01:48:47] samsung triangle-m5: PASS surface 24s maxPipelineMs=3563.56
+[01:48:47] samsung triangle-m5: START triangle_lighting timeout=1200s
+[01:48:47] samsung triangle-m5: SCENE-DUMP triangle_lighting
+[01:49:06] samsung triangle-m5: SCENE-REFERENCE triangle_lighting references=6
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=12 max=4.768e-07 | local-vs-glibc differing=57 maxUlps=24 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=5 max=1.788e-07 | local-vs-glibc differing=929 maxUlps=228 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=8 max=6.407e-07 | local-vs-glibc differing=987 maxUlps=2273 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=235 max=1.788e-06 | local-vs-glibc differing=716 maxUlps=116 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=11 max=3.725e-07 | local-vs-glibc differing=933 maxUlps=820185 practical=6
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=248 max=1.788e-06 | local-vs-glibc differing=778 maxUlps=55 practical=0
+[01:50:28] samsung triangle-m5: REFERENCE triangle_lighting host re-judged vs glibc: True
+[01:50:28] samsung triangle-m5: PASS triangle_lighting 79s maxPipelineMs=8990.73
+[01:50:28] samsung triangle-m5: START replay-0 timeout=1200s
+[01:50:44] samsung triangle-m5: PASS replay-0 16s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[01:50:44] samsung triangle-m5: START replay-1 timeout=1200s
+[01:51:06] samsung triangle-m5: PASS replay-1 21s readbacks=417 max=1.79e-07 strict=5 fmt=native-command-stream-v8
+[01:51:06] samsung triangle-m5: START replay-2 timeout=1200s
+[01:51:27] samsung triangle-m5: PASS replay-2 21s readbacks=415 max=6.41e-07 strict=8 fmt=native-command-stream-v8
+[01:51:27] samsung triangle-m5: START replay-3 timeout=1200s
+[01:51:50] samsung triangle-m5: PASS replay-3 22s readbacks=473 max=1.79e-06 strict=235 fmt=native-command-stream-v8
+[01:51:50] samsung triangle-m5: START replay-4 timeout=1200s
+[01:52:12] samsung triangle-m5: PASS replay-4 21s readbacks=415 max=3.73e-07 strict=11 fmt=native-command-stream-v8
+[01:52:12] samsung triangle-m5: START replay-5 timeout=1200s
+[01:52:48] samsung triangle-m5: PASS replay-5 35s readbacks=464 max=1.79e-06 strict=248 fmt=native-command-stream-v8
+[01:53:06] samsung triangle-m5: END passed=False wall=326s/2400s failures=1
+{"passed": false, "failures": ["triangle_sample: Emitter sample=3133 field=2 got=0.382186 expected=0.379992"], "error": null, "wallSeconds": 326.3}
+[01:53:26] samsung emitter-m5: START emitter_sample timeout=300s
+[01:53:26] samsung emitter-m5: SCENE-DUMP emitter_sample
+[01:53:44] samsung emitter-m5: SCENE-REFERENCE emitter_sample references=1
+samples          gpu-vs-glibc passed=True practical=0 strict=135 max=9.06e-06 | local-vs-glibc differing=1192 maxUlps=3310 practical=1
+[01:53:52] samsung emitter-m5: REFERENCE emitter_sample host re-judged vs glibc: True
+[01:53:52] samsung emitter-m5: PASS emitter_sample 8s maxPipelineMs=None
+[01:54:11] samsung emitter-m5: END passed=True wall=46s/600s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 46.1}
+[01:54:30] samsung lighting-m5: START lighting_mis timeout=1200s
+[01:54:30] samsung lighting-m5: SCENE-DUMP lighting_mis
+[01:54:50] samsung lighting-m5: SCENE-REFERENCE lighting_mis references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=780 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=787 maxUlps=78 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=278 max=3.278e-06 | local-vs-glibc differing=509 maxUlps=169 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=0 max=4.936e-08 | local-vs-glibc differing=515 maxUlps=75 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=271 max=6.05e-06 | local-vs-glibc differing=526 maxUlps=154 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=12 max=1.431e-06 | local-vs-glibc differing=416 maxUlps=165 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=289 max=6.08e-06 | local-vs-glibc differing=534 maxUlps=154 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=220 max=6.02e-06 | local-vs-glibc differing=442 maxUlps=99 practical=0
+[01:55:24] samsung lighting-m5: REFERENCE lighting_mis host re-judged vs glibc: True
+[01:55:24] samsung lighting-m5: PASS lighting_mis 29s maxPipelineMs=4282.55
+[01:55:24] samsung lighting-m5: START broad_lighting timeout=1200s
+[01:55:24] samsung lighting-m5: SCENE-DUMP broad_lighting
+[01:55:45] samsung lighting-m5: SCENE-REFERENCE broad_lighting references=12
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=695 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=15 max=4.172e-07 | local-vs-glibc differing=854 maxUlps=1441 practical=0
+case-10.film     gpu-vs-glibc passed=True practical=0 strict=44 max=3.815e-05 | local-vs-glibc differing=67 maxUlps=19 practical=0
+case-11.film     gpu-vs-glibc passed=True practical=0 strict=210 max=6.437e-06 | local-vs-glibc differing=720 maxUlps=504 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=176 max=3.293e-06 | local-vs-glibc differing=777 maxUlps=670 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=43 max=5.066e-07 | local-vs-glibc differing=348 maxUlps=44447 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=35 max=1.371e-05 | local-vs-glibc differing=957 maxUlps=112 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=23 max=6.735e-06 | local-vs-glibc differing=842 maxUlps=129 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=22 max=2.086e-06 | local-vs-glibc differing=796 maxUlps=90 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=142 max=3.815e-06 | local-vs-glibc differing=677 maxUlps=971 practical=0
+case-8.film      gpu-vs-glibc passed=True practical=0 strict=127 max=3.815e-06 | local-vs-glibc differing=617 maxUlps=806 practical=0
+case-9.film      gpu-vs-glibc passed=True practical=0 strict=156 max=3.815e-06 | local-vs-glibc differing=679 maxUlps=12337 practical=0
+[01:56:49] samsung lighting-m5: REFERENCE broad_lighting host re-judged vs glibc: True
+[01:56:49] samsung lighting-m5: PASS broad_lighting 56s maxPipelineMs=8178.67
+[01:56:49] samsung lighting-m5: START lighting_mis-replay-0 timeout=1200s
+[01:57:06] samsung lighting-m5: PASS lighting_mis-replay-0 16s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[01:57:06] samsung lighting-m5: START lighting_mis-replay-1 timeout=1200s
+[01:57:23] samsung lighting-m5: PASS lighting_mis-replay-1 17s readbacks=450 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[01:57:23] samsung lighting-m5: START broad_lighting-replay-0 timeout=1200s
+[01:57:41] samsung lighting-m5: PASS broad_lighting-replay-0 17s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[01:57:41] samsung lighting-m5: START broad_lighting-replay-1 timeout=1200s
+[01:57:58] samsung lighting-m5: PASS broad_lighting-replay-1 17s readbacks=450 max=4.17e-07 strict=15 fmt=native-command-stream-v6
+[01:58:16] samsung lighting-m5: END passed=True wall=227s/2400s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 227.1}
+[01:58:35] samsung regression-m5: START glass_render timeout=600s
+[01:58:35] samsung regression-m5: SCENE-DUMP glass_render
+[01:58:54] samsung regression-m5: SCENE-REFERENCE glass_render references=1
+image            gpu-vs-glibc passed=True practical=0 strict=97 max=1.907e-06 | local-vs-glibc differing=2277 maxUlps=11 practical=0
+[01:59:58] samsung regression-m5: REFERENCE glass_render host re-judged vs glibc: True
+[01:59:58] samsung regression-m5: PASS glass_render 63s maxPipelineMs=4150.3
+[01:59:58] samsung regression-m5: START lighting_mis timeout=600s
+[01:59:58] samsung regression-m5: SCENE-DUMP lighting_mis
+[02:00:17] samsung regression-m5: SCENE-REFERENCE lighting_mis references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=780 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=787 maxUlps=78 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=278 max=3.278e-06 | local-vs-glibc differing=509 maxUlps=169 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=0 max=4.936e-08 | local-vs-glibc differing=515 maxUlps=75 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=271 max=6.05e-06 | local-vs-glibc differing=526 maxUlps=154 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=12 max=1.431e-06 | local-vs-glibc differing=416 maxUlps=165 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=289 max=6.08e-06 | local-vs-glibc differing=534 maxUlps=154 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=220 max=6.02e-06 | local-vs-glibc differing=442 maxUlps=99 practical=0
+[02:00:52] samsung regression-m5: REFERENCE lighting_mis host re-judged vs glibc: True
+[02:00:52] samsung regression-m5: PASS lighting_mis 30s maxPipelineMs=4410.44
+[02:00:52] samsung regression-m5: START transparent_lighting timeout=600s
+[02:00:52] samsung regression-m5: SCENE-DUMP transparent_lighting
+[02:01:12] samsung regression-m5: SCENE-REFERENCE transparent_lighting references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=780 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=812 maxUlps=44 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=77 max=3.815e-06 | local-vs-glibc differing=980 maxUlps=636 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=134 max=2.295e-06 | local-vs-glibc differing=797 maxUlps=670 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=168 max=6.02e-06 | local-vs-glibc differing=521 maxUlps=96 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=3 max=7.898e-07 | local-vs-glibc differing=350 maxUlps=199 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=103 max=6.02e-06 | local-vs-glibc differing=421 maxUlps=100 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=208 max=6.02e-06 | local-vs-glibc differing=447 maxUlps=100 practical=0
+[02:02:48] samsung regression-m5: REFERENCE transparent_lighting host re-judged vs glibc: True
+[02:02:48] samsung regression-m5: PASS transparent_lighting 91s maxPipelineMs=8461.4
+[02:03:06] samsung regression-m5: END passed=True wall=272s/1500s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 272.0}
+[02:03:26] samsung transparent-m5: START transparent_shadow timeout=1200s
+[02:03:45] samsung transparent-m5: PASS transparent_shadow 18s maxPipelineMs=3498.92
+[02:03:45] samsung transparent-m5: START transparent_lighting timeout=1200s
+[02:03:45] samsung transparent-m5: SCENE-DUMP transparent_lighting
+[02:04:04] samsung transparent-m5: SCENE-REFERENCE transparent_lighting references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=780 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.192e-07 | local-vs-glibc differing=812 maxUlps=44 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=77 max=3.815e-06 | local-vs-glibc differing=980 maxUlps=636 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=134 max=2.295e-06 | local-vs-glibc differing=797 maxUlps=670 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=168 max=6.02e-06 | local-vs-glibc differing=521 maxUlps=96 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=3 max=7.898e-07 | local-vs-glibc differing=350 maxUlps=199 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=103 max=6.02e-06 | local-vs-glibc differing=421 maxUlps=100 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=208 max=6.02e-06 | local-vs-glibc differing=447 maxUlps=100 practical=0
+[02:05:39] samsung transparent-m5: REFERENCE transparent_lighting host re-judged vs glibc: True
+[02:05:39] samsung transparent-m5: PASS transparent_lighting 90s maxPipelineMs=8220.45
+[02:05:39] samsung transparent-m5: START transparent_lighting-replay-0 timeout=1200s
+[02:05:59] samsung transparent-m5: PASS transparent_lighting-replay-0 19s readbacks=560 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[02:05:59] samsung transparent-m5: START transparent_lighting-replay-1 timeout=1200s
+[02:06:19] samsung transparent-m5: PASS transparent_lighting-replay-1 20s readbacks=596 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[02:06:19] samsung transparent-m5: START transparent_lighting-replay-2 timeout=1200s
+[02:06:45] samsung transparent-m5: PASS transparent_lighting-replay-2 25s readbacks=575 max=3.81e-06 strict=77 fmt=native-command-stream-v7
+[02:06:45] samsung transparent-m5: START transparent_lighting-replay-3 timeout=1200s
+[02:07:11] samsung transparent-m5: PASS transparent_lighting-replay-3 25s readbacks=580 max=2.29e-06 strict=134 fmt=native-command-stream-v7
+[02:07:11] samsung transparent-m5: START transparent_lighting-replay-4 timeout=1200s
+[02:07:37] samsung transparent-m5: PASS transparent_lighting-replay-4 26s readbacks=840 max=6.02e-06 strict=168 fmt=native-command-stream-v7
+[02:07:37] samsung transparent-m5: START transparent_lighting-replay-5 timeout=1200s
+[02:08:05] samsung transparent-m5: PASS transparent_lighting-replay-5 26s readbacks=916 max=7.9e-07 strict=3 fmt=native-command-stream-v7
+[02:08:05] samsung transparent-m5: START transparent_lighting-replay-6 timeout=1200s
+[02:08:30] samsung transparent-m5: PASS transparent_lighting-replay-6 25s readbacks=428 max=6.02e-06 strict=103 fmt=native-command-stream-v7
+[02:08:30] samsung transparent-m5: START transparent_lighting-replay-7 timeout=1200s
+[02:08:56] samsung transparent-m5: PASS transparent_lighting-replay-7 25s readbacks=518 max=6.02e-06 strict=208 fmt=native-command-stream-v7
+[02:08:56] samsung transparent-m5: START transparent-shadow-replay-direct timeout=1200s
+[02:09:03] samsung transparent-m5: PASS transparent-shadow-replay-direct 6s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[02:09:03] samsung transparent-m5: START transparent-shadow-replay-indexed timeout=1200s
+[02:09:10] samsung transparent-m5: PASS transparent-shadow-replay-indexed 6s readbacks=4 max=0 strict=0 fmt=native-command-stream-v7
+[02:09:27] samsung transparent-m5: END passed=True wall=363s/2400s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 363.3}
+[02:09:46] samsung terminator-m5: START shadow_terminator timeout=900s
+[02:09:46] samsung terminator-m5: SCENE-DUMP shadow_terminator
+[02:10:06] samsung terminator-m5: SCENE-REFERENCE shadow_terminator references=10
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=0 max=5.96e-08 | local-vs-glibc differing=83 maxUlps=2 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=0 max=5.96e-08 | local-vs-glibc differing=159 maxUlps=4 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=0 max=5.96e-08 | local-vs-glibc differing=159 maxUlps=4 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=0 max=5.96e-08 | local-vs-glibc differing=90 maxUlps=2 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=27 max=6.199e-05 | local-vs-glibc differing=277 maxUlps=46 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=19 max=2.325e-05 | local-vs-glibc differing=303 maxUlps=60 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=19 max=2.325e-05 | local-vs-glibc differing=303 maxUlps=60 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=27 max=6.199e-05 | local-vs-glibc differing=273 maxUlps=46 practical=0
+case-8.film      gpu-vs-glibc passed=True practical=0 strict=8 max=2.933e-05 | local-vs-glibc differing=300 maxUlps=34 practical=0
+case-9.film      gpu-vs-glibc passed=True practical=0 strict=24 max=2.909e-05 | local-vs-glibc differing=305 maxUlps=21 practical=0
+[02:11:46] samsung terminator-m5: REFERENCE shadow_terminator host re-judged vs glibc: True
+[02:11:46] samsung terminator-m5: PASS shadow_terminator 96s maxPipelineMs=8644.19
+[02:11:46] samsung terminator-m5: START terminator-replay-0 timeout=900s
+[02:11:59] samsung terminator-m5: PASS terminator-replay-0 13s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:11:59] samsung terminator-m5: START terminator-replay-1 timeout=900s
+[02:12:14] samsung terminator-m5: PASS terminator-replay-1 14s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:12:14] samsung terminator-m5: START terminator-replay-2 timeout=900s
+[02:12:29] samsung terminator-m5: PASS terminator-replay-2 14s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:12:29] samsung terminator-m5: START terminator-replay-3 timeout=900s
+[02:12:44] samsung terminator-m5: PASS terminator-replay-3 14s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:12:44] samsung terminator-m5: START terminator-replay-4 timeout=900s
+[02:13:09] samsung terminator-m5: PASS terminator-replay-4 25s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[02:13:09] samsung terminator-m5: START terminator-replay-5 timeout=900s
+[02:13:34] samsung terminator-m5: PASS terminator-replay-5 25s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[02:13:34] samsung terminator-m5: START terminator-replay-6 timeout=900s
+[02:13:59] samsung terminator-m5: PASS terminator-replay-6 25s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[02:13:59] samsung terminator-m5: START terminator-replay-7 timeout=900s
+[02:14:24] samsung terminator-m5: PASS terminator-replay-7 25s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[02:14:24] samsung terminator-m5: START terminator-replay-8 timeout=900s
+[02:14:50] samsung terminator-m5: PASS terminator-replay-8 25s readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[02:14:50] samsung terminator-m5: START terminator-replay-9 timeout=900s
+[02:15:24] samsung terminator-m5: PASS terminator-replay-9 33s readbacks=443 max=2.91e-05 strict=24 fmt=native-command-stream-v6
+[02:15:42] samsung terminator-m5: END passed=True wall=357s/1800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 356.7}
+[02:16:01] samsung spec-refusal-m5: START glass_render-spec timeout=1200s
+[02:16:01] samsung spec-refusal-m5: SCENE-DUMP glass_render-spec
+[02:16:20] samsung spec-refusal-m5: SCENE-REFERENCE glass_render-spec references=1
+image            gpu-vs-glibc passed=True practical=0 strict=97 max=1.907e-06 | local-vs-glibc differing=2277 maxUlps=11 practical=0
+[02:17:23] samsung spec-refusal-m5: REFERENCE glass_render-spec host re-judged vs glibc: True
+[02:17:23] samsung spec-refusal-m5: PASS glass_render-spec 63s maxPipelineMs=4090.86
+[02:17:23] samsung spec-refusal-m5: START glass_render-nospec-refused timeout=1200s
+[02:17:24] samsung spec-refusal-m5: PASS glass_render-nospec-refused refusal exit=1 0s
+[02:17:24] samsung spec-refusal-m5: START glass_render-superset-refused timeout=1200s
+[02:17:24] samsung spec-refusal-m5: PASS glass_render-superset-refused refusal exit=1 0s
+[02:17:42] samsung spec-refusal-m5: END passed=True wall=102s/1800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 101.8}
+[02:18:00] samsung hostcap-linux-triangle: START tri0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-0)
+[02:18:15] samsung hostcap-linux-triangle: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[02:18:15] samsung hostcap-linux-triangle: START tri1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-1)
+[02:18:36] samsung hostcap-linux-triangle: PASS tri1 readbacks=417 max=1.49e-07 strict=1 fmt=native-command-stream-v8
+[02:18:36] samsung hostcap-linux-triangle: START tri2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-2)
+[02:18:57] samsung hostcap-linux-triangle: PASS tri2 readbacks=415 max=6.41e-07 strict=14 fmt=native-command-stream-v8
+[02:18:58] samsung hostcap-linux-triangle: START tri3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-3)
+[02:19:19] samsung hostcap-linux-triangle: PASS tri3 readbacks=473 max=1.76e-06 strict=236 fmt=native-command-stream-v8
+[02:19:19] samsung hostcap-linux-triangle: START tri4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-4)
+[02:19:41] samsung hostcap-linux-triangle: PASS tri4 readbacks=415 max=3.73e-07 strict=8 fmt=native-command-stream-v8
+[02:19:41] samsung hostcap-linux-triangle: START tri5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-triangle/out/triangle_lighting/run/case-5)
+[02:20:16] samsung hostcap-linux-triangle: PASS tri5 readbacks=464 max=2.38e-06 strict=258 fmt=native-command-stream-v8
+[02:20:32] samsung hostcap-linux-triangle: END passed=True wall=154s/3600s
+[02:20:50] samsung hostcap-linux-terminator: START term0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-0)
+[02:21:02] samsung hostcap-linux-terminator: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:21:02] samsung hostcap-linux-terminator: START term1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-1)
+[02:21:16] samsung hostcap-linux-terminator: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:21:17] samsung hostcap-linux-terminator: START term2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-2)
+[02:21:31] samsung hostcap-linux-terminator: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:21:31] samsung hostcap-linux-terminator: START term3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-3)
+[02:21:46] samsung hostcap-linux-terminator: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[02:21:46] samsung hostcap-linux-terminator: START term4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-4)
+[02:22:11] samsung hostcap-linux-terminator: PASS term4 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[02:22:11] samsung hostcap-linux-terminator: START term5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-5)
+[02:22:36] samsung hostcap-linux-terminator: PASS term5 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[02:22:37] samsung hostcap-linux-terminator: START term6 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-6)
+[02:23:02] samsung hostcap-linux-terminator: PASS term6 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[02:23:02] samsung hostcap-linux-terminator: START term7 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-7)
+[02:23:27] samsung hostcap-linux-terminator: PASS term7 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[02:23:27] samsung hostcap-linux-terminator: START term8 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-8)
+[02:23:53] samsung hostcap-linux-terminator: PASS term8 readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[02:23:53] samsung hostcap-linux-terminator: START term9 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/validation/c-shadow-terminator/out/shadow_terminator/run/case-9)
+[02:24:26] samsung hostcap-linux-terminator: PASS term9 readbacks=443 max=2.93e-05 strict=22 fmt=native-command-stream-v6
+[02:24:43] samsung hostcap-linux-terminator: END passed=True wall=234s/3600s
+[02:25:03] samsung pixel-motion-own: START object-moving-images timeout=2400s
+[02:25:52] samsung pixel-motion-own: PASS object-moving-images 45s maxPipelineMs=7219.62
+[02:25:52] samsung pixel-motion-own: START object-stationary-images timeout=2400s
+[02:26:32] samsung pixel-motion-own: PASS object-stationary-images 36s maxPipelineMs=7068.1
+[02:26:32] samsung pixel-motion-own: START object-replay-motion-0 timeout=2400s
+[02:27:03] samsung pixel-motion-own: PASS object-replay-motion-0 30s readbacks=414 max=3.58e-07 strict=10 fmt=native-command-stream-v6
+[02:27:03] samsung pixel-motion-own: START object-replay-motion-1 timeout=2400s
+[02:27:35] samsung pixel-motion-own: PASS object-replay-motion-1 31s readbacks=454 max=2.86e-06 strict=26 fmt=native-command-stream-v6
+[02:27:35] samsung pixel-motion-own: START object-replay-motion-2 timeout=2400s
+[02:28:07] samsung pixel-motion-own: PASS object-replay-motion-2 31s readbacks=456 max=2.4e-06 strict=290 fmt=native-command-stream-v6
+[02:28:07] samsung pixel-motion-own: START object-replay-motion-3 timeout=2400s
+[02:28:41] samsung pixel-motion-own: PASS object-replay-motion-3 33s readbacks=412 max=1.02e-07 strict=1 fmt=native-command-stream-v6
+[02:28:41] samsung pixel-motion-own: START object-replay-motion-4 timeout=2400s
+[02:29:13] samsung pixel-motion-own: PASS object-replay-motion-4 32s readbacks=457 max=6.08e-06 strict=295 fmt=native-command-stream-v6
+[02:29:13] samsung pixel-motion-own: START object-replay-motion-5 timeout=2400s
+[02:29:45] samsung pixel-motion-own: PASS object-replay-motion-5 32s readbacks=417 max=4.53e-06 strict=59 fmt=native-command-stream-v6
+[02:29:45] samsung pixel-motion-own: START object-replay-motion-6 timeout=2400s
+[02:30:18] samsung pixel-motion-own: PASS object-replay-motion-6 32s readbacks=460 max=6.08e-06 strict=342 fmt=native-command-stream-v6
+[02:30:18] samsung pixel-motion-own: START object-replay-motion-7 timeout=2400s
+[02:30:50] samsung pixel-motion-own: PASS object-replay-motion-7 32s readbacks=354 max=6.02e-06 strict=246 fmt=native-command-stream-v6
+[02:31:08] samsung pixel-motion-own: END passed=True wall=367s/4800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 366.9}
+[02:31:27] samsung pixel-motion-x64: START object-moving-images timeout=2400s
+[02:31:27] samsung pixel-motion-x64: SCENE-DUMP object-moving-images
+[02:31:47] samsung pixel-motion-x64: SCENE-REFERENCE object-moving-images references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=18 max=2.682e-06 | local-vs-glibc differing=802 maxUlps=10598835 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=16 max=4.768e-07 | local-vs-glibc differing=827 maxUlps=16742559 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=303 max=3.517e-06 | local-vs-glibc differing=599 maxUlps=23747911 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=0 max=9.08e-09 | local-vs-glibc differing=544 maxUlps=13735593 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=302 max=6.08e-06 | local-vs-glibc differing=648 maxUlps=17330727 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=72 max=4.292e-06 | local-vs-glibc differing=551 maxUlps=839689964 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=344 max=6.08e-06 | local-vs-glibc differing=667 maxUlps=23287332 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=251 max=6.02e-06 | local-vs-glibc differing=576 maxUlps=810849054 practical=0
+[02:32:38] samsung pixel-motion-x64: REFERENCE object-moving-images host re-judged vs glibc: True
+[02:32:38] samsung pixel-motion-x64: PASS object-moving-images 46s maxPipelineMs=7219.61
+[02:32:38] samsung pixel-motion-x64: START object-stationary-images timeout=2400s
+[02:32:38] samsung pixel-motion-x64: SCENE-DUMP object-stationary-images
+[02:32:57] samsung pixel-motion-x64: SCENE-REFERENCE object-stationary-images references=8
+case-0.film      gpu-vs-glibc passed=True practical=0 strict=6 max=1.192e-06 | local-vs-glibc differing=770 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=True practical=0 strict=18 max=2.325e-06 | local-vs-glibc differing=770 maxUlps=47 practical=0
+case-2.film      gpu-vs-glibc passed=True practical=0 strict=298 max=4.053e-06 | local-vs-glibc differing=540 maxUlps=58 practical=0
+case-3.film      gpu-vs-glibc passed=True practical=0 strict=0 max=1.118e-08 | local-vs-glibc differing=498 maxUlps=75 practical=0
+case-4.film      gpu-vs-glibc passed=True practical=0 strict=278 max=6.08e-06 | local-vs-glibc differing=587 maxUlps=755535144 practical=0
+case-5.film      gpu-vs-glibc passed=True practical=0 strict=19 max=3.338e-06 | local-vs-glibc differing=445 maxUlps=12215152 practical=0
+case-6.film      gpu-vs-glibc passed=True practical=0 strict=300 max=6.08e-06 | local-vs-glibc differing=590 maxUlps=7136579 practical=0
+case-7.film      gpu-vs-glibc passed=True practical=0 strict=238 max=6.02e-06 | local-vs-glibc differing=506 maxUlps=7136579 practical=0
+[02:33:39] samsung pixel-motion-x64: REFERENCE object-stationary-images host re-judged vs glibc: True
+[02:33:39] samsung pixel-motion-x64: PASS object-stationary-images 37s maxPipelineMs=6981.37
+[02:33:39] samsung pixel-motion-x64: START object-replay-motion-0 timeout=2400s
+[02:34:11] samsung pixel-motion-x64: PASS object-replay-motion-0 31s readbacks=414 max=2.68e-06 strict=18 fmt=native-command-stream-v6
+[02:34:11] samsung pixel-motion-x64: START object-replay-motion-1 timeout=2400s
+[02:34:44] samsung pixel-motion-x64: PASS object-replay-motion-1 32s readbacks=454 max=4.77e-07 strict=16 fmt=native-command-stream-v6
+[02:34:44] samsung pixel-motion-x64: START object-replay-motion-2 timeout=2400s
+[02:35:17] samsung pixel-motion-x64: PASS object-replay-motion-2 32s readbacks=456 max=3.52e-06 strict=303 fmt=native-command-stream-v6
+[02:35:17] samsung pixel-motion-x64: START object-replay-motion-3 timeout=2400s
+[02:35:50] samsung pixel-motion-x64: PASS object-replay-motion-3 32s readbacks=412 max=9.08e-09 strict=0 fmt=native-command-stream-v6
+[02:35:50] samsung pixel-motion-x64: START object-replay-motion-4 timeout=2400s
+[02:36:23] samsung pixel-motion-x64: PASS object-replay-motion-4 33s readbacks=457 max=6.08e-06 strict=302 fmt=native-command-stream-v6
+[02:36:23] samsung pixel-motion-x64: START object-replay-motion-5 timeout=2400s
+[02:36:56] samsung pixel-motion-x64: PASS object-replay-motion-5 33s readbacks=417 max=4.29e-06 strict=72 fmt=native-command-stream-v6
+[02:36:56] samsung pixel-motion-x64: START object-replay-motion-6 timeout=2400s
+[02:37:30] samsung pixel-motion-x64: PASS object-replay-motion-6 33s readbacks=460 max=6.08e-06 strict=344 fmt=native-command-stream-v6
+[02:37:30] samsung pixel-motion-x64: START object-replay-motion-7 timeout=2400s
+[02:38:03] samsung pixel-motion-x64: PASS object-replay-motion-7 33s readbacks=354 max=6.02e-06 strict=251 fmt=native-command-stream-v6
+[02:38:22] samsung pixel-motion-x64: END passed=True wall=415s/4800s failures=0
+{"passed": true, "failures": [], "error": null, "wallSeconds": 415.2}

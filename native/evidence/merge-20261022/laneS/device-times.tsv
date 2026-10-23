@@ -1,0 +1,149 @@
+samsung	compile-probe	prin-surface.wgsl:prepare_surface	16	FAIL(device lost)
+samsung	compile-probe	v1-noprin.wgsl:prepare_surface	1.8	PASS
+samsung	compile-probe	v2-nothinfilm.wgsl:prepare_surface	13.2	PASS
+samsung	compile-probe	v3-noortho.wgsl:prepare_surface	15.0	FAIL
+samsung	compile-probe	v4-nofresnel.wgsl:prepare_surface	9.7	PASS
+samsung	compile-probe	v5-noairy.wgsl:prepare_surface	16.5	FAIL
+samsung	compile-probe	v6-noconductive.wgsl:prepare_surface	17.3	FAIL
+samsung	compile-probe	v7-notable.wgsl:prepare_surface	17.4	FAIL
+samsung	compile-probe	v8-noatomic.wgsl:prepare_surface	17.3	FAIL
+samsung	compile-probe	v9-nodynidx.wgsl:prepare_surface	17.5	FAIL
+samsung	compile-probe	v10-noairy-nocond.wgsl:prepare_surface	16.8	FAIL
+samsung	compile-probe	v11-nodielectric.wgsl:prepare_surface	14.2	FAIL
+samsung	compile-probe	v12-loop1.wgsl:prepare_surface	17.9	FAIL
+samsung	compile-probe	v13-pol1.wgsl:prepare_surface	18.1	FAIL
+samsung	compile-probe	v14-allthree.wgsl:prepare_surface	13.4	PASS
+samsung	compile-probe	v15-chan-min.wgsl:prepare_surface	13.7	PASS
+samsung	compile-probe	v16-thinwall-off.wgsl:prepare_surface	17.2	FAIL
+samsung	compile-probe	v17-nowallfresnel.wgsl:prepare_surface	12.9	PASS
+samsung	compile-probe	v18-noalbedofilm.wgsl:prepare_surface	14.1	PASS
+samsung	compile-probe	orig-surface.wgsl:shade_surface	12.3	PASS
+samsung	compile-probe	orig-surface.wgsl:shade_surface_light	3.3	PASS
+samsung	compile-probe	orig-surface.wgsl:connect_surface_light	3.1	PASS
+samsung	compile-probe	orig-surface.wgsl:prepare_shader_data	1.3	PASS
+samsung	compile-probe	fix1-surface.wgsl:prepare_surface	13.6	FAIL
+samsung	compile-probe	fix1-surface.wgsl:shade_surface	12.2	PASS
+samsung	compile-probe	v19-polunroll.wgsl:prepare_surface	13.8	FAIL
+samsung	compile-probe	v20-mloop1.wgsl:prepare_surface	13.7	FAIL
+samsung	compile-probe	v21-noairyloop.wgsl:prepare_surface	13.9	FAIL
+samsung	compile-probe	v22-nodynidx.wgsl:prepare_surface	13.7	FAIL
+samsung	compile-probe	v23-filmscalar.wgsl:prepare_surface	13.5	FAIL
+samsung	compile-probe	v24-noglass.wgsl:prepare_surface	10.3	FAIL
+samsung	compile-probe	v25-noimage.wgsl:prepare_surface	13.6	FAIL
+samsung	compile-probe	v26-nonormalmap.wgsl:prepare_surface	13.9	FAIL
+samsung	compile-probe	v27-novolume.wgsl:prepare_surface	14.0	FAIL
+samsung	compile-probe	fix1:prepare_surface(trusted mask 0)	13	-
+samsung	compile-probe	fix1:prepare_surface(trusted mask 1)	13	-
+samsung	compile-probe	fix1:prepare_surface(trusted mask 2)	14	-
+samsung	compile-probe	v28-nopow.wgsl:prepare_surface	13.8	FAIL
+samsung	compile-probe	v30-simplepost.wgsl:prepare_surface	0.2	FAIL
+samsung	compile-probe	v31-wallnofilm.wgsl:prepare_surface	14.9	FAIL
+samsung	compile-probe	v32-noaniso.wgsl:prepare_surface	10.1	FAIL
+samsung	compile-probe	v33-nocoat.wgsl:prepare_surface	13.6	FAIL
+samsung	compile-probe	v34-nosheen.wgsl:prepare_surface	13.6	FAIL
+samsung	compile-probe	v35-nolobe4.wgsl:prepare_surface	13.2	FAIL
+samsung	compile-probe	v36-nolobe3wall.wgsl:prepare_surface	14.0	FAIL
+samsung	compile-probe	v40-wg32.wgsl:prepare_surface	16.8	FAIL
+samsung	compile-probe	v40-wg16.wgsl:prepare_surface	17.4	FAIL
+samsung	compile-probe	v40-wg1.wgsl:prepare_surface	17.3	FAIL
+samsung	compile-probe	v41-cheapwall.wgsl:prepare_surface	13.0	FAIL
+samsung	compile-probe	v42-albedofilm-metal.wgsl:prepare_surface	16.4	FAIL
+samsung	compile-probe	v43-albedofilm-diel.wgsl:prepare_surface	17.5	FAIL
+samsung	compile-probe	v44-smallstack.wgsl:prepare_surface	13.9	PASS
+samsung	compile-probe	v45-stack128.wgsl:prepare_surface	13.8	PASS
+samsung	compile-probe	v45-stack192.wgsl:prepare_surface	14.0	FAIL
+samsung	compile-probe	v45-stack224.wgsl:prepare_surface	14.3	FAIL
+samsung	compile-probe	v45-stack240.wgsl:prepare_surface	14.7	FAIL
+samsung	compile-probe	v45-stack160.wgsl:prepare_surface	13.8	FAIL
+samsung	compile-probe	v45-stack176.wgsl:prepare_surface	13.9	FAIL
+samsung	compile-probe	v46-plaindiel.wgsl:prepare_surface	12.5	FAIL
+samsung	compile-probe	v47-storagestack.wgsl:prepare_surface	16.9	PASS
+samsung	materials-prin1	principled_svm	126	PASS
+samsung	materials-prin1	principled_bounce	320	PASS
+samsung	materials-prin1	principled_render	54	FAIL(stage 40 mis_ray_pdf lockstep vs local)
+samsung	triangle-s1	triangle_sample	20	FAIL(sample 3133)
+samsung	triangle-s1	surface	66	PASS
+samsung	triangle-s1	triangle_lighting	120	PASS
+samsung	triangle-s1	replays 0-5	15/30/31/31/31/69	PASS
+samsung	triangle-s1	corpus wall	439	1 failure
+samsung	materials-s2	principled_render	54	FAIL(stage40 lockstep)
+samsung	materials-s2	nodes_svm (dump+import)	617	FAIL(svm-45 vs glibc)
+samsung	materials-s2	nodes_world	378	PASS
+samsung	materials-s2	nodes_render	109	FAIL(6720 vs device-scene glibc)
+samsung	materials-s2	corpus wall	1389	-
+samsung	pixel-motion-own	object-moving/stationary	62/35	PASS
+samsung	pixel-motion-own	8 replays	49-52 each	PASS
+samsung	pixel-motion-own	corpus wall	521	PASS
+samsung	pixel-motion-x64	object-moving/stationary	65/36	PASS
+samsung	pixel-motion-x64	8 replays	52-54 each	PASS
+samsung	pixel-motion-x64	corpus wall	567	PASS
+samsung	timing	tri4	30	rc=0
+samsung	timing	tri5	70	rc=0
+samsung	timing	prin	49	rc=0
+samsung	emitter-c2	emitter_sample	7.4	PASS
+samsung	emitter-c2	corpus wall	19.3	PASS
+samsung	regression-c2	glass_render	57.6	PASS
+samsung	regression-c2	lighting_mis	28.8	PASS
+samsung	regression-c2	transparent_lighting	88.3	PASS
+samsung	regression-c2	corpus wall	211.4	PASS
+samsung	transparent-c2	transparent_shadow	18.6	PASS
+samsung	transparent-c2	transparent_lighting	89.1	PASS
+samsung	transparent-c2	transparent_lighting-replay-0	18.9	PASS
+samsung	transparent-c2	transparent_lighting-replay-1	19.5	PASS
+samsung	transparent-c2	transparent_lighting-replay-2	24.5	PASS
+samsung	transparent-c2	transparent_lighting-replay-3	25.2	PASS
+samsung	transparent-c2	transparent_lighting-replay-4	25.5	PASS
+samsung	transparent-c2	transparent_lighting-replay-5	26.1	PASS
+samsung	transparent-c2	transparent_lighting-replay-6	24.8	PASS
+samsung	transparent-c2	transparent_lighting-replay-7	25.3	PASS
+samsung	transparent-c2	transparent-shadow-replay-direct	6.9	PASS
+samsung	transparent-c2	transparent-shadow-replay-indexed	6.9	PASS
+samsung	transparent-c2	corpus wall	335.8	PASS
+samsung	terminator-c2	shadow_terminator	117.0	PASS
+samsung	terminator-c2	terminator-replay-0	12.5	PASS
+samsung	terminator-c2	terminator-replay-1	14.3	PASS
+samsung	terminator-c2	terminator-replay-2	14.2	PASS
+samsung	terminator-c2	terminator-replay-3	14.3	PASS
+samsung	terminator-c2	terminator-replay-4	24.5	PASS
+samsung	terminator-c2	terminator-replay-5	24.7	PASS
+samsung	terminator-c2	terminator-replay-6	24.6	PASS
+samsung	terminator-c2	terminator-replay-7	24.4	PASS
+samsung	terminator-c2	terminator-replay-8	24.7	PASS
+samsung	terminator-c2	terminator-replay-9	53.1	PASS
+samsung	terminator-c2	corpus wall	370.5	PASS
+samsung	lighting-c2	lighting_mis	28.9	PASS
+samsung	lighting-c2	broad_lighting	56.1	PASS
+samsung	lighting-c2	lighting_mis-replay-0	16.1	PASS
+samsung	lighting-c2	lighting_mis-replay-1	16.6	PASS
+samsung	lighting-c2	broad_lighting-replay-0	16.5	PASS
+samsung	lighting-c2	broad_lighting-replay-1	16.9	PASS
+samsung	lighting-c2	corpus wall	185.9	PASS
+samsung	hostcap-linux-triangle	tri0	15.2	PASS
+samsung	hostcap-linux-triangle	tri1	30.5	PASS
+samsung	hostcap-linux-triangle	tri2	31.2	PASS
+samsung	hostcap-linux-triangle	tri3	31.4	PASS
+samsung	hostcap-linux-triangle	tri4	31.3	PASS
+samsung	hostcap-linux-triangle	tri5	69.8	PASS
+samsung	hostcap-linux-triangle	corpus wall	215.2	PASS
+samsung	hostcap-linux-terminator	term0	12.3	PASS
+samsung	hostcap-linux-terminator	term1	14.6	PASS
+samsung	hostcap-linux-terminator	term2	14.7	PASS
+samsung	hostcap-linux-terminator	term3	14.8	PASS
+samsung	hostcap-linux-terminator	term4	25.0	PASS
+samsung	hostcap-linux-terminator	term5	25.0	PASS
+samsung	hostcap-linux-terminator	term6	25.2	PASS
+samsung	hostcap-linux-terminator	term7	25.1	PASS
+samsung	hostcap-linux-terminator	term8	25.2	PASS
+samsung	hostcap-linux-terminator	term9	54.0	PASS
+samsung	hostcap-linux-terminator	corpus wall	242.3	PASS
+samsung	arena-replay	c45 surface_svm_probe	136	done
+samsung	arena-replay	vA.wgsl	135	rc=0
+samsung	arena-replay	vB.wgsl	141	rc=0
+samsung	arena-replay	vC.wgsl	141	rc=0
+samsung	arena-replay	vB1.wgsl	139	rc=0
+samsung	arena-replay	vB2.wgsl	141	rc=0
+samsung	arena-replay	vD.wgsl	140	rc=0
+samsung	materials-fade	nodes_svm (dump+import)	1014	FAIL(driver SIGSEGV creating probe after case 488; 512 cases passed incl. svm-45)
+samsung	materials-fade	nodes_world	376	PASS
+samsung	materials-fade	nodes_render	109	FAIL(6720)
+samsung	materials-fade	corpus wall	1717	-

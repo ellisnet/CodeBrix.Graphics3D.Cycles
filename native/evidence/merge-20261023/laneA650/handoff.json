@@ -1,0 +1,420 @@
+{
+  "lane": "a650-s20",
+  "date": "2026-10-22",
+  "device": {
+    "serial": "RFCRB0MPHYH",
+    "model": "SM-G781U1",
+    "api": 33,
+    "adapter": "Adreno (TM) 650",
+    "driver": "EV031.32.02.10 (Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25)",
+    "vendorId": 20803,
+    "deviceId": 100990978,
+    "tierDecision": "full, reason table, 20 s budget, refusedRegion SVM_NODES_ANY"
+  },
+  "patch": "04431d452498bdd60b65b6e943795fb5bdfd03337c4b2771029484c1424b8c1c",
+  "jobs": {
+    "transparent_lighting": {
+      "status": "fixed",
+      "rootCause": "shadow-all BVH stack (second 192-entry private array in intersect_shadow) lost pushed entries on the EV031.32 compiler: GPU fault / device lost",
+      "fix": "stack in the invocation SVM arena slot (wavefront_shadow_traversal.wgsl)",
+      "before": {
+        "wallSeconds": 47.5,
+        "result": "Parent device is lost"
+      },
+      "after": {
+        "corpus": "transparent-v3",
+        "passed": true,
+        "wallSeconds": 274.2,
+        "exit": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 683,
+        "maximumAbsoluteError": 6.020069122314453e-06,
+        "referenceRows": 8,
+        "reference": "linux-x64-glibc device-scene"
+      },
+      "replays": {
+        "passed": 8,
+        "total": 8,
+        "results": {
+          "transparent_lighting-replay-0": true,
+          "transparent_lighting-replay-1": true,
+          "transparent_lighting-replay-2": true,
+          "transparent_lighting-replay-3": true,
+          "transparent_lighting-replay-4": true,
+          "transparent_lighting-replay-5": true,
+          "transparent_lighting-replay-6": true,
+          "transparent_lighting-replay-7": true
+        }
+      }
+    },
+    "transparent_shadow": {
+      "status": "fixed",
+      "rootCause": "same as transparent_lighting: instance sentinel lost -> object!=NONE check -> invalid state (mask 1)",
+      "fix": "same",
+      "before": {
+        "wallSeconds": 11.0,
+        "result": "invalid data mask 1"
+      },
+      "after": {
+        "corpus": "transparent-v3",
+        "passed": true,
+        "wallSeconds": 21.9,
+        "exit": 0,
+        "practicalFailures": null,
+        "strictDifferences": null,
+        "maximumAbsoluteError": null,
+        "referenceRows": 0,
+        "reference": "gate-local (state gate or refusal)"
+      },
+      "replays": {
+        "passed": 2,
+        "total": 2,
+        "results": {
+          "transparent-shadow-replay-direct": true,
+          "transparent-shadow-replay-indexed": true
+        }
+      }
+    },
+    "object-moving-images": {
+      "status": "fixed",
+      "rootCause": "x64-oracle per-component normalize inlined rounded_divide 3x per call; EV031.32 dropped an SVM store in the light stage (error 8)",
+      "fix": "surface_native_normalize single rounded_divide body in an opaque-bound loop (wavefront_shader_data.wgsl)",
+      "before": {
+        "wallSeconds": 110.9,
+        "result": "mask 8"
+      },
+      "after": {
+        "corpus": "pixel-motion-v3",
+        "passed": true,
+        "wallSeconds": 140.6,
+        "exit": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 1276,
+        "maximumAbsoluteError": 6.079673767089844e-06,
+        "referenceRows": 8,
+        "reference": "linux-x64-glibc device-scene"
+      },
+      "replays": {
+        "passed": 8,
+        "total": 8,
+        "results": {
+          "object-replay-motion-0": true,
+          "object-replay-motion-1": true,
+          "object-replay-motion-2": true,
+          "object-replay-motion-3": true,
+          "object-replay-motion-4": true,
+          "object-replay-motion-5": true,
+          "object-replay-motion-6": true,
+          "object-replay-motion-7": true
+        }
+      }
+    },
+    "deforming-moving-images": {
+      "status": "fixed",
+      "rootCause": "same as object-moving-images",
+      "fix": "same",
+      "before": {
+        "wallSeconds": 82.7,
+        "result": "mask 8"
+      },
+      "after": {
+        "corpus": "pixel-motion-v3",
+        "passed": true,
+        "wallSeconds": 222.1,
+        "exit": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 1213,
+        "maximumAbsoluteError": 6.079673767089844e-06,
+        "referenceRows": 8,
+        "reference": "linux-x64-glibc device-scene"
+      },
+      "afterRerun": {
+        "corpus": "pixel-motion-v4def",
+        "passed": true,
+        "wallSeconds": 318.0,
+        "exit": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 1213,
+        "maximumAbsoluteError": 6.079673767089844e-06,
+        "referenceRows": 8,
+        "reference": "linux-x64-glibc device-scene"
+      },
+      "replays": {
+        "passed": 8,
+        "total": 8,
+        "results": {
+          "deforming-replay-motion-0": true,
+          "deforming-replay-motion-1": true,
+          "deforming-replay-motion-2": true,
+          "deforming-replay-motion-3": true,
+          "deforming-replay-motion-4": true,
+          "deforming-replay-motion-5": true,
+          "deforming-replay-motion-6": true,
+          "deforming-replay-motion-7": true
+        }
+      },
+      "replaysFirstAttempt": {
+        "passed": 4,
+        "total": 5,
+        "results": {
+          "deforming-replay-motion-0": true,
+          "deforming-replay-motion-1": true,
+          "deforming-replay-motion-2": true,
+          "deforming-replay-motion-3": true,
+          "deforming-replay-motion-4": false
+        }
+      }
+    },
+    "nodes_world": {
+      "status": "degraded-gracefully",
+      "how": "tier-table row Adreno (TM) 650 refuses SVM_NODES_ANY in shader_features() before any pipeline; message names GPU and features; capability scope lists it",
+      "rootCause": "separate-vector dynamic component lost a store (fixed, fix 1) and the world interpreter takes false branches (world 5 ramp size check) on EV031.32",
+      "before": {
+        "wallSeconds": 6.2,
+        "result": "mask 8 world 0"
+      },
+      "after": {
+        "corpus": "a650-refusals-v3",
+        "passed": true,
+        "wallSeconds": 0.5,
+        "exit": 1,
+        "practicalFailures": null,
+        "strictDifferences": null,
+        "maximumAbsoluteError": null,
+        "referenceRows": 0,
+        "reference": "gate-local (state gate or refusal)"
+      }
+    },
+    "nodes_svm": {
+      "status": "degraded-gracefully",
+      "how": "same refusal",
+      "rootCause": "EV031.32 link failure PSEUDOIMUL32 assertion (device lost) at a size/pressure threshold",
+      "before": {
+        "result": "device lost creating surface_svm_probe"
+      },
+      "after": {
+        "corpus": "a650-refusals-v3",
+        "passed": true,
+        "wallSeconds": 0.6,
+        "exit": 1,
+        "practicalFailures": null,
+        "strictDifferences": null,
+        "maximumAbsoluteError": null,
+        "referenceRows": 0,
+        "reference": "gate-local (state gate or refusal)"
+      }
+    },
+    "nodes_render": {
+      "status": "degraded-gracefully",
+      "how": "same refusal",
+      "rootCause": "EV031.32 link failure PSEUDOIMUL32 assertion (device lost) linking prepare_surface; bisection: 12 handlers jointly (threshold)",
+      "before": {
+        "wallSeconds": 17.2,
+        "result": "device lost creating prepare_surface"
+      },
+      "after": {
+        "corpus": "a650-refusals-v3",
+        "passed": true,
+        "wallSeconds": 0.7,
+        "exit": 1,
+        "practicalFailures": null,
+        "strictDifferences": null,
+        "maximumAbsoluteError": null,
+        "referenceRows": 0,
+        "reference": "gate-local (state gate or refusal)"
+      }
+    },
+    "principled_bounce": {
+      "status": "fixed (passes; slow)",
+      "before": {
+        "wallSeconds": 915.3,
+        "result": "stopped at timeout"
+      },
+      "after": {
+        "corpus": "materials-v3pb",
+        "passed": true,
+        "wallSeconds": 1631.2,
+        "exit": 0,
+        "practicalFailures": null,
+        "strictDifferences": null,
+        "maximumAbsoluteError": null,
+        "referenceRows": 0,
+        "reference": "gate-local (state gate or refusal)"
+      },
+      "note": "PASS 1631 s gate-local vs device CPU (as on the tablet); 5.3x the tablet 305 s; performance note, not a failure"
+    },
+    "principled_render": {
+      "status": "open (lane S2)",
+      "note": "reproduces the tablet stage 40 path.mis_ray_pdf 1751.469238 vs 1747.274414",
+      "after": {
+        "corpus": "materials-v3pr",
+        "passed": false,
+        "wallSeconds": 174.5,
+        "exit": 1,
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maximumAbsoluteError": 0,
+        "referenceRows": 1,
+        "reference": "linux-x64-glibc device-scene"
+      }
+    },
+    "principled_svm": {
+      "status": "not rerun (passes on the merged tree, 401 s)"
+    }
+  },
+  "regressionSet": {
+    "triangle_sample": {
+      "corpus": "triangle-v3reg",
+      "passed": true,
+      "wallSeconds": 114.7,
+      "exit": 0,
+      "practicalFailures": 0,
+      "strictDifferences": 865,
+      "maximumAbsoluteError": 0.00048828125,
+      "referenceRows": 1,
+      "reference": "linux-x64-glibc device-scene"
+    },
+    "surface": {
+      "corpus": "triangle-v3reg",
+      "passed": true,
+      "wallSeconds": 213.0,
+      "exit": 0,
+      "practicalFailures": null,
+      "strictDifferences": null,
+      "maximumAbsoluteError": null,
+      "referenceRows": 0,
+      "reference": "gate-local (state gate or refusal)"
+    },
+    "glass_render": {
+      "corpus": "regression-v3reg",
+      "passed": true,
+      "wallSeconds": 132.8,
+      "exit": 0,
+      "practicalFailures": 0,
+      "strictDifferences": 100,
+      "maximumAbsoluteError": 1.9073486328125e-06,
+      "referenceRows": 1,
+      "reference": "linux-x64-glibc device-scene"
+    },
+    "lighting_mis": {
+      "corpus": "regression-v3reg",
+      "passed": true,
+      "wallSeconds": 87.1,
+      "exit": 0,
+      "practicalFailures": 0,
+      "strictDifferences": 1057,
+      "maximumAbsoluteError": 6.079673767089844e-06,
+      "referenceRows": 8,
+      "reference": "linux-x64-glibc device-scene"
+    }
+  },
+  "linux": {
+    "build": "fresh (597 s) + one incremental; seeded tree moved to native/work/cycles-build.seeded (cache pointed at main)",
+    "gates": {
+      "v2-all-lanes": {
+        "label": "v2-all-lanes",
+        "exit": 0,
+        "seconds": 1274,
+        "budget": 2700
+      },
+      "v2-dump-nodes-render": {
+        "label": "v2-dump-nodes-render",
+        "exit": 0,
+        "seconds": 48,
+        "budget": 900
+      },
+      "v2-dump-transparent": {
+        "label": "v2-dump-transparent",
+        "exit": 0,
+        "seconds": 37,
+        "budget": 900
+      },
+      "v2-envelope": {
+        "label": "v2-envelope",
+        "exit": 0,
+        "seconds": 99,
+        "budget": 3600
+      },
+      "v2-envelope-nodes": {
+        "label": "v2-envelope-nodes",
+        "exit": 0,
+        "seconds": 43,
+        "budget": 3600
+      },
+      "v2-host-gate": {
+        "label": "v2-host-gate",
+        "exit": 0,
+        "seconds": 95,
+        "budget": 1500
+      },
+      "v2-nodes-gate": {
+        "label": "v2-nodes-gate",
+        "exit": 0,
+        "seconds": 1797,
+        "budget": 3600
+      },
+      "v2-principled-gate": {
+        "label": "v2-principled-gate",
+        "exit": 0,
+        "seconds": 802,
+        "budget": 2700
+      },
+      "v2-sim650-glass-render": {
+        "label": "v2-sim650-glass-render",
+        "exit": 0,
+        "seconds": 32,
+        "budget": 900
+      },
+      "v2-sim650-nodes-world": {
+        "label": "v2-sim650-nodes-world",
+        "exit": 1,
+        "seconds": 0,
+        "budget": 300
+      },
+      "v2-tier-gate": {
+        "label": "v2-tier-gate",
+        "exit": 0,
+        "seconds": 20,
+        "budget": 1800
+      },
+      "v2-transparent-shadow": {
+        "label": "v2-transparent-shadow",
+        "exit": 0,
+        "seconds": 91,
+        "budget": 900
+      }
+    },
+    "films": "glass db8e84f9, principled fd3a7f2b, node render b9d1da3f unchanged; nodes gate 176/176 and principled gate 44/44 films bit-identical to merge wave 4; all-lanes 263 identical, 17 atomic-accumulation cases differ (validation/film-compare-vs-merge4.txt)",
+    "envelopeWorst": "46790 (node render prepare_surface; transparent modules worst 44308)",
+    "audit": "PASS",
+    "notices": "PASS",
+    "diffCheck": "clean"
+  },
+  "binaries": {
+    "androidStagedJson": "native/work/a650-s20/staged-binaries-android-arm64.json",
+    "androidStagedJsonSha256": "e13c8a737f9b6ed0362b222ef0a6a1ec2b8499b5ae082889ddb2412d2ec5f8e8",
+    "linuxFinal": "native/work/a650-s20/logs/linux-bin-sha256-v2.txt",
+    "linuxSeededOracle": "native/work/a650-s20/logs/linux-bin-sha256-before.txt",
+    "compileProbe": "eb7c03c14aa4ebd51c0e85367ce395988bd44b7ebbd1abc8f9fc4cbfa0f6f478",
+    "runtimeArm64": "8113cbfa287b5ffc3d9b3c092ddc5ce543b8390abf05eefdde86cf69792fed52"
+  },
+  "touchedFiles": {
+    "native/shaders/wavefront_svm.wgsl": "svm_component() select chain for NODE_SEPARATE_VECTOR (Adreno 650 dynamic vector component miscompile); shared with lane S2 - local edit",
+    "native/shaders/wavefront_svm_derivatives.wgsl": "separate-vector derivative uses svm_component()",
+    "native/shaders/wavefront_shadow_traversal.wgsl": "trace_shadow_all BVH stack in the invocation SVM arena slot",
+    "native/shaders/wavefront_shader_data.wgsl": "surface_native_normalize: three divisions through one rounded_divide body (opaque loop bound)",
+    "native/cycles/device_tier.h": "KnownAdapter refused_region/refused_text, DeviceTierPolicy::known_adapter()",
+    "native/cycles/device_tier.cpp": "Adreno (TM) 650 table row (full, 20 s, refuses SVM_NODES_ANY); report fields refusedRegion/refused",
+    "native/cycles/pipelines.cpp": "adapter-class refusal in shader_features() (Step zero mask widening must adapt uint64_t region)",
+    "native/host/host_api.inc": "renderTimeRejections string for Adreno 650 node scenes",
+    "native/DEVICE.md": "tier table row, refused_region paragraph, open-items pointer, section Adreno 650 lane",
+    "docs/PARITY.md": "Material row: Adreno 650 status",
+    "AGENT-README.txt": "one consumer sentence (WHAT THIS PACKAGE DOES NOT DO)"
+  },
+  "notRun": [
+    "principled_svm rerun",
+    "HP confirmation (no lock taken)",
+    "Samsung tablet (lane S2)",
+    "Pixel 4 XL (closed)"
+  ]
+}

@@ -1,0 +1,32 @@
+[15:01:23] s20 motion-q: START object-moving-images timeout=600s
+[15:01:23] s20 motion-q: SCENE-DUMP object-moving-images
+[15:01:30] s20 motion-q: SCENE-REFERENCE object-moving-images references=8
+case-0.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=802 maxUlps=10598835 practical=0
+case-1.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-2.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-3.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-4.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-5.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-6.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-7.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[15:04:45] s20 motion-q: REFERENCE object-moving-images host re-judged vs glibc: False
+[15:04:45] s20 motion-q: FAIL object-moving-images exit=1 194s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[15:04:45] s20 motion-q: START deforming-moving-images timeout=600s
+[15:04:45] s20 motion-q: SCENE-DUMP deforming-moving-images
+[15:04:53] s20 motion-q: SCENE-REFERENCE deforming-moving-images references=8
+case-0.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=785 maxUlps=31 practical=0
+case-1.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-2.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-3.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-4.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-5.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-6.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+case-7.film      gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[15:06:18] s20 motion-q: REFERENCE deforming-moving-images host re-judged vs glibc: False
+[15:06:18] s20 motion-q: FAIL deforming-moving-images exit=1 84s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[15:06:18] s20 motion-q: START camera-static timeout=600s
+[15:06:27] s20 motion-q: PASS camera-static 9s maxPipelineMs=670.427
+[15:06:27] s20 motion-q: START camera-motion timeout=600s
+[15:06:57] s20 motion-q: PASS camera-motion 29s maxPipelineMs=20315.8
+[15:07:03] s20 motion-q: END passed=False wall=342s/4200s failures=4
+{"passed": false, "failures": ["object-moving-images: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack", "deforming-moving-images: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack", "object-replay-motion-0: not run (source job failed)", "deforming-replay-motion-0: not run (source job failed)"], "error": null, "wallSeconds": 341.7}

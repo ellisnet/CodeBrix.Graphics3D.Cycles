@@ -1,0 +1,246 @@
+{
+  "closed-overlap": {
+    "gate": "closed_volume_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_VOLUME_CLOSED_COUNT": "4"
+    },
+    "extraEnv": [],
+    "cutoffSeconds": 960,
+    "exit": 0,
+    "wallSeconds": 345.9,
+    "pipelines": [
+      {
+        "module": "volume",
+        "entry": "shader_eval_volume_density",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 181961,
+        "moduleMs": 26.2404,
+        "pipelineMs": 2162.03,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 53423,
+        "moduleMs": 8.89375,
+        "pipelineMs": 757.112,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 76495,
+        "moduleMs": 11.3432,
+        "pipelineMs": 3259.58,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 259489,
+        "moduleMs": 40.2842,
+        "pipelineMs": 3467.94,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 259489,
+        "moduleMs": 39.5523,
+        "pipelineMs": 13204.2,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 259489,
+        "moduleMs": 39.8058,
+        "pipelineMs": 9849.63,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 259489,
+        "moduleMs": 40.0166,
+        "pipelineMs": 5993.7,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 259489,
+        "moduleMs": 39.9233,
+        "pipelineMs": 26164.6,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 196180,
+        "moduleMs": 35.0586,
+        "pipelineMs": 2281.69,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "volume",
+        "entry": "shade_volume",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_COORD,SVM_NODE_CLOSURE_VOLUME,SVM_NODE_CLOSURE_HOLDOUT,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSLUCENT,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 181961,
+        "moduleMs": 30.8396,
+        "pipelineMs": 30007.2,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      }
+    ],
+    "maxPipelineMs": 30007.2,
+    "passed": true,
+    "report": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 580,
+      "paths": 234566,
+      "volumeScatterEvents": 3691,
+      "volumeTransmitEvents": 24240,
+      "volumeTerminatedEvents": 832,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 16,
+      "maxBounce": 5,
+      "maxTransparentBounce": 5,
+      "surfaceShaders": 25,
+      "integerChecks": 68894720,
+      "floatChecks": 97996800,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 3887,
+      "maximumStageError": 0.000732421875,
+      "maximumStageErrorField": "stage 237 path.mis_ray_pdf path=557",
+      "maximumStageErrorActual": 2758.013916015625,
+      "maximumStageErrorExpected": 2758.01318359375,
+      "maximumStagePracticalToleranceRatio": 0.056974646282404326,
+      "strictImageFailures": 857,
+      "maximumImageError": 3.0517578125e-05,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": true,
+        "pipelines": 10,
+        "totalPipelineMs": 97147.7,
+        "maxPipelineMs": 30007.2,
+        "maxPipelineEntry": "shade_volume",
+        "warnings": [
+          "pipeline 'shade_surface' took 26165 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+          "pipeline 'shade_volume' took 30007 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver"
+        ],
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Pixel 4 XL Adreno 640: Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)",
+          "adapter": {
+            "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+            "architecture": "",
+            "device": "Adreno (TM) 640",
+            "description": "Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google ",
+            "vendorId": 20803,
+            "deviceId": 100925441,
+            "simulated": false,
+            "mobile": true
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:3a79b87f57ee44c5",
+          "knownAdapter": {
+            "name": "Pixel 4 XL Adreno 640",
+            "tier": "full",
+            "budgetMs": 20000,
+            "evidence": "Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)"
+          },
+          "budgetSource": "environment",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "pipelineReportPresent": true
+  },
+  "closed-replay-overlap": {
+    "passed": false,
+    "timeout": true,
+    "cleanup": {
+      "pid": "20570",
+      "killed": false,
+      "remaining": []
+    },
+    "cutoffSeconds": 102,
+    "wallSeconds": 102.1,
+    "verdictText": "FAIL (3x cutoff at 102 s)"
+  }
+}

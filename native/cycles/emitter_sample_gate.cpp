@@ -114,7 +114,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     // sampling crashed the Intel Mesa 25.0.7 compiler on every cold compile.
     const std::string source=d.module_wgsl(surface_source())+"const EMITTER_PROBE_GROUP_SIZE:u32="+std::to_string(probe_group_size)+"u;\n"+R"WGSL(
 @compute @workgroup_size(EMITTER_PROBE_GROUP_SIZE) fn emitter_sample_probe(@builtin(global_invocation_id) invocation:vec3<u32>){
- let id=vec3<u32>(invocation.x+p(30u),invocation.y,invocation.z);if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
+ svm_invocation(invocation.x);let id=vec3<u32>(invocation.x+p(30u),invocation.y,invocation.z);if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
  if((state_word(S_path_flag,id.x)&PATH_RAY_MIS_HAD_TRANSMISSION)!=0u){r.runtime_flag=SR_BSDF_HAS_TRANSMISSION;}
  triangle_light_prefill(id.x,sd,false,true);let ls=light_sample_native(id.x,sd,r);let at=p(4u)+id.x*48u;let valid=ls.pdf>0.0;store_word(at,bitcast<u32>(select(0.0,1.0,valid)));
  if(valid){let values=array<f32,11>(ls.P.x,ls.P.y,ls.P.z,ls.D.x,ls.D.y,ls.D.z,ls.t,ls.pdf,ls.eval_fac,f32(ls.prim),f32(ls.object_id));
@@ -123,6 +123,17 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     std::ofstream(std::string(argv[1])+".wgsl")<<source;
     WGPUShaderSourceWGSL code{};code.chain.sType=WGPUSType_ShaderSourceWGSL;code.code={source.data(),source.size()};WGPUShaderModuleDescriptor descriptor{};descriptor.nextInChain=&code.chain;d.gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&descriptor));d.gpu.pop_scope();auto shader=d.gpu.pipeline(module,d.pipeline_layout,"emitter_sample_probe");
     std::array<uint32_t,32> p{};p[1]=count;p[4]=output.device_pointer+32;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[9]=scene.dscene.sample_pattern_lut.device_pointer;p[14]=d.scene_tables();p[17]=d.error_word;
+    // Optional diagnostic (CODEBRIX_EMITTER_PROBE_CAPTURE=PREFIX): the probe module, the arena before the dispatch and
+    // the parameters of the slice holding invocation CODEBRIX_EMITTER_PROBE_CAPTURE_INDEX (default 0), for arena replays.
+    if(const char *capture=std::getenv("CODEBRIX_EMITTER_PROBE_CAPTURE")){
+      const char *index=std::getenv("CODEBRIX_EMITTER_PROBE_CAPTURE_INDEX");auto q=p;q[30]=(index?unsigned(std::stoul(index)):0u)/probe_slice*probe_slice;
+      std::filesystem::create_directories(std::filesystem::path(capture).parent_path());
+      auto staging=d.gpu.buffer(d.arena_bytes,WGPUBufferUsage_CopyDst|WGPUBufferUsage_MapRead);wgpuCommandEncoderCopyBufferToBuffer(d.commands(),d.arena,0,staging,0,d.arena_bytes);d.flush();
+      std::vector<uint8_t> arena(d.arena_bytes);d.gpu.read(staging,arena.data(),arena.size());std::ofstream(std::string(capture)+".wgsl")<<source;
+      std::ofstream(std::string(capture)+".arena.bin",std::ios::binary).write(reinterpret_cast<const char*>(arena.data()),arena.size());
+      std::ofstream(std::string(capture)+".params.bin",std::ios::binary).write(reinterpret_cast<const char*>(q.data()),sizeof(q));
+      std::ofstream(std::string(capture)+".capture.json")<<"{\"entry\":\"emitter_sample_probe\",\"workgroupSize\":"<<probe_group_size<<",\"outputOffset\":"<<p[4]<<",\"recordBytes\":48,\"errorOffset\":"<<p[17]<<"}\n";
+    }
     for(unsigned first=0;first<count;first+=probe_slice){p[30]=first;d.dispatch(p,std::min(probe_slice,count-first),shader,probe_group_size);d.sync();}
     output.copy_from_device();healthy(d);uint error=0;d.download(d.error_word,&error,4);require(error==0,"Emitter shader error");
     auto save=[&](const char *suffix,const float *data,size_t count){std::ofstream f(std::string(argv[1])+suffix,std::ios::binary);f.write(reinterpret_cast<const char*>(data),count*4);};

@@ -1,0 +1,104 @@
+{
+  "documents": {
+    "docs/TESTING-MACOS-ARM64.md": {
+      "sections": [
+        "# Testing on macOS ARM64 (Apple Silicon, Metal)",
+        "## 1. Purpose and evidence produced",
+        "## 2. Prerequisites and pins",
+        "## 3. Build commands",
+        "## 4. Ordered steps and budgets",
+        "### Step 3: macOS host gate",
+        "### Step 4: oracle run",
+        "### Step 5: compare with the previous macOS evidence",
+        "### Step 6: oracle bundle",
+        "### Step 7: managed build, tests and package",
+        "### Step 8: licensing audit",
+        "### Step 9: staging (only on Jeremy's decision)",
+        "## 5. Reference policy and tolerances",
+        "## 6. Oracle bundle to bring back",
+        "## 7. What to record",
+        "## 8. Standing rules"
+      ],
+      "missing": [
+        "a managed GPU render on macOS. `CyclesBackend.Gpu` resolves to",
+        "a comparison of a fresh build against the committed payload",
+        "the Milestone 1 bench scene in `cbcOracleScene` form is not in"
+      ]
+    },
+    "docs/TESTING-LINUX-ARM64.md": {
+      "sections": [
+        "# Testing on Linux ARM64 (Raspberry Pi 5, WebGPU)",
+        "## 1. Purpose and evidence produced",
+        "## 2. Prerequisites and pins",
+        "### Linux x64 build machine (Debian)",
+        "### Raspberry Pi 5 (Debian-based OS, apt only)",
+        "## 3. Build commands (Linux x64 machine)",
+        "## 4. Ordered steps and budgets",
+        "### Linux x64 machine",
+        "### Raspberry Pi 5",
+        "### If the Pi's GPU or driver refuses a module",
+        "## 5. Reference policy and tolerances",
+        "### The Samsung triangle sampler (sample 3133) and the ARM64 float3 question",
+        "## 6. Bundle to bring back",
+        "## 7. What to record",
+        "## 8. Standing rules"
+      ],
+      "missing": [
+        "a native build on the Pi. `tools/build.py` refuses any machine",
+        "a Linux ARM64 device runner. The Linux x64 gate scripts in",
+        "a native (non-QEMU) Linux ARM64 host gate.",
+        "command replays and the specialization identity check on the Pi.",
+        "Linux ARM64 backends in `native/oracle/render_oracles.py`. Its",
+        "a linux-arm64 branch in",
+        "judging the Pi's GPU against the Linux x64 glibc reference of the",
+        "a maintained command that compares two reference sets; the"
+      ]
+    }
+  },
+  "pointers": {
+    "MAINTAINER-README.txt": [
+      "REPOSITORY LAYOUT docs/ entry",
+      "MAP OF THE NATIVE DOCUMENTATION (3 lines)",
+      "TESTING paragraph"
+    ],
+    "README-INDEX.txt": [
+      "MAINTAINER AND EXTRAS (3 entries)"
+    ],
+    "EXTRAS-README.txt": [
+      "COMPATIBILITY, PARITY AND RESEARCH docs/ entry (3 testing documents)"
+    ]
+  },
+  "commandsVerified": {
+    "help_checked": [
+      "native/oracle/render_oracles.py",
+      "native/oracle/compare.py",
+      "native/tools/build_cycles_macos.py",
+      "native/tools/build_cycles_linux_arm64.py",
+      "native/tools/macos_host_gate.py",
+      "native/tools/linux_arm64_host_gate.py",
+      "native/tools/stage_macos_binaries.py",
+      "tools/build_macos.py",
+      "tools/build_linux_arm64.py",
+      "native/tools/android_reference.py (export, scene-reference, compare)",
+      "native/tools/libm_probe.py"
+    ],
+    "executed_read_only": [
+      "android_reference compare_arrays/floats one-liners on the laptop Samsung triangle-m4 files (reproduced 4,620 differing / 65 practical and sample 3133 values)"
+    ],
+    "source_read_for_arguments": [
+      "gate executables OUTPUT_PREFIX (gate.cpp, background_gate.cpp); atomic_film takes no args (atomic_contract.cpp)",
+      "host executables args from host_gate.py",
+      "job args/env from the merge runner corpora",
+      "oracle runner flags from runner.cpp"
+    ],
+    "not_executed": [
+      "all builds, gates and device runs (documentation only)"
+    ]
+  },
+  "patchSha256": "0e0aa801620a0410bc9d944e8560ad599ca81bc218be4cdfc34823b59dc04250",
+  "gitApplyCheckOnMain": "pass",
+  "gateEdits": [
+    "\"Jeremy\" replaced by maintainer wording in both documents (pointer files had none)",
+    "EXTRAS-README.txt docs/ entry lists the three testing documents"
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "lane": "S (s-samsung-materials)",
+  "baseCommit": "3392df3d",
+  "worktree": "/home/jeremy/ClaudeHome/cycles-worktrees/s-samsung-materials",
+  "items": {
+    "item8_principled_device_lost": {
+      "status": "PARTIAL: device loss FIXED; principled_render OPEN",
+      "rootCause": "Adreno 730 per-invocation private memory: 263-word module-private svm_stack plus spills of the Principled thin-film + thin-wall paths -> AdrenoVK 'Failed to link shaders' -> wgpu device lost",
+      "fix": "SVM value stack + mask in a per-invocation arena slot (wavefront_svm.wgsl; device.h/.cpp allocate 4096 x 263 words, header after the error word; svm_invocation(id.x) in every SVM entry)",
+      "evidence": [
+        "device/compile-bisect-results.jsonl",
+        "device/materials-prin1-results.json"
+      ],
+      "samsung": {
+        "principled_svm": "PASS 126 s",
+        "principled_bounce": "PASS 320 s",
+        "principled_render": "FAIL local lockstep stage 40 path 2441 path.mis_ray_pdf 1751.469 vs 1747.274 (device CPU)"
+      },
+      "open": "principled_render lockstep: Linux reproduces 1751.470 when GGX lambda / sheen / principled_rotate / aspect are contraction-proofed (p4, reverted) -> WGSL-vs-CPU formula difference masked on Intel by FMA fusion"
+    },
+    "item9_nodes": {
+      "status": "PARTIAL: typed 2D noise FIXED; nodes_svm driver crash at case 489 OPEN; nodes_render 6720 OPEN",
+      "rootCause": "Adreno 730 reassociates the Perlin fade products (t*t)*(t*inner): identical arena replayed with arena_replay gives Intel == CPU bit for bit (0.5674633) and Adreno 0.5663444; an ordering barrier on that expression alone makes the case agree within 0.001 of the practical bound",
+      "fix": "wavefront_svm_nodes.wgsl svmn_order barrier (XOR with header word 3 after the error word, always 0)",
+      "evidence": [
+        "device/materials-fade-results.json",
+        "device/materials-fade-nodes_svm.stderr.txt",
+        "device/vB1.wgsl",
+        "device/c45.capture.json"
+      ],
+      "samsung": {
+        "nodes_svm": "512 cases PASS incl. svm-45, then Vulkan driver SIGSEGV creating the probe pipeline after case 488 (cumulative specialized probe module)",
+        "nodes_world": "PASS 376 s",
+        "nodes_render": "FAIL 6720 (render_gate device-own adapters; GPU == device CPU)"
+      },
+      "addedInfrastructure": "device-scene reference flow for render_gate images and SVM probe gates"
+    },
+    "item1_sampler_3133": {
+      "status": "OPEN",
+      "tried": "rounded motion step fraction in 3 places (p1) - no change, reverted",
+      "data": "object 5 prim 4 (deforming emitter): GPU P.y 0.382186, glibc 0.379992, device CPU 0.380744; pdf differs by 1 ulp"
+    },
+    "item4_motion_rerun": {
+      "status": "PASS",
+      "own": "device/pixel-motion-own-results.json (moving + stationary + 8 replays, 521 s)",
+      "x64": "device/pixel-motion-x64-results.json (device-scene glibc, host re-judged PASS, 567 s)"
+    },
+    "item3_dispatch_measurement": {
+      "status": "MEASURED, no reset",
+      "evidence": "device/timing-summary.json",
+      "maxSubmissionMs": 29.3,
+      "worstPerInvocationMs": "shade_surface_light ~0.056 ms/invocation (emissive triangles, mode 5)",
+      "extrapolated4096PathsMs": 230
+    }
+  },
+  "validation": {
+    "hostGate": "PASS (3142 comparisons)",
+    "dotnet": "build 0 warnings; test 162/162",
+    "audit": "PASS",
+    "notices": "PASS",
+    "guards": "PASS",
+    "generator": "up to date",
+    "allLanes": "PASS: 29 targets, productionSourcesUnchanged, 1359 s (validation/all-lanes-status.json)",
+    "films": {
+      "glass": "db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6 (unchanged)",
+      "principled": "fd3a7f2baa685d64349caaa207261a822766f8a16e847e622a9cbdcd54f5d47e (unchanged)"
+    },
+    "nodesGateAfterFadeFix": "PASS (validation/l2-nodes-fade.log)",
+    "principledGate": "PASS",
+    "nodesGate": "PASS",
+    "triangleGate": "PASS",
+    "terminatorGate": "PASS",
+    "note": "all-lanes, host gate and dotnet ran before the fade fix; the fix only changes the SVM_NODES_NOISE region (node scenes); glass film rechecked db8e84f9 after it, nodes gate rerun PASS"
+  },
+  "device": {
+    "samsung": "lock released 15:30, no codebrix-s-* folders, no codebrix processes",
+    "times": "device-times.tsv",
+    "finalChains": {
+      "emitter-c2": "PASS",
+      "regression-c2": "PASS",
+      "transparent-c2": "PASS",
+      "terminator-c2": "PASS",
+      "lighting-c2": "PASS",
+      "hostcap-linux-triangle": "PASS",
+      "hostcap-linux-terminator": "PASS",
+      "pixel-motion-own": "PASS",
+      "pixel-motion-x64": "PASS",
+      "triangle_lighting+6 replays": "PASS",
+      "triangle_sample": "FAIL sample 3133 (item 1)"
+    }
+  }
+}

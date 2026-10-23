@@ -1,0 +1,237 @@
+{
+  "lane": "zc-pipeline-cache",
+  "date": "2026-10-22",
+  "result": "Runtime exposes no usable pipeline cache on any backend; commission item 4 applies: audit + driver-cache findings + future-runtime export spec; no host/managed code added.",
+  "audit": {
+    "runtime": "CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433",
+    "wgpuGetVersion": "0x1d000101 (29.0.1.1)",
+    "codebrixApi": 2,
+    "runtimeSha256": {
+      "linux-x64": "a2cf8b752085fcce0328b83e8eeaaa2080efac0ecb05213a185ec2caa11e3b14",
+      "android-x64": "c2b0105f28ba01068cd9b6af6d560315af90b4b2cab6c40fcb78813bd9bb4380",
+      "android-arm64": "8113cbfa287b5ffc3d9b3c092ddc5ce543b8390abf05eefdde86cf69792fed52",
+      "linux-arm64": "512fed0c5a4b5260f3c423a027997219b45a8fa96caa285c9b2e018f571b1e27",
+      "osx-arm64": "44197dcf1d0f5fc07c040af0b8e149c91514efb28fe413f5230418b1ad06c54d",
+      "osx-x64": "3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483",
+      "win-x64": "61c6f4d8d529240ab531e17f9aab7845b9dda04a45848674c1af463f346b6afa",
+      "win-arm64": "5c93319aaefae2d531922f98283f0d3eda6336b8380d245c11aad63263bcf531"
+    },
+    "vulkan_linux_android": {
+      "exposed": false,
+      "evidence": [
+        "wgpu.h: WGPUNativeFeature_PipelineCache=0x0003002B (header: Vulkan supported, DX12/Metal unimplemented); WGPUHubReport.pipelineCaches only",
+        "no wgpuDeviceCreatePipelineCache/wgpuPipelineCacheGetData/Release exported: nm -D 251 defined symbols per ELF RID, none containing cache; proc table count 251 with no cache entry",
+        "no native sType for cache chaining (native sTypes end at 0x0003000B); WGPUComputePipelineDescriptor has no cache member",
+        "feature advertised and device creatable with it on Linux ADL-S Mesa 25.0.7 and HP TGL GT2 Mesa 24.0.8 (audit/probe-*.txt)",
+        "wgpuGetProcAddress panics (unimplemented, ends process)",
+        "Vulkan HAL contains vkCreatePipelineCache/vkGetPipelineCacheData internally; not reachable from C"
+      ]
+    },
+    "metal_macos": {
+      "exposed": false,
+      "evidence": [
+        "no wgpu*Cache* names in osx-x64/osx-arm64 dylib strings; header lists Metal as unimplemented"
+      ]
+    },
+    "d3d12_windows": {
+      "exposed": false,
+      "evidence": [
+        "no cache exports in win-x64 objdump export table / win-arm64 strings; header lists DX12 as unimplemented"
+      ]
+    }
+  },
+  "driverCaches": {
+    "linux_mesa_25_0_7": "works; default $XDG_CACHE_HOME or ~/.cache/mesa_shader_cache_db; warm compile ~0.02 s vs 22-48 s cold; films bit-identical",
+    "hp_mesa_24_0_8_bliss": "absent: nothing written with MESA_SHADER_CACHE_DIR or XDG_CACHE_HOME, equal repeat compile times; no MESA_SHADER_CACHE_DISABLE string in driver (INFERENCE: Mesa disk cache disabled on Android builds)",
+    "samsung_adreno_730": "no effective implicit cache in merge-4 data (identical pipelines recompiled at full cost within and across processes)",
+    "s20_pixel": "no repeated pipelines in data; not determined",
+    "macos_windows": "not measured"
+  },
+  "futureRuntimeExports": [
+    "WGPUPipelineCache handle",
+    "WGPUPipelineCacheDescriptor{nextInChain,label,data,dataSize,fallback}",
+    "wgpuDeviceCreatePipelineCache",
+    "wgpuPipelineCacheGetData (two-call)",
+    "wgpuPipelineCacheAddRef/Release",
+    "WGPUComputePipelineDescriptorExtras{chain,cache} + new native sType (and render equivalent)",
+    "adapter pipeline-cache-key query",
+    "proc-table + wgpuCodebrixGetProcStatus rows (Unsupported, never abort, off Vulkan)"
+  ],
+  "design": "not implemented (no runtime API). Proposed when available: file per (runtime version, adapter key, module hash, opaque specialization-record hash) under configurable dir, fallback=true, save after compile, capability report counters.",
+  "apiAdditions": [],
+  "gates": {
+    "bitIdentityLinuxDriverCache": {
+      "glass_render": {
+        "cold": "db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6",
+        "warm": "db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6",
+        "disabled": "db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6"
+      },
+      "principled_render": {
+        "cold": "fd3a7f2baa685d64349caaa207261a822766f8a16e847e622a9cbdcd54f5d47e",
+        "warm": "fd3a7f2baa685d64349caaa207261a822766f8a16e847e622a9cbdcd54f5d47e",
+        "disabled": "fd3a7f2baa685d64349caaa207261a822766f8a16e847e622a9cbdcd54f5d47e"
+      },
+      "nodes_render": {
+        "cold": "b9d1da3fe595962cadc02925ab10378c099db2bec1c4f80993a3bb1012c419ce",
+        "warm": "b9d1da3fe595962cadc02925ab10378c099db2bec1c4f80993a3bb1012c419ce",
+        "disabled": "b9d1da3fe595962cadc02925ab10378c099db2bec1c4f80993a3bb1012c419ce"
+      }
+    },
+    "linuxColdWarm": [
+      {
+        "gate": "glass_render",
+        "mode": "cold",
+        "wallS": 44.41,
+        "pipelineS": 22.597,
+        "cacheBytesAfter": 4253671,
+        "passed": true
+      },
+      {
+        "gate": "glass_render",
+        "mode": "warm",
+        "wallS": 27.7,
+        "pipelineS": 0.022,
+        "cacheBytesAfter": 4253671,
+        "passed": true
+      },
+      {
+        "gate": "glass_render",
+        "mode": "disabled",
+        "wallS": 43.85,
+        "pipelineS": 21.728,
+        "cacheBytesAfter": 4253671,
+        "passed": true
+      },
+      {
+        "gate": "principled_render",
+        "mode": "cold",
+        "wallS": 65.02,
+        "pipelineS": 47.73,
+        "cacheBytesAfter": 5665420,
+        "passed": true
+      },
+      {
+        "gate": "principled_render",
+        "mode": "warm",
+        "wallS": 16.52,
+        "pipelineS": 0.025,
+        "cacheBytesAfter": 5665420,
+        "passed": true
+      },
+      {
+        "gate": "principled_render",
+        "mode": "disabled",
+        "wallS": 61.35,
+        "pipelineS": 44.812,
+        "cacheBytesAfter": 5665420,
+        "passed": true
+      },
+      {
+        "gate": "nodes_render",
+        "mode": "cold",
+        "wallS": 53.76,
+        "pipelineS": 39.589,
+        "cacheBytesAfter": 5213922,
+        "passed": true
+      },
+      {
+        "gate": "nodes_render",
+        "mode": "warm",
+        "wallS": 16.36,
+        "pipelineS": 0.027,
+        "cacheBytesAfter": 5213922,
+        "passed": true
+      },
+      {
+        "gate": "nodes_render",
+        "mode": "disabled",
+        "wallS": 52.52,
+        "pipelineS": 38.397,
+        "cacheBytesAfter": 5213922,
+        "passed": true
+      }
+    ],
+    "hostAbiGpu": [
+      {
+        "mode": "cold",
+        "wallS": 51.51,
+        "pipelineS": 49.722,
+        "pipelines": 59,
+        "passed": true
+      },
+      {
+        "mode": "warm",
+        "wallS": 1.8,
+        "pipelineS": 0.127,
+        "pipelines": 59,
+        "passed": true
+      },
+      {
+        "mode": "warm2",
+        "wallS": 1.8,
+        "pipelineS": 0.123,
+        "pipelines": 59,
+        "passed": true
+      }
+    ],
+    "hostAbiFilmsNote": "GPU host films differ on every run including warm vs warm (documented atomic accumulation); not bit-comparable",
+    "hpCold_merge4": {
+      "glass_render": [
+        70.7,
+        35.7
+      ],
+      "principled_render": [
+        152.7,
+        118.7
+      ],
+      "nodes_render": [
+        111.8,
+        77.4
+      ],
+      "principled_bounce": [
+        930.7,
+        916.5
+      ]
+    },
+    "linuxGreen": {
+      "audit": "PASS",
+      "notices": "PASS",
+      "dotnetBuildRelease": "0 warnings",
+      "dotnetBuildDebug": "0 warnings",
+      "dotnetTestRelease": "162/162",
+      "dotnetTestDebug": "162/162",
+      "gitDiffCheck": "PASS",
+      "intelCompileEnvelope": "not run: no WGSL/native change"
+    }
+  },
+  "binariesRun": {
+    "codebrix_cycles_glass_render_gate": "c8c50d07477dff85f2de3a93f7d704f5cfe6f3e3ac0bfd7c87d15b831b4cd0ff",
+    "codebrix_cycles_principled_render_gate": "702e32551d160136c535202911b728490b083f4eac33d043c98163eb0870bcc8",
+    "codebrix_cycles_nodes_render_gate": "4f46da0216ca3fe3c11d7af999d09868772ea1f72e34819dd42a65415c08d01f",
+    "codebrix_host_abi_test": "7ac041aabda5f90c2669bf81be2c48fea7ca7350c33161c3ad35f7327b28aabb",
+    "cache_probe_linux": "c36856956bed81a59fab3f4d1df8858f39935893379587b3c733def4fafb2ea8",
+    "cache_probe_android_x64": "c400a7886a50aef63eeb8b5e775144693c82cfdb1d6a48eae68ef8e3e60936ff"
+  },
+  "touchedFiles": [
+    {
+      "path": "MAINTAINER-README.txt",
+      "reason": "new PIPELINE CACHE (AUDIT OF THE SHIPPED RUNTIME) section before NOTES; no overlap with z0"
+    },
+    {
+      "path": "AGENT-README.txt",
+      "reason": "one bullet in WHAT THIS PACKAGE DOES NOT DO: no persistent pipeline cache, driver behaviour"
+    },
+    {
+      "path": "native/DEVICE.md",
+      "reason": "appended section \"Pipeline cache (lane ZC, 2026-10-22)\" at end"
+    }
+  ],
+  "notTouched": "pipelines.cpp/.h, device.cpp/.h, host ABI, managed API, exports lists: unchanged (no feature bit taken)",
+  "hp": {
+    "lockHeld": "18:31-18:33",
+    "remotePrefix": "/data/local/tmp/codebrix-zc-probe",
+    "cleaned": true,
+    "lockReleased": true,
+    "androidBuild": "not built (probe sufficed)"
+  }
+}

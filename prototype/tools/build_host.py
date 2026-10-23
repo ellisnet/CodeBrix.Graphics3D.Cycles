@@ -12,6 +12,7 @@ WORK=ROOT/'work'
 sys.path.insert(0,str(ROOT.parent/'tools'))
 from cycles_source import verify as verify_cycles
 from native_dependencies import prefix as dependency_prefix
+from rebase_build_tree import rebase, verify as verify_rebase
 commands=[]
 def run(command):
     command=list(map(str,command)); commands.append(command)
@@ -24,7 +25,9 @@ def build(source,folder,options,jobs,install=False):
     if install: run(['cmake','--install',WORK/folder])
 def main():
     p=argparse.ArgumentParser(); p.add_argument('--dependencies',action='store_true'); p.add_argument('--jobs',default='6')
+    p.add_argument('--rebase-build-tree',action='store_true',help='Re-point a build tree copied from another checkout at this checkout first (tools/rebase_build_tree.py)')
     args=p.parse_args()
+    rebased=rebase(WORK/'cycles-build',ROOT.parent) if args.rebase_build_tree and (WORK/'cycles-build/CMakeCache.txt').exists() else None
     if args.dependencies:
         run([sys.executable,ROOT.parent/'tools/dependencies/build.py','--jobs',args.jobs])
     deps=dependency_prefix()
@@ -39,5 +42,6 @@ def main():
         'DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
     configure(verify_cycles(),WORK/'cycles-build',options)
     run(['cmake','--build',WORK/'cycles-build','--target','codebrix_cycles_host_probe','--parallel',args.jobs])
+    if rebased and rebased['rebased']:verify_rebase(WORK/'cycles-build',ROOT.parent,rebased['oldRoot'])
     (WORK/'host-build-commands.json').write_text(json.dumps(commands,indent=2)+'\n')
 if __name__=='__main__': main()

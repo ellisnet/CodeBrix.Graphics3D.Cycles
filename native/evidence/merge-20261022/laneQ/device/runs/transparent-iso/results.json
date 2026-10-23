@@ -1,0 +1,65 @@
+{
+  "transparent_shadow": {
+    "gate": "transparent_shadow",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 10.2,
+    "pipelines": [
+      {
+        "module": "shadow",
+        "entry": "intersect_shadow",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_PRINCIPLED",
+        "wgslBytes": 212889,
+        "moduleMs": 24.6597,
+        "pipelineMs": 1421.23,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "shadow",
+        "entry": "prepare_shadow_shader_data",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_PRINCIPLED",
+        "wgslBytes": 212889,
+        "moduleMs": 23.8848,
+        "pipelineMs": 3799.51,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "shadow",
+        "entry": "shade_shadow_transparent",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_PRINCIPLED",
+        "wgslBytes": 212889,
+        "moduleMs": 23.7168,
+        "pipelineMs": 4453.82,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 4453.82,
+    "passed": false,
+    "error": [
+      "shadow variant=0 count=63",
+      "00:10.03 | ERROR: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data",
+      "Transparent intersect failed: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data"
+    ]
+  },
+  "transparent-shadow-replay-direct": {
+    "passed": false,
+    "notRun": "source job failed"
+  },
+  "transparent-shadow-replay-indexed": {
+    "passed": false,
+    "notRun": "source job failed"
+  }
+}

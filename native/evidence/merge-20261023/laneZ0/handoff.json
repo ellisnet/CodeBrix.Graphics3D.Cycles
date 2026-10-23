@@ -1,0 +1,554 @@
+{
+  "lane": "z0-step-zero",
+  "date": "2026-10-22",
+  "patch": "native/work/z0-step-zero/handoff/changes.patch",
+  "patchSha256": "35500e89bcbcc646d8c82bb5424e53b945fd66e51969fbd5e47d8d5d19872c56",
+  "applyCheckOnMain": true,
+  "maskLayout": {
+    "type": "ShaderFeatures (native/cycles/pipelines.h)",
+    "words": 4,
+    "bits": 256,
+    "bitMapping": "bit n = words[n/64] bit n%64",
+    "assigned": "0-61 unchanged, 63 SF_TEX_GABOR",
+    "free": "62, 64-255",
+    "SF_ALL": "bits 0-61 | 63",
+    "SF_SUPERSET_SCENE_ONLY": "unchanged",
+    "persistedFormats": "none carry the numeric mask (pipeline log, reports, superset records and device record use feature names); no version bump"
+  },
+  "jobs": {
+    "job1": {
+      "status": "DONE",
+      "evidence": "native/work/z0-step-zero/validation",
+      "linux": {
+        "films": {
+          "glass_render": {
+            "before": "db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6",
+            "after": "db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6",
+            "allFilmsIdentical": true,
+            "supersetGroups": 4,
+            "groupFilmsIdentical": true,
+            "beforeBinarySha256": "c8c50d07477dff85f2de3a93f7d704f5cfe6f3e3ac0bfd7c87d15b831b4cd0ff",
+            "afterBinarySha256": "f8dada120425827d2f1d34bb452ad05f539ca3574f0b3ac27817c399632b8e2f"
+          },
+          "principled_render": {
+            "before": "fd3a7f2baa685d64349caaa207261a822766f8a16e847e622a9cbdcd54f5d47e",
+            "after": "fd3a7f2baa685d64349caaa207261a822766f8a16e847e622a9cbdcd54f5d47e",
+            "allFilmsIdentical": true,
+            "supersetGroups": 10,
+            "groupFilmsIdentical": true,
+            "beforeBinarySha256": "702e32551d160136c535202911b728490b083f4eac33d043c98163eb0870bcc8",
+            "afterBinarySha256": "cf6a10afb2ee07991414bfbebb8e6eff791a821dfebe27b367b918bf8b74b7be"
+          },
+          "nodes_render": {
+            "before": "b9d1da3fe595962cadc02925ab10378c099db2bec1c4f80993a3bb1012c419ce",
+            "after": "b9d1da3fe595962cadc02925ab10378c099db2bec1c4f80993a3bb1012c419ce",
+            "allFilmsIdentical": true,
+            "supersetGroups": 1,
+            "groupFilmsIdentical": true,
+            "beforeBinarySha256": "4f46da0216ca3fe3c11d7af999d09868772ea1f72e34819dd42a65415c08d01f",
+            "afterBinarySha256": "880e8fc3b26eee69f0cf1755a8c5c2a693547b22f62f9bf06146ad98f28a86a9"
+          }
+        },
+        "wgslDumpsIdentical": true,
+        "hostGate": {
+          "comparisons": 3146,
+          "identicalToMerge4": 3128,
+          "runToRunVariantGpuFilms": 18,
+          "evidence": [
+            "validation/after-host-gate",
+            "validation/after-host-gate-2"
+          ]
+        }
+      },
+      "hp": {
+        "materials": {
+          "glass_render": {
+            "gpuFilm": "7d484aceb14f89926ec2d6a86edb686fd37c73893737eb63e7f62dd6ca94f9d9",
+            "merge4": "7d484aceb14f89926ec2d6a86edb686fd37c73893737eb63e7f62dd6ca94f9d9",
+            "filmsIdentical": true,
+            "passed": true,
+            "seconds": 74.9,
+            "sceneDumpIdenticalToMerge4": {
+              "image.scene": true,
+              "image.local.f32": true
+            }
+          },
+          "principled_render": {
+            "gpuFilm": "e9f7279d8fe3d2cb913ec8b91a87e11567ae679285ef843d6f3decc05a38b487",
+            "merge4": "e9f7279d8fe3d2cb913ec8b91a87e11567ae679285ef843d6f3decc05a38b487",
+            "filmsIdentical": true,
+            "passed": true,
+            "seconds": 155.6,
+            "sceneDumpIdenticalToMerge4": {
+              "image.scene": true,
+              "image.local.f32": true
+            }
+          },
+          "nodes_render": {
+            "gpuFilm": "96d862233f5a2de117b72cb996fb1831d893ecb3a19001b5f55018b006d92960",
+            "merge4": "96d862233f5a2de117b72cb996fb1831d893ecb3a19001b5f55018b006d92960",
+            "filmsIdentical": true,
+            "passed": true,
+            "seconds": 117.1,
+            "sceneDumpIdenticalToMerge4": {
+              "image.scene": true,
+              "image.local.f32": true
+            }
+          }
+        },
+        "hostGate": {
+          "run1": "PASS 48 exports, 1579 comparisons, 1568 identical to merge 4, 11 GPU films vary run to run",
+          "run2": "FAIL 1 strict-required value gpu-exit/run.3 1.49e-7 practical 0 (same binary as run1)",
+          "evidence": [
+            "validation/hp/z0-hostgate-hp",
+            "validation/hp/z0-hostgate-hp-2"
+          ]
+        },
+        "stagedSha256": {
+          "lib/libboost_iostreams.so": "8e049581ef95a5bb6ccce15eac196e2efe384ef38589386145b6f01eef727c15",
+          "lib/libOpenEXR.so": "96a4de9c6585ea70c0f2a0bd065cc341fda34792b930750a00f14d92494edc5b",
+          "lib/libOpenEXRUtil-3_1.so": "87ff06315fad3191a7d798940d4855103511087b8e290a16751c239fb4d82fc8",
+          "lib/libIlmThread-3_1.so": "e4a83d94be3de971874b79af9f879d45cb25fa48d22ad7f50babc350cc80b074",
+          "lib/libboost_filesystem.so": "3f5d883453103617f2a954072dbeec3972d674d80d5efeed15bedffc867e01d9",
+          "lib/libboost_chrono.so": "35fe66ddb4aa0e70a98c756dd8ac59872188c27b607b17563cef02e7e128e4ef",
+          "lib/libIex.so": "064bc76f3136fb73fd79d2992b77f0a211db86301839297f67d4d913b6ec5d7c",
+          "lib/libIlmThread.so": "e4a83d94be3de971874b79af9f879d45cb25fa48d22ad7f50babc350cc80b074",
+          "lib/libzstd.so": "713ad06610a9fc3469af191bda6a6284214379d6e096afd39fbbd409830b89b5",
+          "lib/libexpat.so": "d4448db274b311d731c8f13c49eb42d4c5a720a66eda431753a8c2cfeb802cd4",
+          "lib/libtiff.so": "c2dc762b64a65cb8fe0c26018a7c9d2a80b15fff194e6ad80841df9744ada7b1",
+          "lib/libOpenEXRCore.so": "62fe74fc7f565d88741ab8193d9eaaa03dae8d6ee5555dbf6cf6d20ce040e2d1",
+          "lib/libtiffxx.so": "7c73fdd8fb720cdc60e6c99d71e166a386423f3ac145a63b1d8928de21d3138b",
+          "lib/libOpenImageIO.so": "413888f4a98f12ab2b0a5f640ae1d2c5d22f94d72889abc6db349a952af99367",
+          "lib/libboost_regex.so": "502e7d3c05edf6b0e3bfc2d69a6bf4cef19e0847c0b41f3349e363fcf55fad59",
+          "lib/libIex-3_1.so": "064bc76f3136fb73fd79d2992b77f0a211db86301839297f67d4d913b6ec5d7c",
+          "lib/libboost_thread.so": "f1f10beaa30551c42d39d50a0353166593ccd653c437f9519c27b25a65de3681",
+          "lib/libboost_system.so": "7c67642c1276c9c83c7dc5744356e087607adf7d3462a33644066c8b0b273966",
+          "lib/libOpenEXRUtil.so": "87ff06315fad3191a7d798940d4855103511087b8e290a16751c239fb4d82fc8",
+          "lib/libpng16.so": "08fdae347247afff5e8815380bb54c4756f2977c9cef9c68623db7ddcda1f0ad",
+          "lib/libOpenEXRCore-3_1.so": "62fe74fc7f565d88741ab8193d9eaaa03dae8d6ee5555dbf6cf6d20ce040e2d1",
+          "lib/libpng.so": "08fdae347247afff5e8815380bb54c4756f2977c9cef9c68623db7ddcda1f0ad",
+          "lib/libOpenImageIO_Util.so": "b7136104b56900c5ab1da3ac81b006bba3d0d731a165cffcce544d028b74d039",
+          "lib/libjpeg.so": "d5dfcce8f5d960caf83e8e453ed32c043872ce4ceea27dfa2a4a732004fac407",
+          "lib/libpugixml.so": "3ee8fc0646b60e7cc40cea0f19ec92f0e7520033a7e0df07b4a7269512e7280b",
+          "lib/libImath-3_1.so": "76ca21a6681883f158f110ab55f6b177805c63791b10fe934889d2d11e7f2aa3",
+          "lib/libImath.so": "76ca21a6681883f158f110ab55f6b177805c63791b10fe934889d2d11e7f2aa3",
+          "lib/libOpenColorIO.so": "f012d4cdaeb34632432b0a3d599bed91be5d6e3edcc2e2c5af62692740fd7776",
+          "lib/libtbb.so": "14f5a3ddc8bcef12217eb036d855f30e0cb519d43576a4b06c4971224b6b059d",
+          "lib/libz.so": "71685a16bc5349572b9d7eb03880186cfa7998ec5909f8890b27e107f4c216b4",
+          "lib/libboost_date_time.so": "57ab99a601c7d7e657a955dc0714f2309de962ebd90a9a799ccaacccde30da5e",
+          "lib/libOpenEXR-3_1.so": "96a4de9c6585ea70c0f2a0bd065cc341fda34792b930750a00f14d92494edc5b",
+          "lib/libcodebrix_wgpu.so": "c2b0105f28ba01068cd9b6af6d560315af90b4b2cab6c40fcb78813bd9bb4380",
+          "lib/libc++_shared.so": "e28cb9e0f456caf8498d0e8562b3ac3f73bf78c07555a52b5602396f240abec3",
+          "bin/codebrix_cycles_glass_render_gate": "d63c8d67d689b111e6ee1a67b7586f4711d6dba79b45375edf75d5f541292b3b",
+          "bin/codebrix_cycles_principled_render_gate": "a4f3bb8c506e3f6834e2b4e3cc82e143ed54bc1ac000e67acce3bd645237027d",
+          "bin/codebrix_cycles_nodes_render_gate": "0c6da45c6f967228e2c501dce94ff4be6007e933fd774d6c8364ce4c7dafa956"
+        },
+        "cleanup": "no codebrix-z0* or codebrix-maintained-host-z0* folders, no codebrix processes, no z0 packages; lock released"
+      }
+    },
+    "job2": {
+      "status": "DONE",
+      "design": "wgsl_inlined_bytes per compiled entry at pipeline build; warn at >=1,200,000 bytes (60,000 instr at 20 B/instr central density; measured 16.9-22.1); stderr + device report warnings/sizeGuard (host ABI -> ICapabilityReport.Warnings) + process report; never changes variant/tier/degraded; CODEBRIX_CYCLES_PIPELINE_SIZE_WARN_BYTES override",
+      "evidence": [
+        "validation/size-guard-check/out/size-guard.json",
+        "validation/dotnet-test-release",
+        "validation/dotnet-test-debug"
+      ]
+    },
+    "job3": {
+      "status": "DONE",
+      "design": "tools/rebase_build_tree.py + --rebase-build-tree in tools/build.py, native/tools/build_cycles.py, prototype/tools/build_host.py, native/tools/build_cycles_android.py",
+      "evidence": "native/work/z0-step-zero/rebase-proof/proof-summary.json",
+      "realUse": {
+        "linux": "build1 507 s incl. 141 compiles of my change",
+        "androidX64": "146 s default 25 targets (45 compiles) + 46 s material gates"
+      }
+    },
+    "job4": {
+      "status": "DONE",
+      "evidence": [
+        "native/evidence/step-zero-20261022",
+        "validation/inventory-check"
+      ],
+      "counts": "109 of 1011 rows tested"
+    },
+    "job5": {
+      "status": "DONE",
+      "ledgerFloor": "109/1011 = 10.8%",
+      "weighted": "about 41% (opcodes 90/108, closures 15/41, kernels 22/77, passes 1/56; weights 25/30/30/15)"
+    }
+  },
+  "binaries": {
+    "linuxSeedSha256": {
+      "native/work/cycles-build/bin/codebrix_cycles_atomic_film_gate": "1c3a41fa52c4e60a4f2df3e6fe1eb4a5f759b37aceb38b8104d64d69bea81687",
+      "native/work/cycles-build/bin/codebrix_cycles_attribute_gate": "a430ba611c0eb11c75001e2d7ebd0a303a8fff6e422210baaf498132715dbbc8",
+      "native/work/cycles-build/bin/codebrix_cycles_background_gate": "5df6195c397c2647ee22f89ed9d0eba7bba645fcc0b60ad127769c18da7b8fc2",
+      "native/work/cycles-build/bin/codebrix_cycles_broad_lighting_gate": "a3e4e4722f645502a731bd84d7a4d753edca18a994f4d63267302db026b2f92a",
+      "native/work/cycles-build/bin/codebrix_cycles_broad_light_state_gate": "9dc2ea117c72ddf258ec000c7c582cf864f77fe73083a7a8430c1020ed17785e",
+      "native/work/cycles-build/bin/codebrix_cycles_camera_gate": "687d7922ec1724a2c8ef915c8cbeb6a6fe205dd70ce40da1ba26ced2c6ae3ada",
+      "native/work/cycles-build/bin/codebrix_cycles_closed_volume_render_gate": "1fe8c43d140cd2c53fae79c5d53ea65a60eb77f70957c7a372af2f9fe088d0ff",
+      "native/work/cycles-build/bin/codebrix_cycles_closest_gate": "0d83549880ed4fffc949a7c39ef0bd9dd2dfa60e2f0c17d55a012d550daff1c4",
+      "native/work/cycles-build/bin/codebrix_cycles_deforming_motion_render_gate": "b5630b984df3b87abcf72613d3e8e3883735fe14e32e203aa5866b8756086d01",
+      "native/work/cycles-build/bin/codebrix_cycles_device_gate": "44c60173a2715c6118e4da6a1980a9ccc1d61f8e398be963a283f1910bced485",
+      "native/work/cycles-build/bin/codebrix_cycles_emitter_sample_gate": "21b50ca55047c0ab884a403eeafe7219b153ed38711a92b6e166c85ecc76c670",
+      "native/work/cycles-build/bin/codebrix_cycles_feature_combination_gate": "d436e9b2bcc902c50a277f78489bee484c517e2297694e9afe833a762946cd0e",
+      "native/work/cycles-build/bin/codebrix_cycles_glass_bounce_gate": "d5da1e3d1e5272e15ce1f5fd2137fc716eb4426b57678bf493b2aec433004fd8",
+      "native/work/cycles-build/bin/codebrix_cycles_glass_render_gate": "c8c50d07477dff85f2de3a93f7d704f5cfe6f3e3ac0bfd7c87d15b831b4cd0ff",
+      "native/work/cycles-build/bin/codebrix_cycles_glass_svm_gate": "226ab89bd4f9988a4e9bfe51c3e911897115d1ec290c0638a2744c82ede78309",
+      "native/work/cycles-build/bin/codebrix_cycles_image_file_gate": "2214cc7ddafd9b88df6a9056ec1684ab3a1628afe22103483ce9be377a3b2872",
+      "native/work/cycles-build/bin/codebrix_cycles_image_gate": "0fcf2a2456917024a443c69a7e7dd78b06530b2f3ed40f6ce614819816636e2e",
+      "native/work/cycles-build/bin/codebrix_cycles_lighting_gate": "12b76431976e1becde923133f2f3059513f4d075e0be00ae4a31598cf956ec58",
+      "native/work/cycles-build/bin/codebrix_cycles_lighting_mis_gate": "22b99c939cea0022bd6cf55b0ea1c587a32b4617bc3d38d48c3e5417b3e45e38",
+      "native/work/cycles-build/bin/codebrix_cycles_light_state_gate": "d956cff160879b4564533674e0a64f567cff11a95778e28d675fcfef7072ffda",
+      "native/work/cycles-build/bin/codebrix_cycles_microfacet_bounce_gate": "f7653c5824a8c3f0e5c05d312b49a114760008a442e31cf145764052178b7a92",
+      "native/work/cycles-build/bin/codebrix_cycles_microfacet_render_gate": "84eecfce1ebba6746253e6aad1e1fdd616e3744ece56628cfeb9fbb6edc9d86c",
+      "native/work/cycles-build/bin/codebrix_cycles_microfacet_svm_gate": "52d3623cbf08c7f8e0f046e0950dc07ae1ebb01078bf0ea56fb224ccf44fc906",
+      "native/work/cycles-build/bin/codebrix_cycles_nodes_render_gate": "4f46da0216ca3fe3c11d7af999d09868772ea1f72e34819dd42a65415c08d01f",
+      "native/work/cycles-build/bin/codebrix_cycles_nodes_svm_gate": "22179a8206704934c915e7cfa928ed689758095315ea2de3499fdc16f1ba9811",
+      "native/work/cycles-build/bin/codebrix_cycles_nodes_world_gate": "ba973ea50a9f3af13a9c3584df2c8c0a872124e3b1323ea549b17f9869e14fc0",
+      "native/work/cycles-build/bin/codebrix_cycles_normal_gate": "96ee013e69eb642a78c284e4dd226ffcaf1f39b9bc43acc4b13347b289e7679a",
+      "native/work/cycles-build/bin/codebrix_cycles_object_motion_render_gate": "d49d214d39b18e101a30cca1609617ac5a36f816650054be721f2b8a51d0c9e5",
+      "native/work/cycles-build/bin/codebrix_cycles_oracle": "a567c52ca084f834b7153897a0de4e17d3910d7f266309e02a6a3afc197cb129",
+      "native/work/cycles-build/bin/codebrix_cycles_principled_bounce_gate": "f0cdebfa4d61bbbce575deb1013de780f39756c6b4234bb5be8b872a80eab552",
+      "native/work/cycles-build/bin/codebrix_cycles_principled_render_gate": "702e32551d160136c535202911b728490b083f4eac33d043c98163eb0870bcc8",
+      "native/work/cycles-build/bin/codebrix_cycles_principled_svm_gate": "f22d6a4a3abc27db89dffb14b3fdd72d476ac9e64ca8348fd25a57b4bdc58fef",
+      "native/work/cycles-build/bin/codebrix_cycles_render_gate": "c592c7b9bb274a1863a6a7a84a11614336f222f74bcbb7db21338201b7ccb17c",
+      "native/work/cycles-build/bin/codebrix_cycles_shader_data_gate": "4080fb0e0c71532ed73641e8b2aa499666f6e51ee480d73c8c86dbe84a1232cf",
+      "native/work/cycles-build/bin/codebrix_cycles_shadow_gate": "c65c9829d1e9555beb4074e88d6e16115d47503d48568012ec36e2ae44e7fa1a",
+      "native/work/cycles-build/bin/codebrix_cycles_shadow_terminator_gate": "ae48ab6c1594c05a1faed451e07156d686c6294c187a43b8b166ade18a648b86",
+      "native/work/cycles-build/bin/codebrix_cycles_surface_gate": "59da1cf68d1144a619b7d54c01663e8fbb0cb581ea5d9fafa312255132ac557e",
+      "native/work/cycles-build/bin/codebrix_cycles_svm_surface_gate": "6c7be06679bfd5bf6729daa961e3467fc4687737c555c4557f21b6d64b478402",
+      "native/work/cycles-build/bin/codebrix_cycles_svm_world_gate": "50056da69a674bd7dc82070f2c320cbbc5afb0839b24737abcda7f20ffe79951",
+      "native/work/cycles-build/bin/codebrix_cycles_transparent_lighting_gate": "bb131501e087ff505d092ef1cdb75416a58e1800dc0633d0813d45b36b29b1a9",
+      "native/work/cycles-build/bin/codebrix_cycles_transparent_shadow_gate": "82809d430d2b70b994934eb9532f6a32bdd686f92ce8224dacbba2df27ac1903",
+      "native/work/cycles-build/bin/codebrix_cycles_triangle_lighting_gate": "2e69f71dee6b6b06dbf31d277e082ff6dfd904a4433c55764c24aef740231214",
+      "native/work/cycles-build/bin/codebrix_cycles_triangle_sample_gate": "7533a557455652a2f27beec150e19ec7b5027fecf3b11d1a4051561b06509b26",
+      "native/work/cycles-build/bin/codebrix_cycles_volume_boundary_gate": "19ccb6def5d06fc2d22e41721a924564fea27550f4c041b340e8cf283845634f",
+      "native/work/cycles-build/bin/codebrix_cycles_volume_gate": "34901c990c4083cd6d76bcf9109d13cf5d4105c696afcdc05b9fb493baa35e6a",
+      "native/work/cycles-build/bin/codebrix_cycles_volume_render_gate": "5ab15e7575cc7eb2ba4e239c210f31179a719f73fbfbfd1694b575387c3c466f",
+      "native/work/cycles-build/bin/codebrix_host_abi_test": "7ac041aabda5f90c2669bf81be2c48fea7ca7350c33161c3ad35f7327b28aabb",
+      "native/work/cycles-build/bin/codebrix_host_concurrency_test": "504949530537eb51e04434cf4784d06bed47c6888b2c1cb988e822de6d122893",
+      "native/work/cycles-build/bin/codebrix_host_cpu_test": "3704b60e30f0e4efb444ce84553c38cf9b6a74a985e99068ebdcc58a96077ba2",
+      "native/work/cycles-build/bin/codebrix_host_example_test": "cef099a56e961f71c3b803e41eae6a70b6409de47eee290dd9322c12e04d66ed",
+      "native/work/cycles-build/bin/codebrix_host_gpu_test": "11a7ead0266ee32d180e2fb1ea09a243f57bf92d72c2f6152d76fe5d3460f166",
+      "native/work/cycles-build/bin/codebrix_host_image_reference": "e5a9d4b503fac937955dcae638d748af7c06074a9e726f4fa5aec9dc05e7bc58",
+      "native/work/cycles-build/bin/codebrix_host_reload_test": "dd19d51650ab529f84d13ec92160445bf5930d66e9116a4f70d6ec008f1c536a",
+      "native/work/cycles-build/bin/codebrix_host_scene_edit_test": "b52078dc86a831734f014c6791611147f74cefed62d7dcb9c8a141e6c34e7a9f",
+      "native/work/cycles-build/bin/codebrix_host_session64_reference": "9e87597f422cc4de65d80d8026394fc1f5b5d0970923f856c95d0db1080eddb8",
+      "native/work/cycles-build/bin/codebrix_host_session_reference": "b0e06afe7aa9ba9df5504d34de6d4e09a31d6efd0c0bd371b6b8f5fb1625d3a5",
+      "native/work/cycles-build/bin/codebrix_host_tier_test": "3e1e4aa9489243d48cf26456624ee3c88529c15d8a709f015451c91920f1dd82"
+    },
+    "linuxAfterSha256": {
+      "bin/codebrix_cycles_atomic_film_gate": "675229310593fb170f0346009072c234d7c90988189c2cfb3c4485ed689d9b98",
+      "bin/codebrix_cycles_attribute_gate": "25de5fe69588ba4af363e9b64c2e4554e4cda593d747139dd44f02038362ea3a",
+      "bin/codebrix_cycles_background_gate": "3beaf546360682f95a93b2bcd84199fadfe1e4abebc877309447a8cf30aac39b",
+      "bin/codebrix_cycles_broad_lighting_gate": "c7df4d276bfb9640d3f3eb8ebb54b2d46b9655fb60704582714bcabaac418a07",
+      "bin/codebrix_cycles_broad_light_state_gate": "2c62be52d707183bd265a84a65492e7ae1e3494e010796a2570f9c781ada5c5c",
+      "bin/codebrix_cycles_camera_gate": "fa5f5ef334cda0aa694e8d9d32b9c691cad3493d8967b5afccf1fdba6671085f",
+      "bin/codebrix_cycles_closed_volume_render_gate": "53b2a34fd30b445a835cb62a5f1d247bfba8b4f77f4df51aa64a1e5566921b8f",
+      "bin/codebrix_cycles_closest_gate": "9882022e4e5e6e0ab3777235e45ac6c0a7f637dc113137d5309999e6699c09f9",
+      "bin/codebrix_cycles_deforming_motion_render_gate": "b92aee72ee380aa2ea101b5dddf114964a3142ddc612102ccd7418a27852863f",
+      "bin/codebrix_cycles_device_gate": "289f063483c6fb5cce18a6968a03de138e376635e154a3f3ef0b9a2b43e1ffb8",
+      "bin/codebrix_cycles_emitter_sample_gate": "90ffcf986aa35320f5a68a25c16c20048a964eef5eefbaf3eb584b2893d8c7f9",
+      "bin/codebrix_cycles_feature_combination_gate": "28606d9ac398c23b22e6670ed744ee496523c2a511ee08a41067be26752e85d9",
+      "bin/codebrix_cycles_glass_bounce_gate": "4ec93dc62dfe583cc8d5f0e1641d36a1db966c7b711f473ca345554d5a9150d4",
+      "bin/codebrix_cycles_glass_render_gate": "f8dada120425827d2f1d34bb452ad05f539ca3574f0b3ac27817c399632b8e2f",
+      "bin/codebrix_cycles_glass_svm_gate": "b497340e4d83b9ad7f22e0e9bf9c9a1fb2b420e2ca0a4989414a424946ab7874",
+      "bin/codebrix_cycles_image_file_gate": "df1398655aaf26b12a1ac67856e7ed81ee4b1ea2d4dee139db4f919ec220672a",
+      "bin/codebrix_cycles_image_gate": "e8931afc845525ba2f2e22e22e748a058ad8784c6180cad96221f1bf00508bdb",
+      "bin/codebrix_cycles_lighting_gate": "bfaaa11d3781d2f3d5f0ac73504a75e809eb6c65d652d08243dcd06ab794d48e",
+      "bin/codebrix_cycles_lighting_mis_gate": "34239ebeba1d18f91cb1883a2358cb51426006464c78ad3117cbd8d4501113a6",
+      "bin/codebrix_cycles_light_state_gate": "138a6773f7f10515bb3fef09b7923dd1e72d2d4b1bd329881adccda611ff0a1b",
+      "bin/codebrix_cycles_microfacet_bounce_gate": "ff287934de8ce4a22537974e9a34871797304230fedf8bf99bdf36de77adc77c",
+      "bin/codebrix_cycles_microfacet_render_gate": "32f37f278e437dac71e639dabc03fcfe8905e0134c00c7917eea2f968be9a7d7",
+      "bin/codebrix_cycles_microfacet_svm_gate": "44f1dde0ae98f0e20af6396f9407f8bb5547d07903cee427438a8bccb6de2bbf",
+      "bin/codebrix_cycles_nodes_render_gate": "880e8fc3b26eee69f0cf1755a8c5c2a693547b22f62f9bf06146ad98f28a86a9",
+      "bin/codebrix_cycles_nodes_svm_gate": "6fdb074109ed47682442bed125df5389298e9e080cb5c5abee99b1a46dcc63d6",
+      "bin/codebrix_cycles_nodes_world_gate": "316b66369aad4faa03774e24ea4931019bbec51499d3b63ead38fbca90052dba",
+      "bin/codebrix_cycles_normal_gate": "ae76464dd84f46bf7b9358d691d8db97caec4e8fb4807922887de46dd190bded",
+      "bin/codebrix_cycles_object_motion_render_gate": "ea9f187ac509c7ed6c1033f603356aec461b0171f322215fa2c7545b29b3b5ea",
+      "bin/codebrix_cycles_oracle": "1074171c1f65ad0430e1537844fa0a66cdf01b82ac03fa5bad1e506c1d60b0c4",
+      "bin/codebrix_cycles_principled_bounce_gate": "33a32c305779b215c8108e293aa35d2cbce397d449e23c78325cad70b1f869f0",
+      "bin/codebrix_cycles_principled_render_gate": "cf6a10afb2ee07991414bfbebb8e6eff791a821dfebe27b367b918bf8b74b7be",
+      "bin/codebrix_cycles_principled_svm_gate": "a9d8fd049b9d33176995564f7f7911e7afd00fdb63c1378a1840dd1fc62f3cdb",
+      "bin/codebrix_cycles_render_gate": "af01a13e847688647e67f6fac92f6f77a515db82db0e2dce755286bd14b03e06",
+      "bin/codebrix_cycles_shader_data_gate": "bd2a0866beb7fb99512df90f76dce50a1dd47a9ff62df99d48d1c4d8a9fd8734",
+      "bin/codebrix_cycles_shadow_gate": "e24fde7385f821eca8facc80effed2c884328d5b6ca336e995fae584d67f432b",
+      "bin/codebrix_cycles_shadow_terminator_gate": "b65f6028e06c472b8575286163559e681308bb38ad52aebc45508d85bd394a3f",
+      "bin/codebrix_cycles_surface_gate": "28f7d7cf06ab2b2f50db3134314a8d1549f3ccbb0df1bcdc2f9165e37b8b793e",
+      "bin/codebrix_cycles_svm_surface_gate": "be5374ab5c9a35ee8c5c2b4d26943d9b8b1f860c7241b9e939ab3f6c904908be",
+      "bin/codebrix_cycles_svm_world_gate": "7d41c4d404ea5716e6cc887f7b663ab611b4304ded030c363d271971a04206c9",
+      "bin/codebrix_cycles_transparent_lighting_gate": "57d603132be5b3d2015d6752c112484b68a124f0a733cfe832d11ef860bb3b25",
+      "bin/codebrix_cycles_transparent_shadow_gate": "5711ebdfe91d366f09bed09b5d101c7da5189d9d2c95eafc0f47a6fd5c80b993",
+      "bin/codebrix_cycles_triangle_lighting_gate": "f10218941101793186ce8e6e45c2cc3d3112a2d96933ce5ddf710f7d91ab99da",
+      "bin/codebrix_cycles_triangle_sample_gate": "3850d31e8e411fd8b76f27c37850e454320e3e17df5b110c9e7082cca33d9473",
+      "bin/codebrix_cycles_volume_boundary_gate": "0d80bb85dcc38f2a41e608986eb3306ad252fe58bf5612f7c5296d409d3b1bb3",
+      "bin/codebrix_cycles_volume_gate": "45e15cf800448683d9994e6ee894a12834f8edb2b99c499f8c9922ca452b3693",
+      "bin/codebrix_cycles_volume_render_gate": "1d89a83e86e632a7ec85f306ccabb09b9e98887b890b9b8986d4d146d04e30c7",
+      "bin/codebrix_host_abi_test": "7d5233d4c8a3a35d5a69dc70fefd5126ead743291b0723573b7a329c19ea6c24",
+      "bin/codebrix_host_concurrency_test": "c9add43e85cb6e7200d9a05b96d55973d79dbb7b2d50db1ed4d52a84c333a153",
+      "bin/codebrix_host_cpu_test": "e560209d622d6ba8d3daa9f4243b3a6de337660651d5dd50217d192567a54040",
+      "bin/codebrix_host_example_test": "e7ed4055994f371eec4050f029ed89a779322ab3289bb43ec9edd85f557103e3",
+      "bin/codebrix_host_gpu_test": "8dfd7b9d94d9a78c3caeb4893d6e3655459ddd14fa8a27e667dc58d7d362bbd2",
+      "bin/codebrix_host_image_reference": "4113b005642d538295c0324478505566d17d5dc8642d0d0bdd2a20e8a039dd3e",
+      "bin/codebrix_host_reload_test": "4f1b88c848b36635ba0ff044e114508cb88cb9c5607b6ae65eb55d5fd78afa57",
+      "bin/codebrix_host_scene_edit_test": "282c4a1baa209873df1f6d72c9bfb2781bb7332ee80938c68b6157f4c759d194",
+      "bin/codebrix_host_session64_reference": "2143496c4606ac2448bac7e8c8e377a089cce04b9ca753a835761f12b25f896a",
+      "bin/codebrix_host_session_reference": "072ef1ef32d6b40cac5292493c45668fdf3ae418dd50da6866c75201456d735e",
+      "bin/codebrix_host_tier_test": "1ecf5b1d0328d30bdf153335f30b391711efafed1fb6655fd614afe0c92b5c1c",
+      "lib/libcodebrix_cycles_host.so": "bf6dbffc076c0c5520553bf48322a047f671ec4567b6916ef6f2650e86ebdb41"
+    },
+    "androidX64AfterSha256": {
+      "bin/codebrix_cycles_attribute_gate": "d4d38bfd633be3ea54dae3f500aee25f86bee9e9d3553f217ee015e7d6519a45",
+      "bin/codebrix_host_cpu_test": "782849469a756766bba03f2a2a245726339c4797cae0c6ed0a0dfe0737aadba2",
+      "bin/codebrix_cycles_image_file_gate": "c0701c7a20015e6df35eaf8e7f5f42922826fe6069541ccab099fc3ee5ec402d",
+      "bin/codebrix_cycles_render_gate": "55ec050477ad67ca1d5e364c7549dc231177378b2046968f51e03538930f133a",
+      "bin/codebrix_cycles_shader_data_gate": "2f2b8588356c681c79787166c4aabf585a22a3d9a00bca06f7656ef4755e5f37",
+      "bin/codebrix_cycles_background_gate": "c08fb1eee4b229155fa067556014255ca49b4c592648aa0deec8bf6aef9752a6",
+      "bin/codebrix_cycles_svm_world_gate": "049d4fea97925788c8de4abc774d338e2ec6e0fe46d4b5bfb937c5cee3e492eb",
+      "bin/codebrix_host_gpu_test": "9cedf74c91e7e46bb342dab4f8436828005767ad23ec5e025416dae3a18856f8",
+      "bin/codebrix_cycles_normal_gate": "3a691074806552d363caaec0a0b42936b2bbeaff0504b6230fe16b25976c23ca",
+      "bin/codebrix_cycles_glass_render_gate": "d63c8d67d689b111e6ee1a67b7586f4711d6dba79b45375edf75d5f541292b3b",
+      "bin/codebrix_host_session_reference": "ecc74489ce1dcf744d0290e6abe4a0932d62c59fc9d230a82d2d81d658658f82",
+      "bin/codebrix_host_reload_test": "e4364def1cb7adf703901528ce0b2afd8c1d7d9e1221bc18a7144031da19c115",
+      "bin/codebrix_cycles_device_gate": "e487dda3719840adbb4457d13d5bc83c349526f5a89d506f5100277a65347479",
+      "bin/codebrix_host_image_reference": "1ccff30ca49aa5eb8de1aa606e5b69400b7eab23cb3e6ed23421ed4a1ce70671",
+      "bin/codebrix_host_session64_reference": "69037032e1cf8de1993f71895496836532f990940bbeb5ae07d062ca644f55ef",
+      "bin/codebrix_cycles_microfacet_render_gate": "45abc6f6945ca932d1dee9374aa280931bb2f27f4da86f200977cc43700a8dc4",
+      "bin/codebrix_cycles_atomic_film_gate": "c013b6190be836865d60eafa3103a131974d4815406f1497604f06fd74322885",
+      "bin/codebrix_cycles_svm_surface_gate": "4d767f2340157a09b9f58ef97a2398fab6949101f908b46705f1f945400b94cc",
+      "bin/codebrix_cycles_microfacet_svm_gate": "e7ef969f5a97a26e78a0216bb904ce914c9b0ce0e84fec818c234d34aaa44dbe",
+      "bin/codebrix_cycles_principled_render_gate": "a4f3bb8c506e3f6834e2b4e3cc82e143ed54bc1ac000e67acce3bd645237027d",
+      "bin/codebrix_cycles_camera_gate": "48695120bbd864e5879e35d76d95f00ab1ddf7997a67e744ae695242d3a1901c",
+      "bin/codebrix_cycles_nodes_render_gate": "0c6da45c6f967228e2c501dce94ff4be6007e933fd774d6c8364ce4c7dafa956",
+      "bin/codebrix_cycles_closest_gate": "1bc4f4f80ccb03e2ebb6765bcdedde5eb61270454a59a93dae6bc34ef3a4a640",
+      "bin/codebrix_host_concurrency_test": "7efb6d1aaa33e48fb7ac0b8edafdb1812725a1c6acd43f7ca4e0486d8bc3a0bb",
+      "bin/codebrix_cycles_surface_gate": "cda6372dcb7972bc631049c29873008921106a19c50b07617161fef73acaead2",
+      "bin/codebrix_cycles_microfacet_bounce_gate": "fd3c643d3482db7750d527e8a1133b21eabbf99ad0c53d1276df35f885603240",
+      "bin/codebrix_cycles_image_gate": "40daf9bfba71072003ebd43feac258cc3222830f91a3b61cd277da34f6ffdc58",
+      "lib/libcodebrix_cycles_host.so": "29780b369d44976c589e491b5d450dc66bd2f31738d0f2f89f4b65fb688f6078"
+    }
+  },
+  "touchedFiles": [
+    {
+      "path": "AGENT-README.txt",
+      "reason": "job 2 one consumer sentence."
+    },
+    {
+      "path": "MAINTAINER-README.txt",
+      "reason": "jobs 2/3 (+mask note)."
+    },
+    {
+      "path": "compatibility/README.md",
+      "reason": "job 4 evidence paragraph and tested-row sentence made current (file NOT in the allowed-doc list; flagged)."
+    },
+    {
+      "path": "compatibility/evidence.json",
+      "reason": "job 4 evidence re-recorded (11 native entries + new native-nodes on the Step zero tree; 44 stale replay entries replaced by 6 merge-4 replays; Pixel replays dropped)."
+    },
+    {
+      "path": "compatibility/opcodes.json",
+      "reason": "job 4 regenerated."
+    },
+    {
+      "path": "compatibility/platforms.json",
+      "reason": "job 4 regenerated (replay evidence names)."
+    },
+    {
+      "path": "compatibility/reviews.json",
+      "reason": "job 4 reviews for the 48 opcodes whose tested status had been hand-written into opcodes.json."
+    },
+    {
+      "path": "docs/PARITY.md",
+      "reason": "job 5 inventory paragraph + parity estimate section with method."
+    },
+    {
+      "path": "native/DEVICE.md",
+      "reason": "open item 7 closed; Step zero section (bit identity, HP, size guard)."
+    },
+    {
+      "path": "native/cycles/device.cpp",
+      "reason": "job 1 one line: canary specialize_wgsl(...,SF_NONE)."
+    },
+    {
+      "path": "native/cycles/device.h",
+      "reason": "job 1 member types (enabled_features, principled_features, superset_scene, pipeline_features, PipelineRecord.features, shader_features()); job 2 size_warning_bytes/max_inlined_*/size_warnings members, PipelineRecord.inlined_bytes."
+    },
+    {
+      "path": "native/cycles/pipelines.cpp",
+      "reason": "job 1 mask type through census/specialize/superset grouping/pipeline_current/superset_json + layout static_asserts; job 2 wgsl_inlined_bytes multi-entry overload, size guard in build_pipelines (before compile), sizeGuard/inlinedBytes in device+process reports and pipeline log, size warnings kept out of degraded."
+    },
+    {
+      "path": "native/cycles/pipelines.h",
+      "reason": "job 1 ShaderFeatures 256-bit mask type, SF_* constants (bit numbers unchanged), superset/census signatures; job 2 size-guard constants and declarations. zc lane also edits this file: my edits are the mask block at the top, the SupersetGroups/ShaderFeatureName/census/specialize_wgsl signatures and one block after superset_default_budget_bytes."
+    },
+    {
+      "path": "native/cycles/surface.cpp",
+      "reason": "job 1 one line: SF_LIGHT_TRIANGLE test via .any()."
+    },
+    {
+      "path": "native/cycles/surface_svm_test.h",
+      "reason": "job 1 probe specialization uses ShaderFeatures."
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/background-queue/background.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/background-queue/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/camera-queue/camera.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/camera-queue/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/closest-queue/closest.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/closest-queue/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/device-queue/device.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/device-queue/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/manifest.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-attributes/attributes.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-attributes/render.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-attributes/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-file-images/files.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-file-images/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-images/images.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-images/render.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-images/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-nodes/nodes_render.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-nodes/nodes_svm.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-nodes/nodes_world.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-nodes/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-normals/normals.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-normals/render.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-normals/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-render/render.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/native-render/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/svm-surface/svm_surface.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/svm-surface/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/svm-world/svm_world.stdout.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/evidence/step-zero-20261022/svm-world/validation.json",
+      "reason": "job 4 frozen evidence report (new checkpoint native/evidence/step-zero-20261022)"
+    },
+    {
+      "path": "native/host/ABI.md",
+      "reason": "job 2 sizeGuard/inlinedBytes documented in the device report."
+    },
+    {
+      "path": "native/tools/build_cycles.py",
+      "reason": "job 3 --rebase-build-tree; overlay writes generated files only when content changes."
+    },
+    {
+      "path": "native/tools/build_cycles_android.py",
+      "reason": "job 3 --rebase-build-tree."
+    },
+    {
+      "path": "native/tools/cycles_overlay.py",
+      "reason": "job 3 registration patch written only when changed."
+    },
+    {
+      "path": "native/tools/pipeline_size_guard_check.py",
+      "reason": "job 2 new Linux gate check."
+    },
+    {
+      "path": "prototype/tools/build_host.py",
+      "reason": "job 3 --rebase-build-tree."
+    },
+    {
+      "path": "tests/CodeBrix.Graphics3D.Cycles.Tests/CapabilityReportTests.cs",
+      "reason": "job 2 managed parse test."
+    },
+    {
+      "path": "tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs",
+      "reason": "job 2 managed real-GPU sizeGuard test."
+    },
+    {
+      "path": "tools/build.py",
+      "reason": "job 3 --rebase-build-tree."
+    },
+    {
+      "path": "tools/rebase_build_tree.py",
+      "reason": "job 3 new re-rooting tool."
+    }
+  ]
+}

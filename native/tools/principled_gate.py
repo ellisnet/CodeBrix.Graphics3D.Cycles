@@ -9,11 +9,14 @@ from pathlib import Path
 from build import REPO,WORK,PACKAGE
 from device_gate import sha,save
 from render_gate import inputs
+import specialization_check
 
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--skip-build',action='store_true')
+    parser.add_argument('--off-mode',choices=['superset','unspecialized','none'],default='superset',
+                        help='specialization-off identity check of principled_render (default: superset mode)')
     args=parser.parse_args();out=args.output.resolve();out.mkdir(parents=True,exist_ok=False)
     status={'complete':False,'phase':'prepare'};save(out/'status.json',status)
     sources=inputs();runtime=PACKAGE/'runtimes/linux-x64/native/libcodebrix_wgpu.so'
@@ -42,6 +45,10 @@ def main():
             if kind=='principled_bounce':assert report['originalCpuSurfaceIntegrator'] and report['cases']==29 and report['invalidCasesRejected']==21
             if kind=='principled_render':assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
             reports[kind]=report;save(out/'results.json',reports)
+        if args.off_mode!='none':
+            status['phase']='principled_render-'+args.off_mode;save(out/'status.json',status)
+            reports['principled_render-'+args.off_mode]=specialization_check.check(WORK/'cycles-build/bin'/'codebrix_cycles_principled_render_gate',
+                out/'principled_render',out/('principled_render-'+args.off_mode),args.off_mode);save(out/'results.json',reports)
         assert sources==inputs() and all(sha(Path(name))==digest for name,digest in pins.items())
         status.update(complete=True,passed=True,phase='complete',inputsUnchanged=True,
                       scope='Native Principled BSDF: sheen, coat, emission, F82-tint metallic, generalized-Schlick transmission and specular, thin wall, thin film, diffuse/Oren-Nayar, both GGX distributions, mixtures, independent original-Cycles images. Subsurface is rejected.')

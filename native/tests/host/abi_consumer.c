@@ -174,13 +174,14 @@ int main(int argc, char **argv) {
     nodes(holder, "geometry", light);
     CHECK(cbc_host_set_floats(host, holder, "tfm", t, 12));
     char type[64]; CHECK(cbc_host_node_type(host, light, type, sizeof(type), &required)); light_types++;
-    /* Point, spot and sun render on both backends in one device lifetime (the
-     * Phase D3 spot-after-point case). The area light renders on the CPU only:
-     * it adds the LIGHT_AREA specialization, and recompiling shade_surface_light
-     * with it intermittently crashes the Intel Mesa 25.0.7 compiler
-     * (brw_opt_combine_constants, phaseE3 report); area lights are validated on
-     * WebGPU by the broad-lighting and transparent-lighting gates. */
-    if (k < 4 && (!gpu || k != 2)) { render(film_c); REQUIRE(!same(film_c, base)); lit_renders++; }
+    /* Point, spot, area and sun render on both backends in one device lifetime
+     * (the Phase D3 spot-after-point case; the area light adds the LIGHT_AREA
+     * specialization and recompiles the light stage). Each film is saved and
+     * the host gate compares the WebGPU film with the CPU film. */
+    if (k < 4) {
+      render(film_c); REQUIRE(!same(film_c, base)); lit_renders++;
+      char name[64]; snprintf(name, sizeof(name), "light-%s.rgba.bin", kinds[k]); save(prefix, name, film_c, sizeof(film_c));
+    }
     /* Lifetime: a referenced light cannot be deleted; delete holder, then light, then emitter. */
     REQUIRE(cbc_host_delete_node(host, light) == CBC_INVALID);
     REQUIRE(cbc_host_delete_node(host, emitter) == CBC_INVALID);

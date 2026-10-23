@@ -1,0 +1,1591 @@
+diff --git a/docs/TESTING-MACOS-X64.md b/docs/TESTING-MACOS-X64.md
+new file mode 100644
+index 00000000..67d5d955
+--- /dev/null
++++ b/docs/TESTING-MACOS-X64.md
+@@ -0,0 +1,412 @@
++# Testing on an Intel Mac (osx-x64, WGSL on WebGPU)
++
++Copyright (c) 2026 Jeremy Ellis and contributors
++
++This document was written on a Linux machine without access to an Intel Mac.
++None of the macOS steps below has been executed; each one carries an
++**UNTESTED** marker at the step itself. The maintainer runs them on the Intel Mac,
++corrects what is wrong in this document and in the recipes, and commits the
++validated version. Lines marked **MISSING** name something that does not exist
++yet; lines marked **UNKNOWN** name a fact that cannot be determined without the
++hardware, each with the exact check that settles it.
++
++## Purpose
++
++The osx-x64 product is Cycles with the CodeBrix WGSL/WebGPU device, the same
++device as Linux and Android, on the unchanged shipped CodeBrix.WebGpu.Native
++runtime, which reaches the GPU through Metal on macOS. (Cycles' own Metal device
++is the osx-arm64 product only.) A run on the Intel Mac establishes:
++
++1. that the osx-x64 recipes build the host, the gates and the oracle runner
++   from the reviewed snapshots, isolated from Homebrew;
++2. the first osx-x64 GPU evidence: the Linux host-gate list passing on the
++   Intel Mac's GPU through the runtime's Metal route, against the CPU kernels;
++3. CPU-x64 oracle films from Apple Clang and WGSL films for the oracle corpus,
++   to be compared with the Linux x64, Apple Silicon CPU and Metal films;
++4. a reviewed `native/binaries/osx-x64` payload with provenance.
++
++There is no Metal oracle on the Intel Mac: Cycles' Metal device at the pinned
++revision accepts only Apple GPUs and skips Intel and AMD GPUs by name, so the
++Metal films come from Apple Silicon only.
++
++The recipe itself is described in [native/host/MACOS_X64.md](../native/host/MACOS_X64.md).
++
++## Blocking gap: the WGSL device selects Vulkan only
++
++**MISSING.** `native/src/webgpu_device.cpp` creates its WebGPU instance with
++`extra.backends=WGPUInstanceBackend_Vulkan`. The shipped runtime's osx-x64
++(and osx-arm64) dylib contains wgpu's Metal backend and no Vulkan backend: it
++links `Metal.framework` and `QuartzCore.framework`, references
++`MTLCopyAllDevices`, and contains none of the Vulkan loader strings that the
++Linux and Windows builds contain. On an Intel Mac every GPU step (steps 6 to 9
++below) therefore fails with `No hardware Vulkan adapter` until the device
++selects the Metal backend on Apple platforms. The change is three lines in
++`Device::Device()`: under `#ifdef __APPLE__` use `WGPUInstanceBackend_Metal`
++(and name Metal in the two error messages), keep `WGPUInstanceBackend_Vulkan`
++otherwise. Linux and Android object code is unaffected. Apply it only with
++the maintainer's approval, then rebuild (step 4). Check before applying:
++
++```sh
++grep -n 'WGPUInstanceBackend_' native/src/webgpu_device.cpp
++```
++
++The CPU steps (1 to 5, the CPU parts of 6 and 8, and staging prerequisites) do
++not depend on it.
++
++## Prerequisites and pins
++
++| Item | Value |
++|---|---|
++| Machine | An Intel Mac that runs macOS 15 or later (the deployment target). |
++| macOS | 15.0 or later. The host and the .NET wrapper refuse older systems. |
++| Cycles | `a456b761034dda42c32eef9f4aae0fa5a5c9f604`, the filtered snapshot in `third_party/cycles` |
++| WebGPU runtime | `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.290.1433; package SHA-256 `9ceea7951bff52fe39c4b2451da4e1a80e7a2889a2217487d6392125a18a7112`; `runtimes/osx-x64/native/libcodebrix_wgpu.dylib` SHA-256 `3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483` (x86_64, minimum macOS 11.0, ad-hoc signed) |
++| Xcode | Xcode or the Xcode command-line tools: Apple Clang, the macOS SDK, libc++. Versions are recorded by the recipes. |
++| Homebrew (x64) | In `/usr/local`. Used only for tools (CMake, Python, zstd); every recipe excludes `/usr/local` and `/opt/homebrew` from searches and rejects any reference to them. |
++| CMake | 3.24 or newer (`brew install cmake`). |
++| Python | 3.12 or newer (`brew install python`); the bundle step needs `tarfile`'s extraction filter. Xcode's Python is too old. |
++| .NET | .NET 10 SDK for x64 (`dotnet --info` must report `RID: osx-x64`). |
++| zstd | For the oracle bundle (`brew install zstd`). |
++| Deployment target | macOS 15.0 for every built Mach-O (the runtime declares 11.0). |
++
++**UNKNOWN:** the exact Intel Mac model, CPU, GPU(s) and macOS version.
++Check: step 1 records them.
++
++**UNKNOWN:** whether the Mac has AVX2 (every Intel Mac that runs macOS 15 is
++expected to; this is an inference). Check:
++`sysctl -n machdep.cpu.leaf7_features | tr ' ' '\n' | grep -x AVX2`.
++
++## Ordered steps
++
++Run every step from the repository root of a clean checkout of the commit
++under test. Budgets: none of these steps has been measured on an Intel Mac;
++for every step, **no measurement yet; record the wall** (`/usr/bin/time -p`
++in front of the command, or the timestamps in each output directory).
++
++### 1. Record the machine **UNTESTED**
++
++```sh
++mkdir -p native/work/macos-x64-identity
++cd native/work/macos-x64-identity
++sw_vers > sw_vers.txt
++system_profiler SPHardwareDataType SPDisplaysDataType > system_profiler.txt
++sysctl -n machdep.cpu.brand_string > cpu.txt
++sysctl -n machdep.cpu.features machdep.cpu.leaf7_features > cpu-features.txt
++sysctl -n sysctl.proc_translated > rosetta.txt 2>&1   # must be 0 or absent
++xcodebuild -version > xcode.txt 2>&1; xcode-select -p >> xcode.txt
++xcrun --show-sdk-version >> xcode.txt; xcrun clang --version >> xcode.txt
++cmake --version > tools.txt; python3 --version >> tools.txt; zstd --version >> tools.txt
++dotnet --info > dotnet.txt
++git -C ../../.. rev-parse HEAD > commit.txt; git -C ../../.. status --porcelain > status.txt
++cd ../../..
++```
++
++`system_profiler SPDisplaysDataType` names every GPU and its Metal support
++line. **UNKNOWN:** which Metal feature set the Intel GPU(s) expose (for example
++"Metal Support: Metal 3" or a Metal family). Check: the "Metal Support" line in
++`system_profiler.txt`.
++
++### 2. Restore and verify the WebGPU runtime **UNTESTED**
++
++The recipes read the runtime from the NuGet cache
++(`~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433`, or the
++directory named by `CODEBRIX_WEBGPU_PACKAGE`). Restore it once, then verify:
++
++```sh
++dotnet restore research/GpuProbe/GpuProbe.csproj
++P=~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433
++shasum -a 256 $P/*.nupkg $P/runtimes/osx-x64/native/libcodebrix_wgpu.dylib
++otool -L $P/runtimes/osx-x64/native/libcodebrix_wgpu.dylib
++lipo -info $P/runtimes/osx-x64/native/libcodebrix_wgpu.dylib
++codesign -dv $P/runtimes/osx-x64/native/libcodebrix_wgpu.dylib
++```
++
++Expected: the two SHA-256 values in the pins table; `otool -L` lists only
++`/usr/lib` and `/System/Library` entries (Metal and QuartzCore among them);
++`lipo` reports x86_64 alone; `codesign` reports `Signature=adhoc`.
++
++**UNKNOWN:** whether the runtime's osx-x64 build routes WebGPU to Metal on
++this Mac and which adapter it chooses when the Mac has both an integrated Intel
++GPU and a discrete AMD GPU (the device takes the first hardware adapter the
++runtime enumerates). Check: after step 6, `adapterReport` in the host gate's
++`status.json` and `abi-gpu/run.capabilities-host.json`
++(`host.deviceReport`), which name the adapter and its backend type
++(5 is Metal in `webgpu.h`). There is no rule yet for Macs with more than one
++GPU: record which adapter the runtime listed first and its identity (vendor,
++architecture, device, description, backend type); the choice is decided on the
++actual machine.
++
++### 3. Bring the Linux overlay hashes **UNTESTED** (Linux part verified)
++
++On the Linux x64 machine, after a maintained Linux build of the same commit:
++
++```sh
++python3 native/tools/build_cycles_macos_x64.py --write-overlay-hashes native/work/cycles-overlay \
++  --output native/work/linux-overlay-hashes.json
++```
++
++Copy `linux-overlay-hashes.json` to the Mac (for example to
++`native/work/linux-overlay-hashes.json`). Also bring a passed Linux
++`host_gate.py` output directory (`native/work/host-validation` or the one the
++Linux run named) for the cross-platform comparisons in step 6.
++
++### 4. Build **UNTESTED**
++
++```sh
++python3 tools/build_macos_x64.py --jobs 8 --reference-overlay native/work/linux-overlay-hashes.json
++```
++
++This builds the dependency prefix (`native/work/macos/osx-x64/dependencies`),
++the host, the consumers, the Session references and the WGSL device gates
++(`native/work/macos/osx-x64/host/build`), and the oracle runner
++(`native/work/macos/osx-x64/oracle-build`). Status and logs:
++`native/work/macos/osx-x64/{dependencies,host}/status.json` and the
++`configure.log`/`build.log` files beside them. Rebuild only the host after a
++source change with `python3 tools/build_macos_x64.py --skip-dependencies ...`.
++
++Points that may need correction on the Mac:
++
++- **UNKNOWN:** whether Apple Clang's default header search on this Mac reaches
++  `/usr/local/include`. The dependency recipe checks it before building and
++  fails if so. Check by hand:
++  `echo | xcrun clang++ -x c++ -v -E - 2>&1 | sed -n '/search starts/,/End of search/p'`.
++- **UNKNOWN:** whether Makefile builds emit compiler dependency files
++  (`*.o.d`) for every component; the recipes scan them for Homebrew headers
++  and record how many they found (`compilerDependencyFiles` in the status
++  files). A count of 0 means that check covered nothing.
++- **UNKNOWN:** whether the Apple Clang AST dump translates the WGSL kernels
++  identically. `--reference-overlay` fails the build and names the files if it
++  does not; that is a finding to report, not something to adjust.
++- **UNKNOWN:** whether Cycles' build on x86_64 macOS needs an adaptation that
++  the Linux and Apple Silicon builds do not (the recipe applies none). Check:
++  `native/work/macos/osx-x64/host/build.log`.
++- **UNKNOWN:** whether `FMT_CONSTEVAL=` is still needed with the installed
++  Apple Clang (it is on Apple Clang 21).
++
++### 5. Binary review (inside the host gate) **UNTESTED**
++
++Step 6 starts with it; to look by hand:
++
++```sh
++B=native/work/macos/osx-x64/host/build
++otool -L $B/lib/libcodebrix_cycles_host.dylib
++lipo -info $B/lib/libcodebrix_cycles_host.dylib
++otool -l $B/lib/libcodebrix_cycles_host.dylib | grep -A3 LC_BUILD_VERSION
++codesign -dv $B/lib/libcodebrix_cycles_host.dylib
++nm -gU $B/lib/libcodebrix_cycles_host.dylib | grep ' T _cbc_host_' | wc -l
++```
++
++What must be true: x86_64 alone; `minos 15.0`; linked libraries only from
++`/usr/lib`, `/System/Library`, the dependency prefix by `@rpath` and
++`@rpath/libcodebrix_wgpu.dylib`; no `Metal.framework` on the host itself (only
++the runtime links Metal); the exports equal `native/host/exports.macos`; no
++image codec library in the load closure; signatures verify.
++
++### 6. Host gate **UNTESTED**
++
++```sh
++python3 native/tools/macos_x64_host_gate.py --output native/work/macos-x64-validation-1 \
++  --references <the passed Linux host_gate.py output>
++```
++
++The gate list is the Linux host gate's, with the same comparisons and
++tolerances: Session references on CPU (3 films and 3 at 64 samples),
++C lifecycle and process exit (bitwise against the references), concurrent
++lifetimes, the thin .NET wrapper (HostLifecycle, bitwise), the WebGPU lifecycle
++through `CBC_HOST_GPU` (6 films and the exit variant, practical and strict
++against the CPU references), the ABI additions on CPU and GPU (base, object
++motion and deforming films practical and strict; the four light films practical
++with strict reported), and the example consumer on CPU and GPU. The color
++reload and image reference tests do not apply and stay skipped: the macOS
++payload rule holds for osx-x64 too (no image codec in the load closure;
++textures arrive decoded). With `--references`, the CPU films are also compared with the Linux x64
++films: lifecycle films practical and strict, the others practical with strict
++reported. Results: `status.json` (`passed`, `gpuPracticalFailures`,
++`gpuStrictDifferences`, `adapterReport`), `comparisons.json`, `results.json`,
++`binary-review.json`, and stdout/stderr per step.
++
++The GPU parts need the blocking gap above to be closed first.
++
++**UNKNOWN:** on every Apple RID the host points Cycles' resource path at a
++`codebrix-cycles` directory beside the library (the osx-arm64 payload ships its
++Metal kernel sources there). The osx-x64 payload has no such directory; the CPU
++and WGSL devices are expected not to need it. Check: the host gate's CPU and
++GPU steps pass and their stderr files show no missing-path messages.
++
++**UNKNOWN:** the GPU timeouts (1,800 s per GPU step) are guesses; driver shader
++compilation through the runtime's WGSL-to-MSL path on an Intel GPU has not been
++measured. Record the wall of each GPU step from `commands.json` and the file
++times.
++
++### 7. WGSL device gates (diagnostic) **UNTESTED**
++
++```sh
++python3 native/tools/macos_x64_host_gate.py --output native/work/macos-x64-validation-2 \
++  --references <the passed Linux host_gate.py output> --device-gates
++```
++
++Runs each built device gate executable with an output prefix and records its
++own `passed` flag and the WebGPU library it loaded (`deviceGates` in
++`status.json`). **MISSING:** the Linux gate drivers (`device_gate.py`,
++`render_gate.py`, `svm_surface_gate.py` and the others) read
++`native/work/cycles-build` and add coverage assertions and checkpoint archiving
++that this diagnostic does not reproduce; an osx-x64 driver set does not exist.
++A failure here is a finding with its stderr tail recorded, not a gate failure.
++
++### 8. Oracle corpus **UNTESTED**
++
++```sh
++python3 native/oracle/render_oracles.py --output native/work/oracles/macos-x64-1 \
++  --runner native/work/macos/osx-x64/oracle-build/codebrix_cycles_oracle \
++  --host-library native/work/macos/osx-x64/host/build/lib/libcodebrix_cycles_host.dylib \
++  --backend cpu-x64-macos --backend cpu-x64-macos-sse42 --backend wgsl-macos-x64
++```
++
++This renders every scene under `native/oracle/scenes` (the starter scenes and
++the Linux gate corpus) with Cycles' default CPU kernel dispatch, with the
++SSE4.2 kernels forced, and with the WGSL device, then compares them pairwise
++(`comparisons/`, `run.json` `comparisonsPassed`). A backend that rejects a
++scene is recorded under `failures` and the run continues. Then compare with the
++existing Apple Silicon evidence for the starter scenes:
++
++```sh
++for s in diffuse-triangle glossy-sphere-point-light glass-and-area-light textured-plane; do
++  python3 native/oracle/compare.py native/evidence/cycles-oracles-macos-20261019/oracle/starter/$s/cpu-arm64-macos \
++    native/work/oracles/macos-x64-1/oracle/starter/$s/cpu-x64-macos \
++    native/work/oracles/macos-x64-1/oracle/starter/$s/wgsl-macos-x64 \
++    --json native/work/oracles/macos-x64-1/vs-arm64-$s.json
++done
++```
++
++and, on Linux after the bundle is back, with `cpu-x64-linux` and
++`wgsl-linux-intel` films of the same scenes rendered on Linux by the same
++script. **UNKNOWN:** whether Cycles picks its AVX2 kernels on this CPU;
++`cpu-x64-macos` and `cpu-x64-macos-sse42` agreeing bitwise would mean it did
++not, or that the kernels agree; the CPU features from step 1 decide which.
++
++### 9. Application run: the glTF example client **UNTESTED**
++
++```sh
++H=native/work/macos/osx-x64/host/build/lib/libcodebrix_cycles_host.dylib
++dotnet run --project tools/gltf/CycleGltfRender -c Release -- \
++  --write-sample native/work/macos-x64-gltf/sample.glb --sample-sun
++dotnet run --project tools/gltf/CycleGltfRender -c Release -- native/work/macos-x64-gltf/sample.glb \
++  --output native/work/macos-x64-gltf/film.bin --compare --native-library $H
++```
++
++`--compare` renders on CPU and GPU and exits with 3 when the GPU film fails the
++practical criterion. Record the printed comparison and the wall.
++
++### 10. Managed tests **UNTESTED**
++
++```sh
++dotnet build CodeBrix.Graphics3D.Cycles.slnx -c Release
++dotnet test CodeBrix.Graphics3D.Cycles.slnx -c Release
++```
++
++The native-host tests skip outside Linux x64 (they load the in-tree Linux
++build); on the Mac this step proves that the solution builds and the managed
++tests pass, nothing native. The native coverage on the Mac comes from step 6
++(HostLifecycle) and step 9.
++
++### 11. Stage and audit **UNTESTED**
++
++Only after steps 6 and 8 passed:
++
++```sh
++python3 native/tools/stage_macos_x64_binaries.py --gate native/work/macos-x64-validation-1 \
++  --oracles native/work/oracles/macos-x64-1
++python3 tools/licensing/audit.py
++python3 tools/licensing/notices.py --check
++```
++
++The stager writes `native/binaries/osx-x64/{runtime,unstripped,symbols,provenance.json}`
++with the Mach-O review per dylib (see MACOS_X64.md for what must be true), then
++renders `starter/diffuse-triangle` from a temporary copy of the payload plus
++the package runtime on CPU and WebGPU; the CPU film must equal the oracle film.
++`tools/licensing/audit.py` approves any `native/binaries/<rid>/provenance.json`
++by its `approvedPayload` hashes and `snapshotCopies` (empty for osx-x64, which
++ships no kernel sources); it must report `"passed": true`.
++
++### 12. Bundle and bring back **UNTESTED**
++
++```sh
++python3 native/oracle/render_oracles.py --bundle native/work/oracles/macos-x64-1
++```
++
++On an Intel Mac the bundle is `cycles-oracles-macos-x64-<YYYYMMDD>.tar.zst`
++under the run's `bundle/` directory; the verified extraction is published as a
++new directory `native/evidence/cycles-oracles-macos-x64-<YYYYMMDD>/` (a numeric
++suffix is added rather than overwriting). Bring back to the Linux machine, in
++one new directory per run (for example under `~/ClaudeHome/cycles-oracles/`):
++the bundle file, `native/work/macos-x64-identity/`, the host gate output
++directories, `native/work/macos/osx-x64/{dependencies,host}/{status.json,invocation.json,provenance.json}`
++and the staged `native/binaries/osx-x64/provenance.json`.
++
++## Reference policy and tolerances
++
++The unmodified Cycles CPU kernels are the oracle. Every comparison uses:
++
++- practical criterion, required: `abs(a - b) <= 5e-5 + 2e-4 * abs(b)` for every
++  finite float component, where `b` is the reference;
++- strict criterion, `abs(a - b) <= 1e-7 + 1e-7 * abs(b)`: reported always, and
++  required exactly where the Linux host gate requires it;
++- NaN or Inf: always a failure; same-host CPU films: bitwise identical.
++
++Tolerances are never relaxed, and films are never adjusted to match another
++backend. A disagreement is a finding to report with its reproducer. The device
++reference policy decides where things must pass; the Intel Mac is not one of
++its reference devices, so its results are evidence, recorded as they are.
++
++## Oracle bundle layout
++
++As for the Apple Silicon oracles:
++
++```
++oracle/<scene id>/<backend>/
++  film-0.f32, film-1.f32 ...   scene-linear RGBA float32, little-endian, lower-left origin
++  meta.json                    sceneId, sceneSha256, backend, cyclesRevision, repoCommit,
++                               hostLibrarySha256, runnerSha256, os, cpu, gpu, compiler, xcode,
++                               cmake, threads, width, height, samples, repeats,
++                               repeatBitwiseIdentical, repeatMaxAbsDifference, renderSeconds,
++                               warnings, filmSha256, environment (CYCLES_CPU_NO_AVX2 for sse42)
++oracle/<scene id>/<backend>.output.txt  runner output
++comparisons/<scene>.json         pairwise compare.py reports
++run.json                         backends, common machine record, failures, comparisonsPassed
++manifest.json                    SHA-256 of every file
++```
++
++Backend names on the Intel Mac: `cpu-x64-macos`, `cpu-x64-macos-sse42`,
++`wgsl-macos-x64`. Scenes use the `cbcOracleScene` version 1 format
++(`native/oracle/README.md`).
++
++## What to record
++
++- Hardware and driver identity: step 1's files (`sw_vers`,
++  `system_profiler SPHardwareDataType SPDisplaysDataType`, CPU brand and
++  features, Xcode, SDK, Clang, CMake, Python, `dotnet --info`, commit and
++  working-tree state) and the runtime's adapter report (`adapterReport` in the
++  host gate status, `host.deviceReport` in `abi-gpu/run.capabilities-host.json`).
++- Walls: every step, and per GPU step in the host gate (`commands.json` with
++  file times); first-run versus second-run render times in the oracle
++  `meta.json` (`renderSeconds`) to see the driver's shader compile.
++- Failures with reproducers: the failing command line from `commands.json`,
++  its stdout/stderr files, the scene file or consumer name, the film pair and
++  the `comparisons.json` row (maximum error, practical failures, strict
++  differences).
++- Every correction made to this document or to the recipes on the Mac, so the
++  validated version can replace the **UNTESTED** markers.
++
++## Standing rules
++
++- Never write into an existing `native/evidence/*` checkpoint; new results go
++  to new directories under `native/work/` and to new evidence directories
++  created by the bundle step.
++- Use a new output directory for every gate and oracle run; the scripts refuse
++  non-empty ones.
++- Never relax a tolerance, adjust a film or change a backend setting to make a
++  comparison pass.
++- Only the reviewed snapshots in `third_party/` are built; nothing from
++  Homebrew is linked or included. No new NuGet packages.
++- The shipped WebGPU runtime is used unchanged.
++- The maintainer makes every commit and push.
+diff --git a/native/host/MACOS_X64.md b/native/host/MACOS_X64.md
+new file mode 100644
+index 00000000..2e5b4d34
+--- /dev/null
++++ b/native/host/MACOS_X64.md
+@@ -0,0 +1,195 @@
++# macOS x64 (Intel) WGSL/WebGPU build and oracles
++
++Copyright (c) 2026 Jeremy Ellis and contributors
++
++This recipe produces the osx-x64 product binary: the pinned Cycles revision
++with the CodeBrix WGSL/WebGPU device and the CPU device, behind the same native C
++API and managed API as every other RID. On an Intel Mac the shipped
++CodeBrix.WebGpu.Native runtime reaches the GPU through Metal. Cycles' own Metal
++device is the osx-arm64 product (see [MACOS_ARM64.md](MACOS_ARM64.md)) and is
++not built here. The same build produces CPU-x64 oracle films from Apple Clang
++and WGSL films on the Intel Mac's GPU.
++
++The recipe has not yet been executed on an Intel Mac. The test instructions in
++[docs/TESTING-MACOS-X64.md](../../docs/TESTING-MACOS-X64.md) mark every step
++that still needs validation there.
++
++## Decisions
++
++- Scope is osx-x64 with the WGSL/WebGPU device. `WITH_CYCLES_DEVICE_METAL` is
++  off (Cycles enables it by default on Apple platforms), and the configure
++  step fails if any Metal code reaches the build.
++- The shipped runtime is used unchanged: `CodeBrix.WebGpu.Native.MitLicenseForever`
++  1.0.290.1433, `runtimes/osx-x64/native/libcodebrix_wgpu.dylib`, SHA-256
++  `3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483`. It is a
++  thin x86_64 Mach-O with install name `@rpath/libcodebrix_wgpu.dylib`, minimum
++  macOS 11.0, an ad-hoc signature, and it links QuartzCore, Metal, Foundation,
++  CoreFoundation, libobjc, libiconv and libSystem. It contains wgpu's Metal
++  backend and no Vulkan backend.
++- The runtime is wired exactly as `libcodebrix_wgpu.so` is on Linux: the
++  shared injection `native/tools/inject_cycles.cmake` creates the imported
++  `codebrix_wgpu` target and links the device to it; the macOS x64 injection
++  points that target at the `.dylib` and the recipe copies the runtime beside
++  the host library, where `@loader_path` finds it. The staged payload does not
++  carry the runtime; it is delivered by its own package, and `provenance.json`
++  records the package, version and hash.
++- The deployment target is macOS 15.0, the oldest macOS that .NET 10 supports,
++  as on osx-arm64. The host refuses older systems on every Apple RID
++  (`cbc_host_create` returns `CBC_UNSUPPORTED`) and the .NET wrapper throws
++  `PlatformNotSupportedException` first. The runtime's own minimum (11.0) is
++  lower, so it imposes no further limit.
++- The product reads no image files, as on osx-arm64: OIIO's format plugins are
++  all disabled, libpng is not built, `CBC_HOST_NO_IMAGE_FILES` is set, and the
++  host rejects texture `filename` sockets with `CBC_UNSUPPORTED`. Callers pass
++  decoded pixels.
++- `WITH_CYCLES_NATIVE_ONLY` is off, so the CPU kernels run on every Intel Mac
++  that runs macOS 15: Cycles builds its SSE4.2 baseline and its AVX2 kernels and
++  picks the AVX2 kernels at run time on CPUs that have AVX2.
++  `CYCLES_CPU_NO_AVX2=1` forces the SSE4.2 kernels; the oracle runs record both.
++- The build host is a native Intel Mac. The recipes refuse Apple Silicon hosts
++  and Rosetta translation, because Cycles' x86 reference options follow
++  CMake's host processor, which is not established under translation.
++- There is no Metal oracle on Intel Macs. At the pinned revision, Cycles'
++  Metal device accepts only Apple GPUs with unified memory and skips every
++  device whose name contains "Intel" or "AMD" (`device/metal/util.mm`), so a
++  Metal build would find no usable device. Producing Metal films on an Intel
++  Mac would need a change to that check in a generated overlay, and whether
++  Cycles' Metal kernels then compile and run on Intel and AMD GPUs is
++  unknown; nothing here attempts it. The Metal oracle comes from Apple Silicon.
++- Binaries are ad-hoc signed. Developer ID signing belongs to whoever ships an
++  application that contains them.
++- Reviewed deliverables go to `native/binaries/osx-x64/` (runtime, unstripped
++  and symbols) with provenance. The maintainer makes every commit and push.
++
++## Why separate scripts
++
++The osx-x64 recipes are siblings of the osx-arm64 ones, not an architecture
++switch inside them. The osx-arm64 dependency recipe hashes its own source into
++the identity of its dependency prefix, and the osx-arm64 `provenance.json`
++records the recipe hashes; any edit to those files, even one that keeps their
++behaviour, would invalidate the Apple Silicon prefix and the recorded
++provenance. The siblings import the osx-arm64 dependency recipe as a module and
++reuse its component profile, so both RIDs build the same configuration of the
++reviewed snapshots.
++
++| Purpose | osx-x64 | osx-arm64 |
++|---|---|---|
++| Coordinator | `tools/build_macos_x64.py` | `tools/build_macos.py` |
++| Dependency prefix | `tools/dependencies/build_macos_x64.py` | `tools/dependencies/build_macos.py` |
++| Cycles host and gates | `native/tools/build_cycles_macos_x64.py` | `native/tools/build_cycles_macos.py` |
++| CMake injection | `native/tools/inject_cycles_macos_x64.cmake` (includes `inject_cycles.cmake`) | `native/tools/inject_cycles_macos.cmake` |
++| Host gate | `native/tools/macos_x64_host_gate.py` | `native/tools/macos_host_gate.py` |
++| Staging | `native/tools/stage_macos_x64_binaries.py` | `native/tools/stage_macos_binaries.py` |
++| Work tree | `native/work/macos/osx-x64/` | `native/work/macos/osx-arm64/` |
++
++Every script refuses to run anywhere but an Intel Mac and prints why; `--help`
++works everywhere.
++
++## Toolchain and isolation
++
++Agreed external inputs on the build machine: Xcode or the Xcode command-line
++tools (Apple Clang, the macOS SDK and libc++), CMake 3.24 or newer, Python 3.12
++or newer and the .NET 10 SDK for x64. `zstd` is needed only to bundle oracle
++runs. Exact versions and compiler and CMake hashes are recorded with each build.
++Dependency source comes only from the verified snapshots in `third_party/`.
++
++Homebrew lives in `/usr/local` on Intel Macs and in `/opt/homebrew` on Apple
++Silicon. Both prefixes are excluded explicitly: CMake receives
++`CMAKE_IGNORE_PREFIX_PATH` and `CMAKE_IGNORE_PATH` for both, compiler and
++pkg-config search variables (and Homebrew's `HOMEBREW_*` variables) are
++cleared, and the build fails if a configured cache, a compile command, a link
++command, a compiler dependency file or a linked library names either prefix.
++On an Intel Mac `/usr/local` also holds Homebrew's CMake and Python; the checks
++allow CMake's own program and module paths, which are tools, not inputs. Before
++the first component, the dependency recipe asks Apple Clang for its default
++header search list and fails if it reaches a Homebrew prefix outside the SDK.
++CMake 4 rejects the old minimum versions declared by the jpeg, robin-map and
++yaml-cpp snapshots, so the recipes pass `CMAKE_POLICY_VERSION_MINIMUM=3.5`.
++
++## WGSL kernels
++
++The WGSL overlay is generated by the same code as on Linux
++(`native/tools/build_cycles.py`, `overlay`). Part of it is translated from the
++pinned upstream sources through Clang's AST dump, which runs Apple Clang on the
++Mac. To prove the Mac generated the same kernels, record the Linux overlay's
++hashes and pass them to the Mac build:
++
++```sh
++# On Linux, after a maintained Linux build:
++python3 native/tools/build_cycles_macos_x64.py --write-overlay-hashes native/work/cycles-overlay \
++  --output native/work/linux-overlay-hashes.json
++# On the Intel Mac, with that file copied over:
++python3 tools/build_macos_x64.py --jobs 8 --reference-overlay linux-overlay-hashes.json
++```
++
++The comparison covers every embedded WGSL include, the translated kernels and
++the registration overlay; AST dumps, caches and the device header (which names
++an absolute path) are excluded. A difference fails the build and names the
++files.
++
++## Build, validate and stage
++
++From the repository root on an Intel Mac:
++
++```sh
++python3 tools/build_macos_x64.py --jobs 8 --reference-overlay linux-overlay-hashes.json
++python3 native/tools/macos_x64_host_gate.py --output native/work/macos-x64-validation-<n> \
++  --references <a passed Linux host_gate.py output> [--device-gates]
++python3 native/oracle/render_oracles.py --output native/work/oracles/<run> \
++  --runner native/work/macos/osx-x64/oracle-build/codebrix_cycles_oracle \
++  --host-library native/work/macos/osx-x64/host/build/lib/libcodebrix_cycles_host.dylib \
++  --backend cpu-x64-macos --backend cpu-x64-macos-sse42 --backend wgsl-macos-x64
++python3 native/tools/stage_macos_x64_binaries.py --gate native/work/macos-x64-validation-<n> --oracles native/work/oracles/<run>
++python3 tools/licensing/audit.py
++```
++
++`--skip-dependencies` reuses only a complete prefix whose recipe, toolchain and
++library hashes still match. `native/tools/build_cycles_macos_x64.py` builds the
++host, the lifecycle and ABI consumers, the independent Session references and
++the WGSL device gates from the pinned snapshot directly (no platform adaptation
++is needed on x86_64), checks the exports against `exports.macos`, the x86_64
++architecture, the minimum OS, the load closure and the absence of image codec
++libraries and of a direct Metal link, and copies the runtime beside the host.
++The coordinator then builds the oracle runner from `native/oracle` against
++that host. Selected targets can be built with repeated `--target` arguments.
++
++The host gate runs the Linux host-gate list (`host_gate.py`) with its
++comparisons and tolerances: independent native Session references, the C
++lifecycle and process exit, concurrent lifetimes, the thin .NET wrapper, the
++WebGPU lifecycle through `CBC_HOST_GPU`, the ABI additions on CPU and GPU and
++the example consumer. Same-host CPU films must be bitwise identical. GPU films
++must pass the practical criterion and, where the Linux gate requires it, the
++strict one; the four ABI light films require the practical criterion and record
++strict differences. The image reference and the color-reload tests read and
++write image files and do not apply. With `--references`, the CPU films are also
++compared with a passed Linux x64 host gate under the cross-platform rules of
++`linux_arm64_host_gate.py`. `--device-gates` also runs the built WGSL device
++gate executables and records each one's pass flag; the Linux gate drivers'
++additional coverage assertions are not reproduced. The gate records the WebGPU
++adapter report from the GPU ABI run.
++
++`stage_macos_x64_binaries.py` copies the host and its dependency closure into
++`native/binaries/osx-x64/{runtime,unstripped,symbols}`, removes build-tree
++rpaths (leaving only `@loader_path`), strips the runtime copies
++(`strip -x -S`), signs everything ad hoc and writes the host dSYM, checking
++UUIDs across all three copies. Its Mach-O review requires, for every staged
++dylib: `otool -L` names only `/usr/lib`, `/System/Library`, `@rpath` libraries
++of the payload and `@rpath/libcodebrix_wgpu.dylib`; `lipo` reports x86_64
++alone; the minimum OS is 15.0; the only rpath is `@loader_path`; `codesign -dv`
++reports an ad-hoc signature without a team identifier, and `codesign --verify`
++passes. The host must not link Metal itself. `provenance.json` records the
++inputs, toolchain, build commands, overlay comparison, hashes, the UUID
++mapping, the Mach-O review, the runtime package identity, notices per library,
++validation evidence and the exact approved payload. Before the recorded
++result, the stager copies the runtime directory and the package runtime alone
++to a temporary folder and renders from it on CPU and WebGPU.
++
++## Known gap: WebGPU backend selection on macOS
++
++The WGSL device creates its WebGPU instance with the Vulkan backend only
++(`native/src/webgpu_device.cpp`), and the shipped runtime's macOS builds
++contain no Vulkan backend. On an Intel Mac the device therefore finds no
++adapter and every GPU step fails with "No hardware Vulkan adapter" until the
++device selects the Metal backend on Apple platforms. The change is confined to
++the instance backend flag and the two error messages, under `__APPLE__`; Linux
++and Android keep Vulkan. It is not part of this recipe.
+diff --git a/native/oracle/README.md b/native/oracle/README.md
+index 10b164f3..8a23eed0 100644
+--- a/native/oracle/README.md
++++ b/native/oracle/README.md
+@@ -101,6 +101,16 @@ forces MetalRT on to validate the path M3 and later GPUs use by default. Each
+ Metal backend gets a fresh Cycles kernel cache in the run directory, and its
+ first render is recorded as `kernelCompileSeconds`.
+ 
++macOS x64 (Intel Mac) backends: `cpu-x64-macos` (Cycles' default CPU kernel
++dispatch, which picks the AVX2 kernels on CPUs that have AVX2),
++`cpu-x64-macos-sse42` (SSE4.2 kernels forced through `CYCLES_CPU_NO_AVX2=1`) and
++`wgsl-macos-x64` (the CodeBrix WGSL device on the shipped runtime's Metal route).
++`python3 tools/build_macos_x64.py` builds the runner at
++`native/work/macos/osx-x64/oracle-build/codebrix_cycles_oracle`; see
++[MACOS_X64.md](../host/MACOS_X64.md). On an Intel Mac the bundle and its
++evidence directory are named `cycles-oracles-macos-x64-<date>`. Without
++`--backend`, a run renders the Apple Silicon and Linux backends only.
++
+ `compare.py` treats the earlier directory as the reference `b`. The practical
+ criterion `abs(a - b) <= 5e-5 + 2e-4 * abs(b)` must hold for every component;
+ strict differences (`1e-7 + 1e-7 * abs(b)`) are reported. NaN/Inf, shape or
+diff --git a/native/oracle/render_oracles.py b/native/oracle/render_oracles.py
+index c84bdac4..dadcd659 100644
+--- a/native/oracle/render_oracles.py
++++ b/native/oracle/render_oracles.py
+@@ -7,6 +7,7 @@
+         --runner <codebrix_cycles_oracle> --host-library <libcodebrix_cycles_host> \\
+         [--backend cpu-arm64-macos] [--scene native/oracle/scenes/starter/x.json] [--previews <tool>]
+     python3 native/oracle/render_oracles.py --bundle native/work/oracles/<run>   # also writes native/evidence/cycles-oracles-macos-<date>/
++    (on an Intel Mac the bundle and evidence directory are named cycles-oracles-macos-x64-<date>)
+ 
+ Films are written once and never adjusted. Metal backends run Cycles with
+ MetalRT and kernel specialization fixed by environment, each with a fresh
+@@ -27,7 +28,14 @@ BACKENDS={
+  # Linux x64 (native/host/targets.cmake builds the runner as codebrix_cycles_oracle).
+  'cpu-x64-linux':('cpu',{},'Cycles CPU device, GCC x86-64 (-msse4.2 -ffp-contract=off host options)'),
+  'wgsl-linux-intel':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)'),
++ # macOS x64 (Intel Mac; tools/build_macos_x64.py builds the runner in oracle-build).
++ 'cpu-x64-macos':('cpu',{},'Cycles CPU device, Apple Clang x86-64, Cycles default kernel dispatch (AVX2 kernels where the CPU has AVX2)'),
++ 'cpu-x64-macos-sse42':('cpu',{'CYCLES_CPU_NO_AVX2':'1'},'Cycles CPU device, Apple Clang x86-64, SSE4.2 kernels forced by CYCLES_CPU_NO_AVX2'),
++ 'wgsl-macos-x64':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native osx-x64 runtime (Metal)'),
+ }
++# Without --backend, a run renders the backends listed before the macOS x64 ones.
++DEFAULT_BACKENDS=['cpu-arm64-macos','metal-m2pro','metal-m2pro-metalrt','cpu-x64-linux','wgsl-linux-intel']
++INTEL_MAC=platform.system()=='Darwin' and platform.machine()=='x86_64'
+ 
+ 
+ def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+@@ -50,7 +58,7 @@ def machine():
+ 
+ def kernel_flags():
+  """CPU kernel compile flags from the macOS build's compile database."""
+- database=REPO/'native/work/macos/osx-arm64/host/build/compile_commands.json'
++ database=REPO/'native/work/macos'/('osx-x64' if INTEL_MAC else 'osx-arm64')/'host/build/compile_commands.json'
+  if not database.exists():return None
+  for row in json.loads(database.read_text()):
+   if row['file'].endswith('kernel/device/cpu/kernel.cpp'):
+@@ -64,6 +72,8 @@ def render(args,scene,name,target,cache,extra_meta):
+  backend,environment,description=BACKENDS[name]
+  env=dict(os.environ)
+  for key in ['CYCLES_METALRT','CYCLES_METAL_SPECIALIZATION_LEVEL','OCIO','DYLD_LIBRARY_PATH']:env.pop(key,None)
++ # The macOS x64 CPU backends fix the kernel dispatch themselves.
++ if name.startswith('cpu-x64-macos'):env.pop('CYCLES_CPU_NO_AVX2',None)
+  env.update(environment);env['XDG_CACHE_HOME']=str(cache)
+  command=[str(args.runner),'--scene',str(scene),'--backend',backend,'--label',name,'--output',str(target),'--threads',str(args.threads)]
+  started=time.time()
+@@ -96,7 +106,7 @@ def run(args):
+  oracle=root/'oracle';oracle.mkdir(parents=True)
+  # Scene-family manifest.json files list hashes; they are not scenes.
+  scenes=[Path(s).resolve() for s in args.scene] or sorted(p for p in (HERE/'scenes').rglob('*.json') if p.name!='manifest.json')
+- backends=args.backend or list(BACKENDS)
++ backends=args.backend or list(DEFAULT_BACKENDS)
+  common=dict(machine=machine(),hostLibrarySha256=sha(args.host_library),runnerSha256=sha(args.runner),cpuKernelCompile=kernel_flags())
+  record=dict(scenes={},backends=backends,common=common,kernelCompileSeconds={})
+  for name in backends:
+@@ -134,7 +144,8 @@ def bundle(root):
+  """Pack the run with a manifest, verify a fresh extraction, and publish that
+  extraction as new repository evidence. Existing evidence is never overwritten."""
+  root=root.resolve();files=sorted(p for p in root.rglob('*') if p.is_file() and p.name!='manifest.json' and 'bundle' not in p.parts)
+- manifest=dict(bundle=f'cycles-oracles-macos-{time.strftime("%Y%m%d")}',created=time.strftime('%Y-%m-%dT%H:%M:%S%z'),
++ name='cycles-oracles-macos-x64' if INTEL_MAC else 'cycles-oracles-macos'
++ manifest=dict(bundle=f'{name}-{time.strftime("%Y%m%d")}',created=time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+   files={str(p.relative_to(root)):sha(p) for p in files})
+  (root/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+  target=root/'bundle';target.mkdir(exist_ok=True);tar=target/(manifest['bundle']+'.tar')
+diff --git a/native/tools/build_cycles_macos_x64.py b/native/tools/build_cycles_macos_x64.py
+new file mode 100644
+index 00000000..dd73144e
+--- /dev/null
++++ b/native/tools/build_cycles_macos_x64.py
+@@ -0,0 +1,170 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Build the osx-x64 Cycles host with the CodeBrix WGSL/WebGPU and CPU devices.
++
++    python3 native/tools/build_cycles_macos_x64.py --jobs 8 [--reference-overlay linux-overlay.json]
++    python3 native/tools/build_cycles_macos_x64.py --write-overlay-hashes native/work/cycles-overlay --output linux-overlay.json
++
++The osx-x64 sibling of build_cycles_macos.py (osx-arm64, Cycles' Metal device).
++Intel Macs run the same WGSL device as Linux and Android on the unchanged shipped
++CodeBrix.WebGpu.Native osx-x64 runtime, which reaches the GPU through Metal. The
++pinned snapshot is built unchanged (no platform adaptation is needed on x86_64);
++the WGSL overlay is generated exactly as on Linux. The runtime dylib is linked
++like libcodebrix_wgpu.so on Linux and copied beside the host library.
++
++--write-overlay-hashes runs on any host: on Linux it records the hashes of the
++generated WGSL overlay so the Mac build can prove it generated the same kernels.
++"""
++import argparse,importlib.util,json,platform,re,shutil,subprocess,sys
++from pathlib import Path
++REPO=Path(__file__).resolve().parents[2];sys.path.insert(0,str(REPO/'native/tools'));sys.path.insert(0,str(REPO/'tools'))
++spec=importlib.util.spec_from_file_location('macos_x64_dependencies',REPO/'tools/dependencies/build_macos_x64.py')
++deps=importlib.util.module_from_spec(spec);spec.loader.exec_module(deps)
++sha,save,tool=deps.sha,deps.save,deps.tool
++WORK=REPO/'native/work/macos/osx-x64/host'
++RUNTIME_NAME='libcodebrix_wgpu.dylib'
++# CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433, runtimes/osx-x64/native.
++RUNTIME_SHA256='3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483'
++# The Linux host-gate list (host_gate.py), plus the WGSL device gates.
++HOST_TARGETS=['codebrix_cycles_host',*['codebrix_host_'+n for n in ['cpu_test','gpu_test','reload_test','concurrency_test','tier_test',
++ 'abi_test','example_test','scene_edit_test','session_reference','session64_reference']]]
++GATE_TARGETS=['codebrix_cycles_'+n+'_gate' for n in ['device','camera','closest','background','svm_world','shader_data','svm_surface',
++ 'attribute','normal','image','surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film']]
++SKIPPED_TARGETS={'codebrix_host_image_reference':'writes and reads EXR/PNG through OIIO, whose format plugins are disabled',
++ 'codebrix_cycles_image_file_gate':'loads texture files through OIIO, whose format plugins are disabled'}
++# Overlay files that must be byte-identical to the Linux build's: every embedded
++# WGSL include, the translated kernels and the registration overlay. AST dumps,
++# caches and the device header (which names an absolute path) are excluded.
++OVERLAY_PATTERNS=['*.inc','translated.wgsl','device/*','integrator/*','util/*']
++
++
++def overlay_hashes(directory):
++ directory=Path(directory)
++ return {str(p.relative_to(directory)):sha(p) for pattern in OVERLAY_PATTERNS for p in sorted(directory.glob(pattern)) if p.is_file()}
++
++
++def compare_overlay(generated,reference):
++ expected=json.loads(Path(reference).read_text());actual=overlay_hashes(generated)
++ different=sorted(n for n in set(expected)|set(actual) if expected.get(n)!=actual.get(n))
++ if different:raise RuntimeError('Generated WGSL overlay differs from the reference build: '+', '.join(different[:10]))
++ return dict(reference=str(reference),files=len(actual),identical=True)
++
++
++def exports(library):
++ symbols=sorted(line.split()[-1] for line in tool('nm','-gU',str(library)).splitlines() if ' T ' in line)
++ expected=sorted((REPO/'native/host/exports.macos').read_text().split())
++ if symbols!=expected:raise RuntimeError(f'Unexpected host exports: {sorted(set(symbols)^set(expected))}')
++ return symbols
++
++
++def closure(library,prefix):
++ """Libraries the host loads by @rpath: the dependency prefix plus the runtime."""
++ seen={};pending=[library]
++ while pending:
++  current=pending.pop()
++  for name in deps.linked(current):
++   if not name.startswith('@rpath/'):continue
++   leaf=name[len('@rpath/'):]
++   if leaf==library.name or leaf in seen or leaf==RUNTIME_NAME:continue
++   path=prefix/'lib'/leaf
++   if not path.exists():raise RuntimeError(f'{current.name} needs {name}, absent from the dependency prefix')
++   seen[leaf]=str(path.resolve().relative_to(prefix.resolve()));pending.append(path)
++ return dict(sorted(seen.items()))
++
++
++def main():
++ p=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
++ p.add_argument('--jobs',type=int,default=8);p.add_argument('--target',action='append',help='Build selected CMake targets only')
++ p.add_argument('--reference-overlay',type=Path,help='Overlay hashes written on Linux; the generated overlay must match')
++ p.add_argument('--write-overlay-hashes',type=Path,metavar='OVERLAY_DIR',help='Write the hashes of an existing overlay directory and exit (any host)')
++ p.add_argument('--output',type=Path,help='With --write-overlay-hashes: the JSON file to write')
++ a=p.parse_args()
++ if a.write_overlay_hashes:
++  if not a.output:p.error('--write-overlay-hashes needs --output')
++  hashes=overlay_hashes(a.write_overlay_hashes)
++  if not hashes:raise SystemExit(f'No overlay files under {a.write_overlay_hashes}')
++  save(a.output,hashes);print(f'{len(hashes)} overlay hashes written to {a.output}');return
++ deps.require_build_host()
++ # native/tools/build.py, not the tools/build.py coordinator (the dependency
++ # recipes put tools/ first on the import path).
++ sys.path.insert(0,str(REPO/'native/tools'))
++ from build import PACKAGE,verify_cycles,audit
++ from build_cycles import overlay
++ from cycles_source import SOURCE
++ WORK.mkdir(parents=True,exist_ok=True);state=dict(complete=False,phase='prepare',rid=deps.RID);save(WORK/'status.json',state)
++ try:
++  prefix=deps.prefix();marker=prefix/deps.MARKER
++  verify_cycles();save(WORK/'webgpu-compatibility.json',audit(allow_rust_documentation_change=True))
++  runtime=PACKAGE/'runtimes/osx-x64/native'/RUNTIME_NAME
++  if sha(runtime)!=RUNTIME_SHA256:raise RuntimeError('The osx-x64 WebGPU runtime differs from the pinned shipped binary')
++  # Same generator as Linux; translation runs Apple Clang's AST dump here, so
++  # the result is compared with the Linux overlay when a reference is given.
++  generated=overlay(WORK/'overlay');generated_hashes=overlay_hashes(generated)
++  overlay_check=compare_overlay(generated,a.reference_overlay) if a.reference_overlay else dict(reference=None,identical=None,
++   note='not compared; pass --reference-overlay with hashes written on Linux')
++  values=deps.options(prefix)
++  for name in ['CMAKE_INSTALL_PREFIX','CMAKE_INSTALL_NAME_DIR','CMAKE_POLICY_VERSION_MINIMUM','BUILD_SHARED_LIBS','BUILD_TESTING','CMAKE_INSTALL_LIBDIR:STRING']:
++   values.pop(name)
++  # Only checkout-independent rpaths: build/lib and build/bin reach the host,
++  # the runtime copied beside it and the dependency prefix relatively.
++  values['CMAKE_INSTALL_RPATH']='@loader_path;@loader_path/../lib;@loader_path/../../../dependencies/install/lib'
++  values.update(WITH_LIBS_PRECOMPILED='OFF',WITH_LEGACY_LIBRARIES='ON',
++   # Native-only adds -march=native, which would tie the CPU kernels to the build
++   # machine; Cycles' own SSE4.2 baseline and AVX2 kernel dispatch stay enabled.
++   WITH_CYCLES_NATIVE_ONLY='OFF',WITH_CYCLES_DEVICE_METAL='OFF',WITH_CYCLES_PATH_GUIDING='OFF',
++   OpenImageIO_DIR=prefix/'lib/cmake/OpenImageIO',OpenColorIO_DIR=prefix/'lib/cmake/OpenColorIO',
++   CMAKE_PROJECT_Cycles_INCLUDE=REPO/'native/tools/inject_cycles_macos_x64.cmake',CODEBRIX_CYCLES_OVERLAY=generated,
++   CODEBRIX_WEBGPU_PACKAGE=PACKAGE,CODEBRIX_WEBGPU_RID='osx-x64',
++   CMAKE_C_FLAGS='-gline-tables-only '+deps.PATH_MAP,CMAKE_CXX_FLAGS='-gline-tables-only '+deps.PATH_MAP,
++   CMAKE_OBJCXX_FLAGS='-gline-tables-only '+deps.PATH_MAP,CODEBRIX_OSO_PREFIX=f'{REPO}/')
++  values.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','EMBREE','OPENIMAGEDENOISE','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD',
++   'HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
++  build=WORK/'build'
++  commands=[['cmake','-S',str(SOURCE),'-B',str(build),*['-D'+k+'='+str(v) for k,v in values.items()]],
++   ['cmake','--build',str(build),'--target',*(a.target or HOST_TARGETS+GATE_TARGETS),'--parallel',str(a.jobs)]]
++  pin=dict(identity=deps.identity(),cyclesImportSha256=sha(REPO/'third_party/cycles-import.json'),dependencyMarkerSha256=sha(marker),
++   recipeSha256=sha(Path(__file__)),injectionSha256=sha(REPO/'native/tools/inject_cycles_macos_x64.cmake'),
++   sharedInjectionSha256=sha(REPO/'native/tools/inject_cycles.cmake'),runtimeSha256=sha(runtime),runtimePath=str(runtime),
++   hostSourceSha256={str(p.relative_to(REPO)):sha(p) for p in sorted((REPO/'native/host').glob('*')) if p.is_file() and p.suffix in ('.cpp','.h','.inc','.cmake','.macos')},
++   overlaySha256=generated_hashes,overlayComparison=overlay_check,adaptedFiles=[],commands=commands,skippedTargets=SKIPPED_TARGETS)
++  save(WORK/'invocation.json',pin);env=deps.environment_for(prefix,a.jobs)
++  for step,command in zip(['configure','build'],commands):
++   state['phase']=step;save(WORK/'status.json',state)
++   with (WORK/(step+'.log')).open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True,env=env)
++   deps.check_isolation(build)
++   if step=='configure':
++    cache=(build/'CMakeCache.txt').read_text()
++    for required in ['WITH_CYCLES_DEVICE_METAL:BOOL=OFF','WITH_CYCLES_NATIVE_ONLY:BOOL=OFF','CMAKE_OSX_ARCHITECTURES:STRING=x86_64']:
++     if required not in cache:raise RuntimeError('Configured cache lacks '+required)
++  state['compilerDependencyFiles']=deps.check_build_inputs(build)
++  rows=json.loads((build/'compile_commands.json').read_text())
++  native=[row['file'] for row in rows if re.search(r'-m(arch|cpu|tune)=native',row.get('command',''))]
++  if native:raise RuntimeError(f'Host-specific CPU flags in {native[:3]}')
++  if not any('-DWITH_WEBGPU' in row.get('command','') for row in rows):raise RuntimeError('The WebGPU device was not configured')
++  if any('-DWITH_METAL' in row.get('command','') for row in rows):raise RuntimeError('Cycles Metal code was configured into the WGSL profile')
++  host=build/'lib/libcodebrix_cycles_host.dylib';deps.check_binary(host)
++  if '@rpath/'+RUNTIME_NAME not in deps.linked(host):raise RuntimeError('The host does not load the WebGPU runtime by @rpath')
++  if any('/Metal.framework/' in n for n in deps.linked(host)):raise RuntimeError('The host links Metal directly; only the runtime may')
++  symbols=exports(host);loaded=closure(host,prefix)
++  forbidden=[name for name in loaded if re.match(r'lib(jpeg|png|tiff|webp|gif|heif|raw|openjp|avif|jxl)',name)]
++  if forbidden:raise RuntimeError('Image codec libraries are loaded by the host: '+', '.join(forbidden))
++  # The runtime sits beside the host (found by @loader_path from lib and
++  # @loader_path/../lib from bin), as libcodebrix_wgpu.so does on Linux.
++  copied=build/'lib'/RUNTIME_NAME;shutil.copy2(runtime,copied)
++  if sha(copied)!=RUNTIME_SHA256:raise RuntimeError('Copied runtime differs from the shipped binary')
++  verify_cycles()
++  if sha(runtime)!=pin['runtimeSha256']:raise RuntimeError('The runtime changed during the build')
++  artifacts={str(p.relative_to(build)):sha(p) for d in [build/'bin',build/'lib'] for p in sorted(d.glob('*'))
++   if p.is_file() and (p.name.startswith('codebrix_') or p.name in ('libcodebrix_cycles_host.dylib',RUNTIME_NAME))}
++  if not a.target:assert len(artifacts)==len(HOST_TARGETS+GATE_TARGETS)+1,artifacts
++  state.update(complete=True,passed=True,phase='complete',artifacts=artifacts,exports=len(symbols),dependencyClosure=loaded,
++   runtime=dict(path=str(copied.relative_to(build)),sha256=RUNTIME_SHA256),overlayComparison=overlay_check,
++   executionProven=False,releaseCleared=False)
++  print('osx-x64: WGSL/WebGPU host, lifecycle targets and device gates built',flush=True)
++ except Exception as error:
++  state.update(complete=True,passed=False,error=repr(error));raise
++ finally:save(WORK/'status.json',state)
++
++
++if __name__=='__main__':main()
+diff --git a/native/tools/inject_cycles_macos_x64.cmake b/native/tools/inject_cycles_macos_x64.cmake
+new file mode 100644
+index 00000000..8b13d91a
+--- /dev/null
++++ b/native/tools/inject_cycles_macos_x64.cmake
+@@ -0,0 +1,50 @@
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++# osx-x64 product profile: pinned Cycles with the CodeBrix WGSL/WebGPU device on
++# the shipped CodeBrix.WebGpu.Native osx-x64 runtime, the CPU device and the C
++# host. It reuses the Linux/Android injection (inject_cycles.cmake) unchanged and
++# adds only what macOS needs: the runtime is a .dylib, Apple Clang 21 needs fmt's
++# runtime-checked parser, and the debug map gets repository-relative paths. The
++# osx-arm64 product (Cycles' Metal device) uses inject_cycles_macos.cmake.
++if(CMAKE_VERSION VERSION_LESS 3.24)
++  message(FATAL_ERROR "The CodeBrix native host requires CMake 3.24 or newer")
++endif()
++if(NOT APPLE OR NOT CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
++  message(FATAL_ERROR "inject_cycles_macos_x64.cmake builds only the osx-x64 WGSL profile")
++endif()
++if(NOT CODEBRIX_WEBGPU_RID STREQUAL "osx-x64")
++  message(FATAL_ERROR "The osx-x64 profile requires -DCODEBRIX_WEBGPU_RID=osx-x64")
++endif()
++if(WITH_CYCLES_DEVICE_METAL)
++  message(FATAL_ERROR "The osx-x64 profile uses the WGSL/WebGPU device; configure with WITH_CYCLES_DEVICE_METAL=OFF")
++endif()
++# As on osx-arm64 and NDK 29 (Clang 21): fmt 10's optional consteval
++# format-string parser fails; its supported runtime-checked parser stays enabled.
++add_compile_definitions(FMT_CONSTEVAL=)
++# The product binary reads no image files: callers bind decoded pixels, and the
++# host rejects texture filenames (same rule as osx-arm64). targets.cmake reads
++# this variable when the deferred device function includes it.
++set(CODEBRIX_HOST_NO_IMAGE_FILES ON)
++# Repository-relative object paths in the debug map (Cycles appends its own
++# linker flags as a list, so they are not passed through CMAKE_*_LINKER_FLAGS).
++if(CODEBRIX_OSO_PREFIX)
++  add_link_options("LINKER:-oso_prefix,${CODEBRIX_OSO_PREFIX}")
++endif()
++include("${CMAKE_CURRENT_LIST_DIR}/inject_cycles.cmake")
++# Deferred calls run in the order they are registered, so this runs after
++# codebrix_add_cycles_device has created the imported runtime target with the
++# Linux file name. Point it at the osx-x64 dylib, whose install name is
++# @rpath/libcodebrix_wgpu.dylib; the recipe copies it beside the host library.
++function(codebrix_use_osx_x64_webgpu_runtime)
++  if(NOT TARGET codebrix_wgpu)
++    message(FATAL_ERROR "inject_cycles.cmake did not create the codebrix_wgpu runtime target")
++  endif()
++  set(runtime "${CODEBRIX_WEBGPU_PACKAGE}/runtimes/osx-x64/native/libcodebrix_wgpu.dylib")
++  if(NOT EXISTS "${runtime}")
++    message(FATAL_ERROR "The shipped osx-x64 WebGPU runtime is missing: ${runtime}")
++  endif()
++  set_target_properties(codebrix_wgpu PROPERTIES IMPORTED_LOCATION "${runtime}"
++    IMPORTED_SONAME "@rpath/libcodebrix_wgpu.dylib")
++  message(STATUS "CodeBrix osx-x64 WebGPU runtime: ${runtime}")
++endfunction()
++cmake_language(DEFER CALL codebrix_use_osx_x64_webgpu_runtime)
+diff --git a/native/tools/macos_x64_host_gate.py b/native/tools/macos_x64_host_gate.py
+new file mode 100644
+index 00000000..3a34d228
+--- /dev/null
++++ b/native/tools/macos_x64_host_gate.py
+@@ -0,0 +1,247 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Review the osx-x64 host build and run the Linux host-gate list on an Intel Mac.
++
++    python3 native/tools/macos_x64_host_gate.py --output native/work/macos-x64-validation-<n> \\
++        [--references <passed Linux host_gate.py output>] [--device-gates]
++
++The gate list is host_gate.py's: independent native Session references, C
++lifecycle and process exit, concurrent lifetimes, the thin .NET wrapper, the
++WebGPU lifecycle (CBC_HOST_GPU), the ABI additions on CPU and GPU, and the
++example consumer, with the same comparisons and tolerances. Same-host CPU films
++must be bitwise identical; GPU films must pass the practical criterion
++5e-5 + 2e-4*abs(ref) and, where the Linux gate requires it, the strict criterion
++1e-7 + 1e-7*abs(ref). Disagreements are findings, never adjusted.
++
++The two OIIO file tests (image reference, color reload with PNG files) do not
++apply: this product reads no image files, as on osx-arm64. With --references,
++the CPU films are also compared with a passed Linux x64 host gate, with the
++cross-platform rules of linux_arm64_host_gate.py. --device-gates also runs the
++built WGSL device gate executables and records each one's own pass flag; the
++Linux drivers' extra coverage assertions are not reproduced.
++"""
++import argparse,ctypes,hashlib,json,math,os,platform,re,struct,subprocess,sys
++from pathlib import Path
++REPO=Path(__file__).resolve().parents[2];sys.path.insert(0,str(REPO/'tools/dependencies'))
++from macos_checks import linked,tool
++def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++def save(path,value):Path(path).write_text(json.dumps(value,indent=2)+'\n')
++BASE=REPO/'native/work/macos/osx-x64';FLOATS=32*24*4
++REVISION=json.loads((REPO/'third_party/cycles-import.json').read_text())['revision']
++RUNTIME_NAME='libcodebrix_wgpu.dylib'
++RUNTIME_SHA256='3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483'
++DEPLOYMENT_TARGET='15.0'
++CBC_UNSUPPORTED=2
++# webgpu.h WGPUBackendType values, for the adapter report.
++BACKEND_TYPES={0:'Undefined',1:'Null',2:'WebGPU',3:'D3D11',4:'D3D12',5:'Metal',6:'Vulkan',7:'OpenGL',8:'OpenGLES'}
++# Device gate executables that take only an output prefix (as the Linux drivers call them).
++DEVICE_GATES=['device','camera','closest','background','svm_world','shader_data','svm_surface','attribute','normal','image',
++ 'surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film']
++
++
++def main():
++ p=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
++ p.add_argument('--output',type=Path,required=True);p.add_argument('--references',type=Path,help='A passed Linux x64 host_gate.py output directory')
++ p.add_argument('--device-gates',action='store_true',help='Also run the WGSL device gate executables (diagnostic)')
++ a=p.parse_args()
++ if platform.system()!='Darwin' or platform.machine()!='x86_64':
++  raise SystemExit(f'osx-x64: this gate runs only on an Intel Mac; this host is {platform.system()} {platform.machine()}')
++ host=BASE/'host';build=host/'build';prefix=BASE/'dependencies/install';out=a.output.resolve();out.mkdir(parents=True,exist_ok=False)
++ binary=build/'bin';library=build/'lib/libcodebrix_cycles_host.dylib';runtime=build/'lib'/RUNTIME_NAME
++ state=dict(complete=False,phase='binary-review',rid='osx-x64');save(out/'status.json',state)
++ results={};comparisons=[];commands=[]
++ env=dict(os.environ)
++ for name in ['OCIO','DYLD_LIBRARY_PATH','DYLD_FALLBACK_LIBRARY_PATH','DYLD_INSERT_LIBRARIES','CYCLES_CPU_NO_AVX2',
++  'CODEBRIX_CYCLES_SHADER_SPECIALIZATION','CODEBRIX_CYCLES_TEST_CRASH_PIPELINE']:env.pop(name,None)
++ def call(command,name,timeout=900,extra=None):
++  commands.append(dict(command=list(map(str,command)),environment=extra or {},timeoutSeconds=timeout));save(out/'commands.json',commands)
++  state['phase']=name;save(out/'status.json',state)
++  with (out/(name+'.stdout.txt')).open('w') as stdout,(out/(name+'.stderr.txt')).open('w') as stderr:
++   subprocess.run(list(map(str,command)),cwd=REPO,stdout=stdout,stderr=stderr,check=True,timeout=timeout,env={**env,**(extra or {})})
++  return (out/(name+'.stdout.txt')).read_text()
++ def report(command,name,timeout=900,extra=None):
++  rows=[json.loads(line) for line in call(command,name,timeout,extra).splitlines() if line.strip()]
++  assert rows and all(row['passed'] for row in rows),rows;results[name]=rows;save(out/'results.json',results);return rows
++ def compare(actual,ref,kind,bitwise=False,strict=True):
++  x,y=actual.read_bytes(),ref.read_bytes();v,w=struct.unpack(f'<{FLOATS}f',x),struct.unpack(f'<{FLOATS}f',y)
++  assert all(math.isfinite(f) for f in v+w),actual
++  errors=[abs(i-j) for i,j in zip(v,w)]
++  row=dict(film=str(actual),reference=str(ref),kind=kind,filmSha256=sha(actual),bitwiseEqual=x==y,bitwiseRequired=bitwise,strictRequired=strict,
++   maximumAbsoluteError=max(errors),practicalFailures=sum(e>5e-5+2e-4*abs(b) for e,b in zip(errors,w)),
++   strictDifferences=sum(e>1e-7+1e-7*abs(b) for e,b in zip(errors,w)))
++  comparisons.append(row);save(out/'comparisons.json',comparisons)
++ def folder(name):
++  path=out/name;path.mkdir(parents=True,exist_ok=False);return path
++ try:
++  status=json.loads((host/'status.json').read_text());assert status['complete'] and status['passed'],'Build the host first: python3 tools/build_macos_x64.py'
++  invocation=json.loads((host/'invocation.json').read_text())
++  pins={str(build/name):digest for name,digest in status['artifacts'].items()}
++  dependency=json.loads((prefix/'codebrix-osx-x64-build.json').read_text())
++  pins.update({str(prefix/name):digest for name,digest in dependency['libraries'].items()})
++  assert all(sha(Path(path))==digest for path,digest in pins.items()),'Build artifacts changed since the build recorded them'
++  assert sha(runtime)==RUNTIME_SHA256==invocation['runtimeSha256'],'The runtime beside the host is not the shipped osx-x64 binary'
++
++  # Binary review: exports, architecture, minimum OS, load closure, signatures.
++  exported={line.split()[-1].lstrip('_') for line in tool('nm','-gU',str(library)).splitlines() if ' T ' in line}
++  expected=set(re.findall(r'\b(cbc_host_\w+)\(',(REPO/'native/host/cycles_host.h').read_text()));assert exported==expected and len(exported)==48,sorted(exported^expected)
++  review=[]
++  reviewed=[library,runtime,*[binary/n for n in ['codebrix_host_cpu_test','codebrix_host_gpu_test','codebrix_host_abi_test','codebrix_host_session_reference']]]
++  for path in reviewed:
++   names=linked(path)
++   for name in names:assert name.startswith(('@rpath/','/usr/lib/','/System/Library/')),(path,name)
++   archs=tool('lipo','-archs',str(path)).split();assert archs==['x86_64'],(path,archs)
++   minos=re.findall(r'minos (\S+)',tool('otool','-l',str(path)))
++   if path!=runtime:assert minos and all(v==DEPLOYMENT_TARGET for v in minos),(path,minos)
++   signature=subprocess.run(['codesign','-dv',str(path)],capture_output=True,text=True).stderr.splitlines()
++   subprocess.run(['codesign','--verify',str(path)],check=True)
++   review.append(dict(path=str(path),sha256=sha(path),architectures=archs,linked=names,minimumOs=minos,signature=signature,
++    rpaths=re.findall(r'cmd LC_RPATH\n\s+cmdsize \d+\n\s+path (\S+)',tool('otool','-l',str(path)))))
++  assert '@rpath/'+RUNTIME_NAME in linked(library),'The host does not load the WebGPU runtime'
++  host_frameworks=sorted(n for n in linked(library) if n.startswith('/System/'))
++  assert not any('/Metal.framework/' in f for f in host_frameworks),'The host links Metal directly'
++  runtime_frameworks=sorted(n for n in linked(runtime) if n.startswith('/System/'))
++  codecs=[n for n in status['dependencyClosure'] if re.match(r'lib(jpeg|png|tiff|webp|gif|heif|raw|openjp|avif|jxl)',n)];assert not codecs,codecs
++  for kind in ['session','session64']:
++   link=(build/('codebrix_host_'+kind+'_reference.map')).read_text()
++   assert 'codebrix_host_reference_color.dir' in link and 'colorspace.cpp.o' in link
++  save(out/'binary-review.json',dict(passed=True,exports=sorted(exported),binaries=review,hostFrameworks=host_frameworks,runtimeFrameworks=runtime_frameworks,
++   dependencyClosure=status['dependencyClosure'],overlayComparison=invocation.get('overlayComparison'),
++   scope='osx-x64 exports, x86_64 Mach-O, minimum OS, load closure (system libraries, the reviewed prefix and the shipped runtime), signatures'))
++
++  # Contract checks through the public API, without any test executable.
++  api=ctypes.CDLL(str(library));config=(ctypes.c_uint32*8)(32,1,3,1,0,0,0,0);handle=ctypes.c_uint64(0)
++  metal=api.cbc_host_create(config,ctypes.byref(handle))
++  config[2]=2;assert api.cbc_host_create(config,ctypes.byref(handle))==0
++  node=ctypes.c_uint64(0);shader=ctypes.c_uint64(0);assert api.cbc_host_create_node(handle,b'shader',ctypes.byref(shader))==0
++  assert api.cbc_host_shader_node(handle,shader,b'image_texture',ctypes.byref(node))==0
++  rejected=api.cbc_host_set_string(handle,node,b'filename',b'/tmp/texture.png');cleared=api.cbc_host_set_string(handle,node,b'filename',b'')
++  assert api.cbc_host_destroy(handle)==0
++  contract=dict(metalCreateStatus=metal,filenameSetStatus=rejected,emptyFilenameStatus=cleared)
++  assert contract==dict(metalCreateStatus=CBC_UNSUPPORTED,filenameSetStatus=CBC_UNSUPPORTED,emptyFilenameStatus=0),contract
++  results['contract']=contract;save(out/'results.json',results)
++
++  cpu=folder('cpu');cpu64=folder('cpu64')
++  for target,kind in [(cpu,'session'),(cpu64,'session64')]:
++   rows=report([binary/('codebrix_host_'+kind+'_reference'),'CPU',target/'run'],kind+'-reference')
++   assert rows[0]['actualSession'] and rows[0]['renders']==3 and rows[0]['device']=='CPU'
++  reference_hashes={str(f):sha(f) for d in [cpu,cpu64] for f in d.rglob('*') if f.is_file()}
++  for mode in ['cpu','cpu-exit']:
++   target=folder(mode+'-consumer');report([binary/'codebrix_host_cpu_test',target/'run',*(['--exit-live'] if mode=='cpu-exit' else [])],mode)
++   for i in range(3):compare(target/f'run.{i}.rgba.bin',cpu/f'run.{i}.rgba.bin','same-host CPU lifecycle',bitwise=True)
++
++  stress_input=folder('stress-input');stress_output=folder('stress-output')
++  for variant in ['a','b']:(stress_input/f'{variant}.ocio').write_bytes((REPO/'native/tests/host/configs'/f'{variant}.ocio').read_bytes())
++  linux=a.references.resolve() if a.references else None
++  if linux:
++   # The Linux gate's decoded texture, so the films can also be compared with its references.
++   (stress_input/'input.5.bin').write_bytes((linux/'references/a/output/input.5.bin').read_bytes())
++  else:
++   # Deterministic 7x5 byte4 texture, as on osx-arm64; Linux decodes a PNG here.
++   (stress_input/'input.5.bin').write_bytes(bytes((37*i+11*(i//4))%256 for i in range(7*5*4)))
++  rows=report([binary/'codebrix_host_concurrency_test',stress_input,stress_output],'concurrency',1200)
++  assert all(rows[0][key]==value for key,value in dict(concurrentHostLifetimes=192,destroyDuringRender=12,racingReaders=48,
++   guardedConfigurationRejections=256,hostLiveConfigurationRejections=192).items()),rows
++  assert rows[0]['cancelledOutputUntouched']
++  compare(stress_output/'after-invalid.rgba.bin',stress_output/'guarded.rgba.bin','same-host concurrent lifetime',bitwise=True)
++
++  # Thin .NET wrapper: same films as the native Session, bit for bit.
++  managed=out/'managed-bin'
++  call(['dotnet','build',REPO/'tools/hosttests/HostLifecycle/HostLifecycle.csproj','-c','Release','--configfile',
++   REPO/'tools/hosttests/NuGet.Config','-o',managed],'managed-build',900)
++  pins[str(managed/'HostLifecycle.dll')]=sha(managed/'HostLifecycle.dll');pins[str(managed/'CodeBrix.Graphics3D.Cycles.dll')]=sha(managed/'CodeBrix.Graphics3D.Cycles.dll')
++  target=out/'managed-lifecycle'
++  rows=[json.loads(line) for line in call(['dotnet',managed/'HostLifecycle.dll',cpu,target],'managed-lifecycle',900,
++   {'DYLD_LIBRARY_PATH':str(build/'lib')}).splitlines() if line.strip().startswith('{')]
++  assert rows and rows[-1]['passed'] and rows[-1]['cpuReferenceBitwiseEqual'],rows;results['managed-lifecycle']=rows;save(out/'results.json',results)
++  for i in range(3):compare(target/f'run.{i}.rgba.bin',cpu/f'run.{i}.rgba.bin','managed CPU lifecycle',bitwise=True)
++
++  # WebGPU lifecycle through CBC_HOST_GPU (the shipped runtime's Metal route).
++  for mode,count in [('gpu',6),('gpu-exit',5)]:
++   target=folder(mode)
++   rows=report([binary/'codebrix_host_gpu_test',target/'run',*(['--exit-live'] if mode=='gpu-exit' else [])],mode,1800)
++   if mode=='gpu':assert rows[0]['explicitWebGpu'] and rows[0]['repeatStrictCriterionPassed'] and rows[0]['repeatChecks']==3,rows
++   for i in range(count):
++    reference=cpu64/'run.1.rgba.bin' if i==3 else cpu/f'run.{i if i<3 else 1}.rgba.bin'
++    compare(target/f'run.{i}.rgba.bin',reference,f'{mode} vs same-host CPU Session reference')
++
++  # ABI additions on the CPU reference and through CBC_HOST_GPU.
++  abi={}
++  for mode in ['cpu','gpu']:
++   target=folder('abi-'+mode)
++   row=report([binary/'codebrix_host_abi_test',target/'run',mode],'abi-'+mode,1800)[0]
++   assert re.fullmatch(r'1\.0\.\d{8}\.\d+',row['libraryVersion']) and row['cyclesRevision']==REVISION
++   binary_caps=json.loads((target/'run.capabilities-binary.json').read_text());host_caps=json.loads((target/'run.capabilities-host.json').read_text())
++   assert binary_caps['abiVersion']==1 and binary_caps['cyclesRevision']==REVISION and 'host' not in binary_caps
++   assert binary_caps['backends']==dict(compiled=['cpu','webgpu'],gpu='webgpu',gpuFallbackToCpu=False),binary_caps['backends']
++   assert binary_caps['imageInput']['formats']==['float','float4','half','half4','byte','byte4','ushort','ushort4']
++   assert binary_caps['imageInput']['fileReading'] is False
++   assert host_caps['host']['backend']==('cpu' if mode=='cpu' else 'webgpu')
++   assert host_caps['host']['deviceReport']['backend']==host_caps['host']['backend']
++   assert row['lightTypes']==5 and row['cancelledByCallback'] and row['refusedReentry']==row['progressEvents']+row['statusEvents']
++   if mode=='cpu':
++    assert all(row[k] for k in ['lightDeletionRestores','graphRebuildRestores','motionRemovalRestores','imageUpdateRestores'])
++    assert row['litRenders']==4 and row['projections']==2 and row['errorEvents']==0
++    assert all(row[k]==0 for k in ['depthStatus','normalStatus','aovStatus','dataPassRender','lightPassRender','diffuseDirectStatus','backgroundStatus'])
++    passes=json.loads((target/'run.passes.json').read_text())['passes']
++    assert [(q['name'],q['components'],q['written']) for q in passes]==[('Combined',4,True),('Depth',1,True),('Normal',3,True),('Mask',1,True)]
++   else:
++    assert row['litRenders']==4 and row['errorEvents']==1 and row['renderAfterDeviceFailure']==0
++    state['adapterReport']=host_caps['host']['deviceReport']
++   abi[mode]=target
++  for name in ['base','object-motion','deforming']:
++   compare(abi['gpu']/f'run.{name}.rgba.bin',abi['cpu']/f'run.{name}.rgba.bin','ABI GPU vs CPU')
++  # As on Linux: the four light films require the practical criterion; strict differences are recorded.
++  for name in ['light-pointlight','light-spotlight','light-arealight','light-sunlight']:
++   compare(abi['gpu']/f'run.{name}.rgba.bin',abi['cpu']/f'run.{name}.rgba.bin','ABI GPU vs CPU light film',strict=False)
++  for mode in ['cpu','gpu']:
++   row=report([binary/'codebrix_host_example_test',mode],'example-'+mode,1800)[0]
++   assert row['backend']==(2 if mode=='cpu' else 1) and row['progressEvents']>0
++   assert row['depthStatus']==(0 if mode=='cpu' else 1)
++
++  if linux:
++   assert json.loads((linux/'status.json').read_text())['passed'];old=json.loads((linux/'invocation.json').read_text())
++   # The Linux run recorded absolute paths of its own machine; verify them relative to the copied directory.
++   base=os.path.commonpath(list(old['referenceSha256']))
++   assert all(sha(linux/os.path.relpath(path,base))==digest for path,digest in old['referenceSha256'].items()),'The Linux reference films changed'
++   for name in ['native/tests/host/session_reference.cpp','native/tests/host/consumer.c','native/tests/host/concurrency_consumer.c']:
++    if name in old['sourceSha256']:assert sha(REPO/name)==old['sourceSha256'][name],name
++   # Cross-platform rules of linux_arm64_host_gate.py: lifecycle films strict, others practical.
++   for i in range(3):compare(cpu/f'run.{i}.rgba.bin',linux/'cpu'/f'run.{i}.rgba.bin','cross-platform CPU lifecycle (Linux x64)',strict=True)
++   for i in range(3):compare(cpu64/f'run.{i}.rgba.bin',linux/'cpu64'/f'run.{i}.rgba.bin','cross-platform CPU 64-sample lifecycle (Linux x64)',strict=False)
++   for name in ['guarded','after-invalid']:
++    compare(stress_output/(name+'.rgba.bin'),linux/'references/a/output/case.177.rgba.bin','cross-platform concurrent lifetime (Linux x64)',strict=False)
++
++  if a.device_gates:
++   gates={}
++   for name in DEVICE_GATES:
++    executable=binary/f'codebrix_cycles_{name}_gate';target=folder('device-gate-'+name)
++    try:
++     text=call([executable,target/'run'],'device-gate-'+name,1800)
++     rows=[json.loads(line) for line in text.splitlines() if line.strip().startswith('{')]
++     library_note=(target/'run.library.txt').read_text().strip() if (target/'run.library.txt').exists() else None
++     gates[name]=dict(exit=0,passed=bool(rows) and all(r.get('passed') for r in rows),loadedLibrary=library_note)
++    except (subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:
++     gates[name]=dict(exit=getattr(error,'returncode','timeout'),passed=False,stderrTail=(out/f'device-gate-{name}.stderr.txt').read_text()[-800:])
++   state['deviceGates']=gates
++
++  assert all(sha(Path(path))==digest for path,digest in {**pins,**reference_hashes}.items()),'Inputs changed during the gate'
++  failures=[r for r in comparisons if r['practicalFailures'] or (r['strictRequired'] and r['strictDifferences']) or (r['bitwiseRequired'] and not r['bitwiseEqual'])]
++  gpu=[r for r in comparisons if not r['bitwiseRequired'] and 'cross-platform' not in r['kind']]
++  save(out/'invocation.json',dict(binarySha256=pins,referenceSha256=reference_hashes,buildInvocationSha256=sha(host/'invocation.json'),commands=commands))
++  state.update(complete=True,phase='complete',passed=not failures,filmsCompared=len(comparisons),failedFilms=len(failures),
++   sameHostBitwiseFailures=sum(r['bitwiseRequired'] and not r['bitwiseEqual'] for r in comparisons),
++   gpuPracticalFailures=sum(r['practicalFailures'] for r in gpu),gpuStrictDifferences=sum(r['strictDifferences'] for r in gpu),
++   gpuMaximumAbsoluteError=max((r['maximumAbsoluteError'] for r in gpu),default=None),
++   crossPlatformCompared=linux is not None,
++   skipped=dict(reloadTest='loads PNG files by filename; this profile rejects texture filenames',
++    imageReference='needs OIIO EXR/PNG plugins, which are disabled',managedImageModesAndColorReload='depend on the image reference films'),
++   inputsUnchanged=True)
++  print(json.dumps({k:v for k,v in state.items() if k!='adapterReport'}),flush=True)
++ except Exception as error:
++  state.update(complete=True,passed=False,error=repr(error));raise
++ finally:save(out/'comparisons.json',comparisons);save(out/'status.json',state)
++ return 0 if state['passed'] else 1
++
++
++if __name__=='__main__':raise SystemExit(main())
+diff --git a/native/tools/stage_macos_x64_binaries.py b/native/tools/stage_macos_x64_binaries.py
+new file mode 100644
+index 00000000..e17e9577
+--- /dev/null
++++ b/native/tools/stage_macos_x64_binaries.py
+@@ -0,0 +1,170 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Stage the reviewed osx-x64 deliverable in native/binaries/osx-x64.
++
++    python3 native/tools/stage_macos_x64_binaries.py --gate native/work/<passed x64 gate> --oracles native/work/oracles/<run>
++
++runtime/    stripped host and dependency dylibs
++unstripped/ the same dylibs before stripping (symbol tables retained)
++symbols/    dSYM for the host library (line tables; dependencies carry no DWARF)
++provenance.json records inputs, toolchain, options, hashes, UUID mapping, the
++Mach-O review and the exact approved payload that tools/licensing/audit.py accepts.
++
++The shipped WebGPU runtime (libcodebrix_wgpu.dylib) is not part of this payload:
++it is delivered by the CodeBrix.WebGpu.Native.MitLicenseForever package, and
++provenance.json records its package, version and SHA-256. The runtime payload is
++then copied to a temporary directory together with that runtime and rendered
++with on CPU and WebGPU.
++
++Mach-O review, for every staged dylib: otool -L names only /usr/lib,
++/System/Library, @rpath libraries of this payload and @rpath/libcodebrix_wgpu.dylib;
++lipo reports x86_64 alone; the minimum OS is 15.0; the only rpath is
++@loader_path; codesign reports an ad-hoc signature (no team identifier) that
++verifies. The host must not link Metal itself; only the runtime does.
++"""
++import argparse,importlib.util,json,platform,re,shutil,subprocess,sys,tempfile,time
++from pathlib import Path
++REPO=Path(__file__).resolve().parents[2];sys.path.insert(0,str(REPO/'tools/dependencies'))
++from macos_checks import linked,tool
++spec=importlib.util.spec_from_file_location('macos_x64_dependencies',REPO/'tools/dependencies/build_macos_x64.py')
++deps=importlib.util.module_from_spec(spec);spec.loader.exec_module(deps)
++sha,save=deps.sha,deps.save
++BASE=REPO/'native/work/macos/osx-x64';BUILD=BASE/'host/build';PREFIX=BASE/'dependencies/install'
++TARGET=REPO/'native/binaries/osx-x64';HOST='libcodebrix_cycles_host.dylib'
++RUNTIME_NAME='libcodebrix_wgpu.dylib'
++RUNTIME_SHA256='3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483'
++RUNTIME_PACKAGE=dict(id='CodeBrix.WebGpu.Native.MitLicenseForever',version='1.0.290.1433',path='runtimes/osx-x64/native/'+RUNTIME_NAME,sha256=RUNTIME_SHA256)
++# Shipped dylib name prefix -> third_party/dependencies.json component (as for osx-arm64).
++COMPONENTS=[('libcodebrix_cycles_host','cycles'),('libOpenImageIO','oiio'),('libOpenColorIO','ocio'),('libOpenEXR','openexr'),
++ ('libIex','openexr'),('libIlmThread','openexr'),('libImath','imath'),('libboost_','boost'),('libexpat','expat'),
++ ('libpugixml','pugixml'),('libtbb','tbb'),('libzstd','zstd'),('libz.','zlib')]
++STATIC={'cycles':['Cycles (with mikktspace and sky)','CodeBrix host','CodeBrix WGSL/WebGPU device'],'ocio':['yaml-cpp','pystring','minizip','ocio-embedded'],
++ 'oiio':['fmt','robin-map','oiio-embedded']}
++
++
++def uuid(path):return re.findall(r'UUID: (\S+)',tool('dwarfdump','--uuid',str(path)))
++
++
++def sign(path):subprocess.run(['codesign','-s','-','-f',str(path)],check=True,capture_output=True)
++
++
++def rpaths(path):return re.findall(r'cmd LC_RPATH\n\s+cmdsize \d+\n\s+path (\S+)',tool('otool','-l',str(path)))
++
++
++def macho_review(path,payload_names):
++ """What must be true of every staged dylib (see the module docstring)."""
++ names=linked(path)
++ for name in names:
++  if name.startswith(('/usr/lib/','/System/Library/')):continue
++  if name.startswith('@rpath/') and (name[len('@rpath/'):] in payload_names or name=='@rpath/'+RUNTIME_NAME):continue
++  raise RuntimeError(f'{path.name} links {name}, outside the OS, this payload and the WebGPU runtime')
++ info=tool('lipo','-info',str(path))
++ if tool('lipo','-archs',str(path)).split()!=['x86_64']:raise RuntimeError(f'{path.name}: {info}')
++ minos=re.findall(r'minos (\S+)',tool('otool','-l',str(path)))
++ if not minos or any(v!=deps.DEPLOYMENT_TARGET for v in minos):raise RuntimeError(f'{path.name} minimum OS {minos}')
++ if set(rpaths(path))-{'@loader_path'}:raise RuntimeError(f'{path.name} rpaths are {rpaths(path)}')
++ signature=subprocess.run(['codesign','-dv',str(path)],capture_output=True,text=True).stderr
++ if 'Signature=adhoc' not in signature or re.search(r'TeamIdentifier=(?!not set)',signature):
++  raise RuntimeError(f'{path.name} is not ad-hoc signed as expected: {signature}')
++ subprocess.run(['codesign','--verify',str(path)],check=True)
++ if path.name==HOST and any('/Metal.framework/' in n for n in names):raise RuntimeError('The host links Metal directly')
++ return dict(linked=names,lipoInfo=info,minimumOs=minos,rpaths=rpaths(path),codesign=signature.strip().splitlines())
++
++
++def prepare(source,destination,host):
++ shutil.copyfile(source,destination);destination.chmod(0o755)
++ # Build-tree rpaths (some dependency installs keep their prefix) never ship.
++ for old in rpaths(destination):
++  if old!='@loader_path':subprocess.run(['install_name_tool','-delete_rpath',old,str(destination)],check=True)
++ if host and '@loader_path' not in rpaths(destination):
++  subprocess.run(['install_name_tool','-add_rpath','@loader_path',str(destination)],check=True)
++ identity=tool('otool','-D',str(destination)).splitlines()[-1]
++ if identity!='@rpath/'+destination.name:raise RuntimeError(f'{destination.name} install name is {identity}')
++ if not set(rpaths(destination))<={'@loader_path'} or (host and rpaths(destination)!=['@loader_path']):
++  raise RuntimeError(f'{destination.name} rpaths are {rpaths(destination)}')
++ sign(destination)
++
++
++def main():
++ p=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
++ p.add_argument('--gate',type=Path,required=True);p.add_argument('--oracles',type=Path,required=True);a=p.parse_args()
++ if platform.system()!='Darwin' or platform.machine()!='x86_64':
++  raise SystemExit(f'osx-x64: staging runs only on an Intel Mac; this host is {platform.system()} {platform.machine()}')
++ a.gate,a.oracles=a.gate.resolve(),a.oracles.resolve()
++ status=json.loads((BASE/'host/status.json').read_text());invocation=json.loads((BASE/'host/invocation.json').read_text())
++ gate=json.loads((a.gate/'status.json').read_text());oracle_run=json.loads((a.oracles/'run.json').read_text())
++ if not (status['passed'] and gate['passed'] and gate.get('rid')=='osx-x64'):raise RuntimeError('Stage only a passed osx-x64 build and gate')
++ if any(sha(BUILD/n)!=d for n,d in status['artifacts'].items()):raise RuntimeError('Build artifacts changed since the build recorded them')
++ host_sha=sha(BUILD/'lib'/HOST)
++ if oracle_run['common']['hostLibrarySha256']!=host_sha:raise RuntimeError('Oracle run used a different host library')
++ runtime_source=Path(invocation['runtimePath'])
++ if sha(runtime_source)!=RUNTIME_SHA256:raise RuntimeError('The package runtime differs from the pinned shipped binary')
++ if TARGET.exists() and any(p.name not in ('README.md',) for p in TARGET.iterdir()):raise RuntimeError(f'{TARGET} already holds a payload; review and remove it first')
++ runtime,unstripped,symbols=TARGET/'runtime',TARGET/'unstripped',TARGET/'symbols'
++ for d in (runtime,unstripped,symbols):d.mkdir(parents=True)
++ binaries={HOST:BUILD/'lib'/HOST,**{leaf:PREFIX/rel for leaf,rel in status['dependencyClosure'].items()}}
++ mapping={}
++ for leaf,source in binaries.items():
++  prepare(source,unstripped/leaf,leaf==HOST)
++  shutil.copyfile(unstripped/leaf,runtime/leaf);(runtime/leaf).chmod(0o755)
++  subprocess.run(['strip','-x','-S',str(runtime/leaf)],check=True,capture_output=True);sign(runtime/leaf)
++  subprocess.run(['codesign','--verify',str(runtime/leaf)],check=True)
++  entry=dict(runtime=f'runtime/{leaf}',unstripped=f'unstripped/{leaf}',uuid=uuid(runtime/leaf),buildSource=str(source.relative_to(REPO)))
++  if uuid(unstripped/leaf)!=entry['uuid']:raise RuntimeError(leaf+' UUID changed between unstripped and runtime copies')
++  if leaf==HOST:
++   bundle=symbols/(leaf+'.dSYM')
++   # Object paths in the debug map are repository-relative (-oso_prefix).
++   subprocess.run(['dsymutil','--oso-prepend-path',str(REPO),str(source),'-o',str(bundle)],check=True,capture_output=True)
++   if uuid(bundle)!=entry['uuid']:raise RuntimeError('dSYM UUID does not match the host library')
++   entry['symbols']=f'symbols/{leaf}.dSYM'
++  else:entry['symbols']=None
++  mapping[leaf]=entry
++ names=set(mapping)
++ review={leaf:macho_review(runtime/leaf,names) for leaf in mapping}
++ payload={str(f.relative_to(TARGET)):sha(f) for f in sorted(TARGET.rglob('*')) if f.is_file() and f.name!='README.md'}
++ for leaf,entry in mapping.items():
++  entry['runtimeSha256']=payload[entry['runtime']];entry['unstrippedSha256']=payload[entry['unstripped']];entry['machoReview']=review[leaf]
++ manifest=json.loads((REPO/'third_party/dependencies.json').read_text());by_id={c['id']:c for c in manifest['components']}
++ notices={}
++ for leaf in mapping:
++  component=next(c for prefix,c in COMPONENTS if leaf.startswith(prefix))
++  notices[leaf]=dict(component=component,license=by_id[component]['license'],notices=by_id[component]['notices'],staticallyIncluded=STATIC.get(component,[]))
++ record=dict(
++  rid='osx-x64',created=time.strftime('%Y-%m-%dT%H:%M:%S%z'),deploymentTarget=deps.DEPLOYMENT_TARGET,codeSigning='ad-hoc (codesign -s -)',
++  scope='Reviewed osx-x64 product binaries: Cycles with the CodeBrix WGSL/WebGPU device and the CPU device behind the CodeBrix C API; no image file readers, no Metal device. The WebGPU runtime is an external package dependency.',
++  sources=dict(cyclesRevision=json.loads((REPO/'third_party/cycles-import.json').read_text())['revision'],
++   cyclesImportSha256=invocation['cyclesImportSha256'],dependencyImportsSha256=sha(REPO/'third_party/dependency-imports.json'),
++   dependencyMarkerSha256=invocation['dependencyMarkerSha256'],adaptedFiles=invocation['adaptedFiles'],overlaySha256=invocation['overlaySha256'],
++   overlayComparison=invocation['overlayComparison'],hostSourceSha256=invocation['hostSourceSha256'],recipeSha256=invocation['recipeSha256'],
++   injectionSha256=invocation['injectionSha256'],sharedInjectionSha256=invocation['sharedInjectionSha256']),
++  webGpuRuntime=dict(RUNTIME_PACKAGE,machoReview=dict(linked=linked(runtime_source),lipoInfo=tool('lipo','-info',str(runtime_source)),
++   minimumOs=re.findall(r'minos (\S+)',tool('otool','-l',str(runtime_source))))),
++  toolchain=invocation['identity'],buildCommands=invocation['commands'],skippedTargets=invocation['skippedTargets'],
++  binaries=mapping,notices=dict(repositoryNotices='THIRD-PARTY-NOTICES.txt',libraries=notices),
++  validation=dict(hostGate=dict(directory=str(a.gate.relative_to(REPO)),statusSha256=sha(a.gate/'status.json'),passed=gate['passed'],
++    sameHostBitwiseFailures=gate['sameHostBitwiseFailures'],gpuPracticalFailures=gate['gpuPracticalFailures'],adapterReport=gate.get('adapterReport')),
++   oracles=dict(directory=str(a.oracles.relative_to(REPO)),runSha256=sha(a.oracles/'run.json'),comparisonsPassed=oracle_run['comparisonsPassed'])),
++  approvedPayload=payload,snapshotCopies={})
++ # Repository paths are recorded relative to the checkout root.
++ text=json.dumps(record,indent=2).replace(str(REPO)+'/','').replace(str(REPO),'.')
++ (TARGET/'provenance.json').write_text(text+'\n')
++ # The runtime payload plus the package runtime must load and render on their own.
++ with tempfile.TemporaryDirectory() as temporary:
++  root=Path(temporary)/'payload';shutil.copytree(runtime,root);shutil.copyfile(runtime_source,root/RUNTIME_NAME)
++  runner=root/'codebrix_cycles_oracle';shutil.copyfile(BASE/'oracle-build/codebrix_cycles_oracle',runner);runner.chmod(0o755)
++  for old in rpaths(runner):subprocess.run(['install_name_tool','-delete_rpath',old,str(runner)],check=True)
++  subprocess.run(['install_name_tool','-add_rpath','@executable_path',str(runner)],check=True);sign(runner)
++  scene=REPO/'native/oracle/scenes/starter/diffuse-triangle.json';results={}
++  for backend in ['cpu','webgpu']:
++   output=Path(temporary)/backend
++   result=subprocess.run([str(runner),'--scene',str(scene),'--backend',backend,'--output',str(output)],capture_output=True,text=True,
++    env={'PATH':'/usr/bin:/bin','HOME':str(Path.home())})
++   if result.returncode:raise RuntimeError(f'Standalone payload failed on {backend}: {result.stderr[-500:]}')
++   results[backend]=json.loads((output/'meta.json').read_text())['filmSha256'][0]
++  expected=json.loads((a.oracles/'oracle/starter/diffuse-triangle/cpu-x64-macos/meta.json').read_text())
++  if results['cpu']!=expected['filmSha256'][0]:raise RuntimeError('Standalone CPU film differs from the oracle film')
++ print(json.dumps(dict(staged=str(TARGET.relative_to(REPO)),files=len(payload),binaries=len(mapping),standaloneRender=results),indent=2))
++
++
++if __name__=='__main__':main()
+diff --git a/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesAbiTests.cs b/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesAbiTests.cs
+index bd7d40b5..2d18e2c7 100644
+--- a/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesAbiTests.cs
++++ b/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesAbiTests.cs
+@@ -133,7 +133,9 @@ public unsafe class CyclesAbiTests
+             library.Should().NotBeNullOrEmpty();
+             revision.Length.Should().Be(40);
+             resolved.Should().Be(NativeStatus.Ok);
+-            gpu.Should().Be(OperatingSystem.IsMacOS() ? Backend.Metal : Backend.WebGpu);
++            // Metal is the osx-arm64 product's GPU backend; osx-x64 (Intel Macs) uses WebGPU.
++            bool appleSilicon = OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
++            gpu.Should().Be(appleSilicon ? Backend.Metal : Backend.WebGpu);
+             concrete.Should().Be(NativeStatus.Ok);
+             backend.Should().Be(Backend.CpuReference);
+         }
+diff --git a/tools/build_macos_x64.py b/tools/build_macos_x64.py
+new file mode 100644
+index 00000000..47384ebc
+--- /dev/null
++++ b/tools/build_macos_x64.py
+@@ -0,0 +1,32 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""Build reviewed dependencies, the osx-x64 WGSL/WebGPU host and the oracle runner.
++
++    python3 tools/build_macos_x64.py --jobs 8 [--skip-dependencies] [--reference-overlay linux-overlay.json]
++
++Runs on an Intel Mac only. The osx-arm64 product (Cycles' Metal device) is built
++by tools/build_macos.py.
++"""
++import argparse,platform,subprocess,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[1]
++BASE=ROOT/'native/work/macos/osx-x64'
++parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
++parser.add_argument('--jobs',type=int,default=8)
++parser.add_argument('--skip-dependencies',action='store_true',help='Reuse only a complete matching dependency prefix')
++parser.add_argument('--reference-overlay',type=Path,help='Overlay hashes written on Linux (see native/host/MACOS_X64.md)')
++args=parser.parse_args()
++if platform.system()!='Darwin' or platform.machine()!='x86_64':
++    raise SystemExit(f'osx-x64: this coordinator runs only on an Intel Mac; this host is {platform.system()} {platform.machine()}')
++if not args.skip_dependencies:
++    subprocess.run([sys.executable,str(ROOT/'tools/dependencies/build_macos_x64.py'),'--jobs',str(args.jobs)],cwd=ROOT,check=True)
++subprocess.run([sys.executable,str(ROOT/'native/tools/build_cycles_macos_x64.py'),'--jobs',str(args.jobs),
++                *(['--reference-overlay',str(args.reference_overlay.resolve())] if args.reference_overlay else [])],cwd=ROOT,check=True)
++host=BASE/'host/build/lib/libcodebrix_cycles_host.dylib'
++oracle=BASE/'oracle-build'
++subprocess.run(['cmake','-S',str(ROOT/'native/oracle'),'-B',str(oracle),'-DCMAKE_BUILD_TYPE=Release','-DCMAKE_OSX_ARCHITECTURES=x86_64',
++                '-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0','-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local',
++                '-DCODEBRIX_HOST_LIBRARY='+str(host)],cwd=ROOT,check=True,stdout=subprocess.DEVNULL)
++subprocess.run(['cmake','--build',str(oracle),'--parallel',str(args.jobs)],cwd=ROOT,check=True,stdout=subprocess.DEVNULL)
++print('osx-x64: dependencies, WGSL/WebGPU host and oracle runner built',flush=True)
+diff --git a/tools/dependencies/build_macos_x64.py b/tools/dependencies/build_macos_x64.py
+new file mode 100644
+index 00000000..2e1f77df
+--- /dev/null
++++ b/tools/dependencies/build_macos_x64.py
+@@ -0,0 +1,167 @@
++#!/usr/bin/env python3
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# SPDX-License-Identifier: Apache-2.0
++"""macOS x64 (Intel) build of the reviewed dependency snapshots.
++
++The osx-x64 sibling of build_macos.py. It reuses that recipe's component profile
++(libpng not built, every OIIO format plugin disabled) and changes only what the
++target needs: x86_64 objects, its own work tree and prefix marker, and a build-host
++check for an Intel Mac. build_macos.py stays unchanged because its own hash is part
++of the osx-arm64 prefix identity and provenance.
++
++Homebrew lives in /usr/local on Intel Macs and in /opt/homebrew on Apple Silicon.
++Both prefixes are excluded from every find and rejected in configured caches,
++compile and link commands, compiler dependency files and linked libraries. On an
++Intel Mac /usr/local also holds Homebrew's own CMake and Python; those programs
++are tools, never inputs.
++"""
++import argparse,importlib.util,json,platform,re,shutil,subprocess,sys
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'tools'))
++from android_toolchain import sha
++sys.path.insert(0,str(ROOT/'tools/dependencies'))
++from macos_checks import EXCLUDED_PREFIXES,excluded,tool,check_isolation,linked
++spec=importlib.util.spec_from_file_location('macos_arm64_dependencies',ROOT/'tools/dependencies/build_macos.py')
++arm64=importlib.util.module_from_spec(spec);spec.loader.exec_module(arm64)
++recipe=arm64.recipe
++RID='osx-x64';ARCH='x86_64'
++# The oldest macOS that .NET 10 supports, as for osx-arm64. The host and the .NET
++# wrapper refuse older systems on every Apple RID; the shipped WebGPU runtime's
++# osx-x64 dylib declares 11.0, which this target satisfies.
++DEPLOYMENT_TARGET='15.0'
++WORK=ROOT/'native/work/macos/osx-x64/dependencies'
++MARKER='codebrix-osx-x64-build.json'
++SKIPPED=arm64.SKIPPED
++PATH_MAP=f'-ffile-prefix-map={ROOT}=.'
++save=arm64.save
++
++
++def require_build_host():
++ """Darwin on an Intel CPU only. Under Rosetta, CMake's host processor and the
++ x86 reference-option checks are not established; refuse rather than guess."""
++ if platform.system()!='Darwin':raise SystemExit(f'{RID}: this recipe runs only on macOS (an Intel Mac); this host is {platform.system()}')
++ if platform.machine()!='x86_64':raise SystemExit(f'{RID}: this recipe requires an Intel (x86_64) macOS build host; this host is {platform.machine()}')
++ translated=subprocess.run(['sysctl','-n','sysctl.proc_translated'],capture_output=True,text=True).stdout.strip()
++ if translated=='1':raise SystemExit(f'{RID}: refusing to build under Rosetta translation; use a native Intel Mac')
++
++
++def identity():
++ clang=Path(tool('xcrun','-f','clang'));clangxx=Path(tool('xcrun','-f','clang++'));cmake=Path(shutil.which('cmake')).resolve()
++ return dict(rid=RID,buildHost=platform.machine()+'-'+platform.system(),deploymentTarget=DEPLOYMENT_TARGET,
++  sourceManifestSha256=sha(ROOT/'third_party/dependency-imports.json'),profileRecipeSha256=sha(ROOT/'tools/dependencies/build.py'),
++  macosProfileRecipeSha256=sha(ROOT/'tools/dependencies/build_macos.py'),macosRecipeSha256=sha(Path(__file__)),
++  environmentRecipeSha256=sha(ROOT/'tools/android_toolchain.py'),checksSha256=sha(ROOT/'tools/dependencies/macos_checks.py'),
++  xcode=tool('xcodebuild','-version'),developerDir=tool('xcode-select','-p'),sdkVersion=tool('xcrun','--show-sdk-version'),
++  sdkPath=tool('xcrun','--show-sdk-path'),compilerVersion=tool(str(clangxx),'--version'),cCompilerSha256=sha(clang),cxxCompilerSha256=sha(clangxx),
++  cmakeVersion=tool(str(cmake),'--version').splitlines()[0],cmakeSha256=sha(cmake),cmakePath=str(cmake),
++  homebrewPrefixesPresent=[p for p in EXCLUDED_PREFIXES if Path(p).is_dir()],
++  scope='Native Intel build of the reviewed snapshots for the osx-x64 WGSL/WebGPU host; no image format plugins')
++
++
++def options(prefix):
++ settings=arm64.options(prefix)
++ settings.update(CMAKE_OSX_ARCHITECTURES=ARCH,CMAKE_OSX_DEPLOYMENT_TARGET=DEPLOYMENT_TARGET)
++ return settings
++
++
++def profile(source):return arm64.profile(source)
++
++
++def environment_for(prefix,jobs):
++ env=arm64.environment_for(prefix,jobs)
++ env['MACOSX_DEPLOYMENT_TARGET']=DEPLOYMENT_TARGET
++ # Homebrew's shell setup exports these on Intel Macs; none may steer a build.
++ for name in ['HOMEBREW_PREFIX','HOMEBREW_CELLAR','CPATH','C_INCLUDE_PATH','CPLUS_INCLUDE_PATH','LIBRARY_PATH','OBJC_INCLUDE_PATH']:env.pop(name,None)
++ return env
++
++
++def check_compiler_search(env):
++ """Apple Clang's default search list must not reach a Homebrew prefix. On an
++ Intel Mac /usr/local/include would otherwise be searched before the SDK."""
++ result=subprocess.run([tool('xcrun','-f','clang++'),'-x','c++','-arch',ARCH,'-v','-E','-'],input='',capture_output=True,text=True,env=env)
++ lines=result.stderr.split('#include <...> search starts here:')[-1].split('End of search list.')[0].split('\n')
++ paths=[line.strip() for line in lines if line.strip()]
++ bad=[p for p in paths if excluded(p) and not p.startswith(tool('xcrun','--show-sdk-path'))]
++ if bad:raise RuntimeError('The compiler searches an excluded prefix by default: '+', '.join(bad))
++ return paths
++
++
++def check_build_inputs(build):
++ """Headers the compiler actually read (dependency files) and link commands."""
++ problems=[]
++ for depfile in list(build.rglob('*.o.d'))+list(build.rglob('*.d')):
++  if not depfile.is_file():continue
++  text=depfile.read_text(errors='replace')
++  if excluded(text):problems.append(str(depfile.relative_to(build)))
++ for link in build.rglob('link.txt'):
++  if excluded(link.read_text(errors='replace')):problems.append(str(link.relative_to(build)))
++ if problems:raise RuntimeError(f'Excluded prefix read or linked by {build.name}: {problems[:5]}')
++ return len(list(build.rglob('*.o.d')))
++
++
++def check_binary(path):
++ for name in linked(path):
++  if not (name.startswith('@rpath/') or name.startswith('/usr/lib/') or name.startswith('/System/Library/')):
++   raise RuntimeError(f'{path.name} links outside the reviewed prefix and the OS: {name}')
++ minos=re.findall(r'minos (\S+)',tool('otool','-l',str(path)))
++ if minos and any(v!=DEPLOYMENT_TARGET for v in minos):raise RuntimeError(f'{path.name} has minimum OS {minos}')
++ archs=tool('lipo','-archs',str(path)).split()
++ if archs!=[ARCH]:raise RuntimeError(f'{path.name} architectures are {archs}, expected only {ARCH}')
++
++
++def libraries(prefix):return arm64.libraries(prefix)
++
++
++def prefix():
++ """Reuse only the complete dependency prefix matching current source/tool inputs."""
++ recipe.verify();installed=WORK/'install';marker=installed/MARKER
++ if not marker.exists():raise RuntimeError('Build macOS x64 dependencies first: python3 tools/dependencies/build_macos_x64.py')
++ report=json.loads(marker.read_text())
++ if report['identity']!=identity():raise RuntimeError('macOS x64 dependency inputs/toolchain changed; rebuild the prefix')
++ for name,digest in report['libraries'].items():
++  if sha(installed/name)!=digest:raise RuntimeError('Changed macOS x64 dependency library: '+name)
++ return installed
++
++
++def main():
++ parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
++ parser.add_argument('--jobs',type=int,default=8);args=parser.parse_args()
++ require_build_host()
++ manifest=recipe.verify();WORK.mkdir(parents=True,exist_ok=True);source=WORK/'sources';installed=WORK/'install';installed.mkdir(exist_ok=True)
++ expected={str(Path(c['id'])/f['path']):f['sha256'] for c in manifest['components'] for f in c['files']}
++ if not source.exists():shutil.copytree(recipe.SOURCE,source)
++ def verify_copy():
++  assert all(sha(source/name)==digest for name,digest in expected.items()),'macOS x64 dependency source copy changed'
++ verify_copy();pin=identity();save(WORK/'provenance.json',pin)
++ env=environment_for(installed,args.jobs);completed=[];state=dict(complete=False,completedComponents=completed,identity=pin,skipped=SKIPPED)
++ try:
++  state['compilerSearchPaths']=check_compiler_search(env);depfiles={}
++  for name,path,settings in profile(source):
++   build=WORK/name;build.mkdir(exist_ok=True)
++   values=options(installed);values.update(settings)
++   # Build paths never reach the binaries, so any checkout location gives the same bytes.
++   for flags in ['CMAKE_C_FLAGS','CMAKE_CXX_FLAGS']:values[flags]=(PATH_MAP+' '+values.get(flags,'')).strip()
++   commands=[['cmake','-S',str(path),'-B',str(build),*['-D'+k+'='+str(v) for k,v in values.items()]],
++    ['cmake','--build',str(build),'--parallel',str(args.jobs)],['cmake','--install',str(build)]]
++   save(build/'commands.json',commands)
++   for step,command in zip(['configure','build','install'],commands):
++    state.update(component=name,step=step);save(WORK/'status.json',state)
++    with (build/(step+'.log')).open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True,env=env)
++    if step=='configure':check_isolation(build)
++    if step=='install':assert all(Path(p).resolve().is_relative_to(installed.resolve()) for p in (build/'install_manifest.txt').read_text().splitlines())
++   check_isolation(build);depfiles[name]=check_build_inputs(build);completed.append(name);print(RID,name,'built and installed',flush=True)
++  recipe.verify();verify_copy();assert pin==identity()
++  for library in (installed/'lib').glob('*.dylib'):
++   if not library.is_symlink():check_binary(library)
++  plugins=arm64.registered_plugins(installed)
++  if plugins:raise RuntimeError('OIIO still registers format plugins: '+', '.join(plugins))
++  found=libraries(installed)
++  save(installed/MARKER,dict(identity=pin,libraries=found,skippedComponents=SKIPPED,
++   oiioDisabledPlugins=arm64.oiio_plugins(source),oiioRegisteredFormatPlugins=plugins,compilerDependencyFiles=depfiles))
++  state.update(complete=True,passed=True,libraries=found,compilerDependencyFiles=depfiles)
++ except Exception as error:
++  state.update(complete=True,passed=False,error=repr(error));raise
++ finally:save(WORK/'status.json',state)
++
++
++if __name__=='__main__':main()

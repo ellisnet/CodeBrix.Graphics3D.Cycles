@@ -1,0 +1,28 @@
+[
+ {
+  "corpus": "host-gate",
+  "job": "android-host-gate",
+  "s20Wall": 136,
+  "passed": true,
+  "classification": "",
+  "numbers": "48 exports, 1579 films, 0 practical, 0 required strict, max 1.43e-05 (cpu/cpu-exit/reload/stress/gpu/gpu-exit all rc 0)",
+  "evidence": "native/work/q/device/codebrix-q-host-gate (log device/android-host-gate.log)",
+  "error": null
+ },
+ {
+  "corpus": "app",
+  "job": "app-webgpu",
+  "s20Wall": 379,
+  "passed": true,
+  "classification": "",
+  "numbers": "3 scenes vs Linux glibc films: 0 practical, 921 strict, max 1.38e-05; tier full; cancellation ok=True; capability warning: pipeline 'shade_surface_light' took 53882 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver",
+  "compileWarnings": [
+   [
+    "shade_surface_light",
+    53.9
+   ]
+  ],
+  "evidence": "native/work/q/android-app/webgpu-s20 (log device/app-s20.log)",
+  "error": null
+ }
+]

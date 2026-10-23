@@ -133,7 +133,9 @@ public unsafe class CyclesAbiTests
             library.Should().NotBeNullOrEmpty();
             revision.Length.Should().Be(40);
             resolved.Should().Be(NativeStatus.Ok);
-            gpu.Should().Be(OperatingSystem.IsMacOS() ? Backend.Metal : Backend.WebGpu);
+            // Metal is the osx-arm64 product's GPU backend; osx-x64 (Intel Macs) uses WebGPU.
+            bool appleSilicon = OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
+            gpu.Should().Be(appleSilicon ? Backend.Metal : Backend.WebGpu);
             concrete.Should().Be(NativeStatus.Ok);
             backend.Should().Be(Backend.CpuReference);
         }

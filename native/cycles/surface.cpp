@@ -145,10 +145,21 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
   p[24]=surface_closures+uint32_t(closure_bytes);
   p[26]=p[24]+4;p[27]=surface_stage_bytes;
   if(reserve_shadow)p[28]=surface_closures+uint32_t(records_bytes);
-  if(!pipeline_current(surface,"shade_surface")){
-    auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","connect_surface_light","shade_surface"});
-    surface_geometry=std::move(built[0]);surface_prepare=std::move(built[1]);surface_light=std::move(built[2]);
-    surface_connect=std::move(built[3]);surface=std::move(built[4]);
+  // With emissive triangles (LIGHT_TRIANGLE) the light stage is two entries
+  // (wavefront_surface.wgsl): shade_surface_light samples a lamp and
+  // shade_surface_light_triangle does the triangle work, which keeps each entry
+  // inside the Intel Mesa 25.0.7 backend's 16-bit instruction/register range.
+  const bool triangle_stage=(shader_features()&SF_LIGHT_TRIANGLE).any();
+  if(!pipeline_current(surface,"shade_surface")||(triangle_stage&&!surface_light_triangle.value)){
+    if(triangle_stage){
+      auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","shade_surface_light_triangle","connect_surface_light","shade_surface"});
+      surface_geometry=std::move(built[0]);surface_prepare=std::move(built[1]);surface_light=std::move(built[2]);
+      surface_light_triangle=std::move(built[3]);surface_connect=std::move(built[4]);surface=std::move(built[5]);
+    }else{
+      auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","connect_surface_light","shade_surface"});
+      surface_geometry=std::move(built[0]);surface_prepare=std::move(built[1]);surface_light=std::move(built[2]);
+      surface_connect=std::move(built[3]);surface=std::move(built[4]);surface_light_triangle={};
+    }
   }
   // Dispatch ordering makes the GPU-private preparation records visible to the
   // sampling stage without a CPU readback or a native scheduler queue transition.
@@ -165,6 +176,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
   // Sizes follow the compiled declarations. Light sampling and BSDF/shadow
   // connection are separate dispatches to bound compiler pressure.
   dispatch(p,uint32_t(work),surface_light,workgroup("shade_surface_light"));
+  if(triangle_stage)dispatch(p,uint32_t(work),surface_light_triangle,workgroup("shade_surface_light_triangle"));
   dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
   dispatch(p,uint32_t(work),surface,workgroup("shade_surface"));
 }

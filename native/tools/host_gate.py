@@ -53,7 +53,7 @@ def main():
         results[name] = rows
         return rows
 
-    def compare(actual, reference, bitwise=False):
+    def compare(actual, reference, bitwise=False, strict=True):
         a_bytes, b_bytes = actual.read_bytes(), reference.read_bytes()
         a, b = struct.unpack('<3072f', a_bytes), struct.unpack('<3072f', b_bytes)
         assert all(math.isfinite(v) for v in a+b)
@@ -64,7 +64,9 @@ def main():
                    practicalFailures=sum(e > 5e-5+2e-4*abs(y) for e, y in zip(errors, b)),
                    strictDifferences=sum(e > 1e-7+1e-7*abs(y) for e, y in zip(errors, b)))
         comparisons.append(row)
-        assert row['practicalFailures'] == 0 and row['strictDifferences'] == 0
+        # strict=False (the ABI light films only): the practical criterion is
+        # required and strict differences are recorded in the row, as for the render gates.
+        assert row['practicalFailures'] == 0 and (row['strictDifferences'] == 0 or not strict)
         if bitwise:
             assert row['bitwiseEqual'], str(actual)
 
@@ -182,10 +184,17 @@ def main():
                 assert [(p['name'], p['components'], p['written']) for p in passes] == [
                     ('Combined', 4, True), ('Depth', 1, True), ('Normal', 3, True), ('Mask', 1, True)]
             else:
-                assert row['litRenders'] == 3 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
+                assert row['litRenders'] == 4 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
             abi[mode] = folder
         for name in ['base', 'object-motion', 'deforming']:
             compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin')
+        # The four light films (point, spot, area and sun in one device lifetime):
+        # the practical criterion is required and strict differences are recorded.
+        # Sphere point and spot sampling differs from the CPU in the last bits (about
+        # 125 and 22 strict differences), and the WebGPU film's atomic accumulation
+        # order varies between runs (the area film had 0 or 1 strict difference).
+        for name in ['light-pointlight', 'light-spotlight', 'light-arealight', 'light-sunlight']:
+            compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin', strict=False)
         for mode in ['cpu', 'gpu']:
             row = report([binary/'codebrix_host_example_test', mode], 'example-'+mode)[0]
             assert row['backend'] == (2 if mode == 'cpu' else 1) and row['progressEvents'] > 0

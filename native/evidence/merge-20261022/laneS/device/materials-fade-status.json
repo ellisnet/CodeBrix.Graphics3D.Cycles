@@ -1,0 +1,44 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "device": "samsung",
+  "serial": "R52W207XQ1V",
+  "corpus": "materials",
+  "label": "fade",
+  "declaredBudgetSeconds": 2900,
+  "perJobTimeoutSeconds": 2400,
+  "pipelineBudgetMs": null,
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "startedLocal": "15:00:25",
+  "deviceProperties": {
+    "api": "36",
+    "abi": "arm64-v8a",
+    "model": "SM-X700",
+    "fingerprint": "samsung/gts8wifixx/gts8wifi:16/BP2A.250605.031.A3/X700XXSBEZH3:user/release-keys"
+  },
+  "stagedVerified": true,
+  "reference": {
+    "root": "/home/jeremy/ClaudeHome/cycles-worktrees/s-samsung-materials/native/work/s/reference/linux-x64",
+    "oracleSha256": "1d215d564e7b2172fa6cb825f5e1cac44a9a3b9cffe60628bed08aeed43323b1",
+    "libc": "glibc 2.41",
+    "provenanceSha256": "403823c2eff415c67888b70c3811387a80d6a6b0f557d9d70b2af75d26e704d9"
+  },
+  "referenceImported": [],
+  "deviceScene": {
+    "flow": "device-scene",
+    "linuxBin": "/home/jeremy/ClaudeHome/cycles-worktrees/s-samsung-materials/native/work/cycles-build/bin"
+  },
+  "passed": false,
+  "failures": [
+    "nodes_svm: CodeBrix Cycles: the Vulkan driver terminated while creating WebGPU compute pipeline 'surface_svm_probe'",
+    "nodes_render: Independent CPU image 6720 actual=0.928481 expected=0.928078",
+    "nodes-replay: not run (source job failed)"
+  ],
+  "wallSeconds": 1717.3,
+  "withinBudget": true,
+  "remoteProcessesAfter": [],
+  "productionSourcesUnchanged": true,
+  "binaryInputsUnchanged": true,
+  "inputsUnchanged": true
+}

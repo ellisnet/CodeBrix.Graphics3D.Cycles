@@ -29,12 +29,16 @@ def inputs(capture):
     # captures need no shadow source; v3 records add IDs 6 and 7.
     assert meta['format'] in ('native-command-stream-v1', 'native-command-stream-v2',
                               'native-command-stream-v3', 'native-command-stream-v4', 'native-command-stream-v5',
-                              'native-command-stream-v6', 'native-command-stream-v7'), 'Unknown command stream format'
-    if meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7'):
+                              'native-command-stream-v6', 'native-command-stream-v7',
+                              'native-command-stream-v8'), 'Unknown command stream format'
+    if meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7',
+                          'native-command-stream-v8'):
         # v6 adds entry 15 (connect_surface_light in surface.wgsl); v7 adds
-        # entry 16 (prepare_shadow_shader_data in shadow.wgsl).
+        # entry 16 (prepare_shadow_shader_data in shadow.wgsl); v8 adds entry 17
+        # (shade_surface_light_triangle in surface.wgsl).
         names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
-                 'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow']
+                 'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow',
+                 'surface']
         counts = meta['pipelineDispatches']
         assert len(counts) <= len(names) and all(isinstance(n, int) and n >= 0 for n in counts), 'Unknown pipeline metadata'
         assert all(names[i] is not None for i, count in enumerate(counts) if count), 'Reserved pipeline metadata'

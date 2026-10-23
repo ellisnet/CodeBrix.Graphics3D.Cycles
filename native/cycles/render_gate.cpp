@@ -208,7 +208,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   const char *asset=argc>=3&&!attribute_mode&&!motion_mode?argv[2]:nullptr;const bool preview_mode=argc==7;
   const unsigned width=preview_mode?std::stoul(argv[4]):64,height=preview_mode?std::stoul(argv[5]):48,samples=preview_mode?std::stoul(argv[6]):8;
   require(width>0&&height>0&&width<=2048&&height<=2048&&samples>0&&samples<=1024,"Invalid render dimensions/samples");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"render_gate device creation");Metrics m;Metrics image;
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"render_gate device creation");Metrics m;Metrics image;bool exchange_only=false;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene,asset,attribute_mode,image_mode,normal_mode);scene.camera->set_full_width(width);scene.camera->set_full_height(height);scene.camera->set_screen_size(width,height);scene.camera->compute_auto_viewplane();scene.integrator->set_aa_samples(samples);if(motion_mode)camera_motion_fixture(scene,scene.camera->get_matrix(),motion_case);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Render scene preparation failed");
     if(motion_mode)require(scene.dscene.data.cam.num_motion_steps>=2&&scene.dscene.data.cam.shuttertime!=-1,"Motion render preparation failed");
@@ -220,12 +220,34 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(data.kernel_features&KERNEL_FEATURE_VOLUME,"Missing native world volume feature");
     std::cerr<<"Volume film stride="<<data.film.pass_stride<<" combined="<<data.film.pass_combined<<" scatter="<<data.film.pass_volume_scatter<<" transmit="<<data.film.pass_volume_transmit<<" majorant="<<data.film.pass_volume_majorant<<" count="<<data.film.pass_volume_majorant_sample_count<<'\n';
 #endif
+    // Validation reference policy, device-scene flow (reference_policy.h): the dump pass writes the scene this
+    // device prepared and its local CPU image; the Linux pass loads that scene and exports the glibc image.
+    // Both passes run the CPU render only. The lockstep stage checks stay local (their input is the GPU state).
+    exchange_only=!preview_mode&&reference_policy::exchange_scene(scene.dscene,"image",{});
     d.const_copy_to("data",&data,sizeof(data));
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);auto layout=fields(d);
+    // Optional diagnostic (CODEBRIX_SURFACE_ORACLE_INPUT=FILE, with a loaded scene): run this host's CPU surface
+    // oracle on captured path states (per layout field: u32 name length, name, u32 stride, stride*count bytes) and
+    // write the resulting states to FILE.out in the same format. No GPU work; the gate stops after it.
+    if(const char *oracle_input=std::getenv("CODEBRIX_SURFACE_ORACLE_INPUT")){
+      const auto bytes=reference_policy::read_file(oracle_input);size_t at=0;std::vector<IntegratorStateCPU> states;std::vector<std::pair<const Field*,uint32_t>> order;
+      auto u32=[&](){uint32_t v;require(at+4<=bytes.size(),"Truncated oracle input");std::memcpy(&v,bytes.data()+at,4);at+=4;return v;};
+      while(at<bytes.size()){const uint32_t length=u32();const std::string name=bytes.substr(at,length);at+=length;const uint32_t stride=u32();
+        auto f=std::find_if(layout.begin(),layout.end(),[&](const Field &x){return x.name==name;});require(f!=layout.end()&&f->stride==stride,"Unknown oracle input field "+name);
+        const uint32_t count=u32();if(states.empty())states.resize(count);require(states.size()==count&&at+size_t(count)*stride<=bytes.size(),"Oracle input size");
+        for(uint32_t i=0;i<count;i++)std::memcpy(reinterpret_cast<uint8_t*>(&states[i])+f->offset,bytes.data()+at+size_t(i)*stride,stride);at+=size_t(count)*stride;order.push_back({&*f,count});}
+      std::vector<int> ids;for(size_t i=0;i<states.size();i++)if(states[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)ids.push_back(int(i));
+      std::vector<float> film(size_t(width)*height*data.film.pass_stride);oracle(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,scene.dscene,ids,states,film);
+      std::ofstream out(std::string(oracle_input)+".out",std::ios::binary);
+      for(auto &[f,count]:order){const uint32_t length=uint32_t(f->name.size()),stride=uint32_t(f->stride);out.write(reinterpret_cast<const char*>(&length),4);out<<f->name;
+        out.write(reinterpret_cast<const char*>(&stride),4);out.write(reinterpret_cast<const char*>(&count),4);
+        for(uint32_t i=0;i<count;i++)out.write(reinterpret_cast<const char*>(&states[i])+f->offset,stride);}
+      std::cerr<<"Surface oracle evaluated "<<ids.size()<<" paths\n";std::cout<<"{\"passed\":true,\"surfaceOracleDiagnostic\":true}\n";return 0;
+    }
     BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=data.film.pass_stride;auto buffers=scheduler.get_render_buffers();buffers->reset(bp);
     if(preview_mode){preview_render(d,scheduler,buffers,prefix,width,height,samples);}else{
     std::vector<float> gold(buffers->buffer.size()),first;std::vector<IntegratorStateCPU> cpu(scheduler.capacity());
-    for(unsigned repeat=0;repeat<2;repeat++){
+    for(unsigned repeat=0;repeat<(exchange_only?1u:2u);repeat++){
       buffers->zero();upload(d,layout,std::vector<IntegratorStateCPU>(scheduler.capacity()));
       std::unique_ptr<RenderCapture> capture;if(repeat==1)capture=std::make_unique<RenderCapture>(d,prefix);
       for(unsigned sample=0;sample<samples;sample++){
@@ -240,6 +262,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #endif
           }
         }}
+        if(exchange_only)continue;
         scheduler.enqueue_work_tiles(DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA,&tile,1,0,0);require(scheduler.update_queue_counter_and_cache(),"Render camera failed: "+d.error_message());
         for(unsigned step=0;step<100;step++){
           auto kernel=scheduler.get_most_queued_kernel();if(kernel==DEVICE_KERNEL_NUM)break;require(step<99,"GPU render did not terminate");
@@ -256,8 +279,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
             m.paths+=ids.size();m.kernels[kernel]+=ids.size();
           }
           std::unique_ptr<SurfaceDispatchCapture> surface_capture;
-          if(repeat==0&&sample==0&&kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)
-            if(const char *path=std::getenv("CODEBRIX_SURFACE_DISPATCH_CAPTURE"))surface_capture=std::make_unique<SurfaceDispatchCapture>(d,path);
+          // Optional diagnostic: the first sample's surface dispatch, or the one compared as stage
+          // CODEBRIX_SURFACE_DISPATCH_STAGE (a failing lockstep stage) when that is set.
+          if(repeat==0&&kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)
+            if(const char *path=std::getenv("CODEBRIX_SURFACE_DISPATCH_CAPTURE")){const char *stage=std::getenv("CODEBRIX_SURFACE_DISPATCH_STAGE");
+              if(stage?m.stages==std::stoull(stage):sample==0)surface_capture=std::make_unique<SurfaceDispatchCapture>(d,path);}
           scheduler.enqueue_path_iteration(kernel);require(scheduler.update_queue_counter_and_cache(),"Render iteration failed: "+d.error_message());
 #ifdef CBC_VOLUME_FIXTURE
           if(repeat==0)if(const char *target=std::getenv("CODEBRIX_VOLUME_TRACE"))if(std::find(ids.begin(),ids.end(),std::stoi(target))!=ids.end())volume_trace("gpu",sample,kernel,download(d,layout,scheduler.capacity()));
@@ -267,15 +293,17 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         }
         std::cerr<<"Rendered repeat="<<repeat<<" sample="<<sample<<" stages="<<m.stages<<'\n';
       }
+      if(exchange_only){reference_policy::record_local("image",gold);reference_policy::resolve("image",gold,prefix+".reference-diagnostic.jsonl");break;}
       if(capture)capture->finish(prefix,buffers->buffer.device_pointer,buffers->buffer.memory_size(),uintptr_t(d.state.path.queued_kernel),scheduler.capacity(),width,height,samples,data.film.pass_stride);
       buffers->buffer.copy_from_device();healthy(d);std::vector<float> result(buffers->buffer.data(),buffers->buffer.data()+buffers->buffer.size());
       if(repeat==0){first=result;write_image(prefix+".gpu",result,samples,width,height,data.film.pass_stride);write_image(prefix+".cpu",gold,samples,width,height,data.film.pass_stride);
         // Pass/fail reference for the independent image: local, or the imported correctly rounded one
         // (reference_policy.h). The lockstep stage checks above keep the local oracle: their input is this GPU's state.
-        const auto reference=reference_policy::resolve("image",gold,prefix+".reference-diagnostic.jsonl");
+        reference_policy::record_local("image",gold);const auto reference=reference_policy::resolve("image",gold,prefix+".reference-diagnostic.jsonl");
         for(size_t i=0;i<result.size();i++)number(result[i],reference[i],"Independent CPU image "+std::to_string(i),image);}
       else require(!std::memcmp(first.data(),result.data(),result.size()*4),"GPU render repeat differs");
     }
+    if(!exchange_only){
 #ifdef CBC_VOLUME_FIXTURE
     require(m.kernels[DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME]>0&&m.volume_transmit>0,"Missing volume transmission coverage");
     require(std::getenv("CODEBRIX_VOLUME_ABSORPTION_ONLY")?m.volume_scatter==0:m.volume_scatter>0,"Incorrect volume scattering coverage");
@@ -285,10 +313,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require((m.kernels[DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK]>0)==(std::getenv("CODEBRIX_VOLUME_CAMERA_INSIDE")!=nullptr),"Incorrect native camera-inside volume initialization coverage");
 #endif
     require(m.max_bounce>=3,"Missing multiple bounce coverage");if(!asset){require(m.max_transparent>=1,"Missing transparent bounce coverage");require(m.shaders.size()>=10,"Insufficient compiled shader coverage");}
-    }
+    }}
   }
   require(stats.mem_used==0,"Render Cycles allocation leak");std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
   {std::ofstream edges(prefix+".shared-edges.json");edges<<'[';for(size_t i=0;i<m.edge_records.size();i++){if(i)edges<<',';edges<<m.edge_records[i];}edges<<"]\n";}
-  if(preview_mode)std::cout<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"highResolutionPreviewOnly\":true,\"materialSubstitution\":\"rough diffuse clay\",\"width\":"<<width<<",\"height\":"<<height<<",\"samples\":"<<samples<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+  if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+  else if(preview_mode)std::cout<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"highResolutionPreviewOnly\":true,\"materialSubstitution\":\"rough diffuse clay\",\"width\":"<<width<<",\"height\":"<<height<<",\"samples\":"<<samples<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
   else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentCpuImage\":true,\"repeatBitwiseIdentical\":true,\"nativeImageTextures\":"<<(image_mode?"true":"false")<<",\"nativeNormalMaps\":"<<(normal_mode?"true":"false")<<",\"width\":64,\"height\":48,\"samples\":"<<samples<<",\"stages\":"<<m.stages<<",\"paths\":"<<m.paths<<",\"volumeScatterEvents\":"<<m.volume_scatter<<",\"volumeTransmitEvents\":"<<m.volume_transmit<<",\"volumeTerminatedEvents\":"<<m.volume_terminated<<",\"volumeStackInitializations\":"<<m.kernels[DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK]<<",\"maxVolumeBoundaryBounce\":"<<m.max_volume_bounds<<",\"maxBounce\":"<<m.max_bounce<<",\"maxTransparentBounce\":"<<m.max_transparent<<",\"surfaceShaders\":"<<m.shaders.size()<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"equivalentSharedEdgeComparisons\":"<<m.equivalent_edge_hits<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<m.maximum<<",\"maximumStageErrorField\":\""<<m.maximum_field<<"\",\"maximumStageErrorActual\":"<<m.maximum_actual<<",\"maximumStageErrorExpected\":"<<m.maximum_expected<<",\"maximumStagePracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"strictImageFailures\":"<<image.strict<<",\"maximumImageError\":"<<image.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

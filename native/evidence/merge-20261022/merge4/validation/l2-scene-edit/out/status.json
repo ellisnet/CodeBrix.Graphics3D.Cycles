@@ -1,0 +1,44 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "passed": true,
+  "inputsUnchanged": true,
+  "scenarios": [
+    "object-tfm",
+    "object-motion-added",
+    "camera-motion-added",
+    "material-value",
+    "light-edit",
+    "deformation-motion-added",
+    "mesh-replaced",
+    "instance-added",
+    "object-motion-removed",
+    "tfm-round-trip",
+    "attribute-replaced",
+    "smooth-toggled",
+    "motion-blur-enabled"
+  ],
+  "cpuBitIdentical": true,
+  "gpuMaximumAbsoluteError": 5.7220458984375e-06,
+  "gpuPracticalFailures": 0,
+  "gpuStrictDifferences": 14415,
+  "recovery": {
+    "recovery-pass": {
+      "film": "run.recovery-pass.rgba.bin",
+      "reference": "run.recovery.fresh-cpu.rgba.bin",
+      "bitwiseEqual": false,
+      "maximumAbsoluteError": 3.814697265625e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 373
+    },
+    "recovery-camera": {
+      "film": "run.recovery-camera.rgba.bin",
+      "reference": "run.recovery.fresh-cpu.rgba.bin",
+      "bitwiseEqual": false,
+      "maximumAbsoluteError": 3.814697265625e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 371
+    }
+  },
+  "scope": "Scene edits after a render (object tfm, object/camera/deformation motion, motion blur, material value, light, mesh replacement, instancing, attributes, smooth flags) through the C ABI versus a fresh CPU render of the edited scene; replay = the same edit sequence in a new host; WebGPU device-error recovery after a rejected depth pass and orthographic camera."
+}

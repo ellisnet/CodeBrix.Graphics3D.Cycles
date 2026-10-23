@@ -1,0 +1,46 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "device": "samsung",
+  "serial": "R52W207XQ1V",
+  "corpus": "materials",
+  "label": "m4",
+  "declaredBudgetSeconds": 7200,
+  "perJobTimeoutSeconds": 2400,
+  "pipelineBudgetMs": null,
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "startedLocal": "15:56:00",
+  "deviceProperties": {
+    "api": "36",
+    "abi": "arm64-v8a",
+    "model": "SM-X700",
+    "fingerprint": "samsung/gts8wifixx/gts8wifi:16/BP2A.250605.031.A3/X700XXSBEZH3:user/release-keys"
+  },
+  "stagedVerified": true,
+  "reference": {
+    "root": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge4/reference/linux-x64",
+    "oracleSha256": "50c8c58e010d391d197fb8048b0fcb04db8277b6e890dc56391403a2e1d27c24",
+    "libc": "glibc 2.41",
+    "provenanceSha256": "19aebee9037924f62b3297a2aea2084e11503387348a5b406399e0d88a67c77d"
+  },
+  "referenceImported": [],
+  "deviceScene": {
+    "flow": "device-scene",
+    "linuxBin": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin"
+  },
+  "passed": false,
+  "failures": [
+    "principled_render: stage 40 path.mis_ray_pdf path=2441 actual=1751.469238 expected=1747.274414",
+    "nodes_svm: Native compiled graphs float closures[0].weight path 309 component 0 actual=0.070653 expected=0.079591",
+    "nodes_render: Independent CPU image 6720 actual=0.928481 expected=0.928078",
+    "principled-replay: not run (source job failed)",
+    "nodes-replay: not run (source job failed)"
+  ],
+  "wallSeconds": 1622.2,
+  "withinBudget": true,
+  "remoteProcessesAfter": [],
+  "productionSourcesUnchanged": true,
+  "binaryInputsUnchanged": true,
+  "inputsUnchanged": true
+}

@@ -5,8 +5,8 @@
 // Modified from Cycles: kernel/svm/{noise,fractal_noise,noisetex,voronoi,white_noise,wave,
 // magic,brick,mapping,mapping_util,map_range,mix,color_util,hsv,sepcomb_color,ramp,
 // fresnel,vector_rotate,blackbody,normal,geometry,camera,scene_time,vector_transform,
-// light_path,wavelength,wireframe}.h, closure/bsdf_util.h, util/hash.h,
-// util/color.h, util/transform.h, kernel/util/colorspace.h,
+// light_path,gabor,wavelength,wireframe}.h, closure/bsdf_util.h, util/hash.h,
+// util/color.h, util/transform.h, util/projection.h, kernel/util/colorspace.h,
 // kernel/util/differential.h and kernel/tables.h (blackbody fit, CIE colour
 // matching rows), translated to WGSL for the SVM interpreter.
 // The x86-64 CPU oracle compiles the SSE4.2 branches of noise.h/util: vector fade
@@ -62,11 +62,18 @@ fn svmn_fmod(a:f32,b:f32,sse:bool)->f32{
 //#if SVM_NODES_NOISE
 // noise.h perlin_1d (scalar) and perlin_2d/3d/4d (SSE): lattice gradients are
 // combined along x, then y, z and w with mix(a,b,t)=a+t*(b-a), as the SSE lanes.
+// The fade products keep the oracle's grouping through svmn_order: the Adreno 730
+// driver (EV031.36.08.33) reassociated (t*t)*(t*inner), which moved high-octave
+// noise by up to 7 times the practical bound (nodes_svm typed 2D noise, lane S).
+// The order word is header word 3 after the error word (WebGPUDevice), always 0:
+// the XOR is the identity, but the compiler cannot see through it.
+fn svmn_order(x:f32,order:u32)->f32{return bitcast<f32>(bitcast<u32>(x)^order);}
+fn svmn_order_word()->u32{return load_word(p(17u)+12u);}
 fn svmn_perlin(p:vec4<f32>,dims:u32)->f32{
-    let lattice=floor(p);let cell=vec4<i32>(lattice);let fr=p-lattice;var fade=vec4<f32>(0);
+    let lattice=floor(p);let cell=vec4<i32>(lattice);let fr=p-lattice;var fade=vec4<f32>(0);let order=svmn_order_word();
     for(var d=0u;d<dims;d++){
-        let t=fr[d];let inner=rounded_add(t*rounded_add(t*6.0,-15.0),10.0);
-        fade[d]=select((t*t)*(t*inner),((t*t)*t)*inner,dims==1u);
+        let t=fr[d];let inner=rounded_add(t*rounded_add(t*6.0,-15.0),10.0);let tt=svmn_order(t*t,order);
+        fade[d]=svmn_order(select(svmn_order(tt*svmn_order(t*inner,order),order),svmn_order(svmn_order(tt*t,order)*inner,order),dims==1u),order);
     }
     var partial=vec4<f32>(0);var result=0.0;let corners=1u<<dims;
     for(var c=0u;c<corners;c++){
@@ -545,8 +552,10 @@ fn svm_fresnel_node(s:ptr<function,SvmState>,node:u32,opcode:u32){
     let cosi=svmn_dot((*s).geometry.wi,n);var f=0.0;
     if(opcode==NODE_FRESNEL||kind==NODE_LAYER_WEIGHT_FRESNEL){
         var eta=0.0;
-        if(opcode==NODE_FRESNEL){eta=max(svm_input(s,node+N_Fresnel_ior),1e-5);if(backfacing){eta=1.0/eta;}}
-        else{eta=max(1.0-blend,1e-5);if(!backfacing){eta=1.0/eta;}}
+        // The reciprocal is chosen with select, not a nested if: with the Gabor handler in the same module the
+        // Adreno 730 compiler dropped `if(backfacing){eta=1.0/eta;}` (native/DEVICE.md, lane S2). Same operations.
+        if(opcode==NODE_FRESNEL){let x=max(svm_input(s,node+N_Fresnel_ior),1e-5);eta=select(x,1.0/x,backfacing);}
+        else{let x=max(1.0-blend,1e-5);eta=select(1.0/x,x,backfacing);}
         let c=abs(cosi);var g=eta*eta-1.0+c*c;f=1.0;
         if(g>0.0){g=sqrt(g);let a=(g-c)/(g+c);let b=(c*(g+c)-1.0)/(c*(g-c)+1.0);f=0.5*a*a*(1.0+b*b);}
     }else{
@@ -893,6 +902,108 @@ fn svm_voronoi_texture(s:ptr<function,SvmState>,node:u32){
     svm_optional_store(s,svm_byte(node+N_TexVoronoi_radius_offset),radius);
 }
 //#endif
+//#if SVM_NODE_TEX_GABOR
+// Shipped through scene specialization only (lane L, 2026-10-22): the region is
+// compiled into a module only when an uploaded program reaches NODE_TEX_GABOR
+// (and is scene-only in the superset mode, pipelines.h).
+// gabor.h: 2D and 3D Gabor noise (8 impulses per cell, 3x3 / 3x3x3 cell
+// neighbourhoods, x fastest as the nested host loops), phasor value, phase and
+// intensity. The 2D form runs as 3D with a zero third lane: every dot product,
+// distance and frequency vector is then the host's 2D arithmetic plus exact
+// zero terms. Seeds hash exact integer cell coordinates; the kernel window is
+// zero at the unit-distance cutoff, so the sum is continuous there.
+// spherical_to_direction angles span about [-pi,2pi): quadrant reduction with a
+// two-component pi/2 (residual of n*pi/2 kept) feeding the bounded precise
+// sine/cosine adapter; the inclination/azimuth use the precise arccosine.
+// Driver acos/sin/cos differed from libm by up to 2e-3 relative on Intel; the
+// kernel phasor/window use it too (driver sin/cos at |angle| up to ~40 rad).
+fn svmn_sincos(angle:f32)->vec2<f32>{
+    let n=i32(floor(angle*0.6366197723675814+0.5));let product=trig_product(f32(n),1.5707963705062866);
+    let r=rounded_add(rounded_add(angle,-product.x),rounded_add(-product.y,f32(n)*4.3711390001862426e-8));
+    let sc=precise_disk_sincos(r);let q=((n%4)+4)%4;
+    if(q==1){return vec2<f32>(sc.y,-sc.x);}
+    if(q==2){return vec2<f32>(-sc.x,-sc.y);}
+    if(q==3){return vec2<f32>(-sc.y,sc.x);}
+    return sc;
+}
+fn svm_gabor_texture(s:ptr<function,SvmState>,node:u32){
+    let kind=load_word(node+N_TexGabor_gabor_type);if(kind>NODE_GABOR_TYPE_3D){svm_error(s,16u);return;}
+    let coordinates=svm_load3(s,svm_byte(node+N_TexGabor_coordinates));let scale=svm_input(s,node+N_TexGabor_scale);
+    let frequency=max(0.001,svm_input(s,node+N_TexGabor_frequency));let isotropy=1.0-clamp(svm_input(s,node+N_TexGabor_anisotropy),0.0,1.0);
+    let orientation_2d=svm_input(s,node+N_TexGabor_orientation_2d);let orientation_3d=svm_input3(s,node+N_TexGabor_orientation_3d);
+    if((*s).error!=0u){return;}
+    let three=kind==NODE_GABOR_TYPE_3D;
+    var scaled=coordinates*scale;if(!three){scaled.z=0.0;}
+    let cell_position=floor(scaled);let local_position=scaled-cell_position;
+    // compute_3d_orientation: spherical angles of the normalized base orientation.
+    var base=vec3<f32>(0);var inclination=0.0;var azimuth=0.0;
+    if(three){
+        base=surface_native_normalize(orientation_3d);
+        var arc=vec2<f32>(0);for(var k=0u;k<2u;k++){arc[k]=motion_acos(select(base.z,base.x/sqrt(base.x*base.x+base.y*base.y),k==1u));}
+        inclination=arc.x;azimuth=select(1.0,-1.0,base.y<0.0)*arc.y;
+    }
+    var sum=vec2<f32>(0);
+    for(var c=0u;c<select(9u,27u,three);c++){
+        let offset=vec3<f32>(f32(i32(c%3u)-1),f32(i32((c/3u)%3u)-1),select(0.0,f32(i32(c/9u)-1),three));
+        let cell=cell_position+offset;let position=local_position-offset;var noise=vec2<f32>(0);
+        for(var i=0u;i<8u;i++){
+            // Seeds: hash_float3_to_float(2) keys (cell.xy, 3i+k) in 2D,
+            // hash_float4_to_float(2/3) keys (cell, 3i+k) in 3D.
+            var key=vec4<f32>(cell.x,cell.y,f32(3u*i),0);var n=3u;if(three){key=vec4<f32>(cell,f32(3u*i));n=4u;}
+            let lane=select(vec4<f32>(0,0,1,0),vec4<f32>(0,0,0,1),three);let center_key=key+lane;
+            // Every seed hash through one call site: kernel centre (2 or 3), weight,
+            // then the orientation keys (computed even when the impulse is skipped;
+            // the values are the host's, only unused).
+            var h=vec4<f32>(0);var h_orientation=vec2<f32>(0);
+            for(var k=0u;k<6u;k++){
+                var hk=center_key;
+                if(k==1u){hk=select(center_key.zxyw,center_key.zxwy,three);}
+                else if(k==2u){if(!three){continue;}hk=center_key.wzyx;}
+                else if(k==3u){hk=key+2.0*lane;}
+                else if(k==4u){hk=key;}
+                else if(k==5u){if(!three){continue;}hk=key.zxwy;}
+                if(k>=4u&&three&&isotropy==0.0){continue;}
+                let value=svmn_hash_float(hk,n);if(k<4u){h[k]=value;}else{h_orientation[k-4u]=value;}
+            }
+            let center=vec3<f32>(h[0],h[1],select(0.0,h[2],three));
+            let p=position-center;let distance_squared=(p.x*p.x+p.y*p.y)+p.z*p.z;
+            if(distance_squared>=1.0){continue;}
+            let weight=select(1.0,-1.0,h[3]<0.5);
+            // Orientation (2D angle, or 3D inclination/azimuth when isotropic), Hann
+            // window and phasor angle share one precise sine/cosine call site.
+            var angles=vec2<f32>(0);
+            if(three&&isotropy!=0.0){angles=h_orientation*3.1415927;}
+            var orientation_trig=vec4<f32>(0);var window_trig=vec2<f32>(0);var phasor_trig=vec2<f32>(0);var frequency_vector=frequency*base;
+            for(var k=select(2u,0u,!three||isotropy!=0.0);k<4u;k++){
+                if(k==1u&&!three){continue;}
+                var argument=3.1415927*distance_squared;
+                if(k==0u){
+                    argument=inclination+angles.x*isotropy;
+                    if(!three){argument=orientation_2d+((h_orientation.x-0.5)*3.1415927)*isotropy;}
+                }
+                if(k==1u){argument=azimuth+angles.y*isotropy;}
+                if(k==3u){
+                    if(!three){frequency_vector=vec3<f32>(frequency*orientation_trig.y,frequency*orientation_trig.x,0);}
+                    else if(isotropy!=0.0){frequency_vector=frequency*vec3<f32>(orientation_trig.x*orientation_trig.w,orientation_trig.x*orientation_trig.z,orientation_trig.y);}
+                    argument=6.2831855*((p.x*frequency_vector.x+p.y*frequency_vector.y)+p.z*frequency_vector.z);
+                }
+                let value=svmn_sincos(argument);
+                if(k==0u){orientation_trig=vec4<f32>(value,orientation_trig.zw);}else if(k==1u){orientation_trig=vec4<f32>(orientation_trig.xy,value);}
+                else if(k==2u){window_trig=value;}else{phasor_trig=value;}
+            }
+            // compute_2d/3d_gabor_kernel: Hann-windowed Gaussian times the phasor.
+            let envelope=exp(-3.1415927*distance_squared)*(0.5+0.5*window_trig.y);
+            noise+=weight*vec2<f32>(envelope*phasor_trig.y,envelope*phasor_trig.x);
+        }
+        sum+=noise;
+    }
+    // 6 * compute_{2d,3d}_gabor_standard_deviation() (binary32 host constants).
+    let normalization=select(6.0,bitcast<f32>(0x40a173beu),three);
+    svm_optional_store(s,svm_byte(node+N_TexGabor_value_offset),(sum.y/normalization)*0.5+0.5);
+    svm_optional_store(s,svm_byte(node+N_TexGabor_phase_offset),(atan2(sum.y,sum.x)+3.1415927)/6.2831855);
+    svm_optional_store(s,svm_byte(node+N_TexGabor_intensity_offset),sqrt(sum.x*sum.x+sum.y*sum.y)/normalization);
+}
+//#endif
 //#if SVM_NODE_WAVELENGTH
 // wavelength.h and math_util.h svm_math_wavelength_color_xyz with the
 // tables.h cie_color_match rows as constants (no private array).
@@ -1033,7 +1144,13 @@ fn svm_wireframe(s:ptr<function,SvmState>,node:u32){
 //#if SVM_NODE_MAPPING_DERIVATIVE
 // mapping.h svm_node_mapping<dual3> and svm_node_texture_mapping<dual3> with the
 // util/math_dual.h operators: dual / float3 multiplies by the reciprocal.
-fn svmn_dual_direction(t:mat3x3<f32>,a:NormalDual)->NormalDual{return NormalDual(svmn_direction(t,a.value),svmn_direction(t,a.dx),svmn_direction(t,a.dy));}
+// One column set for the three directions (the same products and sums as svmn_direction): three
+// svmn_direction calls in one expression made the Adreno 730 compiler terminate (SIGSEGV) creating the
+// probe module (native/DEVICE.md, lane S2).
+fn svmn_dual_direction(t:mat3x3<f32>,a:NormalDual)->NormalDual{
+    let col_x=vec3<f32>(t[0].x,t[1].x,t[2].x);let col_y=vec3<f32>(t[0].y,t[1].y,t[2].y);let col_z=vec3<f32>(t[0].z,t[1].z,t[2].z);
+    return NormalDual(a.value.x*col_x+(a.value.y*col_y+a.value.z*col_z),a.dx.x*col_x+(a.dx.y*col_y+a.dx.z*col_z),a.dy.x*col_x+(a.dy.y*col_y+a.dy.z*col_z));
+}
 fn svmn_dual_divide(a:NormalDual,b:vec3<f32>)->NormalDual{
     let inv=vec3<f32>(1)/b;let zero=b==vec3<f32>(0);
     return NormalDual(select(a.value*inv,vec3<f32>(0),zero),select(a.dx*inv,vec3<f32>(0),zero),select(a.dy*inv,vec3<f32>(0),zero));

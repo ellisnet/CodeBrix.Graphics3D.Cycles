@@ -1,0 +1,57 @@
+{
+  "nodes_world": {
+    "gate": "nodes_world",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 6.1,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_SEPARATE_VECTOR,LIGHT_TRIANGLE,SVM_NODE_TEX_NOISE",
+        "wgslBytes": 53423,
+        "moduleMs": 8.72589,
+        "pipelineMs": 661.63,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_SEPARATE_VECTOR,LIGHT_TRIANGLE,SVM_NODE_TEX_NOISE",
+        "wgslBytes": 76495,
+        "moduleMs": 9.17552,
+        "pipelineMs": 2675.65,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_SEPARATE_VECTOR,LIGHT_TRIANGLE,SVM_NODE_TEX_NOISE",
+        "wgslBytes": 219324,
+        "moduleMs": 37.6884,
+        "pipelineMs": 2202.64,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 2675.65,
+    "passed": false,
+    "error": [
+      "[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)",
+      "00:05.91 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack",
+      "Compiled world 0: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack"
+    ]
+  }
+}

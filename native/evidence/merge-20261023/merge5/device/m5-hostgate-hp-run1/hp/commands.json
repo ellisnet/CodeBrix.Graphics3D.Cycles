@@ -1,0 +1,229 @@
+[
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "ps -A -o PID,ARGS"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "getprop ro.build.version.sdk"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "getprop ro.product.cpu.abi"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "getconf PAGESIZE"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "getprop ro.build.fingerprint"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "test '!' -e /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/device/m5-hostgate-hp-run1/hp/stage",
+      "/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/cpu-exit /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/gpu /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/reload /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/gpu-exit /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/stress /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/cpu /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/reload/round.0 /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/reload/round.1 /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/reload/round.3 /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/reload/round.5 /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/reload/round.4 /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/reload/round.2"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "sha256sum /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libboost_iostreams.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libOpenEXR.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libOpenEXRUtil-3_1.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libIlmThread-3_1.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libboost_filesystem.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libboost_chrono.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libIex.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libIlmThread.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libzstd.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libexpat.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libtiff.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libOpenEXRCore.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libtiffxx.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libOpenImageIO.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libboost_regex.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libIex-3_1.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libboost_thread.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libboost_system.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libOpenEXRUtil.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libpng16.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libOpenEXRCore-3_1.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libpng.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libOpenImageIO_Util.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libjpeg.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libpugixml.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libImath-3_1.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libImath.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libOpenColorIO.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libtbb.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libz.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libboost_date_time.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libOpenEXR-3_1.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libcodebrix_wgpu.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libc++_shared.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_cpu_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_gpu_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_reload_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_concurrency_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib/libcodebrix_cycles_host.so /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.7.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.2.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.0.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.3.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.3.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.1.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.5.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.7.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.0.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.4.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.2.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/config.ocio /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.4.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.6.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.5.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.6.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/a/output/input.1.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.7.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.2.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.0.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.3.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.3.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.1.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.5.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.7.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.0.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.4.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.2.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/config.ocio /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.4.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.6.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.5.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.6.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/b/output/input.1.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.7.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.2.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.0.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.3.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.3.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.1.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.5.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.7.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.0.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.4.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.2.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/config.ocio /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.4.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.6.bin /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.5.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.6.png /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references/c/output/input.1.exr /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/stress-input/a.ocio /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/stress-input/b.ocio /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/stress-input/input.5.bin"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "chmod 755 /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_cpu_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_gpu_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_reload_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_concurrency_test"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_cpu_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/cpu/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/cpu",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/device/m5-hostgate-hp-run1/hp"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_cpu_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/cpu-exit/run --exit-live"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/cpu-exit",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/device/m5-hostgate-hp-run1/hp"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_reload_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/references /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/reload 6"
+    ],
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/reload",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/device/m5-hostgate-hp-run1/hp"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_concurrency_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/stress-input /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/stress"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/stress",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/device/m5-hostgate-hp-run1/hp"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_gpu_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/gpu/run"
+    ],
+    "timeoutSeconds": 2400
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/gpu",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/device/m5-hostgate-hp-run1/hp"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/lib /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/bin/codebrix_host_gpu_test /data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/gpu-exit/run --exit-live"
+    ],
+    "timeoutSeconds": 2400
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m5-hostgate-hp-run1-hp/output/gpu-exit",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge5/device/m5-hostgate-hp-run1/hp"
+    ],
+    "timeoutSeconds": 300
+  }
+]

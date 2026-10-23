@@ -1,0 +1,305 @@
+{
+  "glass_render-spec": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {},
+    "exit": 0,
+    "wallSeconds": 62.8,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 53776,
+        "inlinedBytes": 219303,
+        "moduleMs": 5.40437,
+        "pipelineMs": 270.514,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 76848,
+        "inlinedBytes": 250014,
+        "moduleMs": 11.7544,
+        "pipelineMs": 894.145,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 263563,
+        "inlinedBytes": 393257,
+        "moduleMs": 29.4956,
+        "pipelineMs": 1147.82,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 263563,
+        "inlinedBytes": 300174,
+        "moduleMs": 25.5703,
+        "pipelineMs": 1716.46,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 263563,
+        "inlinedBytes": 639542,
+        "moduleMs": 26.1147,
+        "pipelineMs": 3269.24,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 263563,
+        "inlinedBytes": 372925,
+        "moduleMs": 26.6515,
+        "pipelineMs": 1435.55,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 263563,
+        "inlinedBytes": 658413,
+        "moduleMs": 27.7598,
+        "pipelineMs": 4090.86,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS",
+        "wgslBytes": 197989,
+        "inlinedBytes": 354595,
+        "moduleMs": 32.7178,
+        "pipelineMs": 522.012,
+        "adapter": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 4090.86,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "flow": "device-scene",
+      "oracleSha256": "fb66fa6834d02d3bf4b7882d8df2e216fbe84ee53997fee1cec0ecdf6fcdc497",
+      "hostRejudgedPassed": true,
+      "rows": [
+        {
+          "key": "image",
+          "authoritative": {
+            "compared": 12288,
+            "bitwiseDiffering": 2488,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 97,
+            "maximumAbsoluteError": 1.9073486328125e-06,
+            "maximumPracticalRatio": 0.0029827714578273806,
+            "maximumUlps": 11,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 12288,
+            "bitwiseDiffering": 2277,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 81,
+            "maximumAbsoluteError": 1.9073486328125e-06,
+            "maximumPracticalRatio": 0.0029827714578273806,
+            "maximumUlps": 11,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 12288,
+            "bitwiseDiffering": 1461,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 37,
+            "maximumAbsoluteError": 1.9073486328125e-06,
+            "maximumPracticalRatio": 0.0012010926099253968,
+            "maximumUlps": 3,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        }
+      ]
+    },
+    "passed": true,
+    "report": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentCpuImage": true,
+      "repeatBitwiseIdentical": true,
+      "nativeImageTextures": false,
+      "nativeNormalMaps": false,
+      "width": 64,
+      "height": 48,
+      "samples": 8,
+      "stages": 149,
+      "paths": 140646,
+      "volumeScatterEvents": 0,
+      "volumeTransmitEvents": 0,
+      "volumeTerminatedEvents": 0,
+      "volumeStackInitializations": 0,
+      "maxVolumeBoundaryBounce": 0,
+      "maxBounce": 5,
+      "maxTransparentBounce": 3,
+      "surfaceShaders": 21,
+      "integerChecks": 11595776,
+      "floatChecks": 16478208,
+      "equivalentSharedEdgeComparisons": 0,
+      "strictStageFailures": 1087,
+      "maximumStageError": 4096,
+      "maximumStageErrorField": "stage 43 path.mis_ray_pdf path=1384",
+      "maximumStageErrorActual": 15332418560,
+      "maximumStageErrorExpected": 15332422656,
+      "maximumStagePracticalToleranceRatio": 0.003978891186477499,
+      "strictImageFailures": 97,
+      "maximumImageError": 1.9073486328125e-06,
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 8,
+        "totalPipelineMs": 13346.6,
+        "maxPipelineMs": 4090.86,
+        "maxPipelineEntry": "shade_surface",
+        "warnings": [],
+        "sizeGuard": {
+          "thresholdBytes": 1110000,
+          "largestEntryBytes": 658413,
+          "largestEntry": "shade_surface",
+          "estimatedInstructions": 32921,
+          "warnings": 0
+        },
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Samsung SM-X700 Adreno 730: full-fidelity proof device (2026-10-19 policy)",
+          "adapter": {
+            "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+            "architecture": "",
+            "device": "Adreno (TM) 730",
+            "description": "Driver Build: 0c393b63cf, I94e2bd5684, 1746191168 Date: 05/02/25 Compiler Version: EV031.36.08.33 Driver Branch:  ",
+            "vendorId": 20803,
+            "deviceId": 117637121,
+            "simulated": false,
+            "mobile": true
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:bd068d9aea46acc0",
+          "knownAdapter": {
+            "name": "Samsung SM-X700 Adreno 730",
+            "tier": "full",
+            "budgetMs": 0,
+            "evidence": "full-fidelity proof device (2026-10-19 policy)"
+          },
+          "budgetSource": "default",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "pipelineReportPresent": true
+  },
+  "glass_render-nospec-refused": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_SHADER_SPECIALIZATION": "0"
+    },
+    "exit": 1,
+    "wallSeconds": 0.4,
+    "pipelines": [],
+    "maxPipelineMs": null,
+    "passed": true,
+    "expectedRefusal": "refused on Android",
+    "stderr": [
+      "render_gate device creation: WebGPU device creation failed: CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 or =superset is a desktop-only diagnostic and is refused on Android: the unspecialized and superset shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules."
+    ]
+  },
+  "glass_render-superset-refused": {
+    "gate": "glass_render",
+    "args": [],
+    "env": {
+      "CODEBRIX_CYCLES_SHADER_SPECIALIZATION": "superset"
+    },
+    "exit": 1,
+    "wallSeconds": 0.2,
+    "pipelines": [],
+    "maxPipelineMs": null,
+    "passed": true,
+    "expectedRefusal": "refused on Android",
+    "stderr": [
+      "render_gate device creation: WebGPU device creation failed: CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 or =superset is a desktop-only diagnostic and is refused on Android: the unspecialized and superset shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules."
+    ]
+  }
+}

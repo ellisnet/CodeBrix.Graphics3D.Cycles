@@ -67,6 +67,7 @@ fn integrate_suns(index:u32,base:u32){
     }
 }
 @compute @workgroup_size(64) fn shade_light_forward(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD){fail();return;}
     let flag=state_word(S_path_flag,index);let visibility=state_byte(S_path_visibility,index);

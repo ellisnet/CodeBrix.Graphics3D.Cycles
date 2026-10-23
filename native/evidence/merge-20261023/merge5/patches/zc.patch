@@ -1,0 +1,162 @@
+diff --git a/AGENT-README.txt b/AGENT-README.txt
+index 2ef3c673..6196d43c 100644
+--- a/AGENT-README.txt
++++ b/AGENT-README.txt
+@@ -733,6 +733,16 @@ WHAT THIS PACKAGE DOES NOT DO
+   light trees, denoising, adaptive sampling or path guiding on the WebGPU
+   device (the CPU reference backend does).
+ - It does not yet ship the native host library inside the package.
++- It does not keep a persistent cache of compiled GPU pipelines; the WebGPU
++  runtime it uses offers none. The first GPU render in each process compiles
++  the pipelines its scene needs (seconds to a minute per material on the GPUs
++  tested). Whether a later process starts warm depends only on the GPU driver:
++  on Linux with the Mesa driver, Mesa's own shader cache (default
++  ~/.cache/mesa_shader_cache_db; MESA_SHADER_CACHE_DIR moves it) makes later
++  runs of an unchanged scene compile almost instantly; on the Android devices
++  tested, every process compiles again. Within one process, repeated renders
++  of a scene reuse its compiled pipelines unless an edit makes the scene use
++  shader features it did not use before.
+ 
+ 
+ WORKING EXAMPLES ON GITHUB
+diff --git a/MAINTAINER-README.txt b/MAINTAINER-README.txt
+index e696c23e..22342187 100644
+--- a/MAINTAINER-README.txt
++++ b/MAINTAINER-README.txt
+@@ -572,6 +572,93 @@ THIRD-PARTY-NOTICES.txt and NOTICE are generated from them by
+ tools/licensing/notices.py. Never hand-edit the generated files.
+ 
+ 
++PIPELINE CACHE (AUDIT OF THE SHIPPED RUNTIME)
++=============================================
++Driver shader compilation dominates first-render time and gate wall time. A
++persistent pipeline cache was audited on 2026-10-22 against the shipped
++CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 runtime, which this
++repository consumes unchanged (wgpu-native 29.0.1.1, wgpuGetVersion
++0x1d000101; codebrix ABI 2). Result: the runtime exposes NO usable pipeline
++cache on any backend, so the host and the managed API offer none. Nothing in
++this repository pretends to cache.
++
++What the runtime has:
++- wgpu.h declares WGPUNativeFeature_PipelineCache (0x0003002B; header note:
++  Vulkan supported, D3D12 and Metal unimplemented) and WGPUHubReport counts
++  pipelineCaches. On the Linux Intel adapter (Mesa 25.0.7) and the HP Intel
++  adapter (Mesa 24.0.8) the adapter advertises the feature and a device can
++  be created with it enabled.
++- Nothing can USE it. No RID's library (linux-x64/arm64/riscv64,
++  android-x64/arm64, osx-x64/arm64, win-x64/arm64) exports a pipeline-cache
++  function: no wgpuDeviceCreatePipelineCache, wgpuPipelineCacheGetData or
++  release/add-ref. The 251 exports match WGPU_CODEBRIX_PROC_TABLE_FUNCTION_COUNT
++  (251) in codebrix_wgpu_procs.h, which has no cache entry. wgpu.h has no
++  sType for chaining a cache into WGPUComputePipelineDescriptor (the native
++  sTypes stop at WGPUSType_SamplerDescriptorExtras, 0x0003000B), and
++  WGPUComputePipelineDescriptor (webgpu.h) has no cache member.
++  wgpuGetProcAddress ends the process (unimplemented). The Vulkan HAL inside
++  the library loads vkCreatePipelineCache/vkGetPipelineCacheData internally;
++  that path is not reachable from C.
++
++Driver caches (below the runtime; measured, not configured by this repository):
++- Linux, Intel Mesa 25.0.7: Mesa's on-disk cache works and fully covers our
++  pipelines. Default location $XDG_CACHE_HOME/mesa_shader_cache_db (else
++  ~/.cache/mesa_shader_cache_db), overridable with MESA_SHADER_CACHE_DIR,
++  MESA_SHADER_CACHE_MAX_SIZE (Mesa default 1 GB), MESA_SHADER_CACHE_DISABLE.
++  The host's WGSL is deterministic, so a second run hits: see native/DEVICE.md
++  "Pipeline cache" for cold/warm walls (films bit-identical). Consumers on
++  Linux therefore get warm compiles from the second run on, without anything
++  from us. The gate runners deliberately use a fresh scratch
++  MESA_SHADER_CACHE_DIR per run, so every wall in the merge reports is COLD.
++- HP (Android 13 x64, Bliss OS, Intel Mesa 24.0.8): NO driver cache. Neither
++  MESA_SHADER_CACHE_DIR nor XDG_CACHE_HOME makes the driver write anything,
++  and repeated compiles cost the same; the driver binary does not contain the
++  MESA_SHADER_CACHE_DISABLE check (the runners' MESA_SHADER_CACHE_DISABLE=true
++  is a no-op there). INFERENCE: Mesa's disk cache returns "disabled" on Android
++  builds. Every run on the HP compiles cold.
++- Samsung tablet (Adreno 730): no effective implicit cache observed (the S20
++  and Pixel runs have no repeated pipeline to compare). In merge wave 4, principled_bounce compiles the same 5
++  pipelines on 8 fresh devices in one process; each repeat costs as much as
++  the first (Samsung 252 of its 290 compile seconds, HP 800 of 917, are
++  repeats), and the same transparent_lighting pipeline cost 8.5 s and 8.2 s in
++  two separate processes.
++- macOS (Metal) and Windows (D3D12): not measured here. The runtime has no
++  cache API on either (the header calls both unimplemented); the system/driver
++  shader caches of those platforms are outside our control.
++
++DECISION (maintainer, 2026-10-22): pipeline caching IS to be enabled. The
++next time CodeBrix.WebGpu / CodeBrix.WebGpu.Native is updated for any reason,
++that release must add the pipeline-cache exports listed below (Vulkan honours
++them, which covers Linux and Android; the other backends return Unsupported),
++and this repository then implements the host design described after the list
++and removes the "no persistent cache" bullet from AGENT-README.txt. Nothing in
++CodeBrix.WebGpu is changed before that update, and no workaround is built here
++in the meantime. Put the runtime version that first ships the exports in
++native/host/ABI.md when it exists, and raise the pin in this repository to it.
++
++What a future runtime release would need to export (in CodeBrix.WebGpu.Native;
++mirrors wgpu's Device::create_pipeline_cache,
++PipelineCache::get_data, ComputePipelineDescriptor::cache and
++wgpu::util::pipeline_cache_key):
++- WGPUPipelineCache handle; WGPUPipelineCacheDescriptor { nextInChain,
++  label, data pointer + size (initial blob, may be empty), fallback (WGPUBool:
++  an invalid/foreign blob yields an empty cache instead of an error) };
++  wgpuDeviceCreatePipelineCache(device, descriptor) (requires
++  WGPUNativeFeature_PipelineCache);
++- wgpuPipelineCacheGetData(cache, data, size) as a two-call size/fill query
++  (or WGPUStatus + out size), wgpuPipelineCacheAddRef/Release;
++- a chained WGPUComputePipelineDescriptorExtras { chain, cache } with a new
++  native sType (and the render-pipeline equivalent);
++- an adapter cache-key query (the pipeline_cache_key string: vendor, device,
++  driver identity) so a host can name files per adapter/driver;
++- proc-table entries and wgpuCodebrixGetProcStatus rows for all of them,
++  statuses Implemented on Vulkan and Unsupported (never abort) elsewhere.
++With that, the host design is: one cache file per (runtime version, adapter
++key, module hash, specialization-record hash) under a configurable directory,
++loaded with fallback=true (corrupt or foreign entries are ignored and
++rewritten), saved after compilation, and reported in the capability report.
++
++
+ NOTES
+ =====
+ - The CPU reference backend is the oracle for the WebGPU backend; GPU feature
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index 25970ff0..b9fc0b38 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -3022,3 +3022,38 @@ Record only; nothing was fixed. Evidence: `native/work/merge4/runs/s20/`.
+ 
+ principled_svm now passes on the S20 (it failed in lane Q's sweep on 3392df3d; the merged tree adds lane S's arena
+ stack). The SVM-stack (mask 8) failures of motion and node worlds remain on the merged tree.
++
++## Pipeline cache (lane ZC, 2026-10-22)
++
++The shipped CodeBrix.WebGpu.Native 1.0.290.1433 runtime exposes no pipeline-cache API on any backend
++(`WGPUNativeFeature_PipelineCache` is advertised and can be enabled, but no export creates, attaches or serializes
++a cache; audit and the export list a future runtime would need: MAINTAINER-README.txt "PIPELINE CACHE"). The host
++therefore has no cache of its own; what remains is each driver's cache, measured here with the seeded merge-4
++binaries (no code change). Evidence: `native/work/zc-pipeline-cache/` (`runs/linux-seeded/results.json`,
++`audit/probe-*.txt`, `audit/driver-cache-strings.txt`).
++
++Linux, Intel UHD ADL-S, Mesa 25.0.7: Mesa's on-disk cache serves every pipeline. Cold = fresh
++`MESA_SHADER_CACHE_DIR`, warm = the same directory again, disabled = `MESA_SHADER_CACHE_DISABLE=true`. The GPU film
++is bit-identical in all three runs and equal to the reference film.
++
++| Gate | Cold wall / compile s | Warm wall / compile s | Disabled wall / compile s | Cache size | GPU film |
++| --- | --- | --- | --- | --- | --- |
++| glass_render | 44.4 / 22.6 | 27.7 / 0.022 | 43.9 / 21.7 | 4.25 MB | `db8e84f9…` all three |
++| principled_render | 65.0 / 47.7 | 16.5 / 0.025 | 61.4 / 44.8 | 5.67 MB | `fd3a7f2b…` all three |
++| nodes_render | 53.8 / 39.6 | 16.4 / 0.027 | 52.5 / 38.4 | 5.21 MB | `b9d1da3f…` all three |
++| host ABI consumer test (gpu, 59 pipelines) | 51.5 / 49.7 | 1.8 / 0.127 | - | - | not reproducible run to run (atomic accumulation; differs between the two warm runs too) |
++
++The largest single pipeline (Principled `prepare_surface`) drops from 18.9 s to 4 ms. Every merge-report wall on
++Linux is cold, because the runners give each run a fresh scratch cache.
++
++HP, Intel Xe TGL GT2, Mesa 24.0.8 (Bliss OS): no driver cache. With `MESA_SHADER_CACHE_DIR` or `XDG_CACHE_HOME`
++pointing at a writable directory the driver writes nothing and a repeated compile costs the same (probe: 4.6 ms
++each time; the Linux control drops 5.4 ms to 0.2 ms and writes the database). The driver binary lacks the
++`MESA_SHADER_CACHE_DISABLE` check, so the runners' `MESA_SHADER_CACHE_DISABLE=true` changes nothing there. Merge-4
++cold walls are therefore also every-run walls: glass_render 70.7 s (35.7 s compile), principled_render 152.7 s
++(118.7 s), nodes_render 111.8 s (77.4 s), principled_bounce 930.7 s (916.5 s, of which 800 s re-compile the same 5
++pipelines on 8 fresh devices).
++
++Samsung SM-X700, Adreno 730: no effective implicit cache seen. principled_bounce repeats identical pipelines at
++full cost (252 of 290 compile seconds are repeats; `prepare_surface` 14.8-16.8 s each time), and the same
++transparent_lighting `shade_surface_light` cost 8.5 s and 8.2 s in two separate processes.

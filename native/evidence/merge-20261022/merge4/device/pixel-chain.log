@@ -1,0 +1,31 @@
+pixel 67 files staged and verified
+[16:24:12] pixel materials-p-principled_svm: START principled_svm timeout=335s
+[16:24:12] pixel materials-p-principled_svm: SCENE-DUMP principled_svm
+[16:26:21] pixel materials-p-principled_svm: SCENE-REFERENCE principled_svm references=237
+[16:31:57] pixel materials-p-principled_svm: TIMEOUT principled_svm 335s; killed=False
+[16:32:22] pixel materials-p-principled_svm: END passed=False wall=490s/2135s failures=1
+{"passed": false, "failures": ["principled_svm: TIMEOUT after 335s (budget)"], "error": null, "wallSeconds": 490.4}
+[16:32:41] pixel materials-p-principled_bounce: START principled_bounce timeout=915s
+[16:47:56] pixel materials-p-principled_bounce: TIMEOUT principled_bounce 915s; killed=False
+[16:48:12] pixel materials-p-principled_bounce: END passed=False wall=934s/2715s failures=1
+{"passed": false, "failures": ["principled_bounce: TIMEOUT after 915s (budget)"], "error": null, "wallSeconds": 934.1}
+[16:48:32] pixel materials-p-principled_render: START principled_render timeout=148s
+[16:48:32] pixel materials-p-principled_render: SCENE-DUMP principled_render
+[16:48:49] pixel materials-p-principled_render: SCENE-REFERENCE principled_render references=1
+[16:51:17] pixel materials-p-principled_render: TIMEOUT principled_render 148s; killed=False
+[16:51:33] pixel materials-p-principled_render: END passed=False wall=185s/1948s failures=2
+{"passed": false, "failures": ["principled_render: TIMEOUT after 148s (budget)", "principled-replay: not run (source job failed)"], "error": null, "wallSeconds": 185.3}
+[16:51:52] pixel materials-p-nodes_svm: START nodes_svm timeout=461s
+[16:51:52] pixel materials-p-nodes_svm: SCENE-DUMP nodes_svm
+[17:00:21] pixel materials-p-nodes_svm: SCENE-REFERENCE nodes_svm references=541
+[17:08:02] pixel materials-p-nodes_svm: TIMEOUT nodes_svm 461s; killed=False
+[17:08:33] pixel materials-p-nodes_svm: END passed=False wall=1004s/2261s failures=1
+{"passed": false, "failures": ["nodes_svm: TIMEOUT after 461s (budget)"], "error": null, "wallSeconds": 1003.7}
+[17:08:55] pixel materials-p-nodes_render: START nodes_render timeout=386s
+[17:08:55] pixel materials-p-nodes_render: SCENE-DUMP nodes_render
+[17:09:13] pixel materials-p-nodes_render: SCENE-REFERENCE nodes_render references=1
+image            gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[17:12:50] pixel materials-p-nodes_render: REFERENCE nodes_render host re-judged vs glibc: False
+[17:12:50] pixel materials-p-nodes_render: FAIL nodes_render exit=1 217s: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 24): invalid/uninitialized SVM stack unsupported SVM parameter
+[17:13:07] pixel materials-p-nodes_render: END passed=False wall=257s/2186s failures=2
+{"passed": false, "failures": ["nodes_render: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 24): invalid/uninitialized SVM stack unsupported SVM parameter", "nodes-replay: not run (source job failed)"], "error": null, "wallSeconds": 256.7}

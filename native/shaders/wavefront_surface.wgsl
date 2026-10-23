@@ -190,6 +190,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
 }
 // Preparation validates inputs and evaluates closures without changing path or film state.
 @compute @workgroup_size(64) fn prepare_surface(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)){return;}store_word(p(24u)+id.x*SURFACE_STAGE_BYTES,0u);var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}if(state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){fail();return;}
     let flag=state_word(S_path_flag,index);if((flag&SURFACE_UNSUPPORTED_FLAGS)!=0u){fail();return;}
@@ -207,15 +208,34 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
 // light's BSDF/MIS/shadow setup (state 3 -> 2). Combining emitter sampling with
 // BSDF evaluation caused multi-minute, multi-GB driver compilation (and lost the
 // Pixel's device); records remain GPU-private and native scheduling is unchanged.
-@compute @workgroup_size(1) fn shade_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
-    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}
-    let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=1u){return;}store_word(at,0u);
+//
+// With emissive triangles in the scene (LIGHT_TRIANGLE) the sampling itself is
+// split once more: shade_surface_light samples only a selected lamp (state
+// 1 -> 5) and shade_surface_light_triangle, dispatched next, prefills the
+// triangle vertices, computes the forward-hit MIS weight and samples a selected
+// triangle (state 5 -> 3). Both recompute the same inputs from the unchanged
+// stage record and path state, and call the same functions as the combined path,
+// so the stored weight and sample are identical. One entry inlining both samplers
+// with area lights and object motion passed 65,535 backend instructions, where
+// the Intel Mesa 25.0.7 constant-combining pass truncates instruction and
+// register numbers to 16 bits (crash or wrong code; native/DEVICE.md, "Linux
+// reference fixes on the updated Mesa").
+struct SurfaceLightInputs {at:u32,index:u32,sd:SurfaceData,r:SvmResult,emission:bool,sample:bool}
+fn surface_light_inputs(id:vec3<u32>,state:u32)->SurfaceLightInputs{
+    var li:SurfaceLightInputs;li.at=NONE;
+    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return li;}
+    let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=state){return li;}store_word(at,0u);
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;
     let flag=state_word(S_path_flag,index);let emission=(r.runtime_flag&SR_EMISSION)!=0u;
     let sample=data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
        (sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u&&(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)==0u&&
        heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0;
+    return SurfaceLightInputs(at,index,sd,r,emission,sample);
+}
+// The combined light stage (no emissive triangle in the scene).
+fn surface_light_combined(li:SurfaceLightInputs){
+    let index=li.index;let sd=li.sd;let r=li.r;let emission=li.emission;let sample=li.sample;let at=li.at;
     triangle_light_prefill(index,sd,emission,sample);
     var weight=1.0;if(emission){weight=triangle_light_forward_weight(index,sd);}
     var ls:NativeLightSample;
@@ -223,8 +243,31 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
     if(load_word(p(17u))!=0u){return;}
     store_word(at+304u,bitcast<u32>(weight));light_sample_write(at+308u,ls);store_word(at,3u);
 }
+@compute @workgroup_size(1) fn shade_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    let li=surface_light_inputs(id,1u);if(li.at==NONE){return;}
+//#if LIGHT_TRIANGLE else surface_light_combined(li);return;
+    var ls:NativeLightSample;
+    if(li.sample){let selection=light_select(li.index);if(selection.prim<0){ls=light_sample_lamp(li.index,li.sd,li.r,selection);}}
+    if(load_word(p(17u))!=0u){return;}
+    light_sample_write(li.at+308u,ls);store_word(li.at,5u);
+//#endif
+}
+//#if LIGHT_TRIANGLE
+@compute @workgroup_size(1) fn shade_surface_light_triangle(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    let li=surface_light_inputs(id,5u);if(li.at==NONE){return;}
+    triangle_light_prefill(li.index,li.sd,li.emission,li.sample);
+    var weight=1.0;if(li.emission){weight=triangle_light_forward_weight(li.index,li.sd);}
+    if(li.sample){let selection=light_select(li.index);if(selection.prim>=0){
+        let ls=light_sample_triangle(li.sd,selection);if(load_word(p(17u))!=0u){return;}light_sample_write(li.at+308u,ls);}}
+    if(load_word(p(17u))!=0u){return;}
+    store_word(li.at+304u,bitcast<u32>(weight));store_word(li.at,3u);
+}
+//#endif
 // Size 1 retains the verified Linux sampling layout; broader tuning remains open.
 @compute @workgroup_size(1) fn connect_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=3u){return;}store_word(at,0u);
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);var sd=stage.sd;var r=stage.r;
@@ -254,6 +297,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
 // Lighting and continuation share GPU records, with no native queue transition.
 // The continuation runs only after successful lighting/roulette preparation.
 @compute @workgroup_size(1) fn shade_surface(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=2u){return;}
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;

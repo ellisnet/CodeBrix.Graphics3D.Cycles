@@ -7,15 +7,27 @@
 // Cycles ABI; scalar math/gamma functions are generated from upstream AST.
 // Background emission accumulation also derives from closure/emissive.h (BSD).
 // The value stack (words 0..254) and its initialization mask (words 255..262)
-// share one module-scope private array instead of two arrays inside the
-// function-local SvmState. On the Pixel 4 XL's Adreno 640 (driver
-// EV031.31.04.01) dynamic indexing into arrays held in the large SvmState
-// corrupted other live values: a lookup-table address lost its low 16 bits
-// (error 512) and the closure budget read as zero (no closures, black motion
-// images); two separate private arrays lost mask bits (error 8). Evaluations
+// live in a per-invocation slot of the device arena (SVM_STACK_WORDS words),
+// not in private memory. The Adreno 730 driver (EV031.36.08.33) fails to link
+// prepare_surface ("Failed to link shaders", device lost) once the private
+// stack and the register spills of large handlers (Principled thin film with
+// thin wall) exceed its per-invocation private memory; a 263-word private
+// array left too little room. Earlier, on the Pixel 4 XL's Adreno 640 (driver
+// EV031.31.04.01), dynamic indexing into arrays held in the large SvmState
+// corrupted other live values (error 512, black motion images, lost mask bits,
+// error 8), which is why the stack is one array outside SvmState. The arena
+// header after the error word (p(17)) holds the slot region's byte address and
+// slot count (WebGPUDevice); every entry point that can evaluate SVM programs
+// names its invocation with svm_invocation(id.x) first, and an evaluation
+// without a valid slot reports error 1 instead of sharing memory. Evaluations
 // never nest and each one clears the mask first, so reads, errors and results
 // are unchanged.
-var<private> svm_stack:array<u32,263>;
+const SVM_STACK_WORDS:u32=263u;
+var<private> svm_slot:u32=0xffffffffu;
+var<private> svm_stack_at:u32=0u;
+fn svm_invocation(id:u32){svm_slot=id;}
+fn svm_stack_get(word:u32)->u32{return load_word(svm_stack_at+word*4u);}
+fn svm_stack_set(word:u32,value:u32){store_word(svm_stack_at+word*4u,value);}
 struct SvmState {
     pc:u32, error:u32,
     volume:bool, weight:vec3<f32>, geometry:SurfaceData, output:SvmResult,
@@ -31,16 +43,21 @@ fn svm_take(s:ptr<function,SvmState>,bytes:u32)->u32{
     if((*s).pc>p(22u)||count>p(22u)-(*s).pc){svm_error(s,4u);return 0u;}
     let address=p(21u)+(*s).pc*4u;(*s).pc+=count;return address;
 }
+// v[i] for a bytecode-supplied component without dynamic vector indexing: on
+// the Adreno 650 compiler (EV031.32.02.10) v[component] corrupted the separate
+// vector's output offset, so the store was skipped and a later read reported
+// error 8. The select chain reads the same component.
+fn svm_component(v:vec3<f32>,i:u32)->f32{return select(select(v.z,v.y,i==1u),v.x,i==0u);}
 fn svm_byte(address:u32)->u32{return (load_word(address)>>(8u*(address%4u)))&255u;}
 fn svm_load_bits(s:ptr<function,SvmState>,index:u32)->u32{
     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return 0u;}
-    if((svm_stack[255u+index/32u]&(1u<<(index%32u)))==0u){svm_error(s,8u);return 0u;}
-    return svm_stack[index];
+    if((svm_stack_get(255u+index/32u)&(1u<<(index%32u)))==0u){svm_error(s,8u);return 0u;}
+    return svm_stack_get(index);
 }
 fn svm_load(s:ptr<function,SvmState>,index:u32)->f32{return bitcast<f32>(svm_load_bits(s,index));}
 fn svm_store_bits(s:ptr<function,SvmState>,index:u32,value:u32){
     if(index>=SVM_STACK_SIZE){svm_error(s,8u);return;}
-    svm_stack[index]=value;svm_stack[255u+index/32u]|=1u<<(index%32u);
+    svm_stack_set(index,value);svm_stack_set(255u+index/32u,svm_stack_get(255u+index/32u)|(1u<<(index%32u)));
 }
 fn svm_store(s:ptr<function,SvmState>,index:u32,value:f32){svm_store_bits(s,index,bitcast<u32>(value));}
 fn svm_load3(s:ptr<function,SvmState>,index:u32)->vec3<f32>{return vec3<f32>(svm_load(s,index),svm_load(s,index+1u),svm_load(s,index+2u));}
@@ -139,9 +156,13 @@ fn svm_gradient(s:ptr<function,SvmState>,kind:u32,v:vec3<f32>)->f32{
     }
 }
 fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_base:u32,flag:u32,visibility:u32,lcg:u32,volume:bool,previous:SvmResult)->SvmResult{
-    svm_stack[255]=0u;svm_stack[256]=0u;svm_stack[257]=0u;svm_stack[258]=0u;svm_stack[259]=0u;svm_stack[260]=0u;svm_stack[261]=0u;svm_stack[262]=0u;
     var s:SvmState;s.output=previous;s.volume=volume;s.geometry=geometry;s.pc=(geometry.shader&SHADER_MASK)*(1u+SZ_ShaderJump/4u);
     s.output.runtime_flag=geometry.runtime_flag;s.output.N=geometry.N;s.output.lcg_state=lcg;
+    // This invocation's stack slot (header after the error word: region address, slot count).
+    let stack_region=load_word(p(17u)+4u);let stack_slots=load_word(p(17u)+8u);let arena_bytes=arrayLength(&heap)*4u;
+    if(svm_slot>=stack_slots||stack_region==0u||stack_region%4u!=0u||stack_region>arena_bytes||stack_slots>(arena_bytes-stack_region)/(SVM_STACK_WORDS*4u)){svm_error(&s,1u);return s.output;}
+    svm_stack_at=stack_region+svm_slot*(SVM_STACK_WORDS*4u);
+    svm_stack_set(255u,0u);svm_stack_set(256u,0u);svm_stack_set(257u,0u);svm_stack_set(258u,0u);svm_stack_set(259u,0u);svm_stack_set(260u,0u);svm_stack_set(261u,0u);svm_stack_set(262u,0u);
     if(closure_limit>SVM_CLOSURE_CAPACITY){svm_error(&s,16u);return s.output;}
     s.output.closure_base=closure_base;
     if(closure_base!=0u){let bytes=arrayLength(&heap)*4u;let required=SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES;
@@ -287,6 +308,9 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_LIGHT_PATH
             case NODE_LIGHT_PATH:{size=SZ_LightPath;}
 //#endif
+//#if SVM_NODE_TEX_GABOR
+            case NODE_TEX_GABOR:{size=SZ_TexGabor;}
+//#endif
 //#if SVM_NODE_WAVELENGTH
             case NODE_WAVELENGTH:{size=SZ_Wavelength;}
 //#endif
@@ -427,7 +451,7 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             }
             case NODE_SEPARATE_VECTOR:{
 //#if SVM_NODE_SEPARATE_VECTOR else svm_error(&s,2u);
-                let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(&s,16u);}else{let v=svm_input3(&s,node+N_SeparateVector_vector);svm_optional_store(&s,svm_byte(node+N_SeparateVector_out_offset),v[component]);}
+                let component=svm_byte(node+N_SeparateVector_vector_index);if(component>2u){svm_error(&s,16u);}else{let v=svm_input3(&s,node+N_SeparateVector_vector);svm_optional_store(&s,svm_byte(node+N_SeparateVector_out_offset),svm_component(v,component));}
 //#endif
             }
             case NODE_COMBINE_VECTOR:{
@@ -584,6 +608,11 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_LIGHT_PATH
             case NODE_LIGHT_PATH:{
                 svm_light_path(&s,node,index,flag,visibility);
+            }
+//#endif
+//#if SVM_NODE_TEX_GABOR
+            case NODE_TEX_GABOR:{
+                svm_gabor_texture(&s,node);
             }
 //#endif
 //#if SVM_NODE_WAVELENGTH

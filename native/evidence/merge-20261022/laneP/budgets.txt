@@ -1,0 +1,106 @@
+[11:07:29] DECLARED linux native build (tools/build.py --jobs 6 --skip-dependencies) budget=590s
+[11:17:05] DECLARED android gate build android-arm64 (build_android_p.py, 33 gate targets, --jobs 6): budget 590 s
+[11:24:22] DECLARED linux gate build (build_cycles.py --jobs 6, scene-reference gates: triangle_sample emitter_sample triangle_lighting shadow_terminator transparent_lighting lighting_mis lighting broad_lighting feature_combination object_motion_render deforming_motion_render glass_render principled_render nodes_render) budget 590 s
+[11:27:43] DECLARED stage review android-arm64 (+render_replay build) budget 590 s
+[11:29:27] DECLARED samsung staging push budget 300 s
+[11:29:52] DECLARED samsung timing object/deforming-stationary-images jobTimeout=300 wall<=1175
+[11:29:52] DECLARED device=samsung serial=R52W207XQ1V corpus=motion label=timing wallBudget=1155s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=object-stationary-images,deforming-stationary-images replays=0
+[11:31:38] DECLARED samsung timing lighting_mis + replays 0,1 jobTimeout=300 wall<=1069
+[11:31:38] DECLARED device=samsung serial=R52W207XQ1V corpus=pixel-lighting label=timing wallBudget=1049s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=lighting_mis replays=2
+[11:31:56] DECLARED pixel staging push (stage.py push pixel) budget 600 s
+[11:32:04] DECLARED android host build android-arm64 (tools/build_android.py --skip-dependencies --jobs 6) budget 590 s
+[11:32:22] DECLARED step=item2-chain corpus=motion jobs=object-moving-images cutoff=255s replays=1 replayCutoffs={"object-replay-motion-0": 200} budget=1655s
+[11:32:22] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=p-item2-chain-1792693942 wallBudget=1655s perJobTimeout=255s pipelineBudgetMs=20000 jobs=object-moving-images replays=1
+[11:36:06] DECLARED validation APK build (build_android_app.py, application id com.codebrix.cycles.hostvalidation.p) budget 590 s
+[11:36:38] DECLARED android host build android-x64 (needed by the APK builder) budget 590 s
+[11:36:59] DECLARED step=item2-device-oracle corpus=motion jobs=object-moving-images cutoff=255s replays=0 replayCutoffs={} budget=1455s
+[11:36:59] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=p-item2-device-oracle-1792693942 wallBudget=1455s perJobTimeout=255s pipelineBudgetMs=20000 jobs=object-moving-images replays=0
+[11:40:20] DECLARED validation APK build retry budget 590 s
+[11:41:28] DECLARED step=item2-x64-oracle corpus=motion jobs=object-moving-images cutoff=255s replays=0 replayCutoffs={} budget=1455s
+[11:41:28] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=p-item2-x64-oracle-1792693942 wallBudget=1455s perJobTimeout=255s pipelineBudgetMs=20000 jobs=object-moving-images replays=0
+[11:41:33] DECLARED validation APK build retry (references read-only from main merge3 l1-host-gate/out, absolute paths in its comparisons.json) budget 590 s
+[11:45:56] DECLARED step=principled_svm corpus=materials jobs=principled_svm cutoff=214s replays=0 replayCutoffs={} budget=1414s
+[11:45:56] DECLARED device=pixel serial=98271FFBA0048D corpus=materials label=p-principled_svm-1792693942 wallBudget=1414s perJobTimeout=214s pipelineBudgetMs=20000 jobs=principled_svm replays=0
+[11:48:08] DECLARED step=principled_bounce corpus=materials jobs=principled_bounce cutoff=79s replays=0 replayCutoffs={} budget=1279s
+[11:48:08] DECLARED device=pixel serial=98271FFBA0048D corpus=materials label=p-principled_bounce-1792693942 wallBudget=1279s perJobTimeout=79s pipelineBudgetMs=20000 jobs=principled_bounce replays=0
+[11:49:41] DECLARED step=principled_render corpus=materials jobs=principled_render cutoff=86s replays=1 replayCutoffs={"principled-replay": 86} (no Samsung wall for ['principled-replay']; source-job cutoff used as placeholder) budget=1372s
+[11:49:41] DECLARED device=pixel serial=98271FFBA0048D corpus=materials label=p-principled_render-1792693942 wallBudget=1372s perJobTimeout=86s pipelineBudgetMs=20000 jobs=principled_render replays=1
+[11:51:22] DECLARED step=nodes_svm corpus=materials jobs=nodes_svm cutoff=2638s replays=0 replayCutoffs={} budget=3838s
+[11:51:22] DECLARED device=pixel serial=98271FFBA0048D corpus=materials label=p-nodes_svm-1792693942 wallBudget=3838s perJobTimeout=2638s pipelineBudgetMs=20000 jobs=nodes_svm replays=0
+[11:54:15] DECLARED step=nodes_world corpus=materials jobs=nodes_world cutoff=1529s replays=0 replayCutoffs={} budget=2729s
+[11:54:15] DECLARED device=pixel serial=98271FFBA0048D corpus=materials label=p-nodes_world-1792693942 wallBudget=2729s perJobTimeout=1529s pipelineBudgetMs=20000 jobs=nodes_world replays=0
+[11:54:35] DECLARED step=nodes_render corpus=materials jobs=nodes_render cutoff=460s replays=1 replayCutoffs={"nodes-replay": 460} (no Samsung wall for ['nodes-replay']; source-job cutoff used as placeholder) budget=2120s
+[11:54:35] DECLARED device=pixel serial=98271FFBA0048D corpus=materials label=p-nodes_render-1792693942 wallBudget=2120s perJobTimeout=460s pipelineBudgetMs=20000 jobs=nodes_render replays=1
+[11:57:15] DECLARED pixel staging push (stage.py push pixel) budget 600 s
+[11:57:39] DECLARED step=triangle_sample corpus=triangle jobs=triangle_sample cutoff=77s replays=0 replayCutoffs={} budget=1277s
+[11:57:39] DECLARED device=pixel serial=98271FFBA0048D corpus=triangle label=p-triangle_sample-1792695459 wallBudget=1277s perJobTimeout=77s pipelineBudgetMs=20000 jobs=triangle_sample replays=0
+[11:59:16] DECLARED step=surface corpus=triangle jobs=surface cutoff=292s replays=0 replayCutoffs={} budget=1492s
+[11:59:16] DECLARED device=pixel serial=98271FFBA0048D corpus=triangle label=p-surface-1792695459 wallBudget=1492s perJobTimeout=292s pipelineBudgetMs=20000 jobs=surface replays=0
+[12:02:50] DECLARED step=triangle_lighting corpus=triangle jobs=triangle_lighting cutoff=477s replays=6 replayCutoffs={"replay-0": 64, "replay-1": 117, "replay-2": 118, "replay-3": 118, "replay-4": 117, "replay-5": 261} budget=2472s
+[12:02:50] DECLARED device=pixel serial=98271FFBA0048D corpus=triangle label=p-triangle_lighting-1792695459 wallBudget=2472s perJobTimeout=477s pipelineBudgetMs=20000 jobs=triangle_lighting replays=6
+[12:11:12] DECLARED step=emitter_sample corpus=emitter jobs=emitter_sample cutoff=34s replays=0 replayCutoffs={} budget=1234s
+[12:11:12] DECLARED device=pixel serial=98271FFBA0048D corpus=emitter label=p-emitter_sample-1792695459 wallBudget=1234s perJobTimeout=34s pipelineBudgetMs=20000 jobs=emitter_sample replays=0
+[12:11:54] DECLARED step=feature_combination corpus=lighting jobs=feature_combination cutoff=128s replays=2 replayCutoffs={"feature_combination-replay-0": 83, "feature_combination-replay-1": 84} budget=1495s
+[12:11:55] DECLARED device=pixel serial=98271FFBA0048D corpus=lighting label=p-feature_combination-1792695459 wallBudget=1495s perJobTimeout=128s pipelineBudgetMs=20000 jobs=feature_combination replays=2
+[12:14:26] DECLARED step=lighting_mis corpus=lighting jobs=lighting_mis cutoff=100s replays=2 replayCutoffs={"lighting_mis-replay-0": 47, "lighting_mis-replay-1": 48} budget=1395s
+[12:14:26] DECLARED device=pixel serial=98271FFBA0048D corpus=lighting label=p-lighting_mis-1792695459 wallBudget=1395s perJobTimeout=100s pipelineBudgetMs=20000 jobs=lighting_mis replays=2
+[12:18:03] DECLARED step=broad_lighting corpus=lighting jobs=broad_lighting cutoff=205s replays=2 replayCutoffs={"broad_lighting-replay-0": 61, "broad_lighting-replay-1": 61} budget=1527s
+[12:18:03] DECLARED device=pixel serial=98271FFBA0048D corpus=lighting label=p-broad_lighting-1792695459 wallBudget=1527s perJobTimeout=205s pipelineBudgetMs=20000 jobs=broad_lighting replays=2
+[12:23:56] DECLARED step=spec-refusal corpus=spec-refusal jobs=glass_render-spec,glass_render-nospec-refused cutoff=230s replays=0 replayCutoffs={} budget=2560s
+[12:23:56] DECLARED step=spec-refusal job=glass_render-spec cutoff=230s
+[12:23:56] DECLARED device=pixel serial=98271FFBA0048D corpus=spec-refusal label=p-spec-refusal-1792695459-glass_render-spec wallBudget=1430s perJobTimeout=230s pipelineBudgetMs=20000 jobs=glass_render-spec replays=0
+[12:26:11] DECLARED step=spec-refusal job=glass_render-nospec-refused cutoff=5s
+[12:26:11] DECLARED device=pixel serial=98271FFBA0048D corpus=spec-refusal label=p-spec-refusal-1792695459-glass_render-nospec-refused wallBudget=1205s perJobTimeout=5s pipelineBudgetMs=20000 jobs=glass_render-nospec-refused replays=0
+[12:26:26] DECLARED step=transparent_shadow corpus=transparent jobs=transparent_shadow cutoff=48s replays=2 replayCutoffs={"transparent-shadow-replay-direct": 12, "transparent-shadow-replay-indexed": 12} budget=1272s
+[12:26:26] DECLARED device=pixel serial=98271FFBA0048D corpus=transparent label=p-transparent_shadow-1792695459 wallBudget=1272s perJobTimeout=48s pipelineBudgetMs=20000 jobs=transparent_shadow replays=2
+[12:26:53] DECLARED step=transparent_lighting corpus=transparent jobs=transparent_lighting cutoff=321s replays=8 replayCutoffs={"transparent_lighting-replay-0": 71, "transparent_lighting-replay-1": 71, "transparent_lighting-replay-2": 92, "transparent_lighting-replay-3": 93, "transparent_lighting-replay-4": 94, "transparent_lighting-replay-5": 96, "transparent_lighting-replay-6": 91, "transparent_lighting-replay-7": 92} budget=2221s
+[12:26:53] DECLARED device=pixel serial=98271FFBA0048D corpus=transparent label=p-transparent_lighting-1792695459 wallBudget=2221s perJobTimeout=321s pipelineBudgetMs=20000 jobs=transparent_lighting replays=8
+[12:28:19] DECLARED step=shadow_terminator corpus=terminator jobs=shadow_terminator cutoff=442s replays=10 replayCutoffs={"terminator-replay-0": 46, "terminator-replay-1": 52, "terminator-replay-2": 53, "terminator-replay-3": 53, "terminator-replay-4": 89, "terminator-replay-5": 89, "terminator-replay-6": 89, "terminator-replay-7": 89, "terminator-replay-8": 90, "terminator-replay-9": 203} budget=2495s
+[12:28:19] DECLARED device=pixel serial=98271FFBA0048D corpus=terminator label=p-shadow_terminator-1792695459 wallBudget=2495s perJobTimeout=442s pipelineBudgetMs=20000 jobs=shadow_terminator replays=10
+[12:36:05] DECLARED step=object-stationary-images corpus=motion jobs=object-stationary-images cutoff=109s replays=0 replayCutoffs={} budget=1309s
+[12:36:05] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=p-object-stationary-images-1792695459 wallBudget=1309s perJobTimeout=109s pipelineBudgetMs=20000 jobs=object-stationary-images replays=0
+[12:38:15] DECLARED step=deforming-moving-images corpus=motion jobs=deforming-moving-images cutoff=332s replays=1 replayCutoffs={"deforming-replay-motion-0": 89} budget=1621s
+[12:38:15] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=p-deforming-moving-images-1792695459 wallBudget=1621s perJobTimeout=332s pipelineBudgetMs=20000 jobs=deforming-moving-images replays=1
+[12:40:32] DECLARED step=deforming-stationary-images corpus=motion jobs=deforming-stationary-images cutoff=109s replays=0 replayCutoffs={} budget=1309s
+[12:40:32] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=p-deforming-stationary-images-1792695459 wallBudget=1309s perJobTimeout=109s pipelineBudgetMs=20000 jobs=deforming-stationary-images replays=0
+[12:42:43] DECLARED step=camera-static corpus=motion jobs=camera-static cutoff=24s replays=0 replayCutoffs={} budget=1224s
+[12:42:43] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=p-camera-static-1792695459 wallBudget=1224s perJobTimeout=24s pipelineBudgetMs=20000 jobs=camera-static replays=0
+[12:43:06] DECLARED step=camera-motion corpus=motion jobs=camera-motion cutoff=43s replays=0 replayCutoffs={} budget=1243s
+[12:43:06] DECLARED device=pixel serial=98271FFBA0048D corpus=motion label=p-camera-motion-1792695459 wallBudget=1243s perJobTimeout=43s pipelineBudgetMs=20000 jobs=camera-motion replays=0
+[12:43:57] DECLARED step=closest corpus=precision jobs=closest cutoff=64s replays=0 replayCutoffs={} budget=1264s
+[12:43:57] DECLARED device=pixel serial=98271FFBA0048D corpus=precision label=p-closest-1792695459 wallBudget=1264s perJobTimeout=64s pipelineBudgetMs=20000 jobs=closest replays=0
+[12:44:51] DECLARED step=shadow corpus=precision jobs=shadow cutoff=49s replays=2 replayCutoffs={"shadow-replay-direct": 5, "shadow-replay-indexed": 5} budget=1259s
+[12:44:51] DECLARED device=pixel serial=98271FFBA0048D corpus=precision label=p-shadow-1792695459 wallBudget=1259s perJobTimeout=49s pipelineBudgetMs=20000 jobs=shadow replays=2
+[12:45:26] DECLARED step=hostcap-triangle hostcap linux-triangle cutoffs={'tri0': 65, 'tri1': 120, 'tri2': 120, 'tri3': 120, 'tri4': 117, 'tri5': 264} budget=1706s
+[12:45:26] DECLARED device=pixel serial=98271FFBA0048D corpus=hostcap label=linux-triangle-1792695459 wallBudget=1706s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=6
+[12:45:36] DECLARED step=hostcap-terminator hostcap linux-terminator cutoffs={'term0': 52, 'term1': 59, 'term2': 58, 'term3': 58, 'term4': 101, 'term5': 101, 'term6': 100, 'term7': 101, 'term8': 101, 'term9': 218} budget=1849s
+[12:45:36] DECLARED device=pixel serial=98271FFBA0048D corpus=hostcap label=linux-terminator-1792695459 wallBudget=1849s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=10
+[12:45:45] DECLARED step=app managed WebGPU app (3 scenes) cutoff=403s (--result-timeout), gate wall budget 1303s
+[12:52:54] DECLARED pixel staging push (stage.py push pixel) budget 600 s
+[12:53:19] DECLARED step=volume-state corpus=volume jobs=volume-state cutoff=40s replays=0 replayCutoffs={} budget=1240s
+[12:53:19] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-volume-state-1792698799 wallBudget=1240s perJobTimeout=40s pipelineBudgetMs=20000 jobs=volume-state replays=0
+[12:53:43] DECLARED linux triangle_lighting_gate.py --skip-build budget 590 s
+[12:53:58] DECLARED step=boundary-state corpus=volume jobs=boundary-state cutoff=97s replays=0 replayCutoffs={} budget=1297s
+[12:53:58] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-boundary-state-1792698799 wallBudget=1297s perJobTimeout=97s pipelineBudgetMs=20000 jobs=boundary-state replays=0
+[12:54:19] DECLARED linux shadow_terminator_gate.py --skip-build budget 590 s
+[12:55:33] DECLARED step=boundary-compaction-guard corpus=volume jobs=boundary-compaction-guard cutoff=19s replays=0 replayCutoffs={} budget=1219s
+[12:55:33] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-boundary-compaction-guard-1792698799 wallBudget=1219s perJobTimeout=19s pipelineBudgetMs=20000 jobs=boundary-compaction-guard replays=0
+[12:56:07] DECLARED step=volume-absorption corpus=volume jobs=volume-absorption cutoff=362s replays=1 replayCutoffs={"volume-replay-absorption": 58} budget=1620s
+[12:56:07] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-volume-absorption-1792698799 wallBudget=1620s perJobTimeout=362s pipelineBudgetMs=20000 jobs=volume-absorption replays=1
+[12:59:34] DECLARED step=volume-isotropic corpus=volume jobs=volume-isotropic cutoff=516s replays=1 replayCutoffs={"volume-replay-isotropic": 62} budget=1778s
+[12:59:34] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-volume-isotropic-1792698799 wallBudget=1778s perJobTimeout=516s pipelineBudgetMs=20000 jobs=volume-isotropic replays=1
+[13:03:42] DECLARED step=volume-forward corpus=volume jobs=volume-forward cutoff=512s replays=1 replayCutoffs={"volume-replay-forward": 62} budget=1774s
+[13:03:42] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-volume-forward-1792698799 wallBudget=1774s perJobTimeout=512s pipelineBudgetMs=20000 jobs=volume-forward replays=1
+[13:07:51] DECLARED step=volume-backward corpus=volume jobs=volume-backward cutoff=515s replays=1 replayCutoffs={"volume-replay-backward": 62} budget=1777s
+[13:07:51] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-volume-backward-1792698799 wallBudget=1777s perJobTimeout=515s pipelineBudgetMs=20000 jobs=volume-backward replays=1
+[13:12:06] DECLARED step=closed-single corpus=volume jobs=closed-single cutoff=643s replays=1 replayCutoffs={"closed-replay-single": 64} budget=1907s
+[13:12:06] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-closed-single-1792698799 wallBudget=1907s perJobTimeout=643s pipelineBudgetMs=20000 jobs=closed-single replays=1
+[13:16:57] DECLARED step=closed-overlap corpus=volume jobs=closed-overlap cutoff=960s replays=1 replayCutoffs={"closed-replay-overlap": 102} budget=2262s
+[13:16:57] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-closed-overlap-1792698799 wallBudget=2262s perJobTimeout=960s pipelineBudgetMs=20000 jobs=closed-overlap replays=1
+[13:24:43] DECLARED step=closed-inside corpus=volume jobs=closed-inside cutoff=909s replays=1 replayCutoffs={"closed-replay-inside": 102} budget=2211s
+[13:24:43] DECLARED device=pixel serial=98271FFBA0048D corpus=volume label=p-closed-inside-1792698799 wallBudget=2211s perJobTimeout=909s pipelineBudgetMs=20000 jobs=closed-inside replays=1
+[13:32:27] DECLARED pixel staging push (stage.py push pixel) budget 600 s
+[13:32:53] DECLARED step=hostcap-triangle hostcap linux-triangle cutoffs={'tri0': 65, 'tri1': 120, 'tri2': 120, 'tri3': 120, 'tri4': 117, 'tri5': 264} budget=1706s
+[13:32:53] DECLARED device=pixel serial=98271FFBA0048D corpus=hostcap label=linux-triangle-1792701173 wallBudget=1706s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=6
+[13:46:29] DECLARED step=hostcap-terminator hostcap linux-terminator cutoffs={'term0': 52, 'term1': 59, 'term2': 58, 'term3': 58, 'term4': 101, 'term5': 101, 'term6': 100, 'term7': 101, 'term8': 101, 'term9': 218} budget=1849s
+[13:46:29] DECLARED device=pixel serial=98271FFBA0048D corpus=hostcap label=linux-terminator-1792701173 wallBudget=1849s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=10

@@ -5,9 +5,10 @@
 
 Scene specialization is the production path and every probe gate compiles
 scene-specialized modules; the unspecialized module (every handler, the
-CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 desktop diagnostic) is checked for
-correctness by the specialization-off render gates (glass_render,
-principled_render, nodes_render on/off bit-identity). This step only measures
+CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 desktop diagnostic) exceeds the Intel
+Mesa 25.0.7 backend's 16-bit instruction/register range; the on/off
+bit-identity of the render gates uses the superset groups instead
+(specialization_check.py). This step only measures
 it: for prepare_surface and shade_surface_light it records the module size, the
 largest inlined entry size (drivers inline every WGSL call) and the cold
 pipeline-creation time and peak memory, each in a fresh process with a fresh

@@ -1,0 +1,318 @@
+--------- beginning of main
+10-22 14:27:51.388  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+10-22 14:27:51.388  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+10-22 14:27:51.388  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+10-22 14:27:51.398  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x10, addressType=1, address=208ECE_1, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-45, periodicAdvInt=0x0
+10-22 14:27:51.475  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+10-22 14:27:51.475  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+10-22 14:27:51.521 29256 29256 W Adreno-GSL: <gsl_ldd_control:553>: ioctl fd 4 code 0xc040094a (IOCTL_KGSL_GPU_COMMAND) failed: errno 35 Resource deadlock would occur
+10-22 14:27:51.522 29256 29256 W Adreno-GSL: <log_gpu_snapshot:462>: panel.gpuSnapshotPath is not set.not generating user snapshot
+--------- beginning of crash
+10-22 14:27:51.523 29256 29256 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 29256 (codebrix_cycles), pid 29256 (codebrix_cycles)
+10-22 14:27:51.605 29275 29275 I crash_dump64: obtaining output fd from tombstoned, type: kDebuggerdTombstoneProto
+10-22 14:27:51.615   770   770 I tombstoned: received crash request for pid 29256
+10-22 14:27:51.616 29275 29275 I crash_dump64: performing dump of process 29256 (target tid = 29256)
+10-22 14:27:51.625  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+10-22 14:27:51.732  1271 29035 I sensors-hal: handle_sns_client_event:541, [0][12198] accel_sample [-0.938, -0.292,  9.641] 4029758525135
+10-22 14:27:51.819 29275 29275 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+10-22 14:27:51.819 29275 29275 F DEBUG   : Build fingerprint: 'samsung/r8quex/r8q:13/TP1A.220624.014/G781U1UESNGYI1:user/release-keys'
+10-22 14:27:51.819 29275 29275 F DEBUG   : Revision: '8'
+10-22 14:27:51.819 29275 29275 F DEBUG   : ABI: 'arm64'
+10-22 14:27:51.819 29275 29275 F DEBUG   : Processor: '4'
+10-22 14:27:51.819 29275 29275 F DEBUG   : Timestamp: 2026-10-22 14:27:51.631885822-0700
+10-22 14:27:51.819 29275 29275 F DEBUG   : Process uptime: 47s
+10-22 14:27:51.819 29275 29275 F DEBUG   : Cmdline: /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate /data/local/tmp/codebrix-q-regression-q/transparent_lighting/run
+10-22 14:27:51.819 29275 29275 F DEBUG   : pid: 29256, tid: 29256, name: codebrix_cycles  >>> /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate <<<
+10-22 14:27:51.819 29275 29275 F DEBUG   : uid: 2000
+10-22 14:27:51.819 29275 29275 F DEBUG   : signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+10-22 14:27:51.819 29275 29275 F DEBUG   : Abort message: 'Error in wgpuQueueSubmit: Validation Error
+10-22 14:27:51.819 29275 29275 F DEBUG   : 
+10-22 14:27:51.819 29275 29275 F DEBUG   : Caused by:
+10-22 14:27:51.819 29275 29275 F DEBUG   :   Parent device is lost'
+10-22 14:27:51.819 29275 29275 F DEBUG   :     x0  0000000000000000  x1  0000000000007248  x2  0000000000000006  x3  0000007ff7ffa210
+10-22 14:27:51.819 29275 29275 F DEBUG   :     x4  0000000000000080  x5  0000000000000080  x6  0000000000000080  x7  8000000000000000
+10-22 14:27:51.819 29275 29275 F DEBUG   :     x8  00000000000000f0  x9  00000077f066abf0  x10 0000000000000001  x11 00000077f06df3ec
+10-22 14:27:51.819 29275 29275 F DEBUG   :     x12 0101010101010101  x13 20746e6572615020  x14 0000000000000006  x15 0000000000000080
+10-22 14:27:51.819 29275 29275 F DEBUG   :     x16 00000077f074aa58  x17 00000077f0723120  x18 00000078018a6000  x19 0000000000007248
+10-22 14:27:51.819 29275 29275 F DEBUG   :     x20 0000000000007248  x21 00000000ffffffff  x22 b400007722c62d40  x23 00000077f7574990
+10-22 14:27:51.819 29275 29275 F DEBUG   :     x24 0000000000000002  x25 0000000000000000  x26 00000077f758a3a0  x27 00000077f7574688
+10-22 14:27:51.819 29275 29275 F DEBUG   :     x28 00000077f757f050  x29 0000007ff7ffa290
+10-22 14:27:51.819 29275 29275 F DEBUG   :     lr  00000077f06d0368  sp  0000007ff7ffa1f0  pc  00000077f06d0394  pst 0000000000001000
+10-22 14:27:51.820 29275 29275 F DEBUG   : backtrace:
+10-22 14:27:51.820 29275 29275 F DEBUG   :   NOTE: Function names and BuildId information is missing for some frames due
+10-22 14:27:51.820 29275 29275 F DEBUG   :   NOTE: to unreadable libraries. For unwinds of apps, only shared libraries
+10-22 14:27:51.820 29275 29275 F DEBUG   :   NOTE: found under the lib/ directory are readable.
+10-22 14:27:51.820 29275 29275 F DEBUG   :   NOTE: On this device, run setenforce 0 to make the libraries readable.
+10-22 14:27:51.820 29275 29275 F DEBUG   :   NOTE: Unreadable libraries:
+10-22 14:27:51.820 29275 29275 F DEBUG   :   NOTE:   /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate
+10-22 14:27:51.820 29275 29275 F DEBUG   :   NOTE:   /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #00 pc 000000000008d394  /apex/com.android.runtime/lib64/bionic/libc.so (abort+168) (BuildId: 1bcad8bca80d38bceb9089f70d394e33)
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #01 pc 00000000002d8cfc  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #02 pc 00000000002b7b34  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #03 pc 00000000002d92b8  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #04 pc 00000000002a0f78  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #05 pc 00000000002b7b78  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #06 pc 00000000002b748c  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #07 pc 00000000002d9328  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #08 pc 00000000002d92e4  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #09 pc 00000000002d92d8  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #10 pc 0000000000122a98  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #11 pc 00000000004db320  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #12 pc 00000000004db110  /data/local/tmp/codebrix-q-stage/lib/libcodebrix_wgpu.so
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #13 pc 00000000003181c4  /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #14 pc 0000000000318b38  /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #15 pc 0000000000318d50  /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #16 pc 00000000003205ec  /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #17 pc 000000000031f398  /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #18 pc 0000000000470714  /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #19 pc 000000000019c69c  /data/local/tmp/codebrix-q-stage/bin/codebrix_cycles_transparent_lighting_gate
+10-22 14:27:51.820 29275 29275 F DEBUG   :       #20 pc 00000000000854ec  /apex/com.android.runtime/lib64/bionic/libc.so (__libc_init+100) (BuildId: 1bcad8bca80d38bceb9089f70d394e33)
+--------- beginning of system
+10-22 14:27:51.832  1467  3185 W NativeCrashListener: Couldn't find ProcessRecord for pid 29256
+10-22 14:27:51.833   770   770 E tombstoned: Tombstone written to: tombstone_17
+10-22 14:27:51.883  1467  2397 E NativeTombstoneManager: Tombstone's UID (2000) not an app, ignoring
+10-22 14:27:51.897  1467  2397 I BootReceiver: Copying /data/tombstones/tombstone_17 to DropBox (SYSTEM_TOMBSTONE)
+10-22 14:27:51.897  1467  2397 I DropBoxManagerService: add tag=SYSTEM_TOMBSTONE isTagEnabled=true flags=0x6
+10-22 14:27:51.902  8236  8236 I adbd    : adbd service requested 'shell,v2,TERM=xterm-256color,raw:rm -rf /data/local/tmp/codebrix-q-regression-q/transparent_lighting/mesa-cache'
+10-22 14:27:51.907  1467  1907 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras) } to com.google.android.gms/.stats.service.DropBoxEntryAddedReceiver
+10-22 14:27:51.911  1467  2397 E NativeTombstoneManager: Tombstone's UID (2000) not an app, ignoring
+10-22 14:27:51.917  1467  2397 I DropBoxManagerService: add tag=SYSTEM_TOMBSTONE_PROTO isTagEnabled=true flags=0x4
+10-22 14:27:51.932  4013 29269 I GmsCoreXrpcWrapper: (REDACTED) Creating a custom channel provider with trafficStatsTag=%d trafficStatsUid=%d
+10-22 14:27:51.934  8236  8236 I adbd    : adbd service requested 'sync:'
+10-22 14:27:51.935  1467  1907 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras) } to com.google.android.gms/.stats.service.DropBoxEntryAddedReceiver
+10-22 14:27:51.944  4013 29202 I LocationReportUplIntOp: Uploading crowdsourced sightings. [CONTEXT service_id=284 ratelimit_period="5 MINUTES" ]
+10-22 14:27:51.948  4013  4013 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.onboardingconsent.api.ConsentManagerApiService.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }
+10-22 14:27:51.948  4013  4013 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.onboardingconsent.api.ConsentManagerApiService.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }
+10-22 14:27:51.953  4013  4013 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.libs.gmscorelogger.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentDirectBootAwareApiService }
+10-22 14:27:51.955  4013  4144 I ConsentManagerApiServic: (REDACTED) ConsentManagerApiService onGetService success %s
+10-22 14:27:51.996  4013  4013 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.semanticlocationhistory.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }
+10-22 14:27:51.996  4013  4013 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.semanticlocationhistory.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }
+10-22 14:27:52.029  1467  2800 D NetdEventListenerService: DNS Requested by : 100, 10243
+10-22 14:27:52.088  4013 29285 I DropBoxUtil: (REDACTED) Reading dropbox entry with tag %s and timestamp %d
+10-22 14:27:52.098  4013 29285 I DropBoxUtil: (REDACTED) Reading dropbox entry with tag %s and timestamp %d
+10-22 14:27:52.110   642   656 D DrmLibTime: got the req here! ret=0
+10-22 14:27:52.110   642   656 D DrmLibTime: command id, time_cmd_id = 770
+10-22 14:27:52.110   642   656 D DrmLibTime: time_getutcsec starts!
+10-22 14:27:52.110   642   656 D DrmLibTime: QSEE Time Listener: time_getutcsec
+10-22 14:27:52.110   642   656 D DrmLibTime: QSEE Time Listener: get_utc_seconds
+10-22 14:27:52.110   642   656 D DrmLibTime: QSEE Time Listener: time_get_modem_time
+10-22 14:27:52.110   642   656 D DrmLibTime: QSEE Time Listener: Checking if ATS_MODEM is set or not.
+10-22 14:27:52.111   642   656 D QC-time-services: Lib:time_genoff_operation: pargs->base = 13
+10-22 14:27:52.111   642   656 D QC-time-services: Lib:time_genoff_operation: pargs->operation = 2
+10-22 14:27:52.111   642   656 D QC-time-services: Lib:time_genoff_operation: pargs->ts_val = 0
+10-22 14:27:52.112   642   656 D QC-time-services: Lib:time_genoff_operation: Send to server  passed!!
+10-22 14:27:52.114  1150  1382 D QC-time-services: Daemon: Connection accepted:time_genoff
+10-22 14:27:52.115  1150 29293 D QC-time-services: Daemon: genoff_handler: Process name is qseecomd
+10-22 14:27:52.115  1150 29293 D QC-time-services: Daemon:Received base = 13, unit = 1, operation = 2,value = 0
+10-22 14:27:52.115  1150 29293 D QC-time-services: Daemon:genoff_opr: Base = 13, val = 0, operation = 2
+10-22 14:27:52.115  1150 29293 D QC-time-services: offset is: 0 for base: 13
+10-22 14:27:52.115   642   656 E QC-time-services: Receive Passed == base = 13, unit = 1, operation = 2, result = 0
+10-22 14:27:52.115   642   656 D DrmLibTime: QSEE Time Listener: ATS_MODEM is not set. Fallback to Android system time.
+10-22 14:27:52.115   642   656 D DrmLibTime: QSEE Time Listener: Retrieved Android system time: 1792704472
+10-22 14:27:52.115   642   656 D DrmLibTime: time_getutcsec returns 0, sec = 1792704472; nsec = 0
+10-22 14:27:52.115   642   656 D DrmLibTime: time_getutcsec finished! 
+10-22 14:27:52.115  1150  1382 E QC-time-services: Daemon: Time-services: Waiting to acceptconnection
+10-22 14:27:52.115   642   656 D DrmLibTime: iotcl_continue_command finished! and return 0 
+10-22 14:27:52.115   642   656 D DrmLibTime: before calling ioctl to read the next time_cmd
+10-22 14:27:52.117   642   663 D SPL     : Handle Request
+10-22 14:27:52.117   642   663 E SPL     : unknown cmd id [57005]
+10-22 14:27:52.117   642   663 D SPL     : Send Response
+10-22 14:27:52.117   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.117   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.123   642   663 D SPL     : Handle Request
+10-22 14:27:52.123   642   663 D SPL     : Dev node [/dev/qsee_ipc_irq_spss] opened OK.
+10-22 14:27:52.123   642   663 D SPL     : timeout_msec [120000]
+10-22 14:27:52.123   642   663 D SPL     : pfd[0].fd [42].
+10-22 14:27:52.123   642   663 D SPL     : pfd[1].fd [33].
+10-22 14:27:52.123   642   663 D SPL     : Call poll()
+10-22 14:27:52.123   642   663 D SPL     : poll() ret [1].
+10-22 14:27:52.123   642   663 D SPL     : pfd[0].revents [0x1].
+10-22 14:27:52.123   642   663 D SPL     : pfd[1].revents [0x0].
+10-22 14:27:52.123   642   663 D SPL     : IRQ Detected OK.
+10-22 14:27:52.124   642   663 D SPL     : Send Response
+10-22 14:27:52.124   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.124   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.125   642   663 D SPL     : Handle Request
+10-22 14:27:52.125   642   663 D SPL     : Dev node [/dev/qsee_ipc_irq_spss] opened OK.
+10-22 14:27:52.125   642   663 D SPL     : timeout_msec [120000]
+10-22 14:27:52.125   642   663 D SPL     : pfd[0].fd [42].
+10-22 14:27:52.125   642   663 D SPL     : pfd[1].fd [33].
+10-22 14:27:52.125   642   663 D SPL     : Call poll()
+10-22 14:27:52.126   642   663 D SPL     : poll() ret [1].
+10-22 14:27:52.126   642   663 D SPL     : pfd[0].revents [0x1].
+10-22 14:27:52.126   642   663 D SPL     : pfd[1].revents [0x0].
+10-22 14:27:52.126   642   663 D SPL     : IRQ Detected OK.
+10-22 14:27:52.126   642   663 D SPL     : Send Response
+10-22 14:27:52.126   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.126   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.126   642   663 D SPL     : Handle Request
+10-22 14:27:52.126   642   663 E SPL     : unknown cmd id [57005]
+10-22 14:27:52.126   642   663 D SPL     : Send Response
+10-22 14:27:52.127   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.127   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.130   642   663 D SPL     : Handle Request
+10-22 14:27:52.130   642   663 D SPL     : Dev node [/dev/qsee_ipc_irq_spss] opened OK.
+10-22 14:27:52.130   642   663 D SPL     : timeout_msec [120000]
+10-22 14:27:52.130   642   663 D SPL     : pfd[0].fd [42].
+10-22 14:27:52.130   642   663 D SPL     : pfd[1].fd [33].
+10-22 14:27:52.130   642   663 D SPL     : Call poll()
+10-22 14:27:52.130   642   663 D SPL     : poll() ret [1].
+10-22 14:27:52.130   642   663 D SPL     : pfd[0].revents [0x1].
+10-22 14:27:52.130   642   663 D SPL     : pfd[1].revents [0x0].
+10-22 14:27:52.130   642   663 D SPL     : IRQ Detected OK.
+10-22 14:27:52.130   642   663 D SPL     : Send Response
+10-22 14:27:52.130   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.130   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.132   642   663 D SPL     : Handle Request
+10-22 14:27:52.132   642   663 D SPL     : Dev node [/dev/qsee_ipc_irq_spss] opened OK.
+10-22 14:27:52.132   642   663 D SPL     : timeout_msec [120000]
+10-22 14:27:52.132   642   663 D SPL     : pfd[0].fd [42].
+10-22 14:27:52.132   642   663 D SPL     : pfd[1].fd [33].
+10-22 14:27:52.132   642   663 D SPL     : Call poll()
+10-22 14:27:52.150   642   663 D SPL     : poll() ret [1].
+10-22 14:27:52.150   642   663 D SPL     : pfd[0].revents [0x1].
+10-22 14:27:52.150   642   663 D SPL     : pfd[1].revents [0x0].
+10-22 14:27:52.150   642   663 D SPL     : IRQ Detected OK.
+10-22 14:27:52.150   642   663 D SPL     : Send Response
+10-22 14:27:52.150   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.150   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.159   642   663 D SPL     : Handle Request
+10-22 14:27:52.159   642   663 E SPL     : unknown cmd id [57005]
+10-22 14:27:52.159   642   663 D SPL     : Send Response
+10-22 14:27:52.160   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.160   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.165   642   663 D SPL     : Handle Request
+10-22 14:27:52.165   642   663 D SPL     : Dev node [/dev/qsee_ipc_irq_spss] opened OK.
+10-22 14:27:52.165   642   663 D SPL     : timeout_msec [120000]
+10-22 14:27:52.165   642   663 D SPL     : pfd[0].fd [42].
+10-22 14:27:52.165   642   663 D SPL     : pfd[1].fd [33].
+10-22 14:27:52.165   642   663 D SPL     : Call poll()
+10-22 14:27:52.165   642   663 D SPL     : poll() ret [1].
+10-22 14:27:52.165   642   663 D SPL     : pfd[0].revents [0x1].
+10-22 14:27:52.165   642   663 D SPL     : pfd[1].revents [0x0].
+10-22 14:27:52.165   642   663 D SPL     : IRQ Detected OK.
+10-22 14:27:52.165   642   663 D SPL     : Send Response
+10-22 14:27:52.165   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.165   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.167   642   663 D SPL     : Handle Request
+10-22 14:27:52.167   642   663 D SPL     : Dev node [/dev/qsee_ipc_irq_spss] opened OK.
+10-22 14:27:52.167   642   663 D SPL     : timeout_msec [120000]
+10-22 14:27:52.167   642   663 D SPL     : pfd[0].fd [42].
+10-22 14:27:52.167   642   663 D SPL     : pfd[1].fd [33].
+10-22 14:27:52.167   642   663 D SPL     : Call poll()
+10-22 14:27:52.183   642   663 D SPL     : poll() ret [1].
+10-22 14:27:52.183   642   663 D SPL     : pfd[0].revents [0x1].
+10-22 14:27:52.183   642   663 D SPL     : pfd[1].revents [0x0].
+10-22 14:27:52.183   642   663 D SPL     : IRQ Detected OK.
+10-22 14:27:52.183   642   663 D SPL     : Send Response
+10-22 14:27:52.184   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.184   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.185   726  8104 I keystore2: keystore2::security_level: In generate_key. 10243, Some("Stats_Key_EC")
+10-22 14:27:52.187   726  8104 W samsung_keystore_utils: duplicate data log
+10-22 14:27:52.190   726  8104 I keystore2: keystore2::database: In store_new_key "Stats_Key_EC", uid=10243, cert=true, cert_chain=true rebound=true
+10-22 14:27:52.208   642   663 D SPL     : Handle Request
+10-22 14:27:52.208   642   663 E SPL     : unknown cmd id [57005]
+10-22 14:27:52.208   642   663 D SPL     : Send Response
+10-22 14:27:52.208   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.208   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.213   642   663 D SPL     : Handle Request
+10-22 14:27:52.213   642   663 D SPL     : Dev node [/dev/qsee_ipc_irq_spss] opened OK.
+10-22 14:27:52.213   642   663 D SPL     : timeout_msec [120000]
+10-22 14:27:52.213   642   663 D SPL     : pfd[0].fd [42].
+10-22 14:27:52.213   642   663 D SPL     : pfd[1].fd [33].
+10-22 14:27:52.213   642   663 D SPL     : Call poll()
+10-22 14:27:52.213   642   663 D SPL     : poll() ret [1].
+10-22 14:27:52.213   642   663 D SPL     : pfd[0].revents [0x1].
+10-22 14:27:52.213   642   663 D SPL     : pfd[1].revents [0x0].
+10-22 14:27:52.213   642   663 D SPL     : IRQ Detected OK.
+10-22 14:27:52.213   642   663 D SPL     : Send Response
+10-22 14:27:52.213   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.213   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.215   642   663 D SPL     : Handle Request
+10-22 14:27:52.215   642   663 D SPL     : Dev node [/dev/qsee_ipc_irq_spss] opened OK.
+10-22 14:27:52.215   642   663 D SPL     : timeout_msec [120000]
+10-22 14:27:52.215   642   663 D SPL     : pfd[0].fd [42].
+10-22 14:27:52.215   642   663 D SPL     : pfd[1].fd [33].
+10-22 14:27:52.215   642   663 D SPL     : Call poll()
+10-22 14:27:52.218   642   663 D SPL     : poll() ret [1].
+10-22 14:27:52.218   642   663 D SPL     : pfd[0].revents [0x1].
+10-22 14:27:52.218   642   663 D SPL     : pfd[1].revents [0x0].
+10-22 14:27:52.218   642   663 D SPL     : IRQ Detected OK.
+10-22 14:27:52.218   642   663 D SPL     : Send Response
+10-22 14:27:52.218   642   663 D SPL     : QSEECom_send_resp() OK.
+10-22 14:27:52.218   642   663 D SPL     : ==== Wait For Request ======
+10-22 14:27:52.219   726 29294 I keystore2: keystore2::gc: In process_one_key: Success remove invalidate_key.
+10-22 14:27:52.228   729   729 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:260) swd_add_rng_entropy() returns 0
+10-22 14:27:52.241  1271  1271 I sensors-hal: set_config:67, sample_period_ns is adjusted to 20000000 based on min/max delay_ns
+10-22 14:27:52.241  1271  1271 I sensors-hal: batch:363, android.sensor.linear_acceleration/101, period=20000000, max_latency=0 request completed
+10-22 14:27:52.241  1271  1271 I sensors-hal: activate:279, android.sensor.linear_acceleration/101 en=1
+10-22 14:27:52.241  1271  1271 I sensors-hal: get_qmi_debug_flag:241, support_qmi_debug : false
+10-22 14:27:52.245  1271  1271 I sensors-hal: activate:297, android.sensor.linear_acceleration/101 en=1 completed
+10-22 14:27:52.246 21067 21077 D SensorManager: registerListener :: 101, linear_acceleration, 20000, 0, 
+10-22 14:27:52.248  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+10-22 14:27:52.248  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+10-22 14:27:52.248  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+10-22 14:27:52.248  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+10-22 14:27:52.248  1271  1271 I sensors-hal: set_config:67, sample_period_ns is adjusted to 20000000 based on min/max delay_ns
+10-22 14:27:52.249  1271  1271 I sensors-hal: batch:363, android.sensor.rotation_vector/111, period=20000000, max_latency=0 request completed
+10-22 14:27:52.249  1271  1271 I sensors-hal: activate:279, android.sensor.rotation_vector/111 en=1
+10-22 14:27:52.249  1271  1271 I sensors-hal: get_qmi_debug_flag:241, support_qmi_debug : false
+10-22 14:27:52.252  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x10, addressType=1, address=208ECE_1, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-40, periodicAdvInt=0x0
+10-22 14:27:52.254  1271  1271 I sensors-hal: activate:297, android.sensor.rotation_vector/111 en=1 completed
+10-22 14:27:52.254 21067 21077 D SensorManager: registerListener :: 111, Rotation Vector  Non-wakeup, 20000, 0, 
+10-22 14:27:52.262   726 29301 I keystore2: keystore2::legacy_blob: In list_keystore_entries_for_uid: 1
+10-22 14:27:52.263   726 29301 I keystore2: keystore2::legacy_blob: In list_knox_entries_for_uid: 0
+10-22 14:27:52.264   726  8104 I keystore2: keystore2::utils: In list_key_entries: Domain(0), 10243, 30
+10-22 14:27:52.264   726  8104 I keystore2: keystore2::utils: In list_key_entries: 30, 2386
+10-22 14:27:52.265   726 29301 I keystore2: keystore2::legacy_blob: In list_keystore_entries_for_uid: 1
+10-22 14:27:52.265   726 29301 I keystore2: keystore2::legacy_blob: In list_knox_entries_for_uid: 0
+10-22 14:27:52.266   726  8104 I keystore2: keystore2::utils: In list_key_entries: Domain(0), 10243, 30
+10-22 14:27:52.266   726  8104 I keystore2: keystore2::utils: In list_key_entries: 30, 2386
+10-22 14:27:52.270   726  8104 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In get_key_entry, while trying to load key info. 10243, Some(\"unstable.c7202ece89390c490b1b94d5b71225e1.B8326042681317960933\")"
+10-22 14:27:52.271   726  8104 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In get_key_entry, while trying to load key info. 10243, Some(\"unstable.c7202ece89390c490b1b94d5b71225e1.A8326042681317960933\")"
+10-22 14:27:52.276  1271 29296 I sensors-hal: handle_indication_realtime:466,  SCHED_FIFO(10) for qmi_cbk
+10-22 14:27:52.282   729   729 W keymaster_tee: [WRN]start nwd_generate_key
+10-22 14:27:52.288   729   729 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:260) swd_generate_key() returns 0
+10-22 14:27:52.288   729   729 W keymaster_tee: [WRN]ret OK PARAMS: A3 P2 D6 NAR1 S256 2026.10.22,14:27:52.282 
+10-22 14:27:52.289   729   729 W keymaster_tee: [WRN]start nwd_attest_key
+10-22 14:27:52.296   729   729 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:260) swd_key_attest() returns 0
+10-22 14:27:52.296   729   729 E keymaster_tee: [[31mERR[0m]Unexpected title ignore.. title: TEE
+10-22 14:27:52.296   729   729 W keymaster_tee: [WRN]nwd_attest_key GAK ret 0
+10-22 14:27:52.296   726  8104 I keystore2: keystore2::security_level: In generate_key. 10243, Some("unstable.c7202ece89390c490b1b94d5b71225e1.A8326042681317960933")
+10-22 14:27:52.296   726  8104 W samsung_keystore_utils: ExceptionLoggingCase unstable.c7202ece89390c490b1b94d5b71225e1.A8326042681317960933
+10-22 14:27:52.297   726  8104 I keystore2: keystore2::database: In store_new_key "unstable.c7202ece89390c490b1b94d5b71225e1.A8326042681317960933", uid=10243, cert=true, cert_chain=true rebound=false
+10-22 14:27:52.308   726  8104 I keystore2: keystore2::service: In delete_key. 10243, Some("unstable.c7202ece89390c490b1b94d5b71225e1.A8326042681317960933")
+10-22 14:27:52.311   726 29294 I keystore2: keystore2::gc: In process_one_key: Trying to invalidate key blob. Km(Not Support)
+10-22 14:27:52.317   726  8104 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In delete_key: Trying to unbind the key. 10243, Some(\"unstable.c7202ece89390c490b1b94d5b71225e1.B8326042681317960933\")"
+10-22 14:27:52.323 21067 21077 I AdrenoGLES-0: QUALCOMM build                   : db7e7066a2, I1fad33e957
+10-22 14:27:52.323 21067 21077 I AdrenoGLES-0: Build Date                       : 05/11/25
+10-22 14:27:52.323 21067 21077 I AdrenoGLES-0: OpenGL ES Shader Compiler Version: EV031.32.02.10
+10-22 14:27:52.323 21067 21077 I AdrenoGLES-0: Local Branch                     : 
+10-22 14:27:52.323 21067 21077 I AdrenoGLES-0: Remote Branch                    : refs/tags/AU_LINUX_ANDROID_LA.UM.9.12.11.00.00.582.697
+10-22 14:27:52.323 21067 21077 I AdrenoGLES-0: Remote Branch                    : NONE
+10-22 14:27:52.323 21067 21077 I AdrenoGLES-0: Reconstruct Branch               : NOTHING
+10-22 14:27:52.323 21067 21077 I AdrenoGLES-0: Build Config                     : S P 10.0.7 AArch64
+10-22 14:27:52.323 21067 21077 I AdrenoGLES-0: Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so
+10-22 14:27:52.330 21067 21077 I AdrenoGLES-0: PFP: 0x016dd093, ME: 0x00000000
+10-22 14:27:52.330  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+10-22 14:27:52.330  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+10-22 14:27:52.333  1271 29299 I sensors-hal: handle_indication_realtime:466,  SCHED_FIFO(10) for qmi_cbk
+10-22 14:27:52.342  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+10-22 14:27:52.342  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+10-22 14:27:52.342  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+10-22 14:27:52.348  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x0, addressType=1, address=1B466E_8, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-40, periodicAdvInt=0x0
+10-22 14:27:52.383  1467  1467 D Native_CFMS: CFMS Delete Task Tid(-1)
+10-22 14:27:52.383  4013 29285 I PlatformStatsUtil: (REDACTED) Uploading %d dropbox entries to Clearcut
+10-22 14:27:52.414  1467  8108 E ThermalHalWrapper: Couldn't get cooling device because of HAL error: no cooling device for cooling type 
+10-22 14:27:52.414  1467  8108 E ThermalHalWrapper: Couldn't get temperature thresholds because of HAL error: no threshold data for temperature type 
+10-22 14:27:52.425  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+10-22 14:27:52.425  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+10-22 14:27:52.431  1467  8108 W ActivityManager: Unable to start service Intent { cmp=com.samsung.knox.securefolder/.common.provider.DebugService } U=0: not found
+10-22 14:27:52.433 21067 21077 W libc    : Access denied finding property "persist.adb.tls_server.enable"
+10-22 14:27:52.433 21067 21077 W libc    : Access denied finding property "service.adb.tls.port"
+10-22 14:27:52.519  1467  2800 D NetdEventListenerService: DNS Requested by : 100, 10243
+10-22 14:27:52.554  4013  4013 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.auth.service.START pkg=com.google.android.gms }
+10-22 14:27:52.554  4013  4013 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.auth.service.START pkg=com.google.android.gms }
+10-22 14:27:52.575  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+10-22 14:27:52.623  1467  2800 D NetdEventListenerService: DNS Requested by : 100, 10243
+10-22 14:27:52.657  8236  8236 I adbd    : adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-t' '300''

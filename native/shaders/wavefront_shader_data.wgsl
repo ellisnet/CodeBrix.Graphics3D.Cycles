@@ -20,7 +20,17 @@ fn surface_normalize(v:vec3<f32>)->vec3<f32>{return rounded_safe_normalize(v);}
 // by the generated NATIVE_FLOAT3_RECIPROCAL_NORMALIZE of the originating host.
 fn surface_native_normalize(v:vec3<f32>)->vec3<f32>{
     if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,rounded_sqrt(rounded_dot(v,v)));}
-    return rounded_normalize(v);
+    // rounded_normalize(v) with its three divisions through one rounded_divide
+    // body: the loop bound is opaque to the compiler (header word 3 after the
+    // error word, always 0). Inlined three times at every per-component normalize,
+    // the Adreno 650 compiler (EV031.32.02.10) dropped an SVM store in the light
+    // stage (error 8, object and deformation motion images). Same quotients.
+    let norm=rounded_sqrt(rounded_dot(v,v));var out=vec3<f32>(0);let count=3u|load_word(p(17u)+12u);
+    for(var k=0u;k<count;k++){
+        let q=rounded_divide(select(select(v.z,v.y,k==1u),v.x,k==0u),norm);
+        out=select(out,vec3<f32>(q),vec3<u32>(0u,1u,2u)==vec3<u32>(k));
+    }
+    return out;
 }
 fn surface_orthogonal(n:vec3<f32>)->vec3<f32>{
     if(n.x!=n.y||n.x!=n.z){return surface_normalize(vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x));}

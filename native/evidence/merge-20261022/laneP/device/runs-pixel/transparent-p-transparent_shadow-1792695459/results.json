@@ -1,0 +1,67 @@
+{
+  "transparent_shadow": {
+    "gate": "transparent_shadow",
+    "args": [],
+    "env": {},
+    "extraEnv": [],
+    "cutoffSeconds": 48,
+    "exit": 1,
+    "wallSeconds": 13.9,
+    "pipelines": [
+      {
+        "module": "shadow",
+        "entry": "intersect_shadow",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_PRINCIPLED",
+        "wgslBytes": 212889,
+        "moduleMs": 30.2932,
+        "pipelineMs": 1601.95,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "shadow",
+        "entry": "prepare_shadow_shader_data",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_PRINCIPLED",
+        "wgslBytes": 212889,
+        "moduleMs": 30.6484,
+        "pipelineMs": 4977.91,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      },
+      {
+        "module": "shadow",
+        "entry": "shade_shadow_transparent",
+        "specialized": true,
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_NODE_TEX_CHECKER,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_PRINCIPLED",
+        "wgslBytes": 212889,
+        "moduleMs": 31.445,
+        "pipelineMs": 6721.03,
+        "adapter": "Adreno (TM) 640 / Driver Build: 85da404, I46ff5fc46f, 1606794520 Date: 11/30/20 Compiler Version: EV031.31.04.01 Driver Branch: promo490_3_Google "
+      }
+    ],
+    "maxPipelineMs": 6721.03,
+    "passed": false,
+    "error": [
+      "shadow variant=0 count=63",
+      "00:13.62 | ERROR: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data",
+      "Transparent intersect failed: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data"
+    ]
+  },
+  "transparent-shadow-replay-direct": {
+    "passed": false,
+    "notRun": "source job failed"
+  },
+  "transparent-shadow-replay-indexed": {
+    "passed": false,
+    "notRun": "source job failed"
+  }
+}

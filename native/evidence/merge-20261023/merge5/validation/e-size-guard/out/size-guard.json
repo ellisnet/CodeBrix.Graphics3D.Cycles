@@ -1,0 +1,55 @@
+{
+  "gate": "glass_render",
+  "binarySha256": "1f372ea0e0172250a96c3e301aab67f7bd7bf60f7899cce83ed8e8fe5ed23c97",
+  "default": {
+    "thresholdBytes": 1110000,
+    "largestEntryBytes": 658413,
+    "largestEntry": "shade_surface",
+    "estimatedInstructions": 32921,
+    "warnings": 0
+  },
+  "lowered": {
+    "thresholdBytes": 200000,
+    "largestEntryBytes": 658413,
+    "largestEntry": "shade_surface",
+    "estimatedInstructions": 32921,
+    "warnings": 8
+  },
+  "defaultSizeWarnings": [],
+  "loweredSizeWarnings": [
+    "pipeline 'init_camera' (camera module) inlines to 219303 bytes of WGSL, at or above the 200000-byte size guard: about 10965 backend instructions estimated (9923 to 12977); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'intersect_closest' (closest module) inlines to 250014 bytes of WGSL, at or above the 200000-byte size guard: about 12501 backend instructions estimated (11313 to 14794); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'prepare_shader_data' (surface module) inlines to 393257 bytes of WGSL, at or above the 200000-byte size guard: about 19663 backend instructions estimated (17794 to 23270); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'prepare_surface' (surface module) inlines to 300174 bytes of WGSL, at or above the 200000-byte size guard: about 15009 backend instructions estimated (13583 to 17762); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'shade_surface_light' (surface module) inlines to 639542 bytes of WGSL, at or above the 200000-byte size guard: about 31977 backend instructions estimated (28939 to 37843); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'connect_surface_light' (surface module) inlines to 372925 bytes of WGSL, at or above the 200000-byte size guard: about 18646 backend instructions estimated (16874 to 22067); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'shade_surface' (surface module) inlines to 658413 bytes of WGSL, at or above the 200000-byte size guard: about 32921 backend instructions estimated (29792 to 38959); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'shade_background' (background module) inlines to 354595 bytes of WGSL, at or above the 200000-byte size guard: about 17730 backend instructions estimated (16045 to 20982); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged"
+  ],
+  "films": {
+    "run.cpu.film.bin": "5c441a511013378eb0389fc4849d93a279c7d643f443d1377034bec4b19f42ad",
+    "run.cpu.ppm": "05f3c8edcffed7f93a6e3f49158f678598c339ff5287a5c60563f6c86b546386",
+    "run.gpu.film.bin": "db8e84f9990299d2b2ce1c53a390f56e1d4beb73ec7326aa55da4c1b074802f6",
+    "run.gpu.ppm": "05f3c8edcffed7f93a6e3f49158f678598c339ff5287a5c60563f6c86b546386"
+  },
+  "filmsIdentical": true,
+  "degraded": [
+    false,
+    false
+  ],
+  "tier": [
+    "full",
+    "full"
+  ],
+  "checks": {
+    "default threshold reported": true,
+    "largest entry measured": true,
+    "no size warning at the default threshold": true,
+    "lowered threshold reported": true,
+    "size warnings raised when lowered": true,
+    "warnings on stderr": true,
+    "degraded and tier unchanged": true,
+    "films bit-identical": true
+  },
+  "passed": true
+}

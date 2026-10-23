@@ -46,7 +46,11 @@ struct AdapterIdentity {
 };
 // Measured devices. device/driver are substrings of the adapter device name and
 // driver description (empty driver: any). budget_ms 0 keeps the default.
-struct KnownAdapter {const char *name,*device,*driver,*tier;double budget_ms;const char *evidence;};
+// refused_region (optional) names a shader feature region of
+// shader_feature_names() (pipelines.cpp) that scenes may not use on this adapter;
+// such a scene is refused before any pipeline compiles, with refused_text.
+struct KnownAdapter {const char *name,*device,*driver,*tier;double budget_ms;const char *evidence;
+                     const char *refused_region=nullptr,*refused_text=nullptr;};
 const std::vector<KnownAdapter> &known_adapters();
 const KnownAdapter *match_known_adapter(const AdapterIdentity &identity);
 // Mobile GPU vendors (Qualcomm, ARM, Imagination, Samsung, Apple) or an
@@ -89,6 +93,7 @@ class DeviceTierPolicy {
   void canary_result(const std::string &result,double ms,const std::string &detail);
   void switch_conservative(const std::string &reason,const std::string &detail);
   std::string report_json() const;
+  const KnownAdapter *known_adapter() const{return table;}
 
   bool conservative=false;
   std::string reason="default",detail;

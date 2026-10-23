@@ -20,6 +20,7 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
         ((shader&SHADER_EXCLUDE_CAMERA)!=0u&&(visibility&VIS_CAMERA)!=0u));
 }
 @compute @workgroup_size(64) fn shade_background(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}
     if(state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND){fail();return;}

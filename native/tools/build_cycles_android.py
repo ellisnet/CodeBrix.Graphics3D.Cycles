@@ -15,6 +15,7 @@ from build_cycles import overlay
 from device_gate import sha, save
 from render_gate import inputs
 from android_toolchain import AndroidToolchain, TARGETS, environment
+from rebase_build_tree import rebase, verify as verify_rebase
 
 spec = importlib.util.spec_from_file_location('codebrix_android_dependencies', REPO/'tools/dependencies/build_android.py')
 dependencies = importlib.util.module_from_spec(spec)
@@ -79,6 +80,8 @@ def main():
     parser.add_argument('--rid', required=True, choices=TARGETS)
     parser.add_argument('--jobs', type=int, default=4)
     parser.add_argument('--target', action='append')
+    parser.add_argument('--rebase-build-tree', action='store_true',
+                        help='Re-point a build tree copied from another checkout at this checkout first (tools/rebase_build_tree.py)')
     args = parser.parse_args()
     toolchain = AndroidToolchain(args.rid)
     prefix = dependencies.prefix(args.rid)
@@ -88,6 +91,7 @@ def main():
     sources = inputs()
     state = dict(complete=False, phase='prepare', rid=args.rid)
     save(work/'status.json', state)
+    rebased = rebase(build, REPO) if args.rebase_build_tree and (build/'CMakeCache.txt').exists() else None
     try:
         source, source_copy = prepare_source(work)
         generated = overlay(work/'overlay')
@@ -125,6 +129,8 @@ def main():
                 assert all('-march=native' not in row['command'] for row in rows), 'Host CPU flags in target build'
                 if args.rid == 'android-arm64':
                     assert all('-msse' not in row['command'] for row in rows), 'x86 flags in ARM64 build'
+        if rebased and rebased['rebased']:
+            verify_rebase(build, REPO, rebased['oldRoot'])
         assert sources == inputs() and toolchain.identity() == pin['toolchain']
         assert dependencies.prefix(args.rid) == prefix and sha(runtime) == pin['runtimeSha256']
         assert all(sha(source/name) == digest for name, digest in source_copy.items())

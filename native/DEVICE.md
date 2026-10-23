@@ -588,9 +588,11 @@ bits (it is gated by the SVM gate on identical hit inputs and the world gate).
 but with its code present the unspecialized SVM probe module (which every SVM
 gate compiles whole) made the Intel Mesa 25.0.7 driver mis-evaluate Principled
 paths (SVM stack error 8, wrong closure values or a lost device in
-`principled_svm`; a stubbed Gabor body passes). It is therefore not shipped and
-stays deferred with `NODE_RADIAL_TILING`; AOV output needs a render-buffer
-path from the SVM evaluation.
+`principled_svm`; a stubbed Gabor body passes). It was therefore not shipped.
+Update (lane L, 2026-10-22): the cause is the Intel Mesa 25.0.7 16-bit
+instruction/register limit, and Gabor now ships on the scene-specialized path
+("Linux reference fixes on the updated Mesa"). `NODE_RADIAL_TILING` stays
+deferred; AOV output needs a render-buffer path from the SVM evaluation.
 
 ### Bump stages and derivative variants (M4, 2026-10-20, Linux)
 
@@ -641,8 +643,9 @@ SVM probe gates therefore use the scene-specialized probe module ("Materials on
 the devices and scene-specialized probe modules" below): `nodes_svm` compiles
 only the regions its uploaded programs reach, and `refresh_probe` rebuilds the
 module when typed programs reach a further region. The specialized results equal
-those of the earlier probe feature mask. Unspecialized modules are an open item
-(see "Session close: specialization-off status" below).
+those of the earlier probe feature mask. Unspecialized modules were an open item
+(see "Session close: specialization-off status" below); the superset mode of lane
+L replaces them for the on/off check ("Linux reference fixes on the updated Mesa").
 
 ## Build and reproduce
 
@@ -1464,8 +1467,9 @@ WebGPU adapter device name and driver description):
 
 | Entry | Device | Driver | Tier |
 | --- | --- | --- | --- |
-| Pixel 4 XL Adreno 640 | `Adreno (TM) 640` | any | full, 20 s compile budget |
+| Pixel 4 XL Adreno 640 | `Adreno (TM) 640` | any | full tier, 20 s compile budget, not a reference device, verdicts per the device reference policy |
 | Samsung SM-X700 Adreno 730 | `Adreno (TM) 730` | any | full |
+| Samsung Galaxy S20 FE Adreno 650 | `Adreno (TM) 650` | any | full tier, 20 s compile budget (warnings only), not a reference device; refuses the texture, colour and utility node region `SVM_NODES_ANY` ("Adreno 650 lane") |
 | HP Intel Xe (Android x64) | `Intel(R) Xe Graphics` | `Mesa 24.0.8` | full |
 | Linux Intel UHD ADL-S | `Intel(R) UHD Graphics (ADL-S GT1)` | `Mesa 25.0.7` | full |
 
@@ -1477,6 +1481,13 @@ tier meets the practical criterion there and the conservative tier was not
 faster (see below). No table entry selects the conservative tier; it remains a
 reactive fallback after a crash breadcrumb or a creation failure, or an explicit
 opt-in. An explicit `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS` replaces any budget.
+A table entry may also name one shader feature region the adapter refuses
+(`refused_region`, a name from `shader_feature_names()`): a scene whose referenced
+shaders reach it is refused in `shader_features()` before any pipeline compiles,
+with a message naming the GPU and the features (as unimplemented Principled
+features are), and the tier report's `knownAdapter` carries `refusedRegion` and
+`refused`. Only the Adreno 650 entry uses it. `CODEBRIX_CYCLES_TEST_ADAPTER`
+applies it too, so the refusal can be exercised on Linux.
 
 **Persisted record.** Enabled only when the application supplies a writable
 directory (`cbc_host_tier_config`, or `CODEBRIX_CYCLES_DEVICE_RECORD_DIR`); missing
@@ -2308,76 +2319,1164 @@ others). The compile smoke step measured the unspecialized node-render surface m
 - `prepare_surface`: 3,447,736 inlined bytes (2.3 MB is the Intel Android danger zone), 604 s cold, 10.0 GB peak;
 - `shade_surface_light`: 1,578,630 bytes, 24 s.
 
-Both are warnings only. Restoring a reliable specialization-off check is open item 11.
+Both are warnings only. Restoring a reliable specialization-off check was open item 11; lane L restored it
+with the superset groups ("Linux reference fixes on the updated Mesa").
 
-## Open device items (session close, 2026-10-20)
+## Linux reference fixes on the updated Mesa (lane L, 2026-10-22)
 
-These items are open. None is masked, and no tolerance was relaxed. Resolved items are covered in the sections
-above:
-- the Samsung triangle mode-2 decision (exact traversal);
-- the HP compile memory (emissive-triangle compile load);
-- the specialization-off crashes on Android (refused by design);
-- the Pixel feature-combination, motion and volume-stack failures (function-scope array fix);
-- the Android oracle libm differences (validation reference policy);
-- the Pixel triangle sampler's error mask (a GPU reset during one long dispatch; Phase E5);
-- static instanced triangle emitters (mode 4) on every device (exact traversal; Phase E4 on the Adreno);
-- the deforming-emitter sampler on the Pixel 4 XL (reference oracle's arithmetic, Phase E4).
+Linux x64 is a reference device (device reference policy, 2026-10-22): every
+item must work there, with no driver exception. Lane L resolved open items 4,
+11, 12 and 13 on Linux.
 
-1. **Samsung triangle sampler.** 2 values of 1 sample differ from the glibc reference (sample 3133, object 4,
-   prim 5: `P.y` 0.382186 against 0.379992, and `t`). The device CPU and glibc agree on that sample, so the
-   Adreno 730 differs from both; not yet localised. The Pixel 4 XL and the HP pass.
-2. **Pixel 4 XL object motion with the reference oracle's arithmetic.** The object-moving motion images report
-   SVM error 8 when the x64 oracle's adapter constants are selected (imported reference, Phase E4); with the
-   device's own oracle they pass ("Session close: the E4/E5/M4 merge on the devices"). Either the adapters'
-   WGSL meets an Adreno 640 compiler defect, or the gate should keep the device oracle on this GPU; undecided.
-3. **Adreno 640 GPU reset on long submissions.** The driver resets the GPU when one submission runs for about
-   2 s. The sampler gate dispatches in slices of 256 invocations. The renderer does not slice its dispatches,
-   and one dispatch covers up to 4,096 paths (`num_concurrent_states`); the sampler probe needs about 1 ms per
-   invocation on this GPU, so a larger emissive-triangle render could reach the reset (an estimate from the
-   probe; the gate images pass). A production fix is dispatch slicing in the scheduler or a per-tier path cap.
-4. **Intel Mesa 25.0.7 cold-compile crash** (`brw_opt_combine_constants`, intermittent; Linux): a recompile
-   after an area light (object motion) and the exact-traversal emitter probe module. Not hit in the
-   session-close runs. A driver fix or a smaller lamp stage remains open.
-5. **Checks not yet on the glibc reference.** `render_gate.cpp` lockstep stage checks and the state gates
+**Driver identity.** `vulkaninfo`: `Intel(R) UHD Graphics (ADL-S GT1)`, driverInfo
+`Mesa 25.0.7-2+deb13u1`, driverVersion 25.0.7, apiVersion 1.4.305. This is the
+identity recorded at session close (2026-10-20, every `adapter.txt` of the merge
+runs). The package `mesa-vulkan-drivers 25.0.7-2+deb13u1` was installed on
+2026-07-11; the apt run of 2026-10-22 changed no Mesa package.
+`libvulkan_intel.so` sha256 `c40c2c5002eda54fbe4106339fbc64784a03c6b0b1f6291c0e10386e1c298f85`.
+Kernel 6.12.113 (also the session-close kernel).
+
+**Root cause (items 4, 11 and 12).** Mesa 25.0.7's Intel backend pass
+`brw_opt_combine_constants` stores a promoted constant's virtual register (VGRF)
+number and its first and last use instruction numbers (IPs) in 16-bit fields.
+Upstream Mesa widened them to 32 bits in commit b7e1ac830984 (2025-09-18, issue
+#9489, "In very large shaders, first_use_ip, last_use_ip, and even (register) nr
+can overflow 16 bits"); 25.0.7 does not have it.
+- When the VGRF number wraps, `deallocate_slots` finds no matching register and
+  reaches `unreachable()`. In a release build it then reads past its array. It
+  crashes when the read hits unmapped memory and corrupts register bookkeeping
+  when it does not. This is the "intermittent" SIGSEGV of item 4: the E3 crash
+  register number 13,056 is 78,592 modulo 65,536.
+- When the IPs wrap, the constant's load can be placed after some of its uses
+  (wrong code without a crash).
+- Every entry point whose backend IR has more than 65,535 instructions or
+  virtual registers when the pass runs is therefore at risk.
+
+Measurement: gdb with a breakpoint on `brw_opt_combine_constants` (Mesa debug
+information from the debuginfod cache) records the VGRF count and the last
+instruction IP of every compile. `native/tools/intel_compile_envelope.py` does
+this for every entry point of the modules a gate dumps
+(`CODEBRIX_CYCLES_WGSL_DUMP=DIR`, a new diagnostic). The inlined WGSL size
+(`unspecialized_compile_smoke.py` `inlined_bytes`) is about 15.5 to 19.5 bytes per
+backend instruction.
+
+| Entry (scene) | Before (IP / VGRF) | After (IP / VGRF) |
+| --- | --- | --- |
+| `shade_surface_light` (ABI test, point + triangle MIS) | 60,590 / 41,024 | 44,485 / 30,340 (lamp) and 42,065 / 28,213 (triangle stage) |
+| `shade_surface_light` (+ area light) | 75,734 / 51,344 | as above |
+| `shade_surface_light` (+ area light + object motion) | 85,885 / 58,120 | as above |
+| `emitter_sample_probe` | 44,416 / 30,347 | unchanged |
+| `prepare_surface`, node render with Gabor (68 triangles) | 64,996 / 40,956 | 51,579 / 31,892 |
+| `prepare_surface`, Principled render | not measured | 43,235 / 28,044 |
+| `shade_surface`, Principled render | not measured | 52,509 / 35,763 |
+| `prepare_surface`, superset of item 11 compiled whole (Principled scene) | 136,293 / 86,119 | replaced by superset groups |
+| `prepare_surface`, unspecialized | about 190,000 (3.47 MB inlined) | diagnostic only |
+
+**Fixes.**
+- *Light-stage split (item 4).* With emissive triangles in the scene
+  (`LIGHT_TRIANGLE`), `shade_surface_light` samples only a selected lamp (record
+  state 1 -> 5). A new entry, `shade_surface_light_triangle`, dispatched next,
+  prefills the triangle vertices, computes the forward-hit MIS weight and samples
+  a selected triangle (5 -> 3).
+  - Both recompute the same inputs from the unchanged stage record and path
+    state, and call the same functions as the combined path, which scenes
+    without emissive triangles still use.
+  - Recorder v8 adds pipeline entry 17. `render_replay` accepts v1 to v8.
+  - The triangle lighting gate gives every numeric field of the session-close
+    run (sampler, six images, six replays); only the new entry's dispatch counts
+    are added.
+- *Horner loops.* The 29-step `motion_acos` and the 7- and 8-step
+  `precise_disk_sincos` polynomials run as loops over their coefficient pairs:
+  the same operations in the same order, so results are bit-identical. The glass
+  film `db8e84f9...` and the Principled film `fd3a7f2b...` are unchanged.
+- *ABI test.* The GPU ABI test renders the area light on WebGPU again (point,
+  spot, area and sun in one device lifetime; the area light is followed by the
+  object-motion recompile). The host gate compares the four light films with the
+  CPU films. The practical criterion is required and strict differences are
+  recorded:
+  - point and spot: about 125 and 22 (sphere-light sampling in the last bits);
+  - area: 0 or 1 (the WebGPU film's atomic accumulation order varies between
+    runs);
+  - sun: 0.
+- *Superset specialization-off mode (item 11).*
+  `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:G` selects every region except
+  the bump/derivative and Gabor regions the scene does not reach
+  (`SF_SUPERSET_SCENE_ONLY`). Compiled whole, that superset is about twice the
+  16-bit range for `prepare_surface`. The device therefore compiles it in
+  groups:
+  - Group G is the scene plus the G-th greedy fill of the remaining superset
+    regions (ascending bit order).
+  - Each fill keeps every surface and background entry within 1,000,000 inlined
+    bytes (`CODEBRIX_CYCLES_SUPERSET_BUDGET_BYTES`), or within the scene's own
+    size when that is larger.
+  - Regions that do not fit next to the scene are reported as `supersetUnfit`.
+    Other gate scenes cover them.
+  - Pipeline logs and reports carry `specializationMode`, `supersetGroup`,
+    `supersetGroups`, `supersetGroupAdded` and `supersetUnfit`.
+
+  `native/tools/specialization_check.py` runs every group and requires every film
+  to be bit-identical to the specialized run. glass_gate.py and
+  principled_gate.py (their render kinds) and nodes_gate.py (nodes_world,
+  nodes_render) use it by default (`--off-mode superset`; `unspecialized` keeps
+  the whole-module diagnostic, `none` skips). `=0` and `superset` are refused on
+  Android like `=0` before.
+- *Gabor (item 12).* `NODE_TEX_GABOR` ships on the scene-specialized path:
+  - Feature bit 63 (`SF_TEX_GABOR`; only bit 62 stays free). It is a scene-only
+    region in the superset mode.
+  - The M3 precise-trigonometry WGSL body, census and layout.
+  - Node SVM gate: compiled graphs 65 (2D, per-path orientation, anisotropy 0.6)
+    and 66 (3D isotropic); 12 typed programs (2D and 3D; anisotropic, partly
+    isotropic and isotropic; constant and per-path inputs; frequency clamp;
+    unused outputs); rejection 20 is now an invalid Gabor type (16).
+  - World gate: world 23 (3D anisotropic).
+  - The late graphs of the node SVM fixture take 5 rays each (7 before) to stay
+    within the state capacity.
+  - With Gabor present the node-render `prepare_surface` was at 64,996 backend
+    instructions, 0.8% below the 16-bit range, which is why its large modules
+    mis-evaluated. The Horner loops bring it to 51,579.
+- *Node render scene (item 13).* The render gate scene has 68 triangles again:
+  the two Gabor graphs and six repeated continuous graphs follow M2's 60 slots.
+  - It passes against the independent CPU image. The worst image component is at
+    0.126 of the practical bound (component 3162), the same component and value
+    as the 60-triangle scene.
+  - The M3 failure (one pixel at 1.25 times the bound) was measured on a tree
+    without the exact traversal (X2) and the contraction-proof ShaderData (E4).
+    On the current tree the extra triangles move no visible component near the
+    bound. (Inference: the original pixel's path took a last-bit hit-point
+    difference that X2/E4 removed; that tree's arithmetic no longer exists to
+    re-isolate.)
+  - The node render film changes with the scene: `94848a0cddf9c42a...` (60
+    triangles) becomes `b9d1da3fe595962cadc02925ab10378c099db2bec1c4f80993a3bb1012c419ce`.
+    Its image maximum error stays at 1.03e-4.
+
+**Results (Linux, cold Mesa caches).**
+
+| Check | Result | Folder (`native/work/l/validation/`) |
+| --- | --- | --- |
+| Envelope, ABI modules (28 entries) | every entry below 60,000; worst 44,485 instructions / 30,340 VGRFs | `env-abi` |
+| Envelope, material and superset modules (83 entries) | every entry below 60,000; worst 52,509 / 35,763 | `env-materials` |
+| All-lanes coordinator (29 targets) | PASS, 1,256 s. 1,729 of 1,918 report fields equal session close. The rest: the new entry-17 dispatch counts, the superset records, and run-to-run atomic-order counters (broad lighting strict 3,572 to 3,569; broad_light_state strict 13 at session close, 11 here, 12 and 12 on two reruns) | `f3-all-lanes` |
+| Host gate | PASS: 48 exports, 786 reference films, 3,146 comparisons (4 new light films), 0 practical failures, 148 strict differences (point/spot light films), max 1.53e-5 | `f4-host-gate` |
+| Triangle lighting gate | PASS; every report field equal to session close | `f3-triangle` |
+| Shadow terminator gate | PASS; every field equal to session close | `f3-terminator` |
+| Scene-edit gate | PASS. GPU strict counts vary run to run, as within one run (the identical "before" scenes give 371 to 375) | `f4-scene-edit` |
+| principled_gate.py (+ 8 superset groups) | PASS; every field equal to session close; film `fd3a7f2b...` | `v2-principled-gate` |
+| nodes_gate.py (+ superset nodes_world 6 groups, nodes_render 1) | PASS: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render image max 1.03e-4 | `f3-nodes-gate` |
+| Glass superset (4 groups) | bit-identical; glass film `db8e84f9...` unchanged | `s-glass-superset`, `f3-all-lanes/out/glass_gate` |
+| ABI test GPU, 10 cold runs (area light on WebGPU) / emitter probe, 10 cold runs | 10/10 / 10/10 | `f3-abi-*`, `f3-emit-*` |
+| dotnet build / test / pack | 0 warnings, 0 errors / 162 of 162 / package created | `f3-dotnet-*` |
+| audit.py, notices.py --check, inventory, guards | PASS | `f3-audits` |
+
+**Compile time and memory** (one fresh process per entry, cold cache, peak RSS
+from `compile_probe`):
+
+| Module / entry | Instructions / VGRFs | Cold pipeline | Peak RSS |
+| --- | --- | --- | --- |
+| Principled render, scene-specialized `prepare_surface` | 43,235 / 28,044 | 25.2 s | 1.27 GB |
+| Principled superset group 0 `prepare_surface` | 48,577 / 31,160 | 30.6 s | 1.45 GB |
+| Unspecialized `prepare_surface` | about 190,000 (estimate) | 1,237 s (with two gates running; 604 s at session close) | 10.26 GB |
+| Item-11 superset compiled whole, `prepare_surface` | 136,293 / 86,119 | 143 s (in the render, under gdb) | not measured |
+
+A whole superset render group compiles in 19 to 67 s (its largest pipeline takes 16.5 to 21.3 s). Glass needs
+4 groups, Principled 8, nodes_world 6 (over its 24 worlds) and nodes_render 1. Together the groups place
+every superset region next to at least one gate scene: the glass groups leave no region unfit.
+
+**Re-establishment on 2026-10-22 (same driver).**
+- Item 4: 0 of 10 cold ABI runs (area light on WebGPU, baseline WGSL) and 0 of 10
+  cold emitter-probe runs crashed. The baseline light stage nevertheless compiled
+  at 75,734 and 85,885 instructions, inside the overflow range. The crash
+  depends on heap contents, so its absence in 10 runs is not a fix; the split is.
+- Item 11: the item-11 superset compiled whole passed the Principled render once
+  (143 s `prepare_surface`), but at 136,293 instructions it is inside the
+  overflow range, like the unspecialized modules.
+- Item 13: the 68-triangle scene passes on the current tree (before any lane-L
+  arithmetic change).
+
+## Samsung reference fixes (lane S, 2026-10-22)
+
+Device reference policy (2026-10-22): the Samsung SM-X700 (Adreno 730) is the ARM64/Adreno reference device. This lane
+worked on open items 1, 8 and 9, reran the object-moving motion images on the Samsung and measured item 3 there. Runtime
+unchanged (shipped `libcodebrix_wgpu.so` arm64 `8113cbfa...` hash-verified before every corpus); full tier by table.
+
+**Item 8, Principled pipelines on the Adreno 730: root cause and fix.** Creating `prepare_surface` (and the Principled
+SVM probe) failed in the Adreno driver (`AdrenoVK-0: Failed to link shaders` in logcat; wgpu then reports `Parent device
+is lost`). A compile-only probe on the Samsung (`native/tools/compile_probe.cpp` built for android-arm64) reproduces it
+in 16 s from the specialized Principled render module. Bisection (about 45 variants): the failure needs the thin-film
+Fresnel path and the thin-wall path to be live at the same time, but it is not module size (removing the Glass handler or
+anisotropy still fails), not workgroup size (64/32/16/1 all fail), not WGSL runtime checks, not dynamic vector indexing
+and not loop nesting. It is per-invocation private memory: with the 263-word module-scope `svm_stack` shrunk to 128 words
+the module links, at 160 words it fails, and with the stack in storage memory it links. The register spills of the large
+Principled handler plus the private SVM stack exceed what the driver can allocate per invocation.
+
+Fix: the SVM value stack and its initialization mask now live in a per-invocation slot of the device arena
+(`wavefront_svm.wgsl`). `WebGPUDevice` allocates 4,096 slots of 263 words (`num_concurrent_states` is at most 4,096) and
+writes the region address and slot count after the error word (`p(17)+4`, `p(17)+8`). Every entry point of the modules
+that contain the SVM interpreter (background, light forward, shadow, surface, volume, the SVM and emitter probes) names
+its invocation first (`svm_invocation(id.x)`); an evaluation without a valid slot reports error 1 rather than sharing
+memory. Reads, mask checks, error codes and results are unchanged: on Linux the glass film (`db8e84f9...`) and the
+Principled film (`fd3a7f2b...`) are bit-identical. This also keeps the large stack out of private memory, the class of
+the Adreno 640 function-scope array defect.
+
+Results on the Samsung: `principled_svm` PASS (126 s) and `principled_bounce` PASS (320 s, against the device CPU as
+before). `principled_render` now compiles and runs, but fails a local lockstep stage check: stage 40, path 2441,
+`path.mis_ray_pdf` 1751.469 against the device CPU's 1747.274 (open item 8 below). Making the GGX masking terms, the sheen
+LTC value, `principled_rotate` and the anisotropy aspect contraction-proof (rounded products before sums, operation
+order as the pinned sources) leaves the Samsung value unchanged and makes Linux produce the same 1751.470 and fail the same
+check: the Adreno computes the unfused arithmetic, and Linux agrees with the CPU only because Intel Mesa fuses those
+products. That experiment was reverted (Linux films unchanged); the mismatch is a WGSL-versus-CPU difference to localise
+on Linux with the contraction-proof forms applied.
+
+**Device-scene references for render and SVM probe gates.** `render_gate.cpp` images and the SVM probe gates
+(`surface_svm_test.h`, all `svm_surface_gate.cpp` variants) now follow the device-scene flow of the validation reference
+policy when the `CODEBRIX_CYCLES_SCENE_*`/`CODEBRIX_CYCLES_REFERENCE_*` variables are set (no change without them). The
+SVM probes exchange one key per evaluated case (`svm-N`): the scene tables other than the program are written once per
+distinct content (`svm-base-N.scene`), each case file carries the program, `KernelData`, the selected path indices and
+their path/ray/intersection state; the dump and Linux passes do no GPU work and skip the GPU-only rejection checks. The
+device-prepared Principled scene differs from the Linux-prepared one in the BVH, 1,143 lookup-table words, 54 vertex words
+and the object records, so Linux-prepared references are not valid inputs for the Samsung.
+
+**Item 9 under the device-scene flow.** `nodes_world` PASS (23 worlds, 378 s). `nodes_svm` against the glibc records of
+the Samsung's own scene: the same typed 2D noise program (case `svm-45`, "noise 2d type 0 variant 2") fails at path 48
+(0.566344 against 0.567463); the device CPU (scalar ARM64 noise branch) also differs from glibc in that case (6 practical,
+max 1.35e-3). `nodes_render` against the glibc film of the Samsung's own scene: component 6720 0.928481 against 0.928078,
+the same glibc value as the Linux-prepared film, while the Samsung GPU and the Samsung CPU agree (0.928481/0.928485): the
+pixel follows the device-own arithmetic adapters that `render_gate.cpp` keeps for its local lockstep checks, not the
+scene preparation.
+
+**Item 9 localised: the Adreno 730 reassociates the Perlin fade products.** The failing typed noise case was captured
+on Linux (arena, parameters, specialized probe module) and replayed with `arena_replay` on both GPUs: from identical
+inputs Intel reproduces the CPU record bit for bit (path 48: 0.5674633) and the Adreno gives 0.5663444 (41 of 51 paths
+differ). Replaying WGSL variants on the Samsung with opaque ordering barriers (an XOR with a word that is always zero)
+around single expressions isolates it to `svmn_perlin`'s fade, `(t*t)*(t*inner)`: with only that expression ordered the
+Samsung matches the CPU at path 48 and every value of the case is within 0.001 of the practical bound (before: 6 values
+above it, ratio up to 6.8). The fade now goes through `svmn_order` with header word 3 after the error word, which the
+device keeps at zero. Linux node gates and the glass film are unchanged (`db8e84f9...`). On the Samsung the nodes_svm gate (device-scene glibc reference) now passes 512 cases, including the formerly failing typed 2D noise case, and then stops: the Vulkan driver terminates (SIGSEGV) while creating the probe pipeline for the case after "vector math derivative 29" (case 489): the cumulative scene-specialized probe module, never reached on the Samsung before (open). nodes_world passes (376 s); nodes_render still fails at component 6720 (render_gate's device-own adapters, see above).
+
+**Item 1.** Rounding the motion step fraction (`time*(steps-1)-step`, contractible in three places) does not change sample
+3133; reverted. The failing sample is on the deforming emitter (object 5, prim 4): GPU P.y 0.382186, glibc 0.379992, device
+CPU 0.380744 (the device CPU is itself a practical failure there); the pdf differs by 1 ulp, so the spherical-triangle
+sampling amplifies a one-ulp difference upstream of the sample.
+
+**Object-moving motion images on the Samsung (session-close "not rerun").** Both pass, with all eight on-device replays:
+with the device's own oracle against the device CPU (moving and stationary images, 521 s corpus), and with the reference
+oracle's arithmetic against the glibc reference of the Samsung's own scene (host re-judged PASS, 567 s corpus).
+
+**Item 3 measured on the Adreno 730.** `dispatch_timing` (a copy of `render_replay` in the lane's work folder that submits
+every dispatch alone and waits for it) replayed the Samsung's triangle mode-4 and mode-5 captures and a Linux Principled
+render capture on the Samsung. Longest single submissions: 12.4 ms (mode 4, `shade_surface_light`, 415 invocations), 22.4
+ms (mode 5, `shade_surface_light`, 399 invocations, about 0.056 ms per invocation), 29.3 ms (Principled `shade_surface`,
+2,543 invocations); no reset or timeout. At 0.056 ms per invocation a full 4,096-path `shade_surface_light` dispatch is
+about 0.23 s, roughly an order of magnitude below the Adreno 640's 2 s reset; no slicing is needed on the Adreno 730.
+
+Evidence: lane S handoff (`native/work/s/handoff/` in the lane worktree; device and validation records, compile bisection
+log, per-dispatch timings).
+
+
+## Merge wave 4: lanes L, S and P on the devices (2026-10-22)
+
+Tree: 3392df3d plus lane L (Intel Mesa envelope: light-stage split with `shade_surface_light_triangle`, recorder v8
+entry 17, superset groups, Gabor on bit 63, 68-triangle node render), lane S (SVM stack in a per-invocation arena slot,
+noise fade ordering barrier, device-scene reference flow for `render_gate.cpp` images and the SVM probe gates) and
+lane P (docs). Runtime unchanged (shipped `libcodebrix_wgpu.so` hash-verified before every corpus); full tier by table
+on every device. Image, sampler, render and SVM-probe gates are judged against the glibc reference computed from the
+device's own dumped scene; replays of image captures are judged against the same reference; state gates against the
+device's own CPU. Evidence: `native/work/merge4/runs/<device>/`, tables in `native/work/merge4/device/device-tables.md`.
+
+| Gate | Samsung SM-X700 (reference) | HP (reference, Mesa 24.0.8) |
+| --- | --- | --- |
+| triangle sampler | sample 3133 (open item 1) | pass |
+| triangle images 0-5 + 6 replays (v8 captures) | pass | pass |
+| Linux triangle (6, v8) and terminator (10) captures | pass | pass |
+| emitter probe | pass | pass |
+| broad lighting, lighting_mis + 4 replays | pass | pass |
+| regression (glass, lighting_mis, transparent lighting) | pass | pass |
+| transparent shadow + lighting + 10 replays | pass | pass |
+| shadow terminator + 10 replays | pass | pass |
+| specialization refusals (`=0` and `superset`) | refused (exit 1); glass spec on passes | refused (exit 1); glass spec on passes |
+| object-moving/stationary images, own oracle and x64 oracle, 8 + 8 replays | pass | not run |
+| principled_svm / principled_bounce | pass / pass | pass / pass |
+| principled_render | stage 40 `mis_ray_pdf` (open item 2) | pass, replay pass |
+| nodes_svm (67 graphs incl. Gabor) | compiled graph 44 mis-evaluates (open item 3) | pass |
+| nodes_world (24 worlds incl. Gabor) | pass | pass |
+| nodes_render (68 triangles) | component 6720 (open item 4) | pass, replay pass |
+| Android host gate (48 exports) | pass | pass |
+| managed app, 3 scenes | pass | pass |
+
+**No HP exception is needed.** Every HP job passed, so no Mesa 24.0.8 or Bliss OS determination was required. The
+specialization diagnostics (`=0` and `superset`) are refused on Android by design (the device constructor throws
+before any compile), which the refusal jobs verified.
+
+**Samsung node SVM probe: Gabor in the module breaks graph 44 (new).** Lane S's run (without Gabor) passed the
+compiled graphs and 512 typed cases. With lane L's Gabor graphs in the fixture, the scene-specialized probe module
+contains the Gabor handler, and graph 44 (Fresnel and two Layer Weight nodes) gives a closure weight of 0.070653
+against 0.079591 (glibc; the device CPU agrees with glibc) on 27 paths of all three objects. The captured dispatch
+(`native/work/merge4/diag/svm309`) replayed with `arena_replay`: on Linux the merged module matches glibc exactly; on
+the Samsung the merged module, a variant with lane S's unrolled Horner steps, and a variant with the Horner arrays
+replaced by a switch lookup all fail identically; a variant with the Gabor handler body emptied makes graph 44 equal
+to Linux and glibc exactly. So the Adreno 730 mis-evaluates Fresnel/Layer Weight when the Gabor handler is in the
+same module; the Horner loop arrays are not involved. Not fixed in the merge.
+
+**Pixel 4 XL (Adreno 640).** Only the provisional materials jobs ran (see the lane P section): all five are not
+supported. **Samsung Galaxy S20 FE 5G (Adreno 650).** Lane Q's failing jobs were rerun on the merged tree (timeout
+max(600 s, 3 x this merge's Samsung wall)); the results are added to the lane Q section at the end.
+
+
+
+## Samsung follow-up fixes (lane S2, 2026-10-22)
+
+Samsung SM-X700 (Adreno 730), the ARM64/Adreno reference device. Runtime unchanged (shipped `libcodebrix_wgpu.so`
+hash-verified before every corpus); full tier by table. Images, sampler and SVM probes are judged against the glibc
+reference of the device's own dumped scene. Diagnosis used `arena_replay` of dispatches captured on the Samsung,
+replayed with WGSL variants on both GPUs; the opt-in capture switches added for this are
+`CODEBRIX_SURFACE_DISPATCH_STAGE` and `CODEBRIX_SURFACE_DISPATCH_ENTRY` (render_gate, any lockstep stage and the
+`prepare_surface` dispatch), `CODEBRIX_EMITTER_PROBE_CAPTURE` (sampler probe slice), `CODEBRIX_SVM_PROBE_DUMP` (every
+SVM probe module) and `CODEBRIX_SURFACE_ORACLE_INPUT` (this host's CPU surface oracle on captured path states).
+
+**Node SVM graph 44 with the Gabor handler (open item 3(a)): FIXED.** Probe variants that store one intermediate of
+`svm_fresnel_node` showed `backfacing` computed correctly but `eta` left at the IOR on the Adreno 730: with the Gabor
+handler in the module the compiler dropped the nested `if(backfacing){eta=1.0/eta;}`. A minimal Gabor body (its input
+loads, arithmetic and three stores) is enough to trigger it; loads alone or stores alone are not. The reciprocal is now
+chosen with `select` (same operations): the Samsung replay of the captured dispatch has no practical failure, and the
+Linux records are bit-identical to before (node render film `b9d1da3f...` unchanged).
+
+**Node SVM driver crash after case 500 (open item 3(b)): FIXED.** The probe module that first contains the mapping
+derivative region (case 501, "mapping derivative 0") terminated the Adreno 730 compiler (SIGSEGV, immediately) in
+`compile_probe` too. Bisection: `svmn_dual_direction`, three `svmn_direction(mat3x3,...)` calls in one expression.
+It now builds the three transform columns once and applies them (the same products and sums); the module links
+(184 s). The full `nodes_svm` gate (541 cases, 67 graphs including Gabor) now passes on the Samsung (1,563 s on the final tree).
+
+**Principled render stage 40 (open item 2): FIXED.** Path 2441 samples an anisotropic GGX lobe; the sharp coat lobes
+(alpha 0.0025) evaluated at that direction make the MIS pdf ill-conditioned. Running this host's CPU oracle on the
+captured stage input showed the x64 and ARM64 CPUs agree (1747.274); the GPU differed only in the closure tangent
+`T` (one ULP in two components), from `principled_rotate`: (a) the quadrant-reduced angle was rounded to one float
+before the disk sine/cosine, losing one ULP of `cos` against libm; (b) the rotation products were contractible, and
+Intel and the Adreno contracted them differently. The reduction now keeps the two-part angle
+(`precise_disk_sincos_pair`, which `precise_disk_sincos` calls with a zero residual, so its other callers are
+unchanged) and the rotation rounds every product before its sum in `rotate_around_axis` order. A binary32 emulation
+of the pinned function reproduces the CPU tangent exactly, and the replayed `prepare_surface` now gives it on Linux.
+On the Samsung every Principled lockstep stage now passes; the render then stops at the image against glibc
+(components 9114 and 9362, 1.546950 against 1.545995), where the GPU equals the device CPU image: the open item 4
+class below. On Linux the Principled gate passes with fewer strict stage differences (946, before 1,025); its GPU film
+changes to `e81feb12...` (glass `db8e84f9...` and node render `b9d1da3f...` unchanged).
+
+**Node render component 6720 (open item 4): root cause shown, not fixed.** With
+`CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2` (the reference oracle's arithmetic adapters) the Samsung node render
+passes every lockstep stage and the image against glibc (component 6720 = 0.928078, the glibc value). The same
+adapters make the Principled render fail its local lockstep at stage 1 (path 552, `mis_ray_pdf` 44.0036 against the
+device CPU's 43.9791): the local stage checks then compare SSE-adapter GPU arithmetic with the scalar ARM64 CPU. So
+the image follows the adapters, and fixing it under the policy needs the lockstep checks on the glibc flow as well
+(open item 5).
+
+**Triangle sampler sample 3133 (open item 1): localised, not fixed.** The sampler probe slice captured on the Samsung
+and replayed on Linux Intel gives the glibc record bit for bit (P.y 0.3799915); the Samsung GPU gives 0.3821864 from
+the same arena and module, so the deviation is in the Adreno 730's compilation of our WGSL, not in the dumped scene.
+Probe stores trace the first difference to one ULP in the deforming instanced emitter's interpolated object transform
+(row y, column x), amplified by the spherical-triangle sampling; storing intermediate values of the motion transform
+makes the Samsung result correct, and ordering barriers on the quaternion products, the compose outputs, the
+rotation, the interpolated rows, the motion time and the point products did not. The device's own ARM64 CPU also
+misses the practical bound there (0.380744); that is a separate CPU question for the Raspberry Pi 5 glibc ARM64
+reference (Phase F): evaluate sample 3133 of the dumped Samsung scene with the Pi 5 oracle and compare it with the x64
+glibc record.
+
+
+## Open device items (merge wave 4, 2026-10-22)
+
+One list for the reference devices (Samsung SM-X700, Linux x64, HP). None is masked, and no tolerance was relaxed.
+Old numbers (session close, 2026-10-20) are given in brackets. The Adreno 650 (S20) results are not open items of the
+reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno 650 lane" at the end.
+
+1. **Samsung triangle sampler** [1]. Sample 3133 on the deforming instanced emitter (object 5, prim 4): `P.y` 0.382186
+   against the glibc 0.379992. Lane S2: the Samsung capture replayed on Linux Intel gives the glibc record bit for bit,
+   so the deviation is the Adreno 730's compilation of our WGSL, entering as one ULP in the emitter's interpolated
+   object transform (see "Samsung follow-up fixes (lane S2)"); not fixed. The device's own ARM64 CPU (0.380744) also
+   misses the bound: the Raspberry Pi 5 glibc ARM64 oracle (Phase F) on the dumped Samsung scene decides whether that
+   CPU difference is upstream ARM64 arithmetic. Reproducer: `run_corpus.py samsung triangle X 2400 900 --reference
+   ../reference/linux-x64 --device-scene --jobs triangle_sample`.
+2. (resolved by lane S2, see "Resolved" below)
+3. (resolved by lane S2, see "Resolved" below)
+4. **Samsung render images against glibc** [9]. Node render component 6720 (GPU 0.928481, glibc 0.928078) and, since
+   lane S2's stage-40 fix, Principled render components 9114 and 9362 (1.546950 against 1.545995): in both the GPU
+   equals the device CPU image. `render_gate.cpp` keeps the device's own arithmetic adapters for its local lockstep
+   checks. With the reference oracle's adapters (`CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2`) the node render
+   passes completely (lockstep and image), but the Principled render then fails its local lockstep at stage 1 against
+   the scalar device CPU. Fixing it needs the lockstep stage checks on the glibc flow too (item 5); a design decision.
+   Reproducer: `--jobs nodes_render,principled_render` as above.
+5. **Checks not yet on the glibc reference** [5]. The `render_gate.cpp` lockstep stage checks and the state gates
    (surface, closest, shadow, shader_data, glass/microfacet SVM and bounce, camera, volume, volume_boundary,
-   light_state, transparent_shadow, svm_surface and the SVM node gates) compare against the device's own CPU.
-   `render_gate.cpp` images use a Linux-prepared reference without scene exchange, and the managed-API scenes
-   have no scene dump.
-6. **Remaining function-scope arrays** (Adreno 640 candidates): `array<i32,192>` BVH stacks; the
-   `array<vec3<f32>,2|3>` locals in shader data, motion triangles, `wavefront_svm_nodes.wgsl` and the
-   smooth-normal derivative in `wavefront_svm_derivatives.wgsl` (plus its `array<vec2<f32>,3>`);
-   `array<u32,13>` in light-sample packing.
-7. **Pixel 4 XL compile time.** Over the 20 s budget, as warnings: motion `intersect_closest` and
-   `intersect_shadow` (74-87 s), emissive-triangle `shade_surface_light` (up to about 120 s),
-   node-render `prepare_surface` (about 120 s) and `prepare_surface`/`prepare_shader_data` with motion
-   (about 50-60 s). Every run stayed on the full tier and inside its wall budget.
-8. **Principled BSDF on the Adreno 730 (Samsung).** Creating the Principled probe or `prepare_surface`
-   pipeline loses the device.
-9. **Texture nodes on the Adreno 730 (Samsung).** The typed 2D fBM noise program (1.792859 against 1.791512)
-   and node-render image component 6720 exceed the practical criterion. Contraction or precision in the noise
-   chain is suspected. Node worlds pass.
-10. **Materials on the Adreno 640 (Pixel 4 XL).** Every Principled and node gate fails: SVM error 8 (24 with
-    16 in node renders) in worlds and renders, and the node SVM probe loses the device when its pipeline is
-    created. Lamps, glass, feature combination and the triangle gates pass. Candidates are the Adreno 640
-    array class (item 6) and the module-scope `svm_stack` with the larger interpreter.
-11. **Unspecialized modules exceed the Intel driver's reliable size** (as of the bump/derivative opcodes;
-    "Session close: specialization-off status"). On Linux, glass and node renders still give bit-identical
-    on/off films after a 10-minute `prepare_surface` compile; the Principled render mis-evaluates; the
-    unspecialized SVM probe mis-evaluates node graphs. On the HP the unspecialized `prepare_surface` compile
-    terminates the driver. Specialization is required on Android, so this affects the desktop diagnostic
-    path and the on/off check. The next session restores the check with a "superset" mode (every handler
-    except the bump/derivative regions a scene does not use).
-12. **Gabor texture withheld.** Ported; with its code in a large unspecialized module Intel Mesa 25.0.7
-    mis-evaluates Principled paths. Scene-specialized modules would compile it only for scenes that use it;
-    the choice is between shipping it on that mechanism, a much smaller body, or a Mesa issue.
-13. **Node render scene limit.** A 68-triangle node render scene failed one pixel at 1.25 times the
-    practical bound (not isolated), so the gate keeps 60 triangles.
-14. **Not yet ported:** true displacement (`NODE_SET_DISPLACEMENT`, displacement and vector displacement) and
-    the bump-state branch that needs the undisplaced position; tangent and motion-triangle smooth-normal
-    derivatives (rejected, error 16); `NODE_RADIAL_TILING`; AOV output; sky, IES, light falloff, AO, bevel,
-    raycast, volume coefficient and particle/hair/point info nodes.
-15. **Feature mask nearly full.** Bits 0-61 are used; only 62 and 63 are free. The next lane that needs more
-    than two specialization bits must widen the 64-bit mask.
-16. **Contractible ShaderData differentials.** `du`, `dv` and `dP` still differ by ULPs between Intel and
-    the Adreno; no current film depends on them. Make them contraction-proof if a texture-filtering gate
-    needs exact differentials.
+   light_state, transparent_shadow, svm_world) compare against the device's own CPU. Lane S moved the
+   `render_gate.cpp` images and the SVM probe gates to the device-scene glibc flow (environment opt-in); the
+   managed-API scenes have no scene dump.
+6. **Not yet ported** [14]: true displacement (`NODE_SET_DISPLACEMENT`, displacement and vector displacement) and the
+   bump-state branch that needs the undisplaced position; tangent and motion-triangle smooth-normal derivatives
+   (rejected, error 16); `NODE_RADIAL_TILING`; AOV output; sky, IES, light falloff, AO, bevel, raycast, volume
+   coefficient and particle/hair/point info nodes.
+7. **Feature mask** [15]. CLOSED (Step zero, 2026-10-22): the mask is 256 bits (`ShaderFeatures`, four 64-bit
+   words); bits 0-61 and 63 keep their meaning, bit 62 and bits 64-255 are free. See "Step zero" below.
+8. **Contractible ShaderData differentials** [16]. `du`, `dv` and `dP` still differ by ULPs between Intel and the
+   Adreno; no current film depends on them.
+
+Resolved, or closed under the device reference policy:
+- [2 of this list] Samsung principled_render stage 40 `mis_ray_pdf`: FIXED (lane S2; Principled tangent rotation: two-part
+  angle reduction and contraction-proof rotation).
+- [3 of this list] Samsung node SVM probe: (a) graph 44 with the Gabor handler FIXED (Fresnel reciprocal by `select`);
+  (b) the driver crash on the mapping-derivative probe module FIXED (`svmn_dual_direction`); `nodes_svm` passes.
+- [4] Intel Mesa 25.0.7 cold-compile crash: FIXED (lane L; 16-bit IP/VGRF fields in `brw_opt_combine_constants`,
+  light stage split, Horner loops; every compiled entry below 60,000 backend instructions, re-measured in merge 4:
+  worst 52,509).
+- [11] Specialization on/off identity on Linux: FIXED (lane L; superset groups, every group bit-identical).
+- [12] Gabor: shipped on the scene-specialized path (lane L); its Adreno 730 interaction was fixed by lane S2.
+- [13] Node render scene limit: FIXED (68 triangles; root cause recorded as an inference).
+- [8] Principled device loss on the Adreno 730: FIXED (lane S; SVM stack in a per-invocation arena slot);
+  principled_svm and principled_bounce pass. The remaining render failure is open item 4.
+- [9] Typed 2D noise program on the Adreno 730: FIXED (lane S; fade product ordering barrier).
+- [3] Long submissions: measured on the Adreno 730, longest 29 ms, no reset (lane S); the Adreno 640 part is closed
+  under the policy.
+- [2], [6], [7], [10] Adreno 640 items: closed under the device reference policy (not supported on the Adreno 640;
+  "Pixel 4 XL triage under the device reference policy"). The materials verdicts were settled in merge wave 4:
+  Principled not supported (3x), surface nodes not supported (fails).
+- Earlier: the Samsung triangle mode-2 decision (exact traversal); the HP compile memory (emissive-triangle compile
+  load); the specialization-off crashes on Android (refused by design); the Pixel feature-combination, motion and
+  volume-stack failures (function-scope array fix); the Android oracle libm differences (validation reference policy);
+  the Pixel triangle sampler's error mask (Phase E5); static instanced triangle emitters (mode 4, Phase E4); the
+  deforming-emitter sampler on the Pixel 4 XL (Phase E4).
+
+## Step zero: feature mask widened, pipeline size guard (lane z0, 2026-10-22)
+
+Feature mask. `native/cycles/pipelines.h` replaces the 64-bit `ShaderFeatureBit` enum with `ShaderFeatures`, a fixed
+array of `shader_feature_words` (4) 64-bit words: bit n is word n/64, bit n%64. Every assigned bit keeps its number
+(0-61, Gabor 63); `SF_ALL` is bits 0-61 plus 63; `SF_SUPERSET_SCENE_ONLY` is unchanged; superset groups still add the
+candidate regions in ascending bit order, now across every word. The scene census, the Principled census, the
+WGSL region markers (by name, unchanged), the probe specialization (`surface_svm_test.h`), the per-entry pipeline
+features and the superset bookkeeping use the new type. No persisted format carried the numeric mask: the
+pipeline log, the device and process reports, the superset records and the device record name features, so no
+format version changed. Compile-time checks pin bits 0, 61 and 63, the unassigned bit 62 and the word layout.
+
+Bit identity (Linux x64, Intel UHD ADL-S GT1, Mesa 25.0.7-2+deb13u1). "Before" ran the seeded merge wave 4
+binaries; "after" ran the rebuilt Step zero binaries.
+
+| Check | Before | After |
+| --- | --- | --- |
+| glass_render GPU film | `db8e84f9...` | `db8e84f9...`; all films, 4 superset groups identical |
+| principled_render GPU film | `fd3a7f2b...` | `fd3a7f2b...`; all films, 10 superset groups identical |
+| nodes_render GPU film | `b9d1da3f...` | `b9d1da3f...`; all films, 1 superset group identical |
+| compiled WGSL modules (specialized and every superset group, 48 dumps) | | byte-identical |
+| host gate, 3,146 film comparisons | merge wave 4 run | 3,128 identical; the 18 GPU films (`gpu`, `gpu-exit`, `abi-gpu`) differ between two runs of the same Step zero binary in exactly the same 18, so they vary run to run (atomic film accumulation order); practical criterion met |
+
+HP (Android x64, Intel Xe, Mesa 24.0.8). Android x64 rebuilt with the change. glass, Principled and node render
+judged runs (merge wave 4 commands, merge wave 4's device-scene glibc reference images, scene verification against
+merge wave 4's dumped scenes, which my dumps equal): GPU films `7d484ace...`, `e9f7279d...`, `96d86223...`, identical to
+merge wave 4's HP films, all PASS. Android host gate (48 exports, 1,579 film comparisons): PASS, 1,568 identical to
+merge wave 4; the 11 GPU films (`gpu`, `gpu-exit`) differ between two runs of the same binary. A second run of the
+same binary failed on one strict-required GPU film value (`gpu-exit/run.3`, 1 value, 1.49e-7, practical 0): the
+same run-to-run variation crossing the strict bound once (INFERENCE: not caused by Step zero, whose compiled WGSL
+and material films are identical). Merge wave 5 (2026-10-23): the HP Android host gate ran twice on the merged tree and
+`gpu-exit/run.3` had 0 strict differences in both runs (`native/evidence/merge-20261023/merge5/device/hp-hostgate-run1-vs-run2.txt`).
+
+Pipeline-build size guard (lane L decision 4). Each pipeline build measures the inlined WGSL size of every entry it
+compiles (`wgsl_inlined_bytes`, the measure the superset grouping uses) and warns at 1,110,000 bytes (lowered from
+lane z0's 1,200,000 at merge wave 5): 65,535 backend instructions at the densest measured density of 16.9 bytes per
+instruction (65,535 x 16.9 = 1,107,542, rounded up), about 55,500 at the central density of 20 (merge wave 4
+envelope, surface entries above 500 KB: 16.9 to 22.1 bytes per instruction on Mesa 25.0.7). Largest current gate
+entries at Step zero: node render `shade_background` 1,126,723 bytes (40,103 measured instructions),
+`prepare_surface` 1,072,302 (48,439), Principled `shade_surface` 960,137 (52,509). At that size the node-render gate
+scene would warn although its measured count is safe (a false warning is accepted; a missed one would be a driver
+crash; the message says the results are unchanged). On the merged wave-5 tree the largest gate entries are node render
+`shade_background` 1,095,718 bytes, Principled `shade_surface` 950,819 and glass `shade_surface` 658,413, so no gate
+scene warns at 1,110,000. The warning goes to stderr before the compile, into the device
+report's `warnings` and `sizeGuard` (host ABI, managed `ICapabilityReport.Warnings`) and the process report; it
+never changes the variant, the tier or `degraded`. `CODEBRIX_CYCLES_PIPELINE_SIZE_WARN_BYTES` overrides (0
+disables). Gate check `native/tools/pipeline_size_guard_check.py`: glass_render at the default and at 200,000 bytes
+(8 warnings), films bit-identical. On the HP the three material renders report the same largest entries and no
+warning. The 1,200,000-byte threshold lane z0 shipped left a gap (an entry between about 1.11 MB and 1.2 MB could pass
+65,535 instructions at the densest measured ratio without a warning); the merge wave 5 threshold closes it to the
+rounding of the 16.9 ratio.
+
+## Pixel 4 XL triage under the device reference policy (lane P, 2026-10-22)
+
+Under the device reference policy (2026-10-22), the Pixel 4 XL (Adreno 640, API 33) is not a reference device.
+The ARM64 reference is the Samsung SM-X700 (Adreno 730). A job that fails on the Pixel 4 XL, or takes more than
+three times its Samsung wall time, is not supported on the Adreno 640. There is no Pixel-only investigation or fix.
+The consumer-facing list is the AGENT-README section "NOT SUPPORTED ON ADRENO 640 (PIXEL 4 XL CLASS DEVICES)".
+The merged Pixel-specific fixes stay in place: the SVM stack outside `SvmState` (since lane S in a per-invocation
+arena slot), the volume-stack scalar arrays and the sliced sampler dispatch. The known-adapter table and the device-tier code are unchanged.
+
+Method. The tree is 3392df3d. The Android arm64 gates, render_replay and the validation APK were built from that
+tree, with the runtime unchanged (`libcodebrix_wgpu.so` hash-verified before every job). Each job ran alone on the
+device, with the same flags as the merge-wave-3 Pixel chain:
+- image and sampler gates: the device-scene glibc reference flow;
+- materials: the exported Linux references;
+- every gate: `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS=20000`, compile-budget overruns as warnings only;
+- the full tier, chosen by the table.
+
+The per-job hard timeout is the cutoff, 3 x the Samsung wall. The 3x rule carries a 5-second floor on cutoffs
+(adb launch latency): cutoff = max(5 s, 3 x the Samsung wall). Samsung walls
+come from:
+- `native/work/merge3`, else `merge2`, else `merge1` device runs (in main);
+- for four jobs with no Samsung record, one lane-P timing session on the Samsung: object and deforming stationary
+  images, and lighting_mis replays 0 and 1.
+
+A job still running at its cutoff was stopped and recorded as `FAIL (3x cutoff at N s)`. The gate process ended
+with its adb session, and the post-cutoff process lists show no codebrix process. Replays of a device capture run
+only when their source job passed. The Linux triangle and terminator captures were regenerated in the lane-P tree,
+because merge 3 had deleted their arenas. The Pixel walls are single runs. Evidence: lane P handoff `device/`
+(per-job `runs/pixel/<corpus>-p-<step>-<n>/`, the logs, and `triage-table.{json,md}`).
+
+| Corpus | Job | Samsung wall (s) | Pixel wall (s) | Cutoff (s) | Pixel result | Verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| triangle | triangle_sample | 25.8 (fails) | 77.3 | 77.0 | FAIL (3x cutoff at 77 s) | NOT SUPPORTED (3x) |
+| triangle | surface | 97.4 | 199.7 | 292.0 | PASS | SUPPORTED |
+| triangle | triangle_lighting | 159.0 | 477.2 | 477.0 | FAIL (3x cutoff at 477 s) | NOT SUPPORTED (3x) |
+| triangle | replay-0 | 21.4 | - | 64.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| triangle | replay-1 | 39.1 | - | 117.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| triangle | replay-2 | 39.2 | - | 118.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| triangle | replay-3 | 39.4 | - | 118.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| triangle | replay-4 | 39.0 | - | 117.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| triangle | replay-5 | 87.0 | - | 261.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| emitter | emitter_sample | 11.3 | 21.4 | 34.0 | PASS | SUPPORTED |
+| hostcap-linux-triangle | tri0 | 21.7 | 61.4 | 65.0 | PASS | SUPPORTED |
+| hostcap-linux-triangle | tri1 | 40.0 | 120.0 | 120.0 | FAIL (3x cutoff at 120 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-triangle | tri2 | 40.0 | 120.1 | 120.0 | FAIL (3x cutoff at 120 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-triangle | tri3 | 40.0 | 120.0 | 120.0 | FAIL (3x cutoff at 120 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-triangle | tri4 | 39.1 | 117.1 | 117.0 | FAIL (3x cutoff at 117 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-triangle | tri5 | 87.9 | 264.1 | 264.0 | FAIL (3x cutoff at 264 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-terminator | term0 | 17.2 | 39.2 | 52.0 | PASS | SUPPORTED |
+| hostcap-linux-terminator | term1 | 19.6 | 51.5 | 59.0 | PASS | SUPPORTED |
+| hostcap-linux-terminator | term2 | 19.5 | 51.2 | 58.0 | PASS | SUPPORTED |
+| hostcap-linux-terminator | term3 | 19.4 | 50.6 | 58.0 | PASS | SUPPORTED |
+| hostcap-linux-terminator | term4 | 33.7 | 101.1 | 101.0 | FAIL (3x cutoff at 101 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-terminator | term5 | 33.7 | 101.1 | 101.0 | FAIL (3x cutoff at 101 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-terminator | term6 | 33.5 | 100.1 | 100.0 | FAIL (3x cutoff at 100 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-terminator | term7 | 33.7 | 101.1 | 101.0 | FAIL (3x cutoff at 101 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-terminator | term8 | 33.7 | 101.1 | 101.0 | FAIL (3x cutoff at 101 s) | NOT SUPPORTED (3x) |
+| hostcap-linux-terminator | term9 | 72.8 | 218.0 | 218.0 | FAIL (3x cutoff at 218 s) | NOT SUPPORTED (3x) |
+| materials | nodes_svm | 879.2 (fails) | 158.3 | 2638.0 | FAIL: device lost | PROVISIONAL (NOT SUPPORTED (fails)) |
+| materials | nodes_world | 509.8 | 6.8 | 1529.0 | FAIL: SVM error 8 | NOT SUPPORTED (fails) |
+| materials | nodes_render | 153.2 (fails) | 143.1 | 460.0 | FAIL: SVM error 24 (8+16) | PROVISIONAL (NOT SUPPORTED (fails)) |
+| materials | nodes-replay | - (fails) | - | - | not run (no Samsung baseline, deferred to merge) | NO BASELINE |
+| materials | principled_svm | 71.2 (fails) | 115.0 | 214.0 | FAIL: SVM error 8 (probe) | PROVISIONAL (NOT SUPPORTED (fails)) |
+| materials | principled_bounce | 26.3 (fails) | 79.2 | 79.0 | FAIL (3x cutoff at 79 s) | PROVISIONAL (NOT SUPPORTED (3x)) |
+| materials | principled_render | 28.7 (fails) | 86.2 | 86.0 | FAIL (3x cutoff at 86 s) | PROVISIONAL (NOT SUPPORTED (3x)) |
+| materials | principled-replay | - (fails) | - | - | not run (no Samsung baseline, deferred to merge) | NO BASELINE |
+| lighting | broad_lighting | 68.3 | 203.7 | 205.0 | PASS | SUPPORTED |
+| lighting | broad_lighting-replay-0 | 20.3 | 61.1 | 61.0 | FAIL (3x cutoff at 61 s) | NOT SUPPORTED (3x) |
+| lighting | broad_lighting-replay-1 | 20.4 | 61.1 | 61.0 | FAIL (3x cutoff at 61 s) | NOT SUPPORTED (3x) |
+| lighting | feature_combination | 42.8 | 128.2 | 128.0 | FAIL (3x cutoff at 128 s) | NOT SUPPORTED (3x) |
+| lighting | feature_combination-replay-0 | 27.6 | - | 83.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| lighting | feature_combination-replay-1 | 27.9 | - | 84.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| lighting | lighting_mis | 33.4 | 96.4 | 100.0 | PASS | SUPPORTED |
+| lighting | lighting_mis-replay-0 | 15.6 | 47.2 | 47.0 | FAIL (3x cutoff at 47 s) | NOT SUPPORTED (3x) |
+| lighting | lighting_mis-replay-1 | 16.0 | 48.2 | 48.0 | FAIL (3x cutoff at 48 s) | NOT SUPPORTED (3x) |
+| regression | glass_render | 79.9 | 121.4 | 240.0 | PASS | SUPPORTED |
+| regression | lighting_mis | 33.4 | 96.4 | 100.0 | PASS | SUPPORTED |
+| regression | transparent_lighting | 107.5 | 64.7 | 322.0 | FAIL: device lost | NOT SUPPORTED (fails) |
+| transparent | transparent_shadow | 16.1 | 13.9 | 48.0 | FAIL: invalid state/data (mask 1) | NOT SUPPORTED (fails) |
+| transparent | transparent_lighting | 106.9 | 64.7 | 321.0 | FAIL: device lost | NOT SUPPORTED (fails) |
+| transparent | transparent_lighting-replay-0 | 23.7 | - | 71.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| transparent | transparent_lighting-replay-1 | 23.7 | - | 71.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| transparent | transparent_lighting-replay-2 | 30.5 | - | 92.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| transparent | transparent_lighting-replay-3 | 30.9 | - | 93.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| transparent | transparent_lighting-replay-4 | 31.4 | - | 94.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| transparent | transparent_lighting-replay-5 | 31.9 | - | 96.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| transparent | transparent_lighting-replay-6 | 30.2 | - | 91.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| transparent | transparent_lighting-replay-7 | 30.8 | - | 92.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| transparent | transparent-shadow-replay-direct | 3.9 | - | 12.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| transparent | transparent-shadow-replay-indexed | 4.0 | - | 12.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | shadow_terminator | 147.4 | 442.3 | 442.0 | FAIL (3x cutoff at 442 s) | NOT SUPPORTED (3x) |
+| terminator | terminator-replay-0 | 15.3 | - | 46.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | terminator-replay-1 | 17.5 | - | 52.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | terminator-replay-2 | 17.6 | - | 53.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | terminator-replay-3 | 17.6 | - | 53.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | terminator-replay-4 | 29.8 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | terminator-replay-5 | 29.8 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | terminator-replay-6 | 29.8 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | terminator-replay-7 | 29.6 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | terminator-replay-8 | 29.9 | - | 90.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| terminator | terminator-replay-9 | 67.7 | - | 203.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| spec-refusal | glass_render-spec | 76.8 | 121.4 | 230.0 | PASS | SUPPORTED |
+| spec-refusal | glass_render-nospec-refused | 0.3 | 0.9 | 5.0 | PASS | SUPPORTED |
+| motion | object-moving-images | 84.9 | 252.9 | 255.0 | FAIL: SVM error 8 | NOT SUPPORTED (fails) |
+| motion | object-replay-motion-0 | 66.8 | - | 200.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| motion | object-stationary-images | 36.2 | 109.2 | 109.0 | FAIL (3x cutoff at 109 s) | NOT SUPPORTED (3x) |
+| motion | deforming-moving-images | 110.8 | 116.0 | 332.0 | FAIL: SVM error 8 | NOT SUPPORTED (fails) |
+| motion | deforming-replay-motion-0 | 29.6 | - | 89.0 | not run (source job failed) | NOT RUN (source job not supported) |
+| motion | deforming-stationary-images | 36.3 | 109.2 | 109.0 | FAIL (3x cutoff at 109 s) | NOT SUPPORTED (3x) |
+| motion | camera-static | 7.9 | 10.0 | 24.0 | PASS | SUPPORTED |
+| motion | camera-motion | 14.2 | 37.3 | 43.0 | PASS | SUPPORTED |
+| precision | closest | 21.4 | 40.4 | 64.0 | PASS | SUPPORTED |
+| precision | shadow | 16.2 | 16.7 | 49.0 | PASS | SUPPORTED |
+| precision | shadow-replay-direct | 1.5 | 2.0 | 5.0 | PASS | SUPPORTED |
+| precision | shadow-replay-indexed | 1.5 | 2.0 | 5.0 | PASS | SUPPORTED |
+| volume | volume-state | 13.2 | 24.9 | 40.0 | PASS | SUPPORTED |
+| volume | volume-absorption | 120.8 | 140.1 | 362.0 | PASS | SUPPORTED |
+| volume | volume-isotropic | 172.0 | 179.2 | 516.0 | PASS | SUPPORTED |
+| volume | volume-forward | 170.8 | 180.4 | 512.0 | PASS | SUPPORTED |
+| volume | volume-backward | 171.7 | 182.8 | 515.0 | PASS | SUPPORTED |
+| volume | boundary-state | 32.4 | 81.0 | 97.0 | PASS | SUPPORTED |
+| volume | boundary-compaction-guard | 6.4 | 19.2 | 19.0 | FAIL (3x cutoff at 19 s) | NOT SUPPORTED (3x) |
+| volume | closed-single | 214.4 | 219.4 | 643.0 | PASS | SUPPORTED |
+| volume | closed-overlap | 319.9 | 345.9 | 960.0 | PASS | SUPPORTED |
+| volume | closed-inside | 302.9 | 337.5 | 909.0 | PASS | SUPPORTED |
+| volume | volume-replay-absorption | 19.5 | 50.1 | 58.0 | PASS | SUPPORTED |
+| volume | volume-replay-isotropic | 20.6 | 50.5 | 62.0 | PASS | SUPPORTED |
+| volume | volume-replay-forward | 20.5 | 50.3 | 62.0 | PASS | SUPPORTED |
+| volume | volume-replay-backward | 20.7 | 54.8 | 62.0 | PASS | SUPPORTED |
+| volume | closed-replay-single | 21.5 | 54.1 | 64.0 | PASS | SUPPORTED |
+| volume | closed-replay-overlap | 33.9 | 102.1 | 102.0 | FAIL (3x cutoff at 102 s) | NOT SUPPORTED (3x) |
+| volume | closed-replay-inside | 34.1 | 102.2 | 102.0 | FAIL (3x cutoff at 102 s) | NOT SUPPORTED (3x) |
+| app | managed-app-3-scenes | 134.4 | >403 (result timeout) | 403.0 | FAIL (3x cutoff at 403 s) | NOT SUPPORTED (3x) |
+| motion (item 2) | object-moving-images, device oracle, no reference import | 84.9 | 255.3 | 255.0 | FAIL (3x cutoff at 255 s) | NOT SUPPORTED (3x) |
+| motion (item 2) | object-moving-images, CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2, no reference import | 84.9 | 251.8 | 255.0 | FAIL: SVM error 8 | NOT SUPPORTED (fails) |
+
+Summary:
+- Supported (within 3x): the point-lamp emitter probe; surface state; perspective camera, static and with motion;
+  the closest and shadow precision fixtures and their replays; lighting_mis and broad lighting; the specialized
+  glass render; the specialization-off refusal; every homogeneous and closed volume render (including camera
+  inside) with most volume replays; Linux capture replays tri0 and term0-3.
+- Fails on the Adreno 640:
+  - SVM error 8: object motion (with the x64 reference oracle's arithmetic), deformation motion and node worlds;
+  - mask 1 (invalid state): transparent shadow;
+  - device lost at queue submit: transparent lighting.
+  The two transparent gates passed on this device in earlier sessions; they fail in this single run, and under the
+  policy they were not investigated.
+- More than 3x:
+  - the emissive-triangle sampler and images;
+  - feature_combination and shadow_terminator;
+  - stationary motion-capable scenes;
+  - the managed validation app (result not delivered within 403 s);
+  - device replays of lighting captures, overlapping closed volumes and most Linux triangle and terminator captures;
+  - the volume compaction guard case.
+- Materials, settled at merge wave 4 (2026-10-22) after lane S, one run each with cutoff max(5 s, 3 x that merge's
+  Samsung wall): principled_svm (cutoff 335 s), principled_bounce (915 s), principled_render (148 s) and nodes_svm
+  (461 s) were stopped at their cutoffs; nodes_render failed with SVM error 24 (8 + 16) at 217 s (cutoff 386 s). The
+  materials and node replays did not run (their source jobs did not pass). Principled BSDF materials are therefore not
+  supported on the Adreno 640 (3x) and texture/colour/utility nodes in surface shaders are not supported (fails). The
+  Samsung walls of principled_render, nodes_svm and nodes_render are times to their (open) Samsung failures. Evidence:
+  `native/work/merge4/runs/pixel/materials-p-*` and `native/work/merge4/device/pixel-cutoffs.json`.
+
+Dispositions DECIDED by Jeremy (2026-10-22): the following are definitively not supported on Pixel 4 level hardware
+(Adreno 640) and will NOT be rerun: object and deformation motion blur, node-based world shaders, transparent shadows
+and transparent lighting, emissive triangle lights, feature combination, shadow terminator, stationary renders of
+motion-capable scenes, the managed validation app, and most on-device replays. A full functionality test on a Pixel 5
+(Adreno 620) later is the one exception the policy allows.
+
+Diagnostic-only results (maintainer material; not in the consumer AGENT-README):
+- **The x64 reference-oracle import is not supported on Adreno 640.** This is
+  `CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2`, which the image gates select when they import a glibc
+  reference. Object motion fails with SVM error 8 under it (item 2).
+- **On-device replays of captured command streams exceed 3x** for these captures: lighting (lighting_mis,
+  broad_lighting), overlapping and camera-inside closed volumes, Linux triangle captures tri1-5 and Linux terminator
+  captures term4-9. These pass on the Pixel: the precision shadow replays, the volume replays (absorption, isotropic,
+  forward, backward, closed-single), tri0 and term0-3.
+- **The volume-boundary malformed-input (compaction) guard case exceeds 3x:** 19.2 s against a 19 s cutoff
+  (`CODEBRIX_VOLUME_COMPACTION_CASE=1`). The volume-boundary state checks pass.
+
+Compile times on the Pixel (recorded jobs; item 7). Every job stayed on the full tier, and the slow entries were
+warnings only:
+- node-render `prepare_surface`: 119.7 s;
+- object motion: `intersect_closest` 85 s, `prepare_shader_data` 58 s, `prepare_surface` 56 s;
+- deformation motion: `prepare_surface` 54 s;
+- lighting: `shade_surface` 27-32 s;
+- closed volumes: `shade_volume` 29-30 s;
+- glass: `shade_surface` 24 s;
+- camera motion: `init_camera` 27 s.
+Jobs stopped at the cutoff left no pulled pipeline log. Under the 3x rule, the compile time is part of each job's
+wall time.
+
+
+## Samsung Galaxy S20 FE 5G (Adreno 650) sweep (lane Q, 2026-10-22)
+
+A sweep only: every completed device functionality was run once on a new device, with no product, gate,
+tolerance or tier-table change and no diagnosis. Tree 3392df3d; runtime unchanged
+(CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433; staged `libcodebrix_wgpu.so` arm64 `8113cbfa...`
+hash-verified before every corpus). The runner is the merge-wave-3 tool set retargeted to this device
+(`native/work/q/tools`, remote prefix `codebrix-q-`). Image and sampler gates were judged against the glibc reference
+computed on Linux x64 from the S20's own dumped scene. Their replays were judged against the same reference. The
+S20's bionic CPU result was recorded as the diagnostic column. The state, SVM and world gates compare against the
+S20's own CPU. `principled_render` and `nodes_render` used the Linux-prepared export. All of this matches the
+tablet runs.
+
+**Device identity.**
+- Device: SM-G781U1, serial RFCRB0MPHYH, Android 13 / API 33, board `kona` (Snapdragon 865), arm64-v8a,
+  5.7 GB RAM.
+- Build: `samsung/r8quex/r8q:13/TP1A.220624.014/G781U1UESNGYI1`.
+- WebGPU adapter:
+  - device `Adreno (TM) 650`, vendor `Qualcomm Technologies Inc. Adreno Vulkan Driver`, vendor id 20803,
+    device id 100990978;
+  - driver description `Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version:
+    EV031.32.02.10`.
+- Tier: the adapter is not in the known-adapter table (`knownAdapter` null).
+  - Every pipeline of every run used the full tier, reason `default` ("first run on this device: full fidelity"),
+    with the unknown-mobile 20 s compile budget (`budgetSource` `unknown-mobile`).
+  - Slow compiles only warned. No run changed tier or fell back to conservative.
+- Init canary (opt-in, `glass_render`): passed in 1,586 ms.
+- Device record: written in the documented format (status `valid`; 9 full-tier stages; no failure or breadcrumb).
+  The persisted copy is under `native/work/q/runs/s20/canary-q/output/canary-glass_render/record/`.
+
+**Sweep table.** Walls are the gate run itself, excluding the scene-dump and reference steps. Tablet walls and
+results are the SM-X700's latest runs (merge waves 1-3). The host-gate and app rows count the whole tool. The
+Evidence column is relative to `native/work/q/`. No job reached its timeout, which was max(600 s, 3 x the tablet
+wall).
+
+| Corpus | Job | S20 wall s | Tablet wall s | Tablet | S20 | Class | practical / strict / max (vs glibc unless "local") | Compile > 20 s | Evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| canary-q | canary-glass_render | 97.9 | 79.9 | PASS (glass_render, no canary run) | PASS | - | local 33 / 9.54e-07 | - | runs/s20/canary-q |
+| emitter-q | emitter_sample | 22.4 | 11.3 | PASS | PASS | - | 0 / 125 / 9.06e-06 | - | runs/s20/emitter-q |
+| hostcap-linux-terminator-q2 | term replays (10) | 42-368 | 17-73 | PASS | PASS 10/10 | - | readbacks 428/418/418/428/455/446/446/455/407/443; strict 0/0/0/0/27/19/19/27/8/21; max 6.2e-05 | - | runs/s20/hostcap-linux-terminator-q2 |
+| hostcap-linux-triangle-q2 | tri replays (6) | 44-367 | 22-88 | PASS | PASS 6/6 | - | readbacks 289/417/415/473/415/464; strict 12/0/12/233/5/237; max 1.79e-06 | - | runs/s20/hostcap-linux-triangle-q2 |
+| lighting-fc | feature_combination | 91.3 | 42.8 | PASS | PASS | - | 0 / 1179 / 6.02e-06 | init_camera 22 | runs/s20/lighting-fc |
+| lighting-fc | feature_combination replays (2) | 72-72 | 28-28 | PASS | PASS 2/2 | - | readbacks 408/461; strict 12/9; max 2.41e-06 | - | runs/s20/lighting-fc |
+| lighting-q | lighting_mis | 87.4 | 33.4 | PASS | PASS | - | 0 / 1057 / 6.08e-06 | shade_surface 27 | runs/s20/lighting-q |
+| lighting-q | broad_lighting | 174.9 | 68.3 | PASS | PASS | - | 0 / 951 / 3.81e-05 | shade_surface 27, shade_surface 27 | runs/s20/lighting-q |
+| lighting-q | lighting_mis replays (2) | 46-49 | - | not run on tablet | PASS 2/2 | - | readbacks 414/450; strict 0/0; max 1.19e-07 | - | runs/s20/lighting-q |
+| lighting-q | broad_lighting replays (2) | 45-46 | 20-20 | PASS | PASS 2/2 | - | readbacks 414/450; strict 0/13; max 4.17e-07 | - | runs/s20/lighting-q |
+| materials-nr | nodes_render | 14.0 | 153.2 | FAIL pixel 6720 (item 9) | FAIL | device lost | - | - | runs/s20/materials-nr |
+| materials-nr | nodes-replay | - | - | not run (source failed) | FAIL | not run: source job failed | - | - | runs/s20/materials-nr |
+| materials-nsvm | nodes_svm | 19.2 | 879.2 | FAIL typed 2D noise (item 9) | FAIL | device lost | - | - | runs/s20/materials-nsvm |
+| materials-nw | nodes_world | 6.1 | 509.8 | PASS | FAIL | numerical practical (GPU kernel reported invalid data) | - | - | runs/s20/materials-nw |
+| materials-nwiso | nodes_world | 6.1 | 509.8 | PASS | FAIL | numerical practical (GPU kernel reported invalid data) | - | - | runs/s20/materials-nwiso |
+| materials-pr | principled_svm | 152.0 | 71.2 | FAIL device lost (item 8) | FAIL | numerical practical | - | - | runs/s20/materials-pr |
+| materials-pr | principled_bounce | 251.6 | 26.3 | FAIL device lost (item 8) | FAIL | numerical practical (GPU kernel reported invalid data) | - | prepare_surface 152, shade_surface 68 | runs/s20/materials-pr |
+| materials-pr | principled_render | 255.9 | 28.7 | FAIL device lost (item 8) | FAIL | numerical practical (GPU kernel reported invalid data) | - | prepare_surface 151, shade_surface 68 | runs/s20/materials-pr |
+| materials-pr | principled-replay | - | - | not run (source failed) | FAIL | not run: source job failed | - | - | runs/s20/materials-pr |
+| motion-q | object-moving-images | 194.1 | 84.9 | PASS | FAIL | numerical practical (GPU kernel reported invalid data) | - | intersect_closest 74, prepare_shader_data 43 | runs/s20/motion-q |
+| motion-q | deforming-moving-images | 84.0 | 110.8 | PASS | FAIL | numerical practical (GPU kernel reported invalid data) | - | prepare_surface 43 | runs/s20/motion-q |
+| motion-q | camera-static | 9.1 | 7.9 | PASS | PASS | - | local 0 / 0 | - | runs/s20/motion-q |
+| motion-q | camera-motion | 29.3 | 14.2 | PASS | PASS | - | local 2818 / 0 | init_camera 20 | runs/s20/motion-q |
+| motion-q | object replays (1) | - | 67-67 | PASS | not run 1/1 (source failed) | not run: source job failed | - | - | runs/s20/motion-q |
+| motion-q | deforming replays (1) | - | 30-30 | PASS | not run 1/1 (source failed) | not run: source job failed | - | - | runs/s20/motion-q |
+| precision-q | closest | 33.1 | 21.4 | PASS | PASS | - | local 0 / 0 | - | runs/s20/precision-q |
+| precision-q | shadow | 12.8 | 16.2 | PASS | PASS | - | local 0 / 5.96e-08 | - | runs/s20/precision-q |
+| precision-q | shadow replays (2) | 2-2 | 2-2 | PASS | PASS 2/2 | - | readbacks 4/4; strict 0/0; max 5.96e-08 | - | runs/s20/precision-q |
+| regression-q | glass_render | 95.7 | 79.9 | PASS | PASS | - | 0 / 100 / 1.91e-06 | - | runs/s20/regression-q |
+| regression-q | lighting_mis | 63.4 | 33.4 | PASS | PASS | - | 0 / 1057 / 6.08e-06 | - | runs/s20/regression-q |
+| regression-q | transparent_lighting | 46.9 | 106.9 | PASS | FAIL | device lost | - | - | runs/s20/regression-q |
+| spec-refusal-q | glass_render-spec | 101.0 | 76.8 | PASS | PASS | - | local 33 / 9.54e-07 | - | runs/s20/spec-refusal-q |
+| spec-refusal-q | glass_render-nospec-refused | 0.3 | 0.3 | PASS (refused) | PASS | - | - | - | runs/s20/spec-refusal-q |
+| terminator-q | shadow_terminator | 421.2 | 147.4 | PASS | PASS | - | 0 / 120 / 6.2e-05 | intersect_closest 75, intersect_shadow 56 | runs/s20/terminator-q |
+| terminator-q | terminator replays (10) | 28-376 | 15-68 | PASS | PASS 10/10 | - | readbacks 428/418/418/428/455/446/446/455/407/443; strict 0/0/0/0/27/19/19/27/8/20; max 6.2e-05 | - | runs/s20/terminator-q |
+| transparent-iso | transparent_shadow | 10.2 | 16.1 | PASS | FAIL | numerical practical (GPU kernel reported invalid data) | - | - | runs/s20/transparent-iso |
+| transparent-iso | transparent-shadow replays (2) | - | 4-4 | PASS | not run 2/2 (source failed) | not run: source job failed | - | - | runs/s20/transparent-iso |
+| transparent-q | transparent_shadow | 10.4 | 16.1 | PASS | FAIL | numerical practical (GPU kernel reported invalid data) | - | - | runs/s20/transparent-q |
+| transparent-q | transparent_lighting | 46.8 | 106.9 | PASS | FAIL | device lost | - | - | runs/s20/transparent-q |
+| transparent-q | transparent_lighting replays (8) | - | 24-32 | PASS | not run 8/8 (source failed) | not run: source job failed | - | - | runs/s20/transparent-q |
+| transparent-q | transparent-shadow replays (2) | - | 4-4 | PASS | not run 2/2 (source failed) | not run: source job failed | - | - | runs/s20/transparent-q |
+| triangle-q | triangle_sample | 80.1 | 25.8 | FAIL 2 practical (sample 3133) | PASS | - | 0 / 865 / 0.000488 | - | runs/s20/triangle-q |
+| triangle-q | surface | 141.3 | 97.4 | PASS | PASS | - | local 1244 / 3.81e-06 | - | runs/s20/triangle-q |
+| triangle-q | triangle_lighting | 472.9 | 159.0 | PASS | PASS | - | 0 / 490 / 1.79e-06 | shade_surface_light 107, intersect_closest 75 | runs/s20/triangle-q |
+| triangle-q | triangle_lighting replays (6) | 43-356 | 21-87 | PASS | PASS 6/6 | - | readbacks 289/417/415/473/415/464; strict 12/0/6/233/8/231; max 1.79e-06 | - | runs/s20/triangle-q |
+| volume-ci | closed-inside | 281.5 | 302.9 | PASS | PASS | - | local 1788 / 1.53e-05 | shade_volume 21 | runs/s20/volume-ci |
+| volume-ci | closed replays (1) | 72-72 | 34-34 | PASS | PASS 1/1 | - | readbacks 1116; strict 1788; max 1.53e-05 | - | runs/s20/volume-ci |
+| volume-co | closed-overlap | 293.9 | 319.9 | PASS | PASS | - | local 857 / 3.05e-05 | shade_volume 20 | runs/s20/volume-co |
+| volume-co | closed replays (1) | 71-71 | 34-34 | PASS | PASS 1/1 | - | readbacks 1192; strict 857; max 3.05e-05 | - | runs/s20/volume-co |
+| volume-cs | closed-single | 196.5 | 214.4 | PASS | PASS | - | local 608 / 3.05e-05 | - | runs/s20/volume-cs |
+| volume-cs | closed replays (1) | 40-40 | 22-22 | PASS | PASS 1/1 | - | readbacks 838; strict 608; max 3.05e-05 | - | runs/s20/volume-cs |
+| volume-q | volume-state | 19.4 | 13.2 | PASS | PASS | - | local 8551 / 0.00013 | - | runs/s20/volume-q |
+| volume-q | volume-absorption | 124.4 | 120.8 | PASS | PASS | - | local 552 / 2.29e-05 | - | runs/s20/volume-q |
+| volume-q | volume-isotropic | 179.0 | 172.0 | PASS | PASS | - | local 1439 / 2.29e-05 | - | runs/s20/volume-q |
+| volume-q | volume-forward | 220.6 | 170.8 | PASS | PASS | - | local 1472 / 3.62e-05 | - | runs/s20/volume-q |
+| volume-q | volume-backward | 219.1 | 171.7 | PASS | PASS | - | local 1382 / 2.29e-05 | - | runs/s20/volume-q |
+| volume-q | boundary-state | 83.2 | 32.4 | PASS | PASS | - | local 6492 / 0.000244 | shade_surface 24 | runs/s20/volume-q |
+| volume-q | boundary-compaction-guard | 21.6 | 6.4 | PASS | PASS | - | local 0 / 0 | - | runs/s20/volume-q |
+| volume-q | volume replays (4) | 55-56 | 20-21 | PASS | PASS 4/4 | - | readbacks 464/672/664/664; strict 552/1439/1472/1382; max 3.62e-05 | - | runs/s20/volume-q |
+| host-gate | android-host-gate | 136 | 62.0 | PASS 48 exports (wall from file times) | PASS | - | 48 exports, 1579 films, 0 practical, 0 required strict, max 1.43e-05 (cpu/cpu-exit/reload/stress/gpu/gpu-exit all rc 0) | - | device/codebrix-q-host-gate (log device/android-host-gate.log) |
+| app | app-webgpu | 379 | 173.0 | PASS 0 practical | PASS | - | 3 scenes vs Linux glibc films: 0 practical, 921 strict, max 1.38e-05; tier full; cancellation ok=True; capability warning: pipeline 'shade_surface_light' took 53882 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver | shade_surface_light 54 | android-app/webgpu-s20 (log device/app-s20.log) |
+
+The merge-wave-3 Linux captures could not be replayed as they were. merge3's scratch cleanup had deleted their
+`run.arena.bin` inputs, so the first hostcap attempt stopped at the first push. That was a harness input problem, not
+a device result. The captures were re-recorded on Linux in this worktree (`triangle_lighting_gate.py` and
+`shadow_terminator_gate.py`, both pass) and replayed as `hostcap-*-q2`. `transparent_shadow` and `nodes_world` each ran
+directly after a device-lost process, so each was repeated once in isolation (`transparent-iso`, `materials-nwiso`;
+fresh stage, 60 s idle). Both reproduce.
+
+**Differs from the tablet (SM-X700, Adreno 730).**
+- These pass on the tablet and fail on the S20:
+  - `transparent_lighting` (regression and transparent corpora): the device is lost in mode 0
+    (`wgpuQueueSubmit: Parent device is lost`, exit 134). Its 8 replays did not run.
+  - `transparent_shadow`: the kernel reports invalid data, mask 1. Its 2 replays did not run.
+  - The object- and deforming-motion images: SVM error 8 (`invalid/uninitialized SVM stack`). Their replays did not
+    run. Camera static and motion pass.
+  - `nodes_world`: SVM error 8 at world 0.
+- `triangle_sample` passes on the S20 (0 practical, 865 strict) and fails on the tablet (open item 1). The S20's own
+  bionic CPU differs from glibc there by 72 practical values.
+- These fail on both devices, in different ways:
+  - Principled SVM, bounce and render: SVM error 8 on the S20; on the tablet the device is lost (open item 8).
+  - `nodes_svm`: the S20 loses the device creating `surface_svm_probe`; on the tablet the typed 2D noise program
+    fails (item 9).
+  - `nodes_render`: the S20 loses the device creating `prepare_surface`; on the tablet image component 6720 fails
+    (item 9).
+- Speed: the volume renders take 0.9-1.3 x the tablet's wall. Triangle, lighting, terminator, boundary-state and
+  replay jobs take 2-6 x.
+- Compile times: compiles over the 20 s unknown-mobile budget (warnings only) reached:
+  - Principled `prepare_surface` 152 s;
+  - emissive-triangle `shade_surface_light` 107 s;
+  - motion and terminator `intersect_closest` 75 s;
+  - `shade_surface_light` 54 s in the managed app (reported as its capability warning).
+- The SVM error 8 failures (motion images, node world, Principled) have the same signature as the Adreno 640 items 2
+  and 10. This is an observation, not a diagnosis.
+
+The S20 was left with no `codebrix-q-*` folders, no lane Q app and no codebrix process. Folders and packages that were
+on the device before this sweep (`codebrix-ncdbg`, four `com.codebrix.*` test apps) were not touched.
+
+### S20 rerun on the merged tree (merge wave 4, 2026-10-22)
+
+Lane Q's failing jobs, rerun once each on the merge-wave-4 tree (lanes L, S, P), one job per run, timeout max(600 s,
+3 x the merge-wave-4 Samsung wall), same reference flow as the tablet (device-scene glibc). Adapter "Adreno (TM) 650",
+unknown to the tier table (full tier by default, 20 s unknown-mobile compile budget); the table was not changed.
+Record only; nothing was fixed. Evidence: `native/work/merge4/runs/s20/`.
+
+| Job | Timeout s | S20 wall s | Result (first error line) |
+| --- | --- | --- | --- |
+| transparent_lighting | 600 | 47.5 | FAIL: `Parent device is lost` (8 replays not run) |
+| transparent_shadow | 600 | 11.0 | FAIL: invalid data (mask 1): invalid state/data |
+| object-moving-images | 600 | 110.9 | FAIL: lighting stage, mask 8 (invalid/uninitialized SVM stack) |
+| deforming-moving-images | 600 | 82.7 | FAIL: lighting stage, mask 8 (invalid/uninitialized SVM stack) |
+| nodes_world | 1452 | 6.2 | FAIL: compiled world 0, mask 8 (invalid/uninitialized SVM stack) |
+| principled_svm | 600 | 401.1 | PASS |
+| principled_bounce | 915 | 915.3 | TIMEOUT at the cutoff |
+| principled_render | 600 | 233.1 | FAIL: stage 40 `path.mis_ray_pdf` 1751.469 against 1747.274 (as the Samsung) |
+| nodes_svm | 600 | - | FAIL: the scene-dump pass lost the device (`wgpuDeviceCreateComputePipeline: Parent device is lost`) |
+| nodes_render | 600 | 17.2 | FAIL: `wgpuDeviceCreateComputePipeline: Parent device is lost` |
+
+principled_svm now passes on the S20 (it failed in lane Q's sweep on 3392df3d; the merged tree adds lane S's arena
+stack). The SVM-stack (mask 8) failures of motion and node worlds remain on the merged tree.
+
+## Pipeline cache (lane ZC, 2026-10-22)
+
+The shipped CodeBrix.WebGpu.Native 1.0.290.1433 runtime exposes no pipeline-cache API on any backend
+(`WGPUNativeFeature_PipelineCache` is advertised and can be enabled, but no export creates, attaches or serializes
+a cache; audit and the export list a future runtime would need: MAINTAINER-README.txt "PIPELINE CACHE"). The host
+therefore has no cache of its own; what remains is each driver's cache, measured here with the seeded merge-4
+binaries (no code change). Evidence: `native/work/zc-pipeline-cache/` (`runs/linux-seeded/results.json`,
+`audit/probe-*.txt`, `audit/driver-cache-strings.txt`).
+
+Linux, Intel UHD ADL-S, Mesa 25.0.7: Mesa's on-disk cache serves every pipeline. Cold = fresh
+`MESA_SHADER_CACHE_DIR`, warm = the same directory again, disabled = `MESA_SHADER_CACHE_DISABLE=true`. The GPU film
+is bit-identical in all three runs and equal to the reference film.
+
+| Gate | Cold wall / compile s | Warm wall / compile s | Disabled wall / compile s | Cache size | GPU film |
+| --- | --- | --- | --- | --- | --- |
+| glass_render | 44.4 / 22.6 | 27.7 / 0.022 | 43.9 / 21.7 | 4.25 MB | `db8e84f9…` all three |
+| principled_render | 65.0 / 47.7 | 16.5 / 0.025 | 61.4 / 44.8 | 5.67 MB | `fd3a7f2b…` all three |
+| nodes_render | 53.8 / 39.6 | 16.4 / 0.027 | 52.5 / 38.4 | 5.21 MB | `b9d1da3f…` all three |
+| host ABI consumer test (gpu, 59 pipelines) | 51.5 / 49.7 | 1.8 / 0.127 | - | - | not reproducible run to run (atomic accumulation; differs between the two warm runs too) |
+
+The largest single pipeline (Principled `prepare_surface`) drops from 18.9 s to 4 ms. Every merge-report wall on
+Linux is cold, because the runners give each run a fresh scratch cache.
+
+HP, Intel Xe TGL GT2, Mesa 24.0.8 (Bliss OS): no driver cache. With `MESA_SHADER_CACHE_DIR` or `XDG_CACHE_HOME`
+pointing at a writable directory the driver writes nothing and a repeated compile costs the same (probe: 4.6 ms
+each time; the Linux control drops 5.4 ms to 0.2 ms and writes the database). The driver binary lacks the
+`MESA_SHADER_CACHE_DISABLE` check, so the runners' `MESA_SHADER_CACHE_DISABLE=true` changes nothing there. Merge-4
+cold walls are therefore also every-run walls: glass_render 70.7 s (35.7 s compile), principled_render 152.7 s
+(118.7 s), nodes_render 111.8 s (77.4 s), principled_bounce 930.7 s (916.5 s, of which 800 s re-compile the same 5
+pipelines on 8 fresh devices).
+
+Samsung SM-X700, Adreno 730: no effective implicit cache seen. principled_bounce repeats identical pipelines at
+full cost (252 of 290 compile seconds are repeats; `prepare_surface` 14.8-16.8 s each time), and the same
+transparent_lighting `shade_surface_light` cost 8.5 s and 8.2 s in two separate processes.
+
+## Adreno 650 lane (Samsung Galaxy S20 FE 5G, 2026-10-22)
+
+The S20 is not a reference device. Its standard is: fix, or degrade gracefully (an explicit refusal that names the GPU
+class and the feature; never a silent wrong image, a lost device or a hang). Tolerances, the runtime
+(CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433) and the other table entries are unchanged.
+
+**Device and adapter (as the host reports it).** SM-G781U1, Android 13 / API 33, Snapdragon 865. WebGPU adapter:
+vendor `Qualcomm Technologies Inc. Adreno Vulkan Driver` (vendor id 20803 = 0x5143), device `Adreno (TM) 650` (device
+id 100990978 = 0x6050002), description `Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler
+Version: EV031.32.02.10`. Tier report now: reason `table`, entry "Samsung Galaxy S20 FE Adreno 650", full tier,
+20 s compile budget (`budgetSource` `table`, warnings only), `refusedRegion` `SVM_NODES_ANY`. Before this lane the
+adapter was unknown to the table (full tier, unknown-mobile 20 s budget), so compile behaviour is unchanged.
+
+**Root causes.** Each was localised on the S20 with instrumented builds of the failing gate; the Adreno 730 compiler
+(EV031.36) compiles the same WGSL correctly. All four are miscompiles of the EV031.32 shader compiler in large entry
+points; the first three have fixes with unchanged arithmetic, the fourth is refused.
+1. **Dynamic vector component (error 8 in node worlds).** In `NODE_SEPARATE_VECTOR`, `v[component]` (component read
+   from the bytecode) made the store to the node's output slot disappear: the decoded output offset (3) and component
+   (2) were right, the slot stayed unwritten, and the next node read an uninitialized stack slot. Fix: a select chain
+   (`svm_component`, `wavefront_svm.wgsl`; also the derivative variant).
+2. **Second traversal stack (transparent shadows: mask 1; transparent lighting: lost device).** `intersect_shadow`
+   inlines the opaque and the shadow-all traversal, each with a 192-entry private stack. The shadow-all traversal lost
+   the pushed instance sentinel: with distinct failure codes per check, the failing check was `object!=NONE` on an
+   instance leaf. With 63 or more transparent layers the stage reported invalid state; in the lit transparent renders
+   the GPU faulted (`IOCTL_KGSL_GPU_COMMAND ... errno 35`, device lost). Fix: the shadow-all stack lives in the
+   invocation's SVM arena slot (words 0-191; `intersect_shadow` evaluates no SVM program), pushes, pops and bounds
+   unchanged (`wavefront_shadow_traversal.wgsl`).
+3. **Per-component normalize (error 8 in motion images, x64 oracle arithmetic).** Android images judged against the
+   imported glibc reference compile the x64 oracle's arithmetic (`CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2`).
+   With it, object and deformation motion images lost an SVM store in the light stage. Overriding the five oracle
+   constants one at a time showed that only `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE=0` (per-component division) triggers
+   it: every normalize then inlines the integer `rounded_divide` three times. Fix: `surface_native_normalize` runs the
+   three divisions through one `rounded_divide` body, in a loop whose bound the compiler cannot see (header word 3 after
+   the error word, always 0); same quotients (`wavefront_shader_data.wgsl`).
+4. **Texture, colour and utility node interpreters (refused).** At these module sizes the compiler fails in more than
+   one way. (a) `Failed to link shaders ... Assertion failed: false && "PSEUDOIMUL32 must not be seen here"` (device
+   lost) for the node render `prepare_surface` and the node SVM probe. Reproduced with `native/tools/compile_probe.cpp`
+   on the Linux-dumped module in 11 s; a case-by-case bisection kept 12 handlers that are all needed together (a size
+   or register-pressure threshold, not one construct); workgroup sizes 1 and 32 fail alike. (b) Silent wrong code in
+   the world interpreter: after fix 1 and an fBM loop restructure, worlds 0-4 passed, but world 5's ramp took the error
+   branch of `size<2||size>0x0fffffff` with size 256 (the same condition evaluated inside the branch is false); the
+   conservative tier fails the same way. A compiler that takes false branches cannot be patched site by site, so these
+   scenes are refused on this GPU class.
+
+**Degradation.** The known-adapter table entry for `Adreno (TM) 650` names the feature region `SVM_NODES_ANY`
+(noise, white noise, wave, magic, brick, Voronoi and Gabor textures; mapping, map range, mix, HSV, colour
+separate/combine, ramps and curves, Fresnel/layer weight, vector rotate, blackbody, normal, object info/camera/scene
+time/vector transform, light path, wavelength, wireframe, mapping derivatives). `shader_features()` refuses a scene
+whose referenced shaders reach it before any pipeline compiles (as for unimplemented Principled features), with:
+"WebGPU: texture, colour and utility shader nodes are not supported on Adreno (TM) 650 GPUs (this scene uses ...):
+the shader compiler of this GPU class miscompiles or fails to link their shader programs; render the scene on another
+GPU or on the CPU device". The WebGPU capability scope lists "texture, colour and utility shader nodes on Adreno 650
+GPUs" under `renderTimeRejections`. On Linux the refusal is exercised with `CODEBRIX_CYCLES_TEST_ADAPTER` (simulated
+Adreno 650: node world refused, glass render unaffected); the real Linux adapter is unaffected.
+
+**Per-job results on the S20.** Device-scene flow (glibc x64 reference from the S20's own dumped scene), practical
+`5e-5 + 2e-4*abs(ref)`, strict `1e-7 + 1e-7*abs(ref)` counted. Before = the merge-wave-4 rerun above; after = this
+lane's final tree. Walls are the gate run itself.
+
+| Job | Before | After |
+| --- | --- | --- |
+| transparent_shadow | FAIL, invalid data (mask 1), 11.0 s | PASS, 21.9 s (state gate: strict 0, max 1.19e-07) |
+| transparent_lighting | FAIL, device lost, 47.5 s (8 replays not run) | PASS, 274 s: 0 practical, 683 strict, max 6.02e-06; 8/8 replays PASS |
+| transparent-shadow replays (2) | not run | PASS 2/2 |
+| object-moving-images | FAIL, mask 8, 110.9 s | PASS, 141 s: 0 practical, 1,276 strict, max 6.08e-06; 8/8 replays PASS |
+| deforming-moving-images | FAIL, mask 8, 82.7 s | PASS, 222 s (final tree; 318 s in the separate replay run): 0 practical, 1,213 strict, max 6.08e-06; 8/8 replays PASS |
+| nodes_world | FAIL, mask 8 at world 0, 6.2 s | refused (exit 1, message, no pipeline compiled), 0 s |
+| nodes_svm | FAIL, device lost creating the probe | refused (exit 1, message, no pipeline compiled), 1 s |
+| nodes_render | FAIL, device lost creating `prepare_surface`, 17.2 s | refused (exit 1, message, no pipeline compiled), 1 s |
+| principled_bounce | stopped at 915 s | PASS, 1,631 s against the device CPU, as on the Samsung (strict 3,259; max 0.125 on `path.mis_ray_pdf` 840718.4, practical ratio 0.126); slow (5.3 x the Samsung's 305 s; compiles up to 125 s), not a failure under the S20 standard |
+| principled_render | FAIL, stage 40 `path.mis_ray_pdf` | unchanged: FAIL, stage 40 `path.mis_ray_pdf` 1751.469 against 1747.274, 174 s (the Samsung's open item 2). Merge wave 5 (2026-10-23): stage 40 passes after lane S2's principled_rotate fix; the job now fails later, `Independent CPU image 9114 actual=1.546950 expected=1.545995`, the same failure as the Samsung (device-CPU image flow; open on both) |
+| principled_svm | PASS, 401 s | not rerun in the lane. Merge wave 5 (2026-10-23): **FAIL**, `Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12`, 85 s: a regression against merge wave 4 (fixes 1 and 3 touch code this gate uses); OPEN, assigned to the first post-pause Adreno 650 lane (fix or extend the refusal) |
+
+Targeted regression set on the final tree: triangle_sample PASS 115 s (0 practical, 865 strict, max 4.88e-04),
+surface PASS 213 s (state gate, strict 1,244, max 3.81e-06), glass_render PASS 133 s (0 practical, 100 strict, max
+1.91e-06), lighting_mis PASS 87 s (0 practical, 1,057 strict, max 6.08e-06).
+
+**Linux (reference) on the final tree.** Fresh Linux build; all-lanes PASS (1,274 s), host gate PASS, device-tier
+gate PASS (31 scenarios), transparent-shadow gate PASS, node gate PASS (1,797 s; all 176 films bit-identical to merge
+wave 4, node render `b9d1da3f...`), Principled gate PASS (802 s; all 44 films bit-identical, `fd3a7f2b...`); glass film `db8e84f9...` unchanged; in all-lanes 263 films are
+bit-identical to merge wave 4 and 17 differ, all in atomic-accumulation cases whose own repeat differs within a run.
+Intel compile envelope on the transparent-lighting and node-render modules: worst 46,790 (`prepare_surface`, node
+render; it was 48,438 before fix 3), every entry below 60,000.
+
+Evidence (lane worktree `native/work/a650-s20/`): `runs/s20/*-v3*` and `runs/s20/pixel-motion-v4def` (final S20
+runs), `runs/s20/*-v1*` (first fix set), `diag/quick/` (instrumented runs, `index.txt`), `diag/probe-results.jsonl`
+and `diag/bisect-nr/` (compile bisection), `validation/v2-*` (Linux).
+
+## Merge wave 5: device tables
+
+Generated by `native/work/merge5/tools/device_tables.py` from each run's `results.json` (merge wave 5, part 2; the runs are frozen in `native/evidence/merge-20261023/merge5/runs/<device>/`). Wall times are device seconds per job; "Judged against" names the reference the result was judged against (glibc device-scene flow, the device's own CPU, or the source capture's CPU film).
+
+### samsung
+
+| Corpus | Job | Wall s | Result | Judged against | Numbers |
+| --- | --- | --- | --- | --- | --- |
+| materials-m5 | principled_svm | 119.0 | PASS | glibc, device-scene | strictFloatFailures=634, maximumAbsoluteError=3.61e-06 |
+| materials-m5 | principled_bounce | 85.0 | PASS | device's own CPU / gate | strictFloatFailures=3466, maximumAbsoluteError=0.125 |
+| materials-m5 | principled_render | 81.4 | FAIL: Rendered repeat=0 sample=6 stages=127 Rendered repeat=0 sample=7 stages=145 Independent CPU image 9114 actual=1.546950 expected=1.545995 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=2 strict=267 max=0.000954 |
+| materials-m5 | nodes_svm | 1500.5 | PASS | glibc, device-scene | strictFloatFailures=18450, maximumAbsoluteError=0.00195 |
+| materials-m5 | nodes_world | 495.3 | PASS | device's own CPU / gate | strictFloatFailures=16242, maximumAbsoluteError=6.1e-05 |
+| materials-m5 | nodes_render | 133.2 | FAIL: Rendered repeat=0 sample=6 stages=127 Rendered repeat=0 sample=7 stages=144 Independent CPU image 6720 actual=0.928481 expected=0.928078 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=1 strict=3998 max=0.000403 |
+| materials-m5 | principled-replay | - | not run (source job failed) | device's own CPU / gate |  |
+| materials-m5 | nodes-replay | - | not run (source job failed) | device's own CPU / gate |  |
+| triangle-m5 | triangle_sample | 20.9 | FAIL: lorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.) Emitter sample=3133 field=2 got=0.382186 expected=0.379992 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=2 strict=1069 max=0.00219 |
+| triangle-m5 | surface | 24.1 | PASS | device's own CPU / gate | strictFloatFailures=1246, maximumAbsoluteError=3.81e-06 |
+| triangle-m5 | triangle_lighting | 78.6 | PASS | glibc, device-scene | maximumAbsoluteError=1.79e-06; host re-judged vs glibc PASS: practical=0 strict=519 max=1.79e-06 |
+| triangle-m5 | replay-0 | 15.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
+| triangle-m5 | replay-1 | 20.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-07, strictImageFailures=5 |
+| triangle-m5 | replay-2 | 21.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.41e-07, strictImageFailures=8 |
+| triangle-m5 | replay-3 | 22.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-06, strictImageFailures=235 |
+| triangle-m5 | replay-4 | 21.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.73e-07, strictImageFailures=11 |
+| triangle-m5 | replay-5 | 35.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-06, strictImageFailures=248 |
+| emitter-m5 | emitter_sample | 7.7 | PASS | glibc, device-scene | maximumAbsoluteError=9.06e-06; host re-judged vs glibc PASS: practical=0 strict=135 max=9.06e-06 |
+| lighting-m5 | lighting_mis | 29.4 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1070 max=6.08e-06 |
+| lighting-m5 | broad_lighting | 56.5 | PASS | glibc, device-scene | maximumAbsoluteError=3.81e-05; host re-judged vs glibc PASS: practical=0 strict=993 max=3.81e-05 |
+| lighting-m5 | lighting_mis-replay-0 | 16.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| lighting-m5 | lighting_mis-replay-1 | 17.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| lighting-m5 | broad_lighting-replay-0 | 16.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| lighting-m5 | broad_lighting-replay-1 | 17.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.17e-07, strictImageFailures=15 |
+| regression-m5 | glass_render | 63.1 | PASS | glibc, device-scene | strictImageFailures=97, strictStageFailures=1087; host re-judged vs glibc PASS: practical=0 strict=97 max=1.91e-06 |
+| regression-m5 | lighting_mis | 29.9 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1070 max=6.08e-06 |
+| regression-m5 | transparent_lighting | 90.8 | PASS | glibc, device-scene | maximumAbsoluteError=6.02e-06; host re-judged vs glibc PASS: practical=0 strict=693 max=6.02e-06 |
+| transparent-m5 | transparent_shadow | 18.1 | PASS | device's own CPU / gate | maximumAbsoluteError=1.19e-07 |
+| transparent-m5 | transparent_lighting | 89.6 | PASS | glibc, device-scene | maximumAbsoluteError=6.02e-06; host re-judged vs glibc PASS: practical=0 strict=693 max=6.02e-06 |
+| transparent-m5 | transparent_lighting-replay-0 | 19.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m5 | transparent_lighting-replay-1 | 19.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m5 | transparent_lighting-replay-2 | 25.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.81e-06, strictImageFailures=77 |
+| transparent-m5 | transparent_lighting-replay-3 | 25.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.29e-06, strictImageFailures=134 |
+| transparent-m5 | transparent_lighting-replay-4 | 25.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=168 |
+| transparent-m5 | transparent_lighting-replay-5 | 26.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.9e-07, strictImageFailures=3 |
+| transparent-m5 | transparent_lighting-replay-6 | 24.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=103 |
+| transparent-m5 | transparent_lighting-replay-7 | 25.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=208 |
+| transparent-m5 | transparent-shadow-replay-direct | 6.3 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m5 | transparent-shadow-replay-indexed | 6.4 | PASS | source capture CPU film | maximumAbsoluteImageError=0, strictImageFailures=0 |
+| terminator-m5 | shadow_terminator | 96.0 | PASS | glibc, device-scene | maximumAbsoluteError=6.2e-05; host re-judged vs glibc PASS: practical=0 strict=124 max=6.2e-05 |
+| terminator-m5 | terminator-replay-0 | 12.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m5 | terminator-replay-1 | 14.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m5 | terminator-replay-2 | 14.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m5 | terminator-replay-3 | 14.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m5 | terminator-replay-4 | 24.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| terminator-m5 | terminator-replay-5 | 24.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| terminator-m5 | terminator-replay-6 | 24.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| terminator-m5 | terminator-replay-7 | 24.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| terminator-m5 | terminator-replay-8 | 24.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.93e-05, strictImageFailures=8 |
+| terminator-m5 | terminator-replay-9 | 33.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.91e-05, strictImageFailures=24 |
+| spec-refusal-m5 | glass_render-spec | 62.8 | PASS | glibc, device-scene | strictImageFailures=97, strictStageFailures=1087; host re-judged vs glibc PASS: practical=0 strict=97 max=1.91e-06 |
+| spec-refusal-m5 | glass_render-nospec-refused | 0.4 | PASS | expected refusal |  |
+| spec-refusal-m5 | glass_render-superset-refused | 0.2 | PASS | expected refusal |  |
+| hostcap-linux-triangle | tri0 | 15.4 | PASS | source capture CPU film | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
+| hostcap-linux-triangle | tri1 | 20.6 | PASS | source capture CPU film | maximumAbsoluteImageError=1.49e-07, strictImageFailures=1 |
+| hostcap-linux-triangle | tri2 | 21.1 | PASS | source capture CPU film | maximumAbsoluteImageError=6.41e-07, strictImageFailures=14 |
+| hostcap-linux-triangle | tri3 | 21.7 | PASS | source capture CPU film | maximumAbsoluteImageError=1.76e-06, strictImageFailures=236 |
+| hostcap-linux-triangle | tri4 | 21.4 | PASS | source capture CPU film | maximumAbsoluteImageError=3.73e-07, strictImageFailures=8 |
+| hostcap-linux-triangle | tri5 | 34.7 | PASS | source capture CPU film | maximumAbsoluteImageError=2.38e-06, strictImageFailures=258 |
+| hostcap-linux-terminator | term0 | 12.2 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term1 | 14.4 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term2 | 14.7 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term3 | 14.8 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term4 | 24.7 | PASS | source capture CPU film | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| hostcap-linux-terminator | term5 | 24.9 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| hostcap-linux-terminator | term6 | 25.0 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| hostcap-linux-terminator | term7 | 25.1 | PASS | source capture CPU film | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| hostcap-linux-terminator | term8 | 25.5 | PASS | source capture CPU film | maximumAbsoluteImageError=2.93e-05, strictImageFailures=8 |
+| hostcap-linux-terminator | term9 | 33.6 | PASS | source capture CPU film | maximumAbsoluteImageError=2.93e-05, strictImageFailures=22 |
+| pixel-motion-own | object-moving-images | 45.2 | PASS | device's own CPU / gate | maximumAbsoluteError=6.08e-06 |
+| pixel-motion-own | object-stationary-images | 36.0 | PASS | device's own CPU / gate | maximumAbsoluteError=6.08e-06 |
+| pixel-motion-own | object-replay-motion-0 | 30.0 | PASS | source capture CPU film | maximumAbsoluteImageError=3.58e-07, strictImageFailures=10 |
+| pixel-motion-own | object-replay-motion-1 | 31.4 | PASS | source capture CPU film | maximumAbsoluteImageError=2.86e-06, strictImageFailures=26 |
+| pixel-motion-own | object-replay-motion-2 | 31.4 | PASS | source capture CPU film | maximumAbsoluteImageError=2.4e-06, strictImageFailures=290 |
+| pixel-motion-own | object-replay-motion-3 | 32.7 | PASS | source capture CPU film | maximumAbsoluteImageError=1.02e-07, strictImageFailures=1 |
+| pixel-motion-own | object-replay-motion-4 | 31.9 | PASS | source capture CPU film | maximumAbsoluteImageError=6.08e-06, strictImageFailures=295 |
+| pixel-motion-own | object-replay-motion-5 | 31.5 | PASS | source capture CPU film | maximumAbsoluteImageError=4.53e-06, strictImageFailures=59 |
+| pixel-motion-own | object-replay-motion-6 | 31.9 | PASS | source capture CPU film | maximumAbsoluteImageError=6.08e-06, strictImageFailures=342 |
+| pixel-motion-own | object-replay-motion-7 | 31.6 | PASS | source capture CPU film | maximumAbsoluteImageError=6.02e-06, strictImageFailures=246 |
+| pixel-motion-x64 | object-moving-images | 45.8 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1306 max=6.08e-06 |
+| pixel-motion-x64 | object-stationary-images | 36.9 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1157 max=6.08e-06 |
+| pixel-motion-x64 | object-replay-motion-0 | 30.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.68e-06, strictImageFailures=18 |
+| pixel-motion-x64 | object-replay-motion-1 | 32.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=16 |
+| pixel-motion-x64 | object-replay-motion-2 | 32.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.52e-06, strictImageFailures=303 |
+| pixel-motion-x64 | object-replay-motion-3 | 32.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.08e-09, strictImageFailures=0 |
+| pixel-motion-x64 | object-replay-motion-4 | 32.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=302 |
+| pixel-motion-x64 | object-replay-motion-5 | 32.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.29e-06, strictImageFailures=72 |
+| pixel-motion-x64 | object-replay-motion-6 | 32.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=344 |
+| pixel-motion-x64 | object-replay-motion-7 | 32.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=251 |
+
+### hp
+
+| Corpus | Job | Wall s | Result | Judged against | Numbers |
+| --- | --- | --- | --- | --- | --- |
+| materials-m5 | principled_svm | 168.7 | PASS | glibc, device-scene | strictFloatFailures=946, maximumAbsoluteError=9.54e-07 |
+| materials-m5 | principled_bounce | 236.3 | PASS | device's own CPU / gate | strictFloatFailures=5234, maximumAbsoluteError=0.125 |
+| materials-m5 | principled_render | 152.1 | PASS | glibc, device-scene | strictImageFailures=92, strictStageFailures=926; host re-judged vs glibc PASS: practical=0 strict=92 max=6.44e-06 |
+| materials-m5 | nodes_svm | 812.7 | PASS | glibc, device-scene | strictFloatFailures=10978, maximumAbsoluteError=0.0107 |
+| materials-m5 | nodes_world | 258.0 | PASS | device's own CPU / gate | strictFloatFailures=9125, maximumAbsoluteError=6.1e-05 |
+| materials-m5 | nodes_render | 105.9 | PASS | glibc, device-scene | strictImageFailures=1843, strictStageFailures=3987; host re-judged vs glibc PASS: practical=0 strict=1843 max=0.000103 |
+| materials-m5 | principled-replay | 120.7 | PASS | source capture CPU film | maximumAbsoluteImageError=6.44e-06, strictImageFailures=94 |
+| materials-m5 | nodes-replay | 73.6 | PASS | source capture CPU film | maximumAbsoluteImageError=0.000103, strictImageFailures=1849 |
+| triangle-m5 | triangle_sample | 22.9 | PASS | glibc, device-scene | maximumAbsoluteError=0.000488; host re-judged vs glibc PASS: practical=0 strict=865 max=0.000488 |
+| triangle-m5 | surface | 39.3 | PASS | device's own CPU / gate | strictFloatFailures=1810, maximumAbsoluteError=3.81e-06 |
+| triangle-m5 | triangle_lighting | 88.3 | PASS | glibc, device-scene | maximumAbsoluteError=2.32e-06; host re-judged vs glibc PASS: practical=0 strict=887 max=2.32e-06 |
+| triangle-m5 | replay-0 | 37.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=9 |
+| triangle-m5 | replay-1 | 45.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| triangle-m5 | replay-2 | 45.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.41e-07, strictImageFailures=14 |
+| triangle-m5 | replay-3 | 46.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-06, strictImageFailures=427 |
+| triangle-m5 | replay-4 | 45.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.73e-07, strictImageFailures=10 |
+| triangle-m5 | replay-5 | 64.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.26e-06, strictImageFailures=427 |
+| emitter-m5 | emitter_sample | 19.8 | PASS | glibc, device-scene | maximumAbsoluteError=0.00513; host re-judged vs glibc PASS: practical=0 strict=235 max=0.00513 |
+| lighting-m5 | lighting_mis | 47.7 | PASS | glibc, device-scene | maximumAbsoluteError=8.34e-06; host re-judged vs glibc PASS: practical=0 strict=2681 max=8.34e-06 |
+| lighting-m5 | broad_lighting | 69.4 | PASS | glibc, device-scene | maximumAbsoluteError=5.34e-05; host re-judged vs glibc PASS: practical=0 strict=1740 max=5.34e-05 |
+| lighting-m5 | lighting_mis-replay-0 | 37.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-07, strictImageFailures=3 |
+| lighting-m5 | lighting_mis-replay-1 | 38.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=11 |
+| lighting-m5 | broad_lighting-replay-0 | 39.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-07, strictImageFailures=1 |
+| lighting-m5 | broad_lighting-replay-1 | 38.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.07e-07, strictImageFailures=26 |
+| regression-m5 | glass_render | 70.1 | PASS | glibc, device-scene | strictImageFailures=104, strictStageFailures=1155; host re-judged vs glibc PASS: practical=0 strict=104 max=9.54e-07 |
+| regression-m5 | lighting_mis | 49.9 | PASS | glibc, device-scene | maximumAbsoluteError=8.34e-06; host re-judged vs glibc PASS: practical=0 strict=2681 max=8.34e-06 |
+| regression-m5 | transparent_lighting | 77.6 | PASS | glibc, device-scene | maximumAbsoluteError=7.75e-06; host re-judged vs glibc PASS: practical=0 strict=1682 max=7.75e-06 |
+| transparent-m5 | transparent_shadow | 12.7 | PASS | device's own CPU / gate | maximumAbsoluteError=1.19e-07 |
+| transparent-m5 | transparent_lighting | 78.8 | PASS | glibc, device-scene | maximumAbsoluteError=7.75e-06; host re-judged vs glibc PASS: practical=0 strict=1682 max=7.75e-06 |
+| transparent-m5 | transparent_lighting-replay-0 | 42.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.49e-07, strictImageFailures=1 |
+| transparent-m5 | transparent_lighting-replay-1 | 42.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=8 |
+| transparent-m5 | transparent_lighting-replay-2 | 48.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=93 |
+| transparent-m5 | transparent_lighting-replay-3 | 48.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.01e-06, strictImageFailures=323 |
+| transparent-m5 | transparent_lighting-replay-4 | 49.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.75e-06, strictImageFailures=435 |
+| transparent-m5 | transparent_lighting-replay-5 | 49.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.75e-07, strictImageFailures=4 |
+| transparent-m5 | transparent_lighting-replay-6 | 48.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.56e-06, strictImageFailures=299 |
+| transparent-m5 | transparent_lighting-replay-7 | 49.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.79e-06, strictImageFailures=519 |
+| transparent-m5 | transparent-shadow-replay-direct | 5.9 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m5 | transparent-shadow-replay-indexed | 5.9 | PASS | source capture CPU film | maximumAbsoluteImageError=7.45e-09, strictImageFailures=0 |
+| terminator-m5 | shadow_terminator | 151.5 | PASS | glibc, device-scene | maximumAbsoluteError=1.53e-05; host re-judged vs glibc PASS: practical=0 strict=97 max=1.53e-05 |
+| terminator-m5 | terminator-replay-0 | 31.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m5 | terminator-replay-1 | 40.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m5 | terminator-replay-2 | 40.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m5 | terminator-replay-3 | 40.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m5 | terminator-replay-4 | 67.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=22 |
+| terminator-m5 | terminator-replay-5 | 67.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=18 |
+| terminator-m5 | terminator-replay-6 | 67.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=18 |
+| terminator-m5 | terminator-replay-7 | 67.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=22 |
+| terminator-m5 | terminator-replay-8 | 67.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.38e-07, strictImageFailures=5 |
+| terminator-m5 | terminator-replay-9 | 80.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.1e-06, strictImageFailures=12 |
+| spec-refusal-m5 | glass_render-spec | 70.2 | PASS | glibc, device-scene | strictImageFailures=104, strictStageFailures=1155; host re-judged vs glibc PASS: practical=0 strict=104 max=9.54e-07 |
+| spec-refusal-m5 | glass_render-nospec-refused | 0.3 | PASS | expected refusal |  |
+| spec-refusal-m5 | glass_render-superset-refused | 0.2 | PASS | expected refusal |  |
+| hostcap-linux-triangle | tri0 | 38.6 | PASS | source capture CPU film | maximumAbsoluteImageError=4.77e-07, strictImageFailures=9 |
+| hostcap-linux-triangle | tri1 | 47.7 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| hostcap-linux-triangle | tri2 | 48.0 | PASS | source capture CPU film | maximumAbsoluteImageError=6.41e-07, strictImageFailures=14 |
+| hostcap-linux-triangle | tri3 | 47.8 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-06, strictImageFailures=430 |
+| hostcap-linux-triangle | tri4 | 48.3 | PASS | source capture CPU film | maximumAbsoluteImageError=3.73e-07, strictImageFailures=10 |
+| hostcap-linux-triangle | tri5 | 66.5 | PASS | source capture CPU film | maximumAbsoluteImageError=2.26e-06, strictImageFailures=425 |
+| hostcap-linux-terminator | term0 | 33.1 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term1 | 41.3 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term2 | 40.8 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term3 | 41.0 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term4 | 68.7 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=22 |
+| hostcap-linux-terminator | term5 | 68.9 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=18 |
+| hostcap-linux-terminator | term6 | 68.5 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=18 |
+| hostcap-linux-terminator | term7 | 69.5 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=22 |
+| hostcap-linux-terminator | term8 | 70.0 | PASS | source capture CPU film | maximumAbsoluteImageError=2.38e-07, strictImageFailures=5 |
+| hostcap-linux-terminator | term9 | 83.1 | PASS | source capture CPU film | maximumAbsoluteImageError=1.07e-06, strictImageFailures=17 |
+
+### s20
+
+| Corpus | Job | Wall s | Result | Judged against | Numbers |
+| --- | --- | --- | --- | --- | --- |
+| a650-refusals-m5 | nodes_world-refused | 0.7 | PASS | expected refusal |  |
+| a650-refusals-m5 | nodes_svm-refused | 0.4 | PASS | expected refusal |  |
+| a650-refusals-m5 | nodes_render-refused | 0.6 | PASS | expected refusal |  |
+| triangle-s20-triangle_sample | triangle_sample | 78.5 | PASS | glibc, device-scene | maximumAbsoluteError=0.000488; host re-judged vs glibc PASS: practical=0 strict=865 max=0.000488 |
+| regression-s20-glass_render | glass_render | 95.8 | PASS | glibc, device-scene | strictImageFailures=100, strictStageFailures=1079; host re-judged vs glibc PASS: practical=0 strict=100 max=1.91e-06 |
+| regression-s20-lighting_mis | lighting_mis | 63.2 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1057 max=6.08e-06 |
+| triangle-s20-surface | surface | 45.2 | PASS | device's own CPU / gate | strictFloatFailures=1244, maximumAbsoluteError=3.81e-06 |
+| transparent-s20-transparent_lighting | transparent_lighting | 193.7 | PASS | glibc, device-scene | maximumAbsoluteError=6.02e-06; host re-judged vs glibc PASS: practical=0 strict=683 max=6.02e-06 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-0 | 50.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-1 | 50.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-2 | 60.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.81e-06, strictImageFailures=72 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-3 | 61.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.55e-06, strictImageFailures=133 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-4 | 62.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=167 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-5 | 62.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.9e-07, strictImageFailures=3 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-6 | 61.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=103 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-7 | 61.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=205 |
+| transparent-s20-transparent_shadow | transparent_shadow | 16.4 | PASS | device's own CPU / gate | maximumAbsoluteError=1.19e-07 |
+| transparent-s20-transparent_shadow | transparent-shadow-replay-direct | 11.1 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-s20-transparent_shadow | transparent-shadow-replay-indexed | 11.0 | PASS | source capture CPU film | maximumAbsoluteImageError=0, strictImageFailures=0 |
+| materials-s20-principled_render | principled_render | 213.6 | FAIL: Rendered repeat=0 sample=6 stages=127 Rendered repeat=0 sample=7 stages=145 Independent CPU image 9114 actual=1.546950 expected=1.545995 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=2 strict=262 max=0.000954 |
+| materials-s20-principled_render | principled-replay | - | not run (source job failed) | device's own CPU / gate |  |
+| materials-s20-principled_svm | principled_svm | 85.2 | FAIL: r management disabled. (Specify the $OCIO environment variable to enable.) Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12 | glibc, device-scene |  |
+| pixel-motion-s20-object-moving-images | object-moving-images | 139.9 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1276 max=6.08e-06 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-0 | 117.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.56e-06, strictImageFailures=12 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-1 | 120.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-2 | 119.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.52e-06, strictImageFailures=301 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-3 | 118.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.31e-09, strictImageFailures=0 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-4 | 120.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=294 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-5 | 120.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.05e-06, strictImageFailures=70 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-6 | 122.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=338 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-7 | 160.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=249 |
+| pixel-motion-s20-deforming-moving-images | deforming-moving-images | 315.3 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1213 max=6.08e-06 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-0 | 85.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.38e-07, strictImageFailures=2 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-1 | 119.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-07, strictImageFailures=19 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-2 | 119.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.4e-06, strictImageFailures=304 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-3 | 119.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.31e-09, strictImageFailures=0 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-4 | 120.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=280 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-5 | 119.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.17e-06, strictImageFailures=49 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-6 | 129.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=300 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-7 | 170.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=259 |
+| materials-s20-principled_bounce | principled_bounce | 455.2 | PASS | device's own CPU / gate | strictFloatFailures=2796, maximumAbsoluteError=0.125 |

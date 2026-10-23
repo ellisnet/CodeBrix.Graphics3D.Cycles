@@ -4,6 +4,10 @@
 #include "wavefront_test.h"
 #include "wavefront.h"
 #include "svm_surface_reference.h"
+#include "reference_policy.h"
+#include <filesystem>
+#include <map>
+#include <iomanip>
 #include "kernel/svm/node_types.h"
 #include "scene/scene.h"
 #include "scene/mesh.h"
@@ -40,7 +44,7 @@ static std::vector<OutputField> output_fields(){
 static std::string probe_source(){
   std::ostringstream s;s<<svm_surface_source();
   s<<"@compute @workgroup_size(64) fn surface_svm_probe(@builtin(global_invocation_id) id:vec3<u32>){\n"
-      "if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}\n"
+      "svm_invocation(id.x);if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}\n"
       "let sd=surface_cached(id.x);if(sd.error!=0u){return;}let r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}\n"
       "let base=p(4u)+id.x*"<<sizeof(SurfaceSvmRecord)<<"u;\n";
   const char *components[]={".x",".y",".z"};
@@ -57,19 +61,26 @@ static std::string probe_source(){
 // the uploaded programs like the renderer's pipelines: refresh_probe rebuilds it
 // before a dispatch whose programs reach a region the module was built without
 // (typed programs and rejection cases upload new programs after creation).
-static std::string probe_raw,probe_module;static uint64_t probe_features=0;
-static uint64_t probe_scene_features(WebGPUDevice &d){
+static std::string probe_raw,probe_module;static ShaderFeatures probe_features;
+static ShaderFeatures probe_scene_features(WebGPUDevice &d){
   // Native refusals (unsupported Principled features) keep the current module:
   // the case under test then reports through the WGSL handler, as before.
   // Glass records carry the canonical generalized-Schlick fields (model in
   // roughness, f0 in multiscatter) only in modules with the Principled region;
   // the probe compares those canonical records, so it keeps that region whenever
   // glass is reachable (the arithmetic is identical either way; films match).
-  try{uint64_t f=d.shader_features();if(f&SF_BSDF_GLASS)f|=SF_BSDF_PRINCIPLED;return f;}
+  try{ShaderFeatures f=d.shader_features();if(f&SF_BSDF_GLASS)f|=SF_BSDF_PRINCIPLED;return f;}
   catch(const std::exception&){return probe_features;}
 }
 static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &probe){
   probe_raw=probe;probe_features=probe_scene_features(d);probe_module=specialize_wgsl(probe,probe_features);
+  // Optional diagnostic: every probe module this gate builds, numbered, with its feature mask.
+  if(const char *dump=std::getenv("CODEBRIX_SVM_PROBE_DUMP")){static unsigned built=0;const std::string name=std::string(dump)+"/probe-"+std::to_string(built++);
+    std::ofstream(name+".wgsl")<<probe_module;std::ofstream features(name+".features.txt");features<<std::hex;
+    // ShaderFeatures is 256 bits (pipelines.h): the words from the highest non-zero one down, so a mask within bits 0-63 prints as before.
+    unsigned top=shader_feature_words-1;while(top&&!probe_features.words[top])top--;features<<probe_features.words[top];
+    for(unsigned w=top;w-->0;){features<<std::setw(16)<<std::setfill('0')<<probe_features.words[w];}
+    features<<'\n';}
   const std::string &source=probe_module;
   WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={source.data(),source.size()};
   WGPUShaderModuleDescriptor desc{};desc.nextInChain=&wgsl.chain;d.gpu.push_scope();
@@ -78,7 +89,7 @@ static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &probe){
   return d.gpu.pipeline(module,d.pipeline_layout,"surface_svm_probe");
 }
 static void refresh_probe(WebGPUDevice &d,cbc::Pipeline &shader){
-  if(!probe_raw.empty()&&(probe_scene_features(d)&~probe_features)!=0)shader=pipeline(d,probe_raw);
+  if(!probe_raw.empty()&&(probe_scene_features(d)&~probe_features).any())shader=pipeline(d,probe_raw);
 }
 // The prepass is executed by the GPU before every probe, including rejections.
 // Captures retain that GPU-generated cache, never CPU-derived ShaderData.
@@ -93,9 +104,81 @@ struct PreparedSurfaceCache {
   void verify(){storage.copy_from_device();for(unsigned i=0;i<8;i++)require(storage[i]==0xa5a5a5a5u&&storage[storage.size()-1-i]==0xa5a5a5a5u,"ShaderData cache guard");}
 };
 struct Metrics {unsigned cases=0;uint64_t paths=0,integers=0,floats=0,state_checks=0,guards=0,strict=0;double maximum=0;std::set<uint> closures;};
+// Validation reference policy, device-scene flow (reference_policy.h), one exchange key per evaluated case
+// ("svm-N", in evaluation order): the dump pass writes the scene tables this device prepared, the selected
+// path states and its local CPU records; the Linux pass loads them and exports the glibc records; the
+// import pass compares the GPU with the imported records (the local records are a diagnostic). The dump
+// and Linux passes do no GPU work. A probe gate evaluates hundreds of programs on one scene, so the
+// tables other than the program and KernelData are written once per distinct content
+// (svm-base-N.scene, CBCSCENE1 records) and each case file (svm-N.case) names its base and carries the
+// program, KernelData, the selected path indices and their path, ray and intersection state (what the
+// CPU reference reads; the other state members are the same zero-initialized values on both sides).
+// Without the variables nothing changes.
+static bool svm_exchange_mode(){return reference_policy::prepare_only()||reference_policy::reference_only();}
+struct SvmExchangeRecord {uint64_t element;std::string data;};
+struct SvmExchangeState {decltype(IntegratorStateCPU::path) path;decltype(IntegratorStateCPU::ray) ray;decltype(IntegratorStateCPU::isect) isect;};
+static std::map<std::string,SvmExchangeRecord> svm_exchange_read(const std::string &bytes,const std::string &magic){
+  if(bytes.compare(0,magic.size(),magic))throw std::runtime_error("Not an SVM exchange file ("+magic+")");
+  std::map<std::string,SvmExchangeRecord> out;size_t at=magic.size();
+  while(at<bytes.size()){uint64_t h[3];if(at+sizeof(h)>bytes.size())throw std::runtime_error("Truncated SVM exchange file");std::memcpy(h,bytes.data()+at,sizeof(h));at+=sizeof(h);
+    if(at+h[0]>bytes.size()||h[1]*h[2]>bytes.size()-at-h[0])throw std::runtime_error("Truncated SVM exchange file");
+    std::string name=bytes.substr(at,h[0]);at+=h[0];out[name]={h[1],bytes.substr(at,h[1]*h[2])};at+=h[1]*h[2];}
+  return out;
+}
+template<class V>static void svm_exchange_apply(V &table,const std::map<std::string,SvmExchangeRecord> &records,const std::string &name){
+  auto it=records.find(name);if(it==records.end())throw std::runtime_error("SVM exchange table missing: "+name);
+  const size_t element=sizeof(*table.data());if(it->second.element!=element)throw std::runtime_error("SVM exchange element size differs: "+name);
+  const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+}
+static std::string svm_exchange_tables(DeviceScene &s){
+  std::string out="CBCSCENE1";
+#define CBC_SVM_TABLE(name,type) reference_policy::put(out,#name,s.name.data(),sizeof(*s.name.data()),s.name.size());
+  CBC_SCENE_TABLES(CBC_SVM_TABLE) CBC_SVM_TABLE(sample_pattern_lut,float)
+#undef CBC_SVM_TABLE
+  return out;
+}
+static std::vector<SurfaceSvmRecord> svm_reference_records(Scene &scene,const std::vector<IntegratorStateCPU> &states,const std::vector<int> &ids,bool &exchange_only){
+  static unsigned exchange_case=0,bases=0;static std::string last_tables,loaded_base;
+  const std::string key="svm-"+std::to_string(exchange_case++);DeviceScene &ds=scene.dscene;
+  std::vector<SurfaceSvmRecord> local;exchange_only=svm_exchange_mode();
+  if(const char *dump=std::getenv("CODEBRIX_CYCLES_SCENE_DUMP")){
+    std::filesystem::create_directories(dump);const std::string tables=svm_exchange_tables(ds);
+    if(tables!=last_tables){last_tables=tables;std::ofstream(std::filesystem::path(dump)/("svm-base-"+std::to_string(bases++)+".scene"),std::ios::binary)<<tables;}
+    const std::string base="svm-base-"+std::to_string(bases-1);std::vector<SvmExchangeState> selected;for(int i:ids)selected.push_back({states[i].path,states[i].ray,states[i].isect});
+    std::string out="CBCSVMCASE1";reference_policy::put(out,"base",base.data(),1,base.size());reference_policy::put(out,"svm_nodes",ds.svm_nodes.data(),4,ds.svm_nodes.size());
+    reference_policy::put(out,"KernelData",&ds.data,sizeof(ds.data),1);reference_policy::put(out,"ids",ids.data(),sizeof(int),ids.size());
+    reference_policy::put(out,"states",selected.data(),sizeof(SvmExchangeState),selected.size());
+    std::ofstream file(std::filesystem::path(dump)/(key+".case"),std::ios::binary);file<<out;if(!file)throw std::runtime_error("Could not write SVM exchange case "+key);
+    local=original_surface_svm(ds,ids,states);
+  }else if(const char *load=std::getenv("CODEBRIX_CYCLES_SCENE_LOAD")){
+    const auto records=svm_exchange_read(reference_policy::read_file(std::filesystem::path(load)/(key+".case")),"CBCSVMCASE1");
+    const std::string base=records.at("base").data;
+    if(base!=loaded_base){const auto tables=svm_exchange_read(reference_policy::read_file(std::filesystem::path(load)/(base+".scene")),"CBCSCENE1");
+#define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      CBC_SCENE_TABLES(CBC_SVM_TABLE) CBC_SVM_TABLE(sample_pattern_lut,float)
+#undef CBC_SVM_TABLE
+      loaded_base=base;}
+    svm_exchange_apply(ds.svm_nodes,records,"svm_nodes");
+    const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(&ds.data,kernel.data.data(),sizeof(ds.data));
+    const auto &indices=records.at("ids");const auto &blob=records.at("states");
+    if(indices.data.size()!=ids.size()*sizeof(int)||(!ids.empty()&&std::memcmp(indices.data.data(),ids.data(),indices.data.size()))||blob.data.size()!=ids.size()*sizeof(SvmExchangeState))
+      throw std::runtime_error("SVM exchange path selection differs: "+key);
+    auto loaded=states;for(size_t k=0;k<ids.size();k++){SvmExchangeState e;std::memcpy(static_cast<void*>(&e),blob.data.data()+k*sizeof(e),sizeof(e));loaded[ids[k]].path=e.path;loaded[ids[k]].ray=e.ray;loaded[ids[k]].isect=e.isect;}
+    local=original_surface_svm(ds,ids,loaded);
+  }else local=original_surface_svm(ds,ids,states);
+  std::vector<float> words(local.size()*sizeof(SurfaceSvmRecord)/4);if(!local.empty())std::memcpy(words.data(),local.data(),words.size()*4);
+  reference_policy::record_local(key,words);
+  const char *diagnostic=std::getenv("CODEBRIX_CYCLES_REFERENCE_DIAGNOSTIC");
+  const auto reference=reference_policy::resolve(key,words,diagnostic?diagnostic:"svm-reference-diagnostic.jsonl");
+  if(!local.empty())std::memcpy(static_cast<void*>(local.data()),reference.data(),reference.size()*4);
+  return local;
+}
 static void evaluate(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const std::vector<Field> &layout,
     const std::vector<IntegratorStateCPU> &states,const std::vector<int> &ids,const std::string &label,Metrics &m,const std::string &capture="",bool dense=false){
-  auto expected=original_surface_svm(scene.dscene,ids,states);upload(d,layout,states);
+  bool exchange_only=false;auto expected=svm_reference_records(scene,states,ids,exchange_only);
+  if(exchange_only){for(size_t i=0;i<ids.size();i++)for(unsigned j=0;j<expected[i].count&&j<MAX_CLOSURE;j++)m.closures.insert(expected[i].closures[j].kind);
+    m.cases++;m.paths+=ids.size();std::cerr<<"Exchanged "<<label<<" ("<<ids.size()<<" paths)\n";return;}
+  upload(d,layout,states);
   device_vector<int> selected(&d,"svm_surface_indices",MEM_READ_WRITE);selected.alloc(ids.size());std::copy(ids.begin(),ids.end(),selected.data());selected.copy_to_device();
   device_vector<uint> output(&d,"svm_surface_output",MEM_READ_WRITE);output.alloc(16+ids.size()*sizeof(SurfaceSvmRecord)/4);std::fill_n(output.data(),output.size(),0xa5a5a5a5u);output.copy_to_device();
   device_vector<uint> scratch(&d,"svm_surface_closures",MEM_READ_WRITE);scratch.alloc(16+ids.size()*MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);std::fill_n(scratch.data(),scratch.size(),0xa5a5a5a5u);std::fill(scratch.data()+8,scratch.data()+scratch.size()-8,0);scratch.copy_to_device();

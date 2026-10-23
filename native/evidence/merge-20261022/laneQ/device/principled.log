@@ -1,0 +1,10 @@
+[15:50:22] s20 materials-pr: START principled_svm timeout=600s
+[15:52:56] s20 materials-pr: FAIL principled_svm exit=1 152s: Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12
+[15:52:56] s20 materials-pr: START principled_bounce timeout=600s
+[15:57:08] s20 materials-pr: FAIL principled_bounce exit=1 252s: Compiled materials: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[15:57:08] s20 materials-pr: START principled_render timeout=600s
+image            gpu-vs-glibc passed=False practical=None strict=None max=nan | local-vs-glibc differing=None maxUlps=None practical=None
+[16:01:24] s20 materials-pr: REFERENCE principled_render host re-judged vs glibc: False
+[16:01:24] s20 materials-pr: FAIL principled_render exit=1 256s: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[16:01:31] s20 materials-pr: END passed=False wall=672s/2700s failures=4
+{"passed": false, "failures": ["principled_svm: Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12", "principled_bounce: Compiled materials: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack", "principled_render: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack", "principled-replay: not run (source job failed)"], "error": null, "wallSeconds": 672.5}

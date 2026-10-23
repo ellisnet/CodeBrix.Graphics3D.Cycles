@@ -1,0 +1,333 @@
+diff --git a/AGENT-README.txt b/AGENT-README.txt
+index 2ef3c673..803ee1c9 100644
+--- a/AGENT-README.txt
++++ b/AGENT-README.txt
+@@ -394,10 +394,7 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
+     displacement, ambient occlusion, bevel, sky, IES and AOV output nodes; the
+     bump node and the Gabor texture (GaborTextureNode, 2D and 3D) are
+     implemented, but tangent and motion-triangle smooth-normal derivatives
+-    inside a bump height are rejected; known issue: on the Adreno 730, the
+-    ARM64 Android reference GPU, a scene that uses the Gabor texture can
+-    evaluate Fresnel and Layer Weight nodes wrongly, so do not combine them
+-    there until this is fixed);
++    inside a bump height are rejected);
+   - the classes listed in GetCapabilities().Scope.RenderTimeRejections.
+ The CPU reference backend renders all of these.
+ 
+diff --git a/docs/PARITY.md b/docs/PARITY.md
+index 66c046e5..78096292 100644
+--- a/docs/PARITY.md
++++ b/docs/PARITY.md
+@@ -34,7 +34,7 @@ See [the license tracker](RELEASE-LICENSE-PLAN.md) and generated notices.
+ | Native file images and updates | PNG/JPEG/OpenEXR native file loading now passes a Linux gate with 18 fixtures, 450 channel/alpha/color variants, native UDIM mappings, 16 queued-read/replacement cycles and 34,483 independent known lossless texels. The serialized OCIO matrix configuration is tested. A 116,352-case final snapshot has a four-GPU replay gate; actual decoding/lifecycle tests currently execute on Linux only. The original file-image checkpoint preserved earlier renderer/executable identity; renderer edits require the fresh normal-gate regression chain. TIFF/LZW compatibility, other formats, production color/cache/animation stress and native platform hosts remain required. See `native/tools/image_file_gate.py` |
+ | Native normal maps/tangents | Static-triangle normal-map spaces, conventions/base/strength, native UV frames and radial/UV tangents with analytic derivatives have a Linux original-CPU gate (48 graphs, 398 typed programs, 10,704 evaluations; ten explicit rejections). Complete image-normal-mapped render and four-device replay gates are in `native/tools/normal_gate.py`. Full bump state, motion/other geometry and original asset materials remain open |
+ | Real-asset images | The native scheduler renders a 784-triangle ForestCommunity bench with independent CPU film agreement and bitwise-identical Linux repeat; full command replay passes Linux, Pixel API 33, Samsung API 36 and HP API 33. One flat-clay shared-edge equivalence is explicit. A 1024x768/32-spp preview is available. Earlier lime/house images use the separate snapshot renderer. Clay appearance only |
+-| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Surface and world interpreters additionally cover the procedural textures (noise in every dimension and fractal type, Voronoi with every feature/metric/dimension, white noise, wave, magic, brick), mapping/map range/mix/ramp/curve/colour utilities, Fresnel/layer weight, object info, camera, scene time, vector transform and light path (ray-type flags in every stage; bounce depths in the surface and background stages) on Linux; see `native/DEVICE.md`. Wavelength and wireframe nodes have the same Linux gates. Bump mapping (bump node, bump state, all derivative variants) has the same Linux gates and passes the node gates on the HP. The Gabor texture (2D and 3D; lane L, 2026-10-22) passes the node SVM (typed programs and compiled graphs), world and 68-triangle node render gates on Linux and the HP and is compiled only into scene-specialized modules that reach it (on the Samsung SM-X700 a module containing it mis-evaluates Fresnel/Layer Weight, `native/DEVICE.md` open item 3); its earlier withholding was the Intel Mesa 25.0.7 16-bit instruction/register limit (see the Intel row below). Deferred SVM nodes: displacement, AO/bevel/raycast, sky, radial tiling, IES, light falloff, particle/hair/point info and AOV output. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, multi-GGX glass nodes, hair, Principled subsurface and heterogeneous volumes pending. The Principled BSDF (all lobes except subsurface, including thin film, thin wall and multiscatter GGX) passes its Linux SVM, bounce and image gates; its ForestCommunity bench variant passes with exact traversal. On Android the HP passes the Principled SVM, bounce and image gates (image against the glibc reference, with on-device replay). On the Samsung SM-X700 the Principled SVM and bounce gates pass since the SVM value stack moved to a per-invocation arena slot (lane S; the Adreno 730 could not link the private stack), node worlds pass, and the Principled render (one lockstep stage), the node SVM probe and one node-render pixel remain open; on the HP every Principled and node gate passes, Gabor included. Principled and node materials are not supported on the Pixel 4 XL (Adreno 640) under the device reference policy; see `native/DEVICE.md`. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL (Adreno 640) passes glass bounce/render and feature combination; feature combination needed the SVM value stack moved out of the function-local SvmState (an Adreno 640 dynamic-indexing miscompile). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP, and on the Pixel 4 XL after the same Adreno 640 fix plus volume-stack hits kept as scalar arrays (volume-boundary state test, camera-inside closed volume, object/deforming motion images) |
++| Material coverage | Native world interpreter covers 25 SVM opcodes, 20 Cycles-compiled graphs, checker/gradient textures, math/conversion and emission/background mixtures on Linux. Surface and world interpreters additionally cover the procedural textures (noise in every dimension and fractal type, Voronoi with every feature/metric/dimension, white noise, wave, magic, brick), mapping/map range/mix/ramp/curve/colour utilities, Fresnel/layer weight, object info, camera, scene time, vector transform and light path (ray-type flags in every stage; bounce depths in the surface and background stages) on Linux; see `native/DEVICE.md`. Wavelength and wireframe nodes have the same Linux gates. Bump mapping (bump node, bump state, all derivative variants) has the same Linux gates and passes the node gates on the HP. The Gabor texture (2D and 3D; lane L, 2026-10-22) passes the node SVM (typed programs and compiled graphs), world and 68-triangle node render gates on Linux and the HP and is compiled only into scene-specialized modules that reach it; its earlier withholding was the Intel Mesa 25.0.7 16-bit instruction/register limit (see the Intel row below). Deferred SVM nodes: displacement, AO/bevel/raycast, sky, radial tiling, IES, light falloff, particle/hair/point info and AOV output. Remaining SVM nodes, tiled/sparse images, general derivatives/bump state, closure coverage, multi-GGX glass nodes, hair, Principled subsurface and heterogeneous volumes pending. The Principled BSDF (all lobes except subsurface, including thin film, thin wall and multiscatter GGX) passes its Linux SVM, bounce and image gates; its ForestCommunity bench variant passes with exact traversal. On Android the HP passes the Principled SVM, bounce and image gates (image against the glibc reference, with on-device replay). On the Samsung SM-X700 the Principled SVM and bounce gates pass since the SVM value stack moved to a per-invocation arena slot (lane S; the Adreno 730 could not link the private stack), node worlds and the node SVM probe (Gabor included) pass, every Principled lockstep stage passes (lane S2), and the Principled and node render images still differ from the glibc reference in two and one components, where the GPU equals the device CPU (`native/DEVICE.md` open item 4); on the HP every Principled and node gate passes, Gabor included. Principled and node materials are not supported on the Pixel 4 XL (Adreno 640) under the device reference policy; see `native/DEVICE.md`. The registered device separately implements single-scatter GGX reflection/refraction, glass and finite homogeneous volumes with independent CPU comparisons. Glass/GGX SVM, bounce and render pass natively on the Samsung SM-X700 (ARM64 normalization mode) and on Android x64 with SSE normalization (path 126 included). The Pixel 4 XL (Adreno 640) passes glass bounce/render and feature combination; feature combination needed the SVM value stack moved out of the function-local SvmState (an Adreno 640 dynamic-indexing miscompile). Finite and closed homogeneous volumes and object, deforming and camera motion pass natively on the Samsung SM-X700 and the HP, and on the Pixel 4 XL after the same Adreno 640 fix plus volume-stack hits kept as scalar arrays (volume-boundary state test, camera-inside closed volume, object/deforming motion images) |
+ | Lighting | Registered device: point, sun, spot and area lamps with CDF selection, NEE, opaque and transparent shadows and point/sun MIS; flat-CDF constant-emission triangle lights with native solid-angle/area sampling and forward-hit MIS, including moving/deforming and static instanced emitters, pass independent CPU images and replay on Linux; closest-hit and shadow traversal reproduce the CPU oracle's ray/triangle and instance arithmetic bit for bit on Linux x64. Environment importance sampling/MIS, light trees, textured emission, linking and general visibility pending. Android results are judged against the correctly rounded (Linux x64 glibc) CPU reference computed from the device's own prepared scene, with the on-device (bionic) CPU reference a diagnostic (`native/DEVICE.md`, "Validation reference policy"). Android x64 (HP Intel) passes lamps with MIS and forward light, transparent shadows, the emitter probe and every emissive-triangle gate (sampler, six images including moving/deforming and static instanced emitters, replays). ARM64 Android (Samsung Adreno 730): lamps, broad lighting, feature combination, the emitter probe and all six emissive-triangle images, static instanced emitters included, pass with replays (Phase E4: contraction-proof ShaderData position/object transform, and the x64 reference oracle's arithmetic adapters in the gates judged against the imported reference); the triangle sampler still differs in one sample (`native/DEVICE.md` open item 1). The Pixel 4 XL passes lamps, the emitter probe, all six emissive-triangle images with their replays and the triangle sampler (dispatched in slices, since the Adreno 640 resets on submissions of about 2 s); object and deformation motion are not supported on the Adreno 640 under the device reference policy (`native/DEVICE.md`, "Pixel 4 XL triage"); the Samsung passes the object-moving images with both oracles. Open device items are listed in `native/DEVICE.md` |
+ | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clamping, adaptive auxiliary and static data passes tested against original CPU kernels on Linux. General surface/volume film, adaptive convergence, denoising, color management and interoperability pending |
+ | Memory and performance | Bounded path scratch/resource reuse demonstrated in the snapshot renderer. Registered device allocator growth/order and queue compaction now pass correctness gates; its arena is bounded by one storage-binding limit and holds the per-invocation SVM value stacks (4,096 slots of 263 words, about 4.3 MB per device; lane S). Large scenes, stack/register pressure, compile time and practical throughput remain pending. Scene-driven WGSL specialization removes unreachable handlers before pipeline creation (bit-identical to the unspecialized modules in tested scenes); per-pipeline compile time is reported against a 60 s budget and some motion/emitter entries still exceed it cold on Linux. The pipeline tier is chosen before compilation (explicit request, persisted device record with crash breadcrumbs, known-adapter table, optional canary) and reported through the host capability report; slow compiles only warn. Linux tier gates pass; on Android the Samsung SM-X700, HP Intel Xe and Pixel 4 XL (with a 20 s budget) select full tier by table, and the device record, its lock and a crash breadcrumb followed by a conservative start work on device. Scene specialization is required on Android: the unspecialized `shade_surface_light` crashes the Adreno 730 driver and exhausts compiler memory on the Adreno 640 and the HP (Scudo OOM at about 2.2-2.5 GB RSS), so `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0` is refused on Android. Cold compiles: Samsung specialized pipelines at most 32.6 s (the emissive-triangle entry with object motion now 29-30 s, was 205 s); HP specialized prepare_surface 5-32 s, shade_surface_light 4 s (16 s with area lights, 20 s with triangle lights, 27.6 s with triangle lights and object motion, which previously ran out of compiler memory), connect_surface_light 3-11 s, unspecialized prepare_surface 156 s; Pixel up to about 87 s (`intersect_closest` with object motion; 20 s budget, warnings only) |
+diff --git a/native/DEVICE.md b/native/DEVICE.md
+index 25970ff0..3897b75a 100644
+--- a/native/DEVICE.md
++++ b/native/DEVICE.md
+@@ -2613,32 +2613,86 @@ supported. **Samsung Galaxy S20 FE 5G (Adreno 650).** Lane Q's failing jobs were
+ max(600 s, 3 x this merge's Samsung wall)); the results are added to the lane Q section at the end.
+ 
+ 
++
++## Samsung follow-up fixes (lane S2, 2026-10-22)
++
++Samsung SM-X700 (Adreno 730), the ARM64/Adreno reference device. Runtime unchanged (shipped `libcodebrix_wgpu.so`
++hash-verified before every corpus); full tier by table. Images, sampler and SVM probes are judged against the glibc
++reference of the device's own dumped scene. Diagnosis used `arena_replay` of dispatches captured on the Samsung,
++replayed with WGSL variants on both GPUs; the opt-in capture switches added for this are
++`CODEBRIX_SURFACE_DISPATCH_STAGE` and `CODEBRIX_SURFACE_DISPATCH_ENTRY` (render_gate, any lockstep stage and the
++`prepare_surface` dispatch), `CODEBRIX_EMITTER_PROBE_CAPTURE` (sampler probe slice), `CODEBRIX_SVM_PROBE_DUMP` (every
++SVM probe module) and `CODEBRIX_SURFACE_ORACLE_INPUT` (this host's CPU surface oracle on captured path states).
++
++**Node SVM graph 44 with the Gabor handler (open item 3(a)): FIXED.** Probe variants that store one intermediate of
++`svm_fresnel_node` showed `backfacing` computed correctly but `eta` left at the IOR on the Adreno 730: with the Gabor
++handler in the module the compiler dropped the nested `if(backfacing){eta=1.0/eta;}`. A minimal Gabor body (its input
++loads, arithmetic and three stores) is enough to trigger it; loads alone or stores alone are not. The reciprocal is now
++chosen with `select` (same operations): the Samsung replay of the captured dispatch has no practical failure, and the
++Linux records are bit-identical to before (node render film `b9d1da3f...` unchanged).
++
++**Node SVM driver crash after case 500 (open item 3(b)): FIXED.** The probe module that first contains the mapping
++derivative region (case 501, "mapping derivative 0") terminated the Adreno 730 compiler (SIGSEGV, immediately) in
++`compile_probe` too. Bisection: `svmn_dual_direction`, three `svmn_direction(mat3x3,...)` calls in one expression.
++It now builds the three transform columns once and applies them (the same products and sums); the module links
++(184 s). The full `nodes_svm` gate (541 cases, 67 graphs including Gabor) now passes on the Samsung (1,563 s on the final tree).
++
++**Principled render stage 40 (open item 2): FIXED.** Path 2441 samples an anisotropic GGX lobe; the sharp coat lobes
++(alpha 0.0025) evaluated at that direction make the MIS pdf ill-conditioned. Running this host's CPU oracle on the
++captured stage input showed the x64 and ARM64 CPUs agree (1747.274); the GPU differed only in the closure tangent
++`T` (one ULP in two components), from `principled_rotate`: (a) the quadrant-reduced angle was rounded to one float
++before the disk sine/cosine, losing one ULP of `cos` against libm; (b) the rotation products were contractible, and
++Intel and the Adreno contracted them differently. The reduction now keeps the two-part angle
++(`precise_disk_sincos_pair`, which `precise_disk_sincos` calls with a zero residual, so its other callers are
++unchanged) and the rotation rounds every product before its sum in `rotate_around_axis` order. A binary32 emulation
++of the pinned function reproduces the CPU tangent exactly, and the replayed `prepare_surface` now gives it on Linux.
++On the Samsung every Principled lockstep stage now passes; the render then stops at the image against glibc
++(components 9114 and 9362, 1.546950 against 1.545995), where the GPU equals the device CPU image: the open item 4
++class below. On Linux the Principled gate passes with fewer strict stage differences (946, before 1,025); its GPU film
++changes to `e81feb12...` (glass `db8e84f9...` and node render `b9d1da3f...` unchanged).
++
++**Node render component 6720 (open item 4): root cause shown, not fixed.** With
++`CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2` (the reference oracle's arithmetic adapters) the Samsung node render
++passes every lockstep stage and the image against glibc (component 6720 = 0.928078, the glibc value). The same
++adapters make the Principled render fail its local lockstep at stage 1 (path 552, `mis_ray_pdf` 44.0036 against the
++device CPU's 43.9791): the local stage checks then compare SSE-adapter GPU arithmetic with the scalar ARM64 CPU. So
++the image follows the adapters, and fixing it under the policy needs the lockstep checks on the glibc flow as well
++(open item 5).
++
++**Triangle sampler sample 3133 (open item 1): localised, not fixed.** The sampler probe slice captured on the Samsung
++and replayed on Linux Intel gives the glibc record bit for bit (P.y 0.3799915); the Samsung GPU gives 0.3821864 from
++the same arena and module, so the deviation is in the Adreno 730's compilation of our WGSL, not in the dumped scene.
++Probe stores trace the first difference to one ULP in the deforming instanced emitter's interpolated object transform
++(row y, column x), amplified by the spherical-triangle sampling; storing intermediate values of the motion transform
++makes the Samsung result correct, and ordering barriers on the quaternion products, the compose outputs, the
++rotation, the interpolated rows, the motion time and the point products did not. The device's own ARM64 CPU also
++misses the practical bound there (0.380744); that is a separate CPU question for the Raspberry Pi 5 glibc ARM64
++reference (Phase F): evaluate sample 3133 of the dumped Samsung scene with the Pi 5 oracle and compare it with the x64
++glibc record.
++
++
+ ## Open device items (merge wave 4, 2026-10-22)
+ 
+ One list for the reference devices (Samsung SM-X700, Linux x64, HP). None is masked, and no tolerance was relaxed.
+ Old numbers (session close, 2026-10-20) are given in brackets. The Adreno 650 (S20) results are not open items of the
+ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" at the end (a separate Adreno 650 lane follows).
+ 
+-1. **Samsung triangle sampler** [1]. 2 values of 1 sample differ from the glibc reference (sample 3133 on the
+-   deforming emitter, object 5, prim 4: `P.y` 0.382186 against 0.379992, and `t`; the device CPU gives 0.380744). The
+-   pdf differs by one ulp, so the spherical-triangle sampling amplifies an upstream one-ulp difference; not localised.
+-   Reproducer (lane S): `run_corpus.py samsung triangle X 2400 900 --reference ../reference/linux-x64 --device-scene
+-   --jobs triangle_sample`. Unchanged in merge wave 4.
+-2. **Samsung principled_render stage 40** [8, new part]. The Principled pipelines now compile (lane S); the render
+-   fails a local lockstep check: stage 40, path 2441, `path.mis_ray_pdf` 1751.469 against 1747.274. Linux gives the
+-   Samsung value when the GGX/sheen/rotation arithmetic is made contraction-proof (lane S `p4`), so the Adreno computes
+-   the unfused form. Reproducers: Samsung `run_corpus.py samsung materials X 3600 2400 --reference ../reference/linux-x64
+-   --device-scene --jobs principled_render`; Linux with lane S's `native/work/s/patches/p4_principled_contraction.py`.
+-   The same failure appears on the S20.
+-3. **Samsung node SVM probe** [9]. (a) New in merge wave 4: compiled graph 44 (Fresnel + Layer Weight) mis-evaluates
+-   on the Adreno 730 when the Gabor handler is in the module ("Merge wave 4" above; reproducer: the captured dispatch
+-   and WGSL variants in `native/work/merge4/diag/svm309`, `samsung_variants.sh`). (b) Lane S: after 512 passing cases the
+-   Vulkan driver terminates (SIGSEGV) creating the cumulative probe module (after "vector math derivative 29");
+-   reproducer `run_corpus.py samsung materials X 3600 2400 --reference ../reference/linux-x64 --device-scene --jobs
+-   nodes_svm`. (b) was not reached in merge wave 4 because the gate now stops at (a).
+-4. **Samsung node render component 6720** [9]. GPU 0.928481 against glibc 0.928078; the GPU equals the device CPU
+-   (0.928485): the pixel follows `render_gate.cpp`'s device-own arithmetic adapters, kept for the lockstep checks.
+-   Needs a design decision (lane S decision 1). Reproducer: `--jobs nodes_render` as above.
++1. **Samsung triangle sampler** [1]. Sample 3133 on the deforming instanced emitter (object 5, prim 4): `P.y` 0.382186
++   against the glibc 0.379992. Lane S2: the Samsung capture replayed on Linux Intel gives the glibc record bit for bit,
++   so the deviation is the Adreno 730's compilation of our WGSL, entering as one ULP in the emitter's interpolated
++   object transform (see "Samsung follow-up fixes (lane S2)"); not fixed. The device's own ARM64 CPU (0.380744) also
++   misses the bound: the Raspberry Pi 5 glibc ARM64 oracle (Phase F) on the dumped Samsung scene decides whether that
++   CPU difference is upstream ARM64 arithmetic. Reproducer: `run_corpus.py samsung triangle X 2400 900 --reference
++   ../reference/linux-x64 --device-scene --jobs triangle_sample`.
++2. (resolved by lane S2, see "Resolved" below)
++3. (resolved by lane S2, see "Resolved" below)
++4. **Samsung render images against glibc** [9]. Node render component 6720 (GPU 0.928481, glibc 0.928078) and, since
++   lane S2's stage-40 fix, Principled render components 9114 and 9362 (1.546950 against 1.545995): in both the GPU
++   equals the device CPU image. `render_gate.cpp` keeps the device's own arithmetic adapters for its local lockstep
++   checks. With the reference oracle's adapters (`CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2`) the node render
++   passes completely (lockstep and image), but the Principled render then fails its local lockstep at stage 1 against
++   the scalar device CPU. Fixing it needs the lockstep stage checks on the glibc flow too (item 5); a design decision.
++   Reproducer: `--jobs nodes_render,principled_render` as above.
+ 5. **Checks not yet on the glibc reference** [5]. The `render_gate.cpp` lockstep stage checks and the state gates
+    (surface, closest, shadow, shader_data, glass/microfacet SVM and bounce, camera, volume, volume_boundary,
+    light_state, transparent_shadow, svm_world) compare against the device's own CPU. Lane S moved the
+@@ -2654,11 +2708,15 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" at the end
+    Adreno; no current film depends on them.
+ 
+ Resolved, or closed under the device reference policy:
++- [2 of this list] Samsung principled_render stage 40 `mis_ray_pdf`: FIXED (lane S2; Principled tangent rotation: two-part
++  angle reduction and contraction-proof rotation).
++- [3 of this list] Samsung node SVM probe: (a) graph 44 with the Gabor handler FIXED (Fresnel reciprocal by `select`);
++  (b) the driver crash on the mapping-derivative probe module FIXED (`svmn_dual_direction`); `nodes_svm` passes.
+ - [4] Intel Mesa 25.0.7 cold-compile crash: FIXED (lane L; 16-bit IP/VGRF fields in `brw_opt_combine_constants`,
+   light stage split, Horner loops; every compiled entry below 60,000 backend instructions, re-measured in merge 4:
+   worst 52,509).
+ - [11] Specialization on/off identity on Linux: FIXED (lane L; superset groups, every group bit-identical).
+-- [12] Gabor: shipped on the scene-specialized path (lane L); see open item 3(a) for the Adreno 730.
++- [12] Gabor: shipped on the scene-specialized path (lane L); its Adreno 730 interaction was fixed by lane S2.
+ - [13] Node render scene limit: FIXED (68 triangles; root cause recorded as an inference).
+ - [8] Principled device loss on the Adreno 730: FIXED (lane S; SVM stack in a per-invocation arena slot);
+   principled_svm and principled_bounce pass. The remaining render failure is open item 2.
+diff --git a/native/cycles/emitter_sample_gate.cpp b/native/cycles/emitter_sample_gate.cpp
+index 3cad94c7..a191545b 100644
+--- a/native/cycles/emitter_sample_gate.cpp
++++ b/native/cycles/emitter_sample_gate.cpp
+@@ -123,6 +123,17 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     std::ofstream(std::string(argv[1])+".wgsl")<<source;
+     WGPUShaderSourceWGSL code{};code.chain.sType=WGPUSType_ShaderSourceWGSL;code.code={source.data(),source.size()};WGPUShaderModuleDescriptor descriptor{};descriptor.nextInChain=&code.chain;d.gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&descriptor));d.gpu.pop_scope();auto shader=d.gpu.pipeline(module,d.pipeline_layout,"emitter_sample_probe");
+     std::array<uint32_t,32> p{};p[1]=count;p[4]=output.device_pointer+32;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[9]=scene.dscene.sample_pattern_lut.device_pointer;p[14]=d.scene_tables();p[17]=d.error_word;
++    // Optional diagnostic (CODEBRIX_EMITTER_PROBE_CAPTURE=PREFIX): the probe module, the arena before the dispatch and
++    // the parameters of the slice holding invocation CODEBRIX_EMITTER_PROBE_CAPTURE_INDEX (default 0), for arena replays.
++    if(const char *capture=std::getenv("CODEBRIX_EMITTER_PROBE_CAPTURE")){
++      const char *index=std::getenv("CODEBRIX_EMITTER_PROBE_CAPTURE_INDEX");auto q=p;q[30]=(index?unsigned(std::stoul(index)):0u)/probe_slice*probe_slice;
++      std::filesystem::create_directories(std::filesystem::path(capture).parent_path());
++      auto staging=d.gpu.buffer(d.arena_bytes,WGPUBufferUsage_CopyDst|WGPUBufferUsage_MapRead);wgpuCommandEncoderCopyBufferToBuffer(d.commands(),d.arena,0,staging,0,d.arena_bytes);d.flush();
++      std::vector<uint8_t> arena(d.arena_bytes);d.gpu.read(staging,arena.data(),arena.size());std::ofstream(std::string(capture)+".wgsl")<<source;
++      std::ofstream(std::string(capture)+".arena.bin",std::ios::binary).write(reinterpret_cast<const char*>(arena.data()),arena.size());
++      std::ofstream(std::string(capture)+".params.bin",std::ios::binary).write(reinterpret_cast<const char*>(q.data()),sizeof(q));
++      std::ofstream(std::string(capture)+".capture.json")<<"{\"entry\":\"emitter_sample_probe\",\"workgroupSize\":"<<probe_group_size<<",\"outputOffset\":"<<p[4]<<",\"recordBytes\":48,\"errorOffset\":"<<p[17]<<"}\n";
++    }
+     for(unsigned first=0;first<count;first+=probe_slice){p[30]=first;d.dispatch(p,std::min(probe_slice,count-first),shader,probe_group_size);d.sync();}
+     output.copy_from_device();healthy(d);uint error=0;d.download(d.error_word,&error,4);require(error==0,"Emitter shader error");
+     auto save=[&](const char *suffix,const float *data,size_t count){std::ofstream f(std::string(argv[1])+suffix,std::ios::binary);f.write(reinterpret_cast<const char*>(data),count*4);};
+diff --git a/native/cycles/render_gate.cpp b/native/cycles/render_gate.cpp
+index 57f98364..1039db5d 100644
+--- a/native/cycles/render_gate.cpp
++++ b/native/cycles/render_gate.cpp
+@@ -226,6 +226,24 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+     exchange_only=!preview_mode&&reference_policy::exchange_scene(scene.dscene,"image",{});
+     d.const_copy_to("data",&data,sizeof(data));
+     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);auto layout=fields(d);
++    // Optional diagnostic (CODEBRIX_SURFACE_ORACLE_INPUT=FILE, with a loaded scene): run this host's CPU surface
++    // oracle on captured path states (per layout field: u32 name length, name, u32 stride, stride*count bytes) and
++    // write the resulting states to FILE.out in the same format. No GPU work; the gate stops after it.
++    if(const char *oracle_input=std::getenv("CODEBRIX_SURFACE_ORACLE_INPUT")){
++      const auto bytes=reference_policy::read_file(oracle_input);size_t at=0;std::vector<IntegratorStateCPU> states;std::vector<std::pair<const Field*,uint32_t>> order;
++      auto u32=[&](){uint32_t v;require(at+4<=bytes.size(),"Truncated oracle input");std::memcpy(&v,bytes.data()+at,4);at+=4;return v;};
++      while(at<bytes.size()){const uint32_t length=u32();const std::string name=bytes.substr(at,length);at+=length;const uint32_t stride=u32();
++        auto f=std::find_if(layout.begin(),layout.end(),[&](const Field &x){return x.name==name;});require(f!=layout.end()&&f->stride==stride,"Unknown oracle input field "+name);
++        const uint32_t count=u32();if(states.empty())states.resize(count);require(states.size()==count&&at+size_t(count)*stride<=bytes.size(),"Oracle input size");
++        for(uint32_t i=0;i<count;i++)std::memcpy(reinterpret_cast<uint8_t*>(&states[i])+f->offset,bytes.data()+at+size_t(i)*stride,stride);at+=size_t(count)*stride;order.push_back({&*f,count});}
++      std::vector<int> ids;for(size_t i=0;i<states.size();i++)if(states[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)ids.push_back(int(i));
++      std::vector<float> film(size_t(width)*height*data.film.pass_stride);oracle(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,scene.dscene,ids,states,film);
++      std::ofstream out(std::string(oracle_input)+".out",std::ios::binary);
++      for(auto &[f,count]:order){const uint32_t length=uint32_t(f->name.size()),stride=uint32_t(f->stride);out.write(reinterpret_cast<const char*>(&length),4);out<<f->name;
++        out.write(reinterpret_cast<const char*>(&stride),4);out.write(reinterpret_cast<const char*>(&count),4);
++        for(uint32_t i=0;i<count;i++)out.write(reinterpret_cast<const char*>(&states[i])+f->offset,stride);}
++      std::cerr<<"Surface oracle evaluated "<<ids.size()<<" paths\n";std::cout<<"{\"passed\":true,\"surfaceOracleDiagnostic\":true}\n";return 0;
++    }
+     BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=data.film.pass_stride;auto buffers=scheduler.get_render_buffers();buffers->reset(bp);
+     if(preview_mode){preview_render(d,scheduler,buffers,prefix,width,height,samples);}else{
+     std::vector<float> gold(buffers->buffer.size()),first;std::vector<IntegratorStateCPU> cpu(scheduler.capacity());
+@@ -261,8 +279,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+             m.paths+=ids.size();m.kernels[kernel]+=ids.size();
+           }
+           std::unique_ptr<SurfaceDispatchCapture> surface_capture;
+-          if(repeat==0&&sample==0&&kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)
+-            if(const char *path=std::getenv("CODEBRIX_SURFACE_DISPATCH_CAPTURE"))surface_capture=std::make_unique<SurfaceDispatchCapture>(d,path);
++          // Optional diagnostic: the first sample's surface dispatch, or the one compared as stage
++          // CODEBRIX_SURFACE_DISPATCH_STAGE (a failing lockstep stage) when that is set.
++          if(repeat==0&&kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)
++            if(const char *path=std::getenv("CODEBRIX_SURFACE_DISPATCH_CAPTURE")){const char *stage=std::getenv("CODEBRIX_SURFACE_DISPATCH_STAGE");
++              if(stage?m.stages==std::stoull(stage):sample==0)surface_capture=std::make_unique<SurfaceDispatchCapture>(d,path);}
+           scheduler.enqueue_path_iteration(kernel);require(scheduler.update_queue_counter_and_cache(),"Render iteration failed: "+d.error_message());
+ #ifdef CBC_VOLUME_FIXTURE
+           if(repeat==0)if(const char *target=std::getenv("CODEBRIX_VOLUME_TRACE"))if(std::find(ids.begin(),ids.end(),std::stoi(target))!=ids.end())volume_trace("gpu",sample,kernel,download(d,layout,scheduler.capacity()));
+diff --git a/native/cycles/surface_dispatch_capture.h b/native/cycles/surface_dispatch_capture.h
+index bc0aacd2..55d455c0 100644
+--- a/native/cycles/surface_dispatch_capture.h
++++ b/native/cycles/surface_dispatch_capture.h
+@@ -38,7 +38,9 @@ struct SurfaceDispatchCapture final:ccl::WebGPUCommandObserver {
+   void clear(uint32_t,size_t)override{}
+   void readback(uint32_t,const void*,size_t)override{}
+   void dispatch(const std::array<uint32_t,32> &p,uint32_t n,unsigned entry,uint32_t group_size)override{
+-    if(entry!=4||!before.empty())return;
++    // CODEBRIX_SURFACE_DISPATCH_ENTRY selects the recorder entry (default 4, shade_surface; 5 is prepare_surface).
++    const char *wanted=std::getenv("CODEBRIX_SURFACE_DISPATCH_ENTRY");
++    if(entry!=(wanted?unsigned(std::stoul(wanted)):4u)||!before.empty())return;
+     params=p;work=n;workgroup_size=group_size;before=snapshot();
+     file(prefix+".arena.bin",before.data(),before.size());
+     file(prefix+".params.bin",params.data(),sizeof(params));
+diff --git a/native/cycles/surface_svm_test.h b/native/cycles/surface_svm_test.h
+index 04ec2733..05bd02ce 100644
+--- a/native/cycles/surface_svm_test.h
++++ b/native/cycles/surface_svm_test.h
+@@ -73,6 +73,9 @@ static uint64_t probe_scene_features(WebGPUDevice &d){
+ }
+ static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &probe){
+   probe_raw=probe;probe_features=probe_scene_features(d);probe_module=specialize_wgsl(probe,probe_features);
++  // Optional diagnostic: every probe module this gate builds, numbered, with its feature mask.
++  if(const char *dump=std::getenv("CODEBRIX_SVM_PROBE_DUMP")){static unsigned built=0;const std::string name=std::string(dump)+"/probe-"+std::to_string(built++);
++    std::ofstream(name+".wgsl")<<probe_module;std::ofstream(name+".features.txt")<<std::hex<<probe_features<<'\n';}
+   const std::string &source=probe_module;
+   WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={source.data(),source.size()};
+   WGPUShaderModuleDescriptor desc{};desc.nextInChain=&wgsl.chain;d.gpu.push_scope();
+diff --git a/native/shaders/wavefront_svm_microfacet.wgsl b/native/shaders/wavefront_svm_microfacet.wgsl
+index 3b50e41b..d007784b 100644
+--- a/native/shaders/wavefront_svm_microfacet.wgsl
++++ b/native/shaders/wavefront_svm_microfacet.wgsl
+@@ -143,13 +143,17 @@ fn principled_average(v:vec3<f32>)->f32{return (v.x+v.y+v.z)*(1.0/3.0);}
+ // pi/2 and the bounded precise_disk_sincos adapter (driver sin/cos are only
+ // accurate to about 2^-11, which visibly turns sharp anisotropic GGX lobes).
+ fn principled_rotate(p:vec3<f32>,axis:vec3<f32>,angle:f32)->vec3<f32>{
+-    let k=round(angle*0.6366197723675814);let r=rounded_add(rounded_add(angle,-k*1.5707963705062866),k*4.3711390001862426e-8);
+-    let q=precise_disk_sincos(r);let quadrant=u32(i32(k)&3);var s=q.x;var c=q.y;
++    // Exact quadrant reduction (trig_product keeps k*pi/2's rounding residual); the reduced angle stays two-part.
++    let k=round(angle*0.6366197723675814);let product=trig_product(k,1.5707963705062866);
++    let q=precise_disk_sincos_pair(vec2<f32>(rounded_add(angle,-product.x),rounded_add(-product.y,k*4.3711390001862426e-8)));let quadrant=u32(i32(k)&3);var s=q.x;var c=q.y;
+     if(quadrant==1u){s=q.y;c=-q.x;}if(quadrant==2u){s=-q.x;c=-q.y;}if(quadrant==3u){s=-q.y;c=q.x;}
+-    let m=1.0-c;
+-    return vec3<f32>((c+m*axis.x*axis.x)*p.x+(m*axis.x*axis.y-axis.z*s)*p.y+(m*axis.x*axis.z+axis.y*s)*p.z,
+-        (m*axis.x*axis.y+axis.z*s)*p.x+(c+m*axis.y*axis.y)*p.y+(m*axis.y*axis.z-axis.x*s)*p.z,
+-        (m*axis.x*axis.z-axis.y*s)*p.x+(m*axis.y*axis.z+axis.x*s)*p.y+(c+m*axis.z*axis.z)*p.z);
++    // util/math_float3.h rotate_around_axis in its operation order, every product rounded before its sum
++    // (rounded_add), so neither the Intel nor the Adreno compiler contracts it (lane S2, principled_render stage 40).
++    let m=1.0-c;let xx=rounded_add(c,(m*axis.x)*axis.x);let yy=rounded_add(c,(m*axis.y)*axis.y);let zz=rounded_add(c,(m*axis.z)*axis.z);
++    let xy=(m*axis.x)*axis.y;let xz=(m*axis.x)*axis.z;let yz=(m*axis.y)*axis.z;
++    return vec3<f32>(rounded_add(rounded_add(xx*p.x,rounded_add(xy,-(axis.z*s))*p.y),rounded_add(xz,axis.y*s)*p.z),
++        rounded_add(rounded_add(rounded_add(xy,axis.z*s)*p.x,yy*p.y),rounded_add(yz,-(axis.x*s))*p.z),
++        rounded_add(rounded_add(rounded_add(xz,-(axis.y*s))*p.x,rounded_add(yz,axis.x*s)*p.y),zz*p.z));
+ }
+ fn principled_new(kind:u32,weight:vec3<f32>)->SvmClosure{
+     var c:SvmClosure;c.kind=kind;c.weight=max(weight,vec3<f32>(0));c.sample_weight=abs(principled_average(c.weight));return c;
+diff --git a/native/shaders/wavefront_svm_nodes.wgsl b/native/shaders/wavefront_svm_nodes.wgsl
+index 134dbc9d..e300b84d 100644
+--- a/native/shaders/wavefront_svm_nodes.wgsl
++++ b/native/shaders/wavefront_svm_nodes.wgsl
+@@ -552,8 +552,10 @@ fn svm_fresnel_node(s:ptr<function,SvmState>,node:u32,opcode:u32){
+     let cosi=svmn_dot((*s).geometry.wi,n);var f=0.0;
+     if(opcode==NODE_FRESNEL||kind==NODE_LAYER_WEIGHT_FRESNEL){
+         var eta=0.0;
+-        if(opcode==NODE_FRESNEL){eta=max(svm_input(s,node+N_Fresnel_ior),1e-5);if(backfacing){eta=1.0/eta;}}
+-        else{eta=max(1.0-blend,1e-5);if(!backfacing){eta=1.0/eta;}}
++        // The reciprocal is chosen with select, not a nested if: with the Gabor handler in the same module the
++        // Adreno 730 compiler dropped `if(backfacing){eta=1.0/eta;}` (native/DEVICE.md, lane S2). Same operations.
++        if(opcode==NODE_FRESNEL){let x=max(svm_input(s,node+N_Fresnel_ior),1e-5);eta=select(x,1.0/x,backfacing);}
++        else{let x=max(1.0-blend,1e-5);eta=select(1.0/x,x,backfacing);}
+         let c=abs(cosi);var g=eta*eta-1.0+c*c;f=1.0;
+         if(g>0.0){g=sqrt(g);let a=(g-c)/(g+c);let b=(c*(g+c)-1.0)/(c*(g-c)+1.0);f=0.5*a*a*(1.0+b*b);}
+     }else{
+@@ -1142,7 +1144,13 @@ fn svm_wireframe(s:ptr<function,SvmState>,node:u32){
+ //#if SVM_NODE_MAPPING_DERIVATIVE
+ // mapping.h svm_node_mapping<dual3> and svm_node_texture_mapping<dual3> with the
+ // util/math_dual.h operators: dual / float3 multiplies by the reciprocal.
+-fn svmn_dual_direction(t:mat3x3<f32>,a:NormalDual)->NormalDual{return NormalDual(svmn_direction(t,a.value),svmn_direction(t,a.dx),svmn_direction(t,a.dy));}
++// One column set for the three directions (the same products and sums as svmn_direction): three
++// svmn_direction calls in one expression made the Adreno 730 compiler terminate (SIGSEGV) creating the
++// probe module (native/DEVICE.md, lane S2).
++fn svmn_dual_direction(t:mat3x3<f32>,a:NormalDual)->NormalDual{
++    let col_x=vec3<f32>(t[0].x,t[1].x,t[2].x);let col_y=vec3<f32>(t[0].y,t[1].y,t[2].y);let col_z=vec3<f32>(t[0].z,t[1].z,t[2].z);
++    return NormalDual(a.value.x*col_x+(a.value.y*col_y+a.value.z*col_z),a.dx.x*col_x+(a.dx.y*col_y+a.dx.z*col_z),a.dy.x*col_x+(a.dy.y*col_y+a.dy.z*col_z));
++}
+ fn svmn_dual_divide(a:NormalDual,b:vec3<f32>)->NormalDual{
+     let inv=vec3<f32>(1)/b;let zero=b==vec3<f32>(0);
+     return NormalDual(select(a.value*inv,vec3<f32>(0),zero),select(a.dx*inv,vec3<f32>(0),zero),select(a.dy*inv,vec3<f32>(0),zero));
+diff --git a/native/shaders/wavefront_trig.wgsl b/native/shaders/wavefront_trig.wgsl
+index 2fc0f566..3d2711af 100644
+--- a/native/shaders/wavefront_trig.wgsl
++++ b/native/shaders/wavefront_trig.wgsl
+@@ -35,10 +35,13 @@ fn trig_coeff(a:vec2<f32>,b:vec2<f32>)->vec2<f32>{
+ // This keeps the entry points that use the precise trigonometry inside the Intel
+ // Mesa 25.0.7 backend's 16-bit instruction/register range (native/DEVICE.md,
+ // "Linux reference fixes on the updated Mesa").
+-fn precise_disk_sincos(angle:f32)->vec2<f32>{
+-    if(angle==0.0){return vec2<f32>(angle,1);}
+-    var x=vec2<f32>(angle,0);let swap=angle>0.7853981633974483;
+-    if(swap){x=vec2<f32>(rounded_add(1.5707963705062866,-angle),-4.3711390001862426e-8);}
++fn precise_disk_sincos(angle:f32)->vec2<f32>{return precise_disk_sincos_pair(vec2<f32>(angle,0));}
++// The same evaluation for a two-component angle (high part plus a small residual), so a caller's
++// quadrant reduction keeps its residual (lane S2: principled_rotate lost one ULP of cos there).
++fn precise_disk_sincos_pair(angle_pair:vec2<f32>)->vec2<f32>{
++    let angle=angle_pair.x;if(angle==0.0&&angle_pair.y==0.0){return vec2<f32>(angle,1);}
++    var x=angle_pair;let swap=angle>0.7853981633974483;
++    if(swap){x=vec2<f32>(rounded_add(1.5707963705062866,-angle),rounded_add(-4.3711390001862426e-8,-angle_pair.y));}
+     if(abs(x.x)<0.000244140625){return select(vec2<f32>(rounded_add(x.x,x.y),1),vec2<f32>(1,rounded_add(x.x,x.y)),swap);}
+     let z=trig_mul(x,x);
+     var s=vec2<f32>(-7.647163609812713e-13,-1.2200710471178288e-20);

@@ -1,0 +1,151 @@
+{
+  "principled_render": {
+    "gate": "principled_render",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 233.1,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 53405,
+        "moduleMs": 6.77323,
+        "pipelineMs": 762.612,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 76477,
+        "moduleMs": 9.91797,
+        "pipelineMs": 3029.02,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 293923,
+        "moduleMs": 42.2012,
+        "pipelineMs": 2866.5,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 293923,
+        "moduleMs": 38.0236,
+        "pipelineMs": 108095,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 293923,
+        "moduleMs": 52.6316,
+        "pipelineMs": 9611.51,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 293923,
+        "moduleMs": 53.3269,
+        "pipelineMs": 16715.9,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 293923,
+        "moduleMs": 52.3809,
+        "pipelineMs": 69357.2,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "default",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_TRANSPARENT,SVM_BSDF_GLASS,SVM_BSDF_PRINCIPLED,SVM_BSDF_THIN_FILM,SVM_BSDF_THIN_WALL",
+        "wgslBytes": 225857,
+        "moduleMs": 42.0509,
+        "pipelineMs": 2858.67,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 108095,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "flow": "device-scene",
+      "oracleSha256": "963444c0fccc0e5c0cc242ecd85e4b2194e8f855dc69e5a1a90b4c890a38eee8",
+      "hostRejudgedPassed": false,
+      "rows": [
+        {
+          "key": "image",
+          "authoritative": {
+            "passed": false,
+            "notReached": true
+          },
+          "diagnosticLocalVersusGlibc": null,
+          "diagnosticGpuVersusLocal": null
+        }
+      ]
+    },
+    "passed": false,
+    "error": [
+      "Rendered repeat=0 sample=1 stages=36",
+      "Intersection diagnostic actual prim/object/t=38/2/7.059849262 expected=38/2/7.059849262 P=0.786503911,3.465616703,2.234911203 D=0.8700200915,-0.3449651897,-0.3522275686 rayBitsIdentical=0 tmin=0 bounce=2",
+      "stage 40 path.mis_ray_pdf path=2441 actual=1751.469238 expected=1747.274414"
+    ]
+  },
+  "principled-replay": {
+    "passed": false,
+    "notRun": "source job failed"
+  }
+}

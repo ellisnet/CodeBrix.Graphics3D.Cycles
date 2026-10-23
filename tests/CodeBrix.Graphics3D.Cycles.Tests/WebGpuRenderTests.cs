@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using CodeBrix.Graphics3D.Cycles.Diagnostics;
@@ -221,6 +222,30 @@ public class WebGpuRenderTests(ITestOutputHelper output)
         report.DeviceDescription.Should().NotBeNullOrEmpty();
         report.GpuFallsBackToCpu.Should().BeFalse();
         report.Scope.WrittenPasses.Should().Contain("combined");
+    }
+
+    [Fact]
+    public void gpu_device_report_states_the_pipeline_size_guard()
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        WebGpuValidationScenes.Build(gpu, WebGpuValidationScenes.DiffuseSun);
+        gpu.Render(WebGpuValidationScenes.Settings);
+
+        //Act
+        using JsonDocument device = JsonDocument.Parse(gpu.Host.DeviceReportJson());
+        JsonElement guard = device.RootElement.GetProperty("pipelines").GetProperty("sizeGuard");
+        long threshold = guard.GetProperty("thresholdBytes").GetInt64();
+        long largest = guard.GetProperty("largestEntryBytes").GetInt64();
+        ICapabilityReport report = gpu.GetCapabilities();
+        output.WriteLine($"size guard: threshold {threshold} bytes, largest entry {guard.GetProperty("largestEntry").GetString()} {largest} bytes, warnings {guard.GetProperty("warnings").GetInt32()}");
+
+        //Assert: a small scene compiles entries well below the guard, so no size warning reaches the report.
+        threshold.Should().Be(1110000);
+        largest.Should().BeGreaterThan(0);
+        largest.Should().BeLessThan(threshold);
+        guard.GetProperty("warnings").GetInt32().Should().Be(0);
+        report.Warnings.Should().NotContain(w => w.Contains("size guard"));
     }
 
     [Fact]

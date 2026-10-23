@@ -64,8 +64,12 @@ static void evaluate(WebGPUDevice &d,Scene &scene,const std::vector<Field>&layou
 struct RejectionMetrics {unsigned cases=0;size_t zero_capacity_paths=0;};
 static RejectionMetrics rejections(const DeviceInfo &info){
   RejectionMetrics result;
+  // One device for every rejection case, so each distinct pipeline compiles once.
+  // After each case WebGPUDevice::recover() drops the failed command stream and
+  // clears the kernel error word and the sticky error, before that case's scene,
+  // scheduler and buffers are released; every case still builds its own scene.
+  Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"surface_gate device creation");
   for(unsigned test=0;test<21;test++){
-    Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"surface_gate device creation");
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);
     for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
     Progress progress;scene.device_update(&d,progress);healthy(d);auto &ds=scene.dscene;auto &data=ds.data;configure(data);d.const_copy_to("data",&data,sizeof(data));
@@ -116,6 +120,7 @@ static RejectionMetrics rejections(const DeviceInfo &info){
       for(size_t i=0;i<states.size();i++)require(!std::memcmp(actual.data()+i*f.stride,reinterpret_cast<const char*>(&states[i])+f.offset,f.stride),"Rejected surface changed path state");}
     std::vector<float> after(film.size());d.download(film.device_pointer,after.data(),after.size()*4);require(std::all_of(after.begin(),after.end(),[](float x){return x==.125f;}),"Rejected surface changed film");
     IntegratorQueueCounter counter{};d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));require(!std::memcmp(&counter,&before,sizeof(counter)),"Rejected surface changed counters");
+    std::string recovery;require(d.recover(recovery),"Surface rejection "+std::to_string(test)+" recovery: "+recovery);
     result.cases++;
   }return result;
 }

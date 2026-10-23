@@ -11,6 +11,7 @@ fn shadow_transition(index:u32,current:u32,next:u32){
     state_u16(S_shadow_path_queued_kernel,index,next);
 }
 @compute @workgroup_size(64) fn intersect_shadow(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}
     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||(state_word(S_shadow_path_flag,index)&SHADOW_UNSUPPORTED_FLAGS)!=0u){fail();return;}
@@ -58,6 +59,7 @@ fn shadow_write_film(index:u32){
     shadow_transition(index,K_SHADOW_SHADE,0u);
 }
 @compute @workgroup_size(64) fn shade_shadow(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}
     let flag=state_word(S_shadow_path_flag,index);
@@ -70,6 +72,7 @@ fn shadow_write_film(index:u32){
 // intermittently crashed the Intel Mesa 25.0.7 backend (brw_opt_combine_constants)
 // in cold compiles; the split entries compiled every probe (native/work/b1).
 @compute @workgroup_size(64) fn prepare_shadow_shader_data(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}let count=state_half(S_shadow_path_packed_num_hits,index);
     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||count>4095u){return;}
@@ -85,6 +88,7 @@ fn shadow_write_film(index:u32){
 // Bound compiler pressure from the SVM path with one invocation per workgroup.
 // Static transparent triangles remain the supported scope; tuning is pending.
 @compute @workgroup_size(1) fn shade_shadow_transparent(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}let flag=state_word(S_shadow_path_flag,index);let count=state_half(S_shadow_path_packed_num_hits,index);
     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||(flag&SHADOW_UNSUPPORTED_FLAGS)!=0u||count>4095u){fail();return;}

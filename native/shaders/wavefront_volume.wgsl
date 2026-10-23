@@ -56,6 +56,7 @@ fn volume_after(index:u32){
     volume_finish(index,next);
 }
 @compute @workgroup_size(64) fn shade_volume(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME){fail();return;}
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);if(pixel>=p(11u)/stride){fail();return;}let base=p(4u)+pixel*stride*4u;
@@ -142,6 +143,7 @@ fn volume_after(index:u32){
 // Native homogeneous branch of kernel_volume_density_evaluate. The shader's
 // spatially constant coefficient makes voxel position sampling unnecessary.
 @compute @workgroup_size(64) fn shader_eval_volume_density(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
     if(id.x>=p(1u)){return;}let offset=id.x+p(3u);let input=p(2u)+offset*VD_INPUT_SIZE*2u;
     let shader=load_word(input+VD_INPUT_SIZE+VD_INPUT_OBJECT);if(shader==NONE){return;}
     let object=load_word(input+VD_INPUT_OBJECT);let flags=load_word(table_at(G_shaders,shader&SHADER_MASK,SIZE_shaders)+SH_flags);
