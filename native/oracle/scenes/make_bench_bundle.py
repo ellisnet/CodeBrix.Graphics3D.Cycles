@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Generate the bench oracle bundle locally and verify it against the committed scene files.
 
-    python3 native/oracle/scenes/make_bench_bundle.py --model PATH/TO/bench_01.gltf --output DIR [--tool EXE]
+    python3 native/oracle/scenes/make_bench_bundle.py --output DIR [--model PATH/TO/bench_01.gltf] [--tool EXE]
 
 The committed files are native/oracle/scenes/assets/bench_01.json, bench_01-hdri.json and
 manifest.json (expected SHA-256 of every generated raw file). The raw geometry, attribute and
@@ -25,7 +25,7 @@ def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--model',type=Path,required=True,help='the external bench_01.gltf (with bench_01.bin and ../Textures)')
+    parser.add_argument('--model',type=Path,default=REPO/'native/oracle/scenes/assets/ForestVillage/CommunityProps/bench_01.gltf',help='bench_01.gltf (with bench_01.bin beside it and ../Textures); default: the asset in the repository')
     parser.add_argument('--output',type=Path,required=True,help='a new directory (outside tracked paths)')
     parser.add_argument('--tool',type=Path,help='a built CodeBrix.Graphics3D.Cycles.GltfRender executable (default: dotnet run of the project)')
     args=parser.parse_args()

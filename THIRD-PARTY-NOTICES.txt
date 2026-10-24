@@ -239,13 +239,13 @@ Use: External glTF example tool (tools/gltf) and managed tests only: decodes glT
 Attribution: Jeremy Ellis and contributors; Six Labors and the other authors listed in the package notices.
 Notices: third_party/licenses/CodeBrix.Imaging-THIRD-PARTY-NOTICES.txt
 
-Geometry-only test captures 2026-10-18
-Origin: https://polyhaven.com/a/food_lime_01
+Test asset captures and the ForestVillage bench asset 2026-10-23
+Origin: https://polyhaven.com/a/food_lime_01; https://polyhaven.com/a/rough_wood; https://polyhaven.com/a/japanese_cedar_planks
 Selected license: Apache-2.0 AND CC0-1.0
-Use: Jeremy-authored ForestVillage bench/ceramic-home geometry and CC0 Poly Haven lime; no original textures/fonts redistributed. See parity/ASSETS.md.
-Attribution: Copyright (c) 2026 Jeremy Ellis and contributors; Poly Haven food_lime_01 contributors.
-Conditions: Prepared scene buffers and renders carry this provenance; licenses of other external models must be reviewed before import. The six original bench textures have a separate pre-import CC0 review in third_party/bench-texture-license-review.json; they remain external and are not redistributed by these clay tests.
-Notices: third_party/licenses/Cycles-Apache-2.0.txt, parity/ASSETS.md, third_party/licenses/CC0-1.0.txt
+Use: Jeremy-authored ForestVillage bench/ceramic-home geometry captures and CC0 Poly Haven lime (parity/ASSETS.md); the ForestVillage bench_01 asset itself (bench_01.gltf and bench_01.bin, Jeremy-authored geometry dedicated CC0-1.0) with its six unchanged Poly Haven CC0-1.0 textures (rough_wood, japanese_cedar_planks) is redistributed in native/oracle/scenes/assets/ForestVillage/ as the source of the bench oracle scenes; see its PROVENANCE.txt.
+Attribution: Copyright (c) 2026 Jeremy Ellis and contributors; Poly Haven food_lime_01 contributors; Poly Haven rough_wood (Rob Tuytel); Poly Haven japanese_cedar_planks (Charlotte Baglioni, Rico Cilliers).
+Conditions: Prepared scene buffers and renders carry this provenance; licenses of other external models must be reviewed before import. The six bench textures have a pre-import CC0 review in third_party/bench-texture-license-review.json and were imported at exactly the reviewed SHA-256 values; the asset directory is a test input, not part of the package payload.
+Notices: third_party/licenses/Cycles-Apache-2.0.txt, parity/ASSETS.md, third_party/licenses/CC0-1.0.txt, native/oracle/scenes/assets/ForestVillage/PROVENANCE.txt
 
 libtiff v4.7.0
 Origin: https://gitlab.com/libtiff/libtiff
@@ -108067,7 +108067,9 @@ image decoding belongs in the native dependency/texture pipeline.
 
 The existing asset collections include their own Gltf2 validation results and
 provenance. Preserve those notices and keep external resources beside each
-model. Original model files, textures and fonts remain external. Saved rendering
+model. Original model files, textures and fonts remain external, except the
+bench_01 asset and its six textures, imported at their reviewed hashes into
+`native/oracle/scenes/assets/ForestVillage/` (CC0; see its `PROVENANCE.txt`). Saved rendering
 evidence includes prepared geometry and numerical captures derived from the
 bench, lime and ceramic-home tests. The root third-party notices record their
 origins and applicable licenses; these clay tests do not import the original
@@ -108124,9 +108126,50 @@ metallic/roughness channels, sRGB base colour times its factor, occlusion not
 applied, repeat wrapping, linear interpolation without mipmaps) and renders it on
 the CPU reference and WebGPU backends; `native/oracle/scenes/assets/` holds the
 bench oracle scene documents and the expected hashes of the generated files. The
-textures and every decoded or derived pixel file remain external: they are
-generated locally (`native/oracle/scenes/make_bench_bundle.py`) under
-`native/work/` and never committed.
+bench asset and its six reviewed textures are in the repository
+(`native/oracle/scenes/assets/ForestVillage/`, CC0); the decoded and derived
+pixel files are still generated locally (`native/oracle/scenes/make_bench_bundle.py`)
+under `native/work/` and never committed.
+
+======================================================================
+native/oracle/scenes/assets/ForestVillage/PROVENANCE.txt
+======================================================================
+
+ForestVillage bench asset (bench_01): provenance and licence
+Copyright (c) 2026 Jeremy Ellis and contributors
+SPDX-License-Identifier: CC0-1.0
+
+Contents of this directory (SHA-256 of every file, unchanged from the reviewed
+originals; see third_party/bench-texture-license-review.json)
+
+  CommunityProps/bench_01.gltf   3d989094bcf0139445aa075449ecac0aeb08c3ceddf4d7476f029e962dc44d0a
+  CommunityProps/bench_01.bin    f60453db047f9ff01dde59528f219651af25f88b00605a667afedf7b19ffff33
+  Textures/rough_wood_diff_2k.jpg              0bd2b3195db9b54d55aa0f842801220ec5e1d389f5fc1e670b378bdaca3f8e7b
+  Textures/rough_wood_nor_gl_2k.jpg            b75cb1e989407e442c3255f3e05ea8c40162c0e5dc2efc9ef2515fce61319194
+  Textures/rough_wood_arm_2k.jpg               bd7597ff0d2d6682e6990a0204b67260c001cdffe01acf95e8f8b43881edb4af
+  Textures/japanese_cedar_planks_diff_2k.jpg   92fd3742f4744e6262e8093c5dfb919a6bbabac48fe672734d4cba7bc5a4aea3
+  Textures/japanese_cedar_planks_nor_gl_2k.jpg 8f9d6194b9345b9a89702a0a146edf70728a2dc2d23050b60260a1442a2df526
+  Textures/japanese_cedar_planks_arm_2k.jpg    48b6a27493efc3b691ee4d3bbca74779f55480ca8a87626d5cf0f4ebd68119be
+
+Geometry. bench_01.gltf and bench_01.bin are original work of Jeremy Ellis
+(the ForestVillage original mesh generator, part of the ForestCommunity
+collection) and are dedicated to the public domain under CC0-1.0
+(third_party/licenses/CC0-1.0.txt). No font outlines are used by this bench.
+
+Textures. The six JPEG files are unchanged Poly Haven downloads, CC0-1.0
+(https://polyhaven.com/license):
+  rough_wood              https://polyhaven.com/a/rough_wood
+                          author Rob Tuytel (all)
+  japanese_cedar_planks   https://polyhaven.com/a/japanese_cedar_planks
+                          authors Charlotte Baglioni (scanning), Rico Cilliers (processing)
+Their CC0 status is retained; they are not relabelled.
+
+Purpose. This is a test asset: the source of the bench oracle scenes
+native/oracle/scenes/assets/bench_01.json and bench_01-hdri.json, which
+native/oracle/scenes/make_bench_bundle.py generates from it with the glTF
+example tool. The directory keeps the glTF document's relative layout
+(bench_01.bin beside it, the images under ../Textures). It is not part of the
+NuGet package payload.
 
 ======================================================================
 third_party/deps/tiff/LICENSE.md

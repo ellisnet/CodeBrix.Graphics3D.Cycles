@@ -97,14 +97,14 @@ Separate Color, Mix Color, tangent-space normal map from the glTF TANGENT),
 lit by the converter's default sun and a constant world. `bench_01-hdri.json`
 is the same bench lit only by a procedural environment (512x256 float4,
 importance sampled through a background light with `use_mis` and
-`map_resolution` 512). Only the two scene documents and `manifest.json` are
-committed. The raw geometry, attribute and texture files derive from the
-external asset and are never committed; generate them on a machine that has the
-asset and .NET:
+`map_resolution` 512). The asset itself (`bench_01.gltf`, its buffer and the six
+CC0 textures) is in the repository under `scenes/assets/ForestVillage/` with its
+`PROVENANCE.txt`; the two scene documents and `manifest.json` are committed; the
+raw geometry, attribute and texture files the runner needs are generated, not
+committed. Generate them on a machine with .NET:
 
 ```sh
 python3 native/oracle/scenes/make_bench_bundle.py \
-  --model .../ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf \
   --output native/work/oracle-assets/bench_01
 ```
 
@@ -114,9 +114,11 @@ only, the same bytes on every platform), requires both scene documents to be
 byte-identical to the committed ones and every raw file to match the SHA-256
 values in `manifest.json` (which also records the decoder identity), and leaves
 `bench_01.json` and `bench_01-hdri.json` in the output directory for the runner.
-On a machine without the asset, copy a verified bundle directory (the two scene
-documents, `bundle-manifest.json` and every raw file) and check its files against
-`manifest.json`; nothing else is needed to render it.
+If a generated raw file does not match `manifest.json` (a different decoder
+build), or on a machine without .NET, copy a verified bundle directory (the two
+scene documents, `bundle-manifest.json` and every raw file) from a machine that
+produced it and check its files against `manifest.json`; nothing else is needed to
+render it.
 
 ## Linux gate corpus (`scenes/linux-gates/`)
 

@@ -482,9 +482,9 @@ default (gltf/<file name>):
 Decoded pixels depend on the JPEG decoder: a bundle is the portable artifact, so
 copy bundles between machines rather than decoding again elsewhere.
 native/oracle/scenes/make_bench_bundle.py generates and verifies the bench
-oracle bundle (native/oracle/README.md, "Bench oracle scene"); the original
-model and textures stay outside the repository, and so do the generated raw
-files. native/oracle/compare.py is the multi-backend comparator (verdict
+oracle bundle (native/oracle/README.md, "Bench oracle scene") from the bench
+asset in the repository (native/oracle/scenes/assets/ForestVillage/, CC0, with
+its PROVENANCE.txt); the generated raw files stay outside the repository. native/oracle/compare.py is the multi-backend comparator (verdict
 "perfect" when every backend pair passes the practical criterion).
 
 Android: build the validation app as below, then render a bundle on a device

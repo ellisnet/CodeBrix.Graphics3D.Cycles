@@ -385,11 +385,17 @@ python3 native/oracle/compare.py \
   --json native/work/oracles/<linux run>/four-way-<scene>.json
 ```
 
-**MISSING:** the Milestone 1 bench scene in `cbcOracleScene` form is not in
-`native/oracle/scenes` yet, and no comparator ingests two whole bundles and
-produces the four-way table for every scene at once; `compare.py` works one
-scene's directories at a time. When the bench scene is exported, render it
-with `--scene` on both machines.
+The Milestone 1 bench scenes are `native/oracle/scenes/assets/bench_01.json`
+and `bench_01-hdri.json`, and the asset they are built from is in the repository
+(`native/oracle/scenes/assets/ForestVillage/`, CC0, see its `PROVENANCE.txt`).
+Generate the bundle on the Mac with
+`python3 native/oracle/scenes/make_bench_bundle.py --output native/work/oracle-assets/bench_01`
+(needs .NET and the glTF example tool; the script fails if any generated raw file
+differs from `scenes/assets/manifest.json`, in which case copy the verified Linux
+bundle directory instead of re-decoding, as `native/oracle/README.md` says) and
+render both documents with `--scene` on both machines. No comparator ingests two
+whole bundles and produces the four-way table for every scene at once;
+`compare.py` works one scene's directories at a time.
 
 ## 7. What to record
 

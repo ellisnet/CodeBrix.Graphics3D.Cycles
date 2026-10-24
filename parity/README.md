@@ -123,8 +123,9 @@ byte. Adding imported input also preserves the original 38-triangle fixture
 scene byte for byte.
 
 Evidence, preview images, exact package audit, shader and source snapshots are
-saved under `evidence/real-assets`. Original model resources remain in Oasys;
-they have not been copied into this repository. Native wall-clock timings in
+saved under `evidence/real-assets`. Original model resources remain in Oasys,
+except the bench_01 asset, later imported into
+`native/oracle/scenes/assets/ForestVillage/` (CC0). Native wall-clock timings in
 the reports include allocation, dispatch and readback and are not production
 performance benchmarks.
 

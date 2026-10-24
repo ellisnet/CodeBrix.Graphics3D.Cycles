@@ -18,7 +18,9 @@ image decoding belongs in the native dependency/texture pipeline.
 
 The existing asset collections include their own Gltf2 validation results and
 provenance. Preserve those notices and keep external resources beside each
-model. Original model files, textures and fonts remain external. Saved rendering
+model. Original model files, textures and fonts remain external, except the
+bench_01 asset and its six textures, imported at their reviewed hashes into
+`native/oracle/scenes/assets/ForestVillage/` (CC0; see its `PROVENANCE.txt`). Saved rendering
 evidence includes prepared geometry and numerical captures derived from the
 bench, lime and ceramic-home tests. The root third-party notices record their
 origins and applicable licenses; these clay tests do not import the original
@@ -75,6 +77,7 @@ metallic/roughness channels, sRGB base colour times its factor, occlusion not
 applied, repeat wrapping, linear interpolation without mipmaps) and renders it on
 the CPU reference and WebGPU backends; `native/oracle/scenes/assets/` holds the
 bench oracle scene documents and the expected hashes of the generated files. The
-textures and every decoded or derived pixel file remain external: they are
-generated locally (`native/oracle/scenes/make_bench_bundle.py`) under
-`native/work/` and never committed.
+bench asset and its six reviewed textures are in the repository
+(`native/oracle/scenes/assets/ForestVillage/`, CC0); the decoded and derived
+pixel files are still generated locally (`native/oracle/scenes/make_bench_bundle.py`)
+under `native/work/` and never committed.
