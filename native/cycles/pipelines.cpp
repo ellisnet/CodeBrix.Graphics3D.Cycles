@@ -532,6 +532,16 @@ std::string WebGPUDevice::pipeline_report_json() const{
     o<<"{\"module\":\""<<r.module<<"\",\"entry\":\""<<r.entry<<"\",\"wgslBytes\":"<<r.wgsl_bytes<<",\"inlinedBytes\":"<<r.inlined_bytes<<",\"moduleMs\":"<<r.module_ms<<",\"pipelineMs\":"<<r.pipeline_ms<<'}';}
   o<<"]}";return o.str();
 }
+// The WebGPU adapter and backend the device runs on (webgpu.h WGPUBackendType),
+// the runtime library loaded and, on Windows Direct3D 12, the DXC compiler.
+std::string WebGPUDevice::adapter_report_json() const{
+  static const char *backends[]={"Undefined","Null","WebGPU","D3D11","D3D12","Metal","Vulkan","OpenGL","OpenGLES"};
+  const uint32_t b=gpu.adapter_backend;std::ostringstream o;
+  o<<"{\"backendType\":"<<b<<",\"backendName\":\""<<(b<9?backends[b]:"unknown")<<"\",\"adapterType\":"<<gpu.adapter_type
+   <<",\"device\":\""<<json_text(gpu.adapter_device)<<"\",\"vendorId\":"<<gpu.adapter_vendor_id<<",\"deviceId\":"<<gpu.adapter_device_id
+   <<",\"runtimeLibrary\":\""<<json_text(gpu.library_path)<<"\",\"dxcPath\":"<<(gpu.dxc_path.empty()?std::string("null"):"\""+json_text(gpu.dxc_path)+"\"")<<'}';
+  return o.str();
+}
 std::string pipeline_process_report_json(){
   auto &process=process_pipelines();std::lock_guard lock(process.mutex);std::ostringstream o;
   o<<"{\"tier\":\""<<(process.conservative?"conservative":"full")<<"\",\"degraded\":"<<(process.warnings.empty()?"false":"true")

@@ -65,7 +65,11 @@ inline const char *environment(const char *name){const char *value=std::getenv(n
 // render_gate.cpp with the stage-state exchange) call this before creating the device: an Android
 // scalar build then generates the reference oracle's (Linux x64 SSE4.2) arithmetic adapters
 // (wavefront.h reference_oracle_sse). Gates with local checks keep the device's own oracle.
+#ifdef _WIN32
+inline void use_reference_oracle_arithmetic(){if(environment("CODEBRIX_CYCLES_REFERENCE_IMPORT"))_putenv_s("CODEBRIX_CYCLES_REFERENCE_ORACLE","linux-x64-sse4.2");}
+#else
 inline void use_reference_oracle_arithmetic(){if(environment("CODEBRIX_CYCLES_REFERENCE_IMPORT"))setenv("CODEBRIX_CYCLES_REFERENCE_ORACLE","linux-x64-sse4.2",1);}
+#endif
 inline int64_t ordered(float value){int32_t bits;std::memcpy(&bits,&value,4);return bits<0?int64_t(INT32_MIN)-bits:bits;}
 // Units in the last place between two finite floats (0 for equal bits; +0/-0 count as equal).
 inline uint64_t ulps(float a,float b){if(a==b)return 0;const int64_t d=ordered(a)-ordered(b);return uint64_t(d<0?-d:d);}

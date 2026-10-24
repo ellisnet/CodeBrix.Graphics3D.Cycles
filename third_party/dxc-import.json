@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "id": "dxc",
+  "name": "DirectX Shader Compiler (dxcompiler.dll)",
+  "version": "1.9.2609.5",
+  "releaseTag": "v1.9.2609",
+  "source": "https://github.com/microsoft/DirectXShaderCompiler",
+  "importDate": "2026-10-24",
+  "use": "Unchanged Microsoft-signed runtime binary shipped beside the Windows Cycles host. The shipped CodeBrix.WebGpu.Native runtime loads it (WGPUInstanceExtras.dxcPath) to compile the WGSL kernels' HLSL for Direct3D 12. Not a build input: no source is compiled against it.",
+  "why": "Measured on the win-x64 development machine (integrated Intel GPU, CodeBrix.WebGpu.Native 1.0.290.1433) by compiling every compute entry point of five real Cycles WGSL modules (32 pipelines; native/evidence/merge-20261023c/wgsl-modules: two surface, one shadow and one background module plus the largest, 457,744 bytes). D3D12 with DXC: 32 of 32 pipelines compiled. Vulkan (reference): 32 of 32. D3D12 with FXC (d3dcompiler_47.dll, part of Windows): failed shade_background and shader_eval_background (Internal error: FXC D3DCompile error 0x80004005) and prepare_surface of the largest module, and needed 252 s for a prepare_shader_data pipeline that DXC compiled in 8 s and Vulkan in 4 s. FXC therefore cannot be the Windows compiler; wgpu.h names DXC v1.8.2502 as the minimum supported version.",
+  "release": {
+    "asset": "dxc_2026_09_29.zip",
+    "url": "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2609/dxc_2026_09_29.zip",
+    "sha256": "ad31b1fc8443175d204f77a611fdb3ef2ec42759bdc2f1167368de24a4a7e7f1",
+    "sha256Source": "GitHub release asset digest, recomputed after download",
+    "published": "2026-09-29T16:56:40Z"
+  },
+  "crossCheck": {
+    "package": "Microsoft.Direct3D.DXC 1.9.2609.5 (nuget.org)",
+    "url": "https://api.nuget.org/v3-flatcontainer/microsoft.direct3d.dxc/1.9.2609.5/microsoft.direct3d.dxc.1.9.2609.5.nupkg",
+    "sha256": "73cfa082245918c2cc1ec6740250eb7377e83a757b3b3a3e16e0d71535bfbfc3",
+    "result": "build/native/bin/x64/dxcompiler.dll and build/native/bin/arm64/dxcompiler.dll are byte-identical to the release zip's bin/x64 and bin/arm64 copies; the package nuspec declares <license type=\"file\">LICENSE-LLVM.txt</license>."
+  },
+  "files": [
+    {
+      "path": "native/binaries/win-x64/runtime/dxcompiler.dll",
+      "from": "bin/x64/dxcompiler.dll",
+      "sha256": "0689e2fee0a1c9df8662a59680469f24e2a3ad7ce6bbbcc9284f7a83172bfc59",
+      "bytes": 22274872,
+      "machine": "AMD64",
+      "fileVersion": "1.9.2609.5",
+      "authenticode": "Valid; CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    },
+    {
+      "path": "native/binaries/win-arm64/runtime/dxcompiler.dll",
+      "from": "bin/arm64/dxcompiler.dll",
+      "sha256": "ec234595c270a908da183eb04f1f5a1a667d3ce81e69f5bc55370503dab48373",
+      "bytes": 23748408,
+      "machine": "ARM64",
+      "fileVersion": "1.9.2609.5",
+      "authenticode": "Valid; CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    },
+    {
+      "path": "native/binaries/win-x64/runtime/LICENSE-DirectXShaderCompiler.txt",
+      "from": "LICENSE-LLVM.txt",
+      "sha256": "729615317e28dd03907e46f0fc3b5e88f7853cee61d1a1471d2749335516b46f"
+    },
+    {
+      "path": "native/binaries/win-arm64/runtime/LICENSE-DirectXShaderCompiler.txt",
+      "from": "LICENSE-LLVM.txt",
+      "sha256": "729615317e28dd03907e46f0fc3b5e88f7853cee61d1a1471d2749335516b46f"
+    },
+    {
+      "path": "third_party/licenses/DirectXShaderCompiler-LICENSE-LLVM.txt",
+      "from": "LICENSE-LLVM.txt",
+      "sha256": "729615317e28dd03907e46f0fc3b5e88f7853cee61d1a1471d2749335516b46f"
+    }
+  ],
+  "license": {
+    "selected": "NCSA",
+    "text": "LICENSE-LLVM.txt (LLVM Release License, University of Illinois/NCSA Open Source License)",
+    "basis": "Microsoft's own mapping, in ReleaseNotes.md of Microsoft.Direct3D.DXC 1.9.2609.5 (SHA-256 5e0c9736fc30b35c2a23398c086aa29ba3f566b7678e96c29a953ef0cc22a4b0), section Licenses: LICENSE-MIT.txt applies to d3d12shader.h; LICENSE-LLVM.txt applies to all other files. The repository README states that DirectX Shader Compiler is distributed under the University of Illinois Open Source License. The DLL bytes are identical in the GitHub release and the NuGet package.",
+    "conditions": "Binary redistribution must reproduce the copyright notice, conditions and disclaimer in the documentation or other materials: LICENSE-DirectXShaderCompiler.txt beside each DLL and the generated THIRD-PARTY-NOTICES.txt. The names of the LLVM Team, the University of Illinois and contributors may not be used to endorse derived products.",
+    "compatibility": "Permissive; compatible with distribution alongside the Apache-2.0 package.",
+    "review": "Accepted by the maintainer on 2026-10-24: dxcompiler.dll 1.9.2609.5 is imported under the University of Illinois/NCSA license (LICENSE-LLVM.txt), on the basis above. LICENSE-MS.txt applies to no imported file; dxil.dll and the other excluded files stay out of the repository.",
+    "note": "The release zip and the NuGet package also carry LICENSE-MS.txt (Microsoft Software License Terms, DirectX Shader Compiler), which historically applied to dxil.dll and which the current ReleaseNotes mapping does not assign to any file. Its terms (distributor indemnity, downstream terms) are not compatible with an Apache-2.0-only release. No file it could cover is imported: dxil.dll is excluded, and since DXC v1.8.2505 the compiler always uses its internal validator instead of an external dxil.dll (ReleaseNotes)."
+  },
+  "excluded": [
+    {
+      "path": "bin/*/dxil.dll",
+      "reason": "Separately licensed validator/signing library (historically LICENSE-MS.txt); not needed since DXC 1.8.2505 (internal validator); the CodeBrix.WebGpu.Native runtime references only dxcompiler.dll."
+    },
+    {
+      "path": "bin/*/dxc.exe, bin/*/dxv.exe",
+      "reason": "Command-line tools; not used at run time."
+    },
+    {
+      "path": "bin/x86/*",
+      "reason": "32-bit; the package targets 64-bit processes only."
+    },
+    {
+      "path": "inc/*, lib/*",
+      "reason": "Development headers and import libraries; nothing is compiled or linked against DXC."
+    },
+    {
+      "path": "LICENSE-MS.txt",
+      "reason": "Applies to no imported file (see license.openQuestion)."
+    },
+    {
+      "path": "LICENCE-MIT.txt",
+      "reason": "Applies to d3d12shader.h, which is not imported."
+    }
+  ]
+}

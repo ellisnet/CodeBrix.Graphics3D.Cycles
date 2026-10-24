@@ -10,17 +10,49 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <dirent.h>
 #include <fcntl.h>
 #include <fstream>
 #include <locale>
 #include <mutex>
 #include <sstream>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <filesystem>
+#include <io.h>
+#include <process.h>
+#include <sys/stat.h>
+#else
+#include <dirent.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 namespace ccl {
+#ifdef _WIN32
+namespace {
+// Windows equivalents of the POSIX calls below. Record paths are UTF-8; the
+// pending and lock files are opened through the CRT so they stay int descriptors.
+std::filesystem::path native_path(const std::string &utf8){return std::filesystem::u8path(utf8);}
+int open_record_file(const std::string &path,int flags){
+  int fd=-1;_wsopen_s(&fd,native_path(path).c_str(),flags|_O_BINARY|_O_NOINHERIT,_SH_DENYNO,_S_IREAD|_S_IWRITE);return fd;}
+void lock_record_file(int fd,bool lock){
+  OVERLAPPED at{};const HANDLE h=reinterpret_cast<HANDLE>(_get_osfhandle(fd));
+  if(lock)LockFileEx(h,LOCKFILE_EXCLUSIVE_LOCK,0,1,0,&at);else UnlockFileEx(h,0,1,0,&at);}
+bool process_running(long pid){
+  const HANDLE h=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,DWORD(pid));
+  if(!h)return GetLastError()==ERROR_ACCESS_DENIED;  // Exists but belongs to another user.
+  DWORD code=0;const bool running=GetExitCodeProcess(h,&code)&&code==STILL_ACTIVE;CloseHandle(h);return running;}
+bool replace_record_file(const std::string &from,const std::string &to){
+  return MoveFileExW(native_path(from).c_str(),native_path(to).c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0;}
+}
+#endif
 namespace {
 std::mutex config_mutex;
 DeviceTierConfig host_config;
@@ -140,9 +172,15 @@ uint64_t tier_compiles(const DeviceRecord &r,const char *tier){uint64_t n=0;for(
 void DeviceTierPolicy::persist(const std::function<void(DeviceRecord&)> &apply){
   if(!record_writable)return;
   const std::string lock_path=record_path+".lock";
+#ifdef _WIN32
+  const int lock=open_record_file(lock_path,_O_CREAT|_O_RDWR);
+  if(lock<0){warnings.push_back("device record lock '"+lock_path+"' unavailable: "+std::strerror(errno));record_writable=false;return;}
+  lock_record_file(lock,true);
+#else
   const int lock=open(lock_path.c_str(),O_CREAT|O_RDWR|O_CLOEXEC,0600);
   if(lock<0){warnings.push_back("device record lock '"+lock_path+"' unavailable: "+std::strerror(errno));record_writable=false;return;}
   flock(lock,LOCK_EX);
+#endif
   DeviceRecord current;std::string text;
   if(!(read_file(record_path,text)&&parse_device_record(text,current)&&current.vendor==field(identity.vendor)&&current.architecture==field(identity.architecture)
        &&current.device==field(identity.device)&&current.description==field(identity.description)&&current.runtime==field(runtime)&&current.shader_hash==shader_hash)){
@@ -152,17 +190,38 @@ void DeviceTierPolicy::persist(const std::function<void(DeviceRecord&)> &apply){
   apply(current);
   if(current.breadcrumbs.size()>16)current.breadcrumbs.erase(current.breadcrumbs.begin(),current.breadcrumbs.end()-16);
   if(current.failures.size()>16)current.failures.erase(current.failures.begin(),current.failures.end()-16);
+#ifdef _WIN32
+  const std::string temporary=record_path+".tmp-"+std::to_string(_getpid());
+  bool ok=false;{std::ofstream out(native_path(temporary),std::ios::binary|std::ios::trunc);out<<format_device_record(current);out.flush();ok=bool(out);}
+  if(ok&&replace_record_file(temporary,record_path)){record=current;record_status="valid";}
+  else{std::error_code ignored;std::filesystem::remove(native_path(temporary),ignored);warnings.push_back("device record '"+record_path+"' could not be written");record_writable=false;}
+  lock_record_file(lock,false);_close(lock);
+#else
   const std::string temporary=record_path+".tmp-"+std::to_string(getpid());
   bool ok=false;{std::ofstream out(temporary,std::ios::binary|std::ios::trunc);out<<format_device_record(current);out.flush();ok=bool(out);}
   if(ok&&std::rename(temporary.c_str(),record_path.c_str())==0){record=current;record_status="valid";}
   else{std::remove(temporary.c_str());warnings.push_back("device record '"+record_path+"' could not be written");record_writable=false;}
   flock(lock,LOCK_UN);close(lock);
+#endif
 }
 
 // A pending file left by a process that no longer runs is a breadcrumb: the
 // process ended (driver crash, out-of-memory kill or forced stop) while it
 // created that pipeline. "signal=<n>" is present when the crash handler ran.
 void DeviceTierPolicy::consume_pending(){
+#ifdef _WIN32
+  const size_t slash=record_path.find_last_of("/\\");
+  const std::string directory=record_path.substr(0,slash),prefix=record_path.substr(slash+1)+".pending-";
+  std::vector<std::string> names;std::error_code failed;
+  for(std::filesystem::directory_iterator it(native_path(directory),failed),end;!failed&&it!=end;it.increment(failed)){
+    const auto u8=it->path().filename().u8string();const std::string name(u8.begin(),u8.end());
+    if(name.compare(0,prefix.size(),prefix)==0)names.push_back(name);
+  }
+  for(const std::string &name:names){
+    const long pid=std::strtol(name.c_str()+prefix.size(),nullptr,10);
+    if(pid<=0||pid==long(_getpid()))continue;
+    if(process_running(pid))continue;  // Still running (concurrent process).
+#else
   const size_t slash=record_path.rfind('/');
   const std::string directory=record_path.substr(0,slash),prefix=record_path.substr(slash+1)+".pending-";
   DIR *dir=opendir(directory.c_str());if(!dir)return;
@@ -172,6 +231,7 @@ void DeviceTierPolicy::consume_pending(){
     const long pid=std::strtol(name.c_str()+prefix.size(),nullptr,10);
     if(pid<=0||pid==long(getpid()))continue;
     if(kill(pid_t(pid),0)==0||errno==EPERM)continue;  // Still running (concurrent process).
+#endif
     const std::string path=directory+"/"+name;std::string text;if(!read_file(path,text))continue;
     std::istringstream in(text);std::string line;DeviceRecordBreadcrumb crumb;crumb.kind="interrupted";std::string pending_runtime,pending_hash;bool header=false;
     while(std::getline(in,line)){
@@ -218,11 +278,16 @@ void DeviceTierPolicy::decide(const AdapterIdentity &adapter,const std::string &
     record_mode=ignore?"ignore":config.record_read_only?"read-only":"read-write";
     const std::string directory=config.record_directory;
     // Create missing directories (app data folders normally exist already).
+#ifdef _WIN32
+    {std::error_code failed;std::filesystem::create_directories(native_path(directory),failed);
+     if(failed)warnings.push_back("device record directory '"+directory+"' unavailable: "+failed.message());}
+#else
     for(size_t at=directory.find('/',1);;at=directory.find('/',at+1)){
       const std::string part=directory.substr(0,at);
       if(mkdir(part.c_str(),0700)!=0&&errno!=EEXIST&&at==std::string::npos)warnings.push_back("device record directory '"+directory+"' unavailable: "+std::strerror(errno));
       if(at==std::string::npos)break;
     }
+#endif
     record_path=directory+"/codebrix-cycles-device-"+hex64(fnv1a(identity.vendor+'\n'+identity.architecture+'\n'+identity.device+'\n'+identity.description+'\n'+
                                                                  std::to_string(identity.vendor_id)+'\n'+std::to_string(identity.device_id)))+".txt";
     record_writable=record_mode=="read-write";
@@ -258,15 +323,28 @@ void DeviceTierPolicy::begin_pipeline(const char *module,const char *entry,bool 
   pending_tier=tier_conservative?"conservative":"full";pending_module=module;pending_entry=entry;
   if(!record_writable)return;
   // One pending file per device and pipeline: <record>.pending-<pid>-<device>-<serial>.
+#ifdef _WIN32
+  pending_path=record_path+".pending-"+std::to_string(_getpid())+"-"+std::to_string(reinterpret_cast<uintptr_t>(this))+"-"+std::to_string(pending_serial++);
+  pending_fd=open_record_file(pending_path,_O_CREAT|_O_TRUNC|_O_WRONLY);
+#else
   pending_path=record_path+".pending-"+std::to_string(getpid())+"-"+std::to_string(reinterpret_cast<uintptr_t>(this))+"-"+std::to_string(pending_serial++);
   pending_fd=open(pending_path.c_str(),O_CREAT|O_TRUNC|O_WRONLY|O_CLOEXEC,0600);
+#endif
   if(pending_fd<0)return;
   const std::string text="codebrix-cycles-pending 1\nruntime="+field(runtime)+"\nshaderHash="+shader_hash+"\ntier="+pending_tier+
                          "\nmodule="+field(module)+"\nentry="+field(entry)+"\ntime="+std::to_string((long long)std::time(nullptr))+"\n";
+#ifdef _WIN32
+  if(_write(pending_fd,text.data(),unsigned(text.size()))!=int(text.size())){_close(pending_fd);pending_fd=-1;std::error_code ignored;std::filesystem::remove(native_path(pending_path),ignored);return;}
+#else
   if(write(pending_fd,text.data(),text.size())!=ssize_t(text.size())){close(pending_fd);pending_fd=-1;std::remove(pending_path.c_str());return;}
+#endif
 }
 void DeviceTierPolicy::abandon_pipeline(){
+#ifdef _WIN32
+  if(pending_fd>=0){_close(pending_fd);pending_fd=-1;std::error_code ignored;std::filesystem::remove(native_path(pending_path),ignored);}
+#else
   if(pending_fd>=0){close(pending_fd);pending_fd=-1;std::remove(pending_path.c_str());}
+#endif
 }
 void DeviceTierPolicy::end_pipeline(bool success,double ms,const std::string &failure){
   abandon_pipeline();

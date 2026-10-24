@@ -93,6 +93,7 @@ class WebGPUDevice final:public Device {
   bool pipeline_current(const cbc::Pipeline &pipeline,const char *entry);
   std::vector<cbc::Pipeline> build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries);
   std::string pipeline_report_json() const;
+  std::string adapter_report_json() const;
   void validate_geometry_motion() const;
   void validate_lighting(bool sampling) const;
   void validate_volume() const;

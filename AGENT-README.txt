@@ -50,17 +50,25 @@ PackageId:  CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
 
     dotnet add package CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
 
-Dependencies: none other than .NET.
+Dependencies: CodeBrix.WebGpu.Native.MitLicenseForever, exactly version
+              1.0.290.1433 (the WebGPU runtime the GPU backend uses; NuGet
+              places codebrix_wgpu beside the application). No other package.
 License:      Apache-2.0.
 Requirements:
   - A 64-bit process (constructors throw PlatformNotSupportedException
     otherwise).
   - The native scene host library, named codebrix_cycles_host
     (libcodebrix_cycles_host.so on Linux, libcodebrix_cycles_host.dylib on
-    macOS), resolvable by the .NET native library loader. The package does
-    not ship it yet: the process must find it
+    macOS, codebrix_cycles_host.dll on Windows), resolvable by the .NET native
+    library loader. The package does not ship it yet: the process must find it
     on its library search path, or the application must register a
     NativeLibrary.SetDllImportResolver for this assembly that loads it.
+  - On Windows (x64 and ARM64), these files beside codebrix_cycles_host.dll:
+    the DLLs of its native dependencies, codebrix_wgpu.dll (the
+    CodeBrix.WebGpu.Native runtime) and dxcompiler.dll (Microsoft's DirectX
+    Shader Compiler, which the Direct3D 12 backend loads from the host's own
+    folder). Nothing has to be installed on the machine: no Visual C++
+    Redistributable is needed, and Direct3D 12 is part of Windows 10 and 11.
   - On macOS, the minimum macOS release the native library supports; the
     wrapper checks it before the native library loads and throws
     PlatformNotSupportedException on an older system.
@@ -435,6 +443,19 @@ CyclesBackend.Gpu resolves by platform:
 
 Which GPU backend renders is visible through scene.Backend and
 GetCapabilities(); write backend-neutral code against CyclesBackend.
+
+WEBGPU ON WINDOWS. WebGPU reaches the GPU through Direct3D 12 by default, on
+any GPU with a Direct3D 12 driver (every GPU vendor's Windows driver, including
+the Qualcomm Adreno GPUs of Windows on ARM devices); shaders are compiled with
+dxcompiler.dll from the host library's folder. Set the environment variable
+CODEBRIX_CYCLES_WEBGPU_BACKEND=vulkan before the first scene is created to use
+the Vulkan driver instead (for diagnostics or comparison; it needs a Vulkan
+driver on the machine). There is no automatic fallback from one backend to the
+other, nor to the CPU: if the selected one is unavailable, scene creation fails
+with a CyclesException. GetCapabilities().Json names the backend in use.
+Windows x64 is tested on Direct3D 12 and on Vulkan. Windows ARM64 binaries are
+built (the same code and layout) and speculatively marked validated, but not
+yet tested on an ARM64 device; that test happens before they ship.
 
 WHAT DIFFERS BETWEEN THE GPU BACKENDS. The scene API, the edits, the events,
 the film layout and the device-error contract are the same on every platform.

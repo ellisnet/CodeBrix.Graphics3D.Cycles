@@ -1,0 +1,9 @@
+// Copyright (c) 2026 Jeremy Ellis and contributors
+// SPDX-License-Identifier: Apache-2.0
+//
+// Independent replacement for zstd's excluded build/VS2010/libzstd-dll/libzstd-dll.rc
+// (outside the reviewed source profile). zstd's CMake adds that script to its
+// shared library under MSVC-compatible compilers; upstream it only carries a
+// version-information resource. The Windows dependency recipe places this file
+// at that path in its work copy of the snapshot (the snapshot is unchanged). It
+// defines no resources: the DLL's behaviour does not depend on them.

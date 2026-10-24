@@ -33,10 +33,18 @@ BACKENDS={
  # Kept for comparison with runs made before the fixed baseline: without an AVX2 kernel the variable has no effect.
  'cpu-x64-macos-sse42':('cpu',{'CYCLES_CPU_NO_AVX2':'1'},'Cycles CPU device, Apple Clang x86-64, CYCLES_CPU_NO_AVX2 set (no effect on the fixed-baseline build: same kernels as cpu-x64-macos)'),
  'wgsl-macos-x64':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native osx-x64 runtime (Metal)'),
+ # Windows (native/host/WINDOWS_X64.md): clang-cl builds; the WebGPU backend is fixed per name.
+ 'cpu-x64-windows':('cpu',{},'Cycles CPU device, clang-cl x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math'),
+ 'wgsl-windows-x64-d3d12':('webgpu',{'CODEBRIX_CYCLES_WEBGPU_BACKEND':'d3d12'},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native win-x64 runtime (Direct3D 12, DXC)'),
+ 'wgsl-windows-x64-vulkan':('webgpu',{'CODEBRIX_CYCLES_WEBGPU_BACKEND':'vulkan'},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native win-x64 runtime (Vulkan)'),
+ 'cpu-arm64-windows':('cpu',{},'Cycles CPU device, clang-cl ARM64 (cross-built), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math'),
+ 'wgsl-windows-arm64-d3d12':('webgpu',{'CODEBRIX_CYCLES_WEBGPU_BACKEND':'d3d12'},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native win-arm64 runtime (Direct3D 12, DXC)'),
 }
 # Without --backend, a run renders the backends listed before the macOS x64 ones.
 DEFAULT_BACKENDS=['cpu-arm64-macos','metal-m2pro','metal-m2pro-metalrt','cpu-x64-linux','wgsl-linux-intel']
 INTEL_MAC=platform.system()=='Darwin' and platform.machine()=='x86_64'
+WINDOWS=platform.system()=='Windows'
+WINDOWS_RID={'AMD64':'win-x64','ARM64':'win-arm64'}.get(platform.machine()) if WINDOWS else None
 
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -46,11 +54,19 @@ def out(*command):
 
 
 def machine():
- gpu=out('system_profiler','SPDisplaysDataType') if platform.system()=='Darwin' else out('lspci')
+ gpu=out('system_profiler','SPDisplaysDataType') if platform.system()=='Darwin' else \
+  out('powershell','-NoProfile','-Command','(Get-CimInstance Win32_VideoController | ForEach-Object { "Chipset Model: " + $_.Name + " (driver " + $_.DriverVersion + ")" }) -join "`n"') if WINDOWS else out('lspci')
  model=re.search(r'Chipset Model:\s*(.*)',gpu);cores=re.search(r'Total Number of Cores:\s*(\d+)',gpu)
  status=out('git','-C',str(REPO),'status','--porcelain')
  cpuinfo=Path('/proc/cpuinfo').read_text() if Path('/proc/cpuinfo').exists() else ''
  linux_cpu=re.search(r'model name\s*:\s*(.*)',cpuinfo)
+ if WINDOWS:
+  build=REPO/'native/work/windows'/WINDOWS_RID/'host/invocation.json'
+  identity=json.loads(build.read_text())['identity'] if build.exists() else {}
+  return dict(os=platform.platform(),cpu=out('powershell','-NoProfile','-Command','(Get-CimInstance Win32_Processor).Name'),
+   gpu=dict(model=model.group(1) if model else None,cores=None),compiler=identity.get('compilerVersion'),visualStudio=identity.get('visualStudio'),
+   cmake=identity.get('cmakeVersion'),python=sys.version.split()[0],repoCommit=out('git','-C',str(REPO),'rev-parse','HEAD'),
+   repoWorkingTreeClean=status=='',cyclesRevision=REVISION)
  return dict(os=out('sw_vers') if platform.system()=='Darwin' else out('uname','-a'),
   cpu=out('sysctl','-n','machdep.cpu.brand_string') if platform.system()=='Darwin' else (linux_cpu.group(1) if linux_cpu else platform.processor()),
   gpu=dict(model=model.group(1) if model else None,cores=int(cores.group(1)) if cores else None),
@@ -65,24 +81,28 @@ def kernel_flags():
  and reciprocal math off after Cycles' own math flags, so the last occurrence decides."""
  if platform.system()=='Darwin':
   database=REPO/'native/work/macos'/('osx-x64' if INTEL_MAC else 'osx-arm64')/'host/build/compile_commands.json'
+ elif WINDOWS:
+  database=REPO/'native/work/windows'/WINDOWS_RID/'host/build/compile_commands.json'
  else:
   database=REPO/'native/work/cycles-build/compile_commands.json'
  if not database.exists():return None
  for row in json.loads(database.read_text()):
-  if row['file'].endswith('kernel/device/cpu/kernel.cpp'):
-   command=row.get('command','');flags=[f for f in command.split() if re.match(r'-(O\d|ffp-contract|ffast-math|f(no-)?reciprocal-math|march|mcpu|mtune|mss?se|mavx|mfma|mf16c|std=)',f)]
+  if row['file'].replace(chr(92),'/').endswith('kernel/device/cpu/kernel.cpp'):
+   # clang-cl passes Clang's math options as /clang:<option> (Windows).
+   command=row.get('command','').replace('/clang:','');flags=[f for f in command.split() if re.match(r'-(O\d|ffp-contract|ffast-math|f(no-)?reciprocal-math|march|mcpu|mtune|mss?se|mavx|mfma|mf16c|std=)',f)]
    contract=[f for f in flags if f.startswith('-ffp-contract')];reciprocal=[f for f in flags if f.endswith('reciprocal-math') or f=='-ffast-math']
-   return dict(file='src/kernel/device/cpu/kernel.cpp',database=str(database.relative_to(REPO)),flags=flags,
+   return dict(file='src/kernel/device/cpu/kernel.cpp',database=database.relative_to(REPO).as_posix(),flags=flags,
     ffpContractExplicit=bool(contract),fpContract=contract[-1].split('=')[1] if contract else 'compiler default',
     reciprocalMath=bool(reciprocal) and reciprocal[-1]!='-fno-reciprocal-math',
-    note='the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract')
+    note='the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract'
+     +('; clang-cl options are recorded without their /clang: prefix' if WINDOWS else ''))
  return None
 
 
 def render(args,scene,name,target,cache,extra_meta):
  backend,environment,description=BACKENDS[name]
  env=dict(os.environ)
- for key in ['CYCLES_METALRT','CYCLES_METAL_SPECIALIZATION_LEVEL','OCIO','DYLD_LIBRARY_PATH']:env.pop(key,None)
+ for key in ['CYCLES_METALRT','CYCLES_METAL_SPECIALIZATION_LEVEL','OCIO','DYLD_LIBRARY_PATH','CODEBRIX_CYCLES_WEBGPU_BACKEND','CODEBRIX_CYCLES_DXC_PATH']:env.pop(key,None)
  # The macOS x64 CPU backends fix the kernel dispatch themselves.
  if name.startswith('cpu-x64-macos'):env.pop('CYCLES_CPU_NO_AVX2',None)
  env.update(environment);env['XDG_CACHE_HOME']=str(cache)
@@ -103,7 +123,7 @@ def render(args,scene,name,target,cache,extra_meta):
    kernelSource=str(Path(args.host_library).parent/'codebrix-cycles/source'),kernelCache=str(cache/'cycles'),
    systemMetalShaderCache='not cleared (macOS-managed)',optionNames=['CYCLES_METALRT','CYCLES_METAL_SPECIALIZATION_LEVEL','DeviceInfo::use_hardware_raytracing','DeviceInfo::kernel_optimization_level'])
  meta['deviceName']=(f"{extra_meta['machine']['gpu']['model']} (the C API does not expose Cycles' DeviceInfo)" if backend=='metal' else
-  'WebGPU adapter: see machine.gpu and cbc_host_capabilities_json' if backend=='webgpu' else
+  'WebGPU adapter: see machine.gpu and cbc_host_capabilities_json'+(f" ({environment['CODEBRIX_CYCLES_WEBGPU_BACKEND']})" if 'CODEBRIX_CYCLES_WEBGPU_BACKEND' in environment else '') if backend=='webgpu' else
   f"{extra_meta['machine']['cpu']} (the C API does not expose Cycles' DeviceInfo)")
  (target/'meta.json').write_text(json.dumps(meta,indent=2)+'\n')
  if args.previews:

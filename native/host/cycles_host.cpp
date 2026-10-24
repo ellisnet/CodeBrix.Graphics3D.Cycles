@@ -32,6 +32,10 @@
 #  include <dlfcn.h>
 #  include <sys/sysctl.h>
 #endif
+#ifdef _WIN32
+#  include <windows.h>
+#  include <corecrt_startup.h>
+#endif
 #include <algorithm>
 #include <atomic>
 #include <climits>
@@ -247,6 +251,25 @@ void shutdown_hosts() noexcept {
   }
 }
 
+// Registers shutdown_hosts to run at process exit while every thread still exists.
+#ifdef _WIN32
+// A DLL's own atexit table runs at DLL_PROCESS_DETACH, after ExitProcess has
+// terminated every other thread (Cycles' session and scheduler threads among
+// them). The process-wide table (_crt_atexit, the one exit() runs first) runs
+// while they still exist, as atexit does on Linux and macOS. The DLL is pinned so
+// the registered function can never outlive an unloaded library.
+void __cdecl shutdown_hosts_at_exit() { shutdown_hosts(); }
+bool register_exit_hook() {
+  HMODULE self = nullptr;
+  if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                          reinterpret_cast<LPCWSTR>(&shutdown_hosts_at_exit), &self))
+    return false;
+  return _crt_atexit(shutdown_hosts_at_exit) == 0;
+}
+#else
+bool register_exit_hook() { return std::atexit(shutdown_hosts) == 0; }
+#endif
+
 std::shared_ptr<Host> lookup(CBCHost handle) {
   std::lock_guard lock(hosts_mutex);
   auto it = hosts.find(handle); require(it != hosts.end(), "Invalid or destroyed host handle"); return it->second;
@@ -315,6 +338,7 @@ namespace ccl {
 // Defined with the WebGPU device (native/cycles/device_tier.h, device.cpp).
 void host_tier_config(uint32_t tier, bool record_off, bool read_only, bool canary, const char *directory);
 std::string webgpu_device_report_json(Device *device);
+std::string webgpu_adapter_report_json(Device *device);
 bool webgpu_recover(Device *device, std::string &reason);
 }
 #endif
@@ -349,6 +373,9 @@ std::string device_report(Host &host) {
       const std::string report = webgpu_device_report_json(device);
       require(!report.empty(), "WebGPU device report unavailable", CBC_FAILED);
       out << "\"webgpu\",\"pipelines\":" << report;
+      // The adapter and WebGPU backend (Vulkan, D3D12, Metal) the device runs on.
+      const std::string adapter = webgpu_adapter_report_json(device);
+      if (!adapter.empty()) out << ",\"webgpu\":" << adapter;
     } else
 #endif
     out << (device->info.type == DEVICE_METAL ? "\"metal\"" : "\"cpu\"") << ",\"pipelines\":null";
@@ -469,7 +496,7 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
     // Register cleanup after native registry and scheduler initialization, so
     // live contexts close before those process-level services are destroyed.
     (void)NodeType::type_names();
-    std::call_once(exit_hook, [] { require(std::atexit(shutdown_hosts) == 0, "Cannot register native cleanup", CBC_FAILED); });
+    std::call_once(exit_hook, [] { require(register_exit_hook(), "Cannot register native cleanup", CBC_FAILED); });
     auto id = new_id(); { std::lock_guard lock(hosts_mutex); hosts.emplace(id, std::move(host)); } *out = id;
   });
 }

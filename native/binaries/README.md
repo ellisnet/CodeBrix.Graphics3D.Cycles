@@ -16,7 +16,13 @@ The nine RIDs remain win-x64, win-arm64, osx-x64, osx-arm64, linux-x64,
 linux-arm64, linux-riscv64, android-arm64 and android-x64. An empty directory
 does not imply a completed port. `osx-arm64` holds the first reviewed payload
 (Cycles with its Metal device; see [MACOS_ARM64.md](../host/MACOS_ARM64.md));
-no NuGet release has been made.
+`win-x64` and `win-arm64` hold the Windows payloads (the WGSL/WebGPU device on
+Direct3D 12 with the pinned DXC compiler, or Vulkan; see
+[WINDOWS_X64.md](../host/WINDOWS_X64.md)). Both Windows payloads are built on
+an x64 machine: `win-arm64` is cross-compiled and carries the gate's test
+executables (`tests/`) so an ARM64 device validates it without building. Windows
+binaries have no symbol tables, so there is no `unstripped/` copy; their line
+tables are in `symbols/*.pdb`. No NuGet release has been made.
 
 Each delivery must carry source/dependency manifest hashes, toolchain and build
 options, binary hashes, a passing dependency/license audit and the applicable

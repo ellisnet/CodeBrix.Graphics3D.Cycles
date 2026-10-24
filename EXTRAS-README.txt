@@ -131,6 +131,9 @@ BUILD AND LICENSING TOOLS
 
     build.py, build_android.py,         native build entry points for Linux x64,
     build_linux_arm64.py, build_macos.py Android, Linux ARM64 and osx-arm64
+    dependencies/build_windows.py       (Windows: win-x64 and win-arm64, with
+                                        windows_toolchain.py, windows_sources.py
+                                        and windows_dxc.py)
     cycles_source.py, arm_math_source.py, native_dependencies.py,
     android_toolchain.py                source and toolchain verifiers
     dependencies/                       dependency build recipes
@@ -167,7 +170,9 @@ COMPATIBILITY, PARITY AND RESEARCH
                         RELEASE-LICENSE-PLAN.md (publication and license
                         readiness), TESTING-MACOS-ARM64.md (test procedure
                         for Apple Silicon Macs), TESTING-MACOS-X64.md (test
-                        procedure for Intel Macs) and TESTING-LINUX-ARM64.md
+                        procedure for Intel Macs), TESTING-WINDOWS-X64.md
+                        (test procedure for Windows x64 and ARM64) and
+                        TESTING-LINUX-ARM64.md
                         (test procedure for the Raspberry Pi 5)
 
 MAINTAINER-README.txt (MAP OF THE NATIVE DOCUMENTATION) lists the document that

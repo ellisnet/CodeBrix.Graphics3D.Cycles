@@ -279,6 +279,10 @@ std::string webgpu_device_report_json(Device *device){
   auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu)return {};
   std::lock_guard lock(webgpu->mutex);return webgpu->pipeline_report_json();
 }
+std::string webgpu_adapter_report_json(Device *device){
+  auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu)return {};
+  std::lock_guard lock(webgpu->mutex);return webgpu->adapter_report_json();
+}
 unique_ptr<Device> device_webgpu_create(const DeviceInfo &i,Stats &s,Profiler &p,bool h){
   try{return make_unique<WebGPUDevice>(i,s,p,h);}catch(const std::exception &e){auto bad=i;bad.type=DEVICE_DUMMY;bad.error_msg=e.what();return device_dummy_create(bad,s,p,h);}}
 void device_webgpu_info(vector<DeviceInfo> &devices){try{

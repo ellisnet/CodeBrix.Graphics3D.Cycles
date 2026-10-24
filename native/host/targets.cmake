@@ -54,6 +54,12 @@ if(NOT MSVC)
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
     target_compile_options(codebrix_cycles_host PRIVATE -msse4.2)
   endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  # clang-cl (Windows): the same options in the form clang-cl passes to Clang.
+  target_compile_options(codebrix_cycles_host PRIVATE /clang:-ffp-contract=off)
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
+    target_compile_options(codebrix_cycles_host PRIVATE -msse4.2)
+  endif()
 endif()
 
 # A product profile without image file readers rejects texture filenames.
@@ -61,9 +67,10 @@ if(CODEBRIX_HOST_NO_IMAGE_FILES)
   target_compile_definitions(codebrix_cycles_host PRIVATE CBC_HOST_NO_IMAGE_FILES)
 endif()
 
-# pthread consumers currently cover Linux, Android and macOS. Other platforms still
-# require lifecycle execution; compiling a library alone does not establish it.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
+# pthread consumers currently cover Linux, Android, macOS and Windows (where
+# tests/host/windows supplies the threads subset). Other platforms still require
+# lifecycle execution; compiling a library alone does not establish it.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE OR WIN32)
   find_package(Threads REQUIRED)
   # The original and overlaid color implementations must have the same native
   # math options. Cycles sets these in its src/util directory, not on consumers.
@@ -78,7 +85,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
   # -ffp-contract=on -freciprocal-math, and Cycles' flags would win. Where the
   # fixed baseline applies, drop Cycles' own contraction and reciprocal flags.
   if(CODEBRIX_CPU_FP_CONTRACT STREQUAL "off")
-    list(FILTER color_options EXCLUDE REGEX "^-f(fp-contract=.*|reciprocal-math|no-reciprocal-math)$")
+    list(FILTER color_options EXCLUDE REGEX "^(/clang:)?-f(fp-contract=.*|reciprocal-math|no-reciprocal-math)$")
   endif()
   # Directory compile options (the fixed-baseline oracle's -ffp-contract=off
   # -fno-reciprocal-math, inject_cycles.cmake) follow the flags, as in src/util.
@@ -110,13 +117,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
     if(CODEBRIX_HOST_NO_IMAGE_FILES)
       target_compile_definitions(${reference} PRIVATE CBC_HOST_NO_IMAGE_FILES)
     endif()
-    target_compile_options(${reference} PRIVATE -ffp-contract=off)
+    if(MSVC)
+      target_compile_options(${reference} PRIVATE /clang:-ffp-contract=off)
+    else()
+      target_compile_options(${reference} PRIVATE -ffp-contract=off)
+    endif()
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
       target_compile_options(${reference} PRIVATE -msse4.2)
     endif()
     target_link_libraries(${reference} PRIVATE ${codebrix_device_libs})
     if(APPLE)
       target_link_options(${reference} PRIVATE "LINKER:-map,${CMAKE_BINARY_DIR}/${reference}.map")
+    elseif(WIN32)
+      target_link_options(${reference} PRIVATE "LINKER:/MAP:${CMAKE_BINARY_DIR}/${reference}.map")
     else()
       target_link_options(${reference} PRIVATE "LINKER:-Map,${CMAKE_BINARY_DIR}/${reference}.map")
     endif()
@@ -131,8 +144,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
     endif()
     add_executable(codebrix_host_${kind}_test "${CODEBRIX_NATIVE_ROOT}/tests/host/${source}")
     target_compile_features(codebrix_host_${kind}_test PRIVATE c_std_11)
-    target_compile_options(codebrix_host_${kind}_test PRIVATE -Wall -Wextra -Werror)
-    target_link_libraries(codebrix_host_${kind}_test PRIVATE codebrix_cycles_host Threads::Threads m)
+    if(WIN32)
+      # clang-cl reads -Wall as -Weverything; /W4 is its -Wall -Wextra. The C
+      # runtime has no separate math library, and tests/host/windows supplies the
+      # POSIX threads subset the consumers use.
+      # Cycles' C flags carry /MP, which clang-cl ignores (an unused-argument warning).
+      target_compile_options(codebrix_host_${kind}_test PRIVATE /W4 /WX -Wno-unused-command-line-argument)
+      target_compile_definitions(codebrix_host_${kind}_test PRIVATE _CRT_SECURE_NO_WARNINGS)
+      target_include_directories(codebrix_host_${kind}_test PRIVATE "${CODEBRIX_NATIVE_ROOT}/tests/host/windows")
+      target_link_libraries(codebrix_host_${kind}_test PRIVATE codebrix_cycles_host)
+    else()
+      target_compile_options(codebrix_host_${kind}_test PRIVATE -Wall -Wextra -Werror)
+      target_link_libraries(codebrix_host_${kind}_test PRIVATE codebrix_cycles_host Threads::Threads m)
+    endif()
   endforeach()
   if(CODEBRIX_HOST_NO_IMAGE_FILES)
     target_compile_definitions(codebrix_host_reload_test PRIVATE CBC_HOST_NO_IMAGE_FILES)
@@ -145,9 +169,15 @@ endif()
 
 # The oracle runner (native/oracle) uses only the public C API; this in-tree
 # target builds it against the host so the Linux gates can render the corpus.
-if(NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+# The win-arm64 cross-build ships it to the ARM64 test device in its payload.
+if(NOT ANDROID AND (NOT CMAKE_CROSSCOMPILING OR WIN32))
   add_executable(codebrix_cycles_oracle "${CODEBRIX_NATIVE_ROOT}/oracle/runner.cpp")
   target_compile_features(codebrix_cycles_oracle PRIVATE cxx_std_20)
-  target_compile_options(codebrix_cycles_oracle PRIVATE -Wall -Wextra -Werror)
+  if(WIN32)
+    target_compile_options(codebrix_cycles_oracle PRIVATE /W4 /WX -Wno-unused-command-line-argument)
+    target_compile_definitions(codebrix_cycles_oracle PRIVATE _CRT_SECURE_NO_WARNINGS)
+  else()
+    target_compile_options(codebrix_cycles_oracle PRIVATE -Wall -Wextra -Werror)
+  endif()
   target_link_libraries(codebrix_cycles_oracle PRIVATE codebrix_cycles_host)
 endif()

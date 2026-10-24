@@ -5,7 +5,7 @@ A .NET library for building and rendering 3D scenes with the Cycles path-tracing
 The GPU backend depends on the platform:
 
 * macOS on Apple Silicon (osx-arm64): Cycles' own Metal device
-* Every other platform, including macOS on Intel (osx-x64): the CodeBrix WGSL device on WebGPU
+* Every other platform, including macOS on Intel (osx-x64): the CodeBrix WGSL device on WebGPU (on Windows x64 and ARM64 through Direct3D 12 by default, or Vulkan on request)
 
 CodeBrix.Graphics3D.Cycles supports applications and assemblies that target Microsoft .NET version 10.0 and later.
 Microsoft .NET version 10.0 is a Long-Term Supported (LTS) version of .NET, and was released on Nov 11, 2025; and will be actively supported by Microsoft until Nov 14, 2028.

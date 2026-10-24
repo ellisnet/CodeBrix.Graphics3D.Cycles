@@ -7,13 +7,36 @@
 #include <csignal>
 #include <cstdio>
 #include <mutex>
-#include <unistd.h>
 #include <cstring>
 #include <cstdlib>
-#include <dlfcn.h>
 #include <thread>
 #include <vector>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <io.h>
+#include <filesystem>
+#else
+#include <unistd.h>
+#include <dlfcn.h>
+#endif
 namespace cbc {
+#ifdef _WIN32
+static std::string utf8(const std::filesystem::path &path){const auto s=path.u8string();return std::string(s.begin(),s.end());}
+// The file of the module (DLL or executable) that contains an address, in UTF-8.
+static std::filesystem::path module_file(const void *address){
+  HMODULE module=nullptr;
+  if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,static_cast<LPCWSTR>(address),&module))return {};
+  std::wstring name(32768,L'\0');const DWORD n=GetModuleFileNameW(module,name.data(),DWORD(name.size()));
+  if(n==0||n>=name.size())return {};name.resize(n);return std::filesystem::path(name);
+}
+static void module_anchor(){}
+#endif
 static std::string text(WGPUStringView s){return s.data?std::string(s.data,s.length):"";}
 using Pending=std::shared_ptr<Completion>;
 // A one-shot callback owns its shared state, including after a wait times out.
@@ -43,15 +66,50 @@ void Device::pop_scope(){
 }
 Device::Device(){
   if(wgpuCodebrixGetApiVersion()!=WGPU_CODEBRIX_API_VERSION)throw Error(CBC_BACKEND_GPU_ERROR,"WebGPU ABI mismatch");
+#ifdef _WIN32
+  // The address of an imported function is its import thunk in this module, so
+  // the runtime is found by its module name.
+  if(HMODULE runtime=GetModuleHandleW(L"codebrix_wgpu.dll")){
+    std::wstring name(32768,L'\0');const DWORD n=GetModuleFileNameW(runtime,name.data(),DWORD(name.size()));
+    if(n&&n<name.size()){name.resize(n);library_path=utf8(std::filesystem::path(name));}
+  }
+  if(library_path.empty())throw Error(CBC_BACKEND_GPU_ERROR,"Cannot identify WebGPU library");
+#else
   Dl_info loaded{};if(!dladdr(reinterpret_cast<void*>(&wgpuCodebrixGetApiVersion),&loaded))throw Error(CBC_BACKEND_GPU_ERROR,"Cannot identify WebGPU library");
   library_path=loaded.dli_fname;
+#endif
 #ifdef __APPLE__
   // The shipped runtime's macOS builds contain only wgpu's Metal backend.
   const WGPUInstanceBackend backend_flag=WGPUInstanceBackend_Metal;const std::string backend_name="Metal";
+#elif defined(_WIN32)
+  // Windows: Direct3D 12 by default (part of Windows 10 and 11, on every GPU
+  // vendor's driver), with the DXC shader compiler shipped beside this library;
+  // FXC cannot compile the Cycles kernels. Vulkan is an explicit opt-in
+  // (CODEBRIX_CYCLES_WEBGPU_BACKEND=vulkan); a backend never falls back to another.
+  std::string requested;if(const char *b=std::getenv("CODEBRIX_CYCLES_WEBGPU_BACKEND"))requested=b;
+  if(!requested.empty()&&requested!="d3d12"&&requested!="vulkan")
+    throw Error(CBC_BACKEND_INVALID,"CODEBRIX_CYCLES_WEBGPU_BACKEND must be d3d12 or vulkan, not '"+requested+"'");
+  const bool vulkan=requested=="vulkan";
+  const WGPUInstanceBackend backend_flag=vulkan?WGPUInstanceBackend_Vulkan:WGPUInstanceBackend_DX12;const std::string backend_name=vulkan?"Vulkan":"D3D12";
+  std::string dxc;
+  if(!vulkan){
+    if(const char *path=std::getenv("CODEBRIX_CYCLES_DXC_PATH"))dxc=path;
+    else{const std::filesystem::path self=module_file(reinterpret_cast<const void*>(&module_anchor));
+      if(!self.empty())dxc=utf8(self.parent_path()/"dxcompiler.dll");}
+    std::error_code ignored;
+    if(dxc.empty()||!std::filesystem::is_regular_file(std::filesystem::u8path(dxc),ignored))
+      throw Error(CBC_BACKEND_GPU_ERROR,"The DXC shader compiler (dxcompiler.dll) was not found"+(dxc.empty()?std::string():" at "+dxc)+
+        "; it ships beside the Cycles host library (set CODEBRIX_CYCLES_WEBGPU_BACKEND=vulkan to use Vulkan instead)");
+    dxc_path=dxc;
+  }
+  backend=backend_name;
 #else
   const WGPUInstanceBackend backend_flag=WGPUInstanceBackend_Vulkan;const std::string backend_name="Vulkan";
 #endif
   WGPUInstanceExtras extra{};extra.chain.sType=static_cast<WGPUSType>(WGPUSType_InstanceExtras);extra.backends=backend_flag;
+#ifdef _WIN32
+  if(!vulkan){extra.dx12ShaderCompiler=WGPUDx12Compiler_Dxc;extra.dxcPath={dxc_path.c_str(),dxc_path.size()};extra.dxcMaxShaderModel=WGPUDxcMaxShaderModel_V6_7;}
+#endif
   WGPUInstanceDescriptor desc{};desc.nextInChain=&extra.chain;instance=Handle<WGPUInstance,wgpuInstanceRelease>(wgpuCreateInstance(&desc));
   if(!instance.value)throw Error(CBC_BACKEND_GPU_ERROR,"Cannot create "+backend_name+" WebGPU instance");
   std::vector<WGPUAdapter> candidates(wgpuInstanceEnumerateAdapters(instance,nullptr,nullptr));
@@ -112,6 +170,37 @@ Buffer Device::buffer(size_t bytes,WGPUBufferUsage usage,const void *data){
 namespace {
 char crash_note[256];size_t crash_note_bytes=0;
 volatile sig_atomic_t crash_record_fd=-1;
+#ifdef _WIN32
+// Windows: a driver fault is an unhandled structured exception (the process-wide
+// filter below) and abort() raises SIGABRT; the CRT has no sigaction. The record
+// line keeps the "signal=<n>" form with the matching CRT signal number.
+LPTOP_LEVEL_EXCEPTION_FILTER previous_filter=nullptr;void (*previous_abort)(int)=SIG_DFL;
+void crash_record(int signal){
+  if(crash_note_bytes){DWORD ignored;WriteFile(GetStdHandle(STD_ERROR_HANDLE),crash_note,DWORD(crash_note_bytes),&ignored,nullptr);}
+  if(crash_record_fd>=0){
+    char line[24]="signal=";size_t n=7;char digits[12];size_t d=0;unsigned v=unsigned(signal);
+    do{digits[d++]=char('0'+v%10);v/=10;}while(v&&d<sizeof(digits));
+    while(d)line[n++]=digits[--d];line[n++]='\n';
+    (void)_write(crash_record_fd,line,unsigned(n));
+  }
+}
+LONG WINAPI crash_filter(EXCEPTION_POINTERS *e){
+  const DWORD code=e&&e->ExceptionRecord?e->ExceptionRecord->ExceptionCode:0;
+  crash_record(code==EXCEPTION_ILLEGAL_INSTRUCTION||code==EXCEPTION_PRIV_INSTRUCTION?SIGILL:
+               code==EXCEPTION_INT_DIVIDE_BY_ZERO||code==EXCEPTION_FLT_DIVIDE_BY_ZERO||code==EXCEPTION_FLT_INVALID_OPERATION?SIGFPE:SIGSEGV);
+  return previous_filter?previous_filter(e):EXCEPTION_CONTINUE_SEARCH;
+}
+void abort_breadcrumb(int signal){crash_record(signal);std::signal(SIGABRT,previous_abort);std::raise(SIGABRT);}
+struct CrashBreadcrumb {
+  explicit CrashBreadcrumb(const char *entry,int record_fd){
+    crash_record_fd=record_fd;
+    const int n=std::snprintf(crash_note,sizeof(crash_note),"\nCodeBrix Cycles: the GPU driver terminated while creating WebGPU compute pipeline '%s'\n",entry);
+    crash_note_bytes=n>0?std::min(size_t(n),sizeof(crash_note)-1):0;
+    previous_filter=SetUnhandledExceptionFilter(crash_filter);previous_abort=std::signal(SIGABRT,abort_breadcrumb);
+  }
+  ~CrashBreadcrumb(){SetUnhandledExceptionFilter(previous_filter);std::signal(SIGABRT,previous_abort);crash_note_bytes=0;crash_record_fd=-1;}
+};
+#else
 constexpr int crash_signals[]={SIGSEGV,SIGABRT,SIGBUS,SIGILL,SIGFPE};
 struct sigaction previous_actions[5];
 void crash_breadcrumb(int signal){
@@ -135,6 +224,7 @@ struct CrashBreadcrumb {
   }
   ~CrashBreadcrumb(){for(size_t i=0;i<5;i++)sigaction(crash_signals[i],&previous_actions[i],nullptr);crash_note_bytes=0;crash_record_fd=-1;}
 };
+#endif
 std::mutex crash_mutex;
 }
 Pipeline Device::pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry,const char *label,int record_fd){

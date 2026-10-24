@@ -11,8 +11,8 @@ namespace CodeBrix.Graphics3D.Cycles.GltfRender;
 /// <summary>
 /// Points the library's P/Invokes at a specific native host file. The package carries no runtime
 /// assets yet, so the tool accepts an explicit path, the <c>CODEBRIX_CYCLES_NATIVE</c> environment
-/// variable, or (when run from a working tree) the in-tree build for this platform: Linux x64
-/// (WebGPU) or macOS arm64 (Metal).
+/// variable, or (when run from a working tree) the in-tree build for this platform: Linux x64 or
+/// Windows (WebGPU), or macOS arm64 (Metal).
 /// </summary>
 public static class NativeLibraryLocator
 {
@@ -25,7 +25,8 @@ public static class NativeLibraryLocator
     /// then the in-tree build in an enclosing working tree
     /// (<c>native/work/cycles-build/lib/libcodebrix_cycles_host.so</c> on Linux x64,
     /// <c>native/work/macos/osx-arm64/host/build/lib/libcodebrix_cycles_host.dylib</c> on macOS
-    /// arm64). Returns null when none exists (the default loader search then applies).
+    /// arm64, <c>native/work/windows/&lt;rid&gt;/host/build/bin/codebrix_cycles_host.dll</c> on Windows
+    /// x64 and ARM64). Returns null when none exists (the default loader search then applies).
     /// </summary>
     /// <param name="explicitPath">An explicit library path, or null.</param>
     /// <returns>The full path, or null.</returns>
@@ -39,6 +40,10 @@ public static class NativeLibraryLocator
                 ? ["native", "work", "cycles-build", "lib", "libcodebrix_cycles_host.so"]
             : OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64
                 ? ["native", "work", "macos", "osx-arm64", "host", "build", "lib", "libcodebrix_cycles_host.dylib"]
+            : OperatingSystem.IsWindows() && RuntimeInformation.ProcessArchitecture == Architecture.X64
+                ? ["native", "work", "windows", "win-x64", "host", "build", "bin", "codebrix_cycles_host.dll"]
+            : OperatingSystem.IsWindows() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+                ? ["native", "work", "windows", "win-arm64", "host", "build", "bin", "codebrix_cycles_host.dll"]
             : null;
         if (inTree == null) return null;
         for (DirectoryInfo directory = new(AppContext.BaseDirectory); directory != null; directory = directory.Parent)

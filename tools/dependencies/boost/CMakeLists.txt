@@ -22,6 +22,13 @@ function(boost_component name)
   target_include_directories(boost_${name} PUBLIC
     "$<BUILD_INTERFACE:${BOOST_SOURCE_ROOT}>" "$<INSTALL_INTERFACE:include>")
   target_compile_definitions(boost_${name} PRIVATE BOOST_ALL_NO_LIB)
+  if(WIN32)
+    # Windows DLLs: Boost.Build defines BOOST_<LIB>_SOURCE while compiling a
+    # library (dllexport instead of dllimport); consumers link the DLLs (dllimport)
+    # and must not use Boost's auto-link pragmas, which name Boost.Build's files.
+    string(TOUPPER "${name}" upper)
+    target_compile_definitions(boost_${name} PRIVATE BOOST_${upper}_SOURCE PUBLIC BOOST_ALL_DYN_LINK BOOST_ALL_NO_LIB)
+  endif()
   set_target_properties(boost_${name} PROPERTIES VERSION 1.83.0 SOVERSION 1.83.0 EXPORT_NAME ${name})
   install(TARGETS boost_${name} EXPORT CodeBrixBoostTargets LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -69,6 +69,15 @@
     <PackageTags>3d;rendering;path-tracing;cycles;webgpu;graphics;CodeBrix</PackageTags>
   </PropertyGroup>
 
+  <!--
+    The WebGPU runtime (codebrix_wgpu) always comes from this package, never from this
+    repository or this package's own payload. Exact pin ([x]): the native host is built
+    and validated against this version, and the build scripts check its hashes.
+  -->
+  <ItemGroup>
+    <PackageReference Include="CodeBrix.WebGpu.Native.MitLicenseForever" Version="[1.0.290.1433]" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="..\..\icon-codebrix-128.png" Pack="true" PackagePath="" />
     <None Include="..\..\README.md" Pack="true" PackagePath="" />

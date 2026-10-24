@@ -17,7 +17,8 @@ def verify():
     if manifest['revision'] != REVISION:
         raise RuntimeError('Unexpected filtered Cycles baseline')
     expected={r['path'] for r in manifest['files']}
-    actual={str(p.relative_to(SOURCE)) for p in SOURCE.rglob('*') if p.is_file()}
+    # Manifest paths use '/' on every host (as_posix is str() on Linux and macOS).
+    actual={p.relative_to(SOURCE).as_posix() for p in SOURCE.rglob('*') if p.is_file()}
     if actual != expected:
         raise RuntimeError('Filtered Cycles inventory changed: '+str(sorted(actual^expected)))
     for row in manifest['files']:

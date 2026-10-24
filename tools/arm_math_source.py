@@ -15,7 +15,8 @@ def verify():
     base = ROOT/'third_party/arm-optimized-routines'
     expected = {row['path']:row for row in manifest['files']}
     required = {'LICENSE', 'math/sinf.c', 'math/cosf.c', 'math/sincosf.h', 'math/sincosf_data.c'}
-    actual = {str(p.relative_to(base)) for p in base.rglob('*') if p.is_file()}
+    # Manifest paths use '/' on every host (as_posix is str() on Linux and macOS).
+    actual = {p.relative_to(base).as_posix() for p in base.rglob('*') if p.is_file()}
     if set(expected) != required or actual != required:
         raise RuntimeError('Unreviewed scalar-math source set')
     for name, row in expected.items():

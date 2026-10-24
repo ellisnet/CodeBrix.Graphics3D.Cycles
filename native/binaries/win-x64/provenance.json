@@ -1,0 +1,727 @@
+{
+  "rid": "win-x64",
+  "created": "2026-10-24T09:51:15-0700",
+  "scope": "Reviewed win-x64 product binaries: Cycles with the CodeBrix WGSL/WebGPU device (Direct3D 12 with DXC by default, Vulkan on request) and the CPU device behind the CodeBrix C API; no image file readers; hybrid C runtime (no Visual C++ Redistributable).",
+  "sources": {
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "cyclesImportSha256": "bff0a70874bd9d3b6eae5306e6ac6f457a0cee0b82670dcc3c98177a9194b7c7",
+    "dependencyImportsSha256": "9cd70eb8a4a36d2a11a638409f71120563b62917af4d00a82b2a2dd56d5ba83b",
+    "dependencyMarkerSha256": "39cac378ffed1796ae2d04be55270ca325a827914f7012ceff52b5505b94c258",
+    "dependencyReplacements": {
+      "zstd/build/VS2010/libzstd-dll/libzstd-dll.rc": {
+        "replacement": "tools/dependencies/windows/zstd/libzstd-dll.rc",
+        "sha256": "e14bd0259693f9ed8f4b6dafda2b42696c5dfe89f3bee96d2e8bd043d9bb2bff"
+      },
+      "expat/expat/win32/version.rc.cmake": {
+        "replacement": "tools/dependencies/windows/expat/version.rc.cmake",
+        "sha256": "4a1103e55860f86b93ff135fe184bd4a9de0e99e4d5adb5420fe57396f0644b7"
+      },
+      "robin-map/tsl-robin-map.natvis": {
+        "replacement": "tools/dependencies/windows/robin-map/tsl-robin-map.natvis",
+        "sha256": "ed78e474c19da74294d587c955da112d1b2d2550ab6c2c0048ec11c46518d8b8"
+      }
+    },
+    "overlaySha256": {
+      "background_shader.inc": "cf20e5730e0e6e5ed0a313e704167aaf8920f261f1d9769430a2372805520871",
+      "camera_shader.inc": "49c338042f31729f5791ab073576963d69a14797865868189cd360df2d37e16c",
+      "closest_shader.inc": "487cd78a6eac8316548e5424788789338d3abd6362c2c0f360f94e0633557785",
+      "controls_shader.inc": "c92344c4bfbf37891d18c78e15e4139a1fd544a0aabdc728e700369674c856fb",
+      "shader_data_shader.inc": "350bdb077251b249dce180c8ececcfdbd00d67d4e0669eae7ebcfec7f23e9a8a",
+      "shadow_shader.inc": "d2b3091d19c041988746617ec84b5b187e6423e19a7604b77557954a83fe097f",
+      "state_copy_reference.inc": "1b8fba392d5254a03055cd2d791d7a034748cbff9ae4e74fac0a832094d3017d",
+      "surface_shader.inc": "8173521acca2c5b3f5f0de7b381386becb97fed83a1b774fe3b49a0458d3822f",
+      "svm_enums.inc": "c4ed84ba503b47d738f28e7ae5ab3613e529da23fa6674862d687be91b49fa00",
+      "svm_nodes_enums.inc": "6fb15e556f12acaa115a2d07cadb4aacfe23cec2112834351baf8170faa166f4",
+      "svm_shader.inc": "f65cb9cbbf28373e3a58a1fb3dd4f5ed6d8bf8a9e62350ca683a55bb1168dbe0",
+      "volume_shader.inc": "c016cf2d52543fcd60c5328431f766eb65fa1974cc43085c67612ae69489d05b",
+      "volume_stack_shader.inc": "a757d056fad6d4f2bd4ecdb6bb0642ff52cd73a344bcf632248f78d1e272dcd6",
+      "translated.wgsl": "b047c969cf28bec4d7c07a34e1334282da69484770490e64cbb8ad5cdf921105",
+      "device/device.cpp": "53ecbe87f3cccfd12af476e87c1d276f7b26e4abe7490bdf982fc0c39caf324f",
+      "device/device.h": "46d9d2d06022c78070315f8e91200b2b1bb925c344210ea0080c3f8a17933c05",
+      "integrator/path_trace.cpp": "7eae3cbf3b03aa71646ee6c2ae5e056abaeabd399cc3df9fa101c2e6001d5d37",
+      "util/colorspace.cpp": "f75fe2eff2b19c519e6687176855f5fec3b0097c2a103884de9b92545d5f863f"
+    },
+    "overlayComparison": {
+      "reference": null,
+      "identical": null,
+      "note": "not compared; pass --reference-overlay with hashes written on Linux (build_cycles_macos_x64.py --write-overlay-hashes)"
+    },
+    "hostSourceSha256": {
+      "native/host/cycles_host.cpp": "cd6888955852c0760b001ca30ed46ee923b4c8ddc3c0309781b70137781f2ea8",
+      "native/host/cycles_host.h": "000bcb6e8fef19c5bb2969e3d967706af5ebe74aeac71f3fb8667f3f841c49bb",
+      "native/host/exports.def": "fd04a10c92194e727d0c47642f28f7b682c344f7e533c1c45391c0c84fb68238",
+      "native/host/host_api.inc": "eb30c20adc47abe00b7b05204a840d3b8cac0c413f7747c67db80c2724dca967",
+      "native/host/host_edits.inc": "b4d3edf5a511a957f4ca5562f98c60bc9f5cccd46f6a7cff9f252fe3ff1ca325",
+      "native/host/host_properties.inc": "926cbfa00f840af7530f58c98f636e43260e293bf8c91d032a7f46b51d31820b",
+      "native/host/host_scene.inc": "877fbfc347003330bc60b583683213e80532b9603471c79be5f3c8acc7fc0b4a",
+      "native/host/host_scene_types.inc": "4ee5bc16c84493258aa7f05444bc7632d0a6ec87ff30b766742faa176145ff59",
+      "native/host/targets.cmake": "3b960c52bc3d93af4af41a2290fb15dbcd5b25bb8d351d21c7f57dd35204e9d6"
+    },
+    "recipeSha256": "5f813bbd8d8649dacb45e253d49331378088bc98b4e4215a1e97de6b3062c7c1",
+    "injectionSha256": "79e1ed271134b72bd35efb20d6abc8d2d5cbae57412e9bf4c1397fa5bbaca8a8",
+    "sharedInjectionSha256": "818581f5555ccff83c3346dec570a71a33a18050ff6745c09f538129b4387305",
+    "stagerSha256": "65f78ec7dae6606e4a9dac420c88ff81c2d310f7f4ad6e2e1cc3104d6a748b2d",
+    "adaptedFiles": []
+  },
+  "toolchain": {
+    "rid": "win-x64",
+    "buildHost": "AMD64-Windows",
+    "visualStudio": "Visual Studio Professional 2026 18.11.12315.225",
+    "msvcToolsVersion": "14.51.36231",
+    "windowsSdkVersion": "10.0.26100.0",
+    "compilerVersion": "clang version 22.1.3 (https://github.com/llvm/llvm-project e9846648fd6183ee6d8cbdb4502213fcf902a211)",
+    "compilerSha256": "ec094d5f8f37c106eefcfc47c9997c261a06e3bd8eaaa7255835983a58524156",
+    "linkerSha256": "631a02cecb87f9f7f2270713d6c7f84e54a0fabce6c6638d21d3a0caea78204d",
+    "cmakeVersion": "cmake version 4.3.1-msvc1",
+    "cmakeSha256": "87fafbe6507d4b23c38ccaf72a1859219d070acb57ef0160332df10945d2dfac",
+    "ninjaVersion": "1.13.2",
+    "target": "x86_64-pc-windows-msvc",
+    "sourceManifestSha256": "9cd70eb8a4a36d2a11a638409f71120563b62917af4d00a82b2a2dd56d5ba83b",
+    "profileRecipeSha256": "c748d26944f21f7cbb76a2b47a1c7fe7d930d9f93d18adc7950cd5d6ae8c4f85",
+    "macosProfileRecipeSha256": "0100799e53c05b826d8d20c7afbacad7555833e3ef27b8532714937d136df30e",
+    "windowsRecipeSha256": "63ad8b9a3d98442ec044ab078f20ae0edd04cefb8cacd7f5e7d876e77c4a4e10",
+    "toolchainRecipeSha256": "f767c117127b00118cdb118bf8b20596ca371af1060bb8187b48c8d4eefac929",
+    "sourceVerifierSha256": "a29437ad6b9b15536858408ea1a332696cd07ca20bb25a3c3344126ca64575f7",
+    "replacements": {
+      "zstd/build/VS2010/libzstd-dll/libzstd-dll.rc": {
+        "replacement": "tools/dependencies/windows/zstd/libzstd-dll.rc",
+        "sha256": "e14bd0259693f9ed8f4b6dafda2b42696c5dfe89f3bee96d2e8bd043d9bb2bff"
+      },
+      "expat/expat/win32/version.rc.cmake": {
+        "replacement": "tools/dependencies/windows/expat/version.rc.cmake",
+        "sha256": "4a1103e55860f86b93ff135fe184bd4a9de0e99e4d5adb5420fe57396f0644b7"
+      },
+      "robin-map/tsl-robin-map.natvis": {
+        "replacement": "tools/dependencies/windows/robin-map/tsl-robin-map.natvis",
+        "sha256": "ed78e474c19da74294d587c955da112d1b2d2550ab6c2c0048ec11c46518d8b8"
+      }
+    },
+    "scope": "Windows build of the reviewed snapshots for the WGSL/WebGPU host; no image format plugins; hybrid CRT"
+  },
+  "buildCommands": [
+    [
+      "C:\\Program Files\\Microsoft Visual Studio\\18\\Professional\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+      "-G",
+      "Ninja",
+      "-S",
+      "C:\\GitHome\\CodeBrix.Graphics3D.Cycles\\third_party\\cycles",
+      "-B",
+      "C:\\GitHome\\CodeBrix.Graphics3D.Cycles\\native\\work\\windows\\win-x64\\host\\build",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+      "-DCMAKE_PREFIX_PATH=C:/GitHome/CodeBrix.Graphics3D.Cycles/native/work/windows/win-x64/dependencies/install",
+      "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+      "-DCMAKE_MAKE_PROGRAM=C:/Program Files/Microsoft Visual Studio/18/Professional/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe",
+      "-DCMAKE_C_COMPILER=C:/Program Files/Microsoft Visual Studio/18/Professional/VC/Tools/Llvm/x64/bin/clang-cl.exe",
+      "-DCMAKE_CXX_COMPILER=C:/Program Files/Microsoft Visual Studio/18/Professional/VC/Tools/Llvm/x64/bin/clang-cl.exe",
+      "-DCMAKE_LINKER=C:/Program Files/Microsoft Visual Studio/18/Professional/VC/Tools/Llvm/x64/bin/lld-link.exe",
+      "-DCMAKE_AR=C:/Program Files/Microsoft Visual Studio/18/Professional/VC/Tools/Llvm/x64/bin/llvm-lib.exe",
+      "-DCMAKE_RC_COMPILER=C:/Program Files/Microsoft Visual Studio/18/Professional/VC/Tools/Llvm/x64/bin/llvm-rc.exe",
+      "-DCMAKE_C_COMPILER_TARGET=x86_64-pc-windows-msvc",
+      "-DCMAKE_CXX_COMPILER_TARGET=x86_64-pc-windows-msvc",
+      "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW",
+      "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded",
+      "-DCMAKE_EXE_LINKER_FLAGS=/NODEFAULTLIB:libucrt.lib ucrt.lib /Brepro /LIBPATH:C:/GitHome/CodeBrix.Graphics3D.Cycles/native/work/windows/win-x64/dependencies/install/lib /DEBUG /OPT:REF /OPT:ICF /PDBALTPATH:%_PDB%",
+      "-DCMAKE_SHARED_LINKER_FLAGS=/NODEFAULTLIB:libucrt.lib ucrt.lib /Brepro /LIBPATH:C:/GitHome/CodeBrix.Graphics3D.Cycles/native/work/windows/win-x64/dependencies/install/lib /DEBUG /OPT:REF /OPT:ICF /PDBALTPATH:%_PDB%",
+      "-DCMAKE_MODULE_LINKER_FLAGS=/NODEFAULTLIB:libucrt.lib ucrt.lib /Brepro /LIBPATH:C:/GitHome/CodeBrix.Graphics3D.Cycles/native/work/windows/win-x64/dependencies/install/lib /DEBUG /OPT:REF /OPT:ICF /PDBALTPATH:%_PDB%",
+      "-DCMAKE_IGNORE_PREFIX_PATH=C:/Strawberry",
+      "-DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF",
+      "-DWITH_LIBS_PRECOMPILED=OFF",
+      "-DWITH_LEGACY_LIBRARIES=ON",
+      "-DWITH_CYCLES_NATIVE_ONLY=OFF",
+      "-DWITH_CYCLES_PATH_GUIDING=OFF",
+      "-DCXX_HAS_AVX2:BOOL=OFF",
+      "-DCXX_HAS_F16C:BOOL=OFF",
+      "-DOpenImageIO_DIR=C:/GitHome/CodeBrix.Graphics3D.Cycles/native/work/windows/win-x64/dependencies/install/lib/cmake/OpenImageIO",
+      "-DOpenColorIO_DIR=C:/GitHome/CodeBrix.Graphics3D.Cycles/native/work/windows/win-x64/dependencies/install/lib/cmake/OpenColorIO",
+      "-DCMAKE_PROJECT_Cycles_INCLUDE=C:/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/inject_cycles_windows.cmake",
+      "-DCODEBRIX_CYCLES_OVERLAY=C:/GitHome/CodeBrix.Graphics3D.Cycles/native/work/windows/win-x64/host/overlay",
+      "-DCODEBRIX_WEBGPU_PACKAGE=C:/Users/jerem/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433",
+      "-DCODEBRIX_WEBGPU_RID=win-x64",
+      "-DCODEBRIX_WEBGPU_IMPLIB=C:/GitHome/CodeBrix.Graphics3D.Cycles/native/work/windows/win-x64/host/codebrix_wgpu.lib",
+      "-DCODEBRIX_WINDOWS_COMPILE_OPTIONS=-gline-tables-only;/clang:-ffile-prefix-map=C:\\GitHome\\CodeBrix.Graphics3D.Cycles=.",
+      "-DWITH_CYCLES_ALEMBIC=OFF",
+      "-DWITH_CYCLES_EMBREE=OFF",
+      "-DWITH_CYCLES_OPENIMAGEDENOISE=OFF",
+      "-DWITH_CYCLES_OPENSUBDIV=OFF",
+      "-DWITH_CYCLES_OPENVDB=OFF",
+      "-DWITH_CYCLES_NANOVDB=OFF",
+      "-DWITH_CYCLES_OSL=OFF",
+      "-DWITH_CYCLES_USD=OFF",
+      "-DWITH_CYCLES_HYDRA_RENDER_DELEGATE=OFF",
+      "-DWITH_CYCLES_DEVICE_CUDA=OFF",
+      "-DWITH_CYCLES_DEVICE_OPTIX=OFF",
+      "-DWITH_CYCLES_DEVICE_HIP=OFF",
+      "-DWITH_CYCLES_DEVICE_HIPRT=OFF",
+      "-DWITH_CYCLES_DEVICE_ONEAPI=OFF",
+      "-DWITH_CYCLES_DEVICE_METAL=OFF"
+    ],
+    [
+      "C:\\Program Files\\Microsoft Visual Studio\\18\\Professional\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+      "--build",
+      "C:\\GitHome\\CodeBrix.Graphics3D.Cycles\\native\\work\\windows\\win-x64\\host\\build",
+      "--target",
+      "codebrix_cycles_host",
+      "codebrix_host_cpu_test",
+      "codebrix_host_gpu_test",
+      "codebrix_host_reload_test",
+      "codebrix_host_concurrency_test",
+      "codebrix_host_tier_test",
+      "codebrix_host_abi_test",
+      "codebrix_host_example_test",
+      "codebrix_host_scene_edit_test",
+      "codebrix_host_session_reference",
+      "codebrix_host_session64_reference",
+      "codebrix_cycles_oracle",
+      "codebrix_cycles_device_gate",
+      "codebrix_cycles_camera_gate",
+      "codebrix_cycles_closest_gate",
+      "codebrix_cycles_background_gate",
+      "codebrix_cycles_svm_world_gate",
+      "codebrix_cycles_shader_data_gate",
+      "codebrix_cycles_svm_surface_gate",
+      "codebrix_cycles_attribute_gate",
+      "codebrix_cycles_normal_gate",
+      "codebrix_cycles_image_gate",
+      "codebrix_cycles_surface_gate",
+      "codebrix_cycles_microfacet_svm_gate",
+      "codebrix_cycles_microfacet_bounce_gate",
+      "codebrix_cycles_microfacet_render_gate",
+      "codebrix_cycles_render_gate",
+      "codebrix_cycles_atomic_film_gate",
+      "--parallel",
+      "22"
+    ]
+  ],
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "fpContract": [
+      "/clang:-ffp-contract=on",
+      "/clang:-ffp-contract=off"
+    ],
+    "reciprocal": [
+      "/clang:-freciprocal-math",
+      "/clang:-fno-reciprocal-math"
+    ],
+    "runtime": "/MT",
+    "isa": "x86-64 SSE4.2"
+  },
+  "skippedTargets": {
+    "codebrix_host_image_reference": "writes and reads EXR/PNG through OIIO, whose format plugins are disabled",
+    "codebrix_cycles_image_file_gate": "loads texture files through OIIO, whose format plugins are disabled"
+  },
+  "webgpuRuntime": {
+    "id": "CodeBrix.WebGpu.Native.MitLicenseForever",
+    "version": "1.0.290.1433",
+    "path": "runtimes/win-x64/native/codebrix_wgpu.dll",
+    "sha256": "61c6f4d8d529240ab531e17f9aab7845b9dda04a45848674c1af463f346b6afa",
+    "note": "Not part of this payload; delivered by its own package and placed beside the host."
+  },
+  "thirdPartyRuntime": {
+    "dxcompiler.dll": {
+      "component": "dxc",
+      "version": "1.9.2609.5",
+      "sha256": "0689e2fee0a1c9df8662a59680469f24e2a3ad7ce6bbbcc9284f7a83172bfc59",
+      "license": "runtime/LICENSE-DirectXShaderCompiler.txt",
+      "signed": "Microsoft Corporation (Authenticode)",
+      "unchanged": true,
+      "import": "third_party/dxc-import.json"
+    }
+  },
+  "binaries": {
+    "runtime/boost_filesystem.dll": {
+      "sha256": "b2a27210679caa9988ec06d60adcbfab79e5abaa6f3ac36822fd925bbaee913d",
+      "machine": "AMD64",
+      "imports": [
+        "ADVAPI32.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": []
+    },
+    "runtime/boost_thread.dll": {
+      "sha256": "94b853636cf529f728d716d7494a5360dec2d705529bbeccc7d09da14acca1be",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": []
+    },
+    "runtime/codebrix_cycles_host.dll": {
+      "sha256": "00a80acf8c5a27c1695b5627a9b32c476f5911693e4f16ca640f9bf7196f6b55",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+        "codebrix_wgpu.dll",
+        "KERNEL32.dll",
+        "OpenColorIO_2_4.dll",
+        "OpenImageIO.dll",
+        "OpenImageIO_Util.dll",
+        "tbb12.dll"
+      ],
+      "pdb": [
+        "codebrix_cycles_host.pdb"
+      ]
+    },
+    "dxcompiler.dll": {
+      "machine": "AMD64",
+      "imports": [
+        "ADVAPI32.dll",
+        "KERNEL32.dll",
+        "ole32.dll",
+        "OLEAUT32.dll"
+      ],
+      "unchanged": "Microsoft-signed DXC"
+    },
+    "runtime/Imath-3_1.dll": {
+      "sha256": "a4144c23739abbcc22ccba8e8bfe3b8b553bc93c957a287b4417ff97de632f6a",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": []
+    },
+    "runtime/libexpat.dll": {
+      "sha256": "e5591f443b15516b6fa04c7f3187d4ac8f8773726d2fb7d2496b2662d72f20cb",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": []
+    },
+    "runtime/OpenColorIO_2_4.dll": {
+      "sha256": "be42326e0d57f026ca8ac8309ed7024f253a031ff43126ff1d9a9f0218a69801",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+        "GDI32.dll",
+        "Imath-3_1.dll",
+        "KERNEL32.dll",
+        "libexpat.dll",
+        "USER32.dll",
+        "zlib1.dll"
+      ],
+      "pdb": []
+    },
+    "runtime/OpenImageIO.dll": {
+      "sha256": "184749428a5ad2b12336167d39eba62c0545b8a66da1eb138ffbffe11cfc8bae",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "boost_thread.dll",
+        "Imath-3_1.dll",
+        "KERNEL32.dll",
+        "OpenImageIO_Util.dll"
+      ],
+      "pdb": []
+    },
+    "runtime/OpenImageIO_Util.dll": {
+      "sha256": "0d77f5b3cd89fd2b4b02eeddebdd2a2a2349ea02b6fd15406679516f215b539f",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "boost_filesystem.dll",
+        "Imath-3_1.dll",
+        "KERNEL32.dll",
+        "SHELL32.dll"
+      ],
+      "pdb": []
+    },
+    "runtime/tbb12.dll": {
+      "sha256": "e9288348b4f914049ab7c245d5b38bdd05d8369a43ba924dba0df180ad32e275",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": []
+    },
+    "runtime/zlib1.dll": {
+      "sha256": "45c37036d8b92843f67495ab2543c0b688d963c0d3863dca0d695a382ec5e3ee",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": []
+    },
+    "tests/codebrix_cycles_oracle.exe": {
+      "sha256": "64dec9510ca8dadf03fb45a848a788620d14b119b95482bc99461962d3bcc2f6",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "codebrix_cycles_host.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": [
+        "codebrix_cycles_oracle.pdb"
+      ]
+    },
+    "tests/codebrix_host_abi_test.exe": {
+      "sha256": "6410dac7f44cbc874a3be30f9d85c12b4f371211c7d6c1c06561831003909588",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "codebrix_cycles_host.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": [
+        "codebrix_host_abi_test.pdb"
+      ]
+    },
+    "tests/codebrix_host_concurrency_test.exe": {
+      "sha256": "3329c9320efb4a8dadd6ab9a29b8d76b87a806d900dea68e7747c2923b950360",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "codebrix_cycles_host.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": [
+        "codebrix_host_concurrency_test.pdb"
+      ]
+    },
+    "tests/codebrix_host_cpu_test.exe": {
+      "sha256": "f781fe65f324308be4c82b0da040a1f76297c26ccb363e8916355c3b677ff843",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "codebrix_cycles_host.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": [
+        "codebrix_host_cpu_test.pdb"
+      ]
+    },
+    "tests/codebrix_host_example_test.exe": {
+      "sha256": "6c6690dd8ba548bbf0f62450afb31c8d0aeb224a36a3d8fd2ff534dfbd1cd36a",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "codebrix_cycles_host.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": [
+        "codebrix_host_example_test.pdb"
+      ]
+    },
+    "tests/codebrix_host_gpu_test.exe": {
+      "sha256": "61ae869f43261fe1e8fb5e69170bf7b4773a25c3bb4d82cd0e45a00abfc14a9f",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "codebrix_cycles_host.dll",
+        "KERNEL32.dll"
+      ],
+      "pdb": [
+        "codebrix_host_gpu_test.pdb"
+      ]
+    },
+    "tests/codebrix_host_session64_reference.exe": {
+      "sha256": "a2cd4c8abbe43739316e67312adf0e727e980a9e80cce728e07bb64876a1ebba",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+        "codebrix_wgpu.dll",
+        "KERNEL32.dll",
+        "OpenColorIO_2_4.dll",
+        "OpenImageIO.dll",
+        "OpenImageIO_Util.dll",
+        "tbb12.dll"
+      ],
+      "pdb": [
+        "codebrix_host_session64_reference.pdb"
+      ]
+    },
+    "tests/codebrix_host_session_reference.exe": {
+      "sha256": "c6275f44ac2a32a5daf8cc04849d0f6af98e84a9b2a6f896312dc97ecceb3198",
+      "machine": "AMD64",
+      "imports": [
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+        "codebrix_wgpu.dll",
+        "KERNEL32.dll",
+        "OpenColorIO_2_4.dll",
+        "OpenImageIO.dll",
+        "OpenImageIO_Util.dll",
+        "tbb12.dll"
+      ],
+      "pdb": [
+        "codebrix_host_session_reference.pdb"
+      ]
+    }
+  },
+  "exports": 48,
+  "unstripped": "Windows binaries carry no symbol tables; debug information (line tables) is in symbols/*.pdb.",
+  "components": {
+    "codebrix_cycles_host.dll": {
+      "component": "cycles",
+      "static": [
+        "Cycles (with mikktspace and sky)",
+        "CodeBrix host",
+        "CodeBrix WGSL/WebGPU device"
+      ]
+    },
+    "Imath-3_1.dll": {
+      "component": "imath",
+      "static": []
+    },
+    "OpenColorIO_2_4.dll": {
+      "component": "ocio",
+      "static": [
+        "yaml-cpp",
+        "pystring",
+        "minizip",
+        "ocio-embedded"
+      ]
+    },
+    "OpenImageIO.dll": {
+      "component": "oiio",
+      "static": [
+        "fmt",
+        "robin-map",
+        "oiio-embedded"
+      ]
+    },
+    "OpenImageIO_Util.dll": {
+      "component": "oiio",
+      "static": [
+        "fmt",
+        "robin-map",
+        "oiio-embedded"
+      ]
+    },
+    "boost_filesystem.dll": {
+      "component": "boost",
+      "static": []
+    },
+    "boost_thread.dll": {
+      "component": "boost",
+      "static": []
+    },
+    "libexpat.dll": {
+      "component": "expat",
+      "static": []
+    },
+    "tbb12.dll": {
+      "component": "tbb",
+      "static": []
+    },
+    "zlib1.dll": {
+      "component": "zlib",
+      "static": []
+    },
+    "dxcompiler.dll": {
+      "component": "dxc",
+      "static": []
+    }
+  },
+  "notices": {
+    "repositoryNotices": "THIRD-PARTY-NOTICES.txt",
+    "dxc": "runtime/LICENSE-DirectXShaderCompiler.txt"
+  },
+  "validation": {
+    "status": "validated",
+    "hostGates": [
+      {
+        "output": "native\\work\\windows-validation-d3d12-4",
+        "backend": "d3d12",
+        "adapterBackend": "D3D12",
+        "filmsCompared": 28,
+        "gpuPracticalFailures": 0,
+        "gpuStrictDifferences": 145,
+        "gpuMaximumAbsoluteError": 1.52587890625e-05,
+        "crossPlatformCompared": false,
+        "statusSha256": "90911aae6d1aaa736301683c93c16c8fce18153e2b94fe029b8e4272b4dafcdb"
+      },
+      {
+        "output": "native\\work\\windows-validation-vulkan-4",
+        "backend": "vulkan",
+        "adapterBackend": "Vulkan",
+        "filmsCompared": 28,
+        "gpuPracticalFailures": 0,
+        "gpuStrictDifferences": 148,
+        "gpuMaximumAbsoluteError": 1.52587890625e-05,
+        "crossPlatformCompared": false,
+        "statusSha256": "a3d2d518fd4dd0f2e570dbca77f0df1fec883121f98c2c9c95c1464aeda82357"
+      }
+    ],
+    "oracles": null,
+    "payloadSmoke": {
+      "cpu": {
+        "passed": true,
+        "library": "1.0.20261024.0",
+        "backend": 2,
+        "progressEvents": 3,
+        "center": [
+          0.674168,
+          0.377084,
+          0.114271
+        ],
+        "depthStatus": 0,
+        "centerDepth": 4
+      },
+      "gpu": {
+        "passed": true,
+        "library": "1.0.20261024.0",
+        "backend": 1,
+        "progressEvents": 4,
+        "center": [
+          0.674168,
+          0.377084,
+          0.114271
+        ],
+        "depthStatus": 1,
+        "centerDepth": -1
+      }
+    },
+    "note": null
+  },
+  "approvedPayload": {
+    "runtime/boost_filesystem.dll": "b2a27210679caa9988ec06d60adcbfab79e5abaa6f3ac36822fd925bbaee913d",
+    "runtime/boost_thread.dll": "94b853636cf529f728d716d7494a5360dec2d705529bbeccc7d09da14acca1be",
+    "runtime/codebrix_cycles_host.dll": "00a80acf8c5a27c1695b5627a9b32c476f5911693e4f16ca640f9bf7196f6b55",
+    "runtime/dxcompiler.dll": "0689e2fee0a1c9df8662a59680469f24e2a3ad7ce6bbbcc9284f7a83172bfc59",
+    "runtime/Imath-3_1.dll": "a4144c23739abbcc22ccba8e8bfe3b8b553bc93c957a287b4417ff97de632f6a",
+    "runtime/libexpat.dll": "e5591f443b15516b6fa04c7f3187d4ac8f8773726d2fb7d2496b2662d72f20cb",
+    "runtime/LICENSE-DirectXShaderCompiler.txt": "729615317e28dd03907e46f0fc3b5e88f7853cee61d1a1471d2749335516b46f",
+    "runtime/OpenColorIO_2_4.dll": "be42326e0d57f026ca8ac8309ed7024f253a031ff43126ff1d9a9f0218a69801",
+    "runtime/OpenImageIO.dll": "184749428a5ad2b12336167d39eba62c0545b8a66da1eb138ffbffe11cfc8bae",
+    "runtime/OpenImageIO_Util.dll": "0d77f5b3cd89fd2b4b02eeddebdd2a2a2349ea02b6fd15406679516f215b539f",
+    "runtime/tbb12.dll": "e9288348b4f914049ab7c245d5b38bdd05d8369a43ba924dba0df180ad32e275",
+    "runtime/zlib1.dll": "45c37036d8b92843f67495ab2543c0b688d963c0d3863dca0d695a382ec5e3ee",
+    "symbols/codebrix_cycles_host.pdb": "feef8d4d678d1e2a59c8a97ae5f27ea381315d6373c1542533e6be0a9a12dbb0",
+    "symbols/codebrix_cycles_oracle.pdb": "6c3c32f23f01e3d7bc4aa34b1ece7ca872ce5443024aea1e058e0de4982f3cb0",
+    "tests/codebrix_cycles_oracle.exe": "64dec9510ca8dadf03fb45a848a788620d14b119b95482bc99461962d3bcc2f6",
+    "tests/codebrix_host_abi_test.exe": "6410dac7f44cbc874a3be30f9d85c12b4f371211c7d6c1c06561831003909588",
+    "tests/codebrix_host_concurrency_test.exe": "3329c9320efb4a8dadd6ab9a29b8d76b87a806d900dea68e7747c2923b950360",
+    "tests/codebrix_host_cpu_test.exe": "f781fe65f324308be4c82b0da040a1f76297c26ccb363e8916355c3b677ff843",
+    "tests/codebrix_host_example_test.exe": "6c6690dd8ba548bbf0f62450afb31c8d0aeb224a36a3d8fd2ff534dfbd1cd36a",
+    "tests/codebrix_host_gpu_test.exe": "61ae869f43261fe1e8fb5e69170bf7b4773a25c3bb4d82cd0e45a00abfc14a9f",
+    "tests/codebrix_host_session64_reference.exe": "a2cd4c8abbe43739316e67312adf0e727e980a9e80cce728e07bb64876a1ebba",
+    "tests/codebrix_host_session_reference.exe": "c6275f44ac2a32a5daf8cc04849d0f6af98e84a9b2a6f896312dc97ecceb3198"
+  },
+  "snapshotCopies": {}
+}

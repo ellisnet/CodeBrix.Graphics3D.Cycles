@@ -43,6 +43,9 @@ class Device {
   void set_error(const std::string &message);
  public:
   WGPULimits limits{}; std::string adapter_name,library_path;
+  // Windows only: the WebGPU backend in use ("D3D12" or "Vulkan") and, on
+  // D3D12, the DXC shader compiler the runtime loads. Empty elsewhere.
+  std::string backend,dxc_path;
   // Adapter identity for the device-tier record and known-adapter table
   // (device_tier.h): WGPUAdapterInfo strings and PCI-style ids as reported.
   std::string adapter_vendor,adapter_architecture,adapter_device,adapter_description;
