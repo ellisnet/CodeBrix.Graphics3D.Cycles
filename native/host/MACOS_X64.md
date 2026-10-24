@@ -42,10 +42,15 @@ that still needs validation there.
   all disabled, libpng is not built, `CBC_HOST_NO_IMAGE_FILES` is set, and the
   host rejects texture `filename` sockets with `CBC_UNSUPPORTED`. Callers pass
   decoded pixels.
-- `WITH_CYCLES_NATIVE_ONLY` is off, so the CPU kernels run on every Intel Mac
-  that runs macOS 15: Cycles builds its SSE4.2 baseline and its AVX2 kernels and
-  picks the AVX2 kernels at run time on CPUs that have AVX2.
-  `CYCLES_CPU_NO_AVX2=1` forces the SSE4.2 kernels; the oracle runs record both.
+- Fixed-baseline CPU oracle (native/DEVICE.md, "Fixed-baseline CPU oracle"):
+  `WITH_CYCLES_NATIVE_ONLY` is off and the recipe records Cycles' AVX2 and F16C
+  probes as absent, so only the SSE4.2 kernels are built and they run on every
+  Intel Mac that runs macOS 15; the shared injection compiles everything with
+  `-ffp-contract=off -fno-reciprocal-math` after Cycles' math flags, and the
+  recipe checks the CPU kernel line in the compile database. The
+  `cpu-x64-macos` and `cpu-x64-macos-sse42` oracle backends therefore run the
+  same kernels (`CYCLES_CPU_NO_AVX2` has nothing to switch off). UNTESTED: this
+  rule has not yet been compiled or run on an Intel Mac.
 - The build host is a native Intel Mac. The recipes refuse Apple Silicon hosts
   and Rosetta translation, because Cycles' x86 reference options follow
   CMake's host processor, which is not established under translation.

@@ -44,7 +44,11 @@ def main():
    assert all(sha(source/name)==digest for name,digest in copy.items())
   verify_copy();generated=overlay(work/'overlay');save(work/'webgpu-compatibility.json',audit(allow_rust_documentation_change=True))
   options=dict(CMAKE_TOOLCHAIN_FILE=deps.WORK/'toolchain.cmake',CMAKE_BUILD_TYPE='Release',CMAKE_POSITION_INDEPENDENT_CODE='ON',CMAKE_EXPORT_COMPILE_COMMANDS='ON',
-   CMAKE_PREFIX_PATH=prefix,WITH_LIBS_PRECOMPILED='OFF',WITH_LEGACY_LIBRARIES='ON',WITH_CYCLES_NATIVE_ONLY='ON',
+   CMAKE_PREFIX_PATH=prefix,WITH_LIBS_PRECOMPILED='OFF',WITH_LEGACY_LIBRARIES='ON',
+   # Fixed-baseline CPU oracle (native/DEVICE.md): the ARMv8-A base level, never
+   # -march/-mcpu=native (also when this recipe runs on an ARM64 machine), no x86
+   # flag probes; inject_cycles.cmake removes contraction and reciprocal math.
+   WITH_CYCLES_NATIVE_ONLY='OFF',**{'CXX_HAS_SSE42:BOOL':'OFF','CXX_HAS_AVX2:BOOL':'OFF','CXX_HAS_F16C:BOOL':'OFF'},
    OpenImageIO_DIR=prefix/'lib/cmake/OpenImageIO',OpenColorIO_DIR=prefix/'lib/cmake/OpenColorIO',
    CMAKE_PROJECT_Cycles_INCLUDE=ROOT/'tools/inject_cycles.cmake',CODEBRIX_CYCLES_OVERLAY=generated,CODEBRIX_WEBGPU_PACKAGE=PACKAGE,CODEBRIX_WEBGPU_RID='linux-arm64',
    FETCHCONTENT_FULLY_DISCONNECTED='ON',FETCHCONTENT_UPDATES_DISCONNECTED='ON')
@@ -60,10 +64,15 @@ def main():
    with (work/(step+'.log')).open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True,env=env)
    if step=='configure':
     rows=json.loads((build/'compile_commands.json').read_text());assert all('-msse' not in row['command'] and '-march=native' not in row['command'] for row in rows)
+    kernel=[row['command'].split() for row in rows if row['file'].endswith('src/kernel/device/cpu/kernel.cpp')]
+    contract=[w for w in kernel[0] if w.startswith('-ffp-contract')];reciprocal=[w for w in kernel[0] if w.endswith('reciprocal-math')]
+    assert len(kernel)==1 and contract[-1:]==['-ffp-contract=off'] and reciprocal[-1:]==['-fno-reciprocal-math'] \
+       and not any(w.startswith(('-march','-mcpu')) for w in kernel[0]),'CPU kernels are not at the fixed oracle baseline'
+    state['cpuKernelCompile']=[w for w in kernel[0] if w.startswith(('-O','-ffp-contract','-freciprocal','-fno-reciprocal','-march','-mcpu'))]
   assert sources==inputs() and sha(marker)==pin['dependencyMarkerSha256'] and deps.identity()==dependency['identity']
   verify_copy();assert sha(runtime)==pin['runtimeSha256']
   artifacts=[p for d in [build/'bin',build/'lib'] for p in d.glob('*') if p.is_file() and (p.name.startswith('codebrix_') or p.name=='libcodebrix_cycles_host.so')]
-  if not a.target:assert len(artifacts)==25
+  if not a.target:assert len(artifacts)==len(HOST_TARGETS)+len(GATE_TARGETS)  # 28: 8 host outputs + 20 default gates
   state.update(complete=True,passed=True,phase='complete',artifacts={str(p.relative_to(build)):sha(p) for p in artifacts},executionProven=False,releaseCleared=False)
   print('linux-arm64: maintained native host and selected gates built',flush=True)
  except Exception as error:

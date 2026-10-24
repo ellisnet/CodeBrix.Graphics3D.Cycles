@@ -22,12 +22,12 @@ int main(int argc,char **argv){try{
   std::array<WGPUBindGroupLayoutEntry,2> entries{};for(unsigned i=0;i<2;i++){entries[i].binding=i;entries[i].visibility=WGPUShaderStage_Compute;entries[i].buffer.type=i?WGPUBufferBindingType_Uniform:WGPUBufferBindingType_Storage;}
   WGPUBindGroupLayoutDescriptor bd{};bd.entryCount=2;bd.entries=entries.data();d.push_scope();cbc::BindLayout layout(wgpuDeviceCreateBindGroupLayout(d.get(),&bd));d.pop_scope();
   WGPUPipelineLayoutDescriptor pd{};pd.bindGroupLayoutCount=1;pd.bindGroupLayouts=&layout.value;d.push_scope();cbc::PipelineLayout pl(wgpuDeviceCreatePipelineLayout(d.get(),&pd));d.pop_scope();
-  const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","surface","shadow","surface"};const char *entry[]={"control","init_camera","intersect_closest","shade_background","shade_surface","prepare_surface","intersect_shadow","shade_shadow","shade_light_forward","prepare_shader_data","intersect_volume_stack","shade_volume","shade_shadow_transparent","shade_surface_light","shader_eval_volume_density","connect_surface_light","prepare_shadow_shader_data","shade_surface_light_triangle"};std::array<cbc::Pipeline,18> pipelines;
-  std::array<uint64_t,18> pipeline_dispatches{};
+  const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","surface","shadow","surface","surface","background","surface"};const char *entry[]={"control","init_camera","intersect_closest","shade_background","shade_surface","prepare_surface","intersect_shadow","shade_shadow","shade_light_forward","prepare_shader_data","intersect_volume_stack","shade_volume","shade_shadow_transparent","shade_surface_light","shader_eval_volume_density","connect_surface_light","prepare_shadow_shader_data","shade_surface_light_triangle","shade_light_nee","shader_eval_background","prepare_light_nee"};std::array<cbc::Pipeline,21> pipelines;
+  std::array<uint64_t,21> pipeline_dispatches{};
   // Compile-latency report (same declared budget as the native device). Replay
   // never rewrites captured modules: recorded workgroup sizes must match.
   double budget_ms=60000;if(const char *b=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_MS"))budget_ms=std::strtod(b,nullptr);
-  std::array<double,18> pipeline_ms{};std::vector<std::string> warnings;
+  std::array<double,21> pipeline_ms{};std::vector<std::string> warnings;
   cbc::Handle<WGPUCommandEncoder,wgpuCommandEncoderRelease> encoder;
   auto encode=[&](){if(!encoder.value)encoder=decltype(encoder)(wgpuDeviceCreateCommandEncoder(d.get(),nullptr));return encoder.value;};
   auto flush=[&](){if(!encoder.value)return;d.push_scope();cbc::Handle<WGPUCommandBuffer,wgpuCommandBufferRelease> command(wgpuCommandEncoderFinish(encoder,nullptr));d.pop_scope();wgpuQueueSubmit(d.get_queue(),1,&command.value);encoder={};d.check();};

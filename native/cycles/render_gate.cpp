@@ -79,8 +79,10 @@ static bool equivalent_clay_edge(DeviceScene &scene,const IntegratorStateCPU &a,
   auto na=normalize(cross(va[1]-va[0],va[2]-va[0])),nb=normalize(cross(vb[1]-vb[0],vb[2]-vb[0]));if(!(len(na-nb)<=1e-6f))return false;
   auto pa=(1-a.isect.u-a.isect.v)*va[0]+a.isect.u*va[1]+a.isect.v*va[2];auto pb=(1-b.isect.u-b.isect.v)*vb[0]+b.isect.u*vb[1]+b.isect.v*vb[2];return len(pa-pb)<=1e-5f;
 }
-static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&expected,device_vector<float>&film,const std::vector<float>&wanted,Metrics &m){
-  auto actual=download(d,layout,expected.size());std::set<size_t> edge_hits;
+// One lockstep stage: the GPU's output state, film and queue counter against the CPU oracle's result from the same
+// input. Used on the device (local oracle) and by the Linux stage judge (stage-state exchange, below).
+static void compare_stage(DeviceScene &scene,bool clay,const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&expected,const std::vector<IntegratorStateCPU>&actual,const float *film,const std::vector<float>&wanted,const IntegratorQueueCounter &counter,Metrics &m){
+  std::set<size_t> edge_hits;
   if(clay)for(size_t i=0;i<expected.size();i++)if(equivalent_clay_edge(scene,actual[i],expected[i])){edge_hits.insert(i);m.equivalent_edge_hits++;
     auto &a=actual[i].isect;auto &e=expected[i].isect;std::ostringstream record;record<<std::setprecision(10)<<"{\"stage\":"<<m.stages<<",\"path\":"<<i<<",\"object\":"<<a.object<<",\"gpuPrimitive\":"<<a.prim<<",\"cpuPrimitive\":"<<e.prim<<",\"gpuTuv\":["<<a.t<<','<<a.u<<','<<a.v<<"],\"cpuTuv\":["<<e.t<<','<<e.u<<','<<e.v<<"],\"equivalence\":\"shared edge; matching flat normal, shader and position; constant clay fixture only\"}";m.edge_records.push_back(record.str());}
   for(auto &f:layout)for(size_t i=0;i<expected.size();i++){
@@ -98,9 +100,82 @@ static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vect
       require(!std::memcmp(a,e,f.stride),"stage "+std::to_string(m.stages)+" integer "+f.name+" path="+std::to_string(i));m.integers++;
     }
   }
-  film.copy_from_device();healthy(d);for(size_t i=0;i<wanted.size();i++)number(film[i],wanted[i],"Stage "+std::to_string(m.stages)+" film "+std::to_string(i)+" pixel="+std::to_string(i/scene.data.film.pass_stride)+" offset="+std::to_string(i%scene.data.film.pass_stride),m);
-  IntegratorQueueCounter counter{},wanted_counter{};for(auto &s:expected)if(s.path.queued_kernel)wanted_counter.num_queued[s.path.queued_kernel]++;
-  d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));require(!std::memcmp(&counter,&wanted_counter,sizeof(counter)),"Render queue counters differ");m.stages++;
+  for(size_t i=0;i<wanted.size();i++)number(film[i],wanted[i],"Stage "+std::to_string(m.stages)+" film "+std::to_string(i)+" pixel="+std::to_string(i/scene.data.film.pass_stride)+" offset="+std::to_string(i%scene.data.film.pass_stride),m);
+  IntegratorQueueCounter wanted_counter{};for(auto &s:expected)if(s.path.queued_kernel)wanted_counter.num_queued[s.path.queued_kernel]++;
+  require(!std::memcmp(&counter,&wanted_counter,sizeof(counter)),"Render queue counters differ");m.stages++;
+}
+static IntegratorQueueCounter queue_counter(WebGPUDevice &d){IntegratorQueueCounter counter{};d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));healthy(d);return counter;}
+static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&expected,device_vector<float>&film,const std::vector<float>&wanted,Metrics &m){
+  auto actual=download(d,layout,expected.size());film.copy_from_device();healthy(d);compare_stage(scene,clay,layout,expected,actual,film.data(),wanted,queue_counter(d),m);
+}
+// Stage-state exchange (native/DEVICE.md "Validation reference policy"). In the device pass of the device-scene flow
+// (CODEBRIX_CYCLES_REFERENCE_IMPORT with CODEBRIX_CYCLES_SCENE_VERIFY) the GPU generates the reference oracle's
+// arithmetic adapters and every lockstep stage of the first repeat is recorded instead of judged against the device's
+// own CPU: its GPU input state (every layout field of every path), the film before it, the kernel, the GPU output
+// state, the film after it and the GPU queue counter, delta-encoded against the previous snapshot in
+// PREFIX.stages.bin. The Linux x64 (glibc) gate then judges the record from the dumped scene
+// (CODEBRIX_CYCLES_SCENE_LOAD with CODEBRIX_CYCLES_STAGE_JUDGE=FILE): the same CPU oracle on each recorded input and
+// the same compare_stage() on the recorded output. CODEBRIX_RENDER_LOCAL_LOCKSTEP=1 keeps the previous device pass
+// (the device's own adapters and its local lockstep oracle) as a diagnostic.
+static bool stage_exchange_requested(){
+  return reference_policy::environment("CODEBRIX_CYCLES_REFERENCE_IMPORT")&&reference_policy::environment("CODEBRIX_CYCLES_SCENE_VERIFY")&&!reference_policy::environment("CODEBRIX_RENDER_LOCAL_LOCKSTEP");
+}
+struct StageSnapshot {
+  std::vector<uint8_t> rows;std::vector<float> film;size_t row=0;
+  void shape(const std::vector<Field>&layout,size_t capacity,size_t film_floats){row=0;for(auto &f:layout)row+=f.stride;rows.assign(row*capacity,0);film.assign(film_floats,0.f);}
+  void pack(const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&states,std::vector<uint8_t>&out)const{
+    out.resize(row*states.size());for(size_t i=0;i<states.size();i++){size_t at=i*row;for(auto &f:layout){std::memcpy(out.data()+at,reinterpret_cast<const uint8_t*>(&states[i])+f.offset,f.stride);at+=f.stride;}}}
+  void unpack(const std::vector<Field>&layout,std::vector<IntegratorStateCPU>&states)const{
+    for(size_t i=0;i<states.size();i++){size_t at=i*row;for(auto &f:layout){std::memcpy(reinterpret_cast<uint8_t*>(&states[i])+f.offset,rows.data()+at,f.stride);at+=f.stride;}}}
+};
+static void put_u32(std::ostream &out,uint32_t v){out.write(reinterpret_cast<const char*>(&v),4);}
+struct StageRecorder {
+  std::ofstream out;StageSnapshot last;const std::vector<Field>&layout;uint32_t count=0;
+  StageRecorder(const std::string &path,const std::vector<Field>&layout_,size_t capacity,size_t film_floats,uint32_t partition_divisor):out(path,std::ios::binary),layout(layout_){
+    require(bool(out),"Could not write stage exchange "+path);out<<"CBCSTAGE1";put_u32(out,uint32_t(layout.size()));
+    for(auto &f:layout){put_u32(out,uint32_t(f.name.size()));out<<f.name;put_u32(out,uint32_t(f.stride));}
+    put_u32(out,uint32_t(capacity));put_u32(out,uint32_t(film_floats));put_u32(out,partition_divisor);put_u32(out,uint32_t(sizeof(IntegratorQueueCounter)));
+    last.shape(layout,capacity,film_floats);}
+  void delta(const std::vector<IntegratorStateCPU>&states,const float *film){
+    std::vector<uint8_t> rows;last.pack(layout,states,rows);std::vector<uint32_t> changed;
+    for(size_t i=0;i<states.size();i++)if(std::memcmp(rows.data()+i*last.row,last.rows.data()+i*last.row,last.row))changed.push_back(uint32_t(i));
+    put_u32(out,uint32_t(changed.size()));for(auto i:changed){put_u32(out,i);out.write(reinterpret_cast<const char*>(rows.data()+i*last.row),std::streamsize(last.row));}
+    last.rows.swap(rows);std::vector<uint32_t> floats;
+    for(size_t i=0;i<last.film.size();i++)if(std::memcmp(&film[i],&last.film[i],4)){floats.push_back(uint32_t(i));last.film[i]=film[i];}
+    put_u32(out,uint32_t(floats.size()));for(auto i:floats){put_u32(out,i);out.write(reinterpret_cast<const char*>(&last.film[i]),4);}
+  }
+  void input(DeviceKernel kernel,unsigned sample,const std::vector<IntegratorStateCPU>&states,const std::vector<float>&film){put_u32(out,1);put_u32(out,uint32_t(kernel));put_u32(out,sample);delta(states,film.data());}
+  void output(const std::vector<IntegratorStateCPU>&states,const float *film,const IntegratorQueueCounter &counter){delta(states,film);out.write(reinterpret_cast<const char*>(&counter),sizeof(counter));count++;}
+  void finish(){put_u32(out,0);put_u32(out,count);out.close();require(!out.fail(),"Could not write stage exchange records");}
+};
+// Linux pass: judge a device's stage record with this host's CPU oracle on the device's own (loaded) scene.
+static void judge_stages(const std::string &path,DeviceScene &scene,bool clay,const std::vector<Field>&layout,unsigned max_shaders,Metrics &m){
+  const auto bytes=reference_policy::read_file(path);size_t at=0;
+  auto u32=[&](){uint32_t v;require(at+4<=bytes.size(),"Truncated stage exchange");std::memcpy(&v,bytes.data()+at,4);at+=4;return v;};
+  auto take=[&](void *target,size_t size){require(at+size<=bytes.size(),"Truncated stage exchange");std::memcpy(target,bytes.data()+at,size);at+=size;};
+  require(!bytes.compare(0,9,"CBCSTAGE1"),"Not a stage exchange file: "+path);at=9;
+  // Fields are matched by name and stride: the device and this host may order or offset them differently.
+  std::vector<Field> order;const uint32_t fields=u32();require(fields==layout.size(),"Stage exchange field count differs from this host's layout");
+  for(uint32_t i=0;i<fields;i++){const uint32_t length=u32();require(at+length<=bytes.size(),"Truncated stage exchange");const std::string name=bytes.substr(at,length);at+=length;const uint32_t stride=u32();
+    auto f=std::find_if(layout.begin(),layout.end(),[&](const Field &x){return x.name==name;});require(f!=layout.end()&&f->stride==stride,"Stage exchange field differs: "+name);order.push_back(*f);}
+  const uint32_t capacity=u32(),film_floats=u32(),divisor=u32(),counter_bytes=u32();
+  require(capacity>0&&divisor>0&&counter_bytes==sizeof(IntegratorQueueCounter),"Stage exchange header differs from this host");
+  require(film_floats==size_t(64)*48*scene.data.film.pass_stride,"Stage exchange film size differs");
+  StageSnapshot snap;snap.shape(order,capacity,film_floats);
+  auto delta=[&](){const uint32_t rows=u32();for(uint32_t k=0;k<rows;k++){const uint32_t i=u32();require(i<capacity,"Stage exchange row index");take(snap.rows.data()+size_t(i)*snap.row,snap.row);}
+    const uint32_t floats=u32();for(uint32_t k=0;k<floats;k++){const uint32_t i=u32();require(i<film_floats,"Stage exchange film index");take(&snap.film[i],4);}};
+  uint32_t stages=0;
+  for(;;){const uint32_t tag=u32();if(tag==0){require(u32()==stages&&at==bytes.size(),"Stage exchange trailer differs");break;}require(tag==1,"Stage exchange record tag");
+    const auto kernel=DeviceKernel(u32());const unsigned sample=u32();(void)sample;delta();
+    std::vector<IntegratorStateCPU> expected(capacity),actual(capacity);snap.unpack(order,expected);std::vector<float> wanted=snap.film;std::vector<int> ids;
+    for(size_t i=0;i<expected.size();i++)if(expected[i].path.queued_kernel==kernel)ids.push_back(int(i));
+    oracle(kernel,scene,ids,expected,wanted);
+    if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids)if(expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)expected[i].path.shader_sort_key=(scene.tri_shader[expected[i].isect.prim]&SHADER_MASK)+max_shaders*(i/divisor);
+    m.paths+=ids.size();m.kernels[kernel]+=ids.size();
+    delta();snap.unpack(order,actual);IntegratorQueueCounter counter{};take(&counter,sizeof(counter));
+    compare_stage(scene,clay,order,expected,actual,snap.film.data(),wanted,counter,m);stages++;
+  }
+  require(stages>0,"Empty stage exchange");
 }
 static void fixture(Scene &scene,const char *asset,bool attributes=false,bool images=false,bool normals=false){
   if(!asset)prepare(scene);
@@ -207,8 +282,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(!motion_mode||motion_case<8,"Invalid motion case");
   const char *asset=argc>=3&&!attribute_mode&&!motion_mode?argv[2]:nullptr;const bool preview_mode=argc==7;
   const unsigned width=preview_mode?std::stoul(argv[4]):64,height=preview_mode?std::stoul(argv[5]):48,samples=preview_mode?std::stoul(argv[6]):8;
-  require(width>0&&height>0&&width<=2048&&height<=2048&&samples>0&&samples<=1024,"Invalid render dimensions/samples");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
-  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"render_gate device creation");Metrics m;Metrics image;bool exchange_only=false;
+  require(width>0&&height>0&&width<=2048&&height<=2048&&samples>0&&samples<=1024,"Invalid render dimensions/samples");
+  // Device pass of the device-scene flow: the GPU reproduces the reference oracle's arithmetic and its lockstep stages
+  // are judged on Linux (stage-state exchange above). Must precede device creation (the adapters are WGSL constants).
+  const bool stage_exchange=!preview_mode&&stage_exchange_requested();if(stage_exchange)reference_policy::use_reference_oracle_arithmetic();
+  auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"render_gate device creation");Metrics m;Metrics image;bool exchange_only=false;std::unique_ptr<StageRecorder> recorder;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene,asset,attribute_mode,image_mode,normal_mode);scene.camera->set_full_width(width);scene.camera->set_full_height(height);scene.camera->set_screen_size(width,height);scene.camera->compute_auto_viewplane();scene.integrator->set_aa_samples(samples);if(motion_mode)camera_motion_fixture(scene,scene.camera->get_matrix(),motion_case);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Render scene preparation failed");
     if(motion_mode)require(scene.dscene.data.cam.num_motion_steps>=2&&scene.dscene.data.cam.shuttertime!=-1,"Motion render preparation failed");
@@ -222,7 +301,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #endif
     // Validation reference policy, device-scene flow (reference_policy.h): the dump pass writes the scene this
     // device prepared and its local CPU image; the Linux pass loads that scene and exports the glibc image.
-    // Both passes run the CPU render only. The lockstep stage checks stay local (their input is the GPU state).
+    // Both passes run the CPU render only. The lockstep stage checks travel by the stage-state exchange (above): the
+    // device pass records them, a Linux pass with CODEBRIX_CYCLES_STAGE_JUDGE judges them.
     exchange_only=!preview_mode&&reference_policy::exchange_scene(scene.dscene,"image",{});
     d.const_copy_to("data",&data,sizeof(data));
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);auto layout=fields(d);
@@ -235,7 +315,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       while(at<bytes.size()){const uint32_t length=u32();const std::string name=bytes.substr(at,length);at+=length;const uint32_t stride=u32();
         auto f=std::find_if(layout.begin(),layout.end(),[&](const Field &x){return x.name==name;});require(f!=layout.end()&&f->stride==stride,"Unknown oracle input field "+name);
         const uint32_t count=u32();if(states.empty())states.resize(count);require(states.size()==count&&at+size_t(count)*stride<=bytes.size(),"Oracle input size");
-        for(uint32_t i=0;i<count;i++)std::memcpy(reinterpret_cast<uint8_t*>(&states[i])+f->offset,bytes.data()+at+size_t(i)*stride,stride);at+=size_t(count)*stride;order.push_back({&*f,count});}
+        for(uint32_t i=0;i<count;i++){std::memcpy(reinterpret_cast<uint8_t*>(&states[i])+f->offset,bytes.data()+at+size_t(i)*stride,stride);}
+        at+=size_t(count)*stride;order.push_back({&*f,count});}
       std::vector<int> ids;for(size_t i=0;i<states.size();i++)if(states[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)ids.push_back(int(i));
       std::vector<float> film(size_t(width)*height*data.film.pass_stride);oracle(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,scene.dscene,ids,states,film);
       std::ofstream out(std::string(oracle_input)+".out",std::ios::binary);
@@ -244,9 +325,16 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         for(uint32_t i=0;i<count;i++)out.write(reinterpret_cast<const char*>(&states[i])+f->offset,stride);}
       std::cerr<<"Surface oracle evaluated "<<ids.size()<<" paths\n";std::cout<<"{\"passed\":true,\"surfaceOracleDiagnostic\":true}\n";return 0;
     }
+    if(const char *judge=reference_policy::environment("CODEBRIX_CYCLES_STAGE_JUDGE")){
+      require(exchange_only&&reference_policy::reference_only(),"The stage judge needs the device's scene (CODEBRIX_CYCLES_SCENE_LOAD)");
+      judge_stages(judge,scene.dscene,asset!=nullptr,layout,unsigned(data.max_shaders),m);
+      std::cout<<std::setprecision(17)<<"{\"passed\":true,\"stageJudge\":true,\"stages\":"<<m.stages<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"equivalentSharedEdgeComparisons\":"<<m.equivalent_edge_hits<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<m.maximum<<",\"maximumStageErrorField\":\""<<m.maximum_field<<"\",\"maximumStageErrorActual\":"<<m.maximum_actual<<",\"maximumStageErrorExpected\":"<<m.maximum_expected<<",\"maximumStagePracticalToleranceRatio\":"<<m.maximum_bound_ratio<<"}\n";
+      return 0;
+    }
     BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=data.film.pass_stride;auto buffers=scheduler.get_render_buffers();buffers->reset(bp);
     if(preview_mode){preview_render(d,scheduler,buffers,prefix,width,height,samples);}else{
     std::vector<float> gold(buffers->buffer.size()),first;std::vector<IntegratorStateCPU> cpu(scheduler.capacity());
+    if(stage_exchange&&!exchange_only)recorder=std::make_unique<StageRecorder>(prefix+".stages.bin",layout,scheduler.capacity(),buffers->buffer.size(),uint32_t(d.state.sort_partition_divisor));
     for(unsigned repeat=0;repeat<(exchange_only?1u:2u);repeat++){
       buffers->zero();upload(d,layout,std::vector<IntegratorStateCPU>(scheduler.capacity()));
       std::unique_ptr<RenderCapture> capture;if(repeat==1)capture=std::make_unique<RenderCapture>(d,prefix);
@@ -269,9 +357,10 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
           std::vector<IntegratorStateCPU> expected;std::vector<float> wanted;std::vector<int> ids;
           if(repeat==0){expected=download(d,layout,scheduler.capacity());buffers->buffer.copy_from_device();wanted.assign(buffers->buffer.data(),buffers->buffer.data()+buffers->buffer.size());
             for(size_t i=0;i<expected.size();i++){auto &s=expected[i];if(s.path.queued_kernel==kernel){ids.push_back(i);m.max_bounce=std::max(m.max_bounce,unsigned(s.path.bounce));m.max_transparent=std::max(m.max_transparent,unsigned(s.path.transparent_bounce));m.max_volume_bounds=std::max(m.max_volume_bounds,unsigned(s.path.volume_bounds_bounce));if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)m.shaders.insert(scene.dscene.tri_shader[s.isect.prim]&SHADER_MASK);}}
-            oracle(kernel,scene.dscene,ids,expected,wanted);
-            if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids)if(expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)expected[i].path.shader_sort_key=(scene.dscene.tri_shader[expected[i].isect.prim]&SHADER_MASK)+data.max_shaders*(i/d.state.sort_partition_divisor);
-            if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids){auto next=expected[i].path.queued_kernel;
+            if(recorder)recorder->input(kernel,sample,expected,wanted);
+            else{oracle(kernel,scene.dscene,ids,expected,wanted);
+            if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids)if(expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)expected[i].path.shader_sort_key=(scene.dscene.tri_shader[expected[i].isect.prim]&SHADER_MASK)+data.max_shaders*(i/d.state.sort_partition_divisor);}
+            if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME&&!recorder)for(int i:ids){auto next=expected[i].path.queued_kernel;
               if(next==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST)m.volume_scatter++;
               else if(next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE||next==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND||next==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD)m.volume_transmit++;
               else if(!next)m.volume_terminated++;
@@ -289,10 +378,18 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
           if(repeat==0)if(const char *target=std::getenv("CODEBRIX_VOLUME_TRACE"))if(std::find(ids.begin(),ids.end(),std::stoi(target))!=ids.end())volume_trace("gpu",sample,kernel,download(d,layout,scheduler.capacity()));
 #endif
           if(surface_capture)surface_capture->finish(layout,expected,wanted);
-          if(repeat==0)compare(d,scene.dscene,asset!=nullptr,layout,expected,buffers->buffer,wanted,m);
+          if(repeat==0&&recorder){auto actual=download(d,layout,scheduler.capacity());buffers->buffer.copy_from_device();healthy(d);recorder->output(actual,buffers->buffer.data(),queue_counter(d));m.stages++;
+            // Volume coverage from the GPU's next kernel (the Linux judge checks it equals the oracle's exactly).
+            if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids){auto next=actual[i].path.queued_kernel;
+              if(next==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST)m.volume_scatter++;
+              else if(next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE||next==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND||next==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD)m.volume_transmit++;
+              else if(!next)m.volume_terminated++;
+            }}
+          else if(repeat==0)compare(d,scene.dscene,asset!=nullptr,layout,expected,buffers->buffer,wanted,m);
         }
         std::cerr<<"Rendered repeat="<<repeat<<" sample="<<sample<<" stages="<<m.stages<<'\n';
       }
+      if(recorder&&repeat==0)recorder->finish();
       if(exchange_only){reference_policy::record_local("image",gold);reference_policy::resolve("image",gold,prefix+".reference-diagnostic.jsonl");break;}
       if(capture)capture->finish(prefix,buffers->buffer.device_pointer,buffers->buffer.memory_size(),uintptr_t(d.state.path.queued_kernel),scheduler.capacity(),width,height,samples,data.film.pass_stride);
       buffers->buffer.copy_from_device();healthy(d);std::vector<float> result(buffers->buffer.data(),buffers->buffer.data()+buffers->buffer.size());
@@ -319,5 +416,5 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   {std::ofstream edges(prefix+".shared-edges.json");edges<<'[';for(size_t i=0;i<m.edge_records.size();i++){if(i)edges<<',';edges<<m.edge_records[i];}edges<<"]\n";}
   if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
   else if(preview_mode)std::cout<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"highResolutionPreviewOnly\":true,\"materialSubstitution\":\"rough diffuse clay\",\"width\":"<<width<<",\"height\":"<<height<<",\"samples\":"<<samples<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
-  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentCpuImage\":true,\"repeatBitwiseIdentical\":true,\"nativeImageTextures\":"<<(image_mode?"true":"false")<<",\"nativeNormalMaps\":"<<(normal_mode?"true":"false")<<",\"width\":64,\"height\":48,\"samples\":"<<samples<<",\"stages\":"<<m.stages<<",\"paths\":"<<m.paths<<",\"volumeScatterEvents\":"<<m.volume_scatter<<",\"volumeTransmitEvents\":"<<m.volume_transmit<<",\"volumeTerminatedEvents\":"<<m.volume_terminated<<",\"volumeStackInitializations\":"<<m.kernels[DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK]<<",\"maxVolumeBoundaryBounce\":"<<m.max_volume_bounds<<",\"maxBounce\":"<<m.max_bounce<<",\"maxTransparentBounce\":"<<m.max_transparent<<",\"surfaceShaders\":"<<m.shaders.size()<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"equivalentSharedEdgeComparisons\":"<<m.equivalent_edge_hits<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<m.maximum<<",\"maximumStageErrorField\":\""<<m.maximum_field<<"\",\"maximumStageErrorActual\":"<<m.maximum_actual<<",\"maximumStageErrorExpected\":"<<m.maximum_expected<<",\"maximumStagePracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"strictImageFailures\":"<<image.strict<<",\"maximumImageError\":"<<image.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentCpuImage\":true,\"repeatBitwiseIdentical\":true,\"nativeImageTextures\":"<<(image_mode?"true":"false")<<",\"nativeNormalMaps\":"<<(normal_mode?"true":"false")<<",\"width\":64,\"height\":48,\"samples\":"<<samples<<",\"stages\":"<<m.stages<<",\"paths\":"<<m.paths<<",\"volumeScatterEvents\":"<<m.volume_scatter<<",\"volumeTransmitEvents\":"<<m.volume_transmit<<",\"volumeTerminatedEvents\":"<<m.volume_terminated<<",\"volumeStackInitializations\":"<<m.kernels[DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK]<<",\"maxVolumeBoundaryBounce\":"<<m.max_volume_bounds<<",\"maxBounce\":"<<m.max_bounce<<",\"maxTransparentBounce\":"<<m.max_transparent<<",\"surfaceShaders\":"<<m.shaders.size()<<",\"lockstepStageChecks\":\""<<(recorder?"exchanged":"local")<<"\",\"stageExchangeRecords\":"<<(recorder?recorder->count:0)<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"equivalentSharedEdgeComparisons\":"<<m.equivalent_edge_hits<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<m.maximum<<",\"maximumStageErrorField\":\""<<m.maximum_field<<"\",\"maximumStageErrorActual\":"<<m.maximum_actual<<",\"maximumStageErrorExpected\":"<<m.maximum_expected<<",\"maximumStagePracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"strictImageFailures\":"<<image.strict<<",\"maximumImageError\":"<<image.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

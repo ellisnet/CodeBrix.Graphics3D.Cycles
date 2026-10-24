@@ -118,8 +118,11 @@ fn motion_point(t:NativeTransform,v:vec3<f32>)->vec3<f32>{
 fn motion_transpose(t:NativeTransform,v:vec3<f32>)->vec3<f32>{
     return rounded_add3(rounded_add3(v.x*t.x.xyz,v.y*t.y.xyz),v.z*t.z.xyz);
 }
+// Cycles transform_inverse_cross: the fused _mm_fmsub_ps form exists only in AVX2
+// builds; the fixed-baseline oracle (SSE4.2, native/DEVICE.md) takes cross(), whose
+// msub is unfused: both products rounded, then the difference.
 fn motion_inverse_cross(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
-    return fma(a.yzx,b.zxy,-a.zxy*b.yzx);
+    return rounded_cross(a,b);
 }
 fn motion_inverse(t:NativeTransform)->NativeTransform{
     var x=vec3<f32>(t.x.x,t.y.x,t.z.x);var y=vec3<f32>(t.x.y,t.y.y,t.z.y);var z=vec3<f32>(t.x.z,t.y.z,t.z.z);

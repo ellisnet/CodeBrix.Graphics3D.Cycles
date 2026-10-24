@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/m1-oracle/native/tools/glass_gate.py", line 57, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/home/jeremy/ClaudeHome/cycles-worktrees/m1-oracle/native/tools/glass_gate.py", line 49, in main
+    assert sources==inputs() and all(sha(Path(name))==digest for name,digest in pins.items())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+exit 1 507s :: python3 native/tools/glass_gate.py --output native/work/m1-oracle/regress/glass --skip-build

@@ -42,6 +42,22 @@ public static class NativeLibraryLocator
     }
 
     /// <summary>
+    /// Returns third_party/bench-texture-license-review.json of the enclosing working tree (whose
+    /// pinned texture hashes <see cref="TextureSet.Decode"/> checks), or null outside a working tree.
+    /// </summary>
+    /// <returns>The full path, or null.</returns>
+    public static string LicenseReview()
+    {
+        for (DirectoryInfo directory = new(AppContext.BaseDirectory); directory != null; directory = directory.Parent)
+        {
+            if (!File.Exists(Path.Combine(directory.FullName, "CodeBrix.Graphics3D.Cycles.slnx"))) continue;
+            string candidate = Path.Combine(directory.FullName, "third_party", "bench-texture-license-review.json");
+            return File.Exists(candidate) ? candidate : null;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Registers a resolver that loads <paramref name="path"/> for the native host. Only the first
     /// registration in a process takes effect.
     /// </summary>

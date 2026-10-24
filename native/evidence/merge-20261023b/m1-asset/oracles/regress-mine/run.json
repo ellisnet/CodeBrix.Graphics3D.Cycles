@@ -1,0 +1,131 @@
+{
+  "scenes": {
+    "linux-gates/textured-plane": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.0107778,
+          0.00839785
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "wgsl-linux-intel": {
+        "renderSeconds": [
+          19.8458,
+          0.310539
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "linux-gates/glass-render": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.0110964,
+          0.00782891
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "wgsl-linux-intel": {
+        "renderSeconds": [
+          16.6022,
+          0.212591
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "linux-gates/broad-lighting-0": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.00273198,
+          0.00137043
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "wgsl-linux-intel": {
+        "renderSeconds": [
+          4.89172,
+          0.0768118
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "linux-gates/closed-volumes": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.0221333,
+          0.0160069
+        ],
+        "repeatBitwiseIdentical": true
+      }
+    },
+    "linux-gates/object-motion-0": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.00294945,
+          0.00143708
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "wgsl-linux-intel": {
+        "renderSeconds": [
+          23.8646,
+          0.035831
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    },
+    "linux-gates/triangle-lighting-5": {
+      "cpu-x64-linux": {
+        "renderSeconds": [
+          0.00325874,
+          0.00183585
+        ],
+        "repeatBitwiseIdentical": true
+      },
+      "wgsl-linux-intel": {
+        "renderSeconds": [
+          10.8737,
+          0.0571634
+        ],
+        "repeatBitwiseIdentical": false
+      }
+    }
+  },
+  "backends": [
+    "cpu-x64-linux",
+    "wgsl-linux-intel"
+  ],
+  "common": {
+    "machine": {
+      "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+      "cpu": "",
+      "gpu": {
+        "model": null,
+        "cores": null
+      },
+      "compiler": "Debian clang version 19.1.7 (3+b1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-19/bin",
+      "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+      "cmake": "cmake version 3.31.6",
+      "python": "3.13.5",
+      "repoCommit": "d21bd4a58f489afeafe2a3046ab32a556578f0ec",
+      "repoWorkingTreeClean": false,
+      "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+    },
+    "hostLibrarySha256": "f2a62f8076d29ec6abe8a54b872cea6dc195c73707aec3890bd9bd55d37e704b",
+    "runnerSha256": "6cd17c230d1280edf94747613d4bb2759add7cb6cc469fcc8398ced9f50b267d",
+    "cpuKernelCompile": null
+  },
+  "kernelCompileSeconds": {},
+  "failures": {
+    "linux-gates/closed-volumes": {
+      "wgsl-linux-intel": "codebrix_cycles_oracle: cbc_host_render returned 3: WebGPU surface data passes not implemented"
+    }
+  },
+  "comparisonsPassed": {
+    "linux-gates/textured-plane": true,
+    "linux-gates/glass-render": true,
+    "linux-gates/broad-lighting-0": true,
+    "linux-gates/closed-volumes": null,
+    "linux-gates/object-motion-0": true,
+    "linux-gates/triangle-lighting-5": true
+  }
+}

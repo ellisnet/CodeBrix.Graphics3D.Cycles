@@ -29,6 +29,7 @@ std::string shader_data_layout();std::string shader_data_source();std::string sv
   X(attributes_map,AttributeMap) X(attributes_float,float) X(attributes_float2,float2) \
   X(attributes_float3,packed_float3) X(attributes_float4,float4) X(attributes_uchar4,uchar4) \
   X(image_textures,KernelImageTexture) X(image_texture_udims,KernelImageUDIM) X(lookup_table,float) \
-  X(lights,KernelLight) X(light_distribution,KernelLightDistribution) X(camera_motion,DecomposedTransform) X(object_motion,DecomposedTransform)
+  X(lights,KernelLight) X(light_distribution,KernelLightDistribution) X(camera_motion,DecomposedTransform) X(object_motion,DecomposedTransform) \
+  X(light_background_marginal_cdf,float2) X(light_background_conditional_cdf,float2)
 
 #define CBC_DEVICE_TABLES(X) X(image_info,KernelImageInfo) X(image_bounds,uint2)

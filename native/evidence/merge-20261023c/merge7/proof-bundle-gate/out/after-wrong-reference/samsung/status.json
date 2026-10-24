@@ -1,0 +1,111 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "rid": "android-arm64",
+  "serial": "R52W207XQ1V",
+  "appSeconds": 0.0,
+  "perScene": [
+    {
+      "sceneId": "assets/bench_01",
+      "gpuSeconds": [
+        132.1334778,
+        0.6776358
+      ],
+      "cpuSeconds": 0.2358119,
+      "applySeconds": 0.0715556,
+      "progressEvents": 7,
+      "errorEvents": [],
+      "referenceOracle": "linux-x64-sse4.2",
+      "diagnosticGpuVersusInAppCpu": {
+        "maximumAbsoluteError": 0.004018425941467285,
+        "practicalFailures": 44,
+        "strictDifferences": 1655,
+        "bitwiseEqual": false,
+        "worst": {
+          "index": 5800,
+          "pixel": 1450,
+          "channel": "R",
+          "reference": 0.44750547409057617,
+          "actual": 0.4434870481491089
+        },
+        "role": "diagnostic"
+      },
+      "gpuRepeatBitwiseIdentical": false,
+      "diagnosticInAppCpuVersusLinux": {
+        "maximumAbsoluteError": 0.009999990463256836,
+        "practicalFailures": 45,
+        "strictDifferences": 1656,
+        "bitwiseEqual": false,
+        "worst": {
+          "index": 1000,
+          "pixel": 250,
+          "channel": "R",
+          "reference": 0.25999999046325684,
+          "actual": 0.25
+        },
+        "role": "diagnostic"
+      },
+      "maximumAbsoluteError": 0.009999990463256836,
+      "practicalFailures": 1,
+      "strictDifferences": 1,
+      "bitwiseEqual": false,
+      "worst": {
+        "index": 1000,
+        "pixel": 250,
+        "channel": "R",
+        "reference": 0.25999999046325684,
+        "actual": 0.25
+      },
+      "reference": "linux-glibc",
+      "referenceFilmSha256": "0aef91a5fcda766405497fca196738daec38efe5809436f0b65ab90158dd835b",
+      "gpuRepeats": [
+        {
+          "maximumAbsoluteError": 0.009999990463256836,
+          "practicalFailures": 1,
+          "strictDifferences": 1,
+          "bitwiseEqual": false,
+          "worst": {
+            "index": 1000,
+            "pixel": 250,
+            "channel": "R",
+            "reference": 0.25999999046325684,
+            "actual": 0.25
+          }
+        },
+        {
+          "maximumAbsoluteError": 0.009999990463256836,
+          "practicalFailures": 1,
+          "strictDifferences": 1,
+          "bitwiseEqual": false,
+          "worst": {
+            "index": 1000,
+            "pixel": 250,
+            "channel": "R",
+            "reference": 0.25999999046325684,
+            "actual": 0.25
+          }
+        }
+      ],
+      "passed": false,
+      "failures": [
+        "gpu-0: 1 practical failures against linux-glibc",
+        "gpu-1: 1 practical failures against linux-glibc"
+      ]
+    }
+  ],
+  "practicalFailures": 1,
+  "strictDifferences": 1,
+  "maximumAbsoluteError": 0.009999990463256836,
+  "pipelineTier": "full",
+  "deviceDescription": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168\nDate: 05/02/25\nCompiler Version: EV031.36.08.33\nDriver Branch: \n",
+  "capabilityWarnings": [
+    "pipeline 'prepare_surface' took 84718 ms, over the 60000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "pipeline 'shade_background' (background module) inlines to 1315867 bytes of WGSL, at or above the 1110000-byte size guard: about 65793 backend instructions estimated (59541 to 77862); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'prepare_surface' (surface module) inlines to 1261475 bytes of WGSL, at or above the 1110000-byte size guard: about 63074 backend instructions estimated (57080 to 74643); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged"
+  ],
+  "passed": false,
+  "failures": [
+    "gpu-0: 1 practical failures against linux-glibc",
+    "gpu-1: 1 practical failures against linux-glibc"
+  ]
+}

@@ -71,6 +71,9 @@ extern "C" int cbc_host_resolve_backend(uint32_t requested, uint32_t *resolved) 
 extern "C" int cbc_host_backend(CBCHost handle, uint32_t *backend) {
   return boundary([&] { require(backend, "Missing output pointer"); *backend = lookup(handle)->backend; });
 }
+// The CPU kernels' arithmetic, from a translation unit compiled with their flags
+// (native/cycles/cpu_arithmetic.cpp).
+extern "C" const char codebrix_cpu_arithmetic_json[];
 extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t capacity, uint64_t *required) {
   auto write = [&](Host *host) {
     require(required && (!capacity || json), "Invalid result buffer or size pointer");
@@ -87,11 +90,12 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
 #ifdef WITH_OSL
         << ",\"custom\""
 #endif
-        << "],\"passes\":\"registered pass types written by the Cycles CPU device\"}";
+        << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"arithmetic\":"
+        << codebrix_cpu_arithmetic_json << "}";
 #ifdef WITH_WEBGPU
     out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\"],\"primitives\":[\"triangle\"],"
            "\"passes\":[\"combined\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"light trees\",\"surface data passes\","
-           "\"volume light passes\",\"background light MIS\",\"nonconstant light emission\",\"heterogeneous volumes\",\"moving transparent shadows\","
+           "\"volume light passes\",\"background light portals and sky sun guiding\",\"nonconstant point, spot, area and sun light shaders\",\"heterogeneous volumes\",\"moving transparent shadows\","
            "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL

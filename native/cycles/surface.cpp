@@ -180,4 +180,51 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
   dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
   dispatch(p,uint32_t(work),surface,workgroup("shade_surface"));
 }
+// DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE: shadow paths whose sampled light has
+// no constant emission (wavefront_light_nee.wgsl). Arguments as every shading
+// kernel: path indices, render buffer (unused), work size.
+void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args){
+  require(args.count==3,"Light NEE argument count");
+  require(args.types[2]==DeviceKernelArguments::INT32&&args.sizes[2]==4,"Invalid light NEE work argument");
+  int n;std::memcpy(&n,args.values[2],4);require(n>=0&&work>=n,"Incomplete light NEE dispatch");
+  require(args.types[0]==DeviceKernelArguments::POINTER&&args.sizes[0]==sizeof(device_ptr),"Invalid light NEE pointer argument");
+  device_ptr indices;std::memcpy(&indices,args.values[0],sizeof(indices));require(indices%4==0,"Unaligned light NEE indices");
+  std::array<uint32_t,32> p{};p[1]=n;p[2]=uint32_t(indices);p[17]=error_word;if(p[2])validate(p[2],size_t(n)*4);
+  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU light NEE currently requires triangle primitives");
+  require(!(data.kernel_features&(KERNEL_FEATURE_LIGHT_TREE|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING))&&
+          !data.integrator.use_light_tree,"WebGPU light NEE optional integration features not implemented");
+  validate_geometry_motion();
+  validate_lighting(true);
+  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=globals.at("sample_pattern_lut");p[18]=globals.at("shaders");
+  require(remaining(p[18])%sizeof(KernelShader)==0,"Invalid light NEE shader table");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));
+  if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid SVM word table");p[22]=uint32_t(remaining(p[21])/4);}
+  p[10]=uint32_t(remaining(uintptr_t(state.shadow_path.render_pixel_index))/4);
+  if(!p[2])require(uint32_t(n)<=p[10],"Light NEE dispatch exceeds shadow path capacity");
+  require(uint32_t(work)<=svm_stack_slots,"Light NEE dispatch exceeds the SVM stack slots");
+  auto field=[&](const void *address,size_t size){validate(uintptr_t(address),size_t(p[10])*size);};
+  field(state.shadow_path.queued_kernel,2);field(state.shadow_path.throughput,12);field(state.shadow_path.bsdf_eval_average,4);
+  field(state.shadow_path.sample,4);field(state.shadow_path.rng_pixel,4);field(state.shadow_path.rng_offset,2);
+  field(state.shadow_ray.P,12);field(state.shadow_ray.D,12);field(state.shadow_ray.tmax,4);field(state.shadow_ray.time,4);
+  field(state.shadow_ray.dP,4);field(state.shadow_ray.dD,4);field(state.shadow_ray.self_light_object,4);field(state.shadow_ray.self_light_prim,4);
+  validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
+  const auto sequence=data.integrator.tabulated_sobol_sequence_size;
+  require(sequence>1&&(sequence&(sequence-1))==0,"Invalid light NEE Sobol sequence size");
+  validate(p[9],size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
+  p[14]=scene_tables();
+  if(!n||!work)return;
+  // GPU-private ShaderData of each dispatched path's light point (prepare_light_nee -> shade_light_nee).
+  const size_t needed=size_t(work)*surface_data_cache_bytes;
+  if(needed>light_nee_cache_bytes){
+    if(light_nee_cache){flush();release(light_nee_cache);light_nee_cache=0;light_nee_cache_bytes=0;}
+    light_nee_cache=allocate(needed);light_nee_cache_bytes=needed;
+  }
+  p[26]=light_nee_cache;p[27]=surface_data_cache_bytes;
+  if(!pipeline_current(light_nee,"shade_light_nee")||!pipeline_current(light_nee_prepare,"prepare_light_nee")){
+    auto built=build_pipelines("surface",surface_source(),{"prepare_light_nee","shade_light_nee"});
+    light_nee_prepare=std::move(built[0]);light_nee=std::move(built[1]);
+  }
+  // Dispatch ordering makes the cached ShaderData visible to the evaluation.
+  dispatch(p,uint32_t(work),light_nee_prepare,workgroup("prepare_light_nee"));
+  dispatch(p,uint32_t(work),light_nee,workgroup("shade_light_nee"));
+}
 }

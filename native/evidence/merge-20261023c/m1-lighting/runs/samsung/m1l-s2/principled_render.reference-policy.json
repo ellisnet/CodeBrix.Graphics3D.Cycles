@@ -1,0 +1,60 @@
+{
+  "kind": "render",
+  "run": "/home/jeremy/ClaudeHome/cycles-worktrees/m1-lighting/native/work/m1-lighting/runs/samsung/m1l-s2/output/principled_render/run",
+  "reference": "/home/jeremy/ClaudeHome/cycles-worktrees/m1-lighting/native/work/m1-lighting/runs/samsung/m1l-s2/device-scene-reference/references/principled_render",
+  "practicalCriterion": "5e-5 + 2e-4*abs(reference)",
+  "strictCriterion": "1e-7 + 1e-7*abs(reference)",
+  "passed": false,
+  "rows": [
+    {
+      "key": "image",
+      "referenceSha256": "cc884db8799d28055376fdb8f61141a8987184ae1d937a9c4ec8162fe89f7086",
+      "diagnosticLocalVersusGlibc": {
+        "compared": 12288,
+        "bitwiseDiffering": 2305,
+        "nonFinite": 0,
+        "practicalFailures": 2,
+        "strictDifferences": 240,
+        "maximumAbsoluteError": 0.0009545087814331055,
+        "maximumPracticalRatio": 2.657325130616142,
+        "maximumUlps": 8007,
+        "firstPracticalFailure": {
+          "index": 9114,
+          "actual": 1.5469499826431274,
+          "reference": 1.5459954738616943
+        },
+        "passed": false,
+        "role": "diagnostic"
+      },
+      "authoritative": {
+        "compared": 12288,
+        "bitwiseDiffering": 2534,
+        "nonFinite": 0,
+        "practicalFailures": 2,
+        "strictDifferences": 267,
+        "maximumAbsoluteError": 0.0009543895721435547,
+        "maximumPracticalRatio": 2.6569932553656592,
+        "maximumUlps": 8006,
+        "firstPracticalFailure": {
+          "index": 9114,
+          "actual": 1.546949863433838,
+          "reference": 1.5459954738616943
+        },
+        "passed": false
+      },
+      "diagnosticGpuVersusLocal": {
+        "compared": 12288,
+        "bitwiseDiffering": 1395,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 41,
+        "maximumAbsoluteError": 1.9073486328125e-06,
+        "maximumPracticalRatio": 0.0019881369571881973,
+        "maximumUlps": 7,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+      }
+    }
+  ]
+}

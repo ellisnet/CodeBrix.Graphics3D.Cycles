@@ -1,0 +1,12 @@
+gltf/textured-plane (64x48)
+  cpu-x64-linux              samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           samples 16    repeats 2 bitwise=False repeatMaxAbs=9.54e-07 nonfinite=0
+  wgsl-android-samsung       samples 16    repeats 2 bitwise=False repeatMaxAbs=9.54e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux                      0.000142   7.66e-05    2.7e-06             0       1644
+      worst x=36 y=17 R: ref 2.03628612 got 2.03614426 (0.31x tolerance)
+  wgsl-android-samsung vs cpu-x64-linux                  8.88e-05   0.000112   2.33e-06             0       1611
+      worst x=18 y=2 B: ref 0.784202337 got 0.784290254 (0.425x tolerance)
+  wgsl-android-samsung vs wgsl-linux-intel                0.00018   9.21e-05   3.57e-06             0        993
+      worst x=36 y=17 R: ref 2.03614426 got 2.03632426 (0.394x tolerance)
+  verdict: perfect

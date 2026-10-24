@@ -1,0 +1,105 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "rid": "android-x64",
+  "serial": "192.168.86.225:5555",
+  "appSeconds": 331.7,
+  "perScene": [
+    {
+      "sceneId": "assets/bench_01-hdri",
+      "gpuSeconds": [
+        330.2127625,
+        0.5256607
+      ],
+      "cpuSeconds": 0.2093176,
+      "applySeconds": 0.0807086,
+      "progressEvents": 7,
+      "errorEvents": [],
+      "referenceOracle": "linux-x64-sse4.2",
+      "diagnosticGpuVersusInAppCpu": {
+        "maximumAbsoluteError": 0.003999769687652588,
+        "practicalFailures": 48,
+        "strictDifferences": 2226,
+        "bitwiseEqual": false,
+        "worst": {
+          "index": 8624,
+          "pixel": 2156,
+          "channel": "R",
+          "reference": 0.6685676574707031,
+          "actual": 0.6725674271583557
+        },
+        "role": "diagnostic"
+      },
+      "gpuRepeatBitwiseIdentical": false,
+      "diagnosticInAppCpuVersusLinux": {
+        "maximumAbsoluteError": 0.004004776477813721,
+        "practicalFailures": 48,
+        "strictDifferences": 2232,
+        "bitwiseEqual": false,
+        "worst": {
+          "index": 8624,
+          "pixel": 2156,
+          "channel": "R",
+          "reference": 0.6725724339485168,
+          "actual": 0.6685676574707031
+        },
+        "role": "diagnostic"
+      },
+      "maximumAbsoluteError": 9.167194366455078e-05,
+      "practicalFailures": 0,
+      "strictDifferences": 435,
+      "bitwiseEqual": false,
+      "worst": {
+        "index": 7872,
+        "pixel": 1968,
+        "channel": "R",
+        "reference": 1.7448781728744507,
+        "actual": 1.7449698448181152
+      },
+      "reference": "linux-glibc",
+      "referenceFilmSha256": "fc72f30aede5fada2857a07cfa632dccf6de3c7e861c702c95500762e4bca2a3",
+      "gpuRepeats": [
+        {
+          "maximumAbsoluteError": 9.167194366455078e-05,
+          "practicalFailures": 0,
+          "strictDifferences": 435,
+          "bitwiseEqual": false,
+          "worst": {
+            "index": 7872,
+            "pixel": 1968,
+            "channel": "R",
+            "reference": 1.7448781728744507,
+            "actual": 1.7449698448181152
+          }
+        },
+        {
+          "maximumAbsoluteError": 9.143352508544922e-05,
+          "practicalFailures": 0,
+          "strictDifferences": 439,
+          "bitwiseEqual": false,
+          "worst": {
+            "index": 7872,
+            "pixel": 1968,
+            "channel": "R",
+            "reference": 1.7448781728744507,
+            "actual": 1.7449696063995361
+          }
+        }
+      ]
+    }
+  ],
+  "practicalFailures": 0,
+  "strictDifferences": 435,
+  "maximumAbsoluteError": 9.167194366455078e-05,
+  "pipelineTier": "full",
+  "deviceDescription": "Intel(R) Xe Graphics (TGL GT2) / Mesa 24.0.8",
+  "capabilityWarnings": [
+    "pipeline 'prepare_surface' took 148692 ms, over the 60000 ms compile budget (full tier); first-use latency is degraded on this driver",
+    "pipeline 'shader_eval_background' (background module) inlines to 1624991 bytes of WGSL, at or above the 1110000-byte size guard: about 81250 backend instructions estimated (73529 to 96153); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'shade_background' (background module) inlines to 1584943 bytes of WGSL, at or above the 1110000-byte size guard: about 79247 backend instructions estimated (71717 to 93784); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'prepare_surface' (surface module) inlines to 1374819 bytes of WGSL, at or above the 1110000-byte size guard: about 68741 backend instructions estimated (62209 to 81350); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "pipeline 'shade_light_nee' (surface module) inlines to 1352287 bytes of WGSL, at or above the 1110000-byte size guard: about 67614 backend instructions estimated (61189 to 80017); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged"
+  ],
+  "passed": true,
+  "uninstalled": true
+}

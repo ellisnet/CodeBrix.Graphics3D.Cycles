@@ -31,17 +31,30 @@ std::string lighting_layout(){
 #define ENUM(name) constant(#name,uint32_t(name))
   ENUM(LIGHT_POINT);ENUM(LIGHT_SUN);ENUM(LIGHT_SPOT);ENUM(LIGHT_AREA);ENUM(SHADER_CAST_SHADOW);ENUM(SHADER_USE_MIS);ENUM(PRNG_LIGHT);ENUM(PRNG_LIGHT_TERMINATE);
 #undef ENUM
+  constant("K_LIGHT_NEE",DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE);constant("O_primitive_type",offsetof(KernelObject,primitive_type));
   constant("LIGHT_EXCLUDE_CAMERA",SHADER_EXCLUDE_CAMERA);constant("LIGHT_EXCLUDE_SHADOW_CATCHER",SHADER_EXCLUDE_SHADOW_CATCHER);
   return out.str();
 }
 void WebGPUDevice::validate_lighting(bool sampling) const {
   require(!(sampling||data.integrator.use_light_mis)||!data.integrator.use_light_tree,"WebGPU direct lighting light tree not implemented");
   require(data.integrator.num_lights>=0&&size_t(data.integrator.num_lights)==light_records.size(),"Invalid native light table");
+  // Background (world) light: importance-map sampling, MIS and non-constant
+  // worlds (shade_light_nee). Portals and sky-texture sun guiding are refused.
+  require(data.integrator.num_portals==0&&data.background.portal_weight==0,"WebGPU background light portals not implemented");
+  require(data.background.sun_weight==0,"WebGPU background sun guiding (sky texture sun disc) not implemented");
+  unsigned background_lights=0;
   for(const auto &light:light_records){
-    require(light.type==LIGHT_POINT||light.type==LIGHT_SUN||light.type==LIGHT_SPOT||light.type==LIGHT_AREA,"WebGPU direct lighting emitter type not implemented");
+    require(light.type==LIGHT_POINT||light.type==LIGHT_SUN||light.type==LIGHT_SPOT||light.type==LIGHT_AREA||light.type==LIGHT_BACKGROUND,"WebGPU direct lighting emitter type not implemented");
     const auto id=uint(light.shader_id)&SHADER_MASK;
     require(id<shader_records.size(),"Invalid native light shader");
-    require(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION,"WebGPU nonconstant light emission not implemented");
+    if(light.type==LIGHT_BACKGROUND){
+      require(++background_lights==1,"WebGPU multiple background lights not implemented");
+      require(id==(uint(data.background.surface_shader)&SHADER_MASK),"Invalid native background light shader");
+      for(float strength:light.strength)require(std::isfinite(strength),"Invalid native light strength");
+      require(!data.background.use_mis||(data.background.map_res_x>0&&data.background.map_res_y>0),"Invalid native background importance map");
+      continue;
+    }
+    require(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION,"WebGPU nonconstant point, spot, area or sun light emission not implemented");
     require(std::isfinite(light.co.x)&&std::isfinite(light.co.y)&&std::isfinite(light.co.z),"Invalid native light position/direction");
     for(float strength:light.strength)require(std::isfinite(strength),"Invalid native light strength");
     if(light.type==LIGHT_POINT||light.type==LIGHT_SPOT){require(std::isfinite(light.spot.radius)&&light.spot.radius>=0&&
@@ -66,10 +79,9 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
   require(n>0&&light_distribution_records.size()==size_t(n)+1,"Invalid native light distribution");
   require(std::isfinite(data.integrator.distribution_pdf_lights)&&data.integrator.distribution_pdf_lights>=0&&
     std::isfinite(data.integrator.light_inv_rr_threshold)&&data.integrator.light_inv_rr_threshold>=0,"Invalid native light sampling parameters");
-  // Flat-CDF mesh lights currently use constant emission. The GPU evaluates
-  // their sampled vertices, PDFs and MIS; no host shading/readback is involved.
-  for(const auto &shader:shader_records)if(shader.flags&(SD_MIS_FRONT|SD_MIS_BACK))
-    require(shader.flags&SD_HAS_CONSTANT_EMISSION,"WebGPU nonconstant triangle light emission not implemented");
+  // Flat-CDF mesh lights: the GPU evaluates their sampled vertices, PDFs and MIS;
+  // a triangle whose shader has no constant emission is shaded at the sampled
+  // point by shade_light_nee (textured and node emission), as in the pinned kernel.
   auto triangles=globals.find("tri_vindex");const size_t triangle_count=triangles==globals.end()?0:remaining(triangles->second)/sizeof(packed_uint3);
   float previous=0;
   for(int i=0;i<=n;i++){const auto &entry=light_distribution_records[i];

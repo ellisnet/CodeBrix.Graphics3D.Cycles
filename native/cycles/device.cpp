@@ -119,8 +119,12 @@ uint32_t WebGPUDevice::allocate(size_t bytes){
       allocations.emplace(address,Allocation{bytes,extent});return address;
     }
     const size_t limit=std::min<uint64_t>(gpu.limits.maxBufferSize,gpu.limits.maxStorageBufferBindingSize)&~size_t(15);
-    require(extent<=limit-16,"WebGPU allocation exceeds storage binding limit");
-    require(arena_bytes<limit,"WebGPU device arena exhausted (storage binding limit)");
+    if(extent>limit-16||arena_bytes>=limit){
+      size_t used=0;for(const auto &[address,allocation]:allocations)used+=allocation.extent;
+      throw std::runtime_error(std::string(extent>limit-16?"WebGPU allocation exceeds storage binding limit":"WebGPU device arena exhausted (storage binding limit)")+
+        " ("+std::to_string(limit)+" bytes; arena "+std::to_string(arena_bytes)+" bytes, "+std::to_string(used)+" bytes in "+
+        std::to_string(allocations.size())+" allocations; request "+std::to_string(bytes)+" bytes)");
+    }
     size_t next=std::min(limit,std::max({size_t(65536),arena_bytes*2,arena_bytes+extent+16}));
     require(next>arena_bytes,"WebGPU device arena cannot grow");flush();
     auto replacement=gpu.buffer(next,WGPUBufferUsage_Storage|WGPUBufferUsage_CopySrc|WGPUBufferUsage_CopyDst);
@@ -241,8 +245,8 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
   require(work>0&&groups<=gpu.limits.maxComputeWorkgroupsPerDimension,"Dispatch exceeds device limits");
   if(observer){
     const WGPUComputePipeline actual=pipeline?pipeline:controls.value;
-    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:18;
-    require(entry<18,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:actual==light_nee.value?18:actual==background_eval.value?19:actual==light_nee_prepare.value?20:21;
+    require(entry<21,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
   }
   auto uniform=gpu.buffer(sizeof(params),WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params.data());
   std::array<WGPUBindGroupEntry,2> entries{};entries[0].binding=0;entries[0].buffer=arena;entries[0].size=arena_bytes;

@@ -1,0 +1,85 @@
+{
+  "sceneId": "starter/diffuse-triangle",
+  "sceneSha256": "d1464fec86408f802de06659acb34c122aeda54bec99df86a95762fe96a18a55",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "native/work/merge6/oracles/starters/oracle/starter/diffuse-triangle/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": " (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00177569,
+        0.000399917
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/merge6/validation/e-comparator/corrupt-values",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.4901161193847656e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.4901161193847656e-08,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json",
+      "renderSeconds": [
+        2.29323,
+        0.023947
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.01000000536441803,
+      "maxRelativeError": 0.050000022351739795,
+      "rms": 0.0001804220559265432,
+      "practicalFailures": 1,
+      "strictDifferences": 1,
+      "worstPixel": {
+        "x": 4,
+        "y": 3,
+        "channel": "R",
+        "reference": 0.20000001788139343,
+        "candidate": 0.21000002324581146,
+        "absoluteDifference": 0.01000000536441803,
+        "criterionRatio": 111.1111663005948
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "practicalPassed": false
+    }
+  ],
+  "problems": [
+    "wgsl-linux-intel vs cpu-x64-linux: 1 practical failures"
+  ],
+  "passed": false,
+  "verdict": "not perfect"
+}

@@ -104,9 +104,20 @@ fn image_projection(s:ptr<function,SvmState>,co:vec3<f32>,projection:u32)->vec2<
     if(projection==NODE_IMAGE_PROJ_TUBE){let l=sqrt(v.x*v.x+v.y*v.y);if(l>0.0){return vec2<f32>((1.0-atan2(v.x/l,v.y/l)/3.1415927)*0.5,(v.z+1.0)*0.5);}return vec2<f32>(0);}
     svm_error(s,16u);return vec2<f32>(0);
 }
+// direction_to_equirectangular (kernel/camera/projection.h): binary32 steps in
+// the host's order with the precise arctangent/arccosine. The driver
+// atan2/acos/division (up to 2e-3 relative on Intel) moved environment-texture
+// lookups near bright texels beyond the practical criterion.
+fn image_equirectangular(direction:vec3<f32>)->vec2<f32>{
+    if(all(direction==vec3<f32>(0))){return vec2<f32>(0);}
+    let u=rounded_divide(rounded_add(trig_atan2(direction.y,direction.x),-3.1415927410125732),-6.2831854820251465);
+    let length=rounded_sqrt(rounded_dot(direction,direction));
+    let v=rounded_divide(rounded_add(trig_acos(rounded_divide(direction.z,length)),-3.1415927410125732),-3.1415927410125732);
+    return vec2<f32>(u,v);
+}
 fn environment_projection(s:ptr<function,SvmState>,input:vec3<f32>,projection:u32)->vec2<f32>{
     var v=surface_normalize(input);
-    if(projection==0u){if(all(v==vec3<f32>(0))){return vec2<f32>(0);}return vec2<f32>((atan2(v.y,v.x)-3.1415927)/-6.2831855,(c_safe_acosf(v.z/length(v))-3.1415927)/-3.1415927);}
+    if(projection==0u){return image_equirectangular(v);}
     if(projection!=1u){svm_error(s,16u);return vec2<f32>(0);}
     v.y-=1.0;let div=2.0*sqrt(max(-0.5*v.y,0.0));if(div>0.0){v/=div;}return (v.xz+vec2<f32>(1))*0.5;
 }

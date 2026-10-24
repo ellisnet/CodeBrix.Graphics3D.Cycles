@@ -23,6 +23,33 @@ public sealed class MainActivity : Activity
             // "webgpu" (am start --es mode webgpu) renders the shared WebGPU validation scenes on the GPU and
             // CPU reference backends and compares them; any other mode runs the CPU reference suite.
             string mode = Intent?.GetStringExtra("mode") ?? "cpu";
+            // "bundle" (am start --es mode bundle [--es oracle linux-x64-sse4.2]) renders the cbcOracleScene
+            // bundle the runner copied into files/bundle through the library's bundle loader.
+            if (mode == "bundle")
+            {
+                try
+                {
+                    Dictionary<string, object> result = await BundleChecks.Run(Path.Combine(directory, "bundle"), Path.Combine(directory, "output", "bundle"), Intent?.GetStringExtra("oracle"));
+                    string nativeDirectory = ApplicationInfo!.NativeLibraryDir!;
+                    string maps = File.ReadAllText("/proc/self/maps");
+                    foreach (string name in new[] { "libcodebrix_cycles_host.so", "libcodebrix_wgpu.so" })
+                        if (!maps.Contains(Path.Combine(nativeDirectory, name), StringComparison.Ordinal))
+                            throw new Exception("Native library not mapped from app installation: " + name);
+                    File.WriteAllText(Path.Combine(directory, "native-maps.txt"), maps);
+                    result["actualAndroidApp"] = true;
+                    result["architecture"] = RuntimeInformation.ProcessArchitecture.ToString();
+                    result["apiLevel"] = (int)Build.VERSION.SdkInt;
+                    result["nativeDirectory"] = nativeDirectory;
+                    report = result;
+                }
+                catch (Exception error) { report = new { passed = false, mode, error = error.ToString() }; }
+                string bundleJson = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
+                string bundleTemporary = Path.Combine(directory, "result.tmp");
+                File.WriteAllText(bundleTemporary, bundleJson);
+                File.Move(bundleTemporary, Path.Combine(directory, "result.json"), true);
+                RunOnUiThread(() => text.Text = bundleJson);
+                return;
+            }
             if (mode == "webgpu")
             {
                 try

@@ -81,7 +81,8 @@ not depend on it.
 Check: step 1 records them.
 
 **UNKNOWN:** whether the Mac has AVX2 (every Intel Mac that runs macOS 15 is
-expected to; this is an inference). Check:
+expected to; this is an inference). It is recorded only: the fixed-baseline CPU
+oracle builds no AVX2 kernel, so the result does not change the films. Check:
 `sysctl -n machdep.cpu.leaf7_features | tr ' ' '\n' | grep -x AVX2`.
 
 ## Ordered steps
@@ -289,9 +290,14 @@ done
 
 and, on Linux after the bundle is back, with `cpu-x64-linux` and
 `wgsl-linux-intel` films of the same scenes rendered on Linux by the same
-script. **UNKNOWN:** whether Cycles picks its AVX2 kernels on this CPU;
-`cpu-x64-macos` and `cpu-x64-macos-sse42` agreeing bitwise would mean it did
-not, or that the kernels agree; the CPU features from step 1 decide which.
+script. The build is the fixed-baseline CPU oracle (native/DEVICE.md, "Fixed-baseline
+CPU oracle"): SSE4.2 kernels only, no FMA contraction, no reciprocal math, so
+`cpu-x64-macos` and `cpu-x64-macos-sse42` run the same kernels and must agree
+bitwise, and both must agree with `cpu-x64-linux` rendered by the same commit
+within the practical criterion; a difference that does not trace to the C
+library (macOS libm against glibc) is a finding. **UNTESTED:** the fixed-baseline
+rule has not yet been compiled on an Intel Mac; step 4's recipe refuses a CPU
+kernel line that is not at the baseline.
 
 ### 9. Application run: the glTF example client **UNTESTED**
 

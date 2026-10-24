@@ -1,0 +1,7 @@
+starter/diffuse-triangle (32x24)
+  cpu-x64-linux              samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           samples 8     repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux                          0.01       0.05    0.00018             1          1
+      worst x=4 y=3 R: ref 0.200000018 got 0.210000023 (111x tolerance)
+  verdict: not perfect; FAILED: wgsl-linux-intel vs cpu-x64-linux: 1 practical failures

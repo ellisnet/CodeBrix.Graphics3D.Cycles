@@ -30,27 +30,32 @@ GLTF RENDER TOOL (EXAMPLE CLIENT)
     tools/gltf/CycleGltfRender/      project CodeBrix.Graphics3D.Cycles.GltfRender
 
 A console tool in the solution's Tools folder, never packed. It loads a .gltf or
-.glb file with the CodeBrix.Graphics3D.Gltf2.MitLicenseForever package (a
-dependency of this tool only, never of the library), converts it into a Cycles
-scene through the typed API and renders it on the GPU (WebGPU) or the explicit
-CPU reference backend:
+.glb file with the CodeBrix.Graphics3D.Gltf2.MitLicenseForever package, decodes
+its texture images with the CodeBrix.Imaging.ApacheLicenseForever package (both
+dependencies of this tool and the tests only, never of the library), converts it
+into a Cycles scene and renders it on the GPU (WebGPU) or the explicit CPU
+reference backend:
 
     dotnet run --project tools/gltf/CycleGltfRender -c Release -- \
-        MODEL.glb --output film.bin [--backend cpu|gpu] [--compare] \
+        MODEL.gltf --output film.bin [--backend cpu|gpu] [--compare] \
+        [--material-mapping closures|blender] [--textures DIR] \
         [--width 64 --height 48 --samples 16] [--camera N | --default-camera] \
-        [--native-library PATH]
-    ... --write-sample sample.glb [--sample-sun]   (a procedural test model)
+        [--write-bundle DIR [--bundle-id ID] [--repeats N]] [--native-library PATH]
+    ... --bundle SCENE.json --output film.bin [--compare]   (render a saved bundle)
+    ... --write-sample sample.glb [--sample-sun | --sample-textured]
 
 It writes the raw film (film.bin: little-endian float32 RGBA, scene-linear,
 row 0 at the bottom) and a small header (film.bin.json: size, samples, backend,
 sha256); it encodes no images. --compare renders on both backends, writes
 film.cpu.bin and film.gpu.bin and prints the maximum error, practical failures
 and strict differences with the repository criteria (exit code 3 on a practical
-failure). --help prints the mapping below. The native host is found through
+failure). --write-bundle saves the converted scene as a cbcOracleScene bundle
+(scene.json, raw geometry, attribute and pixel files, bundle-manifest.json),
+which the library's OracleSceneBundle loader and the C oracle runner render
+identically. --help prints both mappings. The native host is found through
 --native-library, then CODEBRIX_CYCLES_NATIVE, then the in-tree Linux build.
 
-What it maps (the closest closures the WebGPU backend has today; the Principled
-BSDF is not available on that backend yet, so glTF materials are approximated):
+Mapping "closures" (the default; factors only, textures ignored with a warning):
 
     glTF                         Cycles
     baseColorFactor (rgb)        Diffuse BSDF (Lambert) colour
@@ -62,28 +67,39 @@ BSDF is not available on that backend yet, so glTF materials are approximated):
     KHR_materials_unlit          Emission (base colour, strength 1)
     alphaMode BLEND / MASK       Mix Closure with a Transparent BSDF (fac =
                                  alpha) / all-or-nothing at alphaCutoff
-    meshes, nodes                one Cycles mesh per glTF mesh (primitives as
-                                 per-face shaders), one object per node
-                                 instance; shared meshes and
-                                 EXT_mesh_gpu_instancing become instances
-    NORMAL, TEXCOORD_0           smooth shading with the vertex normals; "uv"
-                                 corner attribute with v flipped
-    KHR_lights_punctual          directional -> sun (strength = intensity),
-                                 point -> point, spot -> spot (strength =
-                                 intensity x 4 pi); a default sun when none
-    camera                       the first perspective camera (yfov); otherwise
-                                 a default camera framing the scene bounds
 
-Limits, stated plainly: textures are NOT used. Gltf2 carries image bytes but
-does not decode them and the library takes raw pixels only (it never decodes
-image files), so the tool uses base-colour, metallic, roughness and emissive
-factors and warns once when a material has textures. Normal and occlusion maps,
-dielectric specular, clearcoat, transmission, sheen, volume, KHR_texture_transform,
-skins, morph targets, animations, orthographic cameras and light ranges are
-ignored with a warning. Objects keep the default shadow-terminator offsets,
-which both backends implement. The tests in
-tests/CodeBrix.Graphics3D.Cycles.Tests/GltfSceneConverterTests.cs drive the
-conversion on the procedural sample model.
+Mapping "blender" (the node graph Blender's glTF importer builds):
+
+    baseColorTexture x factor    Image Texture (scene_linear_srgb) -> Mix Color
+                                 MULTIPLY (fac 1, B = factor) -> Base Color
+    metallicRoughnessTexture     Image Texture (data) -> Separate Color RGB:
+                                 B x metallicFactor -> Metallic,
+                                 G x roughnessFactor -> Roughness
+    normalTexture (scale)        Image Texture (data) -> Normal Map (tangent
+                                 space, OpenGL, strength = scale) -> Normal,
+                                 with the glTF TANGENT as the tangent frame
+    occlusionTexture             not applied (reported)
+    emissive factor/texture      Emission Color / Strength
+    sampler                      REPEAT/CLAMP_TO_EDGE/MIRRORED_REPEAT ->
+                                 periodic/clamp/mirror; NEAREST -> closest,
+                                 otherwise linear; no mipmaps in Cycles
+    everything                   one Principled BSDF (multiscatter GGX, IOR 1.5
+                                 or KHR_materials_ior)
+
+Both mappings: one Cycles mesh per glTF mesh (primitives as per-face shaders),
+one object per node instance (shared meshes and EXT_mesh_gpu_instancing become
+instances); NORMAL -> smooth shading; TEXCOORD_0 -> "uv" corner attribute with v
+flipped; KHR_lights_punctual directional/point/spot -> sun/point/spot (a default
+sun when the file has none); the first perspective camera, otherwise a default
+camera framing the bounds.
+
+Limits, stated plainly: KHR_texture_transform, TEXCOORD_1 and later, the
+KHR_materials_* extensions other than unlit, emissive_strength and ior, skins,
+morph targets, animations, orthographic cameras and light ranges are reported
+and not converted; a normal map on a primitive without TANGENT is refused
+(MikkTSpace generation is not implemented). The tests in
+tests/CodeBrix.Graphics3D.Cycles.Tests/GltfSceneConverterTests.cs drive both
+mappings on procedural sample models (synthetic textures; no external assets).
 
 
 NATIVE RENDERER SOURCE

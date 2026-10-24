@@ -126,8 +126,16 @@ inline constexpr ShaderFeatures SF_VECTOR_MATH_DERIVATIVE=ShaderFeatures::bit(60
 inline constexpr ShaderFeatures SF_MAPPING_DERIVATIVE=ShaderFeatures::bit(61);
 // Gabor texture (wavefront_svm_nodes.wgsl; lane L, 2026-10-22).
 inline constexpr ShaderFeatures SF_TEX_GABOR=ShaderFeatures::bit(63);
-// Every assigned feature (bits 0-61 and 63; bit 62 is unassigned).
-inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR;
+// Background (world) light (lane m1-lighting, 2026-10-23): a LIGHT_BACKGROUND
+// lamp is uploaded (environment importance sampling in the light stage,
+// background MIS, the importance-map shader evaluation and dD clamp).
+inline constexpr ShaderFeatures SF_LIGHT_BACKGROUND=ShaderFeatures::bit(64);
+// A light without constant emission can be sampled (non-constant world through
+// the background light, or an emissive triangle with node emission): deferral
+// to the SHADE_LIGHT_NEE kernel (wavefront_light_nee.wgsl).
+inline constexpr ShaderFeatures SF_LIGHT_NEE=ShaderFeatures::bit(65);
+// Every assigned feature (bits 0-61, 63, 64 and 65; bit 62 is unassigned).
+inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
 // Superset specialization mode (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset,
 // desktop diagnostic): every handler is compiled in except these regions, which

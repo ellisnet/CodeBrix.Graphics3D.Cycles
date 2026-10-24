@@ -1,0 +1,229 @@
+[
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "ps -A -o PID,ARGS"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.build.version.sdk"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.product.cpu.abi"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getconf PAGESIZE"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "getprop ro.build.fingerprint"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "test '!' -e /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/device/m7-hostgate-samsung-run1/samsung/stage",
+      "/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/cpu-exit /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/gpu /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/reload /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/gpu-exit /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/stress /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/cpu /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/reload/round.0 /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/reload/round.1 /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/reload/round.3 /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/reload/round.5 /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/reload/round.4 /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/reload/round.2"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "sha256sum /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libboost_iostreams.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libOpenEXR.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libOpenEXRUtil-3_1.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libIlmThread-3_1.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libboost_filesystem.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libboost_chrono.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libIex.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libIlmThread.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libzstd.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libexpat.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libtiff.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libOpenEXRCore.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libtiffxx.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libOpenImageIO.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libboost_regex.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libIex-3_1.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libboost_thread.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libboost_system.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libOpenEXRUtil.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libpng16.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libOpenEXRCore-3_1.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libpng.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libOpenImageIO_Util.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libjpeg.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libpugixml.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libImath-3_1.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libImath.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libOpenColorIO.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libtbb.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libz.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libboost_date_time.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libOpenEXR-3_1.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libcodebrix_wgpu.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libc++_shared.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_cpu_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_gpu_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_reload_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_concurrency_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib/libcodebrix_cycles_host.so /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.7.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.2.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.0.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.3.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.3.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.1.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.5.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.7.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.0.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.4.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.2.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/config.ocio /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.4.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.6.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.5.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.6.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/a/output/input.1.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.7.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.2.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.0.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.3.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.3.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.1.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.5.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.7.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.0.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.4.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.2.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/config.ocio /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.4.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.6.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.5.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.6.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/b/output/input.1.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.7.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.2.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.0.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.3.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.3.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.1.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.5.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.7.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.0.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.4.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.2.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/config.ocio /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.4.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.6.bin /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.5.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.6.png /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references/c/output/input.1.exr /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/stress-input/a.ocio /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/stress-input/b.ocio /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/stress-input/input.5.bin"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "chmod 755 /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_cpu_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_gpu_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_reload_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_concurrency_test"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_cpu_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/cpu/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/cpu",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/device/m7-hostgate-samsung-run1/samsung"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_cpu_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/cpu-exit/run --exit-live"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/cpu-exit",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/device/m7-hostgate-samsung-run1/samsung"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_reload_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/references /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/reload 6"
+    ],
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/reload",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/device/m7-hostgate-samsung-run1/samsung"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_concurrency_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/stress-input /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/stress"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/stress",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/device/m7-hostgate-samsung-run1/samsung"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_gpu_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/gpu/run"
+    ],
+    "timeoutSeconds": 2400
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/gpu",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/device/m7-hostgate-samsung-run1/samsung"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "echo $$ > /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/lib /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/bin/codebrix_host_gpu_test /data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/gpu-exit/run --exit-live"
+    ],
+    "timeoutSeconds": 2400
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "pull",
+      "/data/local/tmp/codebrix-maintained-host-m7-hostgate-samsung-run1-samsung/output/gpu-exit",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/device/m7-hostgate-samsung-run1/samsung"
+    ],
+    "timeoutSeconds": 300
+  }
+]

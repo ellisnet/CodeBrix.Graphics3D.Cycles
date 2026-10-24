@@ -3,31 +3,37 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json.Nodes;
+using CodeBrix.Graphics3D.Cycles.Bundles;
 using CodeBrix.Graphics3D.Cycles.Generated.Geometry;
 using CodeBrix.Graphics3D.Cycles.Generated.Lights;
 using CodeBrix.Graphics3D.Cycles.Generated.Scene;
 using CodeBrix.Graphics3D.Cycles.Generated.Shaders;
-using CodeBrix.Graphics3D.Cycles.Nodes;
+using CodeBrix.Graphics3D.Cycles.Rendering;
 using CodeBrix.Graphics3D.Gltf2.Schema2;
 using GltfNode = CodeBrix.Graphics3D.Gltf2.Schema2.Node;
+using static CodeBrix.Graphics3D.Cycles.GltfRender.SceneDocument;
 
 namespace CodeBrix.Graphics3D.Cycles.GltfRender;
 
 /// <summary>
-/// Converts a loaded glTF 2.0 model (CodeBrix.Graphics3D.Gltf2) into a Cycles scene through the
-/// typed API. This is an example client: it maps glTF metallic-roughness materials to the closest
-/// closures the WebGPU backend has today (Principled BSDF is not available on that backend yet)
-/// and uses base-colour factors only, because Gltf2 carries image bytes without decoding them.
+/// Converts a loaded glTF 2.0 model (CodeBrix.Graphics3D.Gltf2) into a Cycles scene. This is an
+/// example client. The conversion produces a self-contained <c>cbcOracleScene</c> version 1
+/// bundle (<see cref="ToBundle"/>); <see cref="Convert"/> builds that bundle into a scene with
+/// the library's <see cref="OracleSceneBundle"/> loader, so a rendered glTF file and a saved
+/// bundle (rendered by the managed loader on any device, or by the C oracle runner) are the
+/// same scene. Two material mappings exist (<see cref="GltfMaterialMapping"/>).
 /// </summary>
 public static class GltfSceneConverter
 {
     /// <summary>
-    /// The help text describing the material mapping and its limits.
+    /// The help text describing the material mappings and their limits.
     /// </summary>
     public const string MappingSummary =
-        "Material mapping (closest closures the WebGPU backend has today; Principled BSDF is NOT available there yet):\n" +
+        "Material mapping 'closures' (the default without --textures; factors only):\n" +
         "  baseColorFactor (rgb)          -> Diffuse BSDF (Lambert) colour\n" +
         "  metallicFactor > 0             -> Mix Closure(fac = metallic) of Diffuse and Glossy BSDF (GGX, colour = base colour)\n" +
         "  roughnessFactor                -> Glossy roughness (glTF and Cycles both use perceptual roughness)\n" +
@@ -35,12 +41,27 @@ public static class GltfSceneConverter
         "  KHR_materials_unlit            -> Emission(base colour, 1) only\n" +
         "  alphaMode BLEND                -> Mix Closure(fac = alpha) of Transparent BSDF and the surface\n" +
         "  alphaMode MASK                 -> fully transparent when alpha < alphaCutoff, otherwise opaque\n" +
-        "  textures (any channel)         -> IGNORED with a warning: Gltf2 does not decode image bytes\n" +
-        "  dielectric specular, normal/occlusion maps, clearcoat, transmission, sheen, KHR_texture_transform -> ignored\n" +
+        "  textures, normal/occlusion maps, material extensions, KHR_texture_transform -> ignored with a warning\n" +
+        "Material mapping 'blender' (--material-mapping blender, implied by --textures DIR; the node graph Blender's glTF\n" +
+        "  importer builds, rendered by Cycles):\n" +
+        "  Principled BSDF (multiscatter GGX, IOR 1.5 or KHR_materials_ior)\n" +
+        "  baseColorTexture (sRGB) x baseColorFactor -> Image Texture (scene_linear_srgb: kept 8-bit, decoded in the kernel, as\n" +
+        "                                 Blender does) -> Mix Color MULTIPLY(fac 1, B = factor)\n" +
+        "                                 -> Base Color (no Mix node when the factor is white); factor alone -> Base Color\n" +
+        "  metallicRoughnessTexture (Non-Color) -> Image Texture (data) -> Separate Color RGB: B x metallicFactor -> Metallic,\n" +
+        "                                 G x roughnessFactor -> Roughness (Math MULTIPLY only when the factor is not 1)\n" +
+        "  normalTexture (Non-Color, OpenGL +Y) -> Image Texture (data) -> Normal Map (tangent space, strength = scale) -> Normal;\n" +
+        "                                 the tangent frame is the glTF TANGENT (xyz -> 'tangent', w -> 'tangent_sign', corner domain)\n" +
+        "  occlusionTexture               -> NOT applied (Blender's importer keeps it out of the shading tree; Cycles has no input)\n" +
+        "  emissiveFactor x texture x KHR_materials_emissive_strength -> Emission Color / Emission Strength\n" +
+        "  alphaMode OPAQUE -> alpha ignored; BLEND -> Alpha = base alpha; MASK -> Alpha = 1 - (alpha < cutoff)\n" +
+        "  doubleSided                    -> no effect (Cycles shades both sides, as in Blender)\n" +
+        "  sampler: magFilter NEAREST -> Closest, otherwise Linear; mipmaps do not exist in Cycles (full-resolution\n" +
+        "  sampling); wrap REPEAT -> periodic, CLAMP_TO_EDGE -> clamp, MIRRORED_REPEAT -> mirror (wrapS; a different wrapT\n" +
+        "  is reported). KHR_texture_transform, texCoord > 0 and other KHR_materials_* are reported and not applied.\n" +
         "Geometry: triangles (lists/strips/fans), POSITION, NORMAL (smooth shading), TEXCOORD_0 (v flipped); one Cycles mesh per\n" +
         "  glTF mesh, one Cycles object per node instance (shared meshes and EXT_mesh_gpu_instancing become instances).\n" +
-        "  Skins and morph targets are ignored (rest pose); points and lines are skipped. Each object's shadow-terminator\n" +
-        "  geometry offset is set to 0 (the WebGPU backend does not implement it; smooth meshes lit by a light fail otherwise).\n" +
+        "  Skins and morph targets are ignored (rest pose); points and lines are skipped.\n" +
         "Lights: KHR_lights_punctual directional -> sun (strength = intensity), point -> point (strength = intensity x 4 pi),\n" +
         "  spot -> spot (angle = 2 x outer cone, smooth from the inner cone); a default sun is added when the file has none.\n" +
         "Cameras: perspective only (yfov, converted to Cycles' smaller-dimension fov); otherwise a default camera framing the bounds.";
@@ -68,46 +89,95 @@ public static class GltfSceneConverter
     }
 
     /// <summary>
-    /// Converts the model's default scene (or its first scene) into <paramref name="scene"/>.
-    /// Call this on a fresh scene, before the first render.
+    /// Converts the model's default scene (or its first scene) into <paramref name="scene"/>
+    /// (through the bundle <see cref="ToBundle"/> produces). Call this on a fresh scene, before
+    /// the first render.
     /// </summary>
     /// <param name="model">The loaded glTF model.</param>
     /// <param name="scene">The Cycles scene to fill.</param>
     /// <param name="options">Conversion options; null uses the defaults.</param>
     /// <returns>What was created and every simplification made.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="model"/> or <paramref name="scene"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">The model has no scene or no triangles.</exception>
+    /// <exception cref="InvalidOperationException">The model has no scene or no triangles, or a normal map has no tangents.</exception>
     public static GltfConversionResult Convert(ModelRoot model, CyclesScene scene, GltfConversionOptions options = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(scene);
         options ??= new GltfConversionOptions();
-        return new Converter(model, scene, options).Run();
+        OracleSceneBundle bundle = ToBundle(model, options, new RenderSettings(options.Width, options.Height, 16), out GltfConversionResult result);
+        bundle.Apply(scene);
+        return result;
+    }
+
+    /// <summary>
+    /// Converts the model's default scene (or its first scene) into a self-contained
+    /// <c>cbcOracleScene</c> version 1 bundle: the document plus raw geometry, attribute and
+    /// pixel files. Save it with <see cref="OracleSceneBundle.Save"/>.
+    /// </summary>
+    /// <param name="model">The loaded glTF model.</param>
+    /// <param name="options">Conversion options; null uses the defaults.</param>
+    /// <param name="render">The film size and samples recorded in the document.</param>
+    /// <param name="result">What was created and every simplification made.</param>
+    /// <param name="id">The scene id recorded in the document (default "gltf/scene").</param>
+    /// <param name="description">The description recorded in the document.</param>
+    /// <param name="repeats">How many repeat renders the document asks for (default 2).</param>
+    /// <returns>The bundle.</returns>
+    /// <exception cref="InvalidOperationException">The model has no scene or no triangles, or a normal map has no tangents.</exception>
+    public static OracleSceneBundle ToBundle(ModelRoot model, GltfConversionOptions options, RenderSettings render, out GltfConversionResult result,
+                                             string id = null, string description = null, uint repeats = 2)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        options ??= new GltfConversionOptions();
+        if (options.Textures != null && options.MaterialMapping != GltfMaterialMapping.Blender)
+            throw new ArgumentException("Decoded textures are used by the Blender-importer material mapping only (GltfMaterialMapping.Blender).", nameof(options));
+        Converter converter = new(model, options);
+        result = converter.Run();
+        return converter.Document.ToBundle(id ?? "gltf/scene", description ?? "glTF scene converted by tools/gltf/CycleGltfRender",
+                                           "tools/gltf/CycleGltfRender", render, repeats);
     }
 
     private sealed class Converter
     {
         private readonly ModelRoot model;
-        private readonly CyclesScene scene;
         private readonly GltfConversionOptions options;
         private readonly GltfConversionResult result = new();
-        private readonly Dictionary<int, ShaderNode> materials = new();
-        private readonly Dictionary<int, (MeshNode Mesh, Vector3 Minimum, Vector3 Maximum)> meshes = new();
+        private readonly Dictionary<int, (string Handle, bool NeedsTangents)> materials = new();
+        private readonly Dictionary<int, (string Handle, Vector3 Minimum, Vector3 Maximum)> meshes = new();
+        private readonly HashSet<int> images = new();
         private Vector3 minimum = new(float.PositiveInfinity), maximum = new(float.NegativeInfinity);
+        private int objects;
+        private string lightShader;
 
-        internal Converter(ModelRoot model, CyclesScene scene, GltfConversionOptions options)
+        internal Converter(ModelRoot model, GltfConversionOptions options)
         {
             this.model = model;
-            this.scene = scene;
             this.options = options;
         }
+
+        internal SceneDocument Document { get; } = new();
 
         internal GltfConversionResult Run()
         {
             Scene source = model.DefaultScene ?? model.LogicalScenes.FirstOrDefault();
             if (source == null) throw new InvalidOperationException("The glTF file has no scene.");
-            if (options.ApplyDeterministicIntegrator) ApplyDeterministicIntegrator(scene);
+            if (options.ApplyDeterministicIntegrator)
+            {
+                JsonObject integrator = Document.Scene("integrator", "integrator");
+                Set(integrator, "use_guiding", false);
+                Set(integrator, "use_light_tree", false);
+                Set(integrator, "use_adaptive_sampling", false);
+                Set(integrator, "use_denoise", false);
+                Set(integrator, "caustics_reflective", false);
+                Set(integrator, "caustics_refractive", false);
+                Set(integrator, "min_bounce", 2);
+                Set(integrator, "max_bounce", 4);
+                Set(integrator, "max_diffuse_bounce", 4);
+                Set(integrator, "sampling_pattern", "tabulated_sobol");
+            }
             if (model.LogicalAnimations.Count != 0) result.Warn("Animations are ignored; the rest pose is rendered.");
+            foreach (string extension in model.ExtensionsUsed)
+                if (extension is not ("KHR_lights_punctual" or "KHR_materials_unlit" or "KHR_materials_emissive_strength" or "KHR_materials_ior" or "EXT_mesh_gpu_instancing" or "KHR_mesh_quantization"))
+                    result.Warn($"glTF extension {extension} is not converted.");
 
             List<GltfNode> nodes = GltfNode.Flatten(source).ToList();
             List<(GltfNode Node, CameraPerspective Perspective)> cameras = new();
@@ -151,7 +221,7 @@ public static class GltfSceneConverter
         private void AddMeshInstances(GltfNode node)
         {
             if (node.Skin != null) result.Warn("Skins are ignored; skinned meshes are rendered in their bind pose.");
-            (MeshNode mesh, Vector3 low, Vector3 high) = GetOrCreateMesh(node.Mesh);
+            (string mesh, Vector3 low, Vector3 high) = GetOrCreateMesh(node.Mesh);
             if (mesh == null) return;
             MeshGpuInstancing instancing = node.GetGpuInstancing();
             IEnumerable<Matrix4x4> transforms = instancing == null || instancing.Count == 0
@@ -159,7 +229,9 @@ public static class GltfSceneConverter
                 : instancing.LocalTransforms.Select(local => local.Matrix * node.WorldMatrix);
             foreach (Matrix4x4 world in transforms)
             {
-                scene.CreateObject(mesh, Transform3x4.FromMatrix(world));
+                JsonObject instance = Document.Create("object-" + objects++.ToString(CultureInfo.InvariantCulture), ObjectNode.NativeTypeName);
+                Set(instance, "geometry", mesh);
+                Set(instance, "tfm", Transform(Transform3x4.FromMatrix(world)));
                 ++result.MeshObjects;
                 for (int corner = 0; corner < 8; ++corner)
                 {
@@ -171,14 +243,14 @@ public static class GltfSceneConverter
             }
         }
 
-        private (MeshNode Mesh, Vector3 Minimum, Vector3 Maximum) GetOrCreateMesh(Mesh source)
+        private (string Handle, Vector3 Minimum, Vector3 Maximum) GetOrCreateMesh(Mesh source)
         {
             if (meshes.TryGetValue(source.LogicalIndex, out var existing)) return existing;
-            List<float> positions = new(), normals = new(), uvs = new();
+            List<float> positions = new(), normals = new(), uvs = new(), tangents = new(), signs = new();
             List<uint> indices = new();
             List<int> shaderIndices = new();
-            List<ShaderNode> used = new();
-            bool allNormals = true, anyUv = false;
+            List<string> used = new();
+            bool allNormals = true, anyUv = false, anyTangentNeed = false;
             Vector3 low = new(float.PositiveInfinity), high = new(float.NegativeInfinity);
             foreach (MeshPrimitive primitive in source.Primitives)
             {
@@ -193,9 +265,14 @@ public static class GltfSceneConverter
                 IList<Vector3> points = positionAccessor.AsVector3Array();
                 IList<Vector3> vertexNormals = primitive.GetVertexAccessor("NORMAL")?.AsVector3Array();
                 IList<Vector2> texcoords = primitive.GetVertexAccessor("TEXCOORD_0")?.AsVector2Array();
+                IList<Vector4> vertexTangents = primitive.GetVertexAccessor("TANGENT")?.AsVector4Array();
                 List<(int A, int B, int C)> triangles = primitive.GetTriangleIndices().ToList();
                 if (triangles.Count == 0) continue;
-                ShaderNode shader = GetOrCreateMaterial(primitive.Material);
+                (string shader, bool needsTangents) = GetOrCreateMaterial(primitive.Material);
+                if (needsTangents && vertexTangents == null)
+                    throw new InvalidOperationException($"Material '{primitive.Material?.Name}' has a normal map but a primitive of mesh '{source.Name}' has no TANGENT attribute; " +
+                                                        "MikkTSpace tangent generation is not implemented, so the normal map cannot be applied.");
+                anyTangentNeed |= needsTangents;
                 int slot = used.IndexOf(shader);
                 if (slot < 0)
                 {
@@ -220,6 +297,11 @@ public static class GltfSceneConverter
                     {
                         Vector2 uv = texcoords == null ? Vector2.Zero : texcoords[corner];
                         uvs.Add(uv.X); uvs.Add(1f - uv.Y);
+                        // glTF TANGENT: xyz = tangent, w = bitangent sign (B = cross(N, T) * w), the
+                        // meaning of Cycles' "tangent" and "tangent_sign" corner attributes.
+                        Vector4 tangent = vertexTangents == null ? Vector4.Zero : vertexTangents[corner];
+                        tangents.Add(tangent.X); tangents.Add(tangent.Y); tangents.Add(tangent.Z);
+                        signs.Add(tangent.W < 0f ? -1f : 1f);
                     }
                 }
             }
@@ -228,29 +310,58 @@ public static class GltfSceneConverter
                 meshes[source.LogicalIndex] = (null, low, high);
                 return (null, low, high);
             }
-            MeshNode mesh = scene.CreateMesh(positions.ToArray(), indices.ToArray(), used[0]);
-            if (used.Count > 1)
+            string handle = "mesh-" + source.LogicalIndex.ToString(CultureInfo.InvariantCulture);
+            JsonObject entry = Document.Create(handle, MeshNode.NativeTypeName);
+            JsonArray attributes = new();
+            JsonObject mesh = new() { ["positionsFile"] = handle + ".positions.f32", ["indicesFile"] = handle + ".indices.u32", ["attributes"] = attributes };
+            entry["mesh"] = mesh;
+            Document.AddFloats(handle + ".positions.f32", positions.ToArray());
+            Document.AddUInts(handle + ".indices.u32", indices.ToArray());
+            void Attribute(string name, string value, string domain, float[] data)
             {
-                mesh.UsedShaders = used.ToArray();
-                mesh.Shader = shaderIndices.ToArray();
+                string file = $"{handle}.{name}.f32";
+                attributes.Add(new JsonObject { ["name"] = name, ["value"] = value, ["domain"] = domain, ["flags"] = new JsonArray("standard"), ["file"] = file });
+                Document.AddFloats(file, data);
             }
+            Set(entry, "used_shaders", new JsonArray(used.Select(name => (JsonNode)name).ToArray()));
+            if (used.Count > 1) Set(entry, "shader", new JsonArray(shaderIndices.Select(index => (JsonNode)index).ToArray()));
             if (allNormals)
             {
-                mesh.SetAttribute("N", AttributeValue.Normal, AttributeDomain.VertexNormal, AttributeFlags.Standard, normals.ToArray());
-                mesh.Smooth = Enumerable.Repeat(true, shaderIndices.Count).ToArray();
+                Attribute("N", "normal", "vertex_normal", normals.ToArray());
+                Set(entry, "smooth", new JsonArray(Enumerable.Repeat((JsonNode)true, shaderIndices.Count).Select(node => node.DeepClone()).ToArray()));
             }
-            if (anyUv) mesh.SetAttribute("uv", AttributeValue.Point2, AttributeDomain.Corner, AttributeFlags.Standard, uvs.ToArray());
+            if (anyUv) Attribute("uv", "point2", "corner", uvs.ToArray());
+            if (anyTangentNeed)
+            {
+                Attribute("tangent", "vector", "corner", tangents.ToArray());
+                Attribute("tangent_sign", "float", "corner", signs.ToArray());
+            }
             ++result.Meshes;
             result.Triangles += shaderIndices.Count;
-            var created = (mesh, low, high);
+            var created = (handle, low, high);
             meshes[source.LogicalIndex] = created;
             return created;
         }
 
-        private ShaderNode GetOrCreateMaterial(Material material)
+        private (string Handle, bool NeedsTangents) GetOrCreateMaterial(Material material)
         {
             int key = material?.LogicalIndex ?? -1;
-            if (materials.TryGetValue(key, out ShaderNode existing)) return existing;
+            if (materials.TryGetValue(key, out var existing)) return existing;
+            string handle = key < 0 ? "material-default" : "material-" + key.ToString(CultureInfo.InvariantCulture);
+            JsonObject shader = Document.Create(handle, ShaderNode.NativeTypeName);
+            Set(shader, "emission_sampling_method", "none");
+            bool needsTangents = options.MaterialMapping == GltfMaterialMapping.Blender
+                ? BlenderMaterial(material, shader, handle)
+                : ClosureMaterial(material, shader);
+            var created = (handle, needsTangents);
+            materials[key] = created;
+            ++result.Materials;
+            return created;
+        }
+
+        // The factor-only mapping (unchanged behaviour): Diffuse/Glossy/Emission/Transparent closures.
+        private bool ClosureMaterial(Material material, JsonObject shader)
+        {
             Vector4 baseColor = Vector4.One;
             float metallic = 1f, roughness = 1f, emissiveStrength = 1f;
             Vector3 emissive = Vector3.Zero;
@@ -289,46 +400,45 @@ public static class GltfSceneConverter
             Vector3 rgb = new(baseColor.X, baseColor.Y, baseColor.Z);
             float alpha = Math.Clamp(baseColor.W, 0f, 1f);
 
-            ShaderNode shader = scene.CreateShader();
-            shader.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
-            ShaderOutput surface;
+            Graph graph = GraphOf(shader);
+            string surface, surfaceSocket;
             if (unlit)
             {
-                EmissionNode emission = shader.Add<EmissionNode>();
-                emission.Color = rgb;
-                emission.Strength = 1f;
-                surface = emission.EmissionOutput;
+                JsonObject emission = graph.Node("emission", EmissionNode.NativeTypeName);
+                Set(emission, "color", Floats(rgb.X, rgb.Y, rgb.Z));
+                Set(emission, "strength", 1f);
+                (surface, surfaceSocket) = ("emission", "Emission");
             }
             else
             {
-                DiffuseBsdfNode diffuse = shader.Add<DiffuseBsdfNode>();
-                diffuse.Color = rgb;
-                surface = diffuse.BsdfOutput;
+                JsonObject diffuse = graph.Node("diffuse", DiffuseBsdfNode.NativeTypeName);
+                Set(diffuse, "color", Floats(rgb.X, rgb.Y, rgb.Z));
+                (surface, surfaceSocket) = ("diffuse", "BSDF");
                 if (metallic > 0f)
                 {
-                    GlossyBsdfNode glossy = shader.Add<GlossyBsdfNode>();
-                    glossy.Distribution = GlossyBsdfDistribution.Ggx;
-                    glossy.Color = rgb;
-                    glossy.Roughness = Math.Clamp(roughness, 0f, 1f);
-                    if (metallic >= 1f) surface = glossy.BsdfOutput;
+                    JsonObject glossy = graph.Node("glossy", GlossyBsdfNode.NativeTypeName);
+                    Set(glossy, "distribution", "ggx");
+                    Set(glossy, "color", Floats(rgb.X, rgb.Y, rgb.Z));
+                    Set(glossy, "roughness", Math.Clamp(roughness, 0f, 1f));
+                    if (metallic >= 1f) (surface, surfaceSocket) = ("glossy", "BSDF");
                     else
                     {
-                        MixClosureNode mix = shader.Add<MixClosureNode>();
-                        mix.Fac = metallic;
-                        shader.Connect(diffuse.BsdfOutput, mix.Closure1Input);
-                        shader.Connect(glossy.BsdfOutput, mix.Closure2Input);
-                        surface = mix.ClosureOutput;
+                        JsonObject mix = graph.Node("metal-mix", MixClosureNode.NativeTypeName);
+                        Set(mix, "fac", metallic);
+                        graph.Connect("diffuse", "BSDF", "metal-mix", "Closure1");
+                        graph.Connect("glossy", "BSDF", "metal-mix", "Closure2");
+                        (surface, surfaceSocket) = ("metal-mix", "Closure");
                     }
                 }
                 if (emissive != Vector3.Zero && emissiveStrength > 0f)
                 {
-                    EmissionNode emission = shader.Add<EmissionNode>();
-                    emission.Color = emissive;
-                    emission.Strength = emissiveStrength;
-                    AddClosureNode add = shader.Add<AddClosureNode>();
-                    shader.Connect(surface, add.Closure1Input);
-                    shader.Connect(emission.EmissionOutput, add.Closure2Input);
-                    surface = add.ClosureOutput;
+                    JsonObject emission = graph.Node("emission", EmissionNode.NativeTypeName);
+                    Set(emission, "color", Floats(emissive.X, emissive.Y, emissive.Z));
+                    Set(emission, "strength", emissiveStrength);
+                    graph.Node("emission-add", AddClosureNode.NativeTypeName);
+                    graph.Connect(surface, surfaceSocket, "emission-add", "Closure1");
+                    graph.Connect("emission", "Emission", "emission-add", "Closure2");
+                    (surface, surfaceSocket) = ("emission-add", "Closure");
                 }
             }
             float coverage = alphaMode switch
@@ -339,19 +449,255 @@ public static class GltfSceneConverter
             };
             if (coverage < 1f)
             {
-                TransparentBsdfNode transparent = shader.Add<TransparentBsdfNode>();
-                transparent.Color = Vector3.One;
-                MixClosureNode mix = shader.Add<MixClosureNode>();
-                mix.Fac = coverage;
-                shader.Connect(transparent.BsdfOutput, mix.Closure1Input);
-                shader.Connect(surface, mix.Closure2Input);
-                surface = mix.ClosureOutput;
+                JsonObject transparent = graph.Node("transparent", TransparentBsdfNode.NativeTypeName);
+                Set(transparent, "color", Floats(1f, 1f, 1f));
+                JsonObject mix = graph.Node("alpha-mix", MixClosureNode.NativeTypeName);
+                Set(mix, "fac", coverage);
+                graph.Connect("transparent", "BSDF", "alpha-mix", "Closure1");
+                graph.Connect(surface, surfaceSocket, "alpha-mix", "Closure2");
+                (surface, surfaceSocket) = ("alpha-mix", "Closure");
             }
-            shader.Connect(surface, shader.Output.SurfaceInput);
-            materials[key] = shader;
-            ++result.Materials;
-            return shader;
+            graph.Connect(surface, surfaceSocket, "output", "Surface");
+            return false;
         }
+
+        // The node graph Blender's glTF importer builds (Principled BSDF with image textures).
+        private bool BlenderMaterial(Material material, JsonObject shader, string handle)
+        {
+            string name = material?.Name ?? "(default)";
+            Graph graph = GraphOf(shader);
+            JsonObject bsdf = graph.Node("principled", PrincipledBsdfNode.NativeTypeName);
+            Set(bsdf, "distribution", "multi_ggx");
+            Set(bsdf, "ior", material != null && material.IndexOfRefraction > 0f ? material.IndexOfRefraction : 1.5f);
+            List<string> notes = new();
+            bool needsTangents = false;
+            if (material == null)
+            {
+                // glTF default material: white base colour, metallic 1, roughness 1.
+                Set(bsdf, "base_color", Floats(1f, 1f, 1f));
+                Set(bsdf, "metallic", 1f);
+                Set(bsdf, "roughness", 1f);
+                graph.Connect("principled", "BSDF", "output", "Surface");
+                result.Note($"{handle} '{name}': glTF default material -> Principled BSDF(base 1, metallic 1, roughness 1)");
+                return false;
+            }
+            if (material.Unlit)
+            {
+                material.TryGetChannel("BaseColor", out MaterialChannel unlitBase);
+                Vector4 color = unlitBase.Color;
+                JsonObject emission = graph.Node("emission", EmissionNode.NativeTypeName);
+                Set(emission, "color", Floats(color.X, color.Y, color.Z));
+                Set(emission, "strength", 1f);
+                graph.Connect("emission", "Emission", "output", "Surface");
+                if (unlitBase.Texture != null) result.Warn($"{handle} '{name}': KHR_materials_unlit base-colour textures are not applied (factor only).");
+                result.Note($"{handle} '{name}': KHR_materials_unlit -> Emission(base colour factor, 1)");
+                return false;
+            }
+
+            // Base colour (sRGB texture x factor).
+            material.TryGetChannel("BaseColor", out MaterialChannel baseChannel);
+            Vector4 factor = baseChannel.Color;
+            string baseAlphaNode = null;
+            if (Texture(graph, baseChannel, "base-texture", "scene_linear_srgb", handle, name, "baseColorTexture"))
+            {
+                if (factor.X != 1f || factor.Y != 1f || factor.Z != 1f)
+                {
+                    JsonObject mix = graph.Node("base-factor", MixColorNode.NativeTypeName);
+                    Set(mix, "blend_type", "multiply");
+                    Set(mix, "fac", 1f);
+                    Set(mix, "b", Floats(factor.X, factor.Y, factor.Z));
+                    graph.Connect("base-texture", "Color", "base-factor", "A");
+                    graph.Connect("base-factor", "Result", "principled", "Base Color");
+                    notes.Add($"Base Color = Mix Color MULTIPLY(image {baseChannel.Texture.PrimaryImage.LogicalIndex} sRGB, factor {Vec(factor.X, factor.Y, factor.Z)})");
+                }
+                else
+                {
+                    graph.Connect("base-texture", "Color", "principled", "Base Color");
+                    notes.Add($"Base Color = image {baseChannel.Texture.PrimaryImage.LogicalIndex} (sRGB)");
+                }
+                baseAlphaNode = "base-texture";
+            }
+            else
+            {
+                Set(bsdf, "base_color", Floats(factor.X, factor.Y, factor.Z));
+                notes.Add($"Base Color = {Vec(factor.X, factor.Y, factor.Z)}");
+            }
+
+            // Metallic (B) and roughness (G).
+            material.TryGetChannel("MetallicRoughness", out MaterialChannel metalChannel);
+            float metallic = Factor(metalChannel, "MetallicFactor", 1f), roughness = Factor(metalChannel, "RoughnessFactor", 1f);
+            if (Texture(graph, metalChannel, "metal-rough-texture", "data", handle, name, "metallicRoughnessTexture"))
+            {
+                JsonObject separate = graph.Node("metal-rough-separate", SeparateColorNode.NativeTypeName);
+                Set(separate, "color_type", "rgb");
+                graph.Connect("metal-rough-texture", "Color", "metal-rough-separate", "Color");
+                Channel(graph, "Blue", metallic, "metallic-factor", "Metallic");
+                Channel(graph, "Green", roughness, "roughness-factor", "Roughness");
+                notes.Add($"Metallic = image {metalChannel.Texture.PrimaryImage.LogicalIndex} B x {Num(metallic)}; Roughness = G x {Num(roughness)} (Separate Color RGB, data)");
+            }
+            else
+            {
+                Set(bsdf, "metallic", metallic);
+                Set(bsdf, "roughness", roughness);
+                notes.Add($"Metallic = {Num(metallic)}; Roughness = {Num(roughness)}");
+            }
+
+            // Normal map (tangent space, glTF TANGENT frame).
+            if (material.TryGetChannel("Normal", out MaterialChannel normalChannel) &&
+                Texture(graph, normalChannel, "normal-texture", "data", handle, name, "normalTexture"))
+            {
+                float scale = Factor(normalChannel, "NormalScale", 1f);
+                JsonObject map = graph.Node("normal-map", NormalMapNode.NativeTypeName);
+                Set(map, "space", "tangent");
+                Set(map, "convention", "opengl");
+                Set(map, "strength", scale);
+                graph.Connect("normal-texture", "Color", "normal-map", "Color");
+                graph.Connect("normal-map", "Normal", "principled", "Normal");
+                needsTangents = true;
+                notes.Add($"Normal = Normal Map(tangent space, OpenGL, strength {Num(scale)}, image {normalChannel.Texture.PrimaryImage.LogicalIndex} data; glTF TANGENT)");
+            }
+
+            // Occlusion: reported, never applied.
+            if (material.TryGetChannel("Occlusion", out MaterialChannel occlusionChannel) && occlusionChannel.Texture != null)
+                notes.Add($"occlusionTexture (image {occlusionChannel.Texture.PrimaryImage.LogicalIndex}, strength {Num(Factor(occlusionChannel, "OcclusionStrength", 1f))}) NOT applied: " +
+                          "Blender's importer keeps occlusion out of the shading tree and Cycles has no occlusion input");
+
+            // Emission.
+            if (material.TryGetChannel("Emissive", out MaterialChannel emissiveChannel))
+            {
+                Vector4 emissive = emissiveChannel.Color;
+                float strength = Factor(emissiveChannel, "EmissiveStrength", 1f);
+                bool textured = Texture(graph, emissiveChannel, "emission-texture", "scene_linear_srgb", handle, name, "emissiveTexture");
+                bool black = emissive.X == 0f && emissive.Y == 0f && emissive.Z == 0f;
+                if (textured && !black)
+                {
+                    if (emissive.X != 1f || emissive.Y != 1f || emissive.Z != 1f)
+                    {
+                        JsonObject mix = graph.Node("emission-factor", MixColorNode.NativeTypeName);
+                        Set(mix, "blend_type", "multiply");
+                        Set(mix, "fac", 1f);
+                        Set(mix, "b", Floats(emissive.X, emissive.Y, emissive.Z));
+                        graph.Connect("emission-texture", "Color", "emission-factor", "A");
+                        graph.Connect("emission-factor", "Result", "principled", "Emission Color");
+                    }
+                    else graph.Connect("emission-texture", "Color", "principled", "Emission Color");
+                    Set(bsdf, "emission_strength", strength);
+                    notes.Add($"Emission = image {emissiveChannel.Texture.PrimaryImage.LogicalIndex} (sRGB) x {Vec(emissive.X, emissive.Y, emissive.Z)}, strength {Num(strength)}");
+                }
+                else if (!black)
+                {
+                    Set(bsdf, "emission_color", Floats(emissive.X, emissive.Y, emissive.Z));
+                    Set(bsdf, "emission_strength", strength);
+                    notes.Add($"Emission = {Vec(emissive.X, emissive.Y, emissive.Z)}, strength {Num(strength)}");
+                }
+            }
+
+            // Alpha.
+            if (material.Alpha != AlphaMode.OPAQUE)
+            {
+                string alphaSource = null;
+                if (factor.W != 1f || baseAlphaNode == null)
+                {
+                    if (baseAlphaNode != null)
+                    {
+                        JsonObject multiply = graph.Node("alpha-factor", MathNode.NativeTypeName);
+                        Set(multiply, "math_type", "multiply");
+                        Set(multiply, "value2", factor.W);
+                        graph.Connect(baseAlphaNode, "Alpha", "alpha-factor", "Value1");
+                        alphaSource = "alpha-factor";
+                    }
+                }
+                else alphaSource = baseAlphaNode;
+                if (material.Alpha == AlphaMode.MASK)
+                {
+                    JsonObject less = graph.Node("alpha-cutoff", MathNode.NativeTypeName);
+                    Set(less, "math_type", "less_than");
+                    Set(less, "value1", factor.W);
+                    Set(less, "value2", material.AlphaCutoff);
+                    if (alphaSource != null) graph.Connect(alphaSource, alphaSource == baseAlphaNode ? "Alpha" : "Value", "alpha-cutoff", "Value1");
+                    JsonObject invert = graph.Node("alpha-mask", MathNode.NativeTypeName);
+                    Set(invert, "math_type", "subtract");
+                    Set(invert, "value1", 1f);
+                    graph.Connect("alpha-cutoff", "Value", "alpha-mask", "Value2");
+                    graph.Connect("alpha-mask", "Value", "principled", "Alpha");
+                    notes.Add($"Alpha = 1 - (alpha < {Num(material.AlphaCutoff)}) (MASK)");
+                }
+                else
+                {
+                    if (alphaSource != null) graph.Connect(alphaSource, alphaSource == baseAlphaNode ? "Alpha" : "Value", "principled", "Alpha");
+                    else Set(bsdf, "alpha", factor.W);
+                    notes.Add("Alpha = base colour alpha (BLEND)");
+                }
+            }
+            if (!material.DoubleSided) notes.Add("doubleSided false has no effect (Cycles shades both sides, as in Blender)");
+            foreach (string ignored in new[] { "ClearCoat", "ClearCoatRoughness", "ClearCoatNormal", "Transmission", "SheenColor", "SheenRoughness", "SpecularColor", "SpecularFactor",
+                                               "VolumeThickness", "VolumeAttenuation", "Iridescence", "IridescenceThickness", "Anisotropy", "Diffuse", "SpecularGlossiness" })
+                if (material.TryGetChannel(ignored, out _)) result.Warn($"{handle} '{name}': glTF material channel {ignored} (a KHR_materials_* extension) is not converted.");
+
+            graph.Connect("principled", "BSDF", "output", "Surface");
+            result.Note($"{handle} '{name}': Principled BSDF(multiscatter GGX, IOR {Num(material.IndexOfRefraction > 0f ? material.IndexOfRefraction : 1.5f)}); " + string.Join("; ", notes));
+            return needsTangents;
+        }
+
+        // Math MULTIPLY by the factor only when it is not 1 (as Blender's importer does).
+        private static void Channel(Graph graph, string component, float factor, string multiplyHandle, string input)
+        {
+            if (factor == 1f)
+            {
+                graph.Connect("metal-rough-separate", component, "principled", input);
+                return;
+            }
+            JsonObject multiply = graph.Node(multiplyHandle, MathNode.NativeTypeName);
+            Set(multiply, "math_type", "multiply");
+            Set(multiply, "value2", factor);
+            graph.Connect("metal-rough-separate", component, multiplyHandle, "Value1");
+            graph.Connect(multiplyHandle, "Value", "principled", input);
+        }
+
+        // Adds an Image Texture for a channel's texture when the decoded image exists; false otherwise.
+        private bool Texture(Graph graph, MaterialChannel channel, string nodeHandle, string colorspace, string handle, string name, string slot)
+        {
+            Gltf2.Schema2.Texture texture = channel.Texture;
+            if (texture == null) return false;
+            Gltf2.Schema2.Image image = texture.PrimaryImage;
+            if (image == null)
+            {
+                result.Warn($"{handle} '{name}': {slot} has no image source and is not applied.");
+                return false;
+            }
+            if (options.Textures == null || !options.Textures.Images.TryGetValue(image.LogicalIndex, out DecodedImage decoded))
+            {
+                result.Warn($"{handle} '{name}': {slot} (image {image.LogicalIndex}) is not applied: no decoded pixels (GltfConversionOptions.Textures has no image for it).");
+                return false;
+            }
+            if (channel.TextureCoordinate != 0) result.Warn($"{handle} '{name}': {slot} uses TEXCOORD_{channel.TextureCoordinate}; only TEXCOORD_0 is converted, so TEXCOORD_0 is sampled.");
+            if (channel.TextureTransform != null) result.Warn($"{handle} '{name}': {slot} has KHR_texture_transform, which is not converted (the untransformed UVs are sampled).");
+            string imageHandle = "image-" + image.LogicalIndex.ToString(CultureInfo.InvariantCulture);
+            if (images.Add(image.LogicalIndex))
+            {
+                Document.AddImage(imageHandle, decoded.Width, decoded.Height, "byte4", decoded.FileName, colorspace == "scene_linear_srgb" ? "srgb" : "linear");
+                Document.AddFile(decoded.FileName, decoded.Pixels);
+            }
+            TextureSampler sampler = texture.Sampler;
+            string interpolation = sampler != null && sampler.MagFilter == TextureInterpolationFilter.NEAREST ? "closest" : "linear";
+            TextureWrapMode wrapS = sampler?.WrapS ?? TextureWrapMode.REPEAT, wrapT = sampler?.WrapT ?? TextureWrapMode.REPEAT;
+            string extension = wrapS switch { TextureWrapMode.CLAMP_TO_EDGE => "clamp", TextureWrapMode.MIRRORED_REPEAT => "mirror", _ => "periodic" };
+            if (wrapS != wrapT) result.Warn($"{handle} '{name}': {slot} has wrapS {wrapS} and wrapT {wrapT}; Cycles has one extension mode, so {extension} (wrapS) is used.");
+            if (sampler != null && sampler.MinFilter is TextureMipMapFilter.LINEAR_MIPMAP_LINEAR or TextureMipMapFilter.LINEAR_MIPMAP_NEAREST
+                    or TextureMipMapFilter.NEAREST_MIPMAP_LINEAR or TextureMipMapFilter.NEAREST_MIPMAP_NEAREST)
+                result.Note($"sampler minFilter {sampler.MinFilter}: Cycles has no mipmaps; textures are sampled at full resolution with {interpolation} interpolation (as Blender's Cycles does)");
+            JsonObject node = graph.Node(nodeHandle, ImageTextureNode.NativeTypeName);
+            Set(node, "image", imageHandle);
+            Set(node, "colorspace", colorspace);
+            Set(node, "alpha_type", colorspace == "data" ? "channel_packed" : "unassociated");
+            Set(node, "interpolation", interpolation);
+            Set(node, "extension", extension);
+            return true;
+        }
+
+        private static string Num(float value) => value.ToString("R", CultureInfo.InvariantCulture);
+
+        private static string Vec(float x, float y, float z) => $"({Num(x)}, {Num(y)}, {Num(z)})";
 
         private static float Factor(MaterialChannel channel, string name, float fallback)
         {
@@ -363,42 +709,45 @@ public static class GltfSceneConverter
         private void AddLight(PunctualLight light, Matrix4x4 world)
         {
             Vector3 strength = light.Color * light.Intensity;
-            LightNode node;
+            string shader = LightShader();
+            string handle = "light-" + result.Lights.ToString(CultureInfo.InvariantCulture);
+            JsonObject node;
             switch (light.LightType)
             {
                 case PunctualLightType.Directional:
-                    node = scene.CreateLight<SunLightNode>();
+                    node = Document.Create(handle, SunLightNode.NativeTypeName);
                     break;
                 case PunctualLightType.Spot:
-                    SpotLightNode spot = scene.CreateLight<SpotLightNode>();
+                    node = Document.Create(handle, SpotLightNode.NativeTypeName);
                     float outer = Math.Clamp(light.OuterConeAngle, 1e-4f, MathF.PI / 2);
-                    spot.Angle = 2f * outer;
-                    spot.Smooth = Math.Clamp((outer - light.InnerConeAngle) / outer, 0f, 1f);
+                    Set(node, "angle", 2f * outer);
+                    Set(node, "smooth", Math.Clamp((outer - light.InnerConeAngle) / outer, 0f, 1f));
                     strength *= 4f * MathF.PI;
-                    node = spot;
                     break;
                 default:
-                    node = scene.CreateLight<PointLightNode>();
+                    node = Document.Create(handle, PointLightNode.NativeTypeName);
                     strength *= 4f * MathF.PI;
                     break;
             }
             if (!float.IsPositiveInfinity(light.Range) && light.Range > 0) result.Warn("Punctual light range is ignored (Cycles lights have no cutoff).");
-            node.Strength = strength;
-            node.UsedShaders = new[] { LightShader() };
-            scene.CreateObject(node, Transform3x4.FromMatrix(RemoveScale(world)));
+            Set(node, "strength", Floats(strength.X, strength.Y, strength.Z));
+            Set(node, "used_shaders", new JsonArray(shader));
+            JsonObject instance = Document.Create("object-" + objects++.ToString(CultureInfo.InvariantCulture), ObjectNode.NativeTypeName);
+            Set(instance, "geometry", handle);
+            Set(instance, "tfm", Transform(Transform3x4.FromMatrix(RemoveScale(world))));
             ++result.Lights;
         }
 
-        private ShaderNode lightShader;
-
-        private ShaderNode LightShader()
+        private string LightShader()
         {
             if (lightShader != null) return lightShader;
-            lightShader = scene.CreateShader();
-            EmissionNode emission = lightShader.Add<EmissionNode>();
-            emission.Color = Vector3.One;
-            emission.Strength = 1f;
-            lightShader.Connect(emission.EmissionOutput, lightShader.Output.SurfaceInput);
+            lightShader = "light-shader";
+            JsonObject shader = Document.Create(lightShader, ShaderNode.NativeTypeName);
+            Graph graph = GraphOf(shader);
+            JsonObject emission = graph.Node("emission", EmissionNode.NativeTypeName);
+            Set(emission, "color", Floats(1f, 1f, 1f));
+            Set(emission, "strength", 1f);
+            graph.Connect("emission", "Emission", "output", "Surface");
             return lightShader;
         }
 
@@ -407,23 +756,29 @@ public static class GltfSceneConverter
             // Light travels along the light's local -Z axis (the glTF and Cycles convention).
             Vector3 travel = Vector3.Normalize(new Vector3(-.35f, -1f, -.55f));
             Matrix4x4 frame = Basis(-travel, Vector3.Zero);
-            SunLightNode sun = scene.CreateLight<SunLightNode>();
-            sun.Strength = new Vector3(options.DefaultSunStrength);
-            sun.Angle = .05f;
-            sun.UsedShaders = new[] { LightShader() };
-            scene.CreateObject(sun, Transform3x4.FromMatrix(frame));
+            string shader = LightShader();
+            string handle = "light-" + result.Lights.ToString(CultureInfo.InvariantCulture);
+            JsonObject sun = Document.Create(handle, SunLightNode.NativeTypeName);
+            Set(sun, "strength", Floats(options.DefaultSunStrength, options.DefaultSunStrength, options.DefaultSunStrength));
+            Set(sun, "angle", .05f);
+            Set(sun, "used_shaders", new JsonArray(shader));
+            JsonObject instance = Document.Create("object-" + objects++.ToString(CultureInfo.InvariantCulture), ObjectNode.NativeTypeName);
+            Set(instance, "geometry", handle);
+            Set(instance, "tfm", Transform(Transform3x4.FromMatrix(frame)));
             ++result.Lights;
         }
 
         private void AddBackground()
         {
-            ShaderNode world = scene.CreateShader();
-            BackgroundShaderNode background = world.Add<BackgroundShaderNode>();
-            background.Color = options.BackgroundColor;
-            background.Strength = options.BackgroundStrength;
-            world.Connect(background.BackgroundOutput, world.Output.SurfaceInput);
-            world.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
-            scene.Background.Shader = world;
+            JsonObject world = Document.Create("world", ShaderNode.NativeTypeName);
+            Graph graph = GraphOf(world);
+            JsonObject background = graph.Node("background", BackgroundShaderNode.NativeTypeName);
+            Vector3 color = options.BackgroundColor;
+            Set(background, "color", Floats(color.X, color.Y, color.Z));
+            Set(background, "strength", options.BackgroundStrength);
+            graph.Connect("background", "Background", "output", "Surface");
+            Set(world, "emission_sampling_method", "none");
+            Set(Document.Scene("background", "background"), "shader", "world");
         }
 
         private void FrameBounds()
@@ -464,11 +819,11 @@ public static class GltfSceneConverter
         private void SetCamera(Matrix4x4 world, float verticalFov)
         {
             Matrix4x4 flipped = Matrix4x4.CreateScale(1f, 1f, -1f) * RemoveScale(world);
-            CameraNode camera = scene.Camera;
-            camera.CameraType = CameraCameraType.Perspective;
-            camera.Matrix = Transform3x4.FromMatrix(flipped);
             float aspect = options.Width / (float)Math.Max(1u, options.Height);
-            camera.Fov = aspect >= 1f ? verticalFov : 2f * MathF.Atan(MathF.Tan(verticalFov / 2f) * aspect);
+            JsonObject camera = Document.Scene("camera", "camera");
+            Set(camera, "camera_type", "perspective");
+            Set(camera, "matrix", Transform(Transform3x4.FromMatrix(flipped)));
+            Set(camera, "fov", aspect >= 1f ? verticalFov : 2f * MathF.Atan(MathF.Tan(verticalFov / 2f) * aspect));
         }
     }
 }

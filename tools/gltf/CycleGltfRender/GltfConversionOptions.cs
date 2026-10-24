@@ -56,4 +56,37 @@ public sealed class GltfConversionOptions
     /// CPU/GPU comparisons.
     /// </summary>
     public bool ApplyDeterministicIntegrator { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets how glTF materials become Cycles shader graphs. Default
+    /// <see cref="GltfMaterialMapping.Closures"/> (factors only).
+    /// </summary>
+    public GltfMaterialMapping MaterialMapping { get; set; } = GltfMaterialMapping.Closures;
+
+    /// <summary>
+    /// Gets or sets the decoded glTF images (<see cref="TextureSet.Decode"/> or <see cref="TextureSet.Load"/>) the
+    /// <see cref="GltfMaterialMapping.Blender"/> mapping samples, or null for factors only.
+    /// Default null.
+    /// </summary>
+    public TextureSet Textures { get; set; }
+}
+
+/// <summary>
+/// How <see cref="GltfSceneConverter"/> turns glTF materials into Cycles shader graphs.
+/// </summary>
+public enum GltfMaterialMapping
+{
+    /// <summary>
+    /// Factors only, as Diffuse, Glossy, Emission and Transparent closures mixed by the metallic
+    /// factor and alpha (the original example mapping). Textures are ignored with a warning.
+    /// </summary>
+    Closures = 0,
+
+    /// <summary>
+    /// The node graph Blender's glTF importer builds: a Principled BSDF fed by image textures
+    /// (base colour sRGB x factor, metallic B and roughness G x factors, a tangent-space normal
+    /// map using the glTF TANGENT), with occlusion not applied. Needs decoded textures for
+    /// textured channels (<see cref="GltfConversionOptions.Textures"/>).
+    /// </summary>
+    Blender = 1,
 }

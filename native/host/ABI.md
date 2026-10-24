@@ -159,7 +159,9 @@ availability is reported by `cbc_host_create`.
 the device. Fields (schemaVersion 1): `abiVersion`, `libraryVersion`,
 `cyclesRevision`, `backends` (`compiled`, `gpu`, `gpuFallbackToCpu`: false),
 `backendScope` (per compiled backend: camera types, primitives, passes and the
-classes of scene features the device rejects at render time), `optionalLibraries`
+classes of scene features the device rejects at render time; `cpu.arithmetic`
+states the CPU kernels' `isa`, `fpContract` and `reciprocalMath`, from a
+translation unit compiled with their flags), `optionalLibraries`
 (OSL, Embree, OpenImageDenoise, OpenVDB: compiled or not), `imageInput` (the
 eight formats, origin, whether texture filenames are read), `output`,
 `passTypes` (every registered Cycles pass type and value), `events`, `limits`,

@@ -1,0 +1,19 @@
+assets/bench_01-hdri (64x48)
+  cpu-x64-linux              samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-android-hp            samples 16    repeats 2 bitwise=False repeatMaxAbs=4.77e-07 nonfinite=0
+  wgsl-android-samsung       samples 16    repeats 2 bitwise=False repeatMaxAbs=3.58e-07 nonfinite=0
+  wgsl-linux-intel           samples 16    repeats 2 bitwise=False repeatMaxAbs=4.77e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-android-hp vs cpu-x64-linux                       9.16e-05   8.82e-05   1.15e-06             0        430
+      worst x=48 y=30 R: ref 1.74487817 got 1.74496973 (0.229x tolerance)
+  wgsl-android-samsung vs cpu-x64-linux                  7.71e-05   0.000116   8.27e-07             0        329
+      worst x=35 y=28 R: ref 0.662731946 got 0.662654877 (0.422x tolerance)
+  wgsl-linux-intel vs cpu-x64-linux                      9.16e-05    6.7e-05   1.12e-06             0        369
+      worst x=48 y=30 R: ref 1.74487817 got 1.74496973 (0.229x tolerance)
+  wgsl-android-samsung vs wgsl-android-hp                9.21e-05   0.000112   1.26e-06             0        276
+      worst x=35 y=28 R: ref 0.662729144 got 0.662654877 (0.407x tolerance)
+  wgsl-linux-intel vs wgsl-android-hp                    5.41e-05   0.000111   5.97e-07             0        155
+      worst x=46 y=19 R: ref 0.487887621 got 0.487941712 (0.367x tolerance)
+  wgsl-linux-intel vs wgsl-android-samsung               9.21e-05   0.000113   1.34e-06             0        326
+      worst x=35 y=28 R: ref 0.662654877 got 0.66272974 (0.41x tolerance)
+  verdict: perfect

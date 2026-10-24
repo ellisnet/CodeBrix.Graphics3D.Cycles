@@ -117,7 +117,7 @@ to overwrite it. No executable or native dependency library is archived.
 
 General lighting/MIS, tiled/sparse image paths, most closures, volumes, motion,
 curves/points, guiding, MNEE and general film/session modes still require work.
-The broad roadmap is `/home/jeremy/ClaudeHome/PLAN_Cycles_Targetting_WGSL_WebGPU.md`;
+The broad roadmap is the project plan, kept outside the repository;
 all nine requested RIDs and full functionality remain its target.
 
 ## What is implemented
@@ -1789,9 +1789,10 @@ Reference data flow per Android gate:
 | `triangle_sample`, `emitter_sample` (sampler arrays) | on-device bionic CPU | device-scene glibc reference; bionic diagnostic |
 | Image gates from `lighting_gate.cpp` (`lighting`, `lighting_mis`, `broad_lighting`, `transparent_lighting`, `triangle_lighting`, `feature_combination`, `object_motion_render`, `deforming_motion_render`) | on-device bionic CPU film | device-scene glibc film; bionic film diagnostic |
 | `render_gate.cpp` independent image (`glass_render`, `microfacet_render`, `render`, volume renders) | on-device bionic CPU film | Linux-prepared glibc film (`android_reference.py export`); no scene exchange yet |
-| `render_gate.cpp` lockstep stage checks; state gates (`surface`, `closest`, `shadow`, `shader_data`, glass/microfacet `svm`/`bounce`, `camera`, `volume`, `volume_boundary`, `light_state`, `transparent_shadow`, `svm_surface`) | on-device bionic CPU | **unchanged (local)**: the stage checks' CPU input is the device's own GPU state; the state gates are not yet routed through the policy |
+| `render_gate.cpp` lockstep stage checks (in the device-scene flow) | on-device bionic CPU, with the device's own arithmetic adapters on the GPU | **stage-state exchange** (2026-10-23): the device run records every stage's GPU input and output; the Linux x64 glibc gate judges them from the device's dumped scene (`android_reference.py stage-judge`); the GPU uses the reference oracle's adapters; `CODEBRIX_RENDER_LOCAL_LOCKSTEP=1` keeps the earlier local check as a diagnostic |
+| State gates (`surface`, `closest`, `shadow`, `shader_data`, glass/microfacet `svm`/`bounce`, `principled_bounce`, `camera`, `volume`, `volume_boundary`, `light_state`, `broad_light_state`, `transparent_shadow`, `svm_world`) | on-device bionic CPU | **unchanged (local)**: not yet routed through the policy (open item 5) |
 | Command replays of the device's own captures and of Linux captures (`render_replay`) | the capture's recorded readbacks and film | unchanged: no CPU reference on the device; the Linux captures carry the Linux x64 film |
-| `android_host_gate.py` (host API films) | Linux reference run (`host_gate.py`) | unchanged: already a Linux reference |
+| `android_host_gate.py` (host API films) | Linux reference run (`host_gate.py`) | unchanged: already a Linux reference; the GPU 64-sample film (`run.3`) is judged practical-required with strict recorded since merge wave 7 (see "Merge wave 7") |
 | `android_app_gate.py` CPU suite | Linux references packaged in the APK | unchanged |
 | `android_app_gate.py --mode webgpu` (managed API) | in-app CPU film (device scene, bionic) | `--linux-reference`: Linux glibc CPU films rendered by `WebGpuRenderTests` with `CODEBRIX_CYCLES_REFERENCE_EXPORT` (Linux-prepared scene; the managed API has no scene exchange); in-app CPU film diagnostic |
 
@@ -2683,9 +2684,9 @@ glibc record.
 
 One list for the reference devices (Samsung SM-X700, Linux x64, HP). None is masked, and no tolerance was relaxed.
 Old numbers (session close, 2026-10-20) are given in brackets. The Adreno 650 (S20) results are not open items of the
-reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno 650 lane" at the end.
+reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno 650 lane" further below.
 
-1. **Samsung triangle sampler** [1]. Sample 3133 on the deforming instanced emitter (object 5, prim 4): `P.y` 0.382186
+1. (resolved by lane S3, see "Resolved" below) Was: **Samsung triangle sampler** [1]. Sample 3133 on the deforming instanced emitter (object 5, prim 4): `P.y` 0.382186
    against the glibc 0.379992. Lane S2: the Samsung capture replayed on Linux Intel gives the glibc record bit for bit,
    so the deviation is the Adreno 730's compilation of our WGSL, entering as one ULP in the emitter's interpolated
    object transform (see "Samsung follow-up fixes (lane S2)"); not fixed. The device's own ARM64 CPU (0.380744) also
@@ -2694,18 +2695,26 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    ../reference/linux-x64 --device-scene --jobs triangle_sample`.
 2. (resolved by lane S2, see "Resolved" below)
 3. (resolved by lane S2, see "Resolved" below)
-4. **Samsung render images against glibc** [9]. Node render component 6720 (GPU 0.928481, glibc 0.928078) and, since
+4. (resolved by lane S3, see "Resolved" below) Was: **Samsung render images against glibc** [9]. Node render component 6720 (GPU 0.928481, glibc 0.928078) and, since
    lane S2's stage-40 fix, Principled render components 9114 and 9362 (1.546950 against 1.545995): in both the GPU
    equals the device CPU image. `render_gate.cpp` keeps the device's own arithmetic adapters for its local lockstep
    checks. With the reference oracle's adapters (`CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2`) the node render
    passes completely (lockstep and image), but the Principled render then fails its local lockstep at stage 1 against
    the scalar device CPU. Fixing it needs the lockstep stage checks on the glibc flow too (item 5); a design decision.
    Reproducer: `--jobs nodes_render,principled_render` as above.
-5. **Checks not yet on the glibc reference** [5]. The `render_gate.cpp` lockstep stage checks and the state gates
-   (surface, closest, shadow, shader_data, glass/microfacet SVM and bounce, camera, volume, volume_boundary,
-   light_state, transparent_shadow, svm_world) compare against the device's own CPU. Lane S moved the
-   `render_gate.cpp` images and the SVM probe gates to the device-scene glibc flow (environment opt-in); the
-   managed-API scenes have no scene dump.
+5. **Checks not yet on the glibc reference** [5]. On the glibc flow (device-scene): the sampler arrays, the
+   `lighting_gate.cpp` images, the SVM probe gates (`nodes_svm`, `principled_svm`) and, since lane S3, the
+   `glass_render`, `principled_render` and `nodes_render` gates completely (image and every lockstep stage, through
+   the stage-state exchange). Still judged against the device's own CPU: the state gates `surface`, `closest`,
+   `shadow`, `shader_data`, `glass_svm`, `glass_bounce`, `microfacet_svm`, `microfacet_bounce`, `principled_bounce`,
+   `nodes_world` (`svm_world`), `camera`, `volume`, `volume_boundary`, `light_state`, `broad_light_state` and
+   `transparent_shadow`. Since merge wave 6 the other `render_gate.cpp` binaries (`microfacet_render`, `render`
+   static and with camera motion, `volume_render`, `closed_volume_render`) also run in the device-scene flow through
+   the stage-state exchange (they pass on the Samsung and the HP). The managed-API scenes (`android_app_gate.py
+   --mode webgpu` and `--mode bundle`) have no scene dump and stay outside the device-scene flow (judged against
+   Linux-prepared glibc films). Follow-up: move the remaining state gates onto the glibc flow; the on-device CPU
+   then judges nothing, which also settles whether it should be built at the oracle's fixed baseline (it keeps
+   Cycles' flags for now).
 6. **Not yet ported** [14]: true displacement (`NODE_SET_DISPLACEMENT`, displacement and vector displacement) and the
    bump-state branch that needs the undisplaced position; tangent and motion-triangle smooth-normal derivatives
    (rejected, error 16); `NODE_RADIAL_TILING`; AOV output; sky, IES, light falloff, AO, bevel, raycast, volume
@@ -2714,8 +2723,49 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    words); bits 0-61 and 63 keep their meaning, bit 62 and bits 64-255 are free. See "Step zero" below.
 8. **Contractible ShaderData differentials** [16]. `du`, `dv` and `dP` still differ by ULPs between Intel and the
    Adreno; no current film depends on them.
+9. (resolved by lane m1-oracle, see "Resolved" below) Was: **Milestone 1 bench against the Linux CPU oracle**. The
+   bench with its original materials failed the practical criterion on Linux WGSL (47), the Samsung (51) and the HP
+   (47 components of 12,288) against a Linux x64 CPU oracle built `-march=native` with FMA.
+10. (resolved by lane m1-oracle, see "Resolved" below) Was: **Camera-ray last-bit parity**, and the factor-only
+   bench's pixel (45,22) (3 components, max 0.0278).
+11. (resolved by lane m1-lighting, see "Resolved" below) Was: **HDRI bench on WGSL** (`bench_01-hdri.json` was
+   refused until environment importance sampling and MIS landed).
+12. **Size-guard warnings on the bench graph.** The product size guard warns on the bench's textured-Principled
+   entries (`shade_background` about 1.33 MB, `prepare_surface` about 1.27-1.29 MB of inlined WGSL). Measured on
+   Intel Mesa 25.0.7 on the merged tree (merge wave 7), the HDRI bench's `prepare_surface` is 61,690 backend
+   instructions; before merge wave 6's changes were in the tree it measured 62,626 (62,514 without the camera and
+   attribute parity changes). INFERENCE: the Adreno 650 lane 2 rotation loop in the shared Principled code made it
+   smaller. Above the 60,000 compile envelope that every gate entry keeps, below Mesa's 65,535 limit, and it renders
+   correctly (consumer-scene entry, warned by the size guard as designed). Follow-up, first
+   before Milestone 2: split or shrink the textured-Principled surface entry.
+13. **First-render compile times** over the 60 s pipeline budget (warnings, the jobs pass): the bench's
+   `prepare_surface` on the Samsung (91 s) and the HP (136-138 s), first GPU renders including compiles 183 s and
+   236 s (HDRI bench 355 s and 330 s); the Samsung `nodes_world` gate 95.8 s (merge wave 6). The HP's
+   `principled_bounce` (58.9 s) and `principled_render` (58.3 s) are within 3 percent of the budget.
+14. **Texture-sampling last-bit parity.** Image texture lookups still differ from the CPU in the last bit (1,356
+   components at 1 spp on the bench, max 3.6e-7). The bench's closest component is at 0.59 of the practical
+   tolerance on Linux, and the HP against Linux WGSL at 0.91. Recommended next small kernel follow-up.
+15. **Motion arithmetic last bits.** `motion_acos` rounds pi - acos(|x|) in two steps and is one ULP off for about
+   9% of negative inputs; the shared decomposed-motion interpolation (`wavefront_motion.wgsl`) leaves strict
+   differences with camera motion (1,616). Both are within the practical bound; fixing them changes motion films.
+16. **macOS recipes at the fixed baseline.** The macOS arm64 and x64 recipes apply the fixed-baseline flags but are
+   untested at the baseline (`native/host/MACOS_ARM64.md`, `native/host/MACOS_X64.md`).
 
 Resolved, or closed under the device reference policy:
+- [9 of this list] Milestone 1 bench against the CPU oracle: RESOLVED (lane m1-oracle). The Linux x64 CPU oracle is
+  built at a fixed baseline (SSE4.2 kernels, no contraction, no reciprocal math) and camera rays, the
+  scrambling-distance jitter and triangle attributes are bit-exact in the WGSL: the bench and the HDRI bench pass the
+  practical criterion on Linux WGSL, the Samsung and the HP, and compare.py reports "perfect" (see "Fixed-baseline
+  CPU oracle, camera-ray and attribute parity, the bench passes"; merge wave 7 reruns the bundles on the merged tree).
+- [10 of this list] Camera-ray last-bit parity: RESOLVED (lane m1-oracle; 0 differing bits in every ray field over
+  the camera gate's 24 cases). Pixel (45,22) of the factor-only bench was the oracle's FMA build; it passes on the
+  fixed baseline without a WGSL change.
+- [11 of this list] HDRI bench on WGSL: RESOLVED (lane m1-lighting; environment importance sampling and MIS, see
+  "Environment lighting and non-constant emitters").
+- [1 of this list] Samsung triangle sampler sample 3133: FIXED (lane S3; ordering barrier on the triangle-light
+  quaternion normalization; see "Samsung render images and sampler on the glibc flow").
+- [4 of this list] Samsung node and Principled render images: FIXED (lane S3; render_gate lockstep stages judged on
+  the glibc flow through the stage-state exchange, the GPU on the reference oracle's adapters; both renders pass).
 - [2 of this list] Samsung principled_render stage 40 `mis_ray_pdf`: FIXED (lane S2; Principled tangent rotation: two-part
   angle reduction and contraction-proof rotation).
 - [3 of this list] Samsung node SVM probe: (a) graph 44 with the Gabor handler FIXED (Fresnel reciprocal by `select`);
@@ -2727,7 +2777,8 @@ Resolved, or closed under the device reference policy:
 - [12] Gabor: shipped on the scene-specialized path (lane L); its Adreno 730 interaction was fixed by lane S2.
 - [13] Node render scene limit: FIXED (68 triangles; root cause recorded as an inference).
 - [8] Principled device loss on the Adreno 730: FIXED (lane S; SVM stack in a per-invocation arena slot);
-  principled_svm and principled_bounce pass. The remaining render failure is open item 4.
+  principled_svm and principled_bounce pass. The remaining render failure (open item 4) was fixed by
+  lane S3.
 - [9] Typed 2D noise program on the Adreno 730: FIXED (lane S; fade product ordering barrier).
 - [3] Long submissions: measured on the Adreno 730, longest 29 ms, no reset (lane S); the Adreno 640 part is closed
   under the policy.
@@ -3245,8 +3296,8 @@ lane's final tree. Walls are the gate run itself.
 | nodes_svm | FAIL, device lost creating the probe | refused (exit 1, message, no pipeline compiled), 1 s |
 | nodes_render | FAIL, device lost creating `prepare_surface`, 17.2 s | refused (exit 1, message, no pipeline compiled), 1 s |
 | principled_bounce | stopped at 915 s | PASS, 1,631 s against the device CPU, as on the Samsung (strict 3,259; max 0.125 on `path.mis_ray_pdf` 840718.4, practical ratio 0.126); slow (5.3 x the Samsung's 305 s; compiles up to 125 s), not a failure under the S20 standard |
-| principled_render | FAIL, stage 40 `path.mis_ray_pdf` | unchanged: FAIL, stage 40 `path.mis_ray_pdf` 1751.469 against 1747.274, 174 s (the Samsung's open item 2). Merge wave 5 (2026-10-23): stage 40 passes after lane S2's principled_rotate fix; the job now fails later, `Independent CPU image 9114 actual=1.546950 expected=1.545995`, the same failure as the Samsung (device-CPU image flow; open on both) |
-| principled_svm | PASS, 401 s | not rerun in the lane. Merge wave 5 (2026-10-23): **FAIL**, `Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12`, 85 s: a regression against merge wave 4 (fixes 1 and 3 touch code this gate uses); OPEN, assigned to the first post-pause Adreno 650 lane (fix or extend the refusal) |
+| principled_render | FAIL, stage 40 `path.mis_ray_pdf` | unchanged: FAIL, stage 40 `path.mis_ray_pdf` 1751.469 against 1747.274, 174 s (the Samsung's open item 2). Merge wave 5 (2026-10-23): stage 40 passes after lane S2's principled_rotate fix; the job now fails later, `Independent CPU image 9114 actual=1.546950 expected=1.545995`, the same failure as the Samsung (device-CPU image flow; open on both). Adreno 650 lane 2 (2026-10-23): unchanged, 301 s, 2 practical, 262 strict, max 9.54e-04 (recorded only) |
+| principled_svm | PASS, 401 s | not rerun in the lane. Merge wave 5 (2026-10-23): FAIL, `Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12`, 85 s. Fixed in "Adreno 650 lane 2" (the trigger was the merge-5 `principled_rotate`, not fixes 1 or 3): PASS, 413 s, strict 557, max 3.59e-06 |
 
 Targeted regression set on the final tree: triangle_sample PASS 115 s (0 practical, 865 strict, max 4.88e-04),
 surface PASS 213 s (state gate, strict 1,244, max 3.81e-06), glass_render PASS 133 s (0 practical, 100 strict, max
@@ -3263,6 +3314,53 @@ Evidence (lane worktree `native/work/a650-s20/`): `runs/s20/*-v3*` and `runs/s20
 runs), `runs/s20/*-v1*` (first fix set), `diag/quick/` (instrumented runs, `index.txt`), `diag/probe-results.jsonl`
 and `diag/bisect-nr/` (compile bisection), `validation/v2-*` (Linux).
 
+### Adreno 650 lane 2 (2026-10-23)
+
+**Principled SVM regression (error 8), fixed.** At merge wave 5 the S20's `principled_svm` failed with
+`Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12` (it passed at merge wave 4). The probe
+module the S20 compiled at merge wave 5 differs from merge wave 4's only in four places: `precise_disk_sincos_pair`
+and the non-contractible `principled_rotate` (lane S2), the per-component normalize of fix 3 (dead under the device's
+own arithmetic, which this gate uses) and the unused `svm_component` of fix 1. The feature-mask widening and the
+shared-device change of merge wave 5 left the module text unchanged. Arena replays of the failing capture on the
+S20 (the captured buffers, with only the module text changed) located the trigger:
+
+| Module variant | S20 replay |
+| --- | --- |
+| merge wave 5 as shipped | error 8, paths 119-135 and later groups wrong |
+| merge wave 4 | error word 0, 0 practical |
+| merge wave 5 without fix 3's loop | error 8 |
+| merge wave 5 with S2's reduction kept and the old contractible rotation | error word 0, 0 practical |
+| merge wave 5 with the old reduction and S2's rotation | error 8 |
+
+The rotation computes each output row as `rounded_add(rounded_add(e0*x,e1*y),e2*z)` with nine entries
+`e=rounded_add(u,v)`: fifteen inlined copies of the integer `rounded_add` body, and with them the Adreno 650 compiler
+(EV031.32.02.10) dropped an SVM store in the probe. This is the same class of failure as fix 3. **Fix:**
+`principled_rotate` (`wavefront_svm_microfacet.wgsl`) evaluates the three rows through one body in a loop. The loop
+bound is opaque to the compiler (header word 3 after the error word, always 0; a larger value would only add
+iterations that write nothing). The sums and their order are unchanged. A first variant, all fifteen sums through a
+single `rounded_add` in one 15-step loop, fixed the probe but made the S20's `transparent_shadow` fail with mask 8
+(the shadow module contains the same function). It was not kept. The three-row form passes both.
+
+**S20, final tree** (device-scene flow, glibc x64 reference from the S20's own scene; practical
+`5e-5 + 2e-4*abs(ref)`, strict counted): principled_svm PASS 413 s (20 graphs, strict 557, max 3.59e-06);
+principled_bounce PASS 486 s (device CPU, strict 2,796, max 0.125, compiles up to 133 s);
+transparent_lighting PASS 194 s (0 / 683 / 6.02e-06), replays 8/8; transparent_shadow PASS 18 s, replays 2/2;
+object-moving-images PASS 199 s (0 / 1,276 / 6.08e-06), replays 8/8; deforming-moving-images PASS 320 s
+(0 / 1,213 / 6.08e-06), replays 8/8; triangle_sample PASS 80 s (0 / 865 / 4.88e-04); surface PASS 45 s (strict
+1,244); glass_render PASS 97 s (0 / 100 / 1.91e-06); lighting_mis PASS 64 s (0 / 1,057 / 6.08e-06). The node
+refusals are still exact: nodes_world, nodes_svm and nodes_render exit 1 with the message, and no pipeline is
+compiled. principled_render still fails at image component 9114 (1.546950 against 1.545995; 2 practical, 262
+strict), the tablet's open item. The numbers equal merge wave 5's.
+
+**Linux (reference).** All-lanes PASS: 259 of 280 films equal merge wave 5. The 21 that differ are in the 11
+run-to-run atomic cases already listed at merge wave 5. Host gate PASS (the 12 differing files are input EXRs that
+differ only in their capture-date header). Principled gate PASS: 48 of 48 films equal, GPU film `e81feb12...`. Node
+gate PASS, 176 of 176 equal. Glass `db8e84f9...` and node render `b9d1da3f...` superset identity PASS. Device-tier
+gate PASS (31 scenarios). Simulated Adreno 650: node world refused, glass render film unchanged. The size-guard
+check passes. Intel compile envelope worst 52,047 (unchanged). The smaller module lets `SVM_NODE_WIREFRAME` fit into
+a Principled superset group, so that check now runs 11 groups instead of 12, all identical. The change is in shared
+WGSL: the Adreno 730 and the HP compile it too.
+
 ## Merge wave 5: device tables
 
 Generated by `native/work/merge5/tools/device_tables.py` from each run's `results.json` (merge wave 5, part 2; the runs are frozen in `native/evidence/merge-20261023/merge5/runs/<device>/`). Wall times are device seconds per job; "Judged against" names the reference the result was judged against (glibc device-scene flow, the device's own CPU, or the source capture's CPU film).
@@ -3273,13 +3371,13 @@ Generated by `native/work/merge5/tools/device_tables.py` from each run's `result
 | --- | --- | --- | --- | --- | --- |
 | materials-m5 | principled_svm | 119.0 | PASS | glibc, device-scene | strictFloatFailures=634, maximumAbsoluteError=3.61e-06 |
 | materials-m5 | principled_bounce | 85.0 | PASS | device's own CPU / gate | strictFloatFailures=3466, maximumAbsoluteError=0.125 |
-| materials-m5 | principled_render | 81.4 | FAIL: Rendered repeat=0 sample=6 stages=127 Rendered repeat=0 sample=7 stages=145 Independent CPU image 9114 actual=1.546950 expected=1.545995 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=2 strict=267 max=0.000954 |
+| materials-m5 | principled_render | 81.4 | FAIL (merge wave 5; PASS since lane S3, see "Samsung render images and sampler on the glibc flow"): Rendered repeat=0 sample=6 stages=127 Rendered repeat=0 sample=7 stages=145 Independent CPU image 9114 actual=1.546950 expected=1.545995 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=2 strict=267 max=0.000954 |
 | materials-m5 | nodes_svm | 1500.5 | PASS | glibc, device-scene | strictFloatFailures=18450, maximumAbsoluteError=0.00195 |
 | materials-m5 | nodes_world | 495.3 | PASS | device's own CPU / gate | strictFloatFailures=16242, maximumAbsoluteError=6.1e-05 |
-| materials-m5 | nodes_render | 133.2 | FAIL: Rendered repeat=0 sample=6 stages=127 Rendered repeat=0 sample=7 stages=144 Independent CPU image 6720 actual=0.928481 expected=0.928078 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=1 strict=3998 max=0.000403 |
-| materials-m5 | principled-replay | - | not run (source job failed) | device's own CPU / gate |  |
-| materials-m5 | nodes-replay | - | not run (source job failed) | device's own CPU / gate |  |
-| triangle-m5 | triangle_sample | 20.9 | FAIL: lorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.) Emitter sample=3133 field=2 got=0.382186 expected=0.379992 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=2 strict=1069 max=0.00219 |
+| materials-m5 | nodes_render | 133.2 | FAIL (merge wave 5; PASS since lane S3): Rendered repeat=0 sample=6 stages=127 Rendered repeat=0 sample=7 stages=144 Independent CPU image 6720 actual=0.928481 expected=0.928078 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=1 strict=3998 max=0.000403 |
+| materials-m5 | principled-replay | - | not run (source job failed; PASS since lane S3) | device's own CPU / gate |  |
+| materials-m5 | nodes-replay | - | not run (source job failed; PASS since lane S3) | device's own CPU / gate |  |
+| triangle-m5 | triangle_sample | 20.9 | FAIL (merge wave 5; PASS since lane S3): lorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.) Emitter sample=3133 field=2 got=0.382186 expected=0.379992 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=2 strict=1069 max=0.00219 |
 | triangle-m5 | surface | 24.1 | PASS | device's own CPU / gate | strictFloatFailures=1246, maximumAbsoluteError=3.81e-06 |
 | triangle-m5 | triangle_lighting | 78.6 | PASS | glibc, device-scene | maximumAbsoluteError=1.79e-06; host re-judged vs glibc PASS: practical=0 strict=519 max=1.79e-06 |
 | triangle-m5 | replay-0 | 15.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
@@ -3460,7 +3558,7 @@ Generated by `native/work/merge5/tools/device_tables.py` from each run's `result
 | transparent-s20-transparent_shadow | transparent-shadow-replay-indexed | 11.0 | PASS | source capture CPU film | maximumAbsoluteImageError=0, strictImageFailures=0 |
 | materials-s20-principled_render | principled_render | 213.6 | FAIL: Rendered repeat=0 sample=6 stages=127 Rendered repeat=0 sample=7 stages=145 Independent CPU image 9114 actual=1.546950 expected=1.545995 | glibc, device-scene | ; host re-judged vs glibc FAIL: practical=2 strict=262 max=0.000954 |
 | materials-s20-principled_render | principled-replay | - | not run (source job failed) | device's own CPU / gate |  |
-| materials-s20-principled_svm | principled_svm | 85.2 | FAIL: r management disabled. (Specify the $OCIO environment variable to enable.) Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12 | glibc, device-scene |  |
+| materials-s20-principled_svm | principled_svm | 85.2 | FAIL: r management disabled. (Specify the $OCIO environment variable to enable.) Native compiled graphs SVM error mask=8 first incomplete path=119 shader=12 | glibc, device-scene | Fixed in "Adreno 650 lane 2": PASS 413 s, strict 557, max 3.59e-06 |
 | pixel-motion-s20-object-moving-images | object-moving-images | 139.9 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1276 max=6.08e-06 |
 | pixel-motion-s20-object-moving-images | object-replay-motion-0 | 117.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.56e-06, strictImageFailures=12 |
 | pixel-motion-s20-object-moving-images | object-replay-motion-1 | 120.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
@@ -3480,3 +3578,879 @@ Generated by `native/work/merge5/tools/device_tables.py` from each run's `result
 | pixel-motion-s20-deforming-moving-images | deforming-replay-motion-6 | 129.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=300 |
 | pixel-motion-s20-deforming-moving-images | deforming-replay-motion-7 | 170.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=259 |
 | materials-s20-principled_bounce | principled_bounce | 455.2 | PASS | device's own CPU / gate | strictFloatFailures=2796, maximumAbsoluteError=0.125 |
+
+## Samsung render images and sampler on the glibc flow (lane S3, 2026-10-23)
+
+Samsung SM-X700 (Adreno 730). Runtime unchanged (shipped `libcodebrix_wgpu.so` arm64 hash-verified before every
+corpus); full tier by table. Every result below is judged against the glibc reference of the device's own dumped scene.
+
+**Render gates: lockstep stages on the glibc flow (open items 4 and 5).** `render_gate.cpp` used to judge each
+lockstep stage (the GPU's output state for one kernel dispatch against the CPU oracle run on the same GPU input) on
+the device, with the device's own CPU and therefore with the device's own arithmetic adapters on the GPU, while its
+image was judged against glibc. Lane S2 showed the consequence: with the device adapters the images followed the
+device CPU (node render component 6720, Principled components 9114 and 9362); with the reference oracle's adapters
+the Principled lockstep failed against the scalar device CPU at stage 1. In the device-scene flow
+(`CODEBRIX_CYCLES_REFERENCE_IMPORT` with `CODEBRIX_CYCLES_SCENE_VERIFY`) the gate now:
+- generates the reference oracle's (Linux x64 SSE4.2) arithmetic adapters, as the sampler and lighting gates do;
+- records, for every lockstep stage of the first repeat, the GPU input state (every layout field of every path), the
+  film before the stage, the kernel, the GPU output state, the film after it and the GPU queue counter, delta-encoded
+  in `PREFIX.stages.bin` (about 23-27 MB for the node and Principled renders);
+- keeps its GPU-only checks on the device (bitwise repeat, coverage, termination, the image against the imported
+  glibc film, and the scene check of the local CPU image).
+The Linux x64 gate binary then judges the record (`CODEBRIX_CYCLES_SCENE_LOAD` with
+`CODEBRIX_CYCLES_STAGE_JUDGE=FILE`, CPU only; `native/tools/android_reference.py stage-judge`): it rebuilds each
+stage's input, runs the glibc CPU oracle on it and compares the recorded GPU output with the same code as the local
+check (practical criterion fatal, strict counted, integer fields exact, film, queue counters, the clay shared-edge
+rule). A device job passes only when the device run and the stage judge both pass, and the judge must cover the
+same number of stages as the device. On Linux the judge reproduces the local lockstep exactly (node render: 144
+stages, 4,123 strict, maximum ratio 0.2488; Principled: 145 stages, 946 strict, 0.0502; same films). Render replays
+of a device-scene render job are judged against the same glibc film. `CODEBRIX_RENDER_LOCAL_LOCKSTEP=1` restores the
+earlier device pass (device adapters, local lockstep) as a diagnostic. Without these variables nothing changes:
+Linux films are bit-identical (node render `b9d1da3f...`, Principled `e81feb12...`, glass `db8e84f9...`).
+
+| Samsung job | Result | Image against glibc | Stages judged on Linux |
+| --- | --- | --- | --- |
+| `nodes_render` | **PASS** (112 s) | 0 practical, 1,728 strict, max 3.72e-5 | 144 stages, 4,028 strict, max 7.63e-6, ratio 0.0485 |
+| `principled_render` | **PASS** (71 s) | 0 practical, 68 strict, max 6.44e-6 | 145 stages, 660 strict, max 0.0625, ratio 0.0496 |
+| `glass_render` | PASS (47 s) | 0 practical, 63 strict, max 1.91e-6 | 149 stages, 1,070 strict, ratio 0.0034 |
+| `nodes-replay`, `principled-replay` | PASS (88 s, 43 s) | 1,728 / 68 strict (glibc film) | - |
+
+So no Adreno 730 deviation remains in either render: the earlier image failures were the device-CPU arithmetic the
+GPU had been made to reproduce. The HP passes the same flow (Principled 142 s: image 92 strict, stages 927 strict;
+node render 95 s: 1,843 / 3,987; glass 60 s: 104 / 1,157; both replays), with the same image counts as merge wave 5.
+
+**Triangle sampler sample 3133 (open item 1): FIXED.** Store probes in `triangle_light_vertices_compute`, replayed on
+the Samsung from the captured probe slice, showed the deforming emitter's interpolated object transform off by 4 and
+2 ULPs in exactly the two elements dominated by the quaternion product `w*z` (rows x/y, columns y/x): the rotation's
+z component differed. Ordering barriers on the normalized quaternion (`triangle_light_normalize4`) remove it; barriers
+on the products downstream (earlier attempts) did not, so the Adreno 730 reassociated the reciprocal-length product
+with the next product the caller applies to the normalized value (the slerp sine weight; the compose scale on the
+linear branch) (inference from where the barrier works). Each component of `triangle_light_normalize4` now leaves through
+the header-word-3 ordering barrier (XOR with a word the device keeps at zero, as `svmn_order`). Samsung replay of the
+captured slice: all 1,024 samples equal the Linux replay bit for bit (before: 15 differed), sample 3133 `P.y`
+0.3799915 = glibc. Gate: `triangle_sample` PASS on the Samsung (0 practical, 865 strict, max 4.88e-4; before 2
+practical, 1,069 strict, max 2.19e-3), `triangle_lighting` and its six replays pass; the HP passes (865 strict, as
+before). Linux GPU outputs of the sampler, emitter probe, triangle lighting, shadow terminator and the three render
+films are bit-identical to merge wave 5; the device ARM64 CPU's own miss at 3133 (0.380744) is a CPU diagnostic for
+the Raspberry Pi 5 glibc ARM64 reference (Phase F), not a GPU item.
+
+Regression set on the final tree (Samsung): `nodes_svm` PASS (541 cases, 18,450 strict, max 1.95e-3, 1,500 s), `principled_svm` PASS (121 s), `surface` PASS,
+`lighting_mis` PASS, `glass_render` PASS, `triangle_sample` and `triangle_lighting` PASS.
+
+## Milestone 1 bench through the managed bundle path (lane m1-asset, 2026-10-23)
+
+The textured ForestCommunity bench (784 triangles, three materials, six reviewed 2K CC0 JPEGs) is
+converted with its original materials by the glTF example tool (mapping "blender": Principled BSDF,
+Image Texture, Mix Color, Separate Color, tangent-space Normal Map from the glTF TANGENT; textures
+decoded with CodeBrix.Imaging) into a cbcOracleScene bundle (`native/oracle/scenes/assets/bench_01.json`
+plus locally generated raw files, `make_bench_bundle.py`). The same bundle is rendered by the C oracle
+runner and by the library's `OracleSceneBundle` loader (bit-identical CPU films on Linux), on Linux
+WGSL, and inside the Android validation app (`android_app_gate.py --mode bundle`), judged against the
+Linux x64 CPU film of the same bundle. Lighting: the converter's default sun and a constant world
+(the HDRI variant `bench_01-hdri.json` needs environment importance sampling on WGSL). 64x48, 16 samples,
+12,288 components per film. Practical / strict counts against the Linux CPU film:
+
+| Scene | Linux WGSL (Intel UHD, Mesa 25.0.7) | Samsung SM-X700 (Adreno 730) | HP Android x64 (Intel Xe, Mesa 24.0.8) |
+| --- | --- | --- | --- |
+| Textured-plane control (same graph, 64x64 synthetic textures) | 0 / 1,641, max 1.42e-4 | 0 / 1,598, max 8.89e-5; first render 142 s | 0 / 1,636, max 1.09e-4; first render 214 s |
+| Bench, original materials | 47 / 1,590, max 8.46e-3 | 51 / 1,602, max 8.46e-3; first render 138 s | 47 / 1,587, max 8.46e-3; first render 201 s |
+
+Findings:
+- Device memory. The WebGPU device keeps all scene data in one storage binding. WebGPU's default
+  limit (128 MiB) failed the bench on Linux ("device arena exhausted"); the device now requests the
+  adapter's maxBufferSize and maxStorageBufferBindingSize (at most 2 GiB); allocation is unchanged
+  for scenes that fit the default (the arena still grows on demand; Linux GPU films of untouched
+  scenes stay within their repeat variation, CPU films bit-identical). The exhaustion message now
+  reports the limit, the arena, the bytes in use and the request. With the base-colour textures in
+  colorspace `__builtin_srgb`, Cycles converts 8-bit images to half4 at load (two 32 MiB images; 128 MiB
+  of images in all), which exceeded the Samsung's binding; `scene_linear_srgb` keeps them 8-bit and
+  decodes sRGB while sampling (what Blender does) and the bench fits.
+- Comparator (`native/oracle/compare.py`): the textured-plane control is "perfect" over the reference
+  backends (Linux CPU, Linux WGSL, Samsung WGSL, HP WGSL: every pair 0 practical failures). The in-app
+  Android CPU films are diagnostics (bionic C library); the HP's differs from the Linux CPU in 3
+  components of the control.
+- The practical failures on the bench are not texture-specific defects. Comparator matrix (bench):
+  the three WGSL films agree with each other far better than with the oracle (Linux WGSL vs HP WGSL 0
+  failures / 34 strict; Samsung WGSL vs either 11); the ARM64 CPU on the Samsung differs from the Linux
+  x64 CPU in 41 components; the three WGSL films vs the Linux CPU 47 / 51 / 47. The Linux x64 CPU oracle is built with
+  Cycles' `WITH_CYCLES_NATIVE_ONLY` (`-march=native -ffp-contract=on -freciprocal-math`; AVX2 + FMA on
+  the i7-12850HX), while the WGSL device models the SSE4.2 arithmetic the gates' references use. With
+  the CPU kernels rebuilt `-msse4.2` (diagnostic, not shipped), the Linux WGSL bench has 11 failures
+  (max 6.2e-4) instead of 47, barycentric differences drop from 531 to 74 of about 1,500 hit pixels
+  (1 spp), and the remainder follows camera-ray directions that differ in the last bit (95 components
+  at 1 spp; the camera row of docs/PARITY.md lists these). High-frequency 2K textures turn those
+  ulp-level u/v differences into texel differences above the practical criterion. The textured-plane
+  control (64x64 textures) passes everywhere. Decision needed (not taken by the lane): build the Linux
+  CPU oracle as the SSE4.2 baseline, and close the camera-ray last-bit differences.
+- Decoder identity matters: CodeBrix.Imaging and libjpeg-turbo decode the six JPEGs to different
+  pixels, so bench bundles record the decoder in `bundle-manifest.json`; copy a verified bundle between
+  machines instead of decoding again.
+
+Open items of the bench were items 9 to 13 of "Open device items" (9 to 11 since resolved). Evidence, frozen in
+`native/evidence/merge-20261023b/m1-asset/`: `android-app/device-3-bench3-samsung`, `device-3-plane2-samsung`,
+`device-4-bench3-hp`, `device-4-plane2-hp`, `oracles/`, `comparator-proof/` and the run logs.
+
+## Merge wave 6: device tables
+
+Generated by `native/work/merge6/tools/device_tables.py` from each run's `results.json` (merge wave 6, part 2; the runs are frozen in `native/evidence/merge-20261023b/merge6/runs/<device>/`). Wall times are device seconds per job; "Judged against" names the reference the result was judged against (glibc device-scene flow, the device's own CPU, or the source capture's CPU film).
+
+Summary (merge wave 6, both parts). Every job passed: the Samsung SM-X700 116 of 116 (jobs and replays), the HP 96
+of 96, the S20 41 of 41 (`principled_svm` 418 s; `principled_render` PASS through the stage exchange, 64 strict).
+Linux films unchanged (glass, node render and Principled gate films as in merge wave 5). The Samsung strict counts
+dropped with the stage exchange, as lane S3 predicted: Principled render 267 -> 68, node render 3,998 -> 1,728,
+glass render 97 -> 63, triangle sampler 1,069 -> 865. The Samsung `nodes_world` pipeline compile took 95.8 s, over
+the 60 s budget (the job passes; open item 13). 59 leftover scratch folders from 2026-10-18/19 were removed on each of
+the Samsung and the HP (about 5.8 GB each). The bench bundle failed against the old (`-march=native`) oracle as
+expected (open item 9, since resolved).
+
+### samsung
+
+| Corpus | Job | Wall s | Result | Judged against | Numbers |
+| --- | --- | --- | --- | --- | --- |
+| materials-m6 | principled_svm | 118.6 | PASS | glibc, device-scene | strictFloatFailures=634, maximumAbsoluteError=3.61e-06 |
+| materials-m6 | principled_bounce | 83.8 | PASS | device's own CPU / gate | strictFloatFailures=3466, maximumAbsoluteError=0.125 |
+| materials-m6 | principled_render | 73.4 | PASS | glibc, device-scene | strictImageFailures=68, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=68 max=6.44e-06 |
+| materials-m6 | nodes_svm | 1486.7 | PASS | glibc, device-scene | strictFloatFailures=18450, maximumAbsoluteError=0.00195 |
+| materials-m6 | nodes_world | 492.8 | PASS | device's own CPU / gate | strictFloatFailures=16242, maximumAbsoluteError=6.1e-05 |
+| materials-m6 | nodes_render | 113.5 | PASS | glibc, device-scene | strictImageFailures=1728, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1728 max=3.72e-05 |
+| materials-m6 | principled-replay | 42.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.44e-06, strictImageFailures=68 |
+| materials-m6 | nodes-replay | 90.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.72e-05, strictImageFailures=1728 |
+| triangle-m6 | triangle_sample | 20.6 | PASS | glibc, device-scene | maximumAbsoluteError=0.000488; host re-judged vs glibc PASS: practical=0 strict=865 max=0.000488 |
+| triangle-m6 | surface | 23.9 | PASS | device's own CPU / gate | strictFloatFailures=1246, maximumAbsoluteError=3.81e-06 |
+| triangle-m6 | triangle_lighting | 77.5 | PASS | glibc, device-scene | maximumAbsoluteError=1.79e-06; host re-judged vs glibc PASS: practical=0 strict=516 max=1.79e-06 |
+| triangle-m6 | replay-0 | 15.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
+| triangle-m6 | replay-1 | 20.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-07, strictImageFailures=5 |
+| triangle-m6 | replay-2 | 20.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.41e-07, strictImageFailures=8 |
+| triangle-m6 | replay-3 | 21.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-06, strictImageFailures=235 |
+| triangle-m6 | replay-4 | 21.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.73e-07, strictImageFailures=11 |
+| triangle-m6 | replay-5 | 34.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-06, strictImageFailures=245 |
+| emitter-m6 | emitter_sample | 7.8 | PASS | glibc, device-scene | maximumAbsoluteError=9.06e-06; host re-judged vs glibc PASS: practical=0 strict=135 max=9.06e-06 |
+| regression-m6 | glass_render | 48.4 | PASS | glibc, device-scene | strictImageFailures=63, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=63 max=1.91e-06 |
+| regression-m6 | lighting_mis | 29.7 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1070 max=6.08e-06 |
+| regression-m6 | transparent_lighting | 89.5 | PASS | glibc, device-scene | maximumAbsoluteError=6.02e-06; host re-judged vs glibc PASS: practical=0 strict=693 max=6.02e-06 |
+| lighting-m6 | lighting_mis | 29.0 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1070 max=6.08e-06 |
+| lighting-m6 | broad_lighting | 57.0 | PASS | glibc, device-scene | maximumAbsoluteError=3.81e-05; host re-judged vs glibc PASS: practical=0 strict=993 max=3.81e-05 |
+| lighting-m6 | lighting_mis-replay-0 | 16.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| lighting-m6 | lighting_mis-replay-1 | 16.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| lighting-m6 | broad_lighting-replay-0 | 16.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| lighting-m6 | broad_lighting-replay-1 | 17.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.17e-07, strictImageFailures=15 |
+| transparent-m6 | transparent_shadow | 17.9 | PASS | device's own CPU / gate | maximumAbsoluteError=1.19e-07 |
+| transparent-m6 | transparent_lighting | 90.5 | PASS | glibc, device-scene | maximumAbsoluteError=6.02e-06; host re-judged vs glibc PASS: practical=0 strict=693 max=6.02e-06 |
+| transparent-m6 | transparent_lighting-replay-0 | 19.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m6 | transparent_lighting-replay-1 | 20.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m6 | transparent_lighting-replay-2 | 25.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.81e-06, strictImageFailures=77 |
+| transparent-m6 | transparent_lighting-replay-3 | 25.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.29e-06, strictImageFailures=134 |
+| transparent-m6 | transparent_lighting-replay-4 | 26.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=168 |
+| transparent-m6 | transparent_lighting-replay-5 | 26.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.9e-07, strictImageFailures=3 |
+| transparent-m6 | transparent_lighting-replay-6 | 25.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=103 |
+| transparent-m6 | transparent_lighting-replay-7 | 25.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=208 |
+| transparent-m6 | transparent-shadow-replay-direct | 6.0 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m6 | transparent-shadow-replay-indexed | 6.3 | PASS | source capture CPU film | maximumAbsoluteImageError=0, strictImageFailures=0 |
+| terminator-m6 | shadow_terminator | 98.0 | PASS | glibc, device-scene | maximumAbsoluteError=6.2e-05; host re-judged vs glibc PASS: practical=0 strict=124 max=6.2e-05 |
+| terminator-m6 | terminator-replay-0 | 12.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m6 | terminator-replay-1 | 14.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m6 | terminator-replay-2 | 14.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m6 | terminator-replay-3 | 14.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m6 | terminator-replay-4 | 24.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| terminator-m6 | terminator-replay-5 | 24.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| terminator-m6 | terminator-replay-6 | 24.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| terminator-m6 | terminator-replay-7 | 25.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| terminator-m6 | terminator-replay-8 | 25.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.93e-05, strictImageFailures=8 |
+| terminator-m6 | terminator-replay-9 | 33.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.91e-05, strictImageFailures=24 |
+| spec-refusal-m6 | glass_render-spec | 46.3 | PASS | glibc, device-scene | strictImageFailures=63, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=63 max=1.91e-06 |
+| spec-refusal-m6 | glass_render-nospec-refused | 0.2 | PASS | expected refusal |  |
+| spec-refusal-m6 | glass_render-superset-refused | 0.2 | PASS | expected refusal |  |
+| hostcap-linux-triangle | tri0 | 15.4 | PASS | source capture CPU film | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
+| hostcap-linux-triangle | tri1 | 20.7 | PASS | source capture CPU film | maximumAbsoluteImageError=1.49e-07, strictImageFailures=1 |
+| hostcap-linux-triangle | tri2 | 20.9 | PASS | source capture CPU film | maximumAbsoluteImageError=6.41e-07, strictImageFailures=14 |
+| hostcap-linux-triangle | tri3 | 21.3 | PASS | source capture CPU film | maximumAbsoluteImageError=1.76e-06, strictImageFailures=236 |
+| hostcap-linux-triangle | tri4 | 21.1 | PASS | source capture CPU film | maximumAbsoluteImageError=3.73e-07, strictImageFailures=8 |
+| hostcap-linux-triangle | tri5 | 34.6 | PASS | source capture CPU film | maximumAbsoluteImageError=1.79e-06, strictImageFailures=257 |
+| hostcap-linux-terminator | term0 | 12.2 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term1 | 14.3 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term2 | 14.5 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term3 | 14.7 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term4 | 24.9 | PASS | source capture CPU film | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| hostcap-linux-terminator | term5 | 25.5 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| hostcap-linux-terminator | term6 | 25.3 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| hostcap-linux-terminator | term7 | 25.1 | PASS | source capture CPU film | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| hostcap-linux-terminator | term8 | 25.5 | PASS | source capture CPU film | maximumAbsoluteImageError=2.93e-05, strictImageFailures=8 |
+| hostcap-linux-terminator | term9 | 33.8 | PASS | source capture CPU film | maximumAbsoluteImageError=2.93e-05, strictImageFailures=22 |
+| arm-m6 | microfacet_render | 44.7 | PASS | glibc, device-scene | strictImageFailures=100, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=100 max=2.38e-06 |
+| motion-m6 | render-static | 45.3 | PASS | glibc, device-scene | strictImageFailures=327, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=327 max=7.63e-06 |
+| motion-m6 | render-motion-0 | 43.7 | PASS | glibc, device-scene | strictImageFailures=345, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=345 max=2.53e-05 |
+| motion-m6 | render-motion-1 | 43.7 | PASS | glibc, device-scene | strictImageFailures=306, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=306 max=7.63e-06 |
+| motion-m6 | render-motion-2 | 43.8 | PASS | glibc, device-scene | strictImageFailures=446, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=446 max=0.000188 |
+| motion-m6 | render-motion-3 | 42.1 | PASS | glibc, device-scene | strictImageFailures=655, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=655 max=4.01e-05 |
+| motion-m6 | render-motion-4 | 42.2 | PASS | glibc, device-scene | strictImageFailures=445, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=445 max=1.53e-05 |
+| motion-m6 | render-motion-5 | 42.9 | PASS | glibc, device-scene | strictImageFailures=465, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=465 max=3.05e-05 |
+| motion-m6 | render-motion-6 | 41.3 | PASS | glibc, device-scene | strictImageFailures=586, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=586 max=4.58e-05 |
+| motion-m6 | render-motion-7 | 41.8 | PASS | glibc, device-scene | strictImageFailures=443, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=443 max=1.53e-05 |
+| pixel-motion-own | object-moving-images | 45.7 | PASS | device's own CPU / gate | maximumAbsoluteError=6.08e-06 |
+| pixel-motion-own | object-stationary-images | 35.3 | PASS | device's own CPU / gate | maximumAbsoluteError=6.08e-06 |
+| pixel-motion-own | object-replay-motion-0 | 29.6 | PASS | source capture CPU film | maximumAbsoluteImageError=3.58e-07, strictImageFailures=10 |
+| pixel-motion-own | object-replay-motion-1 | 30.5 | PASS | source capture CPU film | maximumAbsoluteImageError=2.86e-06, strictImageFailures=26 |
+| pixel-motion-own | object-replay-motion-2 | 30.9 | PASS | source capture CPU film | maximumAbsoluteImageError=2.4e-06, strictImageFailures=290 |
+| pixel-motion-own | object-replay-motion-3 | 30.9 | PASS | source capture CPU film | maximumAbsoluteImageError=1.02e-07, strictImageFailures=1 |
+| pixel-motion-own | object-replay-motion-4 | 31.2 | PASS | source capture CPU film | maximumAbsoluteImageError=6.08e-06, strictImageFailures=295 |
+| pixel-motion-own | object-replay-motion-5 | 31.2 | PASS | source capture CPU film | maximumAbsoluteImageError=4.53e-06, strictImageFailures=59 |
+| pixel-motion-own | object-replay-motion-6 | 31.5 | PASS | source capture CPU film | maximumAbsoluteImageError=6.08e-06, strictImageFailures=342 |
+| pixel-motion-own | object-replay-motion-7 | 31.4 | PASS | source capture CPU film | maximumAbsoluteImageError=6.02e-06, strictImageFailures=246 |
+| pixel-motion-x64 | object-moving-images | 45.3 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1306 max=6.08e-06 |
+| pixel-motion-x64 | object-stationary-images | 36.3 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1157 max=6.08e-06 |
+| pixel-motion-x64 | object-replay-motion-0 | 30.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.68e-06, strictImageFailures=18 |
+| pixel-motion-x64 | object-replay-motion-1 | 32.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=16 |
+| pixel-motion-x64 | object-replay-motion-2 | 32.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.52e-06, strictImageFailures=303 |
+| pixel-motion-x64 | object-replay-motion-3 | 32.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.08e-09, strictImageFailures=0 |
+| pixel-motion-x64 | object-replay-motion-4 | 32.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=302 |
+| pixel-motion-x64 | object-replay-motion-5 | 33.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.29e-06, strictImageFailures=72 |
+| pixel-motion-x64 | object-replay-motion-6 | 32.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=344 |
+| pixel-motion-x64 | object-replay-motion-7 | 32.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=251 |
+| volume-m6 | volume-state | 10.6 | PASS | device's own CPU / gate |  |
+| volume-m6 | volume-absorption | 64.0 | PASS | glibc, device-scene | strictImageFailures=840, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=840 max=2.29e-05 |
+| volume-m6 | volume-isotropic | 87.9 | PASS | glibc, device-scene | strictImageFailures=1437, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1437 max=3.05e-05 |
+| volume-m6 | volume-forward | 82.4 | PASS | glibc, device-scene | strictImageFailures=1479, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1479 max=3.05e-05 |
+| volume-m6 | volume-backward | 83.5 | PASS | glibc, device-scene | strictImageFailures=1369, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1369 max=3.05e-05 |
+| volume-m6 | boundary-state | 23.2 | PASS | device's own CPU / gate |  |
+| volume-m6 | boundary-compaction-guard | 4.4 | PASS | device's own CPU / gate |  |
+| volume-m6 | closed-single | 97.0 | PASS | glibc, device-scene | strictImageFailures=819, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=819 max=3.05e-05 |
+| volume-m6 | closed-overlap | 156.9 | PASS | glibc, device-scene | strictImageFailures=1013, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1013 max=3.05e-05 |
+| volume-m6 | closed-inside | 147.0 | PASS | glibc, device-scene | strictImageFailures=2061, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=2061 max=3.05e-05 |
+| volume-m6 | volume-replay-absorption | 15.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.29e-05, strictImageFailures=840 |
+| volume-m6 | volume-replay-isotropic | 17.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=1437 |
+| volume-m6 | volume-replay-forward | 17.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=1479 |
+| volume-m6 | volume-replay-backward | 17.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=1369 |
+| volume-m6 | closed-replay-single | 18.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=819 |
+| volume-m6 | closed-replay-overlap | 28.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=1013 |
+| volume-m6 | closed-replay-inside | 28.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=2061 |
+
+### hp
+
+| Corpus | Job | Wall s | Result | Judged against | Numbers |
+| --- | --- | --- | --- | --- | --- |
+| materials-m6 | principled_svm | 163.8 | PASS | glibc, device-scene | strictFloatFailures=946, maximumAbsoluteError=9.54e-07 |
+| materials-m6 | principled_bounce | 236.7 | PASS | device's own CPU / gate | strictFloatFailures=5237, maximumAbsoluteError=0.125 |
+| materials-m6 | principled_render | 140.6 | PASS | glibc, device-scene | strictImageFailures=92, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=92 max=6.44e-06 |
+| materials-m6 | nodes_svm | 806.4 | PASS | glibc, device-scene | strictFloatFailures=10978, maximumAbsoluteError=0.0107 |
+| materials-m6 | nodes_world | 256.4 | PASS | device's own CPU / gate | strictFloatFailures=9125, maximumAbsoluteError=6.1e-05 |
+| materials-m6 | nodes_render | 94.5 | PASS | glibc, device-scene | strictImageFailures=1843, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1843 max=0.000103 |
+| materials-m6 | principled-replay | 117.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.44e-06, strictImageFailures=92 |
+| materials-m6 | nodes-replay | 72.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=0.000103, strictImageFailures=1843 |
+| triangle-m6 | triangle_sample | 22.7 | PASS | glibc, device-scene | maximumAbsoluteError=0.000488; host re-judged vs glibc PASS: practical=0 strict=865 max=0.000488 |
+| triangle-m6 | surface | 38.2 | PASS | device's own CPU / gate | strictFloatFailures=1813, maximumAbsoluteError=3.81e-06 |
+| triangle-m6 | triangle_lighting | 87.5 | PASS | glibc, device-scene | maximumAbsoluteError=2.32e-06; host re-judged vs glibc PASS: practical=0 strict=887 max=2.32e-06 |
+| triangle-m6 | replay-0 | 36.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=9 |
+| triangle-m6 | replay-1 | 44.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| triangle-m6 | replay-2 | 45.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.41e-07, strictImageFailures=14 |
+| triangle-m6 | replay-3 | 45.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-06, strictImageFailures=427 |
+| triangle-m6 | replay-4 | 45.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.73e-07, strictImageFailures=10 |
+| triangle-m6 | replay-5 | 63.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.26e-06, strictImageFailures=427 |
+| emitter-m6 | emitter_sample | 19.8 | PASS | glibc, device-scene | maximumAbsoluteError=0.00513; host re-judged vs glibc PASS: practical=0 strict=235 max=0.00513 |
+| regression-m6 | glass_render | 59.4 | PASS | glibc, device-scene | strictImageFailures=104, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=104 max=9.54e-07 |
+| regression-m6 | lighting_mis | 49.5 | PASS | glibc, device-scene | maximumAbsoluteError=8.34e-06; host re-judged vs glibc PASS: practical=0 strict=2681 max=8.34e-06 |
+| regression-m6 | transparent_lighting | 76.5 | PASS | glibc, device-scene | maximumAbsoluteError=7.75e-06; host re-judged vs glibc PASS: practical=0 strict=1682 max=7.75e-06 |
+| lighting-m6 | lighting_mis | 48.1 | PASS | glibc, device-scene | maximumAbsoluteError=8.34e-06; host re-judged vs glibc PASS: practical=0 strict=2681 max=8.34e-06 |
+| lighting-m6 | broad_lighting | 68.6 | PASS | glibc, device-scene | maximumAbsoluteError=5.34e-05; host re-judged vs glibc PASS: practical=0 strict=1742 max=5.34e-05 |
+| lighting-m6 | lighting_mis-replay-0 | 38.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-07, strictImageFailures=3 |
+| lighting-m6 | lighting_mis-replay-1 | 38.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=11 |
+| lighting-m6 | broad_lighting-replay-0 | 38.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-07, strictImageFailures=1 |
+| lighting-m6 | broad_lighting-replay-1 | 38.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.07e-07, strictImageFailures=26 |
+| transparent-m6 | transparent_shadow | 12.8 | PASS | device's own CPU / gate | maximumAbsoluteError=1.19e-07 |
+| transparent-m6 | transparent_lighting | 76.8 | PASS | glibc, device-scene | maximumAbsoluteError=7.75e-06; host re-judged vs glibc PASS: practical=0 strict=1682 max=7.75e-06 |
+| transparent-m6 | transparent_lighting-replay-0 | 41.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.49e-07, strictImageFailures=1 |
+| transparent-m6 | transparent_lighting-replay-1 | 42.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=8 |
+| transparent-m6 | transparent_lighting-replay-2 | 47.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=93 |
+| transparent-m6 | transparent_lighting-replay-3 | 48.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.01e-06, strictImageFailures=323 |
+| transparent-m6 | transparent_lighting-replay-4 | 48.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.75e-06, strictImageFailures=435 |
+| transparent-m6 | transparent_lighting-replay-5 | 49.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.75e-07, strictImageFailures=4 |
+| transparent-m6 | transparent_lighting-replay-6 | 48.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.56e-06, strictImageFailures=299 |
+| transparent-m6 | transparent_lighting-replay-7 | 48.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.79e-06, strictImageFailures=519 |
+| transparent-m6 | transparent-shadow-replay-direct | 5.8 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m6 | transparent-shadow-replay-indexed | 5.8 | PASS | source capture CPU film | maximumAbsoluteImageError=7.45e-09, strictImageFailures=0 |
+| terminator-m6 | shadow_terminator | 148.9 | PASS | glibc, device-scene | maximumAbsoluteError=1.53e-05; host re-judged vs glibc PASS: practical=0 strict=97 max=1.53e-05 |
+| terminator-m6 | terminator-replay-0 | 31.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m6 | terminator-replay-1 | 39.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m6 | terminator-replay-2 | 39.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m6 | terminator-replay-3 | 39.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m6 | terminator-replay-4 | 66.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=22 |
+| terminator-m6 | terminator-replay-5 | 66.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=18 |
+| terminator-m6 | terminator-replay-6 | 67.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=18 |
+| terminator-m6 | terminator-replay-7 | 66.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=22 |
+| terminator-m6 | terminator-replay-8 | 67.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.38e-07, strictImageFailures=5 |
+| terminator-m6 | terminator-replay-9 | 79.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.1e-06, strictImageFailures=12 |
+| spec-refusal-m6 | glass_render-spec | 59.0 | PASS | glibc, device-scene | strictImageFailures=104, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=104 max=9.54e-07 |
+| spec-refusal-m6 | glass_render-nospec-refused | 0.3 | PASS | expected refusal |  |
+| spec-refusal-m6 | glass_render-superset-refused | 0.3 | PASS | expected refusal |  |
+| hostcap-linux-triangle | tri0 | 39.6 | PASS | source capture CPU film | maximumAbsoluteImageError=4.77e-07, strictImageFailures=9 |
+| hostcap-linux-triangle | tri1 | 47.2 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| hostcap-linux-triangle | tri2 | 47.6 | PASS | source capture CPU film | maximumAbsoluteImageError=6.41e-07, strictImageFailures=14 |
+| hostcap-linux-triangle | tri3 | 47.8 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-06, strictImageFailures=430 |
+| hostcap-linux-triangle | tri4 | 47.4 | PASS | source capture CPU film | maximumAbsoluteImageError=3.73e-07, strictImageFailures=10 |
+| hostcap-linux-triangle | tri5 | 66.5 | PASS | source capture CPU film | maximumAbsoluteImageError=2.26e-06, strictImageFailures=425 |
+| hostcap-linux-terminator | term0 | 33.3 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term1 | 40.8 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term2 | 40.7 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term3 | 41.0 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term4 | 68.2 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=22 |
+| hostcap-linux-terminator | term5 | 68.0 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=18 |
+| hostcap-linux-terminator | term6 | 68.5 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=18 |
+| hostcap-linux-terminator | term7 | 68.4 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=22 |
+| hostcap-linux-terminator | term8 | 69.5 | PASS | source capture CPU film | maximumAbsoluteImageError=2.38e-07, strictImageFailures=5 |
+| hostcap-linux-terminator | term9 | 82.9 | PASS | source capture CPU film | maximumAbsoluteImageError=1.07e-06, strictImageFailures=17 |
+| arm-m6 | microfacet_render | 58.8 | PASS | glibc, device-scene | strictImageFailures=119, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=119 max=1.91e-06 |
+| motion-m6 | render-static | 44.3 | PASS | glibc, device-scene | strictImageFailures=406, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=406 max=7.63e-06 |
+| motion-m6 | render-motion-0 | 47.7 | PASS | glibc, device-scene | strictImageFailures=422, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=422 max=2.53e-05 |
+| motion-m6 | render-motion-1 | 47.9 | PASS | glibc, device-scene | strictImageFailures=386, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=386 max=1.14e-05 |
+| motion-m6 | render-motion-2 | 47.5 | PASS | glibc, device-scene | strictImageFailures=601, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=601 max=0.000188 |
+| motion-m6 | render-motion-3 | 48.1 | PASS | glibc, device-scene | strictImageFailures=792, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=792 max=3.71e-05 |
+| motion-m6 | render-motion-4 | 46.7 | PASS | glibc, device-scene | strictImageFailures=660, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=660 max=4.48e-05 |
+| motion-m6 | render-motion-5 | 46.9 | PASS | glibc, device-scene | strictImageFailures=647, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=647 max=0.000135 |
+| motion-m6 | render-motion-6 | 46.0 | PASS | glibc, device-scene | strictImageFailures=761, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=761 max=2.86e-05 |
+| motion-m6 | render-motion-7 | 46.6 | PASS | glibc, device-scene | strictImageFailures=661, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=661 max=4.48e-05 |
+| volume-m6 | volume-state | 11.8 | PASS | device's own CPU / gate |  |
+| volume-m6 | volume-absorption | 59.6 | PASS | glibc, device-scene | strictImageFailures=1143, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1143 max=1.53e-05 |
+| volume-m6 | volume-isotropic | 73.7 | PASS | glibc, device-scene | strictImageFailures=1611, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1611 max=3.24e-05 |
+| volume-m6 | volume-forward | 75.1 | PASS | glibc, device-scene | strictImageFailures=1669, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1669 max=4.67e-05 |
+| volume-m6 | volume-backward | 75.7 | PASS | glibc, device-scene | strictImageFailures=1617, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1617 max=4.01e-05 |
+| volume-m6 | boundary-state | 45.9 | PASS | device's own CPU / gate |  |
+| volume-m6 | boundary-compaction-guard | 6.9 | PASS | device's own CPU / gate |  |
+| volume-m6 | closed-single | 89.2 | PASS | glibc, device-scene | strictImageFailures=976, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=976 max=3.05e-05 |
+| volume-m6 | closed-overlap | 143.0 | PASS | glibc, device-scene | strictImageFailures=1260, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1260 max=4.58e-05 |
+| volume-m6 | closed-inside | 141.1 | PASS | glibc, device-scene | strictImageFailures=2284, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=2284 max=2.29e-05 |
+| volume-m6 | volume-replay-absorption | 25.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=1143 |
+| volume-m6 | volume-replay-isotropic | 26.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.24e-05, strictImageFailures=1611 |
+| volume-m6 | volume-replay-forward | 26.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.67e-05, strictImageFailures=1669 |
+| volume-m6 | volume-replay-backward | 26.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.01e-05, strictImageFailures=1617 |
+| volume-m6 | closed-replay-single | 27.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=976 |
+| volume-m6 | closed-replay-overlap | 52.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.58e-05, strictImageFailures=1260 |
+| volume-m6 | closed-replay-inside | 53.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.29e-05, strictImageFailures=2284 |
+
+### s20
+
+| Corpus | Job | Wall s | Result | Judged against | Numbers |
+| --- | --- | --- | --- | --- | --- |
+| materials-s20-principled_svm | principled_svm | 418.3 | PASS | glibc, device-scene | strictFloatFailures=557, maximumAbsoluteError=3.59e-06 |
+| a650-refusals-m6 | nodes_world-refused | 0.5 | PASS | expected refusal |  |
+| a650-refusals-m6 | nodes_svm-refused | 0.4 | PASS | expected refusal |  |
+| a650-refusals-m6 | nodes_render-refused | 0.5 | PASS | expected refusal |  |
+| triangle-s20-triangle_sample | triangle_sample | 79.4 | PASS | glibc, device-scene | maximumAbsoluteError=0.000488; host re-judged vs glibc PASS: practical=0 strict=865 max=0.000488 |
+| regression-s20-glass_render | glass_render | 84.6 | PASS | glibc, device-scene | strictImageFailures=64, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=64 max=1.91e-06 |
+| regression-s20-lighting_mis | lighting_mis | 63.7 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1057 max=6.08e-06 |
+| triangle-s20-surface | surface | 45.4 | PASS | device's own CPU / gate | strictFloatFailures=1244, maximumAbsoluteError=3.81e-06 |
+| transparent-s20-transparent_lighting | transparent_lighting | 193.5 | PASS | glibc, device-scene | maximumAbsoluteError=6.02e-06; host re-judged vs glibc PASS: practical=0 strict=683 max=6.02e-06 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-0 | 50.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-1 | 51.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-2 | 61.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.81e-06, strictImageFailures=72 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-3 | 61.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.55e-06, strictImageFailures=133 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-4 | 62.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=167 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-5 | 63.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.9e-07, strictImageFailures=3 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-6 | 61.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=103 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-7 | 62.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=205 |
+| transparent-s20-transparent_shadow | transparent_shadow | 15.5 | PASS | device's own CPU / gate | maximumAbsoluteError=1.19e-07 |
+| transparent-s20-transparent_shadow | transparent-shadow-replay-direct | 11.1 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-s20-transparent_shadow | transparent-shadow-replay-indexed | 11.2 | PASS | source capture CPU film | maximumAbsoluteImageError=0, strictImageFailures=0 |
+| materials-s20-principled_render | principled_render | 207.5 | PASS | glibc, device-scene | strictImageFailures=64, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=64 max=6.44e-06 |
+| materials-s20-principled_render | principled-replay | 168.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.44e-06, strictImageFailures=64 |
+| pixel-motion-s20-object-moving-images | object-moving-images | 140.4 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1276 max=6.08e-06 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-0 | 120.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.56e-06, strictImageFailures=12 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-1 | 120.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-2 | 121.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.52e-06, strictImageFailures=301 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-3 | 121.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.31e-09, strictImageFailures=0 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-4 | 131.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=294 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-5 | 177.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.05e-06, strictImageFailures=70 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-6 | 173.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=338 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-7 | 180.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=249 |
+| pixel-motion-s20-deforming-moving-images | deforming-moving-images | 322.8 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1213 max=6.08e-06 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-0 | 120.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.38e-07, strictImageFailures=2 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-1 | 176.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-07, strictImageFailures=19 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-2 | 176.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.4e-06, strictImageFailures=304 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-3 | 176.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.31e-09, strictImageFailures=0 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-4 | 153.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=280 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-5 | 125.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.17e-06, strictImageFailures=49 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-6 | 123.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=300 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-7 | 123.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=259 |
+| materials-s20-principled_bounce | principled_bounce | 336.0 | PASS | device's own CPU / gate | strictFloatFailures=2796, maximumAbsoluteError=0.125 |
+
+## Environment lighting and non-constant emitters (lane m1-lighting, 2026-10-23)
+
+The registered device now samples the world as a light, as the pinned Cycles does, and shades non-constant light
+shaders at the sampled point.
+
+- **Importance map.** Cycles' unmodified `LightManager::device_update_background` builds
+  `light_background_marginal_cdf` / `light_background_conditional_cdf` from the world shader through `ShaderEval`;
+  on this device that is the new WGSL entry `shader_eval_background` (`kernel_background_evaluate`, background module,
+  dispatched in slices of the 4,096 SVM stack slots). The two tables are scene tables after the existing ones
+  (`wavefront.h`), so the CPU references and the Android scene exchange carry exactly the device-built map.
+  Cycles enables the background light only for a direction-dependent world with `use_mis`
+  (`LightManager::test_enabled_lights`); a consumer must create a `backgroundlight` object for world MIS and should set
+  its `map_resolution` (with 0 the pinned code picks 4,096 x 2,048 when there is no sky-texture sun, whose evaluation
+  buffers exceed one 128 MiB storage binding and fail with an allocation error).
+- **Light stage.** A `LIGHT_BACKGROUND` lamp samples the map (`background_map_sample`, binary32 steps in the host's
+  order, precise sine/cosine/arccosine; `wavefront_background_light.wgsl`). Portals, sky-texture sun guiding, more than
+  one background light and non-constant point/spot/area/sun shaders are refused on the host.
+- **SHADE_LIGHT_NEE.** When the sampled light's shader has no constant emission, `connect_surface_light` skips the
+  light-threshold roulette and queues the shadow path to `DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE`
+  (`light_sample_shader_eval_nee_constant`). That kernel is two entries (`prepare_light_nee` writes the light point's
+  ShaderData: world for the background light, `triangle_light_uv` + `shader_setup_from_ray` for a triangle;
+  `shade_light_nee` evaluates the emission shader, applies the roulette with `bsdf_eval_average` and multiplies the
+  shadow throughput), so each entry stays inside the compile envelope. Capture entries 18-20, recorder v9.
+- **Background stage.** `light_sample_mis_weight_forward_background` (background light PDF x lamp selection
+  probability, power heuristic) and `background_light_clamp_dD` for non-camera rays.
+- **Fixed along the way.** (a) The triangle self-intersection skip of `integrate_surface_direct_light` was missing
+  in NEE; it is reachable once an emitter also has a BSDF (mixed emission/diffuse emitter failed by 1e-3 before).
+  (b) The environment-texture equirectangular projection used the driver's atan2/acos and division (up to 2e-3
+  relative on Intel; HDRI sample evaluations near bright texels were 5.7e-4 off). It now takes binary32 steps in
+  the host's order with `trig_atan2` and `trig_acos` (`wavefront_trig.wgsl`), which equal glibc 2.41's correctly
+  rounded atan2f/acosf bit for bit on a 65,536-input probe (`CODEBRIX_ENVIRONMENT_TRIG_PROBE`), and the map
+  directions use `native_disk_sincos` (glibc sinf/cosf bit for bit on [-pi, pi]). This exactness is required, not
+  cosmetic: with a 2000-radiance sun texel, one ULP of an environment coordinate moves a linearly interpolated
+  lookup by more than the practical bound (the bench-like case 11 failed by 8e-4 relative with 1-ULP arithmetic).
+  `motion_acos` (used by motion code, left unchanged) is one ULP off for about 9% of negative inputs because it
+  rounds pi - acos(|x|) in two steps.
+- **Feature bits** 64 `LIGHT_BACKGROUND` and 65 `LIGHT_NEE`; scenes without them compile the same handlers as
+  before, and every film of the Linux regression set is bit-identical to merge wave 5 except 1-ULP differences in
+  cases whose own repeat already differs (atomic film-add order: lighting_mis 5, transparent_lighting 4/5,
+  broad_lighting 3/7/8/9, feature_combination 5).
+
+Gate: `codebrix_cycles_environment_gate OUT [CASE...]` (12 cases: procedural and HDRI worlds with MIS at map
+resolutions 32-512 (case 11: a 512 x 256 HDRI with a 1.5-degree, 2000-radiance sun, as in the bench HDRI), procedural and HDRI worlds without a background light, image/UV, procedural and mixed
+emission/BSDF triangle emitters, and an emitter with an HDRI world). Each case checks the importance-map pixels and
+2,048 light samples with the sampled light's shader evaluation against the original CPU kernels, then the native
+scheduler image twice (repeat bitwise, command capture). All three CPU references go through the reference policy
+(keys `case-N.map`, `.samples`, `.film`).
+
+| Device | Environment gate (12 cases) | Wall | Regression set of the touched stages |
+| --- | --- | --- | --- |
+| Linux x64 (Intel, Mesa 25.0.7) | PASS: map 628,224 checks (56 strict, max 1.9e-6), samples 200,704 (3,393 strict, max 1.56e-3 on values up to 2000), films 73,728 (3,970 strict, max 1.63e-4), repeat bitwise, 12,572 SHADE_LIGHT_NEE paths | 127 s | PASS; films bit-identical to merge wave 5 apart from the atomic-order cases above; superset identity (glass, Principled, environment groups) bit-identical |
+| HP (Mesa 24.0.8, Bliss) | PASS against the glibc device-scene references (host re-judged), 4 replays PASS | 350 s (slowest pipeline 33.5 s) | PASS (lighting_mis, triangle sampler and images, transparent lighting, emitter probe, background, glass/Principled/node renders, image, node worlds, replays) |
+| Samsung SM-X700 (Adreno 730) | PASS against the glibc device-scene references (map max 0, films max 1.45e-5), 12 replays PASS | 433 s (slowest pipeline 18.4 s) | PASS except open items 1 and 4 with unchanged values (triangle sampler 3133, Principled render 9114, node render 6720; the lane's tree predates their fix by lane S3) |
+
+Evidence: the lane's runs, frozen in `native/evidence/merge-20261023c/m1-lighting/runs/` (`dev26`, `regress3`,
+`superset1/2`, `envelope2`, `samsung/m1l-s2`, `hp/m1l-hp4`; earlier rounds `hp/m1l-hp1` and `samsung/m1l-s1` ran the
+same regression set on the earlier binaries); the ledger checkpoint `native/evidence/m1-lighting-20261023/environment-light/`.
+Compile envelope of the new entries (Linux, gate scenes): prepare_light_nee 18,875, shade_light_nee 22,285,
+shader_eval_background 39,118 backend instructions; on a Principled + texture scene shade_light_nee is about the size of
+prepare_surface, so it carries that scene's size-guard warning too.
+
+## Fixed-baseline CPU oracle, camera-ray and attribute parity, the bench passes (lane m1-oracle, 2026-10-23)
+
+**Oracle definition (decision of 2026-10-23).** The CPU device every GPU film is judged against is an unmodified
+Cycles CPU kernel built at a fixed arithmetic baseline, so its films do not depend on the machine that built it:
+
+- x86-64: Cycles' SSE4.2 kernels only. `build_cycles.py` turns `WITH_CYCLES_NATIVE_ONLY` off (it added
+  `-march=native`) and records Cycles' AVX2/F16C probes as absent (no AVX2 kernel, no FMA).
+- No floating-point contraction and no reciprocal math: `inject_cycles.cmake` adds
+  `-ffp-contract=off -fno-reciprocal-math` as directory compile options, which follow Cycles' own
+  `-ffp-contract=on -freciprocal-math` on every command line (all Cycles and CodeBrix translation units; the
+  reference colorspace object in `host/targets.cmake` gets them too). Android keeps Cycles' flags (its CPU is a
+  diagnostic). Linux ARM64: the ARMv8-A base level (no `-march`/`-mcpu`), cross build verified here; macOS arm64
+  and x64: the same rule in their recipes, UNTESTED (MACOS_ARM64.md, MACOS_X64.md).
+- The CPU kernel compile line actually used (Linux x64, from the compile database, recorded in
+  `native/work/cycles-build.json` and in every oracle run's `meta.json` as `cpuKernelCompile`):
+  `-msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -ffp-contract=on -freciprocal-math -mfpmath=sse -O3
+  -ffp-contract=off -fno-reciprocal-math` (the last occurrence decides). `build_cycles.py` refuses any other
+  line. `native/cycles/cpu_arithmetic.cpp` is compiled into `cycles_kernel_cpu` with the kernels' flags, refuses
+  an x86-64 oracle with AVX/FMA or reciprocal math, and states the arithmetic in the capability report:
+  `backendScope.cpu.arithmetic` = `{"isa":"x86-64 SSE4.2","fpContract":"off","reciprocalMath":"off"}`.
+- Fused multiply-add instructions in `libcodebrix_cycles_host.so`: 8,806 before, 0 after (x64); 21,010 in the
+  previous ARM64 build, 0 after.
+
+**What changes and what does not.**
+
+- Unaffected (proved): the device-scene glibc flow. The gate binaries built before and after the flag change
+  produce bit-identical references from the devices' dumped scenes (HP `triangle_lighting` 6 films and
+  `triangle_sample`, S20 `lighting_mis` 8 films), equal to the merge-5 references.
+- Changed: every Session-based CPU film (C runner, managed CpuReference backend, host-gate references) and the
+  Linux-local independent CPU images of the gates. The gates' own reference programs were already compiled
+  `-ffp-contract=off -msse4.2`, but they share the Cycles scene preparation, which was a `-march=native` FMA
+  build: the glass render gate's CPU film is `5c441a51` with the old binaries and `da52a2d8` with the new
+  ones, same sources. Repeat renders stay bitwise identical; no GPU-versus-CPU verdict got worse.
+
+| Film set (same sources, old flags -> fixed baseline) | CPU films changed | GPU vs CPU practical failures (sum) | strict (sum) |
+| --- | --- | --- | --- |
+| Oracle corpus: 4 starters + 45 Linux-gate scenes (2 refused by WGSL, as before) | 49 of 49 | 0 -> 0 | 5,403 -> 4,859 |
+| glTF tool: sample, sample-sun, factor-only bench, textured plane, bench (Blender mapping) | 5 of 5 | 50 -> 11 | 4,899 -> 3,773 |
+| Host gate: 786 reference films + inputs + ABI CPU films | 809 of 854 files | 0 -> 0 | 149 -> 153 (ABI light films, strict not required) |
+
+Selected old -> new CPU film-0 hashes: starter diffuse-triangle `e03583fd` -> `a9a2d6e7`, glass-and-area-light
+`028cf600` -> `73dc5469`, glossy-sphere `7baffd34` -> `ea6832c7`, textured-plane `2b2c63e0` -> `0b443dbf`;
+bench (Blender mapping) `445d954e` -> `f4b08b95`, factor-only bench `8873becc` -> `44683a24`, textured-plane
+control `5a25410b` -> `a1d20c08`. The full table (54 films with practical/strict before and after) is frozen in
+`native/evidence/merge-20261023c/m1-oracle/` (`hash-table-flags.md`, `hash-table-old-final.md`,
+`hash-table-new-final.md` and their `.json`). The factor-only bench's pixel (45,22) (3 practical failures, max 0.0278, a single-path divergence at the
+seed) was the FMA: it passes on the baseline without any WGSL change. The environment gate (12 cases) passes on the
+baseline: map 628,224 checks (56 strict), samples 200,704 (3,179 strict, was 3,393), films 73,728 (2,684 strict,
+max 2.86e-5; was 3,970 and 1.63e-4).
+
+**Camera rays bit-exact (`wavefront_camera.wgsl`).** The camera gate now reports, per ray field, how many
+components differ from the CPU in any bit (`rayBitDifferences`, by case and with examples). On the baseline it
+found `ray.D` 15,258, `ray.P` 216, `dD` 12,519, `dP` 12,090 and `tmax` 15 of 22,972 paths (all within the
+practical bound). Causes and fixes, all with integer `rounded_add` sums so no driver can contract them:
+
+- `transform_direction` (camera to world): Cycles' SSE build accumulates `z*c2`, then `y*c1`, then `x*c0` with
+  unfused `madd`; the WGSL let the driver fuse them. New `camera_direction` (SSE grouping, or the scalar
+  `(x+y)+z` dot for a scalar oracle).
+- `ray->P += nearclip*D`, `interp()` of the perspective motion, the filter and shutter table lookups
+  (`(1-t)*a + t*b`) and `len()` of the differentials (the builtin `length` is not correctly rounded).
+- The scrambling-distance Cranley-Patterson jitter in `native_rng` (`wavefront_common.wgsl`, shared): the
+  product was fused into the sum (cases with distance 0.75 and 0.9 differed; 0.125 is exact either way).
+- Rolling shutter: Intel Mesa reassociated `(1 - y/h) - 0.5` with the constant; every sum is now opaque.
+
+Result: 0 differing bits in every ray field over the 24 cases. With camera motion (`--motion`) strict differences
+fall from 3,533 (old binaries) to 1,616; time and tmax are exact, the rest is the shared decomposed-motion
+interpolation (`wavefront_motion.wgsl`, not changed here; within the practical bound).
+
+**Triangle attributes (`wavefront_attributes.wgsl`, shared).** With exact camera rays the bench still had 2
+practical failures. Stage outputs rendered at 1 spp (emission shaders that output Incoming, Position,
+Parametric, UV, texture colour, normal, roughness) located them: rays, positions and barycentrics equal the CPU
+bit for bit, UVs differed in 296 components. `triangle_interpolate` `(1-u-v)*f0 + u*f1 + v*f2` and the
+`dfdx/dfdy` sums were fused by the driver. Each product now passes the order word (header word 3, always 0; the
+`svmn_order` mechanism) before the left-to-right sum: UVs are bit-identical and the bench passes. The cost is 112
+backend instructions in the bench's `prepare_surface`.
+
+`motion_inverse_cross` modelled Cycles' AVX2-only `_mm_fmsub_ps`; the baseline oracle takes the unfused
+`cross()`, so it is now `rounded_cross` (object and deforming motion scenes: practical 0 before and after,
+strict within run-to-run variation).
+
+**The bench (Milestone 1 acceptance).** 64x48, 16 spp, 12,288 components, Blender mapping, judged against the
+Linux CPU film of the same bundle; device films through the validation app's bundle mode (managed loader):
+
+| Scene | Linux WGSL (Intel, Mesa 25.0.7) | Samsung SM-X700 | HP (Mesa 24.0.8) | compare.py over the four |
+| --- | --- | --- | --- | --- |
+| bench_01 (sun + constant world) | 0 / 199, max 6.97e-5 | 0 / 110, max 4.30e-5, 183 s | 0 / 212, max 3.78e-5, 236 s | perfect |
+| bench_01-hdri (importance-sampled HDRI, map 512) | 0 / 367, max 9.16e-5 | 0 / 316, max 7.71e-5, 355 s | 0 / 435, max 9.17e-5, 330 s | perfect |
+| textured-plane control | 0 / 656, max 5.53e-5 | 0 / 503, max 1.65e-4, 192 s | 0 / 776, max 1.62e-4, 241 s | perfect |
+
+Practical / strict, maximum absolute error, first GPU render including pipeline compiles. The closest component
+is bench pixel (46,19) R at 0.59 of the tolerance on Linux (HP against Linux WGSL 0.91): texture sampling still
+differs from the CPU in the last bit (1,356 components at 1 spp, max 3.6e-7), the next site to make exact.
+
+Open items (in "Open device items"): the bench's `prepare_surface` size (item 12), texture-sampling last-bit
+parity (item 14), the motion arithmetic's last bits (item 15), the macOS recipes at the baseline (item 16).
+Evidence, frozen in `native/evidence/merge-20261023c/m1-oracle/`: the hash tables above, `camera/` (per-field ray
+bit differences), `android-app/s1-*` and `h1-*` (the bundle runs on the Samsung and the HP), `oracles-assets/` and `comparator/`,
+`linux-arm64-record/`, `regress/`, and the S20 runs `runs/s20` and `runs/s20-run2-baseline-without-a650`.
+
+## Merge wave 7 (2026-10-23)
+
+Host gate criterion: the GPU 64-sample host film (`gpu/run.3`, `gpu-exit/run.3`, against the session64 CPU
+reference) is judged practical-required with strict differences recorded, as the ABI light films are, in
+`host_gate.py` and `android_host_gate.py`, because its atomic accumulation order varies between runs of one binary and
+the fixed-baseline CPU reference moved one float step: on the merged tree it failed strict in 3 of 4 Linux runs at
+component 1742 (difference 1.49e-7 against a bound of 1.30e-7, every run within practical). The default Android and
+Linux ARM64 gate set (`build_cycles_android.py`) now includes `principled_svm`, `transparent_shadow` and
+`codebrix_cycles_environment_gate`.
+
+## Merge wave 7: device tables
+
+Generated by `native/work/merge7/tools/device_tables.py` from each run's `results.json` (merge wave 7, part 2; the runs are frozen in `native/evidence/merge-20261023c/merge7/runs/<device>/`). Wall times are device seconds per job; "Judged against" names the reference the result was judged against (glibc device-scene flow, the device's own CPU, or the source capture's CPU film).
+
+### samsung
+
+| Corpus | Job | Wall s | Result | Judged against | Numbers |
+| --- | --- | --- | --- | --- | --- |
+| materials-m7 | principled_svm | 118.6 | PASS | glibc, device-scene | strictFloatFailures=634, maximumAbsoluteError=3.61e-06 |
+| materials-m7 | principled_bounce | 85.3 | PASS | device's own CPU / gate | strictFloatFailures=3466, maximumAbsoluteError=0.125 |
+| materials-m7 | principled_render | 68.4 | PASS | glibc, device-scene | strictImageFailures=67, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=67 max=6.44e-06 |
+| materials-m7 | nodes_svm | 1506.7 | PASS | glibc, device-scene | strictFloatFailures=18450, maximumAbsoluteError=0.00195 |
+| materials-m7 | nodes_world | 505.8 | PASS | device's own CPU / gate | strictFloatFailures=16230, maximumAbsoluteError=6.1e-05 |
+| materials-m7 | nodes_render | 115.5 | PASS | glibc, device-scene | strictImageFailures=1689, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1689 max=3.72e-05 |
+| materials-m7 | principled-replay | 43.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.44e-06, strictImageFailures=67 |
+| materials-m7 | nodes-replay | 91.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.72e-05, strictImageFailures=1689 |
+| triangle-m7 | triangle_sample | 21.3 | PASS | glibc, device-scene | maximumAbsoluteError=0.000488; host re-judged vs glibc PASS: practical=0 strict=865 max=0.000488 |
+| triangle-m7 | surface | 24.1 | PASS | device's own CPU / gate | strictFloatFailures=1246, maximumAbsoluteError=3.81e-06 |
+| triangle-m7 | triangle_lighting | 80.6 | PASS | glibc, device-scene | maximumAbsoluteError=1.79e-06; host re-judged vs glibc PASS: practical=0 strict=490 max=1.79e-06 |
+| triangle-m7 | replay-0 | 16.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
+| triangle-m7 | replay-1 | 21.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-07, strictImageFailures=0 |
+| triangle-m7 | replay-2 | 21.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.41e-07, strictImageFailures=6 |
+| triangle-m7 | replay-3 | 22.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-06, strictImageFailures=233 |
+| triangle-m7 | replay-4 | 21.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.58e-07, strictImageFailures=8 |
+| triangle-m7 | replay-5 | 35.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-06, strictImageFailures=231 |
+| emitter-m7 | emitter_sample | 8.0 | PASS | glibc, device-scene | maximumAbsoluteError=9.06e-06; host re-judged vs glibc PASS: practical=0 strict=135 max=9.06e-06 |
+| regression-m7 | glass_render | 50.3 | PASS | glibc, device-scene | strictImageFailures=63, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=63 max=1.91e-06 |
+| regression-m7 | lighting_mis | 29.5 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1057 max=6.08e-06 |
+| regression-m7 | transparent_lighting | 91.4 | PASS | glibc, device-scene | maximumAbsoluteError=6.02e-06; host re-judged vs glibc PASS: practical=0 strict=685 max=6.02e-06 |
+| lighting-m7 | lighting_mis | 29.4 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1057 max=6.08e-06 |
+| lighting-m7 | broad_lighting | 59.6 | PASS | glibc, device-scene | maximumAbsoluteError=3.81e-05; host re-judged vs glibc PASS: practical=0 strict=953 max=3.81e-05 |
+| lighting-m7 | lighting_mis-replay-0 | 16.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| lighting-m7 | lighting_mis-replay-1 | 17.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| lighting-m7 | broad_lighting-replay-0 | 17.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| lighting-m7 | broad_lighting-replay-1 | 17.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.17e-07, strictImageFailures=13 |
+| transparent-m7 | transparent_shadow | 17.6 | PASS | device's own CPU / gate | maximumAbsoluteError=1.19e-07 |
+| transparent-m7 | transparent_lighting | 92.8 | PASS | glibc, device-scene | maximumAbsoluteError=6.02e-06; host re-judged vs glibc PASS: practical=0 strict=685 max=6.02e-06 |
+| transparent-m7 | transparent_lighting-replay-0 | 20.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m7 | transparent_lighting-replay-1 | 20.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m7 | transparent_lighting-replay-2 | 25.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.81e-06, strictImageFailures=73 |
+| transparent-m7 | transparent_lighting-replay-3 | 26.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.55e-06, strictImageFailures=133 |
+| transparent-m7 | transparent_lighting-replay-4 | 27.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=167 |
+| transparent-m7 | transparent_lighting-replay-5 | 27.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.9e-07, strictImageFailures=3 |
+| transparent-m7 | transparent_lighting-replay-6 | 26.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=103 |
+| transparent-m7 | transparent_lighting-replay-7 | 26.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=206 |
+| transparent-m7 | transparent-shadow-replay-direct | 6.0 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m7 | transparent-shadow-replay-indexed | 6.1 | PASS | source capture CPU film | maximumAbsoluteImageError=0, strictImageFailures=0 |
+| terminator-m7 | shadow_terminator | 100.7 | PASS | glibc, device-scene | maximumAbsoluteError=6.2e-05; host re-judged vs glibc PASS: practical=0 strict=114 max=6.2e-05 |
+| terminator-m7 | terminator-replay-0 | 13.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m7 | terminator-replay-1 | 15.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m7 | terminator-replay-2 | 15.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m7 | terminator-replay-3 | 15.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m7 | terminator-replay-4 | 25.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| terminator-m7 | terminator-replay-5 | 25.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| terminator-m7 | terminator-replay-6 | 25.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| terminator-m7 | terminator-replay-7 | 25.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| terminator-m7 | terminator-replay-8 | 26.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.93e-05, strictImageFailures=8 |
+| terminator-m7 | terminator-replay-9 | 37.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.91e-05, strictImageFailures=14 |
+| spec-refusal-m7 | glass_render-spec | 47.5 | PASS | glibc, device-scene | strictImageFailures=63, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=63 max=1.91e-06 |
+| spec-refusal-m7 | glass_render-nospec-refused | 0.2 | PASS | expected refusal |  |
+| spec-refusal-m7 | glass_render-superset-refused | 0.2 | PASS | expected refusal |  |
+| environment-m7 | environment | 455.8 | PASS | glibc, device-scene | maximumAbsoluteError=3.81e-06; host re-judged vs glibc PASS: practical=0 strict=349 max=3.81e-06 |
+| environment-m7 | environment-replay-0 | 25.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.86e-06, strictImageFailures=48 |
+| environment-m7 | environment-replay-1 | 39.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-06, strictImageFailures=36 |
+| environment-m7 | environment-replay-2 | 33.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.86e-06, strictImageFailures=40 |
+| environment-m7 | environment-replay-3 | 40.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-06, strictImageFailures=30 |
+| environment-m7 | environment-replay-4 | 42.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=62 |
+| environment-m7 | environment-replay-5 | 36.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.81e-06, strictImageFailures=28 |
+| environment-m7 | environment-replay-6 | 64.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=5 |
+| environment-m7 | environment-replay-7 | 61.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| environment-m7 | environment-replay-8 | 61.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.54e-07, strictImageFailures=41 |
+| environment-m7 | environment-replay-9 | 63.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.53e-07, strictImageFailures=4 |
+| environment-m7 | environment-replay-10 | 64.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.43e-06, strictImageFailures=39 |
+| environment-m7 | environment-replay-11 | 61.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.43e-06, strictImageFailures=16 |
+| arm-m7 | microfacet_render | 46.0 | PASS | glibc, device-scene | strictImageFailures=100, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=100 max=2.38e-06 |
+| motion-m7 | render-static | 45.7 | PASS | glibc, device-scene | strictImageFailures=326, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=326 max=7.63e-06 |
+| motion-m7 | render-motion-0 | 42.9 | PASS | glibc, device-scene | strictImageFailures=322, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=322 max=2.53e-05 |
+| motion-m7 | render-motion-1 | 43.8 | PASS | glibc, device-scene | strictImageFailures=287, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=287 max=7.63e-06 |
+| motion-m7 | render-motion-2 | 44.4 | PASS | glibc, device-scene | strictImageFailures=351, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=351 max=1.67e-05 |
+| motion-m7 | render-motion-3 | 44.4 | PASS | glibc, device-scene | strictImageFailures=602, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=602 max=3.36e-05 |
+| motion-m7 | render-motion-4 | 43.8 | PASS | glibc, device-scene | strictImageFailures=328, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=328 max=1e-05 |
+| motion-m7 | render-motion-5 | 44.5 | PASS | glibc, device-scene | strictImageFailures=312, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=312 max=1.57e-05 |
+| motion-m7 | render-motion-6 | 42.7 | PASS | glibc, device-scene | strictImageFailures=515, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=515 max=4.58e-05 |
+| motion-m7 | render-motion-7 | 43.1 | PASS | glibc, device-scene | strictImageFailures=327, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=327 max=1e-05 |
+| pixel-motion-own | object-moving-images | 45.2 | PASS | device's own CPU / gate | maximumAbsoluteError=6.08e-06 |
+| pixel-motion-own | object-stationary-images | 36.3 | PASS | device's own CPU / gate | maximumAbsoluteError=6.08e-06 |
+| pixel-motion-own | object-replay-motion-0 | 31.2 | PASS | source capture CPU film | maximumAbsoluteImageError=2.38e-07, strictImageFailures=6 |
+| pixel-motion-own | object-replay-motion-1 | 32.2 | PASS | source capture CPU film | maximumAbsoluteImageError=2.92e-06, strictImageFailures=17 |
+| pixel-motion-own | object-replay-motion-2 | 32.2 | PASS | source capture CPU film | maximumAbsoluteImageError=2.43e-06, strictImageFailures=290 |
+| pixel-motion-own | object-replay-motion-3 | 32.5 | PASS | source capture CPU film | maximumAbsoluteImageError=1.02e-07, strictImageFailures=1 |
+| pixel-motion-own | object-replay-motion-4 | 32.9 | PASS | source capture CPU film | maximumAbsoluteImageError=6.08e-06, strictImageFailures=288 |
+| pixel-motion-own | object-replay-motion-5 | 33.9 | PASS | source capture CPU film | maximumAbsoluteImageError=4.53e-06, strictImageFailures=59 |
+| pixel-motion-own | object-replay-motion-6 | 33.0 | PASS | source capture CPU film | maximumAbsoluteImageError=6.08e-06, strictImageFailures=335 |
+| pixel-motion-own | object-replay-motion-7 | 32.9 | PASS | source capture CPU film | maximumAbsoluteImageError=6.02e-06, strictImageFailures=241 |
+| pixel-motion-x64 | object-moving-images | 46.7 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1180 max=6.08e-06 |
+| pixel-motion-x64 | object-stationary-images | 36.8 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1135 max=6.08e-06 |
+| pixel-motion-x64 | object-replay-motion-0 | 33.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.62e-06, strictImageFailures=8 |
+| pixel-motion-x64 | object-replay-motion-1 | 34.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.36e-07, strictImageFailures=10 |
+| pixel-motion-x64 | object-replay-motion-2 | 34.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.4e-06, strictImageFailures=291 |
+| pixel-motion-x64 | object-replay-motion-3 | 34.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.31e-09, strictImageFailures=0 |
+| pixel-motion-x64 | object-replay-motion-4 | 34.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=271 |
+| pixel-motion-x64 | object-replay-motion-5 | 34.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.29e-06, strictImageFailures=45 |
+| pixel-motion-x64 | object-replay-motion-6 | 34.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=329 |
+| pixel-motion-x64 | object-replay-motion-7 | 35.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=226 |
+| volume-m7 | volume-state | 10.3 | PASS | device's own CPU / gate |  |
+| volume-m7 | volume-absorption | 62.0 | PASS | glibc, device-scene | strictImageFailures=834, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=834 max=2.29e-05 |
+| volume-m7 | volume-isotropic | 84.0 | PASS | glibc, device-scene | strictImageFailures=1429, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1429 max=3.05e-05 |
+| volume-m7 | volume-forward | 79.0 | PASS | glibc, device-scene | strictImageFailures=1472, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1472 max=3.05e-05 |
+| volume-m7 | volume-backward | 79.3 | PASS | glibc, device-scene | strictImageFailures=1366, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1366 max=3.05e-05 |
+| volume-m7 | boundary-state | 23.2 | PASS | device's own CPU / gate |  |
+| volume-m7 | boundary-compaction-guard | 4.4 | PASS | device's own CPU / gate |  |
+| volume-m7 | closed-single | 98.9 | PASS | glibc, device-scene | strictImageFailures=813, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=813 max=3.05e-05 |
+| volume-m7 | closed-overlap | 153.2 | PASS | glibc, device-scene | strictImageFailures=1007, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1007 max=3.05e-05 |
+| volume-m7 | closed-inside | 145.5 | PASS | glibc, device-scene | strictImageFailures=2054, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=2054 max=3.05e-05 |
+| volume-m7 | volume-replay-absorption | 16.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.29e-05, strictImageFailures=834 |
+| volume-m7 | volume-replay-isotropic | 17.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=1429 |
+| volume-m7 | volume-replay-forward | 17.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=1472 |
+| volume-m7 | volume-replay-backward | 17.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=1366 |
+| volume-m7 | closed-replay-single | 18.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=813 |
+| volume-m7 | closed-replay-overlap | 28.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=1007 |
+| volume-m7 | closed-replay-inside | 28.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=2054 |
+| hostcap-linux-triangle | tri0 | 16.8 | PASS | source capture CPU film | maximumAbsoluteImageError=4.77e-07, strictImageFailures=12 |
+| hostcap-linux-triangle | tri1 | 21.2 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| hostcap-linux-triangle | tri2 | 21.3 | PASS | source capture CPU film | maximumAbsoluteImageError=6.41e-07, strictImageFailures=12 |
+| hostcap-linux-triangle | tri3 | 22.1 | PASS | source capture CPU film | maximumAbsoluteImageError=1.76e-06, strictImageFailures=233 |
+| hostcap-linux-triangle | tri4 | 21.8 | PASS | source capture CPU film | maximumAbsoluteImageError=2.53e-07, strictImageFailures=5 |
+| hostcap-linux-triangle | tri5 | 35.9 | PASS | source capture CPU film | maximumAbsoluteImageError=1.79e-06, strictImageFailures=237 |
+| hostcap-linux-terminator | term0 | 12.7 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term1 | 14.7 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term2 | 14.9 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term3 | 15.0 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term4 | 25.5 | PASS | source capture CPU film | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| hostcap-linux-terminator | term5 | 26.0 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| hostcap-linux-terminator | term6 | 25.6 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-05, strictImageFailures=19 |
+| hostcap-linux-terminator | term7 | 26.6 | PASS | source capture CPU film | maximumAbsoluteImageError=6.2e-05, strictImageFailures=27 |
+| hostcap-linux-terminator | term8 | 26.2 | PASS | source capture CPU film | maximumAbsoluteImageError=2.93e-05, strictImageFailures=9 |
+| hostcap-linux-terminator | term9 | 35.2 | PASS | source capture CPU film | maximumAbsoluteImageError=2.91e-05, strictImageFailures=15 |
+
+### hp
+
+| Corpus | Job | Wall s | Result | Judged against | Numbers |
+| --- | --- | --- | --- | --- | --- |
+| materials-m7 | principled_svm | 162.3 | PASS | glibc, device-scene | strictFloatFailures=946, maximumAbsoluteError=9.54e-07 |
+| materials-m7 | principled_bounce | 234.2 | PASS | device's own CPU / gate | strictFloatFailures=5230, maximumAbsoluteError=0.125 |
+| materials-m7 | principled_render | 140.2 | PASS | glibc, device-scene | strictImageFailures=91, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=91 max=6.44e-06 |
+| materials-m7 | nodes_svm | 802.8 | PASS | glibc, device-scene | strictFloatFailures=10978, maximumAbsoluteError=0.0107 |
+| materials-m7 | nodes_world | 257.2 | PASS | device's own CPU / gate | strictFloatFailures=9052, maximumAbsoluteError=6.1e-05 |
+| materials-m7 | nodes_render | 96.4 | PASS | glibc, device-scene | strictImageFailures=1794, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1794 max=0.000103 |
+| materials-m7 | principled-replay | 118.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.44e-06, strictImageFailures=91 |
+| materials-m7 | nodes-replay | 73.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=0.000103, strictImageFailures=1794 |
+| triangle-m7 | triangle_sample | 23.1 | PASS | glibc, device-scene | maximumAbsoluteError=0.000488; host re-judged vs glibc PASS: practical=0 strict=865 max=0.000488 |
+| triangle-m7 | surface | 38.8 | PASS | device's own CPU / gate | strictFloatFailures=1801, maximumAbsoluteError=3.81e-06 |
+| triangle-m7 | triangle_lighting | 102.6 | PASS | glibc, device-scene | maximumAbsoluteError=2.32e-06; host re-judged vs glibc PASS: practical=0 strict=867 max=2.32e-06 |
+| triangle-m7 | replay-0 | 37.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=9 |
+| triangle-m7 | replay-1 | 46.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| triangle-m7 | replay-2 | 47.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.41e-07, strictImageFailures=12 |
+| triangle-m7 | replay-3 | 46.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-06, strictImageFailures=426 |
+| triangle-m7 | replay-4 | 46.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.38e-07, strictImageFailures=7 |
+| triangle-m7 | replay-5 | 66.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.32e-06, strictImageFailures=413 |
+| emitter-m7 | emitter_sample | 20.0 | PASS | glibc, device-scene | maximumAbsoluteError=0.00513; host re-judged vs glibc PASS: practical=0 strict=235 max=0.00513 |
+| regression-m7 | glass_render | 60.9 | PASS | glibc, device-scene | strictImageFailures=104, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=104 max=9.54e-07 |
+| regression-m7 | lighting_mis | 52.2 | PASS | glibc, device-scene | maximumAbsoluteError=8.34e-06; host re-judged vs glibc PASS: practical=0 strict=2682 max=8.34e-06 |
+| regression-m7 | transparent_lighting | 79.7 | PASS | glibc, device-scene | maximumAbsoluteError=7.75e-06; host re-judged vs glibc PASS: practical=0 strict=1679 max=7.75e-06 |
+| lighting-m7 | lighting_mis | 52.1 | PASS | glibc, device-scene | maximumAbsoluteError=8.34e-06; host re-judged vs glibc PASS: practical=0 strict=2682 max=8.34e-06 |
+| lighting-m7 | broad_lighting | 68.0 | PASS | glibc, device-scene | maximumAbsoluteError=5.34e-05; host re-judged vs glibc PASS: practical=0 strict=1732 max=5.34e-05 |
+| lighting-m7 | lighting_mis-replay-0 | 39.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-07, strictImageFailures=3 |
+| lighting-m7 | lighting_mis-replay-1 | 39.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=11 |
+| lighting-m7 | broad_lighting-replay-0 | 39.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.79e-07, strictImageFailures=1 |
+| lighting-m7 | broad_lighting-replay-1 | 39.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.07e-07, strictImageFailures=26 |
+| transparent-m7 | transparent_shadow | 12.4 | PASS | device's own CPU / gate | maximumAbsoluteError=1.19e-07 |
+| transparent-m7 | transparent_lighting | 78.9 | PASS | glibc, device-scene | maximumAbsoluteError=7.75e-06; host re-judged vs glibc PASS: practical=0 strict=1679 max=7.75e-06 |
+| transparent-m7 | transparent_lighting-replay-0 | 43.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.49e-07, strictImageFailures=1 |
+| transparent-m7 | transparent_lighting-replay-1 | 43.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=8 |
+| transparent-m7 | transparent_lighting-replay-2 | 49.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.91e-06, strictImageFailures=89 |
+| transparent-m7 | transparent_lighting-replay-3 | 49.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.01e-06, strictImageFailures=323 |
+| transparent-m7 | transparent_lighting-replay-4 | 49.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.75e-06, strictImageFailures=435 |
+| transparent-m7 | transparent_lighting-replay-5 | 50.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.75e-07, strictImageFailures=4 |
+| transparent-m7 | transparent_lighting-replay-6 | 48.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.56e-06, strictImageFailures=299 |
+| transparent-m7 | transparent_lighting-replay-7 | 50.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.79e-06, strictImageFailures=520 |
+| transparent-m7 | transparent-shadow-replay-direct | 5.8 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-m7 | transparent-shadow-replay-indexed | 5.8 | PASS | source capture CPU film | maximumAbsoluteImageError=7.45e-09, strictImageFailures=0 |
+| terminator-m7 | shadow_terminator | 155.1 | PASS | glibc, device-scene | maximumAbsoluteError=1.53e-05; host re-judged vs glibc PASS: practical=0 strict=107 max=1.53e-05 |
+| terminator-m7 | terminator-replay-0 | 32.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m7 | terminator-replay-1 | 40.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m7 | terminator-replay-2 | 41.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m7 | terminator-replay-3 | 40.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| terminator-m7 | terminator-replay-4 | 68.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=25 |
+| terminator-m7 | terminator-replay-5 | 68.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=21 |
+| terminator-m7 | terminator-replay-6 | 68.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=21 |
+| terminator-m7 | terminator-replay-7 | 68.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=25 |
+| terminator-m7 | terminator-replay-8 | 67.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.38e-07, strictImageFailures=5 |
+| terminator-m7 | terminator-replay-9 | 82.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.54e-07, strictImageFailures=10 |
+| spec-refusal-m7 | glass_render-spec | 59.7 | PASS | glibc, device-scene | strictImageFailures=104, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=104 max=9.54e-07 |
+| spec-refusal-m7 | glass_render-nospec-refused | 0.3 | PASS | expected refusal |  |
+| spec-refusal-m7 | glass_render-superset-refused | 0.3 | PASS | expected refusal |  |
+| environment-m7 | environment | 348.2 | PASS | glibc, device-scene | maximumAbsoluteError=2.86e-05; host re-judged vs glibc PASS: practical=0 strict=1343 max=2.86e-05 |
+| environment-m7 | environment-replay-0 | 46.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.25e-06, strictImageFailures=122 |
+| environment-m7 | environment-replay-1 | 71.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-06, strictImageFailures=135 |
+| environment-m7 | environment-replay-2 | 62.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.96e-06, strictImageFailures=146 |
+| environment-m7 | environment-replay-3 | 71.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=8.82e-06, strictImageFailures=123 |
+| environment-m7 | environment-replay-4 | 71.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.81e-06, strictImageFailures=216 |
+| environment-m7 | environment-replay-5 | 62.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.86e-05, strictImageFailures=130 |
+| environment-m7 | environment-replay-6 | 108.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=8.52e-06, strictImageFailures=65 |
+| environment-m7 | environment-replay-7 | 110.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.77e-07, strictImageFailures=7 |
+| environment-m7 | environment-replay-8 | 110.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.69e-05, strictImageFailures=163 |
+| environment-m7 | environment-replay-9 | 110.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.66e-06, strictImageFailures=47 |
+| environment-m7 | environment-replay-10 | 110.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.91e-06, strictImageFailures=136 |
+| environment-m7 | environment-replay-11 | 110.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.43e-06, strictImageFailures=53 |
+| hostcap-linux-triangle-run1 | tri0 | 39.9 | PASS | source capture CPU film | maximumAbsoluteImageError=4.77e-07, strictImageFailures=9 |
+| hostcap-linux-triangle-run1 | tri1 | 49.2 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| hostcap-linux-triangle-run1 | tri2 | 49.7 | PASS | source capture CPU film | maximumAbsoluteImageError=6.41e-07, strictImageFailures=12 |
+| hostcap-linux-triangle-run1 | tri3 | 49.1 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-06, strictImageFailures=426 |
+| hostcap-linux-triangle-run1 | tri4 | 49.4 | PASS | source capture CPU film | maximumAbsoluteImageError=2.38e-07, strictImageFailures=7 |
+| hostcap-linux-triangle-run1 | tri5 | 69.3 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-06, strictImageFailures=412 |
+| hostcap-linux-terminator-run1 | term0 | 34.4 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator-run1 | term1 | 41.5 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator-run1 | term2 | 42.2 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator-run1 | term3 | 41.3 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator-run1 | term4 | 69.2 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=25 |
+| hostcap-linux-terminator-run1 | term5 | 68.4 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=21 |
+| hostcap-linux-terminator-run1 | term6 | 69.5 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=21 |
+| hostcap-linux-terminator-run1 | term7 | 69.5 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=25 |
+| hostcap-linux-terminator-run1 | term8 | 70.2 | PASS | source capture CPU film | maximumAbsoluteImageError=4.77e-07, strictImageFailures=8 |
+| hostcap-linux-terminator-run1 | term9 | 83.8 | PASS | source capture CPU film | maximumAbsoluteImageError=1.07e-06, strictImageFailures=12 |
+| arm-m7 | microfacet_render | 60.3 | PASS | glibc, device-scene | strictImageFailures=119, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=119 max=1.91e-06 |
+| motion-m7 | render-static | 45.1 | PASS | glibc, device-scene | strictImageFailures=400, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=400 max=7.63e-06 |
+| motion-m7 | render-motion-0 | 49.3 | PASS | glibc, device-scene | strictImageFailures=407, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=407 max=2.53e-05 |
+| motion-m7 | render-motion-1 | 48.9 | PASS | glibc, device-scene | strictImageFailures=361, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=361 max=1.14e-05 |
+| motion-m7 | render-motion-2 | 49.7 | PASS | glibc, device-scene | strictImageFailures=442, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=442 max=1.67e-05 |
+| motion-m7 | render-motion-3 | 49.9 | PASS | glibc, device-scene | strictImageFailures=657, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=657 max=3.36e-05 |
+| motion-m7 | render-motion-4 | 49.1 | PASS | glibc, device-scene | strictImageFailures=443, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=443 max=4.48e-05 |
+| motion-m7 | render-motion-5 | 49.4 | PASS | glibc, device-scene | strictImageFailures=382, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=382 max=1.57e-05 |
+| motion-m7 | render-motion-6 | 48.3 | PASS | glibc, device-scene | strictImageFailures=592, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=592 max=4.58e-05 |
+| motion-m7 | render-motion-7 | 48.4 | PASS | glibc, device-scene | strictImageFailures=444, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=444 max=4.48e-05 |
+| volume-m7 | volume-state | 11.8 | PASS | device's own CPU / gate |  |
+| volume-m7 | volume-absorption | 60.2 | PASS | glibc, device-scene | strictImageFailures=1133, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1133 max=1.53e-05 |
+| volume-m7 | volume-isotropic | 76.5 | PASS | glibc, device-scene | strictImageFailures=1607, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1607 max=3.24e-05 |
+| volume-m7 | volume-forward | 76.6 | PASS | glibc, device-scene | strictImageFailures=1665, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1665 max=4.67e-05 |
+| volume-m7 | volume-backward | 75.8 | PASS | glibc, device-scene | strictImageFailures=1609, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1609 max=4.01e-05 |
+| volume-m7 | boundary-state | 46.7 | PASS | device's own CPU / gate |  |
+| volume-m7 | boundary-compaction-guard | 7.1 | PASS | device's own CPU / gate |  |
+| volume-m7 | closed-single | 91.6 | PASS | glibc, device-scene | strictImageFailures=974, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=974 max=3.05e-05 |
+| volume-m7 | closed-overlap | 148.6 | PASS | glibc, device-scene | strictImageFailures=1251, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=1251 max=4.58e-05 |
+| volume-m7 | closed-inside | 144.5 | PASS | glibc, device-scene | strictImageFailures=2283, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=2283 max=2.29e-05 |
+| volume-m7 | volume-replay-absorption | 27.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.53e-05, strictImageFailures=1133 |
+| volume-m7 | volume-replay-isotropic | 27.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.24e-05, strictImageFailures=1607 |
+| volume-m7 | volume-replay-forward | 27.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.67e-05, strictImageFailures=1665 |
+| volume-m7 | volume-replay-backward | 27.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.01e-05, strictImageFailures=1609 |
+| volume-m7 | closed-replay-single | 28.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.05e-05, strictImageFailures=974 |
+| volume-m7 | closed-replay-overlap | 54.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.58e-05, strictImageFailures=1251 |
+| volume-m7 | closed-replay-inside | 55.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.29e-05, strictImageFailures=2283 |
+| hostcap-linux-triangle | tri0 | 40.4 | PASS | source capture CPU film | maximumAbsoluteImageError=4.77e-07, strictImageFailures=9 |
+| hostcap-linux-triangle | tri1 | 49.1 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| hostcap-linux-triangle | tri2 | 49.0 | PASS | source capture CPU film | maximumAbsoluteImageError=6.41e-07, strictImageFailures=12 |
+| hostcap-linux-triangle | tri3 | 48.9 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-06, strictImageFailures=426 |
+| hostcap-linux-triangle | tri4 | 49.5 | PASS | source capture CPU film | maximumAbsoluteImageError=2.38e-07, strictImageFailures=7 |
+| hostcap-linux-triangle | tri5 | 68.9 | PASS | source capture CPU film | maximumAbsoluteImageError=2.32e-06, strictImageFailures=412 |
+| hostcap-linux-terminator | term0 | 34.4 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term1 | 41.3 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term2 | 41.6 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term3 | 41.6 | PASS | source capture CPU film | maximumAbsoluteImageError=5.96e-08, strictImageFailures=0 |
+| hostcap-linux-terminator | term4 | 68.9 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=25 |
+| hostcap-linux-terminator | term5 | 68.9 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=21 |
+| hostcap-linux-terminator | term6 | 68.9 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=21 |
+| hostcap-linux-terminator | term7 | 69.1 | PASS | source capture CPU film | maximumAbsoluteImageError=1.53e-05, strictImageFailures=25 |
+| hostcap-linux-terminator | term8 | 70.1 | PASS | source capture CPU film | maximumAbsoluteImageError=4.77e-07, strictImageFailures=8 |
+| hostcap-linux-terminator | term9 | 84.9 | PASS | source capture CPU film | maximumAbsoluteImageError=1.07e-06, strictImageFailures=12 |
+
+### s20
+
+| Corpus | Job | Wall s | Result | Judged against | Numbers |
+| --- | --- | --- | --- | --- | --- |
+| materials-s20-principled_svm | principled_svm | 413.4 | PASS | glibc, device-scene | strictFloatFailures=557, maximumAbsoluteError=3.59e-06 |
+| a650-refusals-m7 | nodes_world-refused | 0.5 | PASS | expected refusal |  |
+| a650-refusals-m7 | nodes_svm-refused | 0.4 | PASS | expected refusal |  |
+| a650-refusals-m7 | nodes_render-refused | 0.5 | PASS | expected refusal |  |
+| triangle-s20-triangle_sample | triangle_sample | 82.6 | PASS | glibc, device-scene | maximumAbsoluteError=0.000488; host re-judged vs glibc PASS: practical=0 strict=865 max=0.000488 |
+| regression-s20-glass_render | glass_render | 87.6 | PASS | glibc, device-scene | strictImageFailures=64, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=64 max=1.91e-06 |
+| regression-s20-lighting_mis | lighting_mis | 66.9 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1057 max=6.08e-06 |
+| triangle-s20-surface | surface | 46.5 | PASS | device's own CPU / gate | strictFloatFailures=1244, maximumAbsoluteError=3.81e-06 |
+| transparent-s20-transparent_lighting | transparent_lighting | 203.8 | PASS | glibc, device-scene | maximumAbsoluteError=6.02e-06; host re-judged vs glibc PASS: practical=0 strict=683 max=6.02e-06 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-0 | 52.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-1 | 54.0 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-2 | 64.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=3.81e-06, strictImageFailures=72 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-3 | 64.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=1.55e-06, strictImageFailures=133 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-4 | 65.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=167 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-5 | 65.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=7.9e-07, strictImageFailures=3 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-6 | 64.2 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=103 |
+| transparent-s20-transparent_lighting | transparent_lighting-replay-7 | 64.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=205 |
+| transparent-s20-transparent_shadow | transparent_shadow | 16.2 | PASS | device's own CPU / gate | maximumAbsoluteError=1.19e-07 |
+| transparent-s20-transparent_shadow | transparent-shadow-replay-direct | 11.2 | PASS | source capture CPU film | maximumAbsoluteImageError=1.19e-07, strictImageFailures=0 |
+| transparent-s20-transparent_shadow | transparent-shadow-replay-indexed | 11.0 | PASS | source capture CPU film | maximumAbsoluteImageError=0, strictImageFailures=0 |
+| materials-s20-principled_render | principled_render | 212.2 | PASS | glibc, device-scene | strictImageFailures=64, strictStageFailures=0; host re-judged vs glibc PASS: practical=0 strict=64 max=6.44e-06 |
+| materials-s20-principled_render | principled-replay | 173.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.44e-06, strictImageFailures=64 |
+| pixel-motion-s20-object-moving-images | object-moving-images | 149.7 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1181 max=6.08e-06 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-0 | 128.4 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.62e-06, strictImageFailures=7 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-1 | 133.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=5.36e-07, strictImageFailures=10 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-2 | 182.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.4e-06, strictImageFailures=291 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-3 | 189.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.31e-09, strictImageFailures=0 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-4 | 190.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=272 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-5 | 189.6 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.29e-06, strictImageFailures=45 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-6 | 191.1 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=329 |
+| pixel-motion-s20-object-moving-images | object-replay-motion-7 | 191.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=227 |
+| pixel-motion-s20-deforming-moving-images | deforming-moving-images | 234.5 | PASS | glibc, device-scene | maximumAbsoluteError=6.08e-06; host re-judged vs glibc PASS: practical=0 strict=1151 max=6.08e-06 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-0 | 85.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.38e-07, strictImageFailures=2 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-1 | 131.3 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=4.17e-07, strictImageFailures=7 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-2 | 143.5 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.4e-06, strictImageFailures=304 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-3 | 188.9 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=9.31e-09, strictImageFailures=0 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-4 | 188.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=280 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-5 | 188.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=2.98e-06, strictImageFailures=34 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-6 | 187.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=300 |
+| pixel-motion-s20-deforming-moving-images | deforming-replay-motion-7 | 186.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=224 |
+| materials-s20-principled_bounce | principled_bounce | 337.3 | PASS | device's own CPU / gate | strictFloatFailures=2796, maximumAbsoluteError=0.125 |

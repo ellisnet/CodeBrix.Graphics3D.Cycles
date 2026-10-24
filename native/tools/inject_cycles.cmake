@@ -12,12 +12,32 @@ if(ANDROID)
   # Its supported runtime-checked parser remains enabled.
   add_compile_definitions(FMT_CONSTEVAL=)
 endif()
+# CPU oracle arithmetic, one definition on every platform whose CPU device is
+# an oracle (Linux x64, Linux ARM64, macOS x64; inject_cycles_macos.cmake for
+# macOS arm64): no floating-point contraction and no reciprocal math, at a
+# fixed ISA baseline the build script selects (x86-64: Cycles' SSE4.2 kernels
+# only; ARM64: the architecture's base level). Cycles' GCC/Clang math flags put
+# -ffp-contract=on and -freciprocal-math into CMAKE_CXX_FLAGS; directory compile
+# options follow those flags on every command line, so these take precedence for
+# every Cycles and CodeBrix translation unit. The pinned source is not changed.
+# Android keeps Cycles' flags: its on-device CPU is a diagnostic, never the oracle.
+if(ANDROID)
+  set(CODEBRIX_CPU_FP_CONTRACT "on")
+else()
+  add_compile_options(-ffp-contract=off -fno-reciprocal-math)
+  set(CODEBRIX_CPU_FP_CONTRACT "off")
+endif()
 function(codebrix_add_cycles_device)
   cmake_policy(SET CMP0079 NEW)
   set(CODEBRIX_REFERENCE_OPTIONS -ffp-contract=off)
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
     list(APPEND CODEBRIX_REFERENCE_OPTIONS -msse4.2)
   endif()
+  # Compiled with the CPU kernels' own flags (cycles_kernel_cpu): states the CPU
+  # device's arithmetic for the capability report and refuses a non-baseline oracle.
+  target_sources(cycles_kernel_cpu PRIVATE "${CODEBRIX_NATIVE_ROOT}/cycles/cpu_arithmetic.cpp")
+  set_source_files_properties("${CODEBRIX_NATIVE_ROOT}/cycles/cpu_arithmetic.cpp" TARGET_DIRECTORY cycles_kernel_cpu
+    PROPERTIES COMPILE_DEFINITIONS "CODEBRIX_CPU_FP_CONTRACT=\"${CODEBRIX_CPU_FP_CONTRACT}\"")
   get_target_property(device_sources cycles_device SOURCES)
   list(REMOVE_ITEM device_sources device.cpp)
   set_property(TARGET cycles_device PROPERTY SOURCES "${device_sources}")
@@ -152,6 +172,18 @@ function(codebrix_add_cycles_device)
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_broad_lighting_gate PRIVATE ${codebrix_device_libs})
   target_compile_definitions(codebrix_cycles_broad_lighting_gate PRIVATE CODEBRIX_LIGHTING_MIS_GATE CODEBRIX_BROAD_LIGHT_GATE)
+  # Lane m1-lighting: environment light importance sampling/MIS and non-constant emitters (SHADE_LIGHT_NEE).
+  add_executable(codebrix_cycles_environment_gate "${CODEBRIX_NATIVE_ROOT}/cycles/environment_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp")
+  target_compile_features(codebrix_cycles_environment_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_environment_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_environment_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_environment_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_environment_gate PRIVATE ${codebrix_device_libs})
   # Phase E3: object shadow terminator offsets on smooth triangles (lighting_gate.cpp variant).
   add_executable(codebrix_cycles_shadow_terminator_gate "${CODEBRIX_NATIVE_ROOT}/cycles/lighting_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"

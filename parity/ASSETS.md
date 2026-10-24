@@ -66,3 +66,15 @@ for the supplied normal scale, color and packed material channels, occlusion
 strength 0.65, and the requested trilinear mip minification with repeat wrapping.
 The existing clay preview and synthetic normal-map proof do not cover these
 original material requirements.
+
+Original-material rendering of the bench now exists: the glTF example tool
+(`tools/gltf/CycleGltfRender`, mapping "blender") decodes the six reviewed JPEGs
+with CodeBrix.Imaging after checking their reviewed SHA-256, builds the Blender
+glTF importer's node graph (normal scale as Normal Map strength, packed
+metallic/roughness channels, sRGB base colour times its factor, occlusion not
+applied, repeat wrapping, linear interpolation without mipmaps) and renders it on
+the CPU reference and WebGPU backends; `native/oracle/scenes/assets/` holds the
+bench oracle scene documents and the expected hashes of the generated files. The
+textures and every decoded or derived pixel file remain external: they are
+generated locally (`native/oracle/scenes/make_bench_bundle.py`) under
+`native/work/` and never committed.

@@ -83,6 +83,7 @@ KEY NAMESPACES / USINGS
                                                           // ShaderOutput, NodeTypeInfo, SocketInfo
     using CodeBrix.Graphics3D.Cycles.Diagnostics;         // ICapabilityReport
     using CodeBrix.Graphics3D.Cycles.Interop;             // CyclesAbi, Native (low-level tier)
+    using CodeBrix.Graphics3D.Cycles.Bundles;             // OracleSceneBundle (scene bundles)
 
 
 CORE API REFERENCE
@@ -375,6 +376,47 @@ Shared value types and enums (root namespace)
     PipelineTier, PipelineTierFlags (WebGPU pipeline-tier selection)
   Every enum value equals the C constant of the same meaning.
 
+SCENE BUNDLES (LOAD AN ORACLE SCENE BUNDLE)
+--------------------------------------------
+A scene bundle is a self-contained scene description: one JSON document in the
+cbcOracleScene version 1 format (scene singletons, created nodes, shader graphs,
+meshes, attributes and images, addressed by their registered Cycles node,
+socket and enum names) plus the raw files it names, all in one directory. The
+same bundle can be rendered on any machine and backend, so it is a convenient
+way to move a scene between processes, devices and tools.
+
+OracleSceneBundle                                       (sealed)
+    static OracleSceneBundle Load(string jsonPath)
+                               the document and the raw files beside it
+    static OracleSceneBundle FromJson(string json,
+                               IReadOnlyDictionary<string, byte[]> files)
+                               an in-memory bundle
+    string Json, Id, Description, ColorConfig
+    RenderSettings Render      film size and samples the document asks for
+    uint Repeats               render.repeats (default 2)
+    IReadOnlyList<string> FileNames
+    byte[] ReadFile(string name)
+    IReadOnlyDictionary<string, Node> Apply(CyclesScene scene)
+                               builds the scene into a FRESH scene (by-name
+                               tier) and returns the nodes by document handle
+    string Save(string directory, string sceneFileName = "scene.json")
+                               writes the document and every file into a new
+                               or empty directory (never overwrites)
+  Raw files are little-endian and tightly packed: pixel files are rows bottom
+  to top in the declared format (float, float4, half, half4, byte, byte4,
+  ushort, ushort4); a mesh may name positionsFile (float32 xyz), indicesFile
+  (uint32) and attribute files (float32, or bytes for byte4 attributes)
+  instead of inline arrays. File names are plain names beside the document.
+  Apply throws FormatException for a malformed document and
+  InvalidOperationException (message naming the entry and socket, inner
+  NativeFailure) when the native host refuses a value. ColorConfig is not
+  applied by Apply: call CyclesHost.ConfigureColor first when it is set.
+
+    OracleSceneBundle bundle = OracleSceneBundle.Load("bench/scene.json");
+    await using CyclesScene scene = new(CyclesBackend.Gpu);
+    bundle.Apply(scene);
+    FilmBuffer film = await scene.RenderAsync(bundle.Render);
+
 BACKEND SELECTION
 -----------------
 Use CyclesBackend.Gpu for "the GPU of this platform" and CyclesBackend.
@@ -445,7 +487,13 @@ DETERMINISM
 -----------
 On the CPU reference backend, rendering the same scene with the same settings
 in the same process is bit-identical, and the three managed tiers produce
-bit-identical films for the same scene. GPU accumulation is not guaranteed to
+bit-identical films for the same scene. The CPU reference backend's arithmetic
+is fixed rather than tuned to the machine that built the library: unmodified
+Cycles CPU kernels at one instruction-set baseline, with every floating-point
+operation rounded separately (no fused multiply-add, no division replaced by a
+reciprocal multiply), so a CPU reference film does not depend on which computer
+built the native library; the capability report states it
+(backendScope.cpu.arithmetic in the JSON). GPU accumulation is not guaranteed to
 be bitwise repeatable. The native determinism statement (native/host/ABI.md,
 section Determinism; GetCapabilities().DeterminismReference) is
 authoritative.
@@ -512,19 +560,47 @@ A light
     lamp.UsedShaders = [emission];
     scene.CreateObject(lamp, Transform3x4.CreateTranslation(2, 3, -2));
 
-A texture from decoded pixels (decode the file with CodeBrix.Imaging)
+A texture from decoded pixels (decode the file with CodeBrix.Imaging, then hand
+the pixels to the image API)
 ---------------------------------------------------------------------
     // rgba8: tightly packed width*height*4 bytes, row 0 at v = 0
     ImageTextureNode texture = material.Add<ImageTextureNode>();
     using (CyclesImage image = scene.CreateImage<byte>(width, height, ImageFormat.Byte4, rgba8))
         texture.Bind(image);                  // the binding keeps the pixels
-    texture.Colorspace = "__builtin_srgb";
+    texture.Colorspace = "scene_linear_srgb";     // 8-bit sRGB colour data
     material.Connect(texture.ColorOutput, diffuse.ColorInput);
     mesh.SetAttribute("uv", AttributeValue.Point2, AttributeDomain.Corner,
                       AttributeFlags.Standard, uvs);   // 2 floats per corner
 
+    // non-colour data (normal, roughness, metallic maps): texture.Colorspace = "data"
     // float data: scene.CreateImage<float>(w, h, ImageFormat.Float4, floats)
     // half data:  scene.CreateImage<Half>(w, h, ImageFormat.Half4, halves)
+
+An environment (HDRI) world with importance sampling
+-----------------------------------------------------
+    ShaderNode world = scene.CreateShader();
+    EnvironmentTextureNode hdri = world.Add<EnvironmentTextureNode>();
+    using (CyclesImage image = scene.CreateImage<float>(w, h, ImageFormat.Float4, floats))
+        hdri.Bind(image);
+    BackgroundShaderNode sky = world.Add<BackgroundShaderNode>();
+    world.Connect(hdri.ColorOutput, sky.ColorInput);
+    world.Connect(sky.BackgroundOutput, world.Output.SurfaceInput);
+    scene.Background.Shader = world;
+    // The world is light-sampled (with MIS) only through a background light:
+    BackgroundLightNode worldLight = scene.CreateLight<BackgroundLightNode>();
+    worldLight.UseMis = true;
+    worldLight.MapResolution = 512;        // set it: 0 means 4096 x 2048 here
+    worldLight.UsedShaders = [world];
+    scene.CreateObject(worldLight);
+Cycles uses the background light only for a world that varies with direction
+(an environment texture or a procedural world); a constant world is lit by
+forward rays alone. The importance map is built from the world on the render
+device. Set the map resolution explicitly: on the WebGPU device the map's
+evaluation buffers must fit one GPU storage binding, so a large map (0 means
+4096 x 2048) needs an adapter whose limits allow a binding that large (WebGPU's
+default is 128 MiB; see the pitfall EXCEEDING THE GPU STORAGE-BINDING LIMIT).
+When the binding is too small, the render fails with the device's allocation
+error.
 
 Dropping to the by-name tier for a socket
 -----------------------------------------
@@ -638,6 +714,17 @@ COMMON PITFALLS TO AVOID
   although the GPU is right. Compare against a CPU reference rendered on a
   platform with a correctly rounded C library (Linux glibc), or treat the
   on-device CPU film as a diagnostic.
+- STORING 8-BIT sRGB TEXTURES AS "__builtin_srgb". With that colorspace the
+  native image manager converts a byte image to half-float at load (twice the
+  memory, 16-bit storage). "scene_linear_srgb" keeps the 8-bit pixels and
+  decodes sRGB while sampling (what Blender does with its default colour
+  configuration). Use "data" for normal, roughness and other non-colour maps.
+- EXCEEDING THE GPU STORAGE-BINDING LIMIT. The WebGPU device keeps a scene's
+  device data (images included) in one storage buffer binding, so a scene can
+  use at most the adapter's largest storage binding (the device requests the
+  adapter's limit, at most 2 GiB). A scene above it fails the render with
+  "WebGPU device arena exhausted (storage binding limit)" and the sizes; some
+  mobile GPUs offer only 128 MiB. Keep 8-bit textures 8-bit (previous item).
 - USING SOCKET NAMES FOR LINKS. On the low-level tiers, Connect takes socket
   UI names ("Color", "BSDF"); the setters take native socket names ("color",
   "value"). The typed tier handles both for you.
@@ -646,22 +733,33 @@ COMMON PITFALLS TO AVOID
 BRINGING GLTF SCENES
 ====================
 The package does not read glTF; load the file with a glTF library and build the
-scene through the typed API. The repository's example client,
-tools/gltf/CycleGltfRender (GltfSceneConverter.cs), does exactly that with
-CodeBrix.Graphics3D.Gltf2.MitLicenseForever and is a starting point to copy:
-one MeshNode per glTF mesh (positions, indices, per-face shaders for
+scene through the typed API (or write a scene bundle). The repository's example
+client, tools/gltf/CycleGltfRender (GltfSceneConverter.cs), does exactly that
+with CodeBrix.Graphics3D.Gltf2.MitLicenseForever and is a starting point to
+copy: one MeshNode per glTF mesh (positions, indices, per-face shaders for
 primitives, "N" vertex normals with Smooth, "uv" corner attribute with v
 flipped), one CreateObject per node instance with Transform3x4.FromMatrix(the
 node's world matrix), KHR_lights_punctual lights as sun/point/spot lights with
 an emission shader, and the glTF camera with its Z axis flipped (glTF cameras
-look along -Z, Cycles cameras along +Z). The example approximates
-metallic-roughness with a Diffuse BSDF mixed with a GGX Glossy BSDF by the
-metallic factor, adds emission with Add Closure and uses a Transparent BSDF for
-alpha. The WebGPU backend also renders PrincipledBsdfNode (every lobe except
-subsurface, see WEBGPU RENDER-TIME LIMITS), so a client may map glTF materials to
-it directly.
-Textures need decoded pixels (CreateImage with raw RGBA): the example uses
-base-colour factors only because Gltf2 does not decode images.
+look along -Z, Cycles cameras along +Z).
+It has two material mappings. The default approximates metallic-roughness
+factors with Diffuse/Glossy/Emission/Transparent closures. The Blender mapping
+builds the node graph Blender's glTF importer builds: a PrincipledBsdfNode fed
+by ImageTextureNodes (base colour image in "scene_linear_srgb" times the factor
+through a MixColorNode MULTIPLY; metallic = blue and roughness = green of the
+metallic-roughness image in "data" through SeparateColorNode, times their
+factors; a tangent-space NormalMapNode with strength = the normal scale). Its
+tangent frame is the glTF TANGENT attribute set as the "tangent" (vector) and
+"tangent_sign" (float, +1/-1) corner attributes with AttributeFlags.Standard;
+the Normal Map node's empty attribute uses them. The occlusion texture is not
+applied (Cycles has no occlusion input, and Blender's importer leaves it out of
+the shading tree). glTF sampler mapping: REPEAT -> extension "periodic",
+CLAMP_TO_EDGE -> "clamp", MIRRORED_REPEAT -> "mirror"; magFilter NEAREST ->
+interpolation "closest", otherwise "linear"; Cycles has no mipmaps.
+Textures need decoded pixels: the example decodes the glTF's images with
+CodeBrix.Imaging (Image.Load<Rgba32>, rows flipped to bottom-first) and passes
+the RGBA8 bytes to CreateImage. The WebGPU backend renders PrincipledBsdfNode
+(every lobe except subsurface, see WEBGPU RENDER-TIME LIMITS).
 
 
 NOT SUPPORTED ON ADRENO 640 (PIXEL 4 XL CLASS DEVICES)
@@ -732,6 +830,12 @@ WHAT THIS PACKAGE DOES NOT DO
 - It does not render passes other than Combined, non-perspective cameras,
   light trees, denoising, adaptive sampling or path guiding on the WebGPU
   device (the CPU reference backend does).
+- It does not render background-light portals, sky-texture sun guiding,
+  more than one background light, or point, spot, area and sun lamps whose
+  emission shader is not constant on the WebGPU device (the render fails with
+  an error naming the feature). Environment-texture and procedural worlds with
+  importance sampling, and mesh emitters with textured or node emission, do
+  render there.
 - It does not render texture, colour and utility shader nodes (noise, Voronoi,
   wave, magic, brick and Gabor textures, ramps, mixing, mapping and similar) on
   Adreno 650 GPUs (for example the Samsung Galaxy S20); such scenes are refused
@@ -765,6 +869,8 @@ WORKING EXAMPLES ON GITHUB
 - Rendering on the GPU (WebGPU) backend and comparing with the CPU reference,
   progress and cancellation on the GPU:
   https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs
+- Loading, saving and rendering scene bundles:
+  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/OracleSceneBundleTests.cs
 - Converting a glTF file into a scene (example client):
   https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tools/gltf/CycleGltfRender/GltfSceneConverter.cs
 
@@ -789,6 +895,7 @@ Version:       CyclesVersion.NativeLibraryVersion, CyclesRevision, IsAbiCompatib
 Progress:      scene.RenderEventReceived += (s, e) => Log(e.Kind, e.SamplesDone);  // no scene calls inside
 Passes:        scene.AddPass(PassType.Depth, "Depth"); scene.Render(s); scene.ReadPass("Depth");
 Remove:        scene.Remove(obj); scene.Remove(mesh);   // referrers first
+Bundle:        OracleSceneBundle b = OracleSceneBundle.Load("scene.json"); b.Apply(scene); scene.Render(b.Render);
 Re-upload:     img.Update<byte>(rgba8);
 Motion:        mesh.SetMotionPositions(3, xyzSteps);    // before or after a render
 Catalogue:     NodeType.Find("principled_bsdf").Inputs

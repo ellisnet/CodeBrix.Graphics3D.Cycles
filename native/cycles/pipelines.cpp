@@ -30,7 +30,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SVM_BSDF_DIFFUSE",SF_BSDF_DIFFUSE},{"SVM_BSDF_TRANSLUCENT",SF_BSDF_TRANSLUCENT},
     {"SVM_BSDF_TRANSPARENT",SF_BSDF_TRANSPARENT},{"SVM_BSDF_GLOSSY",SF_BSDF_GLOSSY},{"SVM_BSDF_GLASS",SF_BSDF_GLASS},
     {"LIGHT_AREA",SF_LIGHT_AREA},{"MOTION_OBJECT",SF_MOTION_OBJECT},{"MOTION_CAMERA",SF_MOTION_CAMERA},
-    {"LIGHT_TRIANGLE",SF_LIGHT_TRIANGLE},
+    {"LIGHT_TRIANGLE",SF_LIGHT_TRIANGLE},{"LIGHT_BACKGROUND",SF_LIGHT_BACKGROUND},{"LIGHT_NEE",SF_LIGHT_NEE},
     {"SHADOW_TERMINATOR_GEOMETRY",SF_TERMINATOR_GEOMETRY},{"SHADOW_TERMINATOR_SHADING",SF_TERMINATOR_SHADING},
     {"SVM_NODE_TEX_NOISE",SF_TEX_NOISE},{"SVM_NODE_TEX_WHITE_NOISE",SF_TEX_WHITE_NOISE},{"SVM_NODE_TEX_WAVE",SF_TEX_WAVE},
     {"SVM_NODE_TEX_MAGIC",SF_TEX_MAGIC},{"SVM_NODE_TEX_BRICK",SF_TEX_BRICK},{"SVM_NODE_MAPPING",SF_MAPPING},
@@ -64,7 +64,7 @@ std::string shader_feature_list(ShaderFeatures features){
 
 // Mask layout invariants (pipelines.h): assigned bits keep their numbers.
 static_assert(SF_GEOMETRY.test(0)&&SF_MAPPING_DERIVATIVE.test(61)&&SF_TEX_GABOR.test(63)&&!SF_ALL.test(62));
-static_assert(SF_ALL.count()==63&&!(SF_ALL&~ShaderFeatures::range(0,64)).any());
+static_assert(SF_ALL.count()==65&&!(SF_ALL&~ShaderFeatures::range(0,66)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65));
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
 
 namespace {
@@ -363,6 +363,12 @@ ShaderFeatures WebGPUDevice::shader_features(){
     // The last distribution entry is the CDF end marker (prim 0), not an emitter.
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0)enabled_features|=SF_LIGHT_TRIANGLE;
     for(const KernelShader &shader:shader_records)if(shader.flags&(SD_MIS_FRONT|SD_MIS_BACK))enabled_features|=SF_LIGHT_TRIANGLE;
+    // Background light and non-constant emitters that light sampling can reach.
+    for(const KernelLight &light:light_records)if(light.type==LIGHT_BACKGROUND){enabled_features|=SF_LIGHT_BACKGROUND;
+      const auto id=uint(light.shader_id)&SHADER_MASK;if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}
+    if(data.background.use_mis)enabled_features|=SF_LIGHT_BACKGROUND;
+    for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0&&size_t(light_distribution_records[i].prim)<tri_shader_words.size()){
+      const auto id=tri_shader_words[light_distribution_records[i].prim]&SHADER_MASK;if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}
     for(const uint flags:object_flag_records)if(flags&SD_OBJECT_MOTION)enabled_features|=SF_MOTION_OBJECT;
     if(data.cam.num_motion_steps!=0)enabled_features|=SF_MOTION_CAMERA;
     for(const KernelObject &object:object_records){

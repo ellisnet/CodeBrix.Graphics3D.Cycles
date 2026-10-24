@@ -273,6 +273,32 @@ public class WebGpuRenderTests(ITestOutputHelper output)
         comparison.PracticalFailures.Should().Be(0);
     }
 
+    [Fact]
+    public async Task gltf_textured_plane_with_the_blender_mapping_renders_on_the_gpu_within_the_practical_criterion()
+    {
+        //Arrange: the textured-plane control (image textures, Mix Color, Separate Color, Math, tangent-space normal map, Principled BSDF).
+        string directory = Path.Combine(Path.GetTempPath(), "cycles-gltf-textures-" + Guid.NewGuid().ToString("N"));
+        SampleModel.WriteTexturedPlaneTextures(directory);
+        TextureSet textures = TextureSet.Load(directory);
+        Directory.Delete(directory, true);
+        ModelRoot model = SampleModel.CreateTexturedPlane();
+        RenderSettings settings = new(48, 32, 16);
+        GltfConversionOptions options = new() { Width = settings.Width, Height = settings.Height, MaterialMapping = GltfMaterialMapping.Blender, Textures = textures };
+        using CyclesScene gpu = CreateGpuScene();
+        GltfSceneConverter.Convert(model, gpu, options);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        GltfSceneConverter.Convert(model, cpu, options);
+
+        //Act
+        FilmBuffer reference = cpu.Render(settings);
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
+        FilmComparison comparison = FilmComparison.Compare(film.Span, reference.Span);
+        output.WriteLine("gltf textured plane: " + comparison);
+
+        //Assert
+        comparison.PracticalFailures.Should().Be(0);
+    }
+
     // Records reports on the reporting thread, so the last report is known when the task completes.
     private sealed class SynchronousProgress(ConcurrentQueue<RenderProgress> reports) : IProgress<RenderProgress>
     {

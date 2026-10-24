@@ -85,12 +85,12 @@ def overlay(out=None):
     _write(out/'svm_nodes_enums.inc',''.join('  ENUM('+name+');\n' for name in node_enum_names))
     _write(out/'svm_shader.inc','R"CBWGSL('+translated+closures+svm+')CBWGSL"\n')
     emitter_math=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_emitters.wgsl'))
-    background=shader_data+translated+closures+svm+emitter_math+(ROOT/'shaders/wavefront_background.wgsl').read_text()+(ROOT/'shaders/wavefront_light_eval.wgsl').read_text()
+    background=shader_data+translated+closures+svm+emitter_math+(ROOT/'shaders/wavefront_background_light.wgsl').read_text()+(ROOT/'shaders/wavefront_background.wgsl').read_text()+(ROOT/'shaders/wavefront_light_eval.wgsl').read_text()
     _write(out/'background_shader.inc','R"CBWGSL('+background+')CBWGSL"\n')
     film=(ROOT/'shaders/wavefront_background.wgsl').read_text().split('fn background_visible')[0]
     sampling=(REPO/'parity/shaders/closures.wgsl').read_text()
     sampling=sampling[:sampling.index('struct Closure')]+sampling[sampling.index('// Original numerical adapter:'):sampling.index('fn oren_g')]
-    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_lighting.wgsl'))
+    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_background_light.wgsl','wavefront_lighting.wgsl','wavefront_light_nee.wgsl'))
     _write(out/'surface_shader.inc','R"CBWGSL('+surface+')CBWGSL"\n')
     volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_volume.wgsl'))
     _write(out/'volume_shader.inc','R"CBWGSL('+volume+')CBWGSL"\n')
@@ -110,6 +110,22 @@ def overlay(out=None):
     _write(out/'state_copy_reference.inc','// SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n// SPDX-License-Identifier: Apache-2.0\n'+source)
     return out
 
+def cpu_kernel_flags(build):
+    """The CPU kernel compile line of the fixed-baseline oracle, checked: SSE4.2,
+    no -march=native/AVX/FMA, contraction and reciprocal math switched off last."""
+    rows=[row for row in json.loads((build/'compile_commands.json').read_text())
+          if row['file'].endswith('src/kernel/device/cpu/kernel.cpp')]
+    if len(rows)!=1:raise RuntimeError('CPU kernel compile command not found')
+    words=rows[0]['command'].split()
+    flags=[w for w in words if re.match(r'-(O\d|march|mtune|mss?se|mavx|mfma|mf16c|ffp-contract|f(no-)?reciprocal-math|ffast-math|mfpmath)',w)]
+    contract=[w for w in flags if w.startswith('-ffp-contract')]
+    reciprocal=[w for w in flags if w.endswith('reciprocal-math') or w=='-ffast-math']
+    problems=[w for w in flags if w.startswith(('-march','-mavx','-mfma','-mf16c'))]
+    if problems or '-msse4.2' not in flags or not contract or contract[-1]!='-ffp-contract=off' \
+       or not reciprocal or reciprocal[-1]!='-fno-reciprocal-math':
+        raise RuntimeError('CPU kernels are not at the fixed oracle baseline: '+' '.join(flags))
+    return dict(file='src/kernel/device/cpu/kernel.cpp',flags=flags,isa='x86-64 SSE4.2',fpContract='off',reciprocalMath='off')
+
 def main():
     p=argparse.ArgumentParser();p.add_argument('--jobs',default='6')
     p.add_argument('--target', action='append', help='Build selected CMake targets instead of the default host and gates')
@@ -120,7 +136,11 @@ def main():
     (WORK/'cycles-webgpu-compatibility.json').write_text(json.dumps(audit(allow_rust_documentation_change=True),indent=2)+'\n')
     generated=overlay();deps=dependency_prefix();build=WORK/'cycles-build'
     options={'CMAKE_BUILD_TYPE':'Release','CMAKE_POSITION_INDEPENDENT_CODE':'ON','CMAKE_EXPORT_COMPILE_COMMANDS':'ON',
-        'CMAKE_PREFIX_PATH':deps,'WITH_LIBS_PRECOMPILED':'OFF','WITH_LEGACY_LIBRARIES':'ON','WITH_CYCLES_NATIVE_ONLY':'ON',
+        'CMAKE_PREFIX_PATH':deps,'WITH_LIBS_PRECOMPILED':'OFF','WITH_LEGACY_LIBRARIES':'ON',
+        # Fixed-baseline CPU oracle (native/DEVICE.md): Cycles' SSE4.2 kernels only,
+        # never -march=native (which tied the oracle to the build machine) and no
+        # AVX2 kernel; inject_cycles.cmake removes contraction and reciprocal math.
+        'WITH_CYCLES_NATIVE_ONLY':'OFF','CXX_HAS_AVX2:BOOL':'OFF','CXX_HAS_F16C:BOOL':'OFF',
         'OpenImageIO_DIR':deps/'lib/cmake/OpenImageIO','OpenColorIO_DIR':deps/'lib/cmake/OpenColorIO',
         'CMAKE_PROJECT_Cycles_INCLUDE':ROOT/'tools/inject_cycles.cmake','CODEBRIX_CYCLES_OVERLAY':generated,
         'CODEBRIX_WEBGPU_PACKAGE':PACKAGE}
@@ -138,6 +158,7 @@ def main():
     for command in commands:subprocess.run(command,check=True)
     if rebased and rebased['rebased']:verify_rebase(build,REPO,rebased['oldRoot'])
     (WORK/'cycles-build.json').write_text(json.dumps({'commands':commands,'cyclesRevision':REVISION,
+        'cpuKernelCompile':cpu_kernel_flags(build),
         'registrationPatchSha256':hashlib.sha256((WORK/'cycles-registration.patch').read_bytes()).hexdigest(),
         'shaderSha256':hashlib.sha256((ROOT/'shaders/controls.wgsl').read_bytes()).hexdigest(),
         'cameraShaderSha256':hashlib.sha256((ROOT/'shaders/wavefront_camera.wgsl').read_bytes()).hexdigest(),

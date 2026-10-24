@@ -142,18 +142,29 @@ fn principled_average(v:vec3<f32>)->f32{return (v.x+v.y+v.z)*(1.0/3.0);}
 // rotate_around_axis with binary32 sinf/cosf: quadrant reduction by a split
 // pi/2 and the bounded precise_disk_sincos adapter (driver sin/cos are only
 // accurate to about 2^-11, which visibly turns sharp anisotropic GGX lobes).
-fn principled_rotate(p:vec3<f32>,axis:vec3<f32>,angle:f32)->vec3<f32>{
+fn principled_rotate(pt:vec3<f32>,axis:vec3<f32>,angle:f32)->vec3<f32>{
     // Exact quadrant reduction (trig_product keeps k*pi/2's rounding residual); the reduced angle stays two-part.
     let k=round(angle*0.6366197723675814);let product=trig_product(k,1.5707963705062866);
     let q=precise_disk_sincos_pair(vec2<f32>(rounded_add(angle,-product.x),rounded_add(-product.y,k*4.3711390001862426e-8)));let quadrant=u32(i32(k)&3);var s=q.x;var c=q.y;
     if(quadrant==1u){s=q.y;c=-q.x;}if(quadrant==2u){s=-q.x;c=-q.y;}if(quadrant==3u){s=-q.y;c=q.x;}
     // util/math_float3.h rotate_around_axis in its operation order, every product rounded before its sum
     // (rounded_add), so neither the Intel nor the Adreno compiler contracts it (lane S2, principled_render stage 40).
-    let m=1.0-c;let xx=rounded_add(c,(m*axis.x)*axis.x);let yy=rounded_add(c,(m*axis.y)*axis.y);let zz=rounded_add(c,(m*axis.z)*axis.z);
-    let xy=(m*axis.x)*axis.y;let xz=(m*axis.x)*axis.z;let yz=(m*axis.y)*axis.z;
-    return vec3<f32>(rounded_add(rounded_add(xx*p.x,rounded_add(xy,-(axis.z*s))*p.y),rounded_add(xz,axis.y*s)*p.z),
-        rounded_add(rounded_add(rounded_add(xy,axis.z*s)*p.x,yy*p.y),rounded_add(yz,-(axis.x*s))*p.z),
-        rounded_add(rounded_add(rounded_add(xz,-(axis.y*s))*p.x,rounded_add(yz,axis.x*s)*p.y),zz*p.z));
+    // Row r of the rotation is rounded_add(rounded_add(e0*pt.x,e1*pt.y),e2*pt.z) with e_i=rounded_add(u_r[i],v_r[i]).
+    // The three rows run through one body, in a loop whose bound is opaque to the compiler (header word 3 after the
+    // error word, always 0; a larger value only adds iterations that write nothing). With all fifteen rounded_add
+    // bodies inlined, the Adreno 650 compiler (EV031.32.02.10) dropped an SVM store in the Principled SVM probe
+    // (error 8, native/DEVICE.md "Adreno 650 lane 2"). Same sums in the same order.
+    let m=1.0-c;let xy=(m*axis.x)*axis.y;let xz=(m*axis.x)*axis.z;let yz=(m*axis.y)*axis.z;
+    let u0=vec3<f32>(c,xy,xz);let u1=vec3<f32>(xy,c,yz);let u2=vec3<f32>(xz,yz,c);
+    let v0=vec3<f32>((m*axis.x)*axis.x,-(axis.z*s),axis.y*s);let v1=vec3<f32>(axis.z*s,(m*axis.y)*axis.y,-(axis.x*s));
+    let v2=vec3<f32>(-(axis.y*s),axis.x*s,(m*axis.z)*axis.z);
+    var out=vec3<f32>(0);let count=3u|load_word(p(17u)+12u);
+    for(var row=0u;row<count;row++){
+        let u=select(select(u2,u1,row==1u),u0,row==0u);let v=select(select(v2,v1,row==1u),v0,row==0u);
+        let r=rounded_add(rounded_add(rounded_add(u.x,v.x)*pt.x,rounded_add(u.y,v.y)*pt.y),rounded_add(u.z,v.z)*pt.z);
+        out=select(out,vec3<f32>(r),vec3<u32>(0u,1u,2u)==vec3<u32>(row));
+    }
+    return out;
 }
 fn principled_new(kind:u32,weight:vec3<f32>)->SvmClosure{
     var c:SvmClosure;c.kind=kind;c.weight=max(weight,vec3<f32>(0));c.sample_weight=abs(principled_average(c.weight));return c;

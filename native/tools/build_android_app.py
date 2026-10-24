@@ -104,7 +104,7 @@ def main():
     source_pin=inputs();pins={str(Path(__file__).resolve()):sha(Path(__file__))}
     state=dict(complete=False,phase='staging');save(out/'status.json',state)
     try:
-        for name in ['AndroidHost.csproj','AndroidManifest.xml','MainActivity.cs','FilmComparison.cs','WebGpuChecks.cs']:
+        for name in ['AndroidHost.csproj','AndroidManifest.xml','MainActivity.cs','FilmComparison.cs','WebGpuChecks.cs','BundleChecks.cs']:
             path=templates/name
             assert path.is_file(),path
             shutil.copy2(path,app/path.name);pins[str(path)]=sha(path)

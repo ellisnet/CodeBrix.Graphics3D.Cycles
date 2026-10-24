@@ -1,0 +1,85 @@
+{
+  "sceneId": "assets/bench_01",
+  "sceneSha256": "72bacca609c106d9f099773a52f241d91ad983e0bab6fd19420510f13c946935",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 1.1920928955078125e-07,
+  "renderSeconds": [
+    76.9774,
+    0.226803
+  ],
+  "filmSha256": [
+    "517ee583f050793ee1846ffc152fa47a20d47a4e3ada10e7728ddda8d1f70216",
+    "d718f57dc6d4b07a96f94749a4d4b5d80966706efbeb4b7e1b5577b1cbb3967f"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [
+    "CodeBrix Cycles WebGPU warning: pipeline 'shade_background' (background module) inlines to 1416577 bytes of WGSL, at or above the 1110000-byte size guard: about 70829 backend instructions estimated (64099 to 83821); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' (surface module) inlines to 1362166 bytes of WGSL, at or above the 1110000-byte size guard: about 68108 backend instructions estimated (61636 to 80602); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged"
+  ],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "d21bd4a58f489afeafe2a3046ab32a556578f0ec",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "d71a447a49f472d686a4746e25c5fc12f40d4b8fbfbca1b134e0e56b24c0f18f",
+  "runnerSha256": "00a26fdb9e5be631405699c862440a6203d900a1f0bc0efdd372b8795b6c4842",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/work/merge7/bundles/bench/bench_01.json",
+  "backendDescription": "CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)",
+  "environment": {},
+  "processSeconds": 77.511,
+  "runnerCommand": [
+    "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/bench/bench_01.json",
+    "--backend",
+    "webgpu",
+    "--label",
+    "wgsl-linux-intel",
+    "--output",
+    "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/oracles-p2/bench/oracle/assets/bench_01/wgsl-linux-intel",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json"
+}

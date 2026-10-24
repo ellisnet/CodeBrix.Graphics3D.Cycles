@@ -286,6 +286,14 @@ the sources changed.
 - The CPU kernels are the oracle. On this machine the CPU-arm64 films
   (`cpu-arm64-macos`, Apple Clang, plain C++ kernels without sse2neon) are the
   local CPU oracle; on the Linux machine CPU-x64 is the other.
+- Both are built at the fixed baseline (native/DEVICE.md, "Fixed-baseline CPU
+  oracle"): no FMA contraction (Apple Clang's arm64 default is on; the CMake
+  injection passes `-ffp-contract=off`), no reciprocal math, the architecture's
+  base level (no `-mcpu`). **UNTESTED:** the rule has not yet been compiled on a
+  Mac; the build recipe refuses a CPU kernel compile line that is not at the
+  baseline. The macOS CPU evidence recorded before this rule
+  (`native/evidence/cycles-oracles-macos-*`) used contraction, so its CPU films
+  are not expected to match new ones bit for bit.
 - Practical criterion, must pass for every component:
   `abs(a - b) <= 5e-5 + 2e-4 * abs(b)`, with `b` the reference (the earlier
   directory given to `compare.py`).

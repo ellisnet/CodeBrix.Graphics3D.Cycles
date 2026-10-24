@@ -165,7 +165,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       if(bad==2){d.light_records[2].area.tan_half_spread=-1;reason="Invalid native area";}
       if(bad==3){d.light_records[2].area.invarea=std::numeric_limits<float>::quiet_NaN();reason="Invalid native area";}
       if(bad==4){d.light_records[0].spot.cos_half_larger_spread=2;reason="Invalid native spot";}
-      if(bad==5){d.light_records[0].type=LIGHT_BACKGROUND;reason="emitter type not implemented";}
+      // LIGHT_BACKGROUND is a supported lamp type (environment gate); LIGHT_TRIANGLE never is one.
+      if(bad==5){d.light_records[0].type=LIGHT_TRIANGLE;reason="emitter type not implemented";}
       bool rejected=false;try{d.validate_lighting(true);}catch(const std::exception &error){rejected=std::string(error.what()).find(reason)!=std::string::npos;}
       require(rejected,"Emitter guard did not reject case="+std::to_string(bad));metrics.guards++;
     }d.light_records=saved;

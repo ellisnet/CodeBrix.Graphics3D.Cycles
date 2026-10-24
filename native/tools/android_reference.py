@@ -23,11 +23,19 @@ compare  Recomputes, on the host, a device job's comparisons from the files the 
          against the glibc reference (diagnostic: the device C library's deviation) and
          the device GPU against its local CPU reference (diagnostic: the comparison the
          gate used before this policy).
+stage-judge
+         render_gate's lockstep stages in the device-scene flow (stage-state exchange): the
+         device run records every stage's GPU input and output state (PREFIX.stages.bin); this
+         runs the Linux x64 gate binary on the device's dumped scene with
+         CODEBRIX_CYCLES_STAGE_JUDGE (CPU only), which evaluates the glibc CPU oracle on each
+         recorded input and compares the recorded GPU output with the same criteria as the
+         device's local lockstep check. Must pass for the device job to pass.
 
 Usage:
   android_reference.py export --bin DIR --output DIR --job LABEL=GATE[:ARG,...][@ENV=VALUE;...] ...
   android_reference.py scene-reference --bin DIR --scenes DIR --output DIR --label LABEL --gate GATE [--arg A ...]
   android_reference.py compare --kind samples|lighting|render --run DIR --reference DIR --output FILE
+  android_reference.py stage-judge --bin DIR --scenes DIR --stages FILE --gate GATE [--arg A ...] --output FILE
 """
 import argparse
 import array
@@ -295,6 +303,38 @@ def compare(args):
     return 0 if result['passed'] else 1
 
 
+def stage_judge(args):
+    sys.path.insert(0, str(HERE))
+    from render_gate import inputs
+    binary = args.bin/('codebrix_cycles_'+args.gate+'_gate')
+    stages, scenes = args.stages.resolve(), args.scenes.resolve()
+    folder = args.output.resolve().parent/(args.output.name.removesuffix('.json')+'-run')
+    folder.mkdir(parents=True, exist_ok=True)
+    environment = {k: v for k, v in os.environ.items() if not k.startswith('CODEBRIX_CYCLES_SCENE_') and
+                   not k.startswith('CODEBRIX_CYCLES_REFERENCE_') and k != 'CODEBRIX_CYCLES_STAGE_JUDGE'}
+    environment.update({'CODEBRIX_CYCLES_SCENE_LOAD': str(scenes), 'CODEBRIX_CYCLES_STAGE_JUDGE': str(stages)})
+    command = [str(binary), str(folder/'judge'), *args.arg]
+    started = time.time()
+    result = subprocess.run(command, capture_output=True, text=True, env=environment, timeout=args.budget, cwd=folder)
+    (folder/'judge.stdout.txt').write_text(result.stdout)
+    (folder/'judge.stderr.txt').write_text(result.stderr)
+    report = None
+    if result.returncode == 0:
+        report = json.loads(result.stdout)
+    errors = [l for l in result.stderr.strip().splitlines() if l.strip() and not l.startswith('[OpenColorIO')]
+    record = dict(role='authoritative', comparison='device GPU lockstep stages versus the Linux x64 glibc CPU oracle on the device scene',
+                  practicalCriterion=PRACTICAL, strictCriterion=STRICT,
+                  platform=dict(system=platform.system(), machine=platform.machine(), libc=glibc_version()),
+                  command=command, exit=result.returncode, seconds=round(time.time()-started, 1),
+                  gateBinarySha256=sha(binary), stagesSha256=sha(stages), stagesBytes=stages.stat().st_size,
+                  deviceSceneSha256={p.name: sha(p) for p in sorted(scenes.glob('*.scene'))}, sourceSha256=inputs(),
+                  report=report, failure=None if result.returncode == 0 else (errors[-1] if errors else 'exit %d' % result.returncode),
+                  passed=result.returncode == 0 and bool(report and report.get('passed') and report.get('stageJudge')))
+    args.output.write_text(json.dumps(record, indent=2)+'\n')
+    print('stage-judge', args.gate, 'passed', record['passed'], record['failure'] or '', '%.0fs' % record['seconds'])
+    return 0 if record['passed'] else 1
+
+
 def main():
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest='action', required=True)
@@ -319,8 +359,17 @@ def main():
                    help='samples/render: the job output prefix (.../run); lighting: the job output directory')
     c.add_argument('--reference', type=Path, required=True)
     c.add_argument('--output', type=Path, required=True)
+    j = sub.add_parser('stage-judge')
+    j.add_argument('--bin', type=Path, required=True)
+    j.add_argument('--scenes', type=Path, required=True, help='The device scene dump of the job (pass A)')
+    j.add_argument('--stages', type=Path, required=True, help='The pulled PREFIX.stages.bin of the device run')
+    j.add_argument('--gate', required=True)
+    j.add_argument('--arg', action='append', default=[])
+    j.add_argument('--output', type=Path, required=True)
+    j.add_argument('--budget', type=float, default=900)
     args = parser.parse_args()
-    return {'export': export, 'scene-reference': scene_reference, 'compare': compare}[args.action](args)
+    return {'export': export, 'scene-reference': scene_reference, 'compare': compare,
+            'stage-judge': stage_judge}[args.action](args)
 
 
 if __name__ == '__main__':

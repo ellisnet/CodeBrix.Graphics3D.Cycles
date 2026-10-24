@@ -22,8 +22,8 @@
 //                                         the diagnostic file and never decides pass/fail.
 //
 // Only references that are independent of the GPU (fixed inputs, whole CPU renders) are
-// routed through here. Lockstep checks whose CPU input is the device's own GPU state cannot
-// be produced elsewhere in advance and stay local (DEVICE.md lists them).
+// routed through here. render_gate.cpp's lockstep stages travel by its stage-state exchange
+// (judged on Linux after the device run); the other state checks stay local (DEVICE.md).
 //
 // The GPU consumes the scene tables the device's own host code prepared (light records,
 // motion decompositions, camera data: Cycles' scene preparation also calls libm), so the
@@ -61,10 +61,10 @@
 #include "scene/devicescene.h"
 namespace reference_policy {
 inline const char *environment(const char *name){const char *value=std::getenv(name);return value&&*value?value:nullptr;}
-// Gates whose every check uses the imported reference (sampler arrays, lighting_gate.cpp images)
-// call this before creating the device: an Android scalar build then generates the reference
-// oracle's (Linux x64 SSE4.2) arithmetic adapters (wavefront.h reference_oracle_sse). Gates with
-// local lockstep checks (render_gate.cpp) do not, and keep the device's own oracle.
+// Gates whose every check uses the imported reference (sampler arrays, lighting_gate.cpp images,
+// render_gate.cpp with the stage-state exchange) call this before creating the device: an Android
+// scalar build then generates the reference oracle's (Linux x64 SSE4.2) arithmetic adapters
+// (wavefront.h reference_oracle_sse). Gates with local checks keep the device's own oracle.
 inline void use_reference_oracle_arithmetic(){if(environment("CODEBRIX_CYCLES_REFERENCE_IMPORT"))setenv("CODEBRIX_CYCLES_REFERENCE_ORACLE","linux-x64-sse4.2",1);}
 inline int64_t ordered(float value){int32_t bits;std::memcpy(&bits,&value,4);return bits<0?int64_t(INT32_MIN)-bits:bits;}
 // Units in the last place between two finite floats (0 for equal bits; +0/-0 count as equal).

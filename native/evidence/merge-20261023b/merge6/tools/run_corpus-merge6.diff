@@ -1,0 +1,50 @@
+19c19,20
+< HERE = Path(__file__).resolve().parent; C2 = HERE.parent; REPO = HERE.parents[3]  # merge wave 3: C2 = native/work/merge5 (merge wave 4 copy of lane S's runner)
+---
+> HERE = Path(__file__).resolve().parent; C2 = HERE.parent; REPO = HERE.parents[3]  # merge wave 6: C2 = native/work/merge6 (lane S3's stage-exchange runner, from merge wave 5's)
+> BUILD_ROOT = REPO/'native/work/merge5'  # merge wave 6: the Android gate build trees and replay build stay in merge 5's folder (built in place)
+29c30
+< render_replay.BASE = C2/'replay-build'
+---
+> render_replay.BASE = BUILD_ROOT/'replay-build'
+173a175,176
+> def scene_env(job):  # merge wave 6: scene parameters of a job for the Linux reference and stage-judge passes
+>     return {k: v for k, v in job['env'].items() if not k.startswith('CODEBRIX_CYCLES_')}
+215c218
+< serial, model = DEVICES[args.device]; RID = RIDS[args.device]; RUNTIME_SHA = RUNTIME_SHAS[RID]; BUILD = C2/('build-'+RID)/'android'/RID/'host'
+---
+> serial, model = DEVICES[args.device]; RID = RIDS[args.device]; RUNTIME_SHA = RUNTIME_SHAS[RID]; BUILD = BUILD_ROOT/('build-'+RID)/'android'/RID/'host'
+225,226c228,229
+< STAGE_REMOTE = '/data/local/tmp/codebrix-m5-stage'
+< REMOTE = '/data/local/tmp/codebrix-m5-'+args.corpus+'-'+args.label
+---
+> STAGE_REMOTE = '/data/local/tmp/codebrix-m6-stage'
+> REMOTE = '/data/local/tmp/codebrix-m6-'+args.corpus+'-'+args.label
+256c259
+<     return dict(pid=pid, killed=killed, remaining=[r for r in left.splitlines() if 'codebrix-m5-' in r])
+---
+>     return dict(pid=pid, killed=killed, remaining=[r for r in left.splitlines() if 'codebrix-m6-' in r])
+279c282
+<     assert not any('codebrix_' in l or 'codebrix-m5-' in l or 'render_replay' in l or 'compile_probe' in l for l in processes.splitlines()), 'Another codebrix process is running'
+---
+>     assert not any('codebrix_' in l or 'codebrix-m6-' in l or 'render_replay' in l or 'compile_probe' in l for l in processes.splitlines()), 'Another codebrix process is running'
+286c289,291
+<                        'nodes_svm': 'svm', 'principled_svm': 'svm'}  # lane S: render and SVM probe gates take the device-scene flow
+---
+>                        'nodes_svm': 'svm', 'principled_svm': 'svm',  # lane S: render and SVM probe gates take the device-scene flow
+>                        # merge wave 6 (S3 Q2, decided): the other render_gate.cpp binaries join the device-scene flow and the stage judge (new rows)
+>                        'microfacet_render': 'render', 'render': 'render', 'volume_render': 'render', 'closed_volume_render': 'render'}
+340c345
+<                 r = subprocess.run(command, stdout=f, stderr=subprocess.STDOUT, timeout=900)
+---
+>                 r = subprocess.run(command, stdout=f, stderr=subprocess.STDOUT, timeout=900, env={**os.environ, **scene_env(job)})
+408c413,415
+<                 android_reference.stage_judge(ns)
+---
+>                 saved = dict(os.environ); os.environ.update(scene_env(job))
+>                 try: android_reference.stage_judge(ns)
+>                 finally: os.environ.clear(); os.environ.update(saved)
+499c506
+<     state['remoteProcessesAfter'] = [l for l in after.splitlines() if 'codebrix-m5-' in l or 'codebrix_cycles' in l or 'render_replay' in l]
+---
+>     state['remoteProcessesAfter'] = [l for l in after.splitlines() if 'codebrix-m6-' in l or 'codebrix_cycles' in l or 'render_replay' in l]

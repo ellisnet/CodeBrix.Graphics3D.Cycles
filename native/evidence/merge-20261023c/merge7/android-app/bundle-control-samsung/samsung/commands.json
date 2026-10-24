@@ -1,0 +1,1744 @@
+[
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "ps",
+      "-A",
+      "-o",
+      "PID,ARGS"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "pm",
+      "path",
+      "com.codebrix.cycles.hostvalidation.m7"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "install",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/android-app/validation-m7c/app/bin/Debug/net10.0-android/com.codebrix.cycles.hostvalidation.m7-Signed.apk"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "pm",
+      "path",
+      "com.codebrix.cycles.hostvalidation.m7"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "sha256sum",
+      "/data/app/~~_RpQj6ci9E6goM8WVqKaTA==/com.codebrix.cycles.hostvalidation.m7-BTIAfnENNKx4YenKtO-6eQ==/base.apk"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "rm",
+      "-rf",
+      "/data/local/tmp/codebrix-m7-bundle"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "mkdir",
+      "-p",
+      "/data/local/tmp/codebrix-m7-bundle"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "mkdir",
+      "-p",
+      "files/bundle"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/scene.json",
+      "/data/local/tmp/codebrix-m7-bundle/scene.json"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/scene.json",
+      "files/bundle/scene.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/scene.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/bundle-manifest.json",
+      "/data/local/tmp/codebrix-m7-bundle/bundle-manifest.json"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/bundle-manifest.json",
+      "files/bundle/bundle-manifest.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/bundle-manifest.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/image-0.byte4",
+      "/data/local/tmp/codebrix-m7-bundle/image-0.byte4"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/image-0.byte4",
+      "files/bundle/image-0.byte4"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/image-0.byte4"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/image-1.byte4",
+      "/data/local/tmp/codebrix-m7-bundle/image-1.byte4"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/image-1.byte4",
+      "files/bundle/image-1.byte4"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/image-1.byte4"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/image-2.byte4",
+      "/data/local/tmp/codebrix-m7-bundle/image-2.byte4"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/image-2.byte4",
+      "files/bundle/image-2.byte4"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/image-2.byte4"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/mesh-0.N.f32",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.N.f32"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.N.f32",
+      "files/bundle/mesh-0.N.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/mesh-0.N.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/mesh-0.indices.u32",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.indices.u32"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.indices.u32",
+      "files/bundle/mesh-0.indices.u32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/mesh-0.indices.u32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/mesh-0.positions.f32",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.positions.f32"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.positions.f32",
+      "files/bundle/mesh-0.positions.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/mesh-0.positions.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/mesh-0.tangent.f32",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.tangent.f32"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.tangent.f32",
+      "files/bundle/mesh-0.tangent.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/mesh-0.tangent.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/mesh-0.tangent_sign.f32",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.tangent_sign.f32"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.tangent_sign.f32",
+      "files/bundle/mesh-0.tangent_sign.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/mesh-0.tangent_sign.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge7/bundles/control/mesh-0.uv.f32",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.uv.f32"
+    ],
+    "timeoutSeconds": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cp",
+      "/data/local/tmp/codebrix-m7-bundle/mesh-0.uv.f32",
+      "files/bundle/mesh-0.uv.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "sha256sum",
+      "files/bundle/mesh-0.uv.f32"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "rm",
+      "-rf",
+      "/data/local/tmp/codebrix-m7-bundle"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "am",
+      "start",
+      "-W",
+      "-n",
+      "com.codebrix.cycles.hostvalidation.m7/com.codebrix.cycles.hostvalidation.MainActivity",
+      "--es",
+      "mode",
+      "bundle",
+      "--es",
+      "oracle",
+      "linux-x64-sse4.2"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "cat",
+      "files/result.json"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "exec-out",
+      "run-as",
+      "com.codebrix.cycles.hostvalidation.m7",
+      "tar",
+      "-cf",
+      "-",
+      "files/output",
+      "files/result.json",
+      "files/native-maps.txt"
+    ],
+    "timeoutSeconds": 240
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "shell",
+      "am",
+      "force-stop",
+      "com.codebrix.cycles.hostvalidation.m7"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "R52W207XQ1V",
+      "uninstall",
+      "com.codebrix.cycles.hostvalidation.m7"
+    ],
+    "timeoutSeconds": 120
+  }
+]

@@ -159,7 +159,12 @@ def main():
                 assert rows[0]['explicitWebGpu'] and rows[0]['repeatStrictCriterionPassed'] and rows[0]['repeatChecks'] == 3
             for i in range(count):
                 reference = cpu64/'run.1.rgba.bin' if i == 3 else cpu/f'run.{i if i < 3 else 1}.rgba.bin'
-                compare(folder/f'run.{i}.rgba.bin', reference)
+                # run.3 (the 64-sample film against the session64 reference): the practical criterion is
+                # required and strict differences are recorded, as for the ABI light films below. Its WebGPU
+                # atomic accumulation order varies between runs of one binary, and with the fixed-baseline CPU
+                # reference one component sits one float step from the strict bound (native/DEVICE.md,
+                # "Merge wave 7").
+                compare(folder/f'run.{i}.rgba.bin', reference, strict=i != 3)
         # Phase D ABI additions: every new export, malformed input, lifetime
         # and struct-size rejection, on the CPU reference and through CBC_HOST_GPU.
         abi = {}

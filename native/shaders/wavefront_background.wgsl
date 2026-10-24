@@ -39,6 +39,10 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
         if((load_word(address+SH_flags)&SD_HAS_CONSTANT_EMISSION)!=0u){light=heap_vec3(address+SH_constant_emission);}
         else{light=svm_world(index,shader_id);if(load_word(p(17u))!=0u){return;}}
         if(path_ao(index)){light*=data_float(D_integrator_ao_bounces_factor);}
+        // light_sample_mis_weight_forward_background (background light uploaded).
+//#if LIGHT_BACKGROUND
+        light*=background_mis_weight(index,flag);
+//#endif
     }
     var contribution=throughput*light;
     contribution=select(contribution,vec3<f32>(0),(bitcast<vec3<u32>>(contribution)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
@@ -78,3 +82,32 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[(counter+DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND*4u)/4u],1u);
     state_u16(S_path_queued_kernel,index,0u);
 }
+//#if LIGHT_BACKGROUND
+fn background_mis_weight(index:u32,flag:u32)->f32{
+    if(data_word(D_background_use_mis)==0u||(flag&PATH_RAY_MIS_SKIP)!=0u){return 1.0;}
+    let direction=heap_vec3(state_address(S_ray_D,index,12u));
+    let forward=heap_float(state_address(S_path_mis_ray_pdf,index,4u));
+    let pdf=bgl_pdf(direction)*data_float(D_integrator_distribution_pdf_lights);
+    return rounded_divide(forward*forward,rounded_add(forward*forward,pdf*pdf));
+}
+// DEVICE_KERNEL_SHADER_EVAL_BACKGROUND (kernel_background_evaluate) for the
+// importance map: p(1) items, p(2) KernelShaderEvalInput array, p(3) the
+// native chunk offset, p(4) float3 output, p(30) this dispatch's first item
+// (dispatches are sliced to the SVM stack slots).
+@compute @workgroup_size(64) fn shader_eval_background(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    let item=id.x+p(30u);if(item>=p(1u)){return;}let offset=p(3u)+item;
+    let input=p(2u)+offset*16u;let width=bitcast<i32>(load_word(input));let height=bitcast<i32>(load_word(input+4u));
+    let u=heap_float(input+8u);let v=heap_float(input+12u);
+    let direction=bgl_direction(u,v);
+    let du=rounded_divide(1.0,f32(width));let dv=rounded_divide(1.0,f32(height));
+    let direction_du=bgl_direction(rounded_add(u,du),v);let direction_dv=bgl_direction(u,rounded_add(v,dv));
+    let a=direction_du-direction;let b=direction_dv-direction;
+    let dD=0.5*rounded_add(rounded_sqrt(rounded_dot(a,a)),rounded_sqrt(rounded_dot(b,b)));
+    let sd=bgl_world_data(direction,dD,0.5);if(sd.error!=0u){return;}
+    let r=svm_evaluate_context(NONE,sd,0u,0u,PATH_RAY_EMISSION|BGL_IMPORTANCE_BAKE,0u,0u,false);if(r.error!=0u){return;}
+    var color=r.emission;
+    color=select(color,vec3<f32>(0),(bitcast<vec3<u32>>(color)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
+    let out=p(4u)+offset*12u;store_word(out,bitcast<u32>(color.x));store_word(out+4u,bitcast<u32>(color.y));store_word(out+8u,bitcast<u32>(color.z));
+}
+//#endif

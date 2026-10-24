@@ -1,7 +1,13 @@
 // Copyright (c) 2026 Jeremy Ellis and contributors
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
+using System.IO;
 using System.Numerics;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using CodeBrix.Graphics3D.Gltf2.Memory;
 using CodeBrix.Graphics3D.Gltf2.Schema2;
 using GltfNode = CodeBrix.Graphics3D.Gltf2.Schema2.Node;
 
@@ -81,5 +87,122 @@ public static class SampleModel
             sunNode.LocalMatrix = Matrix4x4.CreateRotationX(-1.0f) * Matrix4x4.CreateRotationY(.4f);
         }
         return model;
+    }
+
+    // Three distinct 1x1 PNG placeholders: the glTF needs image sources; the decoded pixels the
+    // converter samples come from the matching TextureSet (WriteTexturedPlaneTextures).
+    private static readonly string[] Placeholders =
+    [
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNg+M8AAAICAQB7CYF4AAAAAElFTkSuQmCC",
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYPgPAAEDAQAIicLsAAAAAElFTkSuQmCC",
+    ];
+
+    /// <summary>The size of the procedural textures of <see cref="CreateTexturedPlane"/>.</summary>
+    public const int TexturedPlaneTextureSize = 64;
+
+    /// <summary>
+    /// Creates the textured-plane control model: one tilted quad with POSITION, NORMAL,
+    /// TEXCOORD_0 and TANGENT and one material with a base-colour texture (image 0, factor
+    /// 0.9/0.8/0.7), a metallic-roughness texture (image 1, metallic factor 1, roughness factor
+    /// 0.8) that is also the occlusion texture, a normal texture (image 2, scale 0.8), REPEAT
+    /// wrapping and LINEAR filtering, a perspective camera and no light (the converter adds its
+    /// default sun). Its decoded pixels come from <see cref="WriteTexturedPlaneTextures"/>.
+    /// </summary>
+    /// <returns>The model.</returns>
+    public static ModelRoot CreateTexturedPlane()
+    {
+        ModelRoot model = ModelRoot.CreateModel();
+        Gltf2.Schema2.Image[] images = new Gltf2.Schema2.Image[3];
+        for (int i = 0; i < 3; ++i) images[i] = model.UseImage(new MemoryImage(Convert.FromBase64String(Placeholders[i])));
+        TextureSampler sampler = model.UseTextureSampler(TextureWrapMode.REPEAT, TextureWrapMode.REPEAT, TextureMipMapFilter.LINEAR_MIPMAP_LINEAR, TextureInterpolationFilter.LINEAR);
+        Material material = model.CreateMaterial("textured");
+        material.InitializePBRMetallicRoughness("Normal", "Occlusion");
+        material.FindChannel("BaseColor").Value.SetTexture(0, model.UseTexture(images[0], sampler));
+        material.FindChannel("MetallicRoughness").Value.SetTexture(0, model.UseTexture(images[1], sampler));
+        material.FindChannel("Normal").Value.SetTexture(0, model.UseTexture(images[2], sampler));
+        material.FindChannel("Occlusion").Value.SetTexture(0, model.UseTexture(images[1], sampler));
+        SetParameter(material, "BaseColor", "RGBA", new Vector4(.9f, .8f, .7f, 1));
+        SetParameter(material, "MetallicRoughness", "MetallicFactor", 1f);
+        SetParameter(material, "MetallicRoughness", "RoughnessFactor", .8f);
+        SetParameter(material, "Normal", "NormalScale", .8f);
+
+        // Two repeats of the textures across the quad; the tangent follows +u, bitangent +v' (w = 1).
+        Mesh quad = model.CreateMesh("plane");
+        quad.CreatePrimitive()
+            .WithVertexAccessor("POSITION", new[] { new Vector3(-1.5f, 0, 1.5f), new Vector3(1.5f, 0, 1.5f), new Vector3(1.5f, 0, -1.5f), new Vector3(-1.5f, 0, -1.5f) })
+            .WithVertexAccessor("NORMAL", new[] { Vector3.UnitY, Vector3.UnitY, Vector3.UnitY, Vector3.UnitY })
+            .WithVertexAccessor("TEXCOORD_0", new[] { new Vector2(0, 2), new Vector2(2, 2), new Vector2(2, 0), new Vector2(0, 0) })
+            .WithVertexAccessor("TANGENT", new[] { new Vector4(1, 0, 0, 1), new Vector4(1, 0, 0, 1), new Vector4(1, 0, 0, 1), new Vector4(1, 0, 0, 1) })
+            .WithIndicesAccessor(PrimitiveType.TRIANGLES, new[] { 0, 1, 2, 0, 2, 3 })
+            .WithMaterial(material);
+        Scene scene = model.UseScene("textured-plane");
+        scene.CreateNode("plane").WithMesh(quad).WithLocalRotation(Quaternion.CreateFromYawPitchRoll(.3f, .25f, 0));
+
+        Camera camera = model.CreateCamera("camera");
+        camera.SetPerspectiveMode(null, .9f, .1f, 100f);
+        Matrix4x4 view = Matrix4x4.CreateLookAt(new Vector3(0, 2.6f, 3.2f), Vector3.Zero, Vector3.UnitY);
+        Matrix4x4.Invert(view, out Matrix4x4 cameraWorld);
+        GltfNode cameraNode = scene.CreateNode("camera");
+        cameraNode.Camera = camera;
+        cameraNode.LocalMatrix = cameraWorld;
+        return model;
+    }
+
+    private static void SetParameter(Material material, string channel, string name, object value)
+    {
+        foreach (IMaterialParameter parameter in material.FindChannel(channel).Value.Parameters)
+            if (parameter.Name == name)
+            {
+                parameter.Value = value;
+                return;
+            }
+        throw new InvalidOperationException($"glTF channel {channel} has no parameter {name}.");
+    }
+
+    /// <summary>
+    /// Writes the decoded procedural textures of <see cref="CreateTexturedPlane"/> (RGBA8, bottom
+    /// row first) and their <c>textures.json</c> manifest into <paramref name="directory"/>, in
+    /// the layout <see cref="TextureSet.Load"/> reads: image 0 a checker of two sRGB
+    /// colours with a gradient, image 1 occlusion (R), roughness (G, a gradient) and metallic (B,
+    /// stripes), image 2 a tangent-space normal map of sine bumps.
+    /// </summary>
+    /// <param name="directory">The destination directory (created when missing).</param>
+    public static void WriteTexturedPlaneTextures(string directory)
+    {
+        const int size = TexturedPlaneTextureSize;
+        Directory.CreateDirectory(directory);
+        byte[][] pixels = [new byte[size * size * 4], new byte[size * size * 4], new byte[size * size * 4]];
+        for (int y = 0; y < size; ++y)
+            for (int x = 0; x < size; ++x)
+            {
+                int o = (y * size + x) * 4;
+                bool odd = ((x / 8) + (y / 8)) % 2 == 1;
+                byte shade = (byte)(96 + x * 2);
+                pixels[0][o] = odd ? (byte)230 : shade; pixels[0][o + 1] = odd ? (byte)140 : (byte)(40 + y * 3); pixels[0][o + 2] = odd ? (byte)60 : (byte)180; pixels[0][o + 3] = 255;
+                pixels[1][o] = (byte)(255 - y); pixels[1][o + 1] = (byte)(40 + x * 3); pixels[1][o + 2] = (x / 16) % 2 == 0 ? (byte)0 : (byte)255; pixels[1][o + 3] = 255;
+                float u = x / (float)size * MathF.Tau * 2f, v = y / (float)size * MathF.Tau * 2f;
+                Vector3 n = Vector3.Normalize(new Vector3(-.6f * MathF.Cos(u) * MathF.Sin(v), -.6f * MathF.Sin(u) * MathF.Cos(v), 1f));
+                pixels[2][o] = (byte)MathF.Round((n.X * .5f + .5f) * 255f); pixels[2][o + 1] = (byte)MathF.Round((n.Y * .5f + .5f) * 255f);
+                pixels[2][o + 2] = (byte)MathF.Round((n.Z * .5f + .5f) * 255f); pixels[2][o + 3] = 255;
+            }
+        JsonArray entries = new();
+        for (int i = 0; i < 3; ++i)
+        {
+            string file = $"image-{i}.byte4";
+            File.WriteAllBytes(Path.Combine(directory, file), pixels[i]);
+            entries.Add(new JsonObject
+            {
+                ["index"] = i, ["source"] = "procedural (SampleModel.WriteTexturedPlaneTextures)", ["sourceSha256"] = Convert.ToHexStringLower(SHA256.HashData(Convert.FromBase64String(Placeholders[i]))),
+                ["reviewMatch"] = false, ["file"] = file, ["format"] = "byte4", ["width"] = size, ["height"] = size, ["origin"] = "lower-left",
+                ["sha256"] = Convert.ToHexStringLower(SHA256.HashData(pixels[i])),
+            });
+        }
+        JsonObject manifest = new()
+        {
+            ["textures"] = 1, ["note"] = "Procedural textures of the glTF example client's textured-plane control.", ["modelSha256"] = null,
+            ["decoder"] = new JsonObject { ["name"] = "SampleModel.WriteTexturedPlaneTextures" }, ["images"] = entries,
+        };
+        File.WriteAllText(Path.Combine(directory, "textures.json"), manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }

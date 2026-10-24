@@ -1,0 +1,63 @@
+{
+  "sceneId": "assets/bench_01",
+  "sceneSha256": "72bacca609c106d9f099773a52f241d91ad983e0bab6fd19420510f13c946935",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 1.1920928955078125e-07,
+  "renderSeconds": [
+    64.7873,
+    0.14159
+  ],
+  "filmSha256": [
+    "cdc4ce4cc0f375648b4dfd6f9d45b78448a1c7154049ff2980dde9e5f9e5de3b",
+    "9994e947976927e94bbab95870e18e681d4573f8ecb852a20873fa2d54e9ac02"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [
+    "CodeBrix Cycles WebGPU warning: pipeline 'shade_background' (background module) inlines to 1328520 bytes of WGSL, at or above the 1110000-byte size guard: about 66426 backend instructions estimated (60114 to 78611); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+    "CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' (surface module) inlines to 1274128 bytes of WGSL, at or above the 1110000-byte size guard: about 63706 backend instructions estimated (57653 to 75392); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged"
+  ],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "Debian clang version 19.1.7 (3+b1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-19/bin",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "d21bd4a58f489afeafe2a3046ab32a556578f0ec",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "f2a62f8076d29ec6abe8a54b872cea6dc195c73707aec3890bd9bd55d37e704b",
+  "runnerSha256": "6cd17c230d1280edf94747613d4bb2759add7cb6cc469fcc8398ced9f50b267d",
+  "cpuKernelCompile": null,
+  "sceneFile": "native/work/m1-asset/oracle-assets/verify1/bench_01.json",
+  "backendDescription": "CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)",
+  "environment": {},
+  "processSeconds": 65.209,
+  "runnerCommand": [
+    "native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/m1-asset/native/work/m1-asset/oracle-assets/verify1/bench_01.json",
+    "--backend",
+    "webgpu",
+    "--label",
+    "wgsl-linux-intel",
+    "--output",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/m1-asset/native/work/m1-asset/oracles/bench/oracle/assets/bench_01/wgsl-linux-intel",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json"
+}

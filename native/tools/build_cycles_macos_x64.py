@@ -110,9 +110,12 @@ def main():
   # the runtime copied beside it and the dependency prefix relatively.
   values['CMAKE_INSTALL_RPATH']='@loader_path;@loader_path/../lib;@loader_path/../../../dependencies/install/lib'
   values.update(WITH_LIBS_PRECOMPILED='OFF',WITH_LEGACY_LIBRARIES='ON',
-   # Native-only adds -march=native, which would tie the CPU kernels to the build
-   # machine; Cycles' own SSE4.2 baseline and AVX2 kernel dispatch stay enabled.
+   # Fixed-baseline CPU oracle (native/DEVICE.md): Cycles' SSE4.2 kernels only.
+   # Native-only would add -march=native (tying the kernels to the build machine)
+   # and the AVX2 kernel would use FMA; neither is built. inject_cycles.cmake
+   # removes contraction and reciprocal math. UNTESTED on an Intel Mac so far.
    WITH_CYCLES_NATIVE_ONLY='OFF',WITH_CYCLES_DEVICE_METAL='OFF',WITH_CYCLES_PATH_GUIDING='OFF',
+   **{'CXX_HAS_AVX2:BOOL':'OFF','CXX_HAS_F16C:BOOL':'OFF'},
    OpenImageIO_DIR=prefix/'lib/cmake/OpenImageIO',OpenColorIO_DIR=prefix/'lib/cmake/OpenColorIO',
    CMAKE_PROJECT_Cycles_INCLUDE=REPO/'native/tools/inject_cycles_macos_x64.cmake',CODEBRIX_CYCLES_OVERLAY=generated,
    CODEBRIX_WEBGPU_PACKAGE=PACKAGE,CODEBRIX_WEBGPU_RID='osx-x64',
@@ -141,6 +144,11 @@ def main():
   rows=json.loads((build/'compile_commands.json').read_text())
   native=[row['file'] for row in rows if re.search(r'-m(arch|cpu|tune)=native',row.get('command',''))]
   if native:raise RuntimeError(f'Host-specific CPU flags in {native[:3]}')
+  kernel=[row.get('command','').split() for row in rows if row['file'].endswith('src/kernel/device/cpu/kernel.cpp')]
+  contract=[w for w in kernel[0] if w.startswith('-ffp-contract')] if kernel else [];reciprocal=[w for w in kernel[0] if w.endswith('reciprocal-math')] if kernel else []
+  if len(kernel)!=1 or contract[-1:]!=['-ffp-contract=off'] or reciprocal[-1:]!=['-fno-reciprocal-math'] or '-msse4.2' not in kernel[0] \
+     or any(w.startswith(('-mavx','-mfma')) for w in kernel[0]):
+   raise RuntimeError('CPU kernels are not at the fixed oracle baseline (SSE4.2, no contraction, no reciprocal math)')
   if not any('-DWITH_WEBGPU' in row.get('command','') for row in rows):raise RuntimeError('The WebGPU device was not configured')
   if any('-DWITH_METAL' in row.get('command','') for row in rows):raise RuntimeError('Cycles Metal code was configured into the WGSL profile')
   host=build/'lib/libcodebrix_cycles_host.dylib';deps.check_binary(host)

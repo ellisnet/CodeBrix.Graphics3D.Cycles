@@ -1,0 +1,83 @@
+{
+  "sceneId": "linux-gates/triangle-lighting-5",
+  "sceneSha256": "6428a30722942ac1a000b4b983e09c000557908600cc728ed4d80b6374816448",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/home/jeremy/ClaudeHome/cycles-worktrees/m1-asset/native/work/m1-asset/oracles/regress-main/oracle/linux-gates/triangle-lighting-5/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": " (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00317177,
+        0.00155314
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/home/jeremy/ClaudeHome/cycles-worktrees/m1-asset/native/work/m1-asset/oracles/regress-main/oracle/linux-gates/triangle-lighting-5/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 4.76837158203125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.76837158203125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 4.76837158203125e-07,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json",
+      "renderSeconds": [
+        11.147,
+        0.058672
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.9073486328125e-06,
+      "maxRelativeError": 1.136047161768864e-05,
+      "rms": 8.12086989473141e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 125,
+      "worstPixel": {
+        "x": 18,
+        "y": 13,
+        "channel": "B",
+        "reference": 0.13151395320892334,
+        "candidate": 0.131514310836792,
+        "absoluteDifference": 3.5762786865234375e-07,
+        "criterionRatio": 0.004686956605968496
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "practicalPassed": true
+    }
+  ],
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

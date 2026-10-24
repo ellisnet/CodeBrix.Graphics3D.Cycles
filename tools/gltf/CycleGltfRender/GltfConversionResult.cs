@@ -66,6 +66,20 @@ public sealed class GltfConversionResult
 
     internal readonly List<string> warnings = new();
 
+    /// <summary>
+    /// Gets the conversion report of the <see cref="GltfMaterialMapping.Blender"/> mapping: one
+    /// line per material describing the shader graph built (and what was deliberately not
+    /// applied, such as occlusion), plus sampler notes.
+    /// </summary>
+    public IReadOnlyList<string> Notes => notes;
+
+    private readonly List<string> notes = new();
+
+    internal void Note(string message)
+    {
+        if (!notes.Contains(message)) notes.Add(message);
+    }
+
     internal void Warn(string message)
     {
         if (!warnings.Contains(message)) warnings.Add(message);

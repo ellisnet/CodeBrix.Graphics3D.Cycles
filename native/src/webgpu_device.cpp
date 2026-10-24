@@ -66,6 +66,18 @@ Device::Device(){
   }
   if(!adapter.value)throw Error(CBC_BACKEND_GPU_ERROR,"No hardware "+backend_name+" adapter");
   WGPUDeviceDescriptor dd{};
+  // The Cycles device keeps all its memory in one storage binding addressed by 32-bit
+  // offsets. WebGPU's default limits cap a storage binding at 128 MiB, which a scene with a
+  // few 2K textures exceeds, so the two buffer-size limits are raised to what the adapter
+  // supports (at most 2 GiB). Every other limit stays at the WebGPU default. The arena only
+  // grows on demand, so scenes that fit the default limits allocate exactly as before.
+  WGPULimits supported=WGPU_LIMITS_INIT,required=WGPU_LIMITS_INIT;
+  if(wgpuAdapterGetLimits(adapter,&supported)==WGPUStatus_Success){
+    const uint64_t cap=uint64_t(1)<<31;
+    if(supported.maxBufferSize!=WGPU_LIMIT_U64_UNDEFINED)required.maxBufferSize=std::min(supported.maxBufferSize,cap);
+    if(supported.maxStorageBufferBindingSize!=WGPU_LIMIT_U64_UNDEFINED)required.maxStorageBufferBindingSize=std::min(supported.maxStorageBufferBindingSize,cap);
+    dd.requiredLimits=&required;
+  }
   dd.uncapturedErrorCallbackInfo.userdata1=this;
   dd.uncapturedErrorCallbackInfo.callback=[](WGPUDevice const*,WGPUErrorType,WGPUStringView msg,void *data,void*){
     static_cast<Device*>(data)->set_error("Uncaptured GPU error: "+text(msg));};

@@ -4,6 +4,9 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Numerics;
+using System.Text.Json;
+using CodeBrix.Graphics3D.Cycles.Bundles;
 using CodeBrix.Graphics3D.Cycles.GltfRender;
 using CodeBrix.Graphics3D.Cycles.Rendering;
 using CodeBrix.Graphics3D.Gltf2.Schema2;
@@ -177,5 +180,192 @@ public class GltfSceneConverterTests
         model.LogicalMeshes.Count.Should().Be(3);
         model.LogicalCameras.Single().Settings.IsPerspective.Should().BeTrue();
         model.DefaultScene.VisualChildren.Count(node => node.Mesh != null && node.Mesh.Name == "cube").Should().Be(2);
+    }
+
+    // The textured-plane control: procedural decoded textures in a temporary directory.
+    private static (ModelRoot Model, TextureSet Textures) LoadTexturedPlane()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "cycles-gltf-textures-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            SampleModel.WriteTexturedPlaneTextures(directory);
+            return (SampleModel.CreateTexturedPlane(), TextureSet.Load(directory));
+        }
+        finally
+        {
+            Directory.Delete(directory, true);
+        }
+    }
+
+    private static GltfConversionOptions Blender(TextureSet textures) =>
+        new() { Width = Small.Width, Height = Small.Height, MaterialMapping = GltfMaterialMapping.Blender, Textures = textures };
+
+    private static JsonElement Graph(JsonDocument document, string handle) =>
+        document.RootElement.GetProperty("nodes").EnumerateArray().Single(e => e.GetProperty("handle").GetString() == handle).GetProperty("graph");
+
+    private static JsonElement GraphNode(JsonElement graph, string handle) =>
+        graph.GetProperty("nodes").EnumerateArray().Single(n => n.GetProperty("handle").GetString() == handle);
+
+    private static bool Linked(JsonElement graph, string from, string output, string to, string input) =>
+        graph.GetProperty("connect").EnumerateArray().Any(c => c[0].GetString() == from && c[1].GetString() == output && c[2].GetString() == to && c[3].GetString() == input);
+
+    [Fact]
+    public void blender_mapping_builds_the_importer_node_graph_for_the_textured_plane()
+    {
+        //Arrange
+        (ModelRoot model, TextureSet textures) = LoadTexturedPlane();
+
+        //Act
+        OracleSceneBundle bundle = GltfSceneConverter.ToBundle(model, Blender(textures), Small, out GltfConversionResult result);
+        using JsonDocument document = JsonDocument.Parse(bundle.Json);
+        JsonElement graph = Graph(document, "material-0");
+
+        //Assert
+        GraphNode(graph, "principled").GetProperty("set").GetProperty("distribution").GetString().Should().Be("multi_ggx");
+        GraphNode(graph, "base-texture").GetProperty("set").GetProperty("colorspace").GetString().Should().Be("scene_linear_srgb");
+        GraphNode(graph, "base-texture").GetProperty("set").GetProperty("extension").GetString().Should().Be("periodic");
+        GraphNode(graph, "base-texture").GetProperty("set").GetProperty("interpolation").GetString().Should().Be("linear");
+        GraphNode(graph, "metal-rough-texture").GetProperty("set").GetProperty("colorspace").GetString().Should().Be("data");
+        GraphNode(graph, "base-factor").GetProperty("set").GetProperty("blend_type").GetString().Should().Be("multiply");
+        GraphNode(graph, "roughness-factor").GetProperty("set").GetProperty("value2").GetSingle().Should().Be(.8f);
+        GraphNode(graph, "normal-map").GetProperty("set").GetProperty("strength").GetSingle().Should().Be(.8f);
+        GraphNode(graph, "normal-map").GetProperty("set").GetProperty("space").GetString().Should().Be("tangent");
+        Linked(graph, "base-factor", "Result", "principled", "Base Color").Should().BeTrue();
+        Linked(graph, "metal-rough-separate", "Blue", "principled", "Metallic").Should().BeTrue();
+        Linked(graph, "metal-rough-separate", "Green", "roughness-factor", "Value1").Should().BeTrue();
+        Linked(graph, "normal-map", "Normal", "principled", "Normal").Should().BeTrue();
+        string attributes = document.RootElement.GetProperty("nodes").EnumerateArray().Single(e => e.GetProperty("handle").GetString() == "mesh-0")
+            .GetProperty("mesh").GetProperty("attributes").ToString();
+        attributes.Should().Contain("\"tangent\"").And.Contain("\"tangent_sign\"").And.Contain("\"uv\"");
+        document.RootElement.GetProperty("images").GetArrayLength().Should().Be(3);
+        result.Notes.Should().Contain(n => n.Contains("occlusionTexture") && n.Contains("NOT applied"));
+        result.Warnings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void blender_mapping_renders_the_textured_plane_and_repeats_bit_for_bit()
+    {
+        //Arrange
+        (ModelRoot model, TextureSet textures) = LoadTexturedPlane();
+        using CyclesScene first = TestScenes.CreateCpuScene();
+        using CyclesScene second = TestScenes.CreateCpuScene();
+        using CyclesScene untextured = TestScenes.CreateCpuScene();
+        GltfSceneConverter.Convert(model, first, Blender(textures));
+        GltfSceneConverter.Convert(model, second, Blender(textures));
+        GltfSceneConverter.Convert(model, untextured, Blender(null));
+
+        //Act
+        FilmBuffer a = first.Render(Small);
+        FilmBuffer b = second.Render(Small);
+        FilmBuffer c = untextured.Render(Small);
+
+        //Assert
+        a.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+        FilmComparison.Compare(a.Span, b.Span).BitwiseEqual.Should().BeTrue();
+        FilmComparison.Compare(a.Span, c.Span).PracticalFailures.Should().BeGreaterThan(100);
+    }
+
+    [Fact]
+    public void blender_mapping_without_decoded_textures_warns_for_each_textured_channel()
+    {
+        //Arrange
+        ModelRoot model = SampleModel.CreateTexturedPlane();
+
+        //Act
+        GltfSceneConverter.ToBundle(model, Blender(null), Small, out GltfConversionResult result);
+
+        //Assert
+        result.Warnings.Count(w => w.Contains("no decoded pixels")).Should().Be(3);
+    }
+
+    [Fact]
+    public void decoded_textures_require_the_blender_mapping()
+    {
+        //Arrange
+        (ModelRoot model, TextureSet textures) = LoadTexturedPlane();
+        GltfConversionOptions options = Blender(textures);
+        options.MaterialMapping = GltfMaterialMapping.Closures;
+
+        //Act
+        Action convert = () => GltfSceneConverter.ToBundle(model, options, Small, out _);
+
+        //Assert
+        convert.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void a_normal_map_on_a_primitive_without_tangents_is_refused()
+    {
+        //Arrange
+        (ModelRoot model, TextureSet textures) = LoadTexturedPlane();
+        MeshPrimitive primitive = model.LogicalMeshes[0].Primitives[0];
+        Mesh bare = model.CreateMesh("bare");
+        bare.CreatePrimitive()
+            .WithVertexAccessor("POSITION", primitive.GetVertexAccessor("POSITION").AsVector3Array().ToArray())
+            .WithVertexAccessor("NORMAL", primitive.GetVertexAccessor("NORMAL").AsVector3Array().ToArray())
+            .WithVertexAccessor("TEXCOORD_0", primitive.GetVertexAccessor("TEXCOORD_0").AsVector2Array().ToArray())
+            .WithIndicesAccessor(PrimitiveType.TRIANGLES, new[] { 0, 1, 2 })
+            .WithMaterial(primitive.Material);
+        model.DefaultScene.CreateNode("bare").WithMesh(bare).WithLocalTranslation(new Vector3(0, 1, 0));
+
+        //Act
+        Action convert = () => GltfSceneConverter.ToBundle(model, Blender(textures), Small, out _);
+
+        //Assert
+        convert.Should().Throw<InvalidOperationException>().Which.Message.Should().Contain("TANGENT");
+    }
+
+    [Fact]
+    public void texture_set_rejects_a_pixel_file_that_does_not_match_its_manifest()
+    {
+        //Arrange
+        string directory = Path.Combine(Path.GetTempPath(), "cycles-gltf-textures-" + Guid.NewGuid().ToString("N"));
+        SampleModel.WriteTexturedPlaneTextures(directory);
+        string file = Path.Combine(directory, "image-1.byte4");
+        byte[] pixels = File.ReadAllBytes(file);
+        pixels[17] ^= 1;
+        File.WriteAllBytes(file, pixels);
+
+        try
+        {
+            //Act
+            Action load = () => TextureSet.Load(directory);
+
+            //Assert
+            load.Should().Throw<InvalidDataException>().Which.Message.Should().Contain("SHA-256");
+        }
+        finally
+        {
+            Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
+    public void closure_mapping_bundle_saved_and_reloaded_renders_like_convert()
+    {
+        //Arrange
+        ModelRoot model = LoadSample(withSun: true);
+        GltfConversionOptions options = new() { Width = Small.Width, Height = Small.Height };
+        OracleSceneBundle bundle = GltfSceneConverter.ToBundle(model, options, Small, out _);
+        string directory = Path.Combine(Path.GetTempPath(), "cycles-gltf-bundle-" + Guid.NewGuid().ToString("N"));
+        using CyclesScene converted = TestScenes.CreateCpuScene();
+        GltfSceneConverter.Convert(model, converted, options);
+        try
+        {
+            OracleSceneBundle loaded = OracleSceneBundle.Load(bundle.Save(directory));
+            using CyclesScene fromDisk = TestScenes.CreateCpuScene();
+            loaded.Apply(fromDisk);
+
+            //Act
+            FilmBuffer a = converted.Render(Small);
+            FilmBuffer b = fromDisk.Render(Small);
+
+            //Assert
+            FilmComparison.Compare(a.Span, b.Span).BitwiseEqual.Should().BeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
     }
 }

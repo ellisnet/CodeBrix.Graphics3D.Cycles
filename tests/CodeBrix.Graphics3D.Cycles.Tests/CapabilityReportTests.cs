@@ -43,6 +43,23 @@ public class CapabilityReportTests
     }
 
     [Fact]
+    public void cpu_scope_states_the_fixed_baseline_oracle_arithmetic_on_linux_x64()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+
+        //Act
+        ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
+
+        //Assert
+        // The in-tree Linux x64 host is the CPU oracle: Cycles' SSE4.2 kernels without FMA
+        // contraction or reciprocal math (native/DEVICE.md, "Fixed-baseline CPU oracle").
+        Assert.SkipUnless(System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture
+            == System.Runtime.InteropServices.Architecture.X64, "the x86-64 oracle definition applies to x64 hosts");
+        report.Json.Should().Contain("\"arithmetic\":{\"isa\":\"x86-64 SSE4.2\",\"fpContract\":\"off\",\"reciprocalMath\":\"off\"}");
+    }
+
+    [Fact]
     public void binary_report_has_no_device_and_states_the_webgpu_scope_on_linux()
     {
         //Arrange

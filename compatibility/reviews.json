@@ -551,9 +551,10 @@
       "coverage": "partial",
       "evidence": [
         "background-queue",
+        "environment-light",
         "native-render"
       ],
-      "notes": "Constant and selected SVM worlds; no environment-light importance sampling or general MIS.",
+      "notes": "Constant and selected SVM worlds; background-light MIS (environment importance map) on background hits; no portals or sky sun guiding.",
       "implementation": [
         "native/cycles/background.cpp",
         "native/shaders/wavefront_background.wgsl"
@@ -2749,6 +2750,46 @@
         "native/cycles/nodes_fixture.h",
         "native/cycles/svm_surface_gate.cpp",
         "native/tools/nodes_gate.py"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "environment-light"
+      ],
+      "notes": "Non-constant light shaders: the world for the background light and emissive triangles (image/UV, procedural, mixed emission/BSDF); non-constant point/spot/area/sun shaders refused; no light tree or MNEE.",
+      "implementation": [
+        "native/cycles/surface.cpp",
+        "native/shaders/wavefront_light_nee.wgsl",
+        "native/shaders/wavefront_lighting.wgsl"
+      ],
+      "tests": [
+        "native/cycles/environment_gate.cpp",
+        "native/cycles/environment_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_SHADER_EVAL_BACKGROUND": {
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "environment-light"
+      ],
+      "notes": "Background importance-map evaluation for LightManager::device_update_background (kernel_background_evaluate); maps whose evaluation buffers exceed one storage binding are refused with an allocation error.",
+      "implementation": [
+        "native/cycles/background.cpp",
+        "native/shaders/wavefront_background.wgsl",
+        "native/shaders/wavefront_background_light.wgsl"
+      ],
+      "tests": [
+        "native/cycles/environment_gate.cpp",
+        "native/cycles/environment_reference.cpp"
       ]
     }
   }

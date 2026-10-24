@@ -118,6 +118,11 @@ class WebGPUDevice final:public Device {
   uint32_t shadow_shader_cache=0;size_t shadow_shader_cache_bytes=0;
   cbc::Pipeline background;
   cbc::Pipeline light_forward;
+  // DEVICE_KERNEL_SHADER_EVAL_BACKGROUND (background module) and
+  // DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE (surface module, wavefront_light_nee.wgsl).
+  cbc::Pipeline background_eval;
+  cbc::Pipeline light_nee,light_nee_prepare;
+  uint32_t light_nee_cache=0;size_t light_nee_cache_bytes=0;
   cbc::Pipeline volume;
   cbc::Pipeline volume_stack;
   cbc::Pipeline volume_density;
@@ -163,6 +168,8 @@ class WebGPUDevice final:public Device {
   void enqueue_closest(int,const DeviceKernelArguments&);
   void enqueue_shadow(DeviceKernel,int,const DeviceKernelArguments&);
   void enqueue_background(int,const DeviceKernelArguments&,DeviceKernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
+  void enqueue_background_eval(int,const DeviceKernelArguments&);
+  void enqueue_light_nee(int,const DeviceKernelArguments&);
   void enqueue_volume_density(int,const DeviceKernelArguments&);
   void enqueue_volume_stack(int,const DeviceKernelArguments&);
   void enqueue_volume(int,const DeviceKernelArguments&);

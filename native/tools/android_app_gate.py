@@ -18,8 +18,17 @@ def main():
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--device',action='append',required=True,metavar='LABEL,RID,SERIAL')
     parser.add_argument('--adb',default=str(Path.home()/'Android/Sdk/platform-tools/adb'))
-    parser.add_argument('--mode',choices=['cpu','webgpu'],default='cpu',
-                        help='cpu: the CPU reference suite; webgpu: GPU versus CPU reference films rendered in the app')
+    parser.add_argument('--mode',choices=['cpu','webgpu','bundle'],default='cpu',
+                        help='cpu: the CPU reference suite; webgpu: GPU versus CPU reference films rendered in the app; '
+                        'bundle: a cbcOracleScene bundle (--bundle) rendered in the app through the library bundle loader')
+    parser.add_argument('--bundle',type=Path,help='bundle mode: the bundle directory (the scene document and the raw files it names)')
+    parser.add_argument('--bundle-scene',help='bundle mode: the scene document inside --bundle (default: scene.json, else the only '
+                        'cbcOracleScene document in the directory; required when there are several, as in the bench bundle with '
+                        'bench_01.json and bench_01-hdri.json). It is copied to the app as scene.json')
+    parser.add_argument('--reference-film',type=Path,help='bundle mode: film-0.f32 of the same bundle rendered on Linux x64 (glibc) by '
+                        'codebrix_cycles_oracle --backend cpu (or the glTF tool); the device GPU film is judged against it and the '
+                        'in-app CPU film is a diagnostic. The app then also selects that oracle\'s arithmetic adapters '
+                        '(CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2), as the native gates do on reference import')
     parser.add_argument('--linux-reference',type=Path,help='webgpu mode: folder of <scene>.cpu.rgba.bin films rendered on Linux x64 '
                         '(glibc) by WebGpuRenderTests with CODEBRIX_CYCLES_REFERENCE_EXPORT; the device GPU film is judged '
                         'against them and the in-app CPU film becomes a diagnostic (native/DEVICE.md, "Validation reference policy")')
@@ -33,12 +42,28 @@ def main():
     app_id=status.get('applicationId',APP_ID)
     payload=json.loads((app/'payload.json').read_text());build_pin=json.loads((root/'invocation.json').read_text())
     assert all(sha(Path(p))==digest for p,digest in {**build_pin['inputSha256'],**build_pin['stagedSha256']}.items())
+    if args.mode=='bundle':
+        assert args.bundle and args.bundle.is_dir(),'bundle mode needs --bundle DIR'
+        def scene_document(path):
+            try:return json.loads(path.read_text()).get('cbcOracleScene')==1
+            except (ValueError,UnicodeDecodeError,AttributeError):return False
+        documents=sorted(p.name for p in args.bundle.iterdir() if p.is_file() and p.suffix=='.json' and scene_document(p))
+        scene_name=args.bundle_scene or ('scene.json' if 'scene.json' in documents else documents[0] if len(documents)==1 else None)
+        assert scene_name,'bundle mode: name the scene document with --bundle-scene (cbcOracleScene documents found: %s)'%documents
+        assert scene_name in documents,'bundle mode: %s is not a cbcOracleScene version 1 document in %s'%(scene_name,args.bundle)
+        # Device name -> local file: the chosen document travels as scene.json (the name the app loads); the other scene
+        # documents of the directory stay behind; every other file is pushed under its own name.
+        bundle_files={'scene.json':args.bundle/scene_name,**{p.name:p for p in sorted(args.bundle.iterdir())
+                      if p.is_file() and p.name not in documents and p.name!='scene.json'}}
     sources=inputs();devices=[tuple(d.split(',')) for d in args.device]
     assert all(len(d)==3 and d[1] in TARGETS and d[0].isalnum() for d in devices)
     assert len({d[0] for d in devices})==len({d[2] for d in devices})==len(devices)
     save(out/'invocation.json',dict(sourceSha256=sources,runnerSha256=sha(Path(__file__)),apkSha256=sha(apk),
         inspectionSha256=sha(app/'apk-inspection.json'),devices=devices,mode=args.mode,resultTimeoutSeconds=args.result_timeout,
-        linuxReferenceSha256={p.name:sha(p) for p in sorted(args.linux_reference.glob('*.cpu.rgba.bin'))} if args.linux_reference else None))
+        linuxReferenceSha256={p.name:sha(p) for p in sorted(args.linux_reference.glob('*.cpu.rgba.bin'))} if args.linux_reference else None,
+        bundleSha256={name:sha(path) for name,path in bundle_files.items()} if args.mode=='bundle' else None,
+        bundleScene=scene_name if args.mode=='bundle' else None,
+        referenceFilmSha256=sha(args.reference_film) if args.reference_film else None))
     save(out/'status.json',dict(complete=False,phase='devices'))
 
     def run(label,rid,serial):
@@ -58,8 +83,23 @@ def main():
             call(['install',str(apk)],'install',timeout=300);installed=True
             path=call(['shell','pm','path',app_id],'installed-path')[1].decode().strip().removeprefix('package:')
             assert call(['shell','sha256sum',path],'installed-hash')[1].decode().split()[0]==sha(apk)
-            call(['shell','am','start','-W','-n',app_id+'/'+ACTIVITY,*(['--es','mode','webgpu'] if args.mode=='webgpu' else [])],'launch')
-            state['phase']='managed WebGPU versus CPU reference films' if args.mode=='webgpu' else 'managed CPU lifecycle and configuration reloads'
+            extras=['--es','mode','webgpu'] if args.mode=='webgpu' else []
+            if args.mode=='bundle':
+                # Pushed to a staging folder named after the application id's last part, copied into the app's private files/bundle with
+                # run-as and verified there; the staging folder is removed before the app starts.
+                staging='/data/local/tmp/codebrix-'+app_id.rsplit('.',1)[-1]+'-bundle'
+                call(['shell','rm','-rf',staging],'bundle-staging-clean')
+                call(['shell','mkdir','-p',staging],'bundle-staging')
+                call(['shell','run-as',app_id,'mkdir','-p','files/bundle'],'bundle-mkdir')
+                for name,path in bundle_files.items():
+                    call(['push',str(path),staging+'/'+name],'push-'+name,timeout=600)
+                    call(['shell','run-as',app_id,'cp',staging+'/'+name,'files/bundle/'+name],'copy-'+name)
+                    remote=call(['shell','run-as',app_id,'sha256sum','files/bundle/'+name],'bundle-hash')[1].decode().split()[0]
+                    assert remote==sha(path),'Bundle file differs on the device: '+name
+                call(['shell','rm','-rf',staging],'bundle-staging-remove')
+                extras=['--es','mode','bundle']+(['--es','oracle','linux-x64-sse4.2'] if args.reference_film else [])
+            call(['shell','am','start','-W','-n',app_id+'/'+ACTIVITY,*extras],'launch')
+            state['phase']={'webgpu':'managed WebGPU versus CPU reference films','bundle':'managed bundle render'}.get(args.mode,'managed CPU lifecycle and configuration reloads')
             save(folder/'status.json',state);started=time.monotonic()
             report=None;deadline=time.monotonic()+args.result_timeout;attempt=0
             while time.monotonic()<deadline:
@@ -87,6 +127,9 @@ def main():
                         with bundle.extractfile(member) as data:target.write_bytes(data.read())
             if args.mode=='webgpu':
                 webgpu(report,extracted,folder,rid,state);print(label+': '+json.dumps(state),flush=True);return True
+            if args.mode=='bundle':
+                # The device verdict is the judgement's (practical criterion against the reference film), never just a completed run.
+                judge_bundle(report,extracted,folder,rid,label,state);print(label+': '+json.dumps(state),flush=True);return state['passed']
             assert report['passed'],report
             assert all(report[field] for field in ['actualAndroidApp','explicitCpuReference','cancellationAndReuse','disposeDuringRender','propertyReadbackChecks'])
             assert report['architecture']==('Arm64' if rid=='android-arm64' else 'X64')
@@ -182,6 +225,67 @@ def main():
         assert all(r['progressEvents']>0 for r in rows)
         assert inputs()==sources and sha(apk)==inspection['apkSha256']
         state.update(complete=True,passed=True,phase='complete')
+
+    def judge_bundle(report,extracted,folder,rid,label,state):
+        # Independent judgement of the bundle render. With --reference-film the device GPU film is judged
+        # against the Linux glibc CPU film of the same bundle; the in-app CPU film is a diagnostic.
+        assert report.get('mode')=='bundle' and report.get('actualAndroidApp'),report
+        assert report['architecture']==('Arm64' if rid=='android-arm64' else 'X64')
+        assert report['nativeDirectory'].startswith('/data/app/')
+        # The app hashes the scene document and every file it names; extra files (bundle-manifest.json) are not inputs.
+        assert 'scene.json' in report['inputs'] and set(report['inputs'])<=set(bundle_files),'The app rendered other bundle files'
+        assert all(report['inputs'][name]==sha(bundle_files[name]) for name in report['inputs']),'The app rendered other bundle bytes'
+        count=report['width']*report['height']*4;films=extracted/'files/output/bundle'
+        def load(path):
+            values=struct.unpack('<%df'%count,path.read_bytes());assert all(math.isfinite(x) for x in values);return values
+        def judge(x,y):
+            e=[abs(p-q) for p,q in zip(x,y)]
+            worst=max(range(len(e)),key=lambda i:e[i]/(5e-5+2e-4*abs(y[i])))
+            return dict(maximumAbsoluteError=max(e),practicalFailures=sum(d>5e-5+2e-4*abs(q) for d,q in zip(e,y)),
+                        strictDifferences=sum(d>1e-7+1e-7*abs(q) for d,q in zip(e,y)),bitwiseEqual=list(x)==list(y),
+                        worst=dict(index=worst,pixel=worst//4,channel='RGBA'[worst%4],reference=y[worst],actual=x[worst]))
+        gpu=[load(films/f'gpu-{i}.f32') for i in range(report['repeats'])];cpu=load(films/'cpu-0.f32')
+        assert [sha(films/f'gpu-{i}.f32') for i in range(report['repeats'])]==report['gpuSha256'] and sha(films/'cpu-0.f32')==report['cpuSha256']
+        row=dict(sceneId=report['sceneId'],gpuSeconds=report['gpuSeconds'],cpuSeconds=report['cpuSeconds'],applySeconds=report['applySeconds'],
+                 progressEvents=report['progressEvents'],errorEvents=report['errorEvents'],referenceOracle=report['referenceOracle'],
+                 diagnosticGpuVersusInAppCpu=dict(judge(gpu[0],cpu),role='diagnostic'),
+                 gpuRepeatBitwiseIdentical=all(g==gpu[0] for g in gpu))
+        if args.reference_film:
+            linux=load(args.reference_film)
+            row['diagnosticInAppCpuVersusLinux']=dict(judge(cpu,linux),role='diagnostic')
+            row.update(judge(gpu[0],linux),reference='linux-glibc',referenceFilmSha256=sha(args.reference_film))
+            row['gpuRepeats']=[judge(g,linux) for g in gpu]
+        else:
+            row.update(judge(gpu[0],cpu),reference='in-app-cpu')
+        save(folder/'comparisons.json',[row])
+        # The device films in the oracle output layout, for native/oracle/compare.py.
+        scene_sha=sha(bundle_files['scene.json']);device=label.lower()
+        for backend,names,hashes in [('wgsl-android-'+device,[f'gpu-{i}.f32' for i in range(report['repeats'])],report['gpuSha256']),
+                                     ('cpu-'+('arm64' if rid=='android-arm64' else 'x64')+'-android-'+device,['cpu-0.f32'],[report['cpuSha256']])]:
+            target=folder/'oracle'/backend;target.mkdir(parents=True)
+            for i,name in enumerate(names):(target/f'film-{i}.f32').write_bytes((films/name).read_bytes())
+            data=[(target/f'film-{i}.f32').read_bytes() for i in range(len(names))]
+            save(target/'meta.json',dict(sceneId=report['sceneId'],sceneSha256=scene_sha,backend=backend,width=report['width'],height=report['height'],
+                samples=report['samples'],repeats=len(names),repeatBitwiseIdentical=all(d==data[0] for d in data),
+                repeatMaxAbsDifference=max([0.0]+[max(abs(p-q) for p,q in zip(struct.unpack('<%df'%count,d),struct.unpack('<%df'%count,data[0]))) for d in data[1:]]),
+                renderSeconds=report['gpuSeconds'] if backend.startswith('wgsl') else [report['cpuSeconds']],filmSha256=hashes,
+                deviceName=report['capability']['deviceDescription'],apiLevel=report['apiLevel'],
+                referenceOracle=report['referenceOracle'],warnings=report['capability']['warnings'] if backend.startswith('wgsl') else [],
+                filmLayout='float32 little-endian RGBA, width*height*4 values, lower-left origin'))
+        (folder/'capability-report.json').write_text(report['capability']['json'])
+        state.update(perScene=[row],practicalFailures=row['practicalFailures'],strictDifferences=row['strictDifferences'],
+            maximumAbsoluteError=row['maximumAbsoluteError'],pipelineTier=report['capability']['pipelineTier'],
+            deviceDescription=report['capability']['deviceDescription'],capabilityWarnings=report['capability']['warnings'])
+        assert report['passed'],report
+        assert inputs()==sources and sha(apk)==inspection['apkSha256']
+        # Verdict: every GPU repeat must meet the practical criterion against the reference (the Linux film, or the in-app
+        # CPU film without --reference-film). Repeats need not be bitwise identical (atomic film accumulation).
+        failed=[]
+        if row['practicalFailures']:failed.append('gpu-0: %d practical failures against %s'%(row['practicalFailures'],row['reference']))
+        failed+=['gpu-%d: %d practical failures against %s'%(i,r['practicalFailures'],row['reference'])
+                 for i,r in enumerate(row.get('gpuRepeats',[])) if i and r['practicalFailures']]
+        row['passed']=not failed;row['failures']=failed;save(folder/'comparisons.json',[row])
+        state.update(complete=True,passed=not failed,failures=failed,phase='complete')
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(devices)) as pool:
         futures=[pool.submit(run,*device) for device in devices];passed=[f.result() for f in futures]

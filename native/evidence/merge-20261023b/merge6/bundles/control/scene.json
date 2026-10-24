@@ -1,0 +1,402 @@
+{
+  "cbcOracleScene": 1,
+  "id": "gltf/textured-plane",
+  "description": "glTF file plane.glb converted by tools/gltf/CycleGltfRender (Blender-importer material mapping)",
+  "sourceFixture": "tools/gltf/CycleGltfRender",
+  "render": {
+    "width": 64,
+    "height": 48,
+    "samples": 16,
+    "repeats": 2
+  },
+  "colorConfig": null,
+  "nodes": [
+    {
+      "handle": "integrator",
+      "scene": "integrator",
+      "set": {
+        "use_guiding": false,
+        "use_light_tree": false,
+        "use_adaptive_sampling": false,
+        "use_denoise": false,
+        "caustics_reflective": false,
+        "caustics_refractive": false,
+        "min_bounce": 2,
+        "max_bounce": 4,
+        "max_diffuse_bounce": 4,
+        "sampling_pattern": "tabulated_sobol"
+      }
+    },
+    {
+      "handle": "material-0",
+      "create": "shader",
+      "set": {
+        "emission_sampling_method": "none"
+      },
+      "graph": {
+        "nodes": [
+          {
+            "handle": "principled",
+            "type": "principled_bsdf",
+            "set": {
+              "distribution": "multi_ggx",
+              "ior": 1.5
+            }
+          },
+          {
+            "handle": "base-texture",
+            "type": "image_texture",
+            "set": {
+              "image": "image-0",
+              "colorspace": "scene_linear_srgb",
+              "alpha_type": "unassociated",
+              "interpolation": "linear",
+              "extension": "periodic"
+            }
+          },
+          {
+            "handle": "base-factor",
+            "type": "mix_color",
+            "set": {
+              "blend_type": "multiply",
+              "fac": 1,
+              "b": [
+                0.9,
+                0.8,
+                0.7
+              ]
+            }
+          },
+          {
+            "handle": "metal-rough-texture",
+            "type": "image_texture",
+            "set": {
+              "image": "image-1",
+              "colorspace": "data",
+              "alpha_type": "channel_packed",
+              "interpolation": "linear",
+              "extension": "periodic"
+            }
+          },
+          {
+            "handle": "metal-rough-separate",
+            "type": "separate_color",
+            "set": {
+              "color_type": "rgb"
+            }
+          },
+          {
+            "handle": "roughness-factor",
+            "type": "math",
+            "set": {
+              "math_type": "multiply",
+              "value2": 0.8
+            }
+          },
+          {
+            "handle": "normal-texture",
+            "type": "image_texture",
+            "set": {
+              "image": "image-2",
+              "colorspace": "data",
+              "alpha_type": "channel_packed",
+              "interpolation": "linear",
+              "extension": "periodic"
+            }
+          },
+          {
+            "handle": "normal-map",
+            "type": "normal_map",
+            "set": {
+              "space": "tangent",
+              "convention": "opengl",
+              "strength": 0.8
+            }
+          }
+        ],
+        "connect": [
+          [
+            "base-texture",
+            "Color",
+            "base-factor",
+            "A"
+          ],
+          [
+            "base-factor",
+            "Result",
+            "principled",
+            "Base Color"
+          ],
+          [
+            "metal-rough-texture",
+            "Color",
+            "metal-rough-separate",
+            "Color"
+          ],
+          [
+            "metal-rough-separate",
+            "Blue",
+            "principled",
+            "Metallic"
+          ],
+          [
+            "metal-rough-separate",
+            "Green",
+            "roughness-factor",
+            "Value1"
+          ],
+          [
+            "roughness-factor",
+            "Value",
+            "principled",
+            "Roughness"
+          ],
+          [
+            "normal-texture",
+            "Color",
+            "normal-map",
+            "Color"
+          ],
+          [
+            "normal-map",
+            "Normal",
+            "principled",
+            "Normal"
+          ],
+          [
+            "principled",
+            "BSDF",
+            "output",
+            "Surface"
+          ]
+        ]
+      }
+    },
+    {
+      "handle": "mesh-0",
+      "create": "mesh",
+      "mesh": {
+        "positionsFile": "mesh-0.positions.f32",
+        "indicesFile": "mesh-0.indices.u32",
+        "attributes": [
+          {
+            "name": "N",
+            "value": "normal",
+            "domain": "vertex_normal",
+            "flags": [
+              "standard"
+            ],
+            "file": "mesh-0.N.f32"
+          },
+          {
+            "name": "uv",
+            "value": "point2",
+            "domain": "corner",
+            "flags": [
+              "standard"
+            ],
+            "file": "mesh-0.uv.f32"
+          },
+          {
+            "name": "tangent",
+            "value": "vector",
+            "domain": "corner",
+            "flags": [
+              "standard"
+            ],
+            "file": "mesh-0.tangent.f32"
+          },
+          {
+            "name": "tangent_sign",
+            "value": "float",
+            "domain": "corner",
+            "flags": [
+              "standard"
+            ],
+            "file": "mesh-0.tangent_sign.f32"
+          }
+        ]
+      },
+      "set": {
+        "used_shaders": [
+          "material-0"
+        ],
+        "smooth": [
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "handle": "object-0",
+      "create": "object",
+      "set": {
+        "geometry": "mesh-0",
+        "tfm": [
+          0.95533645,
+          0.073112875,
+          0.28633326,
+          0,
+          0,
+          0.9689124,
+          -0.24740396,
+          0,
+          -0.29552025,
+          0.23635404,
+          0.92563736,
+          0
+        ]
+      }
+    },
+    {
+      "handle": "light-shader",
+      "create": "shader",
+      "graph": {
+        "nodes": [
+          {
+            "handle": "emission",
+            "type": "emission",
+            "set": {
+              "color": [
+                1,
+                1,
+                1
+              ],
+              "strength": 1
+            }
+          }
+        ],
+        "connect": [
+          [
+            "emission",
+            "Emission",
+            "output",
+            "Surface"
+          ]
+        ]
+      }
+    },
+    {
+      "handle": "light-0",
+      "create": "sunlight",
+      "set": {
+        "strength": [
+          3,
+          3,
+          3
+        ],
+        "angle": 0.05,
+        "used_shaders": [
+          "light-shader"
+        ]
+      }
+    },
+    {
+      "handle": "object-1",
+      "create": "object",
+      "set": {
+        "geometry": "light-0",
+        "tfm": [
+          0.8436615,
+          -0.44974482,
+          0.29319775,
+          0,
+          0,
+          0.54611874,
+          0.8377079,
+          0,
+          -0.5368755,
+          -0.70674187,
+          0.46073934,
+          0
+        ]
+      }
+    },
+    {
+      "handle": "world",
+      "create": "shader",
+      "graph": {
+        "nodes": [
+          {
+            "handle": "background",
+            "type": "background_shader",
+            "set": {
+              "color": [
+                0.25,
+                0.3,
+                0.4
+              ],
+              "strength": 1
+            }
+          }
+        ],
+        "connect": [
+          [
+            "background",
+            "Background",
+            "output",
+            "Surface"
+          ]
+        ]
+      },
+      "set": {
+        "emission_sampling_method": "none"
+      }
+    },
+    {
+      "handle": "background",
+      "scene": "background",
+      "set": {
+        "shader": "world"
+      }
+    },
+    {
+      "handle": "camera",
+      "scene": "camera",
+      "set": {
+        "camera_type": "perspective",
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0.776114,
+          -0.63059264,
+          2.6000001,
+          0,
+          -0.63059264,
+          -0.776114,
+          3.2
+        ],
+        "fov": 0.9
+      }
+    }
+  ],
+  "images": [
+    {
+      "handle": "image-0",
+      "width": 64,
+      "height": 64,
+      "format": "byte4",
+      "file": "image-0.byte4",
+      "colorspace": "srgb"
+    },
+    {
+      "handle": "image-1",
+      "width": 64,
+      "height": 64,
+      "format": "byte4",
+      "file": "image-1.byte4",
+      "colorspace": "linear"
+    },
+    {
+      "handle": "image-2",
+      "width": 64,
+      "height": 64,
+      "format": "byte4",
+      "file": "image-2.byte4",
+      "colorspace": "linear"
+    }
+  ]
+}

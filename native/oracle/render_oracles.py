@@ -20,17 +20,18 @@ EVIDENCE=REPO/'native/evidence'
 REVISION=json.loads((REPO/'third_party/cycles-import.json').read_text())['revision']
 # name: (host backend, environment, description)
 BACKENDS={
- 'cpu-arm64-macos':('cpu',{},'Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon)'),
+ 'cpu-arm64-macos':('cpu',{},'Cycles CPU device, Apple Clang arm64, plain C++ kernels (no sse2neon), fixed-baseline oracle: no FMA contraction, no reciprocal math'),
  'metal-m2pro':('metal',{'CYCLES_METALRT':'0','CYCLES_METAL_SPECIALIZATION_LEVEL':'0'},
   'Cycles Metal device, MetalRT off (BVH2), generic kernels (PSO_GENERIC), fastMathEnabled as pinned'),
  'metal-m2pro-metalrt':('metal',{'CYCLES_METALRT':'1','CYCLES_METAL_SPECIALIZATION_LEVEL':'0'},
   'Cycles Metal device, MetalRT forced on (Apple ray-tracing API, software on M2), generic kernels; validation of the M3+ default path'),
  # Linux x64 (native/host/targets.cmake builds the runner as codebrix_cycles_oracle).
- 'cpu-x64-linux':('cpu',{},'Cycles CPU device, GCC x86-64 (-msse4.2 -ffp-contract=off host options)'),
+ 'cpu-x64-linux':('cpu',{},'Cycles CPU device, GCC x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math'),
  'wgsl-linux-intel':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)'),
  # macOS x64 (Intel Mac; tools/build_macos_x64.py builds the runner in oracle-build).
- 'cpu-x64-macos':('cpu',{},'Cycles CPU device, Apple Clang x86-64, Cycles default kernel dispatch (AVX2 kernels where the CPU has AVX2)'),
- 'cpu-x64-macos-sse42':('cpu',{'CYCLES_CPU_NO_AVX2':'1'},'Cycles CPU device, Apple Clang x86-64, SSE4.2 kernels forced by CYCLES_CPU_NO_AVX2'),
+ 'cpu-x64-macos':('cpu',{},'Cycles CPU device, Apple Clang x86-64, fixed-baseline oracle: SSE4.2 kernels only (no AVX2 kernel is built), no FMA contraction, no reciprocal math'),
+ # Kept for comparison with runs made before the fixed baseline: without an AVX2 kernel the variable has no effect.
+ 'cpu-x64-macos-sse42':('cpu',{'CYCLES_CPU_NO_AVX2':'1'},'Cycles CPU device, Apple Clang x86-64, CYCLES_CPU_NO_AVX2 set (no effect on the fixed-baseline build: same kernels as cpu-x64-macos)'),
  'wgsl-macos-x64':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native osx-x64 runtime (Metal)'),
 }
 # Without --backend, a run renders the backends listed before the macOS x64 ones.
@@ -48,23 +49,33 @@ def machine():
  gpu=out('system_profiler','SPDisplaysDataType') if platform.system()=='Darwin' else out('lspci')
  model=re.search(r'Chipset Model:\s*(.*)',gpu);cores=re.search(r'Total Number of Cores:\s*(\d+)',gpu)
  status=out('git','-C',str(REPO),'status','--porcelain')
+ cpuinfo=Path('/proc/cpuinfo').read_text() if Path('/proc/cpuinfo').exists() else ''
+ linux_cpu=re.search(r'model name\s*:\s*(.*)',cpuinfo)
  return dict(os=out('sw_vers') if platform.system()=='Darwin' else out('uname','-a'),
-  cpu=out('sysctl','-n','machdep.cpu.brand_string') if platform.system()=='Darwin' else platform.processor(),
+  cpu=out('sysctl','-n','machdep.cpu.brand_string') if platform.system()=='Darwin' else (linux_cpu.group(1) if linux_cpu else platform.processor()),
   gpu=dict(model=model.group(1) if model else None,cores=int(cores.group(1)) if cores else None),
-  compiler=out('clang','--version'),xcode=out('xcodebuild','-version'),cmake=out('cmake','--version').splitlines()[0],
+  compiler=out('clang','--version') if platform.system()=='Darwin' else out('c++','--version'),xcode=out('xcodebuild','-version'),cmake=out('cmake','--version').splitlines()[0],
   python=sys.version.split()[0],repoCommit=out('git','-C',str(REPO),'rev-parse','HEAD'),
   repoWorkingTreeClean=status=='',cyclesRevision=REVISION)
 
 
 def kernel_flags():
- """CPU kernel compile flags from the macOS build's compile database."""
- database=REPO/'native/work/macos'/('osx-x64' if INTEL_MAC else 'osx-arm64')/'host/build/compile_commands.json'
+ """CPU kernel compile flags from the build's compile database (macOS host build or the
+ Linux x64 build tree). The fixed-baseline oracle (native/DEVICE.md) switches contraction
+ and reciprocal math off after Cycles' own math flags, so the last occurrence decides."""
+ if platform.system()=='Darwin':
+  database=REPO/'native/work/macos'/('osx-x64' if INTEL_MAC else 'osx-arm64')/'host/build/compile_commands.json'
+ else:
+  database=REPO/'native/work/cycles-build/compile_commands.json'
  if not database.exists():return None
  for row in json.loads(database.read_text()):
   if row['file'].endswith('kernel/device/cpu/kernel.cpp'):
-   command=row.get('command','');flags=[f for f in command.split() if re.match(r'-(O\d|ffp-contract|ffast-math|march|mcpu|std=)',f)]
-   return dict(file='src/kernel/device/cpu/kernel.cpp',flags=flags,ffpContractExplicit=any('ffp-contract' in f for f in flags),
-    note='Apple Clang default for arm64 without -ffp-contract is on (fused multiply-add within expressions)')
+   command=row.get('command','');flags=[f for f in command.split() if re.match(r'-(O\d|ffp-contract|ffast-math|f(no-)?reciprocal-math|march|mcpu|mtune|mss?se|mavx|mfma|mf16c|std=)',f)]
+   contract=[f for f in flags if f.startswith('-ffp-contract')];reciprocal=[f for f in flags if f.endswith('reciprocal-math') or f=='-ffast-math']
+   return dict(file='src/kernel/device/cpu/kernel.cpp',database=str(database.relative_to(REPO)),flags=flags,
+    ffpContractExplicit=bool(contract),fpContract=contract[-1].split('=')[1] if contract else 'compiler default',
+    reciprocalMath=bool(reciprocal) and reciprocal[-1]!='-fno-reciprocal-math',
+    note='the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract')
  return None
 
 

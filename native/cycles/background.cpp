@@ -22,6 +22,9 @@ std::string background_layout(){
   DATA(film,pass_diffuse_direct);DATA(film,pass_glossy_direct);DATA(film,pass_transmission_direct);
   DATA(film,pass_diffuse_indirect);DATA(film,pass_glossy_indirect);DATA(film,pass_transmission_indirect);
   DATA(film,pass_lightgroup);DATA(film,pass_depth);DATA(film,pass_position);DATA(film,pass_object_id);DATA(film,pass_material_id);
+  // Background light importance map and MIS (wavefront_background_light.wgsl).
+  DATA(background,use_mis);DATA(background,map_res_x);DATA(background,map_res_y);DATA(background,map_weight);
+  DATA(background,portal_weight);DATA(background,sun_weight);DATA(background,map_dD);
 #undef DATA
   constant("O_lightgroup",offsetof(KernelObject,lightgroup));
   constant("SH_constant_emission",offsetof(KernelShader,constant_emission));
@@ -31,7 +34,7 @@ std::string background_layout(){
   ENUM(PATH_RAY_REFLECT);ENUM(PATH_RAY_TRANSPARENT_BACKGROUND);ENUM(PATH_RAY_ANY_PASS);ENUM(PATH_RAY_SURFACE_PASS);ENUM(PATH_RAY_SINGLE_PASS_DONE);
   constant("BACKGROUND_UNSUPPORTED_FLAGS",PATH_RAY_SHADOW_CATCHER_PASS|PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_BACKGROUND|
     PATH_RAY_DENOISING_FEATURES);
-  ENUM(PATH_RAY_VISIBILITY_VOLUME_SCATTER);
+  ENUM(PATH_RAY_VISIBILITY_VOLUME_SCATTER);ENUM(LIGHT_BACKGROUND);constant("BGL_IMPORTANCE_BAKE",PATH_RAY_IMPORTANCE_BAKE);
 #undef ENUM
 #define PASS(name) constant("MASK_" #name,uint32_t(PASSMASK(name)))
   PASS(COMBINED);PASS(BACKGROUND);PASS(DEPTH);PASS(POSITION);PASS(OBJECT_ID);PASS(MATERIAL_ID);
@@ -49,7 +52,6 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
     require(address%4==0,"Unaligned background pointer");return uint32_t(address);};
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[4]=pointer(1,false);p[17]=error_word;
   if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.background.use_mis,"WebGPU background light MIS not implemented");
   validate_volume();
   validate_lighting(false);
   require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING))&&
@@ -101,5 +103,34 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
   const char *entry=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND?"shade_background":"shade_light_forward";
   if(!pipeline_current(pipeline,entry))pipeline=std::move(build_pipelines("background",background_wgsl(),{entry})[0]);
   dispatch(p,uint32_t(work),pipeline,workgroup(entry));
+}
+// DEVICE_KERNEL_SHADER_EVAL_BACKGROUND (integrator/shader_eval.cpp eval_gpu, for
+// LightManager::device_update_background's importance map): arguments are the
+// KernelShaderEvalInput array, the float output, the cache-miss word (always
+// false: no tiled images), the chunk offset and the chunk size. Each dispatch
+// covers at most svm_stack_slots items (one SVM stack slot per invocation).
+void WebGPUDevice::enqueue_background_eval(int work,const DeviceKernelArguments &args){
+  require(args.count==5,"Background evaluation argument count");
+  auto scalar=[&](unsigned i){require(args.types[i]==DeviceKernelArguments::INT32&&args.sizes[i]==4,"Invalid background evaluation integer");
+    int value;std::memcpy(&value,args.values[i],4);require(value>=0,"Negative background evaluation range");return uint32_t(value);};
+  const uint32_t offset=scalar(3),count=scalar(4);require(uint32_t(work)>=count,"Incomplete background evaluation dispatch");
+  auto pointer=[&](unsigned i,size_t bytes){require(args.types[i]==DeviceKernelArguments::POINTER&&args.sizes[i]==sizeof(device_ptr),"Invalid background evaluation pointer");
+    device_ptr address;std::memcpy(&address,args.values[i],sizeof(address));validate(address,bytes);require(address%4==0,"Unaligned background evaluation pointer");return uint32_t(address);};
+  std::array<uint32_t,32> p{};p[1]=count;p[3]=offset;p[17]=error_word;
+  p[2]=pointer(0,(size_t(offset)+count)*sizeof(KernelShaderEvalInput));p[4]=pointer(1,(size_t(offset)+count)*3*sizeof(float));
+  {uint32_t miss=pointer(2,4);uint32_t zero=0;upload(miss,&zero,4);}
+  require(data.background.map_res_x>0&&data.background.map_res_y>0,"Background evaluation without an importance map");
+  require(!data.background.use_sun_guiding||data.background.sun_weight==0,"WebGPU background sun guiding (sky texture sun disc) not implemented");
+  // Runs during scene preparation, before any integrator state exists (p[7] stays 0).
+  p[6]=constants.at("data");p[18]=globals.at("shaders");
+  require(remaining(p[18])%sizeof(KernelShader)==0,"Invalid background shader table");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));
+  require(uint32_t(data.background.surface_shader&SHADER_MASK)<p[19],"Invalid background shader");
+  if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid SVM word table");p[22]=uint32_t(remaining(p[21])/4);}
+  p[14]=scene_tables();
+  if(!count||!work)return;
+  if(!pipeline_current(background_eval,"shader_eval_background"))background_eval=std::move(build_pipelines("background",background_wgsl(),{"shader_eval_background"})[0]);
+  for(uint32_t first=0;first<count;first+=svm_stack_slots){
+    p[30]=first;dispatch(p,std::min<uint32_t>(svm_stack_slots,count-first),background_eval,workgroup("shader_eval_background"));
+  }
 }
 }

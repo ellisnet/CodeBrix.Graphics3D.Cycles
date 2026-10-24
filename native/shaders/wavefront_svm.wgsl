@@ -668,7 +668,12 @@ fn svm_world(index:u32,shader_id:u32)->vec3<f32>{
     sd.shader=shader_id;sd.shader_flag=load_word(p(18u)+shader_id*SIZE_shaders+SH_flags);
     sd.dPdu=surface_orthogonal(sd.Ng);sd.dPdv=cross(sd.Ng,sd.dPdu);
     sd.time=heap_float(state_address(S_ray_time,index,4u));sd.ray_length=bitcast<f32>(0x7f7fffffu);
-    sd.dP=heap_float(state_address(S_ray_dD,index,4u));sd.dI=sd.dP;sd.du=vec2<f32>(sd.dP,0);sd.dv=vec2<f32>(0,sd.dP);
+    sd.dP=heap_float(state_address(S_ray_dD,index,4u));
+    // background_light_clamp_dD for indirect rays (importance map resolution).
+//#if LIGHT_BACKGROUND
+    if((state_byte(S_path_visibility,index)&VIS_CAMERA)==0u){sd.dP=min(sd.dP,data_float(D_background_map_dD));}
+//#endif
+    sd.dI=sd.dP;sd.du=vec2<f32>(sd.dP,0);sd.dv=vec2<f32>(0,sd.dP);
     return svm_evaluate(index,sd,0u,0u).emission;
 }
 

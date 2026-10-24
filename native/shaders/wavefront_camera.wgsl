@@ -8,13 +8,15 @@ fn filter_value(value:f32)->f32{
     let x=clamp(value,0.0,1.0)*f32(FILTER_SIZE-1u);let i=min(u32(x),FILTER_SIZE-1u);
     let a=p(8u)+(data_word(D_tables_filter_table_offset)+i)*4u;let t=x-f32(i);let first=heap_float(a);
     if(t==0.0){return first;}
-    return (1.0-t)*first+t*heap_float(p(8u)+(data_word(D_tables_filter_table_offset)+min(i+1u,FILTER_SIZE-1u))*4u);
+    // Cycles lookup_table_read: (1-t)*data0 + t*data1, both products rounded
+    // before the sum (integer add, so no driver can contract it).
+    return rounded_add((1.0-t)*first,t*heap_float(p(8u)+(data_word(D_tables_filter_table_offset)+min(i+1u,FILTER_SIZE-1u))*4u));
 }
 fn camera_shutter(value:f32)->f32{
     let x=clamp(value,0.0,1.0)*f32(SHUTTER_SIZE-1u);let i=min(u32(x),SHUTTER_SIZE-1u);
     let address=p(8u)+(data_word(D_cam_shutter_table_offset)+i)*4u;let t=x-f32(i);let first=heap_float(address);
     if(t==0.0){return first;}
-    return (1.0-t)*first+t*heap_float(p(8u)+(data_word(D_cam_shutter_table_offset)+min(i+1u,SHUTTER_SIZE-1u))*4u);
+    return rounded_add((1.0-t)*first,t*heap_float(p(8u)+(data_word(D_cam_shutter_table_offset)+min(i+1u,SHUTTER_SIZE-1u))*4u));
 }
 // Preserve native float3 normalization at transparent/volume boundary corners.
 // Captures retain the originating host's SSE division or scalar reciprocal rule.
@@ -22,6 +24,20 @@ fn camera_normalize(v:vec3<f32>)->vec3<f32>{
     if(CAMERA_NATIVE_VECTOR_DIVIDE!=0u){return rounded_normalize(v);}
     return v*rounded_divide(1.0,rounded_sqrt(rounded_dot(v,v)));
 }
+// Cycles transform_direction of the originating oracle host, bit for bit: the
+// SSE build accumulates z*c2, then y*c1, then x*c0 (madd is unfused at the SSE4.2
+// baseline), the scalar build takes the float4 dot (x+y)+z per row. Products
+// are rounded before the integer adds, so no driver can contract them (the
+// shared motion_direction leaves that to the driver).
+fn camera_direction(t:NativeTransform,v:vec3<f32>)->vec3<f32>{
+    let c0=vec3<f32>(t.x.x,t.y.x,t.z.x)*v.x;let c1=vec3<f32>(t.x.y,t.y.y,t.z.y)*v.y;let c2=vec3<f32>(t.x.z,t.y.z,t.z.z)*v.z;
+    if(CAMERA_NATIVE_VECTOR_DIVIDE!=0u){return rounded_add3(c0,rounded_add3(c1,c2));}
+    return rounded_add3(rounded_add3(c0,c1),c2);
+}
+// Cycles len(float3): the square root of the (x+y)+z dot, correctly rounded.
+fn camera_length(v:vec3<f32>)->f32{return rounded_sqrt(rounded_dot(v,v));}
+// Cycles interp(a,b,t) = a + t*(b-a), the product rounded before the sum.
+fn camera_interp(a:vec3<f32>,b:vec3<f32>,t:f32)->vec3<f32>{return rounded_add3(a,(b-a)*t);}
 fn camera_projection(address:u32,v:vec4<f32>)->vec3<f32>{
     // Native float4 dot rounds paired sums before perspective division.
     // Fused projection multiply-add can make a ray cross a box corner twice.
@@ -78,16 +94,19 @@ fn camera_projection(address:u32,v:vec4<f32>)->vec3<f32>{
     if(data_float(D_cam_shuttertime)!=-1.0){
         time=camera_shutter(native_rng(sample_id,rng,RNG_LENS_TIME).x);
         if(data_word(D_cam_rolling_shutter_type)!=0u){
-            let row_time=1.0-f32(y)/data_float(D_cam_height);let duration=data_float(D_cam_rolling_shutter_duration);
-            if(duration!=0.0){time=(time-0.5)*duration;time+=(row_time-0.5)*(1.0-duration)+0.5;}
+            // Every sum is an integer rounded_add: a driver that reassociates
+            // constants ((1-q)-0.5 -> 0.5-q) or fuses a product would change the time.
+            let row_time=rounded_add(1.0,-rounded_divide(f32(y),data_float(D_cam_height)));let duration=data_float(D_cam_rolling_shutter_duration);
+            if(duration!=0.0){time=rounded_add(time,-0.5)*duration;
+                time=rounded_add(time,rounded_add(rounded_add(row_time,-0.5)*rounded_add(1.0,-duration),0.5));}
             else{time=row_time;}
         }
     }
     let rt=p(6u)+D_cam_rastertocamera;let v=vec4<f32>(raster,0.0,1.0);
     var pc=camera_projection(rt,v);
     if(data_word(D_cam_have_perspective_motion)!=0u){
-        if(time<0.5){let before=camera_projection(p(6u)+D_cam_perspective_pre,v);pc=before+(pc-before)*(time*2.0);}
-        else{let after=camera_projection(p(6u)+D_cam_perspective_post,v);pc=pc+(after-pc)*((time-0.5)*2.0);}
+        if(time<0.5){let before=camera_projection(p(6u)+D_cam_perspective_pre,v);pc=camera_interp(before,pc,time*2.0);}
+        else{let after=camera_projection(p(6u)+D_cam_perspective_post,v);pc=camera_interp(pc,after,(time-0.5)*2.0);}
     }
     var world=motion_transform_load(p(6u)+D_cam_cameratoworld);
     let steps=data_word(D_cam_num_motion_steps);
@@ -98,12 +117,13 @@ fn camera_projection(address:u32,v:vec4<f32>)->vec3<f32>{
 //#endif
     }
     if(load_word(p(17u))!=0u){return;}
-    let center=motion_direction(world,pc);let direction=camera_normalize(center);
+    let center=camera_direction(world,pc);let direction=camera_normalize(center);
     let dx=camera_normalize(center+heap_vec3(p(6u)+D_cam_dx))-direction;
     let dy=camera_normalize(center+heap_vec3(p(6u)+D_cam_dy))-direction;
-    let dd=(0.5*(length(dx)+length(dy)))*data_float(D_cam_differential_scale);
+    let dd=(0.5*(camera_length(dx)+camera_length(dy)))*data_float(D_cam_differential_scale);
     let zi=rounded_divide(1.0,camera_normalize(pc).z);let near=data_float(D_cam_nearclip)*zi;
-    let origin=vec3<f32>(world.x.w,world.y.w,world.z.w)+near*direction;
+    // Cycles: ray->P += nearclip*ray->D, the product rounded before the sum.
+    let origin=rounded_add3(vec3<f32>(world.x.w,world.y.w,world.z.w),near*direction);
     state_vec3(S_ray_P,path,origin);state_vec3(S_ray_D,path,direction);
     state_f32(S_ray_dP,path,near*dd);state_f32(S_ray_dD,path,dd);
     state_f32(S_ray_tmin,path,0.0);state_f32(S_ray_tmax,path,data_float(D_cam_cliplength)*zi);state_f32(S_ray_time,path,time);

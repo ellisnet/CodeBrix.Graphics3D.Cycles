@@ -155,10 +155,21 @@ struct Loader {
     }
   }
 
+  // Raw little-endian 32-bit arrays beside the scene (positionsFile, indicesFile, attribute file).
+  template<typename T> std::vector<T> raw_array(const Json &name) const {
+    const auto bytes = read_file(directory / name.string());
+    if (bytes.size() % sizeof(T)) fail("Raw array file " + name.string() + " is not a whole number of 32-bit values");
+    std::vector<T> values(bytes.size() / sizeof(T));
+    if (!values.empty()) std::memcpy(values.data(), bytes.data(), bytes.size());
+    return values;
+  }
+
   void mesh(CBCNode target, const Json &mesh) {
     std::vector<float> xyz; std::vector<uint32_t> indices;
-    for (auto &v : mesh.at("positions").items) xyz.push_back(v.as_float());
-    for (auto &v : mesh.at("indices").items) indices.push_back(uint32_t(v.as_int()));
+    if (auto file = mesh.find("positionsFile")) xyz = raw_array<float>(*file);
+    else for (auto &v : mesh.at("positions").items) xyz.push_back(v.as_float());
+    if (auto file = mesh.find("indicesFile")) indices = raw_array<uint32_t>(*file);
+    else for (auto &v : mesh.at("indices").items) indices.push_back(uint32_t(v.as_int()));
     if (xyz.size() % 3 || indices.size() % 3) fail("Mesh positions and indices must be complete triples");
     check(cbc_host_mesh(host, target, xyz.data(), xyz.size() / 3, indices.data(), indices.size() / 3), "cbc_host_mesh");
     if (auto attributes = mesh.find("attributes")) for (auto &attribute : attributes->items) {
@@ -178,6 +189,14 @@ struct Loader {
       if (auto data = attribute.find("data")) {
         std::vector<float> floats; for (auto &v : data->items) floats.push_back(v.as_float());
         check(cbc_host_attribute_floats(host, target, name.c_str(), &config, floats.data(), floats.size()), "cbc_host_attribute_floats(" + name + ")");
+      } else if (auto file = attribute.find("file")) {
+        if (value->second == CBC_VALUE_BYTE4) {
+          auto bytes = read_file(directory / file->string());
+          check(cbc_host_attribute_bytes(host, target, name.c_str(), &config, reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size()), "cbc_host_attribute_bytes(" + name + ")");
+        } else {
+          auto floats = raw_array<float>(*file);
+          check(cbc_host_attribute_floats(host, target, name.c_str(), &config, floats.data(), floats.size()), "cbc_host_attribute_floats(" + name + ")");
+        }
       } else {
         std::vector<uint8_t> bytes; for (auto &v : attribute.at("bytes").items) bytes.push_back(uint8_t(v.as_int()));
         check(cbc_host_attribute_bytes(host, target, name.c_str(), &config, bytes.data(), bytes.size()), "cbc_host_attribute_bytes(" + name + ")");

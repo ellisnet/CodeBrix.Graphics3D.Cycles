@@ -109,7 +109,9 @@ references; the third builds the ARM64 dependency prefix
 reference executables and the default gate set
 (`native/work/linux/linux-arm64/host/build/{bin,lib}`).
 
-The default ARM64 set holds only part of the device gates. Build the rest with
+The default ARM64 set (shared with the Android recipe: 8 host outputs and 20
+gates, 28 artifacts, including principled_svm, transparent_shadow and the
+environment gate) holds only part of the device gates. Build the rest with
 explicit targets (these targets have not been built for this RID before;
 record any failure):
 
@@ -120,14 +122,14 @@ python3 native/tools/build_cycles_linux_arm64.py --jobs 4 \
   --target codebrix_cycles_emitter_sample_gate --target codebrix_cycles_lighting_gate \
   --target codebrix_cycles_light_state_gate --target codebrix_cycles_lighting_mis_gate \
   --target codebrix_cycles_broad_light_state_gate --target codebrix_cycles_broad_lighting_gate \
-  --target codebrix_cycles_feature_combination_gate --target codebrix_cycles_transparent_shadow_gate \
+  --target codebrix_cycles_feature_combination_gate \
   --target codebrix_cycles_transparent_lighting_gate --target codebrix_cycles_shadow_terminator_gate \
   --target codebrix_cycles_shadow_gate --target codebrix_cycles_object_motion_render_gate \
   --target codebrix_cycles_deforming_motion_render_gate --target codebrix_cycles_glass_svm_gate \
   --target codebrix_cycles_glass_bounce_gate --target codebrix_cycles_glass_render_gate \
   --target codebrix_cycles_volume_gate --target codebrix_cycles_volume_render_gate \
   --target codebrix_cycles_volume_boundary_gate --target codebrix_cycles_closed_volume_render_gate \
-  --target codebrix_cycles_principled_svm_gate --target codebrix_cycles_principled_bounce_gate \
+  --target codebrix_cycles_principled_bounce_gate \
   --target codebrix_cycles_principled_render_gate --target codebrix_cycles_nodes_svm_gate \
   --target codebrix_cycles_nodes_world_gate --target codebrix_cycles_nodes_render_gate
 ```
@@ -412,7 +414,14 @@ result:
 
 ## 5. Reference policy and tolerances
 
-- The CPU kernels are the oracle.
+- The CPU kernels are the oracle, built at the fixed baseline on both machines
+  (native/DEVICE.md, "Fixed-baseline CPU oracle"): no FMA contraction and no
+  reciprocal math (`-ffp-contract=off -fno-reciprocal-math` from the shared
+  CMake injection), Cycles' SSE4.2 kernels on Linux x64 and the ARMv8-A base
+  level on ARM64 (no `-march`/`-mcpu`, also when the recipe runs on the Pi
+  itself). The recipes refuse a CPU kernel compile line that is not at the
+  baseline. The ARM64 cross build at this rule compiles on the Linux x64
+  machine; it has not yet been run on the Pi.
 - Practical criterion, must pass for every component:
   `abs(a - b) <= 5e-5 + 2e-4 * abs(b)`, with `b` the reference.
 - Strict diagnostic, reported, never required:

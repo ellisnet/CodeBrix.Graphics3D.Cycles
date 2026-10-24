@@ -1,0 +1,19 @@
+assets/textured-plane-control (64x48)
+  cpu-x64-linux              samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           samples 16    repeats 2 bitwise=False repeatMaxAbs=9.54e-07 nonfinite=0
+  wgsl-android-tablet        samples 16    repeats 2 bitwise=False repeatMaxAbs=7.15e-07 nonfinite=0
+  wgsl-android-hp            samples 16    repeats 2 bitwise=False repeatMaxAbs=3.81e-06 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux                      5.44e-05   3.53e-05   1.52e-06             0        617
+      worst x=38 y=16 R: ref 1.44267619 got 1.44262528 (0.15x tolerance)
+  wgsl-android-tablet vs cpu-x64-linux                   0.000165   0.000174    3.4e-06             0        503
+      worst x=40 y=8 G: ref 0.947686017 got 0.947520792 (0.69x tolerance)
+  wgsl-android-hp vs cpu-x64-linux                       0.000162    9.5e-05   3.71e-06             0        776
+      worst x=40 y=8 G: ref 0.947686017 got 0.947595954 (0.376x tolerance)
+  wgsl-android-tablet vs wgsl-linux-intel                0.000171    0.00018   3.41e-06             0        537
+      worst x=40 y=8 G: ref 0.947691619 got 0.947520792 (0.713x tolerance)
+  wgsl-android-hp vs wgsl-linux-intel                    0.000116   0.000101    2.7e-06             0        350
+      worst x=40 y=8 G: ref 0.947691619 got 0.947595954 (0.399x tolerance)
+  wgsl-android-hp vs wgsl-android-tablet                 0.000104   0.000127   3.06e-06             0        581
+      worst x=16 y=10 B: ref 0.278034031 got 0.277998805 (0.334x tolerance)
+  verdict: perfect

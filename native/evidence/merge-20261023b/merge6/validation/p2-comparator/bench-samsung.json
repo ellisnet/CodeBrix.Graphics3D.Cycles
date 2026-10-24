@@ -1,0 +1,151 @@
+{
+  "sceneId": "assets/bench_01",
+  "sceneSha256": "72bacca609c106d9f099773a52f241d91ad983e0bab6fd19420510f13c946935",
+  "width": 64,
+  "height": 48,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "native/work/merge6/oracles-p2/bench/oracle/assets/bench_01/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": " (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.0246334,
+        0.00517294
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/merge6/oracles-p2/bench/oracle/assets/bench_01/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.1920928955078125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.1920928955078125e-07,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json",
+      "renderSeconds": [
+        57.3535,
+        0.228324
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/merge6/android-app/bundle-bench-samsung/samsung/oracle/wgsl-android-samsung",
+      "backend": "wgsl-android-samsung",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.1920928955078125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.1920928955078125e-07,
+      "deviceName": "Adreno (TM) 730 / Driver Build: 0c393b63cf, I94e2bd5684, 1746191168\nDate: 05/02/25\nCompiler Version: EV031.36.08.33\nDriver Branch: \n",
+      "renderSeconds": [
+        132.1334778,
+        0.6776358
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.008464038372039795,
+      "maxRelativeError": 0.02790473563818305,
+      "rms": 8.235088908258714e-05,
+      "practicalFailures": 47,
+      "strictDifferences": 1589,
+      "worstPixel": {
+        "x": 41,
+        "y": 32,
+        "channel": "R",
+        "reference": 0.3033190667629242,
+        "candidate": 0.2948550283908844,
+        "absoluteDifference": 0.008464038372039795,
+        "criterionRatio": 76.4842464362999
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "practicalPassed": false
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.008462578058242798,
+      "maxRelativeError": 0.027899921190438035,
+      "rms": 8.246298702504565e-05,
+      "practicalFailures": 51,
+      "strictDifferences": 1600,
+      "worstPixel": {
+        "x": 41,
+        "y": 32,
+        "channel": "R",
+        "reference": 0.3033190667629242,
+        "candidate": 0.2948564887046814,
+        "absoluteDifference": 0.008462578058242798,
+        "criterionRatio": 76.47105048946997
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-android-samsung",
+      "practicalPassed": false
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.0006128251552581787,
+      "maxRelativeError": 0.004221474090958869,
+      "rms": 9.255013454094091e-06,
+      "practicalFailures": 11,
+      "strictDifferences": 1091,
+      "worstPixel": {
+        "x": 37,
+        "y": 31,
+        "channel": "R",
+        "reference": 0.3669121265411377,
+        "candidate": 0.3662993013858795,
+        "absoluteDifference": 0.0006128251552581787,
+        "criterionRatio": 4.96687557994788
+      },
+      "reference": "wgsl-linux-intel",
+      "candidate": "wgsl-android-samsung",
+      "practicalPassed": false
+    }
+  ],
+  "problems": [
+    "wgsl-linux-intel vs cpu-x64-linux: 47 practical failures",
+    "wgsl-android-samsung vs cpu-x64-linux: 51 practical failures",
+    "wgsl-android-samsung vs wgsl-linux-intel: 11 practical failures"
+  ],
+  "passed": false,
+  "verdict": "not perfect"
+}

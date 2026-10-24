@@ -1,0 +1,15 @@
+bench1 textured compare 64x48x16 on Linux: budget 15 min
+linux host rebuild (codebrix_cycles_host) budget 20 min
+diag variants (3 x ~1 min compare) budget 6 min
+oracle runner rebuild budget 10 min
+experiment: kernel.cpp -ffp-contract=off relink (diagnostic only) budget 15 min
+dotnet test filtered (bundle + gltf, CPU) budget 5 min
+android host rebuild arm64+x64 (rebase, target codebrix_cycles_host) budget 30 min
+android app build budget 15 min
+android default full-target rebuild (main-copy trees, rebase) budget 30 min
+device batch 1 (plane + bench bundles, tablet + HP) budget 40 min
+starter oracles cpu+wgsl linux budget 15 min
+full dotnet test (Release) budget 20 min
+regression: 6 linux-gates oracle scenes x (my host, main host) cpu+wgsl budget 20 min
+native checks (specialization, size guard, envelope) budget 30 min
+hp batch 4 (wait for lock + ~10 min run) budget 90 min

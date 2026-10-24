@@ -75,6 +75,13 @@ fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelecti
         let area=area_evaluate(light,sd.P,vec3<f32>(0),0.0,random.xy,true);if(!area.valid){return ls;}
         ls.P=area.P;ls.D=area.D;ls.t=area.t;ls.pdf=area.pdf;ls.eval_fac=area.eval_fac;
 //#endif
+    }else if(load_word(light+L_type)==LIGHT_BACKGROUND){
+        // Infinite area light (light.h): D = -background_light_sample, P = Ng = D.
+        // Removed by scene specialization when no background light is uploaded.
+//#if LIGHT_BACKGROUND else atomicOr(&heap[p(17u)/4u],2u);return ls;
+        let sampled=bgl_sample(random.xy);
+        ls.D=sampled.xyz;ls.P=-sampled.xyz;ls.pdf=sampled.w;ls.t=bitcast<f32>(0x7f7fffffu);ls.eval_fac=1.0;
+//#endif
     }else{
         let spot=load_word(light+L_type)==LIGHT_SPOT;
         let radius=heap_float(light+L_radius);let r2=radius*radius;let delta=sd.P-position;
@@ -131,16 +138,34 @@ fn light_bsdf(sd:SurfaceData,r:SvmResult,direction:vec3<f32>,shader:u32)->Surfac
 fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeLightSample){
     if(data_word(D_integrator_use_direct_light)==0u||(r.runtime_flag&SR_BSDF_HAS_EVAL)==0u){return;}
     if(!(ls.pdf>0.0)||load_word(p(17u))!=0u){return;}
+    // Self-intersection skip for an emissive triangle sampled from itself
+    // (integrate_surface_direct_light): reachable once an emitter also has a BSDF.
+//#if LIGHT_TRIANGLE
+    if(!ls.is_light&&ls.prim==sd.prim&&ls.object_id==sd.object_id){
+        let transmission=dot(ls.D,sd.N)<0.0;if(dot(ls.D,select(sd.Ng,-sd.Ng,transmission))>0.0){return;}}
+//#endif
     let shader=table_at(G_shaders,ls.shader&SHADER_MASK,SIZE_shaders);
-    var emission=heap_vec3(shader+SH_constant_emission);
+    // light_sample_shader_eval_nee_constant: a light shader without constant
+    // emission is evaluated in shade_light_nee (wavefront_light_nee.wgsl).
+//#if LIGHT_NEE else var emission=heap_vec3(shader+SH_constant_emission);
+    let constant=(load_word(shader+SH_flags)&SD_HAS_CONSTANT_EMISSION)!=0u;
+    var emission=select(vec3<f32>(1),heap_vec3(shader+SH_constant_emission),constant);
+//#endif
     if(ls.is_light){emission*=heap_vec3(table_at(G_lights,ls.prim,SIZE_lights)+L_strength);}
     var bsdf=light_bsdf(sd,r,ls.D,ls.shader);let mis=(ls.pdf*ls.pdf)/(ls.pdf*ls.pdf+bsdf.pdf*bsdf.pdf);
     let factor=emission*ls.eval_fac/ls.pdf*mis;bsdf.eval*=factor;bsdf.diffuse*=factor;bsdf.glossy*=factor;
     if(all(bsdf.eval==vec3<f32>(0))){return;}
+    // Path termination for constant light shaders only (non-constant: shade_light_nee).
+//#if LIGHT_NEE
+    if(constant){
+//#endif
     let rr=data_float(D_integrator_light_inv_rr_threshold);
     let probability=select(1.0,max(abs(bsdf.eval.x),max(abs(bsdf.eval.y),abs(bsdf.eval.z)))*rr,rr>0.0);
     if(probability<1.0){let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
         if(random>=probability){return;}let inverse=1.0/probability;bsdf.eval*=inverse;bsdf.diffuse*=inverse;bsdf.glossy*=inverse;}
+//#if LIGHT_NEE
+    }
+//#endif
     // Shadow terminator geometry offset (shadow_ray_offset) moves the origin of
     // smooth-shaded triangles first; w=0 means the ray no longer skips its own
     // primitive and takes no self-intersection offset (light/sample.h).
@@ -177,5 +202,8 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
         state_vec3(S_shadow_path_pass_diffuse_weight,shadow,diffuse);state_vec3(S_shadow_path_pass_glossy_weight,shadow,glossy);
     }
     state_u8(S_shadow_path_visibility,shadow,state_byte(S_path_visibility,index));state_u32(S_shadow_path_flag,shadow,flag);
-    state_u16(S_shadow_path_queued_kernel,shadow,K_SHADOW_INTERSECT);let counter=load_word(p(7u)+S_queue_counter)/4u;atomicAdd(&heap[counter+K_SHADOW_INTERSECT],1u);
+//#if LIGHT_NEE else state_u16(S_shadow_path_queued_kernel,shadow,K_SHADOW_INTERSECT);let counter=load_word(p(7u)+S_queue_counter)/4u;atomicAdd(&heap[counter+K_SHADOW_INTERSECT],1u);
+    let next=select(K_LIGHT_NEE,K_SHADOW_INTERSECT,constant);
+    state_u16(S_shadow_path_queued_kernel,shadow,next);let counter=load_word(p(7u)+S_queue_counter)/4u;atomicAdd(&heap[counter+next],1u);
+//#endif
 }

@@ -94,11 +94,18 @@ fn attribute_read(s:ptr<function,SvmState>,desc:AttributeDesc)->AttributeValue{
         if(k==0u){a=value;}else if(k==1u){b=value;}else{c=value;}
     }
     if(count==1u){result.value=a;return result;}
-    result.value=((1.0-sd.u)-sd.v)*a+sd.u*b+sd.v*c;
-    result.dx=sd.du.x*b+sd.dv.x*c-(sd.du.x+sd.dv.x)*a;
-    result.dy=sd.du.y*b+sd.dv.y*c-(sd.du.y+sd.dv.y)*a;
+    // Cycles triangle_interpolate (1-u-v)*f0 + u*f1 + v*f2 and triangle_attribute_dfdx/dfdy,
+    // summed left to right with every product rounded first: each product passes
+    // the order word (header word 3, always 0) so no driver can fuse it into the
+    // sum or reassociate across it (the svmn_order mechanism).
+    let order=load_word(p(17u)+12u);
+    let w=attribute_order(vec4<f32>(1.0-sd.u),order).x-sd.v;
+    result.value=(attribute_order(w*a,order)+attribute_order(sd.u*b,order))+attribute_order(sd.v*c,order);
+    result.dx=(attribute_order(sd.du.x*b,order)+attribute_order(sd.dv.x*c,order))-attribute_order((sd.du.x+sd.dv.x)*a,order);
+    result.dy=(attribute_order(sd.du.y*b,order)+attribute_order(sd.dv.y*c,order))-attribute_order((sd.du.y+sd.dv.y)*a,order);
     return result;
 }
+fn attribute_order(x:vec4<f32>,order:u32)->vec4<f32>{return bitcast<vec4<f32>>(bitcast<vec4<u32>>(x)^vec4<u32>(order));}
 fn attribute_convert(value:vec4<f32>,kind:u32,output:u32,derivative:bool)->vec3<f32>{
     if(kind==NODE_ATTR_FLOAT){
         if(output==NODE_ATTR_OUTPUT_FLOAT_ALPHA){return vec3<f32>(select(1.0,0.0,derivative));}return vec3<f32>(value.x);

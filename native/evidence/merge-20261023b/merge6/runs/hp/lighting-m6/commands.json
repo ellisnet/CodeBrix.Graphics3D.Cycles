@@ -1,0 +1,658 @@
+[
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "getprop ro.build.version.sdk"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "getprop ro.product.cpu.abi"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "getprop ro.product.model"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "getprop ro.build.fingerprint"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "ps -A -o PID,ARGS"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "sha256sum /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_broad_light_state_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_broad_lighting_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_camera_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_closed_volume_render_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_closest_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_deforming_motion_render_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_emitter_sample_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_feature_combination_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_glass_bounce_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_glass_render_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_glass_svm_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_light_state_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_lighting_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_lighting_mis_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_microfacet_bounce_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_microfacet_render_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_microfacet_svm_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_nodes_render_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_nodes_svm_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_nodes_world_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_object_motion_render_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_principled_bounce_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_principled_render_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_principled_svm_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_render_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_shader_data_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_shadow_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_shadow_terminator_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_surface_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_transparent_lighting_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_transparent_shadow_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_triangle_lighting_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_triangle_sample_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_volume_boundary_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_volume_gate /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_volume_render_gate /data/local/tmp/codebrix-m6-stage/lib/libIex-3_1.so /data/local/tmp/codebrix-m6-stage/lib/libIex.so /data/local/tmp/codebrix-m6-stage/lib/libIlmThread-3_1.so /data/local/tmp/codebrix-m6-stage/lib/libIlmThread.so /data/local/tmp/codebrix-m6-stage/lib/libImath-3_1.so /data/local/tmp/codebrix-m6-stage/lib/libImath.so /data/local/tmp/codebrix-m6-stage/lib/libOpenColorIO.so /data/local/tmp/codebrix-m6-stage/lib/libOpenEXR-3_1.so /data/local/tmp/codebrix-m6-stage/lib/libOpenEXR.so /data/local/tmp/codebrix-m6-stage/lib/libOpenEXRCore-3_1.so /data/local/tmp/codebrix-m6-stage/lib/libOpenEXRCore.so /data/local/tmp/codebrix-m6-stage/lib/libOpenEXRUtil-3_1.so /data/local/tmp/codebrix-m6-stage/lib/libOpenEXRUtil.so /data/local/tmp/codebrix-m6-stage/lib/libOpenImageIO.so /data/local/tmp/codebrix-m6-stage/lib/libOpenImageIO_Util.so /data/local/tmp/codebrix-m6-stage/lib/libboost_chrono.so /data/local/tmp/codebrix-m6-stage/lib/libboost_date_time.so /data/local/tmp/codebrix-m6-stage/lib/libboost_filesystem.so /data/local/tmp/codebrix-m6-stage/lib/libboost_iostreams.so /data/local/tmp/codebrix-m6-stage/lib/libboost_regex.so /data/local/tmp/codebrix-m6-stage/lib/libboost_system.so /data/local/tmp/codebrix-m6-stage/lib/libboost_thread.so /data/local/tmp/codebrix-m6-stage/lib/libc++_shared.so /data/local/tmp/codebrix-m6-stage/lib/libcodebrix_wgpu.so /data/local/tmp/codebrix-m6-stage/lib/libexpat.so /data/local/tmp/codebrix-m6-stage/lib/libjpeg.so /data/local/tmp/codebrix-m6-stage/lib/libpng.so /data/local/tmp/codebrix-m6-stage/lib/libpng16.so /data/local/tmp/codebrix-m6-stage/lib/libpugixml.so /data/local/tmp/codebrix-m6-stage/lib/libtbb.so /data/local/tmp/codebrix-m6-stage/lib/libtiff.so /data/local/tmp/codebrix-m6-stage/lib/libtiffxx.so /data/local/tmp/codebrix-m6-stage/lib/libz.so /data/local/tmp/codebrix-m6-stage/lib/libzstd.so /data/local/tmp/codebrix-m6-stage/bin/render_replay"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "test '!' -e /data/local/tmp/codebrix-m6-lighting-m6"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/lighting_mis; echo $$ > /data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-m6-stage/lib MESA_SHADER_CACHE_DISABLE=true CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/dump-pipelines.jsonl CODEBRIX_CYCLES_SCENE_DUMP=/data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/scene-dump /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_lighting_mis_gate /data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/dump-run"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/scene-dump",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/scenes/lighting_mis"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/lighting_mis/case-0.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-0.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/lighting_mis/case-1.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-1.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/lighting_mis/case-2.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-2.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/lighting_mis/case-3.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-3.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/lighting_mis/case-4.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-4.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/lighting_mis/case-5.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-5.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/lighting_mis/case-6.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-6.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/lighting_mis/case-7.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-7.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "sha256sum /data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-0.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-1.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-2.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-3.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-4.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-5.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-6.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis/case-7.film.f32"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/lighting_mis; echo $$ > /data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-m6-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/pipelines.jsonl MESA_SHADER_CACHE_DISABLE=true CODEBRIX_CYCLES_REFERENCE_IMPORT=/data/local/tmp/codebrix-m6-lighting-m6/reference/lighting_mis CODEBRIX_CYCLES_SCENE_VERIFY=/data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/scene-dump /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_lighting_mis_gate /data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/run"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "rm -rf /data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/mesa-cache"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/lighting_mis",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/output"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/broad_lighting; echo $$ > /data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-m6-stage/lib MESA_SHADER_CACHE_DISABLE=true CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/dump-pipelines.jsonl CODEBRIX_CYCLES_SCENE_DUMP=/data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/scene-dump /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_broad_lighting_gate /data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/dump-run"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/scene-dump",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/scenes/broad_lighting"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-0.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-0.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-1.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-1.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-10.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-10.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-11.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-11.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-2.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-2.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-3.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-3.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-4.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-4.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-5.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-5.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-6.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-6.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-7.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-7.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-8.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-8.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "push",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/device-scene-reference/references/broad_lighting/case-9.film.f32",
+      "/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-9.film.f32"
+    ],
+    "timeout": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "sha256sum /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-0.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-1.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-10.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-11.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-2.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-3.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-4.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-5.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-6.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-7.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-8.film.f32 /data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting/case-9.film.f32"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/broad_lighting; echo $$ > /data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/active.pid; exec env -u OCIO LD_LIBRARY_PATH=/data/local/tmp/codebrix-m6-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/pipelines.jsonl MESA_SHADER_CACHE_DISABLE=true CODEBRIX_CYCLES_REFERENCE_IMPORT=/data/local/tmp/codebrix-m6-lighting-m6/reference/broad_lighting CODEBRIX_CYCLES_SCENE_VERIFY=/data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/scene-dump /data/local/tmp/codebrix-m6-stage/bin/codebrix_cycles_broad_lighting_gate /data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/run"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "rm -rf /data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/mesa-cache"
+    ],
+    "timeout": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/broad_lighting",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/output"
+    ],
+    "timeout": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-0; echo $$ > /data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-0/active.pid; exec env LD_LIBRARY_PATH=/data/local/tmp/codebrix-m6-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-0/pipelines.jsonl MESA_SHADER_CACHE_DISABLE=true /data/local/tmp/codebrix-m6-stage/bin/render_replay /data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/run/case-0 /data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-0/result"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-0/result.arena.bin",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/lighting_mis-replay-0/run.arena.bin"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-0/result.adapter.txt",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/lighting_mis-replay-0/run.adapter.txt"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-0/result.library.txt",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/lighting_mis-replay-0/run.library.txt"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "rm -f /data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-0/result.arena.bin"
+    ],
+    "timeout": 60
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-1; echo $$ > /data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-1/active.pid; exec env LD_LIBRARY_PATH=/data/local/tmp/codebrix-m6-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-1/pipelines.jsonl MESA_SHADER_CACHE_DISABLE=true /data/local/tmp/codebrix-m6-stage/bin/render_replay /data/local/tmp/codebrix-m6-lighting-m6/lighting_mis/run/case-1 /data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-1/result"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-1/result.arena.bin",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/lighting_mis-replay-1/run.arena.bin"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-1/result.adapter.txt",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/lighting_mis-replay-1/run.adapter.txt"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-1/result.library.txt",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/lighting_mis-replay-1/run.library.txt"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "rm -f /data/local/tmp/codebrix-m6-lighting-m6/replays/lighting_mis-replay-1/result.arena.bin"
+    ],
+    "timeout": 60
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-0; echo $$ > /data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-0/active.pid; exec env LD_LIBRARY_PATH=/data/local/tmp/codebrix-m6-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-0/pipelines.jsonl MESA_SHADER_CACHE_DISABLE=true /data/local/tmp/codebrix-m6-stage/bin/render_replay /data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/run/case-0 /data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-0/result"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-0/result.arena.bin",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/broad_lighting-replay-0/run.arena.bin"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-0/result.adapter.txt",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/broad_lighting-replay-0/run.adapter.txt"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-0/result.library.txt",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/broad_lighting-replay-0/run.library.txt"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "rm -f /data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-0/result.arena.bin"
+    ],
+    "timeout": 60
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "mkdir -p /data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-1; echo $$ > /data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-1/active.pid; exec env LD_LIBRARY_PATH=/data/local/tmp/codebrix-m6-stage/lib CODEBRIX_CYCLES_PIPELINE_LOG=/data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-1/pipelines.jsonl MESA_SHADER_CACHE_DISABLE=true /data/local/tmp/codebrix-m6-stage/bin/render_replay /data/local/tmp/codebrix-m6-lighting-m6/broad_lighting/run/case-1 /data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-1/result"
+    ],
+    "timeout": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-1/result.arena.bin",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/broad_lighting-replay-1/run.arena.bin"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-1/result.adapter.txt",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/broad_lighting-replay-1/run.adapter.txt"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "pull",
+      "/data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-1/result.library.txt",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge6/runs/hp/lighting-m6/replays/broad_lighting-replay-1/run.library.txt"
+    ],
+    "timeout": 600
+  },
+  {
+    "command": [
+      "/home/jeremy/Android/Sdk/platform-tools/adb",
+      "-s",
+      "192.168.86.225:5555",
+      "shell",
+      "rm -f /data/local/tmp/codebrix-m6-lighting-m6/replays/broad_lighting-replay-1/result.arena.bin"
+    ],
+    "timeout": 60
+  }
+]

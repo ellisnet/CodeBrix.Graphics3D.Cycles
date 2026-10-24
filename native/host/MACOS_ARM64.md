@@ -107,6 +107,13 @@ Adaptations, all recorded by the recipes:
   `CXX_HAS_SSE42`, `CXX_HAS_AVX2` and `CXX_HAS_F16C` as absent, and rejects any
   x86 or host-specific CPU flag. `WITH_CYCLES_NATIVE_ONLY` is off, so the CPU
   kernels run on every M-series chip.
+- Fixed-baseline CPU oracle (native/DEVICE.md, "Fixed-baseline CPU oracle"):
+  `inject_cycles_macos.cmake` compiles every Cycles and CodeBrix translation
+  unit with `-ffp-contract=off -fno-reciprocal-math` after Cycles' own math
+  flags (Apple Clang contracts by default on arm64), at the architecture's base
+  level; the recipe checks the CPU kernel line in the compile database. UNTESTED:
+  this rule has not yet been compiled or run on a Mac; CPU films made before it
+  (native/evidence/cycles-oracles-macos-*) used contraction.
 - `FMT_CONSTEVAL=` keeps fmt's run-time format checks under Apple Clang 21, as
   on NDK 29.
 - The concurrency test gets an Apple-only barrier, because macOS lacks POSIX

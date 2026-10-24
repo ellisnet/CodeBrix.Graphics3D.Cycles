@@ -27,7 +27,8 @@ HOST_TARGETS = ['codebrix_cycles_host', *['codebrix_host_'+name for name in
 GATE_TARGETS = ['codebrix_cycles_'+name+'_gate' for name in
     ['device', 'camera', 'closest', 'background', 'svm_world', 'shader_data', 'svm_surface',
      'attribute', 'normal', 'image', 'image_file', 'surface', 'microfacet_svm',
-     'microfacet_bounce', 'microfacet_render', 'render', 'atomic_film']]
+     'microfacet_bounce', 'microfacet_render', 'render', 'atomic_film', 'principled_svm',
+     'transparent_shadow', 'environment']]
 
 
 def prepare_source(work):

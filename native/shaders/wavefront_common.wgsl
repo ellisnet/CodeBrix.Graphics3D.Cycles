@@ -24,7 +24,11 @@ fn native_rng(sample_id:u32,pixel:u32,dimension:u32)->vec4<f32>{
     var value=heap_vec4(p(9u)+index*16u);
     if(distance<1.0){
         let hashes=vec4<u32>(wang_hash(dimension,pixel),wang_hash(dimension,pixel^0xca0e1151u),wang_hash(dimension,pixel^0xbf604c5au),wang_hash(dimension,pixel^0x99634d1du));
-        value+=(vec4<f32>(hashes)*(1.0/4294967808.0))*distance;value-=floor(value);
+        // Cycles: x += hash_wang_seeded_float(...)*scrambling_distance; the jitter
+        // product is rounded before the sum (integer add), so no driver can fuse it.
+        let jitter=(vec4<f32>(hashes)*(1.0/4294967808.0))*distance;
+        value=vec4<f32>(rounded_add(value.x,jitter.x),rounded_add(value.y,jitter.y),rounded_add(value.z,jitter.z),rounded_add(value.w,jitter.w));
+        value-=floor(value);
     }
     return value;
 }

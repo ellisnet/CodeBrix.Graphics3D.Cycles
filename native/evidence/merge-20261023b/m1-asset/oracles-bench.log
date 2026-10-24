@@ -1,0 +1,16 @@
+assets/bench_01                          cpu-x64-linux          [0.024887, 0.00548995]
+assets/bench_01-hdri                     cpu-x64-linux          [0.0413469, 0.00858013]
+assets/bench_01                          wgsl-linux-intel       [64.7873, 0.14159]
+assets/bench_01-hdri                     wgsl-linux-intel       FAILED: codebrix_cycles_oracle: cbc_host_render returned 3: WebGPU kernel not implemented: shader_eval_background
+assets/bench_01 (64x48)
+  cpu-x64-linux              samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           samples 16    repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux                       0.00846     0.0279   8.24e-05            47       1590
+      worst x=41 y=32 R: ref 0.303319067 got 0.294855028 (76.5x tolerance)
+  verdict: not perfect; FAILED: wgsl-linux-intel vs cpu-x64-linux: 47 practical failures
+
+
+real	1m8.073s
+user	1m3.754s
+sys	0m2.445s

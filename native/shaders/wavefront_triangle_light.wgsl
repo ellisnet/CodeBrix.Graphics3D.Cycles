@@ -36,7 +36,13 @@ fn triangle_light_acos(value:f32)->f32{
 fn triangle_light_normalize4(a:vec4<f32>)->vec4<f32>{
     let norm=rounded_sqrt(motion_dot4(a,a));
     // Native float4/scalar division multiplies by the reciprocal, including SSE.
-    return a*rounded_divide(1.0,norm);
+    // Each normalized component leaves through an ordering barrier (XOR with
+    // header word 3 after the error word, which the device keeps at zero): the
+    // Adreno 730 otherwise reassociates the reciprocal product with the caller's
+    // next product (the slerp sine weight, the compose scale), moving the
+    // interpolated object rotation by ULPs (triangle sampler, deforming emitter).
+    let order=load_word(p(17u)+12u);let n=a*rounded_divide(1.0,norm);
+    return bitcast<vec4<f32>>(bitcast<vec4<u32>>(n)^vec4<u32>(order));
 }
 fn triangle_light_rotation(a:vec4<f32>,b:vec4<f32>,t:f32)->vec4<f32>{
     let costheta=motion_dot4(a,b);

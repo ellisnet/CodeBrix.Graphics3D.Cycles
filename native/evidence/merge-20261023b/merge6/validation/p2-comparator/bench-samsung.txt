@@ -1,0 +1,12 @@
+assets/bench_01 (64x48)
+  cpu-x64-linux              samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           samples 16    repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  wgsl-android-samsung       samples 16    repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux                       0.00846     0.0279   8.24e-05            47       1589
+      worst x=41 y=32 R: ref 0.303319067 got 0.294855028 (76.5x tolerance)
+  wgsl-android-samsung vs cpu-x64-linux                   0.00846     0.0279   8.25e-05            51       1600
+      worst x=41 y=32 R: ref 0.303319067 got 0.294856489 (76.5x tolerance)
+  wgsl-android-samsung vs wgsl-linux-intel               0.000613    0.00422   9.26e-06            11       1091
+      worst x=37 y=31 R: ref 0.366912127 got 0.366299301 (4.97x tolerance)
+  verdict: not perfect; FAILED: wgsl-linux-intel vs cpu-x64-linux: 47 practical failures; wgsl-android-samsung vs cpu-x64-linux: 51 practical failures; wgsl-android-samsung vs wgsl-linux-intel: 11 practical failures

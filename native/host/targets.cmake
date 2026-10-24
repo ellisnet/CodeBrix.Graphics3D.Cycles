@@ -69,7 +69,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
   # Cycles' legacy directory flags contain -std=c++17; the target's C++20
   # requirement must retain precedence after moving these to target options.
   list(FILTER color_options EXCLUDE REGEX "^(-std=|/std:)")
-  target_compile_options(codebrix_host_reference_color PRIVATE ${color_options})
+  # Directory compile options (the fixed-baseline oracle's -ffp-contract=off
+  # -fno-reciprocal-math, inject_cycles.cmake) follow the flags, as in src/util.
+  get_directory_property(color_directory_options DIRECTORY "${PROJECT_SOURCE_DIR}/src/util" COMPILE_OPTIONS)
+  target_compile_options(codebrix_host_reference_color PRIVATE ${color_options} ${color_directory_options})
   target_compile_features(codebrix_host_reference_color PRIVATE cxx_std_20)
   target_compile_definitions(codebrix_host_reference_color PRIVATE ${definitions})
   target_include_directories(codebrix_host_reference_color PRIVATE "${PROJECT_SOURCE_DIR}/src")

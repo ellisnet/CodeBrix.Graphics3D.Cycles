@@ -1,0 +1,26 @@
+[06:40:02] lane m1-asset start; read briefs
+[06:44:16] baseline factor-only films recorded (native/work/m1-asset/baseline); FINDING: bench factor-only gpu vs cpu at seed = 3 practical failures, one pixel (45,22), max abs 0.0278
+[06:57:16] bench textured WGSL: 'device arena exhausted (storage binding limit)' (default 128 MiB storage binding); raising maxBufferSize/maxStorageBufferBindingSize to adapter limits (cap 2 GiB) in native/src/webgpu_device.cpp; rebuilding host
+[07:01:47] bench-requirements.md v1 written; plane control PASS (0 practical, 1468 strict, max 1.41e-4); bench textured FAIL 146 practical; diag variants running
+[07:10:14] FINDING: Linux CPU oracle kernels -march=native (AVX2/FMA) vs WGSL SSE4.2 model; bench 146 practical vs native CPU, 39 vs SSE4.2-compiled CPU; recorded in m1-shared/bench-requirements.md
+[07:14:19] moved seed Android gate trees into native/work/android/<rid>/host (previous copies kept as host.main-copy); rebuilding codebrix_cycles_host for both RIDs
+[07:14:53] ACK coordinator ruling ~07:15 on item 1: Pillow script = dev/test aid on this laptop only; bundles portable (copy the bundle, never run decode_textures.py elsewhere); managed tests use C# synthetic textures or skip naming the bundle path; library never relies on Pillow; AGENT-README + tool help recommend CodeBrix.Imaging; no Imaging package added; open question = add CodeBrix.Imaging to the glTF tool in a later lane
+[07:17:54] ACK coordinator ruling ~07:25 (supersedes 07:15): no Pillow; glTF tool + tests may use CodeBrix.Imaging.ApacheLicenseForever (latest); remove decode_textures.py; tool decodes image URIs itself; library never references imaging
+[07:19:51] ACK coordinator clarification ~07:30: local Pillow aids OK (outside tracked paths); committed path = .NET tool with CodeBrix.Imaging (added to tools/gltf csproj, 1.0.290.858 = latest on nuget.org); FINDING: Imaging-decoded bench pixels differ from Pillow/libjpeg-turbo decode for all 6 JPEGs (decoder identity recorded in bundle-manifest.json)
+[07:24:42] took samsung + hp locks for device batch 1
+[07:30:07] checkpoint 2 written; device batch 2 running
+[07:37:42] released samsung+hp (batch 1/2 done: HP plane control PASS; tablet push flaky + bench arena exhausted -> fixed: scene_linear_srgb keeps sRGB textures 8-bit (was half4, 128 MiB); push via adb push + run-as cp)
+[07:43:03] comparator (native/oracle/compare.py rewritten: N backends, measured repeats, verdict perfect) proven: 4 starters perfect (cpu-x64 + wgsl-linux); corrupted bytes -> invalid (exit 2), corrupted values -> not perfect. bench_01 oracle: 47 practical wgsl vs cpu; bench_01-hdri wgsl refused (shader_eval_background, m1-lighting)
+[07:52:00] checkpoint 3; waiting for samsung/hp (s3-tablet holds both)
+[07:56:48] took samsung for batch 3 (plane2, bench3)
+[07:57:06] released samsung (app pins stale after notices update); rebuilding Android hosts + app-3
+[07:59:48] took samsung for batch 3 (app-3)
+[08:05:28] checkpoint 4; tablet plane2 0 practical vs Linux; tablet bench3 51 practical vs Linux; gate input-check fixed; clean tablet rerun
+[08:11:21] tablet batch 3 done: plane2 PASS (0 practical, 1598 strict, max 8.89e-5, first render 142 s), bench_01 51 practical / 1602 strict / max 8.46e-3 vs Linux CPU (first render 138 s); tablet clean (no codebrix-m1a*, no package); released samsung
+[08:13:51] residual (vs SSE4.2-built CPU, no FMA, no reciprocal-math): 74/~1500 hit pixels with u/v differences at 1 spp; ray directions (Incoming) differ by 1 ulp in 95 floats at 1 spp -> residual traced to known camera-ray last-bit differences; RCPSS model verified on this CPU (0 mismatches)
+[08:44:14] checkpoint 5 (patch refreshed); still waiting for hp (m1-lighting since 07:55)
+[08:49:34] took hp for batch 4 (plane2, bench3)
+[08:57:47] hp batch 4 done; released hp
+[08:59:06] HP: plane 0/1636 max 1.09e-4 (214 s); bench 47/1587 max 8.46e-3 (201 s); comparator: plane reference backends perfect; bench not perfect (oracle build). DEVICE.md/PARITY.md updated
+[09:00:52] cleanup: intermediates deleted (hashes in deleted-sha256.txt); seed gate trees moved back to seed/ (they were re-rooted to this worktree and webgpu_device.cpp/device.cpp rebuilt in them, not pristine)
+[09:02:22] sealed: handoff written, report at agent-reports/m1-asset.md

@@ -148,6 +148,13 @@ def main():
   rows=json.loads((build/'compile_commands.json').read_text())
   native=[row['file'] for row in rows if re.search(r'-m(arch|cpu|tune)=native|-msse|-mavx|-mf16c',row.get('command',''))]
   if native:raise RuntimeError(f'Host-specific or x86 CPU flags in {native[:3]}')
+  # Fixed-baseline CPU oracle (native/DEVICE.md): the last -ffp-contract and
+  # reciprocal-math options on the CPU kernel line must switch both off
+  # (inject_cycles_macos.cmake). UNTESTED on a Mac so far.
+  kernel=[row.get('command','').split() for row in rows if row['file'].endswith('src/kernel/device/cpu/kernel.cpp')]
+  contract=[w for w in kernel[0] if w.startswith('-ffp-contract')] if kernel else [];reciprocal=[w for w in kernel[0] if w.endswith('reciprocal-math')] if kernel else []
+  if len(kernel)!=1 or contract[-1:]!=['-ffp-contract=off'] or reciprocal[-1:]!=['-fno-reciprocal-math']:
+   raise RuntimeError('CPU kernels are not at the fixed oracle baseline (no contraction, no reciprocal math)')
   if 'WITH_WEBGPU' in json.dumps(rows):raise RuntimeError('WebGPU code was configured into the Metal profile')
   host=build/'lib/libcodebrix_cycles_host.dylib';deps.check_binary(host)
   symbols=exports(host);loaded=closure(host,prefix)

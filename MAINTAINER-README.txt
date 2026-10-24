@@ -249,7 +249,30 @@ builds the pinned dependency snapshots in third_party/deps, then the native
 Cycles host, the CPU references, the WGSL translation and the WebGPU backend.
 `python3 native/tools/build_cycles.py --jobs 6` rebuilds only the Cycles host
 targets once the dependencies exist. The host library lands at
-native/work/cycles-build/lib/libcodebrix_cycles_host.so. Build outputs stay in
+native/work/cycles-build/lib/libcodebrix_cycles_host.so.
+
+The CPU device in that library is the oracle every GPU result is judged
+against, so it is built at a FIXED arithmetic baseline, never tuned to the build
+machine: Cycles' SSE4.2 kernels only (WITH_CYCLES_NATIVE_ONLY off, Cycles' AVX2
+and F16C probes recorded as absent, so no -march=native and no AVX2/FMA kernel),
+and no floating-point contraction or reciprocal math (native/tools/
+inject_cycles.cmake passes -ffp-contract=off -fno-reciprocal-math after Cycles'
+own -ffp-contract=on -freciprocal-math, for every Cycles and CodeBrix
+translation unit). Reasons: the Macs and the Raspberry Pi compare against this
+oracle, so it must not depend on the machine that built it, and it must be the
+arithmetic the WGSL device and the gates' reference programs model (the WGSL
+reproduces the SSE4.2 grouping with contraction-proof sums). The pinned source
+is not edited. build_cycles.py refuses a CPU kernel compile line that is not at
+the baseline and records it in native/work/cycles-build.json
+("cpuKernelCompile"); native/cycles/cpu_arithmetic.cpp, compiled with the
+kernels' flags, refuses an x86-64 build with AVX/FMA or reciprocal math and
+states the arithmetic in the capability report; oracle runs record the compile
+line in meta.json. The Linux ARM64 and macOS recipes apply the same rule (ARM64:
+the architecture's base level, no -march/-mcpu; macOS: UNTESTED). Android's
+on-device CPU is a diagnostic and keeps Cycles' flags. Films made before the
+fixed baseline (frozen evidence) came from -march=native builds with contraction
+and are not comparable bit for bit (native/DEVICE.md, "Fixed-baseline CPU
+oracle"). Build outputs stay in
 ignored work directories. Python 3, CMake, Make, a C/C++20 toolchain and Clang
 (for the AST translation) are external build tools; NASM is optional (JPEG SIMD;
 the verified build uses the scalar fallback). The unchanged
@@ -347,9 +370,15 @@ What the tests need:
     a minute cold on the Intel UHD laptop).
   - GltfSceneConverterTests drive the glTF example client
     (tools/gltf/CycleGltfRender, referenced by the test project; it brings the
-    CodeBrix.Graphics3D.Gltf2.MitLicenseForever package into the tests only) on
-    the CPU reference backend with a procedural sample model; no glTF asset is
-    stored in the repository.
+    CodeBrix.Graphics3D.Gltf2.MitLicenseForever and
+    CodeBrix.Imaging.ApacheLicenseForever packages into the tool and tests only;
+    the library never references an imaging package) on the CPU reference
+    backend with procedural sample models: the closure mapping, and the Blender
+    mapping on the textured-plane control (synthetic 64x64 textures generated in
+    C#; WebGpuRenderTests renders it on the GPU too). No glTF asset or external
+    texture is stored in or required by the tests.
+  - OracleSceneBundleTests cover the scene-bundle loader (header, inline and
+    raw-file geometry, save/load, typed-facade bit identity, refusals).
   - The tests never call ConfigureColor or ConfigureTiers, which are
     process-wide; the host gate covers those.
 
@@ -376,6 +405,11 @@ After a WGSL change, dump the modules a gate compiles
 (CODEBRIX_CYCLES_WGSL_DUMP=DIR) and run native/tools/intel_compile_envelope.py
 on them: every entry point must stay below 60,000 backend instructions and
 registers (native/DEVICE.md, "Linux reference fixes on the updated Mesa").
+Any change to WGSL that every device compiles also runs the Samsung Galaxy S20
+FE (Adreno 650) principled_svm and transparent_shadow jobs as standard
+regression jobs whenever that phone is attached (about 7 minutes together):
+its shader compiler has miscompiled repeated inlined integer-arithmetic bodies
+in shared code (native/DEVICE.md, "Adreno 650 lane 2").
 The product carries the same limit as a warning: every pipeline build measures
 the inlined WGSL size of each entry point it compiles (pipelines.h, size guard)
 and warns at 1,110,000 bytes: 65,535 backend instructions (the Mesa limit) at
@@ -413,6 +447,66 @@ audit.py requires every active code file (outside evidence/ and third_party/),
 including every .cs file, to carry an SPDX-License-Identifier line and the
 original-contribution copyright line. That is why the .cs files in src/ and
 tests/ start with the two-line header described under CODING CONVENTIONS.
+
+
+GLTF EXAMPLE TOOL, SCENE BUNDLES AND THE BENCH ORACLE SCENE
+===========================================================
+    dotnet run --project tools/gltf/CycleGltfRender -c Release -- MODEL.gltf \
+      --material-mapping blender --compare --output native/work/<run>/film.bin \
+      [--write-bundle native/work/<run>/bundle]
+
+renders a glTF file on the CPU reference and WebGPU backends with the Blender
+importer's node graph (textures decoded with CodeBrix.Imaging, license-review
+hashes in third_party/bench-texture-license-review.json checked) and prints the
+practical/strict comparison; `--write-bundle` also saves the scene as a
+cbcOracleScene bundle with bundle-manifest.json (decoder identity, source and
+file hashes). `--bundle SCENE.json` renders a saved bundle through the library's
+loader. `--write-sample PATH --sample-textured` writes the textured-plane control
+(and its synthetic textures, PATH.textures, read with `--textures DIR`). The
+recorded control bundle is reproduced only with its scene id, which is not the
+default (gltf/<file name>):
+
+    CodeBrix.Graphics3D.Cycles.GltfRender plane.glb --material-mapping blender \
+      --textures plane.glb.textures --width 64 --height 48 --samples 16 \
+      --bundle-id gltf/textured-plane --compare --output plane.film.bin \
+      --write-bundle control
+
+Decoded pixels depend on the JPEG decoder: a bundle is the portable artifact, so
+copy bundles between machines rather than decoding again elsewhere.
+native/oracle/scenes/make_bench_bundle.py generates and verifies the bench
+oracle bundle (native/oracle/README.md, "Bench oracle scene"); the original
+model and textures stay outside the repository, and so do the generated raw
+files. native/oracle/compare.py is the multi-backend comparator (verdict
+"perfect" when every backend pair passes the practical criterion).
+
+Android: build the validation app as below, then render a bundle on a device
+through the managed loader and judge the GPU film against the Linux CPU film
+of the same bundle (codebrix_cycles_oracle --backend cpu, film-0.f32):
+
+    python3 native/tools/android_app_gate.py --mode bundle \
+      --bundle native/work/<run>/bundle [--bundle-scene bench_01.json] \
+      --reference-film native/work/<run>/oracle/<scene>/cpu-x64-linux/film-0.f32 \
+      --result-timeout 2400 --uninstall \
+      --build-output native/work/android-app/<build> \
+      --output native/work/android-app/<new-run> \
+      --device tablet,android-arm64,DEVICE_SERIAL
+
+--bundle-scene names the scene document when the directory holds more than one
+(the bench bundle: bench_01.json and bench_01-hdri.json); by default the gate
+takes scene.json, else the directory's only cbcOracleScene document. The chosen
+document is copied to the app as scene.json (the name the app loads); the other
+scene documents stay behind. The gate passes (exit 0, "passed": true) only when
+every GPU repeat meets the practical criterion against the reference film (the
+Linux film, or the in-app CPU film without --reference-film); a run that
+completes with practical failures fails the device and the gate, and the reasons
+are listed under "failures" in its status.json and comparisons.json.
+The bundle is pushed to /data/local/tmp/codebrix-<application-id suffix>-bundle,
+copied into the app's private storage with run-as, verified by SHA-256 and the
+staging folder is removed before the app starts. With --reference-film the app
+selects the Linux x64 oracle's arithmetic adapters (as the native gates do on
+reference import) and the in-app CPU film is a diagnostic. The device films are
+also written in the oracle output layout (oracle/wgsl-android-<label>,
+oracle/cpu-<arch>-android-<label>) for compare.py.
 
 
 GENERATED OBJECT MODEL
@@ -554,7 +648,12 @@ native/tools/android_reference.py (Linux export, device-scene reference and
 host-side comparison) and the CODEBRIX_CYCLES_REFERENCE_* and
 CODEBRIX_CYCLES_SCENE_* variables documented in
 native/cycles/reference_policy.h; native/tools/libm_probe.py measures a device
-C library against correctly rounded results.
+C library against correctly rounded results. The render gates' per-stage
+lockstep checks follow it through a stage-state exchange: the device run writes
+PREFIX.stages.bin and `android_reference.py stage-judge` judges it with the
+Linux x64 gate binary on the device's dumped scene (native/cycles/render_gate.cpp,
+native/DEVICE.md "Validation reference policy"). A device job passes only when
+the device run and the stage judge both pass.
 
 The app tests registry and property readback, cancellation/reuse, disposal
 during rendering, three lifecycle films and six A/B/C/A/B/C configuration

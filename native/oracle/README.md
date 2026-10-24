@@ -23,6 +23,29 @@ cmake -S native/oracle -B native/work/oracle-build -DCMAKE_BUILD_TYPE=Release \
 cmake --build native/work/oracle-build
 ```
 
+## The CPU oracle's arithmetic (one definition on every platform)
+
+The CPU backends are unmodified Cycles CPU kernels built at a fixed baseline, so a
+CPU film does not depend on the machine that built it: no floating-point
+contraction (`-ffp-contract=off`), no reciprocal math (`-fno-reciprocal-math`),
+and a fixed ISA level: Cycles' SSE4.2 kernels only on x86-64 (never
+`-march=native`, no AVX2 kernel), the architecture's base level on ARM64 (no
+`-mcpu`). Only build flags change; the pinned source is not edited. The shared
+CMake injection (`native/tools/inject_cycles.cmake`, and
+`inject_cycles_macos.cmake` for osx-arm64) passes the two math options after
+Cycles' own `-ffp-contract=on -freciprocal-math`, the build scripts choose the ISA
+level and refuse a CPU kernel compile line that is not at the baseline, and
+`native/cycles/cpu_arithmetic.cpp`, compiled with the kernels' flags, refuses an
+x86-64 oracle with AVX/FMA or reciprocal math and states the arithmetic in the
+capability report (`backendScope.cpu.arithmetic`). Each run's `meta.json`
+records the CPU kernel compile line (`cpuKernelCompile`: flags, the deciding
+`fpContract` and `reciprocalMath`). Android's on-device CPU is a diagnostic,
+never the oracle, and keeps Cycles' flags. The WGSL device and the gates'
+reference programs model exactly this arithmetic (native/DEVICE.md,
+"Fixed-baseline CPU oracle"). CPU films rendered before the fixed baseline
+(under `native/evidence/`) came from `-march=native` builds with contraction and
+reciprocal math and are not comparable bit for bit.
+
 ## Scene files (`cbcOracleScene` version 1)
 
 `scenes/<family>/<name>.json` holds `id`, `description`, `sourceFixture`,
@@ -38,8 +61,10 @@ Each node entry has a unique `handle` and either `scene` (a singleton:
 - `graph`: `nodes` (`handle`, Cycles shader node `type`, optional `set`) and
   `connect` as `[from, output, to, input]`; `output` is the shader output node.
   Handles inside a graph shadow scene handles.
-- `mesh`: `positions`, `indices`, optional `attributes`
-  (`name`, `value`, `domain`, `flags`, then `data` floats or `bytes`) and
+- `mesh`: `positions` and `indices` (or `positionsFile` and `indicesFile`: raw
+  little-endian float32 xyz and uint32 files beside the scene), optional
+  `attributes` (`name`, `value`, `domain`, `flags`, then `data` floats, `bytes`,
+  or `file`: a raw float32 file, raw bytes for `byte4`) and
   optional `motion` (`steps`, odd, and `positions`: `steps` time-ordered vertex
   arrays whose center equals `positions`; `cbc_host_motion_positions`). Face
   material indices and smoothing are the mesh sockets `shader` and `smooth` in
@@ -57,6 +82,41 @@ bottom row first, in one of `float`, `float4`, `half`, `half4`, `byte`, `byte4`,
 `ushort`, `ushort4`. Anything the loader cannot express fails with the socket named.
 To reproduce a scene exactly across backends, set every integrator, film and
 camera control the result depends on; do not rely on defaults.
+
+The library's managed loader (`CodeBrix.Graphics3D.Cycles.Bundles.OracleSceneBundle`)
+reads the same format and builds the same scene through the managed API; on the
+CPU reference backend its films are bit-identical to the runner's for the same
+file. The Android validation app renders a bundle with it (`android_app_gate.py
+--mode bundle`, see MAINTAINER-README.txt).
+
+## Bench oracle scene (`scenes/assets/`)
+
+`bench_01.json` is the textured ForestCommunity bench with its original materials
+(the Blender glTF importer's node graph: Principled BSDF, image textures,
+Separate Color, Mix Color, tangent-space normal map from the glTF TANGENT),
+lit by the converter's default sun and a constant world. `bench_01-hdri.json`
+is the same bench lit only by a procedural environment (512x256 float4,
+importance sampled through a background light with `use_mis` and
+`map_resolution` 512). Only the two scene documents and `manifest.json` are
+committed. The raw geometry, attribute and texture files derive from the
+external asset and are never committed; generate them on a machine that has the
+asset and .NET:
+
+```sh
+python3 native/oracle/scenes/make_bench_bundle.py \
+  --model .../ForestCommunity/Domes/ForestVillage/CommunityProps/bench_01.gltf \
+  --output native/work/oracle-assets/bench_01
+```
+
+It runs the glTF example tool (which decodes the textures with CodeBrix.Imaging)
+and `scenes/author_environment.py` (the procedural environment: IEEE arithmetic
+only, the same bytes on every platform), requires both scene documents to be
+byte-identical to the committed ones and every raw file to match the SHA-256
+values in `manifest.json` (which also records the decoder identity), and leaves
+`bench_01.json` and `bench_01-hdri.json` in the output directory for the runner.
+On a machine without the asset, copy a verified bundle directory (the two scene
+documents, `bundle-manifest.json` and every raw file) and check its files against
+`manifest.json`; nothing else is needed to render it.
 
 ## Linux gate corpus (`scenes/linux-gates/`)
 
@@ -79,6 +139,7 @@ at the pinned Cycles defaults; Session-only denoising is disabled.
 python3 native/oracle/render_oracles.py --output native/work/oracles/<new run> \
   --runner <codebrix_cycles_oracle> --host-library <host library> [--backend NAME] [--scene FILE]
 python3 native/oracle/compare.py REFERENCE_DIR OTHER_DIR [...] [--json OUT]
+python3 native/oracle/compare.py --scene-root RUN_DIR SCENE_ID [--json OUT]
 python3 native/oracle/compare.py --self-test
 python3 native/oracle/render_oracles.py --bundle native/work/oracles/<run>
 ```
@@ -101,9 +162,10 @@ forces MetalRT on to validate the path M3 and later GPUs use by default. Each
 Metal backend gets a fresh Cycles kernel cache in the run directory, and its
 first render is recorded as `kernelCompileSeconds`.
 
-macOS x64 (Intel Mac) backends: `cpu-x64-macos` (Cycles' default CPU kernel
-dispatch, which picks the AVX2 kernels on CPUs that have AVX2),
-`cpu-x64-macos-sse42` (SSE4.2 kernels forced through `CYCLES_CPU_NO_AVX2=1`) and
+macOS x64 (Intel Mac) backends: `cpu-x64-macos` (the fixed-baseline CPU
+oracle: SSE4.2 kernels only), `cpu-x64-macos-sse42` (`CYCLES_CPU_NO_AVX2=1`,
+kept for comparison with older runs; without an AVX2 kernel it runs the same
+kernels) and
 `wgsl-macos-x64` (the CodeBrix WGSL device on the shipped runtime's Metal route).
 `python3 tools/build_macos_x64.py` builds the runner at
 `native/work/macos/osx-x64/oracle-build/codebrix_cycles_oracle`; see
@@ -111,14 +173,24 @@ dispatch, which picks the AVX2 kernels on CPUs that have AVX2),
 evidence directory are named `cycles-oracles-macos-x64-<date>`. Without
 `--backend`, a run renders the Apple Silicon and Linux backends only.
 
-`compare.py` treats the earlier directory as the reference `b`. The practical
+`compare.py` is the multi-backend comparator: it takes any number of backend
+directories for one scene (`cpu-x64-linux`, `cpu-arm64-macos`, `metal-m2pro`,
+`wgsl-linux-intel`, `wgsl-android-<device>`, `cpu-arm64-android-<device>`, ...;
+`--scene-root` collects every backend under `RUN_DIR/oracle/SCENE_ID`, CPU
+backends first, so a Mac bundle drops in as more directories) and reports the
+pairwise matrix: practical failures, strict differences, maximum absolute and
+relative error, RMS, the worst pixel and NaN/Inf counts, plus every backend's
+repeat films re-read and compared with film-0. The verdict is `perfect` when
+every pair passes the practical criterion and nothing else failed. For each pair
+it treats the earlier directory as the reference `b`. The practical
 criterion `abs(a - b) <= 5e-5 + 2e-4 * abs(b)` must hold for every component;
 strict differences (`1e-7 + 1e-7 * abs(b)`) are reported. NaN/Inf, shape or
 scene mismatches and films whose bytes differ from their recorded SHA-256 fail.
 
-Previews (`film-0.png`: Reinhard, then 1/2.2 power, rows flipped) and the
-conversion of bitmap textures into raw pixel files come from a scratch .NET
-tool outside the repository build that uses the CodeBrix.Imaging NuGet package.
+Previews (`film-0.png`: Reinhard, then 1/2.2 power, rows flipped) come from a
+scratch .NET tool outside the repository build that uses the CodeBrix.Imaging
+NuGet package. Bitmap textures of glTF assets are converted into raw pixel files
+by the glTF example tool (`tools/gltf/CycleGltfRender`, CodeBrix.Imaging).
 The bundle (`cycles-oracles-macos-<date>.tar.zst`) carries a `manifest.json`
 with the SHA-256 of every file and is verified by extracting it and re-hashing.
 That verified extraction is published as `native/evidence/cycles-oracles-macos-<date>/`

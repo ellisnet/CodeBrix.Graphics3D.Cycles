@@ -1,0 +1,82 @@
+{
+  "sceneId": "assets/textured-plane-control",
+  "sceneSha256": "e33970e9e158c4969842d8c27cd3bd5ed415c653f5175c8711d378fb3669a211",
+  "backend": "cpu-x64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0110328,
+    0.00906182
+  ],
+  "filmSha256": [
+    "a1d20c089816071ecdeafd6b3e49e5463ec180ecf9806a4857e6a56ccf980b06",
+    "a1d20c089816071ecdeafd6b3e49e5463ec180ecf9806a4857e6a56ccf980b06"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "d21bd4a58f489afeafe2a3046ab32a556578f0ec",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "3afe5920994f18eb6d4da3687418c0dca0863d567cdb162d4a95ae91c6ce12d9",
+  "runnerSha256": "8bf68748234b0e9297131ad7ff65e3319a10561c2455f8f8fe3ad8e1f89362a4",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/work/m1-oracle/plane-bundle/scene.json",
+  "backendDescription": "Cycles CPU device, GCC x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.036,
+  "runnerCommand": [
+    "native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/m1-oracle/native/work/m1-oracle/plane-bundle/scene.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-x64-linux",
+    "--output",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/m1-oracle/native/work/m1-oracle/oracles-assets/oracle/assets/textured-plane-control/cpu-x64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)"
+}

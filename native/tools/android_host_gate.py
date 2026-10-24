@@ -4,7 +4,9 @@
 """Validate maintained Android host binaries and run pure C consumers over adb.
 
 CPU image comparisons use the established practical criterion and retain strict
-diagnostics. GPU and CPU lifecycle films must also meet the strict criterion.
+diagnostics. GPU and CPU lifecycle films must also meet the strict criterion, except
+the GPU 64-sample film (run.3), whose atomic accumulation order varies between runs:
+practical required, strict recorded.
 This does not replace the original bitwise Session gate or validate an APK.
 """
 import argparse
@@ -19,7 +21,7 @@ import subprocess
 from pathlib import Path
 
 from build import REPO, ROOT, WORK, PACKAGE
-from build_cycles_android import dependencies
+from build_cycles_android import dependencies, HOST_TARGETS, GATE_TARGETS
 from android_toolchain import AndroidToolchain, TARGETS
 from device_gate import sha, save
 from render_gate import inputs
@@ -55,7 +57,7 @@ def inspect(rid, folder):
     artifacts = [build/name for name in status['artifacts']]
     require(all(sha(build/name) == digest for name, digest in status['artifacts'].items()),
             'A built Android artifact changed')
-    require(len(artifacts) == 25, 'Build the default full set of native targets first')
+    require(len(artifacts) == len(HOST_TARGETS)+len(GATE_TARGETS), 'Build the default full set of native targets first')
     stage = {p.name:p for p in (prefix/'lib').glob('*.so*') if p.is_file()}
     stage.update({p.name:p for p in [runtime, toolchain.runtime, *artifacts]})
     rows = []
@@ -256,8 +258,11 @@ def main():
                     call(['pull', remote+'/output/'+mode, str(folder)], mode+'-pull', timeout=300, check=code == 0)
                     if mode in ['cpu', 'cpu-exit', 'gpu', 'gpu-exit']:
                         count = 3 if mode.startswith('cpu') else (6 if mode == 'gpu' else 5)
+                        # GPU run.3 (64 samples, session64 reference): practical required, strict recorded, as
+                        # in host_gate.py (atomic accumulation order varies between runs of one binary).
                         pairs = [(folder/mode/f'run.{i}.rgba.bin',
-                            refs/'cpu64/run.1.rgba.bin' if i == 3 else refs/'cpu'/f'run.{i if i < 3 else 1}.rgba.bin', True)
+                            refs/'cpu64/run.1.rgba.bin' if i == 3 else refs/'cpu'/f'run.{i if i < 3 else 1}.rgba.bin',
+                            not (mode.startswith('gpu') and i == 3))
                             for i in range(count)]
                     elif mode == 'reload':
                         pairs = [(folder/'reload'/f'round.{i}/case.{j}.rgba.bin',

@@ -1,0 +1,302 @@
+--------- beginning of main
+10-23 09:06:29.352  1982  1992 E HeatmapThread: !@Could not open '/efs/FactoryApp/bsoh', errno = 13
+10-23 09:06:29.352  1982  1992 E HeatmapThread: !@ CAM Could not access BSOH EFS
+10-23 09:06:29.352  1982  1992 E HeatmapThread: !@ CAM New BSOH: 0
+--------- beginning of system
+10-23 09:06:29.452  2696  2854 E Watchdog: !@Sync: 2692 heap(MB): 110 / 143 FD: 1173 [2026-10-23 09:06:29.451]
+10-23 09:06:29.631  4867 30691 I FusedLocation: (REDACTED) location delivery to %s blocked - too close
+10-23 09:06:29.634  2696  3801 D SLocation: PositionManager - Passive handleLocationChanged [F, A : 100.00, T : 1792771589626, ET : 80933270, h : 16/17]
+10-23 09:06:29.635  4256  4353 I GmsPassiveListener_FLP: onGmsLocationChanged, provider=fused / speed=0.0 / time=1792771589626 / elapsed=80933270979799
+10-23 09:06:29.635  2696  3801 D SLocation: PositionManager - receive fused location
+10-23 09:06:29.635  2696  3801 W SLocation: GeopointGeofenceManger - refresh wifi to receive loc
+10-23 09:06:29.635  2696  3801 D SLocation: SLocationCoreSem - send to coreSem, packet length : 23 / [2, 26, 65, 251, 84, 182, 189, 29, 130, 0, 0, 0, 100, 2, 0, 0, 1, 161, 105, 131, 133, 250, 0]
+10-23 09:06:29.635  2696  3801 D SemContextLocationCoreAttribute: setAttribute() mode : 0 action : 23
+10-23 09:06:29.635  2696  3801 D SemContextService: lock : changeParameters
+10-23 09:06:29.635  2696  3801 D SemContext.CaeProvider.LocationCoreImpl: setAttribute() mode : 0 action : 23
+10-23 09:06:29.636  2696  3801 W CAE     : setCAProperty(ContextAwareService.java:509) - [setProperty 01] Mutex is locked for SLOCATION_RUNNER
+10-23 09:06:29.636  2696  3801 I CAE     : setPropertyValue(SLocationRunner.java:116) - SLocationRunner setProperty header : 2, len : 23
+10-23 09:06:29.636  6657  7070 I Rubin   : [61] Z5.b.onLocationChanged(SourceFile:63) : Passive location updated
+10-23 09:06:29.637  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=10212, AttributionTag=com.google.android.gms.findmydevice, Package name=com.google.android.gms, Paused=false)false)
+10-23 09:06:29.637  2696  3378 D SensorService: setSContextDataLocked ints length 8 , byte length 26
+10-23 09:06:29.637  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=1000, AttributionTag=SLocationService, Package name=android, Paused=false)
+10-23 09:06:29.637  2696  3378 D SensorService: setSContextDataLocked 23717c1
+10-23 09:06:29.637  3639  3639 D AiAgentEffect: onPrivacyItemsChanged privacyItems.size = 2
+10-23 09:06:29.637  3639  3639 D AiAgentEffect: onPrivacyItemsChanged privacyItems isEmpty or found item is null
+10-23 09:06:29.637  6657  7366 I Rubin   : [67] com.samsung.android.rubin.inferenceengine.contextanalytics.engine.loggers.LocationLogger.flush(SourceFile:5) : flush
+10-23 09:06:29.637  1873  1873 I sensors-hal: inject_sensor_data:547, handle 1501 send inject
+10-23 09:06:29.637  1873  1873 I sensors-hal: sendContextData:285, sensor hal 26, (0xc1, 0x17, 0x37, 0x2)
+10-23 09:06:29.637  1873  1873 E sensors-hal: sendContextData:131, slocationcore h 193 m 23 s 55
+10-23 09:06:29.637  1873  1873 I sensors-hal: sendUserData:117, slocationcore sendUserData
+10-23 09:06:29.637  1873  1873 E sensors-hal: create_send_context_data:62, slocationcore create_send_context_data
+10-23 09:06:29.637  1873  1873 I sensors-hal: send_context_data:622, slocationcore, 4986366670857974562, 1320970896291267344, msgid:700
+10-23 09:06:29.639  2696  3801 W CAE     : setCAProperty(ContextAwareService.java:515) - [setProperty 02] Mutex is unlocked for SLOCATION_RUNNER
+10-23 09:06:29.639  2696  3801 D SemContextService: unlock : changeParameters
+10-23 09:06:29.639  2696  3801 D SemContextManager:   .changeParameters : listener = Z.i@24b131d, service=SLocation Core
+10-23 09:06:29.640  1873 10219 I sensors-hal: ssc_conn_resp_cb:840, resp_value = 0
+10-23 09:06:29.640  1873 10219 E sensors-hal: handle_sns_client_event:76, slocationcore_event: msgid:1025
+10-23 09:06:29.640  3978  4054 I HoneySpace.StatusIconTracker: invokeEvent() called with: event = PrivacyInfo(visible=false)
+10-23 09:06:29.641  1873 10219 E sensors-hal: handle_sns_client_event:76, slocationcore_event: msgid:1025
+10-23 09:06:29.642  2696  3372 D CAE     : onGetSensorHubData(SensorHubParserProvider.java:92) - onGetSensorHubData Event [event buffer len :26], AP_WAKEUP
+10-23 09:06:29.642  2696  3372 I CAE     : parse(SensorHubParserProvider.java:188) - buffer size = 26
+10-23 09:06:29.642  2696  3372 I CAE     : parse(SensorHubParserProvider.java:199) - 1, 1, 55, 0, 21, 5, 7, 2, 0, 0, 0, 0, 3, 107, -92, 16, 7, 2, 0, 0, 0, 10, 3, 107, -53, 32,
+10-23 09:06:29.643  2696  3372 I CAE     : parse(SLocationRunner.java:88) - SLocationRunner parse start : 3
+10-23 09:06:29.643  2696  3372 D CAE     : display(ContextProvider.java:375) - ================= SLOCATION_RUNNER =================
+10-23 09:06:29.643  2696  3372 I CAE     : display(ContextProvider.java:391) - ExtraDataArray=[1, 1, 55, 0, 21, 5, 7, 2, 0, 0, 0, 0, 3, 107, -92, 16, 7, 2, 0, 0, 0, 10, 3, 107, -53, 32]
+10-23 09:06:29.643  2696  3372 I CAE     : parse(SLocationRunner.java:96) - SLocationRunner parse end:26
+10-23 09:06:29.643  2696  5838 D ActivityManager: Received SERVICE intent 0x8cd4272 Key{startService pkg=com.google.android.gms/com.google.android.gms.findmydevice intent=act=com.google.android.gms.findmydevice.spot.locationreporting.ASSIGN_LOCATION cat=[targeted_intent_op_prefix:.findmydevice.spot.locationreporting.LocationAssigningIntentOperation,SelfLocationUpdate] dat= typ=*/* xflg=0x4 pkg=com.google.android.gms cmp=com.google.android.gms/.chimera.PersistentIntentOperationService clip={text/vnd.android.intent hasLabel(0) {I:xflg=0x4}} flags=0x2000000 u=0} requestCode=0 from uid 10212
+10-23 09:06:29.644  1990  2233 I VSyncReactor: Current= 60, Period= 60, hwcPeriod= 60
+10-23 09:06:29.645  2696  3369 D SemContextService: Service.updateContext() : service = SLocation Core
+10-23 09:06:29.645  2696  3372 D CAE     : onGetSensorHubData(SensorHubParserProvider.java:92) - onGetSensorHubData Event [event buffer len :10], AP_WAKEUP
+10-23 09:06:29.645  2696  3372 I CAE     : parse(SensorHubParserProvider.java:188) - buffer size = 10
+10-23 09:06:29.645  2696  3372 I CAE     : parse(SensorHubParserProvider.java:199) - 1, 1, 55, 0, 5, 2, 2, 0, 0, 0,
+10-23 09:06:29.645  3639  3639 W View    : requestLayout() improperly called by com.android.systemui.qs.SecQSGradationDrawableView{9500a4e V.E...... ......ID 0,0-2560,208 #7f0a0a16 app:id/qs_gradation_view} during layout: running second layout pass
+10-23 09:06:29.645  3639  3639 W View    : requestLayout() improperly called by android.widget.FrameLayout{8c576f V.E...... ......ID 0,0-2560,1600 #2} during layout: running second layout pass
+10-23 09:06:29.645  3639  3639 W View    : requestLayout() improperly called by android.widget.FrameLayout{d3f3c7c V.E...... ......ID 760,64-1801,1568 #7f0a0a14 app:id/qs_frame} during layout: running second layout pass
+10-23 09:06:29.645  2696  3372 I CAE     : parse(SLocationRunner.java:88) - SLocationRunner parse start : 3
+10-23 09:06:29.645  2696  3372 D CAE     : display(ContextProvider.java:375) - ================= SLOCATION_RUNNER =================
+10-23 09:06:29.645  2696  2696 D SemContextManager: onSemContextChanged() : event = SLocation Core
+10-23 09:06:29.646  2696  3372 I CAE     : display(ContextProvider.java:391) - ExtraDataArray=[1, 1, 55, 0, 5, 2, 2, 0, 0, 0]
+10-23 09:06:29.646  2696  3372 I CAE     : parse(SLocationRunner.java:96) - SLocationRunner parse end:10
+10-23 09:06:29.646  2696  2696 D SLocation: SensorHubWrapper - SemContextChanged type = 47, packet received
+10-23 09:06:29.646  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:29.646  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:29.646  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:29.646  2696  3369 D SemContextService: Service.updateContext() : service = SLocation Core
+10-23 09:06:29.646  2696  3801 D SLocation: CommonCoreManager - received Extra Data from core, len : 21
+10-23 09:06:29.647  2696  2696 D SemContextManager: onSemContextChanged() : event = SLocation Core
+10-23 09:06:29.647  2696  2696 D SLocation: SensorHubWrapper - SemContextChanged type = 47, packet received
+10-23 09:06:29.648  2696  3801 D SLocation: CommonCoreManager - received Extra Data from core, len : 5
+10-23 09:06:29.648  2696  3801 D SLocation: CommonCoreManager - handleCommandCallback - FUNC_TYPE : SET_LOCATION  ERROR_CODE : ERROR_NONE
+10-23 09:06:29.648  2696  5819 D ActivityManager: Received SERVICE intent 0xd58121c Key{startService pkg=com.google.android.gms/current_semantic_location intent=act=com.google.android.gms.semanticlocation.ACTION_LOCATION xflg=0x4 cmp=com.google.android.gms/.semanticlocation.service.SemanticLocationService flags=0x2000000 u=0} requestCode=0 from uid 10212
+10-23 09:06:29.650  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=10212, AttributionTag=com.google.android.gms.findmydevice, Package name=com.google.android.gms, Paused=false)false)false)
+10-23 09:06:29.650  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=1000, AttributionTag=SLocationService, Package name=android, Paused=false)false)
+10-23 09:06:29.650  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=5013, AttributionTag=null, Package name=com.sec.location.nsflp2, Paused=false)
+10-23 09:06:29.650  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=10084, AttributionTag=null, Package name=com.samsung.android.rubin.app, Paused=false)
+10-23 09:06:29.650  3639  3639 D AiAgentEffect: onPrivacyItemsChanged privacyItems.size = 4
+10-23 09:06:29.650  3639  3639 D AiAgentEffect: onPrivacyItemsChanged privacyItems isEmpty or found item is null
+10-23 09:06:29.650  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=10212, AttributionTag=com.google.android.gms.findmydevice, Package name=com.google.android.gms, Paused=false)false)false)false)
+10-23 09:06:29.650  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=1000, AttributionTag=SLocationService, Package name=android, Paused=false)false)false)
+10-23 09:06:29.650  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=5013, AttributionTag=null, Package name=com.sec.location.nsflp2, Paused=false)false)
+10-23 09:06:29.650  3639  3779 D AppOpsPrivacyItemMonitor: showLocationSystemApps  AppOpItem(Op code=1, UID=10084, AttributionTag=null, Package name=com.samsung.android.rubin.app, Paused=false)false)
+10-23 09:06:29.651  3639  3639 D AiAgentEffect: onPrivacyItemsChanged privacyItems.size = 4
+10-23 09:06:29.651  3639  3639 D AiAgentEffect: onPrivacyItemsChanged privacyItems isEmpty or found item is null
+10-23 09:06:29.652  3978  4054 I HoneySpace.StatusIconTracker: invokeEvent() called with: event = PrivacyInfo(visible=false)
+10-23 09:06:29.652  3978  4054 I HoneySpace.StatusIconTracker: invokeEvent() called with: event = PrivacyInfo(visible=false)
+10-23 09:06:29.655  4867  4867 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.onboardingconsent.api.ConsentManagerApiService.START dat=chimera-action:/... xflg=0x4 cmp=com.google.android.gms/.chimera.GmsApiService }
+10-23 09:06:29.655  4867  4867 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.onboardingconsent.api.ConsentManagerApiService.START dat=chimera-action:/... xflg=0x4 cmp=com.google.android.gms/.chimera.GmsApiService }
+10-23 09:06:29.658  4867  4867 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action:/... xflg=0x4 cmp=com.google.android.gms/.chimera.PersistentApiService }
+10-23 09:06:29.659  4867  4958 I ConsentManagerApiServic: (REDACTED) ConsentManagerApiService onGetService success %s
+10-23 09:06:29.663  2696  3467 D BackgroundInstallControlService: Package event received: 0
+10-23 09:06:29.663  3639  3639 W View    : requestLayout() improperly called by com.android.systemui.qs.SecQSGradationDrawableView{9500a4e V.E...... ......ID 0,0-2560,208 #7f0a0a16 app:id/qs_gradation_view} during layout: running second layout pass
+10-23 09:06:29.663  3639  3639 W View    : requestLayout() improperly called by android.widget.FrameLayout{8c576f V.E...... ......ID 0,0-2560,1600 #2} during layout: running second layout pass
+10-23 09:06:29.663  3639  3639 W View    : requestLayout() improperly called by android.widget.FrameLayout{d3f3c7c V.E...... ......ID 760,64-1801,1568 #7f0a0a14 app:id/qs_frame} during layout: running second layout pass
+10-23 09:06:29.663  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:29.663  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:29.663  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:29.676  4867 30703 I TFLite-in-PlayServices: Created interpreter.
+10-23 09:06:29.682  4867 30703 I TFLite-in-PlayServices: Created interpreter.
+10-23 09:06:29.685  4867 30703 I SemanticLocation: (REDACTED) [Inferrer] %s%s
+10-23 09:06:29.699  4867 30703 W SemanticLocation: [AddAdditionalPlaceDetailsUtil] Failed to fetch place info for fprint from place index. [CONTEXT service_id=173 ]
+10-23 09:06:29.879  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+10-23 09:06:29.879  1862  4616 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+10-23 09:06:29.880  1862  4616 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+10-23 09:06:29.880  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+10-23 09:06:29.891  3850  4643 I ScanController: onScanResult to scannerId: 8- eventType=0x1a, addressType=1, address=XX:XX:XX:XX:08:F1, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-38, periodicAdvInt=0x0
+10-23 09:06:29.904  3850  4643 I ScanController: onScanResult to scannerId: 8- eventType=0x0, addressType=1, address=XX:XX:XX:XX:6D:52, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-35, periodicAdvInt=0x0
+10-23 09:06:29.905  3850  4643 I ScanController: onScanResult to scannerId: 10- eventType=0x10, addressType=0, address=XX:XX:XX:XX:4C:C6, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-68, periodicAdvInt=0x0
+10-23 09:06:29.908  8521  8965 I [-0700]oneconnect[1.8.52.23_01][CORE]: BleParserForDaDevice.parseBlePacket - DeviceBleDa : [name][BleMac]($)34:FC[DeviceType]WASHER[DeviceInfoVersion]1[DeviceStatus]0,52,0,240,241,1,0,
+10-23 09:06:29.943  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+10-23 09:06:29.943  1862  4616 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+10-23 09:06:30.001  1140  1140 D io_stats: !@   8,0 r 1647748 49684342 w 659648 65493236 d 223757 80444048 f 0 52486 iot 977460 0 th 0 0 0 pt 0 inp 0 0 80824.015
+10-23 09:06:30.001  1140  1140 D io_stats: !@ Read_top(KB): gle.android.gms(4867) 36 system_server(2696) 24
+10-23 09:06:30.001  1140  1140 D io_stats: !@ Write_top(KB): droid.rubin.app(6657) 16
+10-23 09:06:30.094  1862  4199 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+10-23 09:06:30.137  2696  3801 D SLocation: WifiBssidMonitor - requestRefresh
+10-23 09:06:30.139  2696  3801 W SLocation: WifiBssidMonitor - connected wifi : (b0:e4:d5:**:**:69/863)
+10-23 09:06:30.351  1982  1992 E HeatmapThread: ECT Thread time in milliseconds: 1792771590
+10-23 09:06:30.351  1982  1992 D HeatmapThread: !@ batteryplugType : 0
+10-23 09:06:30.351  1982  1992 D HeatmapThread: !@ batteryLevel : 0  batteryTemperature : 0 
+10-23 09:06:30.352  1982  1992 D HeatmapThread: !@ Heatmap currtime: 29879526
+10-23 09:06:30.352  1982  1992 D HeatmapThread: !@ Heatmap prevtime: 29879498
+10-23 09:06:30.352  1982  1992 D HeatmapThread: !@ Heatmap plugstarttime: 35791394
+10-23 09:06:30.352  1982  1992 D HeatmapThread: !@ Heatmap prevv_dsoh_update_time: 29878178
+10-23 09:06:30.352  1982  1992 E HeatmapThread: !@Could not open '/efs/FactoryApp/bsoh', errno = 13
+10-23 09:06:30.352  1982  1992 E HeatmapThread: !@ CAM Could not access BSOH EFS
+10-23 09:06:30.352  1982  1992 E HeatmapThread: !@ CAM New BSOH: 0
+10-23 09:06:30.655  4867  4867 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.libs.gmscorelogger.service.START dat=chimera-action:/... xflg=0x4 cmp=com.google.android.gms/.chimera.PersistentDirectBootAwareApiService }
+10-23 09:06:31.352  1982  1992 E HeatmapThread: ECT Thread time in milliseconds: 1792771591
+10-23 09:06:31.352  1982  1992 D HeatmapThread: !@ batteryplugType : 0
+10-23 09:06:31.352  1982  1992 D HeatmapThread: !@ batteryLevel : 0  batteryTemperature : 0 
+10-23 09:06:31.352  1982  1992 D HeatmapThread: !@ Heatmap currtime: 29879526
+10-23 09:06:31.352  1982  1992 D HeatmapThread: !@ Heatmap prevtime: 29879498
+10-23 09:06:31.352  1982  1992 D HeatmapThread: !@ Heatmap plugstarttime: 35791394
+10-23 09:06:31.352  1982  1992 D HeatmapThread: !@ Heatmap prevv_dsoh_update_time: 29878178
+10-23 09:06:31.353  1982  1992 E HeatmapThread: !@Could not open '/efs/FactoryApp/bsoh', errno = 13
+10-23 09:06:31.353  1982  1992 E HeatmapThread: !@ CAM Could not access BSOH EFS
+10-23 09:06:31.353  1982  1992 E HeatmapThread: !@ CAM New BSOH: 0
+10-23 09:06:31.375  2696  3389 D WifiStaIfaceHidlImpl: getCachedScanData is not implemented by HIDL
+10-23 09:06:31.382  2696  3442 D SemWifiApNsd:Client: lpInterface:wlan0
+10-23 09:06:31.382  2696  3442 D SemWifiSwitchForIndividualAppsService: stopTCPMonitoring : already stopped
+10-23 09:06:31.382  2696  3442 I WifiConnectivityMonitor.NCC: sNetworkCallback(oCC) FULL : 100(valid: true/captive: false)
+10-23 09:06:31.382  2696  3442 I WifiConnectivityMonitor.NCC: [ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED LinkUpBandwidth>=42296Kbps LinkDnBandwidth>=77264Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:**:**:00, MAC: 02:00:00:**:**:00, IP: /192.***.**.242, Security type: 2, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -63, Link speed: 234Mbps, Tx Link speed: 234Mbps, Max Supported Tx Link speed: 866Mbps, Rx Link speed: 520Mbps, Max Supported Rx Link speed: 866Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 60, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -63 AdminUids: [1000] SSID: "LSNet" UnderlyingNetworks: Null]
+10-23 09:06:31.383  3639  3845 I WifiPickerTracker: DefaultNetworkCallback : onCapabilitiesChanged
+10-23 09:06:31.383  6295  7160 I HBD     : g onCapabilitiesChanged network : 100 current network state : wifi 
+10-23 09:06:31.383  3639  3845 I WifiPickerTracker: NetworkCallback : onCapabilitiesChanged
+10-23 09:06:31.383  3639  3845 D WifiPickerTracker: updateWifiEntries capabilities
+10-23 09:06:31.385  3639  3845 D WifiPickerTracker: update AutoHotspot Entries() : bleAccessPoints -> 0
+10-23 09:06:31.385  3639  3845 D WifiPickerTracker: handleNetworkCapabilitiesChanged
+10-23 09:06:31.386  2696  3490 I SemWifiLinkQualityMonitor: Link stat: 384 / 11 / 1.00 (3) / 234 / -63.0 || 100.0 : 234.00 / 0.5 : 1.00 / 0.55 : 0.03 / B (G) || d52bc5695745: 0.108 / 73.861 / N || N N / 0 0 / Y 2.0 / Y X 0 / 80825396 0 || Invalid
+10-23 09:06:31.381  2696  5117 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 26579, isSameBssidAndFreq true
+10-23 09:06:31.386  3639  3794 D WifiInteractor: get wifiIconGroup ePDGConnected : false
+10-23 09:06:31.386  3639  3794 D WifiInteractor: get wifiIconGroup ePDGConnected : false
+10-23 09:06:31.388  3978  4054 I HoneySpace.StatusIconTracker: invokeEvent() called with: event = Wifi(visible=true, resId=2131236018, activityId=0)
+10-23 09:06:31.389  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.390  2696  3510 D SemApeService: Deducted link capacity (M: R=368 T=122) RSSI=-63
+10-23 09:06:31.390  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.390  2696  3510 D SemApeService: Deducted link capacity (M: R=368 T=122) on (wlan0) GoogleAPI(M: R=77 T=42) RSSI=-63 isDefault=false isMlo=false
+10-23 09:06:31.390  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.390  2696  3516 D WifiConnectivityMonitor: HANDLE_ON_CAPABILITIES_CHANGED
+10-23 09:06:31.390  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.390  3639  3639 D CarrierTextController: setCarrierText : LSNet, LSNet allSimsMissing : true anySimReady : false
+10-23 09:06:31.391  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.391  2696  3516 I WifiConnectivityMonitor: determineMode : MODE_NON_SWITCHABLE_BY_POOR_NETWORK_DETECTION_DISABLED
+10-23 09:06:31.391  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.391  2696  3401 D ConnectivityService: NetReassign [no changes] [c 0] [a 1] [i 0]
+10-23 09:06:31.391  2696  3516 D OpenNetworkQos[4.00]: updateBssidNoInternet: mBssidNoInternet = false
+10-23 09:06:31.391  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.391  2696  3516 D OpenNetworkQos[4.00]: getOpenNetworkQosNoInternetStatus: false
+10-23 09:06:31.391  2696  3516 D OpenNetworkQos[4.00]: getOpenNetworkQosScores: 0 23 10 
+10-23 09:06:31.391  2696  3516 D KNOX_MDM_SettingsProvider: isChangeAllowed() : name = wifi_wcm_qos_sharing_score_summary
+10-23 09:06:31.391  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.392  3639  3639 D CarrierTextController: setCarrierText : LSNet, LSNet allSimsMissing : true anySimReady : false
+10-23 09:06:31.392  2696  3516 I WifiProfileShare: network QoS data was changed (internet), updateQoSData networkType: true, qosData: false
+10-23 09:06:31.392  2696  4284 V WifiProfileShare.Caster: update wips network, size: 0
+10-23 09:06:31.392  2696  4284 D WifiProfileShare: nearby scanning settings run
+10-23 09:06:31.392  2696  4284 D WifiProfileShare: network score provider settings enabled
+10-23 09:06:31.392  2696  4284 D OpenNetworkQos[4.00]: getOpenNetworkQosScores: 0 23 10 
+10-23 09:06:31.392  2696  4284 D OpenNetworkQos[4.00]: getOpenNetworkQosNoInternetStatus: false
+10-23 09:06:31.392  2696  4284 I WifiProfileShare.Caster: current network type: 0, score: [0, 23, 10]
+10-23 09:06:31.392  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.392  2696  4284 V WifiProfileShare.Cache: update network score b0:e4:d5:**:**:69
+10-23 09:06:31.392  4867 30691 I NearbyMediums: Wifi changed new SSID: "LSNet"
+10-23 09:06:31.392  2696  4284 D WifiProfileShare.ScanMatcher: getMcfDataList size:2
+10-23 09:06:31.392  4867 30691 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+10-23 09:06:31.392  2696  4284 I WifiProfileShare.Caster: qos data was updated , before:type:QOS, pBssid:cf:10:d9, qosData:11 after:type:QOS, pBssid:cf:10:d9, qosData:11
+10-23 09:06:31.392  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.393  2696  4284 I [MCFSDK_android_1.3.7026]_4_McfCasterImpl: isNetworkEnabled - type : 1 ret : true
+10-23 09:06:31.393  2696  4284 D WifiProfileShare.McfCast: -ME--- mIsNetworkEnabled :true
+10-23 09:06:31.393  2696  4284 D WifiProfileShare.McfCast: updateQoSData ignored, same contents
+10-23 09:06:31.393  2696  4284 D WifiProfileShare.MCF: success update QosData !
+10-23 09:06:31.393  2696  4284 I [MCFSDK_android_1.3.7026]_4_McfCasterImpl: isNetworkEnabled - type : 1 ret : true
+10-23 09:06:31.393  2696  4284 D WifiProfileShare.McfCast: -ME--- mIsNetworkEnabled :true
+10-23 09:06:31.393  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.393  2696  4284 D WifiProfileShare.McfCast: -ME--- updatePasswordDate pwdData size:2
+10-23 09:06:31.393  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.393  3639  3639 D CarrierTextController: setCarrierText : LSNet, LSNet allSimsMissing : true anySimReady : false
+10-23 09:06:31.393  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.394  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.394  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.394  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.394  3639  3639 D CarrierTextController: setCarrierText : LSNet, LSNet allSimsMissing : true anySimReady : false
+10-23 09:06:31.394  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.395  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.395  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.395  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.395  3639  3639 D CarrierTextController: setCarrierText : LSNet, LSNet allSimsMissing : true anySimReady : false
+10-23 09:06:31.395  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.396  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.396  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.396  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.396  3639  3639 D CarrierTextController: setCarrierText : LSNet, LSNet allSimsMissing : true anySimReady : false
+10-23 09:06:31.396  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.397  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.397  4867 12093 I NullBinder: NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+10-23 09:06:31.397  4867 12093 W gle.android.gms: Large reply transaction of 1056768 bytes, interface descriptor , code 1
+10-23 09:06:31.397  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.397  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.397  3639  3639 D CarrierTextController: setCarrierText : LSNet, LSNet allSimsMissing : true anySimReady : false
+10-23 09:06:31.397  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.398  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.398  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.398  3639  3639 D SemCarrierFeature: [get] phoneId should be 0 or 1
+10-23 09:06:31.398  3639  3639 D CarrierTextController: setCarrierText : LSNet, LSNet allSimsMissing : true anySimReady : false
+10-23 09:06:31.399  3639  3639 D CarrierTextController: BLOCK_CARRIER_TEXT_WHEN_SIM_NOT_READY
+10-23 09:06:31.399  3639  3639 D CarrierTextController: BLOCK_CARRIER_TEXT_WHEN_SIM_NOT_READY
+10-23 09:06:31.399  3639  3639 D CarrierTextController: BLOCK_CARRIER_TEXT_WHEN_SIM_NOT_READY
+10-23 09:06:31.399  3639  3639 D CarrierTextController: BLOCK_CARRIER_TEXT_WHEN_SIM_NOT_READY
+10-23 09:06:31.411  1990  2233 I VSyncReactor: Current= 60, Period= 60, hwcPeriod= 60
+10-23 09:06:31.413  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:31.413  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:31.413  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:31.413  3639  3639 D ShadeCarrierGroup: handleUpdateCarrierInfo [LSNet] isLatin=false
+10-23 09:06:31.413  3639  3779 D Tile.WifiTile: handleUpdateState isTransient=false transientEnabling =false cb.isTransient=false state.state = 2 mStateBeforeClick.value =false enabled =true
+10-23 09:06:31.413  3639  3639 D ShadeCarrierGroup: handleUpdateCarrierInfo [LSNet] isLatin=false
+10-23 09:06:31.414  3639  3779 D Tile.WifiTile: handleUpdateState isTransient=false transientEnabling =false cb.isTransient=false state.state = 2 mStateBeforeClick.value =false enabled =true
+10-23 09:06:31.416  1990  2265 D DisplayModeController: setDesiredMode 4630946594533597314 {mode={fps=120.00 Hz, modePtr={id=0, vsyncRate=120.00 Hz, peakRefreshRate=120.00 Hz}}, emitEvent=true, force=false}
+10-23 09:06:31.420  1990  1990 I SurfaceFlinger: No layers with votes - choose 120.00 Hz
+10-23 09:06:31.421  1990  1990 I HWComposer: [4630946594533597314] ActiveConfigToHWC, ID : 0
+10-23 09:06:31.422  1904  2227 I SDM     : HWCDisplay::SubmitDisplayConfig: [DispConfigs] config 2 => 0, hs_mode 1 => 1
+10-23 09:06:31.422  1904  2227 I SDM     : HWDeviceDRM::SetDisplaySwitchMode: [DispConfigs] check hs_mode 1
+10-23 09:06:31.422  1904  2227 I SDM     : HWDeviceDRM::SetDisplaySwitchMode: [DispConfigs] Set mode index:0 1600x2560x120xvidNS, hs_mode(1), found_mode(0)
+10-23 09:06:31.422  1904  2227 I SDM     : HWDeviceDRM::UpdateMixerAttributes: Mixer WxH 1600x2560-1 for Peripheral
+10-23 09:06:31.422  1904  2227 I SDM     : HWCDisplay::SubmitDisplayConfig: Active configuration changed from config 2 to 0
+10-23 09:06:31.427  1990  2233 I VSyncReactor: Current= 60, Period= 120, hwcPeriod= 120
+10-23 09:06:31.436  1990  1990 I SurfaceFlinger: finalizeDisplayModeChange 4630946594533597314
+10-23 09:06:31.438  3639  3639 W View    : requestLayout() improperly called by com.android.systemui.qs.SecQSGradationDrawableView{9500a4e V.E...... ......ID 0,0-2560,208 #7f0a0a16 app:id/qs_gradation_view} during layout: running second layout pass
+10-23 09:06:31.438  3639  3639 W View    : requestLayout() improperly called by android.widget.FrameLayout{8c576f V.E...... ......ID 0,0-2560,1600 #2} during layout: running second layout pass
+10-23 09:06:31.438  3639  3639 W View    : requestLayout() improperly called by android.widget.FrameLayout{d3f3c7c V.E...... ......ID 760,64-1801,1568 #7f0a0a14 app:id/qs_frame} during layout: running second layout pass
+10-23 09:06:31.438  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:31.438  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:31.438  3639  3639 W RefactorFlag: New code path expects SceneContainerFlag to be enabled.
+10-23 09:06:31.486  6295  6295 I HBD     : g onCapabilityChanged  setNetworkState currentNetworkState : wifi 
+10-23 09:06:31.486  6295  6295 I HBD     : h LogTag.TAG_LMDOWNLOAD network status is changed.
+10-23 09:06:31.529  1873  5318 I sensors-hal: handle_sns_std_sensor_event:335, [SSC_LIGHT] P: 13(13),ch0:0,ch1:11,c:43,w:97,l:0,m:0,br:0,c1:0,c2:0,i:0
+10-23 09:06:31.569  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+10-23 09:06:31.569  1862  4616 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+10-23 09:06:31.570  1862  4616 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired 
+10-23 09:06:31.570  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+10-23 09:06:31.580  3850  4643 I ScanController: onScanResult to scannerId: 10- eventType=0x10, addressType=0, address=XX:XX:XX:XX:E3:E0, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-81, periodicAdvInt=0x0
+10-23 09:06:31.585  8521  8965 I [-0700]oneconnect[1.8.52.23_01][CORE]: BleParserForDaDevice.parseBlePacket - DeviceBleDa : [name][BleMac]($)A4:57[DeviceType]DRYER[DeviceInfoVersion]1[DeviceStatus]0,39,0,240,241,1,0,
+10-23 09:06:31.592  3850  4643 I ScanController: onScanResult to scannerId: 8- eventType=0x1a, addressType=1, address=XX:XX:XX:XX:08:F1, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-35, periodicAdvInt=0x0
+10-23 09:06:31.620  3850  4643 I ScanController: onScanResult to scannerId: 8- eventType=0x0, addressType=1, address=XX:XX:XX:XX:6D:52, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-34, periodicAdvInt=0x0
+10-23 09:06:31.658  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+10-23 09:06:31.658  1862  4616 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+10-23 09:06:31.670  1990  2265 D DisplayModeController: setDesiredMode 4630946594533597314 {mode={fps=60.00 Hz, modePtr={id=2, vsyncRate=60.00 Hz, peakRefreshRate=60.00 Hz}}, emitEvent=false, force=false}
+10-23 09:06:31.672  1990  1990 I LayerHistory: StatusBar$_3639#114 voted NoVote (0.00 Hz)
+10-23 09:06:31.672  1990  1990 I SurfaceFlinger: Idle - choose 60.00 Hz
+10-23 09:06:31.673  1990  1990 I HWComposer: [4630946594533597314] ActiveConfigToHWC, ID : 2
+10-23 09:06:31.674  1904  2227 I SDM     : HWCDisplay::SubmitDisplayConfig: [DispConfigs] config 0 => 2, hs_mode 1 => 1
+10-23 09:06:31.674  1904  2227 I SDM     : HWDeviceDRM::SetDisplaySwitchMode: [DispConfigs] check hs_mode 1
+10-23 09:06:31.674  1904  2227 I SDM     : HWDeviceDRM::SetDisplaySwitchMode: [DispConfigs] Set mode index:2 1600x2560x60xvidNS, hs_mode(1), found_mode(0)
+10-23 09:06:31.674  1904  2227 I SDM     : HWDeviceDRM::UpdateMixerAttributes: Mixer WxH 1600x2560-1 for Peripheral
+10-23 09:06:31.675  1904  2227 I SDM     : HWCDisplay::SubmitDisplayConfig: Active configuration changed from config 0 to 2
+10-23 09:06:31.678  1990  2233 I VSyncReactor: Current= 120, Period= 60, hwcPeriod= 60
+10-23 09:06:31.678  1990  1990 I SurfaceFlinger: finalizeDisplayModeChange 4630946594533597314
+10-23 09:06:31.707  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+10-23 09:06:31.707  1862  4616 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+10-23 09:06:31.707  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+10-23 09:06:31.711  3850  4643 I ScanController: onScanResult to scannerId: 8- eventType=0x10, addressType=1, address=XX:XX:XX:XX:8E:A6, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-79, periodicAdvInt=0x0
+10-23 09:06:31.749  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+10-23 09:06:31.749  1862  4616 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+10-23 09:06:31.768  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+10-23 09:06:31.768  1862  4616 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON
+10-23 09:06:31.768  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK
+10-23 09:06:31.810  1862  4616 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+10-23 09:06:31.810  1862  4616 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF
+10-23 09:06:31.893  4867 30705 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+10-23 09:06:31.894  4867 30691 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+10-23 09:06:31.961  1862  4199 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released 
+10-23 09:06:32.002  1140  1140 D io_stats: !@   8,0 r 1647748 49684342 w 659659 65493932 d 223757 80444048 f 0 52486 iot 977472 0 th 0 0 0 pt 0 inp 0 0 80826.016
+10-23 09:06:32.132  4263  4263 I adbd    : adbd service requested 'shell,v2,TERM=xterm-256color,raw:rm -rf /data/local/tmp/codebrix-m1l-m1l-s1/nodes_render/mesa-cache'
+10-23 09:06:32.198  4263  4263 I adbd    : adbd service requested 'sync:'
+10-23 09:06:32.331  4263  4263 I adbd    : adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-t' '300''
+10-23 09:06:32.351  1982  1992 E HeatmapThread: ECT Thread time in milliseconds: 1792771592
+10-23 09:06:32.351  1982  1992 D HeatmapThread: !@ batteryplugType : 0
+10-23 09:06:32.351  1982  1992 D HeatmapThread: !@ batteryLevel : 0  batteryTemperature : 0 
+10-23 09:06:32.352  1982  1992 D HeatmapThread: !@ Heatmap currtime: 29879526
+10-23 09:06:32.352  1982  1992 D HeatmapThread: !@ Heatmap prevtime: 29879498
+10-23 09:06:32.352  1982  1992 D HeatmapThread: !@ Heatmap plugstarttime: 35791394
+10-23 09:06:32.352  1982  1992 D HeatmapThread: !@ Heatmap prevv_dsoh_update_time: 29878178
+10-23 09:06:32.352  1982  1992 E HeatmapThread: !@Could not open '/efs/FactoryApp/bsoh', errno = 13
+10-23 09:06:32.352  1982  1992 E HeatmapThread: !@ CAM Could not access BSOH EFS
+10-23 09:06:32.352  1982  1992 E HeatmapThread: !@ CAM New BSOH: 0

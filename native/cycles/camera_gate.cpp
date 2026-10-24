@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <bit>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -48,7 +49,10 @@ static std::vector<Field> fields(WebGPUDevice &d){std::vector<Field> out;
 #undef KERNEL_STRUCT_END_ARRAY
   return out;
 }
-struct Metrics {uint64_t paths=0,integer_checks=0,float_checks=0,guard_bytes=0,strict_float_failures=0;double max_ray_error=0,max_differential_error=0,max_tmax_error=0;unsigned cases=0,retries=0;};
+struct Metrics {uint64_t paths=0,integer_checks=0,float_checks=0,guard_bytes=0,strict_float_failures=0;double max_ray_error=0,max_differential_error=0,max_tmax_error=0;unsigned cases=0,retries=0;
+  // Per-component bit comparison of every ray field against the CPU oracle
+  // (direction, origin, differentials, tmax, ...), reported per field.
+  std::map<std::string,uint64_t> ray_bit_differences;std::map<unsigned,uint64_t> ray_bit_cases;std::vector<std::string> ray_bit_examples;};
 static void compare(WebGPUDevice &d,const std::vector<Field> &fields,const std::vector<IntegratorStateCPU> &expected,Metrics &m){
   for(const auto &f:fields){std::vector<uint8_t> actual(f.stride*expected.size());d.download(f.address,actual.data(),actual.size());
     for(size_t i=0;i<expected.size();i++){
@@ -59,6 +63,9 @@ static void compare(WebGPUDevice &d,const std::vector<Field> &fields,const std::
       if(ray&&f.floating){for(size_t k=0;k<f.stride;k+=4){float a,e;std::memcpy(&a,got+k,4);std::memcpy(&e,want+k,4);double error=std::abs(double(a)-e);
         require(std::isfinite(a)&&error<=5e-5+2e-4*std::abs(double(e)),"Camera ray mismatch: "+f.name+" path="+std::to_string(i)+" got="+std::to_string(a)+" expected="+std::to_string(e));
         if(error>1e-7+1e-7*std::abs(double(e)))m.strict_float_failures++;
+        auto &bits=m.ray_bit_differences[f.name];if(std::memcmp(&a,&e,4)!=0){bits++;m.ray_bit_cases[m.cases]++;
+          if(bits<=4){uint32_t ab,eb;std::memcpy(&ab,&a,4);std::memcpy(&eb,&e,4);char text[160];
+            std::snprintf(text,sizeof(text),"case %u %s[%zu] path=%zu got=0x%08x expected=0x%08x",m.cases,f.name.c_str(),k/4,i,ab,eb);m.ray_bit_examples.push_back(text);}}
         if(f.name=="ray.dP"||f.name=="ray.dD")m.max_differential_error=std::max(m.max_differential_error,error);
         else if(f.name=="ray.tmax")m.max_tmax_error=std::max(m.max_tmax_error,error);
         else m.max_ray_error=std::max(m.max_ray_error,error);
@@ -208,5 +215,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     <<",\"initializedPaths\":"<<m.paths<<",\"retryPaths\":"<<m.retries<<",\"integerAndGuardChecks\":"<<m.integer_checks<<",\"floatChecks\":"<<m.float_checks<<",\"untouchedGuardBytes\":"<<m.guard_bytes
     <<",\"strictFloatFailures\":"<<m.strict_float_failures<<",\"maximumRayErrorExcludingTmax\":"<<m.max_ray_error<<",\"maximumDifferentialError\":"<<m.max_differential_error
     <<",\"cameraMotionCases\":"<<(motion?m.cases:0)<<",\"maximumTmaxError\":"<<m.max_tmax_error
+    <<",\"rayBitDifferences\":{";
+  {bool first=true;for(const auto &[name,count]:m.ray_bit_differences){std::cout<<(first?"":",")<<'"'<<name<<"\":"<<count;first=false;}}
+  std::cout<<"},\"rayBitDifferencesByCase\":{";
+  {bool first=true;for(const auto &[test,count]:m.ray_bit_cases){std::cout<<(first?"":",")<<'"'<<test<<"\":"<<count;first=false;}}
+  std::cout<<"},\"rayBitExamples\":[";
+  for(size_t i=0;i<m.ray_bit_examples.size();i++)std::cout<<(i?",":"")<<'"'<<m.ray_bit_examples[i]<<'"';
+  std::cout<<"]"
     <<",\"invalidCasesRejected\":"<<rejected<<",\"absoluteTolerance\":0.00005,\"relativeTolerance\":0.0002,\"strictAbsoluteTolerance\":0.0000001,\"strictRelativeTolerance\":0.0000001,\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}
