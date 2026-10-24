@@ -1,0 +1,86 @@
+# ==============================================================================
+# .gitattributes (repository root)
+# ==============================================================================
+#
+# ORDER MATTERS: git applies the LAST matching line, so the general rules come
+# first and the rules for the hash-pinned trees come last.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Everything: LF on every platform. A Windows checkout with core.autocrlf=true
+# would otherwise rewrite every text file to CRLF, and the build and the gates
+# there misbehave: the source verifiers hash the third_party/ snapshots byte for
+# byte, the Clang AST translation and the WGSL overlay hashes are compared with
+# the Linux build, and shell scripts, fixtures and evidence all change under
+# it. The committed blobs are LF; this only stops a checkout from changing them.
+# ------------------------------------------------------------------------------
+* text=auto eol=lf
+
+# Never touched by newline translation, wherever they live.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.bmp    binary
+*.tga    binary
+*.tif    binary
+*.tiff   binary
+*.ico    binary
+*.ppm    binary
+*.exr    binary
+*.hdr    binary
+*.glb    binary
+*.ktx2   binary
+*.so     binary
+*.dylib  binary
+*.dll    binary
+*.exe    binary
+*.pdb    binary
+*.a      binary
+*.lib    binary
+*.o      binary
+*.obj    binary
+*.apk    binary
+*.nupkg  binary
+*.gz     binary
+*.xz     binary
+*.zst    binary
+*.tar    binary
+*.zip    binary
+*.ttf    binary
+*.otf    binary
+
+# Raw films, geometry and pixel files (scene bundles, oracle and test
+# references): little-endian binary data that can happen to contain no NUL
+# byte, so git's heuristic would call some of them text.
+*.f32    binary
+*.u32    binary
+*.bin    binary
+*.float  binary
+*.float4 binary
+*.half   binary
+*.half4  binary
+*.byte   binary
+*.byte4  binary
+*.ushort binary
+*.ushort4 binary
+
+# ------------------------------------------------------------------------------
+# Hash-pinned and immutable trees: checked out exactly as committed.
+#
+# third_party/ holds the pinned, license-reviewed snapshots; their manifests
+# record a SHA-256 per file, and a few upstream files are committed with CRLF
+# (OpenColorIO sources, zstd/TBB Windows scripts, the Gltf2 and WgpuNative
+# licence texts). native/binaries/<rid>/ is approved by the hashes in its
+# provenance.json. The evidence/ folders are immutable gate records, some of
+# which contain CRLF device logs and copies of those licence texts. -text
+# switches every conversion off - stronger than the text=auto eol=lf above,
+# which would still normalise a CRLF blob on the next commit. These lines must
+# stay BELOW the "*" rule, or that rule overrides them.
+# ------------------------------------------------------------------------------
+third_party/**            -text
+native/binaries/**        -text
+native/evidence/**        -text
+parity/evidence/**        -text
+prototype/evidence/**     -text
+research/evidence/**      -text
