@@ -98,13 +98,22 @@ for (int format = 0; format < 8; ++format)
 Node worldColor = host.ShaderNode(world, "color"); host.SetFloats(worldColor, "value", [.25f,.4f,.6f]);
 host.Connect(worldColor, "Color", background, "Color"); host.Connect(texture, "Color", diffuse, "Color");
 host.SetString(texture, "colorspace", "cbc_scaled"); host.SetString(texture, "alpha_type", "channel_packed");
-foreach (int format in new[] { 5, 7 })
+// Builds without image file readers (osx-arm64) reject texture filenames; the four
+// file-and-rebind cases apply only where the native host reads image files.
+bool readsFiles = JsonDocument.Parse(CyclesScene.GetBinaryCapabilities().Json).RootElement
+    .GetProperty("imageInput").GetProperty("fileReading").GetBoolean();
+if (readsFiles)
 {
-    host.SetString(texture, "filename", Path.Combine(args[0], $"input.{format}.png")); host.BindImage(texture, default); RenderCase();
-    Bind(texture, format); RenderCase();
+    foreach (int format in new[] { 5, 7 })
+    {
+        host.SetString(texture, "filename", Path.Combine(args[0], $"input.{format}.png")); host.BindImage(texture, default); RenderCase();
+        Bind(texture, format); RenderCase();
+    }
 }
-Require(completed == 260, "Incomplete cases");
+else Rejected(() => host.SetString(texture, "filename", Path.Combine(args[0], "input.5.png")), 2);
+int fileCases = readsFiles ? 4 : 0;
+Require(completed == 256 + fileCases, "Incomplete cases");
 host.Dispose(); CyclesHost.ConfigureColor(configPath);
 Console.WriteLine(JsonSerializer.Serialize(new { passed = true, thinManagedConsumer = true, cases = completed, imageFormats = 8,
-    colorspaces = 6, alphaModes = 5, environmentCases = 16, fileAndRebindCases = 4, cpuReferenceBitwiseEqual = true,
+    colorspaces = 6, alphaModes = 5, environmentCases = 16, fileAndRebindCases = fileCases, cpuReferenceBitwiseEqual = true,
     emptyStringRoundtrip = true, copiedImagesAndReleasedBindings = true }));

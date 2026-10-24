@@ -17,11 +17,11 @@ deps=importlib.util.module_from_spec(spec);spec.loader.exec_module(deps)
 sha,save,tool=deps.sha,deps.save,deps.tool
 WORK=REPO/'native/work/macos/osx-arm64/host'
 HOST_TARGETS=['codebrix_cycles_host','codebrix_host_cpu_test','codebrix_host_gpu_test','codebrix_host_reload_test',
- 'codebrix_host_concurrency_test','codebrix_host_session_reference','codebrix_host_session64_reference']
-# Linux gates that test WGSL kernels, plus the image oracle that writes and
-# reads EXR/PNG through OIIO, do not apply to this profile.
-SKIPPED_TARGETS={'codebrix_host_image_reference':'writes and reads EXR/PNG through OIIO, whose format plugins are disabled',
- 'WGSL device and render gates':'exercise the WebGPU device, which this profile does not contain'}
+ 'codebrix_host_concurrency_test','codebrix_host_session_reference','codebrix_host_session64_reference',
+ 'codebrix_host_image_reference']
+# Linux gates that test WGSL kernels do not apply to this profile. The image
+# oracle is built in its memory-only mode (no EXR/PNG files are written or read).
+SKIPPED_TARGETS={'WGSL device and render gates':'exercise the WebGPU device, which this profile does not contain'}
 KERNEL_ROOT='codebrix-cycles/source'
 KERNEL_ENTRY='kernel/device/metal/kernel.metal'
 INCLUDE=re.compile(r'^\s*#\s*include\s+"([^"]+)"',re.M)

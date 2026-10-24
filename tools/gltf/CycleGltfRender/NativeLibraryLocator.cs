@@ -11,7 +11,8 @@ namespace CodeBrix.Graphics3D.Cycles.GltfRender;
 /// <summary>
 /// Points the library's P/Invokes at a specific native host file. The package carries no runtime
 /// assets yet, so the tool accepts an explicit path, the <c>CODEBRIX_CYCLES_NATIVE</c> environment
-/// variable, or (when run from a working tree) the in-tree Linux build.
+/// variable, or (when run from a working tree) the in-tree build for this platform: Linux x64
+/// (WebGPU) or macOS arm64 (Metal).
 /// </summary>
 public static class NativeLibraryLocator
 {
@@ -21,8 +22,10 @@ public static class NativeLibraryLocator
 
     /// <summary>
     /// Finds the native host: <paramref name="explicitPath"/>, then <c>CODEBRIX_CYCLES_NATIVE</c>,
-    /// then <c>native/work/cycles-build/lib/libcodebrix_cycles_host.so</c> in an enclosing working
-    /// tree. Returns null when none exists (the default loader search then applies).
+    /// then the in-tree build in an enclosing working tree
+    /// (<c>native/work/cycles-build/lib/libcodebrix_cycles_host.so</c> on Linux x64,
+    /// <c>native/work/macos/osx-arm64/host/build/lib/libcodebrix_cycles_host.dylib</c> on macOS
+    /// arm64). Returns null when none exists (the default loader search then applies).
     /// </summary>
     /// <param name="explicitPath">An explicit library path, or null.</param>
     /// <returns>The full path, or null.</returns>
@@ -31,11 +34,17 @@ public static class NativeLibraryLocator
         if (!string.IsNullOrEmpty(explicitPath)) return Path.GetFullPath(explicitPath);
         string fromEnvironment = Environment.GetEnvironmentVariable("CODEBRIX_CYCLES_NATIVE");
         if (!string.IsNullOrEmpty(fromEnvironment)) return Path.GetFullPath(fromEnvironment);
-        if (!OperatingSystem.IsLinux()) return null;
+        string[] inTree =
+            OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.X64
+                ? ["native", "work", "cycles-build", "lib", "libcodebrix_cycles_host.so"]
+            : OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+                ? ["native", "work", "macos", "osx-arm64", "host", "build", "lib", "libcodebrix_cycles_host.dylib"]
+            : null;
+        if (inTree == null) return null;
         for (DirectoryInfo directory = new(AppContext.BaseDirectory); directory != null; directory = directory.Parent)
         {
             if (!File.Exists(Path.Combine(directory.FullName, "CodeBrix.Graphics3D.Cycles.slnx"))) continue;
-            string candidate = Path.Combine(directory.FullName, "native", "work", "cycles-build", "lib", "libcodebrix_cycles_host.so");
+            string candidate = Path.Combine([directory.FullName, .. inTree]);
             return File.Exists(candidate) ? candidate : null;
         }
         return null;

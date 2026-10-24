@@ -24,15 +24,20 @@ procedure produces:
 - a passed (or failed, with the failure recorded) macOS host gate: export and
   load-closure review, minimum OS, ad-hoc signatures, the public-API contract
   checks, CPU lifecycle films bitwise against the native Session references,
-  the thin .NET wrapper's CPU films, and the Metal lifecycle with MetalRT off
-  and forced on, compared with the CPU references;
-- an oracle run over the whole scene corpus in `native/oracle/scenes`
-  (starter scenes and the exported Linux gate corpus) on three backends:
+  the thin .NET wrapper's CPU films, the memory-image reference and reload
+  fixtures (native and managed) bitwise against an independent image
+  reference, and the Metal lifecycle with MetalRT off and forced on, compared
+  with the CPU references;
+- an oracle run over the scene corpus in `native/oracle/scenes` (starter
+  scenes, the exported Linux gate corpus and, where its generated bundle is
+  present, the bench) on three backends:
   `cpu-arm64-macos`, `metal-m2pro` and `metal-m2pro-metalrt`, with pairwise
   comparisons;
 - a verified oracle bundle (`.tar.zst` with `manifest.json`) for the
   Milestone 1 two-oracle comparator on the Linux machine;
-- the managed build, test and pack results on macOS;
+- the managed build, test and pack results on macOS, including the managed
+  GPU render tests on Cycles' Metal device, judged against the recorded Metal
+  references (section 5);
 - optionally, a restaged osx-arm64 payload under `native/binaries/osx-arm64`
   (only on the maintainer's decision; see step 9).
 
@@ -153,9 +158,16 @@ rejected with `CBC_UNSUPPORTED`); the native Session references (`session` and
 against those references; the thin .NET wrapper (`HostLifecycle`, built with
 `dotnet build`), bitwise against the same references; and the Metal lifecycle
 (`codebrix_host_gpu_test`) with shipped settings and with `CYCLES_METALRT=1`,
-compared with the CPU references by the practical criterion. The reload test
-is skipped by design (it loads PNG files by filename, which this profile
-rejects). Result: `status.json` (`passed`), `results.json`,
+compared with the CPU references by the practical criterion. It then runs the
+image fixtures in their memory-only form, because this profile reads no image
+files: the independent image reference (`codebrix_host_image_reference`, three
+runs of 256 memory-image cases), the C reload test (six rounds, bitwise against
+that reference), and the managed `tools/hosttests/ImageModes` and
+`tools/hosttests/ColorReload` fixtures (built into `managed-bin/`, bitwise
+against the same reference), plus the guarded-concurrency films. The four file
+and rebind cases per round apply only to builds that read files; here the
+fixtures verify that texture filenames are rejected instead, and `status.json`
+lists them under `notApplicable`. Result: `status.json` (`passed`), `results.json`,
 `comparisons.json`, `binary-review.json`, `commands.json` and one
 `.stdout.txt`/`.stderr.txt` pair per call.
 
@@ -174,7 +186,26 @@ python3 native/oracle/render_oracles.py --output native/work/oracles/<run> \
 ```
 
 Without `--scene` it renders every scene under `native/oracle/scenes`
-(starter and `linux-gates`; `manifest.json` files are skipped). `--threads`
+(`assets`, `linux-gates` and `starter`; `manifest.json` files are skipped).
+The two `assets/` bench scenes read raw files that
+`native/oracle/scenes/make_bench_bundle.py` generates from the committed bench
+asset; the raw files are not committed (native/oracle/README.md, "Bench oracle
+scene"), so the documents under `scenes/assets/` cannot render in place. Each
+Metal backend's kernel-compiling warm-up renders the first scene, which would
+be one of them, so generate the bundle first (section 6) and pass the scenes
+explicitly, the bench documents from the generated bundle directory (in zsh,
+build the `--scene` list as an array; an unquoted string stays one argument):
+
+```sh
+bash -c 'scenes=(); for f in $(find native/oracle/scenes/starter native/oracle/scenes/linux-gates -name "*.json" ! -name manifest.json | sort) native/work/oracle-assets/bench_01/bench_01.json native/work/oracle-assets/bench_01/bench_01-hdri.json; do scenes+=(--scene "$f"); done
+python3 native/oracle/render_oracles.py --output native/work/oracles/<run> \
+  --runner native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle \
+  --host-library native/work/macos/osx-arm64/host/build/lib/libcodebrix_cycles_host.dylib \
+  --backend cpu-arm64-macos --backend metal-m2pro --backend metal-m2pro-metalrt "${scenes[@]}"'
+```
+
+Without the generated bundle, leave the two bench documents out of the list and
+record that the bench was not rendered. `--threads`
 defaults to 4; keep the default so CPU films are comparable with earlier runs.
 Each Metal backend gets a fresh Cycles kernel cache inside the run directory,
 and its first render is recorded as `kernelCompileSeconds`. A backend that
@@ -229,26 +260,37 @@ dotnet build --configuration Debug CodeBrix.Graphics3D.Cycles.slnx
 dotnet test --solution CodeBrix.Graphics3D.Cycles.slnx --configuration Debug --no-build
 ```
 
-The build must report 0 warnings. On macOS the tests that need the native host
-skip with the reason "The native-host tests run on Linux x64 only": the test
-project's `NativeHostLibrary` resolves only the Linux x64 host. The tests that
-need only the source tree (header constant matching, the generator check) run.
-Record the passed, skipped and failed counts and the skip reasons.
-
-The managed render through the API that does run on macOS is the
-`HostLifecycle` fixture inside the host gate (step 3): the thin wrapper on the
-CPU reference backend, bitwise against the native Session references.
-
-**MISSING:** a managed GPU render on macOS. `CyclesBackend.Gpu` resolves to
-the Metal device in osx-arm64 processes, but `WebGpuRenderTests` skip because
-`tests/CodeBrix.Graphics3D.Cycles.Tests/NativeHostLibrary.cs` loads only
-`native/work/cycles-build/lib/libcodebrix_cycles_host.so` on Linux x64. To
-cover it, the resolver needs an osx-arm64 branch that loads
+The build must report 0 warnings. The test project's `NativeHostLibrary`
+loads the in-tree host of the platform: on macOS arm64
 `native/work/macos/osx-arm64/host/build/lib/libcodebrix_cycles_host.dylib`
-(with `codebrix-cycles/source` beside it), and the tests need a Metal
-criterion against the CPU reference film. The package also carries no native
-runtime assets yet (MAINTAINER-README.txt, PACKAGING AND PUBLISHING), so no
-consumer-style package render is possible.
+(with `codebrix-cycles/source` beside it), on Linux x64 the Linux build. The
+tests that need it skip only when it has not been built (the skip reason names
+`python3 tools/build_macos.py --jobs 8`). Every test runs on macOS, including
+`GpuRenderTests`, where `CyclesBackend.Gpu` resolves to Cycles' Metal device:
+the validation scenes and glTF samples, progress and cancellation, device-error
+recovery, object edits after a render, passes, and the capability and device
+reports. Their films are judged by the reference policy in section 5. Record
+the passed, skipped and failed counts, and any skip reasons.
+
+The package carries no native runtime assets yet (MAINTAINER-README.txt,
+PACKAGING AND PUBLISHING), so no consumer-style package render is possible.
+
+**Recording the Metal references.** `tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64/`
+holds one reviewed Metal film per GPU test scene (`<name>.rgba.f32`) and
+`manifest.json` (SHA-256, length, recording OS and device, library version and
+the film's CPU comparison). Re-record them only when the Cycles revision, the
+toolchain, a scene or its render settings change:
+
+```sh
+CODEBRIX_CYCLES_RECORD_METAL_REFERENCES=1 dotnet test --project tests/CodeBrix.Graphics3D.Cycles.Tests \
+  --configuration Release --no-build --filter-class "*GpuRenderTests"
+```
+
+Then review every changed film and its recorded CPU comparison (`git diff` of
+`manifest.json`; a CPU comparison that grew is a finding to explain before the
+films are committed) and run the tests again without the variable. A test
+whose film no longer matches its manifest length fails with a request to
+re-record; a missing reference fails, never skips.
 
 ### Step 8: licensing audit
 
@@ -289,11 +331,11 @@ the sources changed.
 - Both are built at the fixed baseline (native/DEVICE.md, "Fixed-baseline CPU
   oracle"): no FMA contraction (Apple Clang's arm64 default is on; the CMake
   injection passes `-ffp-contract=off`), no reciprocal math, the architecture's
-  base level (no `-mcpu`). **UNTESTED:** the rule has not yet been compiled on a
-  Mac; the build recipe refuses a CPU kernel compile line that is not at the
-  baseline. The macOS CPU evidence recorded before this rule
-  (`native/evidence/cycles-oracles-macos-*`) used contraction, so its CPU films
-  are not expected to match new ones bit for bit.
+  base level (no `-mcpu`). The build recipe refuses a CPU kernel compile line
+  that is not at the baseline, and each oracle `meta.json` records the line
+  (`cpuKernelCompile`). The macOS CPU evidence recorded before this rule
+  (`native/evidence/cycles-oracles-macos-20261019`) used contraction, so its
+  CPU films are not expected to match new ones bit for bit.
 - Practical criterion, must pass for every component:
   `abs(a - b) <= 5e-5 + 2e-4 * abs(b)`, with `b` the reference (the earlier
   directory given to `compare.py`).
@@ -307,9 +349,16 @@ the sources changed.
   atomics); record `repeatMaxAbsDifference`.
 - Texture filtering: Metal's hardware bilinear filtering is not bit-exact with
   Cycles' CPU interpolation and can exceed the practical criterion on textured
-  scenes (`starter/textured-plane`). The CPU is the authority; report Metal's
-  deviation per scene as a bounded deviation and never change Metal's
-  sampling to hide it.
+  scenes (`starter/textured-plane`). Report Metal's deviation from the CPU per
+  scene as a bounded deviation and never change Metal's sampling to hide it.
+- Which film is the authority depends on the device under test. The CPU is the
+  authority for the CodeBrix WGSL/WebGPU device, which this repository builds.
+  Cycles' own Metal device (osx-arm64) is upstream's validated implementation:
+  the managed GPU tests judge a Metal film against the reviewed Metal reference
+  recorded for it (`References/metal-osx-arm64`, step 7) with the practical
+  criterion, and compare and report the CPU film without requiring a match. A
+  Metal render is therefore never failed only for differing from the CPU; a
+  Metal film that drifts from its own recorded reference is.
 - A scene where two reference backends disagree beyond the practical
   criterion is a finding for the maintainer, never something to resolve by changing
   settings, thresholds or scenes on the Mac.

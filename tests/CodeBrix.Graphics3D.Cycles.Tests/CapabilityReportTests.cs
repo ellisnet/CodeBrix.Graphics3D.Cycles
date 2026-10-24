@@ -43,7 +43,7 @@ public class CapabilityReportTests
     }
 
     [Fact]
-    public void cpu_scope_states_the_fixed_baseline_oracle_arithmetic_on_linux_x64()
+    public void cpu_scope_states_the_fixed_baseline_oracle_arithmetic()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -52,15 +52,18 @@ public class CapabilityReportTests
         ICapabilityReport report = CyclesScene.GetBinaryCapabilities();
 
         //Assert
-        // The in-tree Linux x64 host is the CPU oracle: Cycles' SSE4.2 kernels without FMA
-        // contraction or reciprocal math (native/DEVICE.md, "Fixed-baseline CPU oracle").
-        Assert.SkipUnless(System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture
-            == System.Runtime.InteropServices.Architecture.X64, "the x86-64 oracle definition applies to x64 hosts");
-        report.Json.Should().Contain("\"arithmetic\":{\"isa\":\"x86-64 SSE4.2\",\"fpContract\":\"off\",\"reciprocalMath\":\"off\"}");
+        // The in-tree hosts are CPU oracles at the fixed baseline (native/DEVICE.md, "Fixed-baseline
+        // CPU oracle"): no FMA contraction or reciprocal math, at the architecture's base level
+        // (SSE4.2 kernels on Linux x64, plain ARM64 on Apple Silicon).
+        System.Runtime.InteropServices.Architecture architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture;
+        Assert.SkipUnless(architecture is System.Runtime.InteropServices.Architecture.X64 or System.Runtime.InteropServices.Architecture.Arm64,
+            "the fixed-baseline oracle definitions cover x64 and ARM64 hosts");
+        string isa = architecture == System.Runtime.InteropServices.Architecture.X64 ? "x86-64 SSE4.2" : "ARM64";
+        report.Json.Should().Contain("\"arithmetic\":{\"isa\":\"" + isa + "\",\"fpContract\":\"off\",\"reciprocalMath\":\"off\"}");
     }
 
     [Fact]
-    public void binary_report_has_no_device_and_states_the_webgpu_scope_on_linux()
+    public void binary_report_has_no_device_and_states_the_platform_gpu_scope()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -74,12 +77,22 @@ public class CapabilityReportTests
         report.Backend.Should().Be(Backend.Gpu);
         report.IsGpu.Should().BeFalse();
         report.Scope.Should().BeNull();
+        report.BackendScopes["cpu"].PassesNote.Should().NotBeNullOrEmpty();
+        if (CyclesScene.ResolveBackend(CyclesBackend.Gpu) == Backend.Metal)
+        {
+            // Apple Silicon: Cycles' own Metal device, the full upstream feature set.
+            report.CompiledBackends.Should().Equal("cpu", "metal");
+            report.GpuBackendName.Should().Be("metal");
+            report.BackendScopes["metal"].CameraTypes.Should().Equal("perspective", "orthograph", "panorama");
+            report.BackendScopes["metal"].PassesNote.Should().NotBeNullOrEmpty();
+            report.BackendScopes["metal"].RenderTimeRejections.Should().BeEmpty();
+            return;
+        }
         report.CompiledBackends.Should().Equal("cpu", "webgpu");
         report.GpuBackendName.Should().Be("webgpu");
         report.BackendScopes["webgpu"].CameraTypes.Should().Equal("perspective");
         report.BackendScopes["webgpu"].WrittenPasses.Should().Equal("combined");
         report.BackendScopes["webgpu"].RenderTimeRejections.Should().NotBeEmpty();
-        report.BackendScopes["cpu"].PassesNote.Should().NotBeNullOrEmpty();
     }
 
     [Fact]

@@ -1,0 +1,147 @@
+{
+  "sceneId": "linux-gates/triangle-lighting-3",
+  "sceneSha256": "f90c9997040ceec8e4c8df0a58081329d134e9f5d13deac14b1f0631b1f9d357",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-20261023-v2/oracle/linux-gates/triangle-lighting-3/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00189225,
+        0.00101746
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-20261023-v2/oracle/linux-gates/triangle-lighting-3/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.4901161193847656e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.4901161193847656e-08,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.398516,
+        0.0285375
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-20261023-v2/oracle/linux-gates/triangle-lighting-3/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.4901161193847656e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.4901161193847656e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.4901161193847656e-08,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.422364,
+        0.0279541
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.9073486328125e-06,
+      "maxRelativeError": 1.8271268514914823e-05,
+      "rms": 1.030376991735526e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 336,
+      "worstPixel": {
+        "x": 13,
+        "y": 8,
+        "channel": "G",
+        "reference": 0.05951966345310211,
+        "candidate": 0.059520743787288666,
+        "absoluteDifference": 1.080334186553955e-06,
+        "criterionRatio": 0.017451786010966076
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "practicalPassed": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.9073486328125e-06,
+      "maxRelativeError": 2.2786176564932385e-05,
+      "rms": 1.0670850351919809e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 331,
+      "worstPixel": {
+        "x": 13,
+        "y": 8,
+        "channel": "G",
+        "reference": 0.05951966345310211,
+        "candidate": 0.05952100455760956,
+        "absoluteDifference": 1.341104507446289e-06,
+        "criterionRatio": 0.021664286082578577
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "practicalPassed": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.2814998626708984e-06,
+      "maxRelativeError": 1.672723969716305e-05,
+      "rms": 4.410164898550165e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 36,
+      "worstPixel": {
+        "x": 17,
+        "y": 15,
+        "channel": "B",
+        "reference": 0.07661155611276627,
+        "candidate": 0.07661283761262894,
+        "absoluteDifference": 1.2814998626708984e-06,
+        "criterionRatio": 0.019618103503791003
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "practicalPassed": true
+    }
+  ],
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

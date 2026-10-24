@@ -19,6 +19,12 @@ def registration_overlay(out):
         after[name]=after[name].replace(old,new)
     replace('device/device.h','  DEVICE_DUMMY,','  DEVICE_DUMMY,\n  DEVICE_WEBGPU,')
     replace('device/device.h','  DEVICE_MASK_ALL = ~0','  DEVICE_MASK_WEBGPU = (1 << DEVICE_WEBGPU),\n  DEVICE_MASK_ALL = ~0')
+    # The host clears an error the scene caused once the caller has removed the
+    # cause and the whole scene is uploaded again (ABI.md, "Device errors").
+    replace('device/device.h','  virtual void set_error(const string &error);\n',
+            '  virtual void set_error(const string &error);\n'
+            '  /* CodeBrix host: forget a recorded error before a full scene re-upload. */\n'
+            '  void clear_error()\n  {\n    error_msg.clear();\n  }\n')
     replace('device/device.cpp','#include "device/device.h"','#include "device/device.h"\n#ifdef WITH_WEBGPU\n#  include "codebrix_webgpu_device.h"\n#endif')
     replace('device/device.cpp','    case DEVICE_CPU:\n      device =',
             '#ifdef WITH_WEBGPU\n    case DEVICE_WEBGPU:\n      device = device_webgpu_create(info, stats, profiler, headless);\n      break;\n#endif\n    case DEVICE_CPU:\n      device =')

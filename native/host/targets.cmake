@@ -22,6 +22,10 @@ if(NOT codebrix_revision_length EQUAL 40)
 endif()
 message(STATUS "CodeBrix Cycles host ${CODEBRIX_HOST_LIBRARY_VERSION}, Cycles ${CODEBRIX_CYCLES_REVISION}")
 add_library(codebrix_cycles_host SHARED "${CMAKE_CURRENT_LIST_DIR}/cycles_host.cpp")
+# Metal device-error recovery needs MetalDevice, which only Objective-C++ can see.
+if(APPLE AND WITH_CYCLES_DEVICE_METAL)
+  target_sources(codebrix_cycles_host PRIVATE "${CMAKE_CURRENT_LIST_DIR}/metal_recovery.mm")
+endif()
 target_compile_definitions(codebrix_cycles_host PRIVATE
   CBC_HOST_LIBRARY_VERSION="${CODEBRIX_HOST_LIBRARY_VERSION}" CBC_HOST_CYCLES_REVISION="${CODEBRIX_CYCLES_REVISION}")
 target_compile_features(codebrix_cycles_host PRIVATE cxx_std_20)
@@ -69,6 +73,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
   # Cycles' legacy directory flags contain -std=c++17; the target's C++20
   # requirement must retain precedence after moving these to target options.
   list(FILTER color_options EXCLUDE REGEX "^(-std=|/std:)")
+  # CMake de-duplicates repeated options, keeping the first: the inherited
+  # -ffp-contract=off -fno-reciprocal-math would stay ahead of Cycles' later
+  # -ffp-contract=on -freciprocal-math, and Cycles' flags would win. Where the
+  # fixed baseline applies, drop Cycles' own contraction and reciprocal flags.
+  if(CODEBRIX_CPU_FP_CONTRACT STREQUAL "off")
+    list(FILTER color_options EXCLUDE REGEX "^-f(fp-contract=.*|reciprocal-math|no-reciprocal-math)$")
+  endif()
   # Directory compile options (the fixed-baseline oracle's -ffp-contract=off
   # -fno-reciprocal-math, inject_cycles.cmake) follow the flags, as in src/util.
   get_directory_property(color_directory_options DIRECTORY "${PROJECT_SOURCE_DIR}/src/util" COMPILE_OPTIONS)
@@ -78,12 +89,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
   target_include_directories(codebrix_host_reference_color PRIVATE "${PROJECT_SOURCE_DIR}/src")
   target_link_libraries(codebrix_host_reference_color PRIVATE cycles_util)
   set_property(TARGET codebrix_host_reference_color PROPERTY POSITION_INDEPENDENT_CODE ON)
-  set(reference_kinds session session64)
-  # The image oracle writes and reads EXR/PNG files through OIIO.
-  if(NOT CODEBRIX_HOST_NO_IMAGE_FILES)
-    list(APPEND reference_kinds image)
-  endif()
-  foreach(kind IN LISTS reference_kinds)
+  foreach(kind IN ITEMS session session64 image)
     if(kind STREQUAL "session64")
       set(source session_reference.cpp)
     else()
@@ -100,6 +106,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
       target_compile_definitions(${reference} PRIVATE CBC_HOST_REFERENCE_SAMPLES=64)
     endif()
     target_include_directories(${reference} PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    # Without image file readers the image oracle serves its fixture pixels from memory.
+    if(CODEBRIX_HOST_NO_IMAGE_FILES)
+      target_compile_definitions(${reference} PRIVATE CBC_HOST_NO_IMAGE_FILES)
+    endif()
     target_compile_options(${reference} PRIVATE -ffp-contract=off)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
       target_compile_options(${reference} PRIVATE -msse4.2)
@@ -124,6 +134,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID OR APPLE)
     target_compile_options(codebrix_host_${kind}_test PRIVATE -Wall -Wextra -Werror)
     target_link_libraries(codebrix_host_${kind}_test PRIVATE codebrix_cycles_host Threads::Threads m)
   endforeach()
+  if(CODEBRIX_HOST_NO_IMAGE_FILES)
+    target_compile_definitions(codebrix_host_reload_test PRIVATE CBC_HOST_NO_IMAGE_FILES)
+  endif()
   if(CODEBRIX_HOST_GPU_TEST_BACKEND)
     target_compile_definitions(codebrix_host_gpu_test PRIVATE
       CBC_TEST_GPU_BACKEND=${CODEBRIX_HOST_GPU_TEST_BACKEND} CBC_TEST_GPU_NAME="${CODEBRIX_HOST_GPU_TEST_NAME}")

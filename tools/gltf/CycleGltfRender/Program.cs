@@ -38,7 +38,7 @@ public static class Program
         "  --bundle-id ID         the scene id recorded in the bundle (default gltf/<file name>)\n" +
         "  --repeats N            render.repeats recorded in the bundle (default 2)\n" +
         "  --bundle SCENE.json    render a saved bundle through the library's bundle loader (size and samples from it)\n" +
-        "  --native-library PATH  the native host (else CODEBRIX_CYCLES_NATIVE, else the in-tree Linux build)\n" +
+        "  --native-library PATH  the native host (else CODEBRIX_CYCLES_NATIVE, else the in-tree Linux x64 or macOS arm64 build)\n" +
         "  --write-sample PATH    write the procedural sample model (.glb) and exit; add --sample-sun for a directional light,\n" +
         "                         or --sample-textured for the textured-plane control (its decoded textures go to PATH.textures)\n\n" +
         "Output: FILM.bin = raw little-endian float32 RGBA (scene-linear, row 0 at the bottom) and FILM.bin.json\n" +

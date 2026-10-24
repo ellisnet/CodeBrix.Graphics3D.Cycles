@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace CodeBrix.Graphics3D.Cycles.Tests;
 
@@ -19,6 +20,20 @@ internal static class RepositoryPaths
 
     // Where native/tools/build_cycles.py places the Linux x64 native host.
     internal static string LinuxNativeHostLibrary => Root == null ? null : Path.Combine(Root, "native", "work", "cycles-build", "lib", "libcodebrix_cycles_host.so");
+
+    // Where tools/build_macos.py places the osx-arm64 (Metal) native host; its Metal kernel
+    // sources are staged beside it in codebrix-cycles/source.
+    internal static string MacNativeHostLibrary => Root == null ? null : Path.Combine(Root, "native", "work", "macos", "osx-arm64", "host", "build", "lib", "libcodebrix_cycles_host.dylib");
+
+    // The in-tree native host for this process's platform, or null where none is built in-tree.
+    internal static string NativeHostLibrary =>
+        OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.X64 ? LinuxNativeHostLibrary
+        : OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? MacNativeHostLibrary
+        : null;
+
+    // The command that builds NativeHostLibrary.
+    internal static string NativeHostBuildCommand =>
+        OperatingSystem.IsMacOS() ? "python3 tools/build_macos.py --jobs 8" : "python3 native/tools/build_cycles.py --jobs 6";
 
     private static string FindRoot()
     {

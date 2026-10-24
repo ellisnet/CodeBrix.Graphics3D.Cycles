@@ -5,10 +5,13 @@
 
     python3 native/tools/macos_host_gate.py --output native/work/macos-validation-v1
 
-Same-host CPU films must match the independent native Session references bit
-for bit. Metal films are compared with the CPU references using the practical
-criterion and reported; disagreements are findings, never adjusted. The reload
-test is skipped: it loads PNG files by filename, which this profile rejects.
+Same-host CPU films must match the independent native Session and image
+references bit for bit, through the C API and the thin .NET wrapper alike.
+This profile reads no image files, so the image reference and the reload
+fixtures run their 256 memory-image cases and verify that texture filenames are
+rejected; the four file cases apply only to builds that read files. Metal films
+are compared with the CPU references using the practical criterion and reported;
+disagreements are findings, never adjusted.
 """
 import argparse,ctypes,json,math,os,re,struct,subprocess,sys
 from pathlib import Path
@@ -62,7 +65,7 @@ def main():
   frameworks=sorted({n for r in review for n in r['linked'] if n.startswith('/System/')})
   assert any('/Metal.framework/' in f for f in frameworks),frameworks
   codecs=[n for n in status['dependencyClosure'] if re.match(r'lib(jpeg|png|tiff|webp|gif|heif|raw|openjp|avif|jxl)',n)];assert not codecs,codecs
-  for kind in ['session','session64']:
+  for kind in ['session','session64','image']:
    link=(build/('codebrix_host_'+kind+'_reference.map')).read_text()
    assert 'codebrix_host_reference_color.dir' in link and 'colorspace.cpp.o' in link
   save(out/'binary-review.json',dict(passed=True,exports=sorted(exported),binaries=review,frameworks=frameworks,dependencyClosure=status['dependencyClosure'],
@@ -99,20 +102,40 @@ def main():
    folder=out/(mode+'-consumer');folder.mkdir()
    rows=report('codebrix_host_gpu_test',[folder/'run'],mode,1800,extra);assert rows[0].get('explicitMetal'),rows
    for i in range(3):compare(folder/f'run.{i}.rgba.bin',out/'cpu'/f'run.{i}.rgba.bin',f'{mode} vs same-host CPU Session reference')
+  # Image oracle (memory images only in this profile), one per OCIO configuration.
+  refs=out/'references';refs.mkdir();cases=256
+  for variant in ['a','b','c']:
+   rows=report('codebrix_host_image_reference',[REPO/'native/tests/host/configs'/f'{variant}.ocio',refs/variant/'output'],'image-reference-'+variant,1800)
+   assert rows[0]['originalNativeCpuSession'] and rows[0]['cases']==cases and rows[0]['fileAndRebindCases']==0,rows
+  reload=out/'reload'
+  for i in range(6):(reload/f'round.{i}').mkdir(parents=True)
+  rows=report('codebrix_host_reload_test',[refs,reload,'6'],'reload',2400);assert len(rows)==7 and rows[-1]['films']==6*cases,rows
+  for i in range(6):
+   for j in range(cases):compare(reload/f'round.{i}/case.{j}.rgba.bin',refs/chr(ord('a')+i%3)/'output'/f'case.{j}.rgba.bin','same-host color reload',bitwise=True)
+  # The same image modes and colour reloads through the thin .NET wrapper.
+  for project in ['ImageModes','ColorReload']:
+   subprocess.run(['dotnet','build',str(REPO/'tools/hosttests'/project/(project+'.csproj')),'-c','Release','-o',str(out/'managed-bin'/project),
+    '--configfile',str(REPO/'tools/hosttests/NuGet.Config')],check=True,capture_output=True)
+  managed_reload=out/'managed-reload'
+  for i in range(6):(managed_reload/f'round.{i}').mkdir(parents=True)
+  rows=[json.loads(line) for line in call(['dotnet',out/'managed-bin/ColorReload/ColorReload.dll',out/'managed-bin/ImageModes/ImageModes.dll',refs,managed_reload],
+   'managed-reload',2400,{'DYLD_LIBRARY_PATH':str(build/'lib')}).splitlines() if line.strip().startswith('{')]
+  assert rows and rows[-1]['passed'] and rows[-1]['sameManagedProcess'] and rows[-1]['films']==6*cases,rows;results['managed-reload']=rows;save(out/'results.json',results)
+  for i in range(6):
+   for j in range(cases):compare(managed_reload/f'round.{i}/case.{j}.rgba.bin',refs/chr(ord('a')+i%3)/'output'/f'case.{j}.rgba.bin','managed color reload',bitwise=True)
   stress_input=out/'stress-input';stress_input.mkdir();stress_output=out/'stress-output';stress_output.mkdir()
   for variant in ['a','b']:(stress_input/f'{variant}.ocio').write_bytes((REPO/'native/tests/host/configs'/f'{variant}.ocio').read_bytes())
-  # Deterministic 7x5 byte4 texture; the Linux gate uses an OIIO-decoded PNG here.
-  (stress_input/'input.5.bin').write_bytes(bytes((37*i+11*(i//4))%256 for i in range(7*5*4)))
+  (stress_input/'input.5.bin').write_bytes((refs/'a/output/input.5.bin').read_bytes())
   rows=report('codebrix_host_concurrency_test',[stress_input,stress_output],'concurrency',1200)
   assert all(rows[0][key]==value for key,value in dict(concurrentHostLifetimes=192,destroyDuringRender=12,racingReaders=48,guardedConfigurationRejections=256,hostLiveConfigurationRejections=192).items()),rows
-  compare(stress_output/'after-invalid.rgba.bin',stress_output/'guarded.rgba.bin','same-host concurrent lifetime',bitwise=True)
+  for name in ['guarded','after-invalid']:compare(stress_output/(name+'.rgba.bin'),refs/'a/output/case.177.rgba.bin','same-host concurrent lifetime',bitwise=True)
   assert all(sha(Path(path))==digest for path,digest in pins.items())
   required=[r for r in comparisons if (r['bitwiseRequired'] and not r['bitwiseEqual'])]
   metal=[r for r in comparisons if r['kind'].startswith('metal')]
   state.update(complete=True,phase='complete',passed=not required,filmsCompared=len(comparisons),sameHostBitwiseFailures=len(required),
    metalPracticalFailures=sum(r['practicalFailures'] for r in metal),metalStrictDifferences=sum(r['strictDifferences'] for r in metal),
    metalMaximumAbsoluteError=max(r['maximumAbsoluteError'] for r in metal),
-   skipped=dict(reloadTest='loads PNG files by filename; this profile rejects texture filenames',imageReference='needs OIIO EXR/PNG plugins, which are disabled'),
+   notApplicable=dict(fileAndRebindCases='4 per round: this profile reads no image files; texture filenames are verified as rejected instead'),
    inputsUnchanged=True)
   print(json.dumps(state),flush=True)
  except Exception as error:

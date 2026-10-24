@@ -89,8 +89,14 @@ device. The next `cbc_host_render` on that host recovers it:
   for a new scene), emits a `CBC_EVENT_STATUS` event whose message starts with
   `Device recovered`, and renders. The device-tier record and pipeline tier are
   not touched. Remove the cause first; otherwise the render fails again.
+- Cycles' Metal device records the errors a scene causes (for example an
+  image wider or taller than Metal's 16384-pixel texture limit) without losing
+  the Metal device. The host clears the recorded error and re-uploads the whole
+  scene in the same way, with the same `Device recovered` status event, so a
+  consumer sees the same behaviour on Apple Silicon as on WebGPU. Remove the
+  cause first; otherwise the render fails again.
 - A device that cannot recover (a lost or otherwise fatally failed WebGPU
-  device, or an error on the CPU or Metal device, which have no recovery path)
+  device, or an error on the CPU device, which has no recovery path)
   keeps the host faulted: every later render returns `CBC_FAILED` with a message
   that starts with `Host faulted:` and names the original error. Destroy the
   host and create a new one.

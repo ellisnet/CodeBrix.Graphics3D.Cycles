@@ -7,12 +7,14 @@
 
 The committed files are native/oracle/scenes/assets/bench_01.json, bench_01-hdri.json and
 manifest.json (expected SHA-256 of every generated raw file). The raw geometry, attribute and
-pixel files are derived from the external ForestCommunity asset and are never committed. This
+pixel files are derived from the bench asset in native/oracle/scenes/assets/ForestVillage/ and
+are generated, not committed. This
 script runs the glTF example tool (tools/gltf/CycleGltfRender; it decodes the textures with
 CodeBrix.Imaging) and native/oracle/scenes/author_environment.py into DIR, requires the scene
 documents to be byte-identical to the committed ones and every raw file to match the manifest,
-and leaves DIR/bench_01.json and DIR/bench_01-hdri.json ready for codebrix_cycles_oracle. On a
-machine without the asset, copy a verified bundle directory instead (see native/oracle/README.md).
+and leaves DIR/bench_01.json and DIR/bench_01-hdri.json ready for codebrix_cycles_oracle. If a
+raw file does not match (another decoder build), copy a verified bundle directory instead (see
+native/oracle/README.md).
 """
 import argparse,hashlib,json,shutil,subprocess,sys
 from pathlib import Path

@@ -318,6 +318,12 @@ std::string webgpu_device_report_json(Device *device);
 bool webgpu_recover(Device *device, std::string &reason);
 }
 #endif
+#ifdef WITH_METAL
+namespace ccl {
+// Defined in metal_recovery.mm (Objective-C++), which can see MetalDevice.
+bool codebrix_metal_clear_error(Device *device);
+}
+#endif
 extern "C" int cbc_host_tier_config(const CBCTierConfig *config, const char *directory) {
   return boundary([&] {
     require(config && config->struct_size == sizeof(*config) && config->abi_version == CBC_HOST_ABI, "Invalid tier configuration");
@@ -357,18 +363,26 @@ namespace {
 // when the device itself is intact (no lost device, no uncaptured WebGPU
 // error); the scene is then tagged for a complete device update, as
 // Scene::reset does without adding default shaders, so every manager uploads
-// its data again. The device record and pipeline tier are not touched. A
-// device that cannot recover (fatal WebGPU error, CPU or Metal device error)
-// keeps the host faulted: every later render fails with "Host faulted".
+// its data again. The device record and pipeline tier are not touched.
+// Cycles' Metal device records the errors a scene causes (for example an image
+// beyond the 16384-pixel texture limit) without losing the Metal device, so the
+// host clears that error and re-uploads the scene the same way. A device that
+// cannot recover (fatal WebGPU error, CPU device error) keeps the host faulted:
+// every later render fails with "Host faulted".
 void recover_device(Host &host) {
   Device *device = host.session->device.get();
   if (!device->have_error()) return;
   const std::string previous = device->error_message();
   std::string reason = "the device has no recovery path";
+  bool recovered = false;
 #ifdef WITH_WEBGPU
-  const bool recovered = webgpu_recover(device, reason);
-#else
-  const bool recovered = false;
+  recovered = webgpu_recover(device, reason);
+#endif
+#ifdef WITH_METAL
+  if (device->info.type == DEVICE_METAL) {
+    recovered = codebrix_metal_clear_error(device);
+    if (!recovered) reason = "the device is not Cycles' Metal device";
+  }
 #endif
   if (!recovered)
     throw Failure(CBC_FAILED, "Host faulted: the device cannot recover from an earlier error (" + previous + "; " + reason +

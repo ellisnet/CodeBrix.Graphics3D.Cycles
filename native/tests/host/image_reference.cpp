@@ -124,6 +124,34 @@ class RawFileLoader final : public ImageLoader {
   bool equals(const ImageLoader &other) const override {auto p=dynamic_cast<const RawFileLoader *>(&other);return p&&p->path==path;}
 };
 
+#ifdef CBC_HOST_NO_IMAGE_FILES
+// Builds without image file readers (osx-arm64): the same fixture pixels, converted to each
+// format as the file writers convert them, are served from memory exactly as the C host's
+// caller images are (metadata from the caller, then native conformance).
+class RawBytesLoader final : public ImageLoader {
+  ImageDataType type;int channels;std::vector<uint8_t> bytes;std::string label;
+ public:
+  RawBytesLoader(ImageDataType t,int c,std::vector<uint8_t> b,std::string l):type(t),channels(c),bytes(std::move(b)),label(std::move(l)){}
+  bool load_metadata(ImageMetaData &metadata,const ImageLoaderParams &params,Progress &) override {
+    metadata.width=7;metadata.height=5;metadata.type=type;metadata.channels=channels;metadata.colorspace=params.colorspace;return true;
+  }
+  bool load_pixels(const ImageMetaData &metadata,void *pixels) override {
+    // As the C host's memory loader: the stored type may differ from the caller's (for
+    // example after sRGB finalization), in which case the pixels are converted.
+    if(metadata.width!=7||metadata.height!=5||metadata.channels!=channels||metadata.is_rgba()!=(channels==4))return false;
+    if(metadata.type==type)std::memcpy(pixels,bytes.data(),bytes.size());
+    else {
+      ImageMetaData source;source.type=type;
+      if(!OIIO::convert_image(channels,7,5,1,bytes.data(),source.typedesc(),OIIO::AutoStride,OIIO::AutoStride,OIIO::AutoStride,
+                              pixels,metadata.typedesc(),OIIO::AutoStride,OIIO::AutoStride,OIIO::AutoStride))return false;
+    }
+    metadata.conform_pixels(pixels);return true;
+  }
+  string name() const override {return label;}
+  bool equals(const ImageLoader &other) const override {auto p=dynamic_cast<const RawBytesLoader *>(&other);return p&&p->label==label;}
+};
+#endif
+
 int main(int argc,char **argv) {
   try {
     require(argc==3,"Usage: image_reference CONFIG OUTPUT_DIRECTORY");const fs::path out=argv[2];fs::create_directories(out);
@@ -132,6 +160,20 @@ int main(int argc,char **argv) {
     const OIIO::TypeDesc formats[]={OIIO::TypeFloat,OIIO::TypeHalf,OIIO::TypeUInt8,OIIO::TypeUInt16};
     const ustring spaces[]={u_colorspace_data,u_colorspace_scene_linear,u_colorspace_scene_linear_srgb,u_colorspace_srgb,u_colorspace_auto,ustring("cbc_scaled")};
     std::vector<fs::path> files;
+#ifdef CBC_HOST_NO_IMAGE_FILES
+    const ImageDataType types[]={IMAGE_DATA_TYPE_FLOAT,IMAGE_DATA_TYPE_FLOAT4,IMAGE_DATA_TYPE_HALF,IMAGE_DATA_TYPE_HALF4,
+                                 IMAGE_DATA_TYPE_BYTE,IMAGE_DATA_TYPE_BYTE4,IMAGE_DATA_TYPE_USHORT,IMAGE_DATA_TYPE_USHORT4};
+    std::vector<std::vector<uint8_t>> inputs;
+    for(unsigned format=0;format<8;++format) {
+      const int channels=format%2?4:1;const OIIO::TypeDesc type=formats[format/2];
+      auto values=fixture_pixels(type,channels,7,5,format+17);std::vector<uint8_t> bytes(values.size()*type.size());
+      require(OIIO::convert_pixel_values(OIIO::TypeFloat,values.data(),type,bytes.data(),int(values.size())),"Fixture conversion");
+      std::ofstream raw(out/("input."+std::to_string(format)+".bin"),std::ios::binary);raw.write(reinterpret_cast<const char *>(bytes.data()),bytes.size());require(raw.good(),"Raw pixel write");
+      inputs.push_back(std::move(bytes));
+    }
+    auto loader=[&](unsigned format)->unique_ptr<ImageLoader>{
+      return make_unique<RawBytesLoader>(types[format],format%2?4:1,inputs[format],"CodeBrix fixture image "+std::to_string(format));};
+#else
     Progress progress;std::atomic<int> failures=0,tx_failures=0;
     ImageLoaderParams loading{.use_texture_cache=false,.auto_texture_cache=false,.texture_cache_path="",.colorspace=u_colorspace_data,.alpha_type=IMAGE_ALPHA_CHANNEL_PACKED,.load_failure_num=failures,.tx_failure_num=tx_failures};
     for(unsigned format=0;format<8;++format) {
@@ -143,6 +185,8 @@ int main(int argc,char **argv) {
       std::vector<uint8_t> pixels(metadata.memory_size());require(loader.load_pixels(metadata,pixels.data()),"Raw native pixels");
       std::ofstream raw(out/("input."+std::to_string(format)+".bin"),std::ios::binary);raw.write(reinterpret_cast<const char *>(pixels.data()),pixels.size());require(raw.good(),"Raw pixel write");
     }
+    auto loader=[&](unsigned format)->unique_ptr<ImageLoader>{return make_unique<RawFileLoader>(files[format]);};
+#endif
     auto devices=Device::available_devices(DEVICE_MASK_CPU);require(!devices.empty(),"CPU unavailable");
     unsigned completed=0;
     auto render=[&](unsigned format,ustring colorspace,ImageAlphaType alpha,int environment,bool filename) {
@@ -154,7 +198,7 @@ int main(int argc,char **argv) {
         auto &graph=*material.shader->graph;auto uv=graph.create_node<UVMapNode>();auto texture=graph.create_node<ImageTextureNode>();
         texture->set_colorspace(colorspace);texture->set_alpha_type(alpha);texture->set_interpolation(INTERPOLATION_LINEAR);texture->set_extension(EXTENSION_REPEAT);
         if(filename)texture->set_filename(ustring(files[format].string()));
-        else texture->handle=scene.image_manager->add_image(make_unique<RawFileLoader>(files[format]),texture->image_params(),false);
+        else texture->handle=scene.image_manager->add_image(loader(format),texture->image_params(),false);
         graph.connect(uv->output("UV"),texture->input("Vector"));graph.connect(texture->output("Color"),material.diffuse->input("Color"));
         auto mesh=static_cast<Mesh *>(scene.geometry[0]);auto attr=mesh->attributes.add(ATTR_STD_UV);
         const float2 coords[]={make_float2(-.3f,-.2f),make_float2(1.7f,.1f),make_float2(.1f,1.4f)};
@@ -164,7 +208,7 @@ int main(int argc,char **argv) {
         auto shader=scene.background->get_shader();auto &graph=*shader->graph;
         auto texture=graph.create_node<EnvironmentTextureNode>();texture->set_colorspace(colorspace);texture->set_alpha_type(alpha);
         texture->set_interpolation(INTERPOLATION_LINEAR);texture->set_projection(NodeEnvironmentProjection(environment));
-        texture->handle=scene.image_manager->add_image(make_unique<RawFileLoader>(files[format]),texture->image_params(),false);
+        texture->handle=scene.image_manager->add_image(loader(format),texture->image_params(),false);
         auto background=graph.create_node<BackgroundNode>();background->set_strength(.8f);
         graph.connect(texture->output("Color"),background->input("Color"));
         graph.disconnect(graph.output()->input("Surface"));graph.connect(background->output("Background"),graph.output()->input("Surface"));shader->tag_update(&scene);
@@ -182,9 +226,15 @@ int main(int argc,char **argv) {
       render(format,space,ImageAlphaType(alpha),-1,false);
     for(unsigned format=0;format<8;++format)for(int projection=0;projection<2;++projection)
       render(format,ustring("cbc_scaled"),IMAGE_ALPHA_CHANNEL_PACKED,projection,false);
+#ifdef CBC_HOST_NO_IMAGE_FILES
+    // No image file readers: the four file-and-rebind cases do not apply.
+    constexpr unsigned file_cases=0;
+#else
+    constexpr unsigned file_cases=4;
     for(unsigned format:{5u,7u}){render(format,ustring("cbc_scaled"),IMAGE_ALPHA_CHANNEL_PACKED,-1,true);render(format,ustring("cbc_scaled"),IMAGE_ALPHA_CHANNEL_PACKED,-1,false);}
-    require(completed==260,"Reference case count");
-    std::cout<<"{\"passed\":true,\"originalNativeCpuSession\":true,\"imageFormats\":8,\"colorspaces\":6,\"alphaModes\":5,\"environmentCases\":16,\"fileAndRebindCases\":4,\"cases\":"<<completed<<"}\n";
+#endif
+    require(completed==256+file_cases,"Reference case count");
+    std::cout<<"{\"passed\":true,\"originalNativeCpuSession\":true,\"imageFormats\":8,\"colorspaces\":6,\"alphaModes\":5,\"environmentCases\":16,\"fileAndRebindCases\":"<<file_cases<<",\"cases\":"<<completed<<"}\n";
   }catch(const std::exception &error){std::cerr<<error.what()<<'\n';return 1;}
 }
 

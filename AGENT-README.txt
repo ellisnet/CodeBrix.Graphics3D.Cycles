@@ -436,6 +436,26 @@ CyclesBackend.Gpu resolves by platform:
 Which GPU backend renders is visible through scene.Backend and
 GetCapabilities(); write backend-neutral code against CyclesBackend.
 
+WHAT DIFFERS BETWEEN THE GPU BACKENDS. The scene API, the edits, the events,
+the film layout and the device-error contract are the same on every platform.
+What a consumer can observe:
+  - Feature coverage. Metal is Cycles' own device with upstream's GPU feature
+    set: all cameras and passes and the integrator defaults render
+    (GetCapabilities().Scope.RenderTimeRejections is empty). The WebGPU device does not yet cover all of Cycles (WEBGPU
+    RENDER-TIME LIMITS below); it is being extended toward the same coverage.
+    Check GetCapabilities().Scope instead of the platform.
+  - First render. Metal compiles its kernels at run time the first time a
+    machine renders (several seconds; the library carries the kernel sources
+    as codebrix-cycles/source beside the native library) and caches them in
+    the user's cache directory, so later renders start at once.
+  - Pipeline tiers are a WebGPU concept: on Metal, the capability report's
+    PipelineTier is null and the device report has no pipeline facts.
+  - Results. Each backend's films agree with the CPU reference backend within
+    the practical criterion in typical scenes but are not bit-identical to it,
+    and Metal repeat renders differ in the last bits (film accumulation uses
+    atomics). Metal's hardware texture filtering can differ from the CPU's
+    interpolation by more than that criterion on magnified textures.
+
 WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
 render runs (the render fails with NativeStatus.Failed, not at edit time):
   - passes other than Combined (AddPass of any other type fails the render;
@@ -456,12 +476,13 @@ The CPU reference backend renders all of these.
 
 DEVICE ERRORS. After a render fails with NativeStatus.Failed (scene.IsFaulted
 is true), remove the cause (for example the extra pass or the non-perspective
-camera) and render again: the native host recovers the WebGPU device, uploads
-the whole scene again and raises a RenderEventReceived status event that starts
-with "Device recovered"; a successful render clears IsFaulted. Only a device
-that cannot recover (a lost WebGPU device, or an error on the CPU or Metal
-device) keeps failing, with a message that starts with "Host faulted": then
-dispose the scene and build a new one.
+camera on WebGPU, or an image wider or taller than Metal's 16384-pixel texture
+limit on Metal) and render again: the native host recovers the GPU device
+(WebGPU or Metal), uploads the whole scene again and raises a
+RenderEventReceived status event that starts with "Device recovered"; a
+successful render clears IsFaulted. Only a device that cannot recover (a lost
+WebGPU device, or an error on the CPU device) keeps failing, with a message
+that starts with "Host faulted": then dispose the scene and build a new one.
 
 MOTION
 ------
@@ -877,9 +898,10 @@ WORKING EXAMPLES ON GITHUB
   https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesAbiTests.cs
 - The by-name host: socket round trips, registry and device report JSON:
   https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/CyclesHostTests.cs
-- Rendering on the GPU (WebGPU) backend and comparing with the CPU reference,
-  progress and cancellation on the GPU:
-  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs
+- Rendering on the GPU backend (WebGPU, or Metal on macOS arm64) and judging
+  the film against the backend's reference, progress, cancellation and
+  device-error recovery on the GPU:
+  https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs
 - Loading, saving and rendering scene bundles:
   https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles/blob/main/tests/CodeBrix.Graphics3D.Cycles.Tests/OracleSceneBundleTests.cs
 - Converting a glTF file into a scene (example client):

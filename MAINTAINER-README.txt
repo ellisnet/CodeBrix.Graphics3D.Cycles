@@ -363,17 +363,24 @@ What the tests need:
     project sets AllowUnsafeBlocks for the raw callback test in CyclesAbiTests; NodeTypeTests' generator check runs
     `python3 tools/managed/generate_model.py --check` and skips when python3
     is not available.
-  - WebGpuRenderTests render the shared validation scenes
+  - GpuRenderTests render the shared validation scenes
     (tools/hosttests/WebGpuScenes/WebGpuValidationScenes.cs: glass sphere,
     diffuse with a sun, textured plane through image upload) and the procedural
     glTF sample on CyclesBackend.Gpu and on CyclesBackend.CpuReference, require
-    the practical criterion and print the maximum error and strict differences
-    (test output; `-showLiveOutput` when running the test assembly directly),
-    check progress events, cancellation and reuse on the GPU backend and the
-    capability report's tier decision. They skip with a reason when no WebGPU
-    adapter is available. They also recover a scene after a rejected render
-    (a depth pass) and move an object after a render (Phase E3 semantics).
-    Run them once with a cold scratch
+    the practical criterion against the backend's authority and print the
+    maximum error and strict differences (test output; `-showLiveOutput` when
+    running the test assembly directly), check progress events, cancellation
+    and reuse on the GPU backend, passes, and the capability and device
+    reports. CyclesBackend.Gpu is the CodeBrix WGSL device on WebGPU everywhere
+    except macOS arm64, where it is Cycles' Metal device. On WebGPU the CPU
+    film is the authority; on Metal the authority is the reviewed Metal film
+    recorded in tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64
+    and the CPU comparison is reported only (GpuReferences.cs;
+    docs/TESTING-MACOS-ARM64.md, step 7, records how to re-record them). They
+    skip with a reason when the GPU device is not available. They also recover
+    a scene after a rejected render (a depth pass on WebGPU, an image larger
+    than Metal's 16384-pixel texture limit on Metal) and move an object after a
+    render (Phase E3 semantics). On WebGPU, run them once with a cold scratch
     MESA_SHADER_CACHE_DIR after changing GPU code (the whole class takes about
     a minute cold on the Intel UHD laptop).
   - GltfSceneConverterTests drive the glTF example client
@@ -383,7 +390,7 @@ What the tests need:
     the library never references an imaging package) on the CPU reference
     backend with procedural sample models: the closure mapping, and the Blender
     mapping on the textured-plane control (synthetic 64x64 textures generated in
-    C#; WebGpuRenderTests renders it on the GPU too). No glTF asset or external
+    C#; GpuRenderTests renders it on the GPU too). No glTF asset or external
     texture is stored in or required by the tests.
   - OracleSceneBundleTests cover the scene-bundle loader (header, inline and
     raw-file geometry, save/load, typed-facade bit identity, refusals).

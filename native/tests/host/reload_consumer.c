@@ -22,6 +22,11 @@ static void save_render(CBCHost host,const char *root,unsigned index) {
   char path[4096];REQUIRE(snprintf(path,sizeof(path),"%s/case.%u.rgba.bin",root,index)>0);
   FILE *file=fopen(path,"wb");REQUIRE(file);REQUIRE(fwrite(pixels,sizeof(float),FLOAT_COUNT,file)==FLOAT_COUNT);REQUIRE(fclose(file)==0);
 }
+#ifdef CBC_HOST_NO_IMAGE_FILES
+enum { IMAGE_CASES = 256 };
+#else
+enum { IMAGE_CASES = 260 };
+#endif
 static int image_cases(int argc,char **argv) {
   REQUIRE(argc==3);
   char config_path[4096],missing[4096];REQUIRE(snprintf(config_path,sizeof(config_path),"%s/config.ocio",argv[1])>0);
@@ -64,14 +69,20 @@ static int image_cases(int argc,char **argv) {
   CBCNode world_color=shader_node(host,world,"color");color(host,world_color,"value",.25f,.4f,.6f);
   CHECK(cbc_host_connect(host,world_color,"Color",background,"Color"));CHECK(cbc_host_connect(host,texture,"Color",diffuse,"Color"));
   CHECK(cbc_host_set_string(host,texture,"colorspace","cbc_scaled"));CHECK(cbc_host_set_string(host,texture,"alpha_type","channel_packed"));
+#ifdef CBC_HOST_NO_IMAGE_FILES
+  /* Builds without image file readers reject texture filenames instead. */
+  REQUIRE(cbc_host_set_string(host,texture,"filename","input.5.png")==CBC_UNSUPPORTED);
+#else
   const unsigned file_formats[]={5,7};
   for(unsigned i=0;i<2;++i) {
     unsigned format=file_formats[i];char path[4096];REQUIRE(snprintf(path,sizeof(path),"%s/input.%u.png",argv[1],format)>0);
     CHECK(cbc_host_set_string(host,texture,"filename",path));CHECK(cbc_host_image_bind(host,texture,0));save_render(host,argv[2],completed++);
     bind_copy(host,texture,argv[1],format);save_render(host,argv[2],completed++);
   }
-  CHECK(cbc_host_destroy(host));CHECK(cbc_host_color_config_path(config_path));REQUIRE(completed==260);
-  puts("{\"passed\":true,\"cases\":260,\"imageFormats\":8,\"colorspaces\":6,\"alphaModes\":5,\"environmentCases\":16,\"fileAndRebindCases\":4,\"copiedInputs\":true,\"releasedBindingModeEdits\":true}");return 0;
+#endif
+  CHECK(cbc_host_destroy(host));CHECK(cbc_host_color_config_path(config_path));REQUIRE(completed==IMAGE_CASES);
+  printf("{\"passed\":true,\"cases\":%u,\"imageFormats\":8,\"colorspaces\":6,\"alphaModes\":5,\"environmentCases\":16,\"fileAndRebindCases\":%u,\"copiedInputs\":true,\"releasedBindingModeEdits\":true}\n",
+         (unsigned)IMAGE_CASES,(unsigned)(IMAGE_CASES-256));return 0;
 }
 
 int main(int argc,char **argv) {
@@ -82,5 +93,5 @@ int main(int argc,char **argv) {
     REQUIRE(snprintf(output,sizeof(output),"%s/round.%u",argv[2],round)>0);
     char *args[]={argv[0],input,output};REQUIRE(image_cases(3,args)==0);
   }
-  printf("{\"passed\":true,\"configurationRounds\":%u,\"films\":%u}\n",cycles,260*cycles);return 0;
+  printf("{\"passed\":true,\"configurationRounds\":%u,\"films\":%u}\n",cycles,(unsigned)IMAGE_CASES*cycles);return 0;
 }

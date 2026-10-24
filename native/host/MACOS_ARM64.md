@@ -111,9 +111,14 @@ Adaptations, all recorded by the recipes:
   `inject_cycles_macos.cmake` compiles every Cycles and CodeBrix translation
   unit with `-ffp-contract=off -fno-reciprocal-math` after Cycles' own math
   flags (Apple Clang contracts by default on arm64), at the architecture's base
-  level; the recipe checks the CPU kernel line in the compile database. UNTESTED:
-  this rule has not yet been compiled or run on a Mac; CPU films made before it
-  (native/evidence/cycles-oracles-macos-*) used contraction.
+  level; the recipe checks the CPU kernel line in the compile database. CPU
+  films made before this rule (native/evidence/cycles-oracles-macos-20261019)
+  used contraction. The host's independent colour reference object
+  (`codebrix_host_reference_color`) inherits Cycles' own `src/util` flags;
+  because CMake keeps only the first of repeated options, `targets.cmake`
+  drops Cycles' `-ffp-contract` and reciprocal-math flags from that list
+  wherever the fixed baseline applies, so the reference compiles
+  `colorspace.cpp` with the same arithmetic as the library.
 - `FMT_CONSTEVAL=` keeps fmt's run-time format checks under Apple Clang 21, as
   on NDK 29.
 - The concurrency test gets an Apple-only barrier, because macOS lacks POSIX
@@ -137,10 +142,31 @@ source copies only when byte-identical to `third_party/cycles/src`. Before the
 recorded result, the stager copies the runtime directory alone to a temporary
 folder and renders from it on CPU and Metal.
 
-Two Linux validations do not apply here. The image reference executable writes
-and reads EXR/PNG through OIIO, and the reload test sets texture filenames.
-The WGSL device and render gates are absent because this profile has no WebGPU
-device.
+The image fixtures run in their memory-only form. Under
+`CBC_HOST_NO_IMAGE_FILES` the independent image reference renders its 256
+memory-image cases from raw pixel files (converting stored types as the host's
+memory loader does), and the C reload test and the managed `ImageModes` and
+`ColorReload` fixtures verify that texture filenames are rejected instead of
+running the four file and rebind cases. The WGSL device and render gates are
+absent because this profile has no WebGPU device.
+
+## Managed GPU tests and device errors
+
+`CyclesBackend.Gpu` is Cycles' Metal device here, and the managed test
+project's `GpuRenderTests` run on it against the in-tree host. Their films are
+judged against reviewed Metal references recorded on Apple Silicon
+(`tests/CodeBrix.Graphics3D.Cycles.Tests/References/metal-osx-arm64`), with the
+practical criterion; the CPU comparison is recorded with each reference and
+reported, never required, because the Metal device is upstream's own
+implementation rather than the device this repository builds.
+docs/TESTING-MACOS-ARM64.md (step 7) describes recording and review.
+
+The host recovers the Metal device after a scene-caused render failure as it
+does WebGPU (ABI.md, "Device errors"): MetalDevice keeps the error message and
+a sticky `has_error` flag that makes pipeline lookup refuse every kernel, so
+`metal_recovery.mm` clears both (through the overlay's `Device::clear_error`)
+before the host uploads the whole scene again and emits "Device recovered". An
+image larger than Metal's 16384-pixel texture limit is the test case.
 
 ## Results and findings (2026-10-19)
 
@@ -188,6 +214,84 @@ uncommitted changes.
 - Run-time Metal kernel compile with an empty Cycles cache took about 7.5 s on
   the first oracle run. Later runs are faster because macOS keeps its own
   shader cache, which the recipes do not clear.
+
+## Results and findings (2026-10-23)
+
+Same build machine and toolchain as 2026-10-19 (macOS 27.0.1). Parity work:
+the managed GPU tests on Metal, Metal device-error recovery, the Metal
+capability scope and the memory-only image fixtures; uncommitted changes on
+`2667be4d`.
+
+- Host gate (`macos_host_gate.py`): 48 exports; 3089 films compared. Every
+  same-host CPU film is bitwise identical to its independent reference, through
+  the C API and the .NET wrapper alike: Session references, 3 x 256
+  memory-image reference cases, 6 C reload rounds, the managed `ImageModes` and
+  `ColorReload` fixtures and the guarded-concurrency films. Metal lifecycle
+  films with MetalRT off and on are within 4.5e-8 of the CPU references.
+- Two defects were found in the new memory-only image reference itself, not in
+  the library or CodeBrix.Imaging: its raw-bytes loader refused images whose
+  stored type Cycles changes during finalization (1-channel byte sRGB, which
+  then rendered as the missing-texture colour) instead of converting them as
+  the host does; and its colour object compiled with Cycles' contraction flags
+  winning, 1 ULP off the library's float sRGB cases (see "Fixed-baseline CPU
+  oracle" above).
+- Oracle corpus: `native/evidence/cycles-oracles-macos-20261023/` (bundle
+  SHA-256 `c6b4eb697539543a0463adafa8edfa742b96c748d9210cd3155c002735ae15e7`),
+  49 scenes (the 4 starter scenes and 45 Linux gate scenes) on
+  `cpu-arm64-macos`, `metal-m2pro` and `metal-m2pro-metalrt`. The two bench
+  scenes were rendered separately, once their asset was committed (below). No
+  backend rejected a scene. 32 scenes pass every pair; the 17 that
+  do not are findings, nothing was adjusted:
+
+  | Scenes | Pair failing the practical criterion | Character |
+  |---|---|---|
+  | closed-volumes, world-volume | Metal and MetalRT vs CPU (max 5.5 and 4.3, about 300 pixels at 8 samples) | path divergence in volume sampling: Metal and MetalRT agree, and at 1024 samples the per-channel means agree with the CPU within 0.15% |
+  | object-motion 1-7, deforming-motion 1, 3, 5, 7 | MetalRT vs CPU and vs BVH2 Metal (max 0.085) | MetalRT's own motion interpolation: BVH2 Metal matches the CPU within 2e-6; at 1024 samples MetalRT's means agree within 0.02% but edge pixels stay up to 0.018 apart |
+  | textured-plane (both) | Metal and MetalRT vs CPU (max 2.9e-3, ratio 9) | hardware texture filtering, as in 2026-10-19 |
+  | triangle-lighting-2 / -5 | BVH2 Metal (3 components) / MetalRT (9 components) | isolated pixels |
+
+  The 1024-sample diagnostics were scratch renders of copied scenes and are
+  not evidence. The motion finding matters for M3 and later, where the shipped
+  rule enables MetalRT: motion-blurred edges there differ from the CPU and
+  from M1/M2 within about 2%.
+- Bench: `make_bench_bundle.py` regenerated the bundle on this Mac from the
+  committed asset (`native/oracle/scenes/assets/ForestVillage/`), and all 13 raw
+  files match the SHA-256 values recorded on Linux: CodeBrix.Imaging decodes the
+  six JPEGs to the same bytes on both platforms. The bundle (98 MB) stays in
+  `native/work/oracle-assets/bench_01` and is not committed. Its films are in
+  `native/evidence/cycles-oracles-macos-20261023-2/` (bundle SHA-256
+  `f13674657575008a7a3f8509160cd60ae250c6ac8797942dc2b2812e8525d94c`). Metal
+  and MetalRT fail the practical criterion against the CPU (`bench_01`: max
+  0.0046, about 180 of 12288 components; `bench_01-hdri`: max 0.022, about 495),
+  and against each other (46 and 96). The image means agree within 0.01% per
+  channel. This is the hardware texture filtering of the 2K textures plus path
+  divergence at 16 samples, the same character as `gltf-textured-plane-blender`
+  in the managed tests. A finding; nothing was adjusted.
+- Starter films against the 2026-10-19 evidence: CPU films are no longer
+  bitwise identical (that run used contraction), within 1.9e-4; Metal films
+  within 2e-6; all within the practical criterion.
+- Managed suite (`dotnet test --solution`, Release and Debug): 182 passed,
+  none skipped, none failed, 0 build warnings. The Metal films of
+  `GpuRenderTests` are within 4.8e-7 of their recorded references. Their
+  recorded CPU comparisons are within 9.4e-6, except
+  `gltf-textured-plane-blender` (0.0066, 162 practical failures, from hardware
+  texture filtering; reported only). Metal recovery after the 16384-pixel
+  texture rejection emits "Device recovered" and renders the reference film.
+  The package declares no dependencies.
+- First Metal render with an empty Cycles kernel cache: 0.63 s (BVH2) and
+  0.68 s (MetalRT), because macOS's own shader cache was warm.
+
+- Restaged `native/binaries/osx-arm64` from this build (gate
+  `macos-validation-parity3`, oracle run `macos-20261023-v2`), 314 files, with
+  the standalone CPU and Metal renders from a copy of `runtime/` passing; the
+  licensing audit passes. Against the 2026-10-19 payload only the host library
+  (both copies and its dSYM) and `libOpenImageIO.2.5.dylib` changed. The
+  dependency recipe and toolchain are unchanged, but the dependency prefix was
+  rebuilt: the new OIIO differs in one function only,
+  `contrast_remap_<unsigned short, float>` (268 bytes shorter; the symbol order
+  and every other function are identical), which Cycles never calls. That is a
+  compiler-level reproducibility finding, not a behaviour change.
+- Nothing was committed or pushed.
 
 ## Session record (2026-10-19)
 

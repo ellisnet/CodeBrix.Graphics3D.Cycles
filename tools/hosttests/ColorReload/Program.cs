@@ -11,4 +11,6 @@ for (int round = 0; round < 6; ++round)
     try { entry.Invoke(null, [inputs]); }
     catch (TargetInvocationException error) { throw error.InnerException ?? error; }
 }
-Console.WriteLine(JsonSerializer.Serialize(new { passed = true, sameManagedProcess = true, configurationRounds = 6, films = 1560 }));
+// 260 films per round, or 256 where the native host reads no image files (osx-arm64).
+int films = Directory.GetFiles(Path.Combine(args[2], "round.0"), "case.*.rgba.bin").Length * 6;
+Console.WriteLine(JsonSerializer.Serialize(new { passed = true, sameManagedProcess = true, configurationRounds = 6, films }));

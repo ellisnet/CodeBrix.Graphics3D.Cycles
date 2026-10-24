@@ -99,7 +99,13 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
            "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL
-    out << ",\"metal\":{\"device\":\"Cycles Metal device\",\"reference\":\"native/host/MACOS_ARM64.md\"}";
+    // Cycles' own Metal device: the full upstream feature set, compiled at run
+    // time from the kernel sources staged beside this library.
+    out << ",\"metal\":{\"device\":\"Cycles Metal device\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\"],"
+           "\"passes\":\"registered pass types written by the Cycles Metal device\",\"renderTimeRejections\":[],"
+           "\"hardwareRayTracing\":\"MetalRT on M3 and later GPUs, BVH2 otherwise (CYCLES_METALRT overrides)\","
+           "\"kernels\":\"compiled at first use from codebrix-cycles/source beside the library; cached in the user cache directory\","
+           "\"reference\":\"native/host/MACOS_ARM64.md\"}";
 #endif
     out << "},\"optionalLibraries\":{\"osl\":"
 #ifdef WITH_OSL

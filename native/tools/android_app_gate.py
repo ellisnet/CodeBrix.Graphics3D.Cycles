@@ -30,7 +30,7 @@ def main():
                         'in-app CPU film is a diagnostic. The app then also selects that oracle\'s arithmetic adapters '
                         '(CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2), as the native gates do on reference import')
     parser.add_argument('--linux-reference',type=Path,help='webgpu mode: folder of <scene>.cpu.rgba.bin films rendered on Linux x64 '
-                        '(glibc) by WebGpuRenderTests with CODEBRIX_CYCLES_REFERENCE_EXPORT; the device GPU film is judged '
+                        '(glibc) by GpuRenderTests with CODEBRIX_CYCLES_REFERENCE_EXPORT; the device GPU film is judged '
                         'against them and the in-app CPU film becomes a diagnostic (native/DEVICE.md, "Validation reference policy")')
     parser.add_argument('--result-timeout',type=int,default=600,help='Seconds to wait for the app result')
     parser.add_argument('--uninstall',action='store_true',help='Uninstall the app after its evidence is extracted')

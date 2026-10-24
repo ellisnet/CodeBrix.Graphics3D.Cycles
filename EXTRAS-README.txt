@@ -21,8 +21,9 @@ TEST PROJECT
 
 xUnit v3; run it as described in MAINTAINER-README.txt (TESTING). Its
 native-host tests skip with a reason when the native host has not been built in
-the working tree, and its WebGPU tests (WebGpuRenderTests.cs) also skip with a
-reason when no WebGPU adapter is available.
+the working tree, and its GPU tests (GpuRenderTests.cs) also skip with a reason
+when the platform's GPU device (Metal on macOS arm64, WebGPU elsewhere) is not
+available.
 
 
 GLTF RENDER TOOL (EXAMPLE CLIENT)
