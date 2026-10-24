@@ -69,6 +69,10 @@ fn light_nee_path(id:vec3<u32>)->u32{
     // light_sample_terminate with the stored average BSDF evaluation.
     var light=r.emission;var next=K_SHADOW_INTERSECT;
     if(all(light==vec3<f32>(0))){next=0u;}
+//#if LIGHT_TREE
+    // No light threshold roulette with the light tree (integrator_shade_light_nee).
+    else if((data_word(D_kernel_features)&LT_FEATURE_LIGHT_TREE)!=0u){}
+//#endif
     else{
         let rr=data_float(D_integrator_light_inv_rr_threshold);
         let weighted=light*heap_float(state_address(S_shadow_path_bsdf_eval_average,index,4u));

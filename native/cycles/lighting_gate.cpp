@@ -42,6 +42,10 @@ using namespace wavefront_test;
 #ifdef CODEBRIX_SHADOW_TERMINATOR_GATE
 #include "shadow_terminator_fixture.h"
 #endif
+#ifdef CODEBRIX_MNEE_GATE
+#include "mnee_fixture.h"
+#include "mnee_reference.h"
+#endif
 constexpr unsigned width=32,height=24,samples=8;
 #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
 #include "object_motion_fixture.h"
@@ -53,6 +57,8 @@ constexpr int lighting_modes[lighting_cases]={0,1,2,3,4,5};
 constexpr int lighting_cases=12;
 #elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
 constexpr int lighting_cases=shadow_terminator_cases;
+#elif defined(CODEBRIX_MNEE_GATE)
+constexpr int lighting_cases=mnee_cases;
 #else
 constexpr int lighting_cases=8;
 #endif
@@ -61,7 +67,7 @@ constexpr bool use_mis=true;
 #else
 constexpr bool use_mis=false;
 #endif
-struct Metrics {uint64_t unsupported_emitters=0,mesh_mis_paths=0,deforming_paths=0,transparent_hits=0,max_shadow_hits=0,transmissions=0,shadows=0,blocked=0,visible=0,forward=0,stages=0,floats=0,strict=0,repeat_differences=0;double maximum=0,repeat_maximum=0;};
+struct Metrics {uint64_t mnee_paths=0,mnee_sampled=0,unsupported_emitters=0,mesh_mis_paths=0,deforming_paths=0,transparent_hits=0,max_shadow_hits=0,transmissions=0,shadows=0,blocked=0,visible=0,forward=0,stages=0,floats=0,strict=0,repeat_differences=0;double maximum=0,repeat_maximum=0;};
 static Shader *material(Scene &scene,int variant){
   auto graph=make_unique<ShaderGraph>();auto diffuse=graph->create_node<DiffuseBsdfNode>();diffuse->set_color(make_float3(.55,.32,.18));diffuse->set_roughness(.31f);
   ShaderOutput *surface=diffuse->output("BSDF");
@@ -85,6 +91,13 @@ static void fixture(Scene &scene,int mode,bool stationary=false){
     auto emission_graph=make_unique<ShaderGraph>();auto emission=emission_graph->create_node<EmissionNode>();emission->set_color(one_float3());emission->set_strength(1);
     emission_graph->connect(emission->output("Emission"),emission_graph->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(emission_graph));emitter->tag_update(&scene);
     shadow_terminator_fixture(scene,mode,emitter);for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);return;}
+#endif
+#ifdef CODEBRIX_MNEE_GATE
+  {(void)stationary;auto background=make_unique<ShaderGraph>();auto bg=background->create_node<BackgroundNode>();bg->set_color(make_float3(.02f,.025f,.03f));background->connect(bg->output("Background"),background->output()->input("Surface"));
+    auto world=scene.create_node<Shader>();world->set_graph(std::move(background));world->tag_update(&scene);scene.background->set_shader(world);
+    auto emission_graph=make_unique<ShaderGraph>();auto emission=emission_graph->create_node<EmissionNode>();emission->set_color(one_float3());emission->set_strength(1);
+    emission_graph->connect(emission->output("Emission"),emission_graph->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(emission_graph));emitter->tag_update(&scene);
+    mnee_fixture(scene,mode,emitter);for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);return;}
 #endif
   auto diffuse=material(scene,0),mixed=material(scene,1);
   quad(scene,diffuse,{make_float3(-4,-3,3),make_float3(4,-3,3),make_float3(4,3,3),make_float3(-4,3,3)});
@@ -203,6 +216,10 @@ static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &metr
       for(auto &[kernel,ids]:queues){
         if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST)original_closest(scene,ids,state,film);
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND)original_background(scene,ids,state,film);
+#ifdef CODEBRIX_MNEE_GATE
+        else if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE){metrics.mnee_paths+=ids.size();original_mnee(scene,ids,state);
+          for(int i:ids)metrics.mnee_sampled+=(state[i].path.mnee&PATH_MNEE_SAMPLED)!=0;}
+#endif
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD){metrics.forward+=ids.size();original_light_forward(scene,ids,state,film);}
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){
           for(int i:ids)metrics.deforming_paths+=state[i].isect.type==PRIMITIVE_MOTION_TRIANGLE;
@@ -253,6 +270,9 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(data.integrator.use_direct_light&&data.integrator.transparent_shadows,"Unexpected native transparent-shadow configuration");
 #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native broad-light configuration");
+#elif defined(CODEBRIX_MNEE_GATE)
+    require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows&&bool(data.integrator.use_caustics)==(mode!=3)&&
+            bool(data.kernel_features&KERNEL_FEATURE_MNEE)==bool(data.integrator.use_caustics),"Unexpected native MNEE configuration");
 #elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native shadow-terminator configuration");
     {bool smooth=false;for(size_t i=0;i<scene.dscene.tri_shader.size();i++)smooth|=(scene.dscene.tri_shader[i]&SHADER_SMOOTH_NORMAL)!=0;require(smooth,"Shadow-terminator fixture lacks smooth triangles");
@@ -287,17 +307,29 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     RenderCapture::file(prefix+".cpu.film.bin",local.data(),local.size()*4);
     // Pass/fail reference: local, or the imported correctly rounded one (reference_policy.h).
     const auto reference=reference_policy::resolve("case-"+std::to_string(image)+".film",local,(out/"reference-diagnostic.jsonl").string());
-    for(unsigned repeat=0;repeat<2;repeat++){
+#ifdef CODEBRIX_MNEE_GATE
+    constexpr unsigned repeats=3;
+#else
+    constexpr unsigned repeats=2;
+#endif
+    for(unsigned repeat=0;repeat<repeats;repeat++){
       buffers->zero();std::unique_ptr<RenderCapture> capture;if(repeat==1)capture=std::make_unique<RenderCapture>(device,prefix);
-      for(unsigned sample=0;sample<samples;sample++){
-        scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Lighting reset failed");KernelWorkTile tile{};tile.w=width;tile.h=height;tile.stride=width;tile.num_samples=1;tile.start_sample=sample;
+#ifdef CODEBRIX_MNEE_GATE
+      // The third (uncaptured) repeat queues four samples per work tile, as a Session batches them:
+      // more concurrent paths, main/shadow compaction with pending MNEE slots (ownership repair).
+      const bool batched=repeat==2;
+#else
+      const bool batched=false;
+#endif
+      for(unsigned sample=0;sample<samples;sample+=(batched?4u:1u)){
+        scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Lighting reset failed");KernelWorkTile tile{};tile.w=width;tile.h=height;tile.stride=width;tile.num_samples=batched?4:1;tile.start_sample=sample;
         scheduler.enqueue_work_tiles(DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA,&tile,1,0,0);require(scheduler.update_queue_counter_and_cache(),"Lighting camera failed");
         for(unsigned step=0;step<150;step++){const auto kernel=scheduler.get_most_queued_kernel();if(kernel==DEVICE_KERNEL_NUM)break;require(step<149,"GPU lighting paths did not terminate");
           require(scheduler.enqueue_path_iteration(),"Native lighting scheduler stopped with pending paths");require(scheduler.update_queue_counter_and_cache(),"Lighting stage failed: "+device.error_message());metrics.stages++;}
       }
       if(capture)capture->finish(prefix,buffers->buffer.device_pointer,buffers->buffer.memory_size(),uintptr_t(device.state.path.queued_kernel),scheduler.capacity(),width,height,samples);
       buffers->buffer.copy_from_device();healthy(device);std::vector<float> actual(buffers->buffer.data(),buffers->buffer.data()+buffers->buffer.size());
-      RenderCapture::file(prefix+(repeat?".repeat.film.bin":".gpu.film.bin"),actual.data(),actual.size()*4);
+      RenderCapture::file(prefix+(repeat==2?".batched.film.bin":repeat?".repeat.film.bin":".gpu.film.bin"),actual.data(),actual.size()*4);
       for(size_t i=0;i<actual.size();i++){double error=std::abs(double(actual[i])-reference[i]);metrics.maximum=std::max(metrics.maximum,error);metrics.floats++;
         metrics.strict+=error>1e-7+1e-7*std::abs(double(reference[i]));
         require(std::isfinite(actual[i])&&std::isfinite(reference[i])&&error<=5e-5+2e-4*std::abs(double(reference[i])),"Lighting film mismatch mode="+std::to_string(mode)+" component="+std::to_string(i)+" actual="+std::to_string(actual[i])+" expected="+std::to_string(reference[i]));
@@ -311,12 +343,17 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(mode!=0)require(metrics.shadows>100&&metrics.visible>100,"Missing mesh direct lighting coverage");
 #elif defined(CODEBRIX_BROAD_LIGHT_GATE)
     require(metrics.shadows>0&&metrics.visible>0,"Missing broad direct lighting coverage");
+#elif defined(CODEBRIX_MNEE_GATE)
+    require(metrics.shadows>100&&metrics.visible>100,"Missing MNEE direct lighting coverage");
+    std::cerr<<"mnee paths="<<metrics.mnee_paths<<" sampled="<<metrics.mnee_sampled<<"\n";
+    if(mode==3)require(metrics.mnee_paths==0,"MNEE ran without a caustic receiver");
+    else require(metrics.mnee_paths>100&&(mode==2||metrics.mnee_sampled>=5),"Missing MNEE coverage");
 #elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
     require(metrics.shadows>100&&metrics.visible>100&&metrics.blocked>10,"Missing shadow-terminator direct lighting coverage");
 #else
     require(metrics.shadows>100&&metrics.visible>100,"Missing direct lighting coverage");if(mode!=6)require(metrics.blocked>10,"Missing occlusion coverage");
 #endif
-    auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"mode\":"<<mode<<",\"transparentSurfaceHits\":"<<metrics.transparent_hits<<",\"maximumShadowHitCount\":"<<metrics.max_shadow_hits<<",\"forwardLightPaths\":"<<metrics.forward<<",\"meshMisPaths\":"<<metrics.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<metrics.deforming_paths<<",\"shadows\":"<<metrics.shadows<<",\"blocked\":"<<metrics.blocked<<",\"visible\":"<<metrics.visible<<",\"stages\":"<<metrics.stages<<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat_differences<<",\"repeatMaximumError\":"<<metrics.repeat_maximum<<"}\n";};
+    auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"mode\":"<<mode<<",\"mneePaths\":"<<metrics.mnee_paths<<",\"mneeSampled\":"<<metrics.mnee_sampled<<",\"transparentSurfaceHits\":"<<metrics.transparent_hits<<",\"maximumShadowHitCount\":"<<metrics.max_shadow_hits<<",\"forwardLightPaths\":"<<metrics.forward<<",\"meshMisPaths\":"<<metrics.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<metrics.deforming_paths<<",\"shadows\":"<<metrics.shadows<<",\"blocked\":"<<metrics.blocked<<",\"visible\":"<<metrics.visible<<",\"stages\":"<<metrics.stages<<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat_differences<<",\"repeatMaximumError\":"<<metrics.repeat_maximum<<"}\n";};
     std::ofstream details(folder/"result.json");report(details);report(std::cerr);total.mesh_mis_paths+=metrics.mesh_mis_paths;total.deforming_paths+=metrics.deforming_paths;total.transparent_hits+=metrics.transparent_hits;total.max_shadow_hits=std::max(total.max_shadow_hits,metrics.max_shadow_hits);total.transmissions+=metrics.transmissions;total.forward+=metrics.forward;total.shadows+=metrics.shadows;total.blocked+=metrics.blocked;total.visible+=metrics.visible;total.stages+=metrics.stages;total.floats+=metrics.floats;total.strict+=metrics.strict;total.maximum=std::max(total.maximum,metrics.maximum);total.repeat_differences+=metrics.repeat_differences;
   }
   const bool exchange_only=reference_policy::prepare_only()||reference_policy::reference_only();
@@ -329,7 +366,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #endif
 #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
   require(total.mesh_mis_paths>10,"Missing forward emissive triangle MIS paths");
-#elif !defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
+#elif !defined(CODEBRIX_SHADOW_TERMINATOR_GATE)&&!defined(CODEBRIX_MNEE_GATE)
   if(use_mis)require(total.forward>100,"Missing forward point-light paths");
 #endif
   }

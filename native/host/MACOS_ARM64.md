@@ -250,6 +250,9 @@ capability scope and the memory-only image fixtures; uncommitted changes on
   | textured-plane (both) | Metal and MetalRT vs CPU (max 2.9e-3, ratio 9) | hardware texture filtering, as in 2026-10-19 |
   | triangle-lighting-2 / -5 | BVH2 Metal (3 components) / MetalRT (9 components) | isolated pixels |
 
+  Under the two-gold-standards rule (native/DEVICE.md, "Validation reference
+  policy") these are characteristics of the Metal reference, not defects.
+
   The 1024-sample diagnostics were scratch renders of copied scenes and are
   not evidence. The motion finding matters for M3 and later, where the shipped
   rule enables MetalRT: motion-blurred edges there differ from the CPU and

@@ -182,12 +182,28 @@ directories for one scene (`cpu-x64-linux`, `cpu-arm64-macos`, `metal-m2pro`,
 backends first, so a Mac bundle drops in as more directories) and reports the
 pairwise matrix: practical failures, strict differences, maximum absolute and
 relative error, RMS, the worst pixel and NaN/Inf counts, plus every backend's
-repeat films re-read and compared with film-0. The verdict is `perfect` when
-every pair passes the practical criterion and nothing else failed. For each pair
-it treats the earlier directory as the reference `b`. The practical
-criterion `abs(a - b) <= 5e-5 + 2e-4 * abs(b)` must hold for every component;
-strict differences (`1e-7 + 1e-7 * abs(b)`) are reported. NaN/Inf, shape or
-scene mismatches and films whose bytes differ from their recorded SHA-256 fail.
+repeat films re-read and compared with film-0.
+
+Two gold standards. The unmodified pinned Cycles CPU kernels (`cpu-*` backends)
+and the unmodified pinned Cycles Metal backend (`metal-*`) are both reference
+renderers; every other backend (`wgsl-*`) is a candidate. A candidate is judged
+against the CPU gold standard of its own host ISA family (`wgsl-linux-intel` and
+every `wgsl-android-*` backend, validated through the Linux x64 glibc flow,
+against `cpu-x64-linux`; an arm64-host candidate against `cpu-arm64-*`; when no
+same-ISA CPU film is present, against the CPU film that is, and the report says
+so): that pair is `gating`, with the CPU film as the reference `b`, and the practical criterion
+`abs(a - b) <= 5e-5 + 2e-4 * abs(b)` must hold for every component; strict
+differences (`1e-7 + 1e-7 * abs(b)`) are reported. Cross-ISA pairs (a CPU x64
+film against a CPU arm64 film, an x64 candidate against a CPU arm64 film),
+candidate-versus-Metal pairs, the pairs of gold standards and candidate-versus-candidate pairs are `reported`
+with the same numbers and never fail the run: Metal's differences from the CPU
+(path divergence, hardware texture filtering, MetalRT's motion interpolation)
+are characteristics of a second reference renderer, not defects or deviations.
+The verdict is `perfect` when every gating pair passes and nothing else failed;
+the table and the JSON mark each pair `gating` or `reported` and list the
+`goldStandards` and `candidates`. A run without a CPU gold standard is invalid
+input ("no gold standard", exit 2). NaN/Inf, shape or scene mismatches and films
+whose bytes differ from their recorded SHA-256 fail.
 
 Previews (`film-0.png`: Reinhard, then 1/2.2 power, rows flipped) come from a
 scratch .NET tool outside the repository build that uses the CodeBrix.Imaging

@@ -30,17 +30,21 @@ def inputs(capture):
     assert meta['format'] in ('native-command-stream-v1', 'native-command-stream-v2',
                               'native-command-stream-v3', 'native-command-stream-v4', 'native-command-stream-v5',
                               'native-command-stream-v6', 'native-command-stream-v7',
-                              'native-command-stream-v8', 'native-command-stream-v9'), 'Unknown command stream format'
+                              'native-command-stream-v8', 'native-command-stream-v9', 'native-command-stream-v10'), 'Unknown command stream format'
     if meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7',
-                          'native-command-stream-v8', 'native-command-stream-v9'):
+                          'native-command-stream-v8', 'native-command-stream-v9', 'native-command-stream-v10'):
         # v6 adds entry 15 (connect_surface_light in surface.wgsl); v7 adds
         # entry 16 (prepare_shadow_shader_data in shadow.wgsl); v8 adds entry 17
         # (shade_surface_light_triangle in surface.wgsl); v9 adds entries 18
         # (shade_light_nee in surface.wgsl), 19 (shader_eval_background in background.wgsl)
-        # and 20 (prepare_light_nee in surface.wgsl).
+        # and 20 (prepare_light_nee in surface.wgsl); v10 adds entry 21
+        # (shade_surface_light_select in surface.wgsl), 22 (light_tree_forward in background.wgsl) and 23-25 (the
+        # shadow catcher split module, shadow_catcher.wgsl), 26 (prepare_surface_raytrace in surface_raytrace.wgsl)
+        # and 27-34 (the seven MNEE entries and mnee_cleanup, all in surface.wgsl).
         names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
                  'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow',
-                 'surface', 'surface', 'background', 'surface']
+                 'surface', 'surface', 'background', 'surface', 'surface', 'background', 'shadow_catcher', 'shadow_catcher', 'shadow_catcher',
+                 'surface_raytrace']+['surface']*8
         counts = meta['pipelineDispatches']
         assert len(counts) <= len(names) and all(isinstance(n, int) and n >= 0 for n in counts), 'Unknown pipeline metadata'
         assert all(names[i] is not None for i, count in enumerate(counts) if count), 'Reserved pipeline metadata'

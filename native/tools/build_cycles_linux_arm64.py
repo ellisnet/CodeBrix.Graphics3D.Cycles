@@ -72,7 +72,7 @@ def main():
   assert sources==inputs() and sha(marker)==pin['dependencyMarkerSha256'] and deps.identity()==dependency['identity']
   verify_copy();assert sha(runtime)==pin['runtimeSha256']
   artifacts=[p for d in [build/'bin',build/'lib'] for p in d.glob('*') if p.is_file() and (p.name.startswith('codebrix_') or p.name=='libcodebrix_cycles_host.so')]
-  if not a.target:assert len(artifacts)==len(HOST_TARGETS)+len(GATE_TARGETS)  # 28: 8 host outputs + 20 default gates
+  if not a.target:assert len(artifacts)==len(HOST_TARGETS)+len(GATE_TARGETS)  # 34: 8 host outputs + 26 default gates
   state.update(complete=True,passed=True,phase='complete',artifacts={str(p.relative_to(build)):sha(p) for p in artifacts},executionProven=False,releaseCleared=False)
   print('linux-arm64: maintained native host and selected gates built',flush=True)
  except Exception as error:

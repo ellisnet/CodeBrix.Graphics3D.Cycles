@@ -88,8 +88,8 @@ static RejectionMetrics rejections(const DeviceInfo &info){
     auto &state=states[0];
     std::string reason="reported invalid data";
     if(test==0){data.integrator.use_direct_light=1;reason="native light distribution";}
-    if(test==1){data.integrator.use_light_mis=1;data.integrator.use_light_tree=1;reason="light tree not implemented";}
-    if(test==2){data.kernel_features|=KERNEL_FEATURE_AO;reason="optional integration";}
+    if(test==1){data.integrator.use_light_mis=1;data.integrator.use_light_tree=1;data.integrator.use_direct_light=1;reason="Missing native light tree";}
+    if(test==2){data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional integration";}
     if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
     if(test==4){data.film.pass_flag=PASSMASK(DEPTH);reason="data passes";}
     if(test==5){data.integrator.filter_glossy=1;reason="glossy filtering";}

@@ -273,7 +273,11 @@ def compare(args):
         cases = sorted(ref.glob('*.f32'))
         for reference in cases:
             key = reference.stem
-            if args.kind == 'lighting':
+            if args.kind == 'lighting' and key.endswith('.samples'):
+                # Light-tree gate probe records (light_tree_gate.cpp): zeros where no selection or sample exists.
+                folder = run/key.replace('.samples', '')
+                gpu_path, local_path = folder/'probe.actual.bin', folder/'probe.reference.bin'
+            elif args.kind == 'lighting':
                 folder = run/key.replace('.film', '')
                 gpu_path, local_path = folder/'run.gpu.film.bin', folder/'run.cpu.film.bin'
             else:

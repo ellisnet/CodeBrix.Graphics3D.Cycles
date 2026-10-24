@@ -1,0 +1,33 @@
+shadow catcher case=0
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)
+stride=12 catcher=8 count=11 matte=4 background=-1 direct=0 transparent shadows=0
+shadow catcher case=1
+stride=15 catcher=11 count=14 matte=4 background=8 direct=0 transparent shadows=0
+shadow catcher case=2
+stride=12 catcher=8 count=11 matte=4 background=-1 direct=0 transparent shadows=1
+shadow catcher case=3
+stride=12 catcher=8 count=11 matte=4 background=-1 direct=0 transparent shadows=0
+shadow catcher case=4
+stride=12 catcher=8 count=11 matte=4 background=-1 direct=1 transparent shadows=0
+shadow catcher case=5
+stride=12 catcher=8 count=11 matte=4 background=-1 direct=1 transparent shadows=0
+shadow catcher case=6
+CodeBrix Cycles WebGPU warning: pipeline 'shader_eval_background' took 38637 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+stride=12 catcher=8 count=11 matte=4 background=-1 direct=1 transparent shadows=0
+CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 38743 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+CodeBrix Cycles WebGPU warning: pipeline 'shade_surface_light' took 27608 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+CodeBrix Cycles WebGPU warning: pipeline 'shade_background' took 33028 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+CodeBrix Cycles WebGPU warning: pipeline 'shade_light_nee' took 20663 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+shadow catcher case=7
+stride=12 catcher=8 count=11 matte=4 background=-1 direct=1 transparent shadows=1
+case 7 refused: WebGPU: shadow catchers with transparent shadows are not supported on Adreno (TM) 650 GPUs: the transparent shadow stage of such scenes fails on this GPU class; render the scene on another GPU or on the CPU device
+shadow catcher case=8
+stride=15 catcher=11 count=14 matte=4 background=8 direct=1 transparent shadows=0
+shadow catcher case=9
+stride=12 catcher=8 count=11 matte=4 background=-1 direct=1 transparent shadows=0
+CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 38623 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+CodeBrix Cycles WebGPU warning: pipeline 'shade_surface_light' took 26741 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+CodeBrix Cycles WebGPU warning: pipeline 'shade_background' took 33001 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+shadow catcher case=10
+stride=23 catcher=14 count=20 matte=4 background=-1 direct=0 transparent shadows=1
+07:44.65 | ERROR: WebGPU shadow catcher with volumes not implemented

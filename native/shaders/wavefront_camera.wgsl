@@ -135,6 +135,10 @@ fn camera_projection(address:u32,v:vec4<f32>)->vec3<f32>{
     state_f32(S_path_mis_ray_pdf,path,0.0);state_u32(S_path_min_ray_pdf,path,0x7f7fffffu);
     state_f32(S_path_continuation_probability,path,1.0);state_vec3(S_path_throughput,path,vec3<f32>(1.0));
     state_f32(S_path_optical_depth,path,0.0);state_u32(S_isect_object,path,NONE);state_u32(S_isect_prim,path,NONE);state_u32(S_isect_type,path,PRIM_TYPE_NONE);
+//#if LIGHT_LINKING
+    // path_state_init: the forward light-linking receiver starts as the background object.
+    if((data_word(D_kernel_features)&KF_LIGHT_LINKING)!=0u){state_u32(S_path_mis_ray_object,path,data_word(D_background_object_index));}
+//#endif
     if(volume_enabled()){
         store_word(volume_stack_address(path,0u,VS_object),data_word(D_background_object_index));
         store_word(volume_stack_address(path,0u,VS_shader),data_word(D_background_volume_shader));

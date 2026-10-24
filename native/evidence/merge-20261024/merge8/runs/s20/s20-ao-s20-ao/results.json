@@ -1,0 +1,432 @@
+{
+  "ao_state-refused": {
+    "gate": "ao_state",
+    "args": [],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 0.8,
+    "pipelines": [],
+    "maxPipelineMs": null,
+    "passed": true,
+    "expectedRefusal": "are not supported on Adreno (TM) 650 GPUs",
+    "stderr": [
+      "00:00.51 | ERROR: WebGPU: ambient occlusion shader nodes and ambient occlusion shadow rays (fast GI additive mode, AO pass) are not supported on Adreno (TM) 650 GPUs (this scene uses AO_SHADOW): the shader compiler of this GPU class miscompiles or fails to link their shader programs; render the scene on another GPU or on the CPU device",
+      "additive and pass: WebGPU: ambient occlusion shader nodes and ambient occlusion shadow rays (fast GI additive mode, AO pass) are not supported on Adreno (TM) 650 GPUs (this scene uses AO_SHADOW): the shader compiler of this GPU class miscompiles or fails to link their shader programs; render the scene on another GPU or on the CPU device"
+    ]
+  },
+  "ao_render-additive-refused": {
+    "gate": "ao_render",
+    "args": [
+      "2"
+    ],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 0.7,
+    "pipelines": [],
+    "maxPipelineMs": null,
+    "passed": true,
+    "expectedRefusal": "are not supported on Adreno (TM) 650 GPUs",
+    "stderr": [
+      "00:00.50 | ERROR: WebGPU: ambient occlusion shader nodes and ambient occlusion shadow rays (fast GI additive mode, AO pass) are not supported on Adreno (TM) 650 GPUs (this scene uses AO_SHADOW): the shader compiler of this GPU class miscompiles or fails to link their shader programs; render the scene on another GPU or on the CPU device",
+      "AO camera failed"
+    ]
+  },
+  "ao_render-node-refused": {
+    "gate": "ao_render",
+    "args": [
+      "6"
+    ],
+    "env": {},
+    "exit": 1,
+    "wallSeconds": 1.4,
+    "pipelines": [],
+    "maxPipelineMs": null,
+    "passed": true,
+    "expectedRefusal": "are not supported on Adreno (TM) 650 GPUs",
+    "stderr": [
+      "00:01.21 | ERROR: WebGPU: ambient occlusion shader nodes and ambient occlusion shadow rays (fast GI additive mode, AO pass) are not supported on Adreno (TM) 650 GPUs (this scene uses SVM_NODE_AO): the shader compiler of this GPU class miscompiles or fails to link their shader programs; render the scene on another GPU or on the CPU device",
+      "AO camera failed"
+    ]
+  },
+  "ao_render-replace": {
+    "gate": "ao_render",
+    "args": [
+      "0",
+      "1"
+    ],
+    "env": {},
+    "exit": 0,
+    "wallSeconds": 40.8,
+    "pipelines": [
+      {
+        "module": "camera",
+        "entry": "init_camera",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 66565,
+        "inlinedBytes": 217655,
+        "moduleMs": 6.99911,
+        "pipelineMs": 1577.83,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "closest",
+        "entry": "intersect_closest",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 91738,
+        "inlinedBytes": 218499,
+        "moduleMs": 10.8238,
+        "pipelineMs": 2718.98,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_shader_data",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 309799,
+        "inlinedBytes": 240132,
+        "moduleMs": 33.1281,
+        "pipelineMs": 1478.13,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "prepare_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 309799,
+        "inlinedBytes": 248989,
+        "moduleMs": 37.7173,
+        "pipelineMs": 3600.68,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 309799,
+        "inlinedBytes": 499733,
+        "moduleMs": 34.4196,
+        "pipelineMs": 6943.58,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "connect_surface_light",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 309799,
+        "inlinedBytes": 296815,
+        "moduleMs": 34.2353,
+        "pipelineMs": 3508.77,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "surface",
+        "entry": "shade_surface",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 1,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 309799,
+        "inlinedBytes": 492287,
+        "moduleMs": 34.7654,
+        "pipelineMs": 12926.8,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "shadow",
+        "entry": "intersect_shadow",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 208877,
+        "inlinedBytes": 215397,
+        "moduleMs": 25.9093,
+        "pipelineMs": 1718.62,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "background",
+        "entry": "shade_background",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 241086,
+        "inlinedBytes": 134799,
+        "moduleMs": 25.6763,
+        "pipelineMs": 897.082,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "shadow",
+        "entry": "shade_shadow",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 208877,
+        "inlinedBytes": 19801,
+        "moduleMs": 22.3922,
+        "pipelineMs": 42.7891,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      },
+      {
+        "module": "background",
+        "entry": "shade_light_forward",
+        "specialized": true,
+        "specializationMode": "scene",
+        "tier": "full",
+        "tierReason": "table",
+        "workgroupSize": 64,
+        "features": "SVM_NODE_GEOMETRY,SVM_BSDF_DIFFUSE,SVM_BSDF_GLOSSY",
+        "wgslBytes": 241086,
+        "inlinedBytes": 55271,
+        "moduleMs": 28.0808,
+        "pipelineMs": 146.598,
+        "adapter": "Adreno (TM) 650 / Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  "
+      }
+    ],
+    "maxPipelineMs": 12926.8,
+    "referencePolicy": {
+      "reference": "linux-x64-glibc",
+      "flow": "device-scene",
+      "oracleSha256": "e5b8b61ad46329105c6302068f9bf5bbce49a86bcaddc9e2e531ca15ebbb03ea",
+      "hostRejudgedPassed": true,
+      "rows": [
+        {
+          "key": "case-0.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 710,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 258,
+            "maximumAbsoluteError": 2.086162567138672e-06,
+            "maximumPracticalRatio": 0.009166683996064505,
+            "maximumUlps": 35,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 404,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 40,
+            "maximumAbsoluteError": 8.344650268554688e-07,
+            "maximumPracticalRatio": 0.0033388804857746755,
+            "maximumUlps": 14,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 716,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 282,
+            "maximumAbsoluteError": 2.086162567138672e-06,
+            "maximumPracticalRatio": 0.009166683996064505,
+            "maximumUlps": 35,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        },
+        {
+          "key": "case-1.film",
+          "authoritative": {
+            "compared": 3072,
+            "bitwiseDiffering": 711,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 245,
+            "maximumAbsoluteError": 2.0265579223632812e-06,
+            "maximumPracticalRatio": 0.006537208908662193,
+            "maximumUlps": 25,
+            "firstPracticalFailure": null,
+            "passed": true
+          },
+          "diagnosticLocalVersusGlibc": {
+            "compared": 3072,
+            "bitwiseDiffering": 376,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 43,
+            "maximumAbsoluteError": 9.5367431640625e-07,
+            "maximumPracticalRatio": 0.0030132149967469334,
+            "maximumUlps": 10,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          },
+          "diagnosticGpuVersusLocal": {
+            "compared": 3072,
+            "bitwiseDiffering": 709,
+            "nonFinite": 0,
+            "practicalFailures": 0,
+            "strictDifferences": 263,
+            "maximumAbsoluteError": 2.1457672119140625e-06,
+            "maximumPracticalRatio": 0.006921751141512124,
+            "maximumUlps": 24,
+            "firstPracticalFailure": null,
+            "passed": true,
+            "role": "diagnostic"
+          }
+        }
+      ]
+    },
+    "passed": true,
+    "report": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentOriginalCpuImage": true,
+      "cases": 2,
+      "aoShadowPaths": 0,
+      "aoTerminations": 367,
+      "raytracePaths": 0,
+      "filmChecks": 12288,
+      "strictDifferences": 1006,
+      "maximumAbsoluteError": 2.086162567138672e-06,
+      "repeatBitwiseDifferences": 0,
+      "caseReports": [
+        {
+          "passed": true,
+          "case": 0,
+          "name": "replace",
+          "aoShadowPaths": 0,
+          "aoBlocked": 0,
+          "aoTerminations": 138,
+          "raytracePaths": 0,
+          "lightShadows": 3391,
+          "lightNeePaths": 0,
+          "stages": 224,
+          "filmChecks": 6144,
+          "strictDifferences": 516,
+          "maximumAbsoluteError": 2.086162567138672e-06,
+          "repeatBitwiseDifferences": 0,
+          "repeatMaximumError": 0
+        },
+        {
+          "passed": true,
+          "case": 1,
+          "name": "replace-object-distance",
+          "aoShadowPaths": 0,
+          "aoBlocked": 0,
+          "aoTerminations": 229,
+          "raytracePaths": 0,
+          "lightShadows": 3391,
+          "lightNeePaths": 0,
+          "stages": 224,
+          "filmChecks": 6144,
+          "strictDifferences": 490,
+          "maximumAbsoluteError": 2.0265579223632812e-06,
+          "repeatBitwiseDifferences": 0,
+          "repeatMaximumError": 0
+        }
+      ],
+      "cyclesAllocationBytesAfterCleanup": 0,
+      "pipelineReport": {
+        "tier": "full",
+        "degraded": false,
+        "pipelines": 11,
+        "totalPipelineMs": 35559.9,
+        "maxPipelineMs": 12926.8,
+        "maxPipelineEntry": "shade_surface",
+        "warnings": [],
+        "sizeGuard": {
+          "thresholdBytes": 1110000,
+          "largestEntryBytes": 499733,
+          "largestEntry": "shade_surface_light",
+          "estimatedInstructions": 24987,
+          "warnings": 0
+        },
+        "decision": {
+          "tier": "full",
+          "reason": "table",
+          "detail": "Samsung Galaxy S20 FE Adreno 650: Adreno 650 lane 2026-10-22: full tier with a 20 s compile budget (warnings only); texture, colour and utility shader nodes refused",
+          "adapter": {
+            "vendor": "Qualcomm Technologies Inc. Adreno Vulkan Driver",
+            "architecture": "",
+            "device": "Adreno (TM) 650",
+            "description": "Driver Build: db7e7066a2, I1fad33e957, 1746950372 Date: 05/11/25 Compiler Version: EV031.32.02.10 Driver Branch:  ",
+            "vendorId": 20803,
+            "deviceId": 100990978,
+            "simulated": false,
+            "mobile": true
+          },
+          "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-linux-android;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+          "shaderHash": "fnv1a64:e6e06fbb70588548",
+          "knownAdapter": {
+            "name": "Samsung Galaxy S20 FE Adreno 650",
+            "tier": "full",
+            "budgetMs": 20000,
+            "evidence": "Adreno 650 lane 2026-10-22: full tier with a 20 s compile budget (warnings only); texture, colour and utility shader nodes refused",
+            "refusedRegion": "SVM_NODES_ANY",
+            "refused": "texture, colour and utility shader nodes",
+            "alsoRefusedRegion": "AO_ANY",
+            "alsoRefused": "ambient occlusion shader nodes and ambient occlusion shadow rays (fast GI additive mode, AO pass)"
+          },
+          "budgetSource": "table",
+          "record": {
+            "mode": "none",
+            "path": "",
+            "status": "none",
+            "fullTierCompiles": 0,
+            "conservativeTierCompiles": 0,
+            "failures": 0,
+            "breadcrumbs": []
+          },
+          "canary": {
+            "enabled": false,
+            "result": "not-run",
+            "ms": 0,
+            "detail": ""
+          },
+          "overrides": [],
+          "warnings": []
+        }
+      }
+    },
+    "pipelineReportPresent": true
+  }
+}

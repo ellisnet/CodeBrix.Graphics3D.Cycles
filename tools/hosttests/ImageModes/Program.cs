@@ -99,9 +99,18 @@ Node worldColor = host.ShaderNode(world, "color"); host.SetFloats(worldColor, "v
 host.Connect(worldColor, "Color", background, "Color"); host.Connect(texture, "Color", diffuse, "Color");
 host.SetString(texture, "colorspace", "cbc_scaled"); host.SetString(texture, "alpha_type", "channel_packed");
 // Builds without image file readers (osx-arm64) reject texture filenames; the four
-// file-and-rebind cases apply only where the native host reads image files.
-bool readsFiles = JsonDocument.Parse(CyclesScene.GetBinaryCapabilities().Json).RootElement
-    .GetProperty("imageInput").GetProperty("fileReading").GetBoolean();
+// file-and-rebind cases apply only where the native host reads image files. The
+// host reports fileReading as false (no image file readers) or as the string
+// "development-only" (files are read; native/host/host_api.inc).
+JsonElement fileReading = JsonDocument.Parse(CyclesScene.GetBinaryCapabilities().Json).RootElement
+    .GetProperty("imageInput").GetProperty("fileReading");
+bool readsFiles = fileReading.ValueKind switch
+{
+    JsonValueKind.True => true,
+    JsonValueKind.False => false,
+    JsonValueKind.String when fileReading.GetString() == "development-only" => true,
+    _ => throw new Exception("Unknown imageInput.fileReading value: " + fileReading.GetRawText())
+};
 if (readsFiles)
 {
     foreach (int format in new[] { 5, 7 })

@@ -50,7 +50,9 @@ struct AdapterIdentity {
 // shader_feature_names() (pipelines.cpp) that scenes may not use on this adapter;
 // such a scene is refused before any pipeline compiles, with refused_text.
 struct KnownAdapter {const char *name,*device,*driver,*tier;double budget_ms;const char *evidence;
-                     const char *refused_region=nullptr,*refused_text=nullptr;};
+                     const char *refused_region=nullptr,*refused_text=nullptr;
+                     // A second refused region (same rules), for example ambient occlusion on the Adreno 650.
+                     const char *also_refused_region=nullptr,*also_refused_text=nullptr;};
 const std::vector<KnownAdapter> &known_adapters();
 const KnownAdapter *match_known_adapter(const AdapterIdentity &identity);
 // Mobile GPU vendors (Qualcomm, ARM, Imagination, Samsung, Apple) or an

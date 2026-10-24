@@ -1,0 +1,214 @@
+[
+  {
+    "command": [
+      "/usr/bin/python3",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles.py",
+      "--jobs",
+      "6",
+      "--target",
+      "codebrix_cycles_host",
+      "--target",
+      "codebrix_host_cpu_test",
+      "--target",
+      "codebrix_host_gpu_test",
+      "--target",
+      "codebrix_host_reload_test",
+      "--target",
+      "codebrix_host_concurrency_test",
+      "--target",
+      "codebrix_host_session_reference",
+      "--target",
+      "codebrix_host_session64_reference",
+      "--target",
+      "codebrix_host_image_reference",
+      "--target",
+      "codebrix_host_abi_test",
+      "--target",
+      "codebrix_host_example_test",
+      "--target",
+      "codebrix_cycles_oracle"
+    ],
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "nm",
+      "-D",
+      "--defined-only",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/lib/libcodebrix_cycles_host.so"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_session_reference",
+      "CPU",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/cpu/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_session64_reference",
+      "CPU",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/cpu64/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/host/configs/a.ocio",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/references/a/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/host/configs/b.ocio",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/references/b/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/host/configs/c.ocio",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/references/c/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_cpu_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/cpu-consumer/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_cpu_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/cpu-exit-consumer/run",
+      "--exit-live"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_reload_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/references",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/reload",
+      "6"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_concurrency_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/stress-input",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/stress-output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/HostLifecycle/HostLifecycle.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/NuGet.Config"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/ImageModes/ImageModes.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/NuGet.Config"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/ColorReload/ColorReload.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/NuGet.Config"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/HostLifecycle/bin/Release/net10.0/HostLifecycle.dll",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/cpu",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/managed-lifecycle"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/ColorReload/bin/Release/net10.0/ColorReload.dll",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/ImageModes/bin/Release/net10.0/ImageModes.dll",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/references",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/managed-reload"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_gpu_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/gpu/run"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_gpu_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/gpu-exit/run",
+      "--exit-live"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_abi_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/abi-cpu/run",
+      "cpu"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_abi_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-host-gate-continue/out/abi-gpu/run",
+      "gpu"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_example_test",
+      "cpu"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build/bin/codebrix_host_example_test",
+      "gpu"
+    ],
+    "timeoutSeconds": 300
+  }
+]

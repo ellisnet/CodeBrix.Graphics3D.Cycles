@@ -41,7 +41,7 @@ std::string background_layout(){
 #undef PASS
   return source.str();
 }
-std::string background_wgsl(){return wavefront_layout()+shader_data_layout()+background_layout()+lighting_layout()+svm_layout()+background_source;}
+std::string background_wgsl(){return wavefront_layout()+shader_data_layout()+background_layout()+lighting_layout()+svm_layout()+shadow_catcher_layout()+mnee_layout()+background_source;}
 void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args,DeviceKernel kernel){
   require(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD,"Invalid emission kernel");
   require(args.count==3,"Background argument count");
@@ -54,8 +54,11 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
   if(p[2])validate(p[2],size_t(n)*4);
   validate_volume();
   validate_lighting(false);
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING))&&
-          !data.integrator.has_shadow_catcher&&!data.integrator.use_caustics,"WebGPU background optional integration features not implemented");
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_SHADOW_LINKING)),
+          "WebGPU background optional integration features not implemented");
+  if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
+  validate_shadow_catcher();
+  if(data.integrator.use_caustics)validate_mnee();
   require(!(data.film.pass_flag&PASSMASK(MOTION)),"WebGPU background motion pass not implemented");
   require(data.film.pass_stride>0,"Invalid background film stride");
   auto pass=[&](int offset,int length){require(offset==PASS_UNUSED||(offset>=0&&offset<=data.film.pass_stride-length),"Invalid background film pass offset");};
@@ -98,9 +101,25 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
 #undef KERNEL_STRUCT_END_ARRAY
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
   p[14]=scene_tables();
+  // Shadow catcher background paths continue to the sorted surface kernel.
+  if(data.integrator.has_shadow_catcher&&state.sort_key_counter[DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE])
+    p[15]=uint32_t(remaining(uintptr_t(state.sort_key_counter[DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE]))/4);
   if(!work)return;
   auto &pipeline=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND?background:light_forward;
   const char *entry=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND?"shade_background":"shade_light_forward";
+  // Light tree: light_tree_forward writes each path's forward tree pdfs (the
+  // background light, then every MIS sun; or the lamp hit) before the entry reads them.
+  if((shader_features()&SF_LIGHT_TREE).any()){
+    uint32_t slots=1;for(const KernelLight &light:light_records)slots+=light.type==LIGHT_SUN&&(light.shader_id&SHADER_USE_MIS);
+    const size_t needed=size_t(p[10])*slots*sizeof(float);
+    if(needed>light_tree_forward_bytes){
+      if(light_tree_forward_scratch){flush();release(light_tree_forward_scratch);light_tree_forward_scratch=0;light_tree_forward_bytes=0;}
+      light_tree_forward_scratch=allocate(needed);light_tree_forward_bytes=needed;
+    }
+    p[28]=light_tree_forward_scratch;p[29]=slots;
+    if(!pipeline_current(light_tree_forward,"light_tree_forward"))light_tree_forward=std::move(build_pipelines("background",background_wgsl(),{"light_tree_forward"})[0]);
+    dispatch(p,uint32_t(work),light_tree_forward,workgroup("light_tree_forward"));
+  }
   if(!pipeline_current(pipeline,entry))pipeline=std::move(build_pipelines("background",background_wgsl(),{entry})[0]);
   dispatch(p,uint32_t(work),pipeline,workgroup(entry));
 }

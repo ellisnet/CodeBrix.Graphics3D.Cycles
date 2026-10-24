@@ -39,13 +39,13 @@ uint32_t WebGPUDevice::scene_tables(){
   std::vector<uint32_t> descriptors;
 #define TABLE(name,type) {auto it=globals.find(#name);uint32_t address=it==globals.end()?0:it->second;size_t bytes=address?remaining(address):0; \
     require(bytes%sizeof(type)==0,"Invalid native scene table size: " #name);descriptors.insert(descriptors.end(),{address,uint32_t(bytes/sizeof(type))});}
-  CBC_SCENE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE)
+  CBC_SCENE_CORE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE) CBC_LIGHT_TREE_TABLES(TABLE)
 #undef TABLE
   if(!intersection_tables)intersection_tables=allocate(descriptors.size()*4);
   if(descriptors!=intersection_table_cache){upload(intersection_tables,descriptors.data(),descriptors.size()*4);intersection_table_cache=descriptors;}
   return intersection_tables;
 }
-std::string closest_wgsl(){return wavefront_layout()+lighting_layout()+closest_source;}
+std::string closest_wgsl(){return wavefront_layout()+lighting_layout()+shadow_catcher_layout()+mnee_layout()+closest_source;}
 void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
   require(args.count==3,"Closest intersection argument count");
   require(args.types[2]==DeviceKernelArguments::INT32&&args.sizes[2]==4,"Invalid closest work argument");
@@ -57,10 +57,13 @@ void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
   if(p[2])validate(p[2],size_t(n)*4);
   require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU closest currently requires triangle primitives");
   validate_geometry_motion();
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING))&&
-          !data.integrator.has_shadow_catcher&&!data.integrator.use_caustics,"WebGPU closest optional integration features not implemented");
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
+          "WebGPU closest optional integration features not implemented");
+  validate_shadow_catcher();
+  if(data.integrator.use_caustics)validate_mnee();
   validate_volume();
   validate_lighting(false);
+  if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
   require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU closest requires tabulated Sobol");
   require(data.max_shaders>0&&state.sort_partition_divisor>0,"Invalid closest sort configuration");
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=globals.at("sample_pattern_lut");
@@ -91,7 +94,9 @@ void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
   require(p[15]>=uint32_t(data.max_shaders),"Missing surface sort counters");
   p[14]=scene_tables();
   if(!work)return;
+  p[24]=shadow_catcher_marks(p[10]);
   if(!pipeline_current(closest,"intersect_closest"))closest=std::move(build_pipelines("closest",closest_wgsl(),{"intersect_closest"})[0]);
   dispatch(p,uint32_t(work),closest,workgroup("intersect_closest"));
+  split_shadow_catcher(p[10]);
 }
 }

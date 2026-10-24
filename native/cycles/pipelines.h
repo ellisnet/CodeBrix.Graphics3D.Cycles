@@ -134,8 +134,39 @@ inline constexpr ShaderFeatures SF_LIGHT_BACKGROUND=ShaderFeatures::bit(64);
 // the background light, or an emissive triangle with node emission): deferral
 // to the SHADE_LIGHT_NEE kernel (wavefront_light_nee.wgsl).
 inline constexpr ShaderFeatures SF_LIGHT_NEE=ShaderFeatures::bit(65);
-// Every assigned feature (bits 0-61, 63, 64 and 65; bit 62 is unassigned).
-inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE;
+// Light tree (lane m2-lighttree, 2026-10-23): integrator.use_light_tree is set
+// (tree selection in shade_surface_light_select, tree forward pdfs for triangle,
+// lamp, sun and background hits; wavefront_light_tree.wgsl).
+inline constexpr ShaderFeatures SF_LIGHT_TREE=ShaderFeatures::bit(94);
+// KERNEL_FEATURE_LIGHT_LINKING is set (receiver light sets on both samplers and
+// on forward hits; wavefront_light_link.wgsl).
+inline constexpr ShaderFeatures SF_LIGHT_LINKING=ShaderFeatures::bit(95);
+// The light selection entry shade_surface_light_select runs (tree or linking).
+inline constexpr ShaderFeatures SF_LIGHT_SELECT=ShaderFeatures::bit(96);
+// Shadow catcher (integrator.has_shadow_catcher): the closest-hit path split,
+// the shifted visibility of split paths and the shadow catcher film passes
+// (wavefront_shadow_catcher.wgsl). Scene-only in superset mode.
+inline constexpr ShaderFeatures SF_SHADOW_CATCHER=ShaderFeatures::bit(102);
+// Ambient occlusion (lane m2-ao, 2026-10-23). SVM_NODE_AO: the Ambient Occlusion
+// node record (svm/ao.h) is reachable; its handler stores ao = 1 as under every
+// node mask without KERNEL_FEATURE_NODE_RAYTRACE. SVM_NODE_RAYTRACE: the node's
+// ray tracing (wavefront_ao.wgsl). It is a module-variant bit, never a scene
+// feature: only prepare_surface_raytrace, the SHADE_SURFACE_RAYTRACE queue's
+// SVM stage, is built with it (build_pipelines' extra features), so it is not in
+// SF_ALL either. AO_SHADOW: the AO shadow ray of fast GI's additive mode and the
+// AO pass (KERNEL_FEATURE_AO) in the surface and shadow stages.
+inline constexpr ShaderFeatures SF_NODE_AO=ShaderFeatures::bit(106);
+inline constexpr ShaderFeatures SF_NODE_RAYTRACE=ShaderFeatures::bit(107);
+inline constexpr ShaderFeatures SF_AO_SHADOW=ShaderFeatures::bit(108);
+// Manifold next-event estimation (lane m2-mnee, 2026-10-23): integrator.use_caustics
+// (KERNEL_FEATURE_MNEE). The INTERSECT_MNEE entries and constants, the closest
+// flags and receiver routing, the surface consumption and cleanup and the
+// background culling (wavefront_mnee.wgsl and MNEE regions). Bits 111-115 are
+// reserved for MNEE entry splits.
+inline constexpr ShaderFeatures SF_MNEE=ShaderFeatures::bit(110);
+// Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108 and 110;
+// bit 62 is unassigned; 107 is the raytrace module variant).
+inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
 // Superset specialization mode (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset,
 // desktop diagnostic): every handler is compiled in except these regions, which
@@ -143,7 +174,7 @@ inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THI
 // pushed the unspecialized entry points past what Intel Mesa 25.0.7 compiles
 // correctly (native/DEVICE.md, "Linux reference fixes on the updated Mesa").
 inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
-  SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR;
+  SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //

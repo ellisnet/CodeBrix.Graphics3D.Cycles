@@ -1,0 +1,2796 @@
+{
+  "schemaVersion": 1,
+  "copyright": "Copyright (c) 2026 Jeremy Ellis and contributors",
+  "policy": "Manual observations attach bounded evidence without closing full requirements. Unreviewed rows remain unassessed; compiler success and symbol occurrences do not establish feature support.",
+  "symbols": {
+    "ShaderNodeType:NODE_NUM": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "ShaderNodeType:NODE_NONE": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "ShaderNodeType:NODE_PAD1": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "DeviceKernel:DEVICE_KERNEL_NUM": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "ClosureType:CLOSURE_NONE_ID": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "ClosureType:NBUILTIN_CLOSURES": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "PassType:PASS_NONE": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "PassType:PASS_NUM": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "InterpolationType:INTERPOLATION_NONE": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "InterpolationType:INTERPOLATION_NUM_TYPES": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "ImageDataType:IMAGE_DATA_NUM_TYPES": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "ImageAlphaType:IMAGE_ALPHA_NUM_TYPES": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "ExtensionType:EXTENSION_NUM_TYPES": {
+      "classification": "sentinel-or-padding",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Retained in the declaration inventory; not an independent rendering feature. Verify invalid/padding handling where applicable."
+    },
+    "ClosureType:CLOSURE_BSDF_ID": {
+      "classification": "category-boundary",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Generic/category marker retained; closure family behavior is tracked separately."
+    },
+    "ClosureType:CLOSURE_VOLUME_ID": {
+      "classification": "category-boundary",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Generic/category marker retained; closure family behavior is tracked separately."
+    },
+    "PassType:PASS_CATEGORY_LIGHT_END": {
+      "classification": "category-boundary",
+      "workItems": [
+        "P12-01"
+      ],
+      "notes": "Pass range boundary; preserve numeric ABI and pass-mask handling."
+    },
+    "PassType:PASS_CATEGORY_DATA_END": {
+      "classification": "category-boundary",
+      "workItems": [
+        "P12-01"
+      ],
+      "notes": "Pass range boundary; preserve numeric ABI and pass-mask handling."
+    },
+    "PassType:PASS_CATEGORY_DENOISING_END": {
+      "classification": "category-boundary",
+      "workItems": [
+        "P12-01"
+      ],
+      "notes": "Pass range boundary; preserve numeric ABI and pass-mask handling."
+    },
+    "PassType:PASS_CATEGORY_BAKE_END": {
+      "classification": "category-boundary",
+      "workItems": [
+        "P12-01"
+      ],
+      "notes": "Pass range boundary; preserve numeric ABI and pass-mask handling."
+    },
+    "ClosureType:CLOSURE_BSDF_PHYSICAL_CONDUCTOR": {
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity."
+    },
+    "ClosureType:CLOSURE_BSDF_F82_CONDUCTOR": {
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity."
+    },
+    "ClosureType:CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID": {
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity."
+    },
+    "ClosureType:CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID": {
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity."
+    },
+    "ClosureType:CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID": {
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity."
+    },
+    "ClosureType:CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID": {
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity."
+    },
+    "ClosureType:CLOSURE_VOLUME_MIE_ID": {
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity."
+    },
+    "ClosureType:CLOSURE_BSDF_PRINCIPLED_ID": {
+      "classification": "virtual-closure",
+      "workItems": [
+        "P06-01"
+      ],
+      "notes": "Requires native closure expansion and all resulting parameters/mixtures; not excluded from parity."
+    },
+    "KernelFeature:KERNEL_FEATURE_HAIR": {
+      "classification": "feature-mask",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Composite or alias mask; constituent semantics and feature combinations remain required."
+    },
+    "KernelFeature:KERNEL_FEATURE_AO": {
+      "classification": "feature-mask",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Composite or alias mask; constituent semantics and feature combinations remain required."
+    },
+    "KernelFeature:KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT": {
+      "classification": "feature-mask",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Composite or alias mask; constituent semantics and feature combinations remain required."
+    },
+    "KernelFeature:KERNEL_FEATURE_NODE_MASK_SURFACE_BACKGROUND": {
+      "classification": "feature-mask",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Composite or alias mask; constituent semantics and feature combinations remain required."
+    },
+    "KernelFeature:KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW": {
+      "classification": "feature-mask",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Composite or alias mask; constituent semantics and feature combinations remain required."
+    },
+    "KernelFeature:KERNEL_FEATURE_NODE_MASK_SURFACE": {
+      "classification": "feature-mask",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Composite or alias mask; constituent semantics and feature combinations remain required."
+    },
+    "KernelFeature:KERNEL_FEATURE_NODE_MASK_VOLUME": {
+      "classification": "feature-mask",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Composite or alias mask; constituent semantics and feature combinations remain required."
+    },
+    "KernelFeature:KERNEL_FEATURE_NODE_MASK_DISPLACEMENT": {
+      "classification": "feature-mask",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Composite or alias mask; constituent semantics and feature combinations remain required."
+    },
+    "KernelFeature:KERNEL_FEATURE_NODE_MASK_BUMP": {
+      "classification": "feature-mask",
+      "workItems": [
+        "P00-02"
+      ],
+      "notes": "Composite or alias mask; constituent semantics and feature combinations remain required."
+    },
+    "anonymous:DEVICE_GPU_KERNEL_INTEGRATOR_NUM:DEVICE_GPU_KERNEL_INTEGRATOR_NUM": {
+      "classification": "category-boundary",
+      "workItems": [
+        "P02-11"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_PREFIX_SUM": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_RESET": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_QUEUED_PATHS_ARRAY": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_QUEUED_SHADOW_PATHS_ARRAY": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_ACTIVE_PATHS_ARRAY": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_TERMINATED_PATHS_ARRAY": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_TERMINATED_SHADOW_PATHS_ARRAY": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_COMPACT_PATHS_ARRAY": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_PATHS_ARRAY": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SORTED_PATHS_ARRAY": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_COMPACT_STATES": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "device-queue"
+      ],
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "implementation": [
+        "native/cycles/queue.cpp",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/gate.cpp",
+        "native/cycles/control_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA": {
+      "workItems": [
+        "P09-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "camera-queue",
+        "native-render"
+      ],
+      "notes": "Static perspective pinhole and tabulated Sobol only; motion, aperture, custom and other projections remain.",
+      "implementation": [
+        "native/cycles/camera.cpp",
+        "native/shaders/wavefront_camera.wgsl"
+      ],
+      "tests": [
+        "native/cycles/camera_gate.cpp",
+        "native/cycles/camera_reference.cpp",
+        "native/cycles/render_gate.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST": {
+      "workItems": [
+        "P08-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "closest-queue",
+        "native-render"
+      ],
+      "notes": "Static BVH2 triangles/instances only; strict edge differences remain. Clay edge equivalence cannot extend to texture seams.",
+      "implementation": [
+        "native/cycles/closest.cpp",
+        "native/shaders/wavefront_closest.wgsl"
+      ],
+      "tests": [
+        "native/cycles/closest_gate.cpp",
+        "native/cycles/closest_reference.cpp",
+        "native/cycles/render_gate.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND": {
+      "workItems": [
+        "P07-05"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "background-queue",
+        "environment-light",
+        "native-render"
+      ],
+      "notes": "Constant and selected SVM worlds; background-light MIS (environment importance map) on background hits; no portals or sky sun guiding.",
+      "implementation": [
+        "native/cycles/background.cpp",
+        "native/shaders/wavefront_background.wgsl"
+      ],
+      "tests": [
+        "native/cycles/background_gate.cpp",
+        "native/cycles/background_reference.cpp",
+        "native/cycles/render_gate.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE": {
+      "workItems": [
+        "P06-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-render"
+      ],
+      "notes": "Selected five closure families; no native direct lights/shadows/MIS, general closures, textures or volumes.",
+      "implementation": [
+        "native/cycles/surface.cpp",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/surface_reference.cpp",
+        "native/cycles/render_gate.cpp"
+      ]
+    },
+    "ClosureType:CLOSURE_BSDF_DIFFUSE_ID": {
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ]
+    },
+    "ClosureType:CLOSURE_BSDF_OREN_NAYAR_ID": {
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ]
+    },
+    "ClosureType:CLOSURE_BSDF_TRANSLUCENT_ID": {
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ]
+    },
+    "ClosureType:CLOSURE_BSDF_TRANSPARENT_ID": {
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ]
+    },
+    "ClosureType:CLOSURE_HOLDOUT_ID": {
+      "workItems": [
+        "P06-01",
+        "P06-08",
+        "P06-09"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "svm-surface",
+        "native-render"
+      ],
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "implementation": [
+        "native/shaders/wavefront_svm_closures.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/svm_surface_gate.cpp",
+        "native/cycles/surface_gate.cpp",
+        "native/cycles/render_gate.cpp"
+      ]
+    },
+    "ShaderNodeType:NODE_ATTR": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-01",
+        "P04-02",
+        "P04-03",
+        "P04-08",
+        "P04-12",
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-attributes"
+      ],
+      "notes": "Static-triangle object/mesh/face/vertex/corner attributes: 48 compiled graphs plus 328 typed programs; 5,088 Linux evaluations, seven rejected inputs. Derivative/bump variants, non-Rec709 color conversion, negative offsets and 64-bit identities are CPU-compared on Linux. Plain native graphs replay on four GPUs; UV-driven complete render also passes. Other domains, general bump state, production image coverage and all native RIDs remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_attributes.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/wavefront.h"
+      ],
+      "tests": [
+        "native/cycles/attribute_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/attribute_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_ATTR_DERIVATIVE": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-01",
+        "P04-02",
+        "P04-03",
+        "P04-08",
+        "P04-12",
+        "P05-01"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-attributes"
+      ],
+      "notes": "Static-triangle object/mesh/face/vertex/corner attributes: 48 compiled graphs plus 328 typed programs; 5,088 Linux evaluations, seven rejected inputs. Derivative/bump variants, non-Rec709 color conversion, negative offsets and 64-bit identities are CPU-compared on Linux. Plain native graphs replay on four GPUs; UV-driven complete render also passes. Other domains, general bump state, production image coverage and all native RIDs remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_attributes.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/wavefront.h"
+      ],
+      "tests": [
+        "native/cycles/attribute_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/attribute_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_IMAGE": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-04",
+        "P04-05",
+        "P04-06",
+        "P04-07",
+        "P04-08",
+        "P04-12",
+        "P05-01",
+        "P05-06"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images"
+      ],
+      "notes": "Resident ImageManager transport: eight formats, four filters and four extension modes; 115,650 original-CPU sampling cases. 128 native graphs plus 176 typed projection/derivative programs total 1,824 evaluations; 14 invalid inputs reject. Sampling and 768 native graph evaluations replay on four GPUs. Typed image/box/environment projections and derivative variants currently execute on Linux only. The complete generated-image textured native render has independent CPU-film and repeated-GPU gates. Strict differences, tiled/mipmap cache/retry, sparse 3D, production decoder/color/UDIM/animation/edit coverage, original asset materials and all native RIDs remain open.",
+      "implementation": [
+        "native/cycles/image.cpp",
+        "native/cycles/device.cpp",
+        "native/cycles/wavefront.h",
+        "native/shaders/wavefront_images.wgsl",
+        "native/shaders/wavefront_svm.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_gate.cpp",
+        "native/cycles/image_fixture.h",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/image_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_IMAGE_DERIVATIVE": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-04",
+        "P04-05",
+        "P04-06",
+        "P04-07",
+        "P04-08",
+        "P04-12",
+        "P05-01",
+        "P05-06"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images"
+      ],
+      "notes": "Resident ImageManager transport: eight formats, four filters and four extension modes; 115,650 original-CPU sampling cases. 128 native graphs plus 176 typed projection/derivative programs total 1,824 evaluations; 14 invalid inputs reject. Sampling and 768 native graph evaluations replay on four GPUs. Typed image/box/environment projections and derivative variants currently execute on Linux only. The complete generated-image textured native render has independent CPU-film and repeated-GPU gates. Strict differences, tiled/mipmap cache/retry, sparse 3D, production decoder/color/UDIM/animation/edit coverage, original asset materials and all native RIDs remain open.",
+      "implementation": [
+        "native/cycles/image.cpp",
+        "native/cycles/device.cpp",
+        "native/cycles/wavefront.h",
+        "native/shaders/wavefront_images.wgsl",
+        "native/shaders/wavefront_svm.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_gate.cpp",
+        "native/cycles/image_fixture.h",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/image_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_IMAGE_BOX": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-04",
+        "P04-05",
+        "P04-06",
+        "P04-07",
+        "P04-08",
+        "P04-12",
+        "P05-01",
+        "P05-06"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images"
+      ],
+      "notes": "Resident ImageManager transport: eight formats, four filters and four extension modes; 115,650 original-CPU sampling cases. 128 native graphs plus 176 typed projection/derivative programs total 1,824 evaluations; 14 invalid inputs reject. Sampling and 768 native graph evaluations replay on four GPUs. Typed image/box/environment projections and derivative variants currently execute on Linux only. The complete generated-image textured native render has independent CPU-film and repeated-GPU gates. Strict differences, tiled/mipmap cache/retry, sparse 3D, production decoder/color/UDIM/animation/edit coverage, original asset materials and all native RIDs remain open.",
+      "implementation": [
+        "native/cycles/image.cpp",
+        "native/cycles/device.cpp",
+        "native/cycles/wavefront.h",
+        "native/shaders/wavefront_images.wgsl",
+        "native/shaders/wavefront_svm.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_gate.cpp",
+        "native/cycles/image_fixture.h",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/image_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_IMAGE_BOX_DERIVATIVE": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-04",
+        "P04-05",
+        "P04-06",
+        "P04-07",
+        "P04-08",
+        "P04-12",
+        "P05-01",
+        "P05-06"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images"
+      ],
+      "notes": "Resident ImageManager transport: eight formats, four filters and four extension modes; 115,650 original-CPU sampling cases. 128 native graphs plus 176 typed projection/derivative programs total 1,824 evaluations; 14 invalid inputs reject. Sampling and 768 native graph evaluations replay on four GPUs. Typed image/box/environment projections and derivative variants currently execute on Linux only. The complete generated-image textured native render has independent CPU-film and repeated-GPU gates. Strict differences, tiled/mipmap cache/retry, sparse 3D, production decoder/color/UDIM/animation/edit coverage, original asset materials and all native RIDs remain open.",
+      "implementation": [
+        "native/cycles/image.cpp",
+        "native/cycles/device.cpp",
+        "native/cycles/wavefront.h",
+        "native/shaders/wavefront_images.wgsl",
+        "native/shaders/wavefront_svm.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_gate.cpp",
+        "native/cycles/image_fixture.h",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/image_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_ENVIRONMENT": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-04",
+        "P04-05",
+        "P04-06",
+        "P04-07",
+        "P04-08",
+        "P04-12",
+        "P05-01",
+        "P05-06"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images"
+      ],
+      "notes": "Resident ImageManager transport: eight formats, four filters and four extension modes; 115,650 original-CPU sampling cases. 128 native graphs plus 176 typed projection/derivative programs total 1,824 evaluations; 14 invalid inputs reject. Sampling and 768 native graph evaluations replay on four GPUs. Typed image/box/environment projections and derivative variants currently execute on Linux only. The complete generated-image textured native render has independent CPU-film and repeated-GPU gates. Strict differences, tiled/mipmap cache/retry, sparse 3D, production decoder/color/UDIM/animation/edit coverage, original asset materials and all native RIDs remain open.",
+      "implementation": [
+        "native/cycles/image.cpp",
+        "native/cycles/device.cpp",
+        "native/cycles/wavefront.h",
+        "native/shaders/wavefront_images.wgsl",
+        "native/shaders/wavefront_svm.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_gate.cpp",
+        "native/cycles/image_fixture.h",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/image_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_ENVIRONMENT_DERIVATIVE": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-04",
+        "P04-05",
+        "P04-06",
+        "P04-07",
+        "P04-08",
+        "P04-12",
+        "P05-01",
+        "P05-06"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images"
+      ],
+      "notes": "Resident ImageManager transport: eight formats, four filters and four extension modes; 115,650 original-CPU sampling cases. 128 native graphs plus 176 typed projection/derivative programs total 1,824 evaluations; 14 invalid inputs reject. Sampling and 768 native graph evaluations replay on four GPUs. Typed image/box/environment projections and derivative variants currently execute on Linux only. The complete generated-image textured native render has independent CPU-film and repeated-GPU gates. Strict differences, tiled/mipmap cache/retry, sparse 3D, production decoder/color/UDIM/animation/edit coverage, original asset materials and all native RIDs remain open.",
+      "implementation": [
+        "native/cycles/image.cpp",
+        "native/cycles/device.cpp",
+        "native/cycles/wavefront.h",
+        "native/shaders/wavefront_images.wgsl",
+        "native/shaders/wavefront_svm.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_gate.cpp",
+        "native/cycles/image_fixture.h",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/image_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_VERTEX_COLOR": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-01",
+        "P04-02",
+        "P04-03",
+        "P04-08",
+        "P04-12",
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-attributes"
+      ],
+      "notes": "Static-triangle object/mesh/face/vertex/corner attributes: 48 compiled graphs plus 328 typed programs; 5,088 Linux evaluations, seven rejected inputs. Derivative/bump variants, non-Rec709 color conversion, negative offsets and 64-bit identities are CPU-compared on Linux. Plain native graphs replay on four GPUs; UV-driven complete render also passes. Other domains, general bump state, production image coverage and all native RIDs remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_attributes.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/wavefront.h"
+      ],
+      "tests": [
+        "native/cycles/attribute_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/attribute_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_VERTEX_COLOR_DERIVATIVE": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-01",
+        "P04-02",
+        "P04-03",
+        "P04-08",
+        "P04-12",
+        "P05-01"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-attributes"
+      ],
+      "notes": "Static-triangle object/mesh/face/vertex/corner attributes: 48 compiled graphs plus 328 typed programs; 5,088 Linux evaluations, seven rejected inputs. Derivative/bump variants, non-Rec709 color conversion, negative offsets and 64-bit identities are CPU-compared on Linux. Plain native graphs replay on four GPUs; UV-driven complete render also passes. Other domains, general bump state, production image coverage and all native RIDs remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_attributes.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/wavefront.h"
+      ],
+      "tests": [
+        "native/cycles/attribute_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/attribute_gate.py"
+      ]
+    },
+    "ImageDataType:IMAGE_DATA_TYPE_FLOAT4": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageDataType:IMAGE_DATA_TYPE_BYTE4": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageDataType:IMAGE_DATA_TYPE_HALF4": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageDataType:IMAGE_DATA_TYPE_FLOAT": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageDataType:IMAGE_DATA_TYPE_BYTE": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageDataType:IMAGE_DATA_TYPE_HALF": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageDataType:IMAGE_DATA_TYPE_USHORT4": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageDataType:IMAGE_DATA_TYPE_USHORT": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageAlphaType:IMAGE_ALPHA_UNASSOCIATED": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageAlphaType:IMAGE_ALPHA_ASSOCIATED": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageAlphaType:IMAGE_ALPHA_CHANNEL_PACKED": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageAlphaType:IMAGE_ALPHA_IGNORE": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ImageAlphaType:IMAGE_ALPHA_AUTO": {
+      "classification": "image-storage-or-alpha-behavior",
+      "workItems": [
+        "P04-06",
+        "P04-08",
+        "P04-10",
+        "P04-11",
+        "P04-12"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-images",
+        "native-file-images"
+      ],
+      "notes": "Eight resident storage formats and five native alpha modes are exercised through PNG/JPEG/OpenEXR ImageManager file loading with five color selections. Linux runs 450 parameter variants, independent known lossless texels and queued replacement/lifetime checks. A final 116352-sample corpus passes four-GPU replay; Android file decoding and lifecycle are not proven. Earlier resident synthetic sampling includes four filters/extensions. TIFF/LZW and other format paths, production OCIO/cache/animation stress and all native platform hosts remain required.",
+      "implementation": [
+        "native/cycles/device.cpp",
+        "native/cycles/image.cpp",
+        "native/shaders/wavefront_images.wgsl"
+      ],
+      "tests": [
+        "native/cycles/image_file_gate.cpp",
+        "native/cycles/image_sampling_reference.cpp",
+        "native/tools/image_file_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_NORMAL_MAP": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TANGENT": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TANGENT_DERIVATIVE": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeTangentDirectionType:NODE_TANGENT_RADIAL": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeTangentDirectionType:NODE_TANGENT_UVMAP": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeTangentAxis:NODE_TANGENT_AXIS_X": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeTangentAxis:NODE_TANGENT_AXIS_Y": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeTangentAxis:NODE_TANGENT_AXIS_Z": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "isolated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeNormalMapSpace:NODE_NORMAL_MAP_TANGENT": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeNormalMapSpace:NODE_NORMAL_MAP_OBJECT": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeNormalMapSpace:NODE_NORMAL_MAP_WORLD": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeNormalMapSpace:NODE_NORMAL_MAP_BLENDER_OBJECT": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeNormalMapSpace:NODE_NORMAL_MAP_BLENDER_WORLD": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeNormalMapConvention:NODE_NORMAL_MAP_CONVENTION_OPENGL": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeNormalMapConvention:NODE_NORMAL_MAP_CONVENTION_DIRECTX": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeNormalMapBase:NODE_NORMAL_MAP_BASE_ORIGINAL": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "NodeNormalMapBase:NODE_NORMAL_MAP_BASE_DISPLACED": {
+      "classification": "normal-or-tangent-behavior",
+      "workItems": [
+        "P04-02",
+        "P04-08",
+        "P05-07"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-normals"
+      ],
+      "notes": "Native static-triangle normal/tangent CPU comparisons: 48 compiled graphs, 398 typed programs, 10704 evaluations and ten explicit rejections. Native-generated UV frames, transforms/instances, base/convention/strength, radial axes and analytic derivatives are tested. Graphs, selected nonzero derivatives and full image-normal-mapped render replay on four GPUs. Full bump state, motion/other geometry, degenerate plain-tangent nonfinite behavior, original asset materials and all native hosts remain open; strict differences persist.",
+      "implementation": [
+        "native/shaders/wavefront_normals.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/normal_gate.cpp",
+        "native/cycles/svm_surface_reference.cpp",
+        "native/cycles/render_gate.cpp",
+        "native/tools/normal_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_GEOMETRY_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_CONVERT_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_COORD_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_VALUE_F_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_VALUE_V_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_NOISE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_SET_BUMP": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_ENTER_BUMP_EVAL": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_LEAVE_BUMP_EVAL": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_HSV": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_FRESNEL": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_LAYER_WEIGHT": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_VECTOR_MATH_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_RGB_RAMP": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_LIGHT_PATH": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_OBJECT_INFO": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEXTURE_MAPPING": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEXTURE_MAPPING_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_MAPPING": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_MAPPING_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_MIN_MAX": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_CAMERA": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_VORONOI": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_GABOR": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_WAVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_MAGIC": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_BRICK": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_TEX_WHITE_NOISE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_NORMAL": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_CURVES": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_MIX": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_SEPARATE_COLOR": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_COMBINE_COLOR": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_SEPARATE_VECTOR_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_COMBINE_VECTOR_DERIVATIVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Bump stage / dual-number derivative variant in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_derivatives.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_VECTOR_ROTATE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_VECTOR_TRANSFORM": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_WIREFRAME": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_WAVELENGTH": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_BLACKBODY": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_MAP_RANGE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_VECTOR_MAP_RANGE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_FLOAT_CURVE": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_MIX_COLOR": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_MIX_FLOAT": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_MIX_VECTOR": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_MIX_VECTOR_NON_UNIFORM": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "ShaderNodeType:NODE_SCENE_TIME": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "native-nodes"
+      ],
+      "notes": "Texture, colour or utility node handler in the WebGPU SVM interpreter, compared with the original CPU SVM in Cycles-compiled graphs and typed programs (native-nodes: 67 graphs, 541 cases, 32 rejections; 24 worlds; 68-triangle render) on Linux x64; device results are recorded in native/DEVICE.md (HP pass; Samsung node SVM probe open item 3). Strict differences persist; true displacement and other unported paths are listed in native/DEVICE.md open items.",
+      "implementation": [
+        "native/shaders/wavefront_svm_nodes.wgsl",
+        "native/cycles/pipelines.cpp"
+      ],
+      "tests": [
+        "native/cycles/nodes_fixture.h",
+        "native/cycles/svm_surface_gate.cpp",
+        "native/tools/nodes_gate.py"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "environment-light"
+      ],
+      "notes": "Non-constant light shaders: the world for the background light and emissive triangles (image/UV, procedural, mixed emission/BSDF); non-constant point/spot/area/sun shaders refused; no light tree or MNEE.",
+      "implementation": [
+        "native/cycles/surface.cpp",
+        "native/shaders/wavefront_light_nee.wgsl",
+        "native/shaders/wavefront_lighting.wgsl"
+      ],
+      "tests": [
+        "native/cycles/environment_gate.cpp",
+        "native/cycles/environment_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_SHADER_EVAL_BACKGROUND": {
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "environment-light"
+      ],
+      "notes": "Background importance-map evaluation for LightManager::device_update_background (kernel_background_evaluate); maps whose evaluation buffers exceed one storage binding are refused with an allocation error.",
+      "implementation": [
+        "native/cycles/background.cpp",
+        "native/shaders/wavefront_background.wgsl",
+        "native/shaders/wavefront_background_light.wgsl"
+      ],
+      "tests": [
+        "native/cycles/environment_gate.cpp",
+        "native/cycles/environment_reference.cpp"
+      ]
+    }
+  }
+}

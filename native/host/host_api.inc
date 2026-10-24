@@ -94,9 +94,9 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
         << codebrix_cpu_arithmetic_json << "}";
 #ifdef WITH_WEBGPU
     out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\"],\"primitives\":[\"triangle\"],"
-           "\"passes\":[\"combined\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"light trees\",\"surface data passes\","
+           "\"passes\":[\"combined\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\",\"ao\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"shadow linking\",\"surface data passes\","
            "\"volume light passes\",\"background light portals and sky sun guiding\",\"nonconstant point, spot, area and sun light shaders\",\"heterogeneous volumes\",\"moving transparent shadows\","
-           "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
+           "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL
     // Cycles' own Metal device: the full upstream feature set, compiled at run

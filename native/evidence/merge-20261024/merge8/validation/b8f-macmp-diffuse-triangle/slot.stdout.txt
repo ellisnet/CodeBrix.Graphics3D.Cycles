@@ -1,0 +1,28 @@
+starter/diffuse-triangle (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.49e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             2.98e-08   2.22e-07   2.52e-09             0          0
+      worst x=13 y=9 R: ref 0.134136409 got 0.134136438 (0.000388x tolerance)
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.98e-08   2.22e-07   1.24e-09             0          0
+      worst x=20 y=8 R: ref 0.134222448 got 0.134222478 (0.000388x tolerance)
+  metal-m2pro vs cpu-x64-linux [reported]                2.98e-08   2.53e-07   3.15e-09             0          0
+      worst x=13 y=8 R: ref 0.133749187 got 0.133749217 (0.000388x tolerance)
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]        2.98e-08   2.53e-07   3.14e-09             0          0
+      worst x=13 y=8 R: ref 0.133749187 got 0.133749217 (0.000388x tolerance)
+  wgsl-linux-intel vs cpu-arm64-macos [reported]         2.98e-08   2.22e-07   2.39e-09             0          0
+      worst x=13 y=9 R: ref 0.134136409 got 0.134136438 (0.000388x tolerance)
+  wgsl-linux-intel vs metal-m2pro [reported]             2.98e-08   3.37e-07   2.99e-09             0          0
+      worst x=17 y=15 R: ref 0.134035468 got 0.134035438 (0.000388x tolerance)
+  wgsl-linux-intel vs metal-m2pro-metalrt [reported]     2.98e-08   3.37e-07   3.06e-09             0          0
+      worst x=15 y=13 R: ref 0.133352906 got 0.133352876 (0.000389x tolerance)
+  metal-m2pro vs cpu-arm64-macos [reported]              2.98e-08   2.53e-07   3.12e-09             0          0
+      worst x=13 y=8 R: ref 0.133749187 got 0.133749217 (0.000388x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      2.98e-08   2.53e-07   3.13e-09             0          0
+      worst x=13 y=8 R: ref 0.133749187 got 0.133749217 (0.000388x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          1.49e-08   1.12e-07   5.66e-10             0          0
+      worst x=15 y=13 R: ref 0.133352891 got 0.133352906 (0.000194x tolerance)
+  verdict: perfect

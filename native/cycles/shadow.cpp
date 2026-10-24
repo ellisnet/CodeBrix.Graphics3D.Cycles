@@ -41,10 +41,14 @@ std::string shadow_layout(){
   constant("K_SHADOW_INTERSECT",DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW);
   constant("K_SHADOW_SHADE",DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW);
   constant("SHADOW_UNSUPPORTED_FLAGS",PATH_RAY_SHADOW_CATCHER_PASS|PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_BACKGROUND|
-    PATH_RAY_VOLUME_PASS|PATH_RAY_VOLUME_PRIMARY_TRANSMIT|PATH_RAY_SHADOW_FOR_AO);
+    PATH_RAY_VOLUME_PASS|PATH_RAY_VOLUME_PRIMARY_TRANSMIT);
+  // Ambient occlusion shadow rays (integrate_surface_ao, film_write_direct_light):
+  // shared by the surface module (ray setup) and the shadow module (film writes).
+  constant("AO_SHADOW_FLAG",PATH_RAY_SHADOW_FOR_AO);constant("AO_FEATURE_ADDITIVE",KERNEL_FEATURE_AO_ADDITIVE);constant("AO_FEATURE_PASS",KERNEL_FEATURE_AO_PASS);
+  constant("D_integrator_ao_additive_factor",offsetof(KernelData,integrator.ao_additive_factor));constant("D_film_pass_ao",offsetof(KernelData,film.pass_ao));
   return out.str();
 }
-std::string shadow_source(){return svm_surface_source()+background_layout()+shadow_layout()+fragment;}
+std::string shadow_source(){return svm_surface_source()+background_layout()+shadow_layout()+shadow_catcher_layout()+fragment;}
 void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKernelArguments &args){
   const bool shading=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW;
   require(args.count==(shading?3u:2u),"Shadow argument count");
@@ -65,8 +69,9 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   // passing opaque-motion tests does not enable those combinations.
   require(!data.integrator.transparent_shadows||!data.bvh.have_motion,"WebGPU moving transparent shadows not implemented");
   if(data.integrator.transparent_shadows)require(data.integrator.transparent_max_bounce>=0&&data.integrator.transparent_max_bounce<=4095,"WebGPU transparent shadow hit limit exceeds packed state");
-  require(!(data.kernel_features&(KERNEL_FEATURE_VOLUME|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO))&&
-          !data.integrator.has_shadow_catcher,"WebGPU shadow optional integration features not implemented");
+  require(!(data.kernel_features&(KERNEL_FEATURE_VOLUME|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
+          "WebGPU shadow optional integration features not implemented");
+  validate_shadow_catcher();
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[14]=scene_tables();
   if(data.integrator.transparent_shadows&&shading){
     if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid shadow SVM table");p[22]=uint32_t(remaining(p[21])/4);}
@@ -95,6 +100,7 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
     field(state.shadow_path.sample,4);field(state.shadow_path.bounce,2);field(state.shadow_path.throughput,12);field(state.shadow_path.lightgroup,1);
     p[20]=(data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)!=0;
     if(p[20]){field(state.shadow_path.pass_diffuse_weight,12);field(state.shadow_path.pass_glossy_weight,12);}
+    validate_ao_shadow(shading,p[10]);
   }else{
     field(state.shadow_ray.time,4);field(state.shadow_ray.P,12);field(state.shadow_ray.D,12);field(state.shadow_ray.tmin,4);field(state.shadow_ray.tmax,4);
     field(state.shadow_ray.self_light_object,4);field(state.shadow_ray.self_light_prim,4);
@@ -126,5 +132,16 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   if(transparent_shading)dispatch(p,uint32_t(work),shadow_shader_data,workgroup("prepare_shadow_shader_data"));
   // Match the smaller transparent SVM workgroup; opaque traversal stays at 64.
   dispatch(p,uint32_t(work),pipeline,workgroup(entry));
+}
+// Ambient occlusion shadow paths (PATH_RAY_SHADOW_FOR_AO): the fields and the
+// pass the shadow film write reads (film_write_direct_light's AO branch).
+void WebGPUDevice::validate_ao_shadow(bool shading,uint32_t capacity) const{
+  if(!(data.kernel_features&KERNEL_FEATURE_AO)||!shading)return;
+  auto field=[&](const void *address,size_t size){validate(uintptr_t(address),size_t(capacity)*size);};
+  if(data.kernel_features&KERNEL_FEATURE_AO_ADDITIVE){
+    require(state.shadow_path.unshadowed_throughput,"Missing AO shadow throughput");field(state.shadow_path.unshadowed_throughput,12);}
+  if(data.kernel_features&KERNEL_FEATURE_AO_PASS){
+    require(data.film.pass_ao!=PASS_UNUSED&&data.film.pass_ao>=0&&data.film.pass_ao<=data.film.pass_stride-3,"Invalid AO film pass offset");
+    field(state.shadow_path.visibility,1);}
 }
 }

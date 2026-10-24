@@ -1,0 +1,145 @@
+== m2-shrink
+== m2-lighttree
+  AGENT-README.txt: 5 of 9 added lines not verbatim in main
+     -   denoising, adaptive sampling, path guiding or shadow linking on the WebGPU
+     -   device (the CPU reference backend does). The integrator's light tree
+     -   (UseLightTree, on by default) and light linking (an object's
+     -   ReceiverLightSet and an emitter object's LightSetMembership) do render
+     -   there, for lamps, mesh emitters and the background light.
+  native/DEVICE.md: 1 of 82 added lines not verbatim in main
+     -    OUT/case-2, DIR)` (`native/tools/render_replay.py`) twice.
+  native/cycles/device.cpp: 2 of 8 added lines not verbatim in main
+     -     unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual
+     -     require(entry<23,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+  native/cycles/pipelines.cpp: 2 of 9 added lines not verbatim in main
+     - static_assert(SF_ALL.count()==68&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97))).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+     -   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96));
+  native/cycles/pipelines.h: 2 of 11 added lines not verbatim in main
+     - // Every assigned feature (bits 0-61, 63, 64, 65 and 94-96; bit 62 is unassigned).
+     - inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT;
+  native/cycles/render_capture.h: 3 of 4 added lines not verbatim in main
+     -   std::array<uint64_t,23> pipeline_dispatches{};
+     -     // (shade_surface_light_select) and 22 (light_tree_forward) are recorder v10. All follow the v5 slots 9-14.
+     -     std::ofstream meta(prefix+".capture.json");meta<<"{\"format\":\"native-command-stream-v"<<((pipeline_dispatches[21]||pipeline_dispatches[22])?10:(pipeline_dispatches[18]||pipel
+  native/cycles/surface.cpp: 1 of 17 added lines not verbatim in main
+     -   require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO))&&
+  native/host/host_api.inc: 1 of 1 added lines not verbatim in main
+     -            "\"passes\":[\"combined\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"shadow linking\",\"surface data passes\","
+  native/tests/render_replay.cpp: 3 of 3 added lines not verbatim in main
+     -   const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","
+     -   std::array<uint64_t,23> pipeline_dispatches{};
+     -   std::array<double,23> pipeline_ms{};std::vector<std::string> warnings;
+  native/tools/build_cycles.py: 3 of 4 added lines not verbatim in main
+     -     background=shader_data+translated+closures+svm+emitter_math+(ROOT/'shaders/wavefront_background_light.wgsl').read_text()+(ROOT/'shaders/wavefront_background.wgsl').read_text()+
+     -     surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_
+     -     closest=common+translated+(ROOT/'shaders/wavefront_closest.wgsl').read_text()+(ROOT/'shaders/wavefront_light_link.wgsl').read_text()
+  native/tools/build_cycles_android.py: 1 of 1 added lines not verbatim in main
+     -      'transparent_shadow', 'environment', 'light_tree']]
+  native/tools/render_replay.py: 2 of 5 added lines not verbatim in main
+     -         # (shade_surface_light_select in surface.wgsl) and 22 (light_tree_forward in background.wgsl).
+     -                  'surface', 'surface', 'background', 'surface', 'surface', 'background']
+== m2-shadowcatcher
+  AGENT-README.txt: 5 of 26 added lines not verbatim in main
+     -   - passes other than Combined and the three shadow catcher passes (AddPass
+     -     of any other type fails the render; data passes report "surface data
+     -     passes not implemented"); see SHADOW CATCHER;
+     - - It does not render passes other than Combined and the shadow catcher passes,
+     -   non-perspective cameras,
+  compatibility/reviews.json: 4 of 80 added lines not verbatim in main
+     -         "tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs"
+     -         "tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs"
+     -         "tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs"
+     -         "tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuRenderTests.cs"
+  docs/PARITY.md: 2 of 2 added lines not verbatim in main
+     - | Path integration | Limited four-bounce snapshot render with finite spherical lights, NEE and MIS passes on four devices; earlier strict intersection failures remain. The register
+     - | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clampin
+  native/cycles/device.cpp: 2 of 2 added lines not verbatim in main
+     -     unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual
+     -     require(entry<24,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+  native/cycles/pipelines.cpp: 1 of 11 added lines not verbatim in main
+     - static_assert(SF_ALL.count()==66&&!(SF_ALL&~(ShaderFeatures::range(0,66)|SF_SHADOW_CATCHER)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&SF_SHADOW_CATCHER.test(102)
+  native/cycles/pipelines.h: 3 of 7 added lines not verbatim in main
+     - // Every assigned feature (bits 0-61, 63, 64, 65 and 102; bit 62 is unassigned).
+     - inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_SHADOW_CATCHER;
+     -   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER;
+  native/cycles/render_capture.h: 3 of 6 added lines not verbatim in main
+     -   std::array<uint64_t,24> pipeline_dispatches{};
+     -     std::ofstream meta(prefix+".capture.json");const bool v10=pipeline_dispatches[21]||pipeline_dispatches[22]||pipeline_dispatches[23];
+     -     // Entries 21-23 (the shadow catcher split module) are recorder v10; older formats keep 21 counts.
+  native/cycles/shadow.cpp: 1 of 4 added lines not verbatim in main
+     -   require(!(data.kernel_features&(KERNEL_FEATURE_VOLUME|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO)),
+  native/host/ABI.md: 1 of 2 added lines not verbatim in main
+     - perspective camera; only `Combined` and the three shadow catcher passes are written
+  native/host/README.md: 1 of 1 added lines not verbatim in main
+     - only Combined and the shadow catcher passes, only supports the perspective camera and needs the integrator's
+  native/host/host_api.inc: 1 of 1 added lines not verbatim in main
+     -            "\"passes\":[\"combined\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"
+  native/shaders/wavefront_shadow.wgsl: 6 of 31 added lines not verbatim in main
+     - //#if SHADOW_CATCHER else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||(state_word(S_shadow_path_flag,index)&SHADOW_UNSUPPORTED_FLAGS)!=0u){fail();retu
+     -     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||(state_word(S_shadow_path_flag,index)&(SHADOW_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u){fail();return;}
+     - //#if SHADOW_CATCHER else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||(flag&SHADOW_UNSUPPORTED_FLAGS)!=0u||state_half(S_shadow_path_packed_num_hits,index)
+     -     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||(flag&(SHADOW_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u||state_half(S_shadow_path_packed_num_hits,index)!=0u){fail();r
+     - //#if SHADOW_CATCHER else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||(flag&SHADOW_UNSUPPORTED_FLAGS)!=0u||count>4095u){fail();return;}
+     -     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||(flag&(SHADOW_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u||count>4095u){fail();return;}
+  native/tests/render_replay.cpp: 3 of 3 added lines not verbatim in main
+     -   const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","
+     -   std::array<uint64_t,24> pipeline_dispatches{};
+     -   std::array<double,24> pipeline_ms{};std::vector<std::string> warnings;
+  native/tools/build_cycles.py: 2 of 4 added lines not verbatim in main
+     -     background=shader_data+translated+closures+svm+emitter_math+(ROOT/'shaders/wavefront_background_light.wgsl').read_text()+(ROOT/'shaders/wavefront_shadow_catcher.wgsl').read_tex
+     -     closest=common+translated+(ROOT/'shaders/wavefront_shadow_catcher.wgsl').read_text()+(ROOT/'shaders/wavefront_closest.wgsl').read_text()
+  native/tools/build_cycles_android.py: 1 of 1 added lines not verbatim in main
+     -      'transparent_shadow', 'environment', 'shadow_catcher']]
+  native/tools/render_replay.py: 3 of 5 added lines not verbatim in main
+     -         # and 20 (prepare_light_nee in surface.wgsl); v10 adds entries 21-23 (the
+     -         # shadow catcher split module, shadow_catcher.wgsl).
+     -                  'surface', 'surface', 'background', 'surface', 'shadow_catcher', 'shadow_catcher', 'shadow_catcher']
+  tests/CodeBrix.Graphics3D.Cycles.Tests/CapabilityReportTests.cs: 1 of 1 added lines not verbatim in main
+     -         report.BackendScopes["webgpu"].WrittenPasses.Should().Equal("combined", "shadow_catcher", "shadow_catcher_sample_count", "shadow_catcher_matte");
+== m2-ao
+  AGENT-README.txt: 2 of 15 added lines not verbatim in main
+     -   - passes other than Combined and AO (AddPass of any other type fails the
+     -     render; data passes report "surface data passes not implemented");
+  docs/PARITY.md: 2 of 3 added lines not verbatim in main
+     - | Path integration | Limited four-bounce snapshot render with finite spherical lights, NEE and MIS passes on four devices; earlier strict intersection failures remain. The register
+     - | Output/features | Camera-stage atomic sample counts/adaptive skip and background-stage combined/transparency, background/lightgroups, diffuse/glossy/transmission routing, clampin
+  native/DEVICE.md: 1 of 68 added lines not verbatim in main
+     - 17. **Ambient occlusion remainder.** The AO node's `only_local` from an object without its own BVH in a scene that
+  native/cycles/device.cpp: 2 of 2 added lines not verbatim in main
+     -     unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual
+     -     require(entry<22,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+  native/cycles/pipelines.cpp: 1 of 16 added lines not verbatim in main
+     - static_assert(SF_ALL.count()==67&&!(SF_ALL&~(ShaderFeatures::range(0,66)|SF_NODE_AO|SF_AO_SHADOW)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65));
+  native/cycles/pipelines.h: 4 of 15 added lines not verbatim in main
+     - // Every assigned scene feature (bits 0-61, 63, 64, 65, 106 and 108; bit 62 is
+     - // unassigned; 107 is the raytrace module variant).
+     - inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_NODE_AO|SF_AO_SHADOW;
+     -   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_NODE_AO|SF_AO_SHADOW;
+  native/cycles/render_capture.h: 4 of 5 added lines not verbatim in main
+     -   std::array<uint64_t,22> pipeline_dispatches{};
+     -     // Entry 21 (prepare_surface_raytrace, the raytrace-specialized surface module
+     -     // surface_raytrace.wgsl) is recorder v10.
+     -     std::ofstream meta(prefix+".capture.json");meta<<"{\"format\":\"native-command-stream-v"<<(pipeline_dispatches[21]?10:(pipeline_dispatches[18]||pipeline_dispatches[19]||pipelin
+  native/cycles/shadow.cpp: 1 of 18 added lines not verbatim in main
+     -   require(!(data.kernel_features&(KERNEL_FEATURE_VOLUME|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_SHADOW_LINKING))&&
+  native/cycles/surface.cpp: 1 of 26 added lines not verbatim in main
+     -   require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING))&&
+  native/host/README.md: 1 of 1 added lines not verbatim in main
+     - only Combined and AO, only supports the perspective camera and needs the integrator's
+  native/host/host_api.inc: 1 of 2 added lines not verbatim in main
+     -            "\"passes\":[\"combined\",\"ao\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"light trees\",\"surface data passes\","
+  native/shaders/wavefront_shadow.wgsl: 3 of 25 added lines not verbatim in main
+     -     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||!shadow_flag_supported(state_word(S_shadow_path_flag,index))){fail();return;}
+     -     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag)||state_half(S_shadow_path_packed_num_hits,index)!=0u){fail();return;}
+     -     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag)||count>4095u){fail();return;}
+  native/tests/render_replay.cpp: 3 of 3 added lines not verbatim in main
+     -   const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","
+     -   std::array<uint64_t,22> pipeline_dispatches{};
+     -   std::array<double,22> pipeline_ms{};std::vector<std::string> warnings;
+  native/tools/build_cycles.py: 1 of 1 added lines not verbatim in main
+     -     surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_
+  native/tools/render_replay.py: 2 of 4 added lines not verbatim in main
+     -         # v10 adds entry 21 (prepare_surface_raytrace in surface_raytrace.wgsl).
+     -                  'surface', 'surface', 'background', 'surface', 'surface_raytrace']
+  tests/CodeBrix.Graphics3D.Cycles.Tests/CapabilityReportTests.cs: 1 of 1 added lines not verbatim in main
+     -         report.BackendScopes["webgpu"].WrittenPasses.Should().Equal("combined", "ao");

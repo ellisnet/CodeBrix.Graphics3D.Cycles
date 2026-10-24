@@ -26,17 +26,46 @@ fn light_cone(n:vec3<f32>,angle:f32,random:vec2<f32>)->vec4<f32>{
     return vec4<f32>(xy.x*b.X+xy.y*b.Y+cosine*n,(0.5*INV_PI)/angle);
 }
 // Light CDF selection (shared with triangle_light_prefill).
-struct LightSelection {random:vec3<f32>,distribution:u32,prim:i32}
+// Stage record of the invocation's light selection (NONE: select from the CDF here).
+var<private> light_select_record:u32=0xffffffffu;
+const LIGHT_SELECT_RECORD:u32=360u;
+//#if LIGHT_SELECT else struct LightSelection {random:vec3<f32>,distribution:u32,prim:i32}
+// With the light tree or light linking, shade_surface_light_select stores the
+// selection (emitter kind and id, object, visibility flags, selection pdf, and
+// whether a sample exists) in the stage record at light_select_record; the
+// samplers read it from there (wavefront_surface.wgsl).
+struct LightSelection {random:vec3<f32>,distribution:u32,prim:i32,object:u32,visibility:u32,pdf:f32,tree:bool,valid:bool}
+fn light_selection_write(at:u32,s:LightSelection,forward_pdf:f32){
+    let words=array<u32,8>(select(0u,1u,s.valid),bitcast<u32>(s.prim),s.object,s.visibility,bitcast<u32>(s.pdf),s.distribution,select(0u,1u,s.tree),bitcast<u32>(forward_pdf));
+    for(var j=0u;j<8u;j++){store_word(at+LIGHT_SELECT_RECORD+j*4u,words[j]);}
+}
+fn light_selection_read(at:u32,random:vec3<f32>)->LightSelection{
+    let r=at+LIGHT_SELECT_RECORD;
+    return LightSelection(random,load_word(r+20u),bitcast<i32>(load_word(r+4u)),load_word(r+8u),load_word(r+12u),heap_float(r+16u),load_word(r+24u)!=0u,load_word(r)!=0u);
+}
+//#endif
 fn light_select(index:u32)->LightSelection{
     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
+//#if LIGHT_SELECT
+    if(light_select_record!=0xffffffffu){return light_selection_read(light_select_record,random);}
+//#endif
     let n=data_word(D_integrator_num_distribution);var first=0u;var length=n+1u;
     loop{let half_count=length>>1u;let middle=first+half_count;
         if(random.z<heap_float(table_at(G_light_distribution,middle,SIZE_light_distribution)+LD_totarea)){length=half_count;}
         else{first=middle+1u;length-=half_count+1u;}if(length==0u){break;}}
     let emitter=u32(clamp(i32(first)-1,0,i32(n)-1));
     let distribution=table_at(G_light_distribution,emitter,SIZE_light_distribution);
-    return LightSelection(random,distribution,bitcast<i32>(load_word(distribution+LD_prim)));
+//#if LIGHT_SELECT else return LightSelection(random,distribution,bitcast<i32>(load_word(distribution+LD_prim)));
+    return LightSelection(random,distribution,bitcast<i32>(load_word(distribution+LD_prim)),load_word(distribution+LD_object),load_word(distribution+LD_visibility),0.0,false,true);
+//#endif
 }
+//#if SHADOW_CATCHER
+// light_sample: mesh lights of objects that are not shadow catchers are not
+// sampled by shadow catcher paths.
+fn sc_triangle_excluded(index:u32,selection:LightSelection)->bool{
+    return (state_word(S_path_flag,index)&SC_PATH_PASS)!=0u&&(load_word(table_at(G_object_flag,load_word(selection.distribution+LD_object),4u))&SC_OBJECT)==0u;
+}
+//#endif
 // Emissive-triangle vertices come from triangle_light_prefill, which the caller
 // runs first for the same invocation.
 fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
@@ -45,6 +74,9 @@ fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
         // Removed by scene specialization when no emissive triangle is in the light
         // distribution (pipelines.h); a reached removed handler reports error 2.
 //#if LIGHT_TRIANGLE else var none:NativeLightSample;atomicOr(&heap[p(17u)/4u],2u);return none;
+//#if SHADOW_CATCHER
+        if(sc_triangle_excluded(index,selection)){var excluded:NativeLightSample;return excluded;}
+//#endif
         return light_sample_triangle(sd,selection);
 //#endif
     }
@@ -52,18 +84,30 @@ fn light_sample_native(index:u32,sd:SurfaceData,r:SvmResult)->NativeLightSample{
 }
 // The emissive triangle chosen by light_select (selection.prim >= 0).
 fn light_sample_triangle(sd:SurfaceData,selection:LightSelection)->NativeLightSample{
-    var ls=triangle_light_sample_native(load_word(selection.distribution+LD_object),u32(selection.prim),sd.time,sd.P,selection.random.xy);
-    ls.shader|=load_word(selection.distribution+LD_visibility);return ls;
+//#if LIGHT_SELECT else var ls=triangle_light_sample_native(load_word(selection.distribution+LD_object),u32(selection.prim),sd.time,sd.P,selection.random.xy);
+    if(!selection.valid){var none:NativeLightSample;return none;}
+    triangle_light_tree_pdf=select(-1.0,selection.pdf,selection.tree);
+    var ls=triangle_light_sample_native(selection.object,u32(selection.prim),sd.time,sd.P,selection.random.xy);
+//#endif
+//#if LIGHT_SELECT else ls.shader|=load_word(selection.distribution+LD_visibility);return ls;
+    ls.shader|=selection.visibility;return ls;
+//#endif
 }
 // The lamp chosen by light_select (selection.prim < 0). With emissive triangles in
 // the scene, shade_surface_light calls this directly and the triangle work runs in
 // shade_surface_light_triangle, so neither entry inlines both samplers.
 fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelection)->NativeLightSample{
     var ls:NativeLightSample;
+//#if LIGHT_SELECT
+    if(!selection.valid){return ls;}
+//#endif
     let random=selection.random;let prim=selection.prim;
     ls.is_light=true;ls.prim=~bitcast<u32>(prim);
     let light=table_at(G_lights,ls.prim,SIZE_lights);
     if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return ls;}
+//#if SHADOW_CATCHER
+    if((state_word(S_path_flag,index)&SC_PATH_PASS)!=0u&&(load_word(light+L_shader_id)&SC_EXCLUDE)!=0u){return ls;}
+//#endif
     ls.shader=load_word(light+L_shader_id);ls.object_id=load_word(light+L_object_id);
     let position=heap_vec3(light+L_co);
     if(load_word(light+L_type)==LIGHT_SUN){
@@ -114,7 +158,9 @@ fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelecti
             if(cosine>0.0){ls.pdf=inverse_area*(ls.t*ls.t/cosine);}
         }
     }
-    ls.pdf*=data_float(D_integrator_distribution_pdf_lights);return ls;
+//#if LIGHT_SELECT else ls.pdf*=data_float(D_integrator_distribution_pdf_lights);return ls;
+    ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);return ls;
+//#endif
 }
 fn light_bsdf(sd:SurfaceData,r:SvmResult,direction:vec3<f32>,shader:u32)->SurfaceSample{
     var result:SurfaceSample;var weight_sum=0.0;var pdf_sum=0.0;var rough_sum=0.0;
@@ -137,12 +183,22 @@ fn light_bsdf(sd:SurfaceData,r:SvmResult,direction:vec3<f32>,shader:u32)->Surfac
 // the split keeps emitter sampling and BSDF evaluation in separate pipelines.
 fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeLightSample){
     if(data_word(D_integrator_use_direct_light)==0u||(r.runtime_flag&SR_BSDF_HAS_EVAL)==0u){return;}
+//#if MNEE
+    // MNEE already sampled a light and the caustic casters (intersect_mnee).
+    if((data_word(D_kernel_features)&MNEE_KERNEL_FEATURE)!=0u&&(state_byte(S_path_mnee,index)&MNEE_PATH_SAMPLED)!=0u){mnee_direct_light(index,sd,r);return;}
+//#endif
     if(!(ls.pdf>0.0)||load_word(p(17u))!=0u){return;}
     // Self-intersection skip for an emissive triangle sampled from itself
     // (integrate_surface_direct_light): reachable once an emitter also has a BSDF.
 //#if LIGHT_TRIANGLE
     if(!ls.is_light&&ls.prim==sd.prim&&ls.object_id==sd.object_id){
         let transmission=dot(ls.D,sd.N)<0.0;if(dot(ls.D,select(sd.Ng,-sd.Ng,transmission))>0.0){return;}}
+//#endif
+//#if MNEE
+    // On a caustic caster a caustic light's transmitted contribution reaches the
+    // receivers through MNEE and is not computed again here.
+    if((data_word(D_kernel_features)&MNEE_KERNEL_FEATURE)!=0u&&ls.is_light&&rounded_dot(ls.D,sd.N)<0.0&&(sd.object_flag&SD_OBJECT_CAUSTICS_CASTER)!=0u&&
+       load_word(table_at(G_lights,ls.prim,SIZE_lights)+MNEE_L_use_caustics)!=0u){return;}
 //#endif
     let shader=table_at(G_shaders,ls.shader&SHADER_MASK,SIZE_shaders);
     // light_sample_shader_eval_nee_constant: a light shader without constant
@@ -155,7 +211,11 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     var bsdf=light_bsdf(sd,r,ls.D,ls.shader);let mis=(ls.pdf*ls.pdf)/(ls.pdf*ls.pdf+bsdf.pdf*bsdf.pdf);
     let factor=emission*ls.eval_fac/ls.pdf*mis;bsdf.eval*=factor;bsdf.diffuse*=factor;bsdf.glossy*=factor;
     if(all(bsdf.eval==vec3<f32>(0))){return;}
-    // Path termination for constant light shaders only (non-constant: shade_light_nee).
+    // Path termination for constant light shaders only (non-constant: shade_light_nee),
+    // and never with the light tree (integrate_surface_direct_light).
+//#if LIGHT_TREE
+    if((data_word(D_kernel_features)&LT_FEATURE_LIGHT_TREE)==0u){
+//#endif
 //#if LIGHT_NEE
     if(constant){
 //#endif
@@ -164,6 +224,9 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     if(probability<1.0){let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
         if(random>=probability){return;}let inverse=1.0/probability;bsdf.eval*=inverse;bsdf.diffuse*=inverse;bsdf.glossy*=inverse;}
 //#if LIGHT_NEE
+    }
+//#endif
+//#if LIGHT_TREE
     }
 //#endif
     // Shadow terminator geometry offset (shadow_ray_offset) moves the origin of
@@ -186,7 +249,10 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     state_f32(S_shadow_ray_dD,shadow,select(sd.dI,max(sd.dI,sqrt(bsdf.roughness)),bsdf.roughness>0.0));
     state_u32(S_shadow_self_object,shadow,select(NONE,sd.object_id,start.w!=0.0));state_u32(S_shadow_self_prim,shadow,select(NONE,sd.prim,start.w!=0.0));
     state_u32(S_shadow_ray_self_light_object,shadow,ls.object_id);state_u32(S_shadow_ray_self_light_prim,shadow,ls.prim);
-    state_f32(S_shadow_path_bsdf_eval_average,shadow,(bsdf.eval.x+bsdf.eval.y+bsdf.eval.z)*(1.0/3.0));
+    // Not allocated with KERNEL_FEATURE_LIGHT_TREE (shadow_state_template.h).
+//#if LIGHT_TREE else state_f32(S_shadow_path_bsdf_eval_average,shadow,(bsdf.eval.x+bsdf.eval.y+bsdf.eval.z)*(1.0/3.0));
+    if((data_word(D_kernel_features)&LT_FEATURE_LIGHT_TREE)==0u){state_f32(S_shadow_path_bsdf_eval_average,shadow,(bsdf.eval.x+bsdf.eval.y+bsdf.eval.z)*(1.0/3.0));}
+//#endif
     state_u32(S_shadow_path_render_pixel_index,shadow,state_word(S_path_render_pixel_index,index));
     state_u32(S_shadow_path_sample,shadow,state_word(S_path_sample,index));state_u32(S_shadow_path_rng_pixel,shadow,state_word(S_path_rng_pixel,index));
     state_u16(S_shadow_path_rng_offset,shadow,state_half(S_path_rng_offset,index));state_u16(S_shadow_path_bounce,shadow,state_half(S_path_bounce,index));

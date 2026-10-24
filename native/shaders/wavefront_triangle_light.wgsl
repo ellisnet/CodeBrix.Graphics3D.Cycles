@@ -163,6 +163,10 @@ fn triangle_light_vertices_compute(object:u32,prim:u32,time:f32)->TriangleVertic
 // use, in the original evaluation order, from one call site; the sampling and
 // forward-PDF code reads them back by (object, prim, time).
 struct TriangleLightCacheEntry {key:vec3<u32>,v:TriangleVertices}
+// Selection pdf of a light-tree triangle sample (negative: flat CDF selection).
+var<private> triangle_light_tree_pdf:f32= -1.0;
+// Object transform at the centre time for the light tree's local space (light_tree_to_local_space).
+fn light_tree_object_motion(object:u32)->NativeTransform{return triangle_light_object(object,0.5);}
 var<private> triangle_light_cache:array<TriangleLightCacheEntry,4>;
 var<private> triangle_light_cache_count:u32;
 fn triangle_light_vertices(object:u32,prim:u32,time:f32)->TriangleVertices{
@@ -186,7 +190,9 @@ fn triangle_light_prefill(index:u32,sd:SurfaceData,emission:bool,sample:bool){
         if(triangle_light_needs_center(sd.object_id)){keys[count]=vec3<u32>(sd.object_id,sd.prim,bitcast<u32>(-1.0));count++;}
     }
     if(sample){let selection=light_select(index);
-        if(selection.prim>=0){let object=load_word(selection.distribution+LD_object);
+//#if LIGHT_SELECT else         if(selection.prim>=0){let object=load_word(selection.distribution+LD_object);
+        if(selection.prim>=0){let object=selection.object;
+//#endif
             keys[count]=vec3<u32>(object,u32(selection.prim),bitcast<u32>(sd.time));count++;
             if(triangle_light_needs_center(object)){keys[count]=vec3<u32>(object,u32(selection.prim),bitcast<u32>(-1.0));count++;}}}
     for(var k=0u;k<count;k++){
@@ -236,7 +242,11 @@ fn triangle_light_sample_native(object:u32,prim:u32,time:f32,P:vec3<f32>,random:
         let delta=ls.P-P;ls.t=rounded_sqrt(rounded_dot(delta,delta));ls.D=delta*rounded_divide(1.0,ls.t);let cosine=abs(rounded_dot(normal.xyz,-ls.D));
         if(cosine!=0.0){ls.pdf=rounded_divide(rounded_divide(ls.t*ls.t,cosine),area);}
     }
+//#if LIGHT_SELECT else ls.pdf*=triangle_light_selection_area(object,prim,area)*data_float(D_integrator_distribution_pdf_triangles);return ls;
+    // With the light tree the selection pdf comes from the tree (light_sample).
+    if(triangle_light_tree_pdf>=0.0){ls.pdf*=triangle_light_tree_pdf;return ls;}
     ls.pdf*=triangle_light_selection_area(object,prim,area)*data_float(D_integrator_distribution_pdf_triangles);return ls;
+//#endif
 }
 fn triangle_light_forward_pdf(sd:SurfaceData)->f32{
     let v=triangle_light_vertices(sd.object_id,sd.prim,sd.time);if(v.error!=0u){return 0.0;}
@@ -245,7 +255,12 @@ fn triangle_light_forward_pdf(sd:SurfaceData)->f32{
     let distance=rounded_divide(abs(rounded_dot(n,sd.wi*t)),n2);let area=0.5*rounded_sqrt(n2);var pdf=0.0;
     if(longest>distance*distance){let P=rounded_add3(sd.P,sd.wi*t);let angle=triangle_light_solid_angle(rounded_safe_normalize(v.a-P),rounded_safe_normalize(v.b-P),rounded_safe_normalize(v.c-P));if(angle!=0.0){pdf=rounded_divide(1.0,angle);}}
     else{let cosine=abs(rounded_dot(sd.Ng,sd.wi));if(area!=0.0&&cosine!=0.0){pdf=rounded_divide(rounded_divide(t*t,cosine),area);}}
+//#if LIGHT_TREE else return pdf*triangle_light_selection_area(sd.object_id,sd.prim,area)*data_float(D_integrator_distribution_pdf_triangles);
+    // light_sample_mis_weight_forward_surface: the tree's pdf of this triangle,
+    // computed by shade_surface_light_select into the stage record.
+    if(data_word(LT_D_use_light_tree)!=0u){return pdf*heap_float(light_select_record+LIGHT_SELECT_RECORD+28u);}
     return pdf*triangle_light_selection_area(sd.object_id,sd.prim,area)*data_float(D_integrator_distribution_pdf_triangles);
+//#endif
 }
 fn triangle_light_forward_weight(index:u32,sd:SurfaceData)->f32{
     if((state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)!=0u||(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))==0u){return 1.0;}

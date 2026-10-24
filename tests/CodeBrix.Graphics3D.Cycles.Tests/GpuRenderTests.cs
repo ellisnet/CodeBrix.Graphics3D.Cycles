@@ -249,6 +249,54 @@ public class GpuRenderTests(ITestOutputHelper output)
         comparison.PracticalFailures.Should().Be(0);
     }
 
+    // A shadow catcher plane over the diffuse-sun scene: the GPU writes Combined and the three shadow
+    // catcher passes; each one read back through ReadPass matches the CPU reference backend.
+    private static readonly string[] ShadowCatcherPasses = ["Shadow Catcher", "Shadow Catcher Matte", "Shadow Catcher Sample Count"];
+
+    private static void BuildShadowCatcher(CyclesScene scene, bool approximate)
+    {
+        WebGpuValidationScenes.Build(scene, WebGpuValidationScenes.DiffuseSun);
+        scene.Background.Transparent = !approximate;
+        scene.Film.UseApproximateShadowCatcher = approximate;
+        ObjectNode catcher = scene.CreateObject(scene.CreateMesh([-2.5f, .01f, -2.5f, 2.5f, .01f, -2.5f, 2.5f, .01f, 2.5f, -2.5f, .01f, 2.5f],
+            [0, 2, 1, 0, 3, 2], Diffuse(scene)));
+        catcher.IsShadowCatcher = true;
+        scene.AddPass(PassType.ShadowCatcher, ShadowCatcherPasses[0]);
+        scene.AddPass(PassType.ShadowCatcherMatte, ShadowCatcherPasses[1]);
+        scene.AddPass(PassType.ShadowCatcherSampleCount, ShadowCatcherPasses[2]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task gpu_shadow_catcher_passes_match_the_cpu_reference(bool approximate)
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+        BuildShadowCatcher(gpu, approximate);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        BuildShadowCatcher(cpu, approximate);
+        FilmBuffer reference = cpu.Render(WebGpuValidationScenes.Settings);
+
+        //Act
+        FilmBuffer film = await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+
+        //Assert
+        gpu.IsFaulted.Should().BeFalse();
+        WebGpuValidationScenes.Compare(film.Span, reference.Span).Practical.Should().Be(0);
+        gpu.GetRenderedPasses().Where(p => ShadowCatcherPasses.Contains(p.Name)).Should().HaveCount(3).And.OnlyContain(p => p.Written);
+        foreach (string name in ShadowCatcherPasses)
+        {
+            FilmBuffer pass = gpu.ReadPass(name), expected = cpu.ReadPass(name);
+            (double maximum, int practical, int strict) = WebGpuValidationScenes.Compare(pass.Span, expected.Span);
+            output.WriteLine($"{name} (approximate {approximate}): {pass.Components} components, max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
+            pass.Components.Should().Be(expected.Components);
+            practical.Should().Be(0);
+        }
+        // The catcher is hit: the sample count pass is not empty.
+        gpu.ReadPass(ShadowCatcherPasses[2]).Span.ToArray().Max().Should().BeGreaterThan(0);
+    }
+
     // A diffuse material (the Cycles default surface shader is not implemented on WebGPU).
     private static ShaderNode Diffuse(CyclesScene scene)
     {

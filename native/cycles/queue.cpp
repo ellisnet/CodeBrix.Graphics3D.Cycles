@@ -83,8 +83,14 @@ class WebGPUQueue final:public DeviceQueue {
       if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME){
         debug_enqueue_begin(kernel,work);d.enqueue_volume(work,args);debug_enqueue_end();return;
       }
-      if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){
-        debug_enqueue_begin(kernel,work);d.enqueue_surface(work,args);debug_enqueue_end();return;
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADOW_CATCHER_COUNT_POSSIBLE_SPLITS){
+        debug_enqueue_begin(kernel,work);d.enqueue_shadow_catcher_count(work,args);debug_enqueue_end();return;
+      }
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE){
+        debug_enqueue_begin(kernel,work);d.enqueue_mnee(work,args);debug_enqueue_end();return;
+      }
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE){
+        debug_enqueue_begin(kernel,work);d.enqueue_surface(work,args,kernel);debug_enqueue_end();return;
       }
       auto scalar=[&](unsigned i){require(i<args.count&&args.types[i]==DeviceKernelArguments::INT32&&args.sizes[i]==4,"Invalid integer kernel argument");
         int32_t n;std::memcpy(&n,args.values[i],4);require(n>=0,"Negative scheduler argument");return uint32_t(n);};
@@ -98,12 +104,18 @@ class WebGPUQueue final:public DeviceQueue {
         require(args.count==1,"Reset argument count");p[0]=0;p[1]=scalar(0);require(uint32_t(work)>=p[1],"Incomplete reset dispatch");
         p[2]=state_pointer(d.state.path.queued_kernel,size_t(p[1])*2);p[3]=state_pointer(d.state.shadow_path.queued_kernel,size_t(p[1])*2);
       }else if(kernel==DEVICE_KERNEL_INTEGRATOR_COMPACT_STATES||kernel==DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES){
-        require(args.count==4,"Compaction argument count");require(!(d.data.kernel_features&KERNEL_FEATURE_MNEE),"MNEE ownership repair is not implemented");
+        require(args.count==4,"Compaction argument count");
         p[0]=4;p[1]=scalar(3);p[12]=scalar(1);p[13]=scalar(2);require(uint32_t(work)>=p[1],"Incomplete compaction dispatch");
         p[4]=pointer(0,(size_t(std::max(p[12],p[13]))+p[1])*4);p[14]=d.fields;p[15]=d.field_count;
         p[16]=kernel==DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES;
         p[2]=state_pointer(p[16]?d.state.shadow_path.queued_kernel:d.state.path.queued_kernel,2);
         p[18]=uint32_t(d.remaining(p[2])/2);
+        // MNEE ownership repair (controls.wgsl op 4), as the pinned state moves do.
+        if((d.data.kernel_features&KERNEL_FEATURE_MNEE)&&d.state.path.mnee_shadow_state){
+          p[22]=state_pointer(d.state.path.mnee,1);p[23]=state_pointer(d.state.path.mnee_shadow_state,4);
+          p[24]=state_pointer(d.state.shadow_isect[2].prim,4);p[25]=PATH_MNEE_SAMPLED;p[26]=DEVICE_KERNEL_INTEGRATOR_SHADOW_PATH_MNEE_PENDING;
+          p[27]=uint32_t(std::min(d.remaining(p[23])/4,d.remaining(p[24])/4));
+        }
       }else{
         bool shadow=false;uint32_t mode=0;
         switch(kernel){
@@ -127,7 +139,10 @@ class WebGPUQueue final:public DeviceQueue {
           p[4]=pointer(1,(size_t(p[1])+p[7])*4);p[5]=pointer(2,4);
         }
       }
-      p[21]=d.data.integrator.transparent_shadows!=0;
+      // Stable (serial) path-array scans: resumable transparent shadows, ambient occlusion and caustic scenes,
+      // whose extra or reserved shadow paths make shadow compaction frequent; atomic indices would make its
+      // moves, and so the native scheduler's counts, run-dependent (replays then reproduce every decision).
+      p[21]=d.data.integrator.transparent_shadows!=0||(d.data.kernel_features&KERNEL_FEATURE_AO)!=0||d.data.integrator.use_caustics!=0;
       if(work){debug_enqueue_begin(kernel,work);d.dispatch(p,uint32_t(work));debug_enqueue_end();}
     });return !d.have_error();
   }

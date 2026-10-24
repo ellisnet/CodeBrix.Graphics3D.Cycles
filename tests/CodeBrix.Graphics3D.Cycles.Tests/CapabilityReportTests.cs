@@ -91,7 +91,7 @@ public class CapabilityReportTests
         report.CompiledBackends.Should().Equal("cpu", "webgpu");
         report.GpuBackendName.Should().Be("webgpu");
         report.BackendScopes["webgpu"].CameraTypes.Should().Equal("perspective");
-        report.BackendScopes["webgpu"].WrittenPasses.Should().Equal("combined");
+        report.BackendScopes["webgpu"].WrittenPasses.Should().Equal("combined", "shadow_catcher", "shadow_catcher_sample_count", "shadow_catcher_matte", "ao");
         report.BackendScopes["webgpu"].RenderTimeRejections.Should().NotBeEmpty();
     }
 

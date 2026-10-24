@@ -22,12 +22,12 @@ int main(int argc,char **argv){try{
   std::array<WGPUBindGroupLayoutEntry,2> entries{};for(unsigned i=0;i<2;i++){entries[i].binding=i;entries[i].visibility=WGPUShaderStage_Compute;entries[i].buffer.type=i?WGPUBufferBindingType_Uniform:WGPUBufferBindingType_Storage;}
   WGPUBindGroupLayoutDescriptor bd{};bd.entryCount=2;bd.entries=entries.data();d.push_scope();cbc::BindLayout layout(wgpuDeviceCreateBindGroupLayout(d.get(),&bd));d.pop_scope();
   WGPUPipelineLayoutDescriptor pd{};pd.bindGroupLayoutCount=1;pd.bindGroupLayouts=&layout.value;d.push_scope();cbc::PipelineLayout pl(wgpuDeviceCreatePipelineLayout(d.get(),&pd));d.pop_scope();
-  const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","surface","shadow","surface","surface","background","surface"};const char *entry[]={"control","init_camera","intersect_closest","shade_background","shade_surface","prepare_surface","intersect_shadow","shade_shadow","shade_light_forward","prepare_shader_data","intersect_volume_stack","shade_volume","shade_shadow_transparent","shade_surface_light","shader_eval_volume_density","connect_surface_light","prepare_shadow_shader_data","shade_surface_light_triangle","shade_light_nee","shader_eval_background","prepare_light_nee"};std::array<cbc::Pipeline,21> pipelines;
-  std::array<uint64_t,21> pipeline_dispatches{};
+  const char *names[]={"controls","camera","closest","background","surface","surface","shadow","shadow","background","surface","volume_stack","volume","shadow","surface","volume","surface","shadow","surface","surface","background","surface","surface","background","shadow_catcher","shadow_catcher","shadow_catcher","surface_raytrace","surface","surface","surface","surface","surface","surface","surface","surface"};const char *entry[]={"control","init_camera","intersect_closest","shade_background","shade_surface","prepare_surface","intersect_shadow","shade_shadow","shade_light_forward","prepare_shader_data","intersect_volume_stack","shade_volume","shade_shadow_transparent","shade_surface_light","shader_eval_volume_density","connect_surface_light","prepare_shadow_shader_data","shade_surface_light_triangle","shade_light_nee","shader_eval_background","prepare_light_nee","shade_surface_light_select","light_tree_forward","shadow_catcher_assign","shadow_catcher_split","shadow_catcher_count","prepare_surface_raytrace","mnee_receiver","mnee_seed","mnee_eval","mnee_setup","mnee_solve","mnee_transfer","mnee_contribute","mnee_cleanup"};std::array<cbc::Pipeline,35> pipelines;
+  std::array<uint64_t,35> pipeline_dispatches{};
   // Compile-latency report (same declared budget as the native device). Replay
   // never rewrites captured modules: recorded workgroup sizes must match.
   double budget_ms=60000;if(const char *b=std::getenv("CODEBRIX_CYCLES_PIPELINE_BUDGET_MS"))budget_ms=std::strtod(b,nullptr);
-  std::array<double,21> pipeline_ms{};std::vector<std::string> warnings;
+  std::array<double,35> pipeline_ms{};std::vector<std::string> warnings;
   cbc::Handle<WGPUCommandEncoder,wgpuCommandEncoderRelease> encoder;
   auto encode=[&](){if(!encoder.value)encoder=decltype(encoder)(wgpuDeviceCreateCommandEncoder(d.get(),nullptr));return encoder.value;};
   auto flush=[&](){if(!encoder.value)return;d.push_scope();cbc::Handle<WGPUCommandBuffer,wgpuCommandBufferRelease> command(wgpuCommandEncoderFinish(encoder,nullptr));d.pop_scope();wgpuQueueSubmit(d.get_queue(),1,&command.value);encoder={};d.check();};
@@ -62,9 +62,11 @@ int main(int argc,char **argv){try{
   auto staging=d.buffer(initial.size(),WGPUBufferUsage_CopyDst|WGPUBufferUsage_MapRead);wgpuCommandEncoderCopyBufferToBuffer(encode(),arena,0,staging,0,initial.size());flush();std::vector<char> actual(initial.size());d.read(staging,actual.data(),actual.size());d.check();std::ofstream file(output+".arena.bin",std::ios::binary);file.write(actual.data(),actual.size());require(bool(file),"Cannot save replay arena");
   std::ofstream(output+".adapter.txt")<<d.adapter_name;std::ofstream(output+".library.txt")<<d.library_path;
   std::cout<<"{\"passed\":true,\"nativeCommandReplay\":true,\"commands\":"<<number<<",\"dispatches\":"<<dispatches<<",\"exactSchedulingReadbacks\":"<<readbacks<<",\"exactSchedulingReadbackBytes\":"<<readback_bytes<<",\"pipelineDispatches\":[";
-  for(size_t i=0;i<pipeline_dispatches.size();i++){if(i)std::cout<<',';std::cout<<pipeline_dispatches[i];}std::cout<<"]";
+  // Replays without MNEE entries keep the v9 list of 21 entries.
+  size_t listed=21;for(size_t i=21;i<pipeline_dispatches.size();i++)if(pipeline_dispatches[i])listed=pipeline_dispatches.size();
+  for(size_t i=0;i<listed;i++){if(i)std::cout<<',';std::cout<<pipeline_dispatches[i];}std::cout<<"]";
   std::cout<<",\"pipelineReport\":{\"tier\":\"captured\",\"degraded\":"<<(warnings.empty()?"false":"true")<<",\"budgetMs\":"<<budget_ms<<",\"pipelineMs\":[";
-  for(size_t i=0;i<pipeline_ms.size();i++){if(i)std::cout<<',';std::cout<<pipeline_ms[i];}std::cout<<"],\"warnings\":[";
+  for(size_t i=0;i<listed;i++){if(i)std::cout<<',';std::cout<<pipeline_ms[i];}std::cout<<"],\"warnings\":[";
   for(size_t i=0;i<warnings.size();i++){if(i)std::cout<<',';std::cout<<'"'<<warnings[i]<<'"';}std::cout<<"]}}\n";
   return 0;
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';return 1;}}

@@ -471,28 +471,43 @@ What a consumer can observe:
     the user's cache directory, so later renders start at once.
   - Pipeline tiers are a WebGPU concept: on Metal, the capability report's
     PipelineTier is null and the device report has no pipeline facts.
-  - Results. Each backend's films agree with the CPU reference backend within
-    the practical criterion in typical scenes but are not bit-identical to it,
-    and Metal repeat renders differ in the last bits (film accumulation uses
-    atomics). Metal's hardware texture filtering can differ from the CPU's
-    interpolation by more than that criterion on magnified textures.
+  - Results. The WebGPU device is validated against the Cycles CPU kernels
+    (the CPU reference backend): its films agree with them within the
+    practical criterion but are not bit-identical to them. The macOS
+    Apple-silicon profile is Cycles' own Metal backend, a reference renderer in
+    its own right: its films agree with the CPU reference backend in typical
+    scenes, its repeat renders differ in the last bits (film accumulation uses
+    atomics), and its hardware texture filtering can differ from the CPU's
+    interpolation by more than that criterion on magnified textures. Those are
+    characteristics of Cycles' Metal backend, not defects.
 
 WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
 render runs (the render fails with NativeStatus.Failed, not at edit time):
-  - passes other than Combined (AddPass of any other type fails the render;
-    data passes report "surface data passes not implemented");
+  - passes other than Combined, AO and the three shadow catcher passes
+    (AddPass of any other type fails the render; data passes report "surface
+    data passes not implemented"); see SHADOW CATCHER;
   - cameras other than perspective (orthographic, panorama);
-  - the integrator defaults: switch off UseLightTree, UseDenoise,
-    UseAdaptiveSampling and UseGuiding before a WebGPU render;
+  - the integrator defaults: switch off UseDenoise, UseAdaptiveSampling and
+    UseGuiding before a WebGPU render (the light tree, UseLightTree, renders);
+  - shadow linking (an object's BlockerShadowSet or ShadowSetMembership other
+    than the defaults): "optional integration features not implemented";
   - a PrincipledBsdfNode with subsurface (a SubsurfaceWeight above the closure
     cutoff, 1e-5, or a linked SubsurfaceWeight input): "Unsupported feature:
     Principled BSDF subsurface scattering";
   - shader nodes the WebGPU device does not implement (for example true
-    displacement, ambient occlusion, bevel, sky, IES and AOV output nodes; the
+    displacement, bevel, sky, IES and AOV output nodes; the
     bump node and the Gabor texture (GaborTextureNode, 2D and 3D) are
     implemented, but tangent and motion-triangle smooth-normal derivatives
     inside a bump height are rejected);
+  - an AmbientOcclusionNode with OnlyLocal on an object that is not instanced
+    while the scene also has instanced objects (the render fails with an
+    unsupported-parameter error);
   - the classes listed in GetCapabilities().Scope.RenderTimeRejections.
+The WebGPU device implements the AmbientOcclusionNode (Inside, OnlyLocal,
+Samples, Distance, Normal) and fast GI ambient occlusion: IntegratorNode
+AoBounces, AoFactor, AoDistance and AoAdditiveFactor, and ObjectNode.AoDistance,
+as the CPU device does; AddPass(PassType.Ao, name) is written and ReadPass
+returns it.
 The CPU reference backend renders all of these.
 
 DEVICE ERRORS. After a render fails with NativeStatus.Failed (scene.IsFaulted
@@ -523,6 +538,30 @@ bakes single-user meshes with their object transform), so such an edit rebuilds
 the BVH. The one refused edit: a baked volume (voxel data), its object's Tfm,
 Motion or Geometry; that throws (NativeStatus.NotReady): remove and recreate the
 object and volume.
+
+SHADOW CATCHER
+--------------
+Mark the receiving object with ObjectNode.IsShadowCatcher = true. The scene
+then gets the shadow catcher passes automatically; to read them, add them by
+name with AddPass(PassType.ShadowCatcher, name),
+AddPass(PassType.ShadowCatcherMatte, name) and
+AddPass(PassType.ShadowCatcherSampleCount, name) and call ReadPass(name) after
+the render. ShadowCatcher is the shadow and light the catcher receives as a
+3-component multiplier for the backdrop; ShadowCatcherMatte is the RGBA of the
+objects that are not catchers, to composite over the multiplied backdrop.
+Combined still contains the catcher. Background.Transparent = true is the usual
+setting; with an opaque background, Film.UseApproximateShadowCatcher = true
+writes the matte with the shadow approximated into it (a background pass is
+added for it). Lights contribute to the ShadowCatcher pass only when their own
+object is also marked IsShadowCatcher, as in Cycles. Both backends render all
+of this; on the WebGPU device a shadow catcher together with a volume (world
+or object) fails with "WebGPU shadow catcher with volumes not implemented", and
+caustics (MNEE) with a shadow catcher are refused as well. A shadow catcher
+together with ambient occlusion (the AO node, the AO pass or the integrator's
+fast-GI ambient occlusion) is not yet validated on the WebGPU device and is not
+refused: its shadow stage writes the ambient-occlusion term without the catcher
+handling the CPU applies, so the passes of such a scene may differ from the CPU
+device; keep the two features apart until this note is gone.
 
 CALLBACKS AND THREADING
 -----------------------
@@ -750,8 +789,8 @@ COMMON PITFALLS TO AVOID
 - EXPECTING CHEAP EDITS OF SINGLE-USER MESHES. Moving, adding motion to or
   editing the data of a rendered single-user mesh rebuilds the BVH on the next
   render (the host keeps one extra copy of such meshes' authored attributes).
-- ENABLING NON-COMBINED PASSES ON WEBGPU. The render fails; read extra passes
-  on the CPU reference backend.
+- ENABLING NON-COMBINED PASSES ON WEBGPU. Except for the shadow catcher passes
+  the render fails; read the other passes on the CPU reference backend.
 - READING THE REGISTRY AS A FEATURE LIST. A node type being registered (and
   generated) does not mean a GPU backend implements it; the CPU reference is
   the complete implementation.
@@ -880,19 +919,36 @@ WHAT THIS PACKAGE DOES NOT DO
 - It does not import model formats (glTF and others); convert their data into
   nodes, meshes and attributes yourself (see BRINGING GLTF SCENES).
 - It does not display images or present to a window or swap chain.
-- It does not render passes other than Combined, non-perspective cameras,
-  light trees, denoising, adaptive sampling or path guiding on the WebGPU
-  device (the CPU reference backend does).
+- It does not render passes other than Combined, AO and the shadow catcher passes,
+  non-perspective cameras, denoising, adaptive sampling, path guiding or shadow
+  linking on the WebGPU device (the CPU reference backend does). The
+  integrator's light tree (UseLightTree, on by default) and light linking (an
+  object's ReceiverLightSet and an emitter object's LightSetMembership) do
+  render there, for lamps, mesh emitters and the background light.
 - It does not render background-light portals, sky-texture sun guiding,
   more than one background light, or point, spot, area and sun lamps whose
   emission shader is not constant on the WebGPU device (the render fails with
   an error naming the feature). Environment-texture and procedural worlds with
   importance sampling, and mesh emitters with textured or node emission, do
   render there.
+- Shadow caustics (manifold next-event estimation: objects with
+  is_caustics_caster / is_caustics_receiver and lights with use_caustics)
+  render on the WebGPU device through glass and refraction BSDFs from point and
+  sun lights. It does not render shadow caustics through anisotropic glass,
+  from spot, area or background lights, or together with light trees, light or
+  shadow linking, ambient occlusion, volumes or motion blur, on the WebGPU
+  device: the render fails with an error naming the feature. On Adreno 730 and
+  Adreno 650 GPUs (for example the Samsung SM-X700 and Galaxy S20) scenes with
+  shadow caustics currently stop with an invalid-data error instead of
+  rendering.
 - It does not render texture, colour and utility shader nodes (noise, Voronoi,
   wave, magic, brick and Gabor textures, ramps, mixing, mapping and similar) on
   Adreno 650 GPUs (for example the Samsung Galaxy S20); such scenes are refused
   with an error message before rendering starts.
+- It does not render the AmbientOcclusionNode, fast GI's additive mode
+  (IntegratorNode.AoAdditiveFactor) or the AO pass on Adreno 650 GPUs; such
+  scenes are refused with an error message before rendering starts (fast GI's
+  replace mode renders there).
 - It does not yet ship the native host library inside the package.
 - It does not keep a persistent cache of compiled GPU pipelines; the WebGPU
   runtime it uses offers none. The first GPU render in each process compiles

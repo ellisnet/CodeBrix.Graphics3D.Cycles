@@ -1,0 +1,32 @@
+{
+  "hp-android-x64": {
+    "passed": true,
+    "run": "native/work/m2-mnee/runs/hp/mnee-m2mn2",
+    "wallSeconds": 1416.7,
+    "jobs": [
+      "mnee_render",
+      "mnee",
+      "device",
+      "closest",
+      "mnee-replay-0..4"
+    ]
+  },
+  "samsung-sm-x700": {
+    "passed": false,
+    "run": "native/work/m2-mnee/runs/samsung/mnee-m2mn1",
+    "failure": "invalid data (mask 1) at the first INTERSECT_MNEE dispatch, inside mnee_setup (DEVICE.md open item 17)",
+    "passedJobs": [
+      "device",
+      "closest"
+    ]
+  },
+  "s20-adreno650": {
+    "passed": false,
+    "run": "native/work/m2-mnee/runs/s20/s20reg-m2mn1",
+    "failure": "same as samsung",
+    "passedJobs": [
+      "principled_svm",
+      "transparent_shadow"
+    ]
+  }
+}

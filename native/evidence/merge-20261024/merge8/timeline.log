@@ -1,0 +1,1705 @@
+[07:03:58] merge wave 8 part 1a start; HEAD 5aa565a2923ce22fa0941cc097c9acc887efde5b clean
+[07:05:23] m2-shrink applied (6 single-owner + DEVICE.md three-way clean)
+[07:05:38] m2-lighttree applied: 37 single-owner, 4 three-way clean, DEVICE.md 1 conflict (append order) resolved shrink-then-lighttree
+[07:08:42] m2-shadowcatcher applied: 13 single-owner, 12 three-way clean (GpuRenderTests.cs from lane WebGpuRenderTests.cs), 16 conflicts resolved (capture 23-25, SF_ALL union, passes union, reviews json3 + test path rename)
+[07:12:18] m2-ao applied: 13 single-owner, 5 three-way clean, 21 conflicts resolved (capture 26, SF_ALL union 71, passes union, shadow flag composition, DEVICE.md item 18 + AO section moved to end)
+[07:12:55] all four lane patches applied; starting b0
+[07:13:03] b0 Linux build exit=1 7s
+[07:14:02] b0 failed: shadow.cpp reconciliation paren (my edit); fixed, rerun
+[07:15:04] C1 applied: compare.py roles+verdict+5 self-test cases (self-test PASS 15/15); oracle README, MAINTAINER, AGENT, DEVICE policy, MACOS_ARM64 sentence, TESTING-MACOS-ARM64, ABI.md, PARITY Full-parity row
+[07:15:26] checkpoint written (067c3d3e3baf85c9)
+[07:17:19] b0 Linux build exit=0 197s
+[07:18:38] render_replay v10 rebuilt (default BASE linux-x64 + merge8/replay-build 3 RIDs)
+[07:19:26] START w8-dotnet-build
+[07:19:29] END w8-dotnet-build exit=0 3s
+[07:19:29] START w8-dotnet-build-debug
+[07:19:32] END w8-dotnet-build-debug exit=0 3s
+[07:20:19] START f-audit
+[07:21:23] END f-audit exit=0 64s
+[07:21:23] START f-notices
+[07:21:23] END f-notices exit=0 0s
+[07:21:23] START f-test-inventory
+[07:21:23] END f-test-inventory exit=0 0s
+[07:21:23] START f-inventory-check
+[07:21:23] END f-inventory-check exit=1 0s
+[07:21:49] copied lane ledger reports (m2-shrink/m2-lighttree/m2-ao native/work/<lane>/ledger, 296 KB, ignored work dirs) so evidence.json citations resolve on this machine
+[07:24:21] b1 Linux build exit=0 422s
+[07:24:36] warning sites: 3 NEW (-Wmisleading-indentation in new files ao_state_gate.cpp:187, light_tree_reference.cpp:56, shadow_catcher_gate.cpp:147) = finding; 2 GONE (not recompiled); launching run_validation
+[07:24:55] b2 Linux build exit=0 19s
+[07:24:56] b2 no-op proof: exit=0 compile/link lines=0
+[07:24:56] START w8-s-nodes_render
+[07:24:56] START w8-light-tree
+[07:24:56] START w8-environment-gate
+[07:24:56] START w8-all-lanes
+[07:24:56] START w8-nodes-gate
+[07:24:56] START w8v-render
+[07:24:56] START w8-glass-superset
+[07:25:43] END w8v-render exit=0 47s
+[07:25:43] START w8v-device
+[07:25:45] END w8v-device exit=0 2s
+[07:25:45] START w8v-camera
+[07:25:49] END w8v-camera exit=0 4s
+[07:25:49] START w8v-background
+[07:26:01] END w8v-background exit=0 12s
+[07:26:01] START w8v-closest
+[07:26:12] END w8v-closest exit=0 11s
+[07:26:12] START w8v-svm_world
+[07:26:56] END w8-s-nodes_render exit=0 120s
+[07:26:56] START w8-s-principled_render
+[07:27:01] END w8v-svm_world exit=0 49s
+[07:27:01] START w8v-svm_surface
+[07:27:14] END w8v-svm_surface exit=0 13s
+[07:27:14] START w8v-attribute
+[07:27:53] END w8v-attribute exit=0 39s
+[07:27:53] START w8v-image
+[07:28:14] END w8-environment-gate exit=0 198s
+[07:28:14] START w8-camera-gate
+[07:28:19] END w8-camera-gate exit=0 5s
+[07:28:19] START w8-camera-motion
+[07:28:30] END w8-camera-motion exit=0 11s
+[07:28:30] START w8-envelope-environment
+[07:28:33] END w8v-image exit=0 40s
+[07:28:33] START w8v-image_file
+[07:28:34] END w8v-image_file exit=0 1s
+[07:28:34] START w8v-normal
+[07:28:57] END w8-s-principled_render exit=0 121s
+[07:28:57] START w8-s-microfacet_render
+[07:29:25] END w8v-normal exit=0 51s
+[07:29:25] START w8v-render-attributes
+[07:30:16] END w8v-render-attributes exit=0 51s
+[07:30:16] START w8v-render-images
+[07:30:36] END w8-s-microfacet_render exit=0 99s
+[07:30:36] START w8-s-render-static
+[07:30:37] END w8-glass-superset exit=0 341s
+[07:30:37] START w8-principled-superset
+[07:31:03] END w8-light-tree exit=1 367s
+[07:31:03] START w8-shadow-catcher
+[07:31:12] END w8v-render-images exit=0 56s
+[07:31:12] START w8v-render-normals
+[07:32:11] END w8-s-render-static exit=0 95s
+[07:32:11] START w8-s-render-motion-0
+[07:32:15] END w8v-render-normals exit=0 63s
+[07:32:15] START w8v-nodes_svm
+[07:34:04] checkpoint written (76e6f4466296fddd)
+[07:34:04] END w8-s-render-motion-0 exit=0 113s
+[07:34:05] START w8-s-render-motion-1
+[07:34:23] light-tree replays: 0,1 PASS; 2 FAIL (known item 17, readback cmd 51); 3-6 run by hand: 4/4 PASS
+[07:34:37] END w8-envelope-environment exit=0 367s
+[07:34:37] slot8_F DONE
+[07:34:48] END w8-shadow-catcher exit=0 225s
+[07:34:48] START w8-ao-state
+[07:35:43] END w8-s-render-motion-1 exit=0 98s
+[07:35:43] START w8-s-render-motion-2
+[07:36:52] END w8-ao-state exit=0 124s
+[07:36:52] START w8-ao-render
+[07:37:24] END w8-s-render-motion-2 exit=0 101s
+[07:37:24] START w8-s-render-motion-3
+[07:37:57] android gate build android-arm64 run 1 exit=0 781s
+[07:38:30] review android-arm64 run 1 exit=0
+[07:38:50] END w8-s-render-motion-3 exit=0 86s
+[07:38:50] START w8-s-render-motion-4
+[07:38:58] END w8-ao-render exit=0 126s
+[07:38:59] START w8-oracle-light-tree_lamps-and-mesh-lights
+[07:39:13] END w8v-nodes_svm exit=0 418s
+[07:39:13] START w8v-nodes_world
+[07:39:46] END w8-oracle-light-tree_lamps-and-mesh-lights exit=0 47s
+[07:39:46] START w8-compare-light-tree_lamps-and-mesh-lights
+[07:39:46] END w8-compare-light-tree_lamps-and-mesh-lights exit=0 0s
+[07:39:46] START w8-oracle-light-tree_light-linking
+[07:40:24] END w8-all-lanes exit=1 928s
+[07:40:24] START w8-host-gate
+[07:40:24] END w8-s-render-motion-4 exit=0 94s
+[07:40:24] START w8-s-render-motion-5
+[07:40:32] END w8-oracle-light-tree_light-linking exit=0 46s
+[07:40:32] START w8-compare-light-tree_light-linking
+[07:40:32] END w8-compare-light-tree_light-linking exit=0 0s
+[07:40:32] START w8-oracle-shadow-catcher_catcher-point-light
+[07:41:03] END w8-oracle-shadow-catcher_catcher-point-light exit=0 31s
+[07:41:03] START w8-compare-shadow-catcher_catcher-point-light
+[07:41:03] END w8-compare-shadow-catcher_catcher-point-light exit=0 0s
+[07:41:03] START w8-oracle-shadow-catcher_catcher-approximate
+[07:41:13] END w8-host-gate exit=1 49s
+[07:41:13] START w8-dotnet-test
+[07:41:34] END w8-oracle-shadow-catcher_catcher-approximate exit=0 31s
+[07:41:34] START w8-compare-shadow-catcher_catcher-approximate
+[07:41:34] END w8-compare-shadow-catcher_catcher-approximate exit=0 0s
+[07:41:34] START w8-oracle-ao_fast-gi-additive
+[07:42:00] END w8-principled-superset exit=0 683s
+[07:42:00] START w8-nodes-render-superset
+[07:42:03] END w8-s-render-motion-5 exit=0 99s
+[07:42:03] START w8-s-render-motion-6
+[07:42:03] END w8-oracle-ao_fast-gi-additive exit=0 29s
+[07:42:03] START w8-compare-ao_fast-gi-additive
+[07:42:03] END w8-compare-ao_fast-gi-additive exit=0 0s
+[07:42:03] START w8-oracle-ao_ao-node
+[07:42:07] END w8v-nodes_world exit=0 174s
+[07:42:36] END w8-oracle-ao_ao-node exit=0 33s
+[07:42:36] START w8-compare-ao_ao-node
+[07:42:36] END w8-compare-ao_ao-node exit=0 0s
+[07:42:36] START w8-envelope-m2
+[07:43:20] END w8-s-render-motion-6 exit=0 77s
+[07:43:20] START w8-s-render-motion-7
+[07:44:30] END w8-dotnet-test exit=0 197s
+[07:44:30] START w8-dotnet-test-debug
+[07:44:37] FINDINGS: all-lanes volume_boundary_gate world-regression fails (volume_gate rejection 9 expects 'optional volume integration', m2-shadowcatcher's volume.cpp now says 'WebGPU shadow catcher with volumes not implemented'); host gate managed-reload aborts (ImageModes GetBoolean on fileReading='development-only', pre-existing on 5aa565a2). Slot R runs the remainder.
+[07:44:37] START w8-al-volume_gate
+[07:44:47] END w8-s-render-motion-7 exit=0 87s
+[07:44:47] START w8-s-volume-absorption
+[07:45:37] END w8-al-volume_gate exit=1 60s
+[07:45:37] START w8-al-glass_gate
+[07:47:01] END w8-s-volume-absorption exit=0 134s
+[07:47:01] START w8-s-volume-isotropic
+[07:47:48] END w8-dotnet-test-debug exit=0 198s
+[07:47:48] slot8_A DONE
+[07:48:38] END w8-nodes-render-superset exit=0 398s
+[07:48:38] START w8-abi-dump
+[07:49:47] END w8-s-volume-isotropic exit=0 166s
+[07:49:47] START w8-s-volume-forward
+[07:49:51] END w8-abi-dump exit=0 73s
+[07:49:51] START w8-transparent-dump
+[07:50:35] END w8-transparent-dump exit=0 44s
+[07:50:35] START w8-envelope-abi
+[07:51:03] android gate build android-x64 run 1 exit=0 753s
+[07:51:34] review android-x64 run 1 exit=0
+[07:52:20] END w8-s-volume-forward exit=0 153s
+[07:52:20] START w8-s-volume-backward
+[07:53:45] END w8-envelope-abi exit=0 190s
+[07:53:45] START w8-envelope-materials
+[07:53:59] END w8-al-glass_gate exit=0 502s
+[07:53:59] START w8-al-camera_motion_gate
+[07:54:38] END w8-s-volume-backward exit=0 138s
+[07:54:38] START w8-s-closed-single
+[07:57:48] END w8-s-closed-single exit=0 190s
+[07:57:48] START w8-s-closed-overlap
+[07:58:28] android host build android-x64 run 1 exit=0 414s
+[07:59:00] coordinator: main fast-forwarded 5aa565a2 -> 139b24f0 (.gitattributes only); checkpoints/seal diff against 139b24f0 from now
+[07:59:00] END w8-al-camera_motion_gate exit=0 301s
+[07:59:00] START w8-host-gate-continue
+[08:00:59] END w8-envelope-m2 exit=0 1103s
+[08:00:59] slot8_N DONE
+[08:01:38] END w8-host-gate-continue exit=0 158s
+[08:01:38] slot8_R DONE
+[08:02:13] END w8-s-closed-overlap exit=0 265s
+[08:02:13] START w8-s-closed-inside
+[08:03:16] END w8-envelope-materials exit=0 571s
+[08:03:16] START w8-libm-linux
+[08:03:42] END w8-libm-linux exit=0 26s
+[08:03:42] START w8-reference-export
+[08:04:55] android host build android-arm64 run 1 exit=0 387s
+[08:04:55] android builds run 1 DONE
+[08:06:07] END w8-s-closed-inside exit=0 234s
+[08:06:07] START w8-gltf-sample-write
+[08:06:07] END w8-gltf-sample-write exit=0 0s
+[08:06:07] START w8-gltf-sample
+[08:06:33] END w8-gltf-sample exit=0 26s
+[08:06:33] START w8-gltf-plane-write
+[08:06:33] END w8-gltf-plane-write exit=0 0s
+[08:06:33] START w8-gltf-plane
+[08:07:34] END w8-gltf-plane exit=0 61s
+[08:07:34] START w8-bench-bundle
+[08:07:36] END w8-bench-bundle exit=0 2s
+[08:07:36] START w8-oracle-starters
+[08:08:08] END w8-reference-export exit=0 266s
+[08:08:08] START w8-triangle
+[08:09:30] END w8-nodes-gate exit=0 2674s
+[08:09:30] START w8-principled-gate
+[08:09:48] START w8-principled-replay
+[08:10:07] END w8-triangle exit=0 119s
+[08:10:07] START w8-shadow-terminator
+[08:10:28] END w8-principled-replay exit=0 40s
+[08:10:28] START w8-nodes-replay
+[08:11:07] END w8-nodes-replay exit=0 39s
+[08:11:07] slot8_D DONE
+[08:11:33] END w8-oracle-starters exit=0 237s
+[08:11:33] START w8-oracle-bench
+[08:11:56] END w8-shadow-terminator exit=0 109s
+[08:11:56] START w8-surface
+[08:12:08] END w8-surface exit=0 12s
+[08:12:08] slot8_C DONE
+[08:12:18] checkpoint written (76e6f4466296fddd)
+[08:12:34] END w8-oracle-bench exit=0 61s
+[08:12:34] START w8-oracle-control
+[08:13:33] END w8-oracle-control exit=0 59s
+[08:13:33] START w8-compare-selftest
+[08:13:33] END w8-compare-selftest exit=0 0s
+[08:13:33] START w8-oracle-hdri
+[08:15:03] END w8-oracle-hdri exit=0 90s
+[08:15:03] START w8-gltf-bench
+[08:15:16] START w8-macmp-diffuse-triangle
+[08:15:16] END w8-macmp-diffuse-triangle exit=0 0s
+[08:15:16] START w8-macmp-glass-and-area-light
+[08:15:16] END w8-macmp-glass-and-area-light exit=0 0s
+[08:15:16] START w8-macmp-glossy-sphere-point-light
+[08:15:16] END w8-macmp-glossy-sphere-point-light exit=0 0s
+[08:15:16] START w8-macmp-textured-plane
+[08:15:16] END w8-macmp-textured-plane exit=0 0s
+[08:15:16] START w8-macmp-bench
+[08:15:16] END w8-macmp-bench exit=1 0s
+[08:15:16] START w8-macmp-hdri
+[08:15:16] END w8-macmp-hdri exit=1 0s
+[08:15:16] slot8_M DONE
+[08:16:00] END w8-gltf-bench exit=0 57s
+[08:16:00] START w8-compare-diffuse-triangle
+[08:16:00] END w8-compare-diffuse-triangle exit=2 0s
+[08:16:00] START w8-compare-glass-and-area-light
+[08:16:00] END w8-compare-glass-and-area-light exit=2 0s
+[08:16:00] START w8-compare-glossy-sphere-point-light
+[08:16:00] END w8-compare-glossy-sphere-point-light exit=2 0s
+[08:16:00] START w8-compare-textured-plane
+[08:16:00] END w8-compare-textured-plane exit=2 0s
+[08:16:00] START w8-compare-control
+[08:16:00] END w8-compare-control exit=0 0s
+[08:16:00] START w8-compare-bench
+[08:16:00] END w8-compare-bench exit=0 0s
+[08:16:00] START w8-compare-hdri
+[08:16:01] END w8-compare-hdri exit=0 1s
+[08:16:01] START w8-envelope-bench-hdri
+[08:18:02] END w8-envelope-bench-hdri exit=0 121s
+[08:18:02] slot8_E DONE
+[08:19:02] END w8-principled-gate exit=0 572s
+[08:19:02] START w8-tier-gate
+[08:19:20] END w8-tier-gate exit=0 18s
+[08:19:20] START w8-transparent-shadow
+[08:21:31] END w8-transparent-shadow exit=0 131s
+[08:21:31] START w8-sim650-nodes-world
+[08:21:31] END w8-sim650-nodes-world exit=1 0s
+[08:21:31] START w8-sim650-glass-render
+[08:22:01] END w8-sim650-glass-render exit=0 30s
+[08:22:01] START w8-size-guard
+[08:23:00] END w8-size-guard exit=0 59s
+[08:23:00] START w8-triangle-sample
+[08:23:12] END w8-triangle-sample exit=0 12s
+[08:23:12] START w8-svm-surface
+[08:23:20] END w8-svm-surface exit=0 8s
+[08:23:20] START w8-svm-world
+[08:23:45] END w8-svm-world exit=0 25s
+[08:23:45] START w8-probe-normal
+[08:24:13] END w8-probe-normal exit=0 28s
+[08:24:13] START w8-probe-attribute
+[08:24:30] END w8-probe-attribute exit=0 17s
+[08:24:30] START w8-probe-image
+[08:24:54] END w8-probe-image exit=0 24s
+[08:24:54] START w8-probe-image_file
+[08:24:55] END w8-probe-image_file exit=0 1s
+[08:24:55] START w8-probe-shader_data
+[08:24:58] START w8-compare2-diffuse-triangle
+[08:24:58] END w8-compare2-diffuse-triangle exit=0 0s
+[08:24:58] START w8-compare2-glass-and-area-light
+[08:24:58] END w8-compare2-glass-and-area-light exit=0 0s
+[08:24:58] START w8-compare2-glossy-sphere-point-light
+[08:24:58] END w8-compare2-glossy-sphere-point-light exit=0 0s
+[08:24:58] START w8-compare2-textured-plane
+[08:24:58] END w8-compare2-textured-plane exit=0 0s
+[08:25:00] END w8-probe-shader_data exit=0 5s
+[08:25:00] slot8_B DONE
+[08:25:00] run_validation ALL DONE
+[08:25:26] PART 1a validation complete (findings recorded); installing m2-mnee (part 1b)
+[08:25:33] m2-mnee installed (39 files; new files git add -N; first attempt stopped at a missing folder, re-run idempotent)
+[08:26:14] DEVICE.md open items 21-26 (findings) added before 1b slots; m2-mnee ledger reports copied to native/work/m2-mnee/ledger
+[08:28:04] b0 Linux build exit=0 145s
+[08:35:13] b4 Linux build exit=0 429s
+[08:35:34] b5 Linux build exit=0 20s
+[08:35:34] b5 no-op proof (1b): compile/link lines=0
+[08:35:41] render_replay rebuilt (1b) exit=0
+[08:35:41] START b8-dotnet-build
+[08:35:45] END b8-dotnet-build exit=0 4s
+[08:35:45] START b8-dotnet-build-debug
+[08:35:47] END b8-dotnet-build-debug exit=0 2s
+[08:35:47] START b8v-render
+[08:35:47] START b8-al-volume_gate
+[08:35:47] START b8-nodes-gate
+[08:35:47] START b8-glass-superset
+[08:35:47] START b8-s-nodes_render
+[08:35:47] START b8-all-lanes
+[08:35:47] START b8-light-tree
+[08:35:47] START b8-environment-gate
+[08:35:48] END b8-environment-gate exit=1 1s
+[08:35:48] START b8-camera-gate
+[08:35:49] checkpoint written (bb3084230d063d00)
+[08:35:53] END b8-camera-gate exit=0 5s
+[08:35:53] START b8-camera-motion
+[08:36:00] END b8v-render exit=1 13s
+[08:36:00] START b8v-device
+[08:36:02] END b8v-device exit=0 2s
+[08:36:02] START b8v-camera
+[08:36:03] END b8-camera-motion exit=0 10s
+[08:36:03] START b8-envelope-environment
+[08:36:06] END b8v-camera exit=0 4s
+[08:36:06] START b8v-background
+[08:36:06] END b8-envelope-environment exit=1 3s
+[08:36:06] slot1b_F DONE
+[08:36:09] END b8v-background exit=1 3s
+[08:36:09] START b8v-closest
+[08:36:10] END b8-glass-superset exit=1 23s
+[08:36:11] START b8-principled-superset
+[08:36:17] END b8v-closest exit=0 8s
+[08:36:17] START b8v-svm_world
+[08:36:20] END b8v-svm_world exit=1 3s
+[08:36:20] START b8v-svm_surface
+[08:36:23] END b8-s-nodes_render exit=0 36s
+[08:36:23] START b8-s-principled_render
+[08:36:34] END b8v-svm_surface exit=0 14s
+[08:36:34] START b8v-attribute
+[08:36:48] END b8-al-volume_gate exit=1 61s
+[08:36:48] START b8-al-glass_gate
+[08:37:00] END b8-principled-superset exit=1 49s
+[08:37:00] START b8-nodes-render-superset
+[08:37:04] END b8v-attribute exit=0 30s
+[08:37:04] START b8v-image
+[08:37:04] END b8-light-tree exit=1 77s
+[08:37:04] START b8-shadow-catcher
+[08:37:16] END b8-s-principled_render exit=0 53s
+[08:37:16] START b8-s-microfacet_render
+[08:37:25] END b8-all-lanes exit=1 98s
+[08:37:25] START b8-host-gate
+[08:37:34] END b8-nodes-render-superset exit=1 34s
+[08:37:34] START b8-abi-dump
+[08:37:37] END b8-abi-dump exit=1 3s
+[08:37:37] START b8-transparent-dump
+[08:37:38] END b8-s-microfacet_render exit=0 22s
+[08:37:38] START b8-s-render-static
+[08:37:41] END b8v-image exit=0 37s
+[08:37:41] START b8v-image_file
+[08:37:42] END b8v-image_file exit=0 1s
+[08:37:42] START b8v-normal
+[08:37:53] END b8-s-render-static exit=0 15s
+[08:37:53] START b8-s-render-motion-0
+[08:37:55] END b8-shadow-catcher exit=1 51s
+[08:37:55] START b8-ao-state
+[08:37:57] END b8-transparent-dump exit=1 20s
+[08:37:57] START b8-envelope-abi
+[08:38:09] END b8-envelope-abi exit=0 12s
+[08:38:09] START b8-envelope-materials
+[08:38:12] END b8-s-render-motion-0 exit=0 19s
+[08:38:12] START b8-s-render-motion-1
+[08:38:13] END b8-host-gate exit=1 48s
+[08:38:13] START b8-dotnet-test
+[08:38:33] END b8v-normal exit=0 51s
+[08:38:33] START b8v-render-attributes
+[08:38:33] END b8-s-render-motion-1 exit=0 21s
+[08:38:33] START b8-s-render-motion-2
+[08:38:42] END b8-al-glass_gate exit=1 114s
+[08:38:42] START b8-al-camera_motion_gate
+[08:38:49] END b8v-render-attributes exit=1 16s
+[08:38:49] START b8v-render-images
+[08:38:54] END b8-s-render-motion-2 exit=0 21s
+[08:38:54] START b8-s-render-motion-3
+[08:39:12] END b8v-render-images exit=1 23s
+[08:39:12] START b8v-render-normals
+[08:39:13] END b8-s-render-motion-3 exit=0 19s
+[08:39:13] START b8-s-render-motion-4
+[08:39:33] END b8-s-render-motion-4 exit=0 20s
+[08:39:33] START b8-s-render-motion-5
+[08:39:38] END b8-dotnet-test exit=2 85s
+[08:39:38] START b8-dotnet-test-debug
+[08:39:38] END b8-al-camera_motion_gate exit=1 56s
+[08:39:38] START b8-host-gate-continue
+[08:39:45] END b8v-render-normals exit=1 33s
+[08:39:45] START b8v-nodes_svm
+[08:39:52] END b8-s-render-motion-5 exit=0 19s
+[08:39:52] START b8-s-render-motion-6
+[08:40:04] END b8-ao-state exit=0 129s
+[08:40:04] START b8-ao-render
+[08:40:15] END b8-s-render-motion-6 exit=0 23s
+[08:40:15] START b8-s-render-motion-7
+[08:40:25] END b8-envelope-materials exit=0 136s
+[08:40:25] START b8-libm-linux
+[08:40:29] END b8-ao-render exit=1 25s
+[08:40:29] START b8-mnee
+[08:40:35] END b8-host-gate-continue exit=1 57s
+[08:40:35] slot1b_R DONE
+[08:40:36] END b8-s-render-motion-7 exit=0 21s
+[08:40:36] START b8-s-volume-absorption
+[08:40:55] END b8-libm-linux exit=0 30s
+[08:40:55] START b8-reference-export
+[08:40:57] END b8-s-volume-absorption exit=0 21s
+[08:40:57] START b8-s-volume-isotropic
+[08:41:08] END b8-dotnet-test-debug exit=2 90s
+[08:41:08] slot1b_A DONE
+[08:41:19] END b8-s-volume-isotropic exit=0 22s
+[08:41:19] START b8-s-volume-forward
+[08:41:43] END b8-s-volume-forward exit=0 24s
+[08:41:43] START b8-s-volume-backward
+[08:42:06] END b8-s-volume-backward exit=0 23s
+[08:42:06] START b8-s-closed-single
+[08:42:22] END b8-s-closed-single exit=0 16s
+[08:42:22] START b8-s-closed-overlap
+[08:42:46] END b8-s-closed-overlap exit=0 24s
+[08:42:46] START b8-s-closed-inside
+[08:43:04] END b8-nodes-gate exit=1 437s
+[08:43:04] START b8-principled-gate
+[08:43:17] END b8-s-closed-inside exit=0 31s
+[08:43:17] START b8-gltf-sample-write
+[08:43:18] END b8-gltf-sample-write exit=0 1s
+[08:43:18] START b8-gltf-sample
+[08:43:20] END b8-mnee exit=1 171s
+[08:43:20] START b8-oracle-light-tree_lamps-and-mesh-lights
+[08:43:21] END b8-gltf-sample exit=1 3s
+[08:43:21] START b8-gltf-plane-write
+[08:43:21] END b8-gltf-plane-write exit=0 0s
+[08:43:21] START b8-gltf-plane
+[08:43:24] END b8-gltf-plane exit=1 3s
+[08:43:24] START b8-bench-bundle
+[08:43:25] END b8-oracle-light-tree_lamps-and-mesh-lights exit=0 5s
+[08:43:25] START b8-compare-light-tree_lamps-and-mesh-lights
+[08:43:25] END b8-compare-light-tree_lamps-and-mesh-lights exit=2 0s
+[08:43:25] START b8-oracle-light-tree_light-linking
+[08:43:26] END b8-bench-bundle exit=0 2s
+[08:43:26] START b8-oracle-starters
+[08:43:28] END b8-oracle-light-tree_light-linking exit=0 3s
+[08:43:28] START b8-compare-light-tree_light-linking
+[08:43:29] END b8-compare-light-tree_light-linking exit=2 1s
+[08:43:29] START b8-oracle-shadow-catcher_catcher-point-light
+[08:43:47] END b8-reference-export exit=1 172s
+[08:43:47] START b8-triangle
+[08:43:52] END b8-oracle-shadow-catcher_catcher-point-light exit=0 23s
+[08:43:52] START b8-compare-shadow-catcher_catcher-point-light
+[08:43:52] END b8-compare-shadow-catcher_catcher-point-light exit=2 0s
+[08:43:52] START b8-oracle-shadow-catcher_catcher-approximate
+[08:43:57] END b8-oracle-shadow-catcher_catcher-approximate exit=0 5s
+[08:43:57] START b8-compare-shadow-catcher_catcher-approximate
+[08:43:57] END b8-compare-shadow-catcher_catcher-approximate exit=2 0s
+[08:43:57] START b8-oracle-ao_fast-gi-additive
+[08:44:04] 1b run STOPPED by me: 'Unterminated WGSL feature marker' in light-tree/SC/AO/MNEE gates (my build_cycles.py composition suspected); killed my own runner process groups
+[08:44:58] FIXED my reconciliation error: wavefront_light_eval.wgsl integrate_suns lost one //#endif when the LIGHT_TREE and MNEE regions were joined (merge-file had factored the shared //#endif out of the conflict block). All shader files' markers now balanced.
+[08:45:07] removed the invalid first 1b run outputs (b8-*, oracles-1b; all made with the broken surface module; small, logs kept in validation/aborted-1b); DEVICE.md item 26 updated; relaunching 1b
+[08:45:37] b0 Linux build exit=0 13s
+[08:46:02] b4 Linux build exit=0 24s
+[08:46:23] b5 Linux build exit=0 20s
+[08:46:23] b5 no-op proof (1b): compile/link lines=0
+[08:46:30] render_replay rebuilt (1b) exit=0
+[08:46:30] START b8-dotnet-build
+[08:46:31] END b8-dotnet-build exit=0 1s
+[08:46:32] START b8-dotnet-build-debug
+[08:46:33] END b8-dotnet-build-debug exit=0 1s
+[08:46:33] START b8-al-volume_gate
+[08:46:33] START b8v-render
+[08:46:33] START b8-all-lanes
+[08:46:33] START b8-nodes-gate
+[08:46:33] START b8-glass-superset
+[08:46:33] START b8-s-nodes_render
+[08:46:33] START b8-light-tree
+[08:46:33] START b8-environment-gate
+[08:47:11] END b8v-render exit=0 38s
+[08:47:11] START b8v-device
+[08:47:13] END b8v-device exit=0 2s
+[08:47:13] START b8v-camera
+[08:47:17] END b8v-camera exit=0 4s
+[08:47:17] START b8v-background
+[08:47:26] END b8v-background exit=0 9s
+[08:47:26] START b8v-closest
+[08:47:36] END b8v-closest exit=0 10s
+[08:47:36] START b8v-svm_world
+[08:47:36] END b8-al-volume_gate exit=1 63s
+[08:47:36] START b8-al-glass_gate
+[08:48:17] END b8-s-nodes_render exit=0 104s
+[08:48:17] START b8-s-principled_render
+[08:48:19] END b8v-svm_world exit=0 43s
+[08:48:19] START b8v-svm_surface
+[08:48:32] END b8v-svm_surface exit=0 13s
+[08:48:32] START b8v-attribute
+[08:49:17] END b8v-attribute exit=0 45s
+[08:49:17] START b8v-image
+[08:49:58] END b8-environment-gate exit=0 205s
+[08:49:58] START b8-camera-gate
+[08:50:03] END b8-camera-gate exit=0 5s
+[08:50:03] START b8-camera-motion
+[08:50:03] END b8v-image exit=0 46s
+[08:50:03] START b8v-image_file
+[08:50:04] END b8v-image_file exit=0 1s
+[08:50:04] START b8v-normal
+[08:50:15] END b8-camera-motion exit=0 12s
+[08:50:15] START b8-envelope-environment
+[08:50:27] END b8-s-principled_render exit=0 130s
+[08:50:27] START b8-s-microfacet_render
+[08:50:57] END b8v-normal exit=0 53s
+[08:50:57] START b8v-render-attributes
+[08:51:47] END b8v-render-attributes exit=0 50s
+[08:51:47] START b8v-render-images
+[08:52:01] android gate build android-arm64 run 2 exit=0 328s
+[08:52:05] END b8-s-microfacet_render exit=0 98s
+[08:52:05] START b8-s-render-static
+[08:52:24] END b8-glass-superset exit=0 351s
+[08:52:24] START b8-principled-superset
+[08:52:39] review android-arm64 run 2 exit=0
+[08:52:42] END b8v-render-images exit=0 55s
+[08:52:42] START b8v-render-normals
+[08:52:51] END b8-light-tree exit=1 378s
+[08:52:51] START b8-shadow-catcher
+[08:53:31] END b8-s-render-static exit=0 86s
+[08:53:31] START b8-s-render-motion-0
+[08:53:48] END b8v-render-normals exit=0 66s
+[08:53:48] START b8v-nodes_svm
+[08:55:05] END b8-s-render-motion-0 exit=0 94s
+[08:55:05] START b8-s-render-motion-1
+[08:56:35] END b8-envelope-environment exit=0 380s
+[08:56:35] slot1b_F DONE
+[08:56:41] END b8-shadow-catcher exit=0 230s
+[08:56:41] START b8-ao-state
+[08:56:47] END b8-s-render-motion-1 exit=0 102s
+[08:56:47] START b8-s-render-motion-2
+[08:57:21] END b8-al-glass_gate exit=0 585s
+[08:57:21] START b8-al-camera_motion_gate
+[08:58:23] END b8-s-render-motion-2 exit=0 96s
+[08:58:23] START b8-s-render-motion-3
+[08:58:53] END b8-ao-state exit=0 132s
+[08:58:53] START b8-ao-render
+[08:59:52] END b8-s-render-motion-3 exit=0 89s
+[08:59:52] START b8-s-render-motion-4
+[09:01:01] END b8v-nodes_svm exit=0 433s
+[09:01:01] START b8v-nodes_world
+[09:01:12] END b8-ao-render exit=0 139s
+[09:01:12] START b8-mnee
+[09:01:16] END b8-s-render-motion-4 exit=0 84s
+[09:01:16] START b8-s-render-motion-5
+[09:01:56] END b8-all-lanes exit=1 923s
+[09:01:56] START b8-host-gate
+[09:02:39] END b8-s-render-motion-5 exit=0 83s
+[09:02:39] START b8-s-render-motion-6
+[09:02:48] END b8-host-gate exit=1 52s
+[09:02:48] START b8-dotnet-test
+[09:02:49] END b8-al-camera_motion_gate exit=0 328s
+[09:02:49] START b8-host-gate-continue
+[09:03:53] END b8v-nodes_world exit=0 172s
+[09:03:53] START b8-principled-replay
+[09:04:02] END b8-s-render-motion-6 exit=0 83s
+[09:04:02] START b8-s-render-motion-7
+[09:04:16] END b8-principled-superset exit=0 712s
+[09:04:16] START b8-nodes-render-superset
+[09:04:49] END b8-principled-replay exit=0 56s
+[09:04:49] START b8-nodes-replay
+[09:05:25] END b8-mnee exit=0 253s
+[09:05:25] START b8-oracle-light-tree_lamps-and-mesh-lights
+[09:05:35] END b8-s-render-motion-7 exit=0 93s
+[09:05:35] START b8-s-volume-absorption
+[09:05:40] END b8-nodes-replay exit=0 51s
+[09:05:40] slot1b_D DONE
+[09:05:43] END b8-host-gate-continue exit=0 174s
+[09:05:43] slot1b_R DONE
+[09:06:00] android gate build android-x64 run 2 exit=0 801s
+[09:06:08] END b8-oracle-light-tree_lamps-and-mesh-lights exit=0 43s
+[09:06:08] START b8-compare-light-tree_lamps-and-mesh-lights
+[09:06:08] END b8-compare-light-tree_lamps-and-mesh-lights exit=0 0s
+[09:06:08] START b8-oracle-light-tree_light-linking
+[09:06:17] END b8-dotnet-test exit=0 209s
+[09:06:17] START b8-dotnet-test-debug
+[09:06:31] review android-x64 run 2 exit=0
+[09:06:49] checkpoint written (0ff450c01b4ea7a5)
+[09:06:51] END b8-oracle-light-tree_light-linking exit=0 43s
+[09:06:51] START b8-compare-light-tree_light-linking
+[09:06:51] END b8-compare-light-tree_light-linking exit=0 0s
+[09:06:51] START b8-oracle-shadow-catcher_catcher-point-light
+[09:07:10] END b8-s-volume-absorption exit=0 95s
+[09:07:10] START b8-s-volume-isotropic
+[09:07:21] END b8-oracle-shadow-catcher_catcher-point-light exit=0 30s
+[09:07:21] START b8-compare-shadow-catcher_catcher-point-light
+[09:07:21] END b8-compare-shadow-catcher_catcher-point-light exit=0 0s
+[09:07:21] START b8-oracle-shadow-catcher_catcher-approximate
+[09:07:50] END b8-oracle-shadow-catcher_catcher-approximate exit=0 29s
+[09:07:50] START b8-compare-shadow-catcher_catcher-approximate
+[09:07:50] END b8-compare-shadow-catcher_catcher-approximate exit=0 0s
+[09:07:50] START b8-oracle-ao_fast-gi-additive
+[09:08:16] END b8-oracle-ao_fast-gi-additive exit=0 26s
+[09:08:16] START b8-compare-ao_fast-gi-additive
+[09:08:17] END b8-compare-ao_fast-gi-additive exit=0 1s
+[09:08:17] START b8-oracle-ao_ao-node
+[09:08:48] END b8-oracle-ao_ao-node exit=0 31s
+[09:08:48] START b8-compare-ao_ao-node
+[09:08:48] END b8-compare-ao_ao-node exit=0 0s
+[09:08:48] START b8-oracle-mnee_glass-sphere-caustic
+[09:09:24] END b8-dotnet-test-debug exit=0 187s
+[09:09:24] slot1b_A DONE
+[09:09:28] END b8-s-volume-isotropic exit=0 138s
+[09:09:28] START b8-s-volume-forward
+[09:09:55] END b8-oracle-mnee_glass-sphere-caustic exit=0 67s
+[09:09:55] START b8-compare-mnee_glass-sphere-caustic
+[09:09:55] END b8-compare-mnee_glass-sphere-caustic exit=0 0s
+[09:09:55] START b8-envelope-m2
+[09:10:31] END b8-nodes-render-superset exit=0 375s
+[09:10:31] START b8-abi-dump
+[09:11:20] android host build android-x64 run 2 exit=0 289s
+[09:11:34] END b8-abi-dump exit=0 63s
+[09:11:34] START b8-transparent-dump
+[09:11:35] END b8-s-volume-forward exit=0 127s
+[09:11:35] START b8-s-volume-backward
+[09:12:15] END b8-transparent-dump exit=0 41s
+[09:12:15] START b8-envelope-abi
+[09:13:21] android host build android-arm64 run 2 exit=0 121s
+[09:13:21] android builds run 2 DONE
+[09:13:42] END b8-s-volume-backward exit=0 127s
+[09:13:42] START b8-s-closed-single
+[09:15:06] END b8-envelope-abi exit=0 171s
+[09:15:06] START b8-envelope-materials
+[09:16:09] END b8-s-closed-single exit=0 147s
+[09:16:09] START b8-s-closed-overlap
+[09:19:44] END b8-s-closed-overlap exit=0 215s
+[09:19:44] START b8-s-closed-inside
+[09:23:09] END b8-s-closed-inside exit=0 205s
+[09:23:09] START b8-gltf-sample-write
+[09:23:09] END b8-gltf-sample-write exit=0 0s
+[09:23:09] START b8-gltf-sample
+[09:23:28] END b8-envelope-materials exit=0 502s
+[09:23:28] START b8-libm-linux
+[09:23:37] END b8-gltf-sample exit=0 28s
+[09:23:37] START b8-gltf-plane-write
+[09:23:38] END b8-gltf-plane-write exit=0 1s
+[09:23:38] START b8-gltf-plane
+[09:23:38] END b8-gltf-plane exit=1 0s
+[09:23:38] START b8-bench-bundle
+[09:23:38] END b8-bench-bundle exit=1 0s
+[09:23:38] START b8-oracle-starters
+[09:23:52] END b8-libm-linux exit=0 24s
+[09:23:52] START b8-reference-export
+[09:23:52] END b8-reference-export exit=1 0s
+[09:23:52] START b8-triangle
+[09:26:00] END b8-triangle exit=0 128s
+[09:26:00] START b8-shadow-terminator
+[09:27:53] END b8-shadow-terminator exit=0 113s
+[09:27:53] START b8-surface
+[09:28:05] END b8-surface exit=0 12s
+[09:28:05] slot1b_C DONE
+[09:28:16] END b8-envelope-m2 exit=0 1101s
+[09:28:16] slot1b_N DONE
+[09:28:38] END b8-oracle-starters exit=0 300s
+[09:28:38] START b8-oracle-bench
+[09:29:29] END b8-nodes-gate exit=0 2576s
+[09:29:29] START b8-principled-gate
+[09:29:36] END b8-oracle-bench exit=0 58s
+[09:29:36] START b8-oracle-control
+[09:30:35] END b8-oracle-control exit=0 59s
+[09:30:35] START b8-compare-selftest
+[09:30:35] END b8-compare-selftest exit=0 0s
+[09:30:35] START b8-oracle-hdri
+[09:32:05] END b8-oracle-hdri exit=0 90s
+[09:32:05] START b8-gltf-bench
+[09:32:13] START b8-macmp-diffuse-triangle
+[09:32:13] END b8-macmp-diffuse-triangle exit=0 0s
+[09:32:13] START b8-macmp-glass-and-area-light
+[09:32:13] END b8-macmp-glass-and-area-light exit=0 0s
+[09:32:13] START b8-macmp-glossy-sphere-point-light
+[09:32:13] END b8-macmp-glossy-sphere-point-light exit=0 0s
+[09:32:13] START b8-macmp-textured-plane
+[09:32:14] END b8-macmp-textured-plane exit=0 1s
+[09:32:14] START b8-macmp-bench
+[09:32:14] END b8-macmp-bench exit=1 0s
+[09:32:14] START b8-macmp-hdri
+[09:32:14] END b8-macmp-hdri exit=1 0s
+[09:32:14] slot1b_M DONE
+[09:33:02] END b8-gltf-bench exit=0 57s
+[09:33:02] START b8-compare-diffuse-triangle
+[09:33:02] END b8-compare-diffuse-triangle exit=0 0s
+[09:33:02] START b8-compare-glass-and-area-light
+[09:33:03] END b8-compare-glass-and-area-light exit=0 1s
+[09:33:03] START b8-compare-glossy-sphere-point-light
+[09:33:03] END b8-compare-glossy-sphere-point-light exit=0 0s
+[09:33:03] START b8-compare-textured-plane
+[09:33:03] END b8-compare-textured-plane exit=0 0s
+[09:33:03] START b8-compare-control
+[09:33:03] END b8-compare-control exit=0 0s
+[09:33:03] START b8-compare-bench
+[09:33:03] END b8-compare-bench exit=0 0s
+[09:33:03] START b8-compare-hdri
+[09:33:03] END b8-compare-hdri exit=0 0s
+[09:33:03] START b8-envelope-bench-hdri
+[09:35:05] END b8-envelope-bench-hdri exit=0 122s
+[09:35:05] slot1b_E DONE
+[09:38:44] END b8-principled-gate exit=0 555s
+[09:38:44] START b8-tier-gate
+[09:39:03] END b8-tier-gate exit=0 19s
+[09:39:03] START b8-transparent-shadow
+[09:41:17] END b8-transparent-shadow exit=0 134s
+[09:41:17] START b8-sim650-nodes-world
+[09:41:17] END b8-sim650-nodes-world exit=1 0s
+[09:41:17] START b8-sim650-glass-render
+[09:41:46] END b8-sim650-glass-render exit=0 29s
+[09:41:46] START b8-size-guard
+[09:42:45] END b8-size-guard exit=0 59s
+[09:42:45] START b8-triangle-sample
+[09:42:57] END b8-triangle-sample exit=0 12s
+[09:42:57] START b8-svm-surface
+[09:43:06] END b8-svm-surface exit=0 9s
+[09:43:06] START b8-svm-world
+[09:43:30] END b8-svm-world exit=0 24s
+[09:43:30] START b8-probe-normal
+[09:43:57] END b8-probe-normal exit=0 27s
+[09:43:57] START b8-probe-attribute
+[09:44:15] END b8-probe-attribute exit=0 18s
+[09:44:15] START b8-probe-image
+[09:44:39] END b8-probe-image exit=0 24s
+[09:44:39] START b8-probe-image_file
+[09:44:39] END b8-probe-image_file exit=0 0s
+[09:44:39] START b8-probe-shader_data
+[09:44:45] END b8-probe-shader_data exit=0 6s
+[09:44:45] slot1b_B DONE
+[09:44:45] run_validation_1b ALL DONE
+[09:45:29] coordinator 09:05 ISA-family rule implemented in compare.py (+3 self-test checks, 18/18), oracle README, MAINTAINER, DEVICE item 25; aborted-run bundles-1b/reference-1b leftovers renamed *-aborted, rerunning gltf-plane, bench-bundle, reference-export
+[09:45:50] START b8f-gltf-plane
+[09:46:44] END b8f-gltf-plane exit=0 54s
+[09:46:44] START b8f-bench-bundle
+[09:46:46] END b8f-bench-bundle exit=0 2s
+[09:46:46] START b8f-reference-export
+[09:50:39] END b8f-reference-export exit=0 233s
+[09:50:39] START b8f-compare-selftest
+[09:50:39] END b8f-compare-selftest exit=0 0s
+[09:50:39] START b8f-compare-diffuse-triangle
+[09:50:39] END b8f-compare-diffuse-triangle exit=0 0s
+[09:50:39] START b8f-macmp-diffuse-triangle
+[09:50:39] END b8f-macmp-diffuse-triangle exit=0 0s
+[09:50:39] START b8f-compare-glass-and-area-light
+[09:50:39] END b8f-compare-glass-and-area-light exit=0 0s
+[09:50:39] START b8f-macmp-glass-and-area-light
+[09:50:39] END b8f-macmp-glass-and-area-light exit=0 0s
+[09:50:39] START b8f-compare-glossy-sphere-point-light
+[09:50:39] END b8f-compare-glossy-sphere-point-light exit=0 0s
+[09:50:39] START b8f-macmp-glossy-sphere-point-light
+[09:50:39] END b8f-macmp-glossy-sphere-point-light exit=0 0s
+[09:50:39] START b8f-compare-textured-plane
+[09:50:39] END b8f-compare-textured-plane exit=0 0s
+[09:50:39] START b8f-macmp-textured-plane
+[09:50:39] END b8f-macmp-textured-plane exit=0 0s
+[09:50:39] START b8f-compare-control
+[09:50:39] END b8f-compare-control exit=0 0s
+[09:50:39] START b8f-compare-bench
+[09:50:39] END b8f-compare-bench exit=0 0s
+[09:50:39] START b8f-compare-hdri
+[09:50:39] END b8f-compare-hdri exit=0 0s
+[09:50:39] START b8f-macmp-bench
+[09:50:39] END b8f-macmp-bench exit=0 0s
+[09:50:39] START b8f-macmp-hdri
+[09:50:39] END b8f-macmp-hdri exit=0 0s
+[09:50:39] START b8f-compare-light-tree_lamps-and-mesh-lights
+[09:50:40] END b8f-compare-light-tree_lamps-and-mesh-lights exit=0 1s
+[09:50:40] START b8f-compare-light-tree_light-linking
+[09:50:40] END b8f-compare-light-tree_light-linking exit=0 0s
+[09:50:40] START b8f-compare-shadow-catcher_catcher-point-light
+[09:50:40] END b8f-compare-shadow-catcher_catcher-point-light exit=0 0s
+[09:50:40] START b8f-compare-shadow-catcher_catcher-approximate
+[09:50:40] END b8f-compare-shadow-catcher_catcher-approximate exit=0 0s
+[09:50:40] START b8f-compare-ao_fast-gi-additive
+[09:50:40] END b8f-compare-ao_fast-gi-additive exit=0 0s
+[09:50:40] START b8f-compare-ao_ao-node
+[09:50:40] END b8f-compare-ao_ao-node exit=0 0s
+[09:50:40] START b8f-compare-mnee_glass-sphere-caustic
+[09:50:40] END b8f-compare-mnee_glass-sphere-caustic exit=0 0s
+[09:50:40] slot1b_F2 DONE
+[09:51:55] START z-audit
+[09:52:55] END z-audit exit=0 60s
+[09:52:55] START z-notices
+[09:52:55] END z-notices exit=0 0s
+[09:52:55] START z-test-inventory
+[09:52:55] END z-test-inventory exit=0 0s
+[09:52:55] START z-inventory-check
+[09:52:55] END z-inventory-check exit=1 0s
+[09:52:56] android gate build android-arm64 run 3 exit=0 65s
+[09:53:22] review android-arm64 run 3 exit=0
+[09:54:27] android gate build android-x64 run 3 exit=0 65s
+[09:54:52] review android-x64 run 3 exit=0
+[09:55:52] android host build android-x64 run 3 exit=0 60s
+[09:56:51] android host build android-arm64 run 3 exit=0 59s
+[09:56:51] android builds run 3 DONE
+[09:59:15] APK build exit=0 130s
+[10:00:24] checkpoint written (7acb8f49fde01ed6)
+[10:00:24] SEAL: wave8.patch 7acb8f49fde01ed6..., post-merge.json written
+[10:03:34] coordinator accepted part 1 as sealed; answers recorded in reconciliation.md (no tracked file changed)
+[10:06:36] merge-wave-8 part 2 evidence agent START; tree verified = part 1 seal (pre-evidence.json)
+[10:09:14] samsung lock taken (chain8_device.sh samsung batch A (stage, materials, triangle, emitter, regression), waited 0s)
+[10:09:14] hp lock taken (chain8_device.sh hp batch A (stage, materials, triangle, emitter, regression), waited 0s)
+[10:09:14] s20 lock taken (chain8_s20.sh, waited 0s)
+[10:09:37] START p8v-render
+[10:09:37] START p8-environment-gate
+[10:09:37] START p8-s-nodes_render
+[10:09:37] START p8-light-tree
+[10:09:37] START p8-nodes-gate
+[10:09:37] START p8-al-volume_gate
+[10:09:37] START p8-all-lanes
+[10:09:37] START p8-glass-superset
+[10:09:39] checkpoint-2 status written
+[10:10:04] samsung staged exit=0
+[10:10:05] s20 staged exit=0
+[10:10:24] END p8v-render exit=0 47s
+[10:10:24] START p8v-device
+[10:10:26] END p8v-device exit=0 2s
+[10:10:26] START p8v-camera
+[10:10:32] END p8v-camera exit=0 6s
+[10:10:32] START p8v-background
+[10:10:38] samsung materials-m8: START principled_svm timeout=2400s
+[10:10:38] samsung materials-m8: SCENE-DUMP principled_svm
+[10:10:39] s20 materials-s20-principled_svm: START principled_svm timeout=600s
+[10:10:39] s20 materials-s20-principled_svm: SCENE-DUMP principled_svm
+[10:10:40] END p8-al-volume_gate exit=1 63s
+[10:10:40] START p8-al-glass_gate
+[10:10:42] END p8v-background exit=0 10s
+[10:10:42] START p8v-closest
+[10:10:51] END p8v-closest exit=0 9s
+[10:10:51] START p8v-svm_world
+[10:11:34] END p8-s-nodes_render exit=0 117s
+[10:11:34] START p8-s-principled_render
+[10:11:41] END p8v-svm_world exit=0 50s
+[10:11:41] START p8v-svm_surface
+[10:11:54] END p8v-svm_surface exit=0 13s
+[10:11:54] START p8v-attribute
+[10:12:05] hp staged exit=0
+[10:12:09] samsung materials-m8: SCENE-REFERENCE principled_svm references=237
+[10:12:31] END p8v-attribute exit=0 37s
+[10:12:31] START p8v-image
+[10:12:37] hp materials-m8: START principled_svm timeout=2400s
+[10:12:37] hp materials-m8: SCENE-DUMP principled_svm
+[10:12:49] s20 materials-s20-principled_svm: SCENE-REFERENCE principled_svm references=237
+[10:12:57] END p8-environment-gate exit=0 200s
+[10:12:57] START p8-camera-gate
+[10:13:02] END p8-camera-gate exit=0 5s
+[10:13:02] START p8-camera-motion
+[10:13:11] END p8v-image exit=0 40s
+[10:13:11] START p8v-image_file
+[10:13:11] END p8-camera-motion exit=0 9s
+[10:13:11] START p8-envelope-environment
+[10:13:11] END p8v-image_file exit=0 0s
+[10:13:11] START p8v-normal
+[10:13:32] END p8-s-principled_render exit=0 118s
+[10:13:32] START p8-s-microfacet_render
+[10:14:01] END p8v-normal exit=0 50s
+[10:14:01] START p8v-render-attributes
+[10:14:10] samsung materials-m8: PASS principled_svm 115s maxPipelineMs=None
+[10:14:10] samsung materials-m8: START principled_bounce timeout=2400s
+[10:14:31] hp materials-m8: SCENE-REFERENCE principled_svm references=237
+[10:14:45] END p8v-render-attributes exit=0 44s
+[10:14:45] START p8v-render-images
+[10:15:02] END p8-s-microfacet_render exit=0 90s
+[10:15:02] START p8-s-render-static
+[10:15:10] END p8-glass-superset exit=0 333s
+[10:15:11] START p8-principled-superset
+[10:15:31] samsung materials-m8: PASS principled_bounce 81s maxPipelineMs=16517.9
+[10:15:31] samsung materials-m8: START principled_render timeout=2400s
+[10:15:31] samsung materials-m8: SCENE-DUMP principled_render
+[10:15:35] END p8v-render-images exit=0 50s
+[10:15:35] START p8v-render-normals
+[10:15:40] END p8-light-tree exit=1 363s
+[10:15:40] START p8-shadow-catcher
+[10:15:58] START p8-light-tree-replays
+[10:16:03] samsung materials-m8: SCENE-REFERENCE principled_render references=1
+[10:16:30] END p8-s-render-static exit=0 88s
+[10:16:30] START p8-s-render-motion-0
+[10:16:35] END p8v-render-normals exit=0 60s
+[10:16:35] START p8v-nodes_svm
+[10:17:11] samsung materials-m8: REFERENCE principled_render host re-judged vs glibc: True
+[10:17:36] hp materials-m8: PASS principled_svm 148s maxPipelineMs=None
+[10:17:36] hp materials-m8: START principled_bounce timeout=2400s
+[10:17:56] END p8-light-tree-replays exit=1 118s
+[10:17:56] START p8-light-tree-replay-2-alone
+[10:18:03] samsung materials-m8: STAGE-JUDGE principled_render passed=True 0.04963492180738576
+[10:18:03] samsung materials-m8: PASS principled_render 66s maxPipelineMs=15730
+[10:18:03] samsung materials-m8: START nodes_svm timeout=2400s
+[10:18:03] samsung materials-m8: SCENE-DUMP nodes_svm
+[10:18:12] END p8-s-render-motion-0 exit=0 102s
+[10:18:12] START p8-s-render-motion-1
+[10:18:56] s20 materials-s20-principled_svm: PASS principled_svm 360s maxPipelineMs=None
+[10:19:00] END p8-light-tree-replay-2-alone exit=1 64s
+[10:19:00] slot8p_L DONE
+[10:19:08] END p8-envelope-environment exit=0 357s
+[10:19:08] slot8p_F DONE
+[10:19:27] s20 materials-s20-principled_svm: END passed=True wall=531s/3000s failures=0
+[10:19:27] s20 corpus materials-s20-principled_svm (principled_svm) exit=0 timeout=600s
+[10:19:32] END p8-shadow-catcher exit=0 232s
+[10:19:32] START p8-ao-state
+[10:19:43] END p8-al-glass_gate exit=0 543s
+[10:19:43] START p8-al-camera_motion_gate
+[10:19:46] END p8-s-render-motion-1 exit=0 94s
+[10:19:46] START p8-s-render-motion-2
+[10:20:01] s20 a650-refusals-m8: START nodes_world-refused timeout=300s
+[10:20:02] s20 a650-refusals-m8: PASS nodes_world-refused refusal exit=1 0s
+[10:20:02] s20 a650-refusals-m8: START nodes_svm-refused timeout=300s
+[10:20:03] s20 a650-refusals-m8: PASS nodes_svm-refused refusal exit=1 0s
+[10:20:03] s20 a650-refusals-m8: START nodes_render-refused timeout=300s
+[10:20:03] s20 a650-refusals-m8: PASS nodes_render-refused refusal exit=1 0s
+[10:20:34] s20 a650-refusals-m8: END passed=True wall=36s/600s failures=0
+[10:20:34] s20 corpus a650-refusals-m8 exit=0
+[10:20:57] hp materials-m8: PASS principled_bounce 200s maxPipelineMs=50714.8
+[10:20:57] hp materials-m8: START principled_render timeout=2400s
+[10:20:57] hp materials-m8: SCENE-DUMP principled_render
+[10:21:08] samsung materials-m8: SCENE-REFERENCE nodes_svm references=541
+[10:21:09] s20 triangle-s20-triangle_sample: START triangle_sample timeout=600s
+[10:21:09] s20 triangle-s20-triangle_sample: SCENE-DUMP triangle_sample
+[10:21:24] END p8-s-render-motion-2 exit=0 98s
+[10:21:24] START p8-s-render-motion-3
+[10:21:29] hp materials-m8: SCENE-REFERENCE principled_render references=1
+[10:21:39] s20 triangle-s20-triangle_sample: SCENE-REFERENCE triangle_sample references=1
+[10:21:40] END p8-ao-state exit=0 128s
+[10:21:40] START p8-ao-render
+[10:22:44] s20 triangle-s20-triangle_sample: REFERENCE triangle_sample host re-judged vs glibc: True
+[10:22:44] s20 triangle-s20-triangle_sample: PASS triangle_sample 64s maxPipelineMs=None
+[10:22:51] END p8-s-render-motion-3 exit=0 87s
+[10:22:51] START p8-s-render-motion-4
+[10:23:16] s20 triangle-s20-triangle_sample: END passed=True wall=129s/3000s failures=0
+[10:23:16] s20 corpus triangle-s20-triangle_sample (triangle_sample) exit=0 timeout=600s
+[10:23:35] END p8v-nodes_svm exit=0 420s
+[10:23:35] START p8v-nodes_world
+[10:23:39] hp materials-m8: REFERENCE principled_render host re-judged vs glibc: True
+[10:23:48] s20 regression-s20-glass_render: START glass_render timeout=600s
+[10:23:48] s20 regression-s20-glass_render: SCENE-DUMP glass_render
+[10:23:49] END p8-ao-render exit=0 129s
+[10:23:49] START p8-mnee
+[10:24:17] END p8-s-render-motion-4 exit=0 87s
+[10:24:18] START p8-s-render-motion-5
+[10:24:20] s20 regression-s20-glass_render: SCENE-REFERENCE glass_render references=1
+[10:24:32] hp materials-m8: STAGE-JUDGE principled_render passed=True 0.05016863064402432
+[10:24:32] hp materials-m8: PASS principled_render 122s maxPipelineMs=49616.4
+[10:24:32] hp materials-m8: START nodes_svm timeout=2400s
+[10:24:32] hp materials-m8: SCENE-DUMP nodes_svm
+[10:24:49] END p8-all-lanes exit=1 912s
+[10:24:49] START p8-host-gate
+[10:25:12] END p8-al-camera_motion_gate exit=0 329s
+[10:25:12] START p8-host-gate-continue
+[10:25:31] END p8-s-render-motion-5 exit=0 73s
+[10:25:31] START p8-s-render-motion-6
+[10:25:38] END p8-host-gate exit=1 49s
+[10:25:38] START p8-dotnet-test
+[10:25:39] s20 regression-s20-glass_render: REFERENCE glass_render host re-judged vs glibc: True
+[10:26:27] END p8v-nodes_world exit=0 172s
+[10:26:30] s20 regression-s20-glass_render: STAGE-JUDGE glass_render passed=True 0.003376758446961255
+[10:26:30] s20 regression-s20-glass_render: PASS glass_render 78s maxPipelineMs=12777.1
+[10:26:31] END p8-principled-superset exit=0 680s
+[10:26:31] START p8-nodes-render-superset
+[10:27:00] s20 regression-s20-glass_render: END passed=True wall=194s/3000s failures=0
+[10:27:00] s20 corpus regression-s20-glass_render (glass_render) exit=0 timeout=600s
+[10:27:02] END p8-s-render-motion-6 exit=0 91s
+[10:27:02] START p8-s-render-motion-7
+[10:27:33] s20 regression-s20-lighting_mis: START lighting_mis timeout=600s
+[10:27:33] s20 regression-s20-lighting_mis: SCENE-DUMP lighting_mis
+[10:27:50] END p8-mnee exit=0 241s
+[10:27:50] START p8-oracle-light-tree_lamps-and-mesh-lights
+[10:27:59] END p8-host-gate-continue exit=0 167s
+[10:27:59] slot8p_R DONE
+[10:27:59] hp materials-m8: SCENE-REFERENCE nodes_svm references=541
+[10:28:05] s20 regression-s20-lighting_mis: SCENE-REFERENCE lighting_mis references=8
+[10:28:12] END p8-s-render-motion-7 exit=0 70s
+[10:28:12] START p8-s-volume-absorption
+[10:28:30] END p8-oracle-light-tree_lamps-and-mesh-lights exit=0 40s
+[10:28:30] START p8-compare-light-tree_lamps-and-mesh-lights
+[10:28:30] END p8-compare-light-tree_lamps-and-mesh-lights exit=0 0s
+[10:28:30] START p8-oracle-light-tree_light-linking
+[10:28:48] END p8-dotnet-test exit=0 190s
+[10:28:48] START p8-dotnet-test-debug
+[10:29:09] s20 regression-s20-lighting_mis: REFERENCE lighting_mis host re-judged vs glibc: True
+[10:29:09] s20 regression-s20-lighting_mis: PASS lighting_mis 59s maxPipelineMs=12740.7
+[10:29:11] END p8-oracle-light-tree_light-linking exit=0 41s
+[10:29:11] START p8-compare-light-tree_light-linking
+[10:29:11] END p8-compare-light-tree_light-linking exit=0 0s
+[10:29:11] START p8-oracle-shadow-catcher_catcher-point-light
+[10:29:36] s20 regression-s20-lighting_mis: END passed=True wall=129s/3000s failures=0
+[10:29:36] s20 corpus regression-s20-lighting_mis (lighting_mis) exit=0 timeout=600s
+[10:29:40] END p8-oracle-shadow-catcher_catcher-point-light exit=0 29s
+[10:29:40] START p8-compare-shadow-catcher_catcher-point-light
+[10:29:40] END p8-compare-shadow-catcher_catcher-point-light exit=0 0s
+[10:29:40] START p8-oracle-shadow-catcher_catcher-approximate
+[10:29:44] END p8-s-volume-absorption exit=0 92s
+[10:29:44] START p8-s-volume-isotropic
+[10:30:06] s20 triangle-s20-surface: START surface timeout=600s
+[10:30:07] END p8-oracle-shadow-catcher_catcher-approximate exit=0 27s
+[10:30:07] START p8-compare-shadow-catcher_catcher-approximate
+[10:30:07] END p8-compare-shadow-catcher_catcher-approximate exit=0 0s
+[10:30:07] START p8-oracle-ao_fast-gi-additive
+[10:30:32] END p8-oracle-ao_fast-gi-additive exit=0 25s
+[10:30:32] START p8-compare-ao_fast-gi-additive
+[10:30:32] END p8-compare-ao_fast-gi-additive exit=0 0s
+[10:30:32] START p8-oracle-ao_ao-node
+[10:30:48] s20 triangle-s20-surface: PASS surface 41s maxPipelineMs=6879.48
+[10:31:02] END p8-oracle-ao_ao-node exit=0 30s
+[10:31:02] START p8-compare-ao_ao-node
+[10:31:02] END p8-compare-ao_ao-node exit=0 0s
+[10:31:02] START p8-oracle-mnee_glass-sphere-caustic
+[10:31:15] s20 triangle-s20-surface: END passed=True wall=71s/3000s failures=0
+[10:31:15] s20 corpus triangle-s20-surface (surface) exit=0 timeout=600s
+[10:31:46] s20 transparent-s20-transparent_lighting: START transparent_lighting timeout=600s
+[10:31:46] s20 transparent-s20-transparent_lighting: SCENE-DUMP transparent_lighting
+[10:31:47] END p8-dotnet-test-debug exit=0 179s
+[10:31:47] slot8p_A DONE
+[10:31:58] END p8-s-volume-isotropic exit=0 134s
+[10:31:58] START p8-s-volume-forward
+[10:32:09] END p8-oracle-mnee_glass-sphere-caustic exit=0 67s
+[10:32:09] START p8-compare-mnee_glass-sphere-caustic
+[10:32:09] END p8-compare-mnee_glass-sphere-caustic exit=0 0s
+[10:32:09] START p8-envelope-m2
+[10:32:13] s20 transparent-s20-transparent_lighting: SCENE-REFERENCE transparent_lighting references=8
+[10:32:27] END p8-nodes-render-superset exit=0 356s
+[10:32:27] START p8-abi-dump
+[10:33:25] END p8-abi-dump exit=0 58s
+[10:33:25] START p8-transparent-dump
+[10:34:02] END p8-s-volume-forward exit=0 124s
+[10:34:02] START p8-s-volume-backward
+[10:34:08] END p8-transparent-dump exit=0 43s
+[10:34:08] START p8-envelope-abi
+[10:35:08] s20 transparent-s20-transparent_lighting: REFERENCE transparent_lighting host re-judged vs glibc: True
+[10:35:08] s20 transparent-s20-transparent_lighting: PASS transparent_lighting 169s maxPipelineMs=15967.1
+[10:35:08] s20 transparent-s20-transparent_lighting: ERROR TypeError("'int' object is not iterable")
+[10:35:24] samsung materials-m8: PASS nodes_svm 845s maxPipelineMs=None
+[10:35:24] samsung materials-m8: START nodes_world timeout=2400s
+[10:35:36] s20 transparent-s20-transparent_lighting: END passed=False wall=233s/3000s failures=0
+[10:35:36] s20 corpus transparent-s20-transparent_lighting (transparent_lighting) exit=1 timeout=600s
+[10:36:05] END p8-s-volume-backward exit=0 123s
+[10:36:05] START p8-s-closed-single
+[10:36:05] s20 transparent-s20-transparent_shadow: START transparent_shadow timeout=600s
+[10:36:23] s20 transparent-s20-transparent_shadow: PASS transparent_shadow 16s maxPipelineMs=7098.25
+[10:36:23] s20 transparent-s20-transparent_shadow: ERROR TypeError("'int' object is not iterable")
+[10:36:50] s20 transparent-s20-transparent_shadow: END passed=False wall=47s/3000s failures=0
+[10:36:50] s20 corpus transparent-s20-transparent_shadow (transparent_shadow) exit=1 timeout=600s
+[10:36:56] END p8-envelope-abi exit=0 168s
+[10:36:56] START p8-envelope-materials
+[10:37:20] s20 materials-s20-principled_render: START principled_render timeout=600s
+[10:37:20] s20 materials-s20-principled_render: SCENE-DUMP principled_render
+[10:37:46] s20 materials-s20-principled_render: SCENE-REFERENCE principled_render references=1
+[10:38:34] END p8-s-closed-single exit=0 149s
+[10:38:34] START p8-s-closed-overlap
+[10:39:38] checkpoint-2 status written
+[10:39:51] hp materials-m8: PASS nodes_svm 659s maxPipelineMs=None
+[10:39:51] hp materials-m8: START nodes_world timeout=2400s
+[10:40:07] s20 materials-s20-principled_render: REFERENCE principled_render host re-judged vs glibc: False
+[10:40:31] s20 materials-s20-principled_render: STAGE-JUDGE principled_render passed=False Truncated stage exchange
+[10:40:32] s20 materials-s20-principled_render: FAIL principled_render exit=1 141s: Render iteration failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[10:40:59] s20 materials-s20-principled_render: END passed=False wall=222s/3000s failures=2
+[10:40:59] s20 corpus materials-s20-principled_render (principled_render) exit=0 timeout=600s
+[10:41:06] samsung materials-m8: PASS nodes_world 341s maxPipelineMs=57516.3
+[10:41:06] samsung materials-m8: START nodes_render timeout=2400s
+[10:41:06] samsung materials-m8: SCENE-DUMP nodes_render
+[10:41:30] s20 pixel-motion-s20-object-moving-images: START object-moving-images timeout=600s
+[10:41:30] s20 pixel-motion-s20-object-moving-images: SCENE-DUMP object-moving-images
+[10:41:34] samsung materials-m8: SCENE-REFERENCE nodes_render references=1
+[10:41:59] s20 pixel-motion-s20-object-moving-images: SCENE-REFERENCE object-moving-images references=8
+[10:42:18] END p8-s-closed-overlap exit=0 224s
+[10:42:18] START p8-s-closed-inside
+[10:43:19] samsung materials-m8: REFERENCE nodes_render host re-judged vs glibc: True
+[10:43:21] s20 pixel-motion-s20-object-moving-images: REFERENCE object-moving-images host re-judged vs glibc: False
+[10:43:22] s20 pixel-motion-s20-object-moving-images: FAIL object-moving-images exit=1 82s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[10:43:50] s20 pixel-motion-s20-object-moving-images: END passed=False wall=143s/3000s failures=9
+[10:43:50] s20 corpus pixel-motion-s20-object-moving-images (object-moving-images) exit=0 timeout=600s
+[10:43:58] hp materials-m8: PASS nodes_world 247s maxPipelineMs=29362.7
+[10:43:58] hp materials-m8: START nodes_render timeout=2400s
+[10:43:58] hp materials-m8: SCENE-DUMP nodes_render
+[10:44:01] samsung materials-m8: STAGE-JUDGE nodes_render passed=True 0.04850152174491691
+[10:44:01] samsung materials-m8: PASS nodes_render 103s maxPipelineMs=36348.5
+[10:44:01] samsung materials-m8: START principled-replay timeout=2400s
+[10:44:23] s20 pixel-motion-s20-deforming-moving-images: START deforming-moving-images timeout=600s
+[10:44:23] s20 pixel-motion-s20-deforming-moving-images: SCENE-DUMP deforming-moving-images
+[10:44:27] hp materials-m8: SCENE-REFERENCE nodes_render references=1
+[10:44:40] samsung materials-m8: PASS principled-replay 38s readbacks=322 max=6.44e-06 strict=67 fmt=native-command-stream-v6
+[10:44:40] samsung materials-m8: START nodes-replay timeout=2400s
+[10:44:52] s20 pixel-motion-s20-deforming-moving-images: SCENE-REFERENCE deforming-moving-images references=8
+[10:45:32] END p8-envelope-materials exit=0 516s
+[10:45:32] START p8-libm-linux
+[10:45:51] s20 pixel-motion-s20-deforming-moving-images: REFERENCE deforming-moving-images host re-judged vs glibc: False
+[10:45:52] s20 pixel-motion-s20-deforming-moving-images: FAIL deforming-moving-images exit=1 58s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[10:45:55] END p8-s-closed-inside exit=0 217s
+[10:45:55] START p8-gltf-sample-write
+[10:45:55] END p8-gltf-sample-write exit=0 0s
+[10:45:55] START p8-gltf-sample
+[10:45:56] samsung materials-m8: PASS nodes-replay 75s readbacks=320 max=3.72e-05 strict=1689 fmt=native-command-stream-v6
+[10:45:56] END p8-libm-linux exit=0 24s
+[10:45:56] START p8-reference-export
+[10:46:08] hp materials-m8: REFERENCE nodes_render host re-judged vs glibc: True
+[10:46:23] s20 pixel-motion-s20-deforming-moving-images: END passed=False wall=122s/3000s failures=9
+[10:46:23] s20 corpus pixel-motion-s20-deforming-moving-images (deforming-moving-images) exit=0 timeout=600s
+[10:46:26] samsung materials-m8: END passed=True wall=2151s/9000s failures=0
+[10:46:26] samsung corpus materials-m8 exit=0
+[10:46:26] END p8-gltf-sample exit=0 31s
+[10:46:27] START p8-gltf-plane-write
+[10:46:27] END p8-gltf-plane-write exit=0 0s
+[10:46:27] START p8-gltf-plane
+[10:46:51] hp materials-m8: STAGE-JUDGE nodes_render passed=True 0.24880713805140664
+[10:46:51] hp materials-m8: PASS nodes_render 92s maxPipelineMs=35180.7
+[10:46:51] hp materials-m8: START principled-replay timeout=2400s
+[10:46:57] s20 environment-s20-environment: START environment timeout=1800s
+[10:46:57] s20 environment-s20-environment: SCENE-DUMP environment
+[10:46:57] s20 environment-s20-environment: ERROR AssertionError('scene dump pass failed: environment')
+[10:46:59] samsung triangle-m8: START triangle_sample timeout=1200s
+[10:46:59] samsung triangle-m8: SCENE-DUMP triangle_sample
+[10:47:27] s20 environment-s20-environment: END passed=False wall=34s/4200s failures=0
+[10:47:27] s20 corpus environment-s20-environment (environment) exit=1 timeout=1800s
+[10:47:27] samsung triangle-m8: SCENE-REFERENCE triangle_sample references=1
+[10:47:37] END p8-gltf-plane exit=0 70s
+[10:47:37] START p8-bench-bundle
+[10:47:39] END p8-bench-bundle exit=0 2s
+[10:47:39] START p8-oracle-starters
+[10:47:44] samsung triangle-m8: REFERENCE triangle_sample host re-judged vs glibc: True
+[10:47:44] samsung triangle-m8: PASS triangle_sample 16s maxPipelineMs=None
+[10:47:44] samsung triangle-m8: START surface timeout=1200s
+[10:47:57] s20 shadowcatcher-s20-shadow_catcher: START shadow_catcher timeout=2700s
+[10:47:57] s20 shadowcatcher-s20-shadow_catcher: SCENE-DUMP shadow_catcher
+[10:48:06] samsung triangle-m8: PASS surface 22s maxPipelineMs=3293.38
+[10:48:06] samsung triangle-m8: START triangle_lighting timeout=1200s
+[10:48:06] samsung triangle-m8: SCENE-DUMP triangle_lighting
+[10:48:34] samsung triangle-m8: SCENE-REFERENCE triangle_lighting references=6
+[10:48:36] hp materials-m8: PASS principled-replay 100s readbacks=322 max=6.44e-06 strict=91 fmt=native-command-stream-v6
+[10:48:36] hp materials-m8: START nodes-replay timeout=2400s
+[10:49:18] s20 shadowcatcher-s20-shadow_catcher: SCENE-REFERENCE shadow_catcher references=10
+[10:49:45] samsung triangle-m8: REFERENCE triangle_lighting host re-judged vs glibc: True
+[10:49:45] samsung triangle-m8: PASS triangle_lighting 67s maxPipelineMs=5788.32
+[10:49:45] samsung triangle-m8: START replay-0 timeout=1200s
+[10:49:51] hp materials-m8: PASS nodes-replay 70s readbacks=320 max=0.000103 strict=1794 fmt=native-command-stream-v6
+[10:49:59] samsung triangle-m8: PASS replay-0 13s readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[10:49:59] samsung triangle-m8: START replay-1 timeout=1200s
+[10:50:17] samsung triangle-m8: PASS replay-1 18s readbacks=417 max=1.79e-07 strict=0 fmt=native-command-stream-v8
+[10:50:17] samsung triangle-m8: START replay-2 timeout=1200s
+[10:50:18] hp materials-m8: END passed=True wall=2266s/9000s failures=0
+[10:50:18] hp corpus materials-m8 exit=0
+[10:50:36] samsung triangle-m8: PASS replay-2 18s readbacks=415 max=6.41e-07 strict=6 fmt=native-command-stream-v8
+[10:50:36] samsung triangle-m8: START replay-3 timeout=1200s
+[10:50:45] END p8-reference-export exit=0 289s
+[10:50:45] START p8-triangle
+[10:50:46] END p8-envelope-m2 exit=0 1117s
+[10:50:46] slot8p_N DONE
+[10:50:47] hp triangle-m8: START triangle_sample timeout=1200s
+[10:50:47] hp triangle-m8: SCENE-DUMP triangle_sample
+[10:50:54] samsung triangle-m8: PASS replay-3 18s readbacks=473 max=1.79e-06 strict=233 fmt=native-command-stream-v8
+[10:50:54] samsung triangle-m8: START replay-4 timeout=1200s
+[10:51:13] samsung triangle-m8: PASS replay-4 18s readbacks=415 max=3.58e-07 strict=8 fmt=native-command-stream-v8
+[10:51:13] samsung triangle-m8: START replay-5 timeout=1200s
+[10:51:13] hp triangle-m8: SCENE-REFERENCE triangle_sample references=1
+[10:51:35] hp triangle-m8: REFERENCE triangle_sample host re-judged vs glibc: True
+[10:51:35] hp triangle-m8: PASS triangle_sample 21s maxPipelineMs=None
+[10:51:35] hp triangle-m8: START surface timeout=1200s
+[10:51:43] samsung triangle-m8: PASS replay-5 30s readbacks=464 max=1.79e-06 strict=231 fmt=native-command-stream-v8
+[10:52:04] END p8-nodes-gate exit=0 2547s
+[10:52:04] START p8-principled-gate
+[10:52:07] START p8-principled-replay
+[10:52:08] hp triangle-m8: PASS surface 33s maxPipelineMs=3790.04
+[10:52:08] hp triangle-m8: START triangle_lighting timeout=1200s
+[10:52:08] hp triangle-m8: SCENE-DUMP triangle_lighting
+[10:52:09] samsung triangle-m8: END passed=True wall=317s/2400s failures=0
+[10:52:09] samsung corpus triangle-m8 exit=0
+[10:52:39] hp triangle-m8: SCENE-REFERENCE triangle_lighting references=6
+[10:52:40] samsung emitter-m8: START emitter_sample timeout=300s
+[10:52:40] samsung emitter-m8: SCENE-DUMP emitter_sample
+[10:52:48] END p8-oracle-starters exit=0 309s
+[10:52:48] START p8-oracle-bench
+[10:52:50] END p8-principled-replay exit=0 43s
+[10:52:50] START p8-nodes-replay
+[10:52:56] END p8-triangle exit=0 131s
+[10:52:56] START p8-shadow-terminator
+[10:53:06] samsung emitter-m8: SCENE-REFERENCE emitter_sample references=1
+[10:53:13] samsung emitter-m8: REFERENCE emitter_sample host re-judged vs glibc: True
+[10:53:13] samsung emitter-m8: PASS emitter_sample 7s maxPipelineMs=None
+[10:53:29] END p8-nodes-replay exit=0 39s
+[10:53:29] slot8p_D DONE
+[10:53:39] samsung emitter-m8: END passed=True wall=64s/600s failures=0
+[10:53:39] samsung corpus emitter-m8 exit=0
+[10:53:55] END p8-oracle-bench exit=0 67s
+[10:53:55] START p8-oracle-control
+[10:54:08] samsung regression-m8: START glass_render timeout=600s
+[10:54:08] samsung regression-m8: SCENE-DUMP glass_render
+[10:54:24] hp triangle-m8: REFERENCE triangle_lighting host re-judged vs glibc: True
+[10:54:24] hp triangle-m8: PASS triangle_lighting 87s maxPipelineMs=9732.71
+[10:54:24] hp triangle-m8: START replay-0 timeout=1200s
+[10:54:33] samsung regression-m8: SCENE-REFERENCE glass_render references=1
+[10:54:54] END p8-shadow-terminator exit=0 118s
+[10:54:54] START p8-surface
+[10:54:57] hp triangle-m8: PASS replay-0 30s readbacks=289 max=4.77e-07 strict=9 fmt=native-command-stream-v6
+[10:54:57] hp triangle-m8: START replay-1 timeout=1200s
+[10:54:59] END p8-oracle-control exit=0 64s
+[10:54:59] START p8-compare-selftest
+[10:54:59] END p8-compare-selftest exit=0 1s
+[10:55:00] START p8-oracle-hdri
+[10:55:05] END p8-surface exit=0 11s
+[10:55:05] slot8p_C DONE
+[10:55:17] samsung regression-m8: REFERENCE glass_render host re-judged vs glibc: True
+[10:55:37] hp triangle-m8: PASS replay-1 38s readbacks=417 max=1.19e-07 strict=0 fmt=native-command-stream-v8
+[10:55:37] hp triangle-m8: START replay-2 timeout=1200s
+[10:55:52] samsung regression-m8: STAGE-JUDGE glass_render passed=True 0.003376758446961255
+[10:55:52] samsung regression-m8: PASS glass_render 43s maxPipelineMs=3586.63
+[10:55:52] samsung regression-m8: START lighting_mis timeout=600s
+[10:55:52] samsung regression-m8: SCENE-DUMP lighting_mis
+[10:56:18] samsung regression-m8: SCENE-REFERENCE lighting_mis references=8
+[10:56:18] hp triangle-m8: PASS replay-2 38s readbacks=415 max=6.41e-07 strict=12 fmt=native-command-stream-v8
+[10:56:18] hp triangle-m8: START replay-3 timeout=1200s
+[10:56:33] END p8-oracle-hdri exit=0 93s
+[10:56:33] START p8-gltf-bench
+[10:56:38] START p8-macmp-diffuse-triangle
+[10:56:38] END p8-macmp-diffuse-triangle exit=0 0s
+[10:56:38] START p8-macmp-glass-and-area-light
+[10:56:38] END p8-macmp-glass-and-area-light exit=0 0s
+[10:56:38] START p8-macmp-glossy-sphere-point-light
+[10:56:38] END p8-macmp-glossy-sphere-point-light exit=0 0s
+[10:56:38] START p8-macmp-textured-plane
+[10:56:38] END p8-macmp-textured-plane exit=0 0s
+[10:56:38] START p8-macmp-bench
+[10:56:38] END p8-macmp-bench exit=0 0s
+[10:56:38] START p8-macmp-hdri
+[10:56:38] END p8-macmp-hdri exit=0 0s
+[10:56:38] slot8p_M DONE
+[10:56:49] samsung regression-m8: REFERENCE lighting_mis host re-judged vs glibc: True
+[10:56:49] samsung regression-m8: PASS lighting_mis 26s maxPipelineMs=3489.3
+[10:56:49] samsung regression-m8: START transparent_lighting timeout=600s
+[10:56:49] samsung regression-m8: SCENE-DUMP transparent_lighting
+[10:56:58] hp triangle-m8: PASS replay-3 38s readbacks=473 max=2.32e-06 strict=426 fmt=native-command-stream-v8
+[10:56:58] hp triangle-m8: START replay-4 timeout=1200s
+[10:57:10] s20 shadowcatcher-s20-shadow_catcher: REFERENCE shadow_catcher host re-judged vs glibc: False
+[10:57:15] samsung regression-m8: SCENE-REFERENCE transparent_lighting references=8
+[10:57:28] s20 shadowcatcher-s20-shadow_catcher: STAGE-JUDGE shadow_catcher passed=True 
+[10:57:28] s20 shadowcatcher-s20-shadow_catcher: PASS shadow_catcher 465s maxPipelineMs=38743.1
+[10:57:28] s20 shadowcatcher-s20-shadow_catcher: START shadow_catcher-replay-0 timeout=2700s
+[10:57:33] END p8-gltf-bench exit=0 60s
+[10:57:33] START p8-compare-diffuse-triangle
+[10:57:33] END p8-compare-diffuse-triangle exit=0 0s
+[10:57:33] START p8-compare-glass-and-area-light
+[10:57:33] END p8-compare-glass-and-area-light exit=0 0s
+[10:57:33] START p8-compare-glossy-sphere-point-light
+[10:57:33] END p8-compare-glossy-sphere-point-light exit=0 0s
+[10:57:33] START p8-compare-textured-plane
+[10:57:33] END p8-compare-textured-plane exit=0 0s
+[10:57:33] START p8-compare-control
+[10:57:33] END p8-compare-control exit=0 0s
+[10:57:33] START p8-compare-bench
+[10:57:33] END p8-compare-bench exit=0 0s
+[10:57:33] START p8-compare-hdri
+[10:57:33] END p8-compare-hdri exit=0 0s
+[10:57:33] START p8-envelope-bench-hdri
+[10:57:39] hp triangle-m8: PASS replay-4 38s readbacks=415 max=2.38e-07 strict=7 fmt=native-command-stream-v8
+[10:57:39] hp triangle-m8: START replay-5 timeout=1200s
+[10:58:05] s20 shadowcatcher-s20-shadow_catcher: PASS shadow_catcher-replay-0 36s readbacks=291 max=4.77e-07 strict=24 fmt=native-command-stream-v10
+[10:58:05] s20 shadowcatcher-s20-shadow_catcher: START shadow_catcher-replay-1 timeout=2700s
+[10:58:37] hp triangle-m8: PASS replay-5 55s readbacks=464 max=2.32e-06 strict=413 fmt=native-command-stream-v8
+[10:58:40] samsung regression-m8: REFERENCE transparent_lighting host re-judged vs glibc: True
+[10:58:40] samsung regression-m8: PASS transparent_lighting 80s maxPipelineMs=7280.14
+[10:58:41] s20 shadowcatcher-s20-shadow_catcher: PASS shadow_catcher-replay-1 36s readbacks=297 max=9.54e-07 strict=14 fmt=native-command-stream-v10
+[10:58:41] s20 shadowcatcher-s20-shadow_catcher: START shadow_catcher-replay-2 timeout=2700s
+[10:59:01] hp triangle-m8: END passed=True wall=499s/2400s failures=0
+[10:59:02] hp corpus triangle-m8 exit=0
+[10:59:05] samsung regression-m8: END passed=True wall=301s/1500s failures=0
+[10:59:05] samsung corpus regression-m8 exit=0
+[10:59:05] samsung lock released
+[10:59:10] samsung lock taken (chain8_device.sh samsung batch B (lighting, transparent, terminator, spec-refusal, host-capture replays), waited 0s)
+[10:59:18] s20 shadowcatcher-s20-shadow_catcher: PASS shadow_catcher-replay-2 36s readbacks=305 max=4.77e-07 strict=16 fmt=native-command-stream-v10
+[10:59:18] s20 shadowcatcher-s20-shadow_catcher: START shadow_catcher-replay-4 timeout=2700s
+[10:59:28] hp emitter-m8: START emitter_sample timeout=300s
+[10:59:28] hp emitter-m8: SCENE-DUMP emitter_sample
+[10:59:38] samsung lighting-m8: START lighting_mis timeout=1200s
+[10:59:38] samsung lighting-m8: SCENE-DUMP lighting_mis
+[10:59:39] END p8-envelope-bench-hdri exit=0 126s
+[10:59:39] slot8p_E DONE
+[10:59:53] hp emitter-m8: SCENE-REFERENCE emitter_sample references=1
+[10:59:57] s20 shadowcatcher-s20-shadow_catcher: PASS shadow_catcher-replay-4 39s readbacks=463 max=2.86e-06 strict=783 fmt=native-command-stream-v10
+[10:59:57] s20 shadowcatcher-s20-shadow_catcher: SKIP shadow_catcher-replay-7 (case refused on this GPU)
+[10:59:57] s20 shadowcatcher-s20-shadow_catcher: START shadow_catcher-replay-8 timeout=2700s
+[11:00:03] samsung lighting-m8: SCENE-REFERENCE lighting_mis references=8
+[11:00:12] hp emitter-m8: REFERENCE emitter_sample host re-judged vs glibc: True
+[11:00:12] hp emitter-m8: PASS emitter_sample 19s maxPipelineMs=None
+[11:00:35] samsung lighting-m8: REFERENCE lighting_mis host re-judged vs glibc: True
+[11:00:35] samsung lighting-m8: PASS lighting_mis 27s maxPipelineMs=3567.09
+[11:00:35] samsung lighting-m8: START broad_lighting timeout=1200s
+[11:00:35] samsung lighting-m8: SCENE-DUMP broad_lighting
+[11:00:36] hp emitter-m8: END passed=True wall=70s/600s failures=0
+[11:00:36] hp corpus emitter-m8 exit=0
+[11:01:02] hp regression-m8: START glass_render timeout=600s
+[11:01:02] hp regression-m8: SCENE-DUMP glass_render
+[11:01:02] samsung lighting-m8: SCENE-REFERENCE broad_lighting references=12
+[11:01:28] hp regression-m8: SCENE-REFERENCE glass_render references=1
+[11:02:02] samsung lighting-m8: REFERENCE broad_lighting host re-judged vs glibc: True
+[11:02:02] samsung lighting-m8: PASS broad_lighting 52s maxPipelineMs=7089.48
+[11:02:02] samsung lighting-m8: START lighting_mis-replay-0 timeout=1200s
+[11:02:03] s20 shadowcatcher-s20-shadow_catcher: PASS shadow_catcher-replay-8 125s readbacks=469 max=2.62e-06 strict=240 fmt=native-command-stream-v10
+[11:02:13] END p8-principled-gate exit=0 609s
+[11:02:13] START p8-tier-gate
+[11:02:17] samsung lighting-m8: PASS lighting_mis-replay-0 14s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[11:02:17] samsung lighting-m8: START lighting_mis-replay-1 timeout=1200s
+[11:02:27] s20 shadowcatcher-s20-shadow_catcher: END passed=True wall=876s/5400s failures=0
+[11:02:27] s20 corpus shadowcatcher-s20-shadow_catcher (shadow_catcher) exit=0 timeout=2700s
+[11:02:28] hp regression-m8: REFERENCE glass_render host re-judged vs glibc: True
+[11:02:32] samsung lighting-m8: PASS lighting_mis-replay-1 14s readbacks=450 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[11:02:32] samsung lighting-m8: START broad_lighting-replay-0 timeout=1200s
+[11:02:33] END p8-tier-gate exit=0 20s
+[11:02:33] START p8-transparent-shadow
+[11:02:47] samsung lighting-m8: PASS broad_lighting-replay-0 14s readbacks=414 max=1.19e-07 strict=0 fmt=native-command-stream-v6
+[11:02:47] samsung lighting-m8: START broad_lighting-replay-1 timeout=1200s
+[11:02:54] s20 s20-ao-s20-ao: START ao_state-refused timeout=900s
+[11:02:55] s20 s20-ao-s20-ao: PASS ao_state-refused refusal exit=1 1s
+[11:02:55] s20 s20-ao-s20-ao: START ao_render-additive-refused timeout=900s
+[11:02:56] s20 s20-ao-s20-ao: PASS ao_render-additive-refused refusal exit=1 1s
+[11:02:56] s20 s20-ao-s20-ao: START ao_render-node-refused timeout=900s
+[11:02:58] s20 s20-ao-s20-ao: PASS ao_render-node-refused refusal exit=1 1s
+[11:02:58] s20 s20-ao-s20-ao: START ao_render-replace timeout=900s
+[11:02:58] s20 s20-ao-s20-ao: SCENE-DUMP ao_render-replace
+[11:03:03] samsung lighting-m8: PASS broad_lighting-replay-1 15s readbacks=450 max=4.17e-07 strict=13 fmt=native-command-stream-v6
+[11:03:05] hp regression-m8: STAGE-JUDGE glass_render passed=True 0.06747885152364427
+[11:03:05] hp regression-m8: PASS glass_render 53s maxPipelineMs=8681.47
+[11:03:05] hp regression-m8: START lighting_mis timeout=600s
+[11:03:05] hp regression-m8: SCENE-DUMP lighting_mis
+[11:03:23] s20 s20-ao-s20-ao: SCENE-REFERENCE ao_render-replace references=2
+[11:03:28] samsung lighting-m8: END passed=True wall=232s/2400s failures=0
+[11:03:28] samsung corpus lighting-m8 exit=0
+[11:03:33] hp regression-m8: SCENE-REFERENCE lighting_mis references=8
+[11:03:54] samsung transparent-m8: START transparent_shadow timeout=1200s
+[11:04:06] s20 s20-ao-s20-ao: REFERENCE ao_render-replace host re-judged vs glibc: True
+[11:04:06] s20 s20-ao-s20-ao: PASS ao_render-replace 41s maxPipelineMs=12926.8
+[11:04:12] samsung transparent-m8: PASS transparent_shadow 17s maxPipelineMs=3156.76
+[11:04:12] samsung transparent-m8: START transparent_lighting timeout=1200s
+[11:04:12] samsung transparent-m8: SCENE-DUMP transparent_lighting
+[11:04:31] s20 s20-ao-s20-ao: END passed=True wall=99s/1800s failures=0
+[11:04:31] s20 corpus s20-ao-s20-ao (ao_state-refused,ao_render-additive-refused,ao_render-node-refused,ao_render-replace) exit=0 timeout=900s
+[11:04:38] samsung transparent-m8: SCENE-REFERENCE transparent_lighting references=8
+[11:04:39] hp regression-m8: REFERENCE lighting_mis host re-judged vs glibc: True
+[11:04:39] hp regression-m8: PASS lighting_mis 44s maxPipelineMs=8694.1
+[11:04:39] hp regression-m8: START transparent_lighting timeout=600s
+[11:04:39] hp regression-m8: SCENE-DUMP transparent_lighting
+[11:04:58] s20 mnee-s20-mnee: START mnee_render timeout=900s
+[11:04:58] s20 mnee-s20-mnee: SCENE-DUMP mnee_render
+[11:05:00] END p8-transparent-shadow exit=0 147s
+[11:05:00] START p8-sim650-nodes-world
+[11:05:00] END p8-sim650-nodes-world exit=1 0s
+[11:05:00] START p8-sim650-glass-render
+[11:05:07] hp regression-m8: SCENE-REFERENCE transparent_lighting references=8
+[11:05:23] s20 mnee-s20-mnee: SCENE-REFERENCE mnee_render references=5
+[11:05:37] END p8-sim650-glass-render exit=0 37s
+[11:05:37] START p8-size-guard
+[11:06:03] samsung transparent-m8: REFERENCE transparent_lighting host re-judged vs glibc: True
+[11:06:03] samsung transparent-m8: PASS transparent_lighting 80s maxPipelineMs=7244.86
+[11:06:03] samsung transparent-m8: START transparent_lighting-replay-0 timeout=1200s
+[11:06:20] samsung transparent-m8: PASS transparent_lighting-replay-0 16s readbacks=560 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[11:06:20] samsung transparent-m8: START transparent_lighting-replay-1 timeout=1200s
+[11:06:37] samsung transparent-m8: PASS transparent_lighting-replay-1 17s readbacks=596 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[11:06:37] samsung transparent-m8: START transparent_lighting-replay-2 timeout=1200s
+[11:06:38] hp regression-m8: REFERENCE transparent_lighting host re-judged vs glibc: True
+[11:06:38] hp regression-m8: PASS transparent_lighting 69s maxPipelineMs=8700.97
+[11:06:50] END p8-size-guard exit=0 73s
+[11:06:50] START p8-triangle-sample
+[11:06:59] samsung transparent-m8: PASS transparent_lighting-replay-2 21s readbacks=575 max=3.81e-06 strict=73 fmt=native-command-stream-v7
+[11:06:59] samsung transparent-m8: START transparent_lighting-replay-3 timeout=1200s
+[11:07:01] hp regression-m8: END passed=True wall=362s/1500s failures=0
+[11:07:01] hp corpus regression-m8 exit=0
+[11:07:01] hp lock released
+[11:07:02] END p8-triangle-sample exit=0 12s
+[11:07:02] START p8-svm-surface
+[11:07:06] hp lock taken (chain8_device.sh hp batch B (lighting, transparent, terminator, spec-refusal, host-capture replays), waited 0s)
+[11:07:11] END p8-svm-surface exit=0 9s
+[11:07:11] START p8-svm-world
+[11:07:21] samsung transparent-m8: PASS transparent_lighting-replay-3 22s readbacks=580 max=1.55e-06 strict=133 fmt=native-command-stream-v7
+[11:07:21] samsung transparent-m8: START transparent_lighting-replay-4 timeout=1200s
+[11:07:21] s20 mnee-s20-mnee: REFERENCE mnee_render host re-judged vs glibc: False
+[11:07:22] s20 mnee-s20-mnee: FAIL mnee_render exit=1 117s: Lighting stage failed: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data
+[11:07:22] s20 mnee-s20-mnee: START mnee timeout=900s
+[11:07:30] hp lighting-m8: START lighting_mis timeout=1200s
+[11:07:30] hp lighting-m8: SCENE-DUMP lighting_mis
+[11:07:39] END p8-svm-world exit=0 28s
+[11:07:39] START p8-probe-normal
+[11:07:45] samsung transparent-m8: PASS transparent_lighting-replay-4 22s readbacks=840 max=6.02e-06 strict=167 fmt=native-command-stream-v7
+[11:07:45] samsung transparent-m8: START transparent_lighting-replay-5 timeout=1200s
+[11:07:58] hp lighting-m8: SCENE-REFERENCE lighting_mis references=8
+[11:08:08] samsung transparent-m8: PASS transparent_lighting-replay-5 23s readbacks=916 max=7.9e-07 strict=3 fmt=native-command-stream-v7
+[11:08:08] samsung transparent-m8: START transparent_lighting-replay-6 timeout=1200s
+[11:08:10] END p8-probe-normal exit=0 31s
+[11:08:10] START p8-probe-attribute
+[11:08:30] samsung transparent-m8: PASS transparent_lighting-replay-6 21s readbacks=428 max=6.02e-06 strict=103 fmt=native-command-stream-v7
+[11:08:30] samsung transparent-m8: START transparent_lighting-replay-7 timeout=1200s
+[11:08:34] END p8-probe-attribute exit=0 24s
+[11:08:34] START p8-probe-image
+[11:08:53] samsung transparent-m8: PASS transparent_lighting-replay-7 22s readbacks=518 max=6.02e-06 strict=206 fmt=native-command-stream-v7
+[11:08:53] samsung transparent-m8: START transparent-shadow-replay-direct timeout=1200s
+[11:08:58] samsung transparent-m8: PASS transparent-shadow-replay-direct 5s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[11:08:58] samsung transparent-m8: START transparent-shadow-replay-indexed timeout=1200s
+[11:08:59] END p8-probe-image exit=0 25s
+[11:08:59] START p8-probe-image_file
+[11:09:00] END p8-probe-image_file exit=0 1s
+[11:09:00] START p8-probe-shader_data
+[11:09:04] samsung transparent-m8: PASS transparent-shadow-replay-indexed 5s readbacks=4 max=0 strict=0 fmt=native-command-stream-v7
+[11:09:05] hp lighting-m8: REFERENCE lighting_mis host re-judged vs glibc: True
+[11:09:05] hp lighting-m8: PASS lighting_mis 43s maxPipelineMs=8899.34
+[11:09:05] hp lighting-m8: START broad_lighting timeout=1200s
+[11:09:05] hp lighting-m8: SCENE-DUMP broad_lighting
+[11:09:06] END p8-probe-shader_data exit=0 6s
+[11:09:06] slot8p_B DONE
+[11:09:16] s20 mnee-s20-mnee: ERROR UnicodeDecodeError('utf-8', b'--------- beginning of main\n10-24 11:09:07.222 22545  7202 I GmsCoreXrpcWrapper: (REDACTED) Creating a custom channel provider with trafficStatsTag=%d trafficStatsUid=%d\n10-24 11:09:07.227 22545 22545 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.onboardingconsent.api.ConsentManagerApiService.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }\n10-24 11:09:07.227 22545 22545 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.onboardingconsent.api.ConsentManagerApiService.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }\n10-24 11:09:07.233 22545 22568 I ConsentManagerApiServic: (REDACTED) ConsentManagerApiService onGetService success %s\n10-24 11:09:07.233 22545  7195 I LocationReportUplIntOp: Uploading owner sightings. [CONTEXT service_id=284 ratelimit_period="5 MINUTES" ]\n10-24 11:09:07.234 22545  7202 I LocationReportUplIntOp: Uploading crowdsourced sightings. [CONTEXT service_id=284 ratelimit_period="5 MINUTES" ]\n10-24 11:09:07.234 22545  7195 I GmsCoreXrpcWrapper: (REDACTED) Returning a channel provider with trafficStatsTag=%d trafficStatsUid=%d\n10-24 11:09:07.274 22545  7181 E jvol    : *~*~*~ Previous channel {0} was garbage collected without being shut down! ~*~*~*\n10-24 11:09:07.274 22545  7181 E jvol    :     Make sure to call shutdown()/shutdownNow()\n10-24 11:09:07.274 22545  7181 E jvol    : java.lang.RuntimeException: ManagedChannel allocation site\n10-24 11:09:07.274 22545  7181 E jvol    : \tat jvok.<init>(:com.google.android.gms@263436029@26.34.36 (190400-981326859):21)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat jvol.<init>(:com.google.android.gms@263436029@26.34.36 (190400-981326859):10)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat jvoj.a(:com.google.android.gms@263436029@26.34.36 (190400-981326859):295)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat juwa.a(:com.google.android.gms@263436029@26.34.36 (190400-981326859):5)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat divs.f(:com.google.android.gms@263436029@26.34.36 (190400-981326859):150)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat ibeo.a(:com.google.android.gms@263436029@26.34.36 (190400-981326859):171)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat hoir.a(:com.google.android.gms@263436029@26.34.36 (190400-981326859):17)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat hxhi.a(:com.google.android.gms@263436029@26.34.36 (190400-981326859):3)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat hxgj.run(:com.google.android.gms@263436029@26.34.36 (190400-981326859):19)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat hxhk.run(:com.google.android.gms@263436029@26.34.36 (190400-981326859):5)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat boeu.d(:com.google.android.gms@263436029@26.34.36 (190400-981326859):50)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat boeu.c(:com.google.android.gms@263436029@26.34.36 (190400-981326859):6)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat boeu.run(:com.google.android.gms@263436029@26.34.36 (190400-981326859):33)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1100)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat bokr.run(:com.google.android.gms@263436029@26.34.36 (190400-981326859):8)\n10-24 11:09:07.274 22545  7181 E jvol    : \tat java.lang.Thread.run(Thread.java:1571)\n10-24 11:09:07.334  1467  2800 D NetdEventListenerService: DNS Requested by : 100, 10243\n10-24 11:09:07.337  1467  2800 D NetdEventListenerService: DNS Requested by : 100, 10243\n10-24 11:09:07.482  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.12505136]\n10-24 11:09:07.482  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.14373438]\n10-24 11:09:07.482  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.7258495]\n10-24 11:09:07.482  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.68625 msecs\n10-24 11:09:07.484  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.211563 msecs\n10-24 11:09:07.485  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.881406 msecs\n10-24 11:09:07.560  1271  1271 I sensors-hal: set_config:67, sample_period_ns is adjusted to 20000000 based on min/max delay_ns\n10-24 11:09:07.561  1271  1271 I sensors-hal: batch:363, android.sensor.linear_acceleration/101, period=20000000, max_latency=0 request completed\n10-24 11:09:07.561  1271  1271 I sensors-hal: activate:279, android.sensor.linear_acceleration/101 en=1\n10-24 11:09:07.561  1271  1271 I sensors-hal: get_qmi_debug_flag:241, support_qmi_debug : false\n10-24 11:09:07.571  1271  1271 I sensors-hal: activate:297, android.sensor.linear_acceleration/101 en=1 completed\n10-24 11:09:07.572 10120 10210 D SensorManager: registerListener :: 101, linear_acceleration, 20000, 0, \n10-24 11:09:07.574  1271  1271 I sensors-hal: set_config:67, sample_period_ns is adjusted to 20000000 based on min/max delay_ns\n10-24 11:09:07.574  1271  1271 I sensors-hal: batch:363, android.sensor.rotation_vector/111, period=20000000, max_latency=0 request completed\n10-24 11:09:07.574  1271  1271 I sensors-hal: activate:279, android.sensor.rotation_vector/111 en=1\n10-24 11:09:07.574  1271  1271 I sensors-hal: get_qmi_debug_flag:241, support_qmi_debug : false\n10-24 11:09:07.577  1271  1271 I sensors-hal: activate:297, android.sensor.rotation_vector/111 en=1 completed\n10-24 11:09:07.577 10120 10210 D SensorManager: registerListener :: 111, Rotation Vector  Non-wakeup, 20000, 0, \n--------- beginning of system\n10-24 11:09:07.587   726  7224 I keystore2: keystore2::legacy_blob: In list_keystore_entries_for_uid: 1\n10-24 11:09:07.588   726  7224 I keystore2: keystore2::legacy_blob: In list_knox_entries_for_uid: 0\n10-24 11:09:07.589   726   743 I keystore2: keystore2::utils: In list_key_entries: Domain(0), 10243, 30\n10-24 11:09:07.589   726   743 I keystore2: keystore2::utils: In list_key_entries: 30, 2386\n10-24 11:09:07.590   726  7224 I keystore2: keystore2::legacy_blob: In list_keystore_entries_for_uid: 1\n10-24 11:09:07.591   726  7224 I keystore2: keystore2::legacy_blob: In list_knox_entries_for_uid: 0\n10-24 11:09:07.591   726   743 I keystore2: keystore2::utils: In list_key_entries: Domain(0), 10243, 30\n10-24 11:09:07.592   726   743 I keystore2: keystore2::utils: In list_key_entries: 30, 2386\n10-24 11:09:07.595   726   743 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In get_key_entry, while trying to load key info. 10243, Some(\\"unstable.c7202ece89390c490b1b94d5b71225e1.B749498032135496283\\")"\n10-24 11:09:07.597   726   743 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In get_key_entry, while trying to load key info. 10243, Some(\\"unstable.c7202ece89390c490b1b94d5b71225e1.A749498032135496283\\")"\n10-24 11:09:07.600   729   729 W keymaster_tee: [WRN]start nwd_generate_key\n10-24 11:09:07.604   729   729 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:260) swd_generate_key() returns 0\n10-24 11:09:07.604   729   729 W keymaster_tee: [WRN]ret OK PARAMS: A3 P2 D6 NAR1 S256 2026.10.24,11:09:07.600 \n10-24 11:09:07.605   729   729 W keymaster_tee: [WRN]start nwd_attest_key\n10-24 11:09:07.608  1271  7218 I sensors-hal: handle_indication_realtime:466,  SCHED_FIFO(10) for qmi_cbk\n10-24 11:09:07.613   729   729 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:260) swd_key_attest() returns 0\n10-24 11:09:07.614   729   729 E keymaster_tee: [\x1b[31mERR\x1b[0m]Unexpected title ignore.. title: TEE\n10-24 11:09:07.614   729   729 W keymaster_tee: [WRN]nwd_attest_key GAK ret 0\n10-24 11:09:07.614   726   743 I keystore2: keystore2::security_level: In generate_key. 10243, Some("unstable.c7202ece89390c490b1b94d5b71225e1.A749498032135496283")\n10-24 11:09:07.614   726   743 W samsung_keystore_utils: ExceptionLoggingCase unstable.c7202ece89390c490b1b94d5b71225e1.A749498032135496283572\x90\x12\x06\xf9v\n10-24 11:09:07.615   726   743 I keystore2: keystore2::database: In store_new_key "unstable.c7202ece89390c490b1b94d5b71225e1.A749498032135496283", uid=10243, cert=true, cert_chain=true rebound=false\n10-24 11:09:07.627   726  8906 I keystore2: keystore2::service: In delete_key. 10243, Some("unstable.c7202ece89390c490b1b94d5b71225e1.A749498032135496283")\n10-24 11:09:07.630   726  7225 I keystore2: keystore2::gc: In process_one_key: Trying to invalidate key blob. Km(Not Support)\n10-24 11:09:07.637   726  8906 E keystore2: keystore2::error: Rc(ResponseCode(7)), "In delete_key: Trying to unbind the key. 10243, Some(\\"unstable.c7202ece89390c490b1b94d5b71225e1.B749498032135496283\\")"\n10-24 11:09:07.638   729   729 D keymaster_swd: keymaster_swd [WRN] (swd_run_cb:260) swd_add_rng_entropy() returns 0\n10-24 11:09:07.644  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:07.644  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:07.644  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired \n10-24 11:09:07.644  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:07.645  1271  7221 I sensors-hal: handle_indication_realtime:466,  SCHED_FIFO(10) for qmi_cbk\n10-24 11:09:07.648  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=1833C4_3, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-40, periodicAdvInt=0x0\n10-24 11:09:07.648  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=17F93C_C, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-66, periodicAdvInt=0x0\n10-24 11:09:07.670  1467  2800 D NetdEventListenerService: DNS Requested by : 100, 10243\n10-24 11:09:07.683  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=2819FD_4, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-62, periodicAdvInt=0x0\n10-24 11:09:07.687 22545 23003 I cn_CronetUrlRequestContext: destroyNativeStreamLocked android.net.http.internal.org.chromium.net.impl.CronetBidirectionalStream@adb1967\n10-24 11:09:07.707 10120 10210 W libc    : Access denied finding property "persist.adb.tls_server.enable"\n10-24 11:09:07.707 10120 10210 W libc    : Access denied finding property "service.adb.tls.port"\n10-24 11:09:07.709 10120 10210 I AdrenoGLES-0: QUALCOMM build                   : db7e7066a2, I1fad33e957\n10-24 11:09:07.709 10120 10210 I AdrenoGLES-0: Build Date                       : 05/11/25\n10-24 11:09:07.709 10120 10210 I AdrenoGLES-0: OpenGL ES Shader Compiler Version: EV031.32.02.10\n10-24 11:09:07.709 10120 10210 I AdrenoGLES-0: Local Branch                     : \n10-24 11:09:07.709 10120 10210 I AdrenoGLES-0: Remote Branch                    : refs/tags/AU_LINUX_ANDROID_LA.UM.9.12.11.00.00.582.697\n10-24 11:09:07.709 10120 10210 I AdrenoGLES-0: Remote Branch                    : NONE\n10-24 11:09:07.709 10120 10210 I AdrenoGLES-0: Reconstruct Branch               : NOTHING\n10-24 11:09:07.709 10120 10210 I AdrenoGLES-0: Build Config                     : S P 10.0.7 AArch64\n10-24 11:09:07.709 10120 10210 I AdrenoGLES-0: Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so\n10-24 11:09:07.716 10120 10210 I AdrenoGLES-0: PFP: 0x016dd093, ME: 0x00000000\n10-24 11:09:07.741  1467  3478 W ActivityManager: Unable to start service Intent { cmp=com.samsung.knox.securefolder/.common.provider.DebugService } U=0: not found\n10-24 11:09:07.761  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:07.761  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:07.823  1271 30889 I sensors-hal: handle_sns_client_event:541, [0][413341] accel_sample [-0.910, -0.321,  9.670] 164905849329505\n10-24 11:09:07.887  1467  3478 E ThermalHalWrapper: Couldn\'t get cooling device because of HAL error: no cooling device for cooling type \n10-24 11:09:07.888  1467  3478 E ThermalHalWrapper: Couldn\'t get temperature thresholds because of HAL error: no threshold data for temperature type \n10-24 11:09:07.892  1267  1267 I android.hardware.health@2.1-service-samsung: updateLrpSysfs: write: 362\n10-24 11:09:07.911  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released \n10-24 11:09:07.921 22545 22545 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.auth.service.START pkg=com.google.android.gms }\n10-24 11:09:07.921 22545 22545 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.auth.service.START pkg=com.google.android.gms }\n10-24 11:09:07.985  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.057440896]\n10-24 11:09:07.986  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.4628576]\n10-24 11:09:07.986  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.56134135]\n10-24 11:09:07.986  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.708958 msecs\n10-24 11:09:07.987  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.125208 msecs\n10-24 11:09:07.988  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.889375 msecs\n10-24 11:09:08.368  1271  3666 I sensors-hal: handle_sns_client_event:252, auto_rotation_debug_2 mode,255, type,1,0 acc,-0.917,-0.321,9.710, ar,0, ver,10\n10-24 11:09:08.490  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.044324055]\n10-24 11:09:08.490  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.33535093]\n10-24 11:09:08.490  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.5426149]\n10-24 11:09:08.491  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.748334 msecs\n10-24 11:09:08.492  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.184428 msecs\n10-24 11:09:08.493  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.878907 msecs\n10-24 11:09:08.505  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:08.506  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:08.506  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired \n10-24 11:09:08.506  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:08.512  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=1833C4_3, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-38, periodicAdvInt=0x0\n10-24 11:09:08.514  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=17F93C_C, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-68, periodicAdvInt=0x0\n10-24 11:09:08.543  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=2819FD_4, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-63, periodicAdvInt=0x0\n10-24 11:09:08.565  3003  3610 D ApfFilter: (wlan0): Adding RA fe80::100d:9df8:951b:ec28 -> ff02::1 0s RIO 1800s fd11:f625:8ceb:1::/64 \n10-24 11:09:08.566  3003  3610 I ApfFilter: Past maximum program size, skipping RAs\n10-24 11:09:08.619  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=1F664F_8, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-94, periodicAdvInt=0x0\n10-24 11:09:08.690 22545 23003 I cn_CronetUrlRequestContext: destroyNativeStreamLocked android.net.http.internal.org.chromium.net.impl.CronetBidirectionalStream@af450c\n10-24 11:09:08.697  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:08.698  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:08.700  1467  5665 D SensorService: Calling activate off 111\n10-24 11:09:08.700  1271  1271 I sensors-hal: activate:279, android.sensor.rotation_vector/111 en=0\n10-24 11:09:08.701  1271  1271 I sensors-hal: deactivate:371, disconnect qmi to disable sensor\n10-24 11:09:08.701  1271  1271 I sensors-hal: activate:297, android.sensor.rotation_vector/111 en=0 completed\n10-24 11:09:08.701 10120 10153 D SensorManager: unregisterListener\n10-24 11:09:08.702  1467  3478 D SensorService: Calling activate off 101\n10-24 11:09:08.702  1271  1271 I sensors-hal: activate:279, android.sensor.linear_acceleration/101 en=0\n10-24 11:09:08.702  1271  1271 I sensors-hal: deactivate:371, disconnect qmi to disable sensor\n10-24 11:09:08.702  1271  1271 I sensors-hal: activate:297, android.sensor.linear_acceleration/101 en=0 completed\n10-24 11:09:08.703 10120 10153 D SensorManager: unregisterListener\n10-24 11:09:08.787   696   696 D io_stats: !@   8,0 r 3246051 259368016 w 620206 98139068 d 250983 101319664 f 0 0 iot 1063104 0 th 0 0 0 pt 0 inp 0 0 164906.827\n10-24 11:09:08.848  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released \n10-24 11:09:08.993  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.017366093]\n10-24 11:09:08.994  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.29390192]\n10-24 11:09:08.994  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.59960794]\n10-24 11:09:08.994  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.715781 msecs\n10-24 11:09:08.995  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.105156 msecs\n10-24 11:09:08.996  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.880312 msecs\n10-24 11:09:08.999  1467  4520 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 53948, isSameBssidAndFreq true\n10-24 11:09:09.001  1467  2760 I SemWifiLinkQualityMonitor: Link Qos Query: 0.169 ms / 47.363 Mbps (468 / 0.125 / 1.190)\n10-24 11:09:09.001  2891  2891 D NetworkController.WifiSignalController: notifyListener: visible=true, connected=true, inetCondition=1, isDefault=true, wifiTestReported=true, receivedInetCondition=-1, hideDuringMobileSwitching=false\n10-24 11:09:09.002  2891  3064 D Tile.WifiTile: handleUpdateState isTransient=false transientEnabling =false cb.isTransient=false state.state = 2 mStateBeforeClick.value =false enabled =true\n10-24 11:09:09.005  1371  1427 I VSyncReactor: Current= 120, TransitioningTo= 120, hwcPeriod= 120, Distance= 0\n10-24 11:09:09.021  1271  3626 I sensors-hal: handle_sns_std_sensor_event:276, [SSC_LIGHT] P: 14(14),m:0,a:48,b:9,c:0,d:0,ag:0,dg:60,it:1824,br:13\n10-24 11:09:09.439  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:09.440  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:09.440  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired \n10-24 11:09:09.440  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:09.445  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=2819FD_4, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-68, periodicAdvInt=0x0\n10-24 11:09:09.515  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x1, addressType=1, address=7AA517_3, primaryPhy=1, secondaryPhy=2, advertisingSid=0x3, txPower=127, rssi=-74, periodicAdvInt=0x0\n10-24 11:09:09.518 22545  7194 I NearbyDiscovery: (REDACTED) loadFastPairModule: checkFeaturesAreAvailable:%d\n10-24 11:09:09.518 22545  7194 I NearbyDiscovery: loadFastPairModule: FastPair module is downloaded. [CONTEXT service_id=265 ]\n10-24 11:09:09.529  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=15701B_2, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-40, periodicAdvInt=0x0\n10-24 11:09:09.607  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:09.607  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:09.757  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released \n10-24 11:09:09.831  1271 30889 I sensors-hal: handle_sns_client_event:541, [0][413448] accel_sample [-0.919, -0.309,  9.658] 164907857543359\n10-24 11:09:09.965  4851  6272 I SDHMS:D : SIOP:: AP:383 BAT:323 USB:283 CHG:377 PA:-777 CP:363 WIFI:368 CF:350 BLK:0 SUBBAT:0 SKIN:362 SKINF:-777 SKINB:-777 LRP:362 LRF:-777 LRB:-777 BLRF:349 BLRB:362 APT:-777 APR:-777 \n10-24 11:09:09.965  4851  6272 I SDHMS:D : MODEMQ:: \n10-24 11:09:09.982  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.028614739]\n10-24 11:09:09.983  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.6259049]\n10-24 11:09:09.983  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.6785798]\n10-24 11:09:09.983  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.772865 msecs\n10-24 11:09:09.984  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.296979 msecs\n10-24 11:09:09.985  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.98901 msecs\n10-24 11:09:10.426  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:10.426  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:10.427  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired \n10-24 11:09:10.427  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:10.433  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=15701B_2, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-41, periodicAdvInt=0x0\n10-24 11:09:10.459  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=1833C4_3, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-41, periodicAdvInt=0x0\n10-24 11:09:10.462  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x1, addressType=1, address=7A7350_D, primaryPhy=1, secondaryPhy=2, advertisingSid=0x4, txPower=127, rssi=-68, periodicAdvInt=0x0\n10-24 11:09:10.481  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=17F93C_C, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-60, periodicAdvInt=0x0\n10-24 11:09:10.486  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.012444132]\n10-24 11:09:10.486  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.9344953]\n10-24 11:09:10.487  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.49142706]\n10-24 11:09:10.487  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.681406 msecs\n10-24 11:09:10.488  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.147136 msecs\n10-24 11:09:10.489  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.851407 msecs\n10-24 11:09:10.529  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x1, addressType=1, address=7AA517_3, primaryPhy=1, secondaryPhy=2, advertisingSid=0x3, txPower=127, rssi=-74, periodicAdvInt=0x0\n10-24 11:09:10.547  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=2819FD_4, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-63, periodicAdvInt=0x0\n10-24 11:09:10.625  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:10.625  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:10.775  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released \n10-24 11:09:10.788   696   696 D io_stats: !@   8,0 r 3246051 259368016 w 620213 98139508 d 250983 101319664 f 0 0 iot 1063108 0 th 0 0 0 pt 0 inp 0 0 164908.828\n10-24 11:09:10.989  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.011839796]\n10-24 11:09:10.990  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.47936058]\n10-24 11:09:10.990  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.5224929]\n10-24 11:09:10.990  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.709375 msecs\n10-24 11:09:10.991  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.150364 msecs\n10-24 11:09:10.992  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.89224 msecs\n10-24 11:09:11.428  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:11.428  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:11.429  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired \n10-24 11:09:11.429  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:11.433  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=1F664F_8, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-96, periodicAdvInt=0x0\n10-24 11:09:11.494  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.010383066]\n10-24 11:09:11.494  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.27888715]\n10-24 11:09:11.494  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.76104444]\n10-24 11:09:11.494  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.717657 msecs\n10-24 11:09:11.496  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.170104 msecs\n10-24 11:09:11.497  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.886979 msecs\n10-24 11:09:11.512  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:11.512  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:11.526  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:11.526  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:11.526  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:11.529  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=15701B_2, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-45, periodicAdvInt=0x0\n10-24 11:09:11.547  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x1, addressType=1, address=7AA517_3, primaryPhy=1, secondaryPhy=2, advertisingSid=0x3, txPower=127, rssi=-78, periodicAdvInt=0x0\n10-24 11:09:11.625  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:11.625  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:11.776  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released \n10-24 11:09:11.840  1271 30889 I sensors-hal: handle_sns_client_event:541, [0][413555] accel_sample [-0.907, -0.326,  9.642] 164909865763359\n10-24 11:09:11.998  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.007957255]\n10-24 11:09:11.998  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.16565292]\n10-24 11:09:11.998  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.7962217]\n10-24 11:09:11.998  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.725938 msecs\n10-24 11:09:12.000  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.179375 msecs\n10-24 11:09:12.001  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.8975 msecs\n10-24 11:09:12.062  1271  3626 I sensors-hal: handle_sns_std_sensor_event:276, [SSC_LIGHT] P: 14(14),m:0,a:48,b:9,c:0,d:0,ag:0,dg:60,it:1824,br:13\n10-24 11:09:12.063  1467  4520 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 53949, isSameBssidAndFreq true\n10-24 11:09:12.065  1467  2760 I SemWifiLinkQualityMonitor: Link Qos Query: 0.020 ms / 393.391 Mbps (468 / 0.000 / 1.190)\n10-24 11:09:12.065  2891  2891 D NetworkController.WifiSignalController: notifyListener: visible=true, connected=true, inetCondition=1, isDefault=true, wifiTestReported=true, receivedInetCondition=-1, hideDuringMobileSwitching=false\n10-24 11:09:12.066  2891  3064 D Tile.WifiTile: handleUpdateState isTransient=false transientEnabling =false cb.isTransient=false state.state = 2 mStateBeforeClick.value =false enabled =true\n10-24 11:09:12.069  1371  1427 I VSyncReactor: Current= 120, TransitioningTo= 120, hwcPeriod= 120, Distance= 0\n10-24 11:09:12.240  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:12.240  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:12.240  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired \n10-24 11:09:12.241  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:12.245  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=17F93C_C, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-61, periodicAdvInt=0x0\n10-24 11:09:12.278  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=2819FD_4, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-67, periodicAdvInt=0x0\n10-24 11:09:12.304  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x1, addressType=1, address=7AA517_3, primaryPhy=1, secondaryPhy=2, advertisingSid=0x3, txPower=127, rssi=-78, periodicAdvInt=0x0\n10-24 11:09:12.318  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x1, addressType=1, address=4EE65B_4, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-64, periodicAdvInt=0x0\n10-24 11:09:12.385  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=15701B_2, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-40, periodicAdvInt=0x0\n10-24 11:09:12.463  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:12.463  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:12.613  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released \n10-24 11:09:12.790   696   696 D io_stats: !@   8,0 r 3246083 259368724 w 620213 98139508 d 250983 101319664 f 0 0 iot 1063120 0 th 0 0 0 pt 0 inp 0 0 164910.830\n10-24 11:09:12.988  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.06387711]\n10-24 11:09:12.988  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.020094287]\n10-24 11:09:12.988  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.8264851]\n10-24 11:09:12.988  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.714531 msecs\n10-24 11:09:12.990  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.087343 msecs\n10-24 11:09:12.991  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.905521 msecs\n10-24 11:09:13.214 22545   694 I NearbyMediums: Found Fast Ble Advertisements :\n10-24 11:09:13.214 22545   694 I NearbyMediums: BleAdvertisement { version=2, socketVersion=2, isFast=true, serviceIdHash=null, data=[ 0x23 0x4e 0x43 0x53 0x38 0x11 0x32 0xb5 0x0f 0x0f 0x9e 0xcd 0xfe 0x94 0x2b 0x4f 0x6f 0x03 0x52 0xe5 0x06 0x2c 0xaf ], deviceToken=[ 0x5b 0xe7 ], rxAdvertisement=null } : 14 times.\n10-24 11:09:13.214 22545   694 I NearbyMediums: BleAdvertisement { version=2, socketVersion=2, isFast=true, serviceIdHash=null, data=[ 0x23 0x39 0x49 0x45 0x49 0x11 0x32 0x75 0xf0 0x93 0x8a 0x8d 0x5e 0x86 0x37 0x95 0x3e 0x75 0xee 0x83 0x06 0xa6 0xe8 ], deviceToken=[ 0xaa 0x6a ], rxAdvertisement=null } : 3 times.\n10-24 11:09:13.214 22545   694 I NearbyMediums: BleAdvertisement { version=2, socketVersion=2, isFast=true, serviceIdHash=null, data=[ 0x23 0x59 0x57 0x4c 0x4c 0x11 0x34 0xca 0xea 0xf3 0xe1 0x63 0xb9 0x34 0x63 0xc7 0x00 0x75 0x15 0x3f 0x74 0xa2 0x3b ], deviceToken=[ 0x65 0xa2 ], rxAdvertisement=null } : 11 times.\n10-24 11:09:13.214 22545   694 I NearbyMediums: Total 28 fast advertisements from 3 unique advertisers.\n10-24 11:09:13.215 22545   694 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing, NearbyConnections.TxAdvertisement}\n10-24 11:09:13.271  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:13.271  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:13.271  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired \n10-24 11:09:13.272  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:13.278  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=15701B_2, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-41, periodicAdvInt=0x0\n10-24 11:09:13.322  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x1, addressType=1, address=7AA517_3, primaryPhy=1, secondaryPhy=2, advertisingSid=0x3, txPower=127, rssi=-72, periodicAdvInt=0x0\n10-24 11:09:13.327  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=1833C4_3, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-39, periodicAdvInt=0x0\n10-24 11:09:13.330  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x1, addressType=1, address=4EE65B_4, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-64, periodicAdvInt=0x0\n10-24 11:09:13.341  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=17F93C_C, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-63, periodicAdvInt=0x0\n10-24 11:09:13.419  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:13.419  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:13.492  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.09996949]\n10-24 11:09:13.492  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.04130886]\n10-24 11:09:13.492  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.67534626]\n10-24 11:09:13.492  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.790416 msecs\n10-24 11:09:13.494  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.078698 msecs\n10-24 11:09:13.495  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.889584 msecs\n10-24 11:09:13.570  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released \n10-24 11:09:13.720  2829  2829 I wpa_supplicant: Heartbeat 16469\n10-24 11:09:13.847  1271 30889 I sensors-hal: handle_sns_client_event:541, [0][413662] accel_sample [-0.918, -0.323,  9.640] 164911873975911\n10-24 11:09:13.996  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.13978127]\n10-24 11:09:13.996  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.0327307]\n10-24 11:09:13.996  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.8668248]\n10-24 11:09:13.996  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.717292 msecs\n10-24 11:09:13.998  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.08026 msecs\n10-24 11:09:13.999  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.885989 msecs\n10-24 11:09:14.172  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:14.172  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:14.173  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired \n10-24 11:09:14.173  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:14.176  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=1F664F_8, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-94, periodicAdvInt=0x0\n10-24 11:09:14.190  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=17F93C_C, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-65, periodicAdvInt=0x0\n10-24 11:09:14.266  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=2819FD_4, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-63, periodicAdvInt=0x0\n10-24 11:09:14.344  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:14.344  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:14.494  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released \n10-24 11:09:14.500  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.09511815]\n10-24 11:09:14.500  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.085985765]\n10-24 11:09:14.500  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.8391616]\n10-24 11:09:14.500  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.703958 msecs\n10-24 11:09:14.501  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.106927 msecs\n10-24 11:09:14.503  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.894114 msecs\n10-24 11:09:15.004  1467  2758 D SemNscXgbMsL1: Probability - Cloud gaming: [0.21660642]\n10-24 11:09:15.004  1467  2758 D SemNscXgbMsL1: Probability - Real time: [0.020322971]\n10-24 11:09:15.004  1467  2758 D SemNscXgbMsL1: Probability - Non real time: [0.7390244]\n10-24 11:09:15.004  1467  2758 D SemNscXgbMsL1: 1 sample inference time: 0.786198 msecs\n10-24 11:09:15.005  1467  2758 D SemNscXgbL2Rt: L2 RT 1 sample inference time: 1.112864 msecs\n10-24 11:09:15.006  1467  2758 D SemNscXgbL2Nrt: L2 NRT 1 sample inference time: 0.8925 msecs\n10-24 11:09:15.088  1467  4520 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 53950, isSameBssidAndFreq true\n10-24 11:09:15.090  1467  2760 I SemWifiLinkQualityMonitor: Link Qos Query: 0.093 ms / 86.328 Mbps (468 / 0.001 / 5.000)\n10-24 11:09:15.090  2891  2891 D NetworkController.WifiSignalController: notifyListener: visible=true, connected=true, inetCondition=1, isDefault=true, wifiTestReported=true, receivedInetCondition=-1, hideDuringMobileSwitching=false\n10-24 11:09:15.092  2891  3064 D Tile.WifiTile: handleUpdateState isTransient=false transientEnabling =false cb.isTransient=false state.state = 2 mStateBeforeClick.value =false enabled =true\n10-24 11:09:15.099  1371  1427 I VSyncReactor: Current= 120, TransitioningTo= 120, hwcPeriod= 120, Distance= 0\n10-24 11:09:15.102  1271  3626 I sensors-hal: handle_sns_std_sensor_event:276, [SSC_LIGHT] P: 14(14),m:0,a:48,b:9,c:0,d:0,ag:0,dg:60,it:1824,br:13\n10-24 11:09:15.108  1371  1371 I SurfaceFlinger: SFWD update time=164913148362715\n10-24 11:09:15.268  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD\n10-24 11:09:15.268  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK ON\n10-24 11:09:15.268  1260  4101 D vendor.qti.bluetooth@1.0-wake_lock: Acquire wakelock is acquired \n10-24 11:09:15.269  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Writing IBS_WAKE_ACK\n10-24 11:09:15.273  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x10, addressType=1, address=15701B_2, primaryPhy=1, secondaryPhy=0, advertisingSid=0xff, txPower=127, rssi=-40, periodicAdvInt=0x0\n10-24 11:09:15.331  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 5- eventType=0x0, addressType=1, address=1833C4_3, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-41, periodicAdvInt=0x0\n10-24 11:09:15.354  3335  3476 D BtGatt.GattService: onScanResult to scannerId: 6- eventType=0x1, addressType=1, address=4EE65B_4, primaryPhy=1, secondaryPhy=1, advertisingSid=0x1, txPower=127, rssi=-64, periodicAdvInt=0x0\n10-24 11:09:15.432  1260  4101 I vendor.qti.bluetooth@1.0-ibs_handler: ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE\n10-24 11:09:15.432  1260  4101 D vendor.qti.bluetooth@1.0-ibs_handler: SerialClockVote: vote for UART CLK OFF\n10-24 11:09:15.583  1260  3747 D vendor.qti.bluetooth@1.0-wake_lock: Release wakelock is released \n10-24 11:09:15.684  8236  8236 I adbd    : adbd service requested \'shell,v2,TERM=xterm-256color,raw:rm -rf /data/local/tmp/codebrix-m8-mnee-s20-mnee/mnee/mesa-cache\'\n10-24 11:09:15.748  8236  8236 I adbd    : adbd service requested \'sync:\'\n10-24 11:09:15.856  1271 30889 I sensors-hal: handle_sns_client_event:541, [0][413769] accel_sample [-0.911, -0.322,  9.627] 164913882185182\n10-24 11:09:15.859  5835  6313 I ContactsProvider_EventLog: cp_s: [CONTACT con(0) dat(0) acc({}) calls([]) Iso(US) uId(0) ]\r\n10-24 11:09:15.859  5835  6313 I ContactsProvider_EventLog: cp_s: [ agr({}) ]\r\n10-24 11:09:15.859  5835  6313 I ContactsProvider_EventLog: cp_s: [ cnt({acore(5835)=1}) ]\r\n10-24 11:09:15.859  5835  6313 I ContactsProvider_EventLog: cp_s: [PROFILE ] [SAPROFILE con(1) dat(1) acc({phone(1)=1}) ]\r\n10-24 11:09:15.859  5835  6313 I ContactsProvider_EventLog: cp_s: [STATE R(F) ]\n10-24 11:09:15.863  8236  8236 I adbd    : adbd service requested \'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=\'\'; exec logcat \'-d\' \'-t\' \'300\'\'\n', 7967, 7968, 'invalid start byte')
+[11:09:29] samsung transparent-m8: END passed=True wall=336s/2400s failures=0
+[11:09:29] samsung corpus transparent-m8 exit=0
+[11:09:34] hp lighting-m8: SCENE-REFERENCE broad_lighting references=12
+[11:09:38] checkpoint-2 status written
+[11:09:41] s20 mnee-s20-mnee: END passed=False wall=285s/2400s failures=1
+[11:09:41] s20 corpus mnee-s20-mnee (mnee_render,mnee) exit=1 timeout=900s
+[11:09:55] samsung terminator-m8: START shadow_terminator timeout=900s
+[11:09:55] samsung terminator-m8: SCENE-DUMP shadow_terminator
+[11:10:08] s20 lighttree-s20-light_tree: START light_tree timeout=2700s
+[11:10:08] s20 lighttree-s20-light_tree: SCENE-DUMP light_tree
+[11:10:19] samsung terminator-m8: SCENE-REFERENCE shadow_terminator references=10
+[11:11:07] hp lighting-m8: REFERENCE broad_lighting host re-judged vs glibc: True
+[11:11:07] hp lighting-m8: PASS broad_lighting 61s maxPipelineMs=8728.96
+[11:11:07] hp lighting-m8: START lighting_mis-replay-0 timeout=1200s
+[11:11:12] s20 lighttree-s20-light_tree: SCENE-REFERENCE light_tree references=14
+[11:11:41] hp lighting-m8: PASS lighting_mis-replay-0 31s readbacks=414 max=1.79e-07 strict=3 fmt=native-command-stream-v6
+[11:11:41] hp lighting-m8: START lighting_mis-replay-1 timeout=1200s
+[11:11:51] samsung terminator-m8: REFERENCE shadow_terminator host re-judged vs glibc: True
+[11:11:51] samsung terminator-m8: PASS shadow_terminator 87s maxPipelineMs=7121.69
+[11:11:51] samsung terminator-m8: START terminator-replay-0 timeout=900s
+[11:12:03] samsung terminator-m8: PASS terminator-replay-0 11s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:12:03] samsung terminator-m8: START terminator-replay-1 timeout=900s
+[11:12:15] hp lighting-m8: PASS lighting_mis-replay-1 32s readbacks=450 max=1.91e-06 strict=11 fmt=native-command-stream-v6
+[11:12:15] hp lighting-m8: START broad_lighting-replay-0 timeout=1200s
+[11:12:16] samsung terminator-m8: PASS terminator-replay-1 13s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:12:16] samsung terminator-m8: START terminator-replay-2 timeout=900s
+[11:12:30] samsung terminator-m8: PASS terminator-replay-2 13s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:12:30] samsung terminator-m8: START terminator-replay-3 timeout=900s
+[11:12:43] samsung terminator-m8: PASS terminator-replay-3 13s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:12:43] samsung terminator-m8: START terminator-replay-4 timeout=900s
+[11:12:49] hp lighting-m8: PASS broad_lighting-replay-0 32s readbacks=414 max=1.79e-07 strict=1 fmt=native-command-stream-v6
+[11:12:49] hp lighting-m8: START broad_lighting-replay-1 timeout=1200s
+[11:13:04] samsung terminator-m8: PASS terminator-replay-4 21s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[11:13:04] samsung terminator-m8: START terminator-replay-5 timeout=900s
+[11:13:23] hp lighting-m8: PASS broad_lighting-replay-1 31s readbacks=450 max=5.07e-07 strict=26 fmt=native-command-stream-v6
+[11:13:26] samsung terminator-m8: PASS terminator-replay-5 21s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[11:13:26] samsung terminator-m8: START terminator-replay-6 timeout=900s
+[11:13:46] hp lighting-m8: END passed=True wall=377s/2400s failures=0
+[11:13:47] hp corpus lighting-m8 exit=0
+[11:13:47] samsung terminator-m8: PASS terminator-replay-6 21s readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[11:13:47] samsung terminator-m8: START terminator-replay-7 timeout=900s
+[11:13:59] s20 lighttree-s20-light_tree: REFERENCE light_tree host re-judged vs glibc: False
+[11:14:00] s20 lighttree-s20-light_tree: FAIL light_tree exit=1 166s: Light tree film mismatch case=0 component=296 actual=0.412908 expected=0.412739
+[11:14:09] samsung terminator-m8: PASS terminator-replay-7 21s readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[11:14:09] samsung terminator-m8: START terminator-replay-8 timeout=900s
+[11:14:10] hp transparent-m8: START transparent_shadow timeout=1200s
+[11:14:24] s20 lighttree-s20-light_tree: END passed=False wall=259s/5400s failures=8
+[11:14:24] s20 corpus lighttree-s20-light_tree (light_tree) exit=0 timeout=2700s
+[11:14:25] hp transparent-m8: PASS transparent_shadow 12s maxPipelineMs=1750.47
+[11:14:25] hp transparent-m8: START transparent_lighting timeout=1200s
+[11:14:25] hp transparent-m8: SCENE-DUMP transparent_lighting
+[11:14:30] samsung terminator-m8: PASS terminator-replay-8 21s readbacks=407 max=2.93e-05 strict=8 fmt=native-command-stream-v6
+[11:14:30] samsung terminator-m8: START terminator-replay-9 timeout=900s
+[11:14:50] s20 materials-s20-principled_bounce: START principled_bounce timeout=2400s
+[11:14:52] hp transparent-m8: SCENE-REFERENCE transparent_lighting references=8
+[11:15:01] samsung terminator-m8: PASS terminator-replay-9 30s readbacks=443 max=2.91e-05 strict=14 fmt=native-command-stream-v6
+[11:15:25] samsung terminator-m8: END passed=True wall=332s/1800s failures=0
+[11:15:25] samsung corpus terminator-m8 exit=0
+[11:15:50] samsung spec-refusal-m8: START glass_render-spec timeout=1200s
+[11:15:50] samsung spec-refusal-m8: SCENE-DUMP glass_render-spec
+[11:16:12] samsung spec-refusal-m8: SCENE-REFERENCE glass_render-spec references=1
+[11:16:20] hp transparent-m8: REFERENCE transparent_lighting host re-judged vs glibc: True
+[11:16:20] hp transparent-m8: PASS transparent_lighting 68s maxPipelineMs=8700.89
+[11:16:20] hp transparent-m8: START transparent_lighting-replay-0 timeout=1200s
+[11:16:55] samsung spec-refusal-m8: REFERENCE glass_render-spec host re-judged vs glibc: True
+[11:16:56] hp transparent-m8: PASS transparent_lighting-replay-0 34s readbacks=560 max=1.49e-07 strict=1 fmt=native-command-stream-v7
+[11:16:56] hp transparent-m8: START transparent_lighting-replay-1 timeout=1200s
+[11:17:02] s20 materials-s20-principled_bounce: FAIL principled_bounce exit=1 131s: Compiled materials: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitialized SVM stack
+[11:17:26] s20 materials-s20-principled_bounce: END passed=False wall=158s/6600s failures=1
+[11:17:26] s20 corpus materials-s20-principled_bounce (principled_bounce) exit=0 timeout=2400s
+[11:17:27] s20 cleaned (left: '')
+[11:17:27] s20 lock released
+[11:17:30] samsung spec-refusal-m8: STAGE-JUDGE glass_render-spec passed=True 0.003376758446961255
+[11:17:30] samsung spec-refusal-m8: PASS glass_render-spec 41s maxPipelineMs=3579.52
+[11:17:30] samsung spec-refusal-m8: START glass_render-nospec-refused timeout=1200s
+[11:17:30] samsung spec-refusal-m8: PASS glass_render-nospec-refused refusal exit=1 0s
+[11:17:30] samsung spec-refusal-m8: START glass_render-superset-refused timeout=1200s
+[11:17:30] samsung spec-refusal-m8: PASS glass_render-superset-refused refusal exit=1 0s
+[11:17:33] hp transparent-m8: PASS transparent_lighting-replay-1 34s readbacks=596 max=1.91e-06 strict=8 fmt=native-command-stream-v7
+[11:17:33] hp transparent-m8: START transparent_lighting-replay-2 timeout=1200s
+[11:17:54] samsung spec-refusal-m8: END passed=True wall=126s/1800s failures=0
+[11:17:54] samsung corpus spec-refusal-m8 exit=0
+[11:18:15] hp transparent-m8: PASS transparent_lighting-replay-2 39s readbacks=575 max=1.91e-06 strict=89 fmt=native-command-stream-v7
+[11:18:15] hp transparent-m8: START transparent_lighting-replay-3 timeout=1200s
+[11:18:18] samsung environment-m8: START environment timeout=1200s
+[11:18:18] samsung environment-m8: SCENE-DUMP environment
+[11:18:57] hp transparent-m8: PASS transparent_lighting-replay-3 40s readbacks=580 max=5.01e-06 strict=323 fmt=native-command-stream-v7
+[11:18:57] hp transparent-m8: START transparent_lighting-replay-4 timeout=1200s
+[11:19:12] samsung environment-m8: SCENE-REFERENCE environment references=26
+[11:19:41] hp transparent-m8: PASS transparent_lighting-replay-4 41s readbacks=840 max=7.75e-06 strict=435 fmt=native-command-stream-v7
+[11:19:41] hp transparent-m8: START transparent_lighting-replay-5 timeout=1200s
+[11:20:24] hp transparent-m8: PASS transparent_lighting-replay-5 40s readbacks=916 max=7.75e-07 strict=4 fmt=native-command-stream-v7
+[11:20:24] hp transparent-m8: START transparent_lighting-replay-6 timeout=1200s
+[11:21:06] hp transparent-m8: PASS transparent_lighting-replay-6 40s readbacks=428 max=6.56e-06 strict=299 fmt=native-command-stream-v7
+[11:21:06] hp transparent-m8: START transparent_lighting-replay-7 timeout=1200s
+[11:21:17] s20 lock taken (chain8_s20_rerun.sh (re-runs after tool fixes), waited 0s)
+[11:21:49] hp transparent-m8: PASS transparent_lighting-replay-7 40s readbacks=518 max=6.79e-06 strict=520 fmt=native-command-stream-v7
+[11:21:49] hp transparent-m8: START transparent-shadow-replay-direct timeout=1200s
+[11:21:55] hp transparent-m8: PASS transparent-shadow-replay-direct 4s readbacks=8 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[11:21:55] hp transparent-m8: START transparent-shadow-replay-indexed timeout=1200s
+[11:22:01] hp transparent-m8: PASS transparent-shadow-replay-indexed 5s readbacks=4 max=7.45e-09 strict=0 fmt=native-command-stream-v7
+[11:22:06] s20 staged exit=0
+[11:22:25] hp transparent-m8: END passed=True wall=495s/2400s failures=0
+[11:22:25] hp corpus transparent-m8 exit=0
+[11:22:33] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting timeout=900s
+[11:22:33] s20 transparent-s20-transparent_lighting-rerun: SCENE-DUMP transparent_lighting
+[11:22:49] hp terminator-m8: START shadow_terminator timeout=900s
+[11:22:49] hp terminator-m8: SCENE-DUMP shadow_terminator
+[11:22:58] s20 transparent-s20-transparent_lighting-rerun: SCENE-REFERENCE transparent_lighting references=8
+[11:23:15] hp terminator-m8: SCENE-REFERENCE shadow_terminator references=10
+[11:25:45] hp terminator-m8: REFERENCE shadow_terminator host re-judged vs glibc: True
+[11:25:45] hp terminator-m8: PASS shadow_terminator 131s maxPipelineMs=25204.1
+[11:25:45] hp terminator-m8: START terminator-replay-0 timeout=900s
+[11:25:52] s20 transparent-s20-transparent_lighting-rerun: REFERENCE transparent_lighting host re-judged vs glibc: True
+[11:25:52] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting 168s maxPipelineMs=15875.6
+[11:25:52] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting-replay-0 timeout=900s
+[11:26:03] samsung environment-m8: REFERENCE environment host re-judged vs glibc: True
+[11:26:03] samsung environment-m8: PASS environment 401s maxPipelineMs=22093.7
+[11:26:03] samsung environment-m8: START environment-replay-0 timeout=1200s
+[11:26:12] hp terminator-m8: PASS terminator-replay-0 27s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:26:12] hp terminator-m8: START terminator-replay-1 timeout=900s
+[11:26:25] samsung environment-m8: PASS environment-replay-0 22s readbacks=443 max=2.86e-06 strict=48 fmt=native-command-stream-v9
+[11:26:25] samsung environment-m8: START environment-replay-1 timeout=1200s
+[11:26:34] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-0 41s readbacks=560 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[11:26:34] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting-replay-1 timeout=900s
+[11:26:48] hp terminator-m8: PASS terminator-replay-1 34s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:26:48] hp terminator-m8: START terminator-replay-2 timeout=900s
+[11:27:00] samsung environment-m8: PASS environment-replay-1 34s readbacks=463 max=1.19e-06 strict=36 fmt=native-command-stream-v9
+[11:27:00] samsung environment-m8: START environment-replay-2 timeout=1200s
+[11:27:16] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-1 42s readbacks=596 max=1.19e-07 strict=0 fmt=native-command-stream-v7
+[11:27:16] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting-replay-2 timeout=900s
+[11:27:24] hp terminator-m8: PASS terminator-replay-2 34s readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:27:24] hp terminator-m8: START terminator-replay-3 timeout=900s
+[11:27:30] samsung environment-m8: PASS environment-replay-2 30s readbacks=281 max=2.86e-06 strict=40 fmt=native-command-stream-v6
+[11:27:30] samsung environment-m8: START environment-replay-3 timeout=1200s
+[11:27:59] hp terminator-m8: PASS terminator-replay-3 34s readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:27:59] hp terminator-m8: START terminator-replay-4 timeout=900s
+[11:28:05] samsung environment-m8: PASS environment-replay-3 34s readbacks=463 max=1.19e-06 strict=30 fmt=native-command-stream-v9
+[11:28:05] samsung environment-m8: START environment-replay-4 timeout=1188s
+[11:28:08] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-2 52s readbacks=575 max=3.81e-06 strict=72 fmt=native-command-stream-v7
+[11:28:08] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting-replay-3 timeout=900s
+[11:28:41] samsung environment-m8: PASS environment-replay-4 35s readbacks=575 max=1.91e-06 strict=62 fmt=native-command-stream-v9
+[11:28:41] samsung environment-m8: START environment-replay-5 timeout=1153s
+[11:28:54] hp terminator-m8: PASS terminator-replay-4 54s readbacks=455 max=1.53e-05 strict=25 fmt=native-command-stream-v6
+[11:28:54] hp terminator-m8: START terminator-replay-5 timeout=900s
+[11:29:01] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-3 52s readbacks=580 max=1.55e-06 strict=133 fmt=native-command-stream-v7
+[11:29:01] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting-replay-4 timeout=900s
+[11:29:10] samsung environment-m8: PASS environment-replay-5 28s readbacks=281 max=3.81e-06 strict=28 fmt=native-command-stream-v6
+[11:29:10] samsung environment-m8: START environment-replay-6 timeout=1124s
+[11:29:50] hp terminator-m8: PASS terminator-replay-5 54s readbacks=446 max=1.53e-05 strict=21 fmt=native-command-stream-v6
+[11:29:50] hp terminator-m8: START terminator-replay-6 timeout=900s
+[11:29:54] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-4 52s readbacks=840 max=6.02e-06 strict=167 fmt=native-command-stream-v7
+[11:29:54] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting-replay-5 timeout=900s
+[11:30:12] samsung environment-m8: PASS environment-replay-6 62s readbacks=465 max=4.77e-07 strict=5 fmt=native-command-stream-v9
+[11:30:12] samsung environment-m8: START environment-replay-7 timeout=1061s
+[11:30:44] hp terminator-m8: PASS terminator-replay-6 53s readbacks=446 max=1.53e-05 strict=21 fmt=native-command-stream-v6
+[11:30:44] hp terminator-m8: START terminator-replay-7 timeout=900s
+[11:30:47] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-5 53s readbacks=916 max=7.9e-07 strict=3 fmt=native-command-stream-v7
+[11:30:47] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting-replay-6 timeout=900s
+[11:31:31] samsung environment-m8: PASS environment-replay-7 78s readbacks=465 max=1.19e-07 strict=0 fmt=native-command-stream-v9
+[11:31:31] samsung environment-m8: START environment-replay-8 timeout=983s
+[11:31:39] hp terminator-m8: PASS terminator-replay-7 54s readbacks=455 max=1.53e-05 strict=25 fmt=native-command-stream-v6
+[11:31:39] hp terminator-m8: START terminator-replay-8 timeout=900s
+[11:31:40] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-6 52s readbacks=428 max=6.02e-06 strict=103 fmt=native-command-stream-v7
+[11:31:40] s20 transparent-s20-transparent_lighting-rerun: START transparent_lighting-replay-7 timeout=900s
+[11:31:51] PART 1C START (Jeremy GO 11:28): items 21 and 22; part 2 is running in this checkout - only volume_gate.cpp, ImageModes/Program.cs, DEVICE.md items 21/22 and merge8 seal files will change
+[11:32:13] START c1-volume_gate
+[11:32:32] s20 transparent-s20-transparent_lighting-rerun: PASS transparent_lighting-replay-7 52s readbacks=518 max=6.02e-06 strict=205 fmt=native-command-stream-v7
+[11:32:35] hp terminator-m8: PASS terminator-replay-8 53s readbacks=407 max=2.38e-07 strict=5 fmt=native-command-stream-v6
+[11:32:35] hp terminator-m8: START terminator-replay-9 timeout=900s
+[11:32:49] samsung environment-m8: PASS environment-replay-8 78s readbacks=484 max=9.54e-07 strict=41 fmt=native-command-stream-v9
+[11:32:49] samsung environment-m8: START environment-replay-9 timeout=904s
+[11:32:56] s20 transparent-s20-transparent_lighting-rerun: END passed=False wall=626s/3000s failures=0
+[11:32:56] s20 corpus transparent-s20-transparent_lighting-rerun (transparent_lighting) exit=0 timeout=900s
+[11:33:18] s20 transparent-s20-transparent_shadow-rerun: ERROR AssertionError('Production sources changed since build')
+[11:33:41] s20 transparent-s20-transparent_shadow-rerun: END passed=False wall=22s/1200s failures=0
+[11:33:41] s20 corpus transparent-s20-transparent_shadow-rerun (transparent_shadow) exit=1 timeout=600s
+[11:33:41] s20 mnee-s20-mnee-rerun WAITING for HOLD-ALL (part 1c)
+[11:33:44] hp terminator-m8: PASS terminator-replay-9 66s readbacks=443 max=9.54e-07 strict=10 fmt=native-command-stream-v6
+[11:34:07] samsung environment-m8: PASS environment-replay-9 78s readbacks=484 max=2.53e-07 strict=4 fmt=native-command-stream-v9
+[11:34:07] samsung environment-m8: START environment-replay-10 timeout=826s
+[11:34:08] hp terminator-m8: END passed=False wall=679s/1800s failures=0
+[11:34:08] hp corpus terminator-m8 exit=0
+[11:34:08] hp spec-refusal-m8 WAITING for HOLD-ALL (part 1c)
+[11:35:27] samsung environment-m8: PASS environment-replay-10 79s readbacks=463 max=1.43e-06 strict=39 fmt=native-command-stream-v9
+[11:35:27] samsung environment-m8: START environment-replay-11 timeout=747s
+[11:36:11] END c1-volume_gate exit=0 238s
+[11:36:11] START c1-volume_boundary_gate
+[11:36:45] samsung environment-m8: PASS environment-replay-11 77s readbacks=433 max=1.43e-06 strict=16 fmt=native-command-stream-v9
+[11:37:08] samsung environment-m8: END passed=False wall=1131s/1800s failures=0
+[11:37:08] samsung corpus environment-m8 exit=0
+[11:39:38] checkpoint-2 status written
+[11:41:23] END c1-volume_boundary_gate exit=0 312s
+[11:41:31] START c1-host-gate
+[11:43:42] END c1-host-gate exit=0 131s
+[11:44:05] 1c: volume_gate.cpp case 9, ImageModes fileReading mapping, DEVICE.md items 21/22 resolved; Linux: volume_gate PASS, volume_boundary_gate PASS, host_gate PASS (3,146, 0 practical, 149 strict); Linux volume gate 20a5463e -> 5a963979
+[11:45:13] 1c android volume gate build android-arm64 exit=0 52s
+[11:45:41] 1c review android-arm64 exit=0
+[11:46:32] 1c android volume gate build android-x64 exit=0 52s
+[11:47:00] 1c review android-x64 exit=0
+[11:47:54] 1c SEAL: wave8.patch 8661982fef2a6360 (98 files), staged lists re-reviewed, post-merge.json updated
+[11:54:01] START p8c-al-volume_gate
+[11:54:29] s20 mnee-s20-mnee-rerun: START mnee timeout=900s
+[11:54:32] samsung hostcap-linux-triangle: START tri0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-triangle/out/triangle_lighting/run/case-0)
+[11:54:33] hp spec-refusal-m8: START glass_render-spec timeout=1200s
+[11:54:33] hp spec-refusal-m8: SCENE-DUMP glass_render-spec
+[11:54:45] samsung hostcap-linux-triangle: PASS tri0 readbacks=289 max=4.77e-07 strict=12 fmt=native-command-stream-v6
+[11:54:46] samsung hostcap-linux-triangle: START tri1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-triangle/out/triangle_lighting/run/case-1)
+[11:54:58] hp spec-refusal-m8: SCENE-REFERENCE glass_render-spec references=1
+[11:55:03] samsung hostcap-linux-triangle: PASS tri1 readbacks=417 max=1.19e-07 strict=0 fmt=native-command-stream-v8
+[11:55:03] samsung hostcap-linux-triangle: START tri2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-triangle/out/triangle_lighting/run/case-2)
+[11:55:21] samsung hostcap-linux-triangle: PASS tri2 readbacks=415 max=6.41e-07 strict=12 fmt=native-command-stream-v8
+[11:55:21] samsung hostcap-linux-triangle: START tri3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-triangle/out/triangle_lighting/run/case-3)
+[11:55:39] samsung hostcap-linux-triangle: PASS tri3 readbacks=473 max=1.76e-06 strict=233 fmt=native-command-stream-v8
+[11:55:39] samsung hostcap-linux-triangle: START tri4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-triangle/out/triangle_lighting/run/case-4)
+[11:55:57] samsung hostcap-linux-triangle: PASS tri4 readbacks=415 max=2.53e-07 strict=5 fmt=native-command-stream-v8
+[11:55:57] samsung hostcap-linux-triangle: START tri5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-triangle/out/triangle_lighting/run/case-5)
+[11:55:59] hp spec-refusal-m8: REFERENCE glass_render-spec host re-judged vs glibc: True
+[11:56:25] s20 mnee-s20-mnee-rerun: FAIL mnee exit=1 115s: case 0 sample 0 step 1: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/data
+[11:56:27] samsung hostcap-linux-triangle: PASS tri5 readbacks=464 max=1.79e-06 strict=237 fmt=native-command-stream-v8
+[11:56:42] hp spec-refusal-m8: STAGE-JUDGE glass_render-spec passed=True 0.06747885152364427
+[11:56:42] hp spec-refusal-m8: PASS glass_render-spec 53s maxPipelineMs=8816.71
+[11:56:42] hp spec-refusal-m8: START glass_render-nospec-refused timeout=1200s
+[11:56:43] hp spec-refusal-m8: PASS glass_render-nospec-refused refusal exit=1 0s
+[11:56:43] hp spec-refusal-m8: START glass_render-superset-refused timeout=1200s
+[11:56:43] hp spec-refusal-m8: PASS glass_render-superset-refused refusal exit=1 0s
+[11:56:51] samsung hostcap-linux-triangle: END passed=True wall=139s/3600s
+[11:56:51] samsung hostcap triangle exit=0
+[11:56:52] s20 mnee-s20-mnee-rerun: END passed=False wall=144s/1500s failures=1
+[11:56:52] s20 corpus mnee-s20-mnee-rerun (mnee) exit=0 timeout=900s
+[11:56:53] s20 cleaned (left: '')
+[11:56:53] s20 lock released
+[11:57:10] hp spec-refusal-m8: END passed=True wall=156s/1800s failures=0
+[11:57:10] hp corpus spec-refusal-m8 exit=0
+[11:57:16] samsung hostcap-linux-terminator: START term0 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-0)
+[11:57:27] samsung hostcap-linux-terminator: PASS term0 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:57:27] samsung hostcap-linux-terminator: START term1 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-1)
+[11:57:35] hp environment-m8: START environment timeout=1200s
+[11:57:35] hp environment-m8: SCENE-DUMP environment
+[11:57:39] samsung hostcap-linux-terminator: PASS term1 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:57:40] samsung hostcap-linux-terminator: START term2 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-2)
+[11:57:52] samsung hostcap-linux-terminator: PASS term2 readbacks=418 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:57:52] samsung hostcap-linux-terminator: START term3 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-3)
+[11:58:02] END p8c-al-volume_gate exit=0 241s
+[11:58:02] START p8c-al-volume_boundary_gate
+[11:58:05] samsung hostcap-linux-terminator: PASS term3 readbacks=428 max=5.96e-08 strict=0 fmt=native-command-stream-v6
+[11:58:06] samsung hostcap-linux-terminator: START term4 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-4)
+[11:58:26] samsung hostcap-linux-terminator: PASS term4 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[11:58:26] samsung hostcap-linux-terminator: START term5 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-5)
+[11:58:32] hp environment-m8: SCENE-REFERENCE environment references=26
+[11:58:47] samsung hostcap-linux-terminator: PASS term5 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[11:58:47] samsung hostcap-linux-terminator: START term6 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-6)
+[11:59:07] samsung hostcap-linux-terminator: PASS term6 readbacks=446 max=2.32e-05 strict=19 fmt=native-command-stream-v6
+[11:59:08] samsung hostcap-linux-terminator: START term7 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-7)
+[11:59:16] WIND-DOWN (coordinator 12:00): HOLD-ALL set, chain8_device.sh samsung (1760296) and hp (1760298) stopped by PID (my own); in-flight jobs left to finish
+[11:59:28] samsung hostcap-linux-terminator: PASS term7 readbacks=455 max=6.2e-05 strict=27 fmt=native-command-stream-v6
+[11:59:28] samsung hostcap-linux-terminator: START term8 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-8)
+[11:59:49] samsung hostcap-linux-terminator: PASS term8 readbacks=407 max=2.93e-05 strict=9 fmt=native-command-stream-v6
+[11:59:49] samsung hostcap-linux-terminator: START term9 (/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-shadow-terminator/out/shadow_terminator/run/case-9)
+[12:00:19] samsung hostcap-linux-terminator: PASS term9 readbacks=443 max=2.91e-05 strict=15 fmt=native-command-stream-v6
+[12:00:40] samsung hostcap-linux-terminator: END passed=True wall=208s/3600s
+[12:03:30] END p8c-al-volume_boundary_gate exit=0 328s
+[12:03:30] START p8c-host-gate
+[12:04:03] hp environment-m8: REFERENCE environment host re-judged vs glibc: True
+[12:04:03] hp environment-m8: PASS environment 295s maxPipelineMs=23575.1
+[12:04:03] hp environment-m8: START environment-replay-0 timeout=1200s
+[12:04:47] hp environment-m8: PASS environment-replay-0 40s readbacks=443 max=5.25e-06 strict=122 fmt=native-command-stream-v9
+[12:04:47] hp environment-m8: START environment-replay-1 timeout=1200s
+[12:05:37] END p8c-host-gate exit=0 127s
+[12:05:37] slot8p_C1 DONE
+[12:05:51] hp environment-m8: PASS environment-replay-1 61s readbacks=463 max=4.77e-06 strict=135 fmt=native-command-stream-v9
+[12:05:51] hp environment-m8: START environment-replay-2 timeout=1200s
+[12:06:32] samsung cleaned (left: '')
+[12:06:32] s20 cleaned (left: '')
+[12:06:35] samsung lock released
+[12:06:46] hp environment-m8: PASS environment-replay-2 53s readbacks=281 max=5.96e-06 strict=146 fmt=native-command-stream-v6
+[12:06:46] hp environment-m8: START environment-replay-3 timeout=1200s
+[12:07:50] hp environment-m8: PASS environment-replay-3 61s readbacks=463 max=8.82e-06 strict=123 fmt=native-command-stream-v9
+[12:07:50] hp environment-m8: START environment-replay-4 timeout=1159s
+[12:08:54] hp environment-m8: PASS environment-replay-4 61s readbacks=575 max=3.81e-06 strict=216 fmt=native-command-stream-v9
+[12:08:54] hp environment-m8: START environment-replay-5 timeout=1095s
+[12:09:49] hp environment-m8: PASS environment-replay-5 53s readbacks=281 max=2.86e-05 strict=130 fmt=native-command-stream-v6
+[12:09:49] hp environment-m8: START environment-replay-6 timeout=1040s
+[12:11:18] hp environment-m8: PASS environment-replay-6 86s readbacks=465 max=8.52e-06 strict=65 fmt=native-command-stream-v9
+[12:11:18] hp environment-m8: START environment-replay-7 timeout=951s
+[12:12:48] hp environment-m8: PASS environment-replay-7 87s readbacks=465 max=4.77e-07 strict=7 fmt=native-command-stream-v9
+[12:12:48] hp environment-m8: START environment-replay-8 timeout=861s
+[12:14:18] hp environment-m8: PASS environment-replay-8 87s readbacks=484 max=2.69e-05 strict=163 fmt=native-command-stream-v9
+[12:14:18] hp environment-m8: START environment-replay-9 timeout=771s
+[12:15:48] hp environment-m8: PASS environment-replay-9 88s readbacks=484 max=4.66e-06 strict=47 fmt=native-command-stream-v9
+[12:15:48] hp environment-m8: START environment-replay-10 timeout=681s
+[12:17:18] hp environment-m8: PASS environment-replay-10 87s readbacks=463 max=6.91e-06 strict=136 fmt=native-command-stream-v9
+[12:17:18] hp environment-m8: START environment-replay-11 timeout=591s
+[12:18:48] hp environment-m8: PASS environment-replay-11 87s readbacks=433 max=1.43e-06 strict=53 fmt=native-command-stream-v9
+[12:19:11] hp environment-m8: END passed=True wall=1298s/1800s failures=0
+[12:19:15] hp cleaned (left: '')
+[12:19:15] hp lock released
+[12:19:18] hp cleaned, all locks released; FREEZE start

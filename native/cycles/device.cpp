@@ -195,6 +195,8 @@ void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);requ
       if(mem.memory_size())std::memcpy(records.data(),mem.host_pointer,mem.memory_size());};
     if(std::strcmp(mem.global_name(),"lights")==0)copy(light_records);
     if(std::strcmp(mem.global_name(),"light_distribution")==0)copy(light_distribution_records);
+    if(std::strcmp(mem.global_name(),"light_tree_nodes")==0)copy(light_tree_nodes);
+    if(std::strcmp(mem.global_name(),"light_tree_emitters")==0)copy(light_tree_emitters);
     if(std::strcmp(mem.global_name(),"shaders")==0)copy(shader_records);
     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
     if(std::strcmp(mem.global_name(),"object_flag")==0)copy(object_flag_records);
@@ -203,7 +205,7 @@ void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);requ
     // Exact SVM program copy: selects the WGSL handlers this scene can reach.
     if(std::strcmp(mem.global_name(),"svm_nodes")==0)copy(svm_node_words);
     if(std::strcmp(mem.global_name(),"tri_shader")==0){copy(tri_shader_words);svm_generation++;}
-    if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;
+    if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"light_tree_emitters")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;
   }
   if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images[image.image_info_id]=&image;
     globals["image_pixels_"+std::to_string(image.image_info_id)]=uint32_t(mem.device_pointer);image_info_dirty=true;}});}
@@ -218,13 +220,15 @@ void WebGPUDevice::mem_free(device_memory &mem){std::lock_guard lock(mutex);try{
     if(mem.type==MEM_GLOBAL){globals.erase(mem.global_name());
       if(std::strcmp(mem.global_name(),"lights")==0)light_records.clear();
       if(std::strcmp(mem.global_name(),"light_distribution")==0)light_distribution_records.clear();
+      if(std::strcmp(mem.global_name(),"light_tree_nodes")==0)light_tree_nodes.clear();
+      if(std::strcmp(mem.global_name(),"light_tree_emitters")==0)light_tree_emitters.clear();
       if(std::strcmp(mem.global_name(),"shaders")==0)shader_records.clear();
       if(std::strcmp(mem.global_name(),"objects")==0)object_records.clear();
       if(std::strcmp(mem.global_name(),"object_flag")==0)object_flag_records.clear();
       if(std::strcmp(mem.global_name(),"tri_shader")==0)smooth_triangles=false;
       if(std::strcmp(mem.global_name(),"svm_nodes")==0)svm_node_words.clear();
       if(std::strcmp(mem.global_name(),"tri_shader")==0){tri_shader_words.clear();svm_generation++;}
-      if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;}
+      if(std::strcmp(mem.global_name(),"svm_nodes")==0||std::strcmp(mem.global_name(),"shaders")==0||std::strcmp(mem.global_name(),"lights")==0||std::strcmp(mem.global_name(),"light_distribution")==0||std::strcmp(mem.global_name(),"light_tree_emitters")==0||std::strcmp(mem.global_name(),"object_flag")==0)svm_generation++;}
     if(mem.type==MEM_IMAGE_TEXTURE){auto &image=static_cast<device_image&>(mem);images.erase(image.image_info_id);
       globals.erase("image_pixels_"+std::to_string(image.image_info_id));image_info_dirty=true;}
     mem.device_pointer=0;mem.device_size=0;}
@@ -238,6 +242,9 @@ void WebGPUDevice::const_copy_to(const char *name,void *host,size_t size){guard(
   if(!address)address=allocate(size);
   upload(address,host,size);
 });}
+// Recorder entries 27-33: the INTERSECT_MNEE entries in dispatch order (35 = unknown; merge wave 8 numbering).
+static unsigned mnee_entry_of(const WebGPUDevice &d,WGPUComputePipeline actual){
+  for(unsigned i=0;i<WebGPUDevice::mnee_entries;i++)if(d.mnee_pipelines[i].value&&actual==d.mnee_pipelines[i].value)return 27+i;return 35;}
 void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,WGPUComputePipeline pipeline,uint32_t workgroup_size){
   require(workgroup_size>0&&workgroup_size<=gpu.limits.maxComputeWorkgroupSizeX&&
           workgroup_size<=gpu.limits.maxComputeInvocationsPerWorkgroup,"Invalid workgroup size");
@@ -245,8 +252,8 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
   require(work>0&&groups<=gpu.limits.maxComputeWorkgroupsPerDimension,"Dispatch exceeds device limits");
   if(observer){
     const WGPUComputePipeline actual=pipeline?pipeline:controls.value;
-    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:actual==light_nee.value?18:actual==background_eval.value?19:actual==light_nee_prepare.value?20:21;
-    require(entry<21,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:actual==light_nee.value?18:actual==background_eval.value?19:actual==light_nee_prepare.value?20:actual==surface_light_select.value?21:actual==light_tree_forward.value?22:actual==sc_assign.value?23:actual==sc_split.value?24:actual==sc_count.value?25:actual==surface_prepare_raytrace.value?26:actual==mnee_cleanup.value?34:mnee_entry_of(*this,actual);
+    require(entry<35,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
   }
   auto uniform=gpu.buffer(sizeof(params),WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params.data());
   std::array<WGPUBindGroupEntry,2> entries{};entries[0].binding=0;entries[0].buffer=arena;entries[0].size=arena_bytes;
@@ -287,6 +294,6 @@ unique_ptr<Device> device_webgpu_create(const DeviceInfo &i,Stats &s,Profiler &p
   try{return make_unique<WebGPUDevice>(i,s,p,h);}catch(const std::exception &e){auto bad=i;bad.type=DEVICE_DUMMY;bad.error_msg=e.what();return device_dummy_create(bad,s,p,h);}}
 void device_webgpu_info(vector<DeviceInfo> &devices){try{
   cbc::Device gpu;DeviceInfo info;info.type=DEVICE_WEBGPU;info.id="WEBGPU_"+gpu.adapter_name;info.description=gpu.adapter_name;
-  info.has_gpu_queue=true;info.has_mnee_=false;info.has_execution_optimization=false;devices.push_back(info);
+  info.has_gpu_queue=true;info.has_mnee_=true;info.has_execution_optimization=false;devices.push_back(info);
 }catch(const std::exception&){} }
 }

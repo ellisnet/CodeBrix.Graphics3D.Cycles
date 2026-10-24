@@ -27,8 +27,30 @@ fn rounded_add(a:f32,b:f32)->f32{
     if(exponent>=255u){return bitcast<f32>(sign|0x7f800000u);}
     return bitcast<f32>(sign|(exponent<<23u)|(mantissa&0x7fffffu));
 }
-fn rounded_add3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{return vec3<f32>(rounded_add(a.x,b.x),rounded_add(a.y,b.y),rounded_add(a.z,b.z));}
-fn rounded_dot(a:vec3<f32>,b:vec3<f32>)->f32{return rounded_add(rounded_add(a.x*b.x,a.y*b.y),a.z*b.z);}
+// Single-body loops (compiler pressure, native/DEVICE.md "Surface entries under the
+// Intel compile envelope"): every rounded_add body is inlined at each call site,
+// and before these loops rounded_add3, rounded_dot and the helpers below inlined
+// two to six copies per call (about 56 Intel backend instructions each; a third
+// of the textured-Principled prepare_surface). Each helper now runs its sums
+// through ONE body in a loop whose bound is opaque to the compiler: push word 31,
+// which no dispatch sets (always 0), so rounded_steps(n) is n. Iterations past n
+// write nothing. The operands, the operations and their order are those of the
+// unrolled form, so results are bit-identical.
+fn rounded_steps(n:u32)->u32{return n|p(31u);}
+fn rounded_add3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
+    var out=vec3<f32>(0);let count=rounded_steps(3u);
+    for(var k=0u;k<count;k++){
+        let r=rounded_add(select(select(a.z,a.y,k==1u),a.x,k==0u),select(select(b.z,b.y,k==1u),b.x,k==0u));
+        out=select(out,vec3<f32>(r),vec3<u32>(0u,1u,2u)==vec3<u32>(k));
+    }
+    return out;
+}
+// rounded_add(rounded_add(a.x*b.x,a.y*b.y),a.z*b.z).
+fn rounded_dot(a:vec3<f32>,b:vec3<f32>)->f32{
+    var sum=a.x*b.x;let count=rounded_steps(3u);
+    for(var k=1u;k<count;k++){sum=select(sum,rounded_add(sum,select(a.z*b.z,a.y*b.y,k==1u)),k<3u);}
+    return sum;
+}
 fn rounded_cross(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{return rounded_add3(a.yzx*b.zxy,-a.zxy*b.yzx);}
 // The state contains an integer floor candidate and its exact remainder.
 fn rounded_root_step(state:vec2<u32>,step:u32)->vec2<u32>{
@@ -62,9 +84,9 @@ fn rounded_sqrt(value:f32)->f32{
     var root=((estimate&0x7fffffu)|0x800000u)<<select(0u,1u,(estimate>>23u)>127u);
     if((estimate>>23u)<127u){root>>=1u;}
     root-=17u;var state=vec2<u32>(root,low-root*root);
-    state=rounded_root_step(state,32u);state=rounded_root_step(state,16u);
-    state=rounded_root_step(state,8u);state=rounded_root_step(state,4u);
-    state=rounded_root_step(state,2u);state=rounded_root_step(state,1u);
+    // Steps 32, 16, 8, 4, 2, 1 through one body (rounded_steps).
+    let count=rounded_steps(6u);
+    for(var k=0u;k<count;k++){state=rounded_root_step(state,select(0u,32u>>k,k<6u));}
     // An integer radicand cannot lie exactly at a squared half-integer.
     root=state.x+select(0u,1u,4u*state.y>4u*state.x+1u);
     var result_exponent=(unbiased>>1u)+127;
@@ -85,8 +107,9 @@ fn rounded_divide(a:f32,b:f32)->f32{
     var quotient=((estimate&0x7fffffu)|0x800000u)<<select(0u,1u,(estimate>>23u)>127u);
     if((estimate>>23u)<127u){quotient>>=1u;}
     quotient-=5u;var state=vec2<u32>(quotient,(ma<<23u)-mb*quotient);
-    state=rounded_quotient_step(state,mb,8u);state=rounded_quotient_step(state,mb,4u);
-    state=rounded_quotient_step(state,mb,2u);state=rounded_quotient_step(state,mb,1u);
+    // Steps 8, 4, 2, 1 through one body (rounded_steps).
+    let count=rounded_steps(4u);
+    for(var k=0u;k<count;k++){state=rounded_quotient_step(state,mb,select(0u,8u>>k,k<4u));}
     quotient=state.x;let remainder=state.y;
     if(exponent<=0){
         // Use floor and remainder directly to avoid double rounding.
@@ -101,8 +124,13 @@ fn rounded_divide(a:f32,b:f32)->f32{
     return bitcast<f32>(sign|(u32(exponent)<<23u)|(quotient&0x7fffffu));
 }
 fn rounded_normalize(v:vec3<f32>)->vec3<f32>{
-    let norm=rounded_sqrt(rounded_dot(v,v));
-    return vec3<f32>(rounded_divide(v.x,norm),rounded_divide(v.y,norm),rounded_divide(v.z,norm));
+    // vec3(v.x/norm, v.y/norm, v.z/norm), the three quotients through one body (rounded_steps).
+    let norm=rounded_sqrt(rounded_dot(v,v));var out=vec3<f32>(0);let count=rounded_steps(3u);
+    for(var k=0u;k<count;k++){
+        let q=rounded_divide(select(select(v.z,v.y,k==1u),v.x,k==0u),norm);
+        out=select(out,vec3<f32>(q),vec3<u32>(0u,1u,2u)==vec3<u32>(k));
+    }
+    return out;
 }
 fn rounded_safe_normalize(v:vec3<f32>)->vec3<f32>{
     let norm=rounded_sqrt(rounded_dot(v,v));if(norm==0.0){return v;}

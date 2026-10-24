@@ -161,8 +161,9 @@ WGSL's 32-bit atomic storage also carries Cycles' 8-bit and 16-bit fields.
 Masked atomic updates prevent adjacent state writes from overwriting each
 other. State-copy descriptors come from the original state templates and native
 `sizeof` values; all allocated fields are copied, including vector payloads
-and array members. MNEE's cross-path ownership repair is explicitly rejected
-until implemented.
+and array members. MNEE's cross-path ownership repair was explicitly rejected
+at this checkpoint; it is implemented since "Manifold next-event estimation
+(caustics)" below.
 
 ## Control checkpoint
 
@@ -1738,6 +1739,16 @@ the Android device itself, with Android's bionic C library, is kept as a **diagn
 deviation from the glibc reference is reported per gate and it never decides pass or fail. No libm
 code is imported or emulated.
 
+**Two gold standards (2026-10-24).** The unmodified pinned Cycles CPU kernels and the unmodified pinned
+Cycles Metal backend (the osx-arm64 product device) are both accepted reference evidence. Metal films
+are never judged against CPU films for pass or fail, and their differences from the CPU (path
+divergence, hardware texture filtering, MetalRT motion interpolation; `native/host/MACOS_ARM64.md`) are
+characteristics of the Metal reference, not deviations. The WGSL device (every candidate backend) is
+judged against the CPU gold standard, the only one available where it runs; WGSL-versus-Metal pairs
+are reported as information (`native/oracle/compare.py`, `native/oracle/README.md`). The earlier
+2026-10-19 record of Metal's texture filtering as a bounded deviation (`native/host/MACOS_ARM64.md`,
+"Results and findings (2026-10-19)") stays as history; this rule supersedes its wording.
+
 **Why bionic is a diagnostic.** Cycles calls the C library's binary32 functions (`safe_acosf` and
 `safe_asinf` in light and emitter sampling, `atan2f`/`sinf`/`cosf`/`tanf`/`expf`/`logf`/`powf` in
 closures, camera, SVM nodes and scene preparation). glibc 2.41 returns the correctly rounded
@@ -2715,7 +2726,8 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    the stage-state exchange). Still judged against the device's own CPU: the state gates `surface`, `closest`,
    `shadow`, `shader_data`, `glass_svm`, `glass_bounce`, `microfacet_svm`, `microfacet_bounce`, `principled_bounce`,
    `nodes_world` (`svm_world`), `camera`, `volume`, `volume_boundary`, `light_state`, `broad_light_state` and
-   `transparent_shadow`. Since merge wave 6 the other `render_gate.cpp` binaries (`microfacet_render`, `render`
+   `transparent_shadow`, and the MNEE state gate `mnee` (its images, `mnee_render`, take the device-scene flow).
+   Since merge wave 6 the other `render_gate.cpp` binaries (`microfacet_render`, `render`
    static and with camera motion, `volume_render`, `closed_volume_render`) also run in the device-scene flow through
    the stage-state exchange (they pass on the Samsung and the HP). The managed-API scenes (`android_app_gate.py
    --mode webgpu` and `--mode bundle`) have no scene dump and stay outside the device-scene flow (judged against
@@ -2724,7 +2736,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    Cycles' flags for now).
 6. **Not yet ported** [14]: true displacement (`NODE_SET_DISPLACEMENT`, displacement and vector displacement) and the
    bump-state branch that needs the undisplaced position; tangent and motion-triangle smooth-normal derivatives
-   (rejected, error 16); `NODE_RADIAL_TILING`; AOV output; sky, IES, light falloff, AO, bevel, raycast, volume
+   (rejected, error 16); `NODE_RADIAL_TILING`; AOV output; sky, IES, light falloff, bevel, raycast, volume
    coefficient and particle/hair/point info nodes.
 7. **Feature mask** [15]. CLOSED (Step zero, 2026-10-22): the mask is 256 bits (`ShaderFeatures`, four 64-bit
    words); bits 0-61 and 63 keep their meaning, bit 62 and bits 64-255 are free. See "Step zero" below.
@@ -2737,18 +2749,14 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    bench's pixel (45,22) (3 components, max 0.0278).
 11. (resolved by lane m1-lighting, see "Resolved" below) Was: **HDRI bench on WGSL** (`bench_01-hdri.json` was
    refused until environment importance sampling and MIS landed).
-12. **Size-guard warnings on the bench graph.** The product size guard warns on the bench's textured-Principled
-   entries (`shade_background` about 1.33 MB, `prepare_surface` about 1.27-1.29 MB of inlined WGSL). Measured on
-   Intel Mesa 25.0.7 on the merged tree (merge wave 7), the HDRI bench's `prepare_surface` is 61,690 backend
-   instructions; before merge wave 6's changes were in the tree it measured 62,626 (62,514 without the camera and
-   attribute parity changes). INFERENCE: the Adreno 650 lane 2 rotation loop in the shared Principled code made it
-   smaller. Above the 60,000 compile envelope that every gate entry keeps, below Mesa's 65,535 limit, and it renders
-   correctly (consumer-scene entry, warned by the size guard as designed). Follow-up, first
-   before Milestone 2: split or shrink the textured-Principled surface entry.
-13. **First-render compile times** over the 60 s pipeline budget (warnings, the jobs pass): the bench's
-   `prepare_surface` on the Samsung (91 s) and the HP (136-138 s), first GPU renders including compiles 183 s and
-   236 s (HDRI bench 355 s and 330 s); the Samsung `nodes_world` gate 95.8 s (merge wave 6). The HP's
-   `principled_bounce` (58.9 s) and `principled_render` (58.3 s) are within 3 percent of the budget.
+12. (resolved by lane m2-shrink for the bench and the HDRI bench, see "Resolved" below) Was: **Size-guard warnings on
+   the bench graph** (HDRI bench `prepare_surface` 61,690 Intel backend instructions). Remaining: the textured-plane
+   control's `prepare_surface` (1,114,357 bytes, 52,126 instructions) is 4,357 bytes above the size guard.
+13. **First-render compile times** over the 60 s pipeline budget (warnings, the jobs pass). Since lane m2-shrink the
+   bench's `prepare_surface` takes 71-74 s on the Samsung (was 116 s) and 123 s on the HP (was 147 s); first GPU
+   renders bench 97 s and 189 s, HDRI bench 206 s and 270 s (were 177 s and 233 s, 344 s and 327 s). The Samsung
+   `nodes_world` gate 98.3 s (merge wave 7). The HP's `principled_bounce` and `principled_render` (57-59 s) are
+   within 5 percent of the budget.
 14. **Texture-sampling last-bit parity.** Image texture lookups still differ from the CPU in the last bit (1,356
    components at 1 spp on the bench, max 3.6e-7). The bench's closest component is at 0.59 of the practical
    tolerance on Linux, and the HP against Linux WGSL at 0.91. Recommended next small kernel follow-up.
@@ -2757,8 +2765,80 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    differences with camera motion (1,616). Both are within the practical bound; fixing them changes motion films.
 16. **macOS recipes at the fixed baseline.** The macOS arm64 and x64 recipes apply the fixed-baseline flags but are
    untested at the baseline (`native/host/MACOS_ARM64.md`, `native/host/MACOS_X64.md`).
+17. **Replays with shadow-path compaction.** The light-tree gate's case 2 (lamps and emissive triangles under an HDRI
+   world, light tree on) does not replay: the native scheduler's shadow-path compaction (control op 2, modes 2 and 3)
+   counts the active shadow paths above a slot index, and which slots those paths hold follows the order of the atomic
+   shadow-slot allocation in `surface_direct_light`, which differs from run to run (Linux 54, 55, 57 and 59 at the
+   same command). The films are unaffected (repeat differences are last-bit film accumulation only) and the case
+   passes its image and probe checks on every device. What differs in the replay: only the 4-byte readbacks of the
+   compaction counter after the shadow kernels (first at command 51 of the case-2 capture; recorded 54, replayed 55,
+   57 or 59); the films, the light-tree probe, every lockstep state and every judgment are unaffected; the other six
+   captures replay exactly. Pre-existing: the atomic shadow-slot allocator is unchanged code, and disabling the new
+   `light_tree_forward` entry in a copy of the capture leaves the counts varying. Making the replay exact needs a
+   deterministic shadow-slot reservation for every scene (the transparent-shadow path already has one); a design
+   decision. Reproducer: run `codebrix_cycles_light_tree_gate OUT 2`, then `render_replay.run('linux-x64',
+   OUT/case-2, DIR)` (`native/tools/render_replay.py`) twice. Merge wave 8: the ambient-occlusion stage reserves its shadow slots stably whenever AO is on
+   (two reserved slots per surface input and the stable serial path-array scan; "Ambient occlusion"), which made its
+   own replays exact; scenes without AO keep the atomic allocator unchanged, so this case still does not replay.
+18. **Ambient occlusion remainder.** The AO node's `only_local` from an object without its own BVH in a scene that
+   also has instanced objects is refused (error 16 when the local traversal reaches an instance leaf); ambient
+   occlusion with object or deformation motion has no gate yet; on the Adreno 650 the AO node and the AO shadow rays
+   are refused (see "Ambient occlusion"). Bevel and raycast nodes stay unported (item 6).
+19. **MNEE on the Adreno 730 (Samsung SM-X700).** The `INTERSECT_MNEE` dispatches stop at their first use with the
+   invalid-data error (mask 1), in the state gate (`mnee`) and in the image gate (`mnee_render`, device-scene flow);
+   no image is produced. Narrowed with temporary diagnostics: the failure is a generic invalid-data check reached
+   inside `mnee_setup` (the manifold-vertex setup entry); every input that entry reads was valid when it ran (16 paths,
+   every caster hit's primitive, object and closure index in range). The same build passes on Linux Intel and on the
+   HP. INFERENCE: an Adreno compilation of `mnee_setup` (its function-scope vertex and normal arrays indexed in a loop
+   are the class of construct the Adreno 640 fix of 2026-10-20 moved out of function scope); not fixed. Until it is,
+   caustic scenes stop with that error on this GPU class (never a wrong image). The Adreno 650 (S20) fails the same
+   way. Reproducer: `run_corpus.py samsung mnee LABEL 3600 2400 --device-scene --jobs mnee` with the lane's staged
+   binaries (see "Manifold next-event estimation (caustics)").
+20. **MNEE with the light tree (refused).** Caustic scenes with the integrator's light tree, light or shadow
+   linking, AO, volumes or motion blur are refused before rendering ("Manifold next-event estimation (caustics)");
+   MNEE would call the light tree's selection in its own entry. Shadow linking is the next lighting work (Milestone 2,
+   wave B); the light-tree combination is open with it.
+21. (resolved in merge wave 8 part 1c, see "Resolved" below) Was: **Volume gate rejection text (merge wave 8).** The shadow catcher with volumes now has its own refusal ("WebGPU
+   shadow catcher with volumes not implemented"); `codebrix_cycles_volume_gate` rejection case 9 still expects
+   "optional volume integration", so the volume gate and the all-lanes `volume_boundary_gate` (its world regression)
+   stop there on Linux. The refusal itself works; the gates after case 9 were not exercised in this wave.
+22. (resolved in merge wave 8 part 1c, see "Resolved" below) Was: **Host gate managed reload on Linux (merge wave 8).** `tools/hosttests/ImageModes` reads
+   `imageInput.fileReading` of the capability report as a Boolean, but the Linux host reports the string
+   "development-only", so the managed-reload phase of `native/tools/host_gate.py` aborts (SIGABRT). Every other phase
+   passes (1,586 comparisons, 0 practical, 151 strict); the managed-reload films were not compared in this wave.
+23. **Shadow catcher with ambient occlusion (merge wave 8).** Not refused and not gated. In `shade_shadow` the AO
+   branch (AO pass and fast GI's additive term) writes Combined directly and returns before the shadow catcher
+   handling, while the pinned `film_write_direct_light` routes the additive term through `film_write_combined_pass`
+   (shadow catcher split included). Scenes with both may differ from the CPU.
+24. **Light-tree gate driver stops at the known replay (merge wave 8).** `native/tools/light_tree_gate.py` replays the
+   seven captures in order and stops at case 2 (item 17), so it exits 1 although the gate passes; replays 3-6 pass
+   when run on their own.
+25. **Two CPU gold standards differ on the bench (merge wave 8).** The macOS arm64 CPU films of the bench and HDRI
+   bench (16 samples) differ from the Linux x64 CPU films in 32 and 67 components beyond the practical criterion
+   (max 0.0042 and 0.012). With both CPU films gating, the WGSL bench and HDRI bench are "not perfect" against the
+   arm64 CPU film while perfect against the Linux one; the four starter scenes are perfect against both. Resolved in
+   the comparator (merge wave 8): a candidate gates against the CPU film of its own host ISA family (x64 for the Linux
+   and Android WGSL backends) and cross-ISA pairs are reported, so the bench and HDRI bench read "perfect" with the
+   Mac films present; the cross-ISA CPU difference itself stays recorded here (the macOS arm64 recipe is untested at
+   the fixed baseline on this side, item 16).
+26. **New compiler warning sites (merge wave 8).** `-Wmisleading-indentation` (a one-line `for`/`if` followed by a
+   statement on the same line) in `ao_state_gate.cpp:187`, `light_tree_reference.cpp:56`,
+   `shadow_catcher_gate.cpp:147`, `mnee_gate.cpp:262`, `mnee_reference.cpp:53,54,83` and `device.cpp:247`
+   (`mnee_entry_of`).
 
 Resolved, or closed under the device reference policy:
+- [21 of this list] Volume gate rejection text: RESOLVED (merge wave 8 part 1c, on the maintainer's go-ahead).
+  `volume_gate.cpp` rejection case 9 now expects the shadow catcher's own refusal ("shadow catcher with volumes");
+  the volume gate (every case, including those after case 9) and `volume_boundary_gate` pass on Linux, films
+  identical to merge wave 7.
+- [22 of this list] Host gate managed reload on Linux: RESOLVED (merge wave 8 part 1c, on the maintainer's
+  go-ahead). `tools/hosttests/ImageModes` accepts `imageInput.fileReading` as a Boolean or as the host's
+  "development-only" string (files are read); any other value fails the tool. `host_gate.py` passes on Linux with
+  every phase, 3,146 comparisons, 0 practical failures.
+- [12 of this list] Size-guard warnings on the bench graph: RESOLVED for the bench and the HDRI bench (lane m2-shrink;
+  single-body loops in the shared rounded-arithmetic helpers: HDRI bench `prepare_surface` 51,287 instructions, every
+  bench-family entry below 60,000, every bench and HDRI bench entry below the size guard; see "Surface entries under
+  the Intel compile envelope"). The textured-plane control's `prepare_surface` still warns (item 12).
 - [9 of this list] Milestone 1 bench against the CPU oracle: RESOLVED (lane m1-oracle). The Linux x64 CPU oracle is
   built at a fixed baseline (SSE4.2 kernels, no contraction, no reciprocal math) and camera rays, the
   scrambling-distance jitter and triangle attributes are bit-exact in the WGSL: the bench and the HDRI bench pass the
@@ -4461,3 +4541,400 @@ Generated by `native/work/merge7/tools/device_tables.py` from each run's `result
 | pixel-motion-s20-deforming-moving-images | deforming-replay-motion-6 | 187.7 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.08e-06, strictImageFailures=300 |
 | pixel-motion-s20-deforming-moving-images | deforming-replay-motion-7 | 186.8 | PASS | glibc device-scene (replay) | maximumAbsoluteImageError=6.02e-06, strictImageFailures=224 |
 | materials-s20-principled_bounce | principled_bounce | 337.3 | PASS | device's own CPU / gate | strictFloatFailures=2796, maximumAbsoluteError=0.125 |
+
+## Surface entries under the Intel compile envelope (lane m2-shrink, 2026-10-24)
+
+The textured-Principled bench made the largest consumer-scene entries of the tree: the HDRI bench's `prepare_surface`
+measured 61,690 Intel backend instructions on Mesa 25.0.7 (above the 60,000 envelope every gate entry keeps, below the
+65,535 limit of "Linux reference fixes on the updated Mesa"), and the size guard warned on `prepare_surface`,
+`shade_light_nee`, `shade_background`, `shader_eval_background` and `shade_shadow_transparent`.
+
+**Where the size was.** Not in the entry partition. The contraction-proof binary32 add `rounded_add`
+(`wavefront_float.wgsl`, an integer implementation, about 1.3 KB of WGSL and about 56 Intel instructions per inlined
+copy) was inlined 355 times into the HDRI bench's `prepare_surface`: 34% of its inlined WGSL. The copies came from the
+helpers that call it two to six times per call (`rounded_add3` 96, `rounded_dot` 82, `surface_transform_row` 54,
+`surface_decode_normal` 30, the trigonometry helpers 36). In the background module 475 KB of `shade_background`'s
+1.57 MB were the closure setup behind `if(SVM_SURFACE)`, which is false there: the driver removes it, the size guard's
+text measure did not.
+
+**Change** (no entry, dispatch, record, region, feature bit, tier or threshold changes):
+- Single-body loops. `rounded_add3`, `rounded_dot`, `rounded_normalize`, `rounded_sqrt` (root steps),
+  `rounded_divide` (quotient steps), `surface_transform_row`, `surface_decode_normal` and `trig_two_sum` run their
+  sums (steps, quotients) through one inlined body in a loop, the pattern of "Adreno 650 lane 2". The bound is
+  `rounded_steps(n)` = `n|p(31u)`: push word 31, which no dispatch sets (0), so the compiler cannot unroll the loop;
+  iterations past n write nothing. Operands are selected by `select` chains or branches, never by dynamic vector
+  indexing. Each sum keeps its operands, operation and order, so every result is bit-identical. Push word 31 is
+  reserved for this bound.
+- `trig_coeff` keeps its three inlined sums. With its loop form as well, the Adreno 650 (S20) compiler dropped an SVM
+  store in the Principled SVM probe (error 8 at path 119, shader 12, the "Adreno 650 lane 2" signature). Arena
+  replays of the failing capture on the S20 with single helpers reverted: reverting `trig_coeff`, `rounded_add3` or
+  `rounded_dot` each removes the error; reverting `surface_transform_row` or `surface_decode_normal` does not. The
+  shipped form passes the replay (0 practical, the same 114 strict as the unchanged module) and the full gate.
+- The `NODE_CLOSURE_BSDF` case calls `svm_closure_bsdf`, emitted by `svm_layout()` next to `SVM_SURFACE`: `svm_bsdf`
+  in surface modules, error 2 elsewhere (what `if(SVM_SURFACE)` compiled to). The background module's text no longer
+  carries the dead closure setup.
+
+Intel backend instructions / inlined WGSL bytes (`intel_compile_envelope.py`, Mesa 25.0.7, before -> after):
+
+| Entry (HDRI bench) | Instructions | Inlined bytes |
+| --- | --- | --- |
+| `prepare_surface` | 61,690 -> 51,287 | 1,362,166 -> 1,101,295 |
+| `shade_light_nee` | 53,393 -> 44,135 | 1,339,634 -> 1,078,251 |
+| `shader_eval_background` | 44,352 -> 40,944 | 1,612,338 -> 935,537 |
+| `shade_surface` | 43,969 -> 36,166 | 838,577 -> 644,252 |
+| `shade_surface_light` | 43,030 -> 40,293 | 858,649 -> 708,769 |
+| `shade_shadow_transparent` | 38,964 -> 31,689 | 1,357,328 -> 1,096,457 |
+| `shade_background` | 33,086 -> 30,682 | 1,572,290 -> 876,791 |
+| `prepare_shader_data` | 12,894 -> 8,396 | 393,257 -> 240,132 |
+
+Every entry of the three bench modules is below 60,000 (worst: bench and HDRI bench 51,287, textured-plane control
+52,126; the check exits 0). The size guard no longer warns on the bench or the HDRI bench; it still warns on the
+textured-plane control's `prepare_surface` (1,114,357 bytes, 4,357 over; 52,126 instructions). No scene-specialized
+gate entry grew: worst gate entries ABI set 44,585 -> 40,441, environment set 43,078 -> 40,341, materials set 52,341 ->
+46,850. Smaller entries change the superset grouping (`specialization_check.py`; superset-group entries can be larger
+because each group now holds more regions), all groups bit-identical: glass 5 -> 3 groups, Principled 11 -> 6
+(unfit regions 9 -> 1), node render 1 -> 4 (unfit 21 -> 9; the scene's own entries are now below the
+1,000,000-byte group budget), node world 7 -> 6.
+
+**Bit identity (Linux x64, Intel UHD ADL-S GT1, Mesa 25.0.7).** A GPU identity probe compares every rewritten helper
+with its previous definition on 4 x 1,000,000 records of random and special binary32 inputs: 0 differing results
+(a deliberately reordered `rounded_dot` is detected). Films, against the unchanged tree's runs: bench, HDRI bench and
+textured-plane control at 1 spp (WGSL and CPU, three repeats each) bit-identical; at 16 spp the WGSL films vary run to
+run on the unchanged tree too (repeat 0 against 1: 1,178 / 2,689 / 2,361 differing components) and after against
+before is within that (0 practical, at most 11 strict); CPU films `f4b08b95` / `fc72f30a` / `a1d20c08` unchanged.
+Principled gate (GPU `2e11701d`, CPU `cc861de5`), node gate and node render (`39fa5c6b` / `58156b43`), glass
+(`f7c827af` / `da52a2d8`), environment gate (36 films), triangle images (18), the SVM probes and the state gates
+(svm_surface, svm_world, nodes_svm, principled_svm, surface, shader_data, closest, camera, device, attribute, image,
+normal, image files, render with attributes, images and normals, nodes_world): identical films and reports.
+Differences only in the known run-to-run atomic family (transparent-shadow suite: broad_lighting 3/7/8/9,
+feature_combination 5, lighting_mis 5, transparent_lighting 2/4/5), the capture-date headers of the gates' input EXRs
+(host gate 12, image-file gate 8), and the background gate's film statistics, which vary run to run (strict 196 and
+210 in two runs of the same binary; 206, 212 and 180 at merge waves 5, 6 and 7).
+
+**Devices** (judged as the gates define: the glibc reference of the device's own scene, or the Linux CPU film for
+the managed-app bundles; practical / strict / maximum):
+
+| Device | Job | Result | Numbers (practical / strict / max) | Merge wave 7 strict |
+| --- | --- | --- | --- | --- |
+| Samsung SM-X700 | principled_svm | PASS | strict 634, max 3.61e-06 | 634 |
+| Samsung SM-X700 | principled_render | PASS | 0 / 67 / 6.44e-06, stage strict 0 | 67 |
+| Samsung SM-X700 | nodes_render | PASS | 0 / 1,689 / 3.72e-05 | 1,689 |
+| Samsung SM-X700 | environment | PASS | per case as merge wave 7 | as merge wave 7 |
+| Samsung SM-X700 | bench bundle (managed app) | PASS | 0 / 113 / 4.29e-05 | 113 |
+| Samsung SM-X700 | HDRI bench bundle (managed app) | PASS | 0 / 329 / 7.71e-05 | 329 |
+| HP (Android x64) | principled_svm | PASS | strict 946, max 9.54e-07 | 946 |
+| HP | principled_render | PASS | 0 / 91 / 6.44e-06 | 91 |
+| HP | nodes_render | PASS | 0 / 1,794 / 1.03e-04 | 1,794 |
+| HP | environment | PASS | per case as merge wave 7 | as merge wave 7 |
+| HP | bench bundle (managed app) | PASS | 0 / 209 / 3.78e-05 | 213 |
+| HP | HDRI bench bundle (managed app) | PASS | 0 / 446 / 9.16e-05 | 430 |
+| S20 (Adreno 650) | principled_svm | PASS | strict 557, max 3.59e-06 | 557 |
+| S20 | transparent_shadow | PASS | strict 0, max 1.19e-07 | 0 |
+
+The lockstep and SVM gates give merge wave 7's strict counts exactly; the managed-app bundle films move a little run
+to run (atomic accumulation).
+
+First-render compile times (seconds, cold, merge wave 7 -> this change):
+
+| Entry | Samsung bench | Samsung HDRI | HP bench | HP HDRI |
+| --- | --- | --- | --- | --- |
+| `prepare_surface` | 115.5 -> 70.9 | 116.5 -> 73.5 | 146.5 -> 122.8 | 146.5 -> 123.6 |
+| `shade_light_nee` | | 117.7 -> 72.9 | | 54.6 -> 44.5 |
+| `shade_background` | 35.6 -> 5.4 | 39.9 -> 23.6 | 11.7 -> 10.5 | 17.2 -> 15.5 |
+| `shader_eval_background` | | 36.9 -> 9.4 | | 22.6 -> 21.3 |
+| first GPU render | 177.2 -> 97.2 | 343.8 -> 206.1 | 232.8 -> 189.3 | 326.9 -> 270.1 |
+
+The S20 `principled_svm` gate took 365 s (413 s at merge wave 7).
+
+## Light trees and light linking (lane m2-lighttree, 2026-10-24)
+
+The integrator's light tree (`use_light_tree`, `KERNEL_FEATURE_LIGHT_TREE`) and light linking
+(`KERNEL_FEATURE_LIGHT_LINKING`: receiver light sets and emitter set membership) render on the WebGPU device, as the
+pinned kernel does them, on the flat light distribution and on the tree. The unmodified `LightManager` builds the tree
+(`device_update_tree`, including the per-receiver specialized trees of light linking); the device uploads its arrays
+unchanged and validates them before any dispatch (`validate_light_tree`, `native/cycles/lighting.cpp`: node kinds,
+child, instance, emitter and lamp indices, leaf sizes, per-object lookups and every light-set root).
+
+Data and stages
+- Scene tables: `light_tree_nodes`, `light_tree_emitters`, `light_to_tree`, `object_lookup_offset`,
+  `triangle_to_tree` and `object_prim_offset` (`CBC_LIGHT_TREE_TABLES`, `native/cycles/wavefront.h`). Their GPU
+  descriptors follow the device tables, so no earlier table index moved; the CPU references and the Android scene
+  exchange carry them.
+- `wavefront_light_tree.wgsl`: `light_tree_sample<false>` and `light_tree_pdf<false>` (node and emitter importance
+  for point, spot, area, sun, background and triangle emitters, the distant node, the leaf reservoirs with their
+  uniform fallback, inner-node splitting, mesh subtrees in object space, instance nodes, bit trails). Cycles'
+  `fast_sincosf`, `fast_cosf` and `fast_acosf` are reproduced operation by operation and glibc `cosf` through the
+  existing glibc-exact disk sine/cosine; every sum of products goes through `rounded_add` (contraction- and
+  reassociation-proof), and divisions and square roots are correctly rounded. Selections are integer decisions on
+  these values: the selected emitter equals the CPU's for every probe state on Linux, the Samsung and the HP.
+- `wavefront_light_link.wgsl`: `light_link_object_match`, the NEE receiver and the forward receiver
+  (`path.mis_ray_object`, written at path start and at every non-transparent surface bounce).
+- New surface entry `shade_surface_light_select` (feature bit 96 `LIGHT_SELECT`): selects the emitter for each surface
+  path (tree or flat distribution, then the link match) and computes the tree's pdf of an emissive-triangle hit for
+  its forward MIS weight; the lamp and triangle samplers read the 8-word record (stage record byte 360). New
+  background entry `light_tree_forward` (bit 94 `LIGHT_TREE`): per-path tree pdfs of the background light, of every
+  MIS sun and of a lamp hit, before `shade_background` and `shade_light_forward` read them. Both are their own
+  entries because the traversal alone inlines to about 0.55 MB of WGSL (0.70 MB with object motion); Linux Intel
+  measures `shade_surface_light_select` at 40,987 backend instructions and `light_tree_forward` at 23,149. The
+  worst gate entry of the light-tree gate is the existing `shade_surface_light` (lamp sampling with the
+  background light and an area light) in case 2 (lamps and emissive triangles under an HDRI world): 58,001
+  backend instructions, 1,999 below the 60,000 envelope (1,101,856 bytes inlined, under the 1,110,000-byte size
+  guard); the next additions to that entry need a split. A probe
+  entry that inlined the traversal and both emitter samplers (1.5 MB) was miscompiled by Intel Mesa 25.0.7 (wrong
+  selections that moved with unrelated code edits): the gate's probes keep the device's split.
+- Bit 95 `LIGHT_LINKING`: link checks on lamp intersection (closest), emissive surfaces (connect), sun lights
+  (background) and NEE. With the tree, the threshold roulette and `shadow_path.bsdf_eval_average` are skipped as in
+  the pinned kernel. Capture entries 21 and 22 (recorder format v10).
+- Refused (unchanged): shadow linking (blocker sets and the dedicated-light kernels), volumes with direct light (so
+  the tree's volume-segment variant is not used).
+
+Gate `codebrix_cycles_light_tree_gate` (`native/cycles/light_tree_gate.cpp`, `native/tools/light_tree_gate.py`), 7 cases:
+0 lamps (point, spot, area, sun), 1 a 12-triangle mesh light with a second mesh light and a point, 2 lamps with
+emissive triangles under an HDRI world with its background light, 3 one emitter mesh instanced three times (instance
+nodes), 4 a moving and deforming emitter, 5 light linking on the flat CDF (tree off), 6 light linking on the tree
+(per-receiver trees). Per case: a 4,096-state probe of the selection and the light sample (selection validity,
+emitter, sample validity, prim and object exact; selection pdf, point, direction, distance, pdf and eval factor
+practical), the tree's forward pdf of a target emitter (`light_tree_pdf<false>`), the GPU image against the
+original CPU render (twice, the second captured), and host guards (corrupted tree tables refused).
+
+| Device | Probe valid / forward pdfs / link rejections | Probe numeric strict / max | Films strict / max | Wall |
+| --- | --- | --- | --- | --- |
+| Linux | 24,047 / 12,820 / 2,379 | 26,771 / 0.0227 | 4,874 / 2.85e-5 | 110 s |
+| Samsung SM-X700 | 24,048 / 12,820 / 2,378 | 13,498 / 0.0145 (host re-judge per key 663-3,992) | 3,012 / 1.53e-5 | 732 s |
+| HP | 24,047 / 12,820 / 2,379 | 26,731 / 0.0227 (host re-judge per key 1,048-8,165) | 4,932 / 2.85e-5 | 485 s |
+All practical PASS; Android judged against the glibc references computed from the device's own scene, host
+re-judged (14 references per device, 0 practical failures). The slowest pipeline compile is 17.8 s on the Samsung and 26.2 s on the HP. Replays on Linux,
+the Samsung and the HP: cases 0, 1 and 3-6 replay exactly; case 2 does not reproduce its recorded scheduling readbacks on
+any of the three (see "Open device items", item 17). Regression on the devices (Samsung and HP): lighting_mis,
+triangle_sample, emitter_sample, triangle_lighting, transparent_lighting, light_state, broad_lighting, glass_render and
+principled_render pass; the Samsung environment gate passes with replays of cases 2, 8 and 11. The S20 pair
+(principled_svm, transparent_shadow) passes.
+Regression (Linux): every gate of the lighting, emitter, environment and materials set passes; films bit-identical to
+the wave-7 references except GPU films whose own repeat differs (atomic film accumulation: lighting_mis 5,
+transparent_lighting 3, 4, 5). Superset on/off identity (glass_render, 5 groups including the new regions) holds.
+Oracle scenes `light-tree/lamps-and-mesh-lights` and `light-tree/light-linking` (Session through the public host
+API): CPU vs WGSL on Linux "perfect" (0 practical, 825 and 928 strict).
+
+## Shadow catcher and its film passes (lane m2-shadowcatcher, 2026-10-23/24)
+
+The registered device renders the shadow catcher as the pinned Cycles does and writes the first film passes beyond
+Combined: `PASS_SHADOW_CATCHER`, `PASS_SHADOW_CATCHER_SAMPLE_COUNT` and `PASS_SHADOW_CATCHER_MATTE` (and the background
+pass of the approximate shadow catcher). The host reads them with the pinned pass accessor (`HostOutput`,
+`cbc_host_pass_floats`, managed `ReadPass`); nothing on the device converts passes.
+
+- **Passes.** The surface stage's data-pass refusal now masks only the three shadow catcher bits; every other data
+  pass keeps "WebGPU surface data passes not implemented". `validate_shadow_catcher()` (`shadow_catcher.cpp`, called by
+  the closest, surface, background and shadow stages) checks the three offsets (3, 1 and 4 floats) and requires them
+  with `integrator.has_shadow_catcher`. Writes follow `film/light_passes.h` exactly (`wavefront_shadow_catcher.wgsl`):
+  matte paths (no `PATH_RAY_SHADOW_CATCHER_HIT`) add to the matte, shadow catcher paths
+  (`PATH_RAY_SHADOW_CATCHER_PASS`) add to the catcher pass instead of Combined, `PATH_RAY_SHADOW_CATCHER_BACKGROUND`
+  paths write only the background pass, transparency goes to the matte alpha, light passes and light groups are skipped
+  for catcher paths, and `film_write_data_passes` keeps its `PATH_RAY_SINGLE_PASS_DONE` bookkeeping.
+- **Path split.** `intersect_closest` makes the split decision (`kernel_shadow_catcher_is_path_split_bounce`), writes
+  the sample count and matte alpha, sets `PATH_RAY_SHADOW_CATCHER_HIT` and records the new path's kernel and shader in
+  a per-path mark. Two dispatches of the `shadow_catcher` module then take new path indices from
+  `next_main_path_index` in ascending path order (one of the orders the upstream atomic allows; renders and the
+  integer state stay reproducible), copy every main-path field with the compaction descriptors
+  (`integrator_state_copy_only`) and initialize the copy: `PATH_RAY_SHADOW_CATCHER_PASS`, and the sorted
+  `SHADE_SURFACE` (key from the new index) or `SHADE_BACKGROUND` with `PATH_RAY_SHADOW_CATCHER_BACKGROUND` when the
+  background pass exists and the film is opaque. The background stage continues such paths to the sorted surface
+  kernel. `DEVICE_KERNEL_INTEGRATOR_SHADOW_CATCHER_COUNT_POSSIBLE_SPLITS` is implemented, so the pinned
+  `PathTraceWorkGPU` halves new paths and predicts splits as upstream.
+- **Visibility and lights.** Shadow catcher paths and their shadow rays trace with the visibility shifted by 16 bits
+  (opaque mask likewise); lamps with `SHADER_EXCLUDE_SHADOW_CATCHER` and mesh lights of non-catcher objects are not
+  sampled by them.
+- **Refused.** A shadow catcher with a volume ("WebGPU shadow catcher with volumes not implemented") or with caustics
+  (MNEE). On the Adreno 650 (S20, not a reference device) a shadow catcher with transparent shadows and direct light is
+  refused before any pipeline compiles: the transparent shadow stage of such a scene stopped with SVM error 8
+  ("invalid/uninitialized SVM stack"); every other case, a transparent pane without direct light included, passes
+  there. The cause on that compiler is not determined.
+- **Feature bit** 102 `SHADOW_CATCHER` (scene-only in superset mode). Every edit is a specialization region whose
+  fallback is the previous line verbatim, so modules of scenes without a shadow catcher are byte-identical to merge
+  wave 7 after specialization. Capture entries 21-23 (the `shadow_catcher` module), recorder v10.
+
+Gate: `codebrix_cycles_shadow_catcher_gate OUT` (`native/tools/shadow_catcher_gate.py`). Cases 0-3 (no direct light:
+transparent film; the approximate catcher with an opaque film; a transparent pane over the catcher; a holdout object)
+judge every GPU stage against the original CPU kernels on the same input states: all path fields (flags, visibility,
+sort keys), every film float, the queue counters, `next_main_path_index` and the split-count kernel. Cases 4-9 (point
+light; a light marked as catcher plus a sun; HDRI world with background-light MIS and an area light; a
+transparent-shadow caster; the approximate catcher with a point light; a mesh light over a glossy catcher) compare the
+raw film (Combined and the three passes) with an independent CPU render (two CPU states per pixel, as the CPU
+megakernel). Case 10 checks the volume refusal. Device-scene flow: images through the scene exchange; the state stages
+are recorded per case (`run/case-N/run.stages.bin`) and judged on Linux (`CODEBRIX_CYCLES_STAGE_JUDGE` = the device's
+run directory).
+
+| Device | Shadow catcher gate (11 cases) | Wall | Regression |
+| --- | --- | --- | --- |
+| Linux x64 (Intel, Mesa 25.0.7) | PASS: 447 state stages (13,046,589 integer and 20,957,184 float checks, 5,824 strict, max 1.38e-4), images max 2.69e-5, repeat bitwise, volume refused, 6 replays PASS | 28 s | PASS: device reference export films bit-identical to merge wave 7 except the atomic-order cases lighting_mis 5 and transparent_lighting 4/5; render static and camera motion, volume renders, transparent shadow, microfacet render, host gate, background and closest queue gates, glass superset identity, `dotnet test` Release and Debug 183/183, compile envelope (gate entries worst 58,250), size guard |
+| Samsung SM-X700 (Adreno 730) | PASS against the glibc device-scene references (films max 1.74e-5); the 447 state stages judged on Linux (148 strict, max 9.5e-7); 6 replays PASS | 210 s (slowest pipeline 16.0 s) | not rerun: no module of a scene without a shadow catcher changes |
+| HP (Mesa 24.0.8, Bliss) | PASS against the glibc device-scene references (films max 2.67e-5); state stages judged on Linux (1,347 strict, max 1.38e-4); 6 replays PASS | 219 s (slowest pipeline 25.8 s) | not rerun (as above) |
+| Samsung Galaxy S20 FE (Adreno 650) | PASS with case 7 refused as above (films max 1.74e-5); state stages judged on Linux; 5 replays PASS | 502 s (slowest pipeline 43.8 s) | principled_svm and transparent_shadow PASS |
+
+Oracle scenes `native/oracle/scenes/shadow-catcher/catcher-point-light.json` and `catcher-approximate.json`
+(`author_shadow_catcher.py`; the passes are named pass nodes, the output contract records Combined): WGSL against the CPU
+oracle on Linux "perfect" (practical 0; 334 and 23 strict). Managed test `gpu_shadow_catcher_passes_match_the_cpu_reference`
+reads the three passes through `ReadPass` on both backends (transparent and approximate film).
+
+## Ambient occlusion (lane m2-ao, 2026-10-23)
+
+The registered device implements Cycles' ambient occlusion in its three forms, as the pinned kernels do.
+
+- **Fast GI, replace mode** (`ao_bounces` with a non-zero `ao_factor`, `ao_distance`; per-object `ao_distance`).
+  Already present in the closest stage (AO bounce termination, the shortened ray `tmax`, the object's AO distance)
+  and the background stage (`ao_bounces_factor`); this section adds its image gates.
+- **AO shadow rays** (`integrate_surface_ao`, for fast GI's additive mode, `KERNEL_FEATURE_AO_ADDITIVE` with
+  `ao_additive_factor`, and for the AO pass, `KERNEL_FEATURE_AO_PASS`). `connect_surface_light` calls
+  `surface_ao` (`wavefront_ao.wgsl`) after the direct light, before the BSDF bounce: `surface_shader_ao` (diffuse
+  closure weights times the additive factor, their weighted normal), the cosine-weighted direction from
+  `PRNG_SURFACE_BSDF`, the shadow-terminator origin and self-intersection offset, `tmax = ao_distance`, throughput
+  times `surface_shader_alpha`, flag `PATH_RAY_SHADOW_FOR_AO`, `unshadowed_throughput`. The shadow stage traces it
+  like every shadow path (opaque or transparent); `shadow_write_film` has the pinned AO branch of
+  `film_write_direct_light` (the AO pass for camera paths, the additive combined term). With AO on, every surface
+  input gets two fixed shadow slots (control op 5, as for transparent shadows) and the shadow path arrays use the
+  stable serial scan: with atomic slots and atomic path-array indices the shadow compaction moved paths in a
+  run-dependent order, so the scheduler's counts, and the command replays, differed between runs.
+- **The AO pass.** Written by those rays, read back unchanged by the host (`cbc_host_pass_floats`) and the managed
+  `CyclesScene.ReadPass`; the capability report lists `ao` under `backendScope.webgpu.passes`.
+- **The Ambient Occlusion node** (`NODE_AMBIENT_OCCLUSION`). Shaders with the node are flagged `SD_HAS_RAYTRACE`
+  and the closest stage queues them to `DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE`, which now runs the surface
+  stage with one different SVM entry: `prepare_surface_raytrace`, the surface module specialized with
+  `SVM_NODE_RAYTRACE` (`svm_ao_occlusion`: `num_samples` hemisphere rays from `PRNG_SURFACE_AO` through
+  `path_branched_rng_2D`, `inside`, the global radius when the distance is 0 and unlinked, an opaque any-hit
+  traversal, or with `only_local` the object's own BVH from `object_node` with the instance transform pushed, as
+  `bvh/local.h`). Every other SVM evaluation runs the node as Cycles' non-raytrace node masks do (`ao = 1`). The
+  other surface entries are shared; push word 29 names the queue. Capture entry 21, recorder v10.
+- **Specialization.** Bits 106 `SVM_NODE_AO` (scene feature), 107 `SVM_NODE_RAYTRACE` (a module variant used only
+  for `prepare_surface_raytrace`, not a scene feature and not in the off mode) and 108 `AO_SHADOW`. Modules of
+  scenes without AO are unchanged; on Intel Mesa 25.0.7 `prepare_surface_raytrace` measures 42,215 backend
+  instructions (envelope run over the AO gate modules, worst entry 43,078).
+- **Refused, never approximated.** `only_local` from an object without its own BVH in a scene with instanced objects
+  (a local traversal that reaches an instance leaf reports error 16); bevel and raycast nodes stay unported (error
+  2). Ambient occlusion with object or deformation motion has no gate yet. On the Adreno 650 (S20) the AO node and
+  the AO shadow rays are refused before any pipeline compiles (below).
+
+Gates (Linux, Samsung SM-X700 and HP; images judged against the glibc reference of each device's own scene):
+
+| Gate | Linux | Samsung SM-X700 | HP |
+| --- | --- | --- | --- |
+| `ao_state` (9 cases: AO ray setup and shadow-stage film against the CPU; AO node on the raytrace queue and under the non-raytrace mask) | PASS, 6,324 AO rays (311 occluded), 288 node paths, max 7.63e-6, strict 1,055 | PASS (device CPU), max 7.63e-6, strict 602, 177 s | PASS (device CPU), max 7.63e-6, strict 908, 330 s |
+| `ao_render` (8 images: replace, per-object distance, additive, additive with transparent shadows, additive with an HDRI world, AO pass, AO node, local AO on instances) | PASS, max 1.57e-5, strict 8,730 | PASS, max 1.38e-5, strict 1,739 (glibc), 164 s | PASS, max 1.57e-5, strict 4,361 (glibc), 270 s |
+| `ao_render` on-device replays (8) | n/a | 8/8 PASS | 8/8 PASS |
+| AO oracle scenes (`ao/fast-gi-additive`, `ao/ao-node`, `compare.py`) | perfect (max 1.91e-6) | | |
+| Managed AO pass read-back (`WebGpuAmbientOcclusionTests`) | PASS | | |
+| AO corpus rerun on the final binaries (state + image) | | PASS, 378 s | PASS, 662 s |
+
+The fast GI termination and per-object AO distance state checks remain the closest gate's cases. The regression set
+on the same binaries passes on Linux (surface, closest, shadow, transparent shadow and lighting, lighting MIS, broad
+lighting, feature combination, glass, Principled and node gates with their superset identity, host gate; untouched
+films bit-identical apart from the known run-to-run atomic family; bench, HDRI bench and control bundles: CPU films
+identical, WGSL films practical 0), on the Samsung SM-X700 and on the HP (surface, closest, shadow, transparent
+shadow and lighting, lighting MIS, glass render, Principled SVM and render, node SVM and render).
+
+**Adreno 650 (S20, not a reference device).** Fast GI images 0, 1 (replace) and 2-5 (AO shadow rays, AO pass) passed,
+but the AO node image and the AO state gate failed with SVM error 8 (invalid stack). The known-adapter table now
+refuses scenes with the AO node or AO shadow rays on this GPU class before any pipeline compiles ("ambient occlusion
+shader nodes and ambient occlusion shadow rays (fast GI additive mode, AO pass) are not supported on Adreno (TM) 650
+GPUs"; `KnownAdapter::also_refused_region` = `AO_ANY`); the capability scope lists it under `renderTimeRejections`.
+On the S20 the three refusals and the replace-mode images pass, as do principled_svm, transparent_shadow, surface,
+closest, shadow, lighting_mis and glass_render.
+
+## Manifold next-event estimation (caustics)
+
+`DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE` runs on the WebGPU device (`cycles/mnee.cpp`,
+`shaders/wavefront_mnee.wgsl`). The device reports `has_mnee`, so a scene with a caustic caster,
+a caustic receiver and a lamp with shadow caustics renders with `integrator.use_caustics` and
+`KERNEL_FEATURE_MNEE` exactly as on the CPU device. Before this, the device reported no MNEE
+support and such a scene rendered without the manifold walk on WebGPU while the CPU rendered
+with it.
+
+What runs, in the pinned order (`kernel/integrator/intersect_mnee.h`, `mnee.h`):
+
+- **Closest stage.** The `PATH_MNEE_RECEIVER_ANCESTOR` / `PATH_MNEE_CULL_LIGHT_CONNECTION`
+  update after the intersection, the caustic-lamp culling of the lamp-intersection test, and
+  the routing of a caustic receiver to `INTERSECT_MNEE` instead of the surface queue.
+- **`INTERSECT_MNEE`**, seven dispatches over one GPU-private record per path, so every entry
+  stays inside the pipeline size guard: `mnee_receiver` (ShaderData), `mnee_seed` (the light
+  sample and the probe ray: caster hits, triangle and smooth-normal checks), `mnee_eval` (the
+  caster shaders with the caustics closure limit, the first refractive or glass closure, the
+  index of refraction and the sampled half-vector offset), `mnee_setup` (the manifold
+  vertices), `mnee_solve` (the Newton walk: constraint derivatives, the block-tridiagonal
+  solve, projection to the surfaces, step control; the pinned constants and limits),
+  `mnee_transfer` (the light-sample update, the transfer matrix, the clamped geometry term, the
+  visibility of every vertex) and `mnee_contribute` (the shaders at the solution vertices, the
+  refractive BSDF terms, the shadow ray from the last vertex, the MNEE shadow slot and the move
+  to the sorted surface queue). The bounce counters the pinned kernel leaves modified when the
+  transfer matrix or a visibility check fails are reproduced.
+- **Surface stage.** A path with `PATH_MNEE_SAMPLED` takes its light sample, throughput and
+  ray from the MNEE slot (no MIS weight, no light-threshold roulette); on a caustic caster a
+  caustic lamp's transmitted light is skipped; `mnee_cleanup` (after `shade_surface`) clears
+  the flag and terminates a slot the surface did not use.
+- **Background stage.** Caustic background and sun lamps are culled for paths with
+  `PATH_MNEE_CULL_LIGHT_CONNECTION`.
+- **Queue.** Main and shadow compaction rewrite the MNEE ownership words as the pinned state
+  moves do (`controls.wgsl` op 4). In caustic scenes the MNEE and surface shadow slots are
+  reserved one per dispatched path and the queue selection is serial, as with transparent
+  shadows, so slot numbers and compaction decisions do not depend on atomic order and command
+  replays reproduce every scheduler readback.
+
+Every MNEE region is the specialization feature `MNEE` (bit 110, superset scene-only): a scene
+without caustics compiles byte-identical WGSL. Command captures with MNEE dispatches are
+recorder v10 (entries 21-27 the INTERSECT_MNEE entries, 28 `mnee_cleanup`, all in
+`surface.wgsl`); captures without them keep the v9 layout.
+
+Arithmetic. The walk is chaotic: one unit in the last place in a Jacobian changes the
+iteration count. Every sum of products, division and square root goes through the correctly
+rounded adapters in the pinned operation order, including the float4 rule of the oracle
+(`float4 / float` multiplies by the reciprocal on every host, `float3 / float` divides each
+lane on SSE hosts), Cycles' `fast_sincosf` with unfused steps, and MNEE's own point and sun
+light sampling (the shared lamp sampler divides where the oracle multiplies by `1/d`; changing
+it would change untouched films). With these, the solver's outcome and iteration count equal
+the pinned walk path by path on Linux.
+
+Refused before any dispatch (explicit errors, never an image without caustics): spot, area and
+background lamps with shadow caustics, MNEE with the light tree, light or shadow linking, AO,
+volumes or motion blur. An anisotropic refractive caster reports the unsupported-handler error
+(error 2).
+
+Gates (`native/tools/mnee_gate.py`; fixtures `cycles/mnee_fixture.h`: sharp glass sphere and
+point lamp, rough refraction slab and spherical lamp, glass sphere and glossy caster under a
+sun, casters without a receiver, one caustic and one ordinary lamp):
+
+- `codebrix_cycles_mnee_gate`, lockstep state: every path the pinned CPU wavefront queues at
+  `INTERSECT_MNEE` (all bounces) through the WGSL kernel and the pinned
+  `integrator_intersect_mnee` on the same input state; main-path fields, sort keys, queue
+  counters and the MNEE slot payload compared (integers exact); the walk's outcome, iteration
+  count, half-vector offsets and final vertices against the pinned helpers replayed step by
+  step; then the surface stage (MNEE consumption and cleanup), the MNEE shadow paths and the
+  closest stage of the same paths.
+- `codebrix_cycles_mnee_render_gate` (lighting-gate variant), independent CPU images of the five
+  fixtures, a captured repeat and an uncaptured repeat that queues four samples per work tile.
+- the queue control gate's two MNEE compaction cases (the pinned moves with `__MNEE__`).
+- command replays of the five captures.
+
+Oracle scene: `native/oracle/scenes/mnee/glass-sphere-caustic.json` (fixture case 0 through the
+public host API).
+
+Linux x64 (Intel Mesa 25.0.7):
+
+| Check | Result |
+| --- | --- |
+| `codebrix_cycles_mnee_gate` (cases 0, 1, 2, 4; 8 samples, every bounce) | PASS: 23,757 INTERSECT_MNEE paths, 52 sampled, 2,358,243 integer and 5,477,650 float checks; walk outcome and iteration count equal the pinned walk for every solved path; 458 strict values, maximum 0.125 (a singular-lobe `mis_ray_pdf` near 1e6 in the surface lockstep) |
+| `codebrix_cycles_mnee_render_gate` (5 cases, 32 x 24, 8 samples) | PASS, 0 practical; strict 159 / 2,834 / 0 / 161 / 236, maximum 6.1e-5 (case 1: spherical lamp, whose ordinary NEE uses the shared lamp sampler); MNEE-sampled paths 10 / 19 / 17 / 0 / 6 |
+| Command replays of the five captures | PASS (strict 45 / 940 / 0 / 43 / 48) |
+| Queue control gate | PASS, compaction cases 4 (2 with MNEE ownership against the pinned moves) |
+| Oracle scene `mnee/glass-sphere-caustic` | wgsl-linux-intel against cpu-x64-linux: perfect, 0 practical, 3 strict, maximum 5.1e-7 |
+| Intel compile envelope (Mesa 25.0.7) | PASS, largest `mnee_solve` 48,339 instructions; `mnee_contribute` 42,207, `mnee_seed` 34,658 |
+| Scenes without caustics | glass, microfacet and Principled render films, the superset films (`f7c827af`/`da52a2d8`, `2e11701d`/`cc861de5`) and the bench, HDRI bench and control CPU films (`f4b08b95`, `fc72f30a`, `a1d20c08`) unchanged; lighting/lighting MIS case 5 and transparent lighting 2/4/5 vary run to run as before |
+
+Android:
+
+| Device | Gate | Wall | Result |
+| --- | --- | --- | --- |
+| HP (Mesa 24.0.8) | `mnee_render`, glibc device-scene reference | 224 s | PASS, 0 practical; strict 43 / 940 / 0 / 41 / 48, maximum 1.23e-5; local (bionic) CPU identical to glibc |
+| HP | `mnee` (state, device's own CPU) | 268 s | PASS: 23,757 paths, 54 sampled, walk outcome and iteration count exact, 461 strict, maximum 0.125 (`mis_ray_pdf` near 1e6) |
+| HP | queue control gate, closest gate | 2 s, 27 s | PASS (MNEE compaction cases included) |
+| HP | five on-device replays of the device's own captures | 101-177 s each | PASS (strict 43 / 940 / 0 / 41 / 48) |
+| Samsung SM-X700 (Adreno 730) | `mnee_render`, `mnee` | about 41 s each | FAIL: invalid data at the first `INTERSECT_MNEE` dispatch (open item 19) |
+| Samsung SM-X700 | queue control gate, closest gate | 3 s, 16 s | PASS |
+| S20 (Adreno 650, not a reference device) | `principled_svm`, `transparent_shadow` | 415 s, 16 s | PASS (shared-WGSL regression) |
+| S20 | `mnee_render`, `mnee` | 215 s, 209 s | FAIL as on the Adreno 730: an explicit error, no image |

@@ -85,5 +85,16 @@ fn fail(){atomicOr(&heap[p(17u)/4u],1u);}
             else{for(var b=0u;b<stride;b+=4u){store_word(destination+b,load_word(source+b));}}
         }
         masked(p(2u)+source_index*2u,0u,16u);
+        // MNEE ownership (integrator_state_move / integrator_shadow_state_move):
+        // p(22) path.mnee, p(23) path.mnee_shadow_state, p(24) shadow_isect[2].prim,
+        // p(25) PATH_MNEE_SAMPLED, p(26) SHADOW_PATH_MNEE_PENDING, p(27) the slot/owner bound; zero without MNEE.
+        if(p(22u)!=0u){
+            if(p(16u)==0u){
+                let byte=p(22u)+destination_index;let flags=(load_word(byte)>>(8u*(byte%4u)))&255u;
+                if((flags&p(25u))!=0u){let slot=load_word(p(23u)+destination_index*4u);if(slot>=p(27u)){fail();return;}store_word(p(24u)+slot*4u,destination_index);}
+            }else if(load_half(p(2u)+destination_index*2u)==p(26u)){
+                let owner=load_word(p(24u)+destination_index*4u);if(owner>=p(27u)){fail();return;}store_word(p(23u)+owner*4u,destination_index);
+            }
+        }
     }
 }

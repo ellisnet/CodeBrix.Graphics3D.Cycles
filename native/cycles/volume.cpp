@@ -39,7 +39,8 @@ void WebGPUDevice::validate_volume() const{
   require(!data.bvh.have_motion&&!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU volumes currently require static triangle boundaries");
   require(!data.integrator.volume_ray_marching,"WebGPU biased volume ray marching not implemented");
   require(!data.integrator.use_direct_light&&!data.integrator.use_light_mis&&!data.background.use_mis,"WebGPU volume direct-light/MIS and shadow attenuation not implemented");
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING))&&!data.integrator.has_shadow_catcher,"WebGPU optional volume integration features not implemented");
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING)),"WebGPU optional volume integration features not implemented");
+  require(!data.integrator.has_shadow_catcher,"WebGPU shadow catcher with volumes not implemented");
   require(data.volume_stack_size>=2&&data.volume_stack_size<=MAX_VOLUME_STACK_SIZE,"Invalid homogeneous volume stack size");
   require(data.max_closures>=1&&data.max_closures<=MAX_CLOSURE,"Invalid homogeneous volume closure capacity");
   for(auto &shader:shader_records)if(shader.flags&SD_HAS_VOLUME){

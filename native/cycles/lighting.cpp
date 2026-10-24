@@ -33,10 +33,71 @@ std::string lighting_layout(){
 #undef ENUM
   constant("K_LIGHT_NEE",DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE);constant("O_primitive_type",offsetof(KernelObject,primitive_type));
   constant("LIGHT_EXCLUDE_CAMERA",SHADER_EXCLUDE_CAMERA);constant("LIGHT_EXCLUDE_SHADOW_CATCHER",SHADER_EXCLUDE_SHADOW_CATCHER);
+  // Light tree and light linking (wavefront_light_tree.wgsl, wavefront_light_link.wgsl).
+  constant("LT_D_use_light_tree",offsetof(KernelData,integrator.use_light_tree));constant("LT_D_link_sets",offsetof(KernelData,light_link_sets));
+  constant("LT_D_background_object",offsetof(KernelData,background.object_index));
+  constant("LT_LINK_SET_STRIDE",sizeof(KernelLightLinkSet));constant("LT_LINK_SET_MAX",LIGHT_LINK_SET_MAX);
+  constant("LT_FEATURE_LIGHT_TREE",KERNEL_FEATURE_LIGHT_TREE);constant("LT_FEATURE_LIGHT_LINKING",KERNEL_FEATURE_LIGHT_LINKING);
+  constant("LT_O_receiver_light_set",offsetof(KernelObject,receiver_light_set));constant("LT_O_light_set_membership",offsetof(KernelObject,light_set_membership));
+  constant("LT_O_tfm",offsetof(KernelObject,tfm));constant("LT_O_itfm",offsetof(KernelObject,itfm));
+#define NODE(name,member) constant("LTN_" #name,offsetof(KernelLightTreeNode,member))
+  NODE(bbox_min,bbox.min);NODE(bbox_max,bbox.max);NODE(axis,bcone.axis);NODE(theta_o,bcone.theta_o);NODE(theta_e,bcone.theta_e);
+  NODE(energy,energy);NODE(type,type);NODE(num_emitters,num_emitters);NODE(first_emitter,leaf.first_emitter);
+  NODE(left_child,inner.left_child);NODE(right_child,inner.right_child);NODE(reference,instance.reference);NODE(bit_trail,bit_trail);NODE(bit_skip,bit_skip);
+#undef NODE
+#define EMITTER(name,member) constant("LTE_" #name,offsetof(KernelLightTreeEmitter,member))
+  EMITTER(theta_o,theta_o);EMITTER(theta_e,theta_e);EMITTER(energy,energy);EMITTER(id,light.id);EMITTER(emission_sampling,triangle.emission_sampling);
+  EMITTER(mesh_object,mesh.object_id);EMITTER(mesh_node,mesh.node_id);EMITTER(object,object_id);EMITTER(visibility,visibility_flag);EMITTER(bit_trail,bit_trail);
+#undef EMITTER
+  static_assert(offsetof(KernelLightTreeEmitter,light.id)==offsetof(KernelLightTreeEmitter,triangle.id)&&offsetof(KernelLightTreeEmitter,light.id)==offsetof(KernelLightTreeEmitter,mesh.object_id));
+  static_assert(sizeof(LightTreeNodeType)==1&&sizeof(KernelLightTreeNode{}.bit_skip)==1&&sizeof(EmissionSampling)==4);
+#define ENUM(name) constant("LT_" #name,uint32_t(name))
+  ENUM(LIGHT_TREE_INSTANCE);ENUM(LIGHT_TREE_INNER);ENUM(LIGHT_TREE_LEAF);ENUM(LIGHT_TREE_DISTANT);ENUM(LIGHT_BACKGROUND);ENUM(LIGHT_POINT);ENUM(LIGHT_SPOT);ENUM(LIGHT_AREA);ENUM(LIGHT_SUN);
+  ENUM(EMISSION_SAMPLING_FRONT);ENUM(EMISSION_SAMPLING_BACK);ENUM(SD_OBJECT_TRANSFORM_APPLIED);ENUM(SD_OBJECT_NEGATIVE_SCALE);ENUM(SD_OBJECT_MOTION);
+  ENUM(PATH_RAY_MIS_HAD_TRANSMISSION);ENUM(PATH_RAY_VISIBILITY_CAMERA);ENUM(PATH_RAY_VISIBILITY_VOLUME_SCATTER);ENUM(SR_BSDF_HAS_TRANSMISSION);
+#undef ENUM
   return out.str();
 }
+// Light tree tables uploaded by the unmodified LightManager::device_update_tree:
+// counts, node kinds, child/emitter/instance indices and the per-object lookups
+// are checked here, so the WGSL traversal reads only in-range records.
+void WebGPUDevice::validate_light_tree() const{
+  auto count=[&](const char *name,size_t size)->size_t{auto it=globals.find(name);if(it==globals.end())return 0;
+    require(remaining(it->second)%size==0,"Invalid native light tree table size");return remaining(it->second)/size;};
+  const size_t nodes=count("light_tree_nodes",sizeof(KernelLightTreeNode)),emitters=count("light_tree_emitters",sizeof(KernelLightTreeEmitter));
+  const size_t to_tree=count("light_to_tree",4),lookup=count("object_lookup_offset",4),triangles=count("triangle_to_tree",4),prim_offsets=count("object_prim_offset",4);
+  require(light_tree_nodes.size()==nodes&&light_tree_emitters.size()==emitters,"Invalid native light tree host copy");
+  if(!data.integrator.use_direct_light)return;
+  require(nodes>0&&emitters>0,"Missing native light tree");
+  require(to_tree>=object_records.size()&&lookup>=object_records.size()&&prim_offsets>=object_records.size(),"Invalid native light tree object lookup");
+  for(const KernelLightTreeNode &node:light_tree_nodes){
+    const unsigned type=node.type;
+    require(type==LIGHT_TREE_INSTANCE||type==LIGHT_TREE_INNER||type==LIGHT_TREE_LEAF||type==LIGHT_TREE_DISTANT,"Invalid native light tree node type");
+    for(float value:{node.bbox.min.x,node.bbox.min.y,node.bbox.min.z,node.bbox.max.x,node.bbox.max.y,node.bbox.max.z,node.bcone.axis.x,node.bcone.axis.y,node.bcone.axis.z,
+        node.bcone.theta_o,node.bcone.theta_e,node.energy})require(!std::isnan(value),"Invalid native light tree node bounds");
+    if(type==LIGHT_TREE_INNER)require(node.inner.left_child>=0&&size_t(node.inner.left_child)<nodes&&node.inner.right_child>=0&&size_t(node.inner.right_child)<nodes,"Invalid native light tree child");
+    else if(type==LIGHT_TREE_INSTANCE)require(node.instance.reference>=0&&size_t(node.instance.reference)<nodes&&light_tree_nodes[node.instance.reference].type!=LIGHT_TREE_INSTANCE,"Invalid native light tree instance");
+    else require(node.num_emitters>=0&&node.num_emitters<=32&&node.leaf.first_emitter>=0&&size_t(node.leaf.first_emitter)+size_t(node.num_emitters)<=emitters,"Invalid native light tree leaf");
+  }
+  for(int set=0;set<LIGHT_LINK_SET_MAX;set++)require(data.light_link_sets[set].light_tree_root<nodes,"Invalid native light link tree root");
+  for(const KernelLightTreeEmitter &emitter:light_tree_emitters){
+    for(float value:{emitter.theta_o,emitter.theta_e,emitter.energy})require(std::isfinite(value),"Invalid native light tree emitter");
+    if(emitter.light.id<0){
+      require(size_t(~emitter.light.id)<light_records.size()&&emitter.object_id>=0&&size_t(emitter.object_id)<object_records.size(),"Invalid native light tree lamp");
+      const auto type=light_records[~emitter.light.id].type;
+      require(type==LIGHT_POINT||type==LIGHT_SPOT||type==LIGHT_AREA||type==LIGHT_SUN||type==LIGHT_BACKGROUND,"WebGPU direct lighting emitter type not implemented");
+    }
+    else if(emitter.object_id==OBJECT_NONE)require(emitter.mesh.object_id>=0&&size_t(emitter.mesh.object_id)<object_records.size()&&emitter.mesh.node_id>=0&&size_t(emitter.mesh.node_id)<nodes,"Invalid native light tree mesh");
+    else{
+      auto it=globals.find("tri_vindex");const size_t triangle_count=it==globals.end()?0:remaining(it->second)/sizeof(packed_uint3);
+      require(emitter.object_id>=0&&size_t(emitter.object_id)<object_records.size()&&size_t(emitter.triangle.id)<triangle_count&&
+        (object_records[emitter.object_id].primitive_type==PRIMITIVE_TRIANGLE||object_records[emitter.object_id].primitive_type==PRIMITIVE_MOTION_TRIANGLE),"Invalid native light tree triangle");
+    }
+  }
+  (void)triangles;
+}
 void WebGPUDevice::validate_lighting(bool sampling) const {
-  require(!(sampling||data.integrator.use_light_mis)||!data.integrator.use_light_tree,"WebGPU direct lighting light tree not implemented");
+  if(data.integrator.use_light_tree)validate_light_tree();
   require(data.integrator.num_lights>=0&&size_t(data.integrator.num_lights)==light_records.size(),"Invalid native light table");
   // Background (world) light: importance-map sampling, MIS and non-constant
   // worlds (shade_light_nee). Portals and sky-texture sun guiding are refused.
@@ -74,7 +135,7 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
   if(data.integrator.use_light_mis)require(std::isfinite(data.integrator.distribution_pdf_lights)&&data.integrator.distribution_pdf_lights>=0,"Invalid native MIS selection probability");
   require(std::isfinite(data.integrator.distribution_pdf_triangles)&&data.integrator.distribution_pdf_triangles>=0,"Invalid native triangle selection probability");
   if(!sampling)return;
-  require(!data.integrator.use_light_tree,"WebGPU direct lighting light tree not implemented");
+  if(data.integrator.use_light_tree)return;
   const int n=data.integrator.num_distribution;
   require(n>0&&light_distribution_records.size()==size_t(n)+1,"Invalid native light distribution");
   require(std::isfinite(data.integrator.distribution_pdf_lights)&&data.integrator.distribution_pdf_lights>=0&&

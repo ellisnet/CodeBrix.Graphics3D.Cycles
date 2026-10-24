@@ -191,8 +191,7 @@ static unsigned rejections(const DeviceInfo &info){
     if(test==2){DeviceKernelArguments args(&one,&prefix.device_pointer,&one);result=queue->enqueue(DEVICE_KERNEL_PREFIX_SUM,1,args);reason="pointer kernel argument";}
     if(test==3){DeviceKernelArguments args(&counter.device_pointer,&prefix.device_pointer,&two);result=queue->enqueue(DEVICE_KERNEL_PREFIX_SUM,1,args);reason="range outside allocation";}
     if(test==4){DeviceKernelArguments args(&two);result=queue->enqueue(DEVICE_KERNEL_INTEGRATOR_RESET,1,args);reason="Incomplete reset";}
-    if(test==5){KernelData data{};data.kernel_features=KERNEL_FEATURE_MNEE;d.const_copy_to("data",&data,sizeof(data));
-      DeviceKernelArguments args(&counter.device_pointer,&one,&one,&one);result=queue->enqueue(DEVICE_KERNEL_INTEGRATOR_COMPACT_STATES,1,args);reason="MNEE ownership";}
+    if(test==5){DeviceKernelArguments args(&counter.device_pointer,&one,&one);result=queue->enqueue(DEVICE_KERNEL_INTEGRATOR_COMPACT_STATES,1,args);reason="Compaction argument count";}
     if(test==6){StateFixture f(d,3);f.cpu.path.shader_sort_key[1]=0;f.cpu.path.shader_sort_key[2]=1;f.upload();
       device_vector<int> indices(&d,"bad_key_indices",MEM_READ_WRITE);indices.alloc(3);indices.zero_to_device();
       int n=3,kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE;
@@ -229,7 +228,23 @@ int main(int argc,char **argv){TaskScheduler::init(1);int result=0;try{
       require(queue->enqueue(shadow?DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES:DEVICE_KERNEL_INTEGRATOR_COMPACT_STATES,n,args),"Compaction dispatch failed");
       require(queue->synchronize(),"Compaction sync failed");f.compare();compaction_cases++;
     }
-    require(!queue->enqueue(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,1,DeviceKernelArguments()),"Unimplemented shading kernel was accepted");
+    // MNEE ownership repair: SAMPLED main paths and MNEE_PENDING shadow slots move with
+    // their owner/slot words rewritten, against the pinned moves with __MNEE__.
+    {const auto saved=d.data;auto data=d.data;data.kernel_features|=KERNEL_FEATURE_MNEE;d.const_copy_to("data",&data,sizeof(data));
+    for(bool shadow:{false,true}){
+      f.seed();const int n=193,active=0,terminated=n;
+      for(unsigned i=0;i<f.count;i++){f.cpu.path.mnee_shadow_state[i]=int((i*37+11)%f.count);f.cpu.shadow_isect[2].prim[i]=int((i*53+5)%f.count);
+        f.cpu.path.mnee[i]=uint8_t(i%3?PATH_MNEE_SAMPLED|PATH_MNEE_VALID:PATH_MNEE_VALID);
+        if(shadow&&i%2)f.cpu.shadow_path.queued_kernel[i]=DEVICE_KERNEL_INTEGRATOR_SHADOW_PATH_MNEE_PENDING;}
+      device_vector<int> pairs(&d,"mnee_compaction_pairs",MEM_READ_WRITE);pairs.alloc(2*n);
+      for(int i=0;i<n;i++){pairs[i]=2048+i;pairs[n+i]=i*2+1;(shadow?f.cpu.shadow_path.queued_kernel:f.cpu.path.queued_kernel)[pairs[n+i]]=0;}
+      f.upload();pairs.copy_to_device();for(int i=0;i<n;i++)original_move_mnee(f.cpu,2,shadow,pairs[n+i],pairs[i]);
+      DeviceKernelArguments args(&pairs.device_pointer,&active,&terminated,&n);
+      require(queue->enqueue(shadow?DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES:DEVICE_KERNEL_INTEGRATOR_COMPACT_STATES,n,args),"MNEE compaction dispatch failed");
+      require(queue->synchronize(),"MNEE compaction sync failed");f.compare();compaction_cases++;
+    }
+    auto restore=saved;d.const_copy_to("data",&restore,sizeof(restore));}
+    require(!queue->enqueue(DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE,1,DeviceKernelArguments()),"Unimplemented kernel was accepted");
     require(d.error_message().find("kernel not implemented")!=std::string::npos,"Unsupported kernel did not report the reason");
   }
   require(stats.mem_used==0,"Control tests leaked Cycles allocations");

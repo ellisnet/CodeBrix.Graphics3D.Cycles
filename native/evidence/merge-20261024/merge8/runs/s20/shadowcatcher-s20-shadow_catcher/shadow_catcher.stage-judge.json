@@ -1,0 +1,138 @@
+{
+  "role": "authoritative",
+  "comparison": "device GPU state stages versus the Linux x64 glibc CPU oracle on the device scene",
+  "exit": 0,
+  "seconds": 18.0,
+  "report": {
+    "passed": true,
+    "stageJudge": true,
+    "nativeSceneAndScheduler": true,
+    "independentOriginalCpuImage": true,
+    "exchangeOnly": true,
+    "sceneExchangeOnly": "reference",
+    "stateStages": 447,
+    "integerChecks": 13046589,
+    "floatChecks": 20860416,
+    "strictDifferences": 148,
+    "maximumAbsoluteError": 9.5367431640625e-07,
+    "repeatBitwiseDifferences": 0,
+    "volumeRefused": false,
+    "cases": [
+      {
+        "case": 0,
+        "stageJudge": true,
+        "stages": 110,
+        "splits": 2209,
+        "backgroundSplits": 0,
+        "catcherSurfacePaths": 2209,
+        "integerChecks": 3210570,
+        "floatChecks": 5068800,
+        "strictStageFailures": 35,
+        "maximumStageError": 9.5367431640625e-07
+      },
+      {
+        "case": 1,
+        "stageJudge": true,
+        "stages": 114,
+        "splits": 2256,
+        "backgroundSplits": 2256,
+        "catcherSurfacePaths": 2256,
+        "integerChecks": 3327318,
+        "floatChecks": 5515776,
+        "strictStageFailures": 35,
+        "maximumStageError": 9.5367431640625e-07
+      },
+      {
+        "case": 2,
+        "stageJudge": true,
+        "stages": 117,
+        "splits": 2256,
+        "backgroundSplits": 0,
+        "catcherSurfacePaths": 2256,
+        "integerChecks": 3414879,
+        "floatChecks": 5391360,
+        "strictStageFailures": 43,
+        "maximumStageError": 9.5367431640625e-07
+      },
+      {
+        "case": 3,
+        "stageJudge": true,
+        "stages": 106,
+        "splits": 2173,
+        "backgroundSplits": 0,
+        "catcherSurfacePaths": 2173,
+        "integerChecks": 3093822,
+        "floatChecks": 4884480,
+        "strictStageFailures": 35,
+        "maximumStageError": 9.5367431640625e-07
+      }
+    ],
+    "cyclesAllocationBytesAfterCleanup": 0,
+    "pipelineReport": {
+      "tier": "full",
+      "degraded": false,
+      "pipelines": 1,
+      "totalPipelineMs": 3.01627,
+      "maxPipelineMs": 3.01627,
+      "maxPipelineEntry": "shader_eval_background",
+      "warnings": [],
+      "sizeGuard": {
+        "thresholdBytes": 1110000,
+        "largestEntryBytes": 574391,
+        "largestEntry": "shader_eval_background",
+        "estimatedInstructions": 28720,
+        "warnings": 0
+      },
+      "decision": {
+        "tier": "full",
+        "reason": "table",
+        "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+        "adapter": {
+          "vendor": "Intel open-source Mesa driver",
+          "architecture": "",
+          "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+          "description": "Mesa 25.0.7-2+deb13u1",
+          "vendorId": 32902,
+          "deviceId": 18056,
+          "simulated": false,
+          "mobile": false
+        },
+        "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+        "shaderHash": "fnv1a64:e6e06fbb70588548",
+        "knownAdapter": {
+          "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+          "tier": "full",
+          "budgetMs": 0,
+          "evidence": "Phase C1 2026-10-19 Linux validation"
+        },
+        "budgetSource": "default",
+        "record": {
+          "mode": "none",
+          "path": "",
+          "status": "none",
+          "fullTierCompiles": 0,
+          "conservativeTierCompiles": 0,
+          "failures": 0,
+          "breadcrumbs": []
+        },
+        "canary": {
+          "enabled": false,
+          "result": "not-run",
+          "ms": 0,
+          "detail": ""
+        },
+        "overrides": [],
+        "warnings": []
+      }
+    }
+  },
+  "gateBinarySha256": "deba5a8b8ed78d4a90c32b30591d0234ecf1e23c2d7f76da5474b2c32aa53725",
+  "stagesSha256": {
+    "run/case-0/run.stages.bin": "cc3a9a03c276dc0201366b601a5dd019861f5c123864cc649215957a0906ecdb",
+    "run/case-1/run.stages.bin": "d2f1374009ad963176f29e6f7709e154d66ff1277fdb96abdbc6e8f7b56362da",
+    "run/case-2/run.stages.bin": "6a7f6c9ab9d2ea98a71d7c7d3b510f50a57cc7a9142cc543af8eff4a483dd835",
+    "run/case-3/run.stages.bin": "a89a588fd5b2fc476b5c064e4c365e05d9a2468846d0e3224a4138f0b7877008"
+  },
+  "failure": null,
+  "passed": true
+}

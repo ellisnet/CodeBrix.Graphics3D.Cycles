@@ -1,0 +1,367 @@
+{
+  "sceneId": "assets/bench_01",
+  "sceneSha256": "72bacca609c106d9f099773a52f241d91ad983e0bab6fd19420510f13c946935",
+  "width": 64,
+  "height": 48,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/oracles-1b/bench/oracle/assets/bench_01/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.0251669,
+        0.00647697
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/oracles-1b/bench/oracle/assets/bench_01/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.1920928955078125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.1920928955078125e-07,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json",
+      "renderSeconds": [
+        55.7454,
+        0.19318
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/evidence/cycles-oracles-macos-20261023-2/oracle/assets/bench_01/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.0175604,
+        0.00491808
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/evidence/cycles-oracles-macos-20261023-2/oracle/assets/bench_01/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.1920928955078125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.1920928955078125e-07,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.475459,
+        0.133487
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/evidence/cycles-oracles-macos-20261023-2/oracle/assets/bench_01/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.1920928955078125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.1920928955078125e-07,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.260174,
+        0.0249797
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux",
+    "cpu-arm64-macos",
+    "metal-m2pro",
+    "metal-m2pro-metalrt"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 6.964802742004395e-05,
+      "maxRelativeError": 0.00020311537439977973,
+      "rms": 6.537736558992696e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 196,
+      "worstPixel": {
+        "x": 46,
+        "y": 19,
+        "channel": "R",
+        "reference": 0.3428988456726074,
+        "candidate": 0.34296849370002747,
+        "absoluteDifference": 6.964802742004395e-05,
+        "criterionRatio": 0.5873516867875879
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.004242539405822754,
+      "maxRelativeError": 0.009566321516327412,
+      "rms": 4.674889485030021e-05,
+      "practicalFailures": 32,
+      "strictDifferences": 1603,
+      "worstPixel": {
+        "x": 42,
+        "y": 22,
+        "channel": "R",
+        "reference": 0.4434870183467865,
+        "candidate": 0.44772955775260925,
+        "absoluteDifference": 0.004242539405822754,
+        "criterionRatio": 30.588455829617423
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "cpu-arm64-macos",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.004754126071929932,
+      "maxRelativeError": 0.03582788614028409,
+      "rms": 9.580434279934033e-05,
+      "practicalFailures": 187,
+      "strictDifferences": 1894,
+      "worstPixel": {
+        "x": 29,
+        "y": 36,
+        "channel": "R",
+        "reference": 0.34779614210128784,
+        "candidate": 0.3525502681732178,
+        "absoluteDifference": 0.004754126071929932,
+        "criterionRatio": 39.7637734430579
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.005606710910797119,
+      "maxRelativeError": 0.03586403036355315,
+      "rms": 0.00010558579890209,
+      "practicalFailures": 186,
+      "strictDifferences": 1888,
+      "worstPixel": {
+        "x": 37,
+        "y": 28,
+        "channel": "R",
+        "reference": 0.3788982331752777,
+        "candidate": 0.38450494408607483,
+        "absoluteDifference": 0.005606710910797119,
+        "criterionRatio": 44.57566117246902
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.004242449998855591,
+      "maxRelativeError": 0.009475474480958292,
+      "rms": 4.701535935048083e-05,
+      "practicalFailures": 32,
+      "strictDifferences": 1600,
+      "worstPixel": {
+        "x": 42,
+        "y": 22,
+        "channel": "R",
+        "reference": 0.44772955775260925,
+        "candidate": 0.44348710775375366,
+        "absoluteDifference": 0.004242449998855591,
+        "criterionRatio": 30.40182225130712
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": false,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.00475427508354187,
+      "maxRelativeError": 0.037158411660613185,
+      "rms": 9.574295221603213e-05,
+      "practicalFailures": 187,
+      "strictDifferences": 1892,
+      "worstPixel": {
+        "x": 29,
+        "y": 36,
+        "channel": "R",
+        "reference": 0.3525502681732178,
+        "candidate": 0.3477959930896759,
+        "absoluteDifference": 0.00475427508354187,
+        "criterionRatio": 39.45127348424926
+      },
+      "reference": "metal-m2pro",
+      "candidate": "wgsl-linux-intel",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.0056067705154418945,
+      "maxRelativeError": 0.03719729340175451,
+      "rms": 0.00010556021737091631,
+      "practicalFailures": 186,
+      "strictDifferences": 1890,
+      "worstPixel": {
+        "x": 37,
+        "y": 28,
+        "channel": "R",
+        "reference": 0.38450494408607483,
+        "candidate": 0.37889817357063293,
+        "absoluteDifference": 0.0056067705154418945,
+        "criterionRatio": 44.18224450179618
+      },
+      "reference": "metal-m2pro-metalrt",
+      "candidate": "wgsl-linux-intel",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.004642367362976074,
+      "maxRelativeError": 0.03582075387784978,
+      "rms": 9.418269458605233e-05,
+      "practicalFailures": 179,
+      "strictDifferences": 1896,
+      "worstPixel": {
+        "x": 29,
+        "y": 36,
+        "channel": "R",
+        "reference": 0.3479079008102417,
+        "candidate": 0.3525502681732178,
+        "absoluteDifference": 0.004642367362976074,
+        "criterionRatio": 38.82175964462982
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.005598157644271851,
+      "maxRelativeError": 0.03585689836848821,
+      "rms": 0.00010497749844732925,
+      "practicalFailures": 182,
+      "strictDifferences": 1895,
+      "worstPixel": {
+        "x": 37,
+        "y": 28,
+        "channel": "R",
+        "reference": 0.378906786441803,
+        "candidate": 0.38450494408607483,
+        "absoluteDifference": 0.005598157644271851,
+        "criterionRatio": 44.507053866796575
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.0064841508865356445,
+      "maxRelativeError": 0.017152894769767255,
+      "rms": 6.579186242323364e-05,
+      "practicalFailures": 46,
+      "strictDifferences": 1349,
+      "worstPixel": {
+        "x": 37,
+        "y": 28,
+        "channel": "R",
+        "reference": 0.3780207931995392,
+        "candidate": 0.38450494408607483,
+        "absoluteDifference": 0.0064841508865356445,
+        "criterionRatio": 51.62369587717977
+      },
+      "reference": "metal-m2pro",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": false,
+      "samplesMatch": true
+    }
+  ],
+  "gatingPairs": 2,
+  "problems": [
+    "wgsl-linux-intel vs cpu-arm64-macos: 32 practical failures"
+  ],
+  "passed": false,
+  "verdict": "not perfect"
+}

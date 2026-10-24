@@ -118,7 +118,7 @@ std::string wavefront_layout(){
   constant("POINTER_SIZE",sizeof(void*));
   unsigned table_index=0;
 #define TABLE(name,type) constant("G_" #name,table_index++);constant("SIZE_" #name,sizeof(type));
-  CBC_SCENE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE)
+  CBC_SCENE_CORE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE) CBC_LIGHT_TREE_TABLES(TABLE)
 #undef TABLE
   constant("O_tfm",offsetof(KernelObject,tfm));constant("O_motion_offset",offsetof(KernelObject,motion_offset));
   constant("O_num_tfm_steps",offsetof(KernelObject,num_tfm_steps));
@@ -155,7 +155,7 @@ std::string wavefront_layout(){
   constant("K_CAMERA",DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA);
   constant("K_CLOSEST",DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
   constant("NONE",uint32_t(OBJECT_NONE));constant("PRIM_TYPE_NONE",PRIMITIVE_NONE);
-  constant("PASS_NONE",uint32_t(PASS_UNUSED));
+  constant("PASS_NONE",uint32_t(PASS_UNUSED));constant("KF_LIGHT_LINKING",KERNEL_FEATURE_LIGHT_LINKING);
   return source.str();
 }
 std::string camera_wgsl(){return wavefront_layout()+camera_source;}
@@ -186,7 +186,8 @@ void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
           "Invalid camera rolling shutter");
   validate_volume();
   require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|
-          KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_NODE_PORTAL)),"WebGPU camera optional path features not implemented");
+          KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_NODE_PORTAL)),"WebGPU camera optional path features not implemented");
+  if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
   require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU camera requires tabulated Sobol");
   const auto sequence=data.integrator.tabulated_sobol_sequence_size;
   require(sequence>1&&(sequence&(sequence-1))==0,"Invalid Sobol sequence size");

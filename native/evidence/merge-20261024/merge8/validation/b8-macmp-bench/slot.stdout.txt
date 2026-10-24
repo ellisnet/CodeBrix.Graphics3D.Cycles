@@ -1,0 +1,28 @@
+assets/bench_01 (64x48)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  cpu-arm64-macos            cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 16    repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 16    repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             6.96e-05   0.000203   6.54e-07             0        196
+      worst x=46 y=19 R: ref 0.342898846 got 0.342968494 (0.587x tolerance)
+  cpu-arm64-macos vs cpu-x64-linux [reported]             0.00424    0.00957   4.67e-05            32       1603
+      worst x=42 y=22 R: ref 0.443487018 got 0.447729558 (30.6x tolerance)
+  metal-m2pro vs cpu-x64-linux [reported]                 0.00475     0.0358   9.58e-05           187       1894
+      worst x=29 y=36 R: ref 0.347796142 got 0.352550268 (39.8x tolerance)
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]         0.00561     0.0359   0.000106           186       1888
+      worst x=37 y=28 R: ref 0.378898233 got 0.384504944 (44.6x tolerance)
+  wgsl-linux-intel vs cpu-arm64-macos [gating]            0.00424    0.00948    4.7e-05            32       1600
+      worst x=42 y=22 R: ref 0.447729558 got 0.443487108 (30.4x tolerance)
+  wgsl-linux-intel vs metal-m2pro [reported]              0.00475     0.0372   9.57e-05           187       1892
+      worst x=29 y=36 R: ref 0.352550268 got 0.347795993 (39.5x tolerance)
+  wgsl-linux-intel vs metal-m2pro-metalrt [reported]      0.00561     0.0372   0.000106           186       1890
+      worst x=37 y=28 R: ref 0.384504944 got 0.378898174 (44.2x tolerance)
+  metal-m2pro vs cpu-arm64-macos [reported]               0.00464     0.0358   9.42e-05           179       1896
+      worst x=29 y=36 R: ref 0.347907901 got 0.352550268 (38.8x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]        0.0056     0.0359   0.000105           182       1895
+      worst x=37 y=28 R: ref 0.378906786 got 0.384504944 (44.5x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]           0.00648     0.0172   6.58e-05            46       1349
+      worst x=37 y=28 R: ref 0.378020793 got 0.384504944 (51.6x tolerance)
+  verdict: not perfect; FAILED: wgsl-linux-intel vs cpu-arm64-macos: 32 practical failures

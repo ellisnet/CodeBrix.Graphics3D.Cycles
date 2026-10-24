@@ -82,7 +82,7 @@ static unsigned rejections(WebGPUDevice &d,const std::vector<Field>&layout,const
       case 6:d.data.background.use_mis=1;reason="direct-light/MIS";break;
       case 7:d.data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional volume integration";break;
       case 8:d.data.kernel_features|=KERNEL_FEATURE_DENOISING;reason="optional volume integration";break;
-      case 9:d.data.integrator.has_shadow_catcher=1;reason="optional volume integration";break;
+      case 9:d.data.integrator.has_shadow_catcher=1;reason="shadow catcher with volumes";break;
       case 10:d.data.volume_stack_size=1;reason="volume stack size";break;
       case 11:d.data.max_closures=0;reason="volume closure capacity";break;
       case 12:d.data.film.pass_volume_transmit=PASS_UNUSED;reason="volume film pass";break;

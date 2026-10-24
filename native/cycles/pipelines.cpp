@@ -31,6 +31,8 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SVM_BSDF_TRANSPARENT",SF_BSDF_TRANSPARENT},{"SVM_BSDF_GLOSSY",SF_BSDF_GLOSSY},{"SVM_BSDF_GLASS",SF_BSDF_GLASS},
     {"LIGHT_AREA",SF_LIGHT_AREA},{"MOTION_OBJECT",SF_MOTION_OBJECT},{"MOTION_CAMERA",SF_MOTION_CAMERA},
     {"LIGHT_TRIANGLE",SF_LIGHT_TRIANGLE},{"LIGHT_BACKGROUND",SF_LIGHT_BACKGROUND},{"LIGHT_NEE",SF_LIGHT_NEE},
+    {"LIGHT_TREE",SF_LIGHT_TREE},{"LIGHT_LINKING",SF_LIGHT_LINKING},{"LIGHT_SELECT",SF_LIGHT_SELECT},
+    {"SHADOW_CATCHER",SF_SHADOW_CATCHER},{"MNEE",SF_MNEE},
     {"SHADOW_TERMINATOR_GEOMETRY",SF_TERMINATOR_GEOMETRY},{"SHADOW_TERMINATOR_SHADING",SF_TERMINATOR_SHADING},
     {"SVM_NODE_TEX_NOISE",SF_TEX_NOISE},{"SVM_NODE_TEX_WHITE_NOISE",SF_TEX_WHITE_NOISE},{"SVM_NODE_TEX_WAVE",SF_TEX_WAVE},
     {"SVM_NODE_TEX_MAGIC",SF_TEX_MAGIC},{"SVM_NODE_TEX_BRICK",SF_TEX_BRICK},{"SVM_NODE_MAPPING",SF_MAPPING},
@@ -38,7 +40,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SVM_NODE_RAMP",SF_RAMP},{"SVM_NODE_FRESNEL",SF_FRESNEL},{"SVM_NODE_VECTOR_ROTATE",SF_VECTOR_ROTATE},
     {"SVM_NODE_BLACKBODY",SF_BLACKBODY},{"SVM_NODE_NORMAL",SF_NORMAL},{"SVM_NODE_SHADING_INFO",SF_SHADING_INFO},{"SVM_NODE_LIGHT_PATH",SF_LIGHT_PATH},
     {"SVM_NODE_TEX_VORONOI",SF_TEX_VORONOI},{"SVM_NODE_WAVELENGTH",SF_WAVELENGTH},{"SVM_NODE_WIREFRAME",SF_WIREFRAME},
-    {"SVM_NODE_TEX_GABOR",SF_TEX_GABOR},
+    {"SVM_NODE_TEX_GABOR",SF_TEX_GABOR},{"SVM_NODE_AO",SF_NODE_AO},{"AO_ANY",SF_NODE_AO|SF_AO_SHADOW},{"SVM_NODE_RAYTRACE",SF_NODE_RAYTRACE},{"AO_SHADOW",SF_AO_SHADOW},
     {"SVM_NODE_BUMP",SF_BUMP},{"SVM_NODE_BUMP_STATE",SF_BUMP_STATE},{"SVM_NODE_GEOMETRY_DERIVATIVE",SF_GEOMETRY_DERIVATIVE},
     {"SVM_NODE_TEX_COORD_DERIVATIVE",SF_TEX_COORD_DERIVATIVE},{"SVM_NODE_VALUE_DERIVATIVE",SF_VALUE_DERIVATIVE},
     {"SVM_NODE_VECTOR_MATH_DERIVATIVE",SF_VECTOR_MATH_DERIVATIVE},{"SVM_NODE_MAPPING_DERIVATIVE",SF_MAPPING_DERIVATIVE},
@@ -64,7 +66,9 @@ std::string shader_feature_list(ShaderFeatures features){
 
 // Mask layout invariants (pipelines.h): assigned bits keep their numbers.
 static_assert(SF_GEOMETRY.test(0)&&SF_MAPPING_DERIVATIVE.test(61)&&SF_TEX_GABOR.test(63)&&!SF_ALL.test(62));
-static_assert(SF_ALL.count()==65&&!(SF_ALL&~ShaderFeatures::range(0,66)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65));
+static_assert(SF_ALL.count()==72&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+  SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
+static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
 
 namespace {
@@ -104,6 +108,7 @@ OpInfo op_info(uint32_t op){
     OP(NODE_OBJECT_INFO,ObjectInfo,SF_SHADING_INFO) OP(NODE_CAMERA,Camera,SF_SHADING_INFO) OP(NODE_SCENE_TIME,SceneTime,SF_SHADING_INFO)
     OP(NODE_VECTOR_TRANSFORM,VectorTransform,SF_SHADING_INFO) OP(NODE_LIGHT_PATH,LightPath,SF_LIGHT_PATH)
     OP(NODE_WAVELENGTH,Wavelength,SF_WAVELENGTH) OP(NODE_WIREFRAME,Wireframe,SF_WIREFRAME) OP(NODE_TEX_GABOR,TexGabor,SF_TEX_GABOR)
+    OP(NODE_AMBIENT_OCCLUSION,AmbientOcclusion,SF_NODE_AO)
     OP(NODE_SET_BUMP,SetBump,SF_BUMP) OP(NODE_ENTER_BUMP_EVAL,EnterBumpEval,SF_BUMP_STATE) OP(NODE_LEAVE_BUMP_EVAL,LeaveBumpEval,SF_BUMP_STATE)
     OP(NODE_GEOMETRY_DERIVATIVE,Geometry,SF_GEOMETRY_DERIVATIVE) OP(NODE_TEX_COORD_DERIVATIVE,TexCoord,SF_TEX_COORD|SF_TEX_COORD_DERIVATIVE)
     OP(NODE_VALUE_F_DERIVATIVE,ValueF,SF_VALUE_DERIVATIVE) OP(NODE_VALUE_V_DERIVATIVE,ValueV,SF_VALUE_DERIVATIVE)
@@ -348,12 +353,23 @@ ShaderFeatures WebGPUDevice::shader_features(){
     // Adapter-class refusal from the known-adapter table (device_tier.cpp), for
     // example texture, colour and utility nodes on the Adreno 650.
     const KnownAdapter *known=tier_policy.known_adapter();
-    if(unsupported_feature.empty()&&known&&known->refused_region){
-      ShaderFeatures region=SF_NONE;for(auto &n:shader_feature_names())if(std::strcmp(n.name,known->refused_region)==0)region=n.bit;
-      if(const ShaderFeatures refused=referenced.features&region)
-        unsupported_feature=std::string("WebGPU: ")+known->refused_text+" are not supported on "+known->device+" GPUs (this scene uses "+
+    // AO shadow rays come from KernelData, not from the SVM census.
+    ShaderFeatures scene_regions=referenced.features;if(data.kernel_features&KERNEL_FEATURE_AO)scene_regions|=SF_AO_SHADOW;
+    for(const auto &[region_name,text]:{std::pair{known?known->refused_region:nullptr,known?known->refused_text:nullptr},
+                                         std::pair{known?known->also_refused_region:nullptr,known?known->also_refused_text:nullptr}}){
+      if(!unsupported_feature.empty()||!region_name)continue;
+      ShaderFeatures region=SF_NONE;for(auto &n:shader_feature_names())if(std::strcmp(n.name,region_name)==0)region=n.bit;
+      if(const ShaderFeatures refused=scene_regions&region)
+        unsupported_feature=std::string("WebGPU: ")+text+" are not supported on "+known->device+" GPUs (this scene uses "+
           shader_feature_list(refused)+"): the shader compiler of this GPU class miscompiles or fails to link their shader programs; render the scene on another GPU or on the CPU device";
-    }}
+    }
+    // Adreno 650 (not a reference device): a shadow catcher scene with transparent
+    // shadow rays (direct light) fails there with SVM stack errors in the transparent shadow stage
+    // (native/DEVICE.md, shadow catcher section); refused before any pipeline compiles.
+    if(unsupported_feature.empty()&&known&&std::strcmp(known->device,"Adreno (TM) 650")==0&&data.integrator.has_shadow_catcher&&data.integrator.transparent_shadows&&data.integrator.use_direct_light)
+      unsupported_feature=std::string("WebGPU: shadow catchers with transparent shadows are not supported on ")+known->device+
+        " GPUs: the transparent shadow stage of such scenes fails on this GPU class; render the scene on another GPU or on the CPU device";
+    }
   if(!unsupported_feature.empty())throw std::runtime_error(unsupported_feature);
   if(specialization_mode==SpecializationMode::Off)return SF_ALL;
   if(census_generation!=svm_generation){
@@ -370,10 +386,19 @@ ShaderFeatures WebGPUDevice::shader_features(){
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0&&size_t(light_distribution_records[i].prim)<tri_shader_words.size()){
       const auto id=tri_shader_words[light_distribution_records[i].prim]&SHADER_MASK;if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}
     for(const uint flags:object_flag_records)if(flags&SD_OBJECT_MOTION)enabled_features|=SF_MOTION_OBJECT;
+    // Light tree and light linking (lighting.cpp validate_light_tree; m2-lighttree).
+    if(data.integrator.use_light_tree){enabled_features|=SF_LIGHT_TREE|SF_LIGHT_SELECT;
+      for(const KernelLightTreeEmitter &emitter:light_tree_emitters)if(emitter.light.id>=0&&emitter.object_id!=OBJECT_NONE){enabled_features|=SF_LIGHT_TRIANGLE;
+        if(size_t(emitter.triangle.id)<tri_shader_words.size()){const auto id=tri_shader_words[emitter.triangle.id]&SHADER_MASK;
+          if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}}}
+    if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)enabled_features|=SF_LIGHT_LINKING|SF_LIGHT_SELECT;
     if(data.cam.num_motion_steps!=0)enabled_features|=SF_MOTION_CAMERA;
+    if(data.integrator.has_shadow_catcher)enabled_features|=SF_SHADOW_CATCHER;
+    if(data.kernel_features&KERNEL_FEATURE_AO)enabled_features|=SF_AO_SHADOW;
+    if(data.integrator.use_caustics)enabled_features|=SF_MNEE;
     for(const KernelObject &object:object_records){
       if(object.shadow_terminator_shading_offset>1.0f)enabled_features|=SF_TERMINATOR_SHADING;
-      if(object.shadow_terminator_geometry_offset>0.0f&&smooth_triangles&&data.integrator.use_direct_light)enabled_features|=SF_TERMINATOR_GEOMETRY;
+      if(object.shadow_terminator_geometry_offset>0.0f&&smooth_triangles&&(data.integrator.use_direct_light||(data.kernel_features&KERNEL_FEATURE_AO)))enabled_features|=SF_TERMINATOR_GEOMETRY;
     }
   }
   if(specialization_mode==SpecializationMode::Superset){
@@ -413,8 +438,8 @@ uint32_t WebGPUDevice::workgroup(const char *entry) const{
   auto it=pipeline_workgroups.find(entry);if(it==pipeline_workgroups.end())throw std::runtime_error(std::string("No compiled workgroup size for ")+entry);
   return it->second;
 }
-std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries){
-  const ShaderFeatures features=shader_features();const std::string specialized=specialize_wgsl(source,features);
+std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries,ShaderFeatures extra){
+  const ShaderFeatures features=shader_features()|extra;const std::string specialized=specialize_wgsl(source,features);
   using clock=std::chrono::steady_clock;auto ms=[](clock::time_point a,clock::time_point b){return std::chrono::duration<double,std::milli>(b-a).count();};
   auto warn=[&](const std::string &message){
     pipeline_warnings.push_back(message);std::fprintf(stderr,"CodeBrix Cycles WebGPU warning: %s\n",message.c_str());

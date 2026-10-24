@@ -15,9 +15,12 @@ static constexpr char surface_fragment[]=
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
 // GPU-private record: ready word, 60 ShaderData words, 15 SVM metadata words,
 // then the forward-hit triangle MIS weight and the 13-word sampled light (lamp
-// or emissive triangle) passed from shade_surface_light to connect_surface_light.
+// or emissive triangle) passed from shade_surface_light to connect_surface_light,
+// then the 8-word light selection of shade_surface_light_select (light tree or
+// light linking; LIGHT_SELECT_RECORD = byte 360).
 // Its scalar encoding is in wavefront_surface_stage.wgsl and wavefront_lighting.wgsl.
-static constexpr size_t surface_stage_bytes=surface_data_cache_bytes+30*sizeof(uint32_t);
+static constexpr size_t surface_stage_bytes=surface_data_cache_bytes+38*sizeof(uint32_t);
+static_assert(surface_data_cache_bytes+30*sizeof(uint32_t)==360,"LIGHT_SELECT_RECORD in wavefront_lighting.wgsl");
 static std::string surface_layout(){
   std::ostringstream source;
   auto constant=[&](const char *name,size_t value){source<<"const "<<name<<":u32="<<value<<"u;\n";};
@@ -43,8 +46,9 @@ static std::string surface_layout(){
     PATH_RAY_DENOISING_FEATURES|PATH_RAY_SUBSURFACE);
   return source.str();
 }
-std::string surface_source(){return svm_surface_source()+background_layout()+shadow_layout()+lighting_layout()+surface_layout()+surface_fragment;}
-void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
+std::string surface_source(){return svm_surface_source()+background_layout()+shadow_layout()+lighting_layout()+surface_layout()+shadow_catcher_layout()+mnee_layout()+surface_fragment;}
+void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,DeviceKernel kernel){
+  require(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,"Invalid surface kernel");
   require(args.count==3,"Surface argument count");
   require(args.types[2]==DeviceKernelArguments::INT32&&args.sizes[2]==4,"Invalid surface work argument");
   int n;std::memcpy(&n,args.values[2],4);require(n>=0&&work>=n,"Incomplete surface dispatch");
@@ -65,9 +69,12 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
     require(!(object.shadow_terminator_shading_offset>2.0f)&&!std::isnan(object.shadow_terminator_shading_offset),
             "WebGPU shadow terminator shading offset outside [0, 1] not implemented");
   }
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO))&&
-          !data.integrator.has_shadow_catcher&&!data.integrator.use_caustics,"WebGPU surface optional integration features not implemented");
-  require(data.film.pass_flag==0,"WebGPU surface data passes not implemented");
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_SHADOW_LINKING)),
+          "WebGPU surface optional integration features not implemented");
+  if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
+  if(data.integrator.use_caustics)validate_mnee();
+  require((data.film.pass_flag&~shadow_catcher_pass_mask())==0,"WebGPU surface data passes not implemented");
+  validate_shadow_catcher();
   require(data.integrator.filter_glossy==FLT_MAX,"WebGPU surface glossy filtering not implemented");
   // Native Scene::get_max_closure_count() preserves a global minimum of one.
   // Local zero-storage SVM evaluation for termination remains valid.
@@ -79,6 +86,9 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
   pass(data.film.pass_diffuse_direct,3);pass(data.film.pass_glossy_direct,3);pass(data.film.pass_transmission_direct,3);
   pass(data.film.pass_diffuse_indirect,3);pass(data.film.pass_glossy_indirect,3);pass(data.film.pass_transmission_indirect,3);
   if(data.film.light_pass_flag&PASSMASK(COMBINED))require(data.film.pass_combined!=PASS_UNUSED,"Missing combined film pass");
+  // Ambient occlusion shadow rays (wavefront_ao.wgsl): the AO pass the shadow stage writes.
+  const bool ao=(data.kernel_features&KERNEL_FEATURE_AO)!=0;
+  if(data.kernel_features&KERNEL_FEATURE_AO_PASS)require(data.film.pass_ao!=PASS_UNUSED&&data.film.pass_ao>=0&&data.film.pass_ao<=data.film.pass_stride-3,"Invalid AO film pass offset");
   require(std::isfinite(data.integrator.sample_clamp_direct)&&data.integrator.sample_clamp_direct>=0&&
           std::isfinite(data.integrator.sample_clamp_indirect)&&data.integrator.sample_clamp_indirect>=0,"Invalid surface clamp");
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[18]=globals.at("shaders");
@@ -107,7 +117,9 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
 #undef KERNEL_STRUCT_END_ARRAY
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
   p[9]=globals.at("sample_pattern_lut");p[14]=scene_tables();
-  if(data.integrator.use_direct_light){
+  // Push word 29 names the queue for the shared stages (0: SHADE_SURFACE).
+  p[29]=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE?uint32_t(kernel):0;
+  if(data.integrator.use_direct_light||ao){
     p[25]=uint32_t(remaining(uintptr_t(state.shadow_path.render_pixel_index))/4);
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
@@ -124,7 +136,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
 #undef KERNEL_STRUCT_ARRAY_MEMBER
 #undef KERNEL_STRUCT_END
 #undef KERNEL_STRUCT_END_ARRAY
-    require(state.shadow_path.bsdf_eval_average,"Missing shadow BSDF average");
+    require(state.shadow_path.bsdf_eval_average||(data.kernel_features&KERNEL_FEATURE_LIGHT_TREE),"Missing shadow BSDF average");
     validate(uintptr_t(state.shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].object),size_t(p[25])*4);
     validate(uintptr_t(state.shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].prim),size_t(p[25])*4);
     validate(uintptr_t(state.next_shadow_path_index),4);
@@ -135,7 +147,12 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
   if(!work||!n)return;
   const size_t closure_bytes=size_t(n)*MAX_CLOSURE*sizeof(SurfaceClosureRecord);
   const size_t records_bytes=closure_bytes+size_t(n)*surface_stage_bytes;
-  const bool reserve_shadow=data.integrator.use_direct_light&&data.integrator.transparent_shadows;
+  // Reserved shadow slots (control op 5) give every input fixed slots: needed by
+  // resumable transparent shadows, with ambient occlusion, whose two shadow
+  // paths per input otherwise take atomic slots in a run-dependent order (the
+  // native scheduler's compaction counts then differ between runs), and in caustic
+  // scenes (MNEE reserves its slots the same way; mnee.cpp).
+  const bool reserve_shadow=(data.integrator.use_direct_light&&(data.integrator.transparent_shadows||data.integrator.use_caustics))||ao;
   const size_t needed=records_bytes+(reserve_shadow?sizeof(uint32_t):0);
   if(needed>surface_closure_bytes){
     if(surface_closures){flush();release(surface_closures);surface_closures=0;surface_closure_bytes=0;}
@@ -150,6 +167,11 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
   // shade_surface_light_triangle does the triangle work, which keeps each entry
   // inside the Intel Mesa 25.0.7 backend's 16-bit instruction/register range.
   const bool triangle_stage=(shader_features()&SF_LIGHT_TRIANGLE).any();
+  // shade_surface_light_select (light tree or light linking) runs first whenever
+  // the module carries it: the samplers then read its selection record.
+  const bool select_stage=(shader_features()&SF_LIGHT_SELECT).any();
+  if(select_stage&&(!pipeline_current(surface_light_select,"shade_surface_light_select")||!surface_light_select.value))
+    surface_light_select=std::move(build_pipelines("surface",surface_source(),{"shade_surface_light_select"})[0]);
   if(!pipeline_current(surface,"shade_surface")||(triangle_stage&&!surface_light_triangle.value)){
     if(triangle_stage){
       auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","shade_surface_light_triangle","connect_surface_light","shade_surface"});
@@ -164,21 +186,37 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args){
   // Dispatch ordering makes the GPU-private preparation records visible to the
   // sampling stage without a CPU readback or a native scheduler queue transition.
   dispatch(p,uint32_t(work),surface_geometry,workgroup("prepare_shader_data"));
-  dispatch(p,uint32_t(work),surface_prepare,workgroup("prepare_surface"));
+  if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE){
+    // Shaders flagged SD_HAS_RAYTRACE (the Ambient Occlusion node): the SVM stage
+    // with the node's ray tracing (SVM_NODE_RAYTRACE, wavefront_ao.wgsl), built from
+    // the same surface source; the other stages are the shared pipelines above.
+    if(!pipeline_current(surface_prepare_raytrace,"prepare_surface_raytrace"))
+      surface_prepare_raytrace=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_raytrace"},SF_NODE_RAYTRACE)[0]);
+    dispatch(p,uint32_t(work),surface_prepare_raytrace,workgroup("prepare_surface_raytrace"));
+  }else dispatch(p,uint32_t(work),surface_prepare,workgroup("prepare_surface"));
   if(reserve_shadow){
     // PathTraceWorkGPU::enqueue_path_iteration budgets at least one shadow slot
     // for each surface input before invoking this kernel. Unused reservations
     // stay terminated; native counters/compaction still decide subsequent work.
-    std::array<uint32_t,32> reserve{};reserve[0]=5;reserve[1]=n;
+    std::array<uint32_t,32> reserve{};reserve[0]=5;
+    // With ambient occlusion each input may add two shadow paths (the native
+    // scheduler halves its work for AO kernels); the AO path takes slot n + id.x.
+    reserve[1]=ao?2*n:n;
     reserve[2]=uint32_t(uintptr_t(state.next_shadow_path_index));reserve[3]=uint32_t(uintptr_t(state.shadow_path.queued_kernel));
     reserve[4]=p[28];reserve[17]=error_word;reserve[18]=p[25];dispatch(reserve,1);
   }
   // Sizes follow the compiled declarations. Light sampling and BSDF/shadow
   // connection are separate dispatches to bound compiler pressure.
+  if(select_stage)dispatch(p,uint32_t(work),surface_light_select,workgroup("shade_surface_light_select"));
   dispatch(p,uint32_t(work),surface_light,workgroup("shade_surface_light"));
   if(triangle_stage)dispatch(p,uint32_t(work),surface_light_triangle,workgroup("shade_surface_light_triangle"));
   dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
   dispatch(p,uint32_t(work),surface,workgroup("shade_surface"));
+  // integrator_shade_surface's MNEE cleanup (wavefront_mnee.wgsl), caustic scenes only.
+  if(data.integrator.use_caustics){
+    if(!pipeline_current(mnee_cleanup,"mnee_cleanup"))mnee_cleanup=std::move(build_pipelines("surface",surface_source(),{"mnee_cleanup"})[0]);
+    dispatch(p,uint32_t(work),mnee_cleanup,workgroup("mnee_cleanup"));
+  }
 }
 // DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE: shadow paths whose sampled light has
 // no constant emission (wavefront_light_nee.wgsl). Arguments as every shading
@@ -191,8 +229,7 @@ void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args)
   device_ptr indices;std::memcpy(&indices,args.values[0],sizeof(indices));require(indices%4==0,"Unaligned light NEE indices");
   std::array<uint32_t,32> p{};p[1]=n;p[2]=uint32_t(indices);p[17]=error_word;if(p[2])validate(p[2],size_t(n)*4);
   require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU light NEE currently requires triangle primitives");
-  require(!(data.kernel_features&(KERNEL_FEATURE_LIGHT_TREE|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING))&&
-          !data.integrator.use_light_tree,"WebGPU light NEE optional integration features not implemented");
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),"WebGPU light NEE optional integration features not implemented");
   validate_geometry_motion();
   validate_lighting(true);
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=globals.at("sample_pattern_lut");p[18]=globals.at("shaders");
@@ -202,7 +239,8 @@ void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args)
   if(!p[2])require(uint32_t(n)<=p[10],"Light NEE dispatch exceeds shadow path capacity");
   require(uint32_t(work)<=svm_stack_slots,"Light NEE dispatch exceeds the SVM stack slots");
   auto field=[&](const void *address,size_t size){validate(uintptr_t(address),size_t(p[10])*size);};
-  field(state.shadow_path.queued_kernel,2);field(state.shadow_path.throughput,12);field(state.shadow_path.bsdf_eval_average,4);
+  field(state.shadow_path.queued_kernel,2);field(state.shadow_path.throughput,12);
+  if(!(data.kernel_features&KERNEL_FEATURE_LIGHT_TREE))field(state.shadow_path.bsdf_eval_average,4);
   field(state.shadow_path.sample,4);field(state.shadow_path.rng_pixel,4);field(state.shadow_path.rng_offset,2);
   field(state.shadow_ray.P,12);field(state.shadow_ray.D,12);field(state.shadow_ray.tmax,4);field(state.shadow_ray.time,4);
   field(state.shadow_ray.dP,4);field(state.shadow_ray.dD,4);field(state.shadow_ray.self_light_object,4);field(state.shadow_ray.self_light_prim,4);

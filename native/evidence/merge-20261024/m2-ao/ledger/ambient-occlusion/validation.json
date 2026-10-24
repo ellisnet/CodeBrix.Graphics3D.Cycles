@@ -1,0 +1,1091 @@
+{
+ "passed": true,
+ "fullCyclesParity": false,
+ "rid": "linux-x64",
+ "producedBy": "lane m2-ao, 2026-10-24, Linux x64 Intel UHD (ADL-S) Mesa 25.0.7-2+deb13u1 final lane binaries; devices through native/work/m2-ao/tools/run_corpus.py (device-scene flow)",
+ "capturedUtc": "2026-10-24T13:52:47+00:00",
+ "reports": {
+  "ao_state": {
+   "file": "native/work/m2-ao/ledger/ambient-occlusion/ao_state.stdout.json",
+   "sha256": "3ff06578fb644f4196cf60b00d63aac9da3fef767ba906126531ef42bf2fd1c4",
+   "gate": "bin/codebrix_cycles_ao_state_gate",
+   "arguments": [],
+   "gateSha256": "85c0861dd161855906080e57fd30e201b2a3fc6cf924d4e0b25a6cfe38c7d759",
+   "result": {
+    "passed": true,
+    "originalCpuSurfaceAndShadowIntegrator": true,
+    "cases": 9,
+    "paths": 7716,
+    "aoShadowRays": 6324,
+    "aoUnoccluded": 6013,
+    "aoOccluded": 311,
+    "aoNodePaths": 288,
+    "aoNodeSensitivePaths": 155,
+    "integerChecks": 247477,
+    "floatChecks": 866664,
+    "strictFloatFailures": 1055,
+    "maximumAbsoluteError": 7.62939453125e-06,
+    "cyclesAllocationBytesAfterCleanup": 0
+   }
+  },
+  "ao_render": {
+   "file": "native/work/m2-ao/ledger/ambient-occlusion/ao_render.stdout.json",
+   "sha256": "d983033e0b86e26d72e2565a05160b0f971378931705e119a585c60057b71d52",
+   "gate": "bin/codebrix_cycles_ao_render_gate",
+   "arguments": [],
+   "gateSha256": "d5fd0c82bdaad0ca799fa68f5e095494b2b753a09effb1c2fef5e2bbd4212bfa",
+   "result": {
+    "passed": true,
+    "nativeSceneAndScheduler": true,
+    "independentOriginalCpuImage": true,
+    "cases": 8,
+    "aoShadowPaths": 16115,
+    "aoTerminations": 721,
+    "raytracePaths": 1495,
+    "filmChecks": 53760,
+    "strictDifferences": 8731,
+    "maximumAbsoluteError": 1.5735626220703125e-05,
+    "repeatBitwiseDifferences": 12,
+    "caseReports": [
+     {
+      "passed": true,
+      "case": 0,
+      "name": "replace",
+      "aoShadowPaths": 0,
+      "aoBlocked": 0,
+      "aoTerminations": 138,
+      "raytracePaths": 0,
+      "lightShadows": 3391,
+      "lightNeePaths": 0,
+      "stages": 224,
+      "filmChecks": 6144,
+      "strictDifferences": 1270,
+      "maximumAbsoluteError": 4.291534423828125e-06,
+      "repeatBitwiseDifferences": 0,
+      "repeatMaximumError": 0
+     },
+     {
+      "passed": true,
+      "case": 1,
+      "name": "replace-object-distance",
+      "aoShadowPaths": 0,
+      "aoBlocked": 0,
+      "aoTerminations": 229,
+      "raytracePaths": 0,
+      "lightShadows": 3391,
+      "lightNeePaths": 0,
+      "stages": 224,
+      "filmChecks": 6144,
+      "strictDifferences": 1220,
+      "maximumAbsoluteError": 4.410743713378906e-06,
+      "repeatBitwiseDifferences": 0,
+      "repeatMaximumError": 0
+     },
+     {
+      "passed": true,
+      "case": 2,
+      "name": "additive",
+      "aoShadowPaths": 3391,
+      "aoBlocked": 171,
+      "aoTerminations": 161,
+      "raytracePaths": 0,
+      "lightShadows": 3391,
+      "lightNeePaths": 0,
+      "stages": 224,
+      "filmChecks": 6144,
+      "strictDifferences": 836,
+      "maximumAbsoluteError": 4.291534423828125e-06,
+      "repeatBitwiseDifferences": 0,
+      "repeatMaximumError": 0
+     },
+     {
+      "passed": true,
+      "case": 3,
+      "name": "additive-only-transparent",
+      "aoShadowPaths": 5537,
+      "aoBlocked": 590,
+      "aoTerminations": 0,
+      "raytracePaths": 0,
+      "lightShadows": 4507,
+      "lightNeePaths": 0,
+      "stages": 540,
+      "filmChecks": 6144,
+      "strictDifferences": 711,
+      "maximumAbsoluteError": 4.0531158447265625e-06,
+      "repeatBitwiseDifferences": 1,
+      "repeatMaximumError": 2.384185791015625e-07
+     },
+     {
+      "passed": true,
+      "case": 4,
+      "name": "additive-hdri",
+      "aoShadowPaths": 4097,
+      "aoBlocked": 296,
+      "aoTerminations": 55,
+      "raytracePaths": 0,
+      "lightShadows": 3267,
+      "lightNeePaths": 1237,
+      "stages": 428,
+      "filmChecks": 6144,
+      "strictDifferences": 968,
+      "maximumAbsoluteError": 1.5735626220703125e-05,
+      "repeatBitwiseDifferences": 4,
+      "repeatMaximumError": 4.76837158203125e-07
+     },
+     {
+      "passed": true,
+      "case": 5,
+      "name": "replace-ao-pass",
+      "aoShadowPaths": 3090,
+      "aoBlocked": 111,
+      "aoTerminations": 138,
+      "raytracePaths": 0,
+      "lightShadows": 3391,
+      "lightNeePaths": 0,
+      "stages": 224,
+      "filmChecks": 10752,
+      "strictDifferences": 1276,
+      "maximumAbsoluteError": 4.291534423828125e-06,
+      "repeatBitwiseDifferences": 0,
+      "repeatMaximumError": 0
+     },
+     {
+      "passed": true,
+      "case": 6,
+      "name": "ao-node",
+      "aoShadowPaths": 0,
+      "aoBlocked": 0,
+      "aoTerminations": 0,
+      "raytracePaths": 723,
+      "lightShadows": 4220,
+      "lightNeePaths": 0,
+      "stages": 512,
+      "filmChecks": 6144,
+      "strictDifferences": 1282,
+      "maximumAbsoluteError": 6.9141387939453125e-06,
+      "repeatBitwiseDifferences": 3,
+      "repeatMaximumError": 2.384185791015625e-07
+     },
+     {
+      "passed": true,
+      "case": 7,
+      "name": "ao-node-local-instanced",
+      "aoShadowPaths": 0,
+      "aoBlocked": 0,
+      "aoTerminations": 0,
+      "raytracePaths": 772,
+      "lightShadows": 4248,
+      "lightNeePaths": 0,
+      "stages": 520,
+      "filmChecks": 6144,
+      "strictDifferences": 1168,
+      "maximumAbsoluteError": 4.5299530029296875e-06,
+      "repeatBitwiseDifferences": 4,
+      "repeatMaximumError": 1.1920928955078125e-07
+     }
+    ],
+    "cyclesAllocationBytesAfterCleanup": 0
+   }
+  }
+ },
+ "devices": {
+  "samsung-sm-x700": {
+   "passed": true,
+   "finalBinaries": {
+    "statusFile": "native/work/m2-ao/runs/samsung/ao-confirm/status.json",
+    "statusSha256": "96221f626936af51eea8eb49fb9ea243afef76a56b573163b7c5d39c72436faf",
+    "state": {
+     "passed": true,
+     "wallSeconds": 178.8,
+     "report": {
+      "passed": true,
+      "originalCpuSurfaceAndShadowIntegrator": true,
+      "cases": 9,
+      "paths": 7716,
+      "aoShadowRays": 6324,
+      "aoUnoccluded": 6013,
+      "aoOccluded": 311,
+      "aoNodePaths": 288,
+      "aoNodeSensitivePaths": 155,
+      "integerChecks": 247477,
+      "floatChecks": 866664,
+      "strictFloatFailures": 602,
+      "maximumAbsoluteError": 7.62939453125e-06,
+      "cyclesAllocationBytesAfterCleanup": 0
+     }
+    },
+    "image": {
+     "passed": true,
+     "wallSeconds": 163.8,
+     "report": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentOriginalCpuImage": true,
+      "cases": 8,
+      "aoShadowPaths": 16115,
+      "aoTerminations": 721,
+      "raytracePaths": 1495,
+      "filmChecks": 53760,
+      "strictDifferences": 3483,
+      "maximumAbsoluteError": 1.3828277587890625e-05,
+      "repeatBitwiseDifferences": 54,
+      "cyclesAllocationBytesAfterCleanup": 0
+     },
+     "hostRejudgedPassed": true,
+     "rows": [
+      {
+       "key": "case-0.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 711,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 258,
+        "maximumAbsoluteError": 2.086162567138672e-06,
+        "maximumPracticalRatio": 0.009166683996064505,
+        "maximumUlps": 35,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 400,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 41,
+        "maximumAbsoluteError": 8.344650268554688e-07,
+        "maximumPracticalRatio": 0.0033388804857746755,
+        "maximumUlps": 14,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 717,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 283,
+        "maximumAbsoluteError": 2.086162567138672e-06,
+        "maximumPracticalRatio": 0.009166683996064505,
+        "maximumUlps": 35,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-1.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 712,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 245,
+        "maximumAbsoluteError": 2.0265579223632812e-06,
+        "maximumPracticalRatio": 0.006537208908662193,
+        "maximumUlps": 25,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 376,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 43,
+        "maximumAbsoluteError": 9.5367431640625e-07,
+        "maximumPracticalRatio": 0.0030132149967469334,
+        "maximumUlps": 10,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 708,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 263,
+        "maximumAbsoluteError": 2.1457672119140625e-06,
+        "maximumPracticalRatio": 0.006921751141512124,
+        "maximumUlps": 24,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-2.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 515,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 127,
+        "maximumAbsoluteError": 1.9073486328125e-06,
+        "maximumPracticalRatio": 0.0027352541277720042,
+        "maximumUlps": 7,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 220,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 20,
+        "maximumAbsoluteError": 9.5367431640625e-07,
+        "maximumPracticalRatio": 0.001585759624847331,
+        "maximumUlps": 4,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 534,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 150,
+        "maximumAbsoluteError": 1.9073486328125e-06,
+        "maximumPracticalRatio": 0.0027352541277720042,
+        "maximumUlps": 7,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-3.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 451,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 111,
+        "maximumAbsoluteError": 2.1457672119140625e-06,
+        "maximumPracticalRatio": 0.0027304714923563566,
+        "maximumUlps": 9,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 345,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 39,
+        "maximumAbsoluteError": 9.5367431640625e-07,
+        "maximumPracticalRatio": 0.003750709821833782,
+        "maximumUlps": 8,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 484,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 127,
+        "maximumAbsoluteError": 2.1457672119140625e-06,
+        "maximumPracticalRatio": 0.002813034476550544,
+        "maximumUlps": 9,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-4.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 676,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 243,
+        "maximumAbsoluteError": 1.3828277587890625e-05,
+        "maximumPracticalRatio": 0.024695730954828684,
+        "maximumUlps": 50,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 468,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 136,
+        "maximumAbsoluteError": 5.14984130859375e-05,
+        "maximumPracticalRatio": 0.028749860243734927,
+        "maximumUlps": 82,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 878,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 312,
+        "maximumAbsoluteError": 5.14984130859375e-05,
+        "maximumPracticalRatio": 0.028749694933792647,
+        "maximumUlps": 81,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-5.film",
+       "authoritative": {
+        "compared": 5376,
+        "bitwiseDiffering": 622,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 256,
+        "maximumAbsoluteError": 2.086162567138672e-06,
+        "maximumPracticalRatio": 0.009166683996064505,
+        "maximumUlps": 35,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 5376,
+        "bitwiseDiffering": 400,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 41,
+        "maximumAbsoluteError": 8.344650268554688e-07,
+        "maximumPracticalRatio": 0.0033388804857746755,
+        "maximumUlps": 14,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 5376,
+        "bitwiseDiffering": 609,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 281,
+        "maximumAbsoluteError": 2.086162567138672e-06,
+        "maximumPracticalRatio": 0.009166683996064505,
+        "maximumUlps": 35,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-6.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 630,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 255,
+        "maximumAbsoluteError": 2.6226043701171875e-06,
+        "maximumPracticalRatio": 0.005553344630224647,
+        "maximumUlps": 16,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 466,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 77,
+        "maximumAbsoluteError": 2.6226043701171875e-06,
+        "maximumPracticalRatio": 0.010382987435799462,
+        "maximumUlps": 37,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 646,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 291,
+        "maximumAbsoluteError": 2.5033950805664062e-06,
+        "maximumPracticalRatio": 0.009541143402767975,
+        "maximumUlps": 34,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-7.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 646,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 247,
+        "maximumAbsoluteError": 2.1457672119140625e-06,
+        "maximumPracticalRatio": 0.006247512709002727,
+        "maximumUlps": 18,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 487,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 86,
+        "maximumAbsoluteError": 1.3113021850585938e-06,
+        "maximumPracticalRatio": 0.0032242920744321372,
+        "maximumUlps": 11,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 684,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 296,
+        "maximumAbsoluteError": 2.2649765014648438e-06,
+        "maximumPracticalRatio": 0.006594597206167656,
+        "maximumUlps": 19,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      }
+     ]
+    }
+   },
+   "replaysRun": {
+    "note": "same WGSL; binaries before the Adreno 650 refusal change",
+    "statusFile": "native/work/m2-ao/runs/samsung/ao-final/status.json",
+    "statusSha256": "89318b788b1af67123419d33c4b2e0a6b4e3aa7466a50c0568a69f9903981623",
+    "replays": [
+     {
+      "name": "ao_render-replay-0",
+      "passed": true,
+      "maximumAbsoluteImageError": 2.086162567138672e-06,
+      "strictImageFailures": 258,
+      "captureFormat": "native-command-stream-v6"
+     },
+     {
+      "name": "ao_render-replay-1",
+      "passed": true,
+      "maximumAbsoluteImageError": 2.0265579223632812e-06,
+      "strictImageFailures": 245,
+      "captureFormat": "native-command-stream-v6"
+     },
+     {
+      "name": "ao_render-replay-2",
+      "passed": true,
+      "maximumAbsoluteImageError": 1.9073486328125e-06,
+      "strictImageFailures": 127,
+      "captureFormat": "native-command-stream-v6"
+     },
+     {
+      "name": "ao_render-replay-3",
+      "passed": true,
+      "maximumAbsoluteImageError": 2.1457672119140625e-06,
+      "strictImageFailures": 111,
+      "captureFormat": "native-command-stream-v7"
+     },
+     {
+      "name": "ao_render-replay-4",
+      "passed": true,
+      "maximumAbsoluteImageError": 1.3828277587890625e-05,
+      "strictImageFailures": 241,
+      "captureFormat": "native-command-stream-v9"
+     },
+     {
+      "name": "ao_render-replay-5",
+      "passed": true,
+      "maximumAbsoluteImageError": 2.086162567138672e-06,
+      "strictImageFailures": 256,
+      "captureFormat": "native-command-stream-v6"
+     },
+     {
+      "name": "ao_render-replay-6",
+      "passed": true,
+      "maximumAbsoluteImageError": 2.6226043701171875e-06,
+      "strictImageFailures": 255,
+      "captureFormat": "native-command-stream-v10"
+     },
+     {
+      "name": "ao_render-replay-7",
+      "passed": true,
+      "maximumAbsoluteImageError": 2.1457672119140625e-06,
+      "strictImageFailures": 246,
+      "captureFormat": "native-command-stream-v10"
+     }
+    ]
+   }
+  },
+  "hp-android-x64": {
+   "passed": true,
+   "finalBinaries": {
+    "statusFile": "native/work/m2-ao/runs/hp/ao-confirm/status.json",
+    "statusSha256": "65e7c87db6022c5f243cc9533bbcca2113b3344ca947515f672c8c9732b5821b",
+    "state": {
+     "passed": true,
+     "wallSeconds": 333.8,
+     "report": {
+      "passed": true,
+      "originalCpuSurfaceAndShadowIntegrator": true,
+      "cases": 9,
+      "paths": 7716,
+      "aoShadowRays": 6324,
+      "aoUnoccluded": 6013,
+      "aoOccluded": 311,
+      "aoNodePaths": 288,
+      "aoNodeSensitivePaths": 155,
+      "integerChecks": 247477,
+      "floatChecks": 866664,
+      "strictFloatFailures": 908,
+      "maximumAbsoluteError": 7.62939453125e-06,
+      "cyclesAllocationBytesAfterCleanup": 0
+     }
+    },
+    "image": {
+     "passed": true,
+     "wallSeconds": 270.8,
+     "report": {
+      "passed": true,
+      "nativeSceneAndScheduler": true,
+      "independentOriginalCpuImage": true,
+      "cases": 8,
+      "aoShadowPaths": 16115,
+      "aoTerminations": 721,
+      "raytracePaths": 1495,
+      "filmChecks": 53760,
+      "strictDifferences": 8724,
+      "maximumAbsoluteError": 1.5735626220703125e-05,
+      "repeatBitwiseDifferences": 4,
+      "cyclesAllocationBytesAfterCleanup": 0
+     },
+     "hostRejudgedPassed": true,
+     "rows": [
+      {
+       "key": "case-0.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 932,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 635,
+        "maximumAbsoluteError": 4.291534423828125e-06,
+        "maximumPracticalRatio": 0.015920800738442115,
+        "maximumUlps": 48,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 5,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maximumAbsoluteError": 1.1920928955078125e-07,
+        "maximumPracticalRatio": 0.00047584985832998015,
+        "maximumUlps": 1,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 932,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 635,
+        "maximumAbsoluteError": 4.291534423828125e-06,
+        "maximumPracticalRatio": 0.015920800738442115,
+        "maximumUlps": 48,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-1.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 924,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 610,
+        "maximumAbsoluteError": 4.410743713378906e-06,
+        "maximumPracticalRatio": 0.012520052386606223,
+        "maximumUlps": 38,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 3,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maximumAbsoluteError": 2.384185791015625e-07,
+        "maximumPracticalRatio": 0.0005258871084454945,
+        "maximumUlps": 1,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 924,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 610,
+        "maximumAbsoluteError": 4.410743713378906e-06,
+        "maximumPracticalRatio": 0.012520052386606223,
+        "maximumUlps": 38,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-2.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 748,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 418,
+        "maximumAbsoluteError": 4.291534423828125e-06,
+        "maximumPracticalRatio": 0.004378571698235844,
+        "maximumUlps": 11,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 0,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maximumAbsoluteError": 0.0,
+        "maximumPracticalRatio": 0.0,
+        "maximumUlps": 0,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 748,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 418,
+        "maximumAbsoluteError": 4.291534423828125e-06,
+        "maximumPracticalRatio": 0.004378571698235844,
+        "maximumUlps": 11,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-3.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 797,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 359,
+        "maximumAbsoluteError": 4.0531158447265625e-06,
+        "maximumPracticalRatio": 0.004965813586629553,
+        "maximumUlps": 17,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 2,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maximumAbsoluteError": 4.76837158203125e-07,
+        "maximumPracticalRatio": 0.0004832599712479648,
+        "maximumUlps": 1,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 798,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 359,
+        "maximumAbsoluteError": 4.0531158447265625e-06,
+        "maximumPracticalRatio": 0.004965813586629553,
+        "maximumUlps": 17,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-4.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 988,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 479,
+        "maximumAbsoluteError": 1.5735626220703125e-05,
+        "maximumPracticalRatio": 0.03326363425968858,
+        "maximumUlps": 66,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 100,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 37,
+        "maximumAbsoluteError": 2.86102294921875e-05,
+        "maximumPracticalRatio": 0.01249398934995689,
+        "maximumUlps": 33,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 999,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 492,
+        "maximumAbsoluteError": 2.86102294921875e-05,
+        "maximumPracticalRatio": 0.03275964310334417,
+        "maximumUlps": 65,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-5.film",
+       "authoritative": {
+        "compared": 5376,
+        "bitwiseDiffering": 888,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 638,
+        "maximumAbsoluteError": 4.291534423828125e-06,
+        "maximumPracticalRatio": 0.015920800738442115,
+        "maximumUlps": 48,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 5376,
+        "bitwiseDiffering": 5,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maximumAbsoluteError": 1.1920928955078125e-07,
+        "maximumPracticalRatio": 0.00047584985832998015,
+        "maximumUlps": 1,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 5376,
+        "bitwiseDiffering": 890,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 638,
+        "maximumAbsoluteError": 4.291534423828125e-06,
+        "maximumPracticalRatio": 0.015920800738442115,
+        "maximumUlps": 48,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-6.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 928,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 641,
+        "maximumAbsoluteError": 6.9141387939453125e-06,
+        "maximumPracticalRatio": 0.015125403678769387,
+        "maximumUlps": 48,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 1,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maximumAbsoluteError": 1.1920928955078125e-07,
+        "maximumPracticalRatio": 0.0003509060780933055,
+        "maximumUlps": 1,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 928,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 642,
+        "maximumAbsoluteError": 6.9141387939453125e-06,
+        "maximumPracticalRatio": 0.015125403678769387,
+        "maximumUlps": 48,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      },
+      {
+       "key": "case-7.film",
+       "authoritative": {
+        "compared": 3072,
+        "bitwiseDiffering": 906,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 582,
+        "maximumAbsoluteError": 4.5299530029296875e-06,
+        "maximumPracticalRatio": 0.012622448546415432,
+        "maximumUlps": 38,
+        "firstPracticalFailure": null,
+        "passed": true
+       },
+       "diagnosticLocalVersusGlibc": {
+        "compared": 3072,
+        "bitwiseDiffering": 1,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maximumAbsoluteError": 1.1920928955078125e-07,
+        "maximumPracticalRatio": 0.00032409401785965454,
+        "maximumUlps": 1,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       },
+       "diagnosticGpuVersusLocal": {
+        "compared": 3072,
+        "bitwiseDiffering": 905,
+        "nonFinite": 0,
+        "practicalFailures": 0,
+        "strictDifferences": 582,
+        "maximumAbsoluteError": 4.5299530029296875e-06,
+        "maximumPracticalRatio": 0.012622448546415432,
+        "maximumUlps": 38,
+        "firstPracticalFailure": null,
+        "passed": true,
+        "role": "diagnostic"
+       }
+      }
+     ]
+    }
+   },
+   "replaysRun": {
+    "note": "same WGSL; binaries before the Adreno 650 refusal change",
+    "statusFile": "native/work/m2-ao/runs/hp/ao-final/status.json",
+    "statusSha256": "34cdef40ea01bcf50954de8cdfc535b85c38ece5a9bd1f5005c4f39d9c8d6204",
+    "replays": [
+     {
+      "name": "ao_render-replay-0",
+      "passed": true,
+      "maximumAbsoluteImageError": 4.291534423828125e-06,
+      "strictImageFailures": 635,
+      "captureFormat": "native-command-stream-v6"
+     },
+     {
+      "name": "ao_render-replay-1",
+      "passed": true,
+      "maximumAbsoluteImageError": 4.410743713378906e-06,
+      "strictImageFailures": 610,
+      "captureFormat": "native-command-stream-v6"
+     },
+     {
+      "name": "ao_render-replay-2",
+      "passed": true,
+      "maximumAbsoluteImageError": 4.291534423828125e-06,
+      "strictImageFailures": 418,
+      "captureFormat": "native-command-stream-v6"
+     },
+     {
+      "name": "ao_render-replay-3",
+      "passed": true,
+      "maximumAbsoluteImageError": 4.0531158447265625e-06,
+      "strictImageFailures": 359,
+      "captureFormat": "native-command-stream-v7"
+     },
+     {
+      "name": "ao_render-replay-4",
+      "passed": true,
+      "maximumAbsoluteImageError": 1.5735626220703125e-05,
+      "strictImageFailures": 479,
+      "captureFormat": "native-command-stream-v9"
+     },
+     {
+      "name": "ao_render-replay-5",
+      "passed": true,
+      "maximumAbsoluteImageError": 4.291534423828125e-06,
+      "strictImageFailures": 638,
+      "captureFormat": "native-command-stream-v6"
+     },
+     {
+      "name": "ao_render-replay-6",
+      "passed": true,
+      "maximumAbsoluteImageError": 6.9141387939453125e-06,
+      "strictImageFailures": 641,
+      "captureFormat": "native-command-stream-v10"
+     },
+     {
+      "name": "ao_render-replay-7",
+      "passed": true,
+      "maximumAbsoluteImageError": 4.5299530029296875e-06,
+      "strictImageFailures": 582,
+      "captureFormat": "native-command-stream-v10"
+     }
+    ]
+   }
+  },
+  "s20-adreno-650": {
+   "passed": true,
+   "policy": "not a reference device: AO node and AO shadow rays refused before compiling",
+   "jobs": {
+    "ao_state-refused": true,
+    "ao_render-additive-refused": true,
+    "ao_render-node-refused": true,
+    "ao_render-replace": true
+   },
+   "statusSha256": "8434fa6ede00ee3a71d4a3e1c256fc923cec9ead079f641337d56798562e8256"
+  }
+ },
+ "oracleScenes": {
+  "fast-gi-additive": {
+   "verdict": "perfect"
+  },
+  "ao-node": {
+   "verdict": "perfect"
+  }
+ },
+ "managedTest": "tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuAmbientOcclusionTests.cs (182/182, native/work/m2-ao/dotnet-test-final-1.log)"
+}

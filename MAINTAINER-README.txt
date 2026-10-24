@@ -519,8 +519,17 @@ copy bundles between machines rather than decoding again elsewhere.
 native/oracle/scenes/make_bench_bundle.py generates and verifies the bench
 oracle bundle (native/oracle/README.md, "Bench oracle scene") from the bench
 asset in the repository (native/oracle/scenes/assets/ForestVillage/, CC0, with
-its PROVENANCE.txt); the generated raw files stay outside the repository. native/oracle/compare.py is the multi-backend comparator (verdict
-"perfect" when every backend pair passes the practical criterion).
+its PROVENANCE.txt); the generated raw files stay outside the repository. native/oracle/compare.py is the multi-backend comparator.
+
+Gold standards and candidates: the pinned Cycles CPU kernels (cpu-* backends)
+and the pinned Cycles Metal backend (metal-*, the osx-arm64 product device) are
+both reference renderers ("gold standards"); the WGSL backends (wgsl-*) are the
+candidates. compare.py judges every candidate against the CPU gold standard of
+its own host ISA family (x64 for the Linux and Android WGSL backends; gating
+pairs: practical criterion required, strict recorded) and reports the
+cross-ISA, candidate-versus-Metal and CPU-versus-Metal pairs without judging them; Metal
+films are never failed against CPU films. Its verdict is "perfect" when every
+gating pair passes, and a run without a CPU backend is invalid input.
 
 Android: build the validation app as below, then render a bundle on a device
 through the managed loader and judge the GPU film against the Linux CPU film

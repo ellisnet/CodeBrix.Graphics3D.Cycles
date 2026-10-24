@@ -161,8 +161,8 @@ static unsigned rejections(const DeviceInfo &info){
     if(test==1){data.bvh.have_curves=1;reason="triangle primitives";}
     if(test==2){data.bvh.have_points=1;reason="triangle primitives";}
     if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
-    if(test==4){data.integrator.use_caustics=1;reason="optional integration features";}
-    if(test==5){data.integrator.use_light_mis=1;data.integrator.use_light_tree=1;reason="light tree not implemented";}
+    if(test==4){data.integrator.use_caustics=1;reason="Invalid native MNEE feature flags";}
+    if(test==5){data.integrator.use_light_mis=1;data.integrator.use_light_tree=1;data.integrator.use_direct_light=1;reason="Missing native light tree";}
     if(test==6){data.integrator.sampling_pattern=SAMPLING_PATTERN_SOBOL_BURLEY;reason="tabulated Sobol";}
     if(test==8)data.bvh.root=INT_MAX;
     if(test==9){for(size_t i=0;i<scene.dscene.tri_vindex.size();i++)scene.dscene.tri_vindex[i].x=0x7fffffffu;scene.dscene.tri_vindex.copy_to_device();}

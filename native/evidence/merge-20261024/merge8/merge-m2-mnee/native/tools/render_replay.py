@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+# Copyright (c) 2026 Jeremy Ellis and contributors
+# SPDX-License-Identifier: Apache-2.0
+"""Replay native Cycles scheduler commands and compare the independent CPU film.
+
+Scheduling readbacks are assertions, never replacements for device output.
+Android replay validates GPU portability; it is not an Android Cycles host build.
+"""
+import argparse
+import json
+import math
+import shlex
+import shutil
+import struct
+import subprocess
+from pathlib import Path
+from build import ROOT, REPO, WORK, PACKAGE, NDK, audit
+from device_gate import sha, save
+
+ADB = Path.home()/'Android/Sdk/platform-tools/adb'
+BASE = WORK/'render/replay-build'
+INPUTS = ['run.arena.bin', 'run.commands.bin', 'controls.wgsl', 'camera.wgsl',
+          'closest.wgsl', 'background.wgsl', 'surface.wgsl']
+
+
+def inputs(capture):
+    meta = json.loads((capture/'run.capture.json').read_text())
+    # Pipeline IDs 0..5 and their command encoding remain unchanged. Old
+    # captures need no shadow source; v3 records add IDs 6 and 7.
+    assert meta['format'] in ('native-command-stream-v1', 'native-command-stream-v2',
+                              'native-command-stream-v3', 'native-command-stream-v4', 'native-command-stream-v5',
+                              'native-command-stream-v6', 'native-command-stream-v7',
+                              'native-command-stream-v8', 'native-command-stream-v9', 'native-command-stream-v10'), 'Unknown command stream format'
+    if meta['format'] in ('native-command-stream-v5', 'native-command-stream-v6', 'native-command-stream-v7',
+                          'native-command-stream-v8', 'native-command-stream-v9', 'native-command-stream-v10'):
+        # v6 adds entry 15 (connect_surface_light in surface.wgsl); v7 adds
+        # entry 16 (prepare_shadow_shader_data in shadow.wgsl); v8 adds entry 17
+        # (shade_surface_light_triangle in surface.wgsl); v9 adds entries 18
+        # (shade_light_nee in surface.wgsl), 19 (shader_eval_background in background.wgsl)
+<<<<<<< ours(main)
+        # and 20 (prepare_light_nee in surface.wgsl); v10 adds entry 21
+        # (shade_surface_light_select in surface.wgsl), 22 (light_tree_forward in background.wgsl) and 23-25 (the
+        # shadow catcher split module, shadow_catcher.wgsl) and 26 (prepare_surface_raytrace in surface_raytrace.wgsl).
+        names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
+                 'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow',
+                 'surface', 'surface', 'background', 'surface', 'surface', 'background', 'shadow_catcher', 'shadow_catcher', 'shadow_catcher',
+                 'surface_raytrace']
+=======
+        # and 20 (prepare_light_nee in surface.wgsl); v10 adds entries 21-28 (the seven
+        # MNEE entries and mnee_cleanup, all in surface.wgsl).
+        names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
+                 'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow',
+                 'surface', 'surface', 'background', 'surface']+['surface']*8
+>>>>>>> theirs(m2-mnee)
+        counts = meta['pipelineDispatches']
+        assert len(counts) <= len(names) and all(isinstance(n, int) and n >= 0 for n in counts), 'Unknown pipeline metadata'
+        assert all(names[i] is not None for i, count in enumerate(counts) if count), 'Reserved pipeline metadata'
+        return ['run.arena.bin', 'run.commands.bin']+list(dict.fromkeys(
+            names[i]+'.wgsl' for i, count in enumerate(counts) if count))
+    return INPUTS+(['shadow.wgsl'] if meta['format'] in ('native-command-stream-v3', 'native-command-stream-v4') else [])
+
+
+def build(rid):
+    out = BASE/rid
+    out.mkdir(parents=True, exist_ok=True)
+    save(out/'webgpu-compatibility.json', audit(allow_rust_documentation_change=True))
+    compiler = {'linux-x64':'clang++', 'android-arm64':str(NDK/'aarch64-linux-android33-clang++'),
+                'android-x64':str(NDK/'x86_64-linux-android33-clang++')}[rid]
+    command = [compiler, '-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror',
+               '-I', str(ROOT/'src'), '-I', str(ROOT/'include'), '-I', str(PACKAGE/'include'),
+               '-I', str(REPO/'third_party/deps/tbb/include'),
+               str(ROOT/'tests/render_replay.cpp'), str(ROOT/'src/webgpu_device.cpp'),
+               '-L', str(PACKAGE/'runtimes'/rid/'native'), '-lcodebrix_wgpu', '-ldl', '-pthread',
+               '-Wl,-rpath,$ORIGIN', '-o', str(out/'render_replay')]
+    if rid.startswith('android'):
+        command += ['-static-libstdc++']
+    subprocess.run(command, check=True)
+    library = PACKAGE/'runtimes'/rid/'native/libcodebrix_wgpu.so'
+    shutil.copy2(library, out/library.name)
+    save(out/'build.json', {'command':command, 'minimumAndroidApi':33 if rid.startswith('android') else None,
+                          'driverSha256':sha(out/'render_replay'), 'webGpuSha256':sha(library),
+                          'sourceSha256':{str(p.relative_to(REPO)):sha(p) for p in
+                              [ROOT/'tests/render_replay.cpp', ROOT/'src/webgpu_device.cpp',
+                               ROOT/'src/webgpu_device.h', ROOT/'include/cycles_backend.h', Path(__file__)]}})
+    print(out, flush=True)
+
+
+def validate(capture, out):
+    meta = json.loads((capture/'run.capture.json').read_text())
+    capture_inputs = inputs(capture)
+    observed = json.loads((out/'run.stdout.txt').read_text())
+    assert observed['passed'] and observed['nativeCommandReplay']
+    assert observed['commands'] == meta['commands'] and observed['exactSchedulingReadbacks'] > 0
+    if 'pipelineDispatches' in meta:
+        expected = meta['pipelineDispatches']
+        assert observed['pipelineDispatches'] == expected+[0]*(len(observed['pipelineDispatches'])-len(expected)), 'Pipeline dispatch counts differ'
+    before = (capture/'run.arena.bin').read_bytes()
+    actual = (out/'run.arena.bin').read_bytes()
+    assert len(actual) == len(before) == meta['arenaBytes']
+    assert struct.unpack_from('<I', actual, meta['errorOffset'])[0] == 0, 'GPU error word set'
+    queued = meta['queuedKernelOffset']
+    count = meta['pathCapacity']
+    assert meta['queuedKernelElementBytes'] == 2
+    assert 0 <= queued <= queued+count*2 <= len(actual)
+    assert actual[queued:queued+count*2] == bytes(count*2), 'Unfinished GPU paths'
+    shadow_count = meta.get('shadowPathCapacity', 0)
+    if shadow_count:
+        shadow = meta['shadowQueuedKernelOffset']
+        assert 0 <= shadow <= shadow+shadow_count*2 <= len(actual)
+        assert actual[shadow:shadow+shadow_count*2] == bytes(shadow_count*2), 'Unfinished GPU shadow paths'
+    immutable = 0
+    for span in meta['immutableSceneSpans']:
+        begin, length = span['offset'], span['bytes']
+        assert 0 <= begin <= begin+length <= len(actual)
+        assert actual[begin:begin+length] == before[begin:begin+length], 'Changed scene table '+span['name']
+        immutable += length
+    reference = (capture/'run.cpu.film.bin').read_bytes()
+    offset, length = meta['filmOffset'], meta['filmBytes']
+    assert len(reference) == length == meta['width']*meta['height']*meta.get('filmStride', 4)*4
+    assert offset+length <= len(actual)
+    strict = 0
+    maximum = squared = 0.0
+    for i, (a, e) in enumerate(zip(struct.iter_unpack('<f', actual[offset:offset+length]),
+                                   struct.iter_unpack('<f', reference), strict=True)):
+        a, e = a[0], e[0]
+        error = abs(a-e)
+        assert math.isfinite(a) and math.isfinite(e) and error <= 5e-5+2e-4*abs(e), f'Film {i}: GPU {a}, CPU {e}'
+        strict += error > 1e-7+1e-7*abs(e)
+        maximum = max(maximum, error)
+        squared += error*error
+    workload = meta.get('workload', 'native-render')
+    assert workload in ('native-render', 'shadow-stages'), 'Unknown capture workload'
+    scope = ('Full recorded native render loop' if workload == 'native-render' else
+             'Recorded shadow stages; light sampling and MIS not proven')
+    report = {'passed':True, 'scope':scope+'; every scheduling readback verified; independent original-CPU film',
+            'androidNativeHostProven':False, 'results':observed, 'filmFloats':length//4,
+            'maximumAbsoluteImageError':maximum, 'rmsImageError':math.sqrt(squared/(length//4)),
+            'strictImageFailures':strict, 'strictNumericalParityPassed':strict == 0,
+            'absoluteTolerance':5e-5, 'relativeTolerance':2e-4,
+            'strictAbsoluteTolerance':1e-7, 'strictRelativeTolerance':1e-7,
+            'immutableSceneBytes':immutable, 'terminalPathSlots':count, 'gpuErrorWord':0,
+            'inputSha256':{name:sha(capture/name) for name in capture_inputs+['run.capture.json','run.cpu.film.bin']},
+            'outputSha256':sha(out/'run.arena.bin')}
+    if 'pipelineReport' in observed:
+        # Compile-latency tier/warnings are reported, never used to accept output.
+        report['pipelineReport'] = observed['pipelineReport']
+        report['degraded'] = observed['pipelineReport']['degraded']
+    if 'workload' in meta:
+        report['workload'] = workload
+    if 'shadowPathCapacity' in meta:
+        report['terminalShadowPathSlots'] = shadow_count
+    return report
+
+
+def run(rid, capture, out, serial=None, timeout=600):
+    binary = BASE/rid
+    if rid.startswith('android') != bool(serial):
+        raise ValueError('Android replay needs a device serial; Linux does not')
+    library = PACKAGE/'runtimes'/rid/'native/libcodebrix_wgpu.so'
+    assert sha(binary/'libcodebrix_wgpu.so') == sha(library), 'Staged runtime differs from package'
+    out.mkdir(parents=True, exist_ok=True)
+    (out/'validation.json').unlink(missing_ok=True)
+    (out/'timeout.json').unlink(missing_ok=True)
+    remote = '/data/local/tmp/codebrix-cycles-native-render-'+capture.name
+    if serial:
+        adb = [str(ADB), '-s', serial]
+        def shell(args):
+            return subprocess.run(adb+['shell', shlex.join(args)], check=True, capture_output=True, text=True, timeout=180).stdout.strip()
+        properties = {key:shell(['getprop', 'ro.'+key]) for key in ['build.version.sdk','product.cpu.abi','product.model','build.fingerprint']}
+        assert int(properties['build.version.sdk']) >= 33
+        assert properties['product.cpu.abi'] == {'android-arm64':'arm64-v8a','android-x64':'x86_64'}[rid]
+        save(out/'device.json', {'serial':serial, **properties})
+        shell(['mkdir','-p',remote])
+        for path in [binary/'render_replay', binary/'libcodebrix_wgpu.so', *[capture/name for name in inputs(capture)]]:
+            subprocess.run(adb+['push',str(path),remote+'/'+path.name], check=True, capture_output=True)
+        shell(['chmod','700',remote+'/render_replay'])
+        deployed = shell(['sha256sum',remote+'/libcodebrix_wgpu.so']).split()[0]
+        assert deployed == sha(library)
+        command = adb+['shell', shlex.join(['env','LD_LIBRARY_PATH='+remote,remote+'/render_replay',remote,remote+'/result'])]
+    else:
+        deployed = sha(library)
+        command = [str(binary/'render_replay'),str(capture),str(out/'run')]
+    save(out/'invocation.json', {'command':command, 'timeoutSeconds':timeout})
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        for name, value in [('stdout',error.stdout), ('stderr',error.stderr)]:
+            if isinstance(value, bytes):
+                value = value.decode('utf-8', errors='replace')
+            (out/('run.'+name+'.txt')).write_text(value or '')
+        save(out/'timeout.json', {'passed':False, 'timeoutSeconds':timeout, 'command':command})
+        raise
+    (out/'run.stdout.txt').write_text(result.stdout)
+    (out/'run.stderr.txt').write_text(result.stderr)
+    if result.returncode:
+        raise RuntimeError(result.stderr or result.stdout)
+    if serial:
+        for suffix in ['arena.bin','adapter.txt','library.txt']:
+            subprocess.run(adb+['pull',remote+'/result.'+suffix,str(out/('run.'+suffix))], check=True, capture_output=True)
+    loaded = (out/'run.library.txt').read_text().strip()
+    expected = remote+'/libcodebrix_wgpu.so' if serial else str((binary/'libcodebrix_wgpu.so').resolve())
+    assert loaded == expected, 'Replay loaded unexpected runtime: '+loaded
+    report = validate(capture, out)
+    report.update({'rid':rid, 'serial':serial, 'matchesPinnedPackage':True, 'webGpuSha256':deployed,
+                   'loadedWebGpuPath':loaded, 'driverSha256':sha(binary/'render_replay')})
+    save(out/'validation.json', report)
+    print(json.dumps(report, indent=2), flush=True)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('action',choices=['build','run'])
+    parser.add_argument('--rid',choices=['linux-x64','android-arm64','android-x64'],required=True)
+    parser.add_argument('--capture',type=Path)
+    parser.add_argument('--output',type=Path)
+    parser.add_argument('--serial')
+    parser.add_argument('--timeout',type=int,default=600,help='Shader compilation/execution limit in seconds')
+    args = parser.parse_args()
+    if args.action == 'build':
+        build(args.rid)
+    else:
+        if args.capture is None or args.output is None:
+            parser.error('run requires --capture and --output')
+        run(args.rid,args.capture.resolve(),args.output.resolve(),args.serial,timeout=args.timeout)

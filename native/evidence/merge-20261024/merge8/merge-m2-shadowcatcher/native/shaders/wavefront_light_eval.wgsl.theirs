@@ -1,0 +1,105 @@
+// SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+// SPDX-FileCopyrightText: 2004 NVIDIA Corporation
+// SPDX-FileCopyrightText: 2008-2014 Larry Gritz
+// SPDX-FileCopyrightText: 2009-2014 Sony Pictures Imageworks Inc., et al.
+// Copyright (c) 2026 Jeremy Ellis and contributors
+// SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause
+// Point/sun forward evaluation, native MIS and emission film routing. The
+// bounded positive-argument atan2 follows the pinned Cycles math_fast.h.
+fn forward_mis_weight(index:u32,pdf:f32)->f32{
+    if((state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)!=0u){return 1.0;}
+    let forward=heap_float(state_address(S_path_mis_ray_pdf,index,4u));
+    let nee=pdf*data_float(D_integrator_distribution_pdf_lights);
+    return (forward*forward)/(forward*forward+nee*nee);
+}
+fn point_forward_pdf(index:u32,light:u32)->f32{
+    let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=heap_vec3(state_address(S_ray_D,index,12u));
+    let delta=origin-heap_vec3(light+L_co);let radius=heap_float(light+L_radius);let r2=radius*radius;
+    if(load_word(light+L_is_sphere)!=0u){let d2=rounded_dot(delta,delta);
+        if(d2>r2){let sine2=r2/d2;var angle=select(0.5*sine2,1.0-sqrt(max(1.0-sine2,0.0)),sine2>0.0004);if(load_word(light+L_type)==LIGHT_SPOT){angle=min(angle,1.0-heap_float(light+L_spot_spread_cos));}return 0.15915494309189535/angle;}
+        if((state_word(S_path_flag,index)&PATH_RAY_MIS_HAD_TRANSMISSION)!=0u){return 0.07957747154594767;}
+        return max(dot(heap_vec3(state_address(S_path_mis_origin_n,index,12u)),direction),0.0)*0.3183098861837907;
+    }
+    let t=heap_float(state_address(S_isect_t,index,4u));if(t==bitcast<f32>(0x7f7fffffu)){return 0.0;}
+    let normal=rounded_normalize(delta);let cosine=dot(normal,-direction);
+    let inverse_area=select(1.0,1.0/(r2*3.141592653589793),r2>0.0);
+    return select(0.0,inverse_area*(t*t/cosine),cosine>0.0);
+}
+fn sun_forward_visible(light:u32,direction:vec3<f32>)->bool{
+    let angle=heap_float(light+L_sun_half_angle);if(angle==0.0){return false;}
+    let axis= -heap_vec3(light+L_co);let a=rounded_sqrt(rounded_dot(axis+direction,axis+direction));
+    let b=rounded_sqrt(rounded_dot(axis-direction,axis-direction));
+    var k=0.0;if(b!=0.0){k=select(select(b/a,a/b,b>a),1.0,a==b);}
+    let s=rounded_add(1.0,-rounded_add(1.0,-k));let t=s*s;
+    let numerator=s*rounded_add(0.43157974*t,1.0);
+    let denominator=rounded_add(rounded_add(0.05831938*t,0.76443945)*t,1.0);
+    var half_angle=rounded_divide(numerator,denominator);if(b>a){half_angle=rounded_add(1.5707963267948966,-half_angle);}
+    return !(2.0*half_angle>angle);
+}
+fn forward_emission(index:u32,base:u32,light:u32,eval:vec3<f32>,weight:f32){
+    var value=heap_vec3(state_address(S_path_throughput,index,12u))*eval*weight;
+    value=select(value,vec3<f32>(0),(bitcast<vec3<u32>>(value)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
+    let bounce=state_half(S_path_bounce,index);let limit=select(data_float(D_integrator_sample_clamp_direct),data_float(D_integrator_sample_clamp_indirect),i32(bounce)-1>0);
+    let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
+//#if SHADOW_CATCHER else     let flags=data_word(D_film_light_pass_flag);if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+    let flags=data_word(D_film_light_pass_flag);let sc_handled=sc_combined(state_word(S_path_flag,index),base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+//#endif
+//#if SHADOW_CATCHER else     if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
+    if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
+//#endif
+    if(flags==0u){return;}let flag=state_word(S_path_flag,index);let group=load_word(table_at(G_objects,load_word(light+L_object_id),SIZE_objects)+O_lightgroup);
+//#if SHADOW_CATCHER else     if(group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
+    if(sc_light_passes(flag)&&group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
+//#endif
+    if((flag&PATH_RAY_ANY_PASS)==0u){film_rgb(base,data_word(D_film_pass_emission),value);}
+//#if SHADOW_CATCHER else     else if(p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){let diffuse=heap_vec3(state_address(S_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_path_pass_glossy_weight,index,12u));
+    else if(sc_light_passes(flag)&&p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){let diffuse=heap_vec3(state_address(S_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_path_pass_glossy_weight,index,12u));
+//#endif
+        film_rgb(base,select(data_word(D_film_pass_glossy_indirect),data_word(D_film_pass_glossy_direct),bounce==1u),glossy*value);
+        film_rgb(base,select(data_word(D_film_pass_transmission_indirect),data_word(D_film_pass_transmission_direct),bounce==1u),(vec3<f32>(1)-diffuse-glossy)*value);
+        film_rgb(base,select(data_word(D_film_pass_diffuse_indirect),data_word(D_film_pass_diffuse_direct),bounce==1u),diffuse*value);}
+}
+fn forward_constant_emission(light:u32)->vec3<f32>{
+    let shader=table_at(G_shaders,load_word(light+L_shader_id)&SHADER_MASK,SIZE_shaders);
+    return heap_vec3(shader+SH_constant_emission)*heap_vec3(light+L_strength);
+}
+fn integrate_suns(index:u32,base:u32){
+    let direction=heap_vec3(state_address(S_ray_D,index,12u));let visibility=state_byte(S_path_visibility,index);let flag=state_word(S_path_flag,index);
+    let previous=state_word(S_isect_prim,index);let start=select(previous,0u,previous==NONE);
+    for(var lamp=start;lamp<data_word(D_integrator_num_lights);lamp++){
+        let light=table_at(G_lights,lamp,SIZE_lights);let shader=load_word(light+L_shader_id);
+        if(load_word(light+L_type)!=LIGHT_SUN||(shader&SHADER_USE_MIS)==0u){continue;}
+        if(!sun_forward_visible(light,direction)||!background_visible(shader,visibility,flag)){continue;}
+        let eval=forward_constant_emission(light)*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
+        forward_emission(index,base,light,eval,forward_mis_weight(index,heap_float(light+L_sun_pdf)));
+    }
+}
+@compute @workgroup_size(64) fn shade_light_forward(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD){fail();return;}
+    let flag=state_word(S_path_flag,index);let visibility=state_byte(S_path_visibility,index);
+//#if SHADOW_CATCHER else     if((flag&BACKGROUND_UNSUPPORTED_FLAGS)!=0u||(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return;}
+    if((flag&(BACKGROUND_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u||(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return;}
+//#endif
+    let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);if(pixel>=p(11u)/stride){fail();return;}
+    let lamp=state_word(S_isect_prim,index);if(lamp>=table_count(G_lights)||state_word(S_isect_type,index)!=PRIMITIVE_LAMP){fail();return;}
+    let light=table_at(G_lights,lamp,SIZE_lights);if((load_word(light+L_type)!=LIGHT_POINT&&load_word(light+L_type)!=LIGHT_SPOT&&load_word(light+L_type)!=LIGHT_AREA)||load_word(light+L_object_id)!=state_word(S_isect_object,index)){fail();return;}
+    let t=heap_float(state_address(S_isect_t,index,4u));state_f32(S_ray_tmin,index,select(bitcast<f32>(bitcast<u32>(t)+1u),1.1754943508222875e-38,t==0.0));
+    if(background_visible(load_word(light+L_shader_id),visibility,flag)){
+        let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=heap_vec3(state_address(S_ray_D,index,12u));var factor=heap_float(light+L_point_eval);var pdf=0.0;
+        if(load_word(light+L_type)==LIGHT_AREA){
+//#if LIGHT_AREA else atomicOr(&heap[p(17u)/4u],2u);fail();return;
+            let area=area_evaluate(light,origin,direction,t,vec2<f32>(0),false);factor=select(0.0,area.eval_fac,area.valid);pdf=area.pdf;
+//#endif
+        }
+        else{pdf=point_forward_pdf(index,light);if(load_word(light+L_type)==LIGHT_SPOT){let delta=origin-heap_vec3(light+L_co);let radius=heap_float(light+L_radius);
+            if(load_word(light+L_is_sphere)==0u||dot(delta,delta)>radius*radius){factor*=spot_attenuation(light,-direction);}}}
+        let eval=forward_constant_emission(light)*factor;
+        if(any(eval!=vec3<f32>(0))){forward_emission(index,p(4u)+pixel*stride*4u,light,eval,forward_mis_weight(index,pdf));}
+    }
+    let transparent=state_half(S_path_transparent_bounce,index)+1u;state_u16(S_path_transparent_bounce,index,transparent);
+    let next=select(K_CLOSEST,0u,transparent>=data_word(D_integrator_transparent_max_bounce));
+    let counter=load_word(p(7u)+S_queue_counter)/4u;atomicSub(&heap[counter+DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD],1u);
+    if(next!=0u){atomicAdd(&heap[counter+next],1u);}state_u16(S_path_queued_kernel,index,next);
+}

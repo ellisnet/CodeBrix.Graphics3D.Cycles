@@ -3,7 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Modified from the pinned Cycles intersect_shadow, shade_shadow, state flow
 // and film/light_passes kernels. Opaque/transparent static triangles and light passes.
-// Volume, hair, AO, linking and cache-miss paths remain explicit errors.
+// Volume, hair, linking and cache-miss paths remain explicit errors; AO shadow
+// rays (PATH_RAY_SHADOW_FOR_AO) take the pinned film_write_direct_light AO branch.
+// Shadow paths flagged for ambient occlusion exist only in scenes with
+// KERNEL_FEATURE_AO (AO_SHADOW); elsewhere the flag is invalid input.
+fn shadow_flag_supported(flag:u32)->bool{
+//#if AO_SHADOW else return (flag&(SHADOW_UNSUPPORTED_FLAGS|AO_SHADOW_FLAG))==0u;
+    return (flag&SHADOW_UNSUPPORTED_FLAGS)==0u;
+//#endif
+}
 fn shadow_transition(index:u32,current:u32,next:u32){
     let counter=load_word(p(7u)+S_queue_counter);
     atomicSub(&heap[counter/4u+current],1u);
@@ -14,7 +22,9 @@ fn shadow_transition(index:u32,current:u32,next:u32){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}
-    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||(state_word(S_shadow_path_flag,index)&SHADOW_UNSUPPORTED_FLAGS)!=0u){fail();return;}
+//#if SHADOW_CATCHER else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||!shadow_flag_supported(state_word(S_shadow_path_flag,index))){fail();return;}
+    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||!shadow_flag_supported(state_word(S_shadow_path_flag,index)&~SC_FLAGS)){fail();return;}
+//#endif
     let origin=heap_vec3(state_address(S_shadow_ray_P,index,12u));let direction=heap_vec3(state_address(S_shadow_ray_D,index,12u));
     let tmin=heap_float(state_address(S_shadow_ray_tmin,index,4u));let tmax=heap_float(state_address(S_shadow_ray_tmax,index,4u));
     var hit=false;let transparent=data_word(D_integrator_transparent_shadows)!=0u;var count=0u;
@@ -22,9 +32,13 @@ fn shadow_transition(index:u32,current:u32,next:u32){
         let self_object=state_word(S_shadow_self_object,index);let self_prim=state_word(S_shadow_self_prim,index);
         let light_object=state_word(S_shadow_ray_self_light_object,index);let light_prim=state_word(S_shadow_ray_self_light_prim,index);
         if(transparent){let maximum=data_word(D_integrator_transparent_max_bounce);let used=state_half(S_shadow_path_transparent_bounce,index);
-            let all=trace_shadow_all(index,origin,direction,tmin,tmax,PATH_RAY_VISIBILITY_SHADOW,self_object,self_prim,light_object,light_prim,maximum-min(maximum,used));
+//#if SHADOW_CATCHER else             let all=trace_shadow_all(index,origin,direction,tmin,tmax,PATH_RAY_VISIBILITY_SHADOW,self_object,self_prim,light_object,light_prim,maximum-min(maximum,used));
+            let all=trace_shadow_all(index,origin,direction,tmin,tmax,sc_shadow_visibility(index,PATH_RAY_VISIBILITY_SHADOW),self_object,self_prim,light_object,light_prim,maximum-min(maximum,used));
+//#endif
             hit=all.opaque;count=all.count;
-        }else{let result=trace_native_filtered(origin,direction,tmin,tmax,heap_float(state_address(S_shadow_ray_time,index,4u)),PATH_RAY_VISIBILITY_SHADOW_OPAQUE,self_object,self_prim,light_object,light_prim);hit=result.prim!=NONE;}
+//#if SHADOW_CATCHER else         }else{let result=trace_native_filtered(origin,direction,tmin,tmax,heap_float(state_address(S_shadow_ray_time,index,4u)),PATH_RAY_VISIBILITY_SHADOW_OPAQUE,self_object,self_prim,light_object,light_prim);hit=result.prim!=NONE;}
+        }else{let result=trace_native_filtered(origin,direction,tmin,tmax,heap_float(state_address(S_shadow_ray_time,index,4u)),sc_shadow_visibility(index,PATH_RAY_VISIBILITY_SHADOW_OPAQUE),self_object,self_prim,light_object,light_prim);hit=result.prim!=NONE;}
+//#endif
     }
     if(load_word(p(17u))!=0u){return;}
     if(transparent){if(hit){state_vec3(S_shadow_path_throughput,index,heap_vec3(state_address(S_shadow_path_throughput,index,12u))*vec3<f32>(0));count=0u;}
@@ -32,6 +46,13 @@ fn shadow_transition(index:u32,current:u32,next:u32){
     }else if(!hit){state_u16(S_shadow_path_packed_num_hits,index,0u);}
     shadow_transition(index,K_SHADOW_INTERSECT,select(K_SHADOW_SHADE,0u,hit));
 }
+//#if SHADOW_CATCHER
+// SHADOW_CATCHER_PATH_VISIBILITY: shadow catcher paths see only shadow catcher
+// objects (their visibility bits shifted by 16; the opaque mask likewise).
+fn sc_shadow_visibility(index:u32,visibility:u32)->u32{
+    return select(visibility,visibility<<16u,(state_word(S_shadow_path_flag,index)&SC_PATH_PASS)!=0u);
+}
+//#endif
 fn shadow_write_film(index:u32){
     let flag=state_word(S_shadow_path_flag,index);
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_shadow_path_render_pixel_index,index);
@@ -43,11 +64,30 @@ fn shadow_write_film(index:u32){
     let bounce=state_half(S_shadow_path_bounce,index);
     let limit=select(data_float(D_integrator_sample_clamp_direct),data_float(D_integrator_sample_clamp_indirect),bounce>0u);
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
-    if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
-    if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
+//#if AO_SHADOW
+    // film_write_direct_light, ambient occlusion: the AO pass for camera paths,
+    // and fast GI's additive term weighted by the unshadowed AO throughput.
+    if((flag&AO_SHADOW_FLAG)!=0u){
+        let features=data_word(D_kernel_features);
+        if((features&AO_FEATURE_PASS)!=0u&&(state_byte(S_shadow_path_visibility,index)&VIS_CAMERA)!=0u){film_rgb(base,data_word(D_film_pass_ao),value);}
+        if((features&AO_FEATURE_ADDITIVE)!=0u){let ao=value*heap_vec3(state_address(S_shadow_path_unshadowed_throughput,index,12u));
+            if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
+            if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
+                film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),2.0*ao);}}
+        shadow_transition(index,K_SHADOW_SHADE,0u);return;
+    }
+//#endif
+//#if SHADOW_CATCHER else     if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+    let sc_handled=sc_combined(flag,base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+//#endif
+//#if SHADOW_CATCHER else     if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
+    if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
+//#endif
         film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),2.0*value);
     }
-    if(flags!=0u){
+//#if SHADOW_CATCHER else     if(flags!=0u){
+    if(flags!=0u&&sc_light_passes(flag)){
+//#endif
         if(group!=0u&&go!=PASS_NONE){film_rgb(base,go+3u*(group-1u),value);}
         if(p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){
             let diffuse=heap_vec3(state_address(S_shadow_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_shadow_path_pass_glossy_weight,index,12u));
@@ -63,7 +103,9 @@ fn shadow_write_film(index:u32){
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}
     let flag=state_word(S_shadow_path_flag,index);
-    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||(flag&SHADOW_UNSUPPORTED_FLAGS)!=0u||state_half(S_shadow_path_packed_num_hits,index)!=0u){fail();return;}
+//#if SHADOW_CATCHER else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag)||state_half(S_shadow_path_packed_num_hits,index)!=0u){fail();return;}
+    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag&~SC_FLAGS)||state_half(S_shadow_path_packed_num_hits,index)!=0u){fail();return;}
+//#endif
     shadow_write_film(index);
 }
 // Recorded transparent hits get their native ShaderData in a separate GPU
@@ -91,7 +133,9 @@ fn shadow_write_film(index:u32){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}let flag=state_word(S_shadow_path_flag,index);let count=state_half(S_shadow_path_packed_num_hits,index);
-    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||(flag&SHADOW_UNSUPPORTED_FLAGS)!=0u||count>4095u){fail();return;}
+//#if SHADOW_CATCHER else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag)||count>4095u){fail();return;}
+    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag&~SC_FLAGS)||count>4095u){fail();return;}
+//#endif
     let recorded=min(count,SHADOW_HIT_CAPACITY);
     for(var slot=0u;slot<recorded;slot++){
         let hit=shadow_hit_load(index,slot);

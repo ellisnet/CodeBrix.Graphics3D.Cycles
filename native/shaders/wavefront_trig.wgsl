@@ -137,9 +137,21 @@ fn trig_sincos_series(x:vec2<f32>)->vec4<f32>{
     return vec4<f32>(trig_mul(s,x),c);
 }
 // Knuth two-sum (any magnitudes): high = a + b rounded, low = its exact residual.
+// high=rounded_add(a,b); bb=rounded_add(high,-a); the low part
+// rounded_add(rounded_add(a,-rounded_add(high,-bb)),rounded_add(b,-bb)): the six
+// sums through one body (rounded_steps, wavefront_float.wgsl), same operands.
+// (trig_coeff keeps its three inlined sums: its loop form, together with the
+// other loops, made the Adreno 650 compiler drop an SVM store in the Principled
+// SVM probe, native/DEVICE.md "Surface entries under the Intel compile envelope".)
 fn trig_two_sum(a:f32,b:f32)->vec2<f32>{
-    let high=rounded_add(a,b);let bb=rounded_add(high,-a);
-    return vec2<f32>(high,rounded_add(rounded_add(a,-rounded_add(high,-bb)),rounded_add(b,-bb)));
+    var high=0.0;var bb=0.0;var t=0.0;var u=0.0;let count=rounded_steps(6u);
+    for(var k=0u;k<count;k++){
+        var x=a;var y=b;
+        if(k==1u){x=high;y=-a;}else if(k==2u){x=high;y=-bb;}else if(k==3u){x=a;y=-t;}else if(k==4u){x=b;y=-bb;}else if(k==5u){x=t;y=u;}
+        let r=rounded_add(x,y);
+        if(k==0u){high=r;}else if(k==1u){bb=r;}else if(k==2u||k==3u||k==5u){t=r;}else if(k==4u){u=r;}
+    }
+    return vec2<f32>(high,t);
 }
 // Correctly rounded atan2f (glibc 2.41 is correctly rounded): the driver value
 // theta0 refined by delta = (y cos theta0 - x sin theta0)/(x cos theta0 + y sin theta0),

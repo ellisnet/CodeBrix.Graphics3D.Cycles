@@ -317,6 +317,9 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_WIREFRAME
             case NODE_WIREFRAME:{size=SZ_Wireframe;}
 //#endif
+//#if SVM_NODE_AO
+            case NODE_AMBIENT_OCCLUSION:{size=SZ_AmbientOcclusion;}
+//#endif
 //#if SVM_NODE_BUMP
             case NODE_SET_BUMP:{size=SZ_SetBump;}
 //#endif
@@ -464,7 +467,7 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 if(volume){svm_volume(&s,node);}
 //#endif
             }
-            case NODE_CLOSURE_BSDF:{if(SVM_SURFACE){svm_bsdf(&s,node,flag,visibility);}else{svm_error(&s,2u);}}
+            case NODE_CLOSURE_BSDF:{svm_closure_bsdf(&s,node,flag,visibility);}
             case NODE_CLOSURE_HOLDOUT:{
 //#if SVM_NODE_CLOSURE_HOLDOUT else svm_error(&s,2u);
                 if(!SVM_SURFACE){svm_error(&s,2u);return s.output;}
@@ -623,6 +626,25 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_WIREFRAME
             case NODE_WIREFRAME:{
                 svm_wireframe(&s,node);
+            }
+//#endif
+//#if SVM_NODE_AO
+            // svm_node_ao: ao = 1 under every node mask without
+            // KERNEL_FEATURE_NODE_RAYTRACE; the ray tracing runs only in
+            // prepare_surface_raytrace (wavefront_ao.wgsl).
+            case NODE_AMBIENT_OCCLUSION:{
+                var ao=1.0;
+//#if SVM_NODE_RAYTRACE
+                if(svm_raytrace){
+                    let normal_offset=svm_byte(node+N_AmbientOcclusion_normal_offset);var normal=s.geometry.N;
+                    if(normal_offset!=SVM_STACK_INVALID){normal=svm_load3(&s,normal_offset);}
+                    ao=svm_ao_occlusion(index,s.geometry,rounded_safe_normalize(normal),svm_input(&s,node+N_AmbientOcclusion_dist),
+                        svm_byte(node+N_AmbientOcclusion_samples),svm_byte(node+N_AmbientOcclusion_flags));
+                }
+//#endif
+                svm_optional_store(&s,svm_byte(node+N_AmbientOcclusion_out_ao_offset),ao);
+                let color_offset=svm_byte(node+N_AmbientOcclusion_out_color_offset);
+                if(color_offset!=SVM_STACK_INVALID){svm_store3(&s,color_offset,ao*svm_input3(&s,node+N_AmbientOcclusion_color));}
             }
 //#endif
 //#if SVM_NODE_BUMP

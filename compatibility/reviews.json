@@ -471,7 +471,7 @@
       "evidence": [
         "device-queue"
       ],
-      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership repair tested against the pinned moves (two cases); all feature configurations remain open.",
       "implementation": [
         "native/cycles/queue.cpp",
         "native/shaders/controls.wgsl"
@@ -491,7 +491,7 @@
       "evidence": [
         "device-queue"
       ],
-      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership repair tested against the pinned moves (two cases); all feature configurations remain open.",
       "implementation": [
         "native/cycles/queue.cpp",
         "native/shaders/controls.wgsl"
@@ -552,6 +552,7 @@
       "evidence": [
         "background-queue",
         "environment-light",
+        "light-tree",
         "native-render"
       ],
       "notes": "Constant and selected SVM worlds; background-light MIS (environment importance map) on background hits; no portals or sky sun guiding.",
@@ -2759,9 +2760,10 @@
       "status": "integrated-tested",
       "coverage": "partial",
       "evidence": [
-        "environment-light"
+        "environment-light",
+        "light-tree"
       ],
-      "notes": "Non-constant light shaders: the world for the background light and emissive triangles (image/UV, procedural, mixed emission/BSDF); non-constant point/spot/area/sun shaders refused; no light tree or MNEE.",
+      "notes": "Non-constant light shaders: the world for the background light and emissive triangles (image/UV, procedural, mixed emission/BSDF); non-constant point/spot/area/sun shaders refused; with or without the light tree; no MNEE.",
       "implementation": [
         "native/cycles/surface.cpp",
         "native/shaders/wavefront_light_nee.wgsl",
@@ -2790,6 +2792,304 @@
       "tests": [
         "native/cycles/environment_gate.cpp",
         "native/cycles/environment_reference.cpp"
+      ]
+    },
+    "KernelFeature:KERNEL_FEATURE_LIGHT_TREE": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "light-tree"
+      ],
+      "notes": "Light tree sampling (light_tree_sample<false>) and forward MIS pdfs (light_tree_pdf<false>) for lamps, mesh lights (instanced, moving), sun and background lights; volume segments not ported (volumes with direct light refused).",
+      "implementation": [
+        "native/cycles/lighting.cpp",
+        "native/shaders/wavefront_light_tree.wgsl",
+        "native/shaders/wavefront_surface.wgsl",
+        "native/shaders/wavefront_light_eval.wgsl"
+      ],
+      "tests": [
+        "native/cycles/light_tree_gate.cpp",
+        "native/cycles/light_tree_reference.cpp"
+      ]
+    },
+    "KernelFeature:KERNEL_FEATURE_LIGHT_LINKING": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "light-tree"
+      ],
+      "notes": "Receiver light sets and emitter set membership on the flat distribution and on the per-receiver light trees, NEE and forward hits; shadow linking (blocker sets, dedicated-light kernels) refused.",
+      "implementation": [
+        "native/cycles/lighting.cpp",
+        "native/shaders/wavefront_light_tree.wgsl",
+        "native/shaders/wavefront_surface.wgsl",
+        "native/shaders/wavefront_light_eval.wgsl",
+        "native/shaders/wavefront_light_link.wgsl",
+        "native/shaders/wavefront_closest.wgsl"
+      ],
+      "tests": [
+        "native/cycles/light_tree_gate.cpp",
+        "native/cycles/light_tree_reference.cpp"
+      ]
+    },
+    "PassType:PASS_SHADOW_CATCHER": {
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "shadow-catcher"
+      ],
+      "notes": "Written by the WebGPU device (catcher paths) and read through the pinned pass accessor; raw film against the original CPU kernels with lamps, MIS, HDRI world, transparent shadows and mesh lights; no volumes, caustics, denoising.",
+      "implementation": [
+        "native/cycles/shadow_catcher.cpp",
+        "native/shaders/wavefront_shadow_catcher.wgsl",
+        "native/shaders/wavefront_shadow_catcher_split.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_catcher_gate.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs"
+      ]
+    },
+    "PassType:PASS_SHADOW_CATCHER_SAMPLE_COUNT": {
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "shadow-catcher"
+      ],
+      "notes": "Split bounce sample count written at the closest-hit split; exact in state and image gates.",
+      "implementation": [
+        "native/cycles/shadow_catcher.cpp",
+        "native/shaders/wavefront_shadow_catcher.wgsl",
+        "native/shaders/wavefront_shadow_catcher_split.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_catcher_gate.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs"
+      ]
+    },
+    "PassType:PASS_SHADOW_CATCHER_MATTE": {
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "shadow-catcher"
+      ],
+      "notes": "Matte of non-catcher paths with transparency, including the approximate matte with shadow (background pass); state and image gates.",
+      "implementation": [
+        "native/cycles/shadow_catcher.cpp",
+        "native/shaders/wavefront_shadow_catcher.wgsl",
+        "native/shaders/wavefront_shadow_catcher_split.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_catcher_gate.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADOW_CATCHER_COUNT_POSSIBLE_SPLITS": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "shadow-catcher"
+      ],
+      "notes": "Parallel count over the main paths; compared exactly with the oracle states after every state stage.",
+      "implementation": [
+        "native/cycles/shadow_catcher.cpp",
+        "native/shaders/wavefront_shadow_catcher.wgsl",
+        "native/shaders/wavefront_shadow_catcher_split.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_catcher_gate.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs"
+      ]
+    },
+    "ShaderNodeType:NODE_AMBIENT_OCCLUSION": {
+      "workItems": [
+        "P05-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "ambient-occlusion"
+      ],
+      "notes": "Ambient Occlusion node on the SHADE_SURFACE_RAYTRACE queue (prepare_surface_raytrace, SVM_NODE_RAYTRACE): hemisphere sampling, inside, global radius, only_local local traversal; ao = 1 under the non-raytrace node masks. State and image gates against the CPU on Linux, Samsung SM-X700 and HP. Refused on the Adreno 650; only_local from a transform-applied object in a scene with instances and motion combinations untested or refused (native/DEVICE.md).",
+      "implementation": [
+        "native/shaders/wavefront_ao.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/surface.cpp",
+        "native/cycles/pipelines.cpp",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/ao_reference.cpp"
+      ]
+    },
+    "PassType:PASS_AO": {
+      "workItems": [
+        "P12-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "ambient-occlusion"
+      ],
+      "notes": "AO pass written by the AO shadow rays (film_write_direct_light AO branch), raw film compared with the CPU (ao_render case 5) and read back through the host and the managed ReadPass (managed WebGPU test).",
+      "implementation": [
+        "native/shaders/wavefront_shadow.wgsl",
+        "native/shaders/wavefront_ao.wgsl",
+        "native/cycles/shadow.cpp"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/ao_reference.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuAmbientOcclusionTests.cs"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE": {
+      "classification": "integrator-kernel",
+      "workItems": [
+        "P02-11"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "ambient-occlusion"
+      ],
+      "notes": "Surface stage with the raytrace SVM entry prepare_surface_raytrace; other stages shared with SHADE_SURFACE (push word 29). Capture entry 21 (recorder v10).",
+      "implementation": [
+        "native/cycles/surface.cpp",
+        "native/cycles/queue.cpp",
+        "native/shaders/wavefront_ao.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/ao_reference.cpp"
+      ]
+    },
+    "KernelFeature:KERNEL_FEATURE_AO_ADDITIVE": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "ambient-occlusion"
+      ],
+      "notes": "Fast GI additive mode: AO shadow ray per surface hit with unshadowed_throughput, additive combined write.",
+      "implementation": [
+        "native/shaders/wavefront_ao.wgsl",
+        "native/shaders/wavefront_shadow.wgsl",
+        "native/cycles/surface.cpp",
+        "native/cycles/shadow.cpp"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/ao_reference.cpp"
+      ]
+    },
+    "KernelFeature:KERNEL_FEATURE_AO_PASS": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "ambient-occlusion"
+      ],
+      "notes": "AO pass: AO shadow ray for camera paths, pass_ao write.",
+      "implementation": [
+        "native/shaders/wavefront_ao.wgsl",
+        "native/shaders/wavefront_shadow.wgsl",
+        "native/cycles/surface.cpp",
+        "native/cycles/shadow.cpp"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/ao_reference.cpp"
+      ]
+    },
+    "KernelFeature:KERNEL_FEATURE_MNEE": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P11-02"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "mnee"
+      ],
+      "notes": "MNEE (shadow caustics) through GGX glass/refraction casters from point and sun lamps, distribution light sampling, opaque shadows; spot/area/background caustic lamps, the light tree, linking, AO, volumes and motion blur with caustics refused; anisotropic casters report error 2.",
+      "implementation": [
+        "native/cycles/mnee.cpp",
+        "native/shaders/wavefront_mnee.wgsl"
+      ],
+      "tests": [
+        "native/cycles/mnee_gate.cpp",
+        "native/cycles/mnee_fixture.h",
+        "native/cycles/mnee_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE": {
+      "classification": "shader-behavior",
+      "workItems": [
+        "P11-02"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "mnee"
+      ],
+      "notes": "MNEE (shadow caustics) through GGX glass/refraction casters from point and sun lamps, distribution light sampling, opaque shadows; spot/area/background caustic lamps, the light tree, linking, AO, volumes and motion blur with caustics refused; anisotropic casters report error 2.",
+      "implementation": [
+        "native/cycles/mnee.cpp",
+        "native/shaders/wavefront_mnee.wgsl"
+      ],
+      "tests": [
+        "native/cycles/mnee_gate.cpp",
+        "native/cycles/mnee_fixture.h",
+        "native/cycles/mnee_reference.cpp"
+      ]
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADOW_PATH_MNEE_PENDING": {
+      "classification": "scheduler-control",
+      "workItems": [
+        "P11-02"
+      ],
+      "status": "integrated-tested",
+      "coverage": "partial",
+      "evidence": [
+        "mnee"
+      ],
+      "notes": "Pending MNEE shadow slot: never dispatched; reused by the surface stage or terminated by mnee_cleanup; compaction ownership repair tested.",
+      "implementation": [
+        "native/shaders/wavefront_mnee.wgsl",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/mnee_gate.cpp",
+        "native/cycles/gate.cpp"
       ]
     }
   }

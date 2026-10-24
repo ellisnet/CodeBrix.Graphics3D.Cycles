@@ -42,13 +42,27 @@ fn surface_orthogonal(n:vec3<f32>)->vec3<f32>{
 // ((w+z)+y)+x, scalar builds take the float4 dot (x+y)+(z+w). Plain WGSL
 // arithmetic let drivers fuse products into sums differently (Intel Mesa and the
 // Adreno compiler disagreed by an ULP in ShaderData P of static instances).
+// Both groupings run their three sums through one rounded_add body
+// (rounded_steps, wavefront_float.wgsl): same operands in the same order.
 fn surface_transform_row(t:vec4<f32>,v:vec3<f32>,point:bool)->f32{
+    let count=rounded_steps(3u);
     if(NATIVE_TRIANGLE_ARITHMETIC==0u){
+        // rounded_add(rounded_add(v.x*t.x,v.y*t.y),rounded_add(v.z*t.z,w))
         let w=select(bitcast<f32>(bitcast<u32>(t.w)&0x80000000u),t.w,point);
-        return rounded_add(rounded_add(v.x*t.x,v.y*t.y),rounded_add(v.z*t.z,w));
+        var s1=0.0;var s2=0.0;
+        for(var k=0u;k<count;k++){
+            let a=select(select(s1,v.z*t.z,k==1u),v.x*t.x,k==0u);let b=select(select(s2,w,k==1u),v.y*t.y,k==0u);
+            let r=rounded_add(a,b);s1=select(s1,r,k==0u||k==2u);s2=select(s2,r,k==1u);
+        }
+        return s1;
     }
-    var sum=v.z*t.z;if(point){sum=rounded_add(t.w,sum);}
-    return rounded_add(rounded_add(sum,v.y*t.y),v.x*t.x);
+    // sum=v.z*t.z; if(point){sum=rounded_add(t.w,sum);} rounded_add(rounded_add(sum,v.y*t.y),v.x*t.x)
+    var sum=v.z*t.z;
+    for(var k=0u;k<count;k++){
+        let a=select(sum,t.w,k==0u);let b=select(select(v.x*t.x,v.y*t.y,k==1u),sum,k==0u);
+        let r=rounded_add(a,b);sum=select(sum,r,(k!=0u||point)&&k<3u);
+    }
+    return sum;
 }
 fn surface_transform_vector(address:u32,v:vec3<f32>,point:bool)->vec3<f32>{
     return vec3<f32>(surface_transform_row(heap_vec4(address),v,point),surface_transform_row(heap_vec4(address+16u),v,point),surface_transform_row(heap_vec4(address+32u),v,point));
@@ -73,12 +87,20 @@ fn surface_object_normal(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
 }
 fn surface_decode_normal(value:u32)->vec3<f32>{
     let raw=vec2<f32>(f32(value&65535u),f32(value>>16u))*(2.0/65535.0);
-    let xy=vec2<f32>(rounded_add(raw.x,-1.0),rounded_add(raw.y,-1.0));
-    let z=rounded_add(rounded_add(1.0,-abs(xy.x)),-abs(xy.y));let t=max(-z,0.0);
+    // The six sums through one rounded_add body (rounded_steps), in this order:
+    // x=raw.x-1, y=raw.y-1, z=(1-|x|)-|y|, then x+shift.x and y+shift.y with
+    // t=max(-z,0) and shift=-t where the undecoded coordinate is positive, else t.
     // The packed grid has no exact zero coordinate; sign comparison matches
     // both upstream scalar copysign and the CPU SIMD decoder.
-    let shift=select(vec2<f32>(t),vec2<f32>(-t),xy>vec2<f32>(0));
-    return surface_normalize(vec3<f32>(rounded_add(xy.x,shift.x),rounded_add(xy.y,shift.y),z));
+    var x=0.0;var y=0.0;var z=0.0;let count=rounded_steps(6u);
+    for(var k=0u;k<count;k++){
+        let t=max(-z,0.0);let shift=select(vec2<f32>(t),vec2<f32>(-t),vec2<f32>(x,y)>vec2<f32>(0));
+        var a=raw.x;var b=-1.0;
+        if(k==1u){a=raw.y;}else if(k==2u){a=1.0;b=-abs(x);}else if(k==3u){a=z;b=-abs(y);}else if(k==4u){a=x;b=shift.x;}else if(k==5u){a=y;b=shift.y;}
+        let r=rounded_add(a,b);
+        if(k==0u||k==4u){x=r;}else if(k==1u||k==5u){y=r;}else if(k<4u){z=r;}
+    }
+    return surface_normalize(vec3<f32>(x,y,z));
 }
 fn surface_differentials(sd:ptr<function,SurfaceData>){
     let n=(*sd).Ng;let tangent=surface_orthogonal(n);

@@ -168,8 +168,15 @@ fn surf_next(index:u32,label:u32,runtime:u32){
     if((flag&PATH_RAY_ANY_PASS)==0u&&(flag&PATH_RAY_TRANSPARENT_BACKGROUND)==0u){flag|=PATH_RAY_SURFACE_PASS;}
     state_u8(S_path_visibility,index,visibility);state_u32(S_path_flag,index,flag);state_u16(S_path_bounce,index,bounce);
 }
+// The queue this dispatch serves: push word 29 names SHADE_SURFACE_RAYTRACE
+// (shaders with the AO node, wavefront_ao.wgsl); 0 is SHADE_SURFACE.
+fn surf_queue()->u32{
+//#if SVM_NODE_AO else return DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE;
+    return select(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,p(29u),p(29u)!=0u);
+//#endif
+}
 fn surf_finish(index:u32,continues:bool){
-    let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[counter/4u+DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE],1u);
+    let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[counter/4u+surf_queue()],1u);
     if(continues){atomicAdd(&heap[counter/4u+K_CLOSEST],1u);state_u16(S_path_queued_kernel,index,K_CLOSEST);}else{volume_write_depth(index);state_u16(S_path_queued_kernel,index,0u);}
 }
 fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight:f32){
@@ -178,22 +185,48 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
     let bounce=state_half(S_path_bounce,index);let limit=select(data_float(D_integrator_sample_clamp_direct),data_float(D_integrator_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
     volume_guidance_pass(index,base,value);
-    let flags=data_word(D_film_light_pass_flag);if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
-    if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
+//#if SHADOW_CATCHER else     let flags=data_word(D_film_light_pass_flag);if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+    let flags=data_word(D_film_light_pass_flag);let sc_handled=sc_combined(state_word(S_path_flag,index),base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+//#endif
+//#if SHADOW_CATCHER else     if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
+    if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
+//#endif
     if(flags==0u){return;}let flag=state_word(S_path_flag,index);let group=load_word(table_at(G_objects,sd.object_id,SIZE_objects)+O_lightgroup);
-    if(group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
+//#if SHADOW_CATCHER else     if(group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
+    if(sc_light_passes(flag)&&group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
+//#endif
     if((flag&PATH_RAY_ANY_PASS)==0u){film_rgb(base,data_word(D_film_pass_emission),value);}
-    else if(p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){let diffuse=heap_vec3(state_address(S_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_path_pass_glossy_weight,index,12u));
+//#if SHADOW_CATCHER else     else if(p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){let diffuse=heap_vec3(state_address(S_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_path_pass_glossy_weight,index,12u));
+    else if(sc_light_passes(flag)&&p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){let diffuse=heap_vec3(state_address(S_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_path_pass_glossy_weight,index,12u));
+//#endif
         film_rgb(base,select(data_word(D_film_pass_glossy_indirect),data_word(D_film_pass_glossy_direct),bounce==1u),glossy*value);
         film_rgb(base,select(data_word(D_film_pass_transmission_indirect),data_word(D_film_pass_transmission_direct),bounce==1u),(vec3<f32>(1)-diffuse-glossy)*value);
         film_rgb(base,select(data_word(D_film_pass_diffuse_indirect),data_word(D_film_pass_diffuse_direct),bounce==1u),diffuse*value);}
 }
+//#if SHADOW_CATCHER
+// film_write_data_passes with only the shadow catcher passes in the data pass
+// flag (every other data pass is refused): no film write, only the
+// PATH_RAY_SINGLE_PASS_DONE bookkeeping of the pinned function.
+fn sc_data_passes(index:u32,r:SvmResult){
+    let flag=state_word(S_path_flag,index);
+    if((flag&SC_TRANSPARENT_BACKGROUND)==0u||(flag&SC_PATH_PASS)!=0u||data_word(SC_D_pass_flag)==0u||(flag&SC_SINGLE_PASS_DONE)!=0u){return;}
+    let threshold=data_float(SC_D_pass_alpha_threshold);
+    if((r.runtime_flag&(SC_SR_TRANSPARENT|SC_SR_RAY_PORTAL))!=0u&&threshold!=0.0){
+        let alpha=clamp(vec3<f32>(1)-r.transparency,vec3<f32>(0),vec3<f32>(1));
+        if(!((alpha.x+alpha.y+alpha.z)*(1.0/3.0)>=threshold)){return;}
+    }
+    state_u32(S_path_flag,index,flag|SC_SINGLE_PASS_DONE);
+}
+//#endif
 // Preparation validates inputs and evaluates closures without changing path or film state.
-@compute @workgroup_size(64) fn prepare_surface(@builtin(global_invocation_id) id:vec3<u32>){
+@compute @workgroup_size(64) fn prepare_surface(@builtin(global_invocation_id) id:vec3<u32>){surface_prepare(id);}
+fn surface_prepare(id:vec3<u32>){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}store_word(p(24u)+id.x*SURFACE_STAGE_BYTES,0u);var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
-    if(index>=p(10u)){fail();return;}if(state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){fail();return;}
-    let flag=state_word(S_path_flag,index);if((flag&SURFACE_UNSUPPORTED_FLAGS)!=0u){fail();return;}
+    if(index>=p(10u)){fail();return;}if(state_half(S_path_queued_kernel,index)!=surf_queue()){fail();return;}
+//#if SHADOW_CATCHER else     let flag=state_word(S_path_flag,index);if((flag&SURFACE_UNSUPPORTED_FLAGS)!=0u){fail();return;}
+    let flag=state_word(S_path_flag,index);if((flag&(SURFACE_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u){fail();return;}
+//#endif
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);if(pixel>=p(11u)/stride){fail();return;}let base=p(4u)+pixel*stride*4u;
     var sd=surface_cached(id.x);if(sd.error!=0u){return;}let object=table_at(G_objects,sd.object_id,SIZE_objects);
     let group=load_word(object+O_lightgroup);let go=data_word(D_film_pass_lightgroup);if(group!=NONE&&go!=PASS_NONE&&(group>=stride/3u||go>stride-3u*(group+1u))){fail();return;}
@@ -225,6 +258,9 @@ fn surface_light_inputs(id:vec3<u32>,state:u32)->SurfaceLightInputs{
     var li:SurfaceLightInputs;li.at=NONE;
     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return li;}
     let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=state){return li;}store_word(at,0u);
+//#if LIGHT_SELECT
+    light_select_record=at;
+//#endif
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;
     let flag=state_word(S_path_flag,index);let emission=(r.runtime_flag&SR_EMISSION)!=0u;
@@ -233,6 +269,60 @@ fn surface_light_inputs(id:vec3<u32>,state:u32)->SurfaceLightInputs{
        heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0;
     return SurfaceLightInputs(at,index,sd,r,emission,sample);
 }
+//#if LIGHT_SELECT
+// Light selection (lane m2-lighttree), dispatched before shade_surface_light when
+// the scene uses the light tree or light linking. For a record in state 1 (left
+// unchanged) it selects the emitter as light_sample_from_position does
+// (light_tree_sample<false> or the flat CDF, then light_link_object_match on
+// the object; a failed selection or a rejected link is no sample), and the
+// tree's pdf of an emissive triangle hit for the forward MIS weight
+// (light_sample_mis_weight_forward_surface). The samplers read the record.
+struct LightSelectResult {selection:LightSelection,forward_pdf:f32}
+// sample: the path samples a light here (shade_surface_light's condition);
+// forward: the tree's pdf of this emissive-triangle hit is needed.
+fn light_selection_compute(index:u32,sd:SurfaceData,r:SvmResult,sample:bool,forward:bool)->LightSelectResult{
+    // prim -1: an invalid selection takes the lamp path, which returns no sample.
+    var out=LightSelectResult(LightSelection(vec3<f32>(0),0u,-1,NONE,0u,0.0,false,false),0.0);
+    let tree=data_word(LT_D_use_light_tree)!=0u;let flag=state_word(S_path_flag,index);
+    if(sample&&!tree){out.selection=light_select(index);}
+    // One traversal call site: k=0 samples (NEE), k=1 the forward triangle pdf.
+    for(var k=0u;k<2u;k++){
+        if((k==0u&&!(sample&&tree))||(k==1u&&!(forward&&tree))){continue;}
+        var P=sd.P;var N=sd.N;var transmission=(r.runtime_flag&LT_SR_BSDF_HAS_TRANSMISSION)!=0u;var receiver=select(NONE,sd.object_id,light_link_enabled());var goal=0u;
+        if(k==1u){
+            if((state_byte(S_path_visibility,index)&LT_PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return out;}
+            P=heap_vec3(state_address(S_ray_P,index,12u));N=heap_vec3(state_address(S_path_mis_origin_n,index,12u));
+            transmission=(flag&LT_PATH_RAY_MIS_HAD_TRANSMISSION)!=0u;receiver=light_link_receiver_forward(index);
+            let offset=load_word(table_at(G_object_lookup_offset,sd.object_id,4u));let first=load_word(table_at(G_object_prim_offset,sd.object_id,4u));
+            goal=load_word(table_at(G_triangle_to_tree,sd.prim-first+offset,4u));
+        }
+        let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
+        let walk=light_tree_walk(k==0u,P,N,transmission,receiver,random.z,sd.object_id,goal);
+        if(k==1u){out.forward_pdf=walk.pdf;continue;}
+        out.selection.random=random;
+        if(walk.emitter>=0){let e=lt_emitter(u32(walk.emitter));out.selection.prim=bitcast<i32>(load_word(e+LTE_id));out.selection.visibility=load_word(e+LTE_visibility);
+            out.selection.object=select(load_word(e+LTE_object),walk.object,out.selection.prim>=0);out.selection.pdf=walk.pdf;out.selection.tree=true;out.selection.valid=true;
+            out.selection.distribution=u32(walk.emitter);}
+    }
+    if(out.selection.valid&&!light_link_match(sd.object_id,out.selection.object)){out.selection.valid=false;out.selection.prim= -1;}
+    return out;
+}
+@compute @workgroup_size(1) fn shade_surface_light_select(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}
+    let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=1u){return;}
+    var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;
+    let flag=state_word(S_path_flag,index);
+    let sample=data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
+       (sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u&&(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)==0u&&
+       heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0;
+    let forward=(r.runtime_flag&SR_EMISSION)!=0u&&(flag&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u;
+    let result=light_selection_compute(index,sd,r,sample,forward);
+    if(load_word(p(17u))!=0u){return;}
+    light_selection_write(at,result.selection,result.forward_pdf);
+}
+//#endif
 // The combined light stage (no emissive triangle in the scene).
 fn surface_light_combined(li:SurfaceLightInputs){
     let index=li.index;let sd=li.sd;let r=li.r;let emission=li.emission;let sample=li.sample;let at=li.at;
@@ -259,7 +349,9 @@ fn surface_light_combined(li:SurfaceLightInputs){
     let li=surface_light_inputs(id,5u);if(li.at==NONE){return;}
     triangle_light_prefill(li.index,li.sd,li.emission,li.sample);
     var weight=1.0;if(li.emission){weight=triangle_light_forward_weight(li.index,li.sd);}
-    if(li.sample){let selection=light_select(li.index);if(selection.prim>=0){
+//#if SHADOW_CATCHER else     if(li.sample){let selection=light_select(li.index);if(selection.prim>=0){
+    if(li.sample){let selection=light_select(li.index);if(selection.prim>=0&&!sc_triangle_excluded(li.index,selection)){
+//#endif
         let ls=light_sample_triangle(li.sd,selection);if(load_word(p(17u))!=0u){return;}light_sample_write(li.at+308u,ls);}}
     if(load_word(p(17u))!=0u){return;}
     store_word(li.at+304u,bitcast<u32>(weight));store_word(li.at,3u);
@@ -276,10 +368,16 @@ fn surface_light_combined(li:SurfaceLightInputs){
     if(((r.runtime_flag&SR_HOLDOUT)!=0u||(sd.object_flag&SD_OBJECT_HOLDOUT_MASK)!=0u)&&(flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u){
         let weight=surf_holdout(sd,&r);let contribution=weight*heap_vec3(state_address(S_path_throughput,index,12u));
         if((data_word(D_film_light_pass_flag)&MASK_COMBINED)!=0u){film_add(base+(data_word(D_film_pass_combined)+3u)*4u,(contribution.x+contribution.y+contribution.z)*(1.0/3.0));}
+//#if SHADOW_CATCHER
+        sc_transparent_only(flag,base,(contribution.x+contribution.y+contribution.z)*(1.0/3.0));
+//#endif
         volume_transparent_pass(index,base,(contribution.x+contribution.y+contribution.z)*(1.0/3.0));
         if(all(weight==vec3<f32>(1))){surf_finish(index,false);return;}
     }
-    if((r.runtime_flag&SR_EMISSION)!=0u){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0),heap_float(at+304u));}
+//#if LIGHT_LINKING else if((r.runtime_flag&SR_EMISSION)!=0u){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0),heap_float(at+304u));}
+    // integrate_surface_emission: an indirect ray sees only emitters linked to its receiver.
+    if((r.runtime_flag&SR_EMISSION)!=0u&&light_link_forward_visible(index,sd.object_id)){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0),heap_float(at+304u));}
+//#endif
     let probability=select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)!=0u);
     if(probability==0.0){surf_finish(index,false);return;}
     var throughput=heap_vec3(state_address(S_path_throughput,index,12u));if(probability!=1.0){throughput/=probability;state_vec3(S_path_throughput,index,throughput);}
@@ -290,7 +388,13 @@ fn surface_light_combined(li:SurfaceLightInputs){
         let t=sd.ray_length;state_f32(S_ray_tmin,index,select(bitcast<f32>(bitcast<u32>(t)+1u),1.1754943508222875e-38,t==0.0));
         volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);surf_finish(index,true);return;
     }
+//#if SHADOW_CATCHER
+    sc_data_passes(index,r);
+//#endif
     surface_direct_light(index,id.x,sd,r,light_sample_read(at+308u));if(load_word(p(17u))!=0u){return;}
+//#if AO_SHADOW
+    if((data_word(D_kernel_features)&(AO_FEATURE_ADDITIVE|AO_FEATURE_PASS))!=0u){surface_ao(index,id.x,sd,r);if(load_word(p(17u))!=0u){return;}}
+//#endif
     // Holdout may change closure metadata; retain it with the same GPU record.
     surface_stage_write(at,sd,r);store_word(at,2u);
 }
@@ -311,7 +415,11 @@ fn surface_light_combined(li:SurfaceLightInputs){
     state_vec3(S_path_throughput,index,throughput*(sampled.eval/sampled.pdf));
     if(p(20u)!=0u&&state_half(S_path_bounce,index)==0u){state_vec3(S_path_pass_diffuse_weight,index,svm_divide(sampled.diffuse,sampled.eval));state_vec3(S_path_pass_glossy_weight,index,svm_divide(sampled.glossy,sampled.eval));}
     if((sampled.label&LABEL_TRANSPARENT)==0u){state_f32(S_path_mis_ray_pdf,index,sampled.pdf);state_vec3(S_path_mis_origin_n,index,sd.N);
-        state_f32(S_path_min_ray_pdf,index,min(sampled.pdf,heap_float(state_address(S_path_min_ray_pdf,index,4u))));}
+        state_f32(S_path_min_ray_pdf,index,min(sampled.pdf,heap_float(state_address(S_path_min_ray_pdf,index,4u))));
+//#if LIGHT_LINKING
+        if(light_link_enabled()){state_u32(S_path_mis_ray_object,index,sd.object_id);}
+//#endif
+    }
     surf_next(index,sampled.label,r.runtime_flag);
     if((sampled.label&LABEL_TRANSMIT)!=0u){volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);}
     surf_finish(index,true);

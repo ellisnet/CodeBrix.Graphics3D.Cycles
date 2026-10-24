@@ -6,10 +6,22 @@
 // SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause
 // Point/sun forward evaluation, native MIS and emission film routing. The
 // bounded positive-argument atan2 follows the pinned Cycles math_fast.h.
+// Slot of the forward tree pdf (light_tree_forward) of the lamp or sun whose
+// forward MIS weight is evaluated.
+var<private> forward_light_slot:u32=0u;
+fn light_tree_forward_read(index:u32,slot:u32)->f32{
+    if(slot>=p(29u)){fail();return 0.0;}return heap_float(p(28u)+(index*p(29u)+slot)*4u);
+}
+// The background module's tree pdfs target lamps and the background light, which
+// never descend into a mesh light's object space (light_tree_walk).
+fn light_tree_object_motion(object:u32)->NativeTransform{fail();return NativeTransform();}
 fn forward_mis_weight(index:u32,pdf:f32)->f32{
     if((state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)!=0u){return 1.0;}
     let forward=heap_float(state_address(S_path_mis_ray_pdf,index,4u));
-    let nee=pdf*data_float(D_integrator_distribution_pdf_lights);
+//#if LIGHT_TREE else let nee=pdf*data_float(D_integrator_distribution_pdf_lights);
+    var selection=data_float(D_integrator_distribution_pdf_lights);if(data_word(LT_D_use_light_tree)!=0u){selection=light_tree_forward_read(index,forward_light_slot);}
+    let nee=pdf*selection;
+//#endif
     return (forward*forward)/(forward*forward+nee*nee);
 }
 fn point_forward_pdf(index:u32,light:u32)->f32{
@@ -41,12 +53,20 @@ fn forward_emission(index:u32,base:u32,light:u32,eval:vec3<f32>,weight:f32){
     value=select(value,vec3<f32>(0),(bitcast<vec3<u32>>(value)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
     let bounce=state_half(S_path_bounce,index);let limit=select(data_float(D_integrator_sample_clamp_direct),data_float(D_integrator_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
-    let flags=data_word(D_film_light_pass_flag);if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
-    if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
+//#if SHADOW_CATCHER else     let flags=data_word(D_film_light_pass_flag);if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+    let flags=data_word(D_film_light_pass_flag);let sc_handled=sc_combined(state_word(S_path_flag,index),base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+//#endif
+//#if SHADOW_CATCHER else     if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
+    if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
+//#endif
     if(flags==0u){return;}let flag=state_word(S_path_flag,index);let group=load_word(table_at(G_objects,load_word(light+L_object_id),SIZE_objects)+O_lightgroup);
-    if(group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
+//#if SHADOW_CATCHER else     if(group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
+    if(sc_light_passes(flag)&&group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
+//#endif
     if((flag&PATH_RAY_ANY_PASS)==0u){film_rgb(base,data_word(D_film_pass_emission),value);}
-    else if(p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){let diffuse=heap_vec3(state_address(S_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_path_pass_glossy_weight,index,12u));
+//#if SHADOW_CATCHER else     else if(p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){let diffuse=heap_vec3(state_address(S_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_path_pass_glossy_weight,index,12u));
+    else if(sc_light_passes(flag)&&p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){let diffuse=heap_vec3(state_address(S_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_path_pass_glossy_weight,index,12u));
+//#endif
         film_rgb(base,select(data_word(D_film_pass_glossy_indirect),data_word(D_film_pass_glossy_direct),bounce==1u),glossy*value);
         film_rgb(base,select(data_word(D_film_pass_transmission_indirect),data_word(D_film_pass_transmission_direct),bounce==1u),(vec3<f32>(1)-diffuse-glossy)*value);
         film_rgb(base,select(data_word(D_film_pass_diffuse_indirect),data_word(D_film_pass_diffuse_direct),bounce==1u),diffuse*value);}
@@ -58,10 +78,23 @@ fn forward_constant_emission(light:u32)->vec3<f32>{
 fn integrate_suns(index:u32,base:u32){
     let direction=heap_vec3(state_address(S_ray_D,index,12u));let visibility=state_byte(S_path_visibility,index);let flag=state_word(S_path_flag,index);
     let previous=state_word(S_isect_prim,index);let start=select(previous,0u,previous==NONE);
+//#if LIGHT_TREE
+    // Tree pdf slots number the MIS suns from lamp 0 (no shading cache misses here).
+    var sun_slot=0u;if(start!=0u&&data_word(LT_D_use_light_tree)!=0u){fail();return;}
+//#endif
     for(var lamp=start;lamp<data_word(D_integrator_num_lights);lamp++){
         let light=table_at(G_lights,lamp,SIZE_lights);let shader=load_word(light+L_shader_id);
         if(load_word(light+L_type)!=LIGHT_SUN||(shader&SHADER_USE_MIS)==0u){continue;}
+//#if LIGHT_TREE
+        sun_slot++;forward_light_slot=sun_slot;
+//#endif
+//#if MNEE
+        if((state_byte(S_path_mnee,index)&MNEE_PATH_CULL_LIGHT_CONNECTION)!=0u&&load_word(light+MNEE_L_use_caustics)!=0u){continue;}
+//#endif
         if(!sun_forward_visible(light,direction)||!background_visible(shader,visibility,flag)){continue;}
+//#if LIGHT_LINKING
+        if(!light_link_forward_visible(index,load_word(light+L_object_id))){continue;}
+//#endif
         let eval=forward_constant_emission(light)*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
         forward_emission(index,base,light,eval,forward_mis_weight(index,heap_float(light+L_sun_pdf)));
     }
@@ -71,7 +104,9 @@ fn integrate_suns(index:u32,base:u32){
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD){fail();return;}
     let flag=state_word(S_path_flag,index);let visibility=state_byte(S_path_visibility,index);
-    if((flag&BACKGROUND_UNSUPPORTED_FLAGS)!=0u||(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return;}
+//#if SHADOW_CATCHER else     if((flag&BACKGROUND_UNSUPPORTED_FLAGS)!=0u||(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return;}
+    if((flag&(BACKGROUND_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u||(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return;}
+//#endif
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);if(pixel>=p(11u)/stride){fail();return;}
     let lamp=state_word(S_isect_prim,index);if(lamp>=table_count(G_lights)||state_word(S_isect_type,index)!=PRIMITIVE_LAMP){fail();return;}
     let light=table_at(G_lights,lamp,SIZE_lights);if((load_word(light+L_type)!=LIGHT_POINT&&load_word(light+L_type)!=LIGHT_SPOT&&load_word(light+L_type)!=LIGHT_AREA)||load_word(light+L_object_id)!=state_word(S_isect_object,index)){fail();return;}
@@ -86,6 +121,9 @@ fn integrate_suns(index:u32,base:u32){
         else{pdf=point_forward_pdf(index,light);if(load_word(light+L_type)==LIGHT_SPOT){let delta=origin-heap_vec3(light+L_co);let radius=heap_float(light+L_radius);
             if(load_word(light+L_is_sphere)==0u||dot(delta,delta)>radius*radius){factor*=spot_attenuation(light,-direction);}}}
         let eval=forward_constant_emission(light)*factor;
+//#if LIGHT_TREE
+        forward_light_slot=0u;
+//#endif
         if(any(eval!=vec3<f32>(0))){forward_emission(index,p(4u)+pixel*stride*4u,light,eval,forward_mis_weight(index,pdf));}
     }
     let transparent=state_half(S_path_transparent_bounce,index)+1u;state_u16(S_path_transparent_bounce,index,transparent);
@@ -93,3 +131,33 @@ fn integrate_suns(index:u32,base:u32){
     let counter=load_word(p(7u)+S_queue_counter)/4u;atomicSub(&heap[counter+DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD],1u);
     if(next!=0u){atomicAdd(&heap[counter+next],1u);}state_u16(S_path_queued_kernel,index,next);
 }
+//#if LIGHT_TREE
+// Forward light-tree pdfs (light_sample_mis_weight_forward_lamp / _distant /
+// _background), dispatched before shade_background and shade_light_forward with
+// their arguments, so those entries keep their size: the traversal is one call
+// site here. Per path p(29) words at p(28)+index*p(29)*4. Path queued for
+// shade_background: [0] the background light (with background MIS), [k] the k-th
+// MIS sun lamp; queued for shade_light_forward: [0] the lamp hit. MIS-skipping
+// paths need none.
+@compute @workgroup_size(64) fn light_tree_forward(@builtin(global_invocation_id) id:vec3<u32>){
+    if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    if(index>=p(10u)){fail();return;}
+    if(data_word(LT_D_use_light_tree)==0u||(state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)!=0u){return;}
+    let forward=state_half(S_path_queued_kernel,index)==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD;
+    var lamp=0u;
+    for(var slot=0u;slot<p(29u);slot++){
+        var object=NONE;
+        if(slot==0u){
+            if(forward){object=state_word(S_isect_object,index);}
+            else if(data_word(D_background_use_mis)!=0u){object=data_word(LT_D_background_object);}
+        }else{
+            if(forward){break;}
+            loop{if(lamp>=data_word(D_integrator_num_lights)){break;}let light=table_at(G_lights,lamp,SIZE_lights);lamp++;
+                if(load_word(light+L_type)==LIGHT_SUN&&(load_word(light+L_shader_id)&SHADER_USE_MIS)!=0u){object=load_word(light+L_object_id);break;}}
+            if(object==NONE){break;}
+        }
+        var pdf=0.0;if(object!=NONE){pdf=light_tree_lamp_pdf(index,object);}
+        store_word(p(28u)+(index*p(29u)+slot)*4u,bitcast<u32>(pdf));
+    }
+}
+//#endif

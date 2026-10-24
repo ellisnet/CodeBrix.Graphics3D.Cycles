@@ -349,8 +349,10 @@ the sources changed.
   atomics); record `repeatMaxAbsDifference`.
 - Texture filtering: Metal's hardware bilinear filtering is not bit-exact with
   Cycles' CPU interpolation and can exceed the practical criterion on textured
-  scenes (`starter/textured-plane`). Report Metal's deviation from the CPU per
-  scene as a bounded deviation and never change Metal's sampling to hide it.
+  scenes (`starter/textured-plane`). The CPU kernels and the Metal backend are
+  both gold standards (native/DEVICE.md, "Validation reference policy"): record
+  the Metal-versus-CPU numbers per scene as information, never as a failure,
+  and never change Metal's sampling to hide them.
 - Which film is the authority depends on the device under test. The CPU is the
   authority for the CodeBrix WGSL/WebGPU device, which this repository builds.
   Cycles' own Metal device (osx-arm64) is upstream's validated implementation:

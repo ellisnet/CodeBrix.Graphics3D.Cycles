@@ -1,0 +1,10 @@
+light-tree/lamps-and-mesh-lights         cpu-x64-linux          [0.018378, 0.00971461]
+light-tree/lamps-and-mesh-lights         wgsl-linux-intel       [40.2146, 0.250524]
+light-tree/lamps-and-mesh-lights (64x48)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=7.15e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             5.48e-06    1.4e-05   1.65e-07             0        820
+      worst x=31 y=22 B: ref 0.448353678 got 0.448358446 (0.0341x tolerance)
+  verdict: perfect
+

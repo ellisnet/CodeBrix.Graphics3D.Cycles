@@ -25,7 +25,9 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     if(index>=p(10u)){fail();return;}
     if(state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND){fail();return;}
     let flag=state_word(S_path_flag,index);let visibility=state_byte(S_path_visibility,index);
-    if((flag&BACKGROUND_UNSUPPORTED_FLAGS)!=0u){fail();return;}
+//#if SHADOW_CATCHER else     if((flag&BACKGROUND_UNSUPPORTED_FLAGS)!=0u){fail();return;}
+    if((flag&(BACKGROUND_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u){fail();return;}
+//#endif
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);
     if(pixel>=p(11u)/stride){fail();return;}let base=p(4u)+pixel*stride*4u;
     integrate_suns(index,base);if(load_word(p(17u))!=0u){return;}
@@ -33,7 +35,16 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     let transparent_ray=data_word(D_background_transparent)!=0u&&(flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u;
     var transparency=0.0;if(transparent_ray){transparency=(throughput.x+throughput.y+throughput.z)*(1.0/3.0);}
     var light=vec3<f32>(0);let shader=data_word(D_background_surface_shader);
-    if((!transparent_ray||(light_flags&MASK_BACKGROUND)!=0u)&&background_visible(shader,visibility,flag)){
+//#if MNEE
+    // A path that MNEE should have resolved skips a caustic background light (MIS).
+    var mnee_cull=false;
+    if((state_byte(S_path_mnee,index)&MNEE_PATH_CULL_LIGHT_CONNECTION)!=0u&&data_word(D_background_use_mis)!=0u){
+        for(var lamp=0u;lamp<data_word(D_integrator_num_lights);lamp++){let l=table_at(G_lights,lamp,SIZE_lights);
+            if(load_word(l+L_type)==LIGHT_BACKGROUND&&load_word(l+MNEE_L_use_caustics)!=0u){mnee_cull=true;break;}}}
+//#endif
+//#if MNEE else     if((!transparent_ray||(light_flags&MASK_BACKGROUND)!=0u)&&background_visible(shader,visibility,flag)){
+    if((!transparent_ray||(light_flags&MASK_BACKGROUND)!=0u)&&background_visible(shader,visibility,flag)&&!mnee_cull){
+//#endif
         let shader_id=shader&SHADER_MASK;if(shader_id>=p(19u)){fail();return;}
         let address=p(18u)+shader_id*SIZE_shaders;
         if((load_word(address+SH_flags)&SD_HAS_CONSTANT_EMISSION)!=0u){light=heap_vec3(address+SH_constant_emission);}
@@ -49,45 +60,84 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     let bounce=state_half(S_path_bounce,index);
     let limit=select(data_float(D_integrator_sample_clamp_direct),data_float(D_integrator_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(contribution.x)+abs(contribution.y)+abs(contribution.z);if(total>limit){contribution*=limit/total;}
-    if(transparent_ray){volume_transparent_pass(index,base,transparency);}
-    else{volume_guidance_pass(index,base,contribution);}
+//#if SHADOW_CATCHER else     if(transparent_ray){volume_transparent_pass(index,base,transparency);}
+    var sc_handled=false;if(transparent_ray){sc_transparent_only(flag,base,transparency);volume_transparent_pass(index,base,transparency);}
+    else{sc_handled=sc_combined_transparent(flag,base,contribution,transparency);if(!sc_handled){volume_guidance_pass(index,base,contribution);}}
+//#endif
+//#if SHADOW_CATCHER else     else{volume_guidance_pass(index,base,contribution);}
+//#endif
     let sample_id=state_word(S_path_sample,index);
-    if((light_flags&MASK_COMBINED)!=0u){
+//#if SHADOW_CATCHER else     if((light_flags&MASK_COMBINED)!=0u){
+    if(!sc_handled&&(light_flags&MASK_COMBINED)!=0u){
+//#endif
         if(!transparent_ray){film_rgb(base,data_word(D_film_pass_combined),contribution);}
         film_add(base+(data_word(D_film_pass_combined)+3u)*4u,transparency);
     }
-    if(!transparent_ray&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&((countOneBits(sample_id&0xaaaaaaaau)&1u)!=0u)){
+//#if SHADOW_CATCHER else     if(!transparent_ray&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&((countOneBits(sample_id&0xaaaaaaaau)&1u)!=0u)){
+    if(!sc_handled&&!transparent_ray&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&((countOneBits(sample_id&0xaaaaaaaau)&1u)!=0u)){
+//#endif
         film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),contribution*2.0);
         film_add(base+(data_word(D_film_pass_adaptive_aux_buffer)+3u)*4u,0.0);
     }
     if(light_flags!=0u){
         let group=data_word(D_background_lightgroup);let group_offset=data_word(D_film_pass_lightgroup);
-        if(group!=NONE&&group_offset!=PASS_NONE){film_rgb(base,group_offset+group*3u,contribution);}
+//#if SHADOW_CATCHER else         if(group!=NONE&&group_offset!=PASS_NONE){film_rgb(base,group_offset+group*3u,contribution);}
+        if(sc_light_passes(flag)&&group!=NONE&&group_offset!=PASS_NONE){film_rgb(base,group_offset+group*3u,contribution);}
+//#endif
         if((flag&PATH_RAY_ANY_PASS)==0u){film_rgb(base,data_word(D_film_pass_background),contribution);}
-        else if(p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){
+//#if SHADOW_CATCHER else         else if(p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){
+        else if(sc_light_passes(flag)&&p(20u)!=0u&&(flag&PATH_RAY_SURFACE_PASS)!=0u){
+//#endif
             let diffuse=heap_vec3(state_address(S_path_pass_diffuse_weight,index,12u));let glossy=heap_vec3(state_address(S_path_pass_glossy_weight,index,12u));
             film_rgb(base,select(data_word(D_film_pass_glossy_indirect),data_word(D_film_pass_glossy_direct),bounce==1u),glossy*contribution);
             film_rgb(base,select(data_word(D_film_pass_transmission_indirect),data_word(D_film_pass_transmission_direct),bounce==1u),(vec3<f32>(1)-diffuse-glossy)*contribution);
             film_rgb(base,select(data_word(D_film_pass_diffuse_indirect),data_word(D_film_pass_diffuse_direct),bounce==1u),diffuse*contribution);
         }
     }
-    if((flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u&&sample_id==0u){
+//#if SHADOW_CATCHER else     if((flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u&&sample_id==0u){
+    if((flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u&&(flag&SC_PATH_PASS)==0u&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u&&sample_id==0u){
+//#endif
         let flags=data_word(D_film_pass_flag);
         if((flags&MASK_DEPTH)!=0u){store_word(base+data_word(D_film_pass_depth)*4u,0u);}
         if((flags&MASK_OBJECT_ID)!=0u){store_word(base+data_word(D_film_pass_object_id)*4u,0u);}
         if((flags&MASK_MATERIAL_ID)!=0u){store_word(base+data_word(D_film_pass_material_id)*4u,0u);}
         if((flags&MASK_POSITION)!=0u){let address=base+data_word(D_film_pass_position)*4u;store_word(address,0u);store_word(address+4u,0u);store_word(address+8u,0u);}
     }
+//#if SHADOW_CATCHER
+    if((flag&SC_PATH_BACKGROUND)!=0u){sc_background_continue(index,flag);return;}
+//#endif
     volume_write_depth(index);
     let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[(counter+DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND*4u)/4u],1u);
     state_u16(S_path_queued_kernel,index,0u);
 }
+//#if SHADOW_CATCHER
+// shade_background for PATH_RAY_SHADOW_CATCHER_BACKGROUND: the background behind
+// the shadow catcher is written, then the path continues with the shadow catcher
+// surface (integrator_intersect_next_kernel_after_shadow_catcher_volume, sorted).
+fn sc_background_continue(index:u32,flag:u32){
+    state_u32(S_path_flag,index,flag&~SC_PATH_BACKGROUND);
+    let prim=state_word(S_isect_prim,index);if(prim==NONE){fail();return;}
+    let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
+    if((load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags)&SD_HAS_RAYTRACE)!=0u){fail();return;}
+    let divisor=load_word(p(7u)+S_sort_partition_divisor);let key=shader+data_word(D_max_shaders)*(index/divisor);
+    if(key>=p(15u)){fail();return;}
+    let sort=load_word(p(7u)+S_sort_key_counter+DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE*POINTER_SIZE);
+    atomicAdd(&heap[(sort+key*4u)/4u],1u);state_u32(S_path_shader_sort_key,index,key);
+    let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[(counter+DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND*4u)/4u],1u);
+    atomicAdd(&heap[(counter+DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE*4u)/4u],1u);
+    state_u16(S_path_queued_kernel,index,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE);
+}
+//#endif
 //#if LIGHT_BACKGROUND
 fn background_mis_weight(index:u32,flag:u32)->f32{
     if(data_word(D_background_use_mis)==0u||(flag&PATH_RAY_MIS_SKIP)!=0u){return 1.0;}
     let direction=heap_vec3(state_address(S_ray_D,index,12u));
     let forward=heap_float(state_address(S_path_mis_ray_pdf,index,4u));
-    let pdf=bgl_pdf(direction)*data_float(D_integrator_distribution_pdf_lights);
+//#if LIGHT_TREE else let pdf=bgl_pdf(direction)*data_float(D_integrator_distribution_pdf_lights);
+    // light_sample_mis_weight_forward_background: the tree's selection pdf of the background light.
+    var selection=data_float(D_integrator_distribution_pdf_lights);if(data_word(LT_D_use_light_tree)!=0u){selection=light_tree_forward_read(index,0u);}
+    let pdf=bgl_pdf(direction)*selection;
+//#endif
     return rounded_divide(forward*forward,rounded_add(forward*forward,pdf*pdf));
 }
 // DEVICE_KERNEL_SHADER_EVAL_BACKGROUND (kernel_background_evaluate) for the

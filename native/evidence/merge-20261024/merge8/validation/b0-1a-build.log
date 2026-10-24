@@ -1,0 +1,821 @@
+-- Not using precompiled libraries
+-- Attempting to use system libraries instead
+CMake Warning (dev) at src/cmake/external_libs.cmake:443 (find_package):
+  Policy CMP0167 is not set: The FindBoost module is removed.  Run "cmake
+  --help-policy CMP0167" for policy details.  Use the cmake_policy command to
+  set the policy and suppress this warning.
+
+Call Stack (most recent call first):
+  CMakeLists.txt:257 (include)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- CodeBrix Cycles host 1.0.20261024.0, Cycles a456b761034dda42c32eef9f4aae0fa5a5c9f604
+-- Configuring done (0.1s)
+-- Generating done (0.3s)
+-- Build files have been written to: /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-build
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 21%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/queue.cpp.o
+[ 24%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/closest.cpp.o
+[ 24%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/shadow.cpp.o
+[ 24%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image.cpp.o
+[ 27%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.cpp.o
+[ 27%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/lighting.cpp.o
+[ 27%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp.o
+[ 27%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/camera.cpp.o
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp: In instantiation of ‘ccl::WebGPUDevice::mem_copy_to(ccl::device_memory&)::<lambda()>::<lambda(auto:42&)> [with auto:42 = std::vector<ccl::KernelObject>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:201:56:   required from here
+  201 |     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
+      |                                                    ~~~~^~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:195:39: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  195 |       if(mem.memory_size())std::memcpy(records.data(),mem.host_pointer,mem.memory_size());};
+      |                            ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/../bvh/params.h:13,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:3:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/../kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp: In function ‘unsigned int ccl::mnee_entry_of(const WebGPUDevice&, WGPUComputePipeline)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:247:3: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+  247 |   for(unsigned i=0;i<WebGPUDevice::mnee_entries;i++)if(d.mnee_pipelines[i].value&&actual==d.mnee_pipelines[i].value)return 27+i;return 35;}
+      |   ^~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.cpp:247:129: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+  247 |   for(unsigned i=0;i<WebGPUDevice::mnee_entries;i++)if(d.mnee_pipelines[i].value&&actual==d.mnee_pipelines[i].value)return 27+i;return 35;}
+      |                                                                                                                                 ^~~~~~
+[ 27%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/background.cpp.o
+[ 27%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface.cpp.o
+[ 29%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/shadow_catcher.cpp.o
+[ 29%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/mnee.cpp.o
+[ 29%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/volume.cpp.o
+[ 29%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_layout.cpp.o
+[ 32%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/pipelines.cpp.o
+[ 32%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device_tier.cpp.o
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/pipelines.cpp: In lambda function:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/pipelines.cpp:146:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+  146 |     if(saturate)v=std::min(std::max(v,0.f),1.f);return v>cutoff;};
+      |     ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/pipelines.cpp:146:49: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+  146 |     if(saturate)v=std::min(std::max(v,0.f),1.f);return v>cutoff;};
+      |                                                 ^~~~~~
+[ 32%] Building CXX object src/device/CMakeFiles/cycles_device.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/shader_data.cpp.o
+[ 32%] Linking CXX static library ../../lib/libcycles_device.a
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Linking CXX shared library lib/libcodebrix_cycles_host.so
+[100%] Built target codebrix_cycles_host
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Built target codebrix_cycles_host
+[100%] Linking C executable bin/codebrix_host_cpu_test
+[100%] Built target codebrix_host_cpu_test
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Built target codebrix_cycles_host
+[100%] Linking C executable bin/codebrix_host_gpu_test
+[100%] Built target codebrix_host_gpu_test
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Built target codebrix_cycles_host
+[100%] Linking C executable bin/codebrix_host_reload_test
+[100%] Built target codebrix_host_reload_test
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Built target codebrix_cycles_host
+[100%] Linking C executable bin/codebrix_host_concurrency_test
+[100%] Built target codebrix_host_concurrency_test
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Built target codebrix_cycles_host
+[ 97%] Linking C executable bin/codebrix_host_tier_test
+[100%] Built target codebrix_host_tier_test
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 16%] Built target codebrix_host_reference_color
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Linking CXX executable bin/codebrix_host_session_reference
+[100%] Built target codebrix_host_session_reference
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 16%] Built target codebrix_host_reference_color
+[ 18%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Linking CXX executable bin/codebrix_host_session64_reference
+[100%] Built target codebrix_host_session64_reference
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 15%] Built target cycles_util
+[ 18%] Built target codebrix_host_reference_color
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[100%] Linking CXX executable bin/codebrix_host_image_reference
+[100%] Built target codebrix_host_image_reference
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_device_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/gate.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_device_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/control_reference.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_device_gate
+[100%] Built target codebrix_cycles_device_gate
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_camera_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/camera_gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_camera_gate
+[100%] Built target codebrix_cycles_camera_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_closest_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/closest_reference.cpp.o
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_closest_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/closest_gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_closest_gate
+[100%] Built target codebrix_cycles_closest_gate
+[  2%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_background_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/background_gate.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_background_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/background_reference.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_background_gate
+[100%] Built target codebrix_cycles_background_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_svm_world_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_world_gate.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_svm_world_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/background_reference.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_svm_world_gate
+[100%] Built target codebrix_cycles_svm_world_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_shader_data_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/shader_data_reference.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_shader_data_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/shader_data_gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_shader_data_gate
+[100%] Built target codebrix_cycles_shader_data_gate
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_svm_surface_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp.o
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_svm_surface_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_reference.cpp.o
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp:4:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In function ‘std::vector<ccl::SurfaceSvmRecord> svm_reference_records(ccl::Scene&, const std::vector<ccl::IntegratorStateCPU>&, const std::vector<int>&, bool&)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:162:197: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelData’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  162 |     const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(&ds.data,kernel.data.data(),sizeof(ds.data));
+      |                                                                                                                                                                                          ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:13,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/wavefront_test.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:4:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1365:22: note: ‘struct ccl::KernelData’ declared here
+ 1365 | struct ccl_align(16) KernelData {
+      |                      ^~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::int4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::int4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:10,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:10:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_int4.h:13:26: note: ‘struct ccl::int4’ declared here
+   13 | struct ccl_try_align(16) int4 {
+      |                          ^~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelObject>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::float4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::float4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:26:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_float4.h:16:26: note: ‘struct ccl::float4’ declared here
+   16 | struct ccl_try_align(16) float4 {
+      |                          ^~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelImageTexture>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelImageTexture’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/memory.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:15:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_image.h:145:8: note: ‘struct ccl::KernelImageTexture’ declared here
+  145 | struct KernelImageTexture {
+      |        ^~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::DecomposedTransform>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::DecomposedTransform’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:11:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/transform.h:71:8: note: ‘struct ccl::DecomposedTransform’ declared here
+   71 | struct DecomposedTransform {
+      |        ^~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable bin/codebrix_cycles_svm_surface_gate
+[100%] Built target codebrix_cycles_svm_surface_gate
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_attribute_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/attribute_gate.cpp.o
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_attribute_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_reference.cpp.o
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/attribute_gate.cpp:3:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In function ‘std::vector<ccl::SurfaceSvmRecord> svm_reference_records(ccl::Scene&, const std::vector<ccl::IntegratorStateCPU>&, const std::vector<int>&, bool&)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:162:197: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelData’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  162 |     const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(&ds.data,kernel.data.data(),sizeof(ds.data));
+      |                                                                                                                                                                                          ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:13,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/wavefront_test.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:4:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1365:22: note: ‘struct ccl::KernelData’ declared here
+ 1365 | struct ccl_align(16) KernelData {
+      |                      ^~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::int4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::int4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:10,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:10:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_int4.h:13:26: note: ‘struct ccl::int4’ declared here
+   13 | struct ccl_try_align(16) int4 {
+      |                          ^~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelObject>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::float4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::float4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:26:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_float4.h:16:26: note: ‘struct ccl::float4’ declared here
+   16 | struct ccl_try_align(16) float4 {
+      |                          ^~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelImageTexture>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelImageTexture’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/memory.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:15:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_image.h:145:8: note: ‘struct ccl::KernelImageTexture’ declared here
+  145 | struct KernelImageTexture {
+      |        ^~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::DecomposedTransform>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::DecomposedTransform’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:11:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/transform.h:71:8: note: ‘struct ccl::DecomposedTransform’ declared here
+   71 | struct DecomposedTransform {
+      |        ^~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable bin/codebrix_cycles_attribute_gate
+[100%] Built target codebrix_cycles_attribute_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 15%] Built target cycles_util
+[ 21%] Built target cycles_graph
+[ 18%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_normal_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_reference.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_normal_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/normal_gate.cpp.o
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/normal_gate.cpp:3:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In function ‘std::vector<ccl::SurfaceSvmRecord> svm_reference_records(ccl::Scene&, const std::vector<ccl::IntegratorStateCPU>&, const std::vector<int>&, bool&)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:162:197: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelData’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  162 |     const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(&ds.data,kernel.data.data(),sizeof(ds.data));
+      |                                                                                                                                                                                          ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:13,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/wavefront_test.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:4:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1365:22: note: ‘struct ccl::KernelData’ declared here
+ 1365 | struct ccl_align(16) KernelData {
+      |                      ^~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::int4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::int4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:10,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:10:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_int4.h:13:26: note: ‘struct ccl::int4’ declared here
+   13 | struct ccl_try_align(16) int4 {
+      |                          ^~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelObject>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::float4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::float4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:26:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_float4.h:16:26: note: ‘struct ccl::float4’ declared here
+   16 | struct ccl_try_align(16) float4 {
+      |                          ^~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelImageTexture>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelImageTexture’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/memory.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:15:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_image.h:145:8: note: ‘struct ccl::KernelImageTexture’ declared here
+  145 | struct KernelImageTexture {
+      |        ^~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::DecomposedTransform>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::DecomposedTransform’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:11:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/transform.h:71:8: note: ‘struct ccl::DecomposedTransform’ declared here
+   71 | struct DecomposedTransform {
+      |        ^~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable bin/codebrix_cycles_normal_gate
+[100%] Built target codebrix_cycles_normal_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_image_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_sampling_reference.cpp.o
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_image_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_gate.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_image_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_reference.cpp.o
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_gate.cpp:3:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In function ‘std::vector<ccl::SurfaceSvmRecord> svm_reference_records(ccl::Scene&, const std::vector<ccl::IntegratorStateCPU>&, const std::vector<int>&, bool&)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:162:197: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelData’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  162 |     const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(&ds.data,kernel.data.data(),sizeof(ds.data));
+      |                                                                                                                                                                                          ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:13,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/wavefront_test.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:4:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1365:22: note: ‘struct ccl::KernelData’ declared here
+ 1365 | struct ccl_align(16) KernelData {
+      |                      ^~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_gate.cpp: In function ‘uint64_t sample_gate(ccl::WebGPUDevice&, ccl::Scene&, const std::vector<ccl::ImageHandle>&, const std::string&, double&, uint64_t&, unsigned int&)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_gate.cpp:94:5: warning: this ‘for’ clause does not guard... [-Wmisleading-indentation]
+   94 |     for(uint v:guard)require(v==0xa5a5a5a5,"Rejected image wrote output");d.zero(d.error_word,4);rejected++;
+      |     ^~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_gate.cpp:94:75: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘for’
+   94 |     for(uint v:guard)require(v==0xa5a5a5a5,"Rejected image wrote output");d.zero(d.error_word,4);rejected++;
+      |                                                                           ^
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::int4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::int4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:10,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:10:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_int4.h:13:26: note: ‘struct ccl::int4’ declared here
+   13 | struct ccl_try_align(16) int4 {
+      |                          ^~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelObject>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::float4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::float4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:26:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_float4.h:16:26: note: ‘struct ccl::float4’ declared here
+   16 | struct ccl_try_align(16) float4 {
+      |                          ^~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelImageTexture>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelImageTexture’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/memory.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:15:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_image.h:145:8: note: ‘struct ccl::KernelImageTexture’ declared here
+  145 | struct KernelImageTexture {
+      |        ^~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::DecomposedTransform>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::DecomposedTransform’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:11:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/transform.h:71:8: note: ‘struct ccl::DecomposedTransform’ declared here
+   71 | struct DecomposedTransform {
+      |        ^~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable bin/codebrix_cycles_image_gate
+[100%] Built target codebrix_cycles_image_gate
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_image_file_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_file_gate.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_image_file_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/image_sampling_reference.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_image_file_gate
+[100%] Built target codebrix_cycles_image_file_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[100%] Building CXX object CMakeFiles/codebrix_cycles_surface_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_gate.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_surface_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_reference.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_surface_gate
+[100%] Built target codebrix_cycles_surface_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_microfacet_svm_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_microfacet_svm_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_reference.cpp.o
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/svm_surface_gate.cpp:4:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In function ‘std::vector<ccl::SurfaceSvmRecord> svm_reference_records(ccl::Scene&, const std::vector<ccl::IntegratorStateCPU>&, const std::vector<int>&, bool&)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:162:197: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelData’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  162 |     const auto &kernel=records.at("KernelData");if(kernel.element!=sizeof(ds.data)||kernel.data.size()!=sizeof(ds.data))throw std::runtime_error("SVM exchange KernelData size differs");std::memcpy(&ds.data,kernel.data.data(),sizeof(ds.data));
+      |                                                                                                                                                                                          ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:13,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:12,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/device.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/wavefront_test.h:4,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:4:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1365:22: note: ‘struct ccl::KernelData’ declared here
+ 1365 | struct ccl_align(16) KernelData {
+      |                      ^~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::int4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::int4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/math.h:7,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:10,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/bvh/params.h:10:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_int4.h:13:26: note: ‘struct ccl::int4’ declared here
+   13 | struct ccl_try_align(16) int4 {
+      |                          ^~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelObject>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelObject’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/kernel/types.h:1410:8: note: ‘struct ccl::KernelObject’ declared here
+ 1410 | struct KernelObject {
+      |        ^~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::float4>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::float4’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types.h:26:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_float4.h:16:26: note: ‘struct ccl::float4’ declared here
+   16 | struct ccl_try_align(16) float4 {
+      |                          ^~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::KernelImageTexture>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::KernelImageTexture’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/device/memory.h:15,
+                 from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/cycles-overlay/device/device.h:15:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/types_image.h:145:8: note: ‘struct ccl::KernelImageTexture’ declared here
+  145 | struct KernelImageTexture {
+      |        ^~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h: In instantiation of ‘void svm_exchange_apply(V&, const std::map<std::__cxx11::basic_string<char>, SvmExchangeRecord>&, const std::string&) [with V = ccl::device_vector<ccl::DecomposedTransform>; std::string = std::__cxx11::basic_string<char>]’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:158:7:   required from here
+  157 | #define CBC_SVM_TABLE(name,type) svm_exchange_apply(ds.name,tables,#name);
+      |                                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_svm_test.h:131:115: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘struct ccl::DecomposedTransform’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+  131 |   const size_t count=it->second.data.size()/element;if(table.size()!=count)table.alloc(count);if(count)std::memcpy(table.data(),it->second.data.data(),count*element);
+      |                                                                                                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/boundbox.h:11:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/third_party/cycles/src/util/transform.h:71:8: note: ‘struct ccl::DecomposedTransform’ declared here
+   71 | struct DecomposedTransform {
+      |        ^~~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable bin/codebrix_cycles_microfacet_svm_gate
+[100%] Built target codebrix_cycles_microfacet_svm_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_microfacet_bounce_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_reference.cpp.o
+[100%] Building CXX object CMakeFiles/codebrix_cycles_microfacet_bounce_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_gate.cpp.o
+[100%] Linking CXX executable bin/codebrix_cycles_microfacet_bounce_gate
+[100%] Built target codebrix_cycles_microfacet_bounce_gate
+[  2%] Built target extern_sky
+[  2%] Built target extern_libc_compat
+[ 15%] Built target cycles_util
+[ 18%] Built target cycles_graph
+[ 21%] Built target cycles_kernel_cpu
+[ 44%] Built target cycles_device
+[ 47%] Built target cycles_session
+[ 60%] Built target cycles_integrator
+[ 65%] Built target cycles_subd
+[ 89%] Built target cycles_scene
+[ 97%] Built target cycles_bvh
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_microfacet_render_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/closest_reference.cpp.o
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_microfacet_render_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/background_reference.cpp.o
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_microfacet_render_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_gate.cpp.o
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_microfacet_render_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_reference.cpp.o
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_gate.cpp:5:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_capture.h: In member function ‘void RenderCapture::finish(const std::string&, uint32_t, size_t, uint32_t, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, const char*)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_capture.h:64:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   64 |     if(!first)meta<<',';auto data=device.constants.at("data");meta<<"{\"name\":\"KernelData\",\"offset\":"<<data<<",\"bytes\":"<<device.remaining(data)<<"}]}\n";
+      |     ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_capture.h:64:25: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   64 |     if(!first)meta<<',';auto data=device.constants.at("data");meta<<"{\"name\":\"KernelData\",\"offset\":"<<data<<",\"bytes\":"<<device.remaining(data)<<"}]}\n";
+      |                         ^~~~
+[ 97%] Linking CXX executable bin/codebrix_cycles_microfacet_render_gate
+[100%] Built target codebrix_cycles_microfacet_render_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 15%] Built target cycles_util
+[ 17%] Built target cycles_kernel_cpu
+[ 20%] Built target cycles_graph
+[ 43%] Built target cycles_device
+[ 46%] Built target cycles_session
+[ 58%] Built target cycles_integrator
+[ 64%] Built target cycles_subd
+[ 87%] Built target cycles_scene
+[ 94%] Built target cycles_bvh
+[ 94%] Building CXX object CMakeFiles/codebrix_cycles_render_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/background_reference.cpp.o
+[ 94%] Building CXX object CMakeFiles/codebrix_cycles_render_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/closest_reference.cpp.o
+[ 94%] Building CXX object CMakeFiles/codebrix_cycles_render_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_gate.cpp.o
+[ 97%] Building CXX object CMakeFiles/codebrix_cycles_render_gate.dir/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/surface_reference.cpp.o
+In file included from /home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_gate.cpp:5:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_capture.h: In member function ‘void RenderCapture::finish(const std::string&, uint32_t, size_t, uint32_t, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, const char*)’:
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_capture.h:64:5: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+   64 |     if(!first)meta<<',';auto data=device.constants.at("data");meta<<"{\"name\":\"KernelData\",\"offset\":"<<data<<",\"bytes\":"<<device.remaining(data)<<"}]}\n";
+      |     ^~
+/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/cycles/render_capture.h:64:25: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+   64 |     if(!first)meta<<',';auto data=device.constants.at("data");meta<<"{\"name\":\"KernelData\",\"offset\":"<<data<<",\"bytes\":"<<device.remaining(data)<<"}]}\n";
+      |                         ^~~~
+[100%] Linking CXX executable bin/codebrix_cycles_render_gate
+[100%] Built target codebrix_cycles_render_gate
+[  0%] Built target extern_libc_compat
+[  2%] Built target extern_sky
+[ 16%] Built target cycles_util
+[ 18%] Built target cycles_kernel_cpu
+[ 21%] Built target cycles_graph
+[ 45%] Built target cycles_device
+[ 48%] Built target cycles_session
+[ 62%] Built target cycles_integrator
+[ 67%] Built target cycles_subd
+[ 91%] Built target cycles_scene
+[100%] Built target cycles_bvh
+[100%] Linking CXX executable bin/codebrix_cycles_atomic_film_gate
+[100%] Built target codebrix_cycles_atomic_film_gate

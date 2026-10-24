@@ -28,7 +28,8 @@ GATE_TARGETS = ['codebrix_cycles_'+name+'_gate' for name in
     ['device', 'camera', 'closest', 'background', 'svm_world', 'shader_data', 'svm_surface',
      'attribute', 'normal', 'image', 'image_file', 'surface', 'microfacet_svm',
      'microfacet_bounce', 'microfacet_render', 'render', 'atomic_film', 'principled_svm',
-     'transparent_shadow', 'environment']]
+     'transparent_shadow', 'environment', 'light_tree', 'shadow_catcher', 'ao_state', 'ao_render', 'mnee',
+     'mnee_render']]
 
 
 def prepare_source(work):

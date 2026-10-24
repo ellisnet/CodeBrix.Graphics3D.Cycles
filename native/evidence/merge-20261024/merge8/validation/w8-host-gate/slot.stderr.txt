@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/host_gate.py", line 226, in <module>
+    main()
+    ~~~~^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/host_gate.py", line 148, in main
+    rows = report(['dotnet', managed['ColorReload'], managed['ImageModes'], refs, managed_reload], 'managed-reload')
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/host_gate.py", line 51, in report
+    rows = [json.loads(line) for line in call(command, name, timeout).splitlines() if line.strip()]
+                                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/host_gate.py", line 46, in call
+    subprocess.run(command, cwd=REPO, env=environment, stdout=stdout, stderr=stderr,
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   check=True, timeout=timeout)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['dotnet', PosixPath('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/ColorReload/bin/Release/net10.0/ColorReload.dll'), PosixPath('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/tools/hosttests/ImageModes/bin/Release/net10.0/ImageModes.dll'), PosixPath('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/w8-host-gate/out/references'), PosixPath('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/w8-host-gate/out/managed-reload')]' died with <Signals.SIGABRT: 6>.

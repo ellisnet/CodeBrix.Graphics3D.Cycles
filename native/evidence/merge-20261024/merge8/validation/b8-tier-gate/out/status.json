@@ -1,0 +1,766 @@
+{
+  "complete": true,
+  "passed": true,
+  "scenarios": {
+    "fresh-no-record": {
+      "seconds": 8.5,
+      "tier": "full",
+      "reason": "default",
+      "detail": "first run on this device: full fidelity",
+      "recordStatus": "absent",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/a/codebrix-cycles-device-146d54c185ae5bf8.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [
+        "full"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "full",
+      "afterReason": "default",
+      "degraded": false,
+      "pipelineWarnings": 0,
+      "filmSha256": "4be2d96dbfcbee649112db1090e7a3b2d2d995980799e69e00df2e6a935f9a30"
+    },
+    "second-run-record-full": {
+      "seconds": 0.3,
+      "tier": "full",
+      "reason": "record",
+      "detail": "8 full-tier pipeline compiles recorded without a failure or breadcrumb",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/a/codebrix-cycles-device-146d54c185ae5bf8.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [
+        "full"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "full",
+      "afterReason": "record",
+      "degraded": false,
+      "pipelineWarnings": 0,
+      "filmSha256": "e5fccb9fa15def481627a11f71382c1938b7ed10942375876f2086d1f3a46c94"
+    },
+    "crash-in-prepare-surface": {
+      "crashed": true,
+      "returncode": -6,
+      "seconds": 0.4656558239948936
+    },
+    "breadcrumb-selects-conservative": {
+      "seconds": 3.4,
+      "tier": "conservative",
+      "reason": "record",
+      "detail": "crash breadcrumb while creating 'prepare_surface' (surface, signal 6)",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/b/codebrix-cycles-device-9511d574d540302a.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [
+        "breadcrumb from an earlier run: the process ended while creating 'prepare_surface' (surface, full tier, signal 6)"
+      ],
+      "pipelineTiers": [
+        "conservative"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "conservative",
+      "afterReason": "record",
+      "degraded": true,
+      "pipelineWarnings": 1,
+      "filmSha256": "916fd9517e1a4fe3f2dee7f0106c85e3b28b8a5dbbe2543750ef7b19ea23dbfb"
+    },
+    "override-full-over-record": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "override",
+      "detail": "full tier requested",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/b/codebrix-cycles-device-9511d574d540302a.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "ignore-record": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "default",
+      "detail": "no device record: full fidelity",
+      "recordStatus": "valid",
+      "recordMode": "ignore",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/b/codebrix-cycles-device-9511d574d540302a.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "record-off": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "default",
+      "detail": "no device record: full fidelity",
+      "recordStatus": "off",
+      "recordMode": "off",
+      "recordPath": "",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "host-record-off-flag": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "default",
+      "detail": "no device record: full fidelity",
+      "recordStatus": "off",
+      "recordMode": "off",
+      "recordPath": "",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "environment-record-dir": {
+      "seconds": 0.1,
+      "tier": "conservative",
+      "reason": "record",
+      "detail": "crash breadcrumb while creating 'prepare_surface' (surface, signal 6)",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/b/codebrix-cycles-device-9511d574d540302a.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "stale-shader-hash": {
+      "seconds": 0.3,
+      "tier": "full",
+      "reason": "default",
+      "detail": "no device record: full fidelity",
+      "recordStatus": "stale-shader-hash",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/stale-shader-hash/codebrix-cycles-device-9511d574d540302a.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [
+        "device record ignored (stale-shader-hash); it is replaced by this run's record"
+      ],
+      "pipelineTiers": [
+        "full"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "full",
+      "afterReason": "default",
+      "degraded": false,
+      "pipelineWarnings": 0,
+      "filmSha256": "c4717793c06939ba0ed3bf13423b86d1f992b2ec77445592e9d7ce31da949620"
+    },
+    "stale-runtime": {
+      "seconds": 0.3,
+      "tier": "full",
+      "reason": "default",
+      "detail": "no device record: full fidelity",
+      "recordStatus": "stale-runtime",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/stale-runtime/codebrix-cycles-device-9511d574d540302a.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [
+        "device record ignored (stale-runtime); it is replaced by this run's record"
+      ],
+      "pipelineTiers": [
+        "full"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "full",
+      "afterReason": "default",
+      "degraded": false,
+      "pipelineWarnings": 0,
+      "filmSha256": "ccdbc8851fc7bd057977ab5d1a3fb2e91c49e1877ad4b97e46868fea9c281cd4"
+    },
+    "table-adreno-640": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "table",
+      "detail": "Pixel 4 XL Adreno 640: Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)",
+      "recordStatus": "none",
+      "recordMode": "none",
+      "recordPath": "",
+      "budgetMs": 20000,
+      "budgetSource": "table",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "table-adreno-730": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "table",
+      "detail": "Samsung SM-X700 Adreno 730: full-fidelity proof device (2026-10-19 policy)",
+      "recordStatus": "none",
+      "recordMode": "none",
+      "recordPath": "",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "table-intel-xe-mesa-24.0.8": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "table",
+      "detail": "HP Intel Xe (Mesa 24.0.8, Android x64): B3 2026-10-19: every specialized and all-handler stage compiles",
+      "recordStatus": "none",
+      "recordMode": "none",
+      "recordPath": "",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "table-real-linux-adapter": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "table",
+      "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+      "recordStatus": "none",
+      "recordMode": "none",
+      "recordPath": "",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "unknown-mobile-tighter-budget": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "default",
+      "detail": "no device record: full fidelity",
+      "recordStatus": "none",
+      "recordMode": "none",
+      "recordPath": "",
+      "budgetMs": 20000,
+      "budgetSource": "unknown-mobile",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "unknown-desktop": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "default",
+      "detail": "no device record: full fidelity",
+      "recordStatus": "none",
+      "recordMode": "none",
+      "recordPath": "",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "table-adreno-640-render": {
+      "seconds": 0.3,
+      "tier": "full",
+      "reason": "table",
+      "detail": "Pixel 4 XL Adreno 640: Phase C close-out 2026-10-20: full tier passes the practical criterion; old-hardware gauge, tighter 20 s compile budget (warnings only)",
+      "recordStatus": "absent",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/c/codebrix-cycles-device-f0bba91b654309d0.txt",
+      "budgetMs": 20000,
+      "budgetSource": "table",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [
+        "full"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "full",
+      "afterReason": "table",
+      "degraded": false,
+      "pipelineWarnings": 0,
+      "filmSha256": "86a7815d87383ce3acd4130cfbe5b5c5e35d8e40b6d903699c0e17936adec703"
+    },
+    "table-adreno-640-record-full": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "record",
+      "detail": "8 full-tier pipeline compiles recorded without a failure or breadcrumb",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/c/codebrix-cycles-device-f0bba91b654309d0.txt",
+      "budgetMs": 20000,
+      "budgetSource": "table",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "adreno-640-crash-in-prepare-surface": {
+      "crashed": true,
+      "returncode": -6,
+      "seconds": 0.4658960349916015
+    },
+    "record-overrides-table": {
+      "seconds": 0.1,
+      "tier": "conservative",
+      "reason": "record",
+      "detail": "crash breadcrumb while creating 'prepare_surface' (surface, signal 6)",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/c/codebrix-cycles-device-f0bba91b654309d0.txt",
+      "budgetMs": 20000,
+      "budgetSource": "table",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [
+        "breadcrumb from an earlier run: the process ended while creating 'prepare_surface' (surface, full tier, signal 6)"
+      ],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "host-opt-in-conservative": {
+      "seconds": 0.1,
+      "tier": "conservative",
+      "reason": "opt-in",
+      "detail": "conservative tier requested",
+      "recordStatus": "none",
+      "recordMode": "none",
+      "recordPath": "",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "canary-pass": {
+      "seconds": 1.3,
+      "tier": "full",
+      "reason": "default",
+      "detail": "first run on this device: full fidelity",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/d/codebrix-cycles-device-68df80d5f202a431.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": true,
+        "result": "passed",
+        "ms": 1022.02,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [
+        "full"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "full",
+      "afterReason": "default",
+      "degraded": false,
+      "pipelineWarnings": 0,
+      "filmSha256": "a2e57b207e1a5c7efafe011409262de0bcb48dcb87d0c516c910e65422c36da8"
+    },
+    "canary-disabled-by-environment": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "record",
+      "detail": "9 full-tier pipeline compiles recorded without a failure or breadcrumb",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/d/codebrix-cycles-device-68df80d5f202a431.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "canary-slow-warns-only": {
+      "seconds": 0.3,
+      "tier": "full",
+      "reason": "record",
+      "detail": "9 full-tier pipeline compiles recorded without a failure or breadcrumb",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/d/codebrix-cycles-device-68df80d5f202a431.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": true,
+        "result": "slow",
+        "ms": 23.3928,
+        "detail": "init canary took 23 ms, over the 1 ms canary budget; the tier is unchanged (full); first-use latency is degraded on this driver"
+      },
+      "warnings": [],
+      "pipelineTiers": [
+        "full"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "full",
+      "afterReason": "record",
+      "degraded": true,
+      "pipelineWarnings": 1,
+      "filmSha256": "c88dab7f7c59574ebedaf5048d284cbf3ca1dac3e04ac3c65f515af50d932ac6"
+    },
+    "canary-failure": {
+      "seconds": 0.3,
+      "tier": "conservative",
+      "reason": "canary",
+      "detail": "init canary failed: GPU validation: Validation Error  Caused by:   In wgpuDeviceCreateShaderModule      Shader '' parsing error: expected identifier, found \"{\"      \u250c\u2500 wgsl:5225:29      \u2502 5225 \u2502 fn codebrix_canary_invalid( {      \u2502                             ^ expected identifier   ",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/e/codebrix-cycles-device-d57c79cb30093c24.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": true,
+        "result": "failed",
+        "ms": 12.9379,
+        "detail": "GPU validation: Validation Error  Caused by:   In wgpuDeviceCreateShaderModule      Shader '' parsing error: expected identifier, found \"{\"      \u250c\u2500 wgsl:5225:29      \u2502 5225 \u2502 fn codebrix_canary_invalid( {      \u2502                             ^ expected identifier   "
+      },
+      "warnings": [],
+      "pipelineTiers": [
+        "conservative"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "conservative",
+      "afterReason": "canary",
+      "degraded": true,
+      "pipelineWarnings": 1,
+      "filmSha256": "9701404bcd956443ee886d634406ff5c7c2f52bb5234f5f7e141ba8a73dbec7c"
+    },
+    "canary-failure-recorded": {
+      "seconds": 0.1,
+      "tier": "conservative",
+      "reason": "record",
+      "detail": "pipeline creation failure in 'prepare_surface' (canary): GPU validation: Validation Error  Caused by:   In wgpuDeviceCreateShaderModule      Shader '' parsing error: expected identifier, found \"{\"      \u250c\u2500 wgsl:5225:29      \u2502 5225 \u2502 fn codebrix_canary_invalid( {      \u2502                             ^ expected identifier   ",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/e/codebrix-cycles-device-d57c79cb30093c24.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    },
+    "canary-crash": {
+      "crashed": true,
+      "returncode": -6,
+      "seconds": 0.31525826299912296
+    },
+    "canary-breadcrumb-selects-conservative": {
+      "seconds": 0.3,
+      "tier": "conservative",
+      "reason": "record",
+      "detail": "crash breadcrumb while creating 'prepare_surface' (canary, signal 6)",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/f/codebrix-cycles-device-d57c79cb30093c24.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": true,
+        "result": "skipped",
+        "ms": 0,
+        "detail": "conservative tier already selected"
+      },
+      "warnings": [
+        "breadcrumb from an earlier run: the process ended while creating 'prepare_surface' (canary, full tier, signal 6)"
+      ],
+      "pipelineTiers": [
+        "conservative"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "conservative",
+      "afterReason": "record",
+      "degraded": true,
+      "pipelineWarnings": 1,
+      "filmSha256": "f43be5fd435aeb4da478d68a518a958f2baa3fd9784f0074fc1a50e27a5b42f7"
+    },
+    "slow-compile-no-switch": {
+      "seconds": 0.3,
+      "tier": "full",
+      "reason": "default",
+      "detail": "first run on this device: full fidelity",
+      "recordStatus": "absent",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/g/codebrix-cycles-device-146d54c185ae5bf8.txt",
+      "budgetMs": 1,
+      "budgetSource": "environment",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [
+        "full"
+      ],
+      "compiledPipelines": 8,
+      "afterTier": "full",
+      "afterReason": "default",
+      "degraded": true,
+      "pipelineWarnings": 8,
+      "filmSha256": "003f3fffd7132e00d2443ac02c120ee082e4f773d43413e9643fe361b5aea16d",
+      "pipelinesOverBudget": 8
+    },
+    "slow-compile-next-run": {
+      "seconds": 0.1,
+      "tier": "full",
+      "reason": "record",
+      "detail": "8 full-tier pipeline compiles recorded without a failure or breadcrumb",
+      "recordStatus": "valid",
+      "recordMode": "read-write",
+      "recordPath": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/merge8/validation/b8-tier-gate/out/records/g/codebrix-cycles-device-146d54c185ae5bf8.txt",
+      "budgetMs": 60000,
+      "budgetSource": "default",
+      "canary": {
+        "enabled": false,
+        "result": "not-run",
+        "ms": 0,
+        "detail": ""
+      },
+      "warnings": [],
+      "pipelineTiers": [],
+      "compiledPipelines": 0
+    }
+  },
+  "filmComparisons": {
+    "fresh-no-record": {
+      "tier": "full",
+      "filmSha256": "4be2d96dbfcbee649112db1090e7a3b2d2d995980799e69e00df2e6a935f9a30",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "second-run-record-full": {
+      "tier": "full",
+      "filmSha256": "e5fccb9fa15def481627a11f71382c1938b7ed10942375876f2086d1f3a46c94",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "breadcrumb-selects-conservative": {
+      "tier": "conservative",
+      "filmSha256": "916fd9517e1a4fe3f2dee7f0106c85e3b28b8a5dbbe2543750ef7b19ea23dbfb",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "stale-shader-hash": {
+      "tier": "full",
+      "filmSha256": "c4717793c06939ba0ed3bf13423b86d1f992b2ec77445592e9d7ce31da949620",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "stale-runtime": {
+      "tier": "full",
+      "filmSha256": "ccdbc8851fc7bd057977ab5d1a3fb2e91c49e1877ad4b97e46868fea9c281cd4",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "table-adreno-640-render": {
+      "tier": "full",
+      "filmSha256": "86a7815d87383ce3acd4130cfbe5b5c5e35d8e40b6d903699c0e17936adec703",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "canary-pass": {
+      "tier": "full",
+      "filmSha256": "a2e57b207e1a5c7efafe011409262de0bcb48dcb87d0c516c910e65422c36da8",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "canary-slow-warns-only": {
+      "tier": "full",
+      "filmSha256": "c88dab7f7c59574ebedaf5048d284cbf3ca1dac3e04ac3c65f515af50d932ac6",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "canary-failure": {
+      "tier": "conservative",
+      "filmSha256": "9701404bcd956443ee886d634406ff5c7c2f52bb5234f5f7e141ba8a73dbec7c",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "canary-breadcrumb-selects-conservative": {
+      "tier": "conservative",
+      "filmSha256": "f43be5fd435aeb4da478d68a518a958f2baa3fd9784f0074fc1a50e27a5b42f7",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    },
+    "slow-compile-no-switch": {
+      "tier": "full",
+      "filmSha256": "003f3fffd7132e00d2443ac02c120ee082e4f773d43413e9643fe361b5aea16d",
+      "maximumAbsoluteError": 2.9802322387695312e-08,
+      "practicalFailures": 0,
+      "strictDifferences": 0
+    }
+  },
+  "fullTierFilmHashes": [
+    "003f3fffd7132e00d2443ac02c120ee082e4f773d43413e9643fe361b5aea16d",
+    "4be2d96dbfcbee649112db1090e7a3b2d2d995980799e69e00df2e6a935f9a30",
+    "86a7815d87383ce3acd4130cfbe5b5c5e35d8e40b6d903699c0e17936adec703",
+    "a2e57b207e1a5c7efafe011409262de0bcb48dcb87d0c516c910e65422c36da8",
+    "c4717793c06939ba0ed3bf13423b86d1f992b2ec77445592e9d7ce31da949620",
+    "c88dab7f7c59574ebedaf5048d284cbf3ca1dac3e04ac3c65f515af50d932ac6",
+    "ccdbc8851fc7bd057977ab5d1a3fb2e91c49e1877ad4b97e46868fea9c281cd4",
+    "e5fccb9fa15def481627a11f71382c1938b7ed10942375876f2086d1f3a46c94"
+  ],
+  "conservativeTierFilmHashes": [
+    "916fd9517e1a4fe3f2dee7f0106c85e3b28b8a5dbbe2543750ef7b19ea23dbfb",
+    "9701404bcd956443ee886d634406ff5c7c2f52bb5234f5f7e141ba8a73dbec7c",
+    "f43be5fd435aeb4da478d68a518a958f2baa3fd9784f0074fc1a50e27a5b42f7"
+  ],
+  "maximumStrictDifferencesAgainstCpu": 0,
+  "maximumAbsoluteErrorAgainstCpu": 2.9802322387695312e-08,
+  "cpuReferenceSha256": "a9a2d6e73a36185a3d2aa8dbb0c54b0dd0703c76dcb28a1e6f8e5fe4189a3a95"
+}

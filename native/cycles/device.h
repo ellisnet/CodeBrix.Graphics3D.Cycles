@@ -43,6 +43,9 @@ class WebGPUDevice final:public Device {
   // Exact native table copies for capability validation; sampling remains on GPU.
   std::vector<KernelLight> light_records;
   std::vector<KernelLightDistribution> light_distribution_records;
+  // Light tree host copies (validate_light_tree; lighting.cpp).
+  std::vector<KernelLightTreeNode> light_tree_nodes;
+  std::vector<KernelLightTreeEmitter> light_tree_emitters;
   std::vector<KernelShader> shader_records;
   std::vector<KernelObject> object_records;
   std::vector<uint> object_flag_records;
@@ -91,12 +94,17 @@ class WebGPUDevice final:public Device {
   ShaderFeatures shader_features();
   std::string module_wgsl(const std::string &source);
   bool pipeline_current(const cbc::Pipeline &pipeline,const char *entry);
-  std::vector<cbc::Pipeline> build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries);
+  // extra: regions compiled in beyond the scene features (the AO node's
+  // traversal for the raytrace surface queue, SVM_NODE_RAYTRACE).
+  std::vector<cbc::Pipeline> build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries,ShaderFeatures extra=SF_NONE);
   std::string pipeline_report_json() const;
   std::string adapter_report_json() const;
   void validate_geometry_motion() const;
   void validate_lighting(bool sampling) const;
+  void validate_light_tree() const;
   void validate_volume() const;
+  // Ambient occlusion shadow paths (shadow.cpp; surface stage ray setup in surface.cpp).
+  void validate_ao_shadow(bool shading,uint32_t capacity) const;
   IntegratorStateGPU state{};
   uint32_t fields=0,field_count=0,error_word=0;
   // SVM value stacks (wavefront_svm.wgsl): one slot of svm_stack_words words per
@@ -134,8 +142,27 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline surface_light;
   // Emissive-triangle half of the light stage (LIGHT_TRIANGLE scenes only; surface.cpp).
   cbc::Pipeline surface_light_triangle;
+  cbc::Pipeline surface_light_select;
+  // Light tree forward pdfs (background module) and their per-path scratch.
+  cbc::Pipeline light_tree_forward;uint32_t light_tree_forward_scratch=0;size_t light_tree_forward_bytes=0;
   cbc::Pipeline surface_connect;
+  // DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE: the surface module specialized
+  // with SVM_NODE_RAYTRACE (AO node traversal); its other stages are shared.
+  cbc::Pipeline surface_prepare_raytrace;
   uint32_t surface_closures=0;size_t surface_closure_bytes=0;
+  // Shadow catcher split (shadow_catcher.cpp): per-path marks and the split module.
+  cbc::Pipeline sc_assign,sc_split,sc_count;
+  uint32_t sc_marks=0;size_t sc_mark_bytes=0;
+  void validate_shadow_catcher() const;
+  uint32_t shadow_catcher_marks(uint32_t capacity);
+  void shadow_catcher_pipelines();
+  void split_shadow_catcher(uint32_t capacity);
+  void enqueue_shadow_catcher_count(int,const DeviceKernelArguments&);
+  // Manifold next-event estimation: the seven INTERSECT_MNEE entries, the surface
+  // stage's cleanup entry and their GPU-private per-path records.
+  static constexpr unsigned mnee_entries=7;
+  std::array<cbc::Pipeline,mnee_entries> mnee_pipelines;cbc::Pipeline mnee_cleanup;
+  uint32_t mnee_records=0;size_t mnee_record_bytes_allocated=0;
   std::map<uint32_t,device_image*> images;
   bool image_info_dirty=false;
   uint32_t image_info_address=0,image_bounds_address=0;
@@ -174,7 +201,10 @@ class WebGPUDevice final:public Device {
   void enqueue_volume_density(int,const DeviceKernelArguments&);
   void enqueue_volume_stack(int,const DeviceKernelArguments&);
   void enqueue_volume(int,const DeviceKernelArguments&);
-  void enqueue_surface(int,const DeviceKernelArguments&);
+  void enqueue_surface(int,const DeviceKernelArguments&,DeviceKernel=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE);
+  // DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE (mnee.cpp, wavefront_mnee.wgsl).
+  void enqueue_mnee(int,const DeviceKernelArguments&);
+  void validate_mnee() const;
   void update_state(const IntegratorStateGPU&);
   uint32_t scene_tables();
   // Host recovery (Phase E3, native/host ABI.md "Device errors"): clears a

@@ -90,8 +90,8 @@ buffers, callbacks and queries.
 | Passes/AOVs | `HostOutput` copies every named caller pass from the same complete tile as Combined; `cbc_host_pass_floats`, `cbc_host_render_passes_json` |
 
 Known limits found while closing them (see ABI.md): the WebGPU device writes
-only Combined, only supports the perspective camera and needs the integrator's
-denoising, adaptive sampling, guiding and light tree switched off.
+only Combined, AO and the shadow catcher passes, only supports the perspective camera and needs the integrator's
+denoising, adaptive sampling and guiding switched off.
 
 Phase E3 closed three of the original limits. Edits after a render apply as for
 a scene built with them (`host_edits.inc`: the host keeps the authored

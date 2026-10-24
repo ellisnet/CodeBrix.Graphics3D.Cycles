@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+# Copyright (c) 2026 Jeremy Ellis and contributors
+# SPDX-License-Identifier: Apache-2.0
+"""Build the maintained native Cycles host and gates for Android API 33."""
+import argparse
+import difflib
+import importlib.util
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+from build import REPO, ROOT, WORK, SOURCE, PACKAGE, verify_cycles, audit
+from build_cycles import overlay
+from device_gate import sha, save
+from render_gate import inputs
+from android_toolchain import AndroidToolchain, TARGETS, environment
+from rebase_build_tree import rebase, verify as verify_rebase
+
+spec = importlib.util.spec_from_file_location('codebrix_android_dependencies', REPO/'tools/dependencies/build_android.py')
+dependencies = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(dependencies)
+
+HOST_TARGETS = ['codebrix_cycles_host', *['codebrix_host_'+name for name in
+    ['cpu_test', 'gpu_test', 'reload_test', 'concurrency_test', 'session_reference',
+     'session64_reference', 'image_reference']]]
+GATE_TARGETS = ['codebrix_cycles_'+name+'_gate' for name in
+    ['device', 'camera', 'closest', 'background', 'svm_world', 'shader_data', 'svm_surface',
+     'attribute', 'normal', 'image', 'image_file', 'surface', 'microfacet_svm',
+     'microfacet_bounce', 'microfacet_render', 'render', 'atomic_film', 'principled_svm',
+     'transparent_shadow', 'environment', 'light_tree', 'shadow_catcher', 'ao_state', 'ao_render', 'mnee',
+     'mnee_render']]
+
+
+def prepare_source(work):
+    """Keep cross-target adaptations out of the pinned snapshot."""
+    verify_cycles()
+    source = work/'cycles-source'
+    if not source.exists():
+        shutil.copytree(SOURCE, source)
+    names = ['src/CMakeLists.txt', 'src/cmake/macros.cmake', 'src/util/half.h']
+    before = {name:(SOURCE/name).read_text() for name in names}
+    after = dict(before)
+
+    def replace(name, old, new):
+        if after[name].count(old) != 1:
+            raise RuntimeError('Android source adaptation anchor changed: '+name)
+        after[name] = after[name].replace(old, new)
+
+    replace(names[0], '  if(NOT MSVC)\n    add_check_cxx_compiler_flags(',
+            '  if(NOT MSVC AND NOT CMAKE_CROSSCOMPILING)\n    add_check_cxx_compiler_flags(')
+    replace(names[0], '  else()\n    if(NOT MSVC_NATIVE_ARCH_FLAGS)',
+            '  elseif(MSVC)\n    if(NOT MSVC_NATIVE_ARCH_FLAGS)')
+    replace(names[1], '    list(APPEND ${libraries} "-lm -lc -lutil")',
+            '    if(ANDROID)\n      list(APPEND ${libraries} "-lm -lc")\n'
+            '    else()\n      list(APPEND ${libraries} "-lm -lc -lutil")\n    endif()')
+    replace(names[2], '#pragma once\n',
+            '#pragma once\n\n#if defined(__ARM_NEON) && !defined(__KERNEL_GPU__)\n'
+            '#  include <arm_neon.h>\n#endif\n')
+    for name in names:
+        comment = '//' if name.endswith('.h') else '#'
+        after[name] = (comment+' Copyright (c) 2026 Jeremy Ellis and contributors\n'+comment+
+                       ' Android target adaptation; upstream notices follow.\n'+after[name])
+        path = source/name
+        if path.read_text() != after[name]:
+            path.write_text(after[name])
+    patch = ''.join(''.join(difflib.unified_diff(before[name].splitlines(True), after[name].splitlines(True),
+                   fromfile='a/'+name, tofile='b/'+name)) for name in names)
+    (work/'android-platform.patch').write_text(patch)
+    manifest = json.loads((REPO/'third_party/cycles-import.json').read_text())
+    expected = {row['path']:sha(source/row['path']) if row['path'] in names else row['sha256']
+                for row in manifest['files']}
+    assert {str(p.relative_to(source)) for p in source.rglob('*') if p.is_file()} == set(expected)
+    for name, digest in expected.items():
+        if sha(source/name) != digest:
+            raise RuntimeError('Unexpected Android source-copy edit: '+name)
+    return source, expected
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--rid', required=True, choices=TARGETS)
+    parser.add_argument('--jobs', type=int, default=4)
+    parser.add_argument('--target', action='append')
+    parser.add_argument('--rebase-build-tree', action='store_true',
+                        help='Re-point a build tree copied from another checkout at this checkout first (tools/rebase_build_tree.py)')
+    args = parser.parse_args()
+    toolchain = AndroidToolchain(args.rid)
+    prefix = dependencies.prefix(args.rid)
+    work = WORK/'android'/args.rid/'host'
+    work.mkdir(parents=True, exist_ok=True)
+    build = work/'build'
+    sources = inputs()
+    state = dict(complete=False, phase='prepare', rid=args.rid)
+    save(work/'status.json', state)
+    rebased = rebase(build, REPO) if args.rebase_build_tree and (build/'CMakeCache.txt').exists() else None
+    try:
+        source, source_copy = prepare_source(work)
+        generated = overlay(work/'overlay')
+        save(work/'webgpu-compatibility.json', audit(allow_rust_documentation_change=True))
+        options = {**toolchain.options(prefix), 'WITH_LIBS_PRECOMPILED':'OFF',
+                   'WITH_LEGACY_LIBRARIES':'ON', 'WITH_CYCLES_NATIVE_ONLY':'ON',
+                   'OpenImageIO_DIR':prefix/'lib/cmake/OpenImageIO',
+                   'OpenColorIO_DIR':prefix/'lib/cmake/OpenColorIO',
+                   'CMAKE_PROJECT_Cycles_INCLUDE':ROOT/'tools/inject_cycles.cmake',
+                   'CODEBRIX_CYCLES_OVERLAY':generated, 'CODEBRIX_WEBGPU_PACKAGE':PACKAGE,
+                   'CODEBRIX_WEBGPU_RID':args.rid}
+        options.update({'WITH_CYCLES_'+name:'OFF' for name in
+            ['ALEMBIC', 'EMBREE', 'OPENIMAGEDENOISE', 'OPENSUBDIV', 'OPENVDB', 'NANOVDB', 'OSL',
+             'USD', 'HYDRA_RENDER_DELEGATE', 'DEVICE_CUDA', 'DEVICE_OPTIX', 'DEVICE_HIP',
+             'DEVICE_HIPRT', 'DEVICE_ONEAPI']})
+        targets = args.target or HOST_TARGETS+GATE_TARGETS
+        commands = [['cmake', '-S', str(source), '-B', str(build),
+                     *['-D'+k+'='+str(v) for k, v in options.items()]],
+                    ['cmake', '--build', str(build), '--target', *targets, '--parallel', str(args.jobs)]]
+        runtime = PACKAGE/'runtimes'/args.rid/'native/libcodebrix_wgpu.so'
+        pin = dict(toolchain=toolchain.identity(), sourceSha256=sources, sourceCopySha256=source_copy,
+                   commands=commands, platformPatchSha256=sha(work/'android-platform.patch'),
+                   dependencyMarkerSha256=sha(prefix/'codebrix-android-build.json'),
+                   overlaySha256={str(p.relative_to(generated)):sha(p) for p in generated.rglob('*') if p.is_file()},
+                   runtimeSha256=sha(runtime))
+        save(work/'invocation.json', pin)
+        env = environment(prefix, args.jobs)
+        for name, command in zip(['configure', 'build'], commands):
+            state['phase'] = name
+            save(work/'status.json', state)
+            with (work/(name+'.log')).open('w') as log:
+                subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, env=env, check=True)
+            if name == 'configure':
+                rows = json.loads((build/'compile_commands.json').read_text())
+                assert all('-march=native' not in row['command'] for row in rows), 'Host CPU flags in target build'
+                if args.rid == 'android-arm64':
+                    assert all('-msse' not in row['command'] for row in rows), 'x86 flags in ARM64 build'
+        if rebased and rebased['rebased']:
+            verify_rebase(build, REPO, rebased['oldRoot'])
+        assert sources == inputs() and toolchain.identity() == pin['toolchain']
+        assert dependencies.prefix(args.rid) == prefix and sha(runtime) == pin['runtimeSha256']
+        assert all(sha(source/name) == digest for name, digest in source_copy.items())
+        assert {str(p.relative_to(source)) for p in source.rglob('*') if p.is_file()} == set(source_copy)
+        artifacts = [p for directory in [build/'bin', build/'lib'] for p in directory.glob('*')
+                     if p.is_file() and (p.name.startswith('codebrix_') or p.name == 'libcodebrix_cycles_host.so')]
+        state.update(complete=True, passed=True, phase='complete', minimumAndroidApi=33,
+                     artifacts={str(p.relative_to(build)):sha(p) for p in artifacts},
+                     executionProven=False, releaseCleared=False)
+        print(args.rid+': maintained native host and selected gates built', flush=True)
+    except Exception as error:
+        state.update(complete=True, passed=False, error=str(error))
+        raise
+    finally:
+        save(work/'status.json', state)
+
+
+if __name__ == '__main__':
+    main()

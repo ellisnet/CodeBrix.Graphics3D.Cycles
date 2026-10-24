@@ -125,8 +125,16 @@ fn intersect_point_lights(index:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
         let shader=load_word(light+L_shader_id);let object=load_word(light+L_object_id);
         if((visibility&VIS_CAMERA)!=0u){if((shader&LIGHT_EXCLUDE_CAMERA)!=0u){continue;}}
         else if((shader&SHADER_USE_MIS)==0u){continue;}
+//#if MNEE
+        // lights_intersect_impl: a path MNEE should have resolved skips caustic lamps.
+        else if((state_byte(S_path_mnee,index)&MNEE_PATH_CULL_LIGHT_CONNECTION)!=0u&&load_word(light+MNEE_L_use_caustics)!=0u){continue;}
+//#endif
         if((flag&PATH_RAY_SHADOW_CATCHER_PASS)!=0u&&(shader&LIGHT_EXCLUDE_SHADOW_CATCHER)!=0u){continue;}
         if(state_word(S_isect_prim,index)==lamp&&state_word(S_isect_object,index)==object&&state_word(S_isect_type,index)==PRIMITIVE_LAMP){continue;}
+//#if LIGHT_LINKING
+        // lights_intersect_impl: indirect rays skip lamps not linked to the receiver.
+        if(!light_link_forward_visible(index,object)){continue;}
+//#endif
         let position=heap_vec3(light+L_co);var t=0.0;
         if(light_kind==LIGHT_AREA){
             // area_light_intersect + ray_quad_intersect with rounded products, sums and quotients.
@@ -179,6 +187,29 @@ fn terminate_surface(index:u32,shader_flags:u32)->bool{
     }
     return false;
 }
+//#if SHADOW_CATCHER
+// integrator_split_shadow_catcher up to the state copy: the split decision
+// (kernel_shadow_catcher_is_path_split_bounce), film_write_shadow_catcher_bounce_data
+// and PATH_RAY_SHADOW_CATCHER_HIT on this path. The new path's kernel and shader
+// go to this path's mark pair (p(24)); shadow_catcher_assign and
+// shadow_catcher_split (wavefront_shadow_catcher_split.wgsl) make the copy.
+fn sc_split_mark(index:u32,object:u32,shader:u32,next:u32){
+    if(!sc_enabled()){return;}
+    let object_flag=load_word(table_at(G_object_flag,object,4u));
+    if((object_flag&SC_OBJECT)==0u||(object_flag&SC_HOLDOUT_MASK)!=0u){return;}
+    let flag=state_word(S_path_flag,index);
+    if((flag&SC_TRANSPARENT_BACKGROUND)==0u||(flag&SC_PATH_HIT)!=0u){return;}
+    let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);
+    if(pixel>=p(11u)/stride||p(24u)==0u||shader>0xffffffu){fail();return;}let base=p(4u)+pixel*stride*4u;
+    let throughput=heap_vec3(state_address(S_path_throughput,index,12u));
+    sc_film_add(base+data_word(SC_D_pass_shadow_catcher_sample_count)*4u,1.0);
+    sc_film_add(base+(data_word(SC_D_pass_shadow_catcher_matte)+3u)*4u,(throughput.x+throughput.y+throughput.z)*(1.0/3.0));
+    state_u32(S_path_flag,index,flag|SC_PATH_HIT);
+    var kernel=next;
+    if(data_word(SC_D_pass_background)!=PASS_NONE&&data_word(SC_D_background_transparent)==0u){kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND;}
+    store_word(p(24u)+index*8u,0x80000000u|(kernel<<24u)|shader);
+}
+//#endif
 @compute @workgroup_size(64) fn intersect_closest(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}
@@ -198,6 +229,18 @@ fn terminate_surface(index:u32,shader_flags:u32)->bool{
     if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
         hit=trace_native(origin,direction,tmin,tmax,heap_float(state_address(S_ray_time,index,4u)),visibility,self_object,self_prim);
     }
+//#if MNEE
+    // MNEE path culling (intersect_closest.h): a ray leaving a caustic caster
+    // after a caustic receiver culls caustic light connections.
+    if(data_word(MNEE_D_use_caustics)!=0u){
+        var from_caster=false;var from_receiver=false;
+        if((state_byte(S_path_visibility,index)&VIS_CAMERA)==0u&&self_object!=NONE){let flags=load_word(table_at(G_object_flag,self_object,4u));
+            from_receiver=(flags&SD_OBJECT_CAUSTICS_RECEIVER)!=0u;from_caster=(flags&SD_OBJECT_CAUSTICS_CASTER)!=0u;}
+        var mnee=state_byte(S_path_mnee,index);let ancestor=(mnee&MNEE_PATH_RECEIVER_ANCESTOR)!=0u;
+        mnee&=~MNEE_PATH_CULL_LIGHT_CONNECTION;if(from_caster&&ancestor){mnee|=MNEE_PATH_CULL_LIGHT_CONNECTION;}
+        if(from_receiver){mnee|=MNEE_PATH_RECEIVER_ANCESTOR;}state_u8(S_path_mnee,index,mnee);
+    }
+//#endif
     let skip_lights=(data_word(D_integrator_filter_closures)&FILTER_CLOSURE_DIRECT_LIGHT)!=0u&&state_half(S_path_bounce,index)==1u;
     if(data_word(D_integrator_use_light_mis)!=0u&&!skip_lights){hit=intersect_point_lights(index,origin,direction,tmin,tmax,hit);}
     if(load_word(p(17u))!=0u){return;}
@@ -215,6 +258,9 @@ fn terminate_surface(index:u32,shader_flags:u32)->bool{
         if(terminate_surface(index,flags)){next=0u;}
         else{next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,(flags&SD_HAS_RAYTRACE)!=0u);sorted=true;}
     }else if((data_word(D_integrator_filter_closures)&FILTER_CLOSURE_DIRECT_LIGHT)!=0u&&state_half(S_path_bounce,index)==1u){next=0u;}
+//#if MNEE
+    if(sorted&&data_word(MNEE_D_use_caustics)!=0u&&(load_word(table_at(G_object_flag,hit.object,4u))&SD_OBJECT_CAUSTICS_RECEIVER)!=0u){next=MNEE_K_INTERSECT;sorted=false;}
+//#endif
     if(sorted){
         let divisor=load_word(p(7u)+S_sort_partition_divisor);let key=shader+data_word(D_max_shaders)*(index/divisor);
         let limit=select(p(15u),p(16u),next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE);
@@ -222,6 +268,9 @@ fn terminate_surface(index:u32,shader_flags:u32)->bool{
         let counter=load_word(p(7u)+S_sort_key_counter+next*POINTER_SIZE);
         atomicAdd(&heap[(counter+key*4u)/4u],1u);state_u32(S_path_shader_sort_key,index,key);
     }
+//#if SHADOW_CATCHER
+    if(sorted){sc_split_mark(index,hit.object,shader,next);if(load_word(p(17u))!=0u){return;}}
+//#endif
     let counter=load_word(p(7u)+S_queue_counter);
     atomicSub(&heap[(counter+K_CLOSEST*4u)/4u],1u);
     if(next==0u){volume_write_depth(index);}

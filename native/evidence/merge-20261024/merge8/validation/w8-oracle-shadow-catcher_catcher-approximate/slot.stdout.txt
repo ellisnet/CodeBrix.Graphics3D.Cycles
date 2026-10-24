@@ -1,0 +1,10 @@
+shadow-catcher/catcher-approximate       cpu-x64-linux          [0.0126082, 0.0072061]
+shadow-catcher/catcher-approximate       wgsl-linux-intel       [28.3314, 0.645763]
+shadow-catcher/catcher-approximate (64x48)
+  cpu-x64-linux              cpu       samples 16    repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  wgsl-linux-intel           candidate samples 16    repeats 2 bitwise=False repeatMaxAbs=4.77e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-x64-linux [gating]             2.62e-06   1.05e-06   5.05e-08             0         17
+      worst x=42 y=21 B: ref 2.49834991 got 2.49834728 (0.00477x tolerance)
+  verdict: perfect
+

@@ -1,0 +1,131 @@
+// Copyright (c) 2026 Jeremy Ellis and contributors
+// SPDX-License-Identifier: Apache-2.0
+#include "device.h"
+#include "wavefront.h"
+#include <cmath>
+#include <cstring>
+#include <sstream>
+#include <stdexcept>
+namespace ccl {
+static constexpr char fragment[]=
+#include "shadow_shader.inc"
+;
+static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
+std::string shadow_layout(){
+  std::ostringstream out;
+  auto constant=[&](const char *name,size_t value){out<<"const "<<name<<":u32="<<value<<"u;\n";};
+#define KERNEL_STRUCT_BEGIN(name)
+#define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) constant("S_" #parent "_" #name,offsetof(IntegratorStateGPU,parent.name));
+#define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
+#define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
+#define KERNEL_STRUCT_END(name)
+#define KERNEL_STRUCT_END_ARRAY(name,cpu_size,gpu_size)
+#include "kernel/integrator/shadow_state_template.h"
+#undef KERNEL_STRUCT_BEGIN
+#undef KERNEL_STRUCT_BEGIN_PACKED
+#undef KERNEL_STRUCT_MEMBER
+#undef KERNEL_STRUCT_MEMBER_PACKED
+#undef KERNEL_STRUCT_ARRAY_MEMBER
+#undef KERNEL_STRUCT_END
+#undef KERNEL_STRUCT_END_ARRAY
+  constant("S_shadow_self_object",offsetof(IntegratorStateGPU,shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].object));
+  constant("S_shadow_self_prim",offsetof(IntegratorStateGPU,shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].prim));
+  constant("D_integrator_transparent_shadows",offsetof(KernelData,integrator.transparent_shadows));
+  constant("SHADOW_ONLY_VOLUME",SD_HAS_ONLY_VOLUME);constant("SHADOW_VOLUME_BOUNDS_MAX",VOLUME_BOUNDS_MAX);
+  constant("SHADOW_HIT_CAPACITY",INTEGRATOR_SHADOW_ISECT_SIZE_GPU);constant("SHADOW_HIT_STRIDE",sizeof(IntegratorStateGPU{}.shadow_isect[0]));
+#define HIT(member) constant("S_shadow_hit_" #member,offsetof(IntegratorStateGPU,shadow_isect[0].member))
+  HIT(t);HIT(u);HIT(v);HIT(prim);HIT(object);HIT(type);
+#undef HIT
+  constant("S_next_shadow_path_index",offsetof(IntegratorStateGPU,next_shadow_path_index));
+  constant("K_SHADOW_INTERSECT",DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW);
+  constant("K_SHADOW_SHADE",DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW);
+  constant("SHADOW_UNSUPPORTED_FLAGS",PATH_RAY_SHADOW_CATCHER_PASS|PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_BACKGROUND|
+    PATH_RAY_VOLUME_PASS|PATH_RAY_VOLUME_PRIMARY_TRANSMIT|PATH_RAY_SHADOW_FOR_AO);
+  return out.str();
+}
+std::string shadow_source(){return svm_surface_source()+background_layout()+shadow_layout()+shadow_catcher_layout()+fragment;}
+void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKernelArguments &args){
+  const bool shading=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW;
+  require(args.count==(shading?3u:2u),"Shadow argument count");
+  const unsigned count_arg=shading?2:1;
+  require(args.types[count_arg]==DeviceKernelArguments::INT32&&args.sizes[count_arg]==4,"Invalid shadow work argument");
+  int n;std::memcpy(&n,args.values[count_arg],4);require(n>=0&&work>=n,"Incomplete shadow dispatch");
+  auto pointer=[&](unsigned i,bool nullable){
+    require(args.types[i]==DeviceKernelArguments::POINTER&&args.sizes[i]==sizeof(device_ptr),"Invalid shadow pointer argument");
+    device_ptr address;std::memcpy(&address,args.values[i],sizeof(address));if(address||!nullable)validate(address,4);
+    require(address%4==0,"Unaligned shadow pointer");return uint32_t(address);
+  };
+  std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[17]=error_word;
+  if(p[2])validate(p[2],size_t(n)*4);
+  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU shadow currently requires triangle primitives");
+  validate_geometry_motion();
+  // Transparent-shadow proof covers static triangle surfaces only. Motion,
+  // volume attenuation, linking, AO and shadow catchers remain guarded below;
+  // passing opaque-motion tests does not enable those combinations.
+  require(!data.integrator.transparent_shadows||!data.bvh.have_motion,"WebGPU moving transparent shadows not implemented");
+  if(data.integrator.transparent_shadows)require(data.integrator.transparent_max_bounce>=0&&data.integrator.transparent_max_bounce<=4095,"WebGPU transparent shadow hit limit exceeds packed state");
+  require(!(data.kernel_features&(KERNEL_FEATURE_VOLUME|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_MNEE|KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO)),
+          "WebGPU shadow optional integration features not implemented");
+  validate_shadow_catcher();
+  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[14]=scene_tables();
+  if(data.integrator.transparent_shadows&&shading){
+    if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid shadow SVM table");p[22]=uint32_t(remaining(p[21])/4);}
+  }
+  p[10]=uint32_t(remaining(uintptr_t(state.shadow_path.render_pixel_index))/4);
+  if(!p[2])require(uint32_t(n)<=p[10],"Shadow dispatch exceeds path capacity");
+  auto field=[&](const void *address,size_t size){validate(uintptr_t(address),size_t(p[10])*size);};
+  field(state.shadow_path.queued_kernel,2);field(state.shadow_path.flag,4);field(state.shadow_path.packed_num_hits,2);
+  if(data.integrator.transparent_shadows){
+    field(state.shadow_path.transparent_bounce,2);field(state.shadow_path.throughput,12);field(state.shadow_path.rng_offset,2);field(state.shadow_path.volume_bounds_bounce,2);
+    field(state.shadow_ray.time,4);field(state.shadow_ray.dP,4);field(state.shadow_ray.dD,4);field(state.shadow_ray.D,12);field(state.shadow_ray.tmin,4);
+    for(unsigned i=0;i<INTEGRATOR_SHADOW_ISECT_SIZE_GPU;i++){field(state.shadow_isect[i].t,4);field(state.shadow_isect[i].u,4);field(state.shadow_isect[i].v,4);field(state.shadow_isect[i].object,4);field(state.shadow_isect[i].prim,4);field(state.shadow_isect[i].type,4);}
+  }
+  if(shading){
+    p[4]=pointer(1,false);p[11]=uint32_t(remaining(p[4])/4);
+    require(data.film.pass_stride>0&&p[11]>=uint32_t(data.film.pass_stride),"Invalid shadow film stride");
+    auto pass=[&](int offset,int length){require(offset==PASS_UNUSED||(offset>=0&&offset<=data.film.pass_stride-length),"Invalid shadow film pass offset");};
+    pass(data.film.pass_combined,4);pass(data.film.pass_adaptive_aux_buffer,4);pass(data.film.pass_lightgroup,3);
+    pass(data.film.pass_diffuse_direct,3);pass(data.film.pass_glossy_direct,3);pass(data.film.pass_transmission_direct,3);
+    pass(data.film.pass_diffuse_indirect,3);pass(data.film.pass_glossy_indirect,3);pass(data.film.pass_transmission_indirect,3);
+    if(data.film.light_pass_flag&PASSMASK(COMBINED))require(data.film.pass_combined!=PASS_UNUSED,"Missing shadow combined film pass");
+    require(std::isfinite(data.integrator.sample_clamp_direct)&&data.integrator.sample_clamp_direct>=0&&
+            std::isfinite(data.integrator.sample_clamp_indirect)&&data.integrator.sample_clamp_indirect>=0,"Invalid shadow clamp");
+    require(data.film.pass_adaptive_aux_buffer==PASS_UNUSED||data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,
+            "WebGPU shadow adaptive buffer requires tabulated Sobol");
+    field(state.shadow_path.sample,4);field(state.shadow_path.bounce,2);field(state.shadow_path.throughput,12);field(state.shadow_path.lightgroup,1);
+    p[20]=(data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)!=0;
+    if(p[20]){field(state.shadow_path.pass_diffuse_weight,12);field(state.shadow_path.pass_glossy_weight,12);}
+  }else{
+    field(state.shadow_ray.time,4);field(state.shadow_ray.P,12);field(state.shadow_ray.D,12);field(state.shadow_ray.tmin,4);field(state.shadow_ray.tmax,4);
+    field(state.shadow_ray.self_light_object,4);field(state.shadow_ray.self_light_prim,4);
+    field(state.shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].object,4);field(state.shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].prim,4);
+    p[14]=scene_tables();
+  }
+  validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
+  if(!n||!work)return;
+  auto &pipeline=shading?(data.integrator.transparent_shadows?shadow_transparent:shadow_shade):shadow_intersect;
+  const bool transparent_shading=shading&&data.integrator.transparent_shadows;
+  if(transparent_shading){
+    // GPU-private ShaderData for every recorded hit of each dispatched path.
+    const size_t needed=size_t(n)*INTEGRATOR_SHADOW_ISECT_SIZE_GPU*surface_data_cache_bytes;
+    if(needed>shadow_shader_cache_bytes){
+      if(shadow_shader_cache){flush();release(shadow_shader_cache);shadow_shader_cache=0;shadow_shader_cache_bytes=0;}
+      shadow_shader_cache=allocate(needed);shadow_shader_cache_bytes=needed;
+    }
+    p[26]=shadow_shader_cache;p[27]=surface_data_cache_bytes;
+  }
+  const char *entry=shading?(data.integrator.transparent_shadows?"shade_shadow_transparent":"shade_shadow"):"intersect_shadow";
+  if(transparent_shading){
+    // Both transparent entries come from the same specialized shadow module.
+    if(!pipeline_current(pipeline,entry)||!pipeline_current(shadow_shader_data,"prepare_shadow_shader_data")){
+      auto built=build_pipelines("shadow",shadow_source(),{"prepare_shadow_shader_data",entry});
+      shadow_shader_data=std::move(built[0]);pipeline=std::move(built[1]);
+    }
+  }else if(!pipeline_current(pipeline,entry))pipeline=std::move(build_pipelines("shadow",shadow_source(),{entry})[0]);
+  // Dispatch ordering makes the cached hit ShaderData visible to the SVM stage.
+  if(transparent_shading)dispatch(p,uint32_t(work),shadow_shader_data,workgroup("prepare_shadow_shader_data"));
+  // Match the smaller transparent SVM workgroup; opaque traversal stays at 64.
+  dispatch(p,uint32_t(work),pipeline,workgroup(entry));
+}
+}

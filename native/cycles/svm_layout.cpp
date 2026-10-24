@@ -38,6 +38,15 @@ std::string svm_layout(bool surface){
   source<<"//#endif\n//#if SVM_NODE_BUMP_STATE\n";
   SIZE(EnterBumpEval);FIELD(EnterBumpEval,state_offset);SIZE(LeaveBumpEval);FIELD(LeaveBumpEval,state_offset);
   source<<"//#endif\n";
+  // Ambient Occlusion node (svm/ao.h; ray tracing in wavefront_ao.wgsl).
+  source<<"//#if SVM_NODE_AO\n";
+  SIZE(AmbientOcclusion);FIELD(AmbientOcclusion,color);FIELD(AmbientOcclusion,dist);FIELD(AmbientOcclusion,flags);FIELD(AmbientOcclusion,samples);
+  FIELD(AmbientOcclusion,normal_offset);FIELD(AmbientOcclusion,out_ao_offset);FIELD(AmbientOcclusion,out_color_offset);
+  constant("AO_NODE_ONLY_LOCAL",NODE_AO_ONLY_LOCAL);constant("AO_NODE_INSIDE",NODE_AO_INSIDE);constant("AO_NODE_GLOBAL_RADIUS",NODE_AO_GLOBAL_RADIUS);
+  source<<"//#endif\n";
+  source<<"//#if SVM_NODE_RAYTRACE\n";
+  constant("AO_VISIBILITY_ALL",PATH_RAY_VISIBILITY_ALL);constant("AO_VISIBILITY_SHADOW_OPAQUE",PATH_RAY_VISIBILITY_SHADOW_OPAQUE);constant("AO_PRNG_SURFACE_AO",PRNG_SURFACE_AO);
+  source<<"//#endif\n";
   SIZE(VertexColor);FIELD(VertexColor,layer_id);FIELD(VertexColor,color_offset);FIELD(VertexColor,alpha_offset);FIELD(VertexColor,bump_offset);FIELD(VertexColor,bump_filter_width);
   SIZE(VectorMath);FIELD(VectorMath,math_type);FIELD(VectorMath,a);FIELD(VectorMath,b);FIELD(VectorMath,c);FIELD(VectorMath,param1);FIELD(VectorMath,value_offset);FIELD(VectorMath,vector_offset);
   SIZE(SeparateVector);FIELD(SeparateVector,vector);FIELD(SeparateVector,vector_index);FIELD(SeparateVector,out_offset);
@@ -140,6 +149,12 @@ std::string svm_layout(bool surface){
   source<<"//#endif\n";
 #undef ENUM
   source<<"const SVM_SURFACE:bool="<<(surface?"true":"false")<<";\n";
+  // NODE_CLOSURE_BSDF: closure setup in surface modules, error 2 elsewhere (what
+  // `if(SVM_SURFACE)` compiled to). Emitting the call only where it can run keeps
+  // the dead Principled/microfacet setup out of the background module's text, so
+  // the pipeline size guard measures the program the driver compiles.
+  source<<"fn svm_closure_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){"
+        <<(surface?"svm_bsdf(s,node,flag,visibility);":"svm_error(s,2u);")<<"}\n";
   constant("SVM_CLOSURE_CAPACITY",surface?MAX_CLOSURE:1);
   constant("SVM_CLOSURE_BYTES",sizeof(SurfaceClosureRecord));
 #define C(member) constant("C_" #member,offsetof(SurfaceClosureRecord,member))

@@ -60,6 +60,8 @@ function(codebrix_add_cycles_device)
     "${CODEBRIX_NATIVE_ROOT}/cycles/lighting.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/background.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/surface.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_catcher.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/mnee.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/volume.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/svm_layout.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/pipelines.cpp"
@@ -194,6 +196,77 @@ function(codebrix_add_cycles_device)
   target_include_directories(codebrix_cycles_environment_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_environment_gate PRIVATE ${codebrix_device_libs})
+  # Lane m2-lighttree: light tree sampling/MIS and light linking (state probe, images, host guards).
+  add_executable(codebrix_cycles_light_tree_gate "${CODEBRIX_NATIVE_ROOT}/cycles/light_tree_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_tree_reference.cpp")
+  target_compile_features(codebrix_cycles_light_tree_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_light_tree_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_light_tree_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_light_tree_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_light_tree_gate PRIVATE ${codebrix_device_libs})
+  # Shadow catcher: state lockstep, images and the volume refusal (shadow_catcher_gate.cpp).
+  add_executable(codebrix_cycles_shadow_catcher_gate "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_catcher_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp")
+  target_compile_features(codebrix_cycles_shadow_catcher_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_shadow_catcher_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_shadow_catcher_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_shadow_catcher_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_shadow_catcher_gate PRIVATE ${codebrix_device_libs})
+  # Ambient occlusion: fast GI, the AO pass and the AO node (images), and the AO
+  # shadow-ray state of the surface stage.
+  add_executable(codebrix_cycles_ao_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/ao_render_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/ao_reference.cpp")
+  target_compile_features(codebrix_cycles_ao_render_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_ao_render_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_ao_render_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_ao_render_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_ao_render_gate PRIVATE ${codebrix_device_libs})
+  add_executable(codebrix_cycles_ao_state_gate "${CODEBRIX_NATIVE_ROOT}/cycles/ao_state_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/ao_reference.cpp")
+  target_compile_features(codebrix_cycles_ao_state_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_ao_state_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_ao_state_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_ao_state_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_ao_state_gate PRIVATE ${codebrix_device_libs})
+  # Manifold next-event estimation lockstep state gate (mnee_gate.cpp).
+  add_executable(codebrix_cycles_mnee_gate "${CODEBRIX_NATIVE_ROOT}/cycles/mnee_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/mnee_reference.cpp")
+  target_compile_features(codebrix_cycles_mnee_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_mnee_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_mnee_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_mnee_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_mnee_gate PRIVATE ${codebrix_device_libs})
+  # Manifold next-event estimation images (lighting_gate.cpp variant, mnee_fixture.h).
+  add_executable(codebrix_cycles_mnee_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/lighting_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/mnee_reference.cpp")
+  target_compile_features(codebrix_cycles_mnee_render_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_mnee_render_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_mnee_render_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_mnee_render_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_mnee_render_gate PRIVATE ${codebrix_device_libs})
+  target_compile_definitions(codebrix_cycles_mnee_render_gate PRIVATE CODEBRIX_LIGHTING_MIS_GATE CODEBRIX_MNEE_GATE)
   # Phase E3: object shadow terminator offsets on smooth triangles (lighting_gate.cpp variant).
   add_executable(codebrix_cycles_shadow_terminator_gate "${CODEBRIX_NATIVE_ROOT}/cycles/lighting_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"

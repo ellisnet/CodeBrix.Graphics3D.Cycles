@@ -193,10 +193,10 @@ it does not list as supported may still fail at render time with `CBC_FAILED`.
 Facts measured for the current WebGPU device (Linux host gate): object shadow
 terminator offsets are implemented (geometry offset; shading offset 0 to 1, larger
 shading offsets are rejected at render time); only the
-perspective camera; only `Combined` is written (data passes and light passes
-fail with "surface data passes not implemented"); the integrator defaults
-(denoising, adaptive sampling, light tree, guiding enabled) must be switched
-off for WebGPU renders; light trees are not implemented.
+perspective camera; only `Combined`, AO and the three shadow catcher passes are written
+(other data passes and light passes fail with "surface data passes not implemented"); the integrator defaults
+(denoising, adaptive sampling, guiding enabled) must be switched
+off for WebGPU renders; the light tree and light linking render.
 
 ## Scene authoring
 
@@ -398,8 +398,9 @@ What varies:
 - Metal's hardware bilinear filtering is not bit-exact with Cycles' CPU texture
   interpolation and exceeded the practical criterion in 4 components of the
   linearly filtered byte4 starter texture (worst 1.16 times the tolerance). The
-  CPU is the authority for texture filtering; this is a documented, bounded
-  Metal deviation.
+  CPU kernels and the Metal backend are both gold standards: this is a
+  characteristic of the Metal reference, reported, not a failure (native/DEVICE.md,
+  "Validation reference policy").
 - GPU drivers may contract floating-point operations. Closest-hit and shadow
   traversal are therefore written so that no driver can fuse them, and reproduce
   the x64 CPU oracle's ray/triangle and instance arithmetic bit for bit on Linux;

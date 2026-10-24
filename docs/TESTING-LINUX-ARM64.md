@@ -109,9 +109,10 @@ references; the third builds the ARM64 dependency prefix
 reference executables and the default gate set
 (`native/work/linux/linux-arm64/host/build/{bin,lib}`).
 
-The default ARM64 set (shared with the Android recipe: 8 host outputs and 20
-gates, 28 artifacts, including principled_svm, transparent_shadow and the
-environment gate) holds only part of the device gates. Build the rest with
+The default ARM64 set (shared with the Android recipe: 8 host outputs and 26
+gates, 34 artifacts, including principled_svm, transparent_shadow, the
+environment, light-tree and shadow-catcher gates and the two ambient-occlusion
+and two MNEE gates) holds only part of the device gates. Build the rest with
 explicit targets (these targets have not been built for this RID before;
 record any failure):
 

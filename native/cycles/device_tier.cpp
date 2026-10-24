@@ -93,7 +93,10 @@ const std::vector<KnownAdapter> &known_adapters(){
     // scenes are refused instead (native/DEVICE.md, "Adreno 650 lane").
     {"Samsung Galaxy S20 FE Adreno 650","Adreno (TM) 650","","full",20000,
      "Adreno 650 lane 2026-10-22: full tier with a 20 s compile budget (warnings only); texture, colour and utility shader nodes refused",
-     "SVM_NODES_ANY","texture, colour and utility shader nodes"},
+     "SVM_NODES_ANY","texture, colour and utility shader nodes",
+     // Lane m2-ao (2026-10-24): the Ambient Occlusion node's raytrace stage and the AO
+     // shadow rays fail with SVM error 8 (invalid stack) on EV031.32.02.10.
+     "AO_ANY","ambient occlusion shader nodes and ambient occlusion shadow rays (fast GI additive mode, AO pass)"},
     {"HP Intel Xe (Mesa 24.0.8, Android x64)","Intel(R) Xe Graphics","Mesa 24.0.8","full",0,
      "B3 2026-10-19: every specialized and all-handler stage compiles"},
     {"Linux Intel UHD ADL-S (Mesa 25.0.7)","Intel(R) UHD Graphics (ADL-S GT1)","Mesa 25.0.7","full",0,
@@ -370,6 +373,7 @@ std::string DeviceTierPolicy::report_json() const{
    <<",\"shaderHash\":"<<quoted(shader_hash)<<",\"knownAdapter\":";
   if(table){o<<"{\"name\":"<<quoted(table->name)<<",\"tier\":"<<quoted(table->tier)<<",\"budgetMs\":"<<table->budget_ms<<",\"evidence\":"<<quoted(table->evidence);
     if(table->refused_region)o<<",\"refusedRegion\":"<<quoted(table->refused_region)<<",\"refused\":"<<quoted(table->refused_text);
+    if(table->also_refused_region)o<<",\"alsoRefusedRegion\":"<<quoted(table->also_refused_region)<<",\"alsoRefused\":"<<quoted(table->also_refused_text);
     o<<'}';}
   else o<<"null";
   o<<",\"budgetSource\":"<<quoted(budget_source)<<",\"record\":{\"mode\":"<<quoted(record_mode)<<",\"path\":"<<quoted(record_path)
