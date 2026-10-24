@@ -12,8 +12,9 @@ AGENT-README FILES (consumer documentation, one per NuGet package)
   AGENT-README.txt
       CodeBrix.Graphics3D.Cycles.ApacheLicenseForever - build and render 3D
       scenes with the Cycles path-tracing renderer through a native scene host,
-      on a WebGPU backend or an explicit CPU reference backend; raw pixel
-      buffers in and out.
+      on a GPU backend (Cycles' Metal device on Apple Silicon Macs, WGSL on
+      WebGPU everywhere else, Intel Macs included) or an explicit CPU
+      reference backend; raw pixel buffers in and out.
 
 MAINTAINER AND EXTRAS
 ---------------------

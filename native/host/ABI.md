@@ -147,8 +147,14 @@ Rules:
 | --- | --- | --- |
 | `CBC_HOST_WEBGPU` | 1 | CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime |
 | `CBC_HOST_CPU_REFERENCE` | 2 | Cycles CPU device; always compiled |
-| `CBC_HOST_METAL` | 3 | Cycles' Metal device; Apple Silicon builds only |
-| `CBC_HOST_GPU` | 4 | "the GPU backend of this binary": Metal on macOS, WebGPU elsewhere |
+| `CBC_HOST_METAL` | 3 | Cycles' Metal device; osx-arm64 (Apple Silicon) build only |
+| `CBC_HOST_GPU` | 4 | "the GPU backend of this binary": Metal in the osx-arm64 build, WebGPU in every other build, osx-x64 included |
+
+The GPU backend is fixed per RID. macOS on Apple Silicon (osx-arm64) renders
+with Cycles' own Metal device; macOS on Intel (osx-x64) and every Windows, Linux
+and Android RID render with the WGSL device on WebGPU. The osx-x64 build is
+configured without Cycles' Metal device, so its WebGPU runtime reaches the GPU
+through Metal but Cycles' Metal kernels are never used there.
 
 Ask for `CBC_HOST_GPU` to stay platform-neutral; `cbc_host_backend` and the
 capability report reveal what was chosen. `cbc_host_resolve_backend` answers

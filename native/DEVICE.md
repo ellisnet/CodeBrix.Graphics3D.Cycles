@@ -12,6 +12,12 @@ platform/application validation remain pending. The earlier
 [snapshot renderer](README.md) remains
 the separate, working image reference on Linux and Android.
 
+Platform scope: this WGSL device is the GPU backend on eight of the nine RIDs,
+including macOS on Intel (osx-x64), where the WebGPU runtime reaches the GPU
+through Metal. macOS on Apple Silicon (osx-arm64) renders with Cycles' own Metal
+device instead and never uses this device; see
+[host/MACOS_ARM64.md](host/MACOS_ARM64.md).
+
 The latest support and validation status is in
 [Integrated handoffs and current limits](#integrated-handoffs-and-current-limits-2026-10-19).
 Earlier milestone sections preserve their original test scope and limitations.
@@ -118,7 +124,8 @@ to overwrite it. No executable or native dependency library is archived.
 General lighting/MIS, tiled/sparse image paths, most closures, volumes, motion,
 curves/points, guiding, MNEE and general film/session modes still require work.
 The broad roadmap is the project plan, kept outside the repository;
-all nine requested RIDs and full functionality remain its target.
+full functionality on all nine requested RIDs remains its target, through this
+device on every RID except osx-arm64, which uses Cycles' Metal device.
 
 ## What is implemented
 

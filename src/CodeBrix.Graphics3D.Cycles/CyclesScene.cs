@@ -99,9 +99,10 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
 
     /// <summary>
     /// Maps a backend-neutral choice onto the concrete backend the loaded native binary creates for it
-    /// (<c>cbc_host_resolve_backend</c>): GPU is Cycles' Metal device in macOS builds and WebGPU in every
-    /// other build; the CPU reference backend is always compiled in and maps without a native call. It
-    /// does not probe hardware; creating the scene reports an unavailable device.
+    /// (<c>cbc_host_resolve_backend</c>): GPU is Cycles' Metal device in the osx-arm64 (Apple Silicon)
+    /// build and WebGPU in every other build, osx-x64 (Intel macOS) included; the CPU reference backend
+    /// is always compiled in and maps without a native call. It does not probe hardware; creating the
+    /// scene reports an unavailable device.
     /// </summary>
     /// <param name="backend">The backend-neutral choice.</param>
     /// <returns>The concrete backend.</returns>

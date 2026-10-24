@@ -21,6 +21,10 @@ INPUTS = (*HEADERS, 'kernel/svm/node_types_template.h', 'kernel/features.h',
           'kernel/data_arrays.h')
 RIDS = ('win-x64', 'win-arm64', 'osx-arm64', 'osx-x64', 'linux-x64',
         'linux-arm64', 'linux-riscv64', 'android-arm64', 'android-x64')
+# The GPU backend is fixed per RID: Cycles' own Metal device on macOS on Apple
+# Silicon, the CodeBrix WGSL device on WebGPU everywhere else (osx-x64 included).
+METAL_RIDS = ('osx-arm64',)
+METAL_STATUS = 'native/host/MACOS_ARM64.md'
 FAMILIES = {'ShaderNodeType': 'opcodes', 'ClosureType': 'closures',
             'DeviceKernel': 'kernels', 'PassType': 'passes'}
 COPYRIGHT = 'Copyright (c) 2026 Jeremy Ellis and contributors'
@@ -280,11 +284,18 @@ def make_row(family, enum_name, symbol, source, value, reviews, evidence):
 def platforms(evidence):
     gates = ('compile', 'link', 'load', 'adapterDiscovery', 'basicCompute', 'scenePreparation',
              'render', 'numericalCorpus', 'stress', 'packageInstall', 'licenseClearance', 'releaseSignoff')
+    # Adapter discovery and basic compute are WebGPU runtime stages; Cycles'
+    # Metal device performs its own device setup.
+    metal_gates = tuple(gate for gate in gates if gate not in ('adapterDiscovery', 'basicCompute'))
     rows = []
     for rid in RIDS:
-        row = dict(rid=rid, required=True, workItems=['P15-C01', 'P15-C02', 'P15-C05', 'P18-09'],
-                   nativeHost={gate: 'pending' for gate in gates},
+        metal = rid in METAL_RIDS
+        row = dict(rid=rid, required=True, gpuBackend='metal' if metal else 'webgpu',
+                   workItems=['P15-C01', 'P15-C02', 'P15-C05', 'P18-09'],
+                   nativeHost={gate: 'pending' for gate in (metal_gates if metal else gates)},
                    replayEvidence=[], nativeHostEvidence=[], fullRequirementVerified=False)
+        if metal:
+            row['statusRecord'] = METAL_STATUS
         if rid.startswith('android'):
             row['minimumApi'] = 33
         if rid == 'linux-x64':

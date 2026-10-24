@@ -23,8 +23,9 @@ public enum Backend : uint
 
     /// <summary>
     /// The backend-neutral GPU request (<c>CBC_HOST_GPU</c>): the native host resolves it to Cycles'
-    /// Metal device in macOS builds and to WebGPU in every other build. A host never reports it as its
-    /// concrete backend; <see cref="CyclesHost.GetBackend"/> returns what was chosen.
+    /// Metal device in the osx-arm64 (Apple Silicon) build and to WebGPU in every other build, osx-x64
+    /// (Intel macOS) included. A host never reports it as its concrete backend;
+    /// <see cref="CyclesHost.GetBackend"/> returns what was chosen.
     /// </summary>
     Gpu = 4
 }

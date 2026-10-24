@@ -7,6 +7,13 @@ This is the initial P00 inventory for Cycles revision
 native RIDs, the unchanged shipped WebGPU runtime and thin .NET delivery remain
 required. `inventoryComplete` and `fullCyclesParity` are both false.
 
+The GPU path is the WGSL device on that runtime for eight RIDs, macOS on Intel
+(osx-x64) included. macOS on Apple Silicon (osx-arm64) renders with Cycles' own
+Metal device instead. Each `platforms.json` row records this as `gpuBackend`
+(`webgpu` or `metal`). The osx-arm64 row omits the WebGPU-only stages
+(`adapterDiscovery`, `basicCompute`) and points to its status record,
+`native/host/MACOS_ARM64.md`.
+
 The ledger currently covers 1,011 source declarations: 111 SVM symbols (including
 `NODE_NUM`), 45 closures, 78 device kernels, 62 passes, 621 other enum values,
 41 feature flags/masks and 53 native scene tables. It also records all nine RIDs,

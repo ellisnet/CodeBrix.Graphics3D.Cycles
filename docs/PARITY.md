@@ -8,6 +8,9 @@ with original Cycles code and, ultimately, complete reference renders.
 Hard constraints: unchanged shipped CodeBrix.WebGpu.Native binaries, native C++
 host/backend, no Slang, Android API 33 minimum, the requested desktop/mobile RIDs,
 permissively licensed redistributable dependencies, and no Git commits/pushes.
+The GPU backend is the WGSL device on WebGPU on every RID except macOS on Apple
+Silicon (osx-arm64), which renders with Cycles' own Metal device; macOS on Intel
+(osx-x64) uses WGSL.
 A need to modify WebGPU itself is a decision point, not an implicit workaround.
 
 Release licensing: active builds use the filtered pinned Cycles snapshot and
@@ -69,8 +72,8 @@ metadata alone does not establish renderer feature coverage.
 ## Parity estimate (Step zero, 2026-10-22)
 
 Two figures, recomputed from the regenerated ledger and the source; both are
-reproducible with the method below. Neither is a release statement; the Metal
-binary on macOS remains the 100% reference.
+reproducible with the method below. Neither is a release statement; the
+osx-arm64 Metal binary (macOS on Apple Silicon) remains the 100% reference.
 
 1. Ledger floor: reviewed rows with a tested status (isolated-, integrated- or
    platform-tested, partial coverage, bounded evidence) divided by all 1,011

@@ -11,8 +11,8 @@ namespace CodeBrix.Graphics3D.Cycles;
 public enum CyclesBackend
 {
     /// <summary>
-    /// The platform's GPU backend: Cycles' native Metal device in osx-arm64 processes, and WebGPU
-    /// everywhere else. A GPU render never falls back to the CPU.
+    /// The platform's GPU backend: Cycles' native Metal device in osx-arm64 (Apple Silicon) processes,
+    /// and WebGPU everywhere else, osx-x64 (Intel macOS) included. A GPU render never falls back to the CPU.
     /// </summary>
     Gpu = 0,
 

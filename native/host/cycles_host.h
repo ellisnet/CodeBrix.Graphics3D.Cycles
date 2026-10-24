@@ -161,8 +161,9 @@ typedef struct CBCVersionInfo {
 } CBCVersionInfo;
 int cbc_host_version(CBCVersionInfo *info);
 
-/* Backend-neutral GPU request: Cycles' Metal device in macOS builds, WebGPU in
- * every other build. Accepted by cbc_host_create and the queries below. */
+/* Backend-neutral GPU request: Cycles' Metal device in the osx-arm64 (Apple
+ * Silicon) build, WebGPU in every other build, osx-x64 (Intel macOS) included.
+ * Accepted by cbc_host_create and the queries below. */
 enum { CBC_HOST_GPU = 4 };
 /* Maps a requested backend (CBC_HOST_GPU, CBC_HOST_WEBGPU, CBC_HOST_METAL or
  * CBC_HOST_CPU_REFERENCE) to the concrete backend this binary would create.

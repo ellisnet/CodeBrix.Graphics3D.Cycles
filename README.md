@@ -1,6 +1,11 @@
 # CodeBrix.Graphics3D.Cycles
 
-A .NET library for building and rendering 3D scenes with the Cycles path-tracing renderer, through a native scene host with a WebGPU rendering backend and an explicit CPU reference backend. CodeBrix.Graphics3D.Cycles is provided as a .NET 10 library and associated `CodeBrix.Graphics3D.Cycles.ApacheLicenseForever` NuGet package.
+A .NET library for building and rendering 3D scenes with the Cycles path-tracing renderer, through a native scene host with a GPU rendering backend and an explicit CPU reference backend. CodeBrix.Graphics3D.Cycles is provided as a .NET 10 library and associated `CodeBrix.Graphics3D.Cycles.ApacheLicenseForever` NuGet package.
+
+The GPU backend depends on the platform:
+
+* macOS on Apple Silicon (osx-arm64): Cycles' own Metal device
+* Every other platform, including macOS on Intel (osx-x64): the CodeBrix WGSL device on WebGPU
 
 CodeBrix.Graphics3D.Cycles supports applications and assemblies that target Microsoft .NET version 10.0 and later.
 Microsoft .NET version 10.0 is a Long-Term Supported (LTS) version of .NET, and was released on Nov 11, 2025; and will be actively supported by Microsoft until Nov 14, 2028.
@@ -25,7 +30,7 @@ CodeBrix.Graphics3D.Cycles has no NuGet dependencies other than .NET.
 
 * A typed scene API: `CyclesScene` with typed camera, film, integrator and background settings, objects, meshes, lights, shader graphs and images
 * A complete object model generated from the native node registry: one class per native node type (scene nodes, geometry, lights and every shader graph node) with strongly typed properties, enumerations and shader graph sockets
-* Backend-neutral device selection (GPU or the explicit CPU reference backend) resolved by the native host, with the native capability report and library version; a GPU render never falls back to the CPU
+* Backend-neutral device selection (GPU or the explicit CPU reference backend) resolved by the native host - Metal on Apple Silicon Macs, WebGPU everywhere else - with the native capability report and library version; a GPU render never falls back to the CPU
 * Asynchronous rendering with `CancellationToken` cancellation and per-sample `IProgress<T>` progress from native render events, plus synchronous rendering into caller-owned buffers
 * Raw scene-linear float32 RGBA film readback as `ReadOnlyMemory<float>` / spans with width, height and stride, and named render passes and AOVs (depth, normal and others on the CPU reference backend)
 * Node removal with reference checks, live image re-upload and mesh deformation motion

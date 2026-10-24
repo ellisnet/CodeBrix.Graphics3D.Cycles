@@ -8,8 +8,10 @@ OVERVIEW
 ========
 CodeBrix.Graphics3D.Cycles builds and renders 3D scenes with the Cycles
 path-tracing renderer from .NET 10 or later. Rendering runs in a native scene
-host on a GPU backend (WebGPU, or Cycles' own Metal device on Apple Silicon)
-or on an explicit CPU reference backend.
+host on a GPU backend or on an explicit CPU reference backend. The GPU backend
+depends on the platform: Cycles' own Metal device on macOS on Apple Silicon
+(osx-arm64), and the CodeBrix WGSL device on WebGPU everywhere else, including
+macOS on Intel (osx-x64).
 
 The package offers three tiers over the same native host. Use the highest one
 that does what you need; they can be mixed on one scene.
@@ -54,8 +56,9 @@ Requirements:
   - A 64-bit process (constructors throw PlatformNotSupportedException
     otherwise).
   - The native scene host library, named codebrix_cycles_host
-    (libcodebrix_cycles_host.so on Linux), resolvable by the .NET native
-    library loader. The package does not ship it yet: the process must find it
+    (libcodebrix_cycles_host.so on Linux, libcodebrix_cycles_host.dylib on
+    macOS), resolvable by the .NET native library loader. The package does
+    not ship it yet: the process must find it
     on its library search path, or the application must register a
     NativeLibrary.SetDllImportResolver for this assembly that loads it.
   - On macOS, the minimum macOS release the native library supports; the
@@ -94,8 +97,9 @@ CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
     CyclesScene(CyclesBackend backend, uint threads = 1)
     CyclesScene(Backend backend, uint threads = 1)    explicit native backend
     static Backend ResolveBackend(CyclesBackend)      asks the native binary:
-                                                      Gpu -> Metal in macOS builds,
-                                                      WebGpu elsewhere;
+                                                      Gpu -> Metal in the osx-arm64
+                                                      build, WebGpu in every other
+                                                      build (osx-x64 included);
                                                       CpuReference -> CpuReference
     static ICapabilityReport GetBinaryCapabilities()  binary-level report, no device
     CyclesHost Host            the by-name host this scene owns (tier 3)
@@ -422,8 +426,15 @@ BACKEND SELECTION
 Use CyclesBackend.Gpu for "the GPU of this platform" and CyclesBackend.
 CpuReference for the CPU. A GPU render never falls back to the CPU: if no
 usable GPU exists, scene creation or the render fails with a CyclesException.
-Which GPU backend renders (WebGPU or Metal) is visible through scene.Backend
-and GetCapabilities(); write backend-neutral code against CyclesBackend.
+CyclesBackend.Gpu resolves by platform:
+
+    macOS on Apple Silicon (osx-arm64)    Backend.Metal  - Cycles' own Metal device
+    macOS on Intel (osx-x64)              Backend.WebGpu - WGSL on WebGPU (which
+                                                           reaches the GPU through Metal)
+    Windows, Linux, Android (all RIDs)    Backend.WebGpu - WGSL on WebGPU
+
+Which GPU backend renders is visible through scene.Backend and
+GetCapabilities(); write backend-neutral code against CyclesBackend.
 
 WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
 render runs (the render fails with NativeStatus.Failed, not at edit time):

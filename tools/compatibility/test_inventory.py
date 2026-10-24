@@ -114,6 +114,17 @@ class Claims(unittest.TestCase):
         self.assertTrue(all(v == 'pending' for v in android['nativeHost'].values()))
         self.assertFalse(android['fullRequirementVerified'])
 
+    def test_only_apple_silicon_uses_the_metal_device(self):
+        rows = {r['rid']: r for r in inv.platforms({})}
+        self.assertEqual({rid for rid, r in rows.items() if r['gpuBackend'] == 'metal'}, {'osx-arm64'})
+        self.assertEqual(rows['osx-x64']['gpuBackend'], 'webgpu')
+        metal = rows['osx-arm64']
+        self.assertEqual(metal['statusRecord'], 'native/host/MACOS_ARM64.md')
+        self.assertNotIn('adapterDiscovery', metal['nativeHost'])
+        self.assertNotIn('basicCompute', metal['nativeHost'])
+        self.assertIn('adapterDiscovery', rows['osx-x64']['nativeHost'])
+        self.assertFalse(metal['fullRequirementVerified'])
+
 
 if __name__ == '__main__':
     unittest.main()

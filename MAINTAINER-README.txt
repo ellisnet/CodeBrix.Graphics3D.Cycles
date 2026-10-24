@@ -62,9 +62,17 @@ facade (CyclesScene), an object model generated from the native registry, and
 a public low-level interop tier (CyclesHost, Interop.CyclesAbi, Interop.Native). The native host
 renders with a new WebGPU backend, using the unchanged binaries shipped by
 CodeBrix.WebGpu.Native, or with the explicit CPU reference backend; the
-osx-arm64 profile uses the native Metal device. The goal is full Cycles parity
-on nine RIDs; the work is in progress, and neither the native host nor the
-package is a production release yet.
+osx-arm64 profile uses the native Metal device. The GPU backend is fixed per RID:
+
+    macOS on Apple Silicon (osx-arm64)     Cycles' own Metal device
+    macOS on Intel (osx-x64)               WGSL on WebGPU
+    win-x64/arm64, linux-x64/arm64/riscv64,
+    android-arm64/x64                      WGSL on WebGPU
+
+The goal is full Cycles parity on all nine RIDs: through the WGSL device on the
+eight WebGPU RIDs, and through Cycles' unchanged Metal device on osx-arm64. The
+work is in progress, and neither the native host nor the package is a
+production release yet.
 
 The library handles raw pixel buffers only. All image file encoding and
 decoding belongs to CodeBrix.Imaging; never add image codecs here.

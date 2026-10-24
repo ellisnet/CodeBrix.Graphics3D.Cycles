@@ -548,7 +548,7 @@ public sealed unsafe class CyclesHost : IDisposable
     /// <summary>
     /// Maps a requested backend (including <see cref="Backend.Gpu"/>) to the concrete backend this
     /// native binary creates for it, without probing hardware: Metal for <see cref="Backend.Gpu"/> in
-    /// macOS builds, WebGPU in every other build.
+    /// the osx-arm64 (Apple Silicon) build, WebGPU in every other build, osx-x64 (Intel macOS) included.
     /// </summary>
     /// <param name="requested">The requested backend.</param>
     /// <returns>The concrete backend.</returns>

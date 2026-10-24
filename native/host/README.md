@@ -53,8 +53,10 @@ Scene compilation, BVH construction, image handling, color management, schedulin
 and rendering remain native. The optional glTF/GLB client uses
 CodeBrix.Graphics3D.Gltf2 and converts its data into this format-neutral API.
 
-The C and .NET callers select WebGPU or the explicit CPU reference backend.
-A requested WebGPU render never falls back to CPU shading. Native node/property
+The C and .NET callers select the platform's GPU backend (`CBC_HOST_GPU`:
+Cycles' Metal device on osx-arm64, the WGSL device on WebGPU on every other RID,
+osx-x64 included), name WebGPU or Metal explicitly, or select the explicit CPU
+reference backend. A requested GPU render never falls back to CPU shading. Native node/property
 registry visibility does not mean a corresponding GPU kernel is implemented.
 Current GPU feature boundaries remain documented in [DEVICE.md](../DEVICE.md).
 
@@ -76,7 +78,7 @@ buffers, callbacks and queries.
 | P14 gap | Resolution |
 | --- | --- |
 | Version | `cbc_host_version` (`CBCVersionInfo`); `targets.cmake` stamps `CBC_HOST_LIBRARY_VERSION` (`1.0.<UTC yyyyMMdd>.<CODEBRIX_HOST_BUILD_NUMBER>`) and reads `CBC_HOST_CYCLES_REVISION` from `third_party/cycles-import.json`; the symbol-version marker and `cbc_host_abi_version` are unchanged |
-| Backend-neutral selection | `CBC_HOST_GPU` (Metal in `WITH_METAL` builds, else WebGPU), `cbc_host_resolve_backend`, `cbc_host_backend` |
+| Backend-neutral selection | `CBC_HOST_GPU` (Metal in `WITH_METAL` builds, which are osx-arm64 only; else WebGPU), `cbc_host_resolve_backend`, `cbc_host_backend` |
 | Capability queries | `cbc_host_capabilities_json` (binary and host level; embeds `device_report()`, the C3 tier report) |
 | Lights | generic layer: the five light node types `cbc_host_create_node` already accepted, their sockets and an object holder; no new export |
 | Cameras, integrator, film | generic layer on the singletons (projection types, panorama type, `motion`, `shuttertime`, exposure, filters, bounces) |
