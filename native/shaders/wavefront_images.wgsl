@@ -46,9 +46,13 @@ fn image_interpolate(info:ImageInfo,xy:vec2<f32>)->vec4<f32>{
     }
     return result;
 }
+// abs(v)<bound on both components, false for NaN, as a test on the bits (bound
+// is the f32 bound's bit pattern): the Intel Vulkan driver on Windows compiles
+// the float comparison as true for NaN (docs/TESTING-WINDOWS-X64.md, W2).
+fn image_below(v:vec2<f32>,bound:u32)->bool{return all((bitcast<vec2<u32>>(v)&vec2<u32>(0x7fffffffu))<vec2<u32>(bound));}
 fn image_sample(s:ptr<function,SvmState>,input_id:i32,input_uv:vec2<f32>)->vec4<f32>{
     var id=input_id;var uv=input_uv;
-    if(!all(abs(uv)<vec2<f32>(1.0e9))){svm_error(s,128u);return vec4<f32>(0);}
+    if(!image_below(uv,0x4e6e6b28u)){svm_error(s,128u);return vec4<f32>(0);}// 1.0e9
     if(id<0){
         let tx=i32(uv.x);let ty=i32(uv.y);if(tx<0||ty<0||tx>=10){return vec4<f32>(1,0,1,1);}
         // IDs are encoded as -tableOffset-1; unsigned arithmetic avoids INT_MIN overflow.
@@ -81,7 +85,7 @@ fn image_sample(s:ptr<function,SvmState>,input_id:i32,input_uv:vec2<f32>)->vec4<
     let bytes=load_word(bounds+4u);
     if(info.data!=load_word(bounds)||bytes/pixel_bytes/u32(info.width)<u32(info.height)){svm_error(s,128u);return vec4<f32>(0);}
     let xy=uv*vec2<f32>(f32(info.width),f32(info.height));
-    if(!all(abs(xy)<vec2<f32>(2147483000.0))){svm_error(s,128u);return vec4<f32>(0);}
+    if(!image_below(xy,0x4efffffbu)){svm_error(s,128u);return vec4<f32>(0);}// 2147483000.0 (2147483008 as f32)
     var result=image_interpolate(info,xy);
     if(info.kind==IMAGE_DATA_TYPE_FLOAT||info.kind==IMAGE_DATA_TYPE_HALF||info.kind==IMAGE_DATA_TYPE_BYTE||info.kind==IMAGE_DATA_TYPE_USHORT){result.w=1.0;}
     return result;

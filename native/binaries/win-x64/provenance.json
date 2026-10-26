@@ -1,6 +1,6 @@
 {
   "rid": "win-x64",
-  "created": "2026-10-26T11:15:49-0700",
+  "created": "2026-10-26T12:54:36-0700",
   "scope": "Reviewed win-x64 product binaries: Cycles with the CodeBrix WGSL/WebGPU device (Direct3D 12 with DXC by default, Vulkan on request) and the CPU device behind the CodeBrix C API; no image file readers; hybrid C runtime (no Visual C++ Redistributable).",
   "sources": {
     "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
@@ -22,7 +22,7 @@
       }
     },
     "overlaySha256": {
-      "background_shader.inc": "71cc8ccdb5b3b970a1c4d0cb657ebc46801a9023ff1869fdc24a7f9b3fbeec22",
+      "background_shader.inc": "59738857e44708788c060b2f00280ee3ba4261bf0ef18dc89976f0209de42061",
       "camera_shader.inc": "f76d9e71f234394b572ede791e7253335e3a6154429cca4cbf499968c2b14e33",
       "closest_shader.inc": "3f5ff2e759793d356dd2ca459633117158ba012b0eb5dd0c14b97da70a079904",
       "controls_shader.inc": "c6b4f46c4aa5dfacc208b418ce2332cd01a9695dbd0168770fe664f5845edef7",
@@ -33,7 +33,7 @@
       "surface_shader.inc": "ee98856f40aeadf69001650bd14d0daea4865e26bef5fd78ce5cc7bcdf0e8106",
       "svm_enums.inc": "2f6f8d706a53c8b32e9d319a3621add519dc22f89ad098531cbc5e21fad505ee",
       "svm_nodes_enums.inc": "6fb15e556f12acaa115a2d07cadb4aacfe23cec2112834351baf8170faa166f4",
-      "svm_shader.inc": "2bc58568c9099f2b22ff75fad0826ebcf775ebd94f093eaffa82893945bb20df",
+      "svm_shader.inc": "713e9c3054b91d9b91e2f14dcecdbb71f9958e3d88bbba8b9ff88676c76be30b",
       "volume_shader.inc": "c016cf2d52543fcd60c5328431f766eb65fa1974cc43085c67612ae69489d05b",
       "volume_stack_shader.inc": "cf8254f055c4839c51cafeb9d52bb18d23b3426eadd676486dceb9719128f890",
       "translated.wgsl": "b047c969cf28bec4d7c07a34e1334282da69484770490e64cbb8ad5cdf921105",
@@ -266,7 +266,7 @@
       "pdb": []
     },
     "runtime/codebrix_cycles_host.dll": {
-      "sha256": "ac70fc65386ecbc98de7a4e3b2cd3b84fc5302eb794dd74b900f9db71d8c33b5",
+      "sha256": "f3aaed0f89b6eb7f0ee327a184406b223e90be48ae2632f1c14793f85b64fb51",
       "machine": "AMD64",
       "imports": [
         "api-ms-win-crt-convert-l1-1-0.dll",
@@ -528,7 +528,7 @@
       ]
     },
     "tests/codebrix_host_session64_reference.exe": {
-      "sha256": "10430c465a8eae6a3c2e37883f8d25469da1109ceef7dd11f23f630d9353ae4a",
+      "sha256": "60f0221aff5be046948650eb4f4cb4b4de1eaa347500c0675c97b6fe73bf2374",
       "machine": "AMD64",
       "imports": [
         "api-ms-win-crt-convert-l1-1-0.dll",
@@ -554,7 +554,7 @@
       ]
     },
     "tests/codebrix_host_session_reference.exe": {
-      "sha256": "203526844a282c1215aa8aab20ddec35c85357a0337082058fb8854ae56db4ed",
+      "sha256": "e613aa03a88ae9ffa1f91be9902ab630d594f30cd80aa7cca5808637e660c2c8",
       "machine": "AMD64",
       "imports": [
         "api-ms-win-crt-convert-l1-1-0.dll",
@@ -653,26 +653,26 @@
     "status": "validated",
     "hostGates": [
       {
-        "output": "native\\work\\windows-validation-d3d12-10",
+        "output": "native\\work\\windows-validation-d3d12-11",
         "backend": "d3d12",
         "adapterBackend": "D3D12",
         "filmsCompared": 28,
         "gpuPracticalFailures": 0,
-        "gpuStrictDifferences": 149,
+        "gpuStrictDifferences": 144,
         "gpuMaximumAbsoluteError": 1.52587890625e-05,
         "crossPlatformCompared": false,
-        "statusSha256": "f30c28f3dba733ce0333026f0ad2833ea8e82cb112f857ba7d0f8aab74d9d692"
+        "statusSha256": "6dac54ad9acf8c4646b48975f351384e31096921819161913dbc9008ec7c008a"
       },
       {
-        "output": "native\\work\\windows-validation-vulkan-7",
+        "output": "native\\work\\windows-validation-vulkan-8",
         "backend": "vulkan",
         "adapterBackend": "Vulkan",
         "filmsCompared": 28,
         "gpuPracticalFailures": 0,
-        "gpuStrictDifferences": 143,
+        "gpuStrictDifferences": 146,
         "gpuMaximumAbsoluteError": 1.52587890625e-05,
         "crossPlatformCompared": false,
-        "statusSha256": "37def3064f16f2c65477362c6d3761eb6eaf7b8953e9fb843af012c077279ddb"
+        "statusSha256": "92460a4fea8e0a51b56f38961b6c397b636397dd55350e922dd4acc772b41e38"
       }
     ],
     "oracles": null,
@@ -709,7 +709,7 @@
   "approvedPayload": {
     "runtime/boost_filesystem.dll": "b2a27210679caa9988ec06d60adcbfab79e5abaa6f3ac36822fd925bbaee913d",
     "runtime/boost_thread.dll": "94b853636cf529f728d716d7494a5360dec2d705529bbeccc7d09da14acca1be",
-    "runtime/codebrix_cycles_host.dll": "ac70fc65386ecbc98de7a4e3b2cd3b84fc5302eb794dd74b900f9db71d8c33b5",
+    "runtime/codebrix_cycles_host.dll": "f3aaed0f89b6eb7f0ee327a184406b223e90be48ae2632f1c14793f85b64fb51",
     "runtime/dxcompiler.dll": "0689e2fee0a1c9df8662a59680469f24e2a3ad7ce6bbbcc9284f7a83172bfc59",
     "runtime/Imath-3_1.dll": "a4144c23739abbcc22ccba8e8bfe3b8b553bc93c957a287b4417ff97de632f6a",
     "runtime/libexpat.dll": "e5591f443b15516b6fa04c7f3187d4ac8f8773726d2fb7d2496b2662d72f20cb",
@@ -719,7 +719,7 @@
     "runtime/OpenImageIO_Util.dll": "0d77f5b3cd89fd2b4b02eeddebdd2a2a2349ea02b6fd15406679516f215b539f",
     "runtime/tbb12.dll": "e9288348b4f914049ab7c245d5b38bdd05d8369a43ba924dba0df180ad32e275",
     "runtime/zlib1.dll": "45c37036d8b92843f67495ab2543c0b688d963c0d3863dca0d695a382ec5e3ee",
-    "symbols/codebrix_cycles_host.pdb": "5804d528d931ae5b9c9121a6bf447a0fc5cefc524c67389f43a0133112759d43",
+    "symbols/codebrix_cycles_host.pdb": "af0d4d889be6e6ff1fb9d61940e5b49c1f739479b0965b4d1b2458595e51fd19",
     "symbols/codebrix_cycles_oracle.pdb": "6c3c32f23f01e3d7bc4aa34b1ece7ca872ce5443024aea1e058e0de4982f3cb0",
     "tests/codebrix_cycles_oracle.exe": "64dec9510ca8dadf03fb45a848a788620d14b119b95482bc99461962d3bcc2f6",
     "tests/codebrix_host_abi_test.exe": "6410dac7f44cbc874a3be30f9d85c12b4f371211c7d6c1c06561831003909588",
@@ -727,8 +727,8 @@
     "tests/codebrix_host_cpu_test.exe": "f781fe65f324308be4c82b0da040a1f76297c26ccb363e8916355c3b677ff843",
     "tests/codebrix_host_example_test.exe": "6c6690dd8ba548bbf0f62450afb31c8d0aeb224a36a3d8fd2ff534dfbd1cd36a",
     "tests/codebrix_host_gpu_test.exe": "61ae869f43261fe1e8fb5e69170bf7b4773a25c3bb4d82cd0e45a00abfc14a9f",
-    "tests/codebrix_host_session64_reference.exe": "10430c465a8eae6a3c2e37883f8d25469da1109ceef7dd11f23f630d9353ae4a",
-    "tests/codebrix_host_session_reference.exe": "203526844a282c1215aa8aab20ddec35c85357a0337082058fb8854ae56db4ed"
+    "tests/codebrix_host_session64_reference.exe": "60f0221aff5be046948650eb4f4cb4b4de1eaa347500c0675c97b6fe73bf2374",
+    "tests/codebrix_host_session_reference.exe": "e613aa03a88ae9ffa1f91be9902ab630d594f30cd80aa7cca5808637e660c2c8"
   },
   "snapshotCopies": {}
 }

@@ -453,16 +453,30 @@ Both RIDs rebuilt with the W1 fixes (0 warnings), Intel graphics driver
   as failed by the script only because its row has no top-level `passed`
   (`memoryAccountingPassed` and `atomicContract.passed` are true; the macOS gate
   scores it the same way).
-- **New finding W2, Vulkan only:** the `image` device gate's test 11 (a texture
+- **Finding W2, Vulkan only (fixed):** the `image` device gate's test 11 (a texture
   lookup with a NaN coordinate must be rejected) fails on the Intel Vulkan
   driver: `!all(abs(uv)<vec2<f32>(1.0e9))` (`wavefront_images.wgsl`) does not
   catch NaN there, while Direct3D 12 does. Vulkan is the opt-in backend on
   Windows, and the effect is a missing rejection of invalid data, not a
-  different image for valid scenes. An equivalent bit-pattern test would fix it
-  on every GPU; not changed.
+  different image for valid scenes. **Fixed (2026-10-26):** both range guards of
+  `image_sample` (`abs(uv)<1.0e9` and `abs(xy)<2147483000.0`) are now a test on
+  the bits (`image_below`: the magnitude bits against the bound's bit pattern,
+  0x4e6e6b28 and 0x4efffffb), which gives the same answer for every input,
+  including ±0, infinities and NaN (checked on the edge values and 200,000
+  random bit patterns), and runs on every GPU. The `image` device gate then
+  rejected all 14 invalid cases on both backends, and its D3D12 sampling and
+  graph results were identical to the run before the change. Revalidated with
+  it: host gates `native/work/windows-validation-d3d12-11` and
+  `windows-validation-vulkan-8` passed (28 films, 0 failed, driver coverage all
+  four, `image` device gate passed on both; the other device-gate results as
+  above); managed tests 180, and `GpuRenderTests` 14 of 14 on both backends;
+  `starter/textured-plane` and `linux-gates/textured-plane` pass on both
+  backends (4.8e-7 and 3.8e-6), and the bench scenes' figures are unchanged
+  (`native/work/oracles/windows-x64-w2-1`).
 
-**Staged:** win-x64 from `windows-validation-d3d12-10` and
-`windows-validation-vulkan-7` (`validation.status` "validated"; the payload
+**Staged:** win-x64 from `windows-validation-d3d12-11` and
+`windows-validation-vulkan-8`, after the W2 fix (`validation.status`
+"validated"; the payload
 smoke render matches on CPU and GPU, center pixel 0.674168, 0.377084,
 0.114271). win-arm64 was rebuilt with the same sources and staged
 "pending-device".
