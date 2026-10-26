@@ -232,7 +232,11 @@ fn surface_prepare(id:vec3<u32>){
     let group=load_word(object+O_lightgroup);let go=data_word(D_film_pass_lightgroup);if(group!=NONE&&go!=PASS_NONE&&(group>=stride/3u||go>stride-3u*(group+1u))){fail();return;}
     if(volume_enabled()&&(sd.shader_flag&VS_HAS_VOLUME)!=0u){if(volume_stack_count(index)==NONE){return;}}
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){var empty:SvmResult;surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,empty);return;}
-    var r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}sd.N=r.N;surf_prepare(index,&r);
+    var r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}
+//#if DEBUG_OUTPUT
+    if(debug_output_first_hit(index,base,sd,r)){surf_finish(index,false);return;}
+//#endif
+    sd.N=r.N;surf_prepare(index,&r);
     surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,r);
 }
 // Direct lighting runs in two dispatches. shade_surface_light samples the lamp or
@@ -424,3 +428,28 @@ fn surface_light_combined(li:SurfaceLightInputs){
     if((sampled.label&LABEL_TRANSMIT)!=0u){volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);}
     surf_finish(index,true);
 }
+//#if DEBUG_OUTPUT
+// Diagnostic debug output (CODEBRIX_CYCLES_DEBUG_OUTPUT; pipelines.h
+// SF_DEBUG_OUTPUT): the first camera hit writes one SurfaceData field to the
+// Combined film, raw (no throughput, no clamping), and the path ends there.
+// Modes: 1 shading normal as interpolated (sd.N before shader evaluation),
+// 2 geometric normal, 3 shading normal after shader evaluation (bump, normal
+// map), 4 (u, v, primitive), 5 (shader flags, object flags, runtime flags).
+// A non-finite component is written as 1e30, so NaN and Inf are unmistakable.
+fn debug_output_value(sd:SurfaceData,r:SvmResult)->vec3<f32>{
+    switch(DEBUG_OUTPUT_MODE){
+        case 1u:{return sd.N;}
+        case 2u:{return sd.Ng;}
+        case 3u:{return r.N;}
+        case 4u:{return vec3<f32>(sd.u,sd.v,f32(sd.prim));}
+        default:{return vec3<f32>(f32(sd.shader_flag),f32(sd.object_flag),f32(sd.runtime_flag));}
+    }
+}
+fn debug_output_first_hit(index:u32,base:u32,sd:SurfaceData,r:SvmResult)->bool{
+    if(state_half(S_path_bounce,index)!=0u||state_half(S_path_transparent_bounce,index)!=0u){return false;}
+    var value=debug_output_value(sd,r);
+    value=select(value,vec3<f32>(1e30),(bitcast<vec3<u32>>(value)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
+    film_rgb(base,data_word(D_film_pass_combined),value);
+    return true;
+}
+//#endif

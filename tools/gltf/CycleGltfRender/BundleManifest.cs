@@ -47,6 +47,6 @@ public static class BundleManifest
             ["sceneId"] = bundle.Id, ["model"] = Path.GetFileName(model), ["modelSha256"] = Sha(File.ReadAllBytes(model)),
             ["decoder"] = textures?.Decoder, ["images"] = images, ["files"] = files,
         };
-        File.WriteAllText(Path.Combine(directory, FileName), manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
+        File.WriteAllText(Path.Combine(directory, FileName), manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true, NewLine = "\n" }) + "\n");
     }
 }

@@ -34,7 +34,8 @@ RUNTIME_SHA256={'win-x64':'61c6f4d8d529240ab531e17f9aab7845b9dda04a45848674c1af4
 HOST_TARGETS=['codebrix_cycles_host',*['codebrix_host_'+n for n in ['cpu_test','gpu_test','reload_test','concurrency_test','tier_test',
  'abi_test','example_test','scene_edit_test','session_reference','session64_reference']],'codebrix_cycles_oracle']
 GATE_TARGETS=['codebrix_cycles_'+n+'_gate' for n in ['device','camera','closest','background','svm_world','shader_data','svm_surface',
- 'attribute','normal','image','surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film']]
+ 'attribute','normal','image','surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film',
+ 'ao_render','ao_state','light_tree','mnee','mnee_render','shadow_catcher']]
 SKIPPED_TARGETS={'codebrix_host_image_reference':'writes and reads EXR/PNG through OIIO, whose format plugins are disabled',
  'codebrix_cycles_image_file_gate':'loads texture files through OIIO, whose format plugins are disabled'}
 OVERLAY_PATTERNS=['*.inc','translated.wgsl','device/*','integrator/*','util/*']

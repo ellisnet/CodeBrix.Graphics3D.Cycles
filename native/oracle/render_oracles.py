@@ -45,6 +45,8 @@ DEFAULT_BACKENDS=['cpu-arm64-macos','metal-m2pro','metal-m2pro-metalrt','cpu-x64
 INTEL_MAC=platform.system()=='Darwin' and platform.machine()=='x86_64'
 WINDOWS=platform.system()=='Windows'
 WINDOWS_RID={'AMD64':'win-x64','ARM64':'win-arm64'}.get(platform.machine()) if WINDOWS else None
+DIAGNOSTIC_VARIABLES=['CODEBRIX_CYCLES_WGSL_LOAD','CODEBRIX_CYCLES_WEBGPU_ADAPTER','CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT',
+ 'CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL','CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS','CODEBRIX_CYCLES_WEBGPU_LOG','CODEBRIX_CYCLES_DEBUG_OUTPUT','CODEBRIX_CYCLES_DRIVER_WORKAROUNDS']
 
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -140,6 +142,10 @@ def run(args):
  backends=args.backend or list(DEFAULT_BACKENDS)
  common=dict(machine=machine(),hostLibrarySha256=sha(args.host_library),runnerSha256=sha(args.runner),cpuKernelCompile=kernel_flags())
  record=dict(scenes={},backends=backends,common=common,kernelCompileSeconds={})
+ # Opt-in WebGPU diagnostics (native/src/webgpu_device.h) make the run diagnostic,
+ # never evidence: they are recorded, and every comparison is reported as such.
+ diagnostic={k:v for k,v in os.environ.items() if k in DIAGNOSTIC_VARIABLES and v}
+ if diagnostic:record['diagnosticRun']=diagnostic;print(f'DIAGNOSTIC RUN (not evidence): {diagnostic}',flush=True)
  for name in backends:
   cache=root/'cache'/name;cache.mkdir(parents=True)
   if BACKENDS[name][0]=='metal':
@@ -203,10 +209,35 @@ def main():
  p.add_argument('--output',type=Path);p.add_argument('--runner',type=Path);p.add_argument('--host-library',type=Path)
  p.add_argument('--backend',action='append',choices=list(BACKENDS));p.add_argument('--scene',action='append',default=[])
  p.add_argument('--threads',type=int,default=4);p.add_argument('--previews',type=Path);p.add_argument('--bundle',type=Path)
+ p.add_argument('--payload',type=Path,help='Windows: render from a staged payload (native/binaries/<rid>) instead of --runner/--host-library')
  a=p.parse_args()
  if a.bundle:return bundle(a.bundle)
+ if a.payload:
+  if not a.output:p.error('--output is required')
+  a.runner,a.host_library=payload_run_folder(a.payload.resolve(),a.output.resolve())
  if not (a.output and a.runner and a.host_library):p.error('--output, --runner and --host-library are required')
  return run(a)
+
+
+def payload_run_folder(payload,output):
+ """A staged Windows payload carries the host, its DLLs, DXC and the oracle runner,
+ but not the WebGPU runtime (its own NuGet package). Assemble one run folder from
+ the verified payload and the pinned runtime, as an application has them
+ (native/tools/windows_host_gate.py --payload does the same)."""
+ provenance=json.loads((payload/'provenance.json').read_text())
+ for name,digest in provenance['approvedPayload'].items():
+  if sha(payload/name)!=digest:raise SystemExit('Payload file changed since staging: '+name)
+ sys.path.insert(0,str(REPO/'research'));from native_runner import PACKAGE
+ runtime=PACKAGE/provenance['webgpuRuntime']['path']
+ if not runtime.is_file() or sha(runtime)!=provenance['webgpuRuntime']['sha256']:
+  raise SystemExit(f'Restore {provenance["webgpuRuntime"]["id"]} {provenance["webgpuRuntime"]["version"]} first (dotnet restore research/GpuProbe/GpuProbe.csproj)')
+ folder=output.parent/(output.name+'-payload-run')
+ if folder.exists():raise SystemExit(f'{folder} exists; use a new run directory')
+ folder.mkdir(parents=True)
+ for name in provenance['approvedPayload']:
+  if name.startswith(('runtime/','tests/')):shutil.copy2(payload/name,folder/Path(name).name)
+ shutil.copy2(runtime,folder/runtime.name)
+ return folder/'codebrix_cycles_oracle.exe',folder/'codebrix_cycles_host.dll'
 
 
 if __name__=='__main__':sys.exit(main())

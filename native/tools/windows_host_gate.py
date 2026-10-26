@@ -35,8 +35,19 @@ CBC_UNSUPPORTED=2
 BACKEND_TYPES={0:'Undefined',1:'Null',2:'WebGPU',3:'D3D11',4:'D3D12',5:'Metal',6:'Vulkan',7:'OpenGL',8:'OpenGLES'}
 EXPECTED_BACKEND={'d3d12':4,'vulkan':6}
 DEVICE_GATES=['device','camera','closest','background','svm_world','shader_data','svm_surface','attribute','normal','image',
- 'surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film']
+ 'surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film',
+ 'ao_render','ao_state','light_tree','mnee','mnee_render','shadow_catcher']
 HOST_MACHINE={'AMD64':'win-x64','ARM64':'win-arm64'}
+# One oracle scene per failure class found on a Windows GPU driver (the Qualcomm
+# Adreno 680 Direct3D 12 driver; docs/TESTING-WINDOWS-ARM64.md).
+DRIVER_COVERAGE={'smooth-shading':'native/oracle/scenes/linux-gates/glass-render.json',
+ 'motion-normal-map':'native/oracle/scenes/linux-gates/deforming-motion-1.json',
+ 'glass-area-light':'native/oracle/scenes/starter/glass-and-area-light.json',
+ 'light-tree':'native/oracle/scenes/light-tree/lamps-and-mesh-lights.json'}
+# Opt-in diagnostics (native/src/webgpu_device.h): a run with any of them set
+# is diagnostic and never passes.
+DIAGNOSTIC_VARIABLES=['CODEBRIX_CYCLES_WGSL_LOAD','CODEBRIX_CYCLES_WEBGPU_ADAPTER','CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT',
+ 'CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL','CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS','CODEBRIX_CYCLES_WEBGPU_LOG','CODEBRIX_CYCLES_DEBUG_OUTPUT','CODEBRIX_CYCLES_DRIVER_WORKAROUNDS']
 
 
 def pe_exports(path):
@@ -195,7 +206,11 @@ def main():
    if mode=='gpu':assert rows[0]['explicitWebGpu'] and rows[0]['repeatStrictCriterionPassed'] and rows[0]['repeatChecks']==3,rows
    for i in range(count):
     reference=cpu64/'run.1.rgba.bin' if i==3 else cpu/f'run.{i if i<3 else 1}.rgba.bin'
-    compare(target/f'run.{i}.rgba.bin',reference,f'{mode} vs same-host CPU Session reference')
+    # run.3 (the 64-sample film against the session64 reference), as in host_gate.py: the
+    # practical criterion is required and strict differences are recorded. Its atomic
+    # accumulation order varies between runs, and one component (1742) sits one float step
+    # from the strict bound (native/DEVICE.md, "Merge wave 7").
+    compare(target/f'run.{i}.rgba.bin',reference,f'{mode} vs same-host CPU Session reference',strict=i!=3)
 
   # ABI additions on the CPU reference and through CBC_HOST_GPU.
   abi={}
@@ -226,6 +241,7 @@ def main():
     # Direct3D 12 compiles with the DXC beside the host; Vulkan loads none.
     assert (adapter['dxcPath'] is not None)==(a.backend=='d3d12'),adapter
     if adapter['dxcPath']:assert Path(adapter['dxcPath']).parent==library.parent,adapter
+    state['deviceDiagnostics']=adapter.get('diagnostics',[]);state['layeredOn']=adapter.get('layeredOn')
    abi[mode]=target
   for name in ['base','object-motion','deforming']:
    compare(abi['gpu']/f'run.{name}.rgba.bin',abi['cpu']/f'run.{name}.rgba.bin','ABI GPU vs CPU')
@@ -236,6 +252,35 @@ def main():
    row=report([exe('codebrix_host_example_test'),mode],'example-'+mode,3600)[0]
    assert row['backend']==(2 if mode=='cpu' else 1) and row['progressEvents']>0
    assert row['depthStatus']==(0 if mode=='cpu' else 1)
+
+  # Windows driver coverage (docs/TESTING-WINDOWS-ARM64.md, F1, F3 and F4;
+  # docs/TESTING-WINDOWS-X64.md, W1): one oracle scene per class of scene a
+  # Windows GPU driver has rendered wrongly or refused,
+  # rendered on the CPU and the GPU by the oracle runner and compared with the
+  # practical criterion, which is required. The shared host-gate fixtures above
+  # (also used on Linux and macOS) are unchanged.
+  coverage={}
+  for kind,scene in DRIVER_COVERAGE.items():
+   target=folder('driver-'+kind)
+   # compare.py takes the CPU film as the reference by its label (cpu-*).
+   for backend,label in [('cpu','cpu-windows'),('webgpu','wgsl-windows')]:
+    try:call([exe('codebrix_cycles_oracle'),'--scene',REPO/scene,'--backend',backend,'--label',label,'--output',target/label,'--threads','4'],
+     f'driver-{kind}-{backend}',3600)
+    except subprocess.CalledProcessError:
+     # A GPU render that fails (a pipeline the driver rejects) is a coverage
+     # failure of this class; the remaining classes still run.
+     if backend=='cpu':raise
+     coverage[kind]=dict(scene=scene,passed=False,error=(out/f'driver-{kind}-{backend}.stderr.txt').read_text().strip()[-400:])
+   if kind in coverage:continue
+   compared=subprocess.run([sys.executable,'-I','-X','utf8',REPO/'native/oracle/compare.py',target/'cpu-windows',target/'wgsl-windows','--json',target/'compare.json'],
+    cwd=REPO,capture_output=True,text=True,timeout=600)
+   (out/f'driver-{kind}-compare.stdout.txt').write_text(compared.stdout+compared.stderr)
+   assert (target/'compare.json').exists(),'compare.py wrote no report: '+(compared.stdout+compared.stderr)[-400:]
+   report_=json.loads((target/'compare.json').read_text())
+   pair=report_['pairs'][0]
+   coverage[kind]=dict(scene=scene,passed=bool(report_['passed']),maximumAbsoluteError=pair['maxAbsoluteDifference'],
+    practicalFailures=pair['practicalFailures'],strictDifferences=pair['strictDifferences'])
+  results['driverCoverage']=coverage;save(out/'results.json',results)
 
   if linux:
    assert json.loads((linux/'status.json').read_text())['passed'];old=json.loads((linux/'invocation.json').read_text())
@@ -266,9 +311,15 @@ def main():
   assert all(sha(Path(path))==digest for path,digest in {**pins,**reference_hashes}.items()),'Inputs changed during the gate'
   failures=[r for r in comparisons if r['practicalFailures'] or (r['strictRequired'] and r['strictDifferences']) or (r['bitwiseRequired'] and not r['bitwiseEqual'])]
   gpu=[r for r in comparisons if not r['bitwiseRequired'] and 'cross-platform' not in r['kind']]
+  coverage_failures=[kind for kind,row in coverage.items() if not row['passed']]
+  # A diagnostic run (any opt-in diagnostic in the environment or reported by the
+  # device) is recorded but never passes; neither does a layered adapter (Dozen).
+  diagnostic=sorted(set(state.get('deviceDiagnostics',[]))|{n+'='+env[n] for n in DIAGNOSTIC_VARIABLES if env.get(n)})
   save(out/'invocation.json',dict(binarySha256=pins,referenceSha256=reference_hashes,commands=commands,
    buildInvocationSha256=None if a.payload else sha(host/'invocation.json')))
-  state.update(complete=True,phase='complete',passed=not failures,filmsCompared=len(comparisons),failedFilms=len(failures),
+  state.update(complete=True,phase='complete',passed=not failures and not coverage_failures and not diagnostic and not state.get('layeredOn'),
+   driverCoverageFailures=coverage_failures,diagnosticRun=bool(diagnostic),diagnostics=diagnostic,
+   filmsCompared=len(comparisons),failedFilms=len(failures),
    sameHostBitwiseFailures=sum(r['bitwiseRequired'] and not r['bitwiseEqual'] for r in comparisons),
    gpuPracticalFailures=sum(r['practicalFailures'] for r in gpu),gpuStrictDifferences=sum(r['strictDifferences'] for r in gpu),
    gpuMaximumAbsoluteError=max((r['maximumAbsoluteError'] for r in gpu),default=None),

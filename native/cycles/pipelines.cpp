@@ -5,7 +5,11 @@
 #include "kernel/svm/node_types.h"
 #include "kernel/types.h"
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cstddef>
+#include <cstdio>
+#include <random>
 #include <cstring>
 #include <cstdlib>
 #include <mutex>
@@ -32,7 +36,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"LIGHT_AREA",SF_LIGHT_AREA},{"MOTION_OBJECT",SF_MOTION_OBJECT},{"MOTION_CAMERA",SF_MOTION_CAMERA},
     {"LIGHT_TRIANGLE",SF_LIGHT_TRIANGLE},{"LIGHT_BACKGROUND",SF_LIGHT_BACKGROUND},{"LIGHT_NEE",SF_LIGHT_NEE},
     {"LIGHT_TREE",SF_LIGHT_TREE},{"LIGHT_LINKING",SF_LIGHT_LINKING},{"LIGHT_SELECT",SF_LIGHT_SELECT},
-    {"SHADOW_CATCHER",SF_SHADOW_CATCHER},{"MNEE",SF_MNEE},
+    {"SHADOW_CATCHER",SF_SHADOW_CATCHER},{"MNEE",SF_MNEE},{"DEBUG_OUTPUT",SF_DEBUG_OUTPUT},{"DRIVER_CACHE_SALT",SF_DRIVER_CACHE_SALT},
     {"SHADOW_TERMINATOR_GEOMETRY",SF_TERMINATOR_GEOMETRY},{"SHADOW_TERMINATOR_SHADING",SF_TERMINATOR_SHADING},
     {"SVM_NODE_TEX_NOISE",SF_TEX_NOISE},{"SVM_NODE_TEX_WHITE_NOISE",SF_TEX_WHITE_NOISE},{"SVM_NODE_TEX_WAVE",SF_TEX_WAVE},
     {"SVM_NODE_TEX_MAGIC",SF_TEX_MAGIC},{"SVM_NODE_TEX_BRICK",SF_TEX_BRICK},{"SVM_NODE_MAPPING",SF_MAPPING},
@@ -70,6 +74,8 @@ static_assert(SF_ALL.count()==72&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderF
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
+static_assert(SF_DEBUG_OUTPUT.test(116)&&!(SF_ALL&SF_DEBUG_OUTPUT).any());
+static_assert(SF_DRIVER_CACHE_SALT.test(117)&&!(SF_ALL&SF_DRIVER_CACHE_SALT).any());
 
 namespace {
 // Record size and handler feature for every opcode the WGSL size switch accepts.
@@ -327,6 +333,7 @@ uint32_t declared_workgroup_size(const std::string &source,const char *entry){
 
 #include "device.h"
 #include "wavefront.h"
+#include "../oracle/sha256.h"
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
@@ -416,7 +423,41 @@ ShaderFeatures WebGPUDevice::shader_features(){
   }
   return enabled_features;
 }
-std::string WebGPUDevice::module_wgsl(const std::string &source){return specialize_wgsl(source,shader_features());}
+unsigned debug_output_mode(){
+  static const unsigned mode=[]{
+    const char *value=cbc::diagnostic_env("CODEBRIX_CYCLES_DEBUG_OUTPUT");if(!value)return 0u;
+    static const char *names[]={"shading-normal","geometric-normal","svm-normal","uv","flags"};
+    for(unsigned i=0;i<5;i++)if(std::strcmp(value,names[i])==0)return i+1;
+    throw std::runtime_error(std::string("CODEBRIX_CYCLES_DEBUG_OUTPUT must be shading-normal, geometric-normal, svm-normal, uv or flags, not '")+value+"'");
+  }();
+  return mode;
+}
+// The diagnostic debug output region joins every module while the mode is set.
+static ShaderFeatures debug_output_features(){return debug_output_mode()?SF_DEBUG_OUTPUT:SF_NONE;}
+std::string WebGPUDevice::module_wgsl(const std::string &source){return specialize_wgsl(source,shader_features()|debug_output_features());}
+// Driver workarounds (pipelines.h SF_DRIVER_CACHE_SALT), keyed to the adapter and
+// listed in the device report.
+static bool driver_workarounds_off(){
+  static const bool off=[]{
+    const char *value=cbc::diagnostic_env("CODEBRIX_CYCLES_DRIVER_WORKAROUNDS");if(!value)return false;
+    if(std::strcmp(value,"none")!=0)throw std::runtime_error(std::string("CODEBRIX_CYCLES_DRIVER_WORKAROUNDS must be none, not '")+value+"'");
+    return true;
+  }();
+  return off;
+}
+static bool intel_d3d12_cache_salt(const cbc::Device &gpu){
+  return gpu.adapter_vendor_id==0x8086&&gpu.adapter_backend==WGPUBackendType_D3D12&&!driver_workarounds_off();
+}
+// A constant no object index reaches (0xF0000000 to 0xFFFFFFFE, never NONE),
+// different for every compile in this process and, from its random start, in
+// every process.
+static void salt_driver_cache(std::string &code){
+  static std::atomic<uint32_t> next{[]{std::random_device random;
+    return uint32_t(random())^uint32_t(std::chrono::steady_clock::now().time_since_epoch().count());}()};
+  char value[16];std::snprintf(value,sizeof(value),"0x%08xu",0xF0000000u|(next.fetch_add(1)&0x0FFFFFFEu));
+  for(size_t at=code.find("DRIVER_CACHE_SALT_VALUE");at!=std::string::npos;at=code.find("DRIVER_CACHE_SALT_VALUE",at))
+    code.replace(at,std::strlen("DRIVER_CACHE_SALT_VALUE"),value);
+}
 bool WebGPUDevice::pipeline_current(const cbc::Pipeline &pipeline,const char *entry){
   if(!pipeline.value)return false;
   auto it=pipeline_features.find(entry);
@@ -439,7 +480,8 @@ uint32_t WebGPUDevice::workgroup(const char *entry) const{
   return it->second;
 }
 std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries,ShaderFeatures extra){
-  const ShaderFeatures features=shader_features()|extra;const std::string specialized=specialize_wgsl(source,features);
+  const ShaderFeatures features=shader_features()|extra|debug_output_features()|(intel_d3d12_cache_salt(gpu)?SF_DRIVER_CACHE_SALT:SF_NONE);
+  const std::string specialized=specialize_wgsl(source,features);
   using clock=std::chrono::steady_clock;auto ms=[](clock::time_point a,clock::time_point b){return std::chrono::duration<double,std::milli>(b-a).count();};
   auto warn=[&](const std::string &message){
     pipeline_warnings.push_back(message);std::fprintf(stderr,"CodeBrix Cycles WebGPU warning: %s\n",message.c_str());
@@ -469,10 +511,29 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
     std::ofstream(std::string(dir)+name)<<(conservative?conservative_wgsl(specialized):specialized);
     std::snprintf(name,sizeof(name),"/source-%s.wgsl",module);std::ofstream(std::string(dir)+name)<<source;
   }
+  // Diagnostic WGSL override (CODEBRIX_CYCLES_WGSL_LOAD=DIR). One module name is
+  // compiled in several variants (entry sets, features, tiers), so overrides are
+  // keyed by the generated source: <key> is <module>-<first 16 hex digits of the
+  // SHA-256 of the WGSL that would be compiled>. A variant without an override
+  // writes DIR/<key>.generated.wgsl (once); copying that file to DIR/<key>.wgsl
+  // and editing it makes exactly that variant compile the edited text. The
+  // override's SHA-256 is noted as an active diagnostic.
+  std::string override_code;
+  if(const char *dir=cbc::diagnostic_env("CODEBRIX_CYCLES_WGSL_LOAD")){
+    const std::string generated=conservative?conservative_wgsl(specialized):specialized;
+    const std::string key=std::string(module)+"-"+oracle::sha256(generated.data(),generated.size()).substr(0,16);
+    std::ifstream file(std::string(dir)+"/"+key+".wgsl",std::ios::binary);
+    if(file){std::ostringstream text;text<<file.rdbuf();override_code=text.str();
+      cbc::note_diagnostic("WGSL override "+key+".wgsl sha256="+oracle::sha256(override_code.data(),override_code.size()));
+      warn("WGSL override loaded for "+key+" (diagnostic, not a validation run)");}
+    else{const std::string path=std::string(dir)+"/"+key+".generated.wgsl";
+      if(!std::ifstream(path))std::ofstream(path,std::ios::binary)<<generated;}
+  }
   for(const char *entry:entries){
     const size_t entry_inlined=inlined[size_t(std::find(entries.begin(),entries.end(),entry)-entries.begin())];
     for(int attempt=0;;attempt++){
-      const std::string code=conservative?conservative_wgsl(specialized):specialized;
+      std::string code=!override_code.empty()?override_code:conservative?conservative_wgsl(specialized):specialized;
+      if((features&SF_DRIVER_CACHE_SALT).any())salt_driver_cache(code);
       const auto t0=clock::now();
       WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};
       WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;
@@ -564,7 +625,16 @@ std::string WebGPUDevice::adapter_report_json() const{
   const uint32_t b=gpu.adapter_backend;std::ostringstream o;
   o<<"{\"backendType\":"<<b<<",\"backendName\":\""<<(b<9?backends[b]:"unknown")<<"\",\"adapterType\":"<<gpu.adapter_type
    <<",\"device\":\""<<json_text(gpu.adapter_device)<<"\",\"vendorId\":"<<gpu.adapter_vendor_id<<",\"deviceId\":"<<gpu.adapter_device_id
-   <<",\"runtimeLibrary\":\""<<json_text(gpu.library_path)<<"\",\"dxcPath\":"<<(gpu.dxc_path.empty()?std::string("null"):"\""+json_text(gpu.dxc_path)+"\"")<<'}';
+   <<",\"runtimeLibrary\":\""<<json_text(gpu.library_path)<<"\",\"dxcPath\":"<<(gpu.dxc_path.empty()?std::string("null"):"\""+json_text(gpu.dxc_path)+"\"")
+   // A layered adapter (Vulkan on Direct3D 12 through Mesa Dozen) is never native evidence.
+   <<",\"layeredOn\":"<<(gpu.layered_on.empty()?std::string("null"):"\""+json_text(gpu.layered_on)+"\"")
+   <<",\"driverWorkarounds\":["<<(intel_d3d12_cache_salt(gpu)?"\"intel-d3d12-shader-cache\"":"")<<"],\"adapters\":[";
+  for(size_t i=0;i<gpu.adapters_seen.size();i++)o<<(i?",":"")<<gpu.adapters_seen[i];
+  // Opt-in diagnostics active in this process (webgpu_device.h): a run with any
+  // listed is diagnostic, never validation.
+  const std::vector<std::string> active=cbc::diagnostics();o<<"],\"diagnostic\":"<<(active.empty()?"false":"true")<<",\"diagnostics\":[";
+  for(size_t i=0;i<active.size();i++)o<<(i?",":"")<<'"'<<json_text(active[i])<<'"';
+  o<<"]}";
   return o.str();
 }
 std::string pipeline_process_report_json(){

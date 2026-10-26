@@ -164,6 +164,26 @@ inline constexpr ShaderFeatures SF_AO_SHADOW=ShaderFeatures::bit(108);
 // background culling (wavefront_mnee.wgsl and MNEE regions). Bits 111-115 are
 // reserved for MNEE entry splits.
 inline constexpr ShaderFeatures SF_MNEE=ShaderFeatures::bit(110);
+// Diagnostic debug output (CODEBRIX_CYCLES_DEBUG_OUTPUT, off by default): the
+// first camera hit writes one SurfaceData field to the Combined film instead of
+// radiance (wavefront_surface.wgsl, DEBUG_OUTPUT region). A module-variant bit
+// like SVM_NODE_RAYTRACE, never a scene feature and not in SF_ALL, so every
+// module compiles byte-identically unless the variable is set.
+inline constexpr ShaderFeatures SF_DEBUG_OUTPUT=ShaderFeatures::bit(116);
+// The debug output mode (0: off; 1 shading-normal, 2 geometric-normal,
+// 3 svm-normal, 4 uv, 5 flags), from CODEBRIX_CYCLES_DEBUG_OUTPUT; an unknown
+// name throws. A set mode is noted as an active diagnostic.
+unsigned debug_output_mode();
+// Driver workaround (docs/TESTING-WINDOWS-X64.md, W1): on the Intel Direct3D 12
+// driver the first compile of a pipeline that walks the light tree is correct
+// and the driver's cached compile of the same DXIL is not. The DRIVER_CACHE_SALT
+// region (wavefront_light_tree.wgsl) compares the walk's receiver with a constant
+// that no object index reaches, different for every compile, so those pipelines
+// never come from the driver's cache; the images are unchanged. A module-variant
+// bit like SF_DEBUG_OUTPUT, not in SF_ALL; build_pipelines sets it on Intel
+// Direct3D 12 adapters unless CODEBRIX_CYCLES_DRIVER_WORKAROUNDS=none (a
+// diagnostic, to test a new driver) is set.
+inline constexpr ShaderFeatures SF_DRIVER_CACHE_SALT=ShaderFeatures::bit(117);
 // Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108 and 110;
 // bit 62 is unassigned; 107 is the raytrace module variant).
 inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE;

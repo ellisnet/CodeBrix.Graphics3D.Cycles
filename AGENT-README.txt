@@ -453,9 +453,20 @@ the Vulkan driver instead (for diagnostics or comparison; it needs a Vulkan
 driver on the machine). There is no automatic fallback from one backend to the
 other, nor to the CPU: if the selected one is unavailable, scene creation fails
 with a CyclesException. GetCapabilities().Json names the backend in use.
-Windows x64 is tested on Direct3D 12 and on Vulkan. Windows ARM64 binaries are
-built (the same code and layout) and speculatively marked validated, but not
-yet tested on an ARM64 device; that test happens before they ship.
+Windows x64 is tested on Direct3D 12 and on Vulkan. On Intel GPUs with Direct3D 12
+the shaders that use the light tree are compiled anew in every process (a
+workaround for an Intel driver shader-cache bug), so the first render of such a
+scene takes longer there; the image is unaffected. Windows ARM64 binaries are
+built (the same code and layout) but not yet validated: on the one ARM64 GPU
+tested so far (Qualcomm Adreno 680, Direct3D 12) some scenes render wrongly
+because of driver problems (smooth-shaded surfaces render black, among others),
+and that work is in progress. Environment variables named
+CODEBRIX_CYCLES_WGSL_LOAD, CODEBRIX_CYCLES_WEBGPU_ADAPTER,
+CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT, CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL,
+CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS, CODEBRIX_CYCLES_WEBGPU_LOG,
+CODEBRIX_CYCLES_DRIVER_WORKAROUNDS and CODEBRIX_CYCLES_DEBUG_OUTPUT are
+maintainer diagnostics for such driver problems: never set them in an
+application (a debug output mode replaces the rendered image).
 
 WHAT DIFFERS BETWEEN THE GPU BACKENDS. The scene API, the edits, the events,
 the film layout and the device-error contract are the same on every platform.

@@ -103,7 +103,8 @@ internal sealed class SceneDocument
             ["nodes"] = nodes.DeepClone(),
             ["images"] = images.DeepClone(),
         };
-        string json = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
+        // LF on every platform: the committed bench documents are compared byte for byte.
+        string json = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true, NewLine = "\n" }) + "\n";
         return OracleSceneBundle.FromJson(json, files);
     }
 

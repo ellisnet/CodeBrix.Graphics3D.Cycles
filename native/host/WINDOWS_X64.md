@@ -120,3 +120,55 @@ has terminated every other thread, so closing the hosts there crashed
 exit hook in the process-wide table instead (`_crt_atexit`, which `exit()` runs
 while all threads exist) and pins its DLL so the hook can never outlive it
 (`native/host/cycles_host.cpp`); Linux and macOS keep `std::atexit`.
+
+## Diagnostics for driver problems
+
+A device run on the Qualcomm Adreno 680 found GPU-driver problems that the
+binaries could not narrow without a rebuild per experiment
+([docs/TESTING-WINDOWS-ARM64.md](../../docs/TESTING-WINDOWS-ARM64.md), F1, F3,
+F4). The host therefore has opt-in diagnostics, all environment variables, all
+off by default. They are implemented in the shared device code and work on every
+WebGPU RID. Each one that is set is printed once to stderr ("CodeBrix Cycles
+diagnostic active (not a validation run)") and listed in the device report
+(`deviceReport.webgpu.diagnostics`, `diagnostic: true`). `windows_host_gate.py`
+records them and never passes while any is active (or while the adapter is
+layered, see Dozen below), so the stager can never stage a diagnostic run;
+`render_oracles.py` records them in `run.json` (`diagnosticRun`).
+
+| Variable | Effect |
+|---|---|
+| `CODEBRIX_CYCLES_WGSL_LOAD=DIR` | Compile edited WGSL in place of the generated (specialized, tier-adjusted) source. One module name is compiled in several variants (entry sets, features, tiers), so each variant is keyed `<module>-<hash>`, the hash being the first 16 hex digits of the SHA-256 of the WGSL that would be compiled. A variant without an override writes `DIR/<key>.generated.wgsl` once; copying that file to `DIR/<key>.wgsl` and editing it makes exactly that variant compile the edited text. Workflow: run once with an empty `DIR`, copy and edit the module of interest, run again, compare with the CPU film. The loaded file's SHA-256 is listed. |
+| `CODEBRIX_CYCLES_WEBGPU_ADAPTER=hardware\|software\|<name>` | `hardware` is the default rule (the first integrated or discrete adapter). `software` picks a CPU adapter: WARP on Direct3D 12 (part of Windows), llvmpipe on Vulkan. That is a full-kernel reference on the same machine, same WGSL and same DXC, which separates "our code is wrong" from "this driver is wrong" in one render; but WARP is very slow with these kernels (on a current x64 laptop it had not finished creating the first module's pipelines after 5 minutes, and the example scene ran for more than 2 hours), so use it only on a tiny scene (one pixel or a few, one sample) or leave it for an overnight run. Anything else selects the first adapter whose device name or description contains it (case-insensitive). The device report lists every enumerated adapter (`deviceReport.webgpu.adapters`). |
+| `CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT=1` | Sets `WGPUInstanceFlag_AllowUnderlyingNoncompliantAdapter`. With `CODEBRIX_CYCLES_WEBGPU_BACKEND=vulkan` this exposes Mesa's Dozen (Vulkan on Direct3D 12) on Windows on ARM devices that have no native Vulkan driver. A Dozen adapter is reported with `layeredOn` "Direct3D 12 (Mesa Dozen)": it compiles SPIR-V to DXIL with Mesa's compiler and runs on the same D3D12 driver, so it is a diagnostic and never Vulkan evidence. |
+| `CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL=6.0`...`6.7` | Caps the shader model DXC targets (default 6.7). A lower model changes the DXIL a driver compiles; a cheap first experiment against a driver compiler bug. Direct3D 12 only. |
+| `CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS=debug,validation,gpu-based-validation,discard-hal-labels,with-env` | wgpu instance flags. `validation` enables the D3D12 debug layer (or the Vulkan validation layers), `gpu-based-validation` D3D12 GPU-based validation; both need the Windows "Graphics Tools" optional feature. `with-env` lets wgpu read its own `WGPU_*` variables. The layers' messages arrive only through wgpu's log, so combine this with `CODEBRIX_CYCLES_WEBGPU_LOG`. |
+| `CODEBRIX_CYCLES_DRIVER_WORKAROUNDS=none` | Turns off every driver workaround (see "Driver workarounds" below), to check whether a new driver still needs one. |
+| `CODEBRIX_CYCLES_WEBGPU_LOG=error\|warn\|info\|debug\|trace` | Prints wgpu's log on stderr (`wgpu <level>: ...`). `warn` shows which stage failed and how (for example "Shader translation error ... (0x80070057)", which wgpu reports for a failed `CreateComputePipelineState`; a DXC failure reads "DXC compile error"). `debug` also prints the HLSL naga generated for every pipeline ("Naga generated shader for ..."), which `dxc.exe -T cs_6_7 -E <entry> -HV 2018` compiles offline; the output is large (12 MB for one light-tree scene). |
+| `CODEBRIX_CYCLES_DEBUG_OUTPUT=shading-normal\|geometric-normal\|svm-normal\|uv\|flags` | The first camera hit writes one `SurfaceData` field to the Combined film instead of radiance, raw, and the path ends there: the interpolated shading normal before shader evaluation, the geometric normal, the shading normal after shader evaluation (bump, normal map), (u, v, primitive) or (shader, object, runtime flags). A non-finite component is written as 1e30. Compare the GPU film with the same mode on `software` (WARP) or with the CPU's expectation. The code is a `DEBUG_OUTPUT` region of `wavefront_surface.wgsl` (feature bit 116, outside `SF_ALL`), so every module is byte-identical to a build without it unless the variable is set. |
+
+### Driver workarounds
+
+A driver workaround is product behavior, not a diagnostic: it is keyed to the
+adapter, on by default where it applies, leaves the images unchanged, and is
+listed in the device report (`deviceReport.webgpu.driverWorkarounds`).
+`CODEBRIX_CYCLES_DRIVER_WORKAROUNDS=none` turns every workaround off (a
+diagnostic, listed like the others above) to check whether a new driver still
+needs it.
+
+| Name | Applies to | What it does |
+|---|---|---|
+| `intel-d3d12-shader-cache` | Intel adapters (vendor 0x8086) on Direct3D 12 | The driver's cached compile of a pipeline that walks the light tree is broken, while its first compile is correct ([TESTING-WINDOWS-X64.md](../../docs/TESTING-WINDOWS-X64.md), W1). The `DRIVER_CACHE_SALT` region of `wavefront_light_tree.wgsl` (feature bit 117, outside `SF_ALL`) compares the walk's receiver with a constant no object index reaches (0xF0000000 to 0xFFFFFFFE), which the host makes different for every compile. Those pipelines therefore never come from the driver's cache; every other pipeline compiles byte-identically. Cost: those pipelines compile cold in every process. |
+
+A correctness canary is not built into scene creation (on the Adreno one surface
+pipeline takes 30 to 90 s to compile). The host gate's driver-coverage step is
+the canary instead: it renders one oracle scene per failure class found so far
+(smooth shading `linux-gates/glass-render`, motion blur with a normal map
+`linux-gates/deforming-motion-1`, glass lit by an area light
+`starter/glass-and-area-light`, and the light tree, which is on by default,
+`light-tree/lamps-and-mesh-lights`) on the CPU and the GPU and requires the
+practical criterion.
+
+`render_oracles.py --payload native/binaries/<rid>` renders the corpus from a
+staged payload: it verifies the payload against its `provenance.json`, assembles
+`<output>-payload-run` from it and the pinned WebGPU runtime (as
+`windows_host_gate.py --payload` does) and runs the payload's oracle runner.

@@ -64,7 +64,7 @@ MneeTrace original_mnee_trace(ccl::DeviceScene &scene,const ccl::IntegratorState
   for(int it=0;it<MNEE_MAX_ITERATIONS;it++){
     out.iterations=it+1;
     if(resolve){if(!mnee_compute_constraint_derivatives(count,v,sd.P,fixed,light)){out.solved=2;break;}
-      float norm=0;for(int i=0;i<count;i++)norm=fmaxf(norm,len(v[i].constraint));out.norms[it]=norm;
+      float norm=0;for(int i=0;i<count;i++)norm=ccl::fmaxf(norm,len(v[i].constraint));out.norms[it]=norm;
       if(norm<MNEE_SOLVER_THRESHOLD){out.solved=1;break;}if(!mnee_solve_matrix_h_to_x(count,v,dx)){out.solved=3;break;}}
     bool stuck=false;
     for(int i=0;i<count;i++){const ManifoldVertex &mv=v[i];float3 tp=mv.p-beta*(dx[i].x*mv.dp_du+dx[i].y*mv.dp_dv);

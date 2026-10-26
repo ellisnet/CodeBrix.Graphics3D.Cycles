@@ -130,7 +130,7 @@ def main():
     data=author();digest=hashlib.sha256(data).hexdigest()
     (args.bundle/'environment.float4').write_bytes(data)
     scene=json.loads((args.bundle/args.scene).read_text())
-    (args.bundle/'bench_01-hdri.json').write_text(json.dumps(variant(scene),indent=2)+'\n')
+    (args.bundle/'bench_01-hdri.json').write_text(json.dumps(variant(scene),indent=2)+'\n',newline='\n')
     print(f'environment.float4 {WIDTH}x{HEIGHT} float4 sha256 {digest}')
     if args.check and EXPECTED_SHA256 and digest!=EXPECTED_SHA256:
         print('author_environment.py: SHA-256 differs from the recorded value',EXPECTED_SHA256,file=sys.stderr);return 1

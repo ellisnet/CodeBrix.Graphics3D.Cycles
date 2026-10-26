@@ -307,12 +307,16 @@ machine with Visual Studio's clang-cl) is described in native/host/WINDOWS_X64.m
 `python -I -X utf8 native/tools/build_cycles_windows.py --rid <rid>`.
 Both reviewed Windows payloads are staged in native/binaries/<rid>/ with the
 same layout (runtime/, symbols/, tests/, provenance.json). win-x64 is
-validated (host gate on Direct3D 12 and Vulkan, managed tests, oracle corpus).
-win-arm64 is cross-compiled and NOT YET TESTED on an ARM64 device. Its
-provenance.json is SPECULATIVELY marked validation.status "validated", the same
-as win-x64, because docs/TESTING-WINDOWS-X64.md step 8 will have passed on an
-ARM64 device before the binaries ship in any form; the binaries themselves do
-not change for that run.
+validated (host gate on Direct3D 12 and Vulkan, managed tests, oracle corpus);
+on Intel GPUs with Direct3D 12 it relies on the driver workaround
+intel-d3d12-shader-cache (native/host/WINDOWS_X64.md, "Driver workarounds";
+docs/TESTING-WINDOWS-X64.md, W1).
+win-arm64 is cross-compiled and NOT YET VALIDATED: its provenance.json records
+validation.status "pending-device". The first device run (Qualcomm Adreno 680,
+Direct3D 12) passed the host gate but found driver problems in some scenes
+(docs/TESTING-WINDOWS-ARM64.md, F1, F3, F4); the next device run uses the
+opt-in diagnostics described in native/host/WINDOWS_X64.md ("Diagnostics for
+driver problems"), which gates never accept as validation.
 Android, Linux ARM64 and osx-arm64 recipes are described in
 native/host/README.md, LINUX_ARM64.md and MACOS_ARM64.md.
 

@@ -28,6 +28,9 @@ static std::string surface_layout(){
   // Preserve the originating native kernel's float3 division order. This is
   // encoded into captures too, independently of the GPU that replays them.
   constant("GGX_NATIVE_RECIPROCAL_NORMALIZE",reference_oracle_sse()?0:1);
+  // Diagnostic debug output (pipelines.h SF_DEBUG_OUTPUT): emitted only while the
+  // mode is set, so production modules are unchanged.
+  if(const unsigned mode=debug_output_mode())constant("DEBUG_OUTPUT_MODE",mode);
 #define DATA(parent,member) constant("D_" #parent "_" #member,offsetof(KernelData,parent.member))
   DATA(integrator,max_bounce);
   DATA(integrator,max_diffuse_bounce);DATA(integrator,max_transmission_bounce);

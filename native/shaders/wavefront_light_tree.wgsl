@@ -224,6 +224,11 @@ struct LtWalk {emitter:i32,pdf:f32,object:u32}
 // sample: light_tree_sample<false> (emitter, pdf_selection, mesh object).
 // otherwise: light_tree_pdf<false> of emitter goal_emitter (object goal_object).
 fn light_tree_walk(sample:bool,P_in:vec3<f32>,N_in:vec3<f32>,transmission:bool,receiver:u32,rand_in:f32,goal_object:u32,goal_emitter:u32)->LtWalk{
+//#if DRIVER_CACHE_SALT
+    // Driver workaround (pipelines.h SF_DRIVER_CACHE_SALT): never true (the host
+    // writes a value no object index reaches), different DXIL for every compile.
+    if(receiver==DRIVER_CACHE_SALT_VALUE){fail();return LtWalk(-1,0.0,NONE);}
+//#endif
     var out=LtWalk(-1,0.0,NONE);
     var P=P_in;var N=N_in;var rand=rand_in;var node=lt_root(receiver);
     var pdf_leaf=1.0;var pdf_selection=1.0;
@@ -301,7 +306,9 @@ fn light_tree_walk(sample:bool,P_in:vec3<f32>,N_in:vec3<f32>,transmission:bool,r
         // Inner node: get_left_probability.
         let total_max=rounded_add(left.x,right.x);if(total_max==0.0){return LtWalk(-1,0.0,NONE);}
         let total_min=rounded_add(left.y,right.y);let probability_max=rounded_divide(left.x,total_max);
-        let probability_min=select(0.5*(select(0.0,1.0,left.x>0.0)+select(0.0,1.0,right.x==0.0)),rounded_divide(left.y,total_min),total_min>0.0);
+        // The flags are summed as integers (the same 0, 0.5 or 1): summed as floats,
+        // the Intel Direct3D 12 driver rejects the pipeline (docs/TESTING-WINDOWS-X64.md, W1).
+        let probability_min=select(0.5*f32(select(0u,1u,left.x>0.0)+select(0u,1u,right.x==0.0)),rounded_divide(left.y,total_min),total_min>0.0);
         let left_probability=0.5*rounded_add(probability_max,probability_min);
         let left_index=load_word(at+LTN_left_child);let right_index=load_word(at+LTN_right_child);
         if(sample){

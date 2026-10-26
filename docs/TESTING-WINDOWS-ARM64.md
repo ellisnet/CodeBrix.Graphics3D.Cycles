@@ -454,6 +454,74 @@ should refuse to report "passed" when any of 1 to 3 or 7 is active.
     gate passed despite F1); `render_oracles.py --payload <dir>` that assembles the
     run folder like `windows_host_gate.py --payload` (F2).
 
+## Additions in the next Windows build, and the next device run
+
+The Windows payloads were rebuilt from `main` with the latest Cycles-with-WGSL
+work (ambient occlusion, light tree, light linking, MNEE, shadow catcher) and
+the following additions; win-x64 was revalidated on that build, and win-arm64 is
+staged "pending-device". The next device run therefore tests the committed
+payload at the same commit as the tests, the oracle scenes and the gates: no
+worktree of an older commit is needed (the "What is tested" note above applies
+to the 2026-10-25 run).
+
+| Recommended addition | In this build |
+|---|---|
+| 1. WGSL override | Yes: `CODEBRIX_CYCLES_WGSL_LOAD=DIR`, keyed per module variant (`<module>-<hash>`; each variant writes `DIR/<key>.generated.wgsl`, copy it to `DIR/<key>.wgsl` and edit) |
+| 2. Adapter choice | Yes: `CODEBRIX_CYCLES_WEBGPU_ADAPTER=hardware\|software\|<name>`; `software` is WARP on D3D12 |
+| 3. Non-conformant adapters (Dozen) | Yes: `CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT=1` with `CODEBRIX_CYCLES_WEBGPU_BACKEND=vulkan`; reported as `layeredOn` "Direct3D 12 (Mesa Dozen)", never Vulkan evidence |
+| 4. DXC shader model cap | Yes: `CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL=6.0`...`6.7` |
+| 5. Instance debug flags | Yes: `CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS=debug,validation,gpu-based-validation,discard-hal-labels,with-env`, and wgpu's log on stderr with `CODEBRIX_CYCLES_WEBGPU_LOG=error\|warn\|info\|debug\|trace` (the layers' messages arrive only there; `debug` also prints the HLSL of every pipeline) |
+| 6. Debug output | Yes: `CODEBRIX_CYCLES_DEBUG_OUTPUT=shading-normal\|geometric-normal\|svm-normal\|uv\|flags` (first camera hit, raw, non-finite written as 1e30) |
+| 7. Named workarounds | Deferred until a workaround exists. A workaround that is mathematically equivalent WGSL applies on every GPU; a driver-keyed one only if it changes results elsewhere |
+| 8. Per-driver micro-probe | Not yet |
+| 9. Correctness canary | As a gate step, not at scene creation: the host gate's driver-coverage step renders `linux-gates/glass-render` (F1), `linux-gates/deforming-motion-1` (F3), `starter/glass-and-area-light` (F4) and `light-tree/lamps-and-mesh-lights` (the light tree, on by default, with mesh lights; on the x64 machine's Intel Direct3D 12 driver it stops at run time, TESTING-WINDOWS-X64.md, W1) on the CPU and the GPU and requires the practical criterion |
+| 10. Coverage and tooling | Yes: the driver-coverage step; `render_oracles.py --payload <dir>` (F2) |
+
+Every diagnostic is off by default, printed once to stderr, listed in the device
+report (`deviceReport.webgpu.diagnostics`) and recorded by the gate, which never
+passes while one is active; `render_oracles.py` marks the run `diagnosticRun`.
+Details: [native/host/WINDOWS_X64.md](../native/host/WINDOWS_X64.md),
+"Diagnostics for driver problems".
+
+Next device run, in order:
+
+1. Validation, with no diagnostic set: the host gate (`windows_host_gate.py
+   --payload native/binaries/win-arm64`, now including the driver-coverage
+   step), the managed tests and the oracle corpus (`render_oracles.py --payload
+   native/binaries/win-arm64 ...`), as in TESTING-WINDOWS-X64.md step 8. The
+   bench scenes render from a bundle generated on the device
+   (`python -I -X utf8 native/oracle/scenes/make_bench_bundle.py --output
+   native/work/oracle-assets/bench_01`, then `render_oracles.py --payload ...
+   --scene native/work/oracle-assets/bench_01/bench_01.json --scene
+   .../bench_01-hdri.json`). Optionally the gate with `--device-gates`: its
+   results are diagnostics (on Windows the in-process CPU reference uses the
+   UCRT's libm; TESTING-WINDOWS-X64.md, "Revalidation with the W1 fixes").
+2. Diagnosis of each open finding, within the triage policy below (override
+   files and edited bundles under `native/work/` are not product code):
+   - WARP (`CODEBRIX_CYCLES_WEBGPU_ADAPTER=software`): the same WGSL and DXC
+     on a reference rasterizer; agreement with the CPU confirms a driver problem
+     in the full kernels. WARP is very slow with these kernels (on the x64
+     machine it had not finished creating the first module's pipelines after 5
+     minutes, and the example scene ran for more than 2 hours), so use it only
+     on a reduced bundle (a few pixels, one sample) and run it in the background
+     or overnight.
+   - Light tree: whether `light-tree/lamps-and-mesh-lights` and
+     `light-tree/light-linking` render on the Adreno. If pipeline creation
+     fails, `CODEBRIX_CYCLES_WEBGPU_LOG=warn` shows whether
+     `CreateComputePipelineState` failed ("Shader translation error ...
+     (0x80070057)") or DXC did ("DXC compile error"); "kernel reported invalid
+     data" at run time is the failure seen on Intel (TESTING-WINDOWS-X64.md, W1).
+   - F1: `CODEBRIX_CYCLES_DEBUG_OUTPUT=shading-normal` on the Adreno and on WARP
+     for the smooth `ground-only-no-sun` bundle shows whether the normal is NaN,
+     zero or flipped; then `geometric-normal` and `svm-normal`.
+   - The cheap driver experiments: `CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL` (6.0,
+     6.2, 6.5) and Dozen (`CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT=1`,
+     `CODEBRIX_CYCLES_WEBGPU_BACKEND=vulkan`).
+   - The candidate WGSL workarounds listed under F1, through the WGSL override;
+     a candidate that fixes the film is brought back as a finding with the exact
+     edit, for the build machine to implement, rebuild and revalidate on both
+     RIDs.
+
 ## Triage policy for the device run
 
 The device run is diagnostic, not a porting effort. Unattended runs follow these

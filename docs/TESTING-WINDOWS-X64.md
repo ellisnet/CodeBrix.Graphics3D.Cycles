@@ -125,7 +125,11 @@ Findings while bringing the gate up:
   same run's `gpu/run.3` and 4 ULPs off on Vulkan; two D3D12 renders of the same
   scene differ by up to 7.45e-8 (GPU film accumulation is not bitwise
   repeatable). The pixel sits at the strict threshold on both backends; the
-  tolerance is unchanged.
+  tolerance is unchanged. (2026-10-26: this is component 1742, the value the
+  Linux gate met in 3 of 4 runs; since merge wave 7, native/DEVICE.md, the
+  Linux and Android host gates require the practical criterion for `run.3` and
+  record its strict differences, and `windows_host_gate.py` now does the same.
+  See "Revalidation with the W1 fixes".)
 
 ### 5. Managed tests **VALIDATED** (win-x64)
 
@@ -193,23 +197,279 @@ payload: `windows_host_gate.py --rid win-x64 --backend d3d12 --payload
 native/binaries/win-x64` passed (28 films, 0 failures, maximum GPU error
 1.5e-5).
 
-### 8. win-arm64 device run **UNTESTED**
+### 8. win-arm64 device run (see TESTING-WINDOWS-ARM64.md)
 
-On the ARM64 device, from a clone of the commit that carries the staged payload
-(nothing is built there; .NET 10 SDK for ARM64 and Python are needed):
+The device run, its results and its findings are in
+[TESTING-WINDOWS-ARM64.md](TESTING-WINDOWS-ARM64.md). On the ARM64 device, from
+a clone of the commit that carries the staged payload (nothing is built there;
+.NET 10 SDK for ARM64 and Python are needed):
 
 ```
 dotnet restore research/GpuProbe/GpuProbe.csproj
 python -I -X utf8 native/tools/windows_host_gate.py --rid win-arm64 --backend d3d12 --payload native/binaries/win-arm64 --output native/work/windows-arm64-validation-d3d12-1
 dotnet build CodeBrix.Graphics3D.Cycles.slnx -c Release
 dotnet tests/CodeBrix.Graphics3D.Cycles.Tests/bin/Release/net10.0/CodeBrix.Graphics3D.Cycles.Tests.dll
-python -I -X utf8 native/oracle/render_oracles.py --output native/work/oracles/windows-arm64-1 --runner native/binaries/win-arm64/tests/codebrix_cycles_oracle.exe --host-library native/binaries/win-arm64/runtime/codebrix_cycles_host.dll --backend cpu-arm64-windows --backend wgsl-windows-arm64-d3d12
+python -I -X utf8 native/oracle/render_oracles.py --payload native/binaries/win-arm64 --output native/work/oracles/windows-arm64-1 --backend cpu-arm64-windows --backend wgsl-windows-arm64-d3d12
 ```
 
-The gate assembles its run folder from the verified payload and the pinned
-runtime. **UNKNOWN:** whether the device's GPU driver compiles the largest
-kernels within the gate's step timeouts (3,600 s per GPU step). Bring back the
-gate output directory and the oracle run directory.
+The gate and `render_oracles.py --payload` each assemble a run folder from the
+verified payload and the pinned WebGPU runtime (the payload's oracle runner does
+not start from `tests/` alone: its DLLs are in `runtime/` and the runtime ships
+in its own package). The gate's GPU steps allow 3,600 s each; the Adreno 680
+compiles the largest kernels well within that. Bring back the gate output
+directory and the oracle run directory. The diagnostics for narrowing driver
+problems are in [native/host/WINDOWS_X64.md](../native/host/WINDOWS_X64.md),
+"Diagnostics for driver problems"; a run that uses any of them is diagnostic
+and cannot validate the payload.
+
+## Revalidation on main (2026-10-26)
+
+Both RIDs were rebuilt from `main` with the latest Cycles-with-WGSL work
+(ambient occlusion, light tree, light linking, MNEE, shadow catcher) and the
+driver diagnostics (native/host/WINDOWS_X64.md, "Diagnostics for driver
+problems"; all off by default). Steps 3 to 6 were rerun on win-x64.
+
+- **Host build:** both RIDs, 0 warnings. The device gates now also include
+  `ao_render`, `ao_state`, `light_tree`, `mnee`, `mnee_render` and
+  `shadow_catcher` (built always, run with `--device-gates`).
+  `mnee_reference.cpp` needed `ccl::fmaxf` (an unqualified `fmaxf` is ambiguous
+  against the UCRT's).
+- **Managed tests:** 180 non-GPU tests, 0 failed; `GpuRenderTests` 14 tests, 0
+  failed, on Direct3D 12 and on Vulkan (this includes the new ambient-occlusion
+  tests).
+- **Oracle corpus** (`native/work/oracles/windows-x64-2`, CPU, D3D12 and
+  Vulkan): 56 scenes, 53 pass every rendered backend pair.
+  `linux-gates/triangle-lighting-2` is the open finding of step 6, unchanged;
+  `closed-volumes` and `world-volume` are refused on WebGPU as before; the
+  `assets/bench_01` scenes are not rendered (raw files not stored). The new
+  ambient-occlusion, MNEE and shadow-catcher scenes pass on both backends. The
+  two light-tree scenes pass on Vulkan and **fail on Direct3D 12** (W1 below).
+- **Host gate:** see "Gate on main" below.
+
+### W1. Light-tree pipelines on the Intel Direct3D 12 driver (fixed and worked around)
+
+On the integrated Intel GPU (UHD Graphics, drivers 32.0.101.7088 and 7092), Direct3D 12,
+every scene that used the light tree stopped at pipeline creation (the WGSL
+change below fixes that part):
+
+```
+WebGPU background pipeline 'light_tree_forward' could not be created (conservative tier): ...
+  In wgpuDeviceCreateComputePipeline
+    Internal error: The parameter is incorrect. (0x80070057)
+```
+
+The light tree is on by default (`UseLightTree`), so this covers ordinary
+consumer scenes: `starter/glossy-sphere-point-light` and
+`starter/diffuse-triangle` with `use_light_tree` set to true fail the same way.
+The render fails with that error; it never returns a wrong image. Vulkan on the
+same GPU renders both light-tree scenes and passes against the CPU. Reproducer
+(about 10 s):
+
+```
+codebrix_cycles_oracle --scene native/oracle/scenes/light-tree/lamps-and-mesh-lights.json --backend webgpu --label wgsl-x --output <new dir>
+```
+
+What is known:
+
+- `CODEBRIX_CYCLES_WEBGPU_LOG=warn` shows wgpu's "Shader translation error for
+  stage COMPUTE: The parameter is incorrect. (0x80070057)", which wgpu reports
+  for a failed `CreateComputePipelineState`; a DXC failure would read "DXC
+  compile error". The HLSL naga generated (from `CODEBRIX_CYCLES_WEBGPU_LOG=debug`)
+  compiles and validates offline with the shipped DXC 1.9.2609.5 (`dxc.exe -T
+  cs_6_7 -E light_tree_forward -HV 2018`) and with the Windows SDK's DXC. The
+  rejection is therefore at pipeline creation in the driver (or the D3D12
+  runtime), not in naga or DXC. The D3D12 debug layer printed nothing.
+  `CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL=6.0`, the conservative tier and
+  workgroup sizes 1 to 64 fail the same way. The DXIL's control flow is
+  reducible (4,186 blocks).
+- Bisection through `CODEBRIX_CYCLES_WGSL_LOAD`: with `light_tree_walk` stubbed
+  out, the background module's pipelines create, and the failure moves to the
+  surface module's `shade_surface_light_select`, which also walks the tree.
+  Inside the walk, the failure needs the inner-node traversal: it goes away
+  when the children's importances no longer reach `left_probability`, or when
+  `left_probability` is a constant. It stays when plain arithmetic replaces the
+  exact-rounding helpers, the item importance is stubbed, the loop bounds are
+  reduced, or the leaf-sampling, fallback, local-transform and early-return
+  paths are removed. No single construct was found; it looks like a limit or
+  bug in the driver's compiler for this function's size and shape.
+- Not yet known: whether other Direct3D 12 drivers (AMD, NVIDIA, Qualcomm Adreno)
+  accept these pipelines. The host gate's driver-coverage step now renders
+  `light-tree/lamps-and-mesh-lights`, so every gate run answers this for its
+  GPU. WARP is too slow to settle it here (it had not reached the background
+  module's pipelines after 5 minutes).
+
+**Pipeline creation: fixed in WGSL.** Further bisection found the trigger: the
+fallback of `probability_min` in the walk's inner-node step,
+`0.5*(select(0.0,1.0,left.x>0.0)+select(0.0,1.0,right.x==0.0))`. Summing the
+two flags as integers, `0.5*f32(select(0u,1u,...)+select(0u,1u,...))`, gives
+the same value (exactly 0, 0.5 or 1) and the driver creates every light-tree
+pipeline. This is the change in `native/shaders/wavefront_light_tree.wgsl`,
+equivalent WGSL that every GPU runs (the workaround policy). With it, scenes
+whose emitters are lamps render on Direct3D 12 with the light tree (the starter
+scenes with `use_light_tree` set to true), and Vulkan still agrees with the CPU
+on both light-tree scenes (5.5e-6 and 3.2e-6, 0 practical failures).
+
+**Still open: mesh lights under the light tree, at run time.** With pipelines
+created, the two corpus scenes with emissive meshes stop on Direct3D 12 with
+"WebGPU scheduler kernel reported invalid data (mask 1)": the shader's own
+consistency check, so the render fails rather than returning a wrong image.
+What is known:
+
+- Tagging each `fail()` call (through `CODEBRIX_CYCLES_WGSL_LOAD`) put it in the
+  surface module's light selection. `light-linking` failed in
+  `light_link_match` because the walk returned a triangle emitter with its mesh
+  object NONE. The walk can only reach a triangle through a mesh emitter, which
+  sets that object, so the driver drops a value the walk carries across the
+  loop's `continue`.
+- **The cause is the driver's shader cache.** The first render of new DXIL is
+  correct, and every later process, which gets the driver's cached compile of the
+  same DXIL, fails. Measured: a harmless edit to the surface module (the bit one
+  `fail()` sets) rendered `lamps-and-mesh-lights` correctly on its first run
+  (5.4e-6 against the CPU, 0 practical failures) and failed on its second and
+  third. The unmodified build failed five times in a row, except for its first
+  run after the driver was reinstalled. The cold run takes about 44 s, the
+  failing cached runs about 32 s. Within one process both renders of a scene
+  pass, because they share the pipeline objects.
+- This explains the earlier observations: any edit "fixed" it (new DXIL, so a
+  cold compile); loading the unchanged module still failed (cached); one
+  oracle run passed right after a rebuild. A restructured walk failed for the
+  same reason, so no WGSL change can fix it: whatever DXIL the change produces is
+  cached after its first run.
+- Intel graphics drivers 32.0.101.7088 and 32.0.101.7092 (the newest for 11th to
+  14th Gen processor graphics) behave the same.
+
+**Worked around: `intel-d3d12-shader-cache`** (native/host/WINDOWS_X64.md,
+"Driver workarounds"). On Intel adapters on Direct3D 12 the host makes the DXIL
+of every pipeline that walks the light tree different for every compile (a
+never-true comparison with a per-compile constant in the walk), so the driver
+compiles those pipelines cold and never uses its cached copy. The images are
+unchanged; the device report lists the workaround. With it, both scenes passed
+five runs out of five on Direct3D 12 (`lamps-and-mesh-lights` 5.4e-6,
+`light-linking` 1.6e-6 against the CPU, 0 practical failures), where without it
+only a first run after new DXIL passed. `CODEBRIX_CYCLES_DRIVER_WORKAROUNDS=none`
+turns it off to check a future driver. Still to do: a report to Intel with the
+generated HLSL (`CODEBRIX_CYCLES_WEBGPU_LOG=debug`) and the reproducer above.
+
+### Gate on main, before the W1 fixes
+
+`windows_host_gate.py --rid win-x64`, with the driver-coverage step (four
+classes, including the light tree):
+
+| Backend | Output | Passed | Films | Failed films | GPU max error | Driver coverage |
+|---|---|---|---|---|---|---|
+| Vulkan | `native/work/windows-validation-vulkan-6` | **yes** | 28 | 0 | 1.5e-5 | all four pass (light tree 5.5e-6, glass and area light 5.7e-6, the others below 5e-7) |
+| Direct3D 12 | `native/work/windows-validation-d3d12-7` | **no** | 28 | 0 | 1.5e-5 | smooth shading, motion with a normal map, glass and area light pass; **light tree fails** (W1) |
+
+The strict differences (144 on Vulkan, 145 on D3D12) are in the ABI light films,
+where the strict criterion is reported, not required. The D3D12 run before it
+(`-6`) stopped at the light-tree render instead of recording it; the gate now
+records a GPU render that fails as a coverage failure and runs the remaining
+classes. That run also had the step-4 accumulation-noise pixel in
+`gpu-exit/run.3` (1.49e-7, 5 ULPs).
+
+These gate runs predate both W1 fixes; see the next section for the
+revalidation with them.
+
+## Revalidation with the W1 fixes (2026-10-26)
+
+Both RIDs rebuilt with the W1 fixes (0 warnings), Intel graphics driver
+32.0.101.7092. win-x64:
+
+- **Host gate, Vulkan** (`native/work/windows-validation-vulkan-7`, with
+  `--device-gates`): passed. 28 films, 0 failed, GPU maximum error 1.5e-5;
+  driver coverage all four pass (light tree 5.5e-6); `driverWorkarounds` empty.
+- **Host gate, Direct3D 12** (`native/work/windows-validation-d3d12-8`, with
+  `--device-gates`): one failed film, `gpu/run.3`, the step-4
+  accumulation-noise pixel (1 strict difference, 1.49e-7, where the strict
+  criterion is required; 0 practical failures). The other 27 films pass, driver
+  coverage all four pass (light tree 5.4e-6), and the device report lists
+  `intel-d3d12-shader-cache`. Rerun without device gates
+  (`native/work/windows-validation-d3d12-9`): the same, one strict difference
+  of 1.49e-7 in `gpu/run.3`, everything else passing. Across the complete D3D12
+  gate runs on this machine (`-4` to `-9`) the pixel exceeded the strict
+  threshold in four of six (`gpu/run.3` or `gpu-exit/run.3`, always 1.49e-7
+  against 1.30e-7).
+- **The `run.3` strict pixel, investigated.** It is component 1742 (pixel
+  19,13, blue, about 0.30, where one float step is 2.98e-8 and the strict bound
+  1.30e-7 allows four). Across every Windows gate run, D3D12 and Vulkan alike,
+  the worst `run.3` component is 5 to 8 float steps from the CPU reference
+  (values below 0.25 have twice the steps within the bound), while two GPU
+  renders differ by at most 2.98e-8: the atomic accumulation order (`film_add`,
+  a compare-and-swap add) contributes about one step of run-to-run variation, and
+  the rest is a fixed difference from the CPU reference, which on Windows uses the
+  UCRT's libm (the device-gate item below). Linux met the same component in 3
+  of 4 runs (1.49e-7 against 1.30e-7) and, since merge wave 7 (native/DEVICE.md),
+  `host_gate.py` and `android_host_gate.py` require the practical criterion for
+  `run.3` and record its strict differences. `windows_host_gate.py` had kept the
+  earlier rule (strict required for every lifecycle film); it now applies the
+  Linux rule, which is this document's rule ("required exactly where the Linux
+  host gate requires it"). No tolerance changed. Rerun under it:
+  `native/work/windows-validation-d3d12-10` passed (28 films, 0 failed, GPU
+  maximum error 1.5e-5, driver coverage all four pass, light tree 5.4e-6,
+  `intel-d3d12-shader-cache` listed; `run.3` had 0 strict differences in this
+  run, maximum 1.19e-7).
+- **Managed tests:** Release build 0 warnings; 180 non-GPU tests, 0 failed;
+  `GpuRenderTests` 14 of 14 on Direct3D 12 (5 min 47 s) and on Vulkan (2 min
+  17 s).
+- **Oracle corpus** (`native/work/oracles/windows-x64-3`, 27 minutes): every
+  rendered scene passes on both backends except `linux-gates/triangle-lighting-2`
+  (the open step-6 finding, unchanged: 6 practical failures, D3D12 and Vulkan
+  agree to 1.1e-7); `closed-volumes` and `world-volume` refused on WebGPU as
+  before. New features, worst error against the CPU (D3D12 / Vulkan, 0 practical
+  failures each): `ao/ao-node` 1.9e-6 / 1.9e-6, `ao/fast-gi-additive` 1.9e-6 /
+  1.9e-6, `light-tree/lamps-and-mesh-lights` 5.4e-6 / 5.5e-6,
+  `light-tree/light-linking` 1.7e-6 / 3.1e-6, `mnee/glass-sphere-caustic` 8.3e-7 /
+  8.3e-7, `shadow-catcher/catcher-approximate` 4.1e-6 / 3.1e-6,
+  `shadow-catcher/catcher-point-light` 3.4e-5 / 5.2e-5.
+- **Bench scenes, first Windows run** (`native/work/oracles/windows-x64-bench-1`,
+  from a bundle `make_bench_bundle.py` generated and verified here; the glTF tool
+  and `author_environment.py` now write LF on Windows, so the documents match
+  the committed ones byte for byte): both fail the practical criterion against
+  the Windows CPU on both backends (`bench_01` 33 practical failures of 12,288
+  components, maximum 1.0e-3; `bench_01-hdri` 74 and 77, maximum 1.8e-3), and
+  D3D12 and Vulkan differ from each other (5 and 7). This is the character the
+  macOS run recorded (native/host/MACOS_ARM64.md: Metal fails these by about
+  180 and 495 components): path divergence with 2K textures at 16 samples. The
+  Windows CPU film itself differs from the macOS CPU film by 32 and 67 practical
+  failures. A finding; nothing was adjusted. The judgement that settles it is the
+  Windows WGSL films against the Linux x64 CPU films (the correctly rounded
+  reference).
+- **Device gates** (`--device-gates`, diagnostic; their results do not decide
+  the gate). Passed on both backends: device, camera, background, svm_world,
+  shader_data, svm_surface, attribute, normal, surface, microfacet_svm,
+  microfacet_bounce, render, ao_render, ao_state, shadow_catcher; `image` passed
+  on D3D12. Failed on both backends, identically: `closest` (165 decision and
+  4,412 bit mismatches against the CPU), `microfacet_render` (a stage-6
+  `mis_ray_pdf`), `light_tree` (one pixel of 768: one path diverges), `mnee` (a
+  walk outcome) and `mnee_render` (a lighting film). These gates judge the GPU,
+  which reproduces glibc's correctly rounded `acosf`, `atan2f` and the like,
+  against a CPU reference computed in the same process, here with the UCRT's
+  libm, which is not correctly rounded. By the validation reference policy
+  (native/DEVICE.md, "Validation reference policy") such an in-process reference
+  is a diagnostic, as on Android with bionic; identical failures on two GPU
+  backends point the same way. The judgement needs the scene exchange
+  (`CODEBRIX_CYCLES_SCENE_DUMP` here, the reference computed on Linux x64,
+  `CODEBRIX_CYCLES_REFERENCE_IMPORT` here). Not done. `atomic_film` is scored
+  as failed by the script only because its row has no top-level `passed`
+  (`memoryAccountingPassed` and `atomicContract.passed` are true; the macOS gate
+  scores it the same way).
+- **New finding W2, Vulkan only:** the `image` device gate's test 11 (a texture
+  lookup with a NaN coordinate must be rejected) fails on the Intel Vulkan
+  driver: `!all(abs(uv)<vec2<f32>(1.0e9))` (`wavefront_images.wgsl`) does not
+  catch NaN there, while Direct3D 12 does. Vulkan is the opt-in backend on
+  Windows, and the effect is a missing rejection of invalid data, not a
+  different image for valid scenes. An equivalent bit-pattern test would fix it
+  on every GPU; not changed.
+
+**Staged:** win-x64 from `windows-validation-d3d12-10` and
+`windows-validation-vulkan-7` (`validation.status` "validated"; the payload
+smoke render matches on CPU and GPU, center pixel 0.674168, 0.377084,
+0.114271). win-arm64 was rebuilt with the same sources and staged
+"pending-device".
+
+Not covered on Windows: the device gates' judgement against the Linux x64
+reference (scene exchange), the bench and `triangle-lighting-2` films against
+Linux x64 CPU films, and the volume scenes (refused on the WebGPU device).
 
 ## Reference policy and tolerances
 

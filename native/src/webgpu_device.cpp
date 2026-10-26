@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <mutex>
 #include <cstring>
+#include <cctype>
 #include <cstdlib>
 #include <thread>
 #include <vector>
@@ -38,13 +39,31 @@ static std::filesystem::path module_file(const void *address){
 static void module_anchor(){}
 #endif
 static std::string text(WGPUStringView s){return s.data?std::string(s.data,s.length):"";}
+namespace {std::mutex diagnostics_mutex;std::vector<std::string> active_diagnostics;}
+void note_diagnostic(const std::string &entry){
+  std::lock_guard lock(diagnostics_mutex);
+  if(std::find(active_diagnostics.begin(),active_diagnostics.end(),entry)!=active_diagnostics.end())return;
+  active_diagnostics.push_back(entry);
+  std::fprintf(stderr,"CodeBrix Cycles diagnostic active (not a validation run): %s\n",entry.c_str());
+}
+std::vector<std::string> diagnostics(){std::lock_guard lock(diagnostics_mutex);return active_diagnostics;}
+const char *diagnostic_env(const char *name){
+  const char *value=std::getenv(name);if(!value||!*value)return nullptr;
+  note_diagnostic(std::string(name)+"="+value);return value;
+}
+static std::string lower(std::string s){for(char &c:s)c=char(std::tolower(static_cast<unsigned char>(c)));return s;}
+static std::string json_escape(const std::string &s){
+  std::string out;for(char c:s){if(c=='"'||c=='\\'){out+='\\';out+=c;}else if(static_cast<unsigned char>(c)<0x20)out+=' ';else out+=c;}return out;
+}
 using Pending=std::shared_ptr<Completion>;
 // A one-shot callback owns its shared state, including after a wait times out.
 static Pending take(void *p){std::unique_ptr<Pending> owner(static_cast<Pending*>(p));return *owner;}
 void Device::set_error(const std::string &message){std::lock_guard lock(error_mutex);fatal=message;}
 void Device::check(){std::lock_guard lock(error_mutex);if(!fatal.empty())throw Error(CBC_BACKEND_GPU_ERROR,fatal);}
 void Device::wait(const Pending &pending,bool gpu){
-  const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(60);
+  // A software adapter (the CODEBRIX_CYCLES_WEBGPU_ADAPTER=software diagnostic:
+  // WARP, llvmpipe) runs the kernels on the CPU, far slower than any GPU.
+  const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(adapter_type==WGPUAdapterType_CPU?3600:60);
   while(!pending->done.load(std::memory_order_acquire)){
     check(); if(std::chrono::steady_clock::now()>=deadline){set_error("GPU callback timeout");check();}
     if(gpu){WGPUCodebrixPollResult result;
@@ -107,22 +126,76 @@ Device::Device(){
   const WGPUInstanceBackend backend_flag=WGPUInstanceBackend_Vulkan;const std::string backend_name="Vulkan";
 #endif
   WGPUInstanceExtras extra{};extra.chain.sType=static_cast<WGPUSType>(WGPUSType_InstanceExtras);extra.backends=backend_flag;
+  // Diagnostic instance flags (opt-in; see note_diagnostic): wgpu debug and
+  // validation layers, and adapters wgpu hides as non-conformant (on Windows on
+  // ARM devices without a native Vulkan driver, Mesa's Dozen, Vulkan on D3D12).
+  if(const char *flags=diagnostic_env("CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS")){
+    std::string list=lower(flags);
+    for(size_t at=0;at<=list.size();){const size_t end=std::min(list.find(',',at),list.size());const std::string name=list.substr(at,end-at);at=end+1;
+      if(name=="debug")extra.flags|=WGPUInstanceFlag_Debug;else if(name=="validation")extra.flags|=WGPUInstanceFlag_Validation;
+      else if(name=="gpu-based-validation")extra.flags|=WGPUInstanceFlag_GPUBasedValidation;else if(name=="discard-hal-labels")extra.flags|=WGPUInstanceFlag_DiscardHalLabels;
+      else if(name=="with-env")extra.flags|=WGPUInstanceFlag_WithEnv;
+      else if(!name.empty())throw Error(CBC_BACKEND_INVALID,"CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS: unknown flag '"+name+"' (debug, validation, gpu-based-validation, discard-hal-labels, with-env)");}
+  }
+  if(const char *allow=diagnostic_env("CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT")){
+    if(std::strcmp(allow,"1")!=0)throw Error(CBC_BACKEND_INVALID,"CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT must be 1");
+    extra.flags|=WGPUInstanceFlag_AllowUnderlyingNoncompliantAdapter;
+  }
+  // Diagnostic: wgpu's log (the D3D12 debug layer and Vulkan validation messages
+  // the debug and validation instance flags enable arrive only here), on stderr.
+  if(const char *level=diagnostic_env("CODEBRIX_CYCLES_WEBGPU_LOG")){
+    const std::string name=lower(level);
+    const WGPULogLevel value=name=="error"?WGPULogLevel_Error:name=="warn"?WGPULogLevel_Warn:name=="info"?WGPULogLevel_Info:
+      name=="debug"?WGPULogLevel_Debug:name=="trace"?WGPULogLevel_Trace:WGPULogLevel_Off;
+    if(value==WGPULogLevel_Off)throw Error(CBC_BACKEND_INVALID,std::string("CODEBRIX_CYCLES_WEBGPU_LOG must be error, warn, info, debug or trace, not '")+level+"'");
+    wgpuSetLogCallback([](WGPULogLevel l,WGPUStringView message,void*){
+      static const char *const names[]={"off","error","warn","info","debug","trace"};
+      std::fprintf(stderr,"wgpu %s: %s\n",l<=WGPULogLevel_Trace?names[l]:"log",text(message).c_str());},nullptr);
+    wgpuSetLogLevel(value);
+  }
 #ifdef _WIN32
-  if(!vulkan){extra.dx12ShaderCompiler=WGPUDx12Compiler_Dxc;extra.dxcPath={dxc_path.c_str(),dxc_path.size()};extra.dxcMaxShaderModel=WGPUDxcMaxShaderModel_V6_7;}
+  if(!vulkan){
+    extra.dx12ShaderCompiler=WGPUDx12Compiler_Dxc;extra.dxcPath={dxc_path.c_str(),dxc_path.size()};extra.dxcMaxShaderModel=WGPUDxcMaxShaderModel_V6_7;
+    // Diagnostic: a lower DXC shader model changes the DXIL a driver compiles.
+    if(const char *model=diagnostic_env("CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL")){
+      if(std::strlen(model)!=3||model[0]!='6'||model[1]!='.'||model[2]<'0'||model[2]>'7')
+        throw Error(CBC_BACKEND_INVALID,std::string("CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL must be 6.0 to 6.7, not '")+model+"'");
+      extra.dxcMaxShaderModel=static_cast<WGPUDxcMaxShaderModel>(WGPUDxcMaxShaderModel_V6_0+(model[2]-'0'));
+    }
+  }
 #endif
   WGPUInstanceDescriptor desc{};desc.nextInChain=&extra.chain;instance=Handle<WGPUInstance,wgpuInstanceRelease>(wgpuCreateInstance(&desc));
   if(!instance.value)throw Error(CBC_BACKEND_GPU_ERROR,"Cannot create "+backend_name+" WebGPU instance");
   std::vector<WGPUAdapter> candidates(wgpuInstanceEnumerateAdapters(instance,nullptr,nullptr));
   wgpuInstanceEnumerateAdapters(instance,nullptr,candidates.data());
+  // Adapter choice. By default the first hardware (integrated or discrete)
+  // adapter. Diagnostic CODEBRIX_CYCLES_WEBGPU_ADAPTER: "hardware" (the default
+  // rule), "software" (a CPU adapter: WARP on Direct3D 12, llvmpipe on Vulkan,
+  // a full-kernel reference on the same machine) or a case-insensitive substring
+  // of the adapter's device name or description.
+  std::string choice="hardware";if(const char *want=diagnostic_env("CODEBRIX_CYCLES_WEBGPU_ADAPTER"))choice=lower(want);
   for(auto a:candidates){WGPUAdapterInfo info{};
     if(wgpuAdapterGetInfo(a,&info)!=WGPUStatus_Success){wgpuAdapterRelease(a);continue;}
-    bool hardware=info.adapterType==WGPUAdapterType_IntegratedGPU||info.adapterType==WGPUAdapterType_DiscreteGPU;
-    if(!adapter.value&&hardware&&text(info.device).find("llvmpipe")==std::string::npos){adapter.value=a;adapter_name=text(info.device)+" / "+text(info.description);
-      adapter_vendor=text(info.vendor);adapter_architecture=text(info.architecture);adapter_device=text(info.device);adapter_description=text(info.description);
-      adapter_vendor_id=info.vendorID;adapter_device_id=info.deviceID;adapter_type=uint32_t(info.adapterType);adapter_backend=uint32_t(info.backendType);}
+    const std::string device_text=text(info.device),description_text=text(info.description);
+    adapters_seen.push_back("{\"device\":\""+json_escape(device_text)+"\",\"description\":\""+json_escape(description_text)+"\",\"adapterType\":"+
+      std::to_string(uint32_t(info.adapterType))+",\"backendType\":"+std::to_string(uint32_t(info.backendType))+",\"vendorId\":"+std::to_string(info.vendorID)+'}');
+    const bool hardware=info.adapterType==WGPUAdapterType_IntegratedGPU||info.adapterType==WGPUAdapterType_DiscreteGPU;
+    const bool wanted=choice=="hardware"?hardware&&device_text.find("llvmpipe")==std::string::npos:
+                      choice=="software"?info.adapterType==WGPUAdapterType_CPU:
+                      lower(device_text).find(choice)!=std::string::npos||lower(description_text).find(choice)!=std::string::npos;
+    if(!adapter.value&&wanted){adapter.value=a;adapter_name=device_text+" / "+description_text;
+      adapter_vendor=text(info.vendor);adapter_architecture=text(info.architecture);adapter_device=device_text;adapter_description=description_text;
+      adapter_vendor_id=info.vendorID;adapter_device_id=info.deviceID;adapter_type=uint32_t(info.adapterType);adapter_backend=uint32_t(info.backendType);
+      // Mesa's Dozen names its devices "Microsoft Direct3D12 (<GPU>)": Vulkan
+      // layered on D3D12, never native Vulkan evidence.
+      if(info.backendType==WGPUBackendType_Vulkan&&device_text.rfind("Microsoft Direct3D12",0)==0)layered_on="Direct3D 12 (Mesa Dozen)";}
     else wgpuAdapterRelease(a);wgpuAdapterInfoFreeMembers(info);
   }
-  if(!adapter.value)throw Error(CBC_BACKEND_GPU_ERROR,"No hardware "+backend_name+" adapter");
+  if(!adapter.value){
+    if(choice=="hardware")throw Error(CBC_BACKEND_GPU_ERROR,"No hardware "+backend_name+" adapter");
+    std::string seen;for(auto &s:adapters_seen)seen+=(seen.empty()?"":", ")+s;
+    throw Error(CBC_BACKEND_GPU_ERROR,"No "+backend_name+" adapter matches CODEBRIX_CYCLES_WEBGPU_ADAPTER="+choice+" (adapters: "+(seen.empty()?"none":seen)+")");
+  }
   WGPUDeviceDescriptor dd{};
   // The Cycles device keeps all its memory in one storage binding addressed by 32-bit
   // offsets. WebGPU's default limits cap a storage binding at 128 MiB, which a scene with a
