@@ -1,0 +1,92 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "rid": "win-arm64",
+  "backend": "d3d12",
+  "source": "payload",
+  "adapterReport": {
+    "abiVersion": 1,
+    "backend": "webgpu",
+    "pipelines": {
+      "specialization": true,
+      "specializationMode": "scene",
+      "tier": "full",
+      "degraded": false,
+      "budgetMs": 20000,
+      "warnings": [],
+      "sizeGuard": {
+        "thresholdBytes": 1110000,
+        "largestEntryBytes": 0,
+        "largestEntry": "",
+        "estimatedInstructions": 0,
+        "warnings": 0
+      },
+      "enabledFeatures": "",
+      "svmDecodedNodes": 0,
+      "svmStoppedPaths": 0,
+      "budgetSource": "unknown-mobile",
+      "decision": {
+        "tier": "full",
+        "reason": "default",
+        "detail": "no device record: full fidelity",
+        "adapter": {
+          "vendor": "27.20.2140.0",
+          "architecture": "",
+          "device": "Qualcomm(R) Adreno(TM) 680 GPU",
+          "description": "",
+          "vendorId": 1297040209,
+          "deviceId": 1093874736,
+          "simulated": false,
+          "mobile": true
+        },
+        "runtime": "codebrix-api=2;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=aarch64-pc-windows-msvc;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool",
+        "shaderHash": "fnv1a64:8f7968e0abb0555d",
+        "knownAdapter": null,
+        "budgetSource": "unknown-mobile",
+        "record": {
+          "mode": "none",
+          "path": "",
+          "status": "none",
+          "fullTierCompiles": 0,
+          "conservativeTierCompiles": 0,
+          "failures": 0,
+          "breadcrumbs": []
+        },
+        "canary": {
+          "enabled": false,
+          "result": "not-run",
+          "ms": 0,
+          "detail": ""
+        },
+        "overrides": [],
+        "warnings": []
+      },
+      "pipelines": []
+    },
+    "webgpu": {
+      "backendType": 4,
+      "backendName": "D3D12",
+      "adapterType": 2,
+      "device": "Qualcomm(R) Adreno(TM) 680 GPU",
+      "vendorId": 1297040209,
+      "deviceId": 1093874736,
+      "runtimeLibrary": "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-d3d12-1\\payload-run\\codebrix_wgpu.dll",
+      "dxcPath": "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-d3d12-1\\payload-run\\dxcompiler.dll"
+    }
+  },
+  "adapterBackend": "D3D12",
+  "passed": true,
+  "filmsCompared": 28,
+  "failedFilms": 0,
+  "sameHostBitwiseFailures": 0,
+  "gpuPracticalFailures": 0,
+  "gpuStrictDifferences": 61,
+  "gpuMaximumAbsoluteError": 1.52587890625e-05,
+  "crossPlatformCompared": false,
+  "skipped": {
+    "reloadTest": "loads PNG files by filename; this profile rejects texture filenames",
+    "imageReference": "needs OIIO EXR/PNG plugins, which are disabled",
+    "managedImageModesAndColorReload": "depend on the image reference films"
+  },
+  "inputsUnchanged": true
+}

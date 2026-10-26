@@ -1,0 +1,83 @@
+{
+  "sceneId": "linux-gates/broad-lighting-9",
+  "sceneSha256": "fcf0ec9ccd99b06a10a685b9beb29afa5a2b0ba53bc8b88404a8e5a29bb51438",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "C:\\GitHome\\Cycles-arm64-test\\native\\work\\oracles\\windows-arm64-2\\oracle\\linux-gates\\broad-lighting-9\\cpu-arm64-windows",
+      "backend": "cpu-arm64-windows",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Microsoft SQ1 @ 3.0 GHz (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.0038532,
+        0.0016718
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "C:\\GitHome\\Cycles-arm64-test\\native\\work\\oracles\\windows-arm64-2\\oracle\\linux-gates\\broad-lighting-9\\wgsl-windows-arm64-d3d12",
+      "backend": "wgsl-windows-arm64-d3d12",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.384185791015625e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 2.384185791015625e-07,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json (d3d12)",
+      "renderSeconds": [
+        74.8047,
+        0.936981
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.0132789611816406e-05,
+      "maxRelativeError": 0.001768775461282271,
+      "rms": 2.858521155257516e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 54,
+      "worstPixel": {
+        "x": 16,
+        "y": 7,
+        "channel": "G",
+        "reference": 0.7754291892051697,
+        "candidate": 0.7754190564155579,
+        "absoluteDifference": 1.0132789611816406e-05,
+        "criterionRatio": 0.04940755401974919
+      },
+      "reference": "cpu-arm64-windows",
+      "candidate": "wgsl-windows-arm64-d3d12",
+      "practicalPassed": true
+    }
+  ],
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

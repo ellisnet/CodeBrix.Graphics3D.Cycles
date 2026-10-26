@@ -1,0 +1,176 @@
+{
+ "cbcOracleScene": 1,
+ "id": "gltf/sample-sun",
+ "description": "glTF file sample-sun.glb converted by tools/gltf/CycleGltfRender (closure material mapping)",
+ "sourceFixture": "tools/gltf/CycleGltfRender",
+ "render": {
+  "width": 48,
+  "height": 32,
+  "samples": 16,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "caustics_reflective": false,
+    "caustics_refractive": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "max_diffuse_bounce": 4,
+    "sampling_pattern": "tabulated_sobol"
+   }
+  },
+  {
+   "handle": "material-0",
+   "create": "shader",
+   "set": {
+    "emission_sampling_method": "none"
+   },
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.55,
+        0.5
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "diffuse",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "mesh-0",
+   "create": "mesh",
+   "mesh": {
+    "positionsFile": "mesh-0.positions.f32",
+    "indicesFile": "mesh-0.indices.u32",
+    "attributes": [
+     {
+      "name": "N",
+      "value": "normal",
+      "domain": "vertex_normal",
+      "flags": [
+       "standard"
+      ],
+      "file": "mesh-0.N.f32"
+     },
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "file": "mesh-0.uv.f32"
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "material-0"
+    ]
+   }
+  },
+  {
+   "handle": "object-0",
+   "create": "object",
+   "set": {
+    "geometry": "mesh-0",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "background",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.25,
+        0.3,
+        0.4
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "background",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "background",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "camera_type": "perspective",
+    "matrix": [
+     0.9103665,
+     -0.13586205,
+     -0.39086366,
+     2.4999998,
+     0,
+     0.9445647,
+     -0.32832545,
+     2.5999997,
+     -0.41380295,
+     -0.2988965,
+     -0.8599,
+     5.5
+    ],
+    "fov": 0.9
+   }
+  }
+ ],
+ "images": []
+}

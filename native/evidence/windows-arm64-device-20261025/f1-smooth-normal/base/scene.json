@@ -1,0 +1,529 @@
+{
+ "cbcOracleScene": 1,
+ "id": "gltf/sample-sun",
+ "description": "glTF file sample-sun.glb converted by tools/gltf/CycleGltfRender (closure material mapping)",
+ "sourceFixture": "tools/gltf/CycleGltfRender",
+ "render": {
+  "width": 48,
+  "height": 32,
+  "samples": 16,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "caustics_reflective": false,
+    "caustics_refractive": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "max_diffuse_bounce": 4,
+    "sampling_pattern": "tabulated_sobol"
+   }
+  },
+  {
+   "handle": "material-0",
+   "create": "shader",
+   "set": {
+    "emission_sampling_method": "none"
+   },
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.55,
+        0.5
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "diffuse",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "mesh-0",
+   "create": "mesh",
+   "mesh": {
+    "positionsFile": "mesh-0.positions.f32",
+    "indicesFile": "mesh-0.indices.u32",
+    "attributes": [
+     {
+      "name": "N",
+      "value": "normal",
+      "domain": "vertex_normal",
+      "flags": [
+       "standard"
+      ],
+      "file": "mesh-0.N.f32"
+     },
+     {
+      "name": "uv",
+      "value": "point2",
+      "domain": "corner",
+      "flags": [
+       "standard"
+      ],
+      "file": "mesh-0.uv.f32"
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "material-0"
+    ],
+    "smooth": [
+     true,
+     true
+    ]
+   }
+  },
+  {
+   "handle": "object-0",
+   "create": "object",
+   "set": {
+    "geometry": "mesh-0",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "material-1",
+   "create": "shader",
+   "set": {
+    "emission_sampling_method": "none"
+   },
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.9,
+        0.7,
+        0.3
+       ]
+      }
+     },
+     {
+      "handle": "glossy",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.9,
+        0.7,
+        0.3
+       ],
+       "roughness": 0.35
+      }
+     },
+     {
+      "handle": "metal-mix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.75
+      }
+     }
+    ],
+    "connect": [
+     [
+      "diffuse",
+      "BSDF",
+      "metal-mix",
+      "Closure1"
+     ],
+     [
+      "glossy",
+      "BSDF",
+      "metal-mix",
+      "Closure2"
+     ],
+     [
+      "metal-mix",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "material-2",
+   "create": "shader",
+   "set": {
+    "emission_sampling_method": "none"
+   },
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.2,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        0.4,
+        0.1
+       ],
+       "strength": 1
+      }
+     },
+     {
+      "handle": "emission-add",
+      "type": "add_closure"
+     }
+    ],
+    "connect": [
+     [
+      "diffuse",
+      "BSDF",
+      "emission-add",
+      "Closure1"
+     ],
+     [
+      "emission",
+      "Emission",
+      "emission-add",
+      "Closure2"
+     ],
+     [
+      "emission-add",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "mesh-1",
+   "create": "mesh",
+   "mesh": {
+    "positionsFile": "mesh-1.positions.f32",
+    "indicesFile": "mesh-1.indices.u32",
+    "attributes": []
+   },
+   "set": {
+    "used_shaders": [
+     "material-1",
+     "material-2"
+    ],
+    "shader": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "handle": "object-1",
+   "create": "object",
+   "set": {
+    "geometry": "mesh-1",
+    "tfm": [
+     1,
+     0,
+     0,
+     -1,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "object-2",
+   "create": "object",
+   "set": {
+    "geometry": "mesh-1",
+    "tfm": [
+     0.8253356,
+     0,
+     0.5646425,
+     1.2,
+     0,
+     1,
+     0,
+     0,
+     -0.5646425,
+     0,
+     0.8253356,
+     -0.5
+    ]
+   }
+  },
+  {
+   "handle": "material-3",
+   "create": "shader",
+   "set": {
+    "emission_sampling_method": "none"
+   },
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.5,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ]
+      }
+     },
+     {
+      "handle": "alpha-mix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.5
+      }
+     }
+    ],
+    "connect": [
+     [
+      "transparent",
+      "BSDF",
+      "alpha-mix",
+      "Closure1"
+     ],
+     [
+      "diffuse",
+      "BSDF",
+      "alpha-mix",
+      "Closure2"
+     ],
+     [
+      "alpha-mix",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "mesh-2",
+   "create": "mesh",
+   "mesh": {
+    "positionsFile": "mesh-2.positions.f32",
+    "indicesFile": "mesh-2.indices.u32",
+    "attributes": []
+   },
+   "set": {
+    "used_shaders": [
+     "material-3"
+    ]
+   }
+  },
+  {
+   "handle": "object-3",
+   "create": "object",
+   "set": {
+    "geometry": "mesh-2",
+    "tfm": [
+     1,
+     0,
+     0,
+     0.1,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     1.2
+    ]
+   }
+  },
+  {
+   "handle": "light-shader",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "emission",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "light-0",
+   "create": "sunlight",
+   "set": {
+    "strength": [
+     3,
+     2.85,
+     2.6999998
+    ],
+    "used_shaders": [
+     "light-shader"
+    ]
+   }
+  },
+  {
+   "handle": "object-4",
+   "create": "object",
+   "set": {
+    "geometry": "light-0",
+    "tfm": [
+     0.921061,
+     -0.32768425,
+     0.21040362,
+     0,
+     0,
+     0.54030234,
+     0.841471,
+     0,
+     -0.38941833,
+     -0.7750461,
+     0.49765137,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "background",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.25,
+        0.3,
+        0.4
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "background",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "background",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "camera_type": "perspective",
+    "matrix": [
+     0.9103665,
+     -0.13586205,
+     -0.39086366,
+     2.4999998,
+     0,
+     0.9445647,
+     -0.32832545,
+     2.5999997,
+     -0.41380295,
+     -0.2988965,
+     -0.8599,
+     5.5
+    ],
+    "fov": 0.9
+   }
+  }
+ ],
+ "images": []
+}

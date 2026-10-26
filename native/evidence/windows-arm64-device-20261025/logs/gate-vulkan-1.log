@@ -1,0 +1,17 @@
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)
+Traceback (most recent call last):
+  File "C:\GitHome\Cycles-arm64-test\native\tools\windows_host_gate.py", line 286, in <module>
+    if __name__=='__main__':raise SystemExit(main())
+                                             ~~~~^^
+  File "C:\GitHome\Cycles-arm64-test\native\tools\windows_host_gate.py", line 194, in main
+    rows=report([exe('codebrix_host_gpu_test'),target/'run',*(['--exit-live'] if mode=='gpu-exit' else [])],mode,3600)
+  File "C:\GitHome\Cycles-arm64-test\native\tools\windows_host_gate.py", line 113, in report
+    rows=[json.loads(line) for line in call(command,name,timeout,extra).splitlines() if line.strip()]
+                                       ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\GitHome\Cycles-arm64-test\native\tools\windows_host_gate.py", line 110, in call
+    subprocess.run(list(map(str,command)),cwd=REPO,stdout=stdout,stderr=stderr,check=True,timeout=timeout,env={**env,**(extra or {})})
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python315-arm64\Lib\subprocess.py", line 692, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command ['C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\payload-run\\codebrix_host_gpu_test.exe', 'C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\gpu\\run'] returned non-zero exit status 1.

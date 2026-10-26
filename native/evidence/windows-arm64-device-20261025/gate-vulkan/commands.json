@@ -1,0 +1,79 @@
+[
+  {
+    "command": [
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\payload-run\\codebrix_host_session_reference.exe",
+      "CPU",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\cpu\\run"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\payload-run\\codebrix_host_session64_reference.exe",
+      "CPU",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\cpu64\\run"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\payload-run\\codebrix_host_cpu_test.exe",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\cpu-consumer\\run"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\payload-run\\codebrix_host_cpu_test.exe",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\cpu-exit-consumer\\run",
+      "--exit-live"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\payload-run\\codebrix_host_concurrency_test.exe",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\stress-input",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\stress-output"
+    ],
+    "environment": {},
+    "timeoutSeconds": 1200
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "C:\\GitHome\\Cycles-arm64-test\\tools\\hosttests\\HostLifecycle\\HostLifecycle.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "C:\\GitHome\\Cycles-arm64-test\\tools\\hosttests\\NuGet.Config",
+      "-o",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\managed-bin"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "dotnet",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\managed-bin\\HostLifecycle.dll",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\cpu",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\managed-lifecycle"
+    ],
+    "environment": {},
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\payload-run\\codebrix_host_gpu_test.exe",
+      "C:\\GitHome\\Cycles-arm64-test\\native\\work\\windows-arm64-validation-vulkan-1\\gpu\\run"
+    ],
+    "environment": {},
+    "timeoutSeconds": 3600
+  }
+]

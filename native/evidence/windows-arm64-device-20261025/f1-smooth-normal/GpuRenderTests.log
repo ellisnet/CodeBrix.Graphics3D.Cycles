@@ -1,0 +1,67 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.14)
+  Discovering: CodeBrix.Graphics3D.Cycles.Tests
+  Discovered:  CodeBrix.Graphics3D.Cycles.Tests
+  Starting:    CodeBrix.Graphics3D.Cycles.Tests
+[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_sample_renders_on_the_gpu_within_the_practical_criterion [OUTPUT] gltf-sample: authority CPU reference: floats 6144, max abs error 0.806812, practical failures 1731, strict differences 1735, bitwise different, practical FAIL
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_sample_renders_on_the_gpu_within_the_practical_criterion [FAIL]
+      Expected value to be 0, but found 1731 (difference of 1731).
+      Stack Trace:
+           at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+           at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+           at SilverAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+           at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+           at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+           at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+           at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+        tests\CodeBrix.Graphics3D.Cycles.Tests\GpuRenderTests.cs(379,0): at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_sample_renders_on_the_gpu_within_the_practical_criterion()
+        --- End of stack trace from previous location ---
+      Output:
+        gltf-sample: authority CPU reference: floats 6144, max abs error 0.806812, practical failures 1731, strict differences 1735, bitwise different, practical FAIL
+CodeBrix Cycles WebGPU warning: pipeline 'shade_background' (background module) inlines to 1429639 bytes of WGSL, at or above the 1110000-byte size guard: about 71482 backend instructions estimated (64690 to 84594); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged
+CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' (surface module) inlines to 1375228 bytes of WGSL, at or above the 1110000-byte size guard: about 68761 backend instructions estimated (62228 to 81374); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged
+CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 85690 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 24504 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_textured_plane_with_the_blender_mapping_renders_on_the_gpu_within_the_practical_criterion [OUTPUT] gltf-textured-plane-blender: authority CPU reference: floats 6144, max abs error 4.97442, practical failures 1665, strict differences 1665, bitwise different, practical FAIL
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_textured_plane_with_the_blender_mapping_renders_on_the_gpu_within_the_practical_criterion [FAIL]
+      Expected value to be 0, but found 1665 (difference of 1665).
+      Stack Trace:
+           at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+           at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+           at SilverAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+           at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+           at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+           at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+           at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+        tests\CodeBrix.Graphics3D.Cycles.Tests\GpuRenderTests.cs(404,0): at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gltf_textured_plane_with_the_blender_mapping_renders_on_the_gpu_within_the_practical_criterion()
+        --- End of stack trace from previous location ---
+      Output:
+        gltf-textured-plane-blender: authority CPU reference: floats 6144, max abs error 4.97442, practical failures 1665, strict differences 1665, bitwise different, practical FAIL
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_capability_report_describes_the_platform_gpu_backend [OUTPUT] backend webgpu; device Qualcomm(R) Adreno(TM) 680 GPU / ; tier full; warnings []
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_film_matches_its_backend_reference_with_the_practical_criterion(name: "glass") [OUTPUT] glass: authority CPU reference: floats 3072, max abs error 0.715374, practical failures 246, strict differences 413, bitwise different, practical FAIL
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_film_matches_its_backend_reference_with_the_practical_criterion(name: "glass") [FAIL]
+      Expected value to be 0, but found 246 (difference of 246).
+      Stack Trace:
+           at SilverAssertions.Execution.XUnit3TestFramework.Throw(String message)
+           at SilverAssertions.Execution.TestFrameworkProvider.Throw(String message)
+           at SilverAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+           at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+           at SilverAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+           at SilverAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+           at SilverAssertions.Numeric.NumericAssertions`2.Be(T expected, String because, Object[] becauseArgs)
+        tests\CodeBrix.Graphics3D.Cycles.Tests\GpuRenderTests.cs(108,0): at CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_film_matches_its_backend_reference_with_the_practical_criterion(String name)
+        --- End of stack trace from previous location ---
+      Output:
+        glass: authority CPU reference: floats 3072, max abs error 0.715374, practical failures 246, strict differences 413, bitwise different, practical FAIL
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_film_matches_its_backend_reference_with_the_practical_criterion(name: "diffuse-sun") [OUTPUT] diffuse-sun: authority CPU reference: floats 3072, max abs error 4.17233E-07, practical failures 0, strict differences 542, bitwise different, practical PASS
+CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 23948 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_film_matches_its_backend_reference_with_the_practical_criterion(name: "textured-plane") [OUTPUT] textured-plane: authority CPU reference: floats 3072, max abs error 2.38419E-07, practical failures 0, strict differences 25, bitwise different, practical PASS
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_object_moved_after_a_render_matches_a_scene_built_with_it [OUTPUT] moved object versus a scene built with it on the CPU: floats 3072, max abs error 4.17233E-07, practical failures 0, strict differences 536, bitwise different, practical PASS
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_device_report_states_the_backend_pipeline_facts [OUTPUT] size guard: threshold 1110000 bytes, largest entry shade_surface_light 643637 bytes, warnings 0
+11:51.62 | ERROR: WebGPU surface data passes not implemented
+11:57.60 | ERROR: WebGPU surface data passes not implemented
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_scene_recovers_after_a_rejected_render_once_the_cause_is_removed [OUTPUT] diffuse-sun: authority CPU reference: floats 3072, max abs error 4.17233E-07, practical failures 0, strict differences 543, bitwise different, practical PASS
+    CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests.gpu_render_is_cancelled_and_the_scene_renders_again_afterwards [OUTPUT] diffuse-sun: authority CPU reference: floats 3072, max abs error 4.17233E-07, practical failures 0, strict differences 536, bitwise different, practical PASS
+  Finished:    CodeBrix.Graphics3D.Cycles.Tests (ID = '4e4ae8b5b0a940d6095369364db272ba3b3d08b04d5e1877580253302887e789')
+=== TEST EXECUTION SUMMARY ===
+   CodeBrix.Graphics3D.Cycles.Tests  Total: 12, Errors: 0, Failed: 3, Skipped: 0, Not Run: 0, Time: 820.972s
