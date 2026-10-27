@@ -1,0 +1,711 @@
+{
+  "reference": "cpu-x64-linux (Linux x64 glibc 2.41, Docker; native/evidence/linux-x64-docker-reference-20261027)",
+  "candidates": {
+    "wgsl-macos-x64": "Intel Mac mini 2018, UHD 630, WGSL on WebGPU/Metal, runtime 1.0.300.210 with precise math (native/work/oracles/macos-x64-7, macos-x64-bench-3)",
+    "cpu-x64-macos": "the same Mac, Cycles CPU with Apple libm (diagnostic)"
+  },
+  "criterion": "practical abs(a-b) <= 5e-5 + 2e-4*abs(reference), required; strict reported",
+  "scenes": 58,
+  "wgslFilms": 56,
+  "wgslPracticalFailures": 0,
+  "wgslMaximumError": 9.1552734375e-05,
+  "wgslRefusedOnWebGpu": [
+    "linux-gates/closed-volumes",
+    "linux-gates/world-volume"
+  ],
+  "macCpuDiagnosticFailures": {
+    "linux-gates/triangle-lighting-2": {
+      "practicalFailures": 3,
+      "strictDifferences": 3,
+      "maxAbsoluteDifference": 0.005035765469074249
+    }
+  },
+  "perScene": {
+    "ao/ao-node": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 5,
+        "maxAbsoluteDifference": 1.9073486328125e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.9802322387695312e-08
+      }
+    },
+    "ao/fast-gi-additive": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 8,
+        "maxAbsoluteDifference": 1.9073486328125e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.9802322387695312e-08
+      }
+    },
+    "assets/bench_01-hdri": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 444,
+        "maxAbsoluteDifference": 9.1552734375e-05
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 30,
+        "maxAbsoluteDifference": 1.2516975402832031e-06
+      }
+    },
+    "assets/bench_01": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 262,
+        "maxAbsoluteDifference": 6.967782974243164e-05
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 2.384185791015625e-07
+      }
+    },
+    "light-tree/lamps-and-mesh-lights": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 401,
+        "maxAbsoluteDifference": 3.2186508178710938e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 324,
+        "maxAbsoluteDifference": 2.384185791015625e-06
+      }
+    },
+    "light-tree/light-linking": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 347,
+        "maxAbsoluteDifference": 2.6226043701171875e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 354,
+        "maxAbsoluteDifference": 1.6689300537109375e-06
+      }
+    },
+    "linux-gates/broad-lighting-0": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.4901161193847656e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.3283064365386963e-10
+      }
+    },
+    "linux-gates/broad-lighting-1": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 4.842877388000488e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.450580596923828e-09
+      }
+    },
+    "linux-gates/broad-lighting-10": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 9.5367431640625e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 0.0
+      }
+    },
+    "linux-gates/broad-lighting-11": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 288,
+        "maxAbsoluteDifference": 1.0967254638671875e-05
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 287,
+        "maxAbsoluteDifference": 1.049041748046875e-05
+      }
+    },
+    "linux-gates/broad-lighting-2": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 5,
+        "maxAbsoluteDifference": 4.1350722312927246e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.4901161193847656e-08
+      }
+    },
+    "linux-gates/broad-lighting-3": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 6.076879799365997e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.9103830456733704e-11
+      }
+    },
+    "linux-gates/broad-lighting-4": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 2,
+        "maxAbsoluteDifference": 1.6391277313232422e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 13,
+        "maxAbsoluteDifference": 3.2782554626464844e-07
+      }
+    },
+    "linux-gates/broad-lighting-5": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 8.493661880493164e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.4901161193847656e-08
+      }
+    },
+    "linux-gates/broad-lighting-6": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 2.5331974029541016e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.2351741790771484e-08
+      }
+    },
+    "linux-gates/broad-lighting-7": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 320,
+        "maxAbsoluteDifference": 9.5367431640625e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 319,
+        "maxAbsoluteDifference": 9.5367431640625e-06
+      }
+    },
+    "linux-gates/broad-lighting-8": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 302,
+        "maxAbsoluteDifference": 1.049041748046875e-05
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 306,
+        "maxAbsoluteDifference": 1.049041748046875e-05
+      }
+    },
+    "linux-gates/broad-lighting-9": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 299,
+        "maxAbsoluteDifference": 4.76837158203125e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 289,
+        "maxAbsoluteDifference": 4.76837158203125e-06
+      }
+    },
+    "linux-gates/closed-volumes": {
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 5,
+        "maxAbsoluteDifference": 3.5762786865234375e-07
+      }
+    },
+    "linux-gates/deforming-motion-0": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 1,
+        "maxAbsoluteDifference": 1.341104507446289e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.450580596923828e-09
+      }
+    },
+    "linux-gates/deforming-motion-1": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.1920928955078125e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.2351741790771484e-08
+      }
+    },
+    "linux-gates/deforming-motion-2": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 2.0116567611694336e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 3.725290298461914e-09
+      }
+    },
+    "linux-gates/deforming-motion-3": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.792795956134796e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 4.656612873077393e-10
+      }
+    },
+    "linux-gates/deforming-motion-4": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 5,
+        "maxAbsoluteDifference": 5.364418029785156e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.450580596923828e-09
+      }
+    },
+    "linux-gates/deforming-motion-5": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 9,
+        "maxAbsoluteDifference": 4.3213367462158203e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 3.725290298461914e-09
+      }
+    },
+    "linux-gates/deforming-motion-6": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 5,
+        "maxAbsoluteDifference": 5.364418029785156e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.450580596923828e-09
+      }
+    },
+    "linux-gates/deforming-motion-7": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 2,
+        "maxAbsoluteDifference": 3.8743019104003906e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.043081283569336e-07
+      }
+    },
+    "linux-gates/glass-render": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 4.76837158203125e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.1920928955078125e-07
+      }
+    },
+    "linux-gates/object-motion-0": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 1,
+        "maxAbsoluteDifference": 3.203749656677246e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.450580596923828e-09
+      }
+    },
+    "linux-gates/object-motion-1": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.1920928955078125e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.9802322387695312e-08
+      }
+    },
+    "linux-gates/object-motion-2": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 2.905726432800293e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.450580596923828e-09
+      }
+    },
+    "linux-gates/object-motion-3": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.6309862732887268e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.3283064365386963e-10
+      }
+    },
+    "linux-gates/object-motion-4": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 8,
+        "maxAbsoluteDifference": 3.203749656677246e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.043081283569336e-07
+      }
+    },
+    "linux-gates/object-motion-5": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 6,
+        "maxAbsoluteDifference": 3.241002559661865e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.450580596923828e-09
+      }
+    },
+    "linux-gates/object-motion-6": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 6,
+        "maxAbsoluteDifference": 3.8743019104003906e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.9802322387695312e-08
+      }
+    },
+    "linux-gates/object-motion-7": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 4,
+        "maxAbsoluteDifference": 4.6193599700927734e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.043081283569336e-07
+      }
+    },
+    "linux-gates/textured-plane": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 47,
+        "maxAbsoluteDifference": 3.814697265625e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 4,
+        "maxAbsoluteDifference": 3.5762786865234375e-07
+      }
+    },
+    "linux-gates/transparent-lighting-0": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 4.0978193283081055e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.9802322387695312e-08
+      }
+    },
+    "linux-gates/transparent-lighting-1": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.1920928955078125e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.1175870895385742e-08
+      }
+    },
+    "linux-gates/transparent-lighting-2": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 2,
+        "maxAbsoluteDifference": 2.384185791015625e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.1920928955078125e-07
+      }
+    },
+    "linux-gates/transparent-lighting-3": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 4,
+        "maxAbsoluteDifference": 2.9243528842926025e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 3.725290298461914e-09
+      }
+    },
+    "linux-gates/transparent-lighting-4": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 1,
+        "maxAbsoluteDifference": 2.384185791015625e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.450580596923828e-09
+      }
+    },
+    "linux-gates/transparent-lighting-5": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.82310962677002e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 0.0
+      }
+    },
+    "linux-gates/transparent-lighting-6": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.384185791015625e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.862645149230957e-09
+      }
+    },
+    "linux-gates/transparent-lighting-7": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.384185791015625e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 7.450580596923828e-09
+      }
+    },
+    "linux-gates/triangle-lighting-0": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.9802322387695312e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 0.0
+      }
+    },
+    "linux-gates/triangle-lighting-1": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 5.960464477539063e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 4.76837158203125e-07
+      }
+    },
+    "linux-gates/triangle-lighting-2": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 3.3527612686157227e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 3,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 0.005035765469074249
+      }
+    },
+    "linux-gates/triangle-lighting-3": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 6,
+        "maxAbsoluteDifference": 1.9073486328125e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 8.940696716308594e-08
+      }
+    },
+    "linux-gates/triangle-lighting-5": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 13,
+        "maxAbsoluteDifference": 1.9073486328125e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 8.940696716308594e-08
+      }
+    },
+    "linux-gates/world-volume": {
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 6,
+        "maxAbsoluteDifference": 1.2367963790893555e-05
+      }
+    },
+    "mnee/glass-sphere-caustic": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 3,
+        "maxAbsoluteDifference": 4.76837158203125e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.4901161193847656e-08
+      }
+    },
+    "shadow-catcher/catcher-approximate": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 21,
+        "maxAbsoluteDifference": 2.86102294921875e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.043081283569336e-07
+      }
+    },
+    "shadow-catcher/catcher-point-light": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 32,
+        "maxAbsoluteDifference": 5.245208740234375e-06
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 5.960464477539063e-08
+      }
+    },
+    "starter/diffuse-triangle": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 2.9802322387695312e-08
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 0.0
+      }
+    },
+    "starter/glass-and-area-light": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 227,
+        "maxAbsoluteDifference": 1.1444091796875e-05
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 15,
+        "maxAbsoluteDifference": 2.384185791015625e-07
+      }
+    },
+    "starter/glossy-sphere-point-light": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 91,
+        "maxAbsoluteDifference": 5.7220458984375e-05
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.862645149230957e-08
+      }
+    },
+    "starter/textured-plane": {
+      "wgsl-macos-x64": {
+        "practicalFailures": 0,
+        "strictDifferences": 2,
+        "maxAbsoluteDifference": 4.6193599700927734e-07
+      },
+      "cpu-x64-macos": {
+        "practicalFailures": 0,
+        "strictDifferences": 0,
+        "maxAbsoluteDifference": 1.4901161193847656e-08
+      }
+    }
+  }
+}

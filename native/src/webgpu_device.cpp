@@ -100,6 +100,13 @@ Device::Device(){
 #ifdef __APPLE__
   // The shipped runtime's macOS builds contain only wgpu's Metal backend.
   const WGPUInstanceBackend backend_flag=WGPUInstanceBackend_Metal;const std::string backend_name="Metal";
+  // Metal compiles WGSL with fast math by default, which removes NaN checks, reassociates
+  // and approximates transcendentals; the kernels rely on IEEE floating point
+  // (docs/TESTING-MACOS-X64.md, M1). The runtime's switch is process-wide and applies to
+  // every pipeline compiled afterwards, so it is set before any pipeline exists.
+  if(wgpuCodebrixSetMetalPreciseMath(1)!=WGPUStatus_Success)
+    throw Error(CBC_BACKEND_GPU_ERROR,"The WebGPU runtime refused IEEE floating point on Metal (wgpuCodebrixSetMetalPreciseMath)");
+  metal_precise_math=true;
 #elif defined(_WIN32)
   // Windows: Direct3D 12 by default (part of Windows 10 and 11, on every GPU
   // vendor's driver), with the DXC shader compiler shipped beside this library;
@@ -169,11 +176,21 @@ Device::Device(){
   std::vector<WGPUAdapter> candidates(wgpuInstanceEnumerateAdapters(instance,nullptr,nullptr));
   wgpuInstanceEnumerateAdapters(instance,nullptr,candidates.data());
   // Adapter choice. By default the first hardware (integrated or discrete)
-  // adapter. Diagnostic CODEBRIX_CYCLES_WEBGPU_ADAPTER: "hardware" (the default
+  // adapter (on Apple, an Intel one first if there is one). Diagnostic CODEBRIX_CYCLES_WEBGPU_ADAPTER: "hardware" (the default
   // rule), "software" (a CPU adapter: WARP on Direct3D 12, llvmpipe on Vulkan,
   // a full-kernel reference on the same machine) or a case-insensitive substring
   // of the adapter's device name or description.
   std::string choice="hardware";if(const char *want=diagnostic_env("CODEBRIX_CYCLES_WEBGPU_ADAPTER"))choice=lower(want);
+  // Apple (osx-x64), default rule only: an Intel adapter is preferred to any other hardware
+  // adapter, whatever the enumeration order. Intel MacBook Pros with Intel + AMD graphics then
+  // render on the supported, validated GPU; AMD GPUs are not supported, may work (they get the
+  // conservative tier as a precaution; docs/TESTING-MACOS-X64.md). Metal reports no vendor
+  // ID, so the device name decides.
+#ifdef __APPLE__
+  const bool prefer_intel=choice=="hardware";
+#else
+  const bool prefer_intel=false;
+#endif
   for(auto a:candidates){WGPUAdapterInfo info{};
     if(wgpuAdapterGetInfo(a,&info)!=WGPUStatus_Success){wgpuAdapterRelease(a);continue;}
     const std::string device_text=text(info.device),description_text=text(info.description);
@@ -183,6 +200,8 @@ Device::Device(){
     const bool wanted=choice=="hardware"?hardware&&device_text.find("llvmpipe")==std::string::npos:
                       choice=="software"?info.adapterType==WGPUAdapterType_CPU:
                       lower(device_text).find(choice)!=std::string::npos||lower(description_text).find(choice)!=std::string::npos;
+    if(adapter.value&&wanted&&prefer_intel&&adapter_device.find("Intel")==std::string::npos&&device_text.find("Intel")!=std::string::npos){
+      wgpuAdapterRelease(adapter.value);adapter.value=nullptr;layered_on.clear();}
     if(!adapter.value&&wanted){adapter.value=a;adapter_name=device_text+" / "+description_text;
       adapter_vendor=text(info.vendor);adapter_architecture=text(info.architecture);adapter_device=device_text;adapter_description=description_text;
       adapter_vendor_id=info.vendorID;adapter_device_id=info.deviceID;adapter_type=uint32_t(info.adapterType);adapter_backend=uint32_t(info.backendType);

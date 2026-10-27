@@ -311,6 +311,24 @@ validated (host gate on Direct3D 12 and Vulkan, managed tests, oracle corpus);
 on Intel GPUs with Direct3D 12 it relies on the driver workaround
 intel-d3d12-shader-cache (native/host/WINDOWS_X64.md, "Driver workarounds";
 docs/TESTING-WINDOWS-X64.md, W1).
+The osx-x64 payload (built and validated on an Intel Mac, 2026-10-26: host gate
+with driver coverage, managed tests, oracle corpus) is staged in
+native/binaries/osx-x64/ (runtime/, unstripped/, symbols/, provenance.json); on
+Intel GPUs through Metal it relies on the driver workaround
+intel-metal-surface-workgroup (docs/TESTING-MACOS-X64.md, M2), and the host
+turns on the runtime's IEEE floating point for Metal (M1; runtime 1.0.300.210).
+The Intel Mac mini (2018) is a REFERENCE DEVICE (native/DEVICE.md, "Reference
+devices and the publish rule"): every host-gate step, device gate, oracle and
+bench scene and managed test must pass there, judged against the Linux x64 glibc
+reference, or the release is not ready to publish. The Apple Silicon Mac mini
+(M2 Pro) is the Metal comparison device, not a WGSL reference device. A Linux x64
+reference can be produced in Docker
+(native/evidence/linux-x64-docker-reference-20261027/README.md; host_gate.py
+--cpu-only runs the Linux host gate's CPU steps where there is no GPU or .NET).
+On the Intel Mac, `python3 native/tools/macos_x64_reference_exchange.py --output
+native/work/macos-x64-exchange-<n>` judges the device gates against that
+reference in one command (Docker Desktop; the image is native/tools/
+linux_reference/Dockerfile; about 5 minutes warm, 16 minutes from nothing).
 win-arm64 is cross-compiled and NOT YET VALIDATED: its provenance.json records
 validation.status "pending-device". The first device run (Qualcomm Adreno 680,
 Direct3D 12) passed the host gate but found driver problems in some scenes
@@ -379,7 +397,8 @@ What the tests need:
     working tree (native/work/cycles-build/lib/libcodebrix_cycles_host.so) on
     the CPU reference backend; NativeHostLibrary registers a
     DllImport resolver that loads that file. When it is absent, or the host is
-    not Linux x64 (or macOS arm64, or Windows with the host built in
+    not Linux x64 (or macOS arm64 or x64 with the host built in
+    native/work/macos/<rid>/host/build/lib, or Windows with the host built in
     native/work/windows/<rid>/host/build/bin or staged in
     native/binaries/<rid>/runtime), those tests SKIP with the reason (they never fail for a
     missing native build). Build the native host first to run them.

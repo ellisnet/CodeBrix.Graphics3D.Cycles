@@ -1,0 +1,162 @@
+{
+  "sceneId": "ao/ao-node",
+  "sceneSha256": "589480a7a1a9c2f1382b819ab76c415d557e41282aa5638e76016f70e92aa6eb",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "native/work/oracles/linux-docker-2/oracle/ao/ao-node/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00420755,
+        0.00270177
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/oracles/macos-x64-7/oracle/ao/ao-node/wgsl-macos-x64",
+      "backend": "wgsl-macos-x64",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 5.960464477539063e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 5.960464477539063e-08,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json",
+      "renderSeconds": [
+        0.886266,
+        0.441749
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/oracles/macos-x64-7/oracle/ao/ao-node/cpu-x64-macos",
+      "backend": "cpu-x64-macos",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00351269,
+        0.00173517
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux",
+    "cpu-x64-macos"
+  ],
+  "candidates": [
+    "wgsl-macos-x64"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.9073486328125e-06,
+      "maxRelativeError": 5.875762705476471e-07,
+      "rms": 1.0387317598825881e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 5,
+      "worstPixel": {
+        "x": 14,
+        "y": 11,
+        "channel": "R",
+        "reference": 0.3016136586666107,
+        "candidate": 0.30161380767822266,
+        "absoluteDifference": 1.4901161193847656e-07,
+        "criterionRatio": 0.0013506881999502621
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-macos-x64",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 2.9802322387695312e-08,
+      "maxRelativeError": 1.1251012450482888e-07,
+      "rms": 1.1326837911679118e-09,
+      "practicalFailures": 0,
+      "strictDifferences": 0,
+      "worstPixel": {
+        "x": 9,
+        "y": 17,
+        "channel": "B",
+        "reference": 0.26488569378852844,
+        "candidate": 0.26488572359085083,
+        "absoluteDifference": 2.9802322387695312e-08,
+        "criterionRatio": 0.0002894071708266922
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "cpu-x64-macos",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.9073486328125e-06,
+      "maxRelativeError": 5.875762705476471e-07,
+      "rms": 1.0388056913092782e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 5,
+      "worstPixel": {
+        "x": 14,
+        "y": 11,
+        "channel": "R",
+        "reference": 0.3016136586666107,
+        "candidate": 0.30161380767822266,
+        "absoluteDifference": 1.4901161193847656e-07,
+        "criterionRatio": 0.0013506881999502621
+      },
+      "reference": "cpu-x64-macos",
+      "candidate": "wgsl-macos-x64",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true
+    }
+  ],
+  "crossIsaGating": [],
+  "gatingPairs": 2,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

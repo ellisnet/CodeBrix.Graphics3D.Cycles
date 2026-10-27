@@ -25,6 +25,10 @@ internal static class RepositoryPaths
     // sources are staged beside it in codebrix-cycles/source.
     internal static string MacNativeHostLibrary => Root == null ? null : Path.Combine(Root, "native", "work", "macos", "osx-arm64", "host", "build", "lib", "libcodebrix_cycles_host.dylib");
 
+    // Where tools/build_macos_x64.py places the osx-x64 (WGSL/WebGPU) native host, with the
+    // shipped WebGPU runtime copied beside it.
+    internal static string MacX64NativeHostLibrary => Root == null ? null : Path.Combine(Root, "native", "work", "macos", "osx-x64", "host", "build", "lib", "libcodebrix_cycles_host.dylib");
+
     // The Windows RID of this process (win-x64 or win-arm64), or null off Windows.
     internal static string WindowsRid =>
         !OperatingSystem.IsWindows() ? null
@@ -67,12 +71,14 @@ internal static class RepositoryPaths
     internal static string NativeHostLibrary =>
         OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.X64 ? LinuxNativeHostLibrary
         : OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? MacNativeHostLibrary
+        : OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.X64 ? MacX64NativeHostLibrary
         : OperatingSystem.IsWindows() ? WindowsNativeHostLibrary
         : null;
 
     // The command that builds NativeHostLibrary.
     internal static string NativeHostBuildCommand =>
-        OperatingSystem.IsMacOS() ? "python3 tools/build_macos.py --jobs 8"
+        OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.X64 ? "python3 tools/build_macos_x64.py --jobs 8"
+        : OperatingSystem.IsMacOS() ? "python3 tools/build_macos.py --jobs 8"
         : OperatingSystem.IsWindows() ? "python -X utf8 native/tools/build_cycles_windows.py --rid " + (WindowsRid ?? "win-x64") + " --jobs 16"
         : "python3 native/tools/build_cycles.py --jobs 6";
 

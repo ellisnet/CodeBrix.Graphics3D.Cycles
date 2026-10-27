@@ -1,0 +1,162 @@
+{
+  "sceneId": "starter/glass-and-area-light",
+  "sceneSha256": "9b52f41844cc566e2c5694a26613e0442270a9c9e2d09d5e309edf5eef81b154",
+  "width": 64,
+  "height": 48,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/Users/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-x64-7/oracle/starter/glass-and-area-light/cpu-x64-macos",
+      "backend": "cpu-x64-macos",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00724163,
+        0.0057757
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/Users/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-x64-7/oracle/starter/glass-and-area-light/cpu-x64-macos-sse42",
+      "backend": "cpu-x64-macos-sse42",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00685678,
+        0.00548918
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/Users/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-x64-7/oracle/starter/glass-and-area-light/wgsl-macos-x64",
+      "backend": "wgsl-macos-x64",
+      "samples": 16,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.384185791015625e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 2.384185791015625e-07,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json",
+      "renderSeconds": [
+        1.0527,
+        0.627354
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-macos",
+    "cpu-x64-macos-sse42"
+  ],
+  "candidates": [
+    "wgsl-macos-x64"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": true,
+      "maxAbsoluteDifference": 0.0,
+      "maxRelativeError": 0.0,
+      "rms": 0.0,
+      "practicalFailures": 0,
+      "strictDifferences": 0,
+      "worstPixel": {
+        "x": 0,
+        "y": 0,
+        "channel": "R",
+        "reference": 0.5433464646339417,
+        "candidate": 0.5433464646339417,
+        "absoluteDifference": 0.0,
+        "criterionRatio": 0.0
+      },
+      "reference": "cpu-x64-macos",
+      "candidate": "cpu-x64-macos-sse42",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.1444091796875e-05,
+      "maxRelativeError": 4.109987182974299e-06,
+      "rms": 1.2880426415152031e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 278,
+      "worstPixel": {
+        "x": 30,
+        "y": 14,
+        "channel": "G",
+        "reference": 0.4858301281929016,
+        "candidate": 0.48582813143730164,
+        "absoluteDifference": 1.996755599975586e-06,
+        "criterionRatio": 0.013568047321460901
+      },
+      "reference": "cpu-x64-macos",
+      "candidate": "wgsl-macos-x64",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true
+    },
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.1444091796875e-05,
+      "maxRelativeError": 4.109987182974299e-06,
+      "rms": 1.2880426415152031e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 278,
+      "worstPixel": {
+        "x": 30,
+        "y": 14,
+        "channel": "G",
+        "reference": 0.4858301281929016,
+        "candidate": 0.48582813143730164,
+        "absoluteDifference": 1.996755599975586e-06,
+        "criterionRatio": 0.013568047321460901
+      },
+      "reference": "cpu-x64-macos-sse42",
+      "candidate": "wgsl-macos-x64",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true
+    }
+  ],
+  "crossIsaGating": [],
+  "gatingPairs": 2,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

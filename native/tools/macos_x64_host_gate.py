@@ -19,7 +19,10 @@ apply: this product reads no image files, as on osx-arm64. With --references,
 the CPU films are also compared with a passed Linux x64 host gate, with the
 cross-platform rules of linux_arm64_host_gate.py. --device-gates also runs the
 built WGSL device gate executables and records each one's own pass flag; the
-Linux drivers' extra coverage assertions are not reproduced.
+Linux drivers' extra coverage assertions are not reproduced. As in
+windows_host_gate.py, the driver-coverage step renders one oracle scene per
+known GPU-driver failure class on the CPU and the GPU (practical criterion
+required), and a run with an opt-in diagnostic set never passes.
 """
 import argparse,ctypes,hashlib,json,math,os,platform,re,struct,subprocess,sys
 from pathlib import Path
@@ -37,7 +40,18 @@ CBC_UNSUPPORTED=2
 BACKEND_TYPES={0:'Undefined',1:'Null',2:'WebGPU',3:'D3D11',4:'D3D12',5:'Metal',6:'Vulkan',7:'OpenGL',8:'OpenGLES'}
 # Device gate executables that take only an output prefix (as the Linux drivers call them).
 DEVICE_GATES=['device','camera','closest','background','svm_world','shader_data','svm_surface','attribute','normal','image',
- 'surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film']
+ 'surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film',
+ 'ao_render','ao_state','light_tree','mnee','mnee_render','shadow_catcher']
+# One oracle scene per failure class found on a GPU driver (windows_host_gate.py;
+# docs/TESTING-WINDOWS-ARM64.md, F1, F3 and F4; docs/TESTING-WINDOWS-X64.md, W1).
+DRIVER_COVERAGE={'smooth-shading':'native/oracle/scenes/linux-gates/glass-render.json',
+ 'motion-normal-map':'native/oracle/scenes/linux-gates/deforming-motion-1.json',
+ 'glass-area-light':'native/oracle/scenes/starter/glass-and-area-light.json',
+ 'light-tree':'native/oracle/scenes/light-tree/lamps-and-mesh-lights.json'}
+# Opt-in diagnostics (native/src/webgpu_device.h): a run with any of them set
+# is diagnostic and never passes.
+DIAGNOSTIC_VARIABLES=['CODEBRIX_CYCLES_WGSL_LOAD','CODEBRIX_CYCLES_WEBGPU_ADAPTER','CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT',
+ 'CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL','CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS','CODEBRIX_CYCLES_WEBGPU_LOG','CODEBRIX_CYCLES_DEBUG_OUTPUT','CODEBRIX_CYCLES_DRIVER_WORKAROUNDS']
 
 
 def main():
@@ -49,6 +63,7 @@ def main():
   raise SystemExit(f'osx-x64: this gate runs only on an Intel Mac; this host is {platform.system()} {platform.machine()}')
  host=BASE/'host';build=host/'build';prefix=BASE/'dependencies/install';out=a.output.resolve();out.mkdir(parents=True,exist_ok=False)
  binary=build/'bin';library=build/'lib/libcodebrix_cycles_host.dylib';runtime=build/'lib'/RUNTIME_NAME
+ oracle=BASE/'oracle-build/codebrix_cycles_oracle'
  state=dict(complete=False,phase='binary-review',rid='osx-x64');save(out/'status.json',state)
  results={};comparisons=[];commands=[]
  env=dict(os.environ)
@@ -81,6 +96,7 @@ def main():
   pins.update({str(prefix/name):digest for name,digest in dependency['libraries'].items()})
   assert all(sha(Path(path))==digest for path,digest in pins.items()),'Build artifacts changed since the build recorded them'
   assert sha(runtime)==RUNTIME_SHA256==invocation['runtimeSha256'],'The runtime beside the host is not the shipped osx-x64 binary'
+  assert oracle.is_file(),'Build the oracle runner first: python3 tools/build_macos_x64.py';pins[str(oracle)]=sha(oracle)
 
   # Binary review: exports, architecture, minimum OS, load closure, signatures.
   exported={line.split()[-1].lstrip('_') for line in tool('nm','-gU',str(library)).splitlines() if ' T ' in line}
@@ -163,7 +179,11 @@ def main():
    if mode=='gpu':assert rows[0]['explicitWebGpu'] and rows[0]['repeatStrictCriterionPassed'] and rows[0]['repeatChecks']==3,rows
    for i in range(count):
     reference=cpu64/'run.1.rgba.bin' if i==3 else cpu/f'run.{i if i<3 else 1}.rgba.bin'
-    compare(target/f'run.{i}.rgba.bin',reference,f'{mode} vs same-host CPU Session reference')
+    # run.3 (the 64-sample film against the session64 reference), as in host_gate.py: the
+    # practical criterion is required and strict differences are recorded. Its atomic
+    # accumulation order varies between runs, and one component (1742) sits one float step
+    # from the strict bound (native/DEVICE.md, "Merge wave 7").
+    compare(target/f'run.{i}.rgba.bin',reference,f'{mode} vs same-host CPU Session reference',strict=i!=3)
 
   # ABI additions on the CPU reference and through CBC_HOST_GPU.
   abi={}
@@ -188,6 +208,14 @@ def main():
    else:
     assert row['litRenders']==4 and row['errorEvents']==1 and row['renderAfterDeviceFailure']==0
     state['adapterReport']=host_caps['host']['deviceReport']
+    adapter=host_caps['host']['deviceReport']['webgpu'];backend_type=adapter['backendType']
+    state['adapterBackend']=BACKEND_TYPES.get(backend_type,backend_type)
+    # The shipped runtime's macOS build has only wgpu's Metal backend.
+    assert backend_type==5 and adapter['backendName']=='Metal',adapter
+    # IEEE floating point requested from the runtime (docs/TESTING-MACOS-X64.md, M1).
+    assert adapter.get('metalPreciseMath') is True,adapter
+    state['metalPreciseMath']=True
+    state['deviceDiagnostics']=adapter.get('diagnostics',[])
    abi[mode]=target
   for name in ['base','object-motion','deforming']:
    compare(abi['gpu']/f'run.{name}.rgba.bin',abi['cpu']/f'run.{name}.rgba.bin','ABI GPU vs CPU')
@@ -199,8 +227,36 @@ def main():
    assert row['backend']==(2 if mode=='cpu' else 1) and row['progressEvents']>0
    assert row['depthStatus']==(0 if mode=='cpu' else 1)
 
+  # Driver coverage, as in windows_host_gate.py: one oracle scene per class of scene a
+  # GPU driver has rendered wrongly or refused, rendered on the CPU and the GPU by the
+  # oracle runner and compared with the practical criterion, which is required.
+  coverage={}
+  for kind,scene in DRIVER_COVERAGE.items():
+   target=folder('driver-'+kind)
+   # compare.py takes the CPU film as the reference by its label (cpu-*).
+   for backend,label in [('cpu','cpu-macos'),('webgpu','wgsl-macos')]:
+    try:call([oracle,'--scene',REPO/scene,'--backend',backend,'--label',label,'--output',target/label,'--threads','4'],
+     f'driver-{kind}-{backend}',3600)
+    except subprocess.CalledProcessError:
+     # A GPU render that fails (a pipeline the driver rejects) is a coverage
+     # failure of this class; the remaining classes still run.
+     if backend=='cpu':raise
+     coverage[kind]=dict(scene=scene,passed=False,error=(out/f'driver-{kind}-{backend}.stderr.txt').read_text().strip()[-400:])
+   if kind in coverage:continue
+   compared=subprocess.run([sys.executable,'-I',REPO/'native/oracle/compare.py',target/'cpu-macos',target/'wgsl-macos','--json',target/'compare.json'],
+    cwd=REPO,capture_output=True,text=True,timeout=600)
+   (out/f'driver-{kind}-compare.stdout.txt').write_text(compared.stdout+compared.stderr)
+   assert (target/'compare.json').exists(),'compare.py wrote no report: '+(compared.stdout+compared.stderr)[-400:]
+   report_=json.loads((target/'compare.json').read_text())
+   pair=report_['pairs'][0]
+   coverage[kind]=dict(scene=scene,passed=bool(report_['passed']),maximumAbsoluteError=pair['maxAbsoluteDifference'],
+    practicalFailures=pair['practicalFailures'],strictDifferences=pair['strictDifferences'])
+  results['driverCoverage']=coverage;save(out/'results.json',results)
+
   if linux:
-   assert json.loads((linux/'status.json').read_text())['passed'];old=json.loads((linux/'invocation.json').read_text())
+   linux_status=json.loads((linux/'status.json').read_text());assert linux_status['passed'];old=json.loads((linux/'invocation.json').read_text())
+   # A CPU-only Linux run (host_gate.py --cpu-only, e.g. in a container) writes the same CPU reference set.
+   state['crossPlatformReference']=dict(directory=str(linux),cpuOnly=bool(linux_status.get('cpuOnly')))
    # The Linux run recorded absolute paths of its own machine; verify them relative to the copied directory.
    base=os.path.commonpath(list(old['referenceSha256']))
    assert all(sha(linux/os.path.relpath(path,base))==digest for path,digest in old['referenceSha256'].items()),'The Linux reference films changed'
@@ -223,13 +279,18 @@ def main():
      gates[name]=dict(exit=0,passed=bool(rows) and all(r.get('passed') for r in rows),loadedLibrary=library_note)
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:
      gates[name]=dict(exit=getattr(error,'returncode','timeout'),passed=False,stderrTail=(out/f'device-gate-{name}.stderr.txt').read_text()[-800:])
-   state['deviceGates']=gates
+    state['deviceGates']=gates;save(out/'status.json',state)
 
   assert all(sha(Path(path))==digest for path,digest in {**pins,**reference_hashes}.items()),'Inputs changed during the gate'
   failures=[r for r in comparisons if r['practicalFailures'] or (r['strictRequired'] and r['strictDifferences']) or (r['bitwiseRequired'] and not r['bitwiseEqual'])]
   gpu=[r for r in comparisons if not r['bitwiseRequired'] and 'cross-platform' not in r['kind']]
   save(out/'invocation.json',dict(binarySha256=pins,referenceSha256=reference_hashes,buildInvocationSha256=sha(host/'invocation.json'),commands=commands))
-  state.update(complete=True,phase='complete',passed=not failures,filmsCompared=len(comparisons),failedFilms=len(failures),
+  coverage_failures=[kind for kind,row in coverage.items() if not row['passed']]
+  # A diagnostic run (any opt-in diagnostic in the environment or reported by the
+  # device) is recorded but never passes.
+  diagnostic=sorted(set(state.get('deviceDiagnostics',[]))|{n+'='+env[n] for n in DIAGNOSTIC_VARIABLES if env.get(n)})
+  state.update(complete=True,phase='complete',passed=not failures and not coverage_failures and not diagnostic,
+   driverCoverageFailures=coverage_failures,diagnosticRun=bool(diagnostic),diagnostics=diagnostic,filmsCompared=len(comparisons),failedFilms=len(failures),
    sameHostBitwiseFailures=sum(r['bitwiseRequired'] and not r['bitwiseEqual'] for r in comparisons),
    gpuPracticalFailures=sum(r['practicalFailures'] for r in gpu),gpuStrictDifferences=sum(r['strictDifferences'] for r in gpu),
    gpuMaximumAbsoluteError=max((r['maximumAbsoluteError'] for r in gpu),default=None),

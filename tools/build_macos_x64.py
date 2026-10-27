@@ -26,7 +26,8 @@ subprocess.run([sys.executable,str(ROOT/'native/tools/build_cycles_macos_x64.py'
 host=BASE/'host/build/lib/libcodebrix_cycles_host.dylib'
 oracle=BASE/'oracle-build'
 subprocess.run(['cmake','-S',str(ROOT/'native/oracle'),'-B',str(oracle),'-DCMAKE_BUILD_TYPE=Release','-DCMAKE_OSX_ARCHITECTURES=x86_64',
-                '-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0','-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local',
+                '-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0',
+                '-DCMAKE_OSX_SYSROOT='+subprocess.check_output(['xcrun','--show-sdk-path'],text=True).strip(),'-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local',
                 '-DCODEBRIX_HOST_LIBRARY='+str(host)],cwd=ROOT,check=True,stdout=subprocess.DEVNULL)
 subprocess.run(['cmake','--build',str(oracle),'--parallel',str(args.jobs)],cwd=ROOT,check=True,stdout=subprocess.DEVNULL)
 print('osx-x64: dependencies, WGSL/WebGPU host and oracle runner built',flush=True)

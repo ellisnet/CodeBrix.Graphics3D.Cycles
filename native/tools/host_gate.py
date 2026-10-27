@@ -22,6 +22,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, default=WORK/'host-validation')
     parser.add_argument('--jobs', default='6')
+    # Opt-in for an environment with no GPU and no .NET (a Linux container): every CPU step runs
+    # exactly as in the full gate, the managed (.NET) and GPU steps are skipped, and status.json
+    # records cpuOnly and what was skipped. The CPU films and image references it writes are the
+    # same reference set the full gate writes (other RIDs' gates read them with --references).
+    parser.add_argument('--cpu-only', action='store_true')
     args = parser.parse_args()
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
@@ -134,86 +139,90 @@ def main():
         for name in ['guarded', 'after-invalid']:
             compare(stress_output/(name+'.rgba.bin'), refs/'a/output/case.177.rgba.bin', bitwise=True)
 
-        for project in ['HostLifecycle', 'ImageModes', 'ColorReload']:
-            call(['dotnet', 'build', REPO/'tools/hosttests'/project/(project+'.csproj'), '-c', 'Release',
-                  '--configfile', REPO/'tools/hosttests/NuGet.Config'], 'managed-build-'+project)
-        managed = {name:REPO/'tools/hosttests'/name/'bin/Release/net10.0'/(name+'.dll')
-                   for name in ['HostLifecycle', 'ImageModes', 'ColorReload']}
-        for path in managed.values():
-            pins[str(path)] = sha(path)
-            wrapper = path.parent/'CodeBrix.Graphics3D.Cycles.dll'
-            pins[str(wrapper)] = sha(wrapper)
-        report(['dotnet', managed['HostLifecycle'], cpu, destination('managed-lifecycle')], 'managed-lifecycle')
-        managed_reload = destination('managed-reload')
-        rows = report(['dotnet', managed['ColorReload'], managed['ImageModes'], refs, managed_reload], 'managed-reload')
-        assert rows[-1]['sameManagedProcess'] and rows[-1]['films'] == 1560
-        for i in range(6):
-            for case in range(260):
-                name = f'case.{case}.rgba.bin'
-                compare(managed_reload/f'round.{i}'/name, refs/chr(ord('a')+i%3)/'output'/name, bitwise=True)
+        if not args.cpu_only:
+            for project in ['HostLifecycle', 'ImageModes', 'ColorReload']:
+                call(['dotnet', 'build', REPO/'tools/hosttests'/project/(project+'.csproj'), '-c', 'Release',
+                      '--configfile', REPO/'tools/hosttests/NuGet.Config'], 'managed-build-'+project)
+            managed = {name:REPO/'tools/hosttests'/name/'bin/Release/net10.0'/(name+'.dll')
+                       for name in ['HostLifecycle', 'ImageModes', 'ColorReload']}
+            for path in managed.values():
+                pins[str(path)] = sha(path)
+                wrapper = path.parent/'CodeBrix.Graphics3D.Cycles.dll'
+                pins[str(wrapper)] = sha(wrapper)
+            report(['dotnet', managed['HostLifecycle'], cpu, destination('managed-lifecycle')], 'managed-lifecycle')
+            managed_reload = destination('managed-reload')
+            rows = report(['dotnet', managed['ColorReload'], managed['ImageModes'], refs, managed_reload], 'managed-reload')
+            assert rows[-1]['sameManagedProcess'] and rows[-1]['films'] == 1560
+            for i in range(6):
+                for case in range(260):
+                    name = f'case.{case}.rgba.bin'
+                    compare(managed_reload/f'round.{i}'/name, refs/chr(ord('a')+i%3)/'output'/name, bitwise=True)
 
-        for mode, count in [('gpu', 6), ('gpu-exit', 5)]:
-            folder = destination(mode)
-            rows = report([binary/'codebrix_host_gpu_test', folder/'run', *(['--exit-live'] if mode == 'gpu-exit' else [])], mode, 900)
-            if mode == 'gpu':
-                assert rows[0]['explicitWebGpu'] and rows[0]['repeatStrictCriterionPassed'] and rows[0]['repeatChecks'] == 3
-            for i in range(count):
-                reference = cpu64/'run.1.rgba.bin' if i == 3 else cpu/f'run.{i if i < 3 else 1}.rgba.bin'
-                # run.3 (the 64-sample film against the session64 reference): the practical criterion is
-                # required and strict differences are recorded, as for the ABI light films below. Its WebGPU
-                # atomic accumulation order varies between runs of one binary, and with the fixed-baseline CPU
-                # reference one component sits one float step from the strict bound (native/DEVICE.md,
-                # "Merge wave 7").
-                compare(folder/f'run.{i}.rgba.bin', reference, strict=i != 3)
-        # Phase D ABI additions: every new export, malformed input, lifetime
-        # and struct-size rejection, on the CPU reference and through CBC_HOST_GPU.
-        abi = {}
-        for mode in ['cpu', 'gpu']:
-            folder = destination('abi-'+mode)
-            row = report([binary/'codebrix_host_abi_test', folder/'run', mode], 'abi-'+mode, 900)[0]
-            assert re.fullmatch(r'1\.0\.\d{8}\.\d+', row['libraryVersion']) and row['cyclesRevision'] == REVISION
-            binary_caps = json.loads((folder/'run.capabilities-binary.json').read_text())
-            host_caps = json.loads((folder/'run.capabilities-host.json').read_text())
-            assert binary_caps['abiVersion'] == 1 and binary_caps['cyclesRevision'] == REVISION and 'host' not in binary_caps
-            assert binary_caps['backends'] == dict(compiled=['cpu', 'webgpu'], gpu='webgpu', gpuFallbackToCpu=False)
-            assert binary_caps['imageInput']['formats'] == ['float', 'float4', 'half', 'half4', 'byte', 'byte4', 'ushort', 'ushort4']
-            assert host_caps['host']['backend'] == ('cpu' if mode == 'cpu' else 'webgpu')
-            assert host_caps['host']['deviceReport']['backend'] == host_caps['host']['backend']
-            assert row['lightTypes'] == 5 and row['cancelledByCallback'] and row['refusedReentry'] == row['progressEvents'] + row['statusEvents']
-            if mode == 'cpu':
-                assert all(row[k] for k in ['lightDeletionRestores', 'graphRebuildRestores', 'motionRemovalRestores', 'imageUpdateRestores'])
-                assert row['litRenders'] == 4 and row['projections'] == 2 and row['errorEvents'] == 0
-                assert all(row[k] == 0 for k in ['depthStatus', 'normalStatus', 'aovStatus', 'dataPassRender', 'lightPassRender',
-                                                 'diffuseDirectStatus', 'backgroundStatus'])
-                passes = json.loads((folder/'run.passes.json').read_text())['passes']
-                assert [(p['name'], p['components'], p['written']) for p in passes] == [
-                    ('Combined', 4, True), ('Depth', 1, True), ('Normal', 3, True), ('Mask', 1, True)]
-            else:
-                assert row['litRenders'] == 4 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
-            abi[mode] = folder
-        for name in ['base', 'object-motion', 'deforming']:
-            compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin')
-        # The four light films (point, spot, area and sun in one device lifetime):
-        # the practical criterion is required and strict differences are recorded.
-        # Sphere point and spot sampling differs from the CPU in the last bits (about
-        # 125 and 22 strict differences), and the WebGPU film's atomic accumulation
-        # order varies between runs (the area film had 0 or 1 strict difference).
-        for name in ['light-pointlight', 'light-spotlight', 'light-arealight', 'light-sunlight']:
-            compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin', strict=False)
-        for mode in ['cpu', 'gpu']:
-            row = report([binary/'codebrix_host_example_test', mode], 'example-'+mode)[0]
-            assert row['backend'] == (2 if mode == 'cpu' else 1) and row['progressEvents'] > 0
-            assert row['depthStatus'] == (0 if mode == 'cpu' else 1)
+            for mode, count in [('gpu', 6), ('gpu-exit', 5)]:
+                folder = destination(mode)
+                rows = report([binary/'codebrix_host_gpu_test', folder/'run', *(['--exit-live'] if mode == 'gpu-exit' else [])], mode, 900)
+                if mode == 'gpu':
+                    assert rows[0]['explicitWebGpu'] and rows[0]['repeatStrictCriterionPassed'] and rows[0]['repeatChecks'] == 3
+                for i in range(count):
+                    reference = cpu64/'run.1.rgba.bin' if i == 3 else cpu/f'run.{i if i < 3 else 1}.rgba.bin'
+                    # run.3 (the 64-sample film against the session64 reference): the practical criterion is
+                    # required and strict differences are recorded, as for the ABI light films below. Its WebGPU
+                    # atomic accumulation order varies between runs of one binary, and with the fixed-baseline CPU
+                    # reference one component sits one float step from the strict bound (native/DEVICE.md,
+                    # "Merge wave 7").
+                    compare(folder/f'run.{i}.rgba.bin', reference, strict=i != 3)
+            # Phase D ABI additions: every new export, malformed input, lifetime
+            # and struct-size rejection, on the CPU reference and through CBC_HOST_GPU.
+            abi = {}
+            for mode in ['cpu', 'gpu']:
+                folder = destination('abi-'+mode)
+                row = report([binary/'codebrix_host_abi_test', folder/'run', mode], 'abi-'+mode, 900)[0]
+                assert re.fullmatch(r'1\.0\.\d{8}\.\d+', row['libraryVersion']) and row['cyclesRevision'] == REVISION
+                binary_caps = json.loads((folder/'run.capabilities-binary.json').read_text())
+                host_caps = json.loads((folder/'run.capabilities-host.json').read_text())
+                assert binary_caps['abiVersion'] == 1 and binary_caps['cyclesRevision'] == REVISION and 'host' not in binary_caps
+                assert binary_caps['backends'] == dict(compiled=['cpu', 'webgpu'], gpu='webgpu', gpuFallbackToCpu=False)
+                assert binary_caps['imageInput']['formats'] == ['float', 'float4', 'half', 'half4', 'byte', 'byte4', 'ushort', 'ushort4']
+                assert host_caps['host']['backend'] == ('cpu' if mode == 'cpu' else 'webgpu')
+                assert host_caps['host']['deviceReport']['backend'] == host_caps['host']['backend']
+                assert row['lightTypes'] == 5 and row['cancelledByCallback'] and row['refusedReentry'] == row['progressEvents'] + row['statusEvents']
+                if mode == 'cpu':
+                    assert all(row[k] for k in ['lightDeletionRestores', 'graphRebuildRestores', 'motionRemovalRestores', 'imageUpdateRestores'])
+                    assert row['litRenders'] == 4 and row['projections'] == 2 and row['errorEvents'] == 0
+                    assert all(row[k] == 0 for k in ['depthStatus', 'normalStatus', 'aovStatus', 'dataPassRender', 'lightPassRender',
+                                                     'diffuseDirectStatus', 'backgroundStatus'])
+                    passes = json.loads((folder/'run.passes.json').read_text())['passes']
+                    assert [(p['name'], p['components'], p['written']) for p in passes] == [
+                        ('Combined', 4, True), ('Depth', 1, True), ('Normal', 3, True), ('Mask', 1, True)]
+                else:
+                    assert row['litRenders'] == 4 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
+                abi[mode] = folder
+            for name in ['base', 'object-motion', 'deforming']:
+                compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin')
+            # The four light films (point, spot, area and sun in one device lifetime):
+            # the practical criterion is required and strict differences are recorded.
+            # Sphere point and spot sampling differs from the CPU in the last bits (about
+            # 125 and 22 strict differences), and the WebGPU film's atomic accumulation
+            # order varies between runs (the area film had 0 or 1 strict difference).
+            for name in ['light-pointlight', 'light-spotlight', 'light-arealight', 'light-sunlight']:
+                compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin', strict=False)
+            for mode in ['cpu', 'gpu']:
+                row = report([binary/'codebrix_host_example_test', mode], 'example-'+mode)[0]
+                assert row['backend'] == (2 if mode == 'cpu' else 1) and row['progressEvents'] > 0
+                assert row['depthStatus'] == (0 if mode == 'cpu' else 1)
         assert inputs() == sources
         assert all(sha(Path(p)) == digest for p, digest in {**pins, **reference_hashes}.items())
         save(out/'invocation.json', dict(sourceSha256=sources, binarySha256=pins,
                                         referenceSha256=reference_hashes, commands=commands))
+        if args.cpu_only:
+            state.update(cpuOnly=True, skipped='managed (.NET) consumers and every GPU step (--cpu-only)')
         state.update(complete=True, passed=True, phase='complete', exportCount=48,
                      independentReferenceFilms=786, comparisons=len(comparisons), results=results,
                      maximumAbsoluteError=max(row['maximumAbsoluteError'] for row in comparisons),
                      practicalFailures=sum(row['practicalFailures'] for row in comparisons),
                      strictDifferences=sum(row['strictDifferences'] for row in comparisons))
-        print('Maintained Linux C/.NET host, color reloads, concurrency and GPU lifecycle passed', flush=True)
+        print('Maintained Linux host, color reloads and concurrency passed (CPU only)' if args.cpu_only else
+              'Maintained Linux C/.NET host, color reloads, concurrency and GPU lifecycle passed', flush=True)
     except Exception as error:
         state.update(complete=True, passed=False, error=str(error))
         raise

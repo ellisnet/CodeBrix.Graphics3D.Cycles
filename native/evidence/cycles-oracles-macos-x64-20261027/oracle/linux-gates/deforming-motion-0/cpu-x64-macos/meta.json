@@ -1,0 +1,83 @@
+{
+  "sceneId": "linux-gates/deforming-motion-0",
+  "sceneSha256": "2e50aa8bea7a94363f3c06614cbb9d76f02b28a2ea7df48697cb379a2a268c35",
+  "backend": "cpu-x64-macos",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00255124,
+    0.00104175
+  ],
+  "filmSha256": [
+    "466933d5713e75346067f8c72e949cd3c4aa5c3d2fca945664bf4f4259184f42",
+    "466933d5713e75346067f8c72e949cd3c4aa5c3d2fca945664bf4f4259184f42"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t15.8.2\nBuildVersion:\t\t24H232",
+    "cpu": "Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz",
+    "gpu": {
+      "model": "Intel UHD Graphics 630",
+      "cores": null
+    },
+    "compiler": "Apple clang version 17.0.0 (clang-1700.6.4.2)\nTarget: x86_64-apple-darwin24.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "xcode": "unavailable: Command ['xcodebuild', '-version'] returned non-zero exit status 1.",
+    "cmake": "cmake version 4.4.3",
+    "python": "3.15.2",
+    "repoCommit": "0e95e5ce3183cb4307203ef3259860b218bd7603",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "4c7486759165fcc862576c3d3fc9dea512aad050e8c545f1bdb690254481acbf",
+  "runnerSha256": "471e322f07de12458eb9e9397d461bf60e9c24f4b6e4b49c1bef329df2048d0d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-x64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/linux-gates/deforming-motion-0.json",
+  "backendDescription": "Cycles CPU device, Apple Clang x86-64, fixed-baseline oracle: SSE4.2 kernels only (no AVX2 kernel is built), no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.051,
+  "runnerCommand": [
+    "native/work/macos/osx-x64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Users/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/linux-gates/deforming-motion-0.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-x64-macos",
+    "--output",
+    "/Users/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-x64-7/oracle/linux-gates/deforming-motion-0/cpu-x64-macos",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz (the C API does not expose Cycles' DeviceInfo)"
+}

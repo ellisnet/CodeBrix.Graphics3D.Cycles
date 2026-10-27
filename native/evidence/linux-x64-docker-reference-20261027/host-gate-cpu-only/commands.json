@@ -1,0 +1,114 @@
+[
+  {
+    "command": [
+      "/usr/bin/python3",
+      "/work/repo/native/tools/build_cycles.py",
+      "--jobs",
+      "6",
+      "--target",
+      "codebrix_cycles_host",
+      "--target",
+      "codebrix_host_cpu_test",
+      "--target",
+      "codebrix_host_gpu_test",
+      "--target",
+      "codebrix_host_reload_test",
+      "--target",
+      "codebrix_host_concurrency_test",
+      "--target",
+      "codebrix_host_session_reference",
+      "--target",
+      "codebrix_host_session64_reference",
+      "--target",
+      "codebrix_host_image_reference",
+      "--target",
+      "codebrix_host_abi_test",
+      "--target",
+      "codebrix_host_example_test",
+      "--target",
+      "codebrix_cycles_oracle"
+    ],
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "nm",
+      "-D",
+      "--defined-only",
+      "/work/repo/native/work/cycles-build/lib/libcodebrix_cycles_host.so"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/work/repo/native/work/cycles-build/bin/codebrix_host_session_reference",
+      "CPU",
+      "/work/repo/native/work/linux-docker-host-validation-2/cpu/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/work/repo/native/work/cycles-build/bin/codebrix_host_session64_reference",
+      "CPU",
+      "/work/repo/native/work/linux-docker-host-validation-2/cpu64/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/work/repo/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "/work/repo/native/tests/host/configs/a.ocio",
+      "/work/repo/native/work/linux-docker-host-validation-2/references/a/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/work/repo/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "/work/repo/native/tests/host/configs/b.ocio",
+      "/work/repo/native/work/linux-docker-host-validation-2/references/b/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/work/repo/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "/work/repo/native/tests/host/configs/c.ocio",
+      "/work/repo/native/work/linux-docker-host-validation-2/references/c/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/work/repo/native/work/cycles-build/bin/codebrix_host_cpu_test",
+      "/work/repo/native/work/linux-docker-host-validation-2/cpu-consumer/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/work/repo/native/work/cycles-build/bin/codebrix_host_cpu_test",
+      "/work/repo/native/work/linux-docker-host-validation-2/cpu-exit-consumer/run",
+      "--exit-live"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/work/repo/native/work/cycles-build/bin/codebrix_host_reload_test",
+      "/work/repo/native/work/linux-docker-host-validation-2/references",
+      "/work/repo/native/work/linux-docker-host-validation-2/reload",
+      "6"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "/work/repo/native/work/cycles-build/bin/codebrix_host_concurrency_test",
+      "/work/repo/native/work/linux-docker-host-validation-2/stress-input",
+      "/work/repo/native/work/linux-docker-host-validation-2/stress-output"
+    ],
+    "timeoutSeconds": 300
+  }
+]

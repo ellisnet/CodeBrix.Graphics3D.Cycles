@@ -63,6 +63,8 @@ class Device {
   // and, for an adapter that is Vulkan layered on another API (Mesa Dozen on
   // Direct3D 12), what it runs on; empty for a native driver.
   std::vector<std::string> adapters_seen;std::string layered_on;
+  // Apple: IEEE floating point requested from the runtime for every WGSL pipeline (M1).
+  bool metal_precise_math=false;
   // Adapter identity for the device-tier record and known-adapter table
   // (device_tier.h): WGPUAdapterInfo strings and PCI-style ids as reported.
   std::string adapter_vendor,adapter_architecture,adapter_device,adapter_description;

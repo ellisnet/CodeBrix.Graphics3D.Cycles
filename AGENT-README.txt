@@ -444,6 +444,20 @@ CyclesBackend.Gpu resolves by platform:
 Which GPU backend renders is visible through scene.Backend and
 GetCapabilities(); write backend-neutral code against CyclesBackend.
 
+INTEL MACS (osx-x64). Supported with Intel graphics (validated on an Intel UHD
+Graphics 630). AMD Radeon GPUs in Intel Macs (and AMD eGPUs) are NOT SUPPORTED
+- rendering may work, but it has not been tested: on an AMD adapter the host
+compiles every GPU stage with one invocation per workgroup as a precaution
+(the conservative pipeline tier; slower, results within the practical
+criterion), and the capability report says so. On Intel graphics a driver
+workaround (intel-metal-surface-workgroup) is applied to two shading stages.
+On a Mac with both Intel and AMD graphics (Intel MacBook Pros, 2016-2019) the
+Intel GPU is used. The host asks the WebGPU runtime for IEEE floating point on
+Metal (no fast math), which the GPU kernels need. That setting is process-wide:
+if your application also renders its own WGSL through CodeBrix.WebGpu.Native,
+pipelines it creates after a Cycles GPU scene exists are compiled the same way
+(correct, possibly slightly slower).
+
 WEBGPU ON WINDOWS. WebGPU reaches the GPU through Direct3D 12 by default, on
 any GPU with a Direct3D 12 driver (every GPU vendor's Windows driver, including
 the Qualcomm Adreno GPUs of Windows on ARM devices); shaders are compiled with

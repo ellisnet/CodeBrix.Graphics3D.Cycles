@@ -1,0 +1,83 @@
+{
+  "sceneId": "linux-gates/transparent-lighting-6",
+  "sceneSha256": "a65f5f2737a068884218bc8e8d44fd12305971098fe3f7b925c5d6303214a6bc",
+  "backend": "wgsl-macos-x64",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 1.4901161193847656e-08,
+  "renderSeconds": [
+    0.721311,
+    0.315787
+  ],
+  "filmSha256": [
+    "ec148218ae2792d050ff8160c698ac3b52af942869b2d96ef309a0c9d9a3e355",
+    "3385700d9fc4de5dc32ea775b24cacecd49c90a61e83b5e4cc7b0cb954f4deaa"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t15.8.2\nBuildVersion:\t\t24H232",
+    "cpu": "Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz",
+    "gpu": {
+      "model": "Intel UHD Graphics 630",
+      "cores": null
+    },
+    "compiler": "Apple clang version 17.0.0 (clang-1700.6.4.2)\nTarget: x86_64-apple-darwin24.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+    "xcode": "unavailable: Command ['xcodebuild', '-version'] returned non-zero exit status 1.",
+    "cmake": "cmake version 4.4.3",
+    "python": "3.15.2",
+    "repoCommit": "0e95e5ce3183cb4307203ef3259860b218bd7603",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "4c7486759165fcc862576c3d3fc9dea512aad050e8c545f1bdb690254481acbf",
+  "runnerSha256": "471e322f07de12458eb9e9397d461bf60e9c24f4b6e4b49c1bef329df2048d0d",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-x64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/linux-gates/transparent-lighting-6.json",
+  "backendDescription": "CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native osx-x64 runtime (Metal)",
+  "environment": {},
+  "processSeconds": 1.139,
+  "runnerCommand": [
+    "native/work/macos/osx-x64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Users/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/linux-gates/transparent-lighting-6.json",
+    "--backend",
+    "webgpu",
+    "--label",
+    "wgsl-macos-x64",
+    "--output",
+    "/Users/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/macos-x64-7/oracle/linux-gates/transparent-lighting-6/wgsl-macos-x64",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json"
+}

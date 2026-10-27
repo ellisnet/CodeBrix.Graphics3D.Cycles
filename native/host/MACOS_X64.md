@@ -10,9 +10,12 @@ device is the osx-arm64 product (see [MACOS_ARM64.md](MACOS_ARM64.md)) and is
 not built here. The same build produces CPU-x64 oracle films from Apple Clang
 and WGSL films on the Intel Mac's GPU.
 
-The recipe has not yet been executed on an Intel Mac. The test instructions in
-[docs/TESTING-MACOS-X64.md](../../docs/TESTING-MACOS-X64.md) mark every step
-that still needs validation there.
+The recipe was first executed on an Intel Mac on 2026-10-26 (Mac mini 2018,
+Intel UHD Graphics 630, macOS 15.8, Command Line Tools 26.3, CMake 4.4): it
+builds, the host gate passes, and the payload is staged in
+`native/binaries/osx-x64`. Results, findings (M1 fast math, M2 the Intel Metal
+compiler) and what is still open are in
+[docs/TESTING-MACOS-X64.md](../../docs/TESTING-MACOS-X64.md).
 
 ## Decisions
 
@@ -49,8 +52,8 @@ that still needs validation there.
   `-ffp-contract=off -fno-reciprocal-math` after Cycles' math flags, and the
   recipe checks the CPU kernel line in the compile database. The
   `cpu-x64-macos` and `cpu-x64-macos-sse42` oracle backends therefore run the
-  same kernels (`CYCLES_CPU_NO_AVX2` has nothing to switch off). UNTESTED: this
-  rule has not yet been compiled or run on an Intel Mac.
+  same kernels (`CYCLES_CPU_NO_AVX2` has nothing to switch off). Validated
+  2026-10-26: the two backends agree bitwise on every oracle scene.
 - The build host is a native Intel Mac. The recipes refuse Apple Silicon hosts
   and Rosetta translation, because Cycles' x86 reference options follow
   CMake's host processor, which is not established under translation.
@@ -62,7 +65,21 @@ that still needs validation there.
   Cycles' Metal kernels then compile and run on Intel and AMD GPUs is
   unknown; nothing here attempts it. The Metal oracle comes from Apple Silicon.
 - Binaries are ad-hoc signed. Developer ID signing belongs to whoever ships an
-  application that contains them.
+  application that contains them. Apple's linker signs arm64 output ad hoc by
+  itself but not x86_64 output, so the osx-x64 injection passes
+  `-adhoc_codesign` to every link (the host gate verifies build-tree
+  signatures; the stager re-signs its copies).
+- On Intel GPUs through Metal the driver workaround
+  `intel-metal-surface-workgroup` compiles `prepare_surface` and
+  `prepare_surface_raytrace` with one invocation per workgroup
+  (docs/TESTING-MACOS-X64.md, M2; [WINDOWS_X64.md](WINDOWS_X64.md), "Driver
+  workarounds"). It costs about 1-7% of render time on a UHD 630.
+- AMD GPUs in Intel Macs (and AMD eGPUs) are not supported, but may work: no
+  AMD GPU has been tested. As a precaution the known-adapter table selects the
+  conservative tier (one invocation per workgroup everywhere) for any Metal
+  adapter named "AMD ..." (native/DEVICE.md, "Device tiers"). On a Mac with
+  both Intel and AMD graphics, the default adapter rule prefers the Intel GPU
+  (Apple builds only; an explicit `CODEBRIX_CYCLES_WEBGPU_ADAPTER` still wins).
 - Reviewed deliverables go to `native/binaries/osx-x64/` (runtime, unstripped
   and symbols) with provenance. The maintainer makes every commit and push.
 
@@ -93,8 +110,9 @@ works everywhere.
 ## Toolchain and isolation
 
 Agreed external inputs on the build machine: Xcode or the Xcode command-line
-tools (Apple Clang, the macOS SDK and libc++), CMake 3.24 or newer, Python 3.12
-or newer and the .NET 10 SDK for x64. `zstd` is needed only to bundle oracle
+tools (Apple Clang, the macOS SDK and libc++; the Command Line Tools alone are
+enough, and the recipes record their package version when Xcode is absent),
+CMake 3.24 or newer, Python 3.12 or newer and the .NET 10 SDK for x64. `zstd` is needed only to bundle oracle
 runs. Exact versions and compiler and CMake hashes are recorded with each build.
 Dependency source comes only from the verified snapshots in `third_party/`.
 
@@ -108,6 +126,12 @@ On an Intel Mac `/usr/local` also holds Homebrew's CMake and Python; the checks
 allow CMake's own program and module paths, which are tools, not inputs. Before
 the first component, the dependency recipe asks Apple Clang for its default
 header search list and fails if it reaches a Homebrew prefix outside the SDK.
+CMake 4 no longer chooses a sysroot on macOS, and without one Apple Clang
+searches `/usr/local/include` before the SDK; the osx-x64 recipes therefore set
+`SDKROOT` and `CMAKE_OSX_SYSROOT` (the SDK `xcrun --show-sdk-path` names) for
+every configure, after which the default list holds only SDK paths. The JPEG
+library is built without its SIMD code (`WITH_SIMD=OFF`, as on Windows):
+otherwise CMake finds Homebrew's `nasm` in `/usr/local/bin`.
 CMake 4 rejects the old minimum versions declared by the jpeg, robin-map and
 yaml-cpp snapshots, so the recipes pass `CMAKE_POLICY_VERSION_MINIMUM=3.5`.
 
@@ -196,6 +220,11 @@ backend, so the WGSL device (`native/src/webgpu_device.cpp`) requests the
 Metal instance backend under `__APPLE__` and names Metal in its two error
 messages ("Cannot create Metal WebGPU instance", "No hardware Metal adapter").
 Every other platform keeps the Vulkan backend, so Linux and Android are
-unchanged. UNTESTED: the Apple branch has not yet been compiled or run on a
-Mac. On osx-x64 the product stays Cycles with WGSL kernels; the runtime only
-routes WGSL to Metal.
+unchanged. Validated on the Intel Mac (2026-10-26): backend type 5 (Metal),
+the UHD 630 as the only adapter. On osx-x64 the product stays Cycles with WGSL
+kernels; the runtime only routes WGSL to Metal. Metal compiles WGSL with fast
+math unless asked otherwise, and the kernels rely on IEEE floating point, so
+the host calls the runtime's process-wide `wgpuCodebrixSetMetalPreciseMath(true)`
+(CodeBrix.WebGpu.Native 1.0.300.210 and later) before any pipeline exists; the
+device report carries `metalPreciseMath` and the host gate requires it
+(docs/TESTING-MACOS-X64.md, M1).

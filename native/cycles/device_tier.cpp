@@ -101,6 +101,15 @@ const std::vector<KnownAdapter> &known_adapters(){
      "B3 2026-10-19: every specialized and all-handler stage compiles"},
     {"Linux Intel UHD ADL-S (Mesa 25.0.7)","Intel(R) UHD Graphics (ADL-S GT1)","Mesa 25.0.7","full",0,
      "Phase C1 2026-10-19 Linux validation"},
+#if defined(__APPLE__)
+    // Apple builds only: there the WGSL device always runs on Metal (osx-x64), and Metal
+    // names AMD GPUs "AMD Radeon ..." (built-in and eGPU alike). Not supported, may work
+    // (docs/TESTING-MACOS-X64.md): no AMD GPU has been tested, and the Intel Metal compiler
+    // mis-compiles prepare_surface with more than one invocation per workgroup (M2), so the
+    // conservative tier (one invocation per workgroup everywhere) is the precaution.
+    {"AMD GPU on Metal (untested precaution)","AMD","","conservative",0,
+     "not supported, may work: untested on AMD GPUs; conservative tier as a precaution against the Intel Metal workgroup miscompile (TESTING-MACOS-X64.md, M2)"},
+#endif
   };
   return table;
 }

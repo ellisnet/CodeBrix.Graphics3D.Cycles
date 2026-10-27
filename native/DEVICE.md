@@ -1480,15 +1480,21 @@ WebGPU adapter device name and driver description):
 | Samsung Galaxy S20 FE Adreno 650 | `Adreno (TM) 650` | any | full tier, 20 s compile budget (warnings only), not a reference device; refuses the texture, colour and utility node region `SVM_NODES_ANY` ("Adreno 650 lane") |
 | HP Intel Xe (Android x64) | `Intel(R) Xe Graphics` | `Mesa 24.0.8` | full |
 | Linux Intel UHD ADL-S | `Intel(R) UHD Graphics (ADL-S GT1)` | `Mesa 25.0.7` | full |
+| AMD GPU on Metal (untested precaution; Apple builds only) | `AMD` | any | **conservative**: osx-x64 policy "not supported, may work" for AMD GPUs in Intel Macs; no AMD GPU tested, and the Intel Metal compiler miscompiles `prepare_surface` with more than one invocation per workgroup (docs/TESTING-MACOS-X64.md, M2) |
 
 An unknown mobile adapter (Android build, or a Qualcomm, ARM, Imagination,
 Samsung or Apple vendor id or Adreno/Mali/PowerVR/Xclipse device name) starts
 full with a 20 s compile budget instead of 60 s (warnings only). A table entry
 may carry its own budget: the Pixel 4 XL entry is full with 20 s, because full
 tier meets the practical criterion there and the conservative tier was not
-faster (see below). No table entry selects the conservative tier; it remains a
-reactive fallback after a crash breadcrumb or a creation failure, or an explicit
-opt-in. An explicit `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS` replaces any budget.
+faster (see below). One table entry selects the conservative tier: AMD GPUs on
+Metal, compiled into Apple builds only (on Windows and Linux AMD adapters are
+untouched), as an untested precaution (docs/TESTING-MACOS-X64.md). Otherwise the
+conservative tier remains a reactive fallback after a crash breadcrumb or a
+creation failure, or an explicit opt-in. Because the table starts it
+conservative, the persisted record never collects full-tier compiles for such an
+adapter, so the record cannot switch it back to full; only an explicit request
+does. An explicit `CODEBRIX_CYCLES_PIPELINE_BUDGET_MS` replaces any budget.
 A table entry may also name one shader feature region the adapter refuses
 (`refused_region`, a name from `shader_feature_names()`): a scene whose referenced
 shaders reach it is refused in `shader_features()` before any pipeline compiles,
@@ -1844,6 +1850,48 @@ Reproduce: `python3 native/tools/libm_probe.py android-arm64 OUT.json --serial S
 `android-x64`, `linux`); `python3 native/tools/android_reference.py export|scene-reference|compare
 --help`. The device runner used for these results is `native/work/x1/tools/run_corpus.py
 --device-scene --reference <export>` (copied for the merge as `native/work/merge1/tools/run_corpus.py`).
+
+### Reference devices and the publish rule (2026-10-27)
+
+A reference device is one where everything ported so far must pass, judged under
+this policy, before a release is published: every host-gate step, every device
+gate, every oracle scene and bench scene the device renders, and the managed
+tests. "Not ready to publish" is the answer while any of them fails there.
+Functionality not yet ported (volume rendering on the WebGPU device) is outside
+"ported so far"; a driver workaround that gives the CPU kernels' images (W1,
+M2) counts as passing, a refused or masked feature does not.
+
+| Device | RID | GPU route | Correctly rounded reference |
+| --- | --- | --- | --- |
+| Linux x64 desktop (Intel UHD ADL-S, Mesa 25.0.7) | linux-x64 | WGSL on Vulkan | itself (glibc 2.41) |
+| Samsung SM-X700 (Adreno 730) | android-arm64 | WGSL on Vulkan | Linux x64, device-scene flow |
+| HP 87FE (Intel Xe, Mesa 24.0.8) | android-x64 | WGSL on Vulkan | Linux x64, device-scene flow |
+| **Mac mini 2018 (Intel UHD 630)** | osx-x64 | WGSL on Metal (runtime 1.0.300.210, precise math) | Linux x64 (docs/TESTING-MACOS-X64.md) |
+
+The Apple Silicon Mac mini (M2 Pro) is not a WGSL reference device: osx-arm64
+ships Cycles' own Metal device, not the WGSL device. It is the comparison
+between the pre-existing Cycles GPU target (Metal) and the device developed
+here; its Metal films are reference evidence of their own (the two gold
+standards above) and are reported beside the WGSL films, never judged against
+them.
+
+Apple's libm is not correctly rounded either: on the Intel Mac the in-process
+CPU reference disagrees with glibc on `linux-gates/triangle-lighting-2` (3
+practical failures) and in the `light_tree`, `microfacet_render` and `mnee`
+device gates, while the Mac GPU agrees with glibc (the scene exchange, the
+render stage exchange and, new on 2026-10-27, the MNEE stage-state exchange in
+`mnee_gate.cpp` - `CODEBRIX_CYCLES_STAGE_RECORD` on the device,
+`CODEBRIX_CYCLES_STAGE_JUDGE` with `android_reference.py stage-judge` on Linux;
+the same flow serves the Android devices, closing open item 5 for that gate). The Mac is therefore judged
+like an Android device: the Linux x64 reference decides, the Mac's own CPU
+reference is a diagnostic. Without the dedicated Linux machine the reference can
+be produced in a Linux container with the same toolchain
+(`native/evidence/linux-x64-docker-reference-20261027/`: Debian 13, GCC 14.2.0,
+clang 19.1.7, CMake 3.31.6, glibc 2.41); `native/tools/host_gate.py --cpu-only`
+runs the Linux host gate's CPU steps where there is no GPU or .NET. On the Intel
+Mac, `native/tools/macos_x64_reference_exchange.py` runs every device-gate
+exchange end to end in one command, with the Linux side in the container of
+`native/tools/linux_reference/` (docs/TESTING-MACOS-X64.md, step 7).
 
 ## Exact traversal and intersection arithmetic (2026-10-20)
 

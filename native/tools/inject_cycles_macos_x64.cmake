@@ -30,6 +30,10 @@ set(CODEBRIX_HOST_NO_IMAGE_FILES ON)
 if(CODEBRIX_OSO_PREFIX)
   add_link_options("LINKER:-oso_prefix,${CODEBRIX_OSO_PREFIX}")
 endif()
+# The linker signs arm64 output ad hoc by itself but leaves x86_64 output
+# unsigned; sign here so the build tree carries the same ad-hoc signatures as
+# on osx-arm64 (the host gate verifies them; the stager re-signs its copies).
+add_link_options("LINKER:-adhoc_codesign")
 include("${CMAKE_CURRENT_LIST_DIR}/inject_cycles.cmake")
 # Deferred calls run in the order they are registered, so this runs after
 # codebrix_add_cycles_device has created the imported runtime target with the

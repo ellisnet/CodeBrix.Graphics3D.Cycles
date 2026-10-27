@@ -448,6 +448,19 @@ static bool driver_workarounds_off(){
 static bool intel_d3d12_cache_salt(const cbc::Device &gpu){
   return gpu.adapter_vendor_id==0x8086&&gpu.adapter_backend==WGPUBackendType_D3D12&&!driver_workarounds_off();
 }
+// On Intel GPUs through Metal (osx-x64), prepare_surface (and its shader-raytrace
+// sibling prepare_surface_raytrace) computes wrong,
+// non-repeatable values for paths that share a SIMD group whenever its workgroup
+// holds more than one invocation, in motion-blur and AO-node scenes
+// (docs/TESTING-MACOS-X64.md, M2); one invocation per workgroup is exact. Metal
+// reports no PCI vendor ID, so the adapter is matched by name.
+static bool intel_metal_surface_workgroup(const cbc::Device &gpu){
+  return gpu.adapter_backend==WGPUBackendType_Metal&&gpu.adapter_device.find("Intel")!=std::string::npos&&!driver_workarounds_off();
+}
+static void single_invocation_entry(std::string &code,const char *entry){
+  const std::string from=std::string("@workgroup_size(64) fn ")+entry+"(";const size_t at=code.find(from);
+  if(at!=std::string::npos)code.replace(at,from.size(),std::string("@workgroup_size(1) fn ")+entry+"(");
+}
 // A constant no object index reaches (0xF0000000 to 0xFFFFFFFE, never NONE),
 // different for every compile in this process and, from its random start, in
 // every process.
@@ -534,6 +547,8 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
     for(int attempt=0;;attempt++){
       std::string code=!override_code.empty()?override_code:conservative?conservative_wgsl(specialized):specialized;
       if((features&SF_DRIVER_CACHE_SALT).any())salt_driver_cache(code);
+      if(override_code.empty()&&(std::strcmp(entry,"prepare_surface")==0||std::strcmp(entry,"prepare_surface_raytrace")==0)&&intel_metal_surface_workgroup(gpu))
+        single_invocation_entry(code,entry);
       const auto t0=clock::now();
       WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};
       WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;
@@ -628,7 +643,9 @@ std::string WebGPUDevice::adapter_report_json() const{
    <<",\"runtimeLibrary\":\""<<json_text(gpu.library_path)<<"\",\"dxcPath\":"<<(gpu.dxc_path.empty()?std::string("null"):"\""+json_text(gpu.dxc_path)+"\"")
    // A layered adapter (Vulkan on Direct3D 12 through Mesa Dozen) is never native evidence.
    <<",\"layeredOn\":"<<(gpu.layered_on.empty()?std::string("null"):"\""+json_text(gpu.layered_on)+"\"")
-   <<",\"driverWorkarounds\":["<<(intel_d3d12_cache_salt(gpu)?"\"intel-d3d12-shader-cache\"":"")<<"],\"adapters\":[";
+   <<",\"metalPreciseMath\":"<<(gpu.metal_precise_math?"true":"false")
+   <<",\"driverWorkarounds\":["<<(intel_d3d12_cache_salt(gpu)?"\"intel-d3d12-shader-cache\"":"")
+   <<(intel_metal_surface_workgroup(gpu)?"\"intel-metal-surface-workgroup\"":"")<<"],\"adapters\":[";
   for(size_t i=0;i<gpu.adapters_seen.size();i++)o<<(i?",":"")<<gpu.adapters_seen[i];
   // Opt-in diagnostics active in this process (webgpu_device.h): a run with any
   // listed is diagnostic, never validation.
