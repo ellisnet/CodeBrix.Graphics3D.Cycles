@@ -14,8 +14,8 @@ from android_toolchain import AndroidToolchain,TARGETS
 SDK_PACKS=[Path('/usr/share/dotnet/packs')/(name+'/'+version) for name,version in [
  ('Microsoft.Android.Runtime.Mono.36.android-arm64','36.1.118'),
  ('Microsoft.Android.Runtime.Mono.36.android-x64','36.1.118'),
- ('Microsoft.NETCore.App.Runtime.Mono.android-arm64','10.0.13'),
- ('Microsoft.NETCore.App.Runtime.Mono.android-x64','10.0.13')]]
+ ('Microsoft.NETCore.App.Runtime.Mono.android-arm64','10.0.14'),
+ ('Microsoft.NETCore.App.Runtime.Mono.android-x64','10.0.14')]]
 
 
 def replace_once(text,old,new):

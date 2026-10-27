@@ -93,7 +93,7 @@ def main():
                     copy(diagnostic/name,dest/model/diagnostic.name/name)
     snapshot(dest)
     manifest={'cyclesRevision':'a456b761034dda42c32eef9f4aae0fa5a5c9f604',
-        'webGpuPackage':'CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433',
+        'webGpuPackage':'CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210',
         'inputSha256':inputs,'outputSha256':outputs,
         'savedSha256':{str(p.relative_to(dest)):sha(p) for p in sorted(dest.rglob('*')) if p.is_file() and p.name!='manifest.json'}}
     (dest/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')

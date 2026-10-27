@@ -33,8 +33,8 @@ sha,save=deps.sha,deps.save
 BASE=REPO/'native/work/macos/osx-x64';BUILD=BASE/'host/build';PREFIX=BASE/'dependencies/install'
 TARGET=REPO/'native/binaries/osx-x64';HOST='libcodebrix_cycles_host.dylib'
 RUNTIME_NAME='libcodebrix_wgpu.dylib'
-RUNTIME_SHA256='3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483'
-RUNTIME_PACKAGE=dict(id='CodeBrix.WebGpu.Native.MitLicenseForever',version='1.0.290.1433',path='runtimes/osx-x64/native/'+RUNTIME_NAME,sha256=RUNTIME_SHA256)
+RUNTIME_SHA256='840a106d54fe479c255ecb98d51cee192a9044c3d0411fc1535f9ff0b8abbb82'
+RUNTIME_PACKAGE=dict(id='CodeBrix.WebGpu.Native.MitLicenseForever',version='1.0.300.210',path='runtimes/osx-x64/native/'+RUNTIME_NAME,sha256=RUNTIME_SHA256)
 # Shipped dylib name prefix -> third_party/dependencies.json component (as for osx-arm64).
 COMPONENTS=[('libcodebrix_cycles_host','cycles'),('libOpenImageIO','oiio'),('libOpenColorIO','ocio'),('libOpenEXR','openexr'),
  ('libIex','openexr'),('libIlmThread','openexr'),('libImath','imath'),('libboost_','boost'),('libexpat','expat'),

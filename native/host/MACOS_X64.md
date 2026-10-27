@@ -20,8 +20,8 @@ that still needs validation there.
   off (Cycles enables it by default on Apple platforms), and the configure
   step fails if any Metal code reaches the build.
 - The shipped runtime is used unchanged: `CodeBrix.WebGpu.Native.MitLicenseForever`
-  1.0.290.1433, `runtimes/osx-x64/native/libcodebrix_wgpu.dylib`, SHA-256
-  `3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483`. It is a
+  1.0.300.210, `runtimes/osx-x64/native/libcodebrix_wgpu.dylib`, SHA-256
+  `840a106d54fe479c255ecb98d51cee192a9044c3d0411fc1535f9ff0b8abbb82`. It is a
   thin x86_64 Mach-O with install name `@rpath/libcodebrix_wgpu.dylib`, minimum
   macOS 11.0, an ad-hoc signature, and it links QuartzCore, Metal, Foundation,
   CoreFoundation, libobjc, libiconv and libSystem. It contains wgpu's Metal

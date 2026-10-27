@@ -33,10 +33,10 @@ Pins (the build scripts check them; do not change them):
 
 - Cycles revision `a456b761034dda42c32eef9f4aae0fa5a5c9f604`, the filtered
   snapshot in `third_party/cycles` (`third_party/cycles-import.json`).
-- CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433, unchanged. The Pi
+- CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210, unchanged. The Pi
   loads its `runtimes/linux-arm64/native/libcodebrix_wgpu.so`. The build reads
   the package from the NuGet cache,
-  `~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433`.
+  `~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.300.210`.
 - Dependency sources only from the verified snapshots in `third_party/deps`;
   nothing is fetched.
 
@@ -165,7 +165,7 @@ rsync -a native/work/linux/linux-arm64/dependencies/install/lib \
   <pi>/native/work/linux/linux-arm64/dependencies/install/
 rsync -a native/work/linux/linux-arm64/oracle-build/codebrix_cycles_oracle \
   <pi>/native/work/linux/linux-arm64/oracle-build/
-rsync -a ~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433 \
+rsync -a ~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.300.210 \
   <pi-home>/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/
 ```
 
@@ -174,7 +174,7 @@ SHA-256 of every binary) with `sha256sum`, and set the library path once per
 shell:
 
 ```sh
-export LD_LIBRARY_PATH=$PWD/native/work/linux/linux-arm64/host/build/lib:$PWD/native/work/linux/linux-arm64/dependencies/install/lib:$HOME/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433/runtimes/linux-arm64/native
+export LD_LIBRARY_PATH=$PWD/native/work/linux/linux-arm64/host/build/lib:$PWD/native/work/linux/linux-arm64/dependencies/install/lib:$HOME/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.300.210/runtimes/linux-arm64/native
 ```
 
 ## 4. Ordered steps and budgets

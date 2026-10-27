@@ -26,10 +26,10 @@ from windows_sources import verify_dependencies
 sys.path.insert(0,str(REPO/'tools/dependencies'))
 import build_windows as deps
 sha,save=wt.sha,deps.save
-# CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433, runtimes/<rid>/native/codebrix_wgpu.dll.
+# CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210, runtimes/<rid>/native/codebrix_wgpu.dll.
 RUNTIME_NAME='codebrix_wgpu.dll'
-RUNTIME_SHA256={'win-x64':'61c6f4d8d529240ab531e17f9aab7845b9dda04a45848674c1af463f346b6afa',
-                'win-arm64':'5c93319aaefae2d531922f98283f0d3eda6336b8380d245c11aad63263bcf531'}
+RUNTIME_SHA256={'win-x64':'88be16eb071943d97bc679a87811f738c5bc0d447f05ee30af2aa8bfeebbc7ce',
+                'win-arm64':'40eb07e06c3ef61d97f9142a23a9094b8104d1ea9913cad790678533b1f43206'}
 # The Linux host-gate list (host_gate.py), plus the WGSL device gates.
 HOST_TARGETS=['codebrix_cycles_host',*['codebrix_host_'+n for n in ['cpu_test','gpu_test','reload_test','concurrency_test','tier_test',
  'abi_test','example_test','scene_edit_test','session_reference','session64_reference']],'codebrix_cycles_oracle']

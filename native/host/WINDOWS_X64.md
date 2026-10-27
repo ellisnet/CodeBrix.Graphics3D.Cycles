@@ -12,7 +12,7 @@ so an ARM64 Windows device only runs the tests. The test procedure is
 ## Decisions
 
 - **One host per architecture, two WebGPU backends.** The shipped
-  `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.290.1433 `codebrix_wgpu.dll`
+  `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.300.210 `codebrix_wgpu.dll`
   (win-x64 and win-arm64) contains wgpu's Direct3D 12, Vulkan and GL backends;
   the backend is chosen when the WebGPU instance is created
   (`native/src/webgpu_device.cpp`). Direct3D 12 is the default: it is part of

@@ -52,7 +52,7 @@ def main():
         if path.is_file():parity.copy(path,dest/'regressions'/path.relative_to(regressions))
     manifest={'capturedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'scope':'Limited batched native backend; full Cycles functionality remains incomplete',
-        'cyclesRevision':REVISION,'webGpuPackage':'CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433',
+        'cyclesRevision':REVISION,'webGpuPackage':'CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210',
         'binarySha256':binaries,
         'savedSha256':{str(path.relative_to(dest)):sha(path) for path in sorted(dest.rglob('*')) if path.is_file()}}
     save(dest/'manifest.json',manifest);print(dest)

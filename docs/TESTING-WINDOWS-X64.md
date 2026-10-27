@@ -34,7 +34,7 @@ default, Vulkan on request. A run establishes:
 | Build machine | x64 Windows 10 or 11 with a Direct3D 12 GPU (and a Vulkan driver for the Vulkan steps). |
 | Test device (win-arm64) | ARM64 Windows 11 with a Direct3D 12 GPU. Nothing is built there. |
 | Cycles | `a456b761034dda42c32eef9f4aae0fa5a5c9f604`, the filtered snapshot in `third_party/cycles` |
-| WebGPU runtime | `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.290.1433; package SHA-256 `9ceea7951bff52fe39c4b2451da4e1a80e7a2889a2217487d6392125a18a7112`; `runtimes/win-x64/native/codebrix_wgpu.dll` SHA-256 `61c6f4d8d529240ab531e17f9aab7845b9dda04a45848674c1af463f346b6afa` |
+| WebGPU runtime | `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.300.210; package SHA-256 `ddfd92f8e9ce0f4348b0b079b856158608552184d3255c26a3e35a87b73b8b7b`; `runtimes/win-x64/native/codebrix_wgpu.dll` SHA-256 `88be16eb071943d97bc679a87811f738c5bc0d447f05ee30af2aa8bfeebbc7ce` |
 | DXC | `dxcompiler.dll` 1.9.2609.5 in `native/binaries/<rid>/runtime/` (`third_party/dxc-import.json`; `tools/windows_dxc.py` pins the hashes) |
 | Visual Studio | 2022 or later with "Desktop development with C++" and "C++ Clang tools for Windows" (clang-cl, lld-link), the Windows SDK, and its bundled CMake and Ninja. Versions are recorded by the recipes. |
 | Python | 3.12 or newer, run as `python -I -X utf8` (UTF-8 mode; `-I` ignores `PYTHONUTF8`). |

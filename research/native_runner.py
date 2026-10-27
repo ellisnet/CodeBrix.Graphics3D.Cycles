@@ -7,7 +7,7 @@ import os
 import subprocess
 from pathlib import Path
 
-PACKAGE = Path(os.environ.get('CODEBRIX_WEBGPU_PACKAGE',str(Path.home()/'.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433')))
+PACKAGE = Path(os.environ.get('CODEBRIX_WEBGPU_PACKAGE',str(Path.home()/'.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.300.210')))
 ADB = Path.home()/'Android/Sdk/platform-tools/adb'
 NDK = Path.home()/'Android/Sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin'
 

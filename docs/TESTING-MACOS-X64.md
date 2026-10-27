@@ -68,7 +68,7 @@ not depend on it.
 | Machine | An Intel Mac that runs macOS 15 or later (the deployment target). |
 | macOS | 15.0 or later. The host and the .NET wrapper refuse older systems. |
 | Cycles | `a456b761034dda42c32eef9f4aae0fa5a5c9f604`, the filtered snapshot in `third_party/cycles` |
-| WebGPU runtime | `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.290.1433; package SHA-256 `9ceea7951bff52fe39c4b2451da4e1a80e7a2889a2217487d6392125a18a7112`; `runtimes/osx-x64/native/libcodebrix_wgpu.dylib` SHA-256 `3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483` (x86_64, minimum macOS 11.0, ad-hoc signed) |
+| WebGPU runtime | `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.300.210; package SHA-256 `ddfd92f8e9ce0f4348b0b079b856158608552184d3255c26a3e35a87b73b8b7b`; `runtimes/osx-x64/native/libcodebrix_wgpu.dylib` SHA-256 `840a106d54fe479c255ecb98d51cee192a9044c3d0411fc1535f9ff0b8abbb82` (x86_64, minimum macOS 11.0, ad-hoc signed) |
 | Xcode | Xcode or the Xcode command-line tools: Apple Clang, the macOS SDK, libc++. Versions are recorded by the recipes. |
 | Homebrew (x64) | In `/usr/local`. Used only for tools (CMake, Python, zstd); every recipe excludes `/usr/local` and `/opt/homebrew` from searches and rejects any reference to them. |
 | CMake | 3.24 or newer (`brew install cmake`). |
@@ -118,12 +118,12 @@ line. **UNKNOWN:** which Metal feature set the Intel GPU(s) expose (for example
 ### 2. Restore and verify the WebGPU runtime **UNTESTED**
 
 The recipes read the runtime from the NuGet cache
-(`~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433`, or the
+(`~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.300.210`, or the
 directory named by `CODEBRIX_WEBGPU_PACKAGE`). Restore it once, then verify:
 
 ```sh
 dotnet restore research/GpuProbe/GpuProbe.csproj
-P=~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433
+P=~/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.300.210
 shasum -a 256 $P/*.nupkg $P/runtimes/osx-x64/native/libcodebrix_wgpu.dylib
 otool -L $P/runtimes/osx-x64/native/libcodebrix_wgpu.dylib
 lipo -info $P/runtimes/osx-x64/native/libcodebrix_wgpu.dylib

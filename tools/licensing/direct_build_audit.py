@@ -17,7 +17,7 @@ import subprocess
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
-PACKAGE=Path(os.environ.get('CODEBRIX_WEBGPU_PACKAGE',str(Path.home()/'.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.290.1433'))).resolve()
+PACKAGE=Path(os.environ.get('CODEBRIX_WEBGPU_PACKAGE',str(Path.home()/'.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.300.210'))).resolve()
 NDK=(Path.home()/'Android/Sdk/ndk/29.0.14206865').resolve()
 
 

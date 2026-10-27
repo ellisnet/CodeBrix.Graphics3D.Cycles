@@ -87,7 +87,7 @@ checkpoint exactly. The strict gate still exits 1 for its existing numerical
 failures; no tolerances or failing cases were changed.
 
 All runs use the exact shipped `CodeBrix.WebGpu.Native.MitLicenseForever`
-1.0.290.1433 bytes. Builds audit the NuGet archive, cache and sibling repository;
+1.0.300.210 bytes. Builds audit the NuGet archive, cache and sibling repository;
 runs identify the loaded library and verify its bytes, including on Android.
 No optional GPU features, WebGPU patches or alternate implementations are used.
 The backend selects hardware Vulkan and has no software-renderer fallback.
@@ -204,7 +204,7 @@ Large-scene performance and wider driver coverage remain unmeasured.
   still require implementation and proof.
 
 All tests continue to use the unchanged CodeBrix.WebGpu.Native.MitLicenseForever
-1.0.290.1433 binaries, independent original CPU references and unchanged practical
+1.0.300.210 binaries, independent original CPU references and unchanged practical
 and strict diagnostic criteria. Recorder v5 uses slots 9 (ShaderData), 10 (volume
 stack), 11 (volume transport), 12 (transparent shadows), 13 (surface lighting)
 and 14 (homogeneous density); earlier capture formats remain supported.

@@ -150,7 +150,7 @@ def collect():
         'readbackRejection':negative,'regressionReportSha256':regression_reports,
         'absoluteTolerance':5e-5,'relativeTolerance':2e-4,'strictAbsoluteTolerance':1e-7,'strictRelativeTolerance':1e-7,
         'strictNumericalParityPassed':False,'sharedEdgePolicy':'Only constant-clay, flat-normal shared edges with equal object, shader, position and geometric normal; exceptions recorded separately',
-        'webGpuPackage':'CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433',
+        'webGpuPackage':'CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210',
         'sourceSha256':inputs(),'nativeExecutableSha256':{n:sha(WORK/'cycles-build/bin'/n) for n in
             ['codebrix_cycles_render_gate','codebrix_cycles_surface_gate']},
         'licenseStatus':'Filtered Cycles source and independent Apache-2.0 host atomics; see current licensing audit for dependency and package scope',

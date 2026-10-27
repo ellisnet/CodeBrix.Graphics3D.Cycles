@@ -24,8 +24,8 @@ deps=importlib.util.module_from_spec(spec);spec.loader.exec_module(deps)
 sha,save,tool=deps.sha,deps.save,deps.tool
 WORK=REPO/'native/work/macos/osx-x64/host'
 RUNTIME_NAME='libcodebrix_wgpu.dylib'
-# CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433, runtimes/osx-x64/native.
-RUNTIME_SHA256='3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483'
+# CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210, runtimes/osx-x64/native.
+RUNTIME_SHA256='840a106d54fe479c255ecb98d51cee192a9044c3d0411fc1535f9ff0b8abbb82'
 # The Linux host-gate list (host_gate.py), plus the WGSL device gates.
 HOST_TARGETS=['codebrix_cycles_host',*['codebrix_host_'+n for n in ['cpu_test','gpu_test','reload_test','concurrency_test','tier_test',
  'abi_test','example_test','scene_edit_test','session_reference','session64_reference']]]

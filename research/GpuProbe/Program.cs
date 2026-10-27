@@ -73,7 +73,7 @@ public unsafe class Program
             foreach (Case test in JsonSerializer.Deserialize<Case[]>(File.ReadAllText(Path.Combine(root, "cases.json")))!)
                 results.Add(Run(root, test));
             Console.WriteLine(JsonSerializer.Serialize(new { adapter = selected,
-                package = "1.0.290.1433", native = CodeBrixWebGpuNative.BuildInfo,
+                package = "1.0.300.210", native = CodeBrixWebGpuNative.BuildInfo,
                 availableLimits = LimitsInfo(available), enabledLimits = LimitsInfo(enabled),
                 requestedOptionalFeatures = 0, results }, new JsonSerializerOptions { WriteIndented = true }));
             return 0;

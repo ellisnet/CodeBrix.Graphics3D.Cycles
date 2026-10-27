@@ -58,7 +58,7 @@ internal static class RepositoryPaths
             string package = Environment.GetEnvironmentVariable("CODEBRIX_WEBGPU_PACKAGE");
             if (string.IsNullOrEmpty(package))
                 package = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages",
-                    "codebrix.webgpu.native.mitlicenseforever", "1.0.290.1433");
+                    "codebrix.webgpu.native.mitlicenseforever", "1.0.300.210");
             return Path.Combine(package, "runtimes", WindowsRid, "native", "codebrix_wgpu.dll");
         }
     }

@@ -796,6 +796,13 @@ repository consumes unchanged (wgpu-native 29.0.1.1, wgpuGetVersion
 cache on any backend, so the host and the managed API offer none. Nothing in
 this repository pretends to cache.
 
+The runtime now pinned, 1.0.300.210 (same wgpu-native and wgpu-core; codebrix
+ABI 4, 257 exports), ADDS pipeline-cache exports for Vulkan adapters
+(wgpuCodebrixDeviceCreatePipelineCache, wgpuCodebrixAdapterGetPipelineCacheKey,
+wgpuCodebrixPipelineCacheGetData/AddRef/Release, chained into pipeline
+descriptors with WGPUCodebrixPipelineDescriptorExtras). The host does not use
+them yet: it creates no cache, and the audit below describes 1.0.290.1433.
+
 What the runtime has:
 - wgpu.h declares WGPUNativeFeature_PipelineCache (0x0003002B; header note:
   Vulkan supported, D3D12 and Metal unimplemented) and WGPUHubReport counts

@@ -47,7 +47,7 @@ Pins (the build scripts check them; do not change them):
 
 - Cycles revision `a456b761034dda42c32eef9f4aae0fa5a5c9f604`, the filtered
   snapshot in `third_party/cycles` (`third_party/cycles-import.json`).
-- CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 is the shipped
+- CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 is the shipped
   runtime of the WGSL RIDs. The osx-arm64 profile contains no WebGPU device and
   does not load it; it is not needed on this machine.
 - Dependency sources only from the verified snapshots in `third_party/deps`

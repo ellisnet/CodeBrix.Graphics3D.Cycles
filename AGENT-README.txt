@@ -51,7 +51,7 @@ PackageId:  CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
     dotnet add package CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
 
 Dependencies: CodeBrix.WebGpu.Native.MitLicenseForever, exactly version
-              1.0.290.1433 (the WebGPU runtime the GPU backend uses; NuGet
+              1.0.300.210 (the WebGPU runtime the GPU backend uses; NuGet
               places codebrix_wgpu beside the application). No other package.
 License:      Apache-2.0.
 Requirements:

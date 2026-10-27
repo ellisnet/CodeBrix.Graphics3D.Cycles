@@ -15,7 +15,7 @@ REPO=Path.home()/'GitHome/CodeBrix.WebGpu'
 def sha(data): return hashlib.sha256(data).hexdigest()
 def audit(allow_rust_documentation_change=False, compare_repository=False):
     package=PACKAGE/(PACKAGE.parent.name+'.'+PACKAGE.name+'.nupkg')
-    expected='9ceea7951bff52fe39c4b2451da4e1a80e7a2889a2217487d6392125a18a7112'
+    expected='ddfd92f8e9ce0f4348b0b079b856158608552184d3255c26a3e35a87b73b8b7b'
     if sha(package.read_bytes()) != expected:
         raise RuntimeError('WebGPU archive differs from the reviewed shipped package')
     with zipfile.ZipFile(package) as archive:

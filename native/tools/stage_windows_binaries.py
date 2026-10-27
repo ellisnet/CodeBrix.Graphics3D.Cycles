@@ -123,7 +123,7 @@ def main():
    hostSourceSha256=invocation['hostSourceSha256'],recipeSha256=invocation['recipeSha256'],injectionSha256=invocation['injectionSha256'],
    sharedInjectionSha256=invocation['sharedInjectionSha256'],stagerSha256=sha(Path(__file__)),adaptedFiles=invocation['adaptedFiles']),
   toolchain=identity,buildCommands=invocation['commands'],cpuKernelCompile=status.get('cpuKernelCompile'),skippedTargets=invocation['skippedTargets'],
-  webgpuRuntime=dict(id='CodeBrix.WebGpu.Native.MitLicenseForever',version='1.0.290.1433',path=f'runtimes/{a.rid}/native/'+recipe.RUNTIME_NAME,
+  webgpuRuntime=dict(id='CodeBrix.WebGpu.Native.MitLicenseForever',version='1.0.300.210',path=f'runtimes/{a.rid}/native/'+recipe.RUNTIME_NAME,
    sha256=recipe.RUNTIME_SHA256[a.rid],note='Not part of this payload; delivered by its own package and placed beside the host.'),
   thirdPartyRuntime={'dxcompiler.dll':dict(component='dxc',version=dxc['version'],import_='third_party/dxc-import.json',sha256=dxc['sha256'],
    license='runtime/'+dxc['license'].name,signed='Microsoft Corporation (Authenticode)',unchanged=True)},

@@ -30,7 +30,7 @@ def save(path,value):Path(path).write_text(json.dumps(value,indent=2)+'\n')
 BASE=REPO/'native/work/macos/osx-x64';FLOATS=32*24*4
 REVISION=json.loads((REPO/'third_party/cycles-import.json').read_text())['revision']
 RUNTIME_NAME='libcodebrix_wgpu.dylib'
-RUNTIME_SHA256='3a3abcf9e67ff9a6d6c5c0ebea4e504ead7d21167858de631d4dc835f793c483'
+RUNTIME_SHA256='840a106d54fe479c255ecb98d51cee192a9044c3d0411fc1535f9ff0b8abbb82'
 DEPLOYMENT_TARGET='15.0'
 CBC_UNSUPPORTED=2
 # webgpu.h WGPUBackendType values, for the adapter report.
