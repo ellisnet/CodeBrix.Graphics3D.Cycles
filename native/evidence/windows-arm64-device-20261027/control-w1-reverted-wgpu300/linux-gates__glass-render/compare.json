@@ -1,0 +1,97 @@
+{
+  "sceneId": "linux-gates/glass-render",
+  "sceneSha256": "c164b57f9743627c32a8e9c91cd8d61299d11eca8ec3eb74d4269535016b2137",
+  "width": 64,
+  "height": 48,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "C:\\GitHome\\CodeBrix.Graphics3D.Cycles\\native\\work\\windows-arm64-wgpu300-revert-w1-1\\linux-gates__glass-render\\cpu",
+      "backend": "cpu-arm64-windows",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": null,
+      "renderSeconds": [
+        0.0179325,
+        0.0173202
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "C:\\GitHome\\CodeBrix.Graphics3D.Cycles\\native\\work\\windows-arm64-wgpu300-revert-w1-1\\linux-gates__glass-render\\gpu",
+      "backend": "wgsl-override",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.384185791015625e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.384185791015625e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 2.384185791015625e-07,
+      "deviceName": null,
+      "renderSeconds": [
+        50.4307,
+        4.94727
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-windows"
+  ],
+  "candidates": [
+    "wgsl-override"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 0.33700399845838547,
+      "maxRelativeError": 3.584849274275034,
+      "rms": 0.014840498911205141,
+      "practicalFailures": 2631,
+      "strictDifferences": 2910,
+      "worstPixel": {
+        "x": 18,
+        "y": 33,
+        "channel": "B",
+        "reference": 0.09400785714387894,
+        "candidate": 0.4310118556022644,
+        "absoluteDifference": 0.33700399845838547,
+        "criterionRatio": 4898.202053528036
+      },
+      "reference": "cpu-arm64-windows",
+      "candidate": "wgsl-override",
+      "role": "gating",
+      "practicalPassed": false,
+      "samplesMatch": true
+    }
+  ],
+  "crossIsaGating": [
+    "wgsl-override"
+  ],
+  "gatingPairs": 1,
+  "problems": [
+    "wgsl-override vs cpu-arm64-windows: 2631 practical failures"
+  ],
+  "passed": false,
+  "verdict": "not perfect"
+}

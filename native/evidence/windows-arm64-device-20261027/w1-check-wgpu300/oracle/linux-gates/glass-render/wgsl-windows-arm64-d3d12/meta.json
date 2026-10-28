@@ -1,0 +1,75 @@
+{
+  "sceneId": "linux-gates/glass-render",
+  "sceneSha256": "c164b57f9743627c32a8e9c91cd8d61299d11eca8ec3eb74d4269535016b2137",
+  "backend": "wgsl-windows-arm64-d3d12",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 4.76837158203125e-07,
+  "renderSeconds": [
+    50.1354,
+    5.33733
+  ],
+  "filmSha256": [
+    "ea1f6e3f33f200f74a3ddaad49cf3a0c8a65390d1f040c4dcfc5cc54269b64f2",
+    "b0bd8469fb644f31d55d2fd71c18894607ad0b944d722850349babcc1abe1331"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [],
+  "machine": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "cpu": "Microsoft SQ1 @ 3.0 GHz",
+    "gpu": {
+      "model": "Qualcomm(R) Adreno(TM) 680 GPU (driver 27.20.2140.0)",
+      "cores": null
+    },
+    "compiler": "clang version 22.1.3 (https://github.com/llvm/llvm-project e9846648fd6183ee6d8cbdb4502213fcf902a211)",
+    "visualStudio": "Visual Studio Professional 2026 18.11.12324.101",
+    "cmake": "cmake version 4.3.1-msvc1",
+    "python": "3.15.1",
+    "repoCommit": "432c4fa2a80304a3e3208ee21b77fac17e5ba4e5",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "522d5450eeb54ba3215b8ce41b7cdfb03b37daff557e653a37123ae98bf633a9",
+  "runnerSha256": "d38896f0b5aaa3772d4763cf6ad12480c3eaa8426dd6e61645ba2ac0932a56e4",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/windows/win-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract; clang-cl options are recorded without their /clang: prefix"
+  },
+  "sceneFile": "native\\oracle\\scenes\\linux-gates\\glass-render.json",
+  "backendDescription": "CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native win-arm64 runtime (Direct3D 12, DXC)",
+  "environment": {
+    "CODEBRIX_CYCLES_WEBGPU_BACKEND": "d3d12"
+  },
+  "processSeconds": 56.227,
+  "runnerCommand": [
+    "native\\work\\windows\\win-arm64\\host\\build\\bin\\codebrix_cycles_oracle.exe",
+    "--scene",
+    "C:\\GitHome\\CodeBrix.Graphics3D.Cycles\\native\\oracle\\scenes\\linux-gates\\glass-render.json",
+    "--backend",
+    "webgpu",
+    "--label",
+    "wgsl-windows-arm64-d3d12",
+    "--output",
+    "C:\\GitHome\\CodeBrix.Graphics3D.Cycles\\native\\work\\oracles\\windows-arm64-wgpu300-w1-1\\oracle\\linux-gates\\glass-render\\wgsl-windows-arm64-d3d12",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json (d3d12)"
+}

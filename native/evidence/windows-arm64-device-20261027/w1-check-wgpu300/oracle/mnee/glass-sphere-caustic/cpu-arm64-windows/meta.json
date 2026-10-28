@@ -1,0 +1,73 @@
+{
+  "sceneId": "mnee/glass-sphere-caustic",
+  "sceneSha256": "9237407365671542ac2903022ff4308b7d1467c5d75c962d7b790897e5115c64",
+  "backend": "cpu-arm64-windows",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0079788,
+    0.0049168
+  ],
+  "filmSha256": [
+    "6bcf4e25c33a68acd33d58e34aed8e4789e2b17f9a1dd17a00c20c96c1c7b361",
+    "6bcf4e25c33a68acd33d58e34aed8e4789e2b17f9a1dd17a00c20c96c1c7b361"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [],
+  "machine": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "cpu": "Microsoft SQ1 @ 3.0 GHz",
+    "gpu": {
+      "model": "Qualcomm(R) Adreno(TM) 680 GPU (driver 27.20.2140.0)",
+      "cores": null
+    },
+    "compiler": "clang version 22.1.3 (https://github.com/llvm/llvm-project e9846648fd6183ee6d8cbdb4502213fcf902a211)",
+    "visualStudio": "Visual Studio Professional 2026 18.11.12324.101",
+    "cmake": "cmake version 4.3.1-msvc1",
+    "python": "3.15.1",
+    "repoCommit": "432c4fa2a80304a3e3208ee21b77fac17e5ba4e5",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "522d5450eeb54ba3215b8ce41b7cdfb03b37daff557e653a37123ae98bf633a9",
+  "runnerSha256": "d38896f0b5aaa3772d4763cf6ad12480c3eaa8426dd6e61645ba2ac0932a56e4",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/windows/win-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract; clang-cl options are recorded without their /clang: prefix"
+  },
+  "sceneFile": "native\\oracle\\scenes\\mnee\\glass-sphere-caustic.json",
+  "backendDescription": "Cycles CPU device, clang-cl ARM64 (cross-built), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.128,
+  "runnerCommand": [
+    "native\\work\\windows\\win-arm64\\host\\build\\bin\\codebrix_cycles_oracle.exe",
+    "--scene",
+    "C:\\GitHome\\CodeBrix.Graphics3D.Cycles\\native\\oracle\\scenes\\mnee\\glass-sphere-caustic.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-windows",
+    "--output",
+    "C:\\GitHome\\CodeBrix.Graphics3D.Cycles\\native\\work\\oracles\\windows-arm64-wgpu300-w1-1\\oracle\\mnee\\glass-sphere-caustic\\cpu-arm64-windows",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "Microsoft SQ1 @ 3.0 GHz (the C API does not expose Cycles' DeviceInfo)"
+}

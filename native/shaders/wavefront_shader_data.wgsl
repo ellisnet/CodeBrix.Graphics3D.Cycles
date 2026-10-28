@@ -138,8 +138,13 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
     sd.dPdu=b-a;sd.dPdv=c-a;sd.P=rounded_add3(rounded_add3(a,sd.u*sd.dPdu),sd.v*sd.dPdv);
     let applied=(sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
     if(!applied){sd.P=surface_object_point(sd,sd.P,false);}
-    var cross_normal=rounded_cross(sd.dPdu,sd.dPdv);
-    if(applied&&(sd.object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0u){cross_normal=rounded_cross(sd.dPdv,sd.dPdu);}
+    // The winding is chosen by select, not by a conditional reassignment: the
+    // Adreno 680 Direct3D 12 driver (27.20.2140.0) applied
+    // `if(applied&&negative scale){cross_normal=rounded_cross(dPdv,dPdu);}` with
+    // the condition false, flipping Ng on every front face (smooth surfaces
+    // black, inverted glass IOR; docs/TESTING-WINDOWS-ARM64.md, F1). Same normal.
+    let swap_winding=applied&&(sd.object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0u;
+    let cross_normal=rounded_cross(select(sd.dPdu,sd.dPdv,swap_winding),select(sd.dPdv,sd.dPdu,swap_winding));
     if(dot(cross_normal,cross_normal)==0.0){surface_failure(&sd);return sd;}
     sd.Ng=surface_native_normalize(cross_normal);sd.N=sd.Ng;
     sd.shader=load_word(table_at(G_tri_shader,sd.prim,4u));let shader_id=sd.shader&SHADER_MASK;

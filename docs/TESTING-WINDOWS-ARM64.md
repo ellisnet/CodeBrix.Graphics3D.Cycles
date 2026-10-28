@@ -11,7 +11,63 @@ it). This document is the device-side counterpart of
 recipe and its decisions are in
 [native/host/WINDOWS_X64.md](../native/host/WINDOWS_X64.md).
 
+## Status (2026-10-27): HEAD built on the device, WebGPU runtime 1.0.300.210
+
+**The root cause of F1, F3, F4 and F6 is one Qualcomm driver bug, and an
+equivalent WGSL rewrite fixes it** (F1 below). The rewrite is in
+`native/shaders/wavefront_shader_data.wgsl` (`surface_setup_hit`, the winding of
+`cross_normal`). Checked on this device against `CodeBrix.WebGpu.Native.MitLicenseForever`
+1.0.300.210, with a host built from HEAD on the device (the committed payload's
+host cannot load that runtime, F9):
+
+| Check (runtime 1.0.300.210, host from HEAD with the fix) | Result |
+|---|---|
+| `linux-gates/glass-render` (F1, smooth shading) | **pass**: GPU vs ARM64 CPU max 2.4e-7, 0 practical failures; passes against the Linux x64 glibc film |
+| `linux-gates/deforming-motion-1` (F3, motion blur with a normal map) | **pass**: 3.8e-7; passes against Linux x64 |
+| `starter/glass-and-area-light` (F4) | **pass**: 5.7e-6; passes against Linux x64 |
+| `mnee/glass-sphere-caustic` (F6, MNEE) | **pass**: 3.6e-7; passes against Linux x64 |
+| `light-tree/lamps-and-mesh-lights` (F5) | **fails**: 3 practical failures (max 0.0047) against the ARM64 CPU, 6 against Linux x64; open |
+| Control: `glass-render` with the fix reverted (WGSL override) | **fails** with the F1 signature (2,631 practical failures, max 0.337): the driver bug is present with the new runtime, and the rewrite is what removes it |
+| glTF example client (`--write-sample --sample-sun`, `--compare`) | **pass**: 12,288 floats, max 4.8e-7, 0 practical failures (failed before the fix) |
+
+Evidence: `native/evidence/windows-arm64-device-20261027/` (2.3 MB: the five
+scenes, the control, the glTF client, the F1 narrowing films, the build status
+and the diagnostic scripts; README there). On the device, `native/work/`:
+`windows/win-arm64/host` (the build), `oracles/windows-arm64-wgpu300-w1-1`,
+`windows-arm64-wgpu300-revert-w1-1`, `windows-arm64-gltf-wgpu300-1`.
+
+**Not yet run with 1.0.300.210** (deliberately deferred to the next full device
+run, see "Next device run"): the host gate (with `--device-gates`),
+`GpuRenderTests` and the non-GPU tests, the whole oracle corpus and the bench
+scenes. During the diagnosis (on the committed payload, runtime 1.0.290.1433,
+with the fix applied through `CODEBRIX_CYCLES_WGSL_LOAD`) 53 of the 54 rendered
+corpus scenes passed against the device's CPU film, the exception being F5; the
+two bench scenes did not (F7).
+
+**The win-arm64 payload is not ready to ship.** It is a runtime behind HEAD
+(F9), it predates the fix, and F5 and F7 are open. After the fix, restage
+win-arm64 (and win-x64, which pins the same old runtime) on the build machine and
+repeat the full device run with the staged payload.
+
+Findings of this run, in short (details under "Findings"):
+
+| Finding | Status |
+|---|---|
+| F1. Qualcomm D3D12 driver executes a conditional assignment whose condition is false (`Ng` flipped on every front face) | **cause found; fixed in WGSL** (also the cause of F3, F4 and F6) |
+| F3. Motion blur with a normal map | **fixed** (F1) |
+| F4. Glass lit by an area light | **fixed** (F1: inverted IOR on wrongly back-facing glass) |
+| F5. Light tree with mesh lights | open; 36 to 3 practical failures with the fix |
+| F6. MNEE caustic | **fixed** (F1) |
+| F7. Bench scenes: small floating-point divergence | open; not rechecked on 1.0.300.210 |
+| F8. `GpuRenderTests` skip (exit 0) when the host rejects the runtime | open (test harness) |
+| F9. Committed Windows payloads pin runtime 1.0.290.1433 (API version 2) | open (restage on the build machine) |
+| F10. Intermittent device loss on long renders | open; seen 3 times during diagnosis on 1.0.290.1433 |
+| C1. ARM64 and x64 CPU films disagree on some scenes | open (CPU kernels, not WebGPU) |
+
 ## Summary (2026-10-25)
+
+(The first device run, on the payload of commit `992615635`. Superseded where
+"Status (2026-10-27)" above differs; the step records below are that run's.)
 
 The committed win-arm64 payload loads, renders and passes the host gate on the
 Adreno 680 with Direct3D 12, and passes every non-GPU managed test. It does
@@ -86,7 +142,7 @@ copies inside the gate directories are not.
 | Vulkan | Loader 1.3.300; the only Vulkan driver is Mesa's Dozen (Vulkan on D3D12, "Microsoft Direct3D12 (Qualcomm(R) Adreno(TM) 680 GPU)", Mesa 26.3.0-devel, Vulkan 1.1.217) from the Microsoft "OpenCL, OpenGL & Vulkan Compatibility Pack" (`Microsoft.D3DMappingLayers` 1.2608.3.0); see step 5 |
 | Python | 3.15.1, native ARM64, run as `python -I -X utf8` |
 | .NET | SDK 10.0.403 (ARM64) |
-| Build tools | none; nothing is compiled except the managed solution |
+| Build tools | 2026-10-25: none. Since 2026-10-27: Visual Studio Professional 2026 with the C++ Clang compiler; HEAD is built on the device ("Building on the device") |
 
 ## Ordered steps
 
@@ -236,7 +292,10 @@ WINDOWS_X64.md, "DXC, not FXC"). It is not part of the device run.
 
 ## Findings
 
-### F1. Smooth-shaded surfaces render black on Adreno 680 / Direct3D 12 (open)
+### F1. Smooth-shaded surfaces render black on Adreno 680 / Direct3D 12 (cause found 2026-10-27; fixed in WGSL)
+
+The 2026-10-25 record follows; the cause and the fix are at the end of this
+finding ("Cause and fix").
 
 **Symptom.** On the GPU, every surface with smooth shading (`smooth` true on the
 mesh) gets exactly 0 from every BSDF: no direct light, no indirect light. Emission
@@ -336,6 +395,70 @@ change is then re-staged and re-validated on both RIDs.
 The installed driver is 27.20.2140.0 (2024-10-30). No other driver version was
 tried.
 
+**Cause and fix (2026-10-27).** Narrowed with `CODEBRIX_CYCLES_DEBUG_OUTPUT`
+and `CODEBRIX_CYCLES_WGSL_LOAD` on the `ground-only-no-sun` and `gns-flat`
+bundles (`f1-smooth-normal` in the 2026-10-25 evidence); each step is one render
+of the first camera hit:
+
+| Captured value (ground quad; the camera sees its front face) | Adreno 680 |
+|---|---|
+| shading normal `N` after `surface_setup_hit` (smooth) | (0, -1, 0): unit length and finite, opposite `Ng` (not NaN, not zero) |
+| geometric normal `Ng` (smooth and flat) | (0, +1, 0) |
+| runtime flags (smooth and flat) | `SR_BACKFACING` set, although the quad is front-facing (indices 0, 2, 1: cross(`dPdu`, `dPdv`) = (0, +36, 0)) |
+| `N` before the back-face flip; the decoded vertex normal; its packed word (32768, 65535) | (0, +1, 0); the decode is correct |
+| `dPdu`, `dPdv`; WGSL's built-in `cross(dPdu, dPdv)` | correct; (0, +36, 0) |
+| `cross_normal` as the kernel computes it | **(0, -36, 0)** |
+| `rounded_cross` and its parts recomputed from the same `dPdu`, `dPdv` at the end of the function | (0, +36, 0): correct |
+| object flags | `TRANSFORM_APPLIED` only (4); `NEGATIVE_SCALE` (8) clear, so the branch condition is false |
+| the same code with the never-taken negative-scale branch deleted | (0, +36, 0): correct |
+
+So the driver applies
+`if(applied&&(sd.object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0u){cross_normal=rounded_cross(sd.dPdv,sd.dPdu);}`
+although its condition is false, which reverses the winding of every triangle.
+`Ng` then points away from the viewer, the back-face step negates `N` and `Ng`
+together, and the smooth `N` (decoded correctly, on the true front side) ends up
+opposite the flipped `Ng`. Cycles' BSDFs reject every sample as a light leak,
+hence exactly 0 with no kernel error. Flat diffuse surfaces are unaffected
+because their `N` and `Ng` flip together. Glass reads the false back-facing
+flag and takes `1/ior` (F4). Motion blur with a normal map (F3) and the MNEE
+caustic (F6) go through the same setup. The 2026-10-25 micro-probe exercised
+decode and interpolation only, so it could not see this.
+
+**Fix** (`native/shaders/wavefront_shader_data.wgsl`, `surface_setup_hit`): the
+operand order is chosen with `select` and `rounded_cross` is called once, with
+no conditional reassignment:
+
+```wgsl
+let swap_winding=applied&&(sd.object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0u;
+let cross_normal=rounded_cross(select(sd.dPdu,sd.dPdv,swap_winding),select(sd.dPdv,sd.dPdu,swap_winding));
+```
+
+The result is identical for every input (the same products and sums in the same
+order, only the operand order is selected), so by the workaround policy it
+applies on every GPU and needs no driver key. A first rewrite that only
+restructured `rounded_cross` itself (products computed first, then
+`rounded_add3(p,-q)`) did not help: the trigger is the conditional
+reassignment, not the cross product. Results with runtime 1.0.300.210 are in
+"Status (2026-10-27)" above.
+
+**Same pattern elsewhere (proposed, untested in isolation).** Conditional
+negations of a normal or axis on `NEGATIVE_SCALE` or the emission side also
+appear in `wavefront_volume_stack.wgsl:82` (the same winding swap),
+`wavefront_mnee.wgsl:197` (`vtx.ng`), `wavefront_light_tree.wgsl:158` and `:160`
+(the emitter cone axis) and `wavefront_triangle_light.wgsl:218` (the mesh-light
+normal). Select-based versions of all five were tried once, together with the
+fix above (`native/work/windows-arm64-wa-2`, runtime 1.0.290.1433). They gave
+the same films as the fix alone on the three F3 scenes and on F5, and the MNEE
+render with them lost the device (F10). They are therefore **not** in the
+source. No scene in the corpus has a negative-scale object, so those branches'
+true case is not covered by any oracle scene either. Worth adding one (a mirrored
+object), since the fix above changes exactly that path.
+
+**Report to Qualcomm** (not yet done): the driver version, the generated HLSL of
+the surface module (`CODEBRIX_CYCLES_WEBGPU_LOG=debug`) with the original lines,
+and the `gns-flat` bundle with `CODEBRIX_CYCLES_DEBUG_OUTPUT=flags` as the
+reproducer (front-facing quad reported back-facing).
+
 ### F2. The step-8 oracle command cannot start the runner (documentation)
 
 `native/binaries/win-arm64/tests/codebrix_cycles_oracle.exe` exits with
@@ -349,7 +472,14 @@ step 3 here does (or `render_oracles.py` could accept a payload directory the wa
 `windows_host_gate.py --payload` does). The same applies to win-x64 when it is
 run from its payload rather than its build directory.
 
-### F3. Motion blur with a normal map renders wrong on Adreno 680 / Direct3D 12 (open)
+### F3. Motion blur with a normal map renders wrong on Adreno 680 / Direct3D 12 (fixed 2026-10-27: same cause as F1)
+
+With the F1 fix all ten failing motion scenes passed against the device's CPU
+film (diagnosis, runtime 1.0.290.1433), and `deforming-motion-1` passes on
+runtime 1.0.300.210 with the fix built in. Unlike the Intel Metal finding M2
+(TESTING-MACOS-X64.md) on the same fixtures, the Adreno films were repeatable
+(GPU repeats within 1.5e-8), which pointed to a deterministic miscompile rather
+than a workgroup race. The 2026-10-25 record:
 
 **Symptom.** 10 oracle scenes from the deforming-motion and object-motion
 fixtures (modes 0, 1, 2, 3, 5, 7 and 1, 3, 5, 7) fail on the GPU with 139 to 334
@@ -375,7 +505,11 @@ that. Reproducer: `codebrix_cycles_oracle --scene
 native/oracle/scenes/linux-gates/deforming-motion-1.json --backend webgpu
 --output <new dir>` from `native/work/windows-arm64-oracle-run-1`.
 
-### F4. Glass lit by an area light renders wrong on Adreno 680 / Direct3D 12 (open)
+### F4. Glass lit by an area light renders wrong on Adreno 680 / Direct3D 12 (fixed 2026-10-27: same cause as F1)
+
+With the F1 fix `starter/glass-and-area-light` passes (5.7e-6 against the CPU,
+runtime 1.0.300.210). The wrong `Ng` sign marked the glass's front faces
+back-facing, so its BSDF used `1/ior`. The 2026-10-25 record:
 
 **Symptom.** `starter/glass-and-area-light` fails on the GPU with 372 practical
 failures (max 0.81; worst pixel CPU 0.076, GPU 0.53). Flat geometry; a glass BSDF
@@ -390,6 +524,136 @@ Intel.
 bisection with edited copies of the scene bundle (glass to diffuse, area light to
 point light), as done for F1, is the next step and needs no rebuild.
 Reproducer: as F3, with `native/oracle/scenes/starter/glass-and-area-light.json`.
+
+### F5. Light tree with mesh lights: small residual on Adreno 680 (open, 2026-10-27)
+
+`light-tree/lamps-and-mesh-lights` fails on the GPU. Before the F1 fix it had 36
+practical failures (max 0.15) against the device's CPU film, and the host gate's
+driver-coverage step failed on it. With the fix it has **3** (max 0.0047)
+against the device's CPU film and 6 against the Linux x64 glibc film, the same
+with runtime 1.0.290.1433 (WGSL override) and with 1.0.300.210 (fix built in).
+The pipelines compile and the render completes without a kernel error, which is
+not the Intel D3D12 failure (TESTING-WINDOWS-X64.md, W1, where pipeline
+creation and then the run-time consistency check failed);
+`shade_surface_light_select` takes about 21 s to compile here.
+`light-tree/light-linking` passes. Part of the remaining gap is the CPU
+reference (C1: the ARM64 CPU film itself has 9 practical failures against
+Linux x64 on this scene), but not all of it: the GPU also differs from the
+ARM64 CPU. Select-based versions of the light tree's conditional negations
+(`wavefront_light_tree.wgsl:158`, `:160`) and of the mesh-light normal
+(`wavefront_triangle_light.wgsl:218`) did not change the film (F1, "Same
+pattern elsewhere"). Next: `CODEBRIX_CYCLES_WEBGPU_ADAPTER=software` (WARP) on a
+cropped copy of the scene, to tell a remaining driver problem from path
+divergence. Reproducer (from the built host's folder, runtime 1.0.300.210):
+
+```
+native/work/windows/win-arm64/host/build/bin/codebrix_cycles_oracle.exe --scene native/oracle/scenes/light-tree/lamps-and-mesh-lights.json --backend webgpu --label wgsl --output <new dir>
+```
+
+### F6. MNEE caustic renders wrong on Adreno 680 (fixed 2026-10-27: same cause as F1)
+
+`mnee/glass-sphere-caustic` failed with 603 practical failures (max 0.13), and
+its ARM64 CPU film passes against Linux x64. With the F1 fix it passes (3.6e-7
+against the CPU, runtime 1.0.300.210).
+
+### F7. Bench scenes: small floating-point divergence (open; not rechecked on 1.0.300.210)
+
+Before the F1 fix both bench scenes failed massively on the GPU (about 1,925
+practical failures each: the bench mesh is smooth-shaded). With the fix through
+`CODEBRIX_CYCLES_WGSL_LOAD` (runtime 1.0.290.1433), against the Linux x64 glibc
+films: `bench_01` 54 practical failures (max 0.0041), `bench_01-hdri` 99 (max
+0.011); against the device's CPU, 41 and 88. That is the size and character of
+the win-x64 bench finding (TESTING-WINDOWS-X64.md: 33 and 74 to 77 against its
+CPU), which on the Intel Mac turned out to be Metal's fast math
+(TESTING-MACOS-X64.md, M1). Next: the M1 probe shader on Direct3D 12 here
+(contraction, `nan != nan`, transcendental ulps), then the bench against Linux
+with runtime 1.0.300.210. The bench bundle is generated on the device by
+`make_bench_bundle.py` (verified here: documents byte-identical, 13 raw files
+matching the manifest).
+
+### F8. `GpuRenderTests` skip instead of failing when the host rejects the runtime (open)
+
+With the committed host (WebGPU API version 2) and runtime 1.0.300.210 (API
+version 4) beside it, `Device::Device()` (`native/src/webgpu_device.cpp`)
+refuses the runtime ("WebGPU ABI mismatch"), but the caller only sees
+`cbc_host_create(webgpu) returned 2: Requested device is unavailable`: the
+specific message is lost. All 14 `GpuRenderTests` then report SKIP ("No GPU
+device is available to the native host") and the run exits 0, so a host/runtime
+mismatch looks like a passing run. Proposed: report the ABI mismatch as its own
+error (or keep the message in the device-unavailable text), and have
+`GpuRenderTests` fail rather than skip when a runtime is present but rejected.
+Until then, check the GPU test count and the skip lines, not only the exit
+code.
+
+### F9. The committed Windows payloads are one WebGPU runtime behind HEAD (open)
+
+`native/binaries/win-arm64` (and `win-x64`) were staged on 2026-10-26 against
+`CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.290.1433 (API version 2); HEAD
+pins 1.0.300.210 (API version 4) since `0e95e5ce3`. HEAD's tools look for the
+payload's runtime in the 1.0.300.210 package, so `windows_host_gate.py --payload`
+and `render_oracles.py --payload` refuse to start on the committed payload
+("Restore ... 1.0.290.1433 first"), and the committed host cannot load the new
+runtime (F8). Testing 1.0.300.210 on this device therefore needs a host built
+from HEAD: done here with `tools/dependencies/build_windows.py --rid win-arm64`
+(15 minutes) and `native/tools/build_cycles_windows.py --rid win-arm64` (7
+minutes), see "Building on the device". Restage both Windows payloads on the
+build machine with the F1 fix.
+
+### F10. Intermittent device loss on long renders (open; seen on 1.0.290.1433)
+
+Three times during the diagnosis the GPU render stopped with `Readback:
+Validation Error ... Parent device is lost`, each after 1.5 to 2 minutes, on a
+light-tree or MNEE scene: once on `mnee/glass-sphere-caustic` with the five
+proposed extra edits, and twice on `light-tree/light-linking` (one of them a run
+with unmodified WGSL). `light-linking` rendered correctly (1.9e-6) when run again
+on its own; the MNEE scene rendered correctly with the F1 fix alone. The likely cause is a driver reset (TDR) on a long dispatch while other
+work was running. Not seen in the 1.0.300.210 checks (five scenes and the glTF
+client). If it recurs, check the System event log for display-driver resets
+(`Display` event 4101) and the dispatch sizes of those passes.
+
+### C1. ARM64 and x64 CPU films disagree on some scenes (open; CPU, not WebGPU)
+
+The device's CPU films (Cycles CPU kernels, ARM64) against the Linux x64 glibc
+films: 54 of 56 corpus scenes pass. `linux-gates/world-volume` has 87 practical
+failures (max 1.4) and `light-tree/lamps-and-mesh-lights` 9 (max 0.0056); the
+bench scenes 32 and 67. The x64 CPU films (Linux and the Intel Mac) agree with
+each other on these scenes (`world-volume` 1.2e-5), and the Windows ARM64 film
+agreed with the macOS arm64 CPU oracle (1.3e-5 on `world-volume`). The bench
+counts equal the ones win-x64's CPU film showed against the macOS arm64 film (32
+and 67). So the split is ARM64 against x64 CPU kernels, not Windows' libm. It
+matters for judging ARM64 GPU films against the Linux x64 reference: where the
+two CPU references disagree, the GPU film cannot match both.
+
+## Building on the device (2026-10-27)
+
+On 2026-10-27 the maintainer decided that this device builds HEAD, so that new
+WebGPU runtimes are tested here without waiting for a restaged payload. The
+WebGPU runtime itself is never built: the host build takes the shipped
+`codebrix_wgpu.dll` from the NuGet cache and refuses it unless its SHA-256 equals
+the pin in `native/tools/build_cycles_windows.py` (1.0.300.210 win-arm64:
+`40eb07e0...`), and DXC is the pinned, Microsoft-signed `dxcompiler.dll`.
+Requirements: Visual Studio 2026 with "Desktop development with C++", the
+ARM64 MSVC tools and **"C++ Clang Compiler for Windows"**
+(`Microsoft.VisualStudio.Component.VC.Llvm.Clang`; the recipes use its
+`VC/Tools/Llvm/ARM64` clang-cl and exclude other LLVM installations). On this
+device that is Visual Studio Professional 2026 18.11.12324.101, clang 22.1.3 (the
+build machine's version), MSVC 14.51.36231, Windows SDK 10.0.26100.0.
+
+```
+dotnet restore research/GpuProbe/GpuProbe.csproj
+python -I -X utf8 tools/dependencies/build_windows.py --rid win-arm64 --jobs 8
+python -I -X utf8 native/tools/build_cycles_windows.py --rid win-arm64 --jobs 8
+```
+
+Both completed at the first attempt, with no recipe changes: 15 and 7 minutes on
+the SQ1; 22 gate executables, the oracle runner and the lifecycle targets in
+`native/work/windows/win-arm64/host/build/bin`. Binaries built here are for
+testing HEAD on the device. They are not byte-identical to the build machine's
+cross-built payload (a different clang executable and build host), and the
+shipped `native/binaries/win-arm64` still comes from the build machine. With a
+built host present, the managed tests and the gate's build mode
+(`windows_host_gate.py --rid win-arm64` without `--payload`) use it instead of
+the payload (`RepositoryPaths.WindowsNativeHostLibrary`).
 
 ## Recommended additions for the next Windows build
 
@@ -483,6 +747,32 @@ passes while one is active; `render_oracles.py` marks the run `diagnosticRun`.
 Details: [native/host/WINDOWS_X64.md](../native/host/WINDOWS_X64.md),
 "Diagnostics for driver problems".
 
+### Next device run (after 2026-10-27)
+
+The full battery deferred on 2026-10-27, on a host built from HEAD on the device
+(with the F1 fix) and runtime 1.0.300.210, then again on the restaged payload:
+
+1. `python -I -X utf8 native/tools/windows_host_gate.py --rid win-arm64 --backend d3d12 --output native/work/windows-arm64-validation-d3d12-<n> --references native/evidence/linux-x64-docker-reference-20261027/host-gate-cpu-only --device-gates`
+   (build mode; on the staged payload add `--payload native/binaries/win-arm64`).
+   About 11 minutes without device gates on 1.0.290.1433; driver coverage is
+   expected to pass except the light tree (F5).
+2. Managed tests: the non-GPU tests and `GpuRenderTests` (about 13 minutes).
+   Check that the GPU tests ran, not only the exit code (F8).
+3. The oracle corpus (about an hour) and the bench scenes (about 8 minutes),
+   `--backend cpu-arm64-windows --backend wgsl-windows-arm64-d3d12`, judged
+   against the Linux x64 glibc films in
+   `native/evidence/linux-x64-docker-reference-20261027/oracles/` with
+   `native/oracle/compare.py` (Linux film first). Mind C1 where the CPU
+   references disagree.
+4. F5 with WARP on a cropped scene; F7 with the M1 probe shader; a mirrored
+   (negative-scale) object scene for the branch the F1 fix touches.
+5. The device gates' judgement against Linux x64 glibc (the scene and stage
+   exchanges) still needs a Linux x64 machine or container. This device has no
+   Docker, and its WSL distribution is ARM64.
+
+The plan written after the 2026-10-26 rebuild follows (superseded where the
+above differs).
+
 Next device run, in order:
 
 1. Validation, with no diagnostic set: the host gate (`windows_host_gate.py
@@ -537,7 +827,11 @@ limits:
   problem is recorded here as a finding (symptom, reproducer command, output
   directory, best hypothesis) and the run moves on to the next step.
 - **Not done on the device:** editing product code, scripts, tests or the
-  payload; rebuilding binaries (nothing is built on the device); changing
+  payload unless the maintainer asks for it (on 2026-10-27 the F1 fix was made
+  in the WGSL source on the device, at the maintainer's request); building the
+  WebGPU runtime (never: the shipped package is used); staging a payload from a
+  device build (since 2026-10-27 HEAD is built on the device for testing, see
+  "Building on the device"); changing
   `provenance.json`; relaxing tolerances, adjusting films or changing backend
   settings; writing into `native/evidence/*`; installing software; commits and
   pushes.
