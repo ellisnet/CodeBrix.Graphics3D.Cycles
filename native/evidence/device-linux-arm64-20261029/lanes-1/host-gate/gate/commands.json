@@ -1,0 +1,145 @@
+[
+  {
+    "command": [
+      "/lib/ld-linux-aarch64.so.1",
+      "--list",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/lib/libcodebrix_cycles_host.so"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/lib/ld-linux-aarch64.so.1",
+      "--list",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_cpu_test"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/lib/ld-linux-aarch64.so.1",
+      "--list",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_session_reference"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/lib/ld-linux-aarch64.so.1",
+      "--list",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_session64_reference"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/lib/ld-linux-aarch64.so.1",
+      "--list",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_image_reference"
+    ],
+    "timeoutSeconds": 120
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_session_reference",
+      "CPU",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/cpu/run"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_session64_reference",
+      "CPU",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/cpu64/run"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_cpu_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/cpu-consumer/run"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_cpu_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/cpu-exit-consumer/run",
+      "--exit-live"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_image_reference",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/host/configs/a.ocio",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/references/a/output"
+    ],
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_image_reference",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/host/configs/b.ocio",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/references/b/output"
+    ],
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_image_reference",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tests/host/configs/c.ocio",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/references/c/output"
+    ],
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_reload_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/references",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/reload",
+      "6"
+    ],
+    "timeoutSeconds": 2400
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_concurrency_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/stress-input",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/stress-output"
+    ],
+    "timeoutSeconds": 1200
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_gpu_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/gpu/run"
+    ],
+    "timeoutSeconds": 35999
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_gpu_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/gpu-exit/run",
+      "--exit-live"
+    ],
+    "timeoutSeconds": 35999
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_abi_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/abi-cpu/run",
+      "cpu"
+    ],
+    "timeoutSeconds": 35999
+  },
+  {
+    "command": [
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_abi_test",
+      "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-lanes-1/host-gate/gate/abi-gpu/run",
+      "gpu"
+    ],
+    "timeoutSeconds": 35999
+  }
+]

@@ -340,6 +340,7 @@ void host_tier_config(uint32_t tier, bool record_off, bool read_only, bool canar
 std::string webgpu_device_report_json(Device *device);
 std::string webgpu_adapter_report_json(Device *device);
 bool webgpu_recover(Device *device, std::string &reason);
+std::string webgpu_unavailable_reason();
 }
 #endif
 #ifdef WITH_METAL
@@ -469,6 +470,13 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
     auto type = backend == CBC_HOST_WEBGPU ? DEVICE_WEBGPU : backend == CBC_HOST_METAL ? DEVICE_METAL : DEVICE_CPU;
     host->backend = backend;
     auto devices = Device::available_devices(DeviceTypeMask(1 << type));
+#ifdef WITH_WEBGPU
+    if (devices.empty() && type == DEVICE_WEBGPU) {
+      // Keep the WebGPU device's own reason (ABI mismatch, no adapter, a limit) in the message.
+      const std::string reason = webgpu_unavailable_reason();
+      require(reason.empty(), ("Requested device is unavailable: " + reason).c_str(), CBC_UNSUPPORTED);
+    }
+#endif
     require(!devices.empty(), "Requested device is unavailable", CBC_UNSUPPORTED);
     SessionParams params; params.device = devices[0];
     if (type == DEVICE_METAL) {

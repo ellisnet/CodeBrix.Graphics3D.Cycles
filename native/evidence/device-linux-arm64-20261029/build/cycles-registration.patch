@@ -1,0 +1,166 @@
+--- a/src/device/device.h
++++ b/src/device/device.h
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -46,6 +48,7 @@
+   DEVICE_METAL,
+   DEVICE_ONEAPI,
+   DEVICE_DUMMY,
++  DEVICE_WEBGPU,
+ };
+ 
+ enum DeviceTypeMask {
+@@ -55,6 +58,7 @@
+   DEVICE_MASK_HIP = (1 << DEVICE_HIP),
+   DEVICE_MASK_METAL = (1 << DEVICE_METAL),
+   DEVICE_MASK_ONEAPI = (1 << DEVICE_ONEAPI),
++  DEVICE_MASK_WEBGPU = (1 << DEVICE_WEBGPU),
+   DEVICE_MASK_ALL = ~0
+ };
+ 
+@@ -174,6 +178,11 @@
+     return !error_message().empty();
+   }
+   virtual void set_error(const string &error);
++  /* CodeBrix host: forget a recorded error before a full scene re-upload. */
++  void clear_error()
++  {
++    error_msg.clear();
++  }
+   virtual BVHLayoutMask get_bvh_layout_mask(const uint kernel_features) const = 0;
+ 
+   /* statistics */
+--- a/src/device/device.cpp
++++ b/src/device/device.cpp
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -8,6 +10,9 @@
+ #include "bvh/bvh2.h"
+ 
+ #include "device/device.h"
++#ifdef WITH_WEBGPU
++#  include "codebrix_webgpu_device.h"
++#endif
+ #include "device/queue.h"
+ 
+ #include "device/cpu/device.h"
+@@ -113,6 +118,11 @@
+   unique_ptr<Device> device;
+ 
+   switch (info.type) {
++#ifdef WITH_WEBGPU
++    case DEVICE_WEBGPU:
++      device = device_webgpu_create(info, stats, profiler, headless);
++      break;
++#endif
+     case DEVICE_CPU:
+       device = device_cpu_create(info, stats, profiler, headless);
+       break;
+@@ -184,6 +194,9 @@
+   if (strcmp(name, "METAL") == 0) {
+     return DEVICE_METAL;
+   }
++  if (strcmp(name, "WEBGPU") == 0) {
++    return DEVICE_WEBGPU;
++  }
+   if (strcmp(name, "ONEAPI") == 0) {
+     return DEVICE_ONEAPI;
+   }
+@@ -214,6 +227,9 @@
+   if (type == DEVICE_METAL) {
+     return "METAL";
+   }
++  if (type == DEVICE_WEBGPU) {
++    return "WEBGPU";
++  }
+   if (type == DEVICE_ONEAPI) {
+     return "ONEAPI";
+   }
+@@ -228,6 +244,9 @@
+ {
+   vector<DeviceType> types;
+   types.push_back(DEVICE_CPU);
++#ifdef WITH_WEBGPU
++  types.push_back(DEVICE_WEBGPU);
++#endif
+ #ifdef WITH_CUDA
+   types.push_back(DEVICE_CUDA);
+ #endif
+@@ -345,6 +364,12 @@
+   }
+ #endif
+ 
++#ifdef WITH_WEBGPU
++  if (mask & DEVICE_MASK_WEBGPU) {
++    device_webgpu_info(devices);
++  }
++#endif
++
+   if (mask & DEVICE_MASK_CPU) {
+     if (!(devices_initialized_mask & DEVICE_MASK_CPU)) {
+       device_cpu_info(cpu_devices());
+--- a/src/integrator/path_trace.cpp
++++ b/src/integrator/path_trace.cpp
+@@ -1,3 +1,5 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// CodeBrix WebGPU registration additions; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+@@ -1289,6 +1291,8 @@
+       return "Multi";
+     case DEVICE_METAL:
+       return "Metal";
++    case DEVICE_WEBGPU:
++      return "WebGPU";
+   }
+ 
+   return "UNKNOWN";
+--- a/src/util/colorspace.cpp
++++ b/src/util/colorspace.cpp
+@@ -2,6 +2,7 @@
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+ 
++// Modifications: Copyright (c) 2026 Jeremy Ellis and contributors
+ #include "util/colorspace.h"
+ #include "util/color.h"
+ #include "util/image.h"
+@@ -46,11 +47,11 @@
+ static void check_invalidate_caches()
+ {
+   static thread_mutex cache_scene_linear_mutex;
+-  static string cache_scene_linear_name;
+-
+-  /* Invalidate cached processors and colorspace, in case Blender changed it.
+-   * Note this should not happen during rendering, all render should be stopped
+-   * before it is changed. */
++  static string cache_config_id;
++
++  /* Configurations can change transforms, roles and aliases while retaining
++   * the same scene-linear name. Invalidate every derived cache when the full
++   * OCIO configuration identity changes. All renders must be stopped first. */
+   const thread_scoped_lock cache_scene_linear_lock(cache_scene_linear_mutex);
+   OCIO::ConstConfigRcPtr config = nullptr;
+   try {
+@@ -61,9 +62,9 @@
+     return;
+   }
+ 
+-  const OCIO::ConstColorSpaceRcPtr scene_linear_colorspace = config->getColorSpace("scene_linear");
+-  if (scene_linear_colorspace && cache_scene_linear_name != scene_linear_colorspace->getName()) {
+-    cache_scene_linear_name = scene_linear_colorspace->getName();
++  const string config_id = config->getCacheID();
++  if (cache_config_id != config_id) {
++    cache_config_id = config_id;
+     {
+       const thread_scoped_lock cache_processors_lock(cache_processors_mutex);
+       cache_processors.clear();

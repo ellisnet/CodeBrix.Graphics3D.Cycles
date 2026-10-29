@@ -39,12 +39,16 @@ BACKENDS={
  'wgsl-windows-x64-vulkan':('webgpu',{'CODEBRIX_CYCLES_WEBGPU_BACKEND':'vulkan'},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native win-x64 runtime (Vulkan)'),
  'cpu-arm64-windows':('cpu',{},'Cycles CPU device, clang-cl ARM64 (cross-built), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math'),
  'wgsl-windows-arm64-d3d12':('webgpu',{'CODEBRIX_CYCLES_WEBGPU_BACKEND':'d3d12'},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native win-arm64 runtime (Direct3D 12, DXC)'),
+ # Linux ARM64 (docs/TESTING-LINUX-ARM64.md; tools/build_linux_arm64.py, natively on the device).
+ 'cpu-arm64-linux':('cpu',{},'Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math'),
+ 'wgsl-linux-arm64-vulkan':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native linux-arm64 runtime (Vulkan)'),
 }
 # Without --backend, a run renders the backends listed before the macOS x64 ones.
 DEFAULT_BACKENDS=['cpu-arm64-macos','metal-m2pro','metal-m2pro-metalrt','cpu-x64-linux','wgsl-linux-intel']
 INTEL_MAC=platform.system()=='Darwin' and platform.machine()=='x86_64'
 WINDOWS=platform.system()=='Windows'
 WINDOWS_RID={'AMD64':'win-x64','ARM64':'win-arm64'}.get(platform.machine()) if WINDOWS else None
+LINUX_ARM64=platform.system()=='Linux' and platform.machine()=='aarch64'
 DIAGNOSTIC_VARIABLES=['CODEBRIX_CYCLES_WGSL_LOAD','CODEBRIX_CYCLES_WEBGPU_ADAPTER','CODEBRIX_CYCLES_WEBGPU_ALLOW_NONCOMPLIANT',
  'CODEBRIX_CYCLES_DXC_MAX_SHADER_MODEL','CODEBRIX_CYCLES_WEBGPU_INSTANCE_FLAGS','CODEBRIX_CYCLES_WEBGPU_LOG','CODEBRIX_CYCLES_DEBUG_OUTPUT','CODEBRIX_CYCLES_DRIVER_WORKAROUNDS']
 
@@ -74,7 +78,9 @@ def machine():
   gpu=dict(model=model.group(1) if model else None,cores=int(cores.group(1)) if cores else None),
   compiler=out('clang','--version') if platform.system()=='Darwin' else out('c++','--version'),xcode=out('xcodebuild','-version'),cmake=out('cmake','--version').splitlines()[0],
   python=sys.version.split()[0],repoCommit=out('git','-C',str(REPO),'rev-parse','HEAD'),
-  repoWorkingTreeClean=status=='',cyclesRevision=REVISION)
+  repoWorkingTreeClean=status=='',cyclesRevision=REVISION,
+  # ARM64 boards (a Raspberry Pi) name themselves in the device tree; lspci finds no GPU there.
+  **(dict(deviceModel=Path('/proc/device-tree/model').read_text().strip('\0\n'),vulkan=out('vulkaninfo','--summary')) if LINUX_ARM64 else {}))
 
 
 def kernel_flags():
@@ -85,6 +91,8 @@ def kernel_flags():
   database=REPO/'native/work/macos'/('osx-x64' if INTEL_MAC else 'osx-arm64')/'host/build/compile_commands.json'
  elif WINDOWS:
   database=REPO/'native/work/windows'/WINDOWS_RID/'host/build/compile_commands.json'
+ elif LINUX_ARM64:
+  database=REPO/'native/work/linux/linux-arm64/host/build/compile_commands.json'
  else:
   database=REPO/'native/work/cycles-build/compile_commands.json'
  if not database.exists():return None

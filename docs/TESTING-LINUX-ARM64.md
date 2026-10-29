@@ -8,7 +8,198 @@ document is the ordered test procedure built on it.
 
 Lines marked **MISSING** name a step for which the repository has no recipe or
 tool yet. Do not work round them on the Pi; record what was done instead and
-bring the output back.
+bring the output back. Since 2026-10-29 the Pi builds HEAD natively ("Native
+build on the device" below), and several MISSING items are resolved; each says
+so where it stands.
+
+## Status (2026-10-29): first device run, WebGPU runtime 1.0.300.210
+
+**Verdict.** The shipped `CodeBrix.WebGpu.Native.MitLicenseForever` 1.0.300.210
+linux-arm64 runtime renders correctly on the Raspberry Pi 5's V3D 7.1 (Mesa
+V3DV 26.2.2) wherever it was run: 16 GPU films against the same-host CPU
+references, all within the practical criterion. It needed one host fix to run at
+all (L1). Coverage stops there: the V3DV compiler takes minutes to hours per
+Cycles pipeline when cold (L2), so the device gates, the driver-coverage scenes
+and the oracle corpus were not reached in 10 hours. On this board the GPU is
+practical only with a warm driver cache and a fixed scene; the CPU reference
+backend rendered the smooth-shading coverage scene in 0.03 to 0.045 s per
+render while the GPU's compile of the same scene was still running after 9.5
+hours.
+
+Evidence: `native/evidence/device-linux-arm64-20261029/` (13 MB, records only, no
+binaries; README there). Device: Raspberry Pi 5 Model B Rev 1.1, 16 GB, Debian 13
+(trixie), glibc 2.41, GCC 14.2.0, clang 19.1.7, CMake 3.31.6, .NET SDK 10.0.403.
+
+| Check | Result |
+|---|---|
+| Package | nupkg SHA-256 `ddfd92f8...` equals `third_party/dependencies.json`; `libcodebrix_wgpu.so` `3fb3a382...` loaded as shipped |
+| Native build (dependencies, host, all device gates, oracle runner) | passed: 18 components in 806 s; 65 artifacts in 2,572 s; CPU kernels at the fixed baseline (`-ffp-contract=off -fno-reciprocal-math`, no `-march`/`-mcpu`) |
+| Generated WGSL | byte-identical to the Linux x64 reference overlay (`linux-x64-docker-reference-20261027`) once the F1 fix is accounted for: at HEAD only the 3 modules embedding it differ; with the pre-fix `wavefront_shader_data.wgsl` all 19 files match |
+| P2, libm probe | glibc 2.41 on ARM64 bit-identical to Linux x64 glibc for all 11 functions (same result digests); 99 s |
+| Native host gate: binary review | passed: 48 exports, loader closure within the build, the prefix, the pinned runtime and the C/C++ runtime only; 547 system headers, all from `libc6-dev`, `libstdc++-14-dev`, `libgcc-14-dev`, `linux-libc-dev` |
+| CPU references, consumers, colour reloads, concurrency | passed: 1,568 same-target films bitwise identical |
+| `gpu`, `gpu-exit` (first WebGPU lifecycle on the V3D) | **passed**: 11 GPU films against the CPU Session references, 0 practical failures, 0 strict differences, max 1.19e-7; repeats bitwise identical |
+| ABI test, GPU | stopped while compiling (L2); its `base` film (max 3.0e-8, 0 strict) and four light films (max 1.5e-5; 159/22/1/0 strict differences, reported, as on Linux x64 Intel) pass the practical criterion; the motion films were not reached |
+| Example, driver coverage, cross-platform CPU comparison, device gates, oracle corpus, managed tests, glTF client | **not reached** (L2) |
+| P4, Samsung triangle sampler | not run: needs the Samsung device-run inputs of the same commit, which are not on the Pi |
+
+### L1. The host refused the V3D: downlevel adapter limits (fixed 2026-10-28)
+
+**Symptom.** `codebrix_host_gpu_test` exited with `cbc_host_create(&config,
+&host) returned 2: Requested device is unavailable`, nothing else.
+
+**Cause.** wgpu treats the V3D 7.1 as a downlevel adapter (not fully WebGPU
+compliant) and gives a device its downlevel defaults for every limit the
+request leaves undefined. The host requested only the two buffer-size limits,
+so the device got `maxStorageBuffersPerShaderStage` 4 (WebGPU default 8), and
+`cbc::Device` then refused it ("Seven storage bindings required"), although the
+adapter supports 8. Also lower than the WebGPU defaults: `maxUniformBufferBindingSize`
+16,384 (65,536) and `maxComputeWorkgroupStorageSize` 16,352 (16,384). Found with a
+scratch probe against the shipped runtime (`probe/` in the evidence). No other
+platform's GPU is downlevel, so none met it.
+
+**Fix** (`native/src/webgpu_device.cpp`): those three limits are requested at
+the WebGPU default, capped at what the adapter supports. A compliant adapter
+gets exactly its defaults, so Intel, Adreno, Apple and NVIDIA devices are
+unchanged (not rerun on those platforms; a host gate there after the change
+confirms it). With the fix the V3D device has 8 storage buffers per stage and
+the lifecycle passes.
+
+**Error reporting** (`native/cycles/device.cpp`, `native/host/cycles_host.cpp`):
+the WebGPU device's own reason was discarded during device enumeration, which
+is why L1 (and Windows F8, an ABI mismatch) showed only "Requested device is
+unavailable". The message now carries it, for example "Requested device is
+unavailable: Seven storage bindings required". Compiled only into WebGPU builds.
+
+### L2. V3DV compiles the Cycles kernels very slowly (open)
+
+Mesa's V3D compiler takes minutes to hours per pipeline, cold. The GPU
+lifecycle test (8 pipelines) took 4,571 s cold and 17.6 s warm:
+
+| Pipeline (lifecycle test, alone) | Cold compile | Linux x64 Intel (median of genuine cold compiles in the evidence) |
+|---|---|---|
+| `intersect_closest` | 1,269 s | - |
+| `prepare_surface` | 1,208 s | 16.2 s |
+| `shade_surface_light` | 723 s | 3.0 s |
+| `connect_surface_light` | 670 s | 5.8 s |
+| `shade_surface` | 242 s | 7.0 s |
+| `prepare_shader_data` | 236 s | 1.6 s |
+| `shade_background` | 158 s | 4.1 s |
+| `init_camera` | 40 s | - |
+
+That is 35 to 240 times Intel, about 100 times overall. Other scene
+specializations were slower still in the 10-hour run, with three compiles sharing the
+four cores (so contended): `prepare_surface` for `linux-gates/glass-render`
+11,015 s, `shade_surface_light_triangle` (ABI test) 10,303 s,
+`connect_surface_light` (glass-render) 7,289 s. The kernel log of the window has
+no V3D errors or resets, and nothing swapped. Each Vulkan pipeline reaches the
+driver with every function inlined (130 to 500 KB of WGSL per entry point); why
+the V3D backend scales so badly with that size was not profiled.
+
+Mesa's on-disk shader cache works on V3DV: warm, every lifecycle pipeline loads
+in 2 to 10 ms and the film is byte-identical to the cold run's. A consumer pays
+the cold compile once per scene specialization and Mesa version, not per frame
+or per render job. Validation that completes on this device therefore needs
+either days of unattended cold compiling (estimated 2 to 5 days serial for the
+gate set, from the Intel compile totals of a validation round) or smaller
+kernels. Proposed, not done: create pipelines concurrently (Mesa compiles each on
+one core); split the largest entry points further, as was done for the Android
+compilers; use the runtime's new Vulkan pipeline-cache exports (the maintainer
+decision in MAINTAINER-README.txt) so applications can ship or pre-warm caches.
+
+### Notes from the run
+
+- **N1. Native system headers.** On Debian the native `/usr/include/<triple>/asm`
+  resolves into `/usr/lib/linux/uapi` (`linux-libc-dev`). The native binary review
+  accepts that directory and additionally requires every system header to belong
+  to one of the four toolchain packages (`dpkg -S`) and every system library in
+  the loader closure to be part of the C/C++ runtime. The Pi has
+  `zlib1g-dev`, `libpng-dev` and `libexpat1-dev` installed; no compile used them.
+- **N2. The non-GPU managed test filter is not GPU-free.** `-noclass
+  CodeBrix.Graphics3D.Cycles.Tests.GpuRenderTests` (TESTING-WINDOWS-ARM64.md, step 2)
+  still runs `WebGpuAmbientOcclusionTests`, which renders on the GPU; on the Pi it
+  was cold-compiling after 10 minutes and the run was stopped. Exclude that class
+  too where GPU compiles are slow.
+- **N3. Build records include the gate scripts.** `render_gate.inputs()` hashes the
+  whole tree outside `work/` and `evidence/`, so editing any tool (a gate script
+  included) makes the next gate refuse the build record; an incremental
+  `build_cycles_linux_arm64.py` rerun (about 65 s) re-records it.
+- **N4.** The host gates write `comparisons.json` only when they end; a gate stopped
+  from outside leaves its comparisons unwritten (the lanes run's manual-stop
+  record compares the films that exist).
+
+## Native build on the device
+
+Since 2026-10-28 the Linux ARM64 recipes also run natively on an ARM64 Linux
+machine and choose that mode by themselves (`platform.machine()` aarch64): the
+system GCC 14 (`/usr/bin/gcc-14`, `/usr/bin/g++-14`) and glibc, no emulator, a
+toolchain file that sets only the compilers. The cross-build on Linux x64 is
+unchanged (its identity record is the same). The WebGPU runtime is never built:
+the host takes the package's `libcodebrix_wgpu.so` from the NuGet cache and
+records its SHA-256.
+
+Requirements on the Pi, beyond section 2: `gcc-14`/`g++-14`, `clang` (the WGSL
+translation's AST dump), `cmake`, `make`, `time`, the .NET 10 SDK for the managed
+steps, and the package (`dotnet restore research/GpuProbe/GpuProbe.csproj`).
+
+```sh
+python3 tools/dependencies/build_linux_arm64.py --jobs 4
+python3 native/tools/build_cycles_linux_arm64.py --jobs 4 --device-set
+export MESA_SHADER_CACHE_DIR=$PWD/native/work/<run>/mesa-cache MESA_SHADER_CACHE_MAX_SIZE=8G
+python3 native/tools/linux_arm64_host_gate.py --output native/work/linux-arm64-validation-<n> \
+  --references native/evidence/linux-x64-docker-reference-20261027/host-gate-cpu-only \
+  --device-gates [--step-timeout <seconds>]
+python3 native/tools/linux_arm64_lanes.py --output native/work/linux-arm64-lanes-<n> --cap-seconds 36000
+```
+
+- `--device-set` builds the default set, every device gate of section 4, the
+  extra host tests and (natively) the oracle runner; it replaces the explicit
+  `--target` list of section 3 and can be rerun.
+- The host gate's native mode adds the GPU steps of `host_gate.py` and
+  `windows_host_gate.py` (lifecycle, ABI, example on `CBC_HOST_GPU`, against the
+  same-host CPU references), checks that the adapter is hardware Vulkan, renders
+  the four driver-coverage scenes and, with `--device-gates`, runs every built
+  gate and counts its JSON verdict (on the Pi the gate's in-process glibc
+  reference is the judge, section 5). `--step-timeout` (default 3,600 s) bounds
+  each GPU step; it never changes a result.
+- `linux_arm64_lanes.py` runs jobs in parallel lanes under one cap, in the job form
+  of section 4, sharing the Mesa cache (default lanes: driver coverage; the host
+  gate and one gate per family; Principled and nodes). Concurrent walls are
+  contended.
+- `render_oracles.py` has the backends `cpu-arm64-linux` and
+  `wgsl-linux-arm64-vulkan` and records the board model and `vulkaninfo`; the
+  corpus has not been rendered on the Pi yet.
+- The managed tests load `native/work/linux/linux-arm64/host/build/lib/libcodebrix_cycles_host.so`
+  on Linux ARM64 (its RUNPATH names the prefix and the package's runtime).
+
+## Device run 2026-10-28 (run record)
+
+On HEAD `9388e9878` with the uncommitted Linux ARM64 work (the native recipes,
+the gate and lane runner, L1). Walls on the Pi; `native/work/` names given for
+reference.
+
+| Step | Wall | Result | Evidence subdirectory | `native/work/` |
+|---|---|---|---|---|
+| Package restore and hash check | 39 s | passed | `README.md` | - |
+| P2 libm probe | 99 s | passed (diagnostic) | `device-runs/libm-*` | `linux-arm64-device-1` |
+| Dependency prefix | 806 s | passed | `build/dependencies-*` | `linux/linux-arm64/dependencies` |
+| Host, gates, oracle runner (`--device-set`) | 2,572 s | passed | `build/host-*`, `build/invocation.json` | `linux/linux-arm64/host` |
+| Gate run 1 | 17 s | stopped: binary review, kernel UAPI header (N1) | `stopped-attempts/gate-run-1` | `linux-arm64-validation-1` |
+| Gate run 2 | 16 s | stopped: build record stale (N3) | `stopped-attempts/gate-run-2` | `linux-arm64-validation-2` |
+| Gate run 3 | 73 s | failed: `gpu`, L1 | `stopped-attempts/gate-run-3` | `linux-arm64-validation-3` |
+| L1 fix, rebuild; `gpu` alone | 1,800 s | stopped at 3 x the P3 budget while compiling (L2) | `stopped-attempts/gpu-first-try-after-L1` | - |
+| `gpu` cold, empty Mesa cache | 4,571 s | passed (its own checks) | `device-runs/gpu-cold` | `linux-arm64-device-1/gpu-cold` |
+| `gpu` warm | 17.6 s | passed; film byte-identical to the cold run | `device-runs/gpu-warm` | `linux-arm64-device-1/gpu-warm` |
+| Managed build (SDK 10.0.403) | 63 s | 0 warnings, 0 errors | `device-runs/managed-build.output.txt` | - |
+| Managed tests without `GpuRenderTests` | 631 s | stopped (N2) | `device-runs/tests-nongpu-stopped-1.output.txt` | - |
+| Gate run 4 (`--device-gates`, warm cache) | 3,693 s | stopped at `abi-gpu` (3,600 s limit, L2); every earlier step passed | `gate-run-4` | `linux-arm64-validation-4` |
+| Lanes run (10-hour cap) | 34,215 s | stopped at the maintainer's request after 9.5 hours: every lane still on its first job (L2) | `lanes-1` (`manual-stop.json`) | `linux-arm64-lanes-1` |
+
+Next on this device, when wanted: the jobs of the lanes run continue from the
+populated Mesa cache (`native/work/linux-arm64-device-1/mesa-cache`), so a run
+without a cap, or a later run after an L2 change, does not repeat the compiles
+already made; then the managed tests (excluding `WebGpuAmbientOcclusionTests`
+first, N2), the glTF client and the oracle corpus.
 
 ## 1. Purpose and evidence produced
 
@@ -43,7 +234,8 @@ Pins (the build scripts check them; do not change them):
 Two machines take part. The Pi runs the binaries; it does not build the
 renderer.
 
-**MISSING:** a native build on the Pi. `tools/build.py` refuses any machine
+**Resolved 2026-10-28** ("Native build on the device"): the Linux ARM64 recipes
+build natively on the Pi. The original note: **MISSING:** a native build on the Pi. `tools/build.py` refuses any machine
 other than Linux x86_64, and the Linux ARM64 recipes are cross-builds that
 expect the x64 machine's cross compiler, target SDK and QEMU
 (`tools/dependencies/build_linux_arm64.py` records `buildHost` linux-x64). A
@@ -210,7 +402,11 @@ and its `run.library.txt` (`run/library.txt` for the image gates) names the
 `CODEBRIX_CYCLES_PIPELINE_BUDGET_ACTION` or `CODEBRIX_CYCLES_SHADER_SPECIALIZATION`
 to make a job pass.
 
-**MISSING:** a Linux ARM64 device runner. The Linux x64 gate scripts in
+**Partly resolved 2026-10-28:** `linux_arm64_host_gate.py --device-gates` runs every
+built gate natively and counts its JSON verdict, and `linux_arm64_lanes.py` runs
+jobs in this form with walls, exits and kernel logs; the per-gate count
+assertions of the x64 scripts and the job table's arguments for every row are not
+applied yet. The original note: **MISSING:** a Linux ARM64 device runner. The Linux x64 gate scripts in
 `native/tools/` (for example `triangle_lighting_gate.py`, `principled_gate.py`)
 run only the x64 build under `native/work/cycles-build`, and the Android
 corpus runner that mirrors their assertions, enforces budgets and checks
@@ -281,6 +477,8 @@ form above, replacing the gate path with the host executable:
 `gpu` is the first real WebGPU lifecycle on the Pi's GPU: its report must show
 `explicitWebGpu` and `repeatStrictCriterionPassed`.
 
+**Resolved 2026-10-28:** `linux_arm64_host_gate.py` has a native mode with the
+GPU-versus-CPU comparisons ("Native build on the device"). The original note:
 **MISSING:** a native (non-QEMU) Linux ARM64 host gate.
 `native/tools/linux_arm64_host_gate.py` runs every executable through
 `/usr/bin/qemu-aarch64` with the cross SDK and reviews ELF files with the
@@ -381,6 +579,8 @@ native/work/linux/linux-arm64/oracle-build/codebrix_cycles_oracle \
 
 and the same with `--backend webgpu`.
 
+**Resolved 2026-10-28, not yet run:** `render_oracles.py` has `cpu-arm64-linux` and
+`wgsl-linux-arm64-vulkan` and records the board model. The original note:
 **MISSING:** Linux ARM64 backends in `native/oracle/render_oracles.py`. Its
 backend list holds only the macOS and Linux x64 names, so the corpus loop,
 `meta.json` enrichment, per-scene comparisons and bundling are not available
@@ -391,7 +591,9 @@ platform.
 
 **P9, managed tests.** Not run on the Pi: the test project's
 `NativeHostLibrary` loads only the Linux x64 host and skips every native test
-on ARM64. **MISSING:** a linux-arm64 branch in
+on ARM64. **Resolved 2026-10-28:** `RepositoryPaths.cs` now has the branch
+(the build only; the tests were not run to completion, N2). The original note:
+**MISSING:** a linux-arm64 branch in
 `tests/CodeBrix.Graphics3D.Cycles.Tests/NativeHostLibrary.cs` loading
 `native/work/linux/linux-arm64/host/build/lib/libcodebrix_cycles_host.so`;
 until it exists, a managed run on the Pi proves only that the tests skip.

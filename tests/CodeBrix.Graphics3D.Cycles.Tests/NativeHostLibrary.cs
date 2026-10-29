@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 namespace CodeBrix.Graphics3D.Cycles.Tests;
 
 // Points the library's P/Invokes at the native host built in this working tree for
-// this platform (Linux x64, macOS arm64 or x64, Windows x64 or ARM64). When it is absent the native tests skip
+// this platform (Linux x64 or ARM64, macOS arm64 or x64, Windows x64 or ARM64). When it is absent the native tests skip
 // with SkipReason instead of failing.
 internal static class NativeHostLibrary
 {
@@ -50,7 +50,7 @@ internal static class NativeHostLibrary
         if (RepositoryPaths.Root == null)
             return "The tests are not running from inside the repository working tree, so the native host cannot be located.";
         if (RepositoryPaths.NativeHostLibrary == null)
-            return "The native-host tests run on Linux x64, Windows x64/ARM64 and macOS x64 (WebGPU) and macOS arm64 (Metal), where the native host is built in-tree.";
+            return "The native-host tests run on Linux x64/ARM64, Windows x64/ARM64 and macOS x64 (WebGPU) and macOS arm64 (Metal), where the native host is built in-tree.";
         if (!File.Exists(RepositoryPaths.NativeHostLibrary))
             return "The native host has not been built: " + RepositoryPaths.NativeHostLibrary
                 + " is missing. Build it with `" + RepositoryPaths.NativeHostBuildCommand + "` (see MAINTAINER-README.txt).";

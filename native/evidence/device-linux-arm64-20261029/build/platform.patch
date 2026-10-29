@@ -1,0 +1,43 @@
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -1,3 +1,5 @@
++# Copyright (c) 2026 Jeremy Ellis and contributors
++# Linux ARM64 cross-target adaptation; upstream notices follow.
+ # Modified by CodeBrix: remove excluded atomic include roots and standalone application build.
+ # Copyright (c) 2026 Jeremy Ellis and contributors
+ # SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+@@ -41,7 +43,7 @@
+     -DWITH_KERNEL_NATIVE
+   )
+ 
+-  if(NOT MSVC)
++  if(NOT MSVC AND NOT CMAKE_CROSSCOMPILING)
+     add_check_cxx_compiler_flags(
+       CMAKE_CXX_FLAGS
+       _has_march_native "-march=native"
+@@ -52,7 +54,7 @@
+       string(APPEND CMAKE_CXX_FLAGS "")
+     endif()
+     unset(_has_march_native)
+-  else()
++  elseif(MSVC)
+     if(NOT MSVC_NATIVE_ARCH_FLAGS)
+       try_run(
+         arch_run_result
+--- a/src/util/half.h
++++ b/src/util/half.h
+@@ -1,8 +1,14 @@
++// Copyright (c) 2026 Jeremy Ellis and contributors
++// Linux ARM64 cross-target adaptation; upstream notices follow.
+ /* SPDX-FileCopyrightText: 2011-2026 Blender Foundation
+  *
+  * SPDX-License-Identifier: Apache-2.0 */
+ 
+ #pragma once
++
++#if defined(__ARM_NEON) && !defined(__KERNEL_GPU__)
++#  include <arm_neon.h>
++#endif
+ 
+ #include "util/defines.h"
+ #include "util/math_base.h"

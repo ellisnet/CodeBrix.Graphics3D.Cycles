@@ -1,0 +1,204 @@
+$ cat /proc/device-tree/model
+Raspberry Pi 5 Model B Rev 1.1
+$ uname -a
+Linux rpi5 6.18.50+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.50-1+rpt1 (2026-09-11) aarch64 GNU/Linux
+
+$ cat /etc/os-release
+PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+NAME="Debian GNU/Linux"
+VERSION_ID="13"
+VERSION="13 (trixie)"
+VERSION_CODENAME=trixie
+DEBIAN_VERSION_FULL=13.7
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+
+$ ldd --version
+ldd (Debian GLIBC 2.41-12+rpt1+deb13u4) 2.41
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Written by Roland McGrath and Ulrich Drepper.
+
+$ lscpu
+Architecture:                            aarch64
+CPU op-mode(s):                          32-bit, 64-bit
+Byte Order:                              Little Endian
+CPU(s):                                  4
+On-line CPU(s) list:                     0-3
+Vendor ID:                               ARM
+Model name:                              Cortex-A76
+Model:                                   1
+Thread(s) per core:                      1
+Core(s) per cluster:                     4
+Socket(s):                               -
+Cluster(s):                              1
+Stepping:                                r4p1
+Frequency boost:                         disabled
+CPU(s) scaling MHz:                      100%
+CPU max MHz:                             2400.0000
+CPU min MHz:                             1500.0000
+BogoMIPS:                                108.00
+Flags:                                   fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm lrcpc dcpop asimddp
+L1d cache:                               256 KiB (4 instances)
+L1i cache:                               256 KiB (4 instances)
+L2 cache:                                2 MiB (4 instances)
+L3 cache:                                2 MiB (1 instance)
+NUMA node(s):                            8
+NUMA node0 CPU(s):                       0-3
+NUMA node1 CPU(s):                       0-3
+NUMA node2 CPU(s):                       0-3
+NUMA node3 CPU(s):                       0-3
+NUMA node4 CPU(s):                       0-3
+NUMA node5 CPU(s):                       0-3
+NUMA node6 CPU(s):                       0-3
+NUMA node7 CPU(s):                       0-3
+Vulnerability Gather data sampling:      Not affected
+Vulnerability Ghostwrite:                Not affected
+Vulnerability Indirect target selection: Not affected
+Vulnerability Itlb multihit:             Not affected
+Vulnerability L1tf:                      Not affected
+Vulnerability Mds:                       Not affected
+Vulnerability Meltdown:                  Not affected
+Vulnerability Mmio stale data:           Not affected
+Vulnerability Old microcode:             Not affected
+Vulnerability Reg file data sampling:    Not affected
+Vulnerability Retbleed:                  Not affected
+Vulnerability Spec rstack overflow:      Not affected
+Vulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
+Vulnerability Spectre v1:                Mitigation; __user pointer sanitization
+Vulnerability Spectre v2:                Mitigation; CSV2, BHB
+Vulnerability Srbds:                     Not affected
+Vulnerability Tsa:                       Not affected
+Vulnerability Tsx async abort:           Not affected
+Vulnerability Vmscape:                   Not affected
+
+$ free -h
+Mem:            15Gi       1.7Gi       8.8Gi       113Mi       5.6Gi        14Gi
+Swap:          2.0Gi          0B       2.0Gi
+
+$ vulkaninfo --summary
+WARNING: [../src/intel/vulkan/anv_physical_device.c:2836] Code 0 : Unable to open device : No such file or directory (VK_ERROR_INCOMPATIBLE_DRIVER)
+==========
+VULKANINFO
+==========
+
+Vulkan Instance Version: 1.4.309
+
+
+Instance Extensions: count = 25
+-------------------------------
+VK_EXT_acquire_drm_display             : extension revision 1
+VK_EXT_acquire_xlib_display            : extension revision 1
+VK_EXT_debug_report                    : extension revision 10
+VK_EXT_debug_utils                     : extension revision 2
+VK_EXT_direct_mode_display             : extension revision 1
+VK_EXT_display_surface_counter         : extension revision 1
+VK_EXT_headless_surface                : extension revision 1
+VK_EXT_layer_settings                  : extension revision 2
+VK_EXT_surface_maintenance1            : extension revision 1
+VK_EXT_swapchain_colorspace            : extension revision 5
+VK_KHR_device_group_creation           : extension revision 1
+VK_KHR_display                         : extension revision 23
+VK_KHR_external_fence_capabilities     : extension revision 1
+VK_KHR_external_memory_capabilities    : extension revision 1
+VK_KHR_external_semaphore_capabilities : extension revision 1
+VK_KHR_get_display_properties2         : extension revision 1
+VK_KHR_get_physical_device_properties2 : extension revision 2
+VK_KHR_get_surface_capabilities2       : extension revision 1
+VK_KHR_portability_enumeration         : extension revision 1
+VK_KHR_surface                         : extension revision 25
+VK_KHR_surface_protected_capabilities  : extension revision 1
+VK_KHR_wayland_surface                 : extension revision 6
+VK_KHR_xcb_surface                     : extension revision 6
+VK_KHR_xlib_surface                    : extension revision 6
+VK_LUNARG_direct_driver_loading        : extension revision 1
+
+Instance Layers: count = 5
+--------------------------
+VK_LAYER_INTEL_nullhw       INTEL NULL HW                                                1.1.73   version 1
+VK_LAYER_MESA_anti_lag      Open-source implementation of the VK_AMD_anti_lag extension. 1.4.303  version 1
+VK_LAYER_MESA_device_select Linux device selection layer                                 1.4.303  version 1
+VK_LAYER_MESA_overlay       Mesa Overlay layer                                           1.4.303  version 1
+VK_LAYER_MESA_screenshot    Mesa Screenshot layer                                        1.4.303  version 1
+
+Devices:
+========
+GPU0:
+	apiVersion         = 1.3.354
+	driverVersion      = 26.2.2
+	vendorID           = 0x14e4
+	deviceID           = 0x55701c33
+	deviceType         = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+	deviceName         = V3D 7.1.10.2
+	driverID           = DRIVER_ID_MESA_V3DV
+	driverName         = V3DV Mesa
+	driverInfo         = Mesa 26.2.2-1~bpo13+0~rpt1
+	conformanceVersion = 1.3.8.3
+	deviceUUID         = c967cc88-8d9e-4e15-98fa-ecced82669b4
+	driverUUID         = 477cb40a-d36d-d9c5-e36b-504115e30234
+GPU1:
+	apiVersion         = 1.4.354
+	driverVersion      = 26.2.2
+	vendorID           = 0x10005
+	deviceID           = 0x0000
+	deviceType         = PHYSICAL_DEVICE_TYPE_CPU
+	deviceName         = llvmpipe (LLVM 19.1.7, 128 bits)
+	driverID           = DRIVER_ID_MESA_LLVMPIPE
+	driverName         = llvmpipe
+	driverInfo         = Mesa 26.2.2-1~bpo13+0~rpt1 (LLVM 19.1.7)
+	conformanceVersion = 1.3.1.1
+	deviceUUID         = 6d657361-3236-2e32-2e32-2d317e627000
+	driverUUID         = 6c6c766d-7069-7065-5555-494400000000
+
+$ dpkg -s mesa-vulkan-drivers libvulkan1
+Package: mesa-vulkan-drivers
+Status: install ok installed
+Architecture: arm64
+Version: 26.2.2-1~bpo13+0~rpt1
+
+Package: libvulkan1
+Status: install ok installed
+Architecture: arm64
+Version: 1.4.309.0-1
+
+$ gcc-14 --version
+gcc-14 (Debian 14.2.0-19) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+$ g++-14 --version
+g++-14 (Debian 14.2.0-19) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+$ clang++ --version
+Debian clang version 19.1.7 (3+b1)
+Target: aarch64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+
+$ cmake --version
+cmake version 3.31.6
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+
+$ python3 --version
+Python 3.13.5
+
+$ dotnet --version
+10.0.403
+
+$ git rev-parse HEAD
+9388e98789de8fe5a72c5b573541384427435bcd
+
+$ git status --porcelain
+?? native/evidence/device-linux-arm64-20261029/
+?? native/tools/linux_arm64_lanes.py
+

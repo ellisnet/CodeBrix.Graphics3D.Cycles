@@ -1,0 +1,729 @@
+{
+  "started": "2026-10-28T21:20:07.058222-07:00",
+  "stoppedByMaintainer": "2026-10-29T06:50:22-07:00",
+  "capSeconds": 36000,
+  "reason": "Stopped at the maintainer's request about 30 minutes before the 10-hour cap: every lane was still cold-compiling its first job, so no further job could start before the cap (docs/TESTING-LINUX-ARM64.md, L2).",
+  "mesaShaderCacheDir": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-device-1/mesa-cache",
+  "jobs": {
+    "coverage-smooth-shading": {
+      "lane": "A",
+      "spec": "coverage:smooth-shading",
+      "scene": "native/oracle/scenes/linux-gates/glass-render.json",
+      "elapsedSeconds": 34215,
+      "cpu": {
+        "exit": "0",
+        "wallSeconds": 0.12,
+        "film": {
+          "width": 64,
+          "height": 48,
+          "samples": 8,
+          "threads": 2,
+          "renderSeconds": [
+            0.0453138,
+            0.030267
+          ],
+          "repeatBitwiseIdentical": true,
+          "filmSha256": [
+            "e5c037862eac8cb738da6c62dc1c04daff90d25adf197d8eedefa47032c4a5ce",
+            "e5c037862eac8cb738da6c62dc1c04daff90d25adf197d8eedefa47032c4a5ce"
+          ]
+        }
+      },
+      "gpu": {
+        "outcome": "stopped while compiling",
+        "pipelinesCompiled": [
+          {
+            "module": "camera",
+            "entry": "init_camera",
+            "compileSeconds": 0.0,
+            "wgslBytes": 66565,
+            "inlinedBytes": 217655,
+            "tier": "full"
+          },
+          {
+            "module": "closest",
+            "entry": "intersect_closest",
+            "compileSeconds": 0.0,
+            "wgslBytes": 91738,
+            "inlinedBytes": 218499,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_shader_data",
+            "compileSeconds": 500.5,
+            "wgslBytes": 310780,
+            "inlinedBytes": 238343,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_surface",
+            "compileSeconds": 11014.8,
+            "wgslBytes": 310780,
+            "inlinedBytes": 260671,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light",
+            "compileSeconds": 1708.6,
+            "wgslBytes": 310780,
+            "inlinedBytes": 499733,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "connect_surface_light",
+            "compileSeconds": 7288.6,
+            "wgslBytes": 310780,
+            "inlinedBytes": 296815,
+            "tier": "full"
+          }
+        ]
+      }
+    },
+    "host-gate": {
+      "lane": "B",
+      "spec": "host-gate",
+      "elapsedSeconds": 34215,
+      "completedSteps": "binary review, CPU references, consumers, colour reloads, concurrency, gpu and gpu-exit (each exited 0 with its own checks passed; the film comparisons of this run were not written, because the gate saves comparisons.json only when it ends, so the GPU film evidence is gate run 4: 11 films, 0 practical failures, 0 strict differences, max 1.19e-7), abi-cpu",
+      "inFlight": {
+        "step": "abi-gpu",
+        "elapsedSeconds": 34018,
+        "outcome": "stopped while compiling",
+        "pipelinesCompiled": [
+          {
+            "module": "camera",
+            "entry": "init_camera",
+            "compileSeconds": 0.0,
+            "wgslBytes": 66565,
+            "inlinedBytes": 217655,
+            "tier": "full"
+          },
+          {
+            "module": "closest",
+            "entry": "intersect_closest",
+            "compileSeconds": 0.0,
+            "wgslBytes": 91738,
+            "inlinedBytes": 218499,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_background",
+            "compileSeconds": 0.0,
+            "wgslBytes": 242025,
+            "inlinedBytes": 134799,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_shader_data",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 238343,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 173502,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 499733,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "connect_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 208103,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 222627,
+            "tier": "full"
+          },
+          {
+            "module": "camera",
+            "entry": "init_camera",
+            "compileSeconds": 0.0,
+            "wgslBytes": 66565,
+            "inlinedBytes": 217655,
+            "tier": "full"
+          },
+          {
+            "module": "closest",
+            "entry": "intersect_closest",
+            "compileSeconds": 0.0,
+            "wgslBytes": 91738,
+            "inlinedBytes": 218499,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_background",
+            "compileSeconds": 0.0,
+            "wgslBytes": 242025,
+            "inlinedBytes": 134799,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_shader_data",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 238343,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 173502,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 499733,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "connect_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 208103,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 222627,
+            "tier": "full"
+          },
+          {
+            "module": "camera",
+            "entry": "init_camera",
+            "compileSeconds": 0.0,
+            "wgslBytes": 66565,
+            "inlinedBytes": 217655,
+            "tier": "full"
+          },
+          {
+            "module": "closest",
+            "entry": "intersect_closest",
+            "compileSeconds": 0.0,
+            "wgslBytes": 91738,
+            "inlinedBytes": 218499,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_background",
+            "compileSeconds": 0.0,
+            "wgslBytes": 242025,
+            "inlinedBytes": 134799,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_shader_data",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 238343,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 173502,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 499733,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "connect_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 208103,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 310376,
+            "inlinedBytes": 222627,
+            "tier": "full"
+          },
+          {
+            "module": "camera",
+            "entry": "init_camera",
+            "compileSeconds": 0.0,
+            "wgslBytes": 66565,
+            "inlinedBytes": 217655,
+            "tier": "full"
+          },
+          {
+            "module": "closest",
+            "entry": "intersect_closest",
+            "compileSeconds": 0.0,
+            "wgslBytes": 91738,
+            "inlinedBytes": 218499,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_background",
+            "compileSeconds": 0.0,
+            "wgslBytes": 242025,
+            "inlinedBytes": 134799,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_shader_data",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312537,
+            "inlinedBytes": 238343,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312537,
+            "inlinedBytes": 173502,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312537,
+            "inlinedBytes": 498204,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light_triangle",
+            "compileSeconds": 10302.9,
+            "wgslBytes": 312537,
+            "inlinedBytes": 428889,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "connect_surface_light",
+            "compileSeconds": 1748.7,
+            "wgslBytes": 312537,
+            "inlinedBytes": 208277,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312537,
+            "inlinedBytes": 222627,
+            "tier": "full"
+          },
+          {
+            "module": "shadow",
+            "entry": "intersect_shadow",
+            "compileSeconds": 1798.3,
+            "wgslBytes": 209635,
+            "inlinedBytes": 215397,
+            "tier": "full"
+          },
+          {
+            "module": "shadow",
+            "entry": "shade_shadow",
+            "compileSeconds": 0.2,
+            "wgslBytes": 209635,
+            "inlinedBytes": 19801,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_light_forward",
+            "compileSeconds": 6.2,
+            "wgslBytes": 242025,
+            "inlinedBytes": 55271,
+            "tier": "full"
+          },
+          {
+            "module": "camera",
+            "entry": "init_camera",
+            "compileSeconds": 0.0,
+            "wgslBytes": 66565,
+            "inlinedBytes": 217655,
+            "tier": "full"
+          },
+          {
+            "module": "closest",
+            "entry": "intersect_closest",
+            "compileSeconds": 0.0,
+            "wgslBytes": 91738,
+            "inlinedBytes": 218499,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_background",
+            "compileSeconds": 0.0,
+            "wgslBytes": 242118,
+            "inlinedBytes": 134799,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_shader_data",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 238343,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 173502,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light",
+            "compileSeconds": 6822.6,
+            "wgslBytes": 312686,
+            "inlinedBytes": 702826,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light_triangle",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 428889,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "connect_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 208277,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 222627,
+            "tier": "full"
+          },
+          {
+            "module": "shadow",
+            "entry": "intersect_shadow",
+            "compileSeconds": 0.0,
+            "wgslBytes": 209635,
+            "inlinedBytes": 215397,
+            "tier": "full"
+          },
+          {
+            "module": "shadow",
+            "entry": "shade_shadow",
+            "compileSeconds": 0.0,
+            "wgslBytes": 209635,
+            "inlinedBytes": 19801,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_light_forward",
+            "compileSeconds": 135.4,
+            "wgslBytes": 242118,
+            "inlinedBytes": 259746,
+            "tier": "full"
+          },
+          {
+            "module": "camera",
+            "entry": "init_camera",
+            "compileSeconds": 1134.8,
+            "wgslBytes": 66592,
+            "inlinedBytes": 348221,
+            "tier": "full"
+          },
+          {
+            "module": "closest",
+            "entry": "intersect_closest",
+            "compileSeconds": 0.0,
+            "wgslBytes": 91738,
+            "inlinedBytes": 218499,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_background",
+            "compileSeconds": 0.0,
+            "wgslBytes": 242118,
+            "inlinedBytes": 134799,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_shader_data",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 238343,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "prepare_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 173502,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 702826,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light_triangle",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 428889,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "connect_surface_light",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 208277,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface",
+            "compileSeconds": 0.0,
+            "wgslBytes": 312686,
+            "inlinedBytes": 222627,
+            "tier": "full"
+          },
+          {
+            "module": "camera",
+            "entry": "init_camera",
+            "compileSeconds": 0.0,
+            "wgslBytes": 66592,
+            "inlinedBytes": 348221,
+            "tier": "full"
+          }
+        ],
+        "pipelinesNote": "pipelinesCompiled lists every pipeline log entry of the gate, including the warm gpu and gpu-exit steps; the abi-gpu share is the entries over 1 s",
+        "coldPipelines": [
+          {
+            "module": "surface",
+            "entry": "shade_surface_light_triangle",
+            "compileSeconds": 10302.9,
+            "wgslBytes": 312537,
+            "inlinedBytes": 428889,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "connect_surface_light",
+            "compileSeconds": 1748.7,
+            "wgslBytes": 312537,
+            "inlinedBytes": 208277,
+            "tier": "full"
+          },
+          {
+            "module": "shadow",
+            "entry": "intersect_shadow",
+            "compileSeconds": 1798.3,
+            "wgslBytes": 209635,
+            "inlinedBytes": 215397,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_light_forward",
+            "compileSeconds": 6.2,
+            "wgslBytes": 242025,
+            "inlinedBytes": 55271,
+            "tier": "full"
+          },
+          {
+            "module": "surface",
+            "entry": "shade_surface_light",
+            "compileSeconds": 6822.6,
+            "wgslBytes": 312686,
+            "inlinedBytes": 702826,
+            "tier": "full"
+          },
+          {
+            "module": "background",
+            "entry": "shade_light_forward",
+            "compileSeconds": 135.4,
+            "wgslBytes": 242118,
+            "inlinedBytes": 259746,
+            "tier": "full"
+          },
+          {
+            "module": "camera",
+            "entry": "init_camera",
+            "compileSeconds": 1134.8,
+            "wgslBytes": 66592,
+            "inlinedBytes": 348221,
+            "tier": "full"
+          }
+        ],
+        "gpuFilmsWrittenBeforeStop": [
+          {
+            "film": "base",
+            "floats": 3072,
+            "finite": true,
+            "maximumAbsoluteError": 2.9802322387695312e-08,
+            "practicalFailures": 0,
+            "strictDifferences": 0,
+            "criterion": "practical required and strict required"
+          },
+          {
+            "film": "object-motion",
+            "gpuFilm": "not written before the stop"
+          },
+          {
+            "film": "deforming",
+            "gpuFilm": "not written before the stop"
+          },
+          {
+            "film": "light-pointlight",
+            "floats": 3072,
+            "finite": true,
+            "maximumAbsoluteError": 1.52587890625e-05,
+            "practicalFailures": 0,
+            "strictDifferences": 159,
+            "criterion": "practical required"
+          },
+          {
+            "film": "light-spotlight",
+            "floats": 3072,
+            "finite": true,
+            "maximumAbsoluteError": 1.1444091796875e-05,
+            "practicalFailures": 0,
+            "strictDifferences": 22,
+            "criterion": "practical required"
+          },
+          {
+            "film": "light-arealight",
+            "floats": 3072,
+            "finite": true,
+            "maximumAbsoluteError": 2.384185791015625e-07,
+            "practicalFailures": 0,
+            "strictDifferences": 1,
+            "criterion": "practical required"
+          },
+          {
+            "film": "light-sunlight",
+            "floats": 3072,
+            "finite": true,
+            "maximumAbsoluteError": 1.1920928955078125e-07,
+            "practicalFailures": 0,
+            "strictDifferences": 0,
+            "criterion": "practical required"
+          }
+        ]
+      }
+    },
+    "gate-principled_render": {
+      "lane": "C",
+      "spec": "gate:principled_render",
+      "elapsedSeconds": 34215,
+      "outcome": "stopped while compiling",
+      "pipelinesCompiled": [
+        {
+          "module": "camera",
+          "entry": "init_camera",
+          "compileSeconds": 0.0,
+          "wgslBytes": 66565,
+          "inlinedBytes": 217655,
+          "tier": "full"
+        },
+        {
+          "module": "closest",
+          "entry": "intersect_closest",
+          "compileSeconds": 0.0,
+          "wgslBytes": 91738,
+          "inlinedBytes": 218499,
+          "tier": "full"
+        },
+        {
+          "module": "surface",
+          "entry": "prepare_shader_data",
+          "compileSeconds": 498.2,
+          "wgslBytes": 343965,
+          "inlinedBytes": 238343,
+          "tier": "full"
+        }
+      ]
+    }
+  },
+  "notReached": {
+    "A": [
+      "coverage:motion-normal-map",
+      "coverage:glass-area-light",
+      "coverage:light-tree"
+    ],
+    "B": [
+      "gate:triangle_lighting",
+      "gate:object_motion_render",
+      "gate:glass_render",
+      "gate:volume_render@CODEBRIX_VOLUME_G=0",
+      "gate:mnee_render"
+    ],
+    "C": [
+      "gate:nodes_render"
+    ]
+  },
+  "kernelLogLinesMentioningGpu": [],
+  "memoryAtStop": "15 GiB total, 6.1 GiB available, swap unused; RSS: principled_render gate 4.98 GB, abi_test 1.83 GB, oracle runner 1.51 GB"
+}

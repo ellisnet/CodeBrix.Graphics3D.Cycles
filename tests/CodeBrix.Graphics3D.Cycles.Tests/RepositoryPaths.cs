@@ -21,6 +21,10 @@ internal static class RepositoryPaths
     // Where native/tools/build_cycles.py places the Linux x64 native host.
     internal static string LinuxNativeHostLibrary => Root == null ? null : Path.Combine(Root, "native", "work", "cycles-build", "lib", "libcodebrix_cycles_host.so");
 
+    // Where tools/build_linux_arm64.py places the Linux ARM64 native host (built natively on the
+    // ARM64 machine, docs/TESTING-LINUX-ARM64.md).
+    internal static string LinuxArm64NativeHostLibrary => Root == null ? null : Path.Combine(Root, "native", "work", "linux", "linux-arm64", "host", "build", "lib", "libcodebrix_cycles_host.so");
+
     // Where tools/build_macos.py places the osx-arm64 (Metal) native host; its Metal kernel
     // sources are staged beside it in codebrix-cycles/source.
     internal static string MacNativeHostLibrary => Root == null ? null : Path.Combine(Root, "native", "work", "macos", "osx-arm64", "host", "build", "lib", "libcodebrix_cycles_host.dylib");
@@ -70,6 +74,7 @@ internal static class RepositoryPaths
     // The in-tree native host for this process's platform, or null where none is built in-tree.
     internal static string NativeHostLibrary =>
         OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.X64 ? LinuxNativeHostLibrary
+        : OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? LinuxArm64NativeHostLibrary
         : OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? MacNativeHostLibrary
         : OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.X64 ? MacX64NativeHostLibrary
         : OperatingSystem.IsWindows() ? WindowsNativeHostLibrary
@@ -80,6 +85,7 @@ internal static class RepositoryPaths
         OperatingSystem.IsMacOS() && RuntimeInformation.ProcessArchitecture == Architecture.X64 ? "python3 tools/build_macos_x64.py --jobs 8"
         : OperatingSystem.IsMacOS() ? "python3 tools/build_macos.py --jobs 8"
         : OperatingSystem.IsWindows() ? "python -X utf8 native/tools/build_cycles_windows.py --rid " + (WindowsRid ?? "win-x64") + " --jobs 16"
+        : OperatingSystem.IsLinux() && RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "python3 tools/build_linux_arm64.py --jobs 4 && python3 native/tools/build_cycles_linux_arm64.py --jobs 4 --device-set"
         : "python3 native/tools/build_cycles.py --jobs 6";
 
     private static string FindRoot()

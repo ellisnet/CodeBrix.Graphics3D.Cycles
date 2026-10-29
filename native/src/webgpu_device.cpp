@@ -226,6 +226,14 @@ Device::Device(){
     const uint64_t cap=uint64_t(1)<<31;
     if(supported.maxBufferSize!=WGPU_LIMIT_U64_UNDEFINED)required.maxBufferSize=std::min(supported.maxBufferSize,cap);
     if(supported.maxStorageBufferBindingSize!=WGPU_LIMIT_U64_UNDEFINED)required.maxStorageBufferBindingSize=std::min(supported.maxStorageBufferBindingSize,cap);
+    // wgpu gives an adapter that is not fully WebGPU compliant (a downlevel adapter: the
+    // Raspberry Pi 5's V3D 7.1 on Mesa V3DV) its downlevel defaults for unrequested limits,
+    // 4 storage buffers per stage instead of WebGPU's 8, below the 7 the kernels bind
+    // (docs/TESTING-LINUX-ARM64.md, L1). These three are requested at the WebGPU default,
+    // capped at what the adapter supports: a compliant adapter gets exactly its defaults.
+    if(supported.maxStorageBuffersPerShaderStage!=WGPU_LIMIT_U32_UNDEFINED)required.maxStorageBuffersPerShaderStage=std::min(supported.maxStorageBuffersPerShaderStage,8u);
+    if(supported.maxUniformBufferBindingSize!=WGPU_LIMIT_U64_UNDEFINED)required.maxUniformBufferBindingSize=std::min<uint64_t>(supported.maxUniformBufferBindingSize,65536);
+    if(supported.maxComputeWorkgroupStorageSize!=WGPU_LIMIT_U32_UNDEFINED)required.maxComputeWorkgroupStorageSize=std::min(supported.maxComputeWorkgroupStorageSize,16384u);
     dd.requiredLimits=&required;
   }
   dd.uncapturedErrorCallbackInfo.userdata1=this;

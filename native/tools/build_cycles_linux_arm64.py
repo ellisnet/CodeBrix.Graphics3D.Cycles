@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Build the current native Cycles host/gates for the installed Linux ARM64 SDK."""
+"""Build the current native Cycles host/gates for Linux ARM64: cross-compiled with the installed
+Linux ARM64 SDK on Linux x64, or natively on an ARM64 Linux machine (tools/dependencies/build_linux_arm64.py)."""
 import argparse,difflib,importlib.util,json,shutil,subprocess,sys
 from pathlib import Path
 REPO=Path(__file__).resolve().parents[2];sys.path.insert(0,str(REPO/'native/tools'))
@@ -13,11 +14,20 @@ from device_gate import sha,save
 from render_gate import inputs
 base=REPO/'native/work/linux/linux-arm64'
 spec=importlib.util.spec_from_file_location('arm64_dependencies',REPO/'tools/dependencies/build_linux_arm64.py');deps=importlib.util.module_from_spec(spec);spec.loader.exec_module(deps)
+# --device-set: every device gate of docs/TESTING-LINUX-ARM64.md (the default set plus the gates
+# not shared with Android) and the extra host tests; natively also the oracle runner, which
+# native/host/targets.cmake adds only when not cross-compiling.
+DEVICE_TARGETS=['codebrix_host_'+name+'_test' for name in ['abi','tier','example','scene_edit']]+['codebrix_cycles_'+name+'_gate' for name in
+ ['triangle_sample','triangle_lighting','emitter_sample','lighting','light_state','lighting_mis','broad_light_state','broad_lighting',
+  'feature_combination','transparent_lighting','shadow_terminator','shadow','object_motion_render','deforming_motion_render','glass_svm',
+  'glass_bounce','glass_render','volume','volume_render','volume_boundary','closed_volume_render','principled_bounce','principled_render',
+  'nodes_svm','nodes_world','nodes_render']]+(['codebrix_cycles_oracle'] if deps.NATIVE else [])
 
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--jobs',type=int,default=4);p.add_argument('--target',action='append');a=p.parse_args()
- work=base/'host';work.mkdir(parents=True,exist_ok=True);state=dict(complete=False,phase='prepare',rid='linux-arm64');save(work/'status.json',state)
+ p=argparse.ArgumentParser();p.add_argument('--jobs',type=int,default=4);p.add_argument('--target',action='append');p.add_argument('--device-set',action='store_true',help='Build the default set plus every device gate (and natively the oracle runner)');a=p.parse_args()
+ targets=HOST_TARGETS+GATE_TARGETS+DEVICE_TARGETS if a.device_set else a.target
+ work=base/'host';work.mkdir(parents=True,exist_ok=True);state=dict(complete=False,phase='prepare',rid='linux-arm64',native=deps.NATIVE);save(work/'status.json',state)
  try:
   prefix=deps.prefix();marker=prefix/'codebrix-linux-arm64-build.json';dependency=json.loads(marker.read_text());assert dependency['identity']==deps.identity()
   assert all(sha(prefix/name)==digest for name,digest in dependency['libraries'].items())
@@ -55,7 +65,7 @@ def main():
   options.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','EMBREE','OPENIMAGEDENOISE','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD','HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
   build=work/'build';runtime=PACKAGE/'runtimes/linux-arm64/native/libcodebrix_wgpu.so'
   commands=[['cmake','-S',str(source),'-B',str(build),*['-D'+k+'='+str(v) for k,v in options.items()]],
-    ['cmake','--build',str(build),'--target',*(a.target or HOST_TARGETS+GATE_TARGETS),'--parallel',str(a.jobs)]]
+    ['cmake','--build',str(build),'--target',*(targets or HOST_TARGETS+GATE_TARGETS),'--parallel',str(a.jobs)]]
   pin=dict(sourceSha256=sources,sourceCopySha256=copy,dependencyMarkerSha256=sha(marker),crossRecipeSha256=sha(Path(__file__)),runtimeSha256=sha(runtime),commands=commands,
     platformPatchSha256=sha(work/'platform.patch'),overlaySha256={str(p.relative_to(generated)):sha(p) for p in generated.rglob('*') if p.is_file()})
   save(work/'invocation.json',pin);env=environment(prefix,a.jobs)
@@ -72,7 +82,7 @@ def main():
   assert sources==inputs() and sha(marker)==pin['dependencyMarkerSha256'] and deps.identity()==dependency['identity']
   verify_copy();assert sha(runtime)==pin['runtimeSha256']
   artifacts=[p for d in [build/'bin',build/'lib'] for p in d.glob('*') if p.is_file() and (p.name.startswith('codebrix_') or p.name=='libcodebrix_cycles_host.so')]
-  if not a.target:assert len(artifacts)==len(HOST_TARGETS)+len(GATE_TARGETS)  # 34: 8 host outputs + 26 default gates
+  if not targets:assert len(artifacts)==len(HOST_TARGETS)+len(GATE_TARGETS)  # 34: 8 host outputs + 26 default gates
   state.update(complete=True,passed=True,phase='complete',artifacts={str(p.relative_to(build)):sha(p) for p in artifacts},executionProven=False,releaseCleared=False)
   print('linux-arm64: maintained native host and selected gates built',flush=True)
  except Exception as error:

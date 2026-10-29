@@ -1,0 +1,18 @@
+{
+  "reference": "native/evidence/linux-x64-docker-reference-20261027/linux-overlay-hashes.json (commit 0e95e5ce3, Linux x64, Debian clang 19.1.7)",
+  "files": 19,
+  "headOverlay": {
+    "path": "native/work/linux/linux-arm64/host/overlay",
+    "differing": [
+      "background_shader.inc",
+      "shader_data_shader.inc",
+      "volume_stack_shader.inc"
+    ],
+    "explanation": "native/shaders/wavefront_shader_data.wgsl changed after 0e95e5ce3 (the Windows F1 fix, 9388e9878); background, shader_data and volume_stack embed it"
+  },
+  "headOverlayWithPreFixShaderData": {
+    "how": "build_cycles.overlay() on the Pi with wavefront_shader_data.wgsl read from 0e95e5ce3, everything else from HEAD",
+    "differing": []
+  },
+  "conclusion": "The Pi (Debian clang 19.1.7 on aarch64) generates WGSL byte-identical to the Linux x64 reference; the only differences at HEAD are the F1 fix."
+}

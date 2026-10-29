@@ -292,8 +292,13 @@ std::string webgpu_adapter_report_json(Device *device){
 }
 unique_ptr<Device> device_webgpu_create(const DeviceInfo &i,Stats &s,Profiler &p,bool h){
   try{return make_unique<WebGPUDevice>(i,s,p,h);}catch(const std::exception &e){auto bad=i;bad.type=DEVICE_DUMMY;bad.error_msg=e.what();return device_dummy_create(bad,s,p,h);}}
+// Why the last device enumeration found no WebGPU device (empty when it found one), so that
+// cbc_host_create can report the cause instead of only "Requested device is unavailable".
+static std::mutex unavailable_mutex;static std::string unavailable_reason;
+std::string webgpu_unavailable_reason(){std::lock_guard lock(unavailable_mutex);return unavailable_reason;}
 void device_webgpu_info(vector<DeviceInfo> &devices){try{
   cbc::Device gpu;DeviceInfo info;info.type=DEVICE_WEBGPU;info.id="WEBGPU_"+gpu.adapter_name;info.description=gpu.adapter_name;
   info.has_gpu_queue=true;info.has_mnee_=true;info.has_execution_optimization=false;devices.push_back(info);
-}catch(const std::exception&){} }
+  std::lock_guard lock(unavailable_mutex);unavailable_reason.clear();
+}catch(const std::exception &e){std::lock_guard lock(unavailable_mutex);unavailable_reason=e.what();} }
 }

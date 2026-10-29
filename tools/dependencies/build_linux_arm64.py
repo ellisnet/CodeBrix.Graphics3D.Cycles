@@ -1,26 +1,35 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Linux ARM64 bring-up using reviewed local sources and installed cross SDK."""
-import argparse,hashlib,importlib.util,json,os,shutil,subprocess,sys
+"""Linux ARM64 bring-up using reviewed local sources and the installed cross SDK, or the
+system GCC 14 when run natively on an ARM64 Linux machine (for example a Raspberry Pi 5)."""
+import argparse,hashlib,importlib.util,json,os,platform,shutil,subprocess,sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'tools'))
 from android_toolchain import environment,sha
 spec=importlib.util.spec_from_file_location('dependency_profile',ROOT/'tools/dependencies/build.py')
 recipe=importlib.util.module_from_spec(spec);spec.loader.exec_module(recipe)
 WORK=ROOT/'native/work/linux/linux-arm64/dependencies'
-CC=Path('/usr/bin/aarch64-linux-gnu-gcc-14');CXX=Path('/usr/bin/aarch64-linux-gnu-g++-14');SDK=Path('/usr/aarch64-linux-gnu')
+NATIVE=platform.system()=='Linux' and platform.machine()=='aarch64'
+if NATIVE:
+ # Native build on the ARM64 device: the system compiler and C/C++ runtime, no emulator.
+ CC=Path('/usr/bin/gcc-14');CXX=Path('/usr/bin/g++-14');SDK=Path('/usr/lib/aarch64-linux-gnu')
+ RUNTIME=[Path('/lib/ld-linux-aarch64.so.1'),SDK/'libc.so.6',SDK/'libstdc++.so.6',SDK/'libgcc_s.so.1']
+else:
+ CC=Path('/usr/bin/aarch64-linux-gnu-gcc-14');CXX=Path('/usr/bin/aarch64-linux-gnu-g++-14');SDK=Path('/usr/aarch64-linux-gnu')
+ RUNTIME=[SDK/'lib/ld-linux-aarch64.so.1',SDK/'lib/libc.so.6',SDK/'lib/libstdc++.so.6',SDK/'lib/libgcc_s.so.1']
 
 
 def save(path,value):path.write_text(json.dumps(value,indent=2)+'\n')
 
 
 def identity():
- return dict(rid='linux-arm64',buildHost='linux-x64',sourceManifestSha256=sha(ROOT/'third_party/dependency-imports.json'),
+ pin=dict(rid='linux-arm64',buildHost='linux-arm64' if NATIVE else 'linux-x64',sourceManifestSha256=sha(ROOT/'third_party/dependency-imports.json'),
   profileRecipeSha256=sha(ROOT/'tools/dependencies/build.py'),crossRecipeSha256=sha(Path(__file__)),environmentRecipeSha256=sha(ROOT/'tools/android_toolchain.py'),
   compilerVersion=subprocess.check_output([str(CXX),'--version'],text=True),cCompilerSha256=sha(CC),cxxCompilerSha256=sha(CXX),
-  sysroot=str(SDK),sdkRuntimeSha256={str(p):sha(p) for p in [SDK/'lib/ld-linux-aarch64.so.1',SDK/'lib/libc.so.6',SDK/'lib/libstdc++.so.6',SDK/'lib/libgcc_s.so.1']},
-  emulatorSha256=sha(Path('/usr/bin/qemu-aarch64')),
+  sysroot=str(SDK),sdkRuntimeSha256={str(p):sha(p) for p in RUNTIME})
+ if NATIVE:return dict(pin,native=True,scope='Local native build on an ARM64 Linux machine with the system GCC 14 and glibc; not a release baseline')
+ return dict(pin,emulatorSha256=sha(Path('/usr/bin/qemu-aarch64')),
   scope='Local cross-build against the installed GNU/Linux ARM64 SDK; not a release baseline or native ARM64 GPU execution claim')
 
 
@@ -46,19 +55,20 @@ def main():
  verify_copy();pin=identity();save(WORK/'provenance.json',pin)
  toolchain=WORK/'toolchain.cmake'
  toolchain.write_text('# Copyright (c) 2026 Jeremy Ellis and contributors\n# SPDX-License-Identifier: Apache-2.0\n'
+  +(f'set(CMAKE_C_COMPILER "{CC}")\nset(CMAKE_CXX_COMPILER "{CXX}")\n' if NATIVE else
   'set(CMAKE_SYSTEM_NAME Linux)\nset(CMAKE_SYSTEM_PROCESSOR aarch64)\n'
   f'set(CMAKE_C_COMPILER "{CC}")\nset(CMAKE_CXX_COMPILER "{CXX}")\n'
   f'set(CMAKE_FIND_ROOT_PATH "{prefix}" "{SDK}")\n'
   'set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)\nset(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)\n'
   'set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)\nset(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)\n'
-  f'set(CMAKE_CROSSCOMPILING_EMULATOR /usr/bin/qemu-aarch64 -L "{SDK}")\n')
+  f'set(CMAKE_CROSSCOMPILING_EMULATOR /usr/bin/qemu-aarch64 -L "{SDK}")\n'))
  env=environment(prefix,args.jobs);completed=[];state=dict(complete=False,completedComponents=completed,identity=pin)
  try:
-  # Confirm compiler, target libc/libstdc++ and QEMU work before building dependencies.
+  # Confirm compiler, target libc/libstdc++ and QEMU (natively: the system loader) work before building dependencies.
   probe=WORK/'sdk_probe.cpp';probe.write_text('// Copyright (c) 2026 Jeremy Ellis and contributors\n// SPDX-License-Identifier: Apache-2.0\n#include <thread>\n#include <iostream>\nint main(){int n=0;std::thread t([&]{n=42;});t.join();std::cout<<n<<"\\n";return n!=42;}\n')
   subprocess.run([str(CXX),str(probe),'-pthread','-o',str(WORK/'sdk_probe')],env=env,check=True)
-  output=subprocess.check_output(['/usr/bin/qemu-aarch64','-L',str(SDK),str(WORK/'sdk_probe')],text=True,env=env)
-  assert output=='42\n';save(WORK/'sdk-probe.json',dict(passed=True,executableSha256=sha(WORK/'sdk_probe'),output=output,emulated=True))
+  output=subprocess.check_output([*([] if NATIVE else ['/usr/bin/qemu-aarch64','-L',str(SDK)]),str(WORK/'sdk_probe')],text=True,env=env)
+  assert output=='42\n';save(WORK/'sdk-probe.json',dict(passed=True,executableSha256=sha(WORK/'sdk_probe'),output=output,emulated=not NATIVE))
   for name,path,options in recipe.profile(source):
    build=WORK/name;build.mkdir(exist_ok=True)
    settings=dict(CMAKE_TOOLCHAIN_FILE=toolchain,CMAKE_BUILD_TYPE='Release',CMAKE_POSITION_INDEPENDENT_CODE='ON',CMAKE_EXPORT_COMPILE_COMMANDS='ON',

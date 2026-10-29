@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/linux_arm64_host_gate.py", line 283, in <module>
+    if __name__=='__main__':raise SystemExit(main())
+                                             ~~~~^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/linux_arm64_host_gate.py", line 180, in main
+    rows=report('codebrix_host_gpu_test',[target/'run',*(['--exit-live'] if mode=='gpu-exit' else [])],mode,3600)
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/linux_arm64_host_gate.py", line 74, in report
+    rows=[json.loads(line) for line in call([*runner,build/'bin'/binary,*arguments],name,timeout).splitlines() if line.strip()]
+                                       ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/tools/linux_arm64_host_gate.py", line 71, in call
+    subprocess.run(command,stdout=stdout,stderr=stderr,check=True,timeout=timeout,env=env)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '[PosixPath('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux/linux-arm64/host/build/bin/codebrix_host_gpu_test'), PosixPath('/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/linux-arm64-validation-3/gpu/run')]' returned non-zero exit status 1.
