@@ -1,5 +1,32 @@
 # Testing on macOS ARM64 (Apple Silicon, Metal)
 
+> **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
+> procedure and override anything below, including the historical records).**
+>
+> 1. **WebGPU binaries: ONLY from the `CodeBrix.WebGpu.Native.MitLicenseForever`
+>    1.0.300.210 NuGet package.** Load the `codebrix_wgpu` binary from that
+>    package's `runtimes/<rid>/native/` folder (restored into the NuGet cache)
+>    and from nowhere else. **Do NOT** test with WebGPU binaries from any other
+>    source (a local build, a committed payload, another package, Dawn, an
+>    upstream wgpu-native release, a system library) or from any other version
+>    of this package, earlier or later. Runs with other WebGPU binaries are not
+>    evidence and must not be recorded as results. (The osx-arm64 Metal
+>    profile loads no WebGPU binary; the rule applies to any WebGPU run made
+>    on this machine.)
+> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 10 SDK
+>    10.0.403 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `10.0.403`) before starting and record
+>    the output with the run.
+> 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
+>    Android testing and validation are done on the dedicated Linux x64 machine
+>    only. Every comparison against Linux x64 uses the newest
+>    `native/evidence/linux-x64-reference-<date>/` set (now
+>    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
+>    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
+>    machine; `linux-x64-docker-reference-20261027` is history only.
+
 Instructions for building, validating and recording the osx-arm64 product
 binary on an Apple Silicon Mac, and for generating the CPU-arm64 and Metal
 oracle films that the Linux machine compares against CPU-x64 and WGSL. The
@@ -71,7 +98,8 @@ Machine and toolchain:
   `CMAKE_POLICY_VERSION_MINIMUM=3.5` for the old snapshot minimums).
 - Python 3.
 - zstd (`render_oracles.py --bundle` runs `zstd -19`).
-- The .NET 10 SDK (the host gate builds `tools/hosttests/HostLifecycle`; the
+- The .NET 10 SDK, **version 10.0.403 only** (no earlier version; `dotnet
+  --version` must print `10.0.403`) (the host gate builds `tools/hosttests/HostLifecycle`; the
   managed tests and package).
 - Homebrew may be installed but must not leak into the build: the recipes
   ignore `/opt/homebrew` and `/usr/local` and fail if a configured cache or

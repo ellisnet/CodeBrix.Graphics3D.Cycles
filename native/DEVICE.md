@@ -1477,7 +1477,7 @@ WebGPU adapter device name and driver description):
 | --- | --- | --- | --- |
 | Pixel 4 XL Adreno 640 | `Adreno (TM) 640` | any | full tier, 20 s compile budget, not a reference device, verdicts per the device reference policy |
 | Samsung SM-X700 Adreno 730 | `Adreno (TM) 730` | any | full |
-| Samsung Galaxy S20 FE Adreno 650 | `Adreno (TM) 650` | any | full tier, 20 s compile budget (warnings only), not a reference device; refuses the texture, colour and utility node region `SVM_NODES_ANY` ("Adreno 650 lane") |
+| Samsung Galaxy S20 FE Adreno 650 | `Adreno (TM) 650` | any | full tier, 20 s compile budget (warnings only), not a reference device; refuses the texture, colour and utility node region `SVM_NODES_ANY` ("Adreno 650 lane"); caustic (MNEE) scenes are refused before any pipeline compiles ("Manifold next-event estimation (caustics)") |
 | HP Intel Xe (Android x64) | `Intel(R) Xe Graphics` | `Mesa 24.0.8` | full |
 | Linux Intel UHD ADL-S | `Intel(R) UHD Graphics (ADL-S GT1)` | `Mesa 25.0.7` | full |
 | AMD GPU on Metal (untested precaution; Apple builds only) | `AMD` | any | **conservative**: osx-x64 policy "not supported, may work" for AMD GPUs in Intel Macs; no AMD GPU tested, and the Intel Metal compiler miscompiles `prepare_surface` with more than one invocation per workgroup (docs/TESTING-MACOS-X64.md, M2) |
@@ -1884,14 +1884,26 @@ render stage exchange and, new on 2026-10-27, the MNEE stage-state exchange in
 `CODEBRIX_CYCLES_STAGE_JUDGE` with `android_reference.py stage-judge` on Linux;
 the same flow serves the Android devices, closing open item 5 for that gate). The Mac is therefore judged
 like an Android device: the Linux x64 reference decides, the Mac's own CPU
-reference is a diagnostic. Without the dedicated Linux machine the reference can
-be produced in a Linux container with the same toolchain
-(`native/evidence/linux-x64-docker-reference-20261027/`: Debian 13, GCC 14.2.0,
-clang 19.1.7, CMake 3.31.6, glibc 2.41); `native/tools/host_gate.py --cpu-only`
-runs the Linux host gate's CPU steps where there is no GPU or .NET. On the Intel
-Mac, `native/tools/macos_x64_reference_exchange.py` runs every device-gate
-exchange end to end in one command, with the Linux side in the container of
-`native/tools/linux_reference/` (docs/TESTING-MACOS-X64.md, step 7).
+reference is a diagnostic. The 2026-10-27 reference was produced in a Linux
+container with the same toolchain (`native/evidence/linux-x64-docker-reference-20261027/`:
+Debian 13, GCC 14.2.0, clang 19.1.7, CMake 3.31.6, glibc 2.41), with
+`native/tools/macos_x64_reference_exchange.py` running the exchanges against the
+container of `native/tools/linux_reference/`.
+
+**Linux x64 reference rule (Jeremy, 2026-10-29).** Linux x64 and Android testing
+and validation are done on the dedicated Linux x64 machine only, and every Linux
+x64 reference other platforms compare against comes from that machine and is
+committed: the newest `native/evidence/linux-x64-reference-<date>/` (now
+`linux-x64-reference-20261029`, which supersedes the Docker set; its CPU films are
+bitwise identical to the Docker set's), with the Android counterpart
+`native/evidence/android-reference-20261029/`. The Docker route is not used for new
+evidence. Devices without a Linux x64 side (Windows, the Intel Mac, the Raspberry
+Pi) run the device-gate exchanges as a two-visit hand-off with that machine,
+`native/tools/reference_exchange_handoff.py` (`device-dump`, `linux-reference`,
+`device-import`, `linux-judge`; docs/TESTING-WINDOWS-ARM64.md, "Device-gate
+exchange with the Linux x64 machine"). Tests use only the
+CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 binaries and the .NET SDK
+10.0.403 (docs/TESTING-*.md, "MANDATORY TEST RULES").
 
 ## Exact traversal and intersection arithmetic (2026-10-20)
 
@@ -2813,7 +2825,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    differences with camera motion (1,616). Both are within the practical bound; fixing them changes motion films.
 16. **macOS recipes at the fixed baseline.** The macOS arm64 and x64 recipes apply the fixed-baseline flags but are
    untested at the baseline (`native/host/MACOS_ARM64.md`, `native/host/MACOS_X64.md`).
-17. **Replays with shadow-path compaction.** The light-tree gate's case 2 (lamps and emissive triangles under an HDRI
+17. (resolved, see "Resolved" below) Was: **Replays with shadow-path compaction.** The light-tree gate's case 2 (lamps and emissive triangles under an HDRI
    world, light tree on) does not replay: the native scheduler's shadow-path compaction (control op 2, modes 2 and 3)
    counts the active shadow paths above a slot index, and which slots those paths hold follows the order of the atomic
    shadow-slot allocation in `surface_direct_light`, which differs from run to run (Linux 54, 55, 57 and 59 at the
@@ -2832,16 +2844,8 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    also has instanced objects is refused (error 16 when the local traversal reaches an instance leaf); ambient
    occlusion with object or deformation motion has no gate yet; on the Adreno 650 the AO node and the AO shadow rays
    are refused (see "Ambient occlusion"). Bevel and raycast nodes stay unported (item 6).
-19. **MNEE on the Adreno 730 (Samsung SM-X700).** The `INTERSECT_MNEE` dispatches stop at their first use with the
-   invalid-data error (mask 1), in the state gate (`mnee`) and in the image gate (`mnee_render`, device-scene flow);
-   no image is produced. Narrowed with temporary diagnostics: the failure is a generic invalid-data check reached
-   inside `mnee_setup` (the manifold-vertex setup entry); every input that entry reads was valid when it ran (16 paths,
-   every caster hit's primitive, object and closure index in range). The same build passes on Linux Intel and on the
-   HP. INFERENCE: an Adreno compilation of `mnee_setup` (its function-scope vertex and normal arrays indexed in a loop
-   are the class of construct the Adreno 640 fix of 2026-10-20 moved out of function scope); not fixed. Until it is,
-   caustic scenes stop with that error on this GPU class (never a wrong image). The Adreno 650 (S20) fails the same
-   way. Reproducer: `run_corpus.py samsung mnee LABEL 3600 2400 --device-scene --jobs mnee` with the lane's staged
-   binaries (see "Manifold next-event estimation (caustics)").
+19. (resolved, see "Resolved" below) Was: **MNEE on the Adreno 730 (Samsung SM-X700).** The `INTERSECT_MNEE`
+   dispatches stopped with the invalid-data error (mask 1) in `mnee` and `mnee_render`; the Adreno 650 failed the same way.
 20. **MNEE with the light tree (refused).** Caustic scenes with the integrator's light tree, light or shadow
    linking, AO, volumes or motion blur are refused before rendering ("Manifold next-event estimation (caustics)");
    MNEE would call the light tree's selection in its own entry. Shadow linking is the next lighting work (Milestone 2,
@@ -2858,7 +2862,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    branch (AO pass and fast GI's additive term) writes Combined directly and returns before the shadow catcher
    handling, while the pinned `film_write_direct_light` routes the additive term through `film_write_combined_pass`
    (shadow catcher split included). Scenes with both may differ from the CPU.
-24. **Light-tree gate driver stops at the known replay (merge wave 8).** `native/tools/light_tree_gate.py` replays the
+24. (resolved, see "Resolved" below) Was: **Light-tree gate driver stops at the known replay (merge wave 8).** `native/tools/light_tree_gate.py` replays the
    seven captures in order and stops at case 2 (item 17), so it exits 1 although the gate passes; replays 3-6 pass
    when run on their own.
 25. **Two CPU gold standards differ on the bench (merge wave 8).** The macOS arm64 CPU films of the bench and HDRI
@@ -2875,6 +2879,37 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    (`mnee_entry_of`).
 
 Resolved, or closed under the device reference policy:
+- [17 of this list] Replays with shadow-path compaction: RESOLVED (on the maintainer's go-ahead, 2026-10-29). Every
+  surface dispatch of a scene with direct light (or ambient occlusion) now reserves one fixed shadow slot per input
+  (control op 5, `surface.cpp`; two per input with AO, as before), and every path-array build of such a scene uses the
+  stable serial scan (`queue.cpp`, `controls.wgsl` op 2 and 3). Both halves are needed: with the reservation alone the
+  slot follows the order of the atomic work arrays (cases 1, 2, 5 and 6 then fail to replay), with the stable scans
+  alone the atomic slot allocation in `surface_direct_light` remains (case 2 fails). Every reserved slot is one the
+  pinned atomic allocator could hand out; unused reservations stay terminated, and the unmodified `PathTraceWorkGPU`
+  makes every scheduling decision (it budgets one shadow path per input before the kernel, so the reservation never
+  overflows). No WGSL changes: the modules of the light-tree, shadow catcher and AO image gates are byte-identical to
+  before, and so are the size guard and the compile envelope. Lit scenes record different command streams (the same
+  shading dispatches; more control dispatches and shadow compactions, e.g. the light-tree case-2 capture 279 -> 323
+  control dispatches), and on Linux two captures of the same light-tree case are byte-identical. Results: all seven light-tree captures
+  replay exactly on Linux, the Samsung SM-X700 and the HP (case 2: 540 scheduling readbacks on each); the light-tree,
+  shadow catcher, AO state and image, transparent shadow and lighting, broad lighting, lighting MIS, feature
+  combination, triangle lighting and glass gates, the host gate and the bench, HDRI bench, control, light-tree,
+  shadow catcher and AO oracle scenes pass on Linux with the previous numbers apart from strict counts of the
+  run-to-run atomic film family; films bit-identical except films of that family (light-tree cases 2 and 5, AO image
+  cases 3, 4, 6 and 7, broad lighting 3/7/8/9, feature combination 5, lighting MIS 5, transparent lighting 2/4/5 and
+  the Session WGSL films, all of which already differ between two runs of the previous build). The Samsung and the HP
+  pass the light-tree, shadow catcher, AO and transparent corpora with all their replays against the glibc
+  device-scene references. Cost: path-array builds of lit scenes become single-thread scans over the path capacity
+  (at most 4,096 states); on Linux (Intel, Mesa 25.0.7) warm walls of small renders rise by about 15-25 % (light-tree
+  gate 10.6-11.3 s -> 12.2-13.7 s; bench 64x48, 16 samples 1.07 -> 1.35 s; HDRI bench 1.46 -> 1.66 s); cold first
+  renders are compile-dominated and unchanged. The warm cost on the Android devices was not measured. A parallel stable
+  scan (`controls.wgsl`) would remove most of it.
+- [24 of this list] Light-tree gate driver stops at the known replay: RESOLVED (same change). `light_tree_gate.py`
+  replays every capture, records a failed replay in `results.json` and fails after the last one, naming the failed
+  cases; with item 17 resolved it exits 0 with all seven replays.
+- [19 of this list] MNEE on the Adreno 730: FIXED (equivalent WGSL in the MNEE region; "Manifold next-event estimation
+  (caustics)", "Adreno 730 fix"). `mnee` and `mnee_render` (with the five replays) pass on the Samsung SM-X700; caustic
+  scenes are refused on the Adreno 650.
 - [21 of this list] Volume gate rejection text: RESOLVED (merge wave 8 part 1c, on the maintainer's go-ahead).
   `volume_gate.cpp` rejection case 9 now expects the shadow catcher's own refusal ("shadow catcher with volumes");
   the volume gate (every case, including those after case 9) and `volume_boundary_gate` pass on Linux, films
@@ -4752,8 +4787,8 @@ original CPU render (twice, the second captured), and host guards (corrupted tre
 | HP | 24,047 / 12,820 / 2,379 | 26,731 / 0.0227 (host re-judge per key 1,048-8,165) | 4,932 / 2.85e-5 | 485 s |
 All practical PASS; Android judged against the glibc references computed from the device's own scene, host
 re-judged (14 references per device, 0 practical failures). The slowest pipeline compile is 17.8 s on the Samsung and 26.2 s on the HP. Replays on Linux,
-the Samsung and the HP: cases 0, 1 and 3-6 replay exactly; case 2 does not reproduce its recorded scheduling readbacks on
-any of the three (see "Open device items", item 17). Regression on the devices (Samsung and HP): lighting_mis,
+the Samsung and the HP: all seven captures replay exactly (case 2 since the stable shadow-slot reservation for every
+scene with direct light; "Open device items", item 17, resolved). Regression on the devices (Samsung and HP): lighting_mis,
 triangle_sample, emitter_sample, triangle_lighting, transparent_lighting, light_state, broad_lighting, glass_render and
 principled_render pass; the Samsung environment gate passes with replays of cases 2, 8 and 11. The S20 pair
 (principled_svm, transparent_shadow) passes.
@@ -4838,8 +4873,8 @@ The registered device implements Cycles' ambient occlusion in its three forms, a
   times `surface_shader_alpha`, flag `PATH_RAY_SHADOW_FOR_AO`, `unshadowed_throughput`. The shadow stage traces it
   like every shadow path (opaque or transparent); `shadow_write_film` has the pinned AO branch of
   `film_write_direct_light` (the AO pass for camera paths, the additive combined term). With AO on, every surface
-  input gets two fixed shadow slots (control op 5, as for transparent shadows) and the shadow path arrays use the
-  stable serial scan: with atomic slots and atomic path-array indices the shadow compaction moved paths in a
+  input gets two fixed shadow slots (control op 5, as every scene with direct light gets one) and the path arrays use
+  the stable serial scan: with atomic slots and atomic path-array indices the shadow compaction moved paths in a
   run-dependent order, so the scheduler's counts, and the command replays, differed between runs.
 - **The AO pass.** Written by those rays, read back unchanged by the host (`cbc_host_pass_floats`) and the managed
   `CyclesScene.ReadPass`; the capability report lists `ao` under `backendScope.webgpu.passes`.
@@ -4943,6 +4978,37 @@ background lamps with shadow caustics, MNEE with the light tree, light or shadow
 volumes or motion blur. An anisotropic refractive caster reports the unsupported-handler error
 (error 2).
 
+On the Adreno 650 (Samsung Galaxy S20, not a reference device) every scene with
+`integrator.use_caustics` is refused before any pipeline compiles: "WebGPU: caustics (manifold
+next-event estimation) are not supported on Adreno (TM) 650 GPUs: caustic scenes render
+incorrectly on this GPU class; render the scene on another GPU or on the CPU device". With the
+Adreno 730 fix below and no refusal, the Adreno 650 rendered `mnee_render` case 0 outside the
+practical criterion (a film value 0.839279 where the glibc reference has 0.840097) and the state
+gate failed (case 2: 5 surface shadow paths where the pinned kernel queues 7); before that fix it
+stopped with the invalid-data error like the Adreno 730. The cause on the Adreno 650 is not
+diagnosed.
+
+**Adreno 730 fix.** On the Samsung SM-X700 (driver EV031.36.08.33) the first `INTERSECT_MNEE`
+dispatches stopped with the invalid-data error (mask 1). Found with WGSL overrides on the unchanged
+binaries (`CODEBRIX_CYCLES_WGSL_LOAD`, every `fail()` call tagged): the check that fired was the
+corner-normal index range check (`triangle_frame_index`), reached from `terminator_normals` in
+`mnee_setup`, because the caster triangle's third vertex index read `0x00108039` instead of 76.
+The same word read 76 at the start of every entry before `mnee_setup`, and changed while
+`mnee_setup` ran although no MNEE entry stores to the scene tables: with `mnee_setup` writing no
+vertex data at all the word still changed; with its `native_triangle_vertices` call removed it
+did not. The same WGSL (with either host's arithmetic constants) hits no `fail()` on Intel Mesa.
+The fix keeps every computation and comparison: the three MNEE call sites of the shared vertex fetch
+(`mn_setup_vertex`, `mn_setup_from_sample`, and the shadow-terminator origin of `mn_contribution`)
+use `mn_static_vertices`, the same checks and corner reads for a static triangle in straight-line
+code (no `vec3` index or corner array written in a loop), and the terminator origin goes through an
+MNEE copy of `terminator_shadow_origin` / `terminator_smooth_offset` that differs only in that
+fetch. Removing `mn_setup_vertex`'s own corner and normal arrays (constant indices, or plain
+variables) or unrolling its normal fetch did not help; moving the solver's arrays to module scope
+(the Adreno 640 pattern) did not either. The fault is in shared code only as it compiles inside
+these entries (INFERENCE: an Adreno 730 compiler defect; the same fetch works in the other entries
+on this device). Every edit is in the MNEE region, so scenes without caustics compile
+byte-identical WGSL.
+
 Gates (`native/tools/mnee_gate.py`; fixtures `cycles/mnee_fixture.h`: sharp glass sphere and
 point lamp, rough refraction slab and spherical lamp, glass sphere and glossy caster under a
 sun, casters without a receiver, one caustic and one ordinary lamp):
@@ -4982,7 +5048,9 @@ Android:
 | HP | `mnee` (state, device's own CPU) | 268 s | PASS: 23,757 paths, 54 sampled, walk outcome and iteration count exact, 461 strict, maximum 0.125 (`mis_ray_pdf` near 1e6) |
 | HP | queue control gate, closest gate | 2 s, 27 s | PASS (MNEE compaction cases included) |
 | HP | five on-device replays of the device's own captures | 101-177 s each | PASS (strict 43 / 940 / 0 / 41 / 48) |
-| Samsung SM-X700 (Adreno 730) | `mnee_render`, `mnee` | about 41 s each | FAIL: invalid data at the first `INTERSECT_MNEE` dispatch (open item 19) |
+| Samsung SM-X700 (Adreno 730) | `mnee_render`, glibc device-scene reference | 120 s | PASS, 0 practical; strict 776, maximum 3.05e-5 (before the Adreno 730 fix: invalid data at the first `INTERSECT_MNEE` dispatch) |
+| Samsung SM-X700 | `mnee` (state, device's own CPU) | 192 s | PASS: 23,757 paths, 53 sampled, walk outcome and iteration count exact, 409 strict, maximum 0.125 |
+| Samsung SM-X700 | five on-device replays of the device's own captures | 20-56 s each | PASS (strict 24 / 696 / 0 / 22 / 35) |
 | Samsung SM-X700 | queue control gate, closest gate | 3 s, 16 s | PASS |
 | S20 (Adreno 650, not a reference device) | `principled_svm`, `transparent_shadow` | 415 s, 16 s | PASS (shared-WGSL regression) |
-| S20 | `mnee_render`, `mnee` | 215 s, 209 s | FAIL as on the Adreno 730: an explicit error, no image |
+| S20 | `mnee_render`, `mnee` | about 1 s each | refused before any pipeline compiles (caustics on the Adreno 650), no image |

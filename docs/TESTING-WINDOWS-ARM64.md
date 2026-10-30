@@ -2,6 +2,31 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
+> **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
+> procedure and override anything below, including the historical records).**
+>
+> 1. **WebGPU binaries: ONLY from the `CodeBrix.WebGpu.Native.MitLicenseForever`
+>    1.0.300.210 NuGet package.** Load the `codebrix_wgpu` binary from that
+>    package's `runtimes/<rid>/native/` folder (restored into the NuGet cache)
+>    and from nowhere else. **Do NOT** test with WebGPU binaries from any other
+>    source (a local build, a committed payload, another package, Dawn, an
+>    upstream wgpu-native release, a system library) or from any other version
+>    of this package, earlier or later. Runs with other WebGPU binaries are not
+>    evidence and must not be recorded as results.
+> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 10 SDK
+>    10.0.403 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `10.0.403`) before starting and record
+>    the output with the run.
+> 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
+>    Android testing and validation are done on the dedicated Linux x64 machine
+>    only. Every comparison against Linux x64 uses the newest
+>    `native/evidence/linux-x64-reference-<date>/` set (now
+>    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
+>    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
+>    machine; `linux-x64-docker-reference-20261027` is history only.
+
 Steps carry a status marker: **VALIDATED** (run on the win-arm64 test device;
 passed; results recorded at the step), **FAILED** (run; findings recorded),
 **RUNNING**, **UNTESTED** (not yet run), **NOT AVAILABLE** (the device cannot
@@ -141,7 +166,7 @@ copies inside the gate directories are not.
 | GPU | Qualcomm Adreno 680, driver 27.20.2140.0 (2024-10-30), Direct3D 12; the host reports it as a mobile adapter (`budgetSource` "unknown-mobile", no device record, tier `full`) |
 | Vulkan | Loader 1.3.300; the only Vulkan driver is Mesa's Dozen (Vulkan on D3D12, "Microsoft Direct3D12 (Qualcomm(R) Adreno(TM) 680 GPU)", Mesa 26.3.0-devel, Vulkan 1.1.217) from the Microsoft "OpenCL, OpenGL & Vulkan Compatibility Pack" (`Microsoft.D3DMappingLayers` 1.2608.3.0); see step 5 |
 | Python | 3.15.1, native ARM64, run as `python -I -X utf8` |
-| .NET | SDK 10.0.403 (ARM64) |
+| .NET | SDK 10.0.403 (ARM64); **the only permitted version** |
 | Build tools | 2026-10-25: none. Since 2026-10-27: Visual Studio Professional 2026 with the C++ Clang compiler; HEAD is built on the device ("Building on the device") |
 
 ## Ordered steps
@@ -752,7 +777,7 @@ Details: [native/host/WINDOWS_X64.md](../native/host/WINDOWS_X64.md),
 The full battery deferred on 2026-10-27, on a host built from HEAD on the device
 (with the F1 fix) and runtime 1.0.300.210, then again on the restaged payload:
 
-1. `python -I -X utf8 native/tools/windows_host_gate.py --rid win-arm64 --backend d3d12 --output native/work/windows-arm64-validation-d3d12-<n> --references native/evidence/linux-x64-docker-reference-20261027/host-gate-cpu-only --device-gates`
+1. `python -I -X utf8 native/tools/windows_host_gate.py --rid win-arm64 --backend d3d12 --output native/work/windows-arm64-validation-d3d12-<n> --references native/evidence/linux-x64-reference-20261029/host-gate --device-gates`
    (build mode; on the staged payload add `--payload native/binaries/win-arm64`).
    About 11 minutes without device gates on 1.0.290.1433; driver coverage is
    expected to pass except the light tree (F5).
@@ -761,14 +786,50 @@ The full battery deferred on 2026-10-27, on a host built from HEAD on the device
 3. The oracle corpus (about an hour) and the bench scenes (about 8 minutes),
    `--backend cpu-arm64-windows --backend wgsl-windows-arm64-d3d12`, judged
    against the Linux x64 glibc films in
-   `native/evidence/linux-x64-docker-reference-20261027/oracles/` with
+   `native/evidence/linux-x64-reference-20261029/oracles/` (`corpus/`, `bench/`) with
    `native/oracle/compare.py` (Linux film first). Mind C1 where the CPU
    references disagree.
 4. F5 with WARP on a cropped scene; F7 with the M1 probe shader; a mirrored
    (negative-scale) object scene for the branch the F1 fix touches.
 5. The device gates' judgement against Linux x64 glibc (the scene and stage
-   exchanges) still needs a Linux x64 machine or container. This device has no
-   Docker, and its WSL distribution is ARM64.
+   exchanges): the hand-off with the Linux x64 machine, "Device-gate exchange with the
+   Linux x64 machine" below (two device visits).
+
+### Device-gate exchange with the Linux x64 machine (2026-10-29)
+
+**UNTESTED on this device** (the script's four steps were run end to end on the
+Linux x64 machine only, with Linux standing in as the device). Some device gates
+are judged against Linux x64 glibc computed from the device's OWN scene tables
+(native/DEVICE.md, "Validation reference policy"). This device has no Linux x64
+side (no Docker; its WSL is ARM64), and from 2026-10-29 the Linux side is the
+dedicated Linux x64 machine only. `native/tools/reference_exchange_handoff.py`
+splits the exchange of `light_tree`, `microfacet_render` and `mnee` into two
+device visits and two Linux steps, all from the SAME commit (scene loading
+refuses another commit's tables):
+
+| Step | Where | Command | Hand over |
+|---|---|---|---|
+| D1 | this device | `python -I -X utf8 native/tools/reference_exchange_handoff.py device-dump --output native/work/exchange-<n>/out-1` | `out-1/` to the Linux machine |
+| L1 | Linux x64 | `python3 native/tools/reference_exchange_handoff.py linux-reference --dump <x>/out-1 --output <x>/in-1` | `in-1/` back (committed under `native/evidence/`, then `git pull`) |
+| D2 | this device | `python -I -X utf8 native/tools/reference_exchange_handoff.py device-import --dump native/work/exchange-<n>/out-1 --reference <in-1> --output native/work/exchange-<n>/out-2` | `out-2/` to the Linux machine |
+| L2 | Linux x64 | `python3 native/tools/reference_exchange_handoff.py linux-judge --dump <x>/out-1 --reference <x>/in-1 --run <x>/out-2 --output <x>/in-2 --evidence native/evidence/<device>-exchange-<date>` | the final verdicts |
+
+- D1: scene dumps of `light_tree` and `microfacet_render` (no GPU work); the
+  `mnee` record pass (GPU), which records every lockstep check.
+- L1: the glibc references of the dumped scenes; the `mnee` stage judge. The
+  `mnee` verdict is final at L1.
+- D2: `light_tree` and `microfacet_render` on the GPU against the imported
+  references (the device's verdict); `microfacet_render` records its stages.
+- L2: the stage judge of those stages; `manifest.json` with every verdict.
+- Each step writes `manifest.json` (commit, working-tree changes, gate and
+  runtime SHA-256, `dotnet --version`, host) and refuses inputs of another
+  commit, a WebGPU runtime that is not the 1.0.300.210 package's file for the
+  RID, or an SDK other than 10.0.403. The gates run from
+  `native/work/windows/<rid>/host/build/bin` (`--bin` for a payload run folder
+  with `codebrix_wgpu.dll` beside it); `--backend` defaults to `d3d12`.
+- The stage records (`mnee` about 155 MB, `microfacet_render` about 25 MB) are
+  not committed: they travel inside `out-1/` and `out-2/` (USB stick or scp) and
+  `--evidence` lists them in `transport-only.json` by SHA-256.
 
 The plan written after the 2026-10-26 rebuild follows (superseded where the
 above differs).

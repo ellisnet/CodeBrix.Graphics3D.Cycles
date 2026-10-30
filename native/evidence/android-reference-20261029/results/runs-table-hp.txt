@@ -1,0 +1,132 @@
+### hp
+RUN materials-r29 runPassed=True complete=True wall=2220.5 srcUnchanged=True failures=0
+  PASS principled_svm                             wall=148.9
+  PASS principled_bounce                          wall=200.5
+  PASS principled_render                          wall=122.5 glibc practical=0 strict=91 max=6.44e-06 rejudge=True
+  PASS nodes_svm                                  wall=659.0
+  PASS nodes_world                                wall=248.7
+  PASS nodes_render                               wall=92.2 glibc practical=0 strict=1794 max=0.000103 rejudge=True
+  PASS principled-replay                          wall=None replay readbacks=322 max=6.44e-06 strict=91
+  PASS nodes-replay                               wall=None replay readbacks=320 max=0.000103 strict=1794
+RUN triangle-r29 runPassed=True complete=True wall=487.0 srcUnchanged=True failures=0
+  PASS triangle_sample                            wall=20.9 glibc practical=0 strict=865 max=0.000488 rejudge=True
+  PASS surface                                    wall=33.3
+  PASS triangle_lighting                          wall=86.0 glibc practical=0 strict=867 max=2.32e-06 rejudge=True
+  PASS replay-0                                   wall=None replay readbacks=289 max=4.77e-07 strict=9
+  PASS replay-1                                   wall=None replay readbacks=417 max=1.19e-07 strict=0
+  PASS replay-2                                   wall=None replay readbacks=415 max=6.41e-07 strict=12
+  PASS replay-3                                   wall=None replay readbacks=473 max=2.32e-06 strict=426
+  PASS replay-4                                   wall=None replay readbacks=415 max=2.38e-07 strict=7
+  PASS replay-5                                   wall=None replay readbacks=464 max=2.32e-06 strict=413
+RUN emitter-r29 runPassed=True complete=True wall=60.4 srcUnchanged=True failures=0
+  PASS emitter_sample                             wall=18.8 glibc practical=0 strict=235 max=0.00513 rejudge=True
+RUN regression-r29 runPassed=True complete=True wall=350.4 srcUnchanged=True failures=0
+  PASS glass_render                               wall=52.5 glibc practical=0 strict=104 max=9.54e-07 rejudge=True
+  PASS lighting_mis                               wall=43.7 glibc practical=0 strict=2682 max=8.34e-06 rejudge=True
+  PASS transparent_lighting                       wall=68.4 glibc practical=0 strict=1679 max=7.75e-06 rejudge=True
+RUN lighting-r29 runPassed=True complete=True wall=384.2 srcUnchanged=True failures=0
+  PASS lighting_mis                               wall=42.6 glibc practical=0 strict=2682 max=8.34e-06 rejudge=True
+  PASS broad_lighting                             wall=58.9 glibc practical=0 strict=1733 max=5.34e-05 rejudge=True
+  PASS lighting_mis-replay-0                      wall=None replay readbacks=414 max=1.79e-07 strict=3
+  PASS lighting_mis-replay-1                      wall=None replay readbacks=450 max=1.91e-06 strict=11
+  PASS broad_lighting-replay-0                    wall=None replay readbacks=414 max=1.79e-07 strict=1
+  PASS broad_lighting-replay-1                    wall=None replay readbacks=450 max=5.07e-07 strict=26
+RUN transparent-r29 runPassed=True complete=True wall=519.7 srcUnchanged=True failures=0
+  PASS transparent_shadow                         wall=11.9
+  PASS transparent_lighting                       wall=68.8 glibc practical=0 strict=1679 max=7.75e-06 rejudge=True
+  PASS transparent_lighting-replay-0              wall=None replay readbacks=560 max=1.49e-07 strict=1
+  PASS transparent_lighting-replay-1              wall=None replay readbacks=596 max=1.91e-06 strict=8
+  PASS transparent_lighting-replay-2              wall=None replay readbacks=575 max=1.91e-06 strict=89
+  PASS transparent_lighting-replay-3              wall=None replay readbacks=580 max=5.01e-06 strict=323
+  PASS transparent_lighting-replay-4              wall=None replay readbacks=840 max=7.75e-06 strict=435
+  PASS transparent_lighting-replay-5              wall=None replay readbacks=916 max=7.75e-07 strict=4
+  PASS transparent_lighting-replay-6              wall=None replay readbacks=428 max=6.56e-06 strict=299
+  PASS transparent_lighting-replay-7              wall=None replay readbacks=518 max=6.79e-06 strict=520
+  PASS transparent-shadow-replay-direct           wall=None replay readbacks=8 max=1.19e-07 strict=0
+  PASS transparent-shadow-replay-indexed          wall=None replay readbacks=4 max=7.45e-09 strict=0
+RUN terminator-r29 runPassed=True complete=True wall=680.1 srcUnchanged=True failures=0
+  PASS shadow_terminator                          wall=129.1 glibc practical=0 strict=107 max=1.53e-05 rejudge=True
+  PASS terminator-replay-0                        wall=None replay readbacks=428 max=5.96e-08 strict=0
+  PASS terminator-replay-1                        wall=None replay readbacks=418 max=5.96e-08 strict=0
+  PASS terminator-replay-2                        wall=None replay readbacks=418 max=5.96e-08 strict=0
+  PASS terminator-replay-3                        wall=None replay readbacks=428 max=5.96e-08 strict=0
+  PASS terminator-replay-4                        wall=None replay readbacks=455 max=1.53e-05 strict=25
+  PASS terminator-replay-5                        wall=None replay readbacks=446 max=1.53e-05 strict=21
+  PASS terminator-replay-6                        wall=None replay readbacks=446 max=1.53e-05 strict=21
+  PASS terminator-replay-7                        wall=None replay readbacks=455 max=1.53e-05 strict=25
+  PASS terminator-replay-8                        wall=None replay readbacks=407 max=2.38e-07 strict=5
+  PASS terminator-replay-9                        wall=None replay readbacks=443 max=9.54e-07 strict=10
+RUN spec-refusal-r29 runPassed=True complete=True wall=134.0 srcUnchanged=True failures=0
+  PASS glass_render-spec                          wall=52.6 glibc practical=0 strict=104 max=9.54e-07 rejudge=True
+  PASS glass_render-nospec-refused                wall=0.3
+  PASS glass_render-superset-refused              wall=0.3
+RUN environment-r29 runPassed=True complete=True wall=1302.7 srcUnchanged=True failures=0
+  PASS environment                                wall=296.1 glibc practical=0 strict=1343 max=2.86e-05 rejudge=True
+  PASS environment-replay-0                       wall=None replay readbacks=443 max=5.25e-06 strict=122
+  PASS environment-replay-1                       wall=None replay readbacks=463 max=4.77e-06 strict=135
+  PASS environment-replay-2                       wall=None replay readbacks=281 max=5.96e-06 strict=146
+  PASS environment-replay-3                       wall=None replay readbacks=463 max=8.82e-06 strict=123
+  PASS environment-replay-4                       wall=None replay readbacks=575 max=3.81e-06 strict=216
+  PASS environment-replay-5                       wall=None replay readbacks=281 max=2.86e-05 strict=130
+  PASS environment-replay-6                       wall=None replay readbacks=465 max=8.52e-06 strict=65
+  PASS environment-replay-7                       wall=None replay readbacks=465 max=4.77e-07 strict=7
+  PASS environment-replay-8                       wall=None replay readbacks=484 max=2.69e-05 strict=163
+  PASS environment-replay-9                       wall=None replay readbacks=484 max=4.66e-06 strict=47
+  PASS environment-replay-10                      wall=None replay readbacks=463 max=6.91e-06 strict=136
+  PASS environment-replay-11                      wall=None replay readbacks=433 max=1.43e-06 strict=53
+RUN lighttree-r29 runPassed=False complete=True wall=1139.1 srcUnchanged=True failures=1
+  PASS light_tree                                 wall=427.1 glibc practical=0 strict=29197 max=0.0227 rejudge=True
+  PASS light_tree-replay-0                        wall=None replay readbacks=490 max=1.59e-05 strict=320
+  PASS light_tree-replay-1                        wall=None replay readbacks=450 max=1.07e-05 strict=301
+  FAIL light_tree-replay-2                        wall=None :: ['Creating pipeline shade_shadow at command 44', 'Created pipeline shade_shadow in 65 ms', 'Native scheduler decision readback differs at command 51 address=4403888']
+  PASS light_tree-replay-3                        wall=None replay readbacks=459 max=9.54e-06 strict=306
+  PASS light_tree-replay-4                        wall=None replay readbacks=462 max=4.89e-06 strict=373
+  PASS light_tree-replay-5                        wall=None replay readbacks=391 max=2.85e-05 strict=174
+  PASS light_tree-replay-6                        wall=None replay readbacks=445 max=1.9e-05 strict=612
+RUN shadowcatcher-r29 runPassed=True complete=True wall=606.0 srcUnchanged=True failures=0
+  PASS shadow_catcher                             wall=196.1 glibc practical=0 strict=4480 max=2.67e-05 rejudge=True
+  PASS shadow_catcher-replay-0                    wall=None replay readbacks=291 max=9.54e-07 strict=90
+  PASS shadow_catcher-replay-1                    wall=None replay readbacks=297 max=9.54e-07 strict=81
+  PASS shadow_catcher-replay-2                    wall=None replay readbacks=305 max=7.15e-07 strict=75
+  PASS shadow_catcher-replay-4                    wall=None replay readbacks=463 max=1.88e-05 strict=1104
+  PASS shadow_catcher-replay-7                    wall=None replay readbacks=529 max=2.5e-05 strict=1103
+  PASS shadow_catcher-replay-8                    wall=None replay readbacks=469 max=1.88e-05 strict=554
+RUN ao-r29 runPassed=True complete=True wall=1052.7 srcUnchanged=True failures=0
+  PASS ao_state                                   wall=239.5
+  PASS ao_render                                  wall=226.2 glibc practical=0 strict=4361 max=1.57e-05 rejudge=True
+  PASS ao_render-replay-0                         wall=None replay readbacks=272 max=4.29e-06 strict=635
+  PASS ao_render-replay-1                         wall=None replay readbacks=272 max=4.41e-06 strict=610
+  PASS ao_render-replay-2                         wall=None replay readbacks=272 max=4.29e-06 strict=418
+  PASS ao_render-replay-3                         wall=None replay readbacks=623 max=4.05e-06 strict=358
+  PASS ao_render-replay-4                         wall=None replay readbacks=498 max=1.57e-05 strict=479
+  PASS ao_render-replay-5                         wall=None replay readbacks=272 max=4.29e-06 strict=638
+  PASS ao_render-replay-6                         wall=None replay readbacks=597 max=6.91e-06 strict=641
+  PASS ao_render-replay-7                         wall=None replay readbacks=610 max=4.53e-06 strict=582
+RUN mnee-r29 runPassed=True complete=True wall=1196.1 srcUnchanged=True failures=0
+  PASS mnee_render                                wall=165.4 glibc practical=0 strict=1072 max=1.23e-05 rejudge=True
+  PASS mnee                                       wall=210.7
+  PASS device                                     wall=1.8
+  PASS closest                                    wall=24.3
+  PASS mnee-replay-0                              wall=None replay readbacks=565 max=6.44e-06 strict=43
+  PASS mnee-replay-1                              wall=None replay readbacks=796 max=1.23e-05 strict=940
+  PASS mnee-replay-2                              wall=None replay readbacks=598 max=2.98e-08 strict=0
+  PASS mnee-replay-3                              wall=None replay readbacks=396 max=7.15e-07 strict=41
+  PASS mnee-replay-4                              wall=None replay readbacks=561 max=7.15e-07 strict=48
+RUN hostcap-linux-triangle runPassed=True complete=True wall=282.2 srcUnchanged=None failures=0
+  PASS tri0                                       wall=None replay readbacks=289 max=4.77e-07 strict=9
+  PASS tri1                                       wall=None replay readbacks=417 max=1.19e-07 strict=0
+  PASS tri2                                       wall=None replay readbacks=415 max=6.41e-07 strict=12
+  PASS tri3                                       wall=None replay readbacks=473 max=2.32e-06 strict=426
+  PASS tri4                                       wall=None replay readbacks=415 max=2.38e-07 strict=7
+  PASS tri5                                       wall=None replay readbacks=464 max=2.32e-06 strict=412
+RUN hostcap-linux-terminator runPassed=True complete=True wall=509.4 srcUnchanged=None failures=0
+  PASS term0                                      wall=None replay readbacks=428 max=5.96e-08 strict=0
+  PASS term1                                      wall=None replay readbacks=418 max=5.96e-08 strict=0
+  PASS term2                                      wall=None replay readbacks=418 max=5.96e-08 strict=0
+  PASS term3                                      wall=None replay readbacks=428 max=5.96e-08 strict=0
+  PASS term4                                      wall=None replay readbacks=455 max=1.53e-05 strict=25
+  PASS term5                                      wall=None replay readbacks=446 max=1.53e-05 strict=21
+  PASS term6                                      wall=None replay readbacks=446 max=1.53e-05 strict=21
+  PASS term7                                      wall=None replay readbacks=455 max=1.53e-05 strict=25
+  PASS term8                                      wall=None replay readbacks=407 max=4.77e-07 strict=8
+  PASS term9                                      wall=None replay readbacks=443 max=1.07e-06 strict=12

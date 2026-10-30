@@ -1,0 +1,88 @@
+### s20
+RUN materials-s20-principled_svm runPassed=True complete=True wall=503.4 srcUnchanged=True failures=0
+  PASS principled_svm                             wall=357.2
+RUN transparent-s20-transparent_shadow runPassed=True complete=True wall=65.8 srcUnchanged=True failures=0
+  PASS transparent_shadow                         wall=16.7
+  PASS transparent-shadow-replay-direct           wall=None replay readbacks=8 max=1.19e-07 strict=0
+  PASS transparent-shadow-replay-indexed          wall=None replay readbacks=4 max=0 strict=0
+RUN a650-refusals-r29 runPassed=True complete=True wall=25.6 srcUnchanged=True failures=0
+  PASS nodes_world-refused                        wall=0.5
+  PASS nodes_svm-refused                          wall=0.4
+  PASS nodes_render-refused                       wall=0.6
+RUN triangle-s20-triangle_sample runPassed=True complete=True wall=109.5 srcUnchanged=True failures=0
+  PASS triangle_sample                            wall=62.6 glibc practical=0 strict=865 max=0.000488 rejudge=True
+RUN regression-s20-glass_render runPassed=True complete=True wall=159.8 srcUnchanged=True failures=0
+  PASS glass_render                               wall=77.6 glibc practical=0 strict=64 max=1.91e-06 rejudge=True
+RUN regression-s20-lighting_mis runPassed=True complete=True wall=109.2 srcUnchanged=True failures=0
+  PASS lighting_mis                               wall=58.3 glibc practical=0 strict=1057 max=6.08e-06 rejudge=True
+RUN triangle-s20-surface runPassed=True complete=True wall=63.0 srcUnchanged=True failures=0
+  PASS surface                                    wall=40.2
+RUN transparent-s20-transparent_lighting runPassed=True complete=True wall=613.4 srcUnchanged=True failures=0
+  PASS transparent_lighting                       wall=166.7 glibc practical=0 strict=683 max=6.02e-06 rejudge=True
+  PASS transparent_lighting-replay-0              wall=None replay readbacks=560 max=1.19e-07 strict=0
+  PASS transparent_lighting-replay-1              wall=None replay readbacks=596 max=1.19e-07 strict=0
+  PASS transparent_lighting-replay-2              wall=None replay readbacks=575 max=3.81e-06 strict=72
+  PASS transparent_lighting-replay-3              wall=None replay readbacks=580 max=1.55e-06 strict=133
+  PASS transparent_lighting-replay-4              wall=None replay readbacks=840 max=6.02e-06 strict=167
+  PASS transparent_lighting-replay-5              wall=None replay readbacks=916 max=7.9e-07 strict=3
+  PASS transparent_lighting-replay-6              wall=None replay readbacks=428 max=6.02e-06 strict=103
+  PASS transparent_lighting-replay-7              wall=None replay readbacks=518 max=6.02e-06 strict=205
+RUN materials-s20-principled_render runPassed=False complete=True wall=195.4 srcUnchanged=True failures=2
+  FAIL principled_render                          wall=135.0 glibc practical=0 strict=0 max=0 rejudge=False :: ["CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 40171 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver", '02:14.73 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitiali
+  FAIL principled-replay                          wall=None :: source job failed
+RUN pixel-motion-s20-object-moving-images runPassed=False complete=True wall=128.7 srcUnchanged=True failures=9
+  FAIL object-moving-images                       wall=81.7 glibc practical=0 strict=0 max=0 rejudge=False :: ["CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 26315 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver", '01:21.49 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitia
+  FAIL object-replay-motion-0                     wall=None :: source job failed
+  FAIL object-replay-motion-1                     wall=None :: source job failed
+  FAIL object-replay-motion-2                     wall=None :: source job failed
+  FAIL object-replay-motion-3                     wall=None :: source job failed
+  FAIL object-replay-motion-4                     wall=None :: source job failed
+  FAIL object-replay-motion-5                     wall=None :: source job failed
+  FAIL object-replay-motion-6                     wall=None :: source job failed
+  FAIL object-replay-motion-7                     wall=None :: source job failed
+RUN pixel-motion-s20-deforming-moving-images runPassed=False complete=True wall=103.1 srcUnchanged=True failures=9
+  FAIL deforming-moving-images                    wall=57.4 glibc practical=0 strict=0 max=0 rejudge=False :: ["CodeBrix Cycles WebGPU warning: pipeline 'prepare_surface' took 25253 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver", '00:57.17 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitia
+  FAIL deforming-replay-motion-0                  wall=None :: source job failed
+  FAIL deforming-replay-motion-1                  wall=None :: source job failed
+  FAIL deforming-replay-motion-2                  wall=None :: source job failed
+  FAIL deforming-replay-motion-3                  wall=None :: source job failed
+  FAIL deforming-replay-motion-4                  wall=None :: source job failed
+  FAIL deforming-replay-motion-5                  wall=None :: source job failed
+  FAIL deforming-replay-motion-6                  wall=None :: source job failed
+  FAIL deforming-replay-motion-7                  wall=None :: source job failed
+RUN environment-s20-environment runPassed=False complete=True wall=23.1 srcUnchanged=True failures=0
+RUN shadowcatcher-s20-shadow_catcher runPassed=True complete=True wall=849.8 srcUnchanged=True failures=0
+  PASS shadow_catcher                             wall=457.5 glibc practical=0 strict=1663 max=1.74e-05 rejudge=False
+  PASS shadow_catcher-replay-0                    wall=None replay readbacks=291 max=4.77e-07 strict=24
+  PASS shadow_catcher-replay-1                    wall=None replay readbacks=297 max=9.54e-07 strict=14
+  PASS shadow_catcher-replay-2                    wall=None replay readbacks=305 max=4.77e-07 strict=16
+  PASS shadow_catcher-replay-4                    wall=None replay readbacks=463 max=2.86e-06 strict=783
+  PASS shadow_catcher-replay-7                    wall=None
+  PASS shadow_catcher-replay-8                    wall=None replay readbacks=469 max=2.62e-06 strict=240
+RUN s20-ao-s20-ao runPassed=True complete=True wall=87.4 srcUnchanged=True failures=0
+  PASS ao_state-refused                           wall=0.9
+  PASS ao_render-additive-refused                 wall=0.7
+  PASS ao_render-node-refused                     wall=1.5
+  PASS ao_render-replace                          wall=40.5 glibc practical=0 strict=503 max=2.09e-06 rejudge=True
+RUN lighttree-s20-light_tree runPassed=False complete=True wall=249.4 srcUnchanged=True failures=8
+  FAIL light_tree                                 wall=165.4 glibc practical=179 strict=2026 max=0.00161 rejudge=False :: ['probe entry light_tree_importance_probe inlines to 745315 bytes', "CodeBrix Cycles WebGPU warning: pipeline 'shade_surface_light_select' took 28386 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver", 'Light tree f
+  FAIL light_tree-replay-0                        wall=None :: source job failed
+  FAIL light_tree-replay-1                        wall=None :: source job failed
+  FAIL light_tree-replay-2                        wall=None :: source job failed
+  FAIL light_tree-replay-3                        wall=None :: source job failed
+  FAIL light_tree-replay-4                        wall=None :: source job failed
+  FAIL light_tree-replay-5                        wall=None :: source job failed
+  FAIL light_tree-replay-6                        wall=None :: source job failed
+RUN materials-s20-principled_bounce runPassed=False complete=True wall=152.9 srcUnchanged=True failures=1
+  FAIL principled_bounce                          wall=129.7 :: ["CodeBrix Cycles WebGPU warning: pipeline 'shade_surface' took 39234 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver", '02:09.34 | ERROR: WebGPU scheduler kernel reported invalid data (mask 8): invalid/uninitiali
+RUN mnee-r29-aborted-nostage runPassed=False complete=True wall=18.3 srcUnchanged=True failures=0
+RUN mnee-r29 runPassed=False complete=True wall=274.1 srcUnchanged=True failures=8
+  FAIL mnee_render                                wall=115.9 glibc practical=0 strict=0 max=0 rejudge=False :: ["CodeBrix Cycles WebGPU warning: pipeline 'mnee_contribute' took 25451 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver", '01:55.63 | ERROR: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/da
+  FAIL mnee                                       wall=110.0 :: ["CodeBrix Cycles WebGPU warning: pipeline 'mnee_contribute' took 24774 ms, over the 20000 ms compile budget (full tier); first-use latency is degraded on this driver", '01:49.69 | ERROR: WebGPU scheduler kernel reported invalid data (mask 1): invalid state/da
+  PASS device                                     wall=1.5
+  FAIL closest                                    wall=0.4 :: ['[OpenColorIO Info]: Color management disabled. (Specify the $OCIO environment variable to enable.)', '00:00.16 | ERROR: WebGPU: ambient occlusion shader nodes and ambient occlusion shadow rays (fast GI additive mode, AO pass) are not supported on Adreno (TM)
+  FAIL mnee-replay-0                              wall=None :: source job failed
+  FAIL mnee-replay-1                              wall=None :: source job failed
+  FAIL mnee-replay-2                              wall=None :: source job failed
+  FAIL mnee-replay-3                              wall=None :: source job failed
+  FAIL mnee-replay-4                              wall=None :: source job failed

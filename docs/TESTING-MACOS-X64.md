@@ -2,6 +2,31 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
+> **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
+> procedure and override anything below, including the historical records).**
+>
+> 1. **WebGPU binaries: ONLY from the `CodeBrix.WebGpu.Native.MitLicenseForever`
+>    1.0.300.210 NuGet package.** Load the `codebrix_wgpu` binary from that
+>    package's `runtimes/<rid>/native/` folder (restored into the NuGet cache)
+>    and from nowhere else. **Do NOT** test with WebGPU binaries from any other
+>    source (a local build, a committed payload, another package, Dawn, an
+>    upstream wgpu-native release, a system library) or from any other version
+>    of this package, earlier or later. Runs with other WebGPU binaries are not
+>    evidence and must not be recorded as results.
+> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 10 SDK
+>    10.0.403 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `10.0.403`) before starting and record
+>    the output with the run.
+> 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
+>    Android testing and validation are done on the dedicated Linux x64 machine
+>    only. Every comparison against Linux x64 uses the newest
+>    `native/evidence/linux-x64-reference-<date>/` set (now
+>    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
+>    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
+>    machine; `linux-x64-docker-reference-20261027` is history only.
+
 Steps carry a status marker: **VALIDATED** (run on the Intel Mac; results
 recorded at the step), **UNTESTED** (not yet run), **MISSING** (something that
 does not exist yet) or **UNKNOWN** (a fact that needs hardware or input not at
@@ -23,10 +48,13 @@ before a release is published. Status on 2026-10-27: **every item passes** -
 the host gate (with the Linux references), every device gate (the three that
 fail against Apple's libm pass against glibc, step 7), all 56 WGSL oracle and
 bench films against the Linux CPU films (step 8), the managed tests and the
-glTF client. The Linux x64 reference data is
+glTF client. The Linux x64 reference data of those runs was
 `native/evidence/linux-x64-docker-reference-20261027/` (produced in Docker on
-this Mac with the dedicated Linux machine's toolchain; replaceable by a run on
-that machine).
+this Mac with the dedicated Linux machine's toolchain). **From 2026-10-29 it is
+replaced by `native/evidence/linux-x64-reference-20261029/`**, made on the Linux
+x64 machine; its CPU films are bitwise identical to the Docker set's. The next
+run uses the new set, and the device-gate exchanges go through
+`native/tools/reference_exchange_handoff.py` instead of Docker (step 7).
 
 The final runs (2026-10-27: gate `macos-x64-validation-7`, corpus
 `macos-x64-7`, bench `macos-x64-bench-3`, the staged payload and the bundle)
@@ -89,7 +117,7 @@ match the device name (M2).
 | Homebrew (x64) | In `/usr/local`. Used only for tools; every recipe excludes `/usr/local` and `/opt/homebrew` from searches and rejects any reference to them. |
 | CMake | 3.24 or newer (4.4.3 validated). |
 | Python | 3.12 or newer (3.15.2 validated). Xcode's Python is too old. |
-| .NET | .NET 10 SDK for x64 (`dotnet --info` must report `RID: osx-x64`). |
+| .NET | .NET 10 SDK **10.0.403 only** (no earlier version) for x64 (`dotnet --version` must print `10.0.403`; `dotnet --info` must report `RID: osx-x64`). |
 | zstd | For the oracle bundle. |
 | Deployment target | macOS 15.0 for every built Mach-O (the runtime declares 11.0). |
 
@@ -136,12 +164,15 @@ Both SHA-256 values match the pins; `otool -L` lists only `/usr/lib` and
 libobjc, libiconv, libSystem); `lipo` reports x86_64 alone; `codesign` reports
 `Signature=adhoc`.
 
-### 3. Bring the Linux x64 reference **VALIDATED** (Docker)
+### 3. Bring the Linux x64 reference **VALIDATED** (Docker, 2026-10-27; superseded)
 
-On the Linux x64 machine (or in a Linux container with its toolchain - see
-`native/evidence/linux-x64-docker-reference-20261027/README.md` for the image,
-the two container-only additions and every command), after a maintained Linux
-build of the same commit:
+From 2026-10-29 the reference comes from the Linux x64 machine only: use
+`native/evidence/linux-x64-reference-20261029/` (overlay hashes in
+`reference/linux-overlay-hashes.json`, the full host gate in `host-gate/`, the
+oracle and bench films in `oracles/`). No Docker run. The 2026-10-27 record,
+when it was made on this Mac in a container (see
+`native/evidence/linux-x64-docker-reference-20261027/README.md`), follows. On
+the Linux x64 machine, after a maintained Linux build of the same commit:
 
 ```sh
 python3 native/tools/build_cycles_macos_x64.py --write-overlay-hashes native/work/cycles-overlay \
@@ -269,8 +300,14 @@ and no CPU or GPU step reported a missing path. Settled.
 
 Run by step 6 with `--device-gates`, each against the CPU reference computed in
 the same process (Apple's libm). Where that fails, the authoritative verdict is
-the device-scene flow against Linux x64 glibc (below). **One command** runs all
-three of those judgements on this Mac, with the Linux side in Docker:
+the device-scene flow against Linux x64 glibc (below).
+
+**From 2026-10-29 the Linux side is the Linux x64 machine, not Docker.** Run the
+exchange as the four-step hand-off of TESTING-WINDOWS-ARM64.md, "Device-gate
+exchange with the Linux x64 machine" (on this Mac with `python3`; the gates are
+found in `native/work/macos/osx-x64/host/build/bin`). The Docker route below is
+the 2026-10-27 record; do not use it for new evidence. Then, **one command** ran
+all three of those judgements on this Mac, with the Linux side in Docker:
 
 ```sh
 python3 native/tools/macos_x64_reference_exchange.py --output native/work/macos-x64-exchange-<n>

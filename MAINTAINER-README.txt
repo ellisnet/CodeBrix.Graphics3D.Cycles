@@ -321,14 +321,19 @@ The Intel Mac mini (2018) is a REFERENCE DEVICE (native/DEVICE.md, "Reference
 devices and the publish rule"): every host-gate step, device gate, oracle and
 bench scene and managed test must pass there, judged against the Linux x64 glibc
 reference, or the release is not ready to publish. The Apple Silicon Mac mini
-(M2 Pro) is the Metal comparison device, not a WGSL reference device. A Linux x64
-reference can be produced in Docker
-(native/evidence/linux-x64-docker-reference-20261027/README.md; host_gate.py
---cpu-only runs the Linux host gate's CPU steps where there is no GPU or .NET).
-On the Intel Mac, `python3 native/tools/macos_x64_reference_exchange.py --output
-native/work/macos-x64-exchange-<n>` judges the device gates against that
-reference in one command (Docker Desktop; the image is native/tools/
-linux_reference/Dockerfile; about 5 minutes warm, 16 minutes from nothing).
+(M2 Pro) is the Metal comparison device, not a WGSL reference device.
+LINUX X64 REFERENCE (2026-10-29): Linux x64 and Android testing and validation
+are done on the dedicated Linux x64 machine ONLY, and every Linux x64 reference
+other platforms compare against comes from that machine and is committed:
+the newest native/evidence/linux-x64-reference-<date>/ (now
+linux-x64-reference-20261029: overlay hashes, libm record, the full host gate,
+oracle and bench films, managed reference films). Device-gate exchanges of the
+devices without a Linux x64 side (Windows, the Intel Mac, the Raspberry Pi) run
+as the two-visit hand-off of native/tools/reference_exchange_handoff.py
+(docs/TESTING-WINDOWS-ARM64.md, "Device-gate exchange with the Linux x64
+machine"). The Docker route (native/evidence/linux-x64-docker-reference-20261027/,
+native/tools/macos_x64_reference_exchange.py, native/tools/linux_reference/) is
+the 2026-10-27 record and is not used for new evidence.
 win-arm64 is cross-compiled and NOT YET VALIDATED: its provenance.json records
 validation.status "pending-device". The first device run (Qualcomm Adreno 680,
 Direct3D 12) passed the host gate but found driver problems in some scenes

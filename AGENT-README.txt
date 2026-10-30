@@ -962,10 +962,9 @@ WHAT THIS PACKAGE DOES NOT DO
   sun lights. It does not render shadow caustics through anisotropic glass,
   from spot, area or background lights, or together with light trees, light or
   shadow linking, ambient occlusion, volumes or motion blur, on the WebGPU
-  device: the render fails with an error naming the feature. On Adreno 730 and
-  Adreno 650 GPUs (for example the Samsung SM-X700 and Galaxy S20) scenes with
-  shadow caustics currently stop with an invalid-data error instead of
-  rendering.
+  device: the render fails with an error naming the feature. On Adreno 650
+  GPUs (for example the Samsung Galaxy S20) scenes with shadow caustics are
+  refused with an error message before rendering starts.
 - It does not render texture, colour and utility shader nodes (noise, Voronoi,
   wave, magic, brick and Gabor textures, ramps, mixing, mapping and similar) on
   Adreno 650 GPUs (for example the Samsung Galaxy S20); such scenes are refused

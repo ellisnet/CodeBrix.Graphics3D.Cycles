@@ -1,0 +1,294 @@
+[10:53:18] START r29-linux; dotnet 10.0.403; HEAD 686f79282; host->1.0.300.210 5a61096e
+[10:53:18] START b-all
+[11:01:08] ALL-TARGETS BUILD DONE exit=0
+[11:01:47] START j3-dotnet-build-release
+[11:01:51] END j3-dotnet-build-release exit=0 4s
+[11:01:51] START j3-dotnet-build-debug
+[11:01:53] END j3-dotnet-build-debug exit=0 2s
+[11:01:53] START j3-dotnet-test-release
+[11:04:18] END j3-dotnet-test-release exit=0 145s
+[11:04:18] START j3-dotnet-test-debug
+[11:06:46] END j3-dotnet-test-debug exit=0 148s
+[11:06:46] START j4-host-gate
+[11:09:07] END j4-host-gate exit=0 141s
+[11:09:07] START j5-overlay-hashes
+[11:09:07] END j5-overlay-hashes exit=0 0s
+[11:09:07] START j6-libm
+[11:09:31] END j6-libm exit=0 24s
+[11:09:31] START j7-oracle-corpus
+[11:14:08] END j7-oracle-corpus exit=0 277s
+[11:14:08] START j7-bench-bundle
+[11:14:10] END j7-bench-bundle exit=0 2s
+[11:14:10] START j7-oracle-bench
+[11:16:38] END j7-oracle-bench exit=0 148s
+[11:16:38] START j8-managed-export
+[11:19:07] END j8-managed-export exit=0 149s
+[11:19:07] SEQ DONE
+[11:19:34] PLAN job9 4 lanes started
+[11:19:34] START p8-nodes-gate
+[11:19:34] START p8-glass-superset
+[11:19:34] START p8-light-tree
+[11:19:34] START p8-s-nodes_render
+[11:20:56] END p8-s-nodes_render exit=0 82s
+[11:20:56] START p8-s-principled_render
+[11:22:25] END p8-s-principled_render exit=0 89s
+[11:22:25] START p8-s-microfacet_render
+[11:23:26] END p8-s-microfacet_render exit=0 61s
+[11:23:26] START p8-s-render-static
+[11:23:47] END p8-glass-superset exit=0 253s
+[11:23:47] START p8-principled-superset
+[11:24:24] END p8-s-render-static exit=0 58s
+[11:24:24] START p8-s-render-motion-0
+[11:24:24] END p8-light-tree exit=1 290s
+[11:24:24] START p8-shadow-catcher
+[11:25:25] END p8-s-render-motion-0 exit=0 61s
+[11:25:25] START p8-s-render-motion-1
+[11:26:25] END p8-s-render-motion-1 exit=0 60s
+[11:26:25] START p8-s-render-motion-2
+[11:27:01] END p8-shadow-catcher exit=0 157s
+[11:27:01] START p8-ao-state
+[11:27:27] END p8-s-render-motion-2 exit=0 62s
+[11:27:27] START p8-s-render-motion-3
+[11:28:29] END p8-s-render-motion-3 exit=0 62s
+[11:28:29] START p8-s-render-motion-4
+[11:28:42] END p8-ao-state exit=0 101s
+[11:28:42] START p8-ao-render
+[11:29:29] END p8-s-render-motion-4 exit=0 60s
+[11:29:29] START p8-s-render-motion-5
+[11:30:30] END p8-s-render-motion-5 exit=0 61s
+[11:30:30] START p8-s-render-motion-6
+[11:30:30] END p8-ao-render exit=0 108s
+[11:30:30] START p8-mnee
+[11:31:30] END p8-s-render-motion-6 exit=0 60s
+[11:31:30] START p8-s-render-motion-7
+[11:32:30] END p8-principled-superset exit=0 523s
+[11:32:30] START p8-nodes-render-superset
+[11:32:32] END p8-s-render-motion-7 exit=0 62s
+[11:32:32] START p8-s-volume-absorption
+[11:33:27] END p8-mnee exit=0 177s
+[11:33:27] START p8-oracle-light-tree_lamps-and-mesh-lights
+[11:34:04] END p8-oracle-light-tree_lamps-and-mesh-lights exit=0 37s
+[11:34:04] START p8-compare-light-tree_lamps-and-mesh-lights
+[11:34:04] END p8-compare-light-tree_lamps-and-mesh-lights exit=0 0s
+[11:34:04] START p8-oracle-light-tree_light-linking
+[11:34:08] END p8-s-volume-absorption exit=0 96s
+[11:34:08] START p8-s-volume-isotropic
+[11:34:40] END p8-oracle-light-tree_light-linking exit=0 36s
+[11:34:40] START p8-compare-light-tree_light-linking
+[11:34:40] END p8-compare-light-tree_light-linking exit=0 0s
+[11:34:40] START p8-oracle-shadow-catcher_catcher-point-light
+[11:35:06] END p8-oracle-shadow-catcher_catcher-point-light exit=0 26s
+[11:35:06] START p8-compare-shadow-catcher_catcher-point-light
+[11:35:06] END p8-compare-shadow-catcher_catcher-point-light exit=0 0s
+[11:35:06] START p8-oracle-shadow-catcher_catcher-approximate
+[11:35:32] END p8-oracle-shadow-catcher_catcher-approximate exit=0 26s
+[11:35:32] START p8-compare-shadow-catcher_catcher-approximate
+[11:35:32] END p8-compare-shadow-catcher_catcher-approximate exit=0 0s
+[11:35:32] START p8-oracle-ao_fast-gi-additive
+[11:35:55] END p8-oracle-ao_fast-gi-additive exit=0 23s
+[11:35:55] START p8-compare-ao_fast-gi-additive
+[11:35:55] END p8-compare-ao_fast-gi-additive exit=0 0s
+[11:35:55] START p8-oracle-ao_ao-node
+[11:36:10] END p8-s-volume-isotropic exit=0 122s
+[11:36:10] START p8-s-volume-forward
+[11:36:22] END p8-oracle-ao_ao-node exit=0 27s
+[11:36:22] START p8-compare-ao_ao-node
+[11:36:22] END p8-compare-ao_ao-node exit=0 0s
+[11:36:22] START p8-oracle-mnee_glass-sphere-caustic
+[11:37:22] END p8-oracle-mnee_glass-sphere-caustic exit=0 60s
+[11:37:22] START p8-compare-mnee_glass-sphere-caustic
+[11:37:22] END p8-compare-mnee_glass-sphere-caustic exit=0 0s
+[11:37:22] START p8-envelope-m2
+[11:37:47] END p8-nodes-render-superset exit=0 317s
+[11:37:47] START p8-abi-dump
+[11:38:11] END p8-s-volume-forward exit=0 121s
+[11:38:11] START p8-s-volume-backward
+[11:38:43] END p8-abi-dump exit=0 56s
+[11:38:43] START p8-transparent-dump
+[11:39:22] END p8-transparent-dump exit=0 39s
+[11:39:22] START p8-envelope-abi
+[11:40:11] END p8-s-volume-backward exit=0 120s
+[11:40:11] START p8-s-closed-single
+[11:42:03] END p8-envelope-abi exit=0 161s
+[11:42:03] START p8-envelope-materials
+[11:42:37] END p8-s-closed-single exit=0 146s
+[11:42:37] START p8-s-closed-overlap
+[11:46:11] END p8-s-closed-overlap exit=0 214s
+[11:46:11] START p8-s-closed-inside
+[11:49:35] END p8-s-closed-inside exit=0 204s
+[11:49:35] START p8-gltf-sample-write
+[11:49:35] END p8-gltf-sample-write exit=0 0s
+[11:49:35] START p8-gltf-sample
+[11:50:02] END p8-gltf-sample exit=0 27s
+[11:50:02] START p8-gltf-plane-write
+[11:50:02] END p8-gltf-plane-write exit=0 0s
+[11:50:02] START p8-gltf-plane
+[11:50:12] END p8-envelope-materials exit=0 489s
+[11:50:12] START p8-libm-linux
+[11:50:34] END p8-libm-linux exit=0 22s
+[11:50:34] START p8-reference-export
+[11:51:07] END p8-gltf-plane exit=0 65s
+[11:51:07] START p8-bench-bundle
+[11:51:08] END p8-bench-bundle exit=0 1s
+[11:51:08] START p8-oracle-starters
+[11:54:56] END p8-reference-export exit=0 262s
+[11:54:56] START p8-triangle
+[11:54:59] END p8-envelope-m2 exit=0 1057s
+[11:54:59] slot8p_N DONE
+[11:54:59] START p8-light-tree-replays
+[11:54:59] END p8-light-tree-replays exit=1 0s
+[11:54:59] START p8-light-tree-replay-2-alone
+[11:54:59] END p8-light-tree-replay-2-alone exit=1 0s
+[11:54:59] START p8-light-tree-replay-3-alone
+[11:54:59] END p8-light-tree-replay-3-alone exit=1 0s
+[11:54:59] slot8p_L DONE
+[11:54:59] START p8-all-lanes
+[11:56:07] END p8-oracle-starters exit=0 299s
+[11:56:07] START p8-oracle-bench
+[11:56:33] END p8-nodes-gate exit=0 2219s
+[11:56:33] START p8-principled-gate
+[11:56:53] END p8-triangle exit=0 117s
+[11:56:53] START p8-shadow-terminator
+[11:57:09] END p8-oracle-bench exit=0 62s
+[11:57:09] START p8-oracle-control
+[11:58:12] END p8-oracle-control exit=0 63s
+[11:58:12] START p8-compare-selftest
+[11:58:12] END p8-compare-selftest exit=0 0s
+[11:58:12] START p8-oracle-hdri
+[11:58:36] END p8-shadow-terminator exit=0 103s
+[11:58:36] START p8-surface
+[11:58:48] END p8-surface exit=0 12s
+[11:58:48] slot8p_C DONE
+[11:59:49] END p8-oracle-hdri exit=0 97s
+[11:59:49] START p8-gltf-bench
+[12:00:08] START p8-macmp-diffuse-triangle
+[12:00:08] END p8-macmp-diffuse-triangle exit=0 0s
+[12:00:08] START p8-macmp-glass-and-area-light
+[12:00:08] END p8-macmp-glass-and-area-light exit=0 0s
+[12:00:09] START p8-macmp-glossy-sphere-point-light
+[12:00:09] END p8-macmp-glossy-sphere-point-light exit=0 0s
+[12:00:09] START p8-macmp-textured-plane
+[12:00:09] END p8-macmp-textured-plane exit=0 0s
+[12:00:09] START p8-macmp-bench
+[12:00:09] END p8-macmp-bench exit=0 0s
+[12:00:09] START p8-macmp-hdri
+[12:00:09] END p8-macmp-hdri exit=0 0s
+[12:00:09] slot8p_M DONE
+[12:00:09] LANE L2 DONE
+[12:00:52] END p8-gltf-bench exit=0 63s
+[12:00:52] START p8-compare-diffuse-triangle
+[12:00:52] END p8-compare-diffuse-triangle exit=0 0s
+[12:00:52] START p8-compare-glass-and-area-light
+[12:00:52] END p8-compare-glass-and-area-light exit=0 0s
+[12:00:52] START p8-compare-glossy-sphere-point-light
+[12:00:52] END p8-compare-glossy-sphere-point-light exit=0 0s
+[12:00:52] START p8-compare-textured-plane
+[12:00:52] END p8-compare-textured-plane exit=0 0s
+[12:00:52] START p8-compare-control
+[12:00:52] END p8-compare-control exit=0 0s
+[12:00:52] START p8-compare-bench
+[12:00:52] END p8-compare-bench exit=0 0s
+[12:00:52] START p8-compare-hdri
+[12:00:52] END p8-compare-hdri exit=0 0s
+[12:00:52] START p8-envelope-bench-hdri
+[12:03:04] END p8-envelope-bench-hdri exit=0 132s
+[12:03:04] slot8p_E DONE
+[12:03:04] START p8-environment-gate
+[12:05:32] END p8-environment-gate exit=0 148s
+[12:05:32] START p8-camera-gate
+[12:05:35] END p8-camera-gate exit=0 3s
+[12:05:35] START p8-camera-motion
+[12:05:43] END p8-camera-motion exit=0 8s
+[12:05:43] START p8-envelope-environment
+[12:06:42] END p8-principled-gate exit=0 609s
+[12:06:42] START p8-tier-gate
+[12:07:04] END p8-tier-gate exit=0 22s
+[12:07:04] START p8-transparent-shadow
+[12:09:30] END p8-transparent-shadow exit=0 146s
+[12:09:30] START p8-sim650-nodes-world
+[12:09:30] END p8-sim650-nodes-world exit=1 0s
+[12:09:30] START p8-sim650-glass-render
+[12:10:05] END p8-sim650-glass-render exit=0 35s
+[12:10:05] START p8-size-guard
+[12:10:09] END p8-envelope-environment exit=0 266s
+[12:10:09] slot8p_F DONE
+[12:10:09] START p8v-render
+[12:10:38] END p8v-render exit=0 29s
+[12:10:38] START p8v-device
+[12:10:39] END p8v-device exit=0 1s
+[12:10:39] START p8v-camera
+[12:10:42] END p8v-camera exit=0 3s
+[12:10:43] START p8v-background
+[12:10:49] END p8v-background exit=0 6s
+[12:10:49] START p8v-closest
+[12:10:55] END p8v-closest exit=0 6s
+[12:10:55] START p8v-svm_world
+[12:11:15] END p8-size-guard exit=0 70s
+[12:11:15] START p8-triangle-sample
+[12:11:25] END p8v-svm_world exit=0 30s
+[12:11:25] START p8v-svm_surface
+[12:11:30] END p8-triangle-sample exit=0 15s
+[12:11:30] START p8-svm-surface
+[12:11:34] END p8v-svm_surface exit=0 9s
+[12:11:34] START p8v-attribute
+[12:11:39] END p8-svm-surface exit=0 9s
+[12:11:39] START p8-svm-world
+[12:11:54] END p8v-attribute exit=0 20s
+[12:11:54] START p8v-image
+[12:12:06] END p8-svm-world exit=0 27s
+[12:12:06] START p8-probe-normal
+[12:12:21] END p8v-image exit=0 27s
+[12:12:21] START p8v-image_file
+[12:12:22] END p8v-image_file exit=0 1s
+[12:12:22] START p8v-normal
+[12:12:38] END p8-probe-normal exit=0 32s
+[12:12:38] START p8-probe-attribute
+[12:12:54] END p8v-normal exit=0 32s
+[12:12:54] START p8v-render-attributes
+[12:13:00] END p8-probe-attribute exit=0 22s
+[12:13:00] START p8-probe-image
+[12:13:26] END p8v-render-attributes exit=0 32s
+[12:13:26] START p8v-render-images
+[12:13:27] END p8-probe-image exit=0 27s
+[12:13:27] START p8-probe-image_file
+[12:13:28] END p8-probe-image_file exit=0 1s
+[12:13:28] START p8-probe-shader_data
+[12:13:35] END p8-probe-shader_data exit=0 7s
+[12:13:35] slot8p_B DONE
+[12:13:35] START p8-al-volume_gate
+[12:14:04] END p8v-render-images exit=0 38s
+[12:14:04] START p8v-render-normals
+[12:14:49] END p8v-render-normals exit=0 45s
+[12:14:49] START p8v-nodes_svm
+[12:17:14] END p8-al-volume_gate exit=0 219s
+[12:17:14] START p8-al-glass_gate
+[12:18:08] SETUP replay-build linux-x64 into own folder (coordinator instruction)
+[12:18:20] SETUP done: replay-build/linux-x64 built, libcodebrix_wgpu.so sha 5a61096e (1.0.300.210)
+[12:18:27] REDO light_tree replays (failed-1 kept)
+[12:18:27] START p8-light-tree-replays
+[12:20:00] END p8-light-tree-replays exit=0 93s
+[12:20:00] START p8-light-tree-replay-2-alone
+[12:20:11] END p8v-nodes_svm exit=0 322s
+[12:20:11] START p8v-nodes_world
+[12:20:49] END p8-light-tree-replay-2-alone exit=1 49s
+[12:20:49] START p8-light-tree-replay-3-alone
+[12:21:37] END p8-light-tree-replay-3-alone exit=0 48s
+[12:21:37] redo_L DONE
+[12:21:46] END p8-all-lanes exit=0 1607s
+[12:21:46] slot8p_A DONE
+[12:21:46] LANE L3 DONE
+[12:22:19] END p8v-nodes_world exit=0 128s
+[12:22:19] START p8-principled-replay
+[12:22:59] END p8-principled-replay exit=0 40s
+[12:22:59] START p8-nodes-replay
+[12:23:35] END p8-nodes-replay exit=0 36s
+[12:23:35] slot8p_D DONE
+[12:23:35] LANE L4 DONE
+[12:23:44] END p8-al-glass_gate exit=0 390s
+[12:23:44] START p8-al-camera_motion_gate
+[12:27:05] END p8-al-camera_motion_gate exit=0 201s
+[12:27:05] START p8c-al-volume_boundary_gate
+[12:31:40] END p8c-al-volume_boundary_gate exit=0 275s
+[12:31:40] slot8p_R DONE
+[12:31:40] LANE L1 DONE
+[12:32:35] ALL JOBS DONE; report written

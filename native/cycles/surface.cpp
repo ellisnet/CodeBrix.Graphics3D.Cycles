@@ -150,12 +150,14 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   if(!work||!n)return;
   const size_t closure_bytes=size_t(n)*MAX_CLOSURE*sizeof(SurfaceClosureRecord);
   const size_t records_bytes=closure_bytes+size_t(n)*surface_stage_bytes;
-  // Reserved shadow slots (control op 5) give every input fixed slots: needed by
-  // resumable transparent shadows, with ambient occlusion, whose two shadow
-  // paths per input otherwise take atomic slots in a run-dependent order (the
-  // native scheduler's compaction counts then differ between runs), and in caustic
-  // scenes (MNEE reserves its slots the same way; mnee.cpp).
-  const bool reserve_shadow=(data.integrator.use_direct_light&&(data.integrator.transparent_shadows||data.integrator.use_caustics))||ao;
+  // Reserved shadow slots (control op 5) give every input fixed slots whenever
+  // the stage can create shadow paths: needed by resumable transparent shadows
+  // and in caustic scenes (MNEE reserves its slots the same way; mnee.cpp), and
+  // for every other direct-light or ambient-occlusion shadow path, which would
+  // otherwise take atomic slots in a run-dependent order (the native scheduler's
+  // shadow compaction counts then differ between runs). Every slot is one the
+  // pinned atomic allocator could also hand out; unused slots stay terminated.
+  const bool reserve_shadow=data.integrator.use_direct_light||ao;
   const size_t needed=records_bytes+(reserve_shadow?sizeof(uint32_t):0);
   if(needed>surface_closure_bytes){
     if(surface_closures){flush();release(surface_closures);surface_closures=0;surface_closure_bytes=0;}

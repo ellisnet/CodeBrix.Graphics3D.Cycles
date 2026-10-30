@@ -139,10 +139,12 @@ class WebGPUQueue final:public DeviceQueue {
           p[4]=pointer(1,(size_t(p[1])+p[7])*4);p[5]=pointer(2,4);
         }
       }
-      // Stable (serial) path-array scans: resumable transparent shadows, ambient occlusion and caustic scenes,
-      // whose extra or reserved shadow paths make shadow compaction frequent; atomic indices would make its
-      // moves, and so the native scheduler's counts, run-dependent (replays then reproduce every decision).
-      p[21]=d.data.integrator.transparent_shadows!=0||(d.data.kernel_features&KERNEL_FEATURE_AO)!=0||d.data.integrator.use_caustics!=0;
+      // Stable (serial) path-array scans: resumable transparent shadows, ambient occlusion, caustic scenes and
+      // every scene with direct light, whose reserved shadow slots (surface.cpp) follow the work order; with atomic
+      // indices that order, the shadow compaction's moves and so the native scheduler's counts would be
+      // run-dependent (replays then reproduce every decision).
+      p[21]=d.data.integrator.transparent_shadows!=0||(d.data.kernel_features&KERNEL_FEATURE_AO)!=0||d.data.integrator.use_caustics!=0||
+            d.data.integrator.use_direct_light!=0;
       if(work){debug_enqueue_begin(kernel,work);d.dispatch(p,uint32_t(work));debug_enqueue_end();}
     });return !d.have_error();
   }

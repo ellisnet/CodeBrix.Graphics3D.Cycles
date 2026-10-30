@@ -1,5 +1,30 @@
 # Testing on Linux ARM64 (Raspberry Pi 5, WebGPU)
 
+> **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
+> procedure and override anything below, including the historical records).**
+>
+> 1. **WebGPU binaries: ONLY from the `CodeBrix.WebGpu.Native.MitLicenseForever`
+>    1.0.300.210 NuGet package.** Load the `codebrix_wgpu` binary from that
+>    package's `runtimes/<rid>/native/` folder (restored into the NuGet cache)
+>    and from nowhere else. **Do NOT** test with WebGPU binaries from any other
+>    source (a local build, a committed payload, another package, Dawn, an
+>    upstream wgpu-native release, a system library) or from any other version
+>    of this package, earlier or later. Runs with other WebGPU binaries are not
+>    evidence and must not be recorded as results.
+> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 10 SDK
+>    10.0.403 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `10.0.403`) before starting and record
+>    the output with the run.
+> 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
+>    Android testing and validation are done on the dedicated Linux x64 machine
+>    only. Every comparison against Linux x64 uses the newest
+>    `native/evidence/linux-x64-reference-<date>/` set (now
+>    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
+>    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
+>    machine; `linux-x64-docker-reference-20261027` is history only.
+
 Instructions for building, running and recording the WGSL/WebGPU renderer on a
 Raspberry Pi 5: Linux ARM64, Vulkan through the shipped runtime's
 `linux-arm64` binary, Broadcom V3D with Mesa's V3DV driver. The cross-build
@@ -41,7 +66,7 @@ binaries; README there). Device: Raspberry Pi 5 Model B Rev 1.1, 16 GB, Debian 1
 | `gpu`, `gpu-exit` (first WebGPU lifecycle on the V3D) | **passed**: 11 GPU films against the CPU Session references, 0 practical failures, 0 strict differences, max 1.19e-7; repeats bitwise identical |
 | ABI test, GPU | stopped while compiling (L2); its `base` film (max 3.0e-8, 0 strict) and four light films (max 1.5e-5; 159/22/1/0 strict differences, reported, as on Linux x64 Intel) pass the practical criterion; the motion films were not reached |
 | Example, driver coverage, cross-platform CPU comparison, device gates, oracle corpus, managed tests, glTF client | **not reached** (L2) |
-| P4, Samsung triangle sampler | not run: needs the Samsung device-run inputs of the same commit, which are not on the Pi |
+| P4, Samsung triangle sampler | not run: needs the Samsung device-run inputs of the same commit, which were not on the Pi. **Since 2026-10-29 they are in the repository** (`native/evidence/android-reference-20261029/samsung-triangle-sample/`, commit `686f79282`; section 5) |
 
 ### L1. The host refused the V3D: downlevel adapter limits (fixed 2026-10-28)
 
@@ -139,15 +164,16 @@ the host takes the package's `libcodebrix_wgpu.so` from the NuGet cache and
 records its SHA-256.
 
 Requirements on the Pi, beyond section 2: `gcc-14`/`g++-14`, `clang` (the WGSL
-translation's AST dump), `cmake`, `make`, `time`, the .NET 10 SDK for the managed
-steps, and the package (`dotnet restore research/GpuProbe/GpuProbe.csproj`).
+translation's AST dump), `cmake`, `make`, `time`, the .NET 10 SDK **10.0.403 only**
+(no earlier version) for the managed steps, and the package
+(`dotnet restore research/GpuProbe/GpuProbe.csproj`).
 
 ```sh
 python3 tools/dependencies/build_linux_arm64.py --jobs 4
 python3 native/tools/build_cycles_linux_arm64.py --jobs 4 --device-set
 export MESA_SHADER_CACHE_DIR=$PWD/native/work/<run>/mesa-cache MESA_SHADER_CACHE_MAX_SIZE=8G
 python3 native/tools/linux_arm64_host_gate.py --output native/work/linux-arm64-validation-<n> \
-  --references native/evidence/linux-x64-docker-reference-20261027/host-gate-cpu-only \
+  --references native/evidence/linux-x64-reference-20261029/host-gate \
   --device-gates [--step-timeout <seconds>]
 python3 native/tools/linux_arm64_lanes.py --output native/work/linux-arm64-lanes-<n> --cap-seconds 36000
 ```
@@ -271,9 +297,10 @@ The maintainer installs these with apt; nothing else in this procedure uses
 - `rsync` (copying the build from the x64 machine)
 - `git`
 
-No .NET SDK is needed on the Pi (section 4, step P9). No other GPU stack is
-needed; the host chooses only a hardware Vulkan adapter and ignores
-`llvmpipe`.
+No .NET SDK is needed on the Pi for the cross-built procedure (section 4, step
+P9); the native build on the device needs SDK 10.0.403, and only that version.
+No other GPU stack is needed; the host chooses only a hardware Vulkan adapter
+and ignores `llvmpipe`.
 
 Checkout on both machines, at the same commit:
 
@@ -667,11 +694,15 @@ way the Linux reference attributes to ARM64 float3 arithmetic
 libm. The Pi computes the missing fourth value: glibc ARM64 arithmetic on the
 same scene.
 
-Inputs, from the Linux x64 machine, copied into a new directory on the Pi
-(`<samsung>`). They come from the device-scene run of the Samsung `triangle`
-corpus, made from the SAME commit as the Pi build, kept in that runner's run
-directory under `native/work/` (not in Git; the `external-payloads.json` of the newest checkpoint under
-`native/evidence/` records the SHA-256 and work location of each):
+Inputs: **committed since 2026-10-29** in
+`native/evidence/android-reference-20261029/samsung-triangle-sample/` (`<samsung>`
+below; `SHA256SUMS` lists every file). They come from the tablet's device-scene run
+of the `triangle` corpus on the Linux x64 machine at commit `686f79282`. The Pi
+build must prepare scenes exactly as that commit does: `686f79282` itself, or a
+later commit that changed no scene preparation (the scene loader refuses tables
+of another layout, below). If it refuses, ask for a newer Android evidence
+directory from the Linux x64 machine; never make these files anywhere else. The
+files:
 
 - `scenes/triangle_sample/samples.scene` and `samples.local.f32` (the
   Samsung's dumped scene and its bionic CPU reference);
@@ -682,8 +713,8 @@ directory under `native/work/` (not in Git; the `external-payloads.json` of the 
   `run.reference.bin`, `run.reference-diagnostic.jsonl`.
 
 If the scene file was written by a different commit, scene loading fails with
-"Scene exchange element size differs" or "order differs"; refresh the Samsung
-run on the committed tree before this step.
+"Scene exchange element size differs" or "order differs"; the Samsung run must
+then be refreshed on the Linux x64 machine at the Pi's commit before this step.
 
 **P4: the glibc ARM64 reference of the Samsung's scene** (on the Pi, with the
 library path set):

@@ -2,6 +2,31 @@
 
 Copyright (c) 2026 Jeremy Ellis and contributors
 
+> **MANDATORY TEST RULES (from 2026-10-29; they apply to every run of this
+> procedure and override anything below, including the historical records).**
+>
+> 1. **WebGPU binaries: ONLY from the `CodeBrix.WebGpu.Native.MitLicenseForever`
+>    1.0.300.210 NuGet package.** Load the `codebrix_wgpu` binary from that
+>    package's `runtimes/<rid>/native/` folder (restored into the NuGet cache)
+>    and from nowhere else. **Do NOT** test with WebGPU binaries from any other
+>    source (a local build, a committed payload, another package, Dawn, an
+>    upstream wgpu-native release, a system library) or from any other version
+>    of this package, earlier or later. Runs with other WebGPU binaries are not
+>    evidence and must not be recorded as results.
+> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 10 SDK
+>    10.0.403 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `10.0.403`) before starting and record
+>    the output with the run.
+> 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
+>    Android testing and validation are done on the dedicated Linux x64 machine
+>    only. Every comparison against Linux x64 uses the newest
+>    `native/evidence/linux-x64-reference-<date>/` set (now
+>    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
+>    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
+>    machine; `linux-x64-docker-reference-20261027` is history only.
+
 Steps carry a status marker: **VALIDATED** (run on the win-x64 development
 machine; results recorded at the step), **UNTESTED** (not yet run), **MISSING**
 (something that does not exist yet) or **UNKNOWN** (a fact that needs the
@@ -38,7 +63,7 @@ default, Vulkan on request. A run establishes:
 | DXC | `dxcompiler.dll` 1.9.2609.5 in `native/binaries/<rid>/runtime/` (`third_party/dxc-import.json`; `tools/windows_dxc.py` pins the hashes) |
 | Visual Studio | 2022 or later with "Desktop development with C++" and "C++ Clang tools for Windows" (clang-cl, lld-link), the Windows SDK, and its bundled CMake and Ninja. Versions are recorded by the recipes. |
 | Python | 3.12 or newer, run as `python -I -X utf8` (UTF-8 mode; `-I` ignores `PYTHONUTF8`). |
-| .NET | .NET 10 SDK for the machine's architecture. |
+| .NET | .NET 10 SDK **10.0.403 only** (no earlier version) for the machine's architecture; `dotnet --version` must print `10.0.403`. |
 | Git | `core.autocrlf` may stay `true`: the root `.gitattributes` keeps every file's committed bytes (LF, and the CRLF files of the pinned snapshots). |
 
 Antivirus scanning of a fresh clone can make the first full read of
@@ -174,7 +199,7 @@ python -I -X utf8 native/oracle/render_oracles.py --output native/work/oracles/w
   the Linux x64 glibc CPU film while the Mac's own CPU film fails there - so the
   Windows CPU reference is the likely outlier; docs/TESTING-MACOS-X64.md, step 8.
   Confirm with the Windows films against
-  `native/evidence/linux-x64-docker-reference-20261027/oracles/`.) Both WebGPU backends differ
+  `native/evidence/linux-x64-reference-20261029/oracles/`.) Both WebGPU backends differ
   from the CPU film identically (6 practical failures, worst pixel 24,15 R: CPU
   0.04195, GPU 0.03668), while D3D12 and Vulkan agree to 1.1e-7 and the Windows
   CPU film agrees with the macOS arm64 CPU oracle
@@ -207,7 +232,7 @@ native/binaries/win-x64` passed (28 films, 0 failures, maximum GPU error
 The device run, its results and its findings are in
 [TESTING-WINDOWS-ARM64.md](TESTING-WINDOWS-ARM64.md). On the ARM64 device, from
 a clone of the commit that carries the staged payload (nothing is built there;
-.NET 10 SDK for ARM64 and Python are needed):
+.NET 10 SDK 10.0.403 (only) for ARM64 and Python are needed):
 
 ```
 dotnet restore research/GpuProbe/GpuProbe.csproj
@@ -487,7 +512,9 @@ smoke render matches on CPU and GPU, center pixel 0.674168, 0.377084,
 "pending-device".
 
 Not covered on Windows: the device gates' judgement against the Linux x64
-reference (scene exchange), the bench and `triangle-lighting-2` films against
+reference (scene exchange; from 2026-10-29 by the hand-off in
+TESTING-WINDOWS-ARM64.md, "Device-gate exchange with the Linux x64 machine",
+with `--backend d3d12` or `vulkan`), the bench and `triangle-lighting-2` films against
 Linux x64 CPU films, and the volume scenes (refused on the WebGPU device).
 
 ## Reference policy and tolerances

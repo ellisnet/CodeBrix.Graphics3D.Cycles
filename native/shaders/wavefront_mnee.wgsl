@@ -180,13 +180,63 @@ fn mn_shader_eval(index:u32,sd:SurfaceData,at:u32)->SvmResult{
     return svm_evaluate_context(index,sd,MNEE_CAUSTICS_MAX_CLOSURE,at+MR_CLOSURES,0u,PATH_RAY_VISIBILITY_DIFFUSE,svm_lcg(index),false);
 }
 
+// native_triangle_vertices for a static caster triangle (mnee_seed accepts
+// triangle casters only; motion is refused with caustics on the host), with the
+// three corners fetched in straight-line code: same checks, same corners. With
+// the shared fetch (a vec3 index and a corner array written in a loop) inside
+// these entries, the Adreno 730 driver (EV031.36.08.33) changed a scene-table
+// word that no entry stores to while mnee_setup ran, and caustic scenes stopped
+// with the invalid-data error; with this fetch they render.
+fn mn_static_vertices(object:u32,prim:u32)->TriangleVertices{
+    var result:TriangleVertices;
+    if(object>=table_count(G_objects)||object>=table_count(G_object_flag)||prim>=table_count(G_tri_vindex)){fail();result.error=1u;return result;}
+    let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
+    if((flags&SD_OBJECT_HAS_VERTEX_MOTION)!=0u){fail();result.error=1u;return result;}
+    let at=table_at(G_tri_vindex,prim,SIZE_tri_vindex);let i0=load_word(at);let i1=load_word(at+4u);let i2=load_word(at+8u);
+    result.a=triangle_position(object,i0,0u);result.b=triangle_position(object,i1,0u);result.c=triangle_position(object,i2,0u);
+    if(load_word(p(17u))!=0u){result.error=1u;}return result;
+}
+// terminator_shadow_origin / terminator_smooth_offset (wavefront_terminator.wgsl)
+// for the static caster triangle, corners through mn_static_vertices.
+fn mn_terminator_smooth_offset(sd:SurfaceData,Ng:vec3<f32>)->vec3<f32>{
+    let vertices=mn_static_vertices(sd.object_id,sd.prim);
+    let N=terminator_normals(sd);let V=array<vec3<f32>,3>(vertices.a,vertices.b,vertices.c);
+    let u=rounded_add(rounded_add(1.0,-sd.u),-sd.v);let v=sd.u;let w=sd.v;
+    let P=terminator_mix(V[0],V[1],V[2],u,v,w);var n=terminator_mix(N[0],N[1],N[2],u,v,w);
+    if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){n=surface_object_direction(sd,n,false);}
+    let a=rounded_dot(N[2]-N[0],V[0]-V[2]);let b=rounded_dot(N[2]-N[1],V[1]-V[2]);let c=rounded_dot(N[1]-N[0],V[1]-V[0]);
+    var h=rounded_add(rounded_add((a*u)*rounded_add(u,-1.0),((rounded_add(rounded_add(a,b),c))*u)*v),(b*v)*rounded_add(v,-1.0));
+    if(rounded_dot(n,Ng)>0.0){
+        var h0=max(max(rounded_dot(V[1]-V[0],N[0]),rounded_dot(V[2]-V[0],N[0])),0.0);
+        var h1=max(max(rounded_dot(V[0]-V[1],N[1]),rounded_dot(V[2]-V[1],N[1])),0.0);
+        var h2=max(max(rounded_dot(V[0]-V[2],N[2]),rounded_dot(V[1]-V[2],N[2])),0.0);
+        h0=max(rounded_add(rounded_dot(V[0]-P,N[0]),h0),0.0);h1=max(rounded_add(rounded_dot(V[1]-P,N[1]),h1),0.0);h2=max(rounded_add(rounded_dot(V[2]-P,N[2]),h2),0.0);
+        h=max(min(min(h0,h1),h2),h*0.5);
+    }else{
+        var h0=max(max(rounded_dot(V[0]-V[1],N[0]),rounded_dot(V[0]-V[2],N[0])),0.0);
+        var h1=max(max(rounded_dot(V[1]-V[0],N[1]),rounded_dot(V[1]-V[2],N[1])),0.0);
+        var h2=max(max(rounded_dot(V[2]-V[0],N[2]),rounded_dot(V[2]-V[1],N[2])),0.0);
+        h0=max(rounded_add(rounded_dot(P-V[0],N[0]),h0),0.0);h1=max(rounded_add(rounded_dot(P-V[1],N[1]),h1),0.0);h2=max(rounded_add(rounded_dot(P-V[2],N[2]),h2),0.0);
+        h=min(-min(min(h0,h1),h2),h*0.5);
+    }
+    return n*h;
+}
+fn mn_terminator_shadow_origin(sd:SurfaceData,L:vec3<f32>)->vec4<f32>{
+    let cutoff=heap_float(terminator_object(sd)+O_shadow_terminator_geometry_offset);
+    var NL=rounded_dot(sd.N,L);let transmit=NL<0.0;if(NL<0.0){NL=-NL;}
+    let Ng=select(sd.Ng,-sd.Ng,transmit);let NgL=rounded_dot(Ng,L);
+    let amount=select(clamp(rounded_add(1.0,-rounded_divide(NgL,cutoff)),0.0,1.0),
+                      clamp(rounded_add(2.0,-rounded_divide(rounded_add(NgL,NL),cutoff)),0.0,1.0),NL<cutoff);
+    if(amount>0.0){return vec4<f32>(rounded_add3(sd.P,mn_terminator_smooth_offset(sd,Ng)*amount),select(0.0,1.0,NgL>0.0));}
+    return vec4<f32>(sd.P,1.0);
+}
 // mnee_setup_manifold_vertex for a static triangle hit (casters are refused
 // unless PRIMITIVE_TRIANGLE; object motion is refused with caustics on the host).
 fn mn_setup_vertex(object:u32,prim:u32,u:f32,v:f32,time:f32,eta:f32,n_offset:vec2<f32>,ci:u32)->MnVertex{
     var vtx:MnVertex;var sd:SurfaceData;
     sd.object_id=object;sd.prim=prim;sd.primitive_type=PRIMITIVE_TRIANGLE;sd.time=time;sd.object_flag=mn_object_flag(object);sd.u=u;sd.v=v;
     let shader=load_word(table_at(G_tri_shader,prim,4u));sd.shader=shader;
-    let vertices=native_triangle_vertices(object,prim,PRIMITIVE_TRIANGLE,time);
+    let vertices=mn_static_vertices(object,prim);
     var verts=array<vec3<f32>,3>(vertices.a,vertices.b,vertices.c);var normals=terminator_normals(sd);
     var P=rounded_add3(rounded_add3(verts[0],u*mn_sub(verts[1],verts[0])),v*mn_sub(verts[2],verts[0]));
     if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){
@@ -511,7 +561,7 @@ fn mn_setup_from_sample(P:vec3<f32>,Ng:vec3<f32>,I:vec3<f32>,shader:u32,object:u
         sd.N=select(Ng,interpolated,any(interpolated!=vec3<f32>(0)));
         if(!applied){sd.N=surface_object_normal(sd,sd.N,false);}
     }
-    let vertices=native_triangle_vertices(object,prim,PRIMITIVE_TRIANGLE,time);
+    let vertices=mn_static_vertices(object,prim);
     sd.dPdu=mn_sub(vertices.b,vertices.a);sd.dPdv=mn_sub(vertices.c,vertices.a);
     if(!applied){sd.dPdu=surface_object_direction(sd,sd.dPdu,false);sd.dPdv=surface_object_direction(sd,sd.dPdv,false);}
     if(rounded_dot(sd.Ng,sd.wi)<0.0){sd.runtime_flag|=SR_BACKFACING;sd.Ng=-sd.Ng;sd.N=-sd.N;sd.dPdu=-sd.dPdu;sd.dPdv=-sd.dPdv;}
@@ -594,7 +644,7 @@ fn mn_contribution(at:u32,index:u32,slot:u32,sd:SurfaceData){
     store_word(at+MR_META+MM_RESULT,4u);mn_s3(at+MR_OUT,throughput);
     // light_sample_to_surface_shadow_ray from the last solution vertex.
     emission.N=emission_N;var start=vec4<f32>(emission.P,1.0);
-    if(terminator_geometry_active(emission)){start=terminator_shadow_origin(emission,ls.D);}
+    if(terminator_geometry_active(emission)){start=mn_terminator_shadow_origin(emission,ls.D);}
     // integrator_shadow_path_init(MNEE_PENDING) + integrator_state_write_mnee, in this
     // path's reserved slot (mnee.cpp: base + dispatch slot, independent of atomic order).
     let shadow=load_word(p(28u))+slot;if(shadow>=p(25u)){fail();return;}

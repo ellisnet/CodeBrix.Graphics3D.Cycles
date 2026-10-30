@@ -376,6 +376,12 @@ ShaderFeatures WebGPUDevice::shader_features(){
     if(unsupported_feature.empty()&&known&&std::strcmp(known->device,"Adreno (TM) 650")==0&&data.integrator.has_shadow_catcher&&data.integrator.transparent_shadows&&data.integrator.use_direct_light)
       unsupported_feature=std::string("WebGPU: shadow catchers with transparent shadows are not supported on ")+known->device+
         " GPUs: the transparent shadow stage of such scenes fails on this GPU class; render the scene on another GPU or on the CPU device";
+    // Adreno 650 (not a reference device): manifold next-event estimation renders
+    // caustic scenes outside the practical tolerance on this GPU class (native/DEVICE.md,
+    // manifold next-event estimation section); refused before any pipeline compiles.
+    if(unsupported_feature.empty()&&known&&std::strcmp(known->device,"Adreno (TM) 650")==0&&data.integrator.use_caustics)
+      unsupported_feature=std::string("WebGPU: caustics (manifold next-event estimation) are not supported on ")+known->device+
+        " GPUs: caustic scenes render incorrectly on this GPU class; render the scene on another GPU or on the CPU device";
     }
   if(!unsupported_feature.empty())throw std::runtime_error(unsupported_feature);
   if(specialization_mode==SpecializationMode::Off)return SF_ALL;

@@ -57,14 +57,21 @@ def main():
         reports['light_tree'] = report
         save(out/'results.json', reports)
         if not args.skip_replay:
+            # Every capture is replayed and reported; a failed replay fails the gate after the last one.
+            failed = []
             for case in range(CASES):
                 status['phase'] = 'replay-'+str(case)
                 save(out/'status.json', status)
                 name = 'light_tree-replay-'+str(case)
-                with (out/(name+'.log')).open('w') as log, contextlib.redirect_stdout(log):
-                    render_replay.run('linux-x64', directory/'run'/('case-'+str(case)), out/name)
-                reports[name] = json.loads((out/name/'validation.json').read_text())
+                try:
+                    with (out/(name+'.log')).open('w') as log, contextlib.redirect_stdout(log):
+                        render_replay.run('linux-x64', directory/'run'/('case-'+str(case)), out/name)
+                    reports[name] = json.loads((out/name/'validation.json').read_text())
+                except Exception as error:
+                    reports[name] = {'passed': False, 'error': repr(error)}
+                    failed.append(case)
                 save(out/'results.json', reports)
+            assert not failed, 'Light tree replays failed for cases '+', '.join(map(str, failed))
         assert source == inputs() and all(sha(Path(name)) == digest for name, digest in pins.items())
         status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
                       scope='Light tree selection, sampling and forward pdfs (lamps, many-triangle, mixed with HDRI world, instanced, '

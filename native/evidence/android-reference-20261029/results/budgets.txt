@@ -1,0 +1,74 @@
+[10:53:41] PLAN: hard stop 8 h from 10:53 (18:53)
+[10:53:41] DECLARED android gate build (all kinds incl device, mnee) android-arm64 (--jobs 6): budget 3600 s
+[11:02:23] DECLARED android gate build (all kinds incl device, mnee) android-x64 (--jobs 6): budget 3600 s
+[11:10:32] DECLARED android host build android-x64 (tools/build_android.py --skip-dependencies --jobs 6): budget 2400 s
+[11:15:01] DECLARED android host build android-arm64 (tools/build_android.py --skip-dependencies --jobs 6): budget 2400 s
+[11:19:49] DECLARED r29-libm-linux budget=900s; DECLARED r29-reference-export budget=2400s (android_reference.py export, 8 jobs)
+[12:05:24] DECLARED r29-triangle budget=900s
+[12:05:24] DECLARED samsung staging push (stage.py push samsung): budget 1200 s
+[12:05:24] DECLARED hp staging push (stage.py push hp): budget 1200 s
+[12:05:24] DECLARED s20 staging push (stage.py push s20): budget 1200 s; s20 chain cap 10800 s
+[12:06:14] DECLARED device=samsung serial=R52W207XQ1V corpus=materials label=r29 wallBudget=9000s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_svm,principled_bounce,principled_render,nodes_svm,nodes_world,nodes_render replays=2
+[12:06:15] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=s20-principled_svm wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=principled_svm replays=0
+[12:07:31] DECLARED r29-shadow-terminator budget=900s
+[12:08:34] DECLARED device=hp serial=192.168.86.225:5555 corpus=materials label=r29 wallBudget=9000s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_svm,principled_bounce,principled_render,nodes_svm,nodes_world,nodes_render replays=2
+[12:15:00] DECLARED device=s20 serial=RFCRB0MPHYH corpus=transparent label=s20-transparent_shadow wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=transparent_shadow replays=2
+[12:16:26] DECLARED device=s20 serial=RFCRB0MPHYH corpus=a650-refusals label=r29 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=nodes_world-refused,nodes_svm-refused,nodes_render-refused replays=0
+[12:17:06] DECLARED validation APK build (build_android_app.py, id com.codebrix.cycles.hostvalidation.r29, references r29-linux/host-gate): budget 1200 s
+[12:17:14] DECLARED device=s20 serial=RFCRB0MPHYH corpus=triangle label=s20-triangle_sample wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=triangle_sample replays=0
+[12:19:27] DECLARED device=s20 serial=RFCRB0MPHYH corpus=regression label=s20-glass_render wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render replays=0
+[12:22:28] DECLARED device=s20 serial=RFCRB0MPHYH corpus=regression label=s20-lighting_mis wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=lighting_mis replays=0
+[12:24:36] DECLARED device=s20 serial=RFCRB0MPHYH corpus=triangle label=s20-surface wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=surface replays=0
+[12:26:00] DECLARED device=s20 serial=RFCRB0MPHYH corpus=transparent label=s20-transparent_lighting wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=transparent_lighting replays=8
+[12:36:33] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=s20-principled_render wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=principled_render replays=1
+[12:40:09] DECLARED device=s20 serial=RFCRB0MPHYH corpus=pixel-motion label=s20-object-moving-images wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=object-moving-images replays=8
+[12:40:33] DECLARED device=samsung serial=R52W207XQ1V corpus=triangle label=r29 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=6
+[12:42:38] DECLARED device=s20 serial=RFCRB0MPHYH corpus=pixel-motion label=s20-deforming-moving-images wallBudget=3000s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=deforming-moving-images replays=8
+[12:44:41] DECLARED device=s20 serial=RFCRB0MPHYH corpus=environment label=s20-environment wallBudget=4200s perJobTimeout=1800s pipelineBudgetMs=default(60000) jobs=environment replays=12
+[12:45:24] DECLARED device=s20 serial=RFCRB0MPHYH corpus=shadowcatcher label=s20-shadow_catcher wallBudget=5400s perJobTimeout=2700s pipelineBudgetMs=default(60000) jobs=shadow_catcher replays=6
+[12:45:44] DECLARED device=samsung serial=R52W207XQ1V corpus=emitter label=r29 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[12:45:55] DECLARED device=hp serial=192.168.86.225:5555 corpus=triangle label=r29 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=triangle_sample,surface,triangle_lighting replays=6
+[12:46:55] DECLARED device=samsung serial=R52W207XQ1V corpus=regression label=r29 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[12:51:53] DECLARED device=samsung serial=R52W207XQ1V corpus=lighting label=r29 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=lighting_mis,broad_lighting replays=4
+[12:54:22] DECLARED device=hp serial=192.168.86.225:5555 corpus=emitter label=r29 wallBudget=600s perJobTimeout=300s pipelineBudgetMs=default(60000) jobs=emitter_sample replays=0
+[12:55:41] DECLARED device=hp serial=192.168.86.225:5555 corpus=regression label=r29 wallBudget=1500s perJobTimeout=600s pipelineBudgetMs=default(60000) jobs=glass_render,lighting_mis,transparent_lighting replays=0
+[12:55:47] DECLARED device=samsung serial=R52W207XQ1V corpus=transparent label=r29 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=transparent_shadow,transparent_lighting replays=10
+[12:59:53] DECLARED device=s20 serial=RFCRB0MPHYH corpus=s20-ao label=s20-ao wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=ao_state-refused,ao_render-additive-refused,ao_render-node-refused,ao_render-replace replays=0
+[13:01:29] DECLARED device=samsung serial=R52W207XQ1V corpus=terminator label=r29 wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=shadow_terminator replays=10
+[13:01:40] DECLARED device=s20 serial=RFCRB0MPHYH corpus=lighttree label=s20-light_tree wallBudget=5400s perJobTimeout=2700s pipelineBudgetMs=default(60000) jobs=light_tree replays=7
+[13:01:52] DECLARED device=hp serial=192.168.86.225:5555 corpus=lighting label=r29 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=lighting_mis,broad_lighting replays=4
+[13:06:09] DECLARED device=s20 serial=RFCRB0MPHYH corpus=materials label=s20-principled_bounce wallBudget=6600s perJobTimeout=2400s pipelineBudgetMs=default(60000) jobs=principled_bounce replays=0
+[13:07:12] DECLARED device=samsung serial=R52W207XQ1V corpus=spec-refusal label=r29 wallBudget=1800s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=glass_render-spec,glass_render-nospec-refused,glass_render-superset-refused replays=0
+[13:08:35] DECLARED device=hp serial=192.168.86.225:5555 corpus=transparent label=r29 wallBudget=2400s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=transparent_shadow,transparent_lighting replays=10
+[13:09:29] DECLARED device=samsung serial=R52W207XQ1V corpus=environment label=r29 wallBudget=1800s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=environment replays=12
+[13:17:34] DECLARED device=hp serial=192.168.86.225:5555 corpus=terminator label=r29 wallBudget=1800s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=shadow_terminator replays=10
+[13:28:42] DECLARED device=samsung serial=R52W207XQ1V corpus=lighttree label=r29 wallBudget=3600s perJobTimeout=1500s pipelineBudgetMs=default(60000) jobs=light_tree replays=7
+[13:29:13] DECLARED device=hp serial=192.168.86.225:5555 corpus=spec-refusal label=r29 wallBudget=1800s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=glass_render-spec,glass_render-nospec-refused,glass_render-superset-refused replays=0
+[13:31:47] DECLARED device=hp serial=192.168.86.225:5555 corpus=environment label=r29 wallBudget=1800s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=environment replays=12
+[13:47:17] DECLARED device=samsung serial=R52W207XQ1V corpus=shadowcatcher label=r29 wallBudget=3000s perJobTimeout=1500s pipelineBudgetMs=default(60000) jobs=shadow_catcher replays=6
+[13:53:50] DECLARED device=hp serial=192.168.86.225:5555 corpus=lighttree label=r29 wallBudget=3600s perJobTimeout=1500s pipelineBudgetMs=default(60000) jobs=light_tree replays=7
+[13:54:26] DECLARED device=samsung serial=R52W207XQ1V corpus=ao label=r29 wallBudget=3000s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=ao_state,ao_render replays=8
+[14:03:36] DECLARED device=samsung serial=R52W207XQ1V corpus=mnee label=r29 wallBudget=3600s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=mnee_render,mnee,device,closest replays=5
+[14:05:55] DECLARED device=samsung serial=R52W207XQ1V corpus=hostcap label=linux-triangle wallBudget=3600s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=6
+[14:08:28] DECLARED device=samsung serial=R52W207XQ1V corpus=hostcap label=linux-terminator wallBudget=3600s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=10
+[14:12:12] DECLARED android host gate on samsung (run1; android_host_gate.py, --gpu-timeout 2400): budget 3000 s
+[14:13:08] DECLARED device=hp serial=192.168.86.225:5555 corpus=shadowcatcher label=r29 wallBudget=3000s perJobTimeout=1500s pipelineBudgetMs=default(60000) jobs=shadow_catcher replays=6
+[14:23:34] DECLARED device=hp serial=192.168.86.225:5555 corpus=ao label=r29 wallBudget=3000s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=ao_state,ao_render replays=8
+[14:41:25] DECLARED device=hp serial=192.168.86.225:5555 corpus=mnee label=r29 wallBudget=3600s perJobTimeout=1200s pipelineBudgetMs=default(60000) jobs=mnee_render,mnee,device,closest replays=5
+[15:01:41] DECLARED device=hp serial=192.168.86.225:5555 corpus=hostcap label=linux-triangle wallBudget=3600s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=6
+[15:06:41] DECLARED device=hp serial=192.168.86.225:5555 corpus=hostcap label=linux-terminator wallBudget=3600s perJobTimeout=900s pipelineBudgetMs=default(60000) replays=10
+[15:15:28] DECLARED android host gate on hp (run1; android_host_gate.py, --gpu-timeout 2400): budget 3000 s
+[16:01:57] DECLARED managed app webgpu on hp (webgpu; result timeout 2400 s, --uninstall): budget 2700 s
+[16:01:57] DECLARED managed app webgpu on samsung (webgpu; result timeout 2400 s, --uninstall): budget 2700 s
+[16:02:22] DECLARED s20 mnee corpus: budget 2400 s
+[16:02:23] DECLARED device=s20 serial=RFCRB0MPHYH corpus=mnee label=r29 wallBudget=2400s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=mnee_render,mnee,device,closest replays=5
+[16:03:08] DECLARED s20x staging push (stage.py push s20x): budget 1200 s
+[16:03:14] DECLARED s20 staging push (stage.py push s20): budget 1200 s
+[16:03:54] DECLARED managed app bundle on samsung (bundle-control; result timeout 2400 s, --uninstall): budget 2700 s
+[16:04:10] DECLARED s20 staging push (stage.py push s20): budget 1200 s
+[16:04:57] DECLARED device=s20 serial=RFCRB0MPHYH corpus=mnee label=r29 wallBudget=2400s perJobTimeout=900s pipelineBudgetMs=default(60000) jobs=mnee_render,mnee,device,closest replays=5
+[16:05:19] DECLARED managed app bundle on hp (bundle-control; result timeout 2400 s, --uninstall): budget 2700 s
+[16:06:38] DECLARED managed app bundle on samsung (bundle-bench; result timeout 2400 s, --uninstall): budget 2700 s
+[16:09:08] DECLARED managed app bundle on samsung (bundle-hdri; result timeout 2400 s, --uninstall): budget 2700 s
+[16:09:25] DECLARED managed app bundle on hp (bundle-bench; result timeout 2400 s, --uninstall): budget 2700 s
+[16:13:38] DECLARED managed app bundle on hp (bundle-hdri; result timeout 2400 s, --uninstall): budget 2700 s

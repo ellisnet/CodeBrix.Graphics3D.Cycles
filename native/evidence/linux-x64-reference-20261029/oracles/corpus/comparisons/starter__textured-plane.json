@@ -1,0 +1,93 @@
+{
+  "sceneId": "starter/textured-plane",
+  "sceneSha256": "1a026fda93758780ee8bf1247f75037cb7a215ec5ab3b9fe49cca55b96243563",
+  "width": 48,
+  "height": 32,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles/corpus/oracle/starter/textured-plane/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00291275,
+        0.00116536
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "/home/jeremy/GitHome/CodeBrix.Graphics3D.Cycles/native/work/refs-20261029/r29-linux/oracles/corpus/oracle/starter/textured-plane/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.9802322387695312e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.9802322387695312e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 2.9802322387695312e-08,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json",
+      "renderSeconds": [
+        11.1914,
+        0.0287682
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 2.9802322387695312e-08,
+      "maxRelativeError": 2.3200047513697308e-07,
+      "rms": 4.2667975672221e-09,
+      "practicalFailures": 0,
+      "strictDifferences": 0,
+      "worstPixel": {
+        "x": 23,
+        "y": 10,
+        "channel": "B",
+        "reference": 0.12845802307128906,
+        "candidate": 0.12845805287361145,
+        "absoluteDifference": 2.9802322387695312e-08,
+        "criterionRatio": 0.0003937335261892642
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true
+    }
+  ],
+  "crossIsaGating": [],
+  "gatingPairs": 1,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}
