@@ -1,0 +1,92 @@
+{
+  "sceneId": "metal-comparison/radial-sides2-r1",
+  "sceneSha256": "7c306bf8107b172b64d9e3fec9c877830776eb1deca4c34e8c5a217907eead71",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "native/evidence/metal-comparison-linux-x64-20261031/cpu-x64-linux-ftz/oracle/metal-comparison/radial-sides2-r1/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00302667,
+        0.00131102
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/oracles/metal-comparison-20261031/oracle/metal-comparison/radial-sides2-r1/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00194142,
+        0.00107683
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux",
+    "cpu-arm64-macos"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 3.0994415283203125e-06,
+      "maxRelativeError": 3.4607056341709084e-06,
+      "rms": 1.3258827698895416e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 82,
+      "worstPixel": {
+        "x": 25,
+        "y": 3,
+        "channel": "B",
+        "reference": 0.24112568795681,
+        "candidate": 0.24112485349178314,
+        "absoluteDifference": 8.344650268554688e-07,
+        "criterionRatio": 0.008495432506564921
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "cpu-arm64-macos",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true
+    }
+  ],
+  "crossIsaGating": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

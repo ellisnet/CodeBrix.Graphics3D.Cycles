@@ -1,0 +1,646 @@
+== velvet-subnormal: metal-m2pro vs cpu-x64-linux
+metal-comparison/velvet-subnormal (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                1.91e-06   0.000167   1.12e-07             0        124
+      worst x=23 y=7 B: ref 0.121905684 got 0.121904999 (0.00922x tolerance)
+  verdict: perfect
+compare exit 0 velvet-subnormal metal-m2pro vs cpu-x64-linux
+== velvet-subnormal: metal-m2pro vs cpu-x64-linux-ftz
+metal-comparison/velvet-subnormal (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                1.91e-06   0.000167   1.12e-07             0        124
+      worst x=23 y=7 B: ref 0.121905684 got 0.121904999 (0.00922x tolerance)
+  verdict: perfect
+compare exit 0 velvet-subnormal metal-m2pro vs cpu-x64-linux-ftz
+== velvet-subnormal: metal-m2pro vs wgsl-linux-intel
+compare.py: invalid input: no gold standard: no cpu-* backend among wgsl-linux-intel, metal-m2pro
+compare exit 2 velvet-subnormal metal-m2pro vs wgsl-linux-intel
+== velvet-subnormal: metal-m2pro-metalrt vs cpu-x64-linux
+metal-comparison/velvet-subnormal (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]        1.91e-06   0.000167   1.11e-07             0        120
+      worst x=16 y=4 R: ref 0.128669694 got 0.128669232 (0.0061x tolerance)
+  verdict: perfect
+compare exit 0 velvet-subnormal metal-m2pro-metalrt vs cpu-x64-linux
+== velvet-subnormal: metal-m2pro-metalrt vs cpu-x64-linux-ftz
+metal-comparison/velvet-subnormal (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]        1.91e-06   0.000167   1.11e-07             0        120
+      worst x=16 y=4 R: ref 0.128669694 got 0.128669232 (0.0061x tolerance)
+  verdict: perfect
+compare exit 0 velvet-subnormal metal-m2pro-metalrt vs cpu-x64-linux-ftz
+== velvet-subnormal: metal-m2pro-metalrt vs wgsl-linux-intel
+compare.py: invalid input: no gold standard: no cpu-* backend among wgsl-linux-intel, metal-m2pro-metalrt
+compare exit 2 velvet-subnormal metal-m2pro-metalrt vs wgsl-linux-intel
+== velvet-subnormal: cpu-arm64-macos vs cpu-x64-linux
+metal-comparison/velvet-subnormal (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            1.19e-07   2.01e-05   7.59e-09             0          1
+      worst x=22 y=4 B: ref 0.106834263 got 0.106834143 (0.00167x tolerance)
+  verdict: perfect
+compare exit 0 velvet-subnormal cpu-arm64-macos vs cpu-x64-linux
+== velvet-subnormal: cpu-arm64-macos vs cpu-x64-linux-ftz
+metal-comparison/velvet-subnormal (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            1.19e-07   2.01e-05   7.59e-09             0          1
+      worst x=22 y=4 B: ref 0.106834263 got 0.106834143 (0.00167x tolerance)
+  verdict: perfect
+compare exit 0 velvet-subnormal cpu-arm64-macos vs cpu-x64-linux-ftz
+== velvet-subnormal: cpu-arm64-macos vs wgsl-linux-intel
+metal-comparison/velvet-subnormal (32x24)
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-arm64-macos [gating]           1.91e-06   3.67e-05   1.06e-07             0         51
+      worst x=23 y=6 R: ref 0.0465131365 got 0.0465134047 (0.00452x tolerance)
+  note: no same-ISA CPU gold standard for wgsl-linux-intel; gated against the CPU film present
+  verdict: perfect
+compare exit 0 velvet-subnormal cpu-arm64-macos vs wgsl-linux-intel
+== velvet-subnormal: metal-m2pro vs cpu-arm64-macos
+metal-comparison/velvet-subnormal (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              1.91e-06   0.000163   1.11e-07             0        111
+      worst x=23 y=7 B: ref 0.121905625 got 0.121904999 (0.00841x tolerance)
+  verdict: perfect
+compare exit 0 velvet-subnormal metal-m2pro vs cpu-arm64-macos
+== velvet-subnormal: metal-m2pro-metalrt vs cpu-arm64-macos
+metal-comparison/velvet-subnormal (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      1.91e-06   0.000163    1.1e-07             0        117
+      worst x=16 y=4 R: ref 0.12866962 got 0.128669232 (0.00512x tolerance)
+  verdict: perfect
+compare exit 0 velvet-subnormal metal-m2pro-metalrt vs cpu-arm64-macos
+== velvet-subnormal: metal-m2pro-metalrt vs metal-m2pro
+compare.py: invalid input: no gold standard: no cpu-* backend among metal-m2pro, metal-m2pro-metalrt
+compare exit 2 velvet-subnormal metal-m2pro-metalrt vs metal-m2pro
+== radial-sides2-r0: metal-m2pro vs cpu-x64-linux
+metal-comparison/radial-sides2-r0 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                6.56e-06   0.000134   2.82e-07             0        454
+      worst x=14 y=6 B: ref 1.3423115 got 1.34230494 (0.0206x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0 metal-m2pro vs cpu-x64-linux
+== radial-sides2-r0: metal-m2pro vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                6.56e-06   0.000134   2.82e-07             0        454
+      worst x=14 y=6 B: ref 1.3423115 got 1.34230494 (0.0206x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0 metal-m2pro vs cpu-x64-linux-ftz
+== radial-sides2-r0: metal-m2pro vs wgsl-linux-intel
+compare.py: invalid input: no gold standard: no cpu-* backend among wgsl-linux-intel, metal-m2pro
+compare exit 2 radial-sides2-r0 metal-m2pro vs wgsl-linux-intel
+== radial-sides2-r0: metal-m2pro-metalrt vs cpu-x64-linux
+metal-comparison/radial-sides2-r0 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]        6.68e-06   7.87e-06   2.82e-07             0        453
+      worst x=14 y=6 B: ref 1.3423115 got 1.34230483 (0.021x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0 metal-m2pro-metalrt vs cpu-x64-linux
+== radial-sides2-r0: metal-m2pro-metalrt vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]        6.68e-06   7.87e-06   2.82e-07             0        453
+      worst x=14 y=6 B: ref 1.3423115 got 1.34230483 (0.021x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0 metal-m2pro-metalrt vs cpu-x64-linux-ftz
+== radial-sides2-r0: metal-m2pro-metalrt vs wgsl-linux-intel
+compare.py: invalid input: no gold standard: no cpu-* backend among wgsl-linux-intel, metal-m2pro-metalrt
+compare exit 2 radial-sides2-r0 metal-m2pro-metalrt vs wgsl-linux-intel
+== radial-sides2-r0: cpu-arm64-macos vs cpu-x64-linux
+metal-comparison/radial-sides2-r0 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.15e-06   6.38e-06   9.04e-08             0         51
+      worst x=25 y=3 B: ref 0.24164322 got 0.241642386 (0.00849x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0 cpu-arm64-macos vs cpu-x64-linux
+== radial-sides2-r0: cpu-arm64-macos vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.15e-06   6.38e-06   9.04e-08             0         51
+      worst x=25 y=3 B: ref 0.24164322 got 0.241642386 (0.00849x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0 cpu-arm64-macos vs cpu-x64-linux-ftz
+== radial-sides2-r0: cpu-arm64-macos vs wgsl-linux-intel
+metal-comparison/radial-sides2-r0 (32x24)
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-arm64-macos [gating]           3.34e-06   1.51e-05   1.81e-07             0        254
+      worst x=19 y=5 B: ref 0.924330235 got 0.924326897 (0.0142x tolerance)
+  note: no same-ISA CPU gold standard for wgsl-linux-intel; gated against the CPU film present
+  verdict: perfect
+compare exit 0 radial-sides2-r0 cpu-arm64-macos vs wgsl-linux-intel
+== radial-sides2-r0: metal-m2pro vs cpu-arm64-macos
+metal-comparison/radial-sides2-r0 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              5.25e-06   0.000128    2.6e-07             0        462
+      worst x=21 y=14 B: ref 1.06477344 got 1.0647682 (0.0199x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0 metal-m2pro vs cpu-arm64-macos
+== radial-sides2-r0: metal-m2pro-metalrt vs cpu-arm64-macos
+metal-comparison/radial-sides2-r0 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      4.53e-06   7.57e-06   2.54e-07             0        462
+      worst x=14 y=6 B: ref 1.34230936 got 1.34230483 (0.0142x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0 metal-m2pro-metalrt vs cpu-arm64-macos
+== radial-sides2-r0: metal-m2pro-metalrt vs metal-m2pro
+compare.py: invalid input: no gold standard: no cpu-* backend among metal-m2pro, metal-m2pro-metalrt
+compare exit 2 radial-sides2-r0 metal-m2pro-metalrt vs metal-m2pro
+== radial-sides2-r0.3: metal-m2pro vs cpu-x64-linux
+metal-comparison/radial-sides2-r0.3 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                    1.77          1      0.245           695        802
+      worst x=18 y=6 B: ref 1.76512706 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.3 metal-m2pro vs cpu-x64-linux
+== radial-sides2-r0.3: metal-m2pro vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0.3 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                    1.77          1      0.245           695        802
+      worst x=18 y=6 B: ref 1.76512706 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.3 metal-m2pro vs cpu-x64-linux-ftz
+skip (no reference film): wgsl-linux-intel for radial-sides2-r0.3
+== radial-sides2-r0.3: metal-m2pro-metalrt vs cpu-x64-linux
+metal-comparison/radial-sides2-r0.3 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]            1.77          1      0.245           695        806
+      worst x=18 y=6 B: ref 1.76512706 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.3 metal-m2pro-metalrt vs cpu-x64-linux
+== radial-sides2-r0.3: metal-m2pro-metalrt vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0.3 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]            1.77          1      0.245           695        806
+      worst x=18 y=6 B: ref 1.76512706 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.3 metal-m2pro-metalrt vs cpu-x64-linux-ftz
+skip (no reference film): wgsl-linux-intel for radial-sides2-r0.3
+== radial-sides2-r0.3: cpu-arm64-macos vs cpu-x64-linux
+metal-comparison/radial-sides2-r0.3 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.26e-06   3.89e-06   8.58e-08             0         32
+      worst x=25 y=3 B: ref 0.295107126 got 0.295106292 (0.00765x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.3 cpu-arm64-macos vs cpu-x64-linux
+== radial-sides2-r0.3: cpu-arm64-macos vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0.3 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.26e-06   3.89e-06   8.58e-08             0         32
+      worst x=25 y=3 B: ref 0.295107126 got 0.295106292 (0.00765x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.3 cpu-arm64-macos vs cpu-x64-linux-ftz
+skip (no reference film): wgsl-linux-intel for radial-sides2-r0.3
+== radial-sides2-r0.3: metal-m2pro vs cpu-arm64-macos
+metal-comparison/radial-sides2-r0.3 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                  1.77          1      0.245           695        805
+      worst x=18 y=6 B: ref 1.76512706 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.3 metal-m2pro vs cpu-arm64-macos
+== radial-sides2-r0.3: metal-m2pro-metalrt vs cpu-arm64-macos
+metal-comparison/radial-sides2-r0.3 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]          1.77          1      0.245           695        809
+      worst x=18 y=6 B: ref 1.76512706 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.3 metal-m2pro-metalrt vs cpu-arm64-macos
+== radial-sides2-r0.3: metal-m2pro-metalrt vs metal-m2pro
+compare.py: invalid input: no gold standard: no cpu-* backend among metal-m2pro, metal-m2pro-metalrt
+compare exit 2 radial-sides2-r0.3 metal-m2pro-metalrt vs metal-m2pro
+== radial-sides2-r0.5: metal-m2pro vs cpu-x64-linux
+metal-comparison/radial-sides2-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                    1.76          1      0.245           704        810
+      worst x=18 y=6 B: ref 1.7617774 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.5 metal-m2pro vs cpu-x64-linux
+== radial-sides2-r0.5: metal-m2pro vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                    1.76          1      0.245           704        810
+      worst x=18 y=6 B: ref 1.7617774 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.5 metal-m2pro vs cpu-x64-linux-ftz
+skip (no reference film): wgsl-linux-intel for radial-sides2-r0.5
+== radial-sides2-r0.5: metal-m2pro-metalrt vs cpu-x64-linux
+metal-comparison/radial-sides2-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]            1.76          1      0.245           704        813
+      worst x=18 y=6 B: ref 1.7617774 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.5 metal-m2pro-metalrt vs cpu-x64-linux
+== radial-sides2-r0.5: metal-m2pro-metalrt vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]            1.76          1      0.245           704        813
+      worst x=18 y=6 B: ref 1.7617774 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.5 metal-m2pro-metalrt vs cpu-x64-linux-ftz
+skip (no reference film): wgsl-linux-intel for radial-sides2-r0.5
+== radial-sides2-r0.5: cpu-arm64-macos vs cpu-x64-linux
+metal-comparison/radial-sides2-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.03e-06   3.77e-06   8.42e-08             0         32
+      worst x=25 y=3 B: ref 0.295107126 got 0.295106292 (0.00765x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.5 cpu-arm64-macos vs cpu-x64-linux
+== radial-sides2-r0.5: cpu-arm64-macos vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.03e-06   3.77e-06   8.42e-08             0         32
+      worst x=25 y=3 B: ref 0.295107126 got 0.295106292 (0.00765x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.5 cpu-arm64-macos vs cpu-x64-linux-ftz
+skip (no reference film): wgsl-linux-intel for radial-sides2-r0.5
+== radial-sides2-r0.5: metal-m2pro vs cpu-arm64-macos
+metal-comparison/radial-sides2-r0.5 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                  1.76          1      0.245           704        814
+      worst x=18 y=6 B: ref 1.7617774 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.5 metal-m2pro vs cpu-arm64-macos
+== radial-sides2-r0.5: metal-m2pro-metalrt vs cpu-arm64-macos
+metal-comparison/radial-sides2-r0.5 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]          1.76          1      0.245           704        817
+      worst x=18 y=6 B: ref 1.7617774 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.5 metal-m2pro-metalrt vs cpu-arm64-macos
+== radial-sides2-r0.5: metal-m2pro-metalrt vs metal-m2pro
+compare.py: invalid input: no gold standard: no cpu-* backend among metal-m2pro, metal-m2pro-metalrt
+compare exit 2 radial-sides2-r0.5 metal-m2pro-metalrt vs metal-m2pro
+== radial-sides2-r0.75: metal-m2pro vs cpu-x64-linux
+metal-comparison/radial-sides2-r0.75 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                    1.76          1      0.244           716        817
+      worst x=18 y=6 B: ref 1.75751078 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.75 metal-m2pro vs cpu-x64-linux
+== radial-sides2-r0.75: metal-m2pro vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0.75 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                    1.76          1      0.244           716        817
+      worst x=18 y=6 B: ref 1.75751078 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.75 metal-m2pro vs cpu-x64-linux-ftz
+skip (no reference film): wgsl-linux-intel for radial-sides2-r0.75
+== radial-sides2-r0.75: metal-m2pro-metalrt vs cpu-x64-linux
+metal-comparison/radial-sides2-r0.75 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]            1.76          1      0.244           716        821
+      worst x=18 y=6 B: ref 1.75751078 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.75 metal-m2pro-metalrt vs cpu-x64-linux
+== radial-sides2-r0.75: metal-m2pro-metalrt vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0.75 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]            1.76          1      0.244           716        821
+      worst x=18 y=6 B: ref 1.75751078 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.75 metal-m2pro-metalrt vs cpu-x64-linux-ftz
+skip (no reference film): wgsl-linux-intel for radial-sides2-r0.75
+== radial-sides2-r0.75: cpu-arm64-macos vs cpu-x64-linux
+metal-comparison/radial-sides2-r0.75 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.15e-06   4.69e-06   8.51e-08             0         31
+      worst x=25 y=3 B: ref 0.295107126 got 0.295106292 (0.00765x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.75 cpu-arm64-macos vs cpu-x64-linux
+== radial-sides2-r0.75: cpu-arm64-macos vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r0.75 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.15e-06   4.69e-06   8.51e-08             0         31
+      worst x=25 y=3 B: ref 0.295107126 got 0.295106292 (0.00765x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.75 cpu-arm64-macos vs cpu-x64-linux-ftz
+skip (no reference film): wgsl-linux-intel for radial-sides2-r0.75
+== radial-sides2-r0.75: metal-m2pro vs cpu-arm64-macos
+metal-comparison/radial-sides2-r0.75 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                  1.76          1      0.244           716        821
+      worst x=18 y=6 B: ref 1.75751078 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.75 metal-m2pro vs cpu-arm64-macos
+== radial-sides2-r0.75: metal-m2pro-metalrt vs cpu-arm64-macos
+metal-comparison/radial-sides2-r0.75 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]          1.76          1      0.244           716        824
+      worst x=18 y=6 B: ref 1.75751078 got 0 (4.38e+03x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r0.75 metal-m2pro-metalrt vs cpu-arm64-macos
+== radial-sides2-r0.75: metal-m2pro-metalrt vs metal-m2pro
+compare.py: invalid input: no gold standard: no cpu-* backend among metal-m2pro, metal-m2pro-metalrt
+compare exit 2 radial-sides2-r0.75 metal-m2pro-metalrt vs metal-m2pro
+== radial-sides2-r1: metal-m2pro vs cpu-x64-linux
+metal-comparison/radial-sides2-r1 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                7.27e-06   6.16e-06   3.56e-07             0        540
+      worst x=21 y=14 G: ref 1.42977071 got 1.42976344 (0.0216x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r1 metal-m2pro vs cpu-x64-linux
+== radial-sides2-r1: metal-m2pro vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r1 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                7.27e-06   6.16e-06   3.56e-07             0        540
+      worst x=21 y=14 G: ref 1.42977071 got 1.42976344 (0.0216x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r1 metal-m2pro vs cpu-x64-linux-ftz
+== radial-sides2-r1: metal-m2pro vs wgsl-linux-intel
+compare.py: invalid input: no gold standard: no cpu-* backend among wgsl-linux-intel, metal-m2pro
+compare exit 2 radial-sides2-r1 metal-m2pro vs wgsl-linux-intel
+== radial-sides2-r1: metal-m2pro-metalrt vs cpu-x64-linux
+metal-comparison/radial-sides2-r1 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]        6.68e-06   6.16e-06   3.39e-07             0        544
+      worst x=14 y=6 B: ref 1.34018314 got 1.34017646 (0.021x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r1 metal-m2pro-metalrt vs cpu-x64-linux
+== radial-sides2-r1: metal-m2pro-metalrt vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r1 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]        6.68e-06   6.16e-06   3.39e-07             0        544
+      worst x=14 y=6 B: ref 1.34018314 got 1.34017646 (0.021x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r1 metal-m2pro-metalrt vs cpu-x64-linux-ftz
+== radial-sides2-r1: metal-m2pro-metalrt vs wgsl-linux-intel
+compare.py: invalid input: no gold standard: no cpu-* backend among wgsl-linux-intel, metal-m2pro-metalrt
+compare exit 2 radial-sides2-r1 metal-m2pro-metalrt vs wgsl-linux-intel
+== radial-sides2-r1: cpu-arm64-macos vs cpu-x64-linux
+metal-comparison/radial-sides2-r1 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]             3.1e-06   3.46e-06   1.33e-07             0         82
+      worst x=25 y=3 B: ref 0.241125688 got 0.241124853 (0.0085x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r1 cpu-arm64-macos vs cpu-x64-linux
+== radial-sides2-r1: cpu-arm64-macos vs cpu-x64-linux-ftz
+metal-comparison/radial-sides2-r1 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]             3.1e-06   3.46e-06   1.33e-07             0         82
+      worst x=25 y=3 B: ref 0.241125688 got 0.241124853 (0.0085x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r1 cpu-arm64-macos vs cpu-x64-linux-ftz
+== radial-sides2-r1: cpu-arm64-macos vs wgsl-linux-intel
+metal-comparison/radial-sides2-r1 (32x24)
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-arm64-macos [gating]           3.81e-06   4.05e-06   2.16e-07             0        307
+      worst x=19 y=5 B: ref 0.899839461 got 0.899836361 (0.0135x tolerance)
+  note: no same-ISA CPU gold standard for wgsl-linux-intel; gated against the CPU film present
+  verdict: perfect
+compare exit 0 radial-sides2-r1 cpu-arm64-macos vs wgsl-linux-intel
+== radial-sides2-r1: metal-m2pro vs cpu-arm64-macos
+metal-comparison/radial-sides2-r1 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              7.39e-06   6.16e-06   3.36e-07             0        543
+      worst x=21 y=14 G: ref 1.42977083 got 1.42976344 (0.022x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r1 metal-m2pro vs cpu-arm64-macos
+== radial-sides2-r1: metal-m2pro-metalrt vs cpu-arm64-macos
+metal-comparison/radial-sides2-r1 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      4.65e-06   6.16e-06   3.06e-07             0        550
+      worst x=9 y=9 G: ref 0.47508508 got 0.475087225 (0.0148x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides2-r1 metal-m2pro-metalrt vs cpu-arm64-macos
+== radial-sides2-r1: metal-m2pro-metalrt vs metal-m2pro
+compare.py: invalid input: no gold standard: no cpu-* backend among metal-m2pro, metal-m2pro-metalrt
+compare exit 2 radial-sides2-r1 metal-m2pro-metalrt vs metal-m2pro
+== radial-sides3-r0.5: metal-m2pro vs cpu-x64-linux
+metal-comparison/radial-sides3-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                8.11e-06   1.82e-05    3.3e-07             0        532
+      worst x=14 y=6 B: ref 1.54873657 got 1.54872847 (0.0225x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides3-r0.5 metal-m2pro vs cpu-x64-linux
+== radial-sides3-r0.5: metal-m2pro vs cpu-x64-linux-ftz
+metal-comparison/radial-sides3-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-x64-linux [reported]                8.11e-06   1.82e-05    3.3e-07             0        532
+      worst x=14 y=6 B: ref 1.54873657 got 1.54872847 (0.0225x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides3-r0.5 metal-m2pro vs cpu-x64-linux-ftz
+== radial-sides3-r0.5: metal-m2pro vs wgsl-linux-intel
+compare.py: invalid input: no gold standard: no cpu-* backend among wgsl-linux-intel, metal-m2pro
+compare exit 2 radial-sides3-r0.5 metal-m2pro vs wgsl-linux-intel
+== radial-sides3-r0.5: metal-m2pro-metalrt vs cpu-x64-linux
+metal-comparison/radial-sides3-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]        8.23e-06   1.71e-05   3.24e-07             0        525
+      worst x=14 y=6 B: ref 1.54873657 got 1.54872835 (0.0229x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides3-r0.5 metal-m2pro-metalrt vs cpu-x64-linux
+== radial-sides3-r0.5: metal-m2pro-metalrt vs cpu-x64-linux-ftz
+metal-comparison/radial-sides3-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-x64-linux [reported]        8.23e-06   1.71e-05   3.24e-07             0        525
+      worst x=14 y=6 B: ref 1.54873657 got 1.54872835 (0.0229x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides3-r0.5 metal-m2pro-metalrt vs cpu-x64-linux-ftz
+== radial-sides3-r0.5: metal-m2pro-metalrt vs wgsl-linux-intel
+compare.py: invalid input: no gold standard: no cpu-* backend among wgsl-linux-intel, metal-m2pro-metalrt
+compare exit 2 radial-sides3-r0.5 metal-m2pro-metalrt vs wgsl-linux-intel
+== radial-sides3-r0.5: cpu-arm64-macos vs cpu-x64-linux
+metal-comparison/radial-sides3-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.62e-06    5.4e-06   1.11e-07             0         71
+      worst x=25 y=3 B: ref 0.309178144 got 0.309177279 (0.00773x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides3-r0.5 cpu-arm64-macos vs cpu-x64-linux
+== radial-sides3-r0.5: cpu-arm64-macos vs cpu-x64-linux-ftz
+metal-comparison/radial-sides3-r0.5 (32x24)
+  cpu-x64-linux              cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-x64-linux [reported]            2.62e-06    5.4e-06   1.11e-07             0         71
+      worst x=25 y=3 B: ref 0.309178144 got 0.309177279 (0.00773x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides3-r0.5 cpu-arm64-macos vs cpu-x64-linux-ftz
+== radial-sides3-r0.5: cpu-arm64-macos vs wgsl-linux-intel
+metal-comparison/radial-sides3-r0.5 (32x24)
+  wgsl-linux-intel           candidate samples 8     repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  wgsl-linux-intel vs cpu-arm64-macos [gating]           3.93e-06   8.48e-06   2.04e-07             0        297
+      worst x=19 y=5 B: ref 1.04600012 got 1.04599619 (0.0152x tolerance)
+  note: no same-ISA CPU gold standard for wgsl-linux-intel; gated against the CPU film present
+  verdict: perfect
+compare exit 0 radial-sides3-r0.5 cpu-arm64-macos vs wgsl-linux-intel
+== radial-sides3-r0.5: metal-m2pro vs cpu-arm64-macos
+metal-comparison/radial-sides3-r0.5 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              5.84e-06   2.12e-05   3.05e-07             0        532
+      worst x=21 y=14 G: ref 1.10631824 got 1.10631239 (0.0215x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides3-r0.5 metal-m2pro vs cpu-arm64-macos
+== radial-sides3-r0.5: metal-m2pro-metalrt vs cpu-arm64-macos
+metal-comparison/radial-sides3-r0.5 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]       5.6e-06   2.01e-05   2.92e-07             0        526
+      worst x=9 y=4 R: ref 0.272800893 got 0.272799045 (0.0177x tolerance)
+  verdict: perfect
+compare exit 0 radial-sides3-r0.5 metal-m2pro-metalrt vs cpu-arm64-macos
+== radial-sides3-r0.5: metal-m2pro-metalrt vs metal-m2pro
+compare.py: invalid input: no gold standard: no cpu-* backend among metal-m2pro, metal-m2pro-metalrt
+compare exit 2 radial-sides3-r0.5 metal-m2pro-metalrt vs metal-m2pro
+== bsdf__velvet: metal-m2pro vs cpu-arm64-macos
+bsdf/velvet (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=5.96e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              1.91e-06   1.17e-05    1.3e-07             0        346
+      worst x=11 y=15 R: ref 0.155773848 got 0.155773357 (0.00606x tolerance)
+  verdict: perfect
+compare exit 0 bsdf__velvet metal-m2pro vs cpu-arm64-macos
+== bsdf__velvet: metal-m2pro-metalrt vs cpu-arm64-macos
+bsdf/velvet (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=5.96e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      1.91e-06   1.19e-05   1.32e-07             0        358
+      worst x=5 y=4 R: ref 0.112528875 got 0.112528063 (0.0112x tolerance)
+  verdict: perfect
+compare exit 0 bsdf__velvet metal-m2pro-metalrt vs cpu-arm64-macos
+== bsdf__velvet: metal-m2pro vs cpu-arm64-linux
+bsdf/velvet (32x24)
+  cpu-arm64-linux            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=5.96e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-linux [reported]              1.91e-06   1.17e-05    1.3e-07             0        346
+      worst x=11 y=15 R: ref 0.155773848 got 0.155773357 (0.00606x tolerance)
+  verdict: perfect
+compare exit 0 bsdf__velvet metal-m2pro vs cpu-arm64-linux
+== bsdf__velvet: metal-m2pro-metalrt vs cpu-arm64-linux
+bsdf/velvet (32x24)
+  cpu-arm64-linux            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=5.96e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro-metalrt vs cpu-arm64-linux [reported]      1.91e-06   1.19e-05   1.32e-07             0        358
+      worst x=5 y=4 R: ref 0.112528875 got 0.112528063 (0.0112x tolerance)
+  verdict: perfect
+compare exit 0 bsdf__velvet metal-m2pro-metalrt vs cpu-arm64-linux
+== bsdf__velvet: cpu-arm64-macos vs cpu-arm64-linux
+bsdf/velvet (32x24)
+  cpu-arm64-linux            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  cpu-arm64-macos vs cpu-arm64-linux [reported]          7.45e-09   2.02e-07    2.2e-10             0          0
+      worst x=17 y=7 G: ref 0.0714361519 got 0.0714361444 (0.000116x tolerance)
+  verdict: perfect
+compare exit 0 bsdf__velvet cpu-arm64-macos vs cpu-arm64-linux
+== bsdf__velvet: metal-m2pro-metalrt vs metal-m2pro
+compare.py: invalid input: no gold standard: no cpu-* backend among metal-m2pro, metal-m2pro-metalrt
+compare exit 2 bsdf__velvet metal-m2pro-metalrt vs metal-m2pro

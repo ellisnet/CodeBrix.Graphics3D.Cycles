@@ -1,0 +1,92 @@
+{
+  "sceneId": "bsdf/velvet",
+  "sceneSha256": "f541d3672adb2295c8b829c73c90c60c3e6658b0fd8f596c77e80e78af51ba62",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "native/work/oracles/linux-arm64-20261031/oracle/bsdf/velvet/cpu-arm64-linux",
+      "backend": "cpu-arm64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": " (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00454421,
+        0.00134388
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/oracles/metal-comparison-20261031/oracle/bsdf/velvet/metal-m2pro-metalrt",
+      "backend": "metal-m2pro-metalrt",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 5.960464477539063e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 5.960464477539063e-08,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.285706,
+        0.0289476
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-linux",
+    "metal-m2pro-metalrt"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.9073486328125e-06,
+      "maxRelativeError": 1.1899701326182627e-05,
+      "rms": 1.3219411302882205e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 358,
+      "worstPixel": {
+        "x": 5,
+        "y": 4,
+        "channel": "R",
+        "reference": 0.11252887547016144,
+        "candidate": 0.11252806335687637,
+        "absoluteDifference": 8.121132850646973e-07,
+        "criterionRatio": 0.011200670346761655
+      },
+      "reference": "cpu-arm64-linux",
+      "candidate": "metal-m2pro-metalrt",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true
+    }
+  ],
+  "crossIsaGating": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

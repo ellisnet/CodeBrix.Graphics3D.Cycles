@@ -1,0 +1,92 @@
+{
+  "sceneId": "linux-gates/deforming-motion-2",
+  "sceneSha256": "46c12ff33375d4a71b225514c9b18de72d0cc461ccb4eeba58123628808e96e7",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "native/evidence/linux-x64-reference-20261030/oracles/corpus/oracle/linux-gates/deforming-motion-2/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00260868,
+        0.00130402
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/oracles/linux-arm64-20261031/oracle/linux-gates/deforming-motion-2/cpu-arm64-linux",
+      "backend": "cpu-arm64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": " (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00284554,
+        0.000948166
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux",
+    "cpu-arm64-linux"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.4901161193847656e-07,
+      "maxRelativeError": 3.6855052834970155e-06,
+      "rms": 7.957212378701447e-09,
+      "practicalFailures": 0,
+      "strictDifferences": 5,
+      "worstPixel": {
+        "x": 13,
+        "y": 16,
+        "channel": "R",
+        "reference": 0.04905056953430176,
+        "candidate": 0.04905068874359131,
+        "absoluteDifference": 1.1920928955078125e-07,
+        "criterionRatio": 0.0019931292847296797
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "cpu-arm64-linux",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true
+    }
+  ],
+  "crossIsaGating": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "/work/CodeBrix.Graphics3D.Cycles/native/oracle/render_oracles.py", line 251, in <module>
+    if __name__=='__main__':sys.exit(main())
+                                     ~~~~^^
+  File "/work/CodeBrix.Graphics3D.Cycles/native/oracle/render_oracles.py", line 227, in main
+    return run(a)
+  File "/work/CodeBrix.Graphics3D.Cycles/native/oracle/render_oracles.py", line 151, in run
+    common=dict(machine=machine(),hostLibrarySha256=sha(args.host_library),runnerSha256=sha(args.runner),cpuKernelCompile=kernel_flags())
+                        ~~~~~~~^^
+  File "/work/CodeBrix.Graphics3D.Cycles/native/oracle/render_oracles.py", line 83, in machine
+    **(dict(deviceModel=Path('/proc/device-tree/model').read_text().strip('\0\n'),vulkan=out('vulkaninfo','--summary')) if LINUX_ARM64 else {}))
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 548, in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/pathlib/_abc.py", line 632, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/pathlib/_local.py", line 539, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/proc/device-tree/model'

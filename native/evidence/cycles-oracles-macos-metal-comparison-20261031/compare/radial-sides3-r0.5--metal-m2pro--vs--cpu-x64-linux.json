@@ -1,0 +1,92 @@
+{
+  "sceneId": "metal-comparison/radial-sides3-r0.5",
+  "sceneSha256": "eee5e4189bd2d3ed46ba7c4d83494940ea69144397c0b994e2e4f5221aa2b0a5",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "native/evidence/metal-comparison-linux-x64-20261031/cpu-x64-linux/oracle/metal-comparison/radial-sides3-r0.5/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00313622,
+        0.00179233
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/oracles/metal-comparison-20261031/oracle/metal-comparison/radial-sides3-r0.5/metal-m2pro",
+      "backend": "metal-m2pro",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 1.1920928955078125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 1.1920928955078125e-07,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.411747,
+        0.0252112
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux",
+    "metal-m2pro"
+  ],
+  "candidates": [],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 8.106231689453125e-06,
+      "maxRelativeError": 1.816511964001923e-05,
+      "rms": 3.2977540955413886e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 532,
+      "worstPixel": {
+        "x": 14,
+        "y": 6,
+        "channel": "B",
+        "reference": 1.548736572265625,
+        "candidate": 1.5487284660339355,
+        "absoluteDifference": 8.106231689453125e-06,
+        "criterionRatio": 0.022533126346685667
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "metal-m2pro",
+      "role": "reported",
+      "practicalPassed": true,
+      "samplesMatch": true
+    }
+  ],
+  "crossIsaGating": [],
+  "gatingPairs": 0,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

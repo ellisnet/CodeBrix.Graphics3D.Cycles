@@ -1,0 +1,78 @@
+{
+  "sceneId": "displacement/true-height",
+  "sceneSha256": "09c00a19a38635d950332003228b8925122922763a7cd6450f0a55436afb521e",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0032495,
+    0.000535125
+  ],
+  "filmSha256": [
+    "f0e855584442755f6159c38ae48fcd4b9192ecf43f7fb4b3d5963c2596cb1d53",
+    "f0e855584442755f6159c38ae48fcd4b9192ecf43f7fb4b3d5963c2596cb1d53"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [],
+  "machine": {
+    "os": "Linux 5d4013c924ab 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 16 11:55:50 UTC 2026 aarch64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "af0a254dd26966f8223e5c55f70f1866fd25ec47",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "deviceModel": "unavailable: no /proc/device-tree/model (no device tree, for example in a container)",
+    "vulkan": "unavailable: [Errno 2] No such file or directory: 'vulkaninfo'"
+  },
+  "hostLibrarySha256": "ab633d0f17066b6f158a5b94d96c27aad9250ae00b3ced359256d376876173cd",
+  "runnerSha256": "982f00418954f53dd0edac58e3353fde5f5aa0a01a13a30f0a574d33b9749f8f",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/linux/linux-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/displacement/true-height.json",
+  "backendDescription": "Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.031,
+  "runnerCommand": [
+    "native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/work/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/displacement/true-height.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-linux",
+    "--output",
+    "/work/CodeBrix.Graphics3D.Cycles/native/work/oracles/linux-arm64-20261031/oracle/displacement/true-height/cpu-arm64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": " (the C API does not expose Cycles' DeviceInfo)"
+}

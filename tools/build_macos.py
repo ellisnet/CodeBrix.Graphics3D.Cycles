@@ -15,7 +15,10 @@ subprocess.run([sys.executable,str(ROOT/'native/tools/build_cycles_macos.py'),'-
 host=ROOT/'native/work/macos/osx-arm64/host/build/lib/libcodebrix_cycles_host.dylib'
 oracle=ROOT/'native/work/macos/osx-arm64/oracle-build'
 subprocess.run(['cmake','-S',str(ROOT/'native/oracle'),'-B',str(oracle),'-DCMAKE_BUILD_TYPE=Release','-DCMAKE_OSX_ARCHITECTURES=arm64',
-                '-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0','-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local',
+                '-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0',
+                # The SDK by name, as tools/dependencies/build_macos.py: without --sdk, xcrun takes the newest SDK it finds.
+                '-DCMAKE_OSX_SYSROOT='+subprocess.check_output(['xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip(),
+                '-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local',
                 '-DCODEBRIX_HOST_LIBRARY='+str(host)],cwd=ROOT,check=True,stdout=subprocess.DEVNULL)
 subprocess.run(['cmake','--build',str(oracle),'--parallel',str(args.jobs)],cwd=ROOT,check=True,stdout=subprocess.DEVNULL)
 print('osx-arm64: dependencies, Metal host and oracle runner built',flush=True)

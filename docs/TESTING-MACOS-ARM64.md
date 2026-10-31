@@ -106,6 +106,13 @@ Machine and toolchain:
   linked binary references them. Do not set `CC`, `CXX`, `CFLAGS`,
   `LDFLAGS`, `SDKROOT`, `MACOSX_DEPLOYMENT_TARGET` or `DYLD_*` in the shell;
   the recipes clear them anyway.
+- The recipes name the SDK (`xcrun --sdk macosx`) and pass it as `SDKROOT` and
+  `CMAKE_OSX_SYSROOT`. Without `--sdk`, xcrun takes the newest SDK it finds,
+  which can be a Command Line Tools SDK that the selected Xcode cannot read:
+  with Command Line Tools 27.2 installed beside Xcode 27.1 (macOS 27.0 SDK),
+  `xcrun --show-sdk-version` failed and stopped the build (2026-10-31). Nothing
+  needs to be uninstalled; the build records the SDK it used (`sdkPath`,
+  `sdkVersion` in the dependency marker and `invocation.json`).
 
 Checkout:
 

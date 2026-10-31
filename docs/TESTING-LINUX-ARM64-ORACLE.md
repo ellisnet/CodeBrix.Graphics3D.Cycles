@@ -61,9 +61,16 @@ docs/TESTING-LINUX-ARM64.md "Native build on the device", minus the GPU parts):
 
 ```sh
 apt-get update
-apt-get install -y --no-install-recommends gcc-14 g++-14 clang cmake make time \
+apt-get install -y --no-install-recommends gcc-14 g++-14 gcc g++ clang cmake make time \
     python3 git ca-certificates file
 ```
+
+`gcc` and `g++` make `cc` and `c++` GCC 14. The recipes call `gcc-14` and `g++-14`
+themselves, but `render_oracles.py` records `c++ --version` as the compiler in every
+film's `meta.json`, and without these two packages `c++` is clang (the `clang`
+package's alternative). The container has no device tree: `meta.json` records
+`deviceModel` as `unavailable: no /proc/device-tree/model ...`; record the Mac model
+instead (section 8).
 
 Record `gcc-14 --version`, `ldd --version` (glibc), `cmake --version` and
 `python3 --version`; the runner also records them in every film's `meta.json`.

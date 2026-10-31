@@ -54,7 +54,9 @@ def xcode_version():
   return 'Command Line Tools '+re.search(r'^version: (\S+)',info,re.M).group(1)
 
 
-def sdk_path():return tool('xcrun','--show-sdk-path')
+# The SDK by name (tools/dependencies/build_macos.py): with only the Command Line
+# Tools, as on the recorded Intel Mac, macosx is their SDK, exactly as before.
+def sdk_path():return tool('xcrun','--sdk','macosx','--show-sdk-path')
 
 
 def identity():
@@ -63,7 +65,7 @@ def identity():
   sourceManifestSha256=sha(ROOT/'third_party/dependency-imports.json'),profileRecipeSha256=sha(ROOT/'tools/dependencies/build.py'),
   macosProfileRecipeSha256=sha(ROOT/'tools/dependencies/build_macos.py'),macosRecipeSha256=sha(Path(__file__)),
   environmentRecipeSha256=sha(ROOT/'tools/android_toolchain.py'),checksSha256=sha(ROOT/'tools/dependencies/macos_checks.py'),
-  xcode=xcode_version(),developerDir=tool('xcode-select','-p'),sdkVersion=tool('xcrun','--show-sdk-version'),
+  xcode=xcode_version(),developerDir=tool('xcode-select','-p'),sdkVersion=tool('xcrun','--sdk','macosx','--show-sdk-version'),
   sdkPath=sdk_path(),compilerVersion=tool(str(clangxx),'--version'),cCompilerSha256=sha(clang),cxxCompilerSha256=sha(clangxx),
   cmakeVersion=tool(str(cmake),'--version').splitlines()[0],cmakeSha256=sha(cmake),cmakePath=str(cmake),
   homebrewPrefixesPresent=[p for p in EXCLUDED_PREFIXES if Path(p).is_dir()],

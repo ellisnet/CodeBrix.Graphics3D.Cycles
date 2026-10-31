@@ -1,0 +1,95 @@
+{
+  "sceneId": "metal-comparison/velvet-subnormal",
+  "sceneSha256": "ce5d0cb5933c0a1db745dd9db931677bb794d2f50a95ffbf4b503e823caf5e30",
+  "width": 32,
+  "height": 24,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "native/evidence/metal-comparison-linux-x64-20261031/wgsl-linux-intel/oracle/metal-comparison/velvet-subnormal/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 2.9802322387695312e-08,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.9802322387695312e-08,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 2.9802322387695312e-08,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json",
+      "renderSeconds": [
+        14.7985,
+        0.0842704
+      ],
+      "nonfiniteComponents": 0
+    },
+    {
+      "directory": "native/work/oracles/metal-comparison-20261031/oracle/metal-comparison/velvet-subnormal/cpu-arm64-macos",
+      "backend": "cpu-arm64-macos",
+      "samples": 8,
+      "repeats": 2,
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00252067,
+        0.00126979
+      ],
+      "nonfiniteComponents": 0
+    }
+  ],
+  "goldStandards": [
+    "cpu-arm64-macos"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 1.9073486328125e-06,
+      "maxRelativeError": 3.672224724691152e-05,
+      "rms": 1.0616108634346945e-07,
+      "practicalFailures": 0,
+      "strictDifferences": 51,
+      "worstPixel": {
+        "x": 23,
+        "y": 6,
+        "channel": "R",
+        "reference": 0.046513136476278305,
+        "candidate": 0.046513404697179794,
+        "absoluteDifference": 2.682209014892578e-07,
+        "criterionRatio": 0.004522917680423175
+      },
+      "reference": "cpu-arm64-macos",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true
+    }
+  ],
+  "crossIsaGating": [
+    "wgsl-linux-intel"
+  ],
+  "gatingPairs": 1,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

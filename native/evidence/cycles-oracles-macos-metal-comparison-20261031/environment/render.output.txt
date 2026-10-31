@@ -1,0 +1,128 @@
+metal-comparison/radial-sides2-r0.3      cpu-arm64-macos        [0.00261471, 0.000937875]
+metal-comparison/radial-sides2-r0.5      cpu-arm64-macos        [0.00188467, 0.000832334]
+metal-comparison/radial-sides2-r0.75     cpu-arm64-macos        [0.00250142, 0.00113746]
+metal-comparison/radial-sides2-r0        cpu-arm64-macos        [0.00192875, 0.00138129]
+metal-comparison/radial-sides2-r1        cpu-arm64-macos        [0.00194142, 0.00107683]
+metal-comparison/radial-sides3-r0.5      cpu-arm64-macos        [0.00204683, 0.00126863]
+metal-comparison/velvet-subnormal        cpu-arm64-macos        [0.00252067, 0.00126979]
+bsdf/velvet                              cpu-arm64-macos        [0.00246462, 0.00111833]
+metal-comparison/radial-sides2-r0.3      metal-m2pro            [0.379492, 0.0257432]
+metal-comparison/radial-sides2-r0.5      metal-m2pro            [0.419492, 0.0266359]
+metal-comparison/radial-sides2-r0.75     metal-m2pro            [0.370488, 0.0248395]
+metal-comparison/radial-sides2-r0        metal-m2pro            [0.391589, 0.023847]
+metal-comparison/radial-sides2-r1        metal-m2pro            [0.379132, 0.023325]
+metal-comparison/radial-sides3-r0.5      metal-m2pro            [0.411747, 0.0252112]
+metal-comparison/velvet-subnormal        metal-m2pro            [0.379238, 0.023554]
+bsdf/velvet                              metal-m2pro            [0.472731, 0.0278012]
+metal-comparison/radial-sides2-r0.3      metal-m2pro-metalrt    [0.470213, 0.0511278]
+metal-comparison/radial-sides2-r0.5      metal-m2pro-metalrt    [0.409846, 0.0275056]
+metal-comparison/radial-sides2-r0.75     metal-m2pro-metalrt    [0.21444, 0.0231143]
+metal-comparison/radial-sides2-r0        metal-m2pro-metalrt    [0.216011, 0.018323]
+metal-comparison/radial-sides2-r1        metal-m2pro-metalrt    [0.212926, 0.0192719]
+metal-comparison/radial-sides3-r0.5      metal-m2pro-metalrt    [0.212694, 0.0150341]
+metal-comparison/velvet-subnormal        metal-m2pro-metalrt    [0.207514, 0.0161935]
+bsdf/velvet                              metal-m2pro-metalrt    [0.285706, 0.0289476]
+metal-comparison/radial-sides2-r0.3 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                  1.77          1      0.245           695        805
+      worst x=18 y=6 B: ref 1.76512706 got 0 (4.38e+03x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]          1.77          1      0.245           695        809
+      worst x=18 y=6 B: ref 1.76512706 got 0 (4.38e+03x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          1.19e-07   8.86e-07   8.35e-09             0          0
+      worst x=16 y=17 R: ref 0.18402648 got 0.184026375 (0.0012x tolerance)
+  verdict: perfect
+
+metal-comparison/radial-sides2-r0.5 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                  1.76          1      0.245           704        814
+      worst x=18 y=6 B: ref 1.7617774 got 0 (4.38e+03x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]          1.76          1      0.245           704        817
+      worst x=18 y=6 B: ref 1.7617774 got 0 (4.38e+03x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          1.19e-07   8.86e-07   7.84e-09             0          0
+      worst x=16 y=17 R: ref 0.18402648 got 0.184026375 (0.0012x tolerance)
+  verdict: perfect
+
+metal-comparison/radial-sides2-r0.75 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]                  1.76          1      0.244           716        821
+      worst x=18 y=6 B: ref 1.75751078 got 0 (4.38e+03x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]          1.76          1      0.244           716        824
+      worst x=18 y=6 B: ref 1.75751078 got 0 (4.38e+03x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          1.19e-07   8.86e-07    8.7e-09             0          0
+      worst x=16 y=17 R: ref 0.18402648 got 0.184026375 (0.0012x tolerance)
+  verdict: perfect
+
+metal-comparison/radial-sides2-r0 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.38e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              5.25e-06   0.000128    2.6e-07             0        462
+      worst x=21 y=14 B: ref 1.06477344 got 1.0647682 (0.0199x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      4.53e-06   7.57e-06   2.54e-07             0        462
+      worst x=14 y=6 B: ref 1.34230936 got 1.34230483 (0.0142x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          2.26e-06   0.000127   8.43e-08             0         34
+      worst x=21 y=14 B: ref 1.0647682 got 1.06477046 (0.00861x tolerance)
+  verdict: perfect
+
+metal-comparison/radial-sides2-r1 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              7.39e-06   6.16e-06   3.36e-07             0        543
+      worst x=21 y=14 G: ref 1.42977083 got 1.42976344 (0.022x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      4.65e-06   6.16e-06   3.06e-07             0        550
+      worst x=9 y=9 G: ref 0.47508508 got 0.475087225 (0.0148x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          2.74e-06   2.14e-06   1.32e-07             0         53
+      worst x=21 y=14 B: ref 1.057163 got 1.05716527 (0.00866x tolerance)
+  verdict: perfect
+
+metal-comparison/radial-sides3-r0.5 (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=1.19e-07 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              5.84e-06   2.12e-05   3.05e-07             0        532
+      worst x=21 y=14 G: ref 1.10631824 got 1.10631239 (0.0215x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]       5.6e-06   2.01e-05   2.92e-07             0        526
+      worst x=9 y=4 R: ref 0.272800893 got 0.272799045 (0.0177x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          2.26e-06   2.19e-06   1.05e-07             0         56
+      worst x=21 y=14 G: ref 1.10631239 got 1.10631466 (0.00835x tolerance)
+  verdict: perfect
+
+metal-comparison/velvet-subnormal (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=2.98e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              1.91e-06   0.000163   1.11e-07             0        111
+      worst x=23 y=7 B: ref 0.121905625 got 0.121904999 (0.00841x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      1.91e-06   0.000163    1.1e-07             0        117
+      worst x=16 y=4 R: ref 0.12866962 got 0.128669232 (0.00512x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          4.99e-07   1.29e-05   1.43e-08             0          6
+      worst x=23 y=7 B: ref 0.121904999 got 0.121905498 (0.00671x tolerance)
+  verdict: perfect
+
+bsdf/velvet (32x24)
+  cpu-arm64-macos            cpu       samples 8     repeats 2 bitwise=True repeatMaxAbs=0 nonfinite=0
+  metal-m2pro                metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=5.96e-08 nonfinite=0
+  metal-m2pro-metalrt        metal     samples 8     repeats 2 bitwise=False repeatMaxAbs=5.96e-08 nonfinite=0
+  candidate vs reference                                   maxAbs     maxRel        rms practicalFail strictDiff
+  metal-m2pro vs cpu-arm64-macos [reported]              1.91e-06   1.17e-05    1.3e-07             0        346
+      worst x=11 y=15 R: ref 0.155773848 got 0.155773357 (0.00606x tolerance)
+  metal-m2pro-metalrt vs cpu-arm64-macos [reported]      1.91e-06   1.19e-05   1.32e-07             0        358
+      worst x=5 y=4 R: ref 0.112528875 got 0.112528063 (0.0112x tolerance)
+  metal-m2pro-metalrt vs metal-m2pro [reported]          7.97e-07   8.02e-06   2.32e-08             0         14
+      worst x=5 y=4 R: ref 0.112528861 got 0.112528063 (0.011x tolerance)
+  verdict: perfect
+

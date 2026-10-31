@@ -80,7 +80,9 @@ def machine():
   python=sys.version.split()[0],repoCommit=out('git','-C',str(REPO),'rev-parse','HEAD'),
   repoWorkingTreeClean=status=='',cyclesRevision=REVISION,
   # ARM64 boards (a Raspberry Pi) name themselves in the device tree; lspci finds no GPU there.
-  **(dict(deviceModel=Path('/proc/device-tree/model').read_text().strip('\0\n'),vulkan=out('vulkaninfo','--summary')) if LINUX_ARM64 else {}))
+  # A container (docs/TESTING-LINUX-ARM64-ORACLE.md: Docker Desktop's Linux VM) has no device tree.
+  **(dict(deviceModel=Path('/proc/device-tree/model').read_text().strip('\0\n') if Path('/proc/device-tree/model').exists()
+   else 'unavailable: no /proc/device-tree/model (no device tree, for example in a container)',vulkan=out('vulkaninfo','--summary')) if LINUX_ARM64 else {}))
 
 
 def kernel_flags():

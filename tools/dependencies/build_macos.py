@@ -28,13 +28,23 @@ PATH_MAP=f'-ffile-prefix-map={ROOT}=.'
 def save(path,value):path.write_text(json.dumps(value,indent=2)+'\n')
 
 
+# Name the SDK: without --sdk, xcrun takes the newest SDK it finds, which can be a
+# Command Line Tools SDK beside a selected Xcode that cannot read it (CLT 27.2 next
+# to Xcode 27.1 made `xcrun --show-sdk-version` fail). With only the Command Line
+# Tools selected, macosx is their SDK, as before.
+def sdk(*query):return tool('xcrun','--sdk','macosx',*query)
+
+
+def sdk_path():return sdk('--show-sdk-path')
+
+
 def identity():
  clang=Path(tool('xcrun','-f','clang'));clangxx=Path(tool('xcrun','-f','clang++'));cmake=Path(shutil.which('cmake')).resolve()
  return dict(rid=RID,buildHost=platform.machine()+'-'+platform.system(),deploymentTarget=DEPLOYMENT_TARGET,
   sourceManifestSha256=sha(ROOT/'third_party/dependency-imports.json'),profileRecipeSha256=sha(ROOT/'tools/dependencies/build.py'),
   macosRecipeSha256=sha(Path(__file__)),environmentRecipeSha256=sha(ROOT/'tools/android_toolchain.py'),
-  xcode=tool('xcodebuild','-version'),developerDir=tool('xcode-select','-p'),sdkVersion=tool('xcrun','--show-sdk-version'),
-  sdkPath=tool('xcrun','--show-sdk-path'),compilerVersion=tool(str(clangxx),'--version'),cCompilerSha256=sha(clang),cxxCompilerSha256=sha(clangxx),
+  xcode=tool('xcodebuild','-version'),developerDir=tool('xcode-select','-p'),sdkVersion=sdk('--show-sdk-version'),
+  sdkPath=sdk_path(),compilerVersion=tool(str(clangxx),'--version'),cCompilerSha256=sha(clang),cxxCompilerSha256=sha(clangxx),
   cmakeVersion=tool(str(cmake),'--version').splitlines()[0],cmakeSha256=sha(cmake),
   scope='Native Apple Silicon build of the reviewed snapshots for the osx-arm64 Metal host; no image format plugins')
 
@@ -42,6 +52,8 @@ def identity():
 def options(prefix):
  settings=dict(CMAKE_BUILD_TYPE='Release',CMAKE_POSITION_INDEPENDENT_CODE='ON',CMAKE_EXPORT_COMPILE_COMMANDS='ON',
   CMAKE_INSTALL_PREFIX=prefix,CMAKE_PREFIX_PATH=prefix,CMAKE_OSX_ARCHITECTURES='arm64',CMAKE_OSX_DEPLOYMENT_TARGET=DEPLOYMENT_TARGET,
+  # CMake 4 sets no sysroot on macOS, and Apple Clang would fall back to xcrun's newest SDK.
+  CMAKE_OSX_SYSROOT=sdk_path(),
   # Link with the final relative rpath: a build-tree rpath would size the Mach-O
   # header by checkout path, shifting every section in the installed library.
   CMAKE_MACOSX_RPATH='ON',CMAKE_INSTALL_NAME_DIR='@rpath',CMAKE_INSTALL_RPATH='@loader_path',CMAKE_BUILD_WITH_INSTALL_RPATH='ON',
@@ -79,6 +91,8 @@ def environment_for(prefix,jobs):
  for name in ['SDKROOT','MACOSX_DEPLOYMENT_TARGET','DYLD_LIBRARY_PATH','DYLD_FALLBACK_LIBRARY_PATH','LDFLAGS','CFLAGS','CXXFLAGS','CPPFLAGS']:
   env.pop(name,None)
  env['MACOSX_DEPLOYMENT_TARGET']=DEPLOYMENT_TARGET
+ # The named SDK for any compiler or xcrun call that CMake does not configure.
+ env['SDKROOT']=sdk_path()
  return env
 
 

@@ -1,0 +1,98 @@
+{
+  "sceneId": "metal-comparison/radial-sides2-r0",
+  "sceneSha256": "431bcb9a01d23915830baa7801c880eaa3df8a96cbeef8cc83455ec5fc83f245",
+  "backend": "metal-m2pro",
+  "hostBackend": "metal",
+  "hostAbi": 1,
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 1.1920928955078125e-07,
+  "renderSeconds": [
+    0.391589,
+    0.023847
+  ],
+  "filmSha256": [
+    "982f00fadfa8e47f9e877a9cd85fb3ddfa09bdbb3e1d5bc51b1a7f747bbace7b",
+    "5c312d3b6c76484e1798236e7bbfc7cb7bc8f16764b31ceef733bb5bf8fa31fd"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "warnings": [],
+  "machine": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2\nBuildVersion:\t\t26B123",
+    "cpu": "Apple M2 Pro",
+    "gpu": {
+      "model": "Apple M2 Pro",
+      "cores": 16
+    },
+    "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Volumes/VideoWork/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+    "xcode": "Xcode 27.1\nBuild version 27A9275",
+    "cmake": "cmake version 4.4.5",
+    "python": "3.15.2",
+    "repoCommit": "af0a254dd26966f8223e5c55f70f1866fd25ec47",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "69d8173f13b91fd55fcd5448b9099a956f63ba740e72965b03f91d4a609f2215",
+  "runnerSha256": "15573ad6088c0cd54f733cc00d1127a55aa00fd604739a89f17b89a542a528d3",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/macos/osx-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/evidence/metal-comparison-linux-x64-20261031/scenes/radial-sides2-r0.json",
+  "kernelCompileSeconds": 85.2887,
+  "backendDescription": "Cycles Metal device, MetalRT off (BVH2), generic kernels (PSO_GENERIC), fastMathEnabled as pinned",
+  "environment": {
+    "CYCLES_METALRT": "0",
+    "CYCLES_METAL_SPECIALIZATION_LEVEL": "0"
+  },
+  "processSeconds": 0.502,
+  "runnerCommand": [
+    "native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle",
+    "--scene",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/evidence/metal-comparison-linux-x64-20261031/scenes/radial-sides2-r0.json",
+    "--backend",
+    "metal",
+    "--label",
+    "metal-m2pro",
+    "--output",
+    "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/metal-comparison-20261031/oracle/metal-comparison/radial-sides2-r0/metal-m2pro",
+    "--threads",
+    "4"
+  ],
+  "metalSettings": {
+    "device": "DEVICE_METAL",
+    "metalrt": false,
+    "specializationLevel": "CYCLES_METAL_SPECIALIZATION_LEVEL=0 (PSO_GENERIC)",
+    "bvhLayout": "BVH_LAYOUT_BVH2",
+    "fastMathEnabled": true,
+    "denoiser": null,
+    "kernelSource": "native/work/macos/osx-arm64/host/build/lib/codebrix-cycles/source",
+    "kernelCache": "/Volumes/VideoWork/GitHome/CodeBrix.Graphics3D.Cycles/native/work/oracles/metal-comparison-20261031/cache/metal-m2pro/cycles",
+    "systemMetalShaderCache": "not cleared (macOS-managed)",
+    "optionNames": [
+      "CYCLES_METALRT",
+      "CYCLES_METAL_SPECIALIZATION_LEVEL",
+      "DeviceInfo::use_hardware_raytracing",
+      "DeviceInfo::kernel_optimization_level"
+    ]
+  },
+  "deviceName": "Apple M2 Pro (the C API does not expose Cycles' DeviceInfo)"
+}

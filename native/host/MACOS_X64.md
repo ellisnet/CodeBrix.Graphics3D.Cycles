@@ -128,7 +128,7 @@ the first component, the dependency recipe asks Apple Clang for its default
 header search list and fails if it reaches a Homebrew prefix outside the SDK.
 CMake 4 no longer chooses a sysroot on macOS, and without one Apple Clang
 searches `/usr/local/include` before the SDK; the osx-x64 recipes therefore set
-`SDKROOT` and `CMAKE_OSX_SYSROOT` (the SDK `xcrun --show-sdk-path` names) for
+`SDKROOT` and `CMAKE_OSX_SYSROOT` (the SDK `xcrun --sdk macosx --show-sdk-path` names) for
 every configure, after which the default list holds only SDK paths. The JPEG
 library is built without its SIMD code (`WITH_SIMD=OFF`, as on Windows):
 otherwise CMake finds Homebrew's `nasm` in `/usr/local/bin`.
