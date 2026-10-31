@@ -134,7 +134,9 @@ public class NodeTypeTests
             {
                 if (!property.CanWrite || property.DeclaringType.Namespace?.StartsWith("CodeBrix.Graphics3D.Cycles.Generated", StringComparison.Ordinal) != true) continue;
                 SocketInfo socket = info.Inputs.FirstOrDefault(candidate => Pascal(candidate.Name) == property.Name || Pascal(candidate.Name) + "Value" == property.Name);
-                if (socket == null) failures.Add($"{info.Name}.{property.Name}: no matching socket");
+                // The node name of objects and shaders (Nodes/NodeNames.cs) is a host property, not a socket.
+                bool nodeName = property.Name == "Name" && (info.ClrType == typeof(ObjectNode) || info.ClrType == typeof(ShaderNode));
+                if (socket == null && !nodeName) failures.Add($"{info.Name}.{property.Name}: no matching socket");
                 try
                 {
                     object before = property.GetValue(node);

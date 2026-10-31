@@ -95,11 +95,12 @@ def overlay(out=None):
     # MNEE (wavefront_mnee.wgsl) needs the closest traversal inside the surface
     # module; both sit in MNEE regions, so other scenes' surface WGSL is unchanged.
     mnee_traversal=(ROOT/'shaders/wavefront_closest.wgsl').read_text().split('// Point emitters use')[0]
-    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_background_light.wgsl','wavefront_lighting.wgsl','wavefront_light_nee.wgsl','wavefront_ao.wgsl'))+light_tree+'//#if MNEE\n'+mnee_traversal+'//#endif\n'+(ROOT/'shaders/wavefront_mnee.wgsl').read_text()
+    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_film_passes.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_background_light.wgsl','wavefront_lighting.wgsl','wavefront_light_nee.wgsl','wavefront_ao.wgsl'))+light_tree+'//#if MNEE\n'+mnee_traversal+'//#endif\n'+(ROOT/'shaders/wavefront_mnee.wgsl').read_text()
     _write(out/'surface_shader.inc','R"CBWGSL('+surface+')CBWGSL"\n')
     volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_volume.wgsl'))
     _write(out/'volume_shader.inc','R"CBWGSL('+volume+')CBWGSL"\n')
     closest=common+translated+(ROOT/'shaders/wavefront_shadow_catcher.wgsl').read_text()+(ROOT/'shaders/wavefront_closest.wgsl').read_text()+(ROOT/'shaders/wavefront_light_link.wgsl').read_text()
+    _write(out/'film_post_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_film_post.wgsl').read_text()+')CBWGSL"\n')
     _write(out/'shadow_catcher_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_shadow_catcher_split.wgsl').read_text()+')CBWGSL"\n')
     _write(out/'closest_shader.inc','R"CBWGSL('+closest+')CBWGSL"\n')
     traversal=(ROOT/'shaders/wavefront_closest.wgsl').read_text().split('// Point emitters use')[0]

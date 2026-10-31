@@ -298,7 +298,9 @@ kernels' flags, refuses an x86-64 build with AVX/FMA or reciprocal math and
 states the arithmetic in the capability report; oracle runs record the compile
 line in meta.json. The Linux ARM64 and macOS recipes apply the same rule (ARM64:
 the architecture's base level, no -march/-mcpu; macOS: UNTESTED). Android's
-on-device CPU is a diagnostic and keeps Cycles' flags. Films made before the
+on-device CPU is a diagnostic, but its builds use the same no-contraction,
+no-reciprocal-math rule, because the same code prepares the scene its GPU
+renders. Films made before the
 fixed baseline (frozen evidence) came from -march=native builds with contraction
 and are not comparable bit for bit (native/DEVICE.md, "Fixed-baseline CPU
 oracle"). Build outputs stay in
@@ -441,7 +443,7 @@ What the tests need:
     and the CPU comparison is reported only (GpuReferences.cs;
     docs/TESTING-MACOS-ARM64.md, step 7, records how to re-record them). They
     skip with a reason when the GPU device is not available. They also recover
-    a scene after a rejected render (a depth pass on WebGPU, an image larger
+    a scene after a rejected render (an orthographic camera on WebGPU, an image larger
     than Metal's 16384-pixel texture limit on Metal) and move an object after a
     render (Phase E3 semantics). On WebGPU, run them once with a cold scratch
     MESA_SHADER_CACHE_DIR after changing GPU code (the whole class takes about
@@ -516,6 +518,14 @@ the build commands, the ordered gates with budgets, the reference policy, what
 to record and the evidence to bring back.
 
 Licensing and source checks:
+
+When to run them: only when external code or content enters the repository (a
+new or updated third-party dependency or source snapshot, vendored code, a new
+binary package or runtime, a new asset or test file from outside the project).
+Porting or changing code that is already in the repository (the pinned Cycles
+sources, the overlay, the WGSL, the host and managed code) and adding renders,
+evidence or documents does not need them: that code has been checked. The
+licence steps in the per-platform TESTING documents follow the same rule.
 
     python3 tools/licensing/audit.py
     python3 tools/licensing/notices.py --check

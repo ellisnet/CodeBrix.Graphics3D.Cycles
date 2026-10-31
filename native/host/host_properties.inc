@@ -105,7 +105,10 @@ void json_text(std::ostream &out,const char *value) {
 extern "C" int cbc_host_property_info(CBCHost handle,CBCNode id,const char *name,CBCPropertyInfo *info) {
   return edit(handle,[&](Host &host) {
     require(info && info->struct_size==sizeof(*info),"Invalid property information structure");
-    auto &entry=host.entry(id);auto &input=socket(entry,name);
+    auto &entry=host.entry(id);
+    if(node_name_property(entry,name)){CBCPropertyInfo result{};result.struct_size=sizeof(result);result.value_type=CBC_VALUE_STRING;
+      result.flags=CBC_PROPERTY_READABLE|CBC_PROPERTY_WRITABLE;result.components=1;result.count=1;*info=result;return;}
+    auto &input=socket(entry,name);
     CBCPropertyInfo result{};result.struct_size=sizeof(result);result.value_type=value_type(input.type);
     result.flags=property_flags(input);result.components=components(input.type);
     result.count=(result.flags&CBC_PROPERTY_READABLE)?element_count(*entry.node,input):0;*info=result;
@@ -157,7 +160,9 @@ extern "C" int cbc_host_set_strings(CBCHost handle,CBCNode id,const char *name,c
 }
 extern "C" int cbc_host_get_string(CBCHost handle,CBCNode id,const char *name,uint64_t index,char *value,uint64_t capacity,uint64_t *required) {
   return edit(handle,[&](Host &host) {
-    auto &entry=host.entry(id);auto &input=socket(entry,name);stored_property(input);ustring result;
+    auto &entry=host.entry(id);
+    if(node_name_property(entry,name)){require(index==0,"Expected a string at index zero");copy_text(entry.node->name.string(),value,capacity,required);return;}
+    auto &input=socket(entry,name);stored_property(input);ustring result;
     if(input.type==SocketType::STRING_ARRAY){auto &items=entry.node->get_string_array(input);require(index<items.size(),"String index out of range");result=items[size_t(index)];}
     else {require((input.type==SocketType::STRING||input.type==SocketType::ENUM)&&index==0,"Expected a string or enumeration at index zero");result=entry.node->get_string(input);}
     copy_text(result.string(),value,capacity,required);

@@ -534,8 +534,9 @@ bring them back verbatim.
 
 ## 9. Metal comparison: Velvet subnormal paths and Radial Tiling with two sides
 
-Two WebGPU-device behaviours are provisional until this comparison is done on the Apple Silicon Metal build: the
-Velvet interim subnormal rule and the refusal of Radial Tiling with two sides and `0 < roundness < 1`. Inputs and the
+This comparison checked two WebGPU-device behaviours against the Apple Silicon Metal build: the Velvet subnormal
+rule and the refusal of Radial Tiling with two sides and `0 < roundness < 1` (both settled by its first run, recorded in
+`native/evidence/cycles-oracles-macos-metal-comparison-20261031/`; native/DEVICE.md open items 29 and 30). Repeat it when either behaviour changes. Inputs and the
 Linux x64 references are frozen in `native/evidence/metal-comparison-linux-x64-<date>/` (its README explains both
 questions). Build first as in sections 3 and 4 (steps 1-2) at the checked-out commit.
 

@@ -5,6 +5,7 @@
 namespace ccl {inline constexpr unsigned surface_data_cache_bytes=60*4;
 std::string volume_source();std::string volume_stack_source();std::string wavefront_layout();std::string svm_layout(bool surface=false);
 std::string shadow_source();std::string shadow_catcher_layout();std::string shadow_catcher_split_wgsl();int shadow_catcher_pass_mask();
+int film_data_pass_mask();std::string film_passes_layout();std::string film_post_wgsl();std::string film_motion_layout();
 std::string shadow_layout();std::string lighting_layout();
 // Generated arithmetic-adapter constants (CAMERA_NATIVE_VECTOR_DIVIDE,
 // NATIVE_FLOAT3_RECIPROCAL_NORMALIZE, NATIVE_TRIANGLE_ARITHMETIC,

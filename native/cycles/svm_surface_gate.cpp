@@ -107,7 +107,8 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
   const uint expected[count]={2,2,2,2,16,16,16,4,16,16,16,16,16,2,2,2,2,2,2,2,16};
   for(unsigned test=0;test<count;test++){
     Program program(ds);program.weight(.2,.4,.6);program.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
-    const uint deferred[]={NODE_AOV_COLOR,NODE_LIGHT_FALLOFF,NODE_IES,NODE_AOV_START}; // Raycast, Bevel and Radial Tiling are implemented
+    // Raycast, Bevel, Radial Tiling and the AOV nodes are implemented: still-unsupported opcodes stand in.
+    const uint deferred[]={NODE_TEX_SKY,NODE_LIGHT_FALLOFF,NODE_IES,NODE_POINT_INFO};
     if(test<4)program.words.push_back(deferred[test]);
     if(test==4||test==5)program.add(NODE_TEX_NOISE,SVMNodeTexNoise{.dimensions=test==4?5u:3u,.noise_type=NodeNoiseType(test==4?1:7),.normalize=1,.w=value(0),.scale=value(1),.detail=value(2),
       .roughness=value(.5f),.lacunarity=value(2),.offset=value(0),.gain=value(1),.distortion=value(0),.vector=0,.value_offset=3,.color_offset=SVM_STACK_INVALID});
@@ -119,7 +120,7 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
     if(test==11)program.add(NODE_TEX_WHITE_NOISE,SVMNodeTexWhiteNoise{.dimensions=0,.vector=stack_in3(0),.w=value(0),.value_offset=3,.color_offset=SVM_STACK_INVALID});
     if(test==12)program.add(NODE_MAP_RANGE,SVMNodeMapRange{.range_type=NodeMapRangeType(9),.value=stack_in(0),.from_min=value(0),.from_max=value(1),.to_min=value(0),.to_max=value(1),.steps=value(4),.result_offset=3});
     // The displacement and vector displacement nodes are implemented (SVM_NODE_DISPLACEMENT): two volume-only opcodes stand in.
-    const uint more[]={NODE_PRINCIPLED_VOLUME,NODE_VOLUME_COEFFICIENTS,NODE_PARTICLE_INFO,NODE_HAIR_INFO,NODE_TEX_SKY,NODE_AOV_VALUE,NODE_POINT_INFO};
+    const uint more[]={NODE_PRINCIPLED_VOLUME,NODE_VOLUME_COEFFICIENTS,NODE_PARTICLE_INFO,NODE_HAIR_INFO,NODE_TEX_SKY,NODE_LIGHT_FALLOFF,NODE_POINT_INFO};
     if(test>=13&&test<20)program.words.push_back(more[test-13]);
     // Gabor is implemented: an invalid Gabor type reports 16.
     if(test==20)program.add(NODE_TEX_GABOR,SVMNodeTexGabor{.gabor_type=NodeGaborType(2),.orientation_3d=color(1,0,0),.scale=value(1),.frequency=value(2),.anisotropy=value(1),

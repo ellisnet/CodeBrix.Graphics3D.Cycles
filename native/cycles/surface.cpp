@@ -48,11 +48,16 @@ static std::string surface_layout(){
   ENUM(FILTER_CLOSURE_EMISSION);ENUM(FILTER_CLOSURE_DIFFUSE);ENUM(CLOSURE_NONE_ID);ENUM(NBUILTIN_CLOSURES);
   ENUM(FILTER_CLOSURE_TRANSPARENT);ENUM(SD_OBJECT_HOLDOUT_MASK);ENUM(SD_HAS_ONLY_VOLUME);ENUM(SD_MIS_FRONT);ENUM(SD_MIS_BACK);ENUM(PRNG_SURFACE_BSDF);
 #undef ENUM
+  // With denoising features (FILM_DENOISING) their path flag is supported; the
+  // markers keep every other module's constant line unchanged.
+  source<<"//#if FILM_DENOISING else ";
   constant("SURFACE_UNSUPPORTED_FLAGS",PATH_RAY_SHADOW_CATCHER_PASS|PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_BACKGROUND|
     PATH_RAY_DENOISING_FEATURES|PATH_RAY_SUBSURFACE);
+  constant("SURFACE_UNSUPPORTED_FLAGS",PATH_RAY_SHADOW_CATCHER_PASS|PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_BACKGROUND|PATH_RAY_SUBSURFACE);
+  source<<"//#endif\n";
   return source.str();
 }
-std::string surface_source(){return svm_surface_source()+background_layout()+shadow_layout()+lighting_layout()+surface_layout()+shadow_catcher_layout()+mnee_layout()+surface_fragment;}
+std::string surface_source(){return svm_surface_source()+background_layout()+shadow_layout()+lighting_layout()+surface_layout()+shadow_catcher_layout()+film_passes_layout()+film_motion_layout()+mnee_layout()+surface_fragment;}
 void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,DeviceKernel kernel){
   require(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,"Invalid surface kernel");
   require(args.count==3,"Surface argument count");
@@ -73,11 +78,11 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
     require(std::isfinite(object.shadow_terminator_geometry_offset),"Invalid native shadow terminator geometry offset");
     require(!std::isnan(object.shadow_terminator_shading_offset),"Invalid native shadow terminator shading offset");
   }
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_SHADOW_LINKING)),
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
           "WebGPU surface optional integration features not implemented");
   if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
   if(data.integrator.use_caustics)validate_mnee();
-  require((data.film.pass_flag&~shadow_catcher_pass_mask())==0,"WebGPU surface data passes not implemented");
+  validate_film_passes();film_motion_words(p);
   validate_shadow_catcher();
   // Native Scene::get_max_closure_count() preserves a global minimum of one.
   // Local zero-storage SVM evaluation for termination remains valid.
@@ -105,7 +110,8 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   if(!p[2])require(uint32_t(n)<=p[10],"Surface dispatch exceeds path capacity");
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES))validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES)||\
+  ((data.kernel_features&KERNEL_FEATURE_DENOISING)&&feature==KERNEL_FEATURE_DENOISING))validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)
@@ -229,6 +235,14 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   dispatch(p,uint32_t(work),surface_light,workgroup("shade_surface_light"));
   if(triangle_stage)dispatch(p,uint32_t(work),surface_light_triangle,workgroup("shade_surface_light_triangle"));
   dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
+  // film_write_data_passes (FILM_DATA_PASSES, wavefront_film_passes.wgsl): after
+  // holdout, emission and termination (connect_surface_light), before the bounce
+  // changes the path's flag and throughput (shade_surface); the same records.
+  if((shader_features()&(SF_FILM_DATA_PASSES|SF_FILM_DENOISING)).any()){
+    if(!pipeline_current(surface_passes,"shade_surface_passes")||!surface_passes.value)
+      surface_passes=std::move(build_pipelines("surface",surface_source(),{"shade_surface_passes"})[0]);
+    dispatch(p,uint32_t(work),surface_passes,workgroup("shade_surface_passes"));
+  }
   if(sample_stage)dispatch(p,uint32_t(work),surface_sample,workgroup("shade_surface_sample"));
   dispatch(p,uint32_t(work),surface,workgroup("shade_surface"));
   // integrator_shade_surface's MNEE cleanup (wavefront_mnee.wgsl), caustic scenes only.

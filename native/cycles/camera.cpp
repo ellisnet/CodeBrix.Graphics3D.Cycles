@@ -156,6 +156,16 @@ std::string wavefront_layout(){
   constant("K_CLOSEST",DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
   constant("NONE",uint32_t(OBJECT_NONE));constant("PRIM_TYPE_NONE",PRIMITIVE_NONE);
   constant("PASS_NONE",uint32_t(PASS_UNUSED));constant("KF_LIGHT_LINKING",KERNEL_FEATURE_LIGHT_LINKING);
+  // Denoising features (FILM_DENOISING; film_passes.cpp, wavefront_film_passes.wgsl).
+  source<<"//#if FILM_DENOISING\n";
+  constant("DN_KERNEL_FEATURE_DENOISING",KERNEL_FEATURE_DENOISING);constant("DN_PATH_RAY_DENOISING_FEATURES",PATH_RAY_DENOISING_FEATURES);
+  constant("DN_D_pass_denoising_albedo",offsetof(KernelData,film.pass_denoising_albedo));constant("DN_D_pass_denoising_normal",offsetof(KernelData,film.pass_denoising_normal));
+  constant("DN_D_pass_denoising_specular_albedo",offsetof(KernelData,film.pass_denoising_specular_albedo));
+  constant("DN_D_pass_denoising_roughness",offsetof(KernelData,film.pass_denoising_roughness));constant("DN_D_pass_denoising_depth",offsetof(KernelData,film.pass_denoising_depth));
+  constant("DN_D_denoising_pass_options_flag",offsetof(KernelData,film.denoising_pass_options_flag));
+  constant("DN_FOLLOW_REFLECTIONS",DENOISING_PASS_FOLLOW_REFLECTIONS);constant("DN_USE_ALBEDO_ROUGHNESS_WEIGHTING",DENOISING_PASS_USE_ALBEDO_ROUGHNESS_WEIGHTING);
+  constant("DN_PATH_RAY_REFLECT",PATH_RAY_REFLECT);
+  source<<"//#endif\n";
   return source.str();
 }
 std::string camera_wgsl(){return wavefront_layout()+camera_source;}
@@ -185,8 +195,11 @@ void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
           std::isfinite(data.cam.rolling_shutter_duration)&&data.cam.rolling_shutter_duration>=0&&data.cam.rolling_shutter_duration<=1,
           "Invalid camera rolling shutter");
   validate_volume();
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|
-          KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_NODE_PORTAL)),"WebGPU camera optional path features not implemented");
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_NODE_PORTAL)),"WebGPU camera optional path features not implemented");
+  // Denoising features (path_state_init_integrator): the flag and the feature throughput.
+  validate_film_passes();
+  if(data.kernel_features&KERNEL_FEATURE_DENOISING)validate(uintptr_t(state.path.denoising_feature_throughput),
+    remaining(uintptr_t(state.path.render_pixel_index))/4*sizeof(PackedSpectrum));
   if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
   require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU camera requires tabulated Sobol");
   const auto sequence=data.integrator.tabulated_sobol_sequence_size;

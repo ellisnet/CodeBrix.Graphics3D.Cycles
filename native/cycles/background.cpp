@@ -32,8 +32,11 @@ std::string background_layout(){
   ENUM(SD_HAS_CONSTANT_EMISSION);ENUM(SHADER_EXCLUDE_DIFFUSE);ENUM(SHADER_EXCLUDE_GLOSSY);ENUM(SHADER_EXCLUDE_TRANSMIT);ENUM(SHADER_EXCLUDE_CAMERA);ENUM(SHADER_EXCLUDE_SCATTER);
   ENUM(PATH_RAY_MIS_SKIP);ENUM(PATH_RAY_MIS_HAD_TRANSMISSION);
   ENUM(PATH_RAY_REFLECT);ENUM(PATH_RAY_TRANSPARENT_BACKGROUND);ENUM(PATH_RAY_ANY_PASS);ENUM(PATH_RAY_SURFACE_PASS);ENUM(PATH_RAY_SINGLE_PASS_DONE);
+  source<<"//#if FILM_DENOISING else ";
   constant("BACKGROUND_UNSUPPORTED_FLAGS",PATH_RAY_SHADOW_CATCHER_PASS|PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_BACKGROUND|
     PATH_RAY_DENOISING_FEATURES);
+  constant("BACKGROUND_UNSUPPORTED_FLAGS",PATH_RAY_SHADOW_CATCHER_PASS|PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_BACKGROUND);
+  source<<"//#endif\n";
   ENUM(PATH_RAY_VISIBILITY_VOLUME_SCATTER);ENUM(LIGHT_BACKGROUND);constant("BGL_IMPORTANCE_BAKE",PATH_RAY_IMPORTANCE_BAKE);
 #undef ENUM
 #define PASS(name) constant("MASK_" #name,uint32_t(PASSMASK(name)))
@@ -41,7 +44,7 @@ std::string background_layout(){
 #undef PASS
   return source.str();
 }
-std::string background_wgsl(){return wavefront_layout()+shader_data_layout()+background_layout()+lighting_layout()+svm_layout()+shadow_catcher_layout()+mnee_layout()+background_source;}
+std::string background_wgsl(){return wavefront_layout()+shader_data_layout()+background_layout()+lighting_layout()+svm_layout()+shadow_catcher_layout()+mnee_layout()+film_motion_layout()+background_source;}
 void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args,DeviceKernel kernel){
   require(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD,"Invalid emission kernel");
   require(args.count==3,"Background argument count");
@@ -54,12 +57,12 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
   if(p[2])validate(p[2],size_t(n)*4);
   validate_volume();
   validate_lighting(false);
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_SHADOW_LINKING)),
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
           "WebGPU background optional integration features not implemented");
   if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
   validate_shadow_catcher();
   if(data.integrator.use_caustics)validate_mnee();
-  require(!(data.film.pass_flag&PASSMASK(MOTION)),"WebGPU background motion pass not implemented");
+  validate_film_passes();
   require(data.film.pass_stride>0,"Invalid background film stride");
   auto pass=[&](int offset,int length){require(offset==PASS_UNUSED||(offset>=0&&offset<=data.film.pass_stride-length),"Invalid background film pass offset");};
   pass(data.film.pass_emission,3);
@@ -86,7 +89,8 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
   if(!p[2])require(uint32_t(n)<=p[10],"Background dispatch exceeds path capacity");
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES))validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES)||\
+  ((data.kernel_features&KERNEL_FEATURE_DENOISING)&&feature==KERNEL_FEATURE_DENOISING))validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)

@@ -292,41 +292,36 @@ int main(int argc, char **argv) {
   /* Passes/AOVs: enable through "pass" nodes and read back as copies. */
   CBCNode depth = create("pass"), normal = 0, aov = 0, aov_output = 0;
   text(depth, "type", "depth"); text(depth, "name", "Depth");
-  if (!gpu) {
-    normal = create("pass"); aov = create("pass");
-    text(normal, "type", "normal"); text(normal, "name", "Normal");
-    text(aov, "type", "aov_value"); text(aov, "name", "Mask");
-    aov_output = graph_node(material, "aov_output"); text(aov_output, "name", "Mask"); scalar(aov_output, "value", .25f);
-  } else CHECK(cbc_host_delete_node(host, depth));
+  normal = create("pass"); aov = create("pass");
+  text(normal, "type", "normal"); text(normal, "name", "Normal");
+  text(aov, "type", "aov_value"); text(aov, "name", "Mask");
+  aov_output = graph_node(material, "aov_output"); text(aov_output, "name", "Mask"); scalar(aov_output, "value", .25f);
   float combined[FLOATS], depth_values[W * H], normal_values[W * H * 3], mask[W * H];
   int depth_status = CBC_FAILED, normal_status = CBC_FAILED, mask_status = CBC_FAILED;
   CBCRenderConfig pass_config = {sizeof(pass_config), W, H, 8, {0}};
-  /* WebGPU rejects surface data passes; that failing render runs last below. */
-  const int data_pass_render = gpu ? CBC_FAILED : cbc_host_render(host, &pass_config, combined, FLOATS);
-  if (!gpu) CHECK(data_pass_render);
+  /* Every backend writes the data passes and AOVs (the WebGPU device since the film passes port). */
+  const int data_pass_render = cbc_host_render(host, &pass_config, combined, FLOATS);
+  CHECK(data_pass_render);
   if (data_pass_render == CBC_OK) {
     char *passes = json_of(cbc_host_render_passes_json, host); save(prefix, "passes.json", passes, strlen(passes)); free(passes);
     REQUIRE(cbc_host_pass_floats(host, "Depth", NULL, 0, &required, &components) == CBC_SMALL_BUFFER && required == W * H && components == 1);
     depth_status = cbc_host_pass_floats(host, "Depth", depth_values, W * H, &required, &components);
     normal_status = cbc_host_pass_floats(host, "Normal", normal_values, W * H * 3, &required, &components);
     mask_status = cbc_host_pass_floats(host, "Mask", mask, W * H, &required, &components);
-    if (!gpu) REQUIRE(depth_status == CBC_OK && normal_status == CBC_OK && mask_status == CBC_OK);
+    REQUIRE(depth_status == CBC_OK && normal_status == CBC_OK && mask_status == CBC_OK);
     if (depth_status == CBC_OK) save(prefix, "depth.f32", depth_values, sizeof(depth_values));
     if (normal_status == CBC_OK) save(prefix, "normal.f32", normal_values, sizeof(normal_values));
     if (mask_status == CBC_OK) save(prefix, "mask.f32", mask, sizeof(mask));
   }
-  if (!gpu) { CHECK(cbc_host_delete_node(host, aov_output)); CHECK(cbc_host_delete_node(host, normal)); CHECK(cbc_host_delete_node(host, aov)); CHECK(cbc_host_delete_node(host, depth)); }
-  /* Light passes (CPU). The WebGPU device rejected diffuse_direct/background
-   * passes with "surface data passes not implemented" during development, and
-   * a device error is sticky, so GPU mode covers only the rejection below. */
+  CHECK(cbc_host_delete_node(host, aov_output)); CHECK(cbc_host_delete_node(host, normal)); CHECK(cbc_host_delete_node(host, aov)); CHECK(cbc_host_delete_node(host, depth));
+  /* Light passes, on every backend. */
   CBCNode direct = create("pass"), sky = create("pass");
   text(direct, "type", "diffuse_direct"); text(direct, "name", "DiffuseDirect");
   text(sky, "type", "background"); text(sky, "name", "Background");
   float direct_values[W * H * 3], sky_values[W * H * 4];
-  if (gpu) { CHECK(cbc_host_delete_node(host, direct)); CHECK(cbc_host_delete_node(host, sky)); direct = sky = 0; }
-  const int light_pass_render = gpu ? CBC_FAILED : cbc_host_render(host, &pass_config, combined, FLOATS);
+  const int light_pass_render = cbc_host_render(host, &pass_config, combined, FLOATS);
   int direct_status = CBC_FAILED, sky_status = CBC_FAILED;
-  if (!gpu) CHECK(light_pass_render);
+  CHECK(light_pass_render);
   if (light_pass_render == CBC_OK) {
     save(prefix, "light-passes.rgba.bin", combined, sizeof(combined));
     char *passes = json_of(cbc_host_render_passes_json, host); save(prefix, "light-passes.json", passes, strlen(passes)); free(passes);
@@ -335,7 +330,8 @@ int main(int argc, char **argv) {
     sky_status = cbc_host_pass_floats(host, "Background", sky_values, W * H * 4, &required, &components);
     if (sky_status == CBC_OK) save(prefix, "background.f32", sky_values, (size_t)required * sizeof(float));
   }
-  if (!gpu) { CHECK(cbc_host_delete_node(host, direct)); CHECK(cbc_host_delete_node(host, sky)); }
+  REQUIRE(direct_status == CBC_OK && sky_status == CBC_OK);
+  CHECK(cbc_host_delete_node(host, direct)); CHECK(cbc_host_delete_node(host, sky));
 
   /* Events: progress/status, reentrancy refusal, version from a callback, cancellation by return. */
   Events events = {0};
@@ -370,14 +366,15 @@ int main(int argc, char **argv) {
     CHECK(cbc_host_connect(host, bsdf, "BSDF", output_of(surface), "Surface"));
     mesh = create("mesh"); nodes(mesh, "used_shaders", surface); CHECK(cbc_host_mesh(host, mesh, xyz, 3, tri, 1));
     object = create("object"); nodes(object, "geometry", mesh);
-    depth = create("pass"); text(depth, "type", "depth"); text(depth, "name", "Depth");
+    /* The cause: an orthographic camera (the WebGPU device renders the perspective camera only). */
+    text(camera, "camera_type", "orthograph");
     for (unsigned i = 0; i < FLOATS; ++i) film_b[i] = -99;
     REQUIRE(cbc_host_render(host, &pass_config, film_b, FLOATS) == CBC_FAILED);
     for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(film_b[i] == -99);
     REQUIRE(failure.error == 1 && failure.refused == failure.status + failure.progress + failure.error);
     REQUIRE(cbc_host_pass_floats(host, "Combined", pass, FLOATS, &required, &components) == CBC_NOT_READY);
     REQUIRE(cbc_host_render_passes_json(host, NULL, 0, &required) == CBC_NOT_READY);
-    CHECK(cbc_host_delete_node(host, depth));
+    text(camera, "camera_type", "perspective");
     after_failure = cbc_host_render(host, &pass_config, film_b, FLOATS);
     REQUIRE(after_failure == CBC_OK && failure.error == 1);
     for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(isfinite(film_b[i]));

@@ -110,7 +110,8 @@ static unsigned rejections(const DeviceInfo &info,bool motion){
     if(test==0){data.cam.type=CAMERA_ORTHOGRAPHIC;reason="perspective pinhole";}
     if(test==1){data.cam.aperturesize=1;reason="perspective pinhole";}
     if(test==2){data.integrator.sampling_pattern=SAMPLING_PATTERN_SOBOL_BURLEY;reason="tabulated Sobol";}
-    if(test==3){data.kernel_features|=KERNEL_FEATURE_DENOISING;reason="optional path features";}
+    // The denoising features are implemented (FILM_DENOISING); light portals stay refused.
+    if(test==3){data.kernel_features|=KERNEL_FEATURE_NODE_PORTAL;reason="optional path features";}
     if(test==4){data.film.pass_sample_count=12;reason="film pass offset";}
     if(test==12){data.cam.num_motion_steps=1;reason="motion step count";}
     if(test==13){data.cam.num_motion_steps=2;reason="native camera motion table";}

@@ -73,7 +73,10 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SVM_NODE_BEVEL",SF_NODE_BEVEL},{"SVM_NODE_RAYCAST",SF_NODE_RAYCAST},{"SVM_RAYTRACE_NODES",SF_NODE_BEVEL|SF_NODE_RAYCAST},
     // The SHADE_SURFACE_RAYTRACE queue (surf_queue): shaders with an AO, Bevel or Raycast node.
     {"SVM_RAYTRACE_QUEUE",SF_NODE_AO|SF_NODE_BEVEL|SF_NODE_RAYCAST},
-    {"SURFACE_FILTER_GLOSSY",SF_FILTER_GLOSSY},{"SHADOW_TERMINATOR_WIDE",SF_TERMINATOR_WIDE},{"SHADOW_TRANSPARENT_MOTION",SF_SHADOW_MOTION},{"MNEE_MOTION",SF_MNEE_MOTION},{"SVM_NODE_DISPLACEMENT",SF_NODE_DISPLACEMENT},{"SHADER_EVAL_DISPLACE",SF_EVAL_DISPLACE},{"SVM_BUMP_UNDISPLACED",SF_BUMP_UNDISPLACED},{"SVM_NODE_RADIAL_TILING",SF_NODE_RADIAL_TILING}};
+    {"SURFACE_FILTER_GLOSSY",SF_FILTER_GLOSSY},{"SHADOW_TERMINATOR_WIDE",SF_TERMINATOR_WIDE},{"SHADOW_TRANSPARENT_MOTION",SF_SHADOW_MOTION},{"MNEE_MOTION",SF_MNEE_MOTION|SF_FILM_MOTION_EXACT},{"SVM_NODE_DISPLACEMENT",SF_NODE_DISPLACEMENT},{"SHADER_EVAL_DISPLACE",SF_EVAL_DISPLACE},{"SVM_BUMP_UNDISPLACED",SF_BUMP_UNDISPLACED},{"SVM_NODE_RADIAL_TILING",SF_NODE_RADIAL_TILING},
+    {"FILM_DATA_PASSES",SF_FILM_DATA_PASSES},{"SVM_NODE_AOV",SF_NODE_AOV},{"FILM_CRYPTOMATTE",SF_FILM_CRYPTOMATTE},{"FILM_DENOISING",SF_FILM_DENOISING},{"FILM_MOTION",SF_FILM_MOTION},
+    // The shade_surface_passes entry and its shared helpers (data passes or denoising features).
+    {"FILM_PASSES_ANY",SF_FILM_DATA_PASSES|SF_FILM_DENOISING}};
   return names;
 }
 std::string shader_feature_list(ShaderFeatures features){
@@ -84,12 +87,13 @@ std::string shader_feature_list(ShaderFeatures features){
 
 // Mask layout invariants (pipelines.h): assigned bits keep their numbers.
 static_assert(SF_GEOMETRY.test(0)&&SF_MAPPING_DERIVATIVE.test(61)&&SF_TEX_GABOR.test(63)&&!SF_ALL.test(62));
-static_assert(SF_ALL.count()==87&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+static_assert(SF_ALL.count()==93&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
 static_assert(SF_DEBUG_OUTPUT.test(116)&&!(SF_ALL&SF_DEBUG_OUTPUT).any());
 static_assert(SF_DRIVER_CACHE_SALT.test(117)&&!(SF_ALL&SF_DRIVER_CACHE_SALT).any());
+static_assert(SF_FILM_DATA_PASSES.test(143)&&SF_NODE_AOV.test(144)&&SF_FILM_CRYPTOMATTE.test(145)&&SF_FILM_DENOISING.test(146)&&SF_FILM_MOTION.test(147)&&SF_FILM_MOTION_EXACT.test(148)&&(SF_SUPERSET_SCENE_ONLY&SF_FILM_MOTION_EXACT).any()&&(SF_SUPERSET_SCENE_ONLY&(SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION))==(SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION));
 static_assert(SF_BSDF_METALLIC.test(128)&&SF_BSDF_BECKMANN.test(129)&&SF_BSDF_ASHIKHMIN_SHIRLEY.test(130)&&SF_BSDF_VELVET.test(131)&&SF_BSDF_TOON.test(132)&&SF_NODE_BEVEL.test(133)&&SF_NODE_RAYCAST.test(134)&&SF_NODE_RADIAL_TILING.test(135)&&(SF_SUPERSET_SCENE_ONLY&SF_NODE_RAYCAST).any()&&(SF_SUPERSET_SCENE_ONLY&SF_BSDF_FAMILIES)==SF_BSDF_FAMILIES);
 
 namespace {
@@ -130,7 +134,7 @@ OpInfo op_info(uint32_t op){
     OP(NODE_VECTOR_TRANSFORM,VectorTransform,SF_SHADING_INFO) OP(NODE_LIGHT_PATH,LightPath,SF_LIGHT_PATH)
     OP(NODE_WAVELENGTH,Wavelength,SF_WAVELENGTH) OP(NODE_WIREFRAME,Wireframe,SF_WIREFRAME) OP(NODE_TEX_GABOR,TexGabor,SF_TEX_GABOR)
     OP(NODE_AMBIENT_OCCLUSION,AmbientOcclusion,SF_NODE_AO) OP(NODE_BEVEL,Bevel,SF_NODE_BEVEL) OP(NODE_RAYCAST,Raycast,SF_NODE_RAYCAST|SF_ATTR)
-    OP(NODE_RADIAL_TILING,RadialTiling,SF_NODE_RADIAL_TILING)
+    OP(NODE_RADIAL_TILING,RadialTiling,SF_NODE_RADIAL_TILING) OP(NODE_AOV_COLOR,AOVColor,SF_NODE_AOV) OP(NODE_AOV_VALUE,AOVValue,SF_NODE_AOV)
     OP(NODE_SET_DISPLACEMENT,SetDisplacement,SF_NODE_DISPLACEMENT) OP(NODE_DISPLACEMENT,Displacement,SF_NODE_DISPLACEMENT)
     OP(NODE_VECTOR_DISPLACEMENT,VectorDisplacement,SF_NODE_DISPLACEMENT|SF_ATTR)
     OP(NODE_SET_BUMP,SetBump,SF_BUMP) OP(NODE_ENTER_BUMP_EVAL,EnterBumpEval,SF_BUMP_STATE) OP(NODE_LEAVE_BUMP_EVAL,LeaveBumpEval,SF_BUMP_STATE)
@@ -214,6 +218,8 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
     for(;;){
       const uint64_t opcode_at=pc;if(!take(pc,4)){out.stopped_paths++;break;}
       const uint32_t op=w[opcode_at];if(op==NODE_END)break;
+      // NODE_AOV_START has no record: it ends the program unless the evaluation writes AOVs.
+      if(op==NODE_AOV_START){if(decoded.insert(uint32_t(opcode_at)).second)out.decoded_nodes++;out.features|=SF_NODE_AOV;continue;}
       const OpInfo info=op_info(op);if(!info.bytes){out.stopped_paths++;break;}
       const uint64_t node=pc;if(!take(pc,info.bytes)){out.stopped_paths++;break;}
       if(decoded.insert(uint32_t(opcode_at)).second)out.decoded_nodes++;
@@ -488,6 +494,11 @@ ShaderFeatures WebGPUDevice::shader_features(){
     if(data.kernel_features&KERNEL_FEATURE_AO)enabled_features|=SF_AO_SHADOW;
     if(data.integrator.use_caustics)enabled_features|=SF_MNEE;
     if(data.integrator.filter_glossy!=FLT_MAX)enabled_features|=SF_FILTER_GLOSSY;
+    if(film_surface_passes())enabled_features|=SF_FILM_DATA_PASSES;
+    if(film_cryptomatte())enabled_features|=SF_FILM_CRYPTOMATTE;
+    if(data.kernel_features&KERNEL_FEATURE_DENOISING)enabled_features|=SF_FILM_DENOISING;
+    if(film_motion_vectors())enabled_features|=SF_FILM_MOTION;
+    if(data.bvh.have_motion&&(data.film.pass_flag&(PASSMASK(DIFFUSE_COLOR)|PASSMASK(GLOSSY_COLOR)|PASSMASK(TRANSMISSION_COLOR))))enabled_features|=SF_FILM_MOTION_EXACT;
     if(data.integrator.transparent_shadows&&data.bvh.have_motion)enabled_features|=SF_SHADOW_MOTION;
     if(data.integrator.use_caustics&&data.bvh.have_motion)enabled_features|=SF_MNEE_MOTION;
     for(const KernelObject &object:object_records){

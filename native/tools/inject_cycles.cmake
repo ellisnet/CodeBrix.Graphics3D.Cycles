@@ -20,10 +20,13 @@ endif()
 # -ffp-contract=on and -freciprocal-math into CMAKE_CXX_FLAGS; directory compile
 # options follow those flags on every command line, so these take precedence for
 # every Cycles and CodeBrix translation unit. The pinned source is not changed.
-# Android keeps Cycles' flags: its on-device CPU is a diagnostic, never the oracle.
-if(ANDROID)
-  set(CODEBRIX_CPU_FP_CONTRACT "on")
-elseif(MSVC)
+# Android follows the same rule. Its on-device CPU is only a diagnostic, but the
+# same translation units prepare the scene the GPU renders (light records,
+# transforms, BVH, lookup tables), and that kernel data must be the same on
+# every RID: with Cycles' flags, clang turned 1/sqrtf into rsqrtss plus one
+# Newton step on android-x64 (an area light's axis and direction came out
+# 0.99999994 instead of 1).
+if(MSVC)
   # clang-cl (Windows) ignores GCC-style math options with only a warning, and
   # Cycles passes its own as /clang:-ffp-contract=on /clang:-freciprocal-math;
   # the same /clang: form switches them off again.
@@ -61,6 +64,7 @@ function(codebrix_add_cycles_device)
     "${CODEBRIX_NATIVE_ROOT}/cycles/background.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/surface.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_catcher.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/film_passes.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/mnee.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/volume.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/svm_layout.cpp"

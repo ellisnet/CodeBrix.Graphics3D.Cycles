@@ -33,6 +33,16 @@ whose bytes differ from their recorded SHA-256, shape or scene mismatches, NaN/I
 practical failures or sample-count mismatches of gating pairs fail. The verdict is "perfect"
 when nothing failed (every gating pair passes the practical criterion). A run without a CPU
 gold standard is invalid input ("no gold standard", exit 2).
+
+Named passes (meta.json "passes", files pass-K-N.f32 from codebrix_cycles_oracle): every pass of the
+reference of a pair is compared with the candidate's pass of the same name and type, with the same
+roles. Float passes use the practical and strict criteria above; integer passes (object_id,
+material_id) must be bitwise equal (every differing value is a failure); cryptomatte passes are
+compared per pixel as the set of (id, weight) entries: the ids must be the same bit patterns and the
+weights of each id meet the practical criterion (their slot order, which the pinned kernel leaves to
+the accumulation order for equal weights, is reported); render_time holds this run's measured
+times and is reported, never judged. A pass that the reference has and a gating candidate lacks, a
+pass of a different shape, NaN/Inf in any pass, and hash mismatches fail.
 """
 import argparse,array,hashlib,itertools,json,math,shutil,sys,tempfile
 from pathlib import Path
@@ -61,7 +71,72 @@ def load(directory,repeat=0):
 def nonfinite(values):return sum(1 for v in values if not math.isfinite(v))
 
 
-def compare(reference,candidate,width):
+# Pass kinds (by the native pass type name): how a pass is judged.
+EXACT_PASSES={'object_id','material_id'};TIMING_PASSES={'render_time'};CRYPTOMATTE_PASSES={'cryptomatte'}
+def pass_kind(entry):
+ t=entry.get('type') or ''
+ return 'exact' if t in EXACT_PASSES else 'timing' if t in TIMING_PASSES else 'cryptomatte' if t in CRYPTOMATTE_PASSES else 'float'
+
+
+def read_pass(directory,meta,entry,repeat):
+ path=Path(directory)/f"pass-{entry['index']}-{repeat}.f32";data=path.read_bytes()
+ hashes=entry.get('filmSha256',[])
+ if repeat>=len(hashes) or hashlib.sha256(data).hexdigest()!=hashes[repeat]:raise Invalid(f'{path} does not match its recorded SHA-256')
+ count=meta['width']*meta['height']*int(entry['components'])
+ if len(data)!=count*4:raise Invalid(f'{path} has {len(data)} bytes; expected {count*4}')
+ values=array.array('f');values.frombytes(data)
+ if sys.byteorder!='little':values.byteswap()
+ return values
+
+
+def compare_exact(reference,candidate,width,components):
+ differ=0;worst=None
+ rb=array.array('I',reference.tobytes());cb=array.array('I',candidate.tobytes())
+ for i,(b,a) in enumerate(zip(rb,cb)):
+  if a!=b:
+   differ+=1
+   if worst is None:
+    pixel,channel=divmod(i,components)
+    worst=dict(x=pixel%width,y=pixel//width,channel=channel,reference=reference[i],candidate=candidate[i])
+ return dict(bitwiseEqual=differ==0,practicalFailures=differ,strictDifferences=differ,maxAbsoluteDifference=None,firstDifference=worst)
+
+
+def compare_cryptomatte(reference,candidate,width,components):
+ """Per pixel: the (id, weight) slots as a map from the id's bit pattern to its weight."""
+ failures=strict=order=0;max_abs=0.0;worst=None;ids=array.array('I',reference.tobytes());cids=array.array('I',candidate.tobytes())
+ pixels=len(reference)//components
+ for pixel in range(pixels):
+  base=pixel*components
+  rmap={};cmap={};rorder=[];corder=[]
+  for k in range(0,components,2):
+   if reference[base+k+1]!=0 or ids[base+k]!=0:rmap[ids[base+k]]=reference[base+k+1];rorder.append(ids[base+k])
+   if candidate[base+k+1]!=0 or cids[base+k]!=0:cmap[cids[base+k]]=candidate[base+k+1];corder.append(cids[base+k])
+  if rorder!=corder:order+=1
+  if set(rmap)!=set(cmap):
+   failures+=1
+   if worst is None:worst=dict(x=pixel%width,y=pixel//width,reason='id set differs',reference=sorted(rmap),candidate=sorted(cmap))
+   continue
+  for key,b in rmap.items():
+   a=cmap[key];difference=abs(a-b)
+   if not (math.isfinite(a) and math.isfinite(b)):continue
+   max_abs=max(max_abs,difference)
+   if difference>PRACTICAL[0]+PRACTICAL[1]*abs(b):
+    failures+=1
+    if worst is None:worst=dict(x=pixel%width,y=pixel//width,reason='weight',id=key,reference=b,candidate=a)
+   if difference>STRICT[0]+STRICT[1]*abs(b):strict+=1
+ return dict(bitwiseEqual=reference.tobytes()==candidate.tobytes(),practicalFailures=failures,strictDifferences=strict,
+  maxAbsoluteDifference=max_abs,slotOrderDifferences=order,firstDifference=worst)
+
+
+def compare_pass(entry,reference,candidate,width):
+ components=int(entry['components']);kind=pass_kind(entry)
+ if kind=='exact':return compare_exact(reference,candidate,width,components)
+ if kind=='cryptomatte':return compare_cryptomatte(reference,candidate,width,components)
+ if kind=='timing':return dict(bitwiseEqual=reference.tobytes()==candidate.tobytes(),notJudged='render time is a measurement of this run, not a rendered value')
+ return compare(reference,candidate,width,components)
+
+
+def compare(reference,candidate,width,components=4):
  failures=strict=0;max_abs=max_rel=0.0;square=0.0;worst=None;bitwise=reference.tobytes()==candidate.tobytes()
  for i,(b,a) in enumerate(zip(reference,candidate)):
   if not (math.isfinite(a) and math.isfinite(b)):continue
@@ -73,8 +148,8 @@ def compare(reference,candidate,width):
   if difference>STRICT[0]+STRICT[1]*abs(b):strict+=1
   ratio=difference/tolerance
   if worst is None or ratio>worst['criterionRatio']:
-   pixel,channel=divmod(i,4)
-   worst=dict(x=pixel%width,y=pixel//width,channel='RGBA'[channel],reference=b,candidate=a,absoluteDifference=difference,criterionRatio=ratio)
+   pixel,channel=divmod(i,components)
+   worst=dict(x=pixel%width,y=pixel//width,channel='RGBA'[channel] if components==4 else channel,reference=b,candidate=a,absoluteDifference=difference,criterionRatio=ratio)
  return dict(bitwiseEqual=bitwise,maxAbsoluteDifference=max_abs,maxRelativeError=max_rel,rms=math.sqrt(square/len(reference)),
   practicalFailures=failures,strictDifferences=strict,worstPixel=worst)
 
@@ -116,6 +191,11 @@ def run(directories):
   meta,values=load(directory)
   films.append((Path(directory),meta,values))
   if nonfinite(values):problems.append(f'{directory}: {nonfinite(values)} NaN/Inf components')
+  for entry in meta.get('passes',[]):
+   if not entry.get('written'):continue
+   for r in range(len(entry.get('filmSha256',[]))):
+    bad=nonfinite(read_pass(directory,meta,entry,r))
+    if bad:problems.append(f"{directory}: pass {entry['name']} repeat {r} has {bad} NaN/Inf components")
  first=films[0][1]
  if not any(role_of(m['backend'])=='cpu' for _,m,_ in films):
   raise Invalid('no gold standard: no cpu-* backend among '+', '.join(m['backend'] for _,m,_ in films))
@@ -127,7 +207,15 @@ def run(directories):
   rows=repeats(d,m,v)
   for row in rows:
    if row['nonfinite']:problems.append(f'{d}: repeat {row["repeat"]} has {row["nonfinite"]} NaN/Inf components')
-  backends.append(dict(directory=str(d),backend=m['backend'],samples=m['samples'],repeats=m['repeats'],
+  pass_repeats=[]
+  for entry in m.get('passes',[]):
+   if not entry.get('written'):continue
+   p0=read_pass(d,m,entry,0)
+   for r in range(1,len(entry.get('filmSha256',[]))):
+    pr=read_pass(d,m,entry,r)
+    pass_repeats.append(dict(name=entry['name'],repeat=r,bitwiseEqual=pr.tobytes()==p0.tobytes(),
+     maxAbsoluteDifference=max((abs(a-b) for a,b in zip(pr,p0) if math.isfinite(a) and math.isfinite(b)),default=0.0)))
+  backends.append(dict(directory=str(d),backend=m['backend'],samples=m['samples'],repeats=m['repeats'],**({'passRepeats':pass_repeats} if pass_repeats else {}),
    repeatBitwiseIdentical=m.get('repeatBitwiseIdentical'),repeatMaxAbsDifference=m.get('repeatMaxAbsDifference'),
    measuredRepeats=rows,measuredRepeatBitwiseIdentical=all(r['bitwiseEqual'] for r in rows),
    measuredRepeatMaxAbsDifference=max([0.0]+[r['maxAbsoluteDifference'] for r in rows]),
@@ -148,6 +236,20 @@ def run(directories):
   if role=='gating':
    if not result['samplesMatch']:problems.append(f'{cm["backend"]} used {cm["samples"]} samples; {rm["backend"]} used {rm["samples"]}')
    if not result['practicalPassed']:problems.append(f'{cm["backend"]} vs {rm["backend"]}: {result["practicalFailures"]} practical failures')
+  # Named passes of the reference, judged like Combined with the pair's role.
+  passes=[];candidate_passes={e['name']:e for e in cm.get('passes',[])}
+  for entry in rm.get('passes',[]):
+   other=candidate_passes.get(entry['name']);row=dict(name=entry['name'],type=entry.get('type'),components=entry.get('components'),kind=pass_kind(entry))
+   problem=None
+   if not entry.get('written'):row['status']='not written by the reference'
+   elif other is None or not other.get('written'):row['status']='missing in the candidate';problem='is missing'
+   elif (other.get('type'),other.get('components'))!=(entry.get('type'),entry.get('components')):row['status']='different type or shape';problem='has a different type or shape'
+   else:
+    row.update(compare_pass(entry,read_pass(rd,rm,entry,0),read_pass(cd,cm,other,0),first['width']));row['status']='compared'
+    if row.get('practicalFailures'):problem=f"{row['practicalFailures']} {'differing values' if row['kind']=='exact' else 'practical failures'}"
+   row['passed']=problem is None;passes.append(row)
+   if role=='gating' and problem:problems.append(f'{cm["backend"]} vs {rm["backend"]}: pass {entry["name"]} {problem}')
+  if passes:result['passes']=passes
   report['pairs'].append(result)
  report['gatingPairs']=sum(1 for p in report['pairs'] if p['role']=='gating')
  report['problems']=problems;report['passed']=not problems
@@ -175,6 +277,12 @@ def table(report):
                f"{p['rms']:>10.3g} {p['practicalFailures']:>13} {p['strictDifferences']:>10}")
   w=p['worstPixel']
   if w:lines.append(f"      worst x={w['x']} y={w['y']} {w['channel']}: ref {w['reference']:.9g} got {w['candidate']:.9g} ({w['criterionRatio']:.3g}x tolerance)")
+  for q in p.get('passes',[]):
+   if q['status']!='compared':lines.append(f"      pass {q['name']:<24} {str(q['type']):<22} {q['status']}");continue
+   if q['kind']=='timing':lines.append(f"      pass {q['name']:<24} {q['type']:<22} reported only (timing)");continue
+   extra=f" slotOrderDiff={q['slotOrderDifferences']}" if 'slotOrderDifferences' in q else ''
+   mx='exact' if q['kind']=='exact' else f"{q['maxAbsoluteDifference']:.3g}"
+   lines.append(f"      pass {q['name']:<24} {q['type']:<22} maxAbs={mx:>10} practicalFail={q['practicalFailures']} strictDiff={q['strictDifferences']}{extra}")
  if report.get('crossIsaGating'):lines.append('  note: no same-ISA CPU gold standard for '+', '.join(report['crossIsaGating'])+'; gated against the CPU film present')
  lines.append(f"  verdict: {report['verdict']}"+('' if report['passed'] else '; FAILED: '+'; '.join(report['problems'])))
  return '\n'.join(lines)
@@ -183,14 +291,19 @@ def table(report):
 def self_test():
  """The comparator must reject NaN/Inf, shape mismatch, corruption and real differences."""
  root=Path(tempfile.mkdtemp(prefix='compare-self-test-'))
- def film(name,values,width=2,height=1,scene='s',repeat_values=None):
-  d=root/name;d.mkdir();hashes=[]
+ def film(name,values,width=2,height=1,scene='s',repeat_values=None,passes=None):
+  d=root/name;d.mkdir();hashes=[];entries=[]
+  for k,(pname,ptype,components,pvalues) in enumerate(passes or []):
+   data=array.array('f',pvalues)
+   if sys.byteorder!='little':data.byteswap()
+   raw=data.tobytes();(d/f'pass-{k}-0.f32').write_bytes(raw)
+   entries.append(dict(index=k,name=pname,type=ptype,components=components,written=True,filmSha256=[hashlib.sha256(raw).hexdigest()]))
   for r,vals in enumerate([values]+([repeat_values] if repeat_values else [])):
    data=array.array('f',vals)
    if sys.byteorder!='little':data.byteswap()
    raw=data.tobytes();(d/f'film-{r}.f32').write_bytes(raw);hashes.append(hashlib.sha256(raw).hexdigest())
   (d/'meta.json').write_text(json.dumps(dict(sceneId='self-test',sceneSha256=scene,backend=name,width=width,height=height,samples=1,repeats=len(hashes),
-   repeatBitwiseIdentical=True,repeatMaxAbsDifference=0,filmSha256=hashes)))
+   repeatBitwiseIdentical=True,repeatMaxAbsDifference=0,filmSha256=hashes,**({'passes':entries} if entries else {}))))
   return d
  base=[0.5,0.25,1.0,1.0,0.0,2.0,3.0,1.0]
  try:
@@ -235,6 +348,30 @@ def self_test():
   checks['arm64CandidateGatesOnArm64']=r['verdict']=='not perfect' and r['pairs'][0]['role']=='gating'
   r=run([film('cpu-arm64-w2',base),film('wgsl-linux-w2',far)])
   checks['noSameIsaCpuGatesOnPresentCpu']=r['verdict']=='not perfect' and r['crossIsaGating']==['wgsl-linux-w2']
+  # Named passes: float passes by the practical criterion, integer passes exactly, cryptomatte as id sets.
+  depth=[('Depth','depth',1,[1.5,2.0])]
+  r=run([film('cpu-p1',base,passes=depth),film('wgsl-p1',base,passes=[('Depth','depth',1,[1.5,2.0+1e-6])])])
+  checks['passWithinPracticalPerfect']=r['verdict']=='perfect' and r['pairs'][0]['passes'][0]['strictDifferences']==1
+  r=run([film('cpu-p2',base,passes=depth),film('wgsl-p2',base,passes=[('Depth','depth',1,[1.5,2.1])])])
+  checks['passBeyondPracticalFails']=r['verdict']=='not perfect' and 'pass Depth' in r['problems'][0]
+  r=run([film('cpu-p3',base,passes=depth),film('wgsl-p3',base)])
+  checks['missingPassFails']=r['verdict']=='not perfect' and 'is missing' in r['problems'][0]
+  r=run([film('cpu-p3m',base,passes=depth),film('metal-p3m',base)])
+  checks['missingPassInReportedPairPerfect']=r['verdict']=='perfect'
+  ids=[('IndexOB','object_id',1,[1.0,2.0])]
+  r=run([film('cpu-p4',base,passes=ids),film('wgsl-p4',base,passes=[('IndexOB','object_id',1,[1.0,2.0000002])])])
+  checks['integerPassExact']=r['verdict']=='not perfect' and 'differing values' in r['problems'][0]
+  crypto=[('CryptoObject00','cryptomatte',4,[3.0,0.6,5.0,0.4,7.0,1.0,0.0,0.0])]
+  r=run([film('cpu-p5',base,passes=crypto),film('wgsl-p5',base,passes=[('CryptoObject00','cryptomatte',4,[5.0,0.4,3.0,0.6,7.0,1.0,0.0,0.0])])])
+  checks['cryptomatteSlotOrderReported']=r['verdict']=='perfect' and r['pairs'][0]['passes'][0]['slotOrderDifferences']==1
+  r=run([film('cpu-p6',base,passes=crypto),film('wgsl-p6',base,passes=[('CryptoObject00','cryptomatte',4,[3.0,0.6,6.0,0.4,7.0,1.0,0.0,0.0])])])
+  checks['cryptomatteIdMismatchFails']=r['verdict']=='not perfect'
+  r=run([film('cpu-p7',base,passes=depth),film('wgsl-p7',base,passes=[('Depth','depth',1,[1.5,float('nan')])])])
+  checks['passNanFails']=r['verdict']=='not perfect'
+  r=run([film('cpu-p8',base,passes=[('Time','render_time',1,[0.3,0.2])]),film('wgsl-p8',base,passes=[('Time','render_time',1,[0.0,0.0])])])
+  checks['renderTimeReportedOnly']=r['verdict']=='perfect' and 'notJudged' in r['pairs'][0]['passes'][0]
+  bad=film('wgsl-p9',base,passes=depth);raw=bytearray((bad/'pass-0-0.f32').read_bytes());raw[0]^=1;(bad/'pass-0-0.f32').write_bytes(bytes(raw))
+  checks['corruptedPassFails']=invalid([film('cpu-p9',base,passes=depth),bad])
  finally:shutil.rmtree(root)
  print(json.dumps(checks,indent=2))
  return all(checks.values())

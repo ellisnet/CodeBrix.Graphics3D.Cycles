@@ -524,6 +524,40 @@ public class CyclesSceneTests
     }
 
     [Fact]
+    public void Node_names_light_group_passes_and_cryptomatte_flag_sets_reach_the_cpu_film()
+    {
+        //Arrange: a named object and material, a light group pass, and object plus material
+        //cryptomatte (a flag set of the film's cryptomatte_passes).
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        (ShaderNode material, _, MeshNode mesh) = TestScenes.BuildTyped(scene);
+        ObjectNode holder = scene.CreateObject(mesh);
+        holder.Name = "triangle";
+        holder.Lightgroup = "group";
+        material.Name = "material";
+        scene.AddPass(PassType.Combined, "Group").Lightgroup = "group";
+        scene.Film.CryptomattePasses = FilmCryptomattePasses.Object | FilmCryptomattePasses.Material;
+        scene.Film.CryptomatteDepth = 1;
+        scene.AddPass(PassType.Cryptomatte, "CryptoObject00");
+        scene.AddPass(PassType.Cryptomatte, "CryptoMaterial00");
+
+        //Act
+        scene.Render(Small);
+        RenderPassInfo[] passes = scene.GetRenderedPasses().ToArray();
+        float[] objects = scene.ReadPass("CryptoObject00").Span.ToArray(), materials = scene.ReadPass("CryptoMaterial00").Span.ToArray();
+
+        //Assert
+        holder.Name.Should().Be("triangle");
+        material.Name.Should().Be("material");
+        scene.Film.CryptomattePasses.Should().Be(FilmCryptomattePasses.Object | FilmCryptomattePasses.Material);
+        passes.Select(pass => pass.Name).Should().Contain(["Group", "CryptoObject00", "CryptoMaterial00"]);
+        scene.ReadPass("Group").Components.Should().Be(3);
+        // The ids are the hashes of the names: the object and material ids differ and are not zero.
+        int objectId = objects.Where((_, i) => i % 2 == 0).Select(BitConverter.SingleToInt32Bits).First(id => id != 0);
+        int materialId = materials.Where((_, i) => i % 2 == 0).Select(BitConverter.SingleToInt32Bits).First(id => id != 0);
+        objectId.Should().NotBe(materialId);
+    }
+
+    [Fact]
     public void ReadPass_returns_combined_bitwise_and_the_enabled_cpu_passes()
     {
         //Arrange

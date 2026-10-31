@@ -54,7 +54,10 @@ policy. See `native/evidence/license-compliance-20261018` and the new
 ## Required verification and evidence
 
 Run `python3 tools/licensing/audit.py` and
-`python3 tools/licensing/notices.py --check`. The source audit verifies imported
+`python3 tools/licensing/notices.py --check` when external code or content enters the repository (a new or updated
+third-party dependency or source snapshot, vendored code, a new binary package or runtime, a new outside asset).
+Porting or changing code already in the repository, and adding renders, evidence or documents, does not need them
+(MAINTAINER-README.txt, "Licensing and source checks"). The source audit verifies imported
 inventories, notices, proposed Git files and exact reviewed wording exceptions.
 Deep scanning, compiler/link closure and rendering checks are separate gates;
 a keyword scan alone is not sufficient.

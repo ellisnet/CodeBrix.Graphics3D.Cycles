@@ -56,7 +56,10 @@ static void prepare(Scene &scene){
   }
 }
 static std::string probe_source(){
-  std::ostringstream code;code<<shader_data_source();
+  // Every region, as the raw source compiled before region alternatives existed; the
+  // host-exact motion regions (MNEE_MOTION) replace their default lines, so the probe
+  // keeps the default ones (a raw module would declare both).
+  std::ostringstream code;code<<specialize_wgsl(shader_data_source(),SF_ALL&~(SF_MNEE_MOTION|SF_FILM_MOTION_EXACT));
   code<<"@compute @workgroup_size(64) fn shader_data_probe(@builtin(global_invocation_id) id:vec3<u32>){\n"
         " if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}\n"
         " let sd=surface_from_ray(index);if(sd.error!=0u){return;}\n"

@@ -11,7 +11,7 @@
 // subsequent native scheduling; it may not inject those CPU decisions as data.
 struct RenderCapture final:ccl::WebGPUCommandObserver {
   ccl::WebGPUDevice &device;std::ofstream commands;size_t arena_size;uint64_t count=0;bool sized_dispatch=false;
-  std::array<uint64_t,36> pipeline_dispatches{};
+  std::array<uint64_t,38> pipeline_dispatches{};
   static void file(const std::string &name,const void *data,size_t bytes){std::ofstream out(name,std::ios::binary);out.write(static_cast<const char*>(data),bytes);if(!out)throw std::runtime_error("Capture write failed: "+name);}
   void header(uint32_t kind,uint32_t address,uint32_t bytes){uint32_t h[]={kind,address,bytes};commands.write(reinterpret_cast<const char*>(h),sizeof(h));count++;}
   RenderCapture(ccl::WebGPUDevice &d,const std::string &prefix):device(d),commands(prefix+".commands.bin",std::ios::binary),arena_size(d.arena_bytes){
@@ -21,6 +21,7 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
     // to the reachable SVM handlers unless specialization is disabled).
     std::ofstream(out/"controls.wgsl")<<ccl::controls_wgsl();std::ofstream(out/"camera.wgsl")<<d.module_wgsl(ccl::camera_wgsl());std::ofstream(out/"closest.wgsl")<<d.module_wgsl(ccl::closest_wgsl());std::ofstream(out/"background.wgsl")<<d.module_wgsl(ccl::background_wgsl());std::ofstream(out/"surface.wgsl")<<d.module_wgsl(ccl::surface_source());std::ofstream(out/"shadow.wgsl")<<d.module_wgsl(ccl::shadow_source());
     if(d.data.integrator.has_shadow_catcher)std::ofstream(out/"shadow_catcher.wgsl")<<d.module_wgsl(ccl::shadow_catcher_split_wgsl());
+    if(d.film_cryptomatte())std::ofstream(out/"film_post.wgsl")<<ccl::film_post_wgsl();
     std::ofstream(out/"surface_raytrace.wgsl")<<ccl::specialize_wgsl(ccl::surface_source(),d.shader_features()|ccl::SF_NODE_RAYTRACE);
     std::ofstream(out/"volume.wgsl")<<d.module_wgsl(ccl::volume_source());std::ofstream(out/"volume_stack.wgsl")<<d.module_wgsl(ccl::volume_stack_source());
     device.observer=this;
@@ -37,7 +38,8 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
     // (shade_surface_light_select) and 22 (light_tree_forward) are recorder v10, as are 23-25 (the shadow catcher
     // split module), 26 (prepare_surface_raytrace, the raytrace-specialized surface module surface_raytrace.wgsl),
     // 27-33 (mnee_receiver, mnee_seed, mnee_eval, mnee_setup, mnee_solve, mnee_transfer, mnee_contribute) and 34
-    // (mnee_cleanup, all MNEE entries in surface.wgsl) and 35 (shade_surface_sample, surface.wgsl). All follow the
+    // (mnee_cleanup, all MNEE entries in surface.wgsl), 35 (shade_surface_sample, surface.wgsl), 36 (shade_surface_passes,
+    // surface.wgsl) and 37 (cryptomatte_postprocess, film_post.wgsl). All follow the
     // v5 slots 9-14.
     pipeline_dispatches[entry]++;
     // Kind 3 retains the original implicit size 64. Kind 5 stores the explicit

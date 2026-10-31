@@ -12,6 +12,19 @@ fn film_rgb(base:u32,offset:u32,value:vec3<f32>){
     if(offset==PASS_NONE){return;}
     film_add(base+offset*4u,value.x);film_add(base+(offset+1u)*4u,value.y);film_add(base+(offset+2u)*4u,value.z);
 }
+//#if FILM_MOTION
+// transform_perspective_direction: a.x * t.x.x + a.y * t.x.y + a.z * t.x.z per row, each step rounded.
+fn bgm_row(t:vec4<f32>,a:vec3<f32>)->f32{return rounded_add(rounded_add(a.x*t.x,a.y*t.y),a.z*t.z);}
+fn bgm_direction(address:u32,a:vec3<f32>)->vec3<f32>{return vec3<f32>(bgm_row(heap_vec4(address),a),bgm_row(heap_vec4(address+16u),a),bgm_row(heap_vec4(address+32u),a));}
+//#endif
+//#if FILM_DENOISING
+// film_write_emission_or_background_pass, denoising albedo: the emission or
+// background contribution times the path's denoising feature throughput.
+fn film_denoising_albedo(index:u32,base:u32,contribution:vec3<f32>){
+    if((state_word(S_path_flag,index)&DN_PATH_RAY_DENOISING_FEATURES)==0u){return;}
+    film_rgb(base,data_word(DN_D_pass_denoising_albedo),heap_vec3(state_address(S_path_denoising_feature_throughput,index,12u))*contribution);
+}
+//#endif
 fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     return !(((shader&SHADER_EXCLUDE_DIFFUSE)!=0u&&(visibility&PATH_RAY_VISIBILITY_DIFFUSE)!=0u)||
         ((shader&SHADER_EXCLUDE_GLOSSY)!=0u&&(visibility&PATH_RAY_VISIBILITY_GLOSSY)!=0u&&(flag&PATH_RAY_REFLECT)!=0u)||
@@ -48,7 +61,9 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
         let shader_id=shader&SHADER_MASK;if(shader_id>=p(19u)){fail();return;}
         let address=p(18u)+shader_id*SIZE_shaders;
         if((load_word(address+SH_flags)&SD_HAS_CONSTANT_EMISSION)!=0u){light=heap_vec3(address+SH_constant_emission);}
-        else{light=svm_world(index,shader_id);if(load_word(p(17u))!=0u){return;}}
+//#if SVM_NODE_AOV else         else{light=svm_world(index,shader_id);if(load_word(p(17u))!=0u){return;}}
+        else{svm_aov_base=base;light=svm_world(index,shader_id);svm_aov_base=0u;if(load_word(p(17u))!=0u){return;}}
+//#endif
         if(path_ao(index)){light*=data_float(D_integrator_ao_bounces_factor);}
         // light_sample_mis_weight_forward_background (background light uploaded).
 //#if LIGHT_BACKGROUND
@@ -80,6 +95,9 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
         film_add(base+(data_word(D_film_pass_adaptive_aux_buffer)+3u)*4u,0.0);
     }
     if(light_flags!=0u){
+//#if FILM_DENOISING
+        film_denoising_albedo(index,base,contribution);
+//#endif
         let group=data_word(D_background_lightgroup);let group_offset=data_word(D_film_pass_lightgroup);
 //#if SHADOW_CATCHER else         if(group!=NONE&&group_offset!=PASS_NONE){film_rgb(base,group_offset+group*3u,contribution);}
         if(sc_light_passes(flag)&&group!=NONE&&group_offset!=PASS_NONE){film_rgb(base,group_offset+group*3u,contribution);}
@@ -103,6 +121,20 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
         if((flags&MASK_MATERIAL_ID)!=0u){store_word(base+data_word(D_film_pass_material_id)*4u,0u);}
         if((flags&MASK_POSITION)!=0u){let address=base+data_word(D_film_pass_position)*4u;store_word(address,0u);store_word(address+4u,0u);store_word(address+8u,0u);}
     }
+//#if FILM_MOTION
+    // film_write_data_passes_background, motion: camera_motion_vector_direction (perspective camera).
+    if((flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u&&(flag&FPM_PATH_RAY_SHADOW_CATCHER_PASS)==0u&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u&&(data_word(D_film_pass_flag)&FPM_MASK_MOTION)!=0u){
+        let D=heap_vec3(state_address(S_ray_D,index,12u));
+        let c=bgm_direction(p(6u)+FPM_D_worldtoraster,D);let a=rounded_add3(bgm_direction(p(6u)+FPM_D_perspective_pre,D),-c);let b=rounded_add3(c,-bgm_direction(p(6u)+FPM_D_perspective_post,D));
+        let at=base+data_word(FPM_D_pass_motion)*4u;film_add(at,a.x);film_add(at+4u,a.y);film_add(at+8u,b.x);film_add(at+12u,b.y);
+        film_add(base+data_word(FPM_D_pass_motion_weight)*4u,1.0);
+    }
+//#endif
+//#if FILM_DENOISING
+    // film_write_denoising_features_background: the depth feature of camera rays that miss.
+    if((flag&DN_PATH_RAY_DENOISING_FEATURES)!=0u&&bounce==0u&&data_word(DN_D_pass_denoising_depth)!=PASS_NONE){
+        store_word(base+data_word(DN_D_pass_denoising_depth)*4u,0x7f7fffffu);}
+//#endif
 //#if SHADOW_CATCHER
     if((flag&SC_PATH_BACKGROUND)!=0u){sc_background_continue(index,flag);return;}
 //#endif

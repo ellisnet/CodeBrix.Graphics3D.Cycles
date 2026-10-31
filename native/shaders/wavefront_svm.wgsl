@@ -26,6 +26,25 @@ const SVM_STACK_WORDS:u32=263u;
 var<private> svm_slot:u32=0xffffffffu;
 var<private> svm_stack_at:u32=0u;
 fn svm_invocation(id:u32){svm_slot=id;}
+//#if SVM_NODE_AOV
+// The film pixel record of an evaluation that writes AOV passes (the pinned
+// render_buffer argument): the surface stage's shader evaluation (prepare_surface)
+// and the background's (shade_background); 0 for every other evaluation, whose
+// AOV start record ends the program as the pinned check does without a render buffer.
+var<private> svm_aov_base:u32=0u;
+// film_write_pass_float: an atomic add to one film float.
+fn svm_aov_add(address:u32,value:f32){
+    var old=load_word(address);
+    loop{let next=bitcast<u32>(bitcast<f32>(old)+value);let result=atomicCompareExchangeWeak(&heap[address/4u],old,next);
+        if(result.exchanged){break;}old=result.old_value;}
+}
+// The AOV pass float at pass + aov_offset + k, inside the pixel record.
+fn svm_aov_address(s:ptr<function,SvmState>,first:u32,offset:u32,count:u32)->u32{
+    let stride=data_word(AOV_D_pass_stride);
+    if(first==AOV_PASS_UNUSED||offset>stride||first>stride-offset||count>stride-first-offset){svm_error(s,16u);return 0u;}
+    return svm_aov_base+(first+offset)*4u;
+}
+//#endif
 //#if SHADER_EVAL_DISPLACE
 // True for the displacement program of shader_eval_displace (NODE_SHADER_JUMP's offset_displacement).
 var<private> svm_displace_program:bool=false;
@@ -338,6 +357,16 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#endif
 //#if SVM_NODE_RADIAL_TILING
             case OP_RADIAL_TILING:{size=SZ_RadialTiling;}
+//#endif
+//#if SVM_NODE_AOV
+            case OP_AOV_START:{
+                // svm_node_aov_check: AOVs are written only by primary (camera or
+                // transparent-background) paths before the data passes are done.
+                if(svm_aov_base==0u||(flag&AOV_PATH_RAY_TRANSPARENT_BACKGROUND)==0u||(flag&AOV_PATH_RAY_SINGLE_PASS_DONE)!=0u){s.output.N=s.geometry.N;return s.output;}
+                size=0u;
+            }
+            case OP_AOV_COLOR:{size=SZ_AOVColor;}
+            case OP_AOV_VALUE:{size=SZ_AOVValue;}
 //#endif
 //#if SVM_NODE_DISPLACEMENT
             case OP_SET_DISPLACEMENT:{size=SZ_SetDisplacement;}
@@ -681,6 +710,20 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#endif
 //#if SVM_NODE_RADIAL_TILING
             case OP_RADIAL_TILING:{svm_radial_tiling(&s,node);}
+//#endif
+//#if SVM_NODE_AOV
+            case OP_AOV_START:{}
+            // svm_node_aov_color / svm_node_aov_value (film_write_aov_pass_color: rgb and 1).
+            case OP_AOV_COLOR:{
+                let value=svm_input3(&s,node+N_AOVColor_color);
+                let at=svm_aov_address(&s,data_word(AOV_D_pass_aov_color),load_word(node+N_AOVColor_aov_offset),4u);
+                if(s.error==0u){svm_aov_add(at,value.x);svm_aov_add(at+4u,value.y);svm_aov_add(at+8u,value.z);svm_aov_add(at+12u,1.0);}
+            }
+            case OP_AOV_VALUE:{
+                let value=svm_input(&s,node+N_AOVValue_value);
+                let at=svm_aov_address(&s,data_word(AOV_D_pass_aov_value),load_word(node+N_AOVValue_aov_offset),1u);
+                if(s.error==0u){svm_aov_add(at,value);}
+            }
 //#endif
 //#if SVM_NODE_DISPLACEMENT
             case OP_SET_DISPLACEMENT,OP_DISPLACEMENT,OP_VECTOR_DISPLACEMENT:{svm_displacement(&s,node,opcode);}

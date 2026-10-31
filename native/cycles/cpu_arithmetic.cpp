@@ -6,7 +6,9 @@
 // "Fixed-baseline CPU oracle"). Contraction is not visible to the preprocessor:
 // CODEBRIX_CPU_FP_CONTRACT comes from the same CMake setting that passes
 // -ffp-contract (inject_cycles*.cmake), and the build scripts check the compile
-// database. Android's CPU is a diagnostic and keeps Cycles' own flags.
+// database. Android uses the same contraction and reciprocal-math rule (its CPU
+// is a diagnostic, but the same code prepares the scene the GPU renders); the
+// ISA baseline check applies to the oracle platforms only.
 #ifndef CODEBRIX_CPU_FP_CONTRACT
 #error "CODEBRIX_CPU_FP_CONTRACT must be defined by the CodeBrix CMake injection"
 #endif
@@ -32,9 +34,9 @@
 #if defined(__x86_64__) && (defined(__AVX__) || defined(__FMA__) || !defined(__SSE4_2__))
 #error "The x86-64 CPU oracle must be built at the SSE4.2 baseline (no AVX, no FMA)"
 #endif
-#if defined(__RECIPROCAL_MATH__) || defined(__FAST_MATH__)
-#error "The CPU oracle must be built without reciprocal math"
 #endif
+#if defined(__RECIPROCAL_MATH__) || defined(__FAST_MATH__)
+#error "The CPU device must be built without reciprocal math"
 #endif
 extern "C" const char codebrix_cpu_arithmetic_json[] =
     "{\"isa\":\"" CODEBRIX_CPU_ISA "\",\"fpContract\":\"" CODEBRIX_CPU_FP_CONTRACT

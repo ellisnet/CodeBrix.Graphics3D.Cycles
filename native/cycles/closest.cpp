@@ -21,6 +21,9 @@ void WebGPUDevice::validate_geometry_motion() const{
   if(motion!=globals.end())require(remaining(motion->second)%sizeof(DecomposedTransform)==0,"Invalid object motion table size");
   for(size_t i=0;i<object_records.size();i++){
     const auto flags=object_flag_records[i];const auto &object=object_records[i];
+    // The motion pass without motion blur keeps deforming meshes as plain triangles (film_passes.cpp).
+    if((flags&SD_OBJECT_HAS_VERTEX_MOTION)&&film_motion_vectors())
+      require(false,"WebGPU motion pass with deforming geometry (vertex motion) not implemented");
     if(flags&SD_OBJECT_HAS_VERTEX_MOTION){
       moving=true;require(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE,"Invalid deforming triangle flags/type");
       require(object.num_geom_steps>=2&&object.numverts>0&&object.numprims>0,"Invalid deforming triangle steps/size");

@@ -225,10 +225,31 @@ inline constexpr ShaderFeatures SF_EVAL_DISPLACE=ShaderFeatures::bit(141);
 // Bump from displacement over displaced geometry (displacement method Both): enter_bump_eval's undisplaced
 // position and normal.
 inline constexpr ShaderFeatures SF_BUMP_UNDISPLACED=ShaderFeatures::bit(142);
+// Film data passes (film_passes.cpp, wavefront_film_passes.wgsl): a data pass the
+// surface stage's film_write_data_passes writes is enabled (depth, position,
+// normal, roughness, UV, object and material index, the diffuse, glossy and
+// transmission colour passes, mist): the shade_surface_passes entry.
+inline constexpr ShaderFeatures SF_FILM_DATA_PASSES=ShaderFeatures::bit(143);
+// AOV output nodes (svm/aov.h: NODE_AOV_START, NODE_AOV_COLOR, NODE_AOV_VALUE) are reachable:
+// their film writes in the surface and background shader evaluations.
+inline constexpr ShaderFeatures SF_NODE_AOV=ShaderFeatures::bit(144);
+// Cryptomatte (film.cryptomatte_passes): the id/weight slot writes of film_write_data_passes.
+inline constexpr ShaderFeatures SF_FILM_CRYPTOMATTE=ShaderFeatures::bit(145);
+// Denoising features (KERNEL_FEATURE_DENOISING, film/denoising_passes.h): the camera's
+// feature flag and throughput, the surface features in shade_surface_passes, the
+// albedo of emission and background, the background depth.
+inline constexpr ShaderFeatures SF_FILM_DENOISING=ShaderFeatures::bit(146);
+// Motion pass (Scene::MOTION_PASS): the surface stage's object and camera motion
+// vectors and the background's camera motion vector.
+inline constexpr ShaderFeatures SF_FILM_MOTION=ShaderFeatures::bit(147);
+// Colour passes in a scene with motion blur: the host-exact motion transforms of the
+// MNEE_MOTION regions (the colour passes divide the direct and indirect light passes,
+// so last-bit differences of a near-zero colour are amplified by the pass accessor).
+inline constexpr ShaderFeatures SF_FILM_MOTION_EXACT=ShaderFeatures::bit(148);
 // Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108, 110
-// and 128-142; bit 62 is unassigned; 107 is the raytrace module variant).
+// and 128-148; bit 62 is unassigned; 107 is the raytrace module variant).
 inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
-  SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED;
+  SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT;
 // The families above, for regions shared by all of them (closure classification).
 inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
@@ -239,7 +260,7 @@ inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THI
 // correctly (native/DEVICE.md, "Linux reference fixes on the updated Mesa").
 inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|
-  SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED;
+  SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //

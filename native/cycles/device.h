@@ -165,6 +165,17 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline sc_assign,sc_split,sc_count;
   uint32_t sc_marks=0;size_t sc_mark_bytes=0;
   void validate_shadow_catcher() const;
+  // Film data passes (film_passes.cpp): the accepted pass mask and its refusal;
+  // shade_surface_passes, the surface stage's film_write_data_passes entry.
+  void validate_film_passes() const;
+  void film_motion_words(std::array<uint32_t,32> &p) const;
+  bool film_motion_vectors() const;
+  bool film_surface_passes() const;
+  bool film_cryptomatte() const;
+  cbc::Pipeline surface_passes;
+  // DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS (film_passes.cpp, wavefront_film_post.wgsl).
+  cbc::Pipeline film_post;
+  void enqueue_cryptomatte_postprocess(int,const DeviceKernelArguments&);
   uint32_t shadow_catcher_marks(uint32_t capacity);
   void shadow_catcher_pipelines();
   void split_shadow_catcher(uint32_t capacity);

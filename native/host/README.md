@@ -115,7 +115,7 @@ broad- and transparent-lighting gates (phaseE3 report).
 `native/tests/host/scene_edit_consumer.c` (`codebrix_host_scene_edit_test`) and
 `native/tools/scene_edit_gate.py` check the edits (13 scenarios, CPU bit for bit
 against a fresh host, WebGPU with the practical criterion, each sequence replayed
-in a new host) and the recovery after a rejected depth pass and orthographic
+in a new host) and the recovery after a rejected volume majorant pass and orthographic
 camera:
 
 ```sh

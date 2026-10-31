@@ -317,6 +317,9 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
     if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
 //#endif
     if(flags==0u){return;}let flag=state_word(S_path_flag,index);let group=load_word(table_at(G_objects,sd.object_id,SIZE_objects)+O_lightgroup);
+//#if FILM_DENOISING
+    film_denoising_albedo(index,base,value);
+//#endif
 //#if SHADOW_CATCHER else     if(group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
     if(sc_light_passes(flag)&&group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
 //#endif
@@ -357,6 +360,9 @@ fn surface_prepare(id:vec3<u32>){
     let group=load_word(object+O_lightgroup);let go=data_word(D_film_pass_lightgroup);if(group!=NONE&&go!=PASS_NONE&&(group>=stride/3u||go>stride-3u*(group+1u))){fail();return;}
     if(volume_enabled()&&(sd.shader_flag&VS_HAS_VOLUME)!=0u){if(volume_stack_count(index)==NONE){return;}}
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){var empty:SvmResult;surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,empty);return;}
+//#if SVM_NODE_AOV
+    svm_aov_base=base;
+//#endif
     var r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}
 //#if DEBUG_OUTPUT
     if(debug_output_first_hit(index,base,sd,r)){surf_finish(index,false);return;}
@@ -520,7 +526,9 @@ fn surface_light_combined(li:SurfaceLightInputs){
         volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);surf_finish(index,true);return;
     }
 //#if SHADOW_CATCHER
-    sc_data_passes(index,r);
+//#if FILM_DATA_PASSES else     sc_data_passes(index,r);
+    // With data passes, shade_surface_passes runs film_write_data_passes (its bookkeeping included).
+//#endif
 //#endif
     surface_direct_light(index,id.x,sd,r,light_sample_read(at+308u));if(load_word(p(17u))!=0u){return;}
 //#if AO_SHADOW

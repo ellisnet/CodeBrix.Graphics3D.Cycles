@@ -64,6 +64,13 @@ std::string svm_layout(bool surface){
   // Displacement nodes (svm/displace.h; wavefront_svm_derivatives.wgsl) and the true-displacement
   // evaluation (shader_eval_displace). DSP_ names: NODE_ and ATTR_ names in the WGSL would join every
   // module's enum list.
+  // AOV output nodes (svm/aov.h, film/aov_passes.h): the AOV writes of film-writing evaluations.
+  source<<"//#endif\n//#if SVM_NODE_AOV\n";
+  constant("OP_AOV_START",NODE_AOV_START);constant("OP_AOV_COLOR",NODE_AOV_COLOR);constant("OP_AOV_VALUE",NODE_AOV_VALUE);
+  SIZE(AOVColor);FIELD(AOVColor,aov_offset);FIELD(AOVColor,color);SIZE(AOVValue);FIELD(AOVValue,aov_offset);FIELD(AOVValue,value);
+  constant("AOV_D_pass_aov_color",offsetof(KernelData,film.pass_aov_color));constant("AOV_D_pass_aov_value",offsetof(KernelData,film.pass_aov_value));
+  constant("AOV_D_pass_stride",offsetof(KernelData,film.pass_stride));constant("AOV_PASS_UNUSED",uint32_t(PASS_UNUSED));
+  constant("AOV_PATH_RAY_TRANSPARENT_BACKGROUND",PATH_RAY_TRANSPARENT_BACKGROUND);constant("AOV_PATH_RAY_SINGLE_PASS_DONE",PATH_RAY_SINGLE_PASS_DONE);
   source<<"//#endif\n//#if SVM_NODE_DISPLACEMENT\n";
   constant("OP_SET_DISPLACEMENT",NODE_SET_DISPLACEMENT);constant("OP_DISPLACEMENT",NODE_DISPLACEMENT);constant("OP_VECTOR_DISPLACEMENT",NODE_VECTOR_DISPLACEMENT);
   SIZE(SetDisplacement);FIELD(SetDisplacement,fac_offset);

@@ -66,7 +66,8 @@ static unsigned rejections(const DeviceInfo &info){
     if(test==0){data.background.portal_weight=1;data.background.use_mis=1;reason="portals";}
     if(test==1){data.integrator.num_lights=1;reason="native light table";}
     if(test==2){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
-    if(test==3){data.film.pass_flag|=PASSMASK(MOTION);reason="motion pass";}
+    // The motion pass is implemented (FILM_MOTION); a path guiding pass (outside the scope) is refused by name.
+    if(test==3){data.film.pass_flag|=PASSMASK(GUIDING_COLOR);reason="film pass guiding_color";}
     if(test==4){data.film.pass_combined=data.film.pass_stride-3;reason="film pass offset";}
     if(test==5)s.path.render_pixel_index=1;
     if(test==6)s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;

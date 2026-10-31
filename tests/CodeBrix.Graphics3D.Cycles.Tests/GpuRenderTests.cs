@@ -163,8 +163,8 @@ public class GpuRenderTests(ITestOutputHelper output)
     [Fact]
     public async Task gpu_scene_recovers_after_a_rejected_render_once_the_cause_is_removed()
     {
-        //Arrange: each backend rejects a scene for its own reason. WebGPU does not write a depth
-        //pass; Cycles' Metal device refuses an image beyond Metal's 16384-pixel texture limit.
+        //Arrange: each backend rejects a scene for its own reason. WebGPU renders the perspective
+        //camera only; Cycles' Metal device refuses an image beyond Metal's 16384-pixel texture limit.
         using CyclesScene gpu = CreateGpuScene();
         WebGpuValidationScenes.Build(gpu, WebGpuValidationScenes.DiffuseSun);
         ConcurrentQueue<RenderEvent> events = new();
@@ -177,8 +177,8 @@ public class GpuRenderTests(ITestOutputHelper output)
         }
         else
         {
-            PassNode depth = gpu.AddPass(PassType.Depth, "Depth");
-            removeCause = () => gpu.Remove(depth);
+            gpu.Camera.CameraType = CameraCameraType.Orthograph;
+            removeCause = () => gpu.Camera.CameraType = CameraCameraType.Perspective;
         }
         Func<Task> rejected = () => gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
         await rejected.Should().ThrowAsync<NativeFailure>();
@@ -338,6 +338,127 @@ public class GpuRenderTests(ITestOutputHelper output)
         depth.Span.ToArray().All(float.IsFinite).Should().BeTrue();
         normal.Span.ToArray().All(float.IsFinite).Should().BeTrue();
         depth.Span.ToArray().Distinct().Count().Should().BeGreaterThan(10);
+    }
+
+    // The shared diffuse-sun scene plus two named panels: a diffuse panel with a value AOV and an
+    // emissive panel, both in the light group "panels".
+    private static void BuildPassScene(CyclesScene scene)
+    {
+        WebGpuValidationScenes.Build(scene, WebGpuValidationScenes.DiffuseSun);
+        ShaderNode panel = scene.CreateShader();
+        panel.Name = "panel-material";
+        DiffuseBsdfNode diffuse = panel.Add<DiffuseBsdfNode>();
+        diffuse.Color = new System.Numerics.Vector3(.4f, .7f, .3f);
+        panel.Connect(diffuse.BsdfOutput, panel.Output.SurfaceInput);
+        AovOutputNode aov = panel.Add<AovOutputNode>();
+        aov.Name = "Mask";
+        aov.Value = .25f;
+        panel.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+        ShaderNode light = scene.CreateShader();
+        light.Name = "light-material";
+        EmissionNode emission = light.Add<EmissionNode>();
+        emission.Color = new System.Numerics.Vector3(1f, .8f, .5f);
+        emission.Strength = 4f;
+        light.Connect(emission.EmissionOutput, light.Output.SurfaceInput);
+        light.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+        ObjectNode a = scene.CreateObject(scene.CreateMesh([-1.6f, 0, 1.2f, -.4f, 0, 1.2f, -.4f, 1.1f, 1.2f, -1.6f, 1.1f, 1.2f], [0, 1, 2, 0, 2, 3], panel));
+        ObjectNode b = scene.CreateObject(scene.CreateMesh([.4f, .2f, 1.2f, 1.4f, .2f, 1.2f, 1.4f, .9f, 1.2f, .4f, .9f, 1.2f], [0, 1, 2, 0, 2, 3], light));
+        a.Name = "panel";
+        b.Name = "light-panel";
+        a.Lightgroup = "panels";
+        b.Lightgroup = "panels";
+    }
+
+    [Fact]
+    public async Task gpu_film_passes_match_the_cpu_reference()
+    {
+        //Arrange: light, data, denoising feature, AOV and light group passes on the GPU backend and
+        //the CPU reference. WebGPU films are judged against the CPU film (practical criterion;
+        //integer passes exactly); Metal's are reported only.
+        using CyclesScene gpu = CreateGpuScene();
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        (PassType Type, string Name)[] passes =
+        [
+            (PassType.DiffuseDirect, "DiffDir"), (PassType.DiffuseIndirect, "DiffInd"), (PassType.DiffuseColor, "DiffCol"),
+            (PassType.Emission, "Emit"), (PassType.Background, "Env"), (PassType.Depth, "Depth"), (PassType.Position, "Position"),
+            (PassType.Normal, "Normal"), (PassType.ObjectId, "IndexOB"), (PassType.MaterialId, "IndexMA"), (PassType.Roughness, "Roughness"),
+            (PassType.DenoisingAlbedo, "Denoising Albedo"), (PassType.DenoisingNormal, "Denoising Normal"), (PassType.AovValue, "Mask"),
+        ];
+        foreach (CyclesScene scene in new[] { gpu, cpu })
+        {
+            BuildPassScene(scene);
+            foreach ((PassType type, string name) in passes) scene.AddPass(type, name);
+            scene.AddPass(PassType.Combined, "Panels").Lightgroup = "panels";
+        }
+
+        //Act
+        await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+        cpu.Render(WebGpuValidationScenes.Settings);
+
+        //Assert
+        foreach (string name in passes.Select(p => p.Name).Append("Panels"))
+        {
+            FilmBuffer film = gpu.ReadPass(name), reference = cpu.ReadPass(name);
+            film.Components.Should().Be(reference.Components);
+            FilmComparison comparison = FilmComparison.Compare(film.Span, reference.Span);
+            output.WriteLine($"{name}: {comparison}");
+            film.Span.ToArray().All(float.IsFinite).Should().BeTrue();
+            if (gpu.Backend == Backend.Metal) continue;
+            if (name == "IndexOB" || name == "IndexMA") comparison.BitwiseEqual.Should().BeTrue();
+            else comparison.PracticalFailures.Should().Be(0);
+        }
+        cpu.ReadPass("Mask").Span.ToArray().Should().Contain(.25f);
+        cpu.ReadPass("Panels").Span.ToArray().Max().Should().BeGreaterThan(0f);
+    }
+
+    [Fact]
+    public async Task gpu_cryptomatte_passes_match_the_cpu_reference()
+    {
+        //Arrange: object and material cryptomatte (depth 2) with named panels.
+        using CyclesScene gpu = CreateGpuScene();
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        string[] names = ["CryptoObject00", "CryptoObject01", "CryptoMaterial00", "CryptoMaterial01"];
+        foreach (CyclesScene scene in new[] { gpu, cpu })
+        {
+            BuildPassScene(scene);
+            scene.Film.CryptomattePasses = FilmCryptomattePasses.Object | FilmCryptomattePasses.Material;
+            scene.Film.CryptomatteDepth = 2;
+            foreach (string name in names) scene.AddPass(PassType.Cryptomatte, name);
+        }
+
+        //Act
+        await gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
+        cpu.Render(WebGpuValidationScenes.Settings);
+
+        //Assert: per pixel the (id, weight) slots, ids exactly and weights by the practical criterion
+        //(the slot order of equal weights is the accumulation order's).
+        foreach (string name in names)
+        {
+            float[] film = gpu.ReadPass(name).Span.ToArray(), reference = cpu.ReadPass(name).Span.ToArray();
+            film.Length.Should().Be(reference.Length);
+            int failures = 0;
+            for (int pixel = 0; pixel < film.Length; pixel += 4)
+            {
+                Dictionary<int, float> expected = CryptomatteSlots(reference, pixel), actual = CryptomatteSlots(film, pixel);
+                if (!expected.Keys.ToHashSet().SetEquals(actual.Keys)) { failures++; continue; }
+                foreach ((int id, float weight) in expected)
+                    if (Math.Abs(actual[id] - weight) > 5e-5 + 2e-4 * Math.Abs(weight)) failures++;
+            }
+            output.WriteLine($"{name}: {failures} differing pixels or weights");
+            if (gpu.Backend != Backend.Metal) failures.Should().Be(0);
+        }
+        // The named panels give distinct ids beside the unnamed objects' common id.
+        float[] objects = cpu.ReadPass(names[0]).Span.ToArray();
+        Enumerable.Range(0, objects.Length / 2).Select(i => BitConverter.SingleToInt32Bits(objects[2 * i])).Where(id => id != 0).Distinct().Count()
+            .Should().BeGreaterThan(2);
+    }
+
+    private static Dictionary<int, float> CryptomatteSlots(float[] values, int pixel)
+    {
+        Dictionary<int, float> slots = [];
+        for (int k = 0; k < 4; k += 2)
+            if (values[pixel + k] != 0 || values[pixel + k + 1] != 0) slots[BitConverter.SingleToInt32Bits(values[pixel + k])] = values[pixel + k + 1];
+        return slots;
     }
 
     [Fact]

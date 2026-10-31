@@ -60,6 +60,9 @@ fn forward_emission(index:u32,base:u32,light:u32,eval:vec3<f32>,weight:f32){
     if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
 //#endif
     if(flags==0u){return;}let flag=state_word(S_path_flag,index);let group=load_word(table_at(G_objects,load_word(light+L_object_id),SIZE_objects)+O_lightgroup);
+//#if FILM_DENOISING
+    film_denoising_albedo(index,base,value);
+//#endif
 //#if SHADOW_CATCHER else     if(group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
     if(sc_light_passes(flag)&&group!=NONE&&data_word(D_film_pass_lightgroup)!=PASS_NONE){film_rgb(base,data_word(D_film_pass_lightgroup)+3u*group,value);}
 //#endif

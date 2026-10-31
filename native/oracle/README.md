@@ -149,6 +149,32 @@ linking, light `cast_shadow`/`max_bounces`, combined motion, clamps, caustic
 filters and exclude flags; it also writes `sky.float4`). Both are judged CPU
 against WGSL like every scene.
 
+## Film pass scenes (`scenes/passes/`)
+
+`author_passes.py` (`--check`) writes `scenes/passes/`: scenes that enable named
+passes with `pass` nodes. `light-passes` (diffuse, glossy and transmission direct,
+indirect, colour and their combined passes, emission, background), `data-passes`
+(depth, position, normal, roughness, UV, object and material index, mist, render
+time), `light-groups`, `aovs`, `cryptomatte` (object, material and asset ids; named
+objects and shaders), `motion` (the motion pass without motion blur),
+`denoising-features`, `denoising-features-weighted` and `denoising-motion` (the
+denoising feature passes; no denoiser runs), and `with-<family>-<scene>`: committed
+scenes of the other families with every light, data, AO and denoising feature pass
+added (raw files stay beside the source scene).
+
+The runner writes every named pass the scene created after each repeat:
+`pass-K-N.f32` (K the pass's position in `meta.json` `passes`, N the repeat;
+float32 little-endian, the listed number of components per pixel, lower-left
+origin, read with `cbc_host_pass_floats`, so through the pinned pass accessor),
+and `meta.json` lists each pass's name, type, components and film SHA-256.
+Scenes without named passes write no pass fields. `compare.py` judges every pass
+of the reference of a pair against the candidate's pass of the same name with the
+pair's role: float passes with the practical criterion (strict reported), the
+object and material index exactly, cryptomatte per pixel as the set of (id,
+weight) slots (ids exactly, weights by the practical criterion, the slot order
+of equal weights reported), and render time reported only (it is this run's
+timing). A missing pass, a different shape, NaN/Inf or a hash mismatch fails.
+
 ## Run, compare and bundle
 
 ```sh

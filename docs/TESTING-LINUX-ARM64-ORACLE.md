@@ -168,8 +168,8 @@ Copy the run into a NEW folder `native/evidence/linux-arm64-cpu-oracle-<date>/`
 (films and `meta.json`), `run.json`, the comparison JSON of section 6, and a
 `README.md` with the commit, the image (`debian:trixie` digest from
 `docker image inspect`), the tool versions of section 2, the walls, and the list of
-refused or failed scenes. Then run `python3 tools/licensing/audit.py` and
-`python3 tools/licensing/notices.py --check`, and commit.
+refused or failed scenes, and commit. No licence checks are needed: the run adds films and records, no external
+code (MAINTAINER-README.txt, "Licensing and source checks").
 
 ## 8. What to record
 

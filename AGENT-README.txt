@@ -189,6 +189,39 @@ FilmBuffer                                              (sealed)
   alpha = coverage. Flip rows and encode with CodeBrix.Imaging for files.
   Other passes follow the same layout with Components floats per pixel.
 
+PASSES, LIGHT GROUPS, AOVS AND CRYPTOMATTE. Enable each pass with
+AddPass(type, name) and read it with ReadPass(name) after the render; the
+values come through Cycles' own pass accessor (for example Mist is already
+1 - accumulated mist, Depth is 1e10 where nothing was hit).
+  - Light passes: Emission, Background, Ao, DiffuseDirect/Indirect/Color,
+    GlossyDirect/Indirect/Color, TransmissionDirect/Indirect/Color and the
+    combined Diffuse, Glossy and Transmission passes.
+  - Data passes: Depth, Position, Normal, Roughness, Uv (the mesh's standard
+    "uv" attribute), ObjectId (ObjectNode.PassId), MaterialId
+    (ShaderNode.PassId), Mist (FilmNode.MistStart, MistDepth, MistFalloff),
+    SampleCount (FilmNode.UseSampleCount), RenderTime (GPU backends do not
+    measure it: it reads zero there).
+  - Motion and MotionWeight: written only when IntegratorNode.MotionBlur is
+    false (Cycles' motion pass mode); object and camera motion transforms
+    give the vectors.
+  - Light groups: a pass of PassType.Combined whose Lightgroup names the
+    group; lamps, emissive objects and the world join it through
+    ObjectNode.Lightgroup or BackgroundNode.Lightgroup.
+  - AOVs: an AovOutputNode in the shader graph and an AovColor or AovValue
+    pass of the same name.
+  - Cryptomatte: FilmNode.CryptomattePasses is a flag set
+    (FilmCryptomattePasses.Object | Material | Asset) and CryptomatteDepth the
+    number of four-component Cryptomatte passes per type, added in the order
+    objects, materials, assets (for example "CryptoObject00",
+    "CryptoObject01", "CryptoMaterial00", ...). The ids hash ObjectNode.Name,
+    ShaderNode.Name and ObjectNode.AssetName: give them distinct names, or
+    every object (material) shares one id.
+  - Denoising features (no denoiser runs): DenoisingAlbedo, DenoisingNormal,
+    DenoisingSpecularAlbedo, DenoisingRoughness, DenoisingDepth,
+    DenoisingBackwardMotion and DenoisingSpecularMotion (the last two with
+    MotionBlur false), shaped by FilmNode.DenoisingPassFollowReflections and
+    DenoisingPassUseAlbedoRoughnessWeighting.
+
 RenderProgress(RenderStage Stage, TimeSpan Elapsed, uint TotalSamples,
                uint? CompletedSamples, double? Fraction)
 RenderStage   Starting, Rendering, Completed, Cancelled, Failed
@@ -508,9 +541,10 @@ What a consumer can observe:
 
 WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
 render runs (the render fails with NativeStatus.Failed, not at edit time):
-  - passes other than Combined, AO and the three shadow catcher passes
-    (AddPass of any other type fails the render; data passes report "surface
-    data passes not implemented"); see SHADOW CATCHER;
+  - the passes the WebGPU device does not write fail the render with
+    "WebGPU film pass <name> not implemented" (the adaptive sampling,
+    path guiding and volume passes), as do the motion pass and the
+    denoising motion features with deforming geometry (vertex motion);
   - cameras other than perspective (orthographic, panorama);
   - the integrator defaults: switch off UseDenoise, UseAdaptiveSampling and
     UseGuiding before a WebGPU render (the light tree, UseLightTree, renders);
@@ -520,7 +554,7 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
     cutoff, 1e-5, or a linked SubsurfaceWeight input): "Unsupported feature:
     Principled BSDF subsurface scattering";
   - shader nodes the WebGPU device does not implement (for example sky, IES
-    and AOV output nodes; the bump node, the Gabor texture (GaborTextureNode,
+    nodes; the AOV output nodes, the bump node, the Gabor texture (GaborTextureNode,
     2D and 3D), the displacement and vector displacement nodes and the bevel,
     raycast and radial tiling nodes are implemented, but tangent and
     motion-triangle smooth-normal derivatives inside a bump height are
@@ -539,8 +573,8 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
     with a thin film renders);
   - a RadialTilingNode with at most two sides and a roundness strictly
     between 0 and 1: "Unsupported feature: Radial Tiling node with two sides"
-    (the Cycles CPU outputs there are binary32 rounding residue; this refusal is
-    provisional); when Sides
+    (the Cycles CPU outputs there are binary32 rounding residue, and Cycles' own
+    Metal device does not reproduce them either); when Sides
     or Roundness is linked the render fails with an unsupported-parameter
     error instead;
   - an AmbientOcclusionNode with OnlyLocal on an object that is not instanced
@@ -555,7 +589,7 @@ returns it.
 The CPU reference backend renders all of these.
 
 DEVICE ERRORS. After a render fails with NativeStatus.Failed (scene.IsFaulted
-is true), remove the cause (for example the extra pass or the non-perspective
+is true), remove the cause (for example the non-perspective
 camera on WebGPU, or an image wider or taller than Metal's 16384-pixel texture
 limit on Metal) and render again: the native host recovers the GPU device
 (WebGPU or Metal), uploads the whole scene again and raises a
@@ -833,8 +867,12 @@ COMMON PITFALLS TO AVOID
 - EXPECTING CHEAP EDITS OF SINGLE-USER MESHES. Moving, adding motion to or
   editing the data of a rendered single-user mesh rebuilds the BVH on the next
   render (the host keeps one extra copy of such meshes' authored attributes).
-- ENABLING NON-COMBINED PASSES ON WEBGPU. Except for the shadow catcher passes
-  the render fails; read the other passes on the CPU reference backend.
+- EXPECTING DISTINCT CRYPTOMATTE IDS WITHOUT NAMES. The ids hash the object
+  and shader names (ObjectNode.Name, ShaderNode.Name, ObjectNode.AssetName);
+  unnamed nodes all share one id.
+- EXPECTING A MOTION PASS WITH MOTION BLUR. Cycles writes the motion pass
+  only when IntegratorNode.MotionBlur is false; with motion blur on, the
+  Motion pass reads zero on every backend.
 - READING THE REGISTRY AS A FEATURE LIST. A node type being registered (and
   generated) does not mean a GPU backend implements it; the CPU reference is
   the complete implementation.
@@ -969,8 +1007,7 @@ WHAT THIS PACKAGE DOES NOT DO
   (macOS on Apple Silicon). Until a feature reaches the WebGPU device, a scene
   that needs it fails there with an error naming the feature; it is never
   approximated.
-- It does not yet render passes other than Combined, AO and the shadow catcher
-  passes, non-perspective cameras (orthographic, panoramic, depth of field,
+- It does not yet render non-perspective cameras (orthographic, panoramic, depth of field,
   stereo), sampling patterns other than tabulated Sobol, adaptive sampling or
   shadow linking on the WebGPU device (the CPU reference backend and the Metal
   backend do). It does not yet render curves (hair), point clouds,

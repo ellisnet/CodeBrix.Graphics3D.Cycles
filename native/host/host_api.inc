@@ -94,7 +94,11 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
         << codebrix_cpu_arithmetic_json << "}";
 #ifdef WITH_WEBGPU
     out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\"],\"primitives\":[\"triangle\"],"
-           "\"passes\":[\"combined\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\",\"ao\"],\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"shadow linking\",\"surface data passes\","
+           "\"passes\":[\"combined\",\"emission\",\"background\",\"ao\",\"diffuse\",\"diffuse_direct\",\"diffuse_indirect\",\"diffuse_color\",\"glossy\",\"glossy_direct\",\"glossy_indirect\",\"glossy_color\","
+           "\"transmission\",\"transmission_direct\",\"transmission_indirect\",\"transmission_color\",\"depth\",\"position\",\"normal\",\"roughness\",\"uv\",\"object_id\",\"material_id\",\"motion\",\"motion_weight\","
+           "\"cryptomatte\",\"aov_color\",\"aov_value\",\"mist\",\"render_time\",\"sample_count\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\",\"denoising_albedo\",\"denoising_normal\","
+           "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\"],\"lightGroups\":true,"
+           "\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"shadow linking\",\"motion pass and denoising motion features with deforming geometry\",\"adaptive sampling passes\",\"volume passes\","
            "\"volume light passes\",\"background light portals and sky sun guiding\",\"nonconstant point, spot, area and sun light shaders\",\"heterogeneous volumes\",\"moving transparent shadows\","
            "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif

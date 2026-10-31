@@ -132,6 +132,11 @@ fn camera_projection(address:u32,v:vec4<f32>)->vec3<f32>{
     state_u16(S_path_transmission_bounce,path,0u);state_u16(S_path_transparent_bounce,path,0u);
     state_u16(S_path_volume_bounce,path,0u);state_u16(S_path_volume_bounds_bounce,path,0u);
     state_u8(S_path_visibility,path,VIS_CAMERA);state_u8(S_path_mnee,path,0u);state_u32(S_path_flag,path,INITIAL_FLAG);
+//#if FILM_DENOISING
+    // path_state_init_integrator: denoising features start at the camera with unit throughput.
+    if((data_word(D_kernel_features)&DN_KERNEL_FEATURE_DENOISING)!=0u){
+        state_u32(S_path_flag,path,INITIAL_FLAG|DN_PATH_RAY_DENOISING_FEATURES);state_vec3(S_path_denoising_feature_throughput,path,vec3<f32>(1.0));}
+//#endif
     state_f32(S_path_mis_ray_pdf,path,0.0);state_u32(S_path_min_ray_pdf,path,0x7f7fffffu);
     state_f32(S_path_continuation_probability,path,1.0);state_vec3(S_path_throughput,path,vec3<f32>(1.0));
     state_f32(S_path_optical_depth,path,0.0);state_u32(S_isect_object,path,NONE);state_u32(S_isect_prim,path,NONE);state_u32(S_isect_type,path,PRIM_TYPE_NONE);

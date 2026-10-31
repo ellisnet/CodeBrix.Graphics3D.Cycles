@@ -92,6 +92,9 @@ class WebGPUQueue final:public DeviceQueue {
       if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE){
         debug_enqueue_begin(kernel,work);d.enqueue_mnee(work,args);debug_enqueue_end();return;
       }
+      if(kernel==DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS){
+        debug_enqueue_begin(kernel,work);d.enqueue_cryptomatte_postprocess(work,args);debug_enqueue_end();return;
+      }
       if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE){
         debug_enqueue_begin(kernel,work);d.enqueue_surface(work,args,kernel);debug_enqueue_end();return;
       }

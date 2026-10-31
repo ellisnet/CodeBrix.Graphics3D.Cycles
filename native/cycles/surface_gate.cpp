@@ -98,9 +98,10 @@ static RejectionMetrics rejections(const DeviceInfo &info){
     if(test==1){data.integrator.use_light_mis=1;data.integrator.use_light_tree=1;data.integrator.use_direct_light=1;reason="Missing native light tree";}
     if(test==2){data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional integration";}
     if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
-    if(test==4){data.film.pass_flag=PASSMASK(DEPTH);reason="data passes";}
-    // Glossy filtering is implemented (SURFACE_FILTER_GLOSSY); another refused integration feature instead.
-    if(test==5){data.kernel_features|=KERNEL_FEATURE_DENOISING;reason="optional integration";}
+    // The data passes are implemented (FILM_DATA_PASSES); a path guiding pass (outside the scope) is refused by name.
+    if(test==4){data.film.pass_flag=PASSMASK(GUIDING_COLOR);reason="film pass guiding_color";}
+    // Glossy filtering and the denoising features are implemented; shadow linking stays refused.
+    if(test==5){data.kernel_features|=KERNEL_FEATURE_SHADOW_LINKING;reason="optional integration";}
     if(test==6){data.max_closures=MAX_CLOSURE+1;reason="closure capacity";}
     if(test==7){data.film.pass_combined=data.film.pass_stride-3;reason="pass offset";}
     if(test==8)state.path.render_pixel_index=1;

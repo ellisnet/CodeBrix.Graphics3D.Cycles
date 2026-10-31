@@ -257,8 +257,9 @@ int main(int argc, char **argv) {
     Params p; base_params(&p, 0); Scene s; build(&s, backend, &p);
     CHECK(cbc_host_set_event_callback(s.host, on_event, &events));
     render(s.host, before);
+    /* The volume majorant pass: the WebGPU device refuses it by name (volume passes are not written there). */
     CBCNode depth = create(s.host, "pass");
-    CHECK(cbc_host_set_string(s.host, depth, "type", "depth")); CHECK(cbc_host_set_string(s.host, depth, "name", "Depth"));
+    CHECK(cbc_host_set_string(s.host, depth, "type", "volume_majorant")); CHECK(cbc_host_set_string(s.host, depth, "name", "Majorant"));
     CBCRenderConfig config = {sizeof(config), W, H, SAMPLES, {0}};
     for (unsigned i = 0; i < FLOATS; ++i) after[i] = -99;
     failed_pass = cbc_host_render(s.host, &config, after, FLOATS);

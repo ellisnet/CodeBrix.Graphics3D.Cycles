@@ -79,7 +79,7 @@ UTF-8, at most 2,047 bytes). A successful call clears it.
 
 **Device errors.** A render that fails with `CBC_FAILED` because the device
 rejected the scene (for example an unimplemented WebGPU feature such as a
-non-Combined pass or a non-perspective camera) leaves the error on the Cycles
+non-perspective camera) leaves the error on the Cycles
 device. The next `cbc_host_render` on that host recovers it:
 
 - The WebGPU device clears the error when the device itself is intact (no lost
@@ -102,7 +102,7 @@ device. The next `cbc_host_render` on that host recovers it:
   host and create a new one.
 
 Measured on Linux WebGPU (native/tools/scene_edit_gate.py): after a rejected
-depth pass or orthographic camera, removing the cause and rendering again on the
+orthographic camera, removing the cause and rendering again on the
 same host meets the practical criterion against a fresh CPU render.
 
 ## Threading and ownership
@@ -193,8 +193,12 @@ it does not list as supported may still fail at render time with `CBC_FAILED`.
 Facts measured for the current WebGPU device (Linux host gate): object shadow
 terminator offsets are implemented (geometry offset; shading offset 0 to 1, larger
 shading offsets are rejected at render time); only the
-perspective camera; only `Combined`, AO and the three shadow catcher passes are written
-(other data passes and light passes fail with "surface data passes not implemented"); the integrator defaults
+perspective camera; it writes the light passes (diffuse, glossy and transmission direct, indirect and colour,
+emission, background, AO), light groups, the data passes (depth, position, normal, roughness, UV, object and
+material index, mist, sample count, the motion pass and motion weight without motion blur; render time stays zero,
+as on Cycles' Metal device), AOVs, cryptomatte and the denoising feature passes (albedo, normal, specular albedo,
+roughness, depth, backward and specular motion), and refuses by name every other pass (for example the adaptive
+sampling, path guiding and volume passes) and the motion pass with deforming geometry; the integrator defaults
 (denoising, adaptive sampling, guiding enabled) must be switched
 off for WebGPU renders; the light tree and light linking render.
 
@@ -283,7 +287,18 @@ one pass (`components` floats per pixel, raw scene-linear values, lower-left
 origin). A render that starts clears earlier results; until a render succeeds
 both return `CBC_NOT_READY`. A pass the device did not write returns
 `CBC_UNSUPPORTED`. AOVs are `aov_color`/`aov_value` passes fed by an
-`aov_output` shader node with the same name.
+`aov_output` shader node with the same name. A light group pass is a `combined`
+pass with a `lightgroup` (and a name); lamps, emissive objects and the world
+join it through their object's, or the background's, `lightgroup` socket.
+Cryptomatte: the film's `cryptomatte_passes` is a flag set (set it with
+`cbc_host_set_ints` to any union of `object` 1, `material` 2 and `asset` 4)
+and `cryptomatte_depth` the number of four-component `cryptomatte` passes per
+type, created in the order objects, materials, assets (for example
+`CryptoObject00`, `CryptoObject01`, `CryptoMaterial00`, ...). The ids hash the
+native node names: objects and shaders have a string property `name` (the node
+name, not a socket; `cbc_host_property_info`, `cbc_host_set_string` and
+`cbc_host_get_string` accept it), and objects an `asset_name` socket. The motion
+pass is written when `integrator.motion_blur` is off (Cycles' motion pass mode).
 
 ## Exports (ABI 1, 48 functions)
 

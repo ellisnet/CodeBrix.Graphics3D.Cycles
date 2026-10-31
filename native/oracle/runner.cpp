@@ -226,6 +226,36 @@ struct Loader {
 
 struct Options { fs::path scene, output; std::string backend, label; uint32_t threads = 4; };
 
+template<typename PassFilm>
+void read_passes(CBCHost host, size_t pixels, uint32_t repeat, std::vector<PassFilm> &out) {
+  uint64_t required = 0;
+  if (const int status = cbc_host_render_passes_json(host, nullptr, 0, &required); status != CBC_SMALL_BUFFER)
+    check(status, "cbc_host_render_passes_json");
+  std::string text(size_t(required), '\0');
+  check(cbc_host_render_passes_json(host, text.data(), text.size(), &required), "cbc_host_render_passes_json");
+  text.resize(std::strlen(text.c_str()));
+  const auto list = oracle::JsonReader(text).document();
+  size_t index = 0;
+  for (auto &entry : list.at("passes").items) {
+    const auto &name = entry.at("name").string();
+    if (name == "Combined") continue;
+    if (repeat == 0) {
+      PassFilm pass; pass.name = name; pass.type = entry.at("type").is(Json::String) ? entry.at("type").string() : "";
+      pass.components = uint32_t(entry.at("components").as_int()); pass.written = entry.at("written").boolean;
+      out.push_back(std::move(pass));
+    }
+    if (index >= out.size() || out[index].name != name) fail("The captured pass list changed between repeats");
+    auto &pass = out[index++];
+    if (!pass.written) continue;
+    std::vector<float> values(pixels * pass.components);
+    uint32_t components = 0; required = 0;
+    check(cbc_host_pass_floats(host, name.c_str(), values.data(), values.size(), &required, &components), "cbc_host_pass_floats(" + name + ")");
+    if (components != pass.components || required != values.size()) fail("Pass " + name + " changed shape");
+    pass.films.push_back(std::move(values));
+  }
+  if (index != out.size()) fail("The captured pass list changed between repeats");
+}
+
 Options parse(int argc, char **argv) {
   Options options;
   for (int i = 1; i < argc; ++i) {
@@ -271,6 +301,10 @@ int run(int argc, char **argv) {
   Loader loader{host, directory, {}, {}};
   std::vector<std::vector<float>> films;
   std::vector<double> seconds;
+  // Named passes the scene created ("pass" nodes), read after every repeat with
+  // cbc_host_pass_floats: one entry per pass, its films in repeat order.
+  struct PassFilm { std::string name, type; uint32_t components = 0; bool written = false; std::vector<std::vector<float>> films; };
+  std::vector<PassFilm> pass_films;
   try {
     if (auto images = scene.find("images")) for (auto &image : images->items) loader.image(image);
     for (auto &entry : scene.at("nodes").items) loader.entry(entry);
@@ -281,6 +315,7 @@ int run(int argc, char **argv) {
       check(cbc_host_render(host, &render_config, film.data(), film.size()), "cbc_host_render");
       seconds.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());
       films.push_back(std::move(film));
+      read_passes(host, size_t(width) * height, i, pass_films);
     }
   } catch (...) { cbc_host_destroy(host); throw; }
   check(cbc_host_destroy(host), "cbc_host_destroy");
@@ -300,6 +335,25 @@ int run(int argc, char **argv) {
   auto list = [](auto &values, auto format) {
     std::string out = "["; for (size_t i = 0; i < values.size(); ++i) out += (i ? "," : "") + format(values[i]); return out + "]";
   };
+  // Pass films: pass-K-N.f32 (K the pass's position in the list, N the repeat),
+  // float32 little-endian, components per pixel as listed, lower-left origin.
+  // Scenes without named passes write no pass fields, so their meta.json is unchanged.
+  std::string passes_json;
+  for (size_t k = 0; k < pass_films.size(); ++k) {
+    auto &pass = pass_films[k];
+    std::vector<std::string> pass_hashes;
+    for (size_t i = 0; i < pass.films.size(); ++i) {
+      const auto file_name = "pass-" + std::to_string(k) + "-" + std::to_string(i) + ".f32";
+      std::ofstream file(options.output / file_name, std::ios::binary);
+      file.write(reinterpret_cast<const char *>(pass.films[i].data()), std::streamsize(pass.films[i].size() * sizeof(float)));
+      if (!file) fail("Cannot write " + file_name);
+      pass_hashes.push_back(oracle::sha256(pass.films[i].data(), pass.films[i].size() * sizeof(float)));
+    }
+    passes_json += std::string(k ? "," : "") + "\n    {\"index\": " + std::to_string(k) + ", \"name\": " + oracle::json_quote(pass.name) +
+                   ", \"type\": " + oracle::json_quote(pass.type) + ", \"components\": " + std::to_string(pass.components) +
+                   ", \"written\": " + (pass.written ? "true" : "false") +
+                   ", \"filmSha256\": " + list(pass_hashes, [](const std::string &h) { return "\"" + h + "\""; }) + "}";
+  }
   std::ostringstream meta;
   meta.precision(17);
   meta << "{\n  \"sceneId\": " << oracle::json_quote(scene.at("id").string())
@@ -312,6 +366,7 @@ int run(int argc, char **argv) {
        << ",\n  \"renderSeconds\": " << list(seconds, [](double s) { std::ostringstream o; o.precision(6); o << s; return o.str(); })
        << ",\n  \"filmSha256\": " << list(hashes, [](const std::string &h) { return "\"" + h + "\""; })
        << ",\n  \"filmLayout\": \"float32 little-endian RGBA, width*height*4 values, lower-left origin\""
+       << (pass_films.empty() ? std::string() : ",\n  \"passes\": [" + passes_json + "\n  ]")
        << ",\n  \"warnings\": []\n}\n";
   std::ofstream(options.output / "meta.json") << meta.str();
   std::cout << meta.str();

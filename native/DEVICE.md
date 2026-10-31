@@ -2796,12 +2796,13 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    the stage-state exchange (they pass on the Samsung and the HP). The managed-API scenes (`android_app_gate.py
    --mode webgpu` and `--mode bundle`) have no scene dump and stay outside the device-scene flow (judged against
    Linux-prepared glibc films). Follow-up: move the remaining state gates onto the glibc flow; the on-device CPU
-   then judges nothing, which also settles whether it should be built at the oracle's fixed baseline (it keeps
-   Cycles' flags for now).
+   then judges nothing. Android builds use the oracle's no-contraction, no-reciprocal-math rule (not its ISA
+   baseline): the same code prepares the scene the device's GPU renders.
 6. **Not yet ported** [14]: true displacement (`NODE_SET_DISPLACEMENT`, displacement and vector displacement) and the
    bump-state branch that needs the undisplaced position; tangent and motion-triangle smooth-normal derivatives
-   (rejected, error 16); AOV output; sky, IES, light falloff, volume coefficient and particle/hair/point info
-   nodes. The radial tiling, bevel and raycast nodes are ported (see "Remaining SVM BSDFs and the bevel, raycast
+   (rejected, error 16); sky, IES, light falloff, volume coefficient and particle/hair/point info
+   nodes. The AOV output nodes are ported (see "Film passes, light groups, AOVs, cryptomatte and denoising
+   features"). The radial tiling, bevel and raycast nodes are ported (see "Remaining SVM BSDFs and the bevel, raycast
    and radial tiling nodes"); radial tiling with two sides and a roundness strictly between 0 and 1 is refused.
 7. **Feature mask** [15]. CLOSED (Step zero, 2026-10-22): the mask is 256 bits (`ShaderFeatures`, four 64-bit
    words); bits 0-61 and 63 keep their meaning, bit 62 and bits 64-255 are free. See "Step zero" below.
@@ -2892,7 +2893,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    `safe_divide` divides correctly rounded), the translator's series `c_acos`/`c_asin` (glibc 2.41's are correctly
    rounded), `surf_bump`'s division and square root, and `surface_orthogonal` (`v*(1/len)`, pinned `normalize()`),
    which feeds the texture derivatives (the texture last-bit class of item 14).
-29. **Velvet subnormal values (interim judgment).** At grazing half vectors the Ashikhmin velvet value and its
+29. **Velvet subnormal values (judged on the film).** At grazing half vectors the Ashikhmin velvet value and its
    products with the closure weight and throughput fall below FLT_MIN. The CPU keeps them subnormal, so the path
    continues with a negligible throughput; the GPU flushes them to zero and terminates the path. The WGSL applies
    flush-to-zero explicitly (`velvet_ftz`), because the driver's own flushing point depends on how it compiles the
@@ -2900,13 +2901,18 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    (velvet only, about 100 path evaluations in the bounce gate and 12 paths in the image gate's stages). With the CPU
    oracle run with the x86 FTZ and DAZ bits set, every difference disappears (0 mismatches), and the films equal the
    normal CPU films within the practical criterion (0 failures, the CPU films with and without FTZ are bit-identical).
-   Under the current interim decision such a difference is judged on the film; whether pinned Cycles-with-Metal flushes
-   the same values is to be compared on Apple Silicon.
-30. **Radial tiling with two sides (refused, provisional pending the Metal comparison).** Sides at most 2 with a
+   Such a difference is judged on the film (practical criterion), with the difference and the flush-to-zero evidence
+   reported; the rule applies to the velvet closure only. Pinned Cycles-with-Metal flushes the same way: on the Apple
+   M2 Pro every binary32 arithmetic operation reads a subnormal operand as zero and writes a result below FLT_MIN as
+   zero, with fast math on and off, and its velvet films are within the practical criterion of every CPU film
+   (`native/evidence/cycles-oracles-macos-metal-comparison-20261031/`).
+30. **Radial tiling with two sides (refused).** Sides at most 2 with a
    roundness strictly between 0 and 1: the CPU
    outputs are binary32 rounding residue (tangent and secant of the binary32 pi/2, cancellation of terms near 1e14,
    subnormal and NaN intermediates). Constant inputs are refused before any pipeline compiles; linked inputs report
-   error 16.
+   error 16. Pinned Cycles-with-Metal does not reproduce the CPU there either: it renders these scenes about 700
+   practical failures away from the CPU films (pixels black where the CPU is not), while roundness 0 and 1 and three
+   sides are within the practical criterion (`native/evidence/cycles-oracles-macos-metal-comparison-20261031/`). The refusal stays.
 31. **`trig_atan2` below 2^-40.** The shared correctly rounded atan2 adapter (`wavefront_trig.wgsl`) returns wrong
    values or NaN when the reduced angle is below about 2^-40 (atan2(y, x) with |y/x| or |x/y| below about 9e-13):
    `trig_product`'s scale exponent `ae+be-173` wraps as an unsigned value. Its callers in the Ashikhmin-Shirley and
@@ -2932,6 +2938,14 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    `trig_acos` is one ULP off for some arguments near 0 (5 of 300,000 sampled on the GPU against glibc acosf, all with
    |x| < 0.05); pi/2 - asin(x) in double-float up to |x| = 0.5 fixes it (0 of 300,000) but adds one series evaluation per
    call site. These need an entry split or a smaller series before they fit.
+36. **Motion pass and denoising motion features with deforming geometry (refused).** In Cycles' motion pass mode a
+   deforming mesh keeps plain triangles with `SD_OBJECT_HAS_VERTEX_MOTION` and its motion steps in the position
+   attribute; the device's triangle code reads vertex motion only from motion triangles, so such scenes are refused
+   ("WebGPU motion pass with deforming geometry (vertex motion) not implemented"). Object and camera motion render.
+37. **Cryptomatte with more ids per pixel than slots.** When a pixel sees more ids than `2 * cryptomatte_depth`, the
+   pinned kernel adds every further weight to the last slot, which keeps the id that claimed it first: an accumulation
+   order effect on any GPU (atomics), so the last slot of such pixels can hold another id than the CPU's. The oracle
+   scenes keep the id count within the slots; `compare.py` compares the slots of a pixel as an id set.
 Resolved, or closed under the device reference policy:
 - Remaining WGSL-vs-host arithmetic in surface shading: RESOLVED (2026-10-30, lane item27b, found while fixing
   item 27). On identical inputs (surface_gate state tally) the WGSL now reproduces the pinned SSE4.2 kernel in every
@@ -4321,8 +4335,10 @@ Cycles CPU kernel built at a fixed arithmetic baseline, so its films do not depe
 - No floating-point contraction and no reciprocal math: `inject_cycles.cmake` adds
   `-ffp-contract=off -fno-reciprocal-math` as directory compile options, which follow Cycles' own
   `-ffp-contract=on -freciprocal-math` on every command line (all Cycles and CodeBrix translation units; the
-  reference colorspace object in `host/targets.cmake` gets them too). Android keeps Cycles' flags (its CPU is a
-  diagnostic). Linux ARM64: the ARMv8-A base level (no `-march`/`-mcpu`), cross build verified here; macOS arm64
+  reference colorspace object in `host/targets.cmake` gets them too). Android uses the same two options: its CPU
+  is a diagnostic, but its scene preparation feeds the GPU, and with Cycles' flags clang turned `1/sqrtf` into an
+  `rsqrtss` estimate on android-x64 (an area light's axis and direction 0.99999994 instead of 1, which moved a light
+  tree probe state onto the lamp plane). Linux ARM64: the ARMv8-A base level (no `-march`/`-mcpu`), cross build verified here; macOS arm64
   and x64: the same rule in their recipes, UNTESTED (MACOS_ARM64.md, MACOS_X64.md).
 - The CPU kernel compile line actually used (Linux x64, from the compile database, recorded in
   `native/work/cycles-build.json` and in every oracle run's `meta.json` as `cpuKernelCompile`):
@@ -5293,8 +5309,8 @@ reaches a new family while every other scene's specialized WGSL stays byte-ident
   sides: sine, cosine and tangent go through `rt_sincos` (three-part Cody-Waite reduction, Taylor series, a few ULP),
   atanf and atan2f through glibc's correctly rounded ones at one call site (`rt_prepare` computes the three atanf arguments
   and the polar angle once; `rt_atan`/`rt_atan2` return the cached value for a bitwise equal argument). Two sides with a
-  roundness strictly between 0 and 1 is refused, provisionally pending a comparison with Cycles' Metal device (census for
-  constant inputs, error 16 for linked ones): there the CPU
+  roundness strictly between 0 and 1 is refused (census for
+  constant inputs, error 16 for linked ones; Cycles' Metal device does not reproduce the CPU there either, item 30): there the CPU
   outputs are binary32 rounding residue (tangent and secant of the binary32 pi/2, cancellation of terms near 1e14,
   subnormal and NaN intermediates).
 
@@ -5438,3 +5454,104 @@ CPU kernels with the practical criterion `5e-5 + 2e-4 |ref|`:
   60,000 envelope), and correctly rounded `c_acos`/`c_asin` (through `trig_acos` and a double-float `trig_asin`; 0 of
   300,000 GPU samples differed from glibc), which inline up to 78 KB more into the raytrace-node entries, past the
   1,110,000-byte size guard.
+
+## Film passes, light groups, AOVs, cryptomatte and denoising features
+
+The WebGPU device writes every film pass the pinned Cycles kernels write for the scenes it renders (the
+target's pass list), through the pinned film layout (`Film::device_update` offsets in `KernelFilm`); the host reads
+every pass with the pinned pass accessor (`HostOutput`, `cbc_host_pass_floats`, managed `ReadPass`), so the device
+converts nothing. Passes it does not write are refused by name before any pipeline compiles
+(`validate_film_passes`, film_passes.cpp: "WebGPU film pass <name> not implemented"), never left unwritten:
+
+| Family | Passes | Where (pinned function) |
+| --- | --- | --- |
+| Light | emission, background, AO, diffuse/glossy/transmission direct and indirect, light groups | surface emission, background, forward light hits, shadow rays (`film_write_emission_or_background_pass`, `film_write_direct_light`) |
+| Colour | diffuse, glossy and transmission colour | `shade_surface_passes` (`film_write_data_passes`: `surface_shader_diffuse/glossy/transmission` with `bsdf_albedo`) |
+| Data | depth, position, normal, roughness, UV, object and material index, mist | `shade_surface_passes`; the background's zero depth/position/indices |
+| Motion | motion, motion weight (Scene::MOTION_PASS: no motion blur) | `shade_surface_passes` (`primitive_motion_vector`), background (`camera_motion_vector_direction`) |
+| Sample count | sample count | camera (`film_write_sample`, already implemented) |
+| AOV | AOV colour and value | the SVM AOV records in `prepare_surface` and the background's shader evaluation |
+| Cryptomatte | object, material and asset id/weight slots | `shade_surface_passes` (`film_write_cryptomatte_slots`); `DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS` (`film_cryptomatte_post`) |
+| Denoising features | albedo, normal, specular albedo, roughness, depth, backward and specular motion | camera (`PATH_RAY_DENOISING_FEATURES`, feature throughput), `shade_surface_passes` (`film_write_denoising_features_surface`), emission and background albedo, background depth |
+| Render time | render time | not written: the pinned GPU devices never write it (only `PathTraceWorkCPU` measures it), so it reads zero as on Cycles' Metal device |
+
+Light passes and light groups were already written by the shared film code; the light-pass refusal came from the
+colour passes that `Film::update_passes` adds for every direct/indirect pass (`divide_type`). Each new region is its own
+specialization feature, superset scene-only, so a scene that does not reach it compiles byte-identical WGSL:
+
+| Bit | Feature | What it adds |
+| --- | --- | --- |
+| 143 | `FILM_DATA_PASSES` | `film_write_data_passes` in `shade_surface_passes` (a surface data or colour pass is enabled) |
+| 144 | `SVM_NODE_AOV` | `NODE_AOV_START`, `NODE_AOV_COLOR`, `NODE_AOV_VALUE` (film-writing evaluations only) |
+| 145 | `FILM_CRYPTOMATTE` | the cryptomatte slot writes (`film.cryptomatte_passes`) |
+| 146 | `FILM_DENOISING` | the denoising features (`KERNEL_FEATURE_DENOISING`) |
+| 147 | `FILM_MOTION` | the motion vectors (motion pass or a denoising motion feature) |
+| 148 | `FILM_MOTION_EXACT` | colour passes with motion blur: the host-exact motion transforms of the `MNEE_MOTION` regions (the marker name covers both) |
+
+Group name: `FILM_PASSES_ANY` (143 or 146: the `shade_surface_passes` entry and its shared helpers).
+
+- **`shade_surface_passes`** (surface module, recorder entry 36) runs after `connect_surface_light` (holdout, emission
+  and termination done: records in state 2) and before the BSDF sample and bounce change the path's flag and throughput,
+  the pinned order of `integrate_surface`. It reads the same GPU records (ShaderData and closures after holdout), so the
+  existing surface entries are unchanged; in scenes with these passes the shadow catcher's `PATH_RAY_SINGLE_PASS_DONE`
+  bookkeeping moves into it with the rest of `film_write_data_passes`.
+- **Colour and denoising albedo** follow `bsdf_albedo` and `bsdf_microfacet_estimate_albedo` per Fresnel model of the
+  closure record (surface_closure.h): the lookup-table branches (generalized Schlick with exponent below zero, which the
+  Glass node and Principled use; F82 tint; dielectric with IOR above 1) unless a thin film is active, the thin glass
+  transmission lobe, otherwise `microfacet_fresnel` at `dot(wi, N)` with the lobes of the closure kind (Beckmann
+  records take the GGX kind with the same lobes).
+- **Cryptomatte**: the first empty slot is claimed with a compare-and-swap (a weak exchange retried while the slot
+  still holds `ID_NONE`), as `__ATOMIC_PASS_WRITE__`; `cryptomatte_postprocess` (film post-processing module
+  `film_post`, recorder entry 37) sorts the slots by weight. The ids hash the node names: the host exposes the object
+  and shader node name as a string property `name`, and accepts unions of the `cryptomatte_passes` flags.
+- **Colour passes with motion blur** (`FILM_MOTION_EXACT`): the pass accessor divides the direct and indirect light
+  passes by the colour passes, which amplifies last-bit differences where a colour is close to zero (for example a
+  texture-coordinate colour of 1e-9 on a moving object: 18 practical failures in the diffuse direct pass of the
+  object-motion gate scene). With the host-exact motion transforms (as for MNEE with motion blur) those passes are
+  within the strict bound there.
+- **Motion**: the object motion pass transforms come in push words 5 and 8 (the `object_motion_pass` table), the
+  camera's pre/post projections from KernelData; the motion pass and the denoising motion features with deforming
+  geometry are refused (open item 36).
+- **Refused**: the adaptive sampling passes (adaptive sampling itself is not ported), the path guiding passes (path
+  guiding is outside the target) and the volume passes (`volume_majorant`, the volume light passes; volumes are not
+  ported), each by name.
+
+### Gates (Linux x64, Intel UHD, Mesa 25.0.7, against the unmodified CPU kernels)
+
+- **Oracle pass scenes** (`native/oracle/scenes/passes/`, `author_passes.py`; CPU and WGSL, 48x36 or the source
+  scene's size, two repeats): 11 dedicated scenes (light passes, data passes, light groups, AOVs, cryptomatte, motion,
+  sample count, holdouts with a transparent film, the denoising features with and without following reflections,
+  and with the motion features) and 36 pass variants of the closure, raytrace node, displacement, MNEE, AO, shadow
+  catcher, light tree and linking, texture, Principled, transparent lighting, gate-corpus lighting, motion blur and
+  light-motion scenes, each with every light, data, AO and denoising feature pass: 47 of 47 perfect (every pass of
+  every scene within the practical criterion; Combined 0 practical failures, maximum 4.58e-5). Per pass type over the
+  scenes: practical failures 0; maximum absolute differences 1.2e-4 (glossy indirect, at values near 1), 1.2e-5
+  (diffuse indirect), 6.5e-5 (glossy direct), 5.7e-6 (denoising albedo), 5.1e-6 (normal), 3.8e-6 (position,
+  denoising depth), 2.4e-6 (depth), 2.4e-7 or less for the colour passes, UV, mist, motion, roughness, the AOVs and the
+  cryptomatte weights; object index, material index, sample count, motion weight and the cryptomatte ids exact.
+- **Found by the variants and fixed:** the colour and denoising albedo of Beckmann refraction and glass (the
+  `microfacet_fresnel` path read the lobes from the GGX kinds); the colour passes in scenes with motion blur (the
+  accessor's division amplified last-bit differences of a near-zero colour, now the host-exact motion transforms,
+  `FILM_MOTION_EXACT`); the data passes with a shadow catcher (the shadow catcher's `PATH_RAY_SINGLE_PASS_DONE`
+  bookkeeping in `connect_surface_light` ran before `shade_surface_passes`; with data passes that entry does it).
+- **Every gate** (65 gate programs; the ones whose sources changed afterwards rerun on the final build): exit 0 except
+  the velvet pair of fixture set 3 (`bsdf3_bounce`, `bsdf3_render`, open item 29's interim rule, the same first
+  differences as before). `codebrix_cycles_shader_data_gate` could not compile its probe since the `MNEE_MOTION` region
+  alternatives (its raw `shader_data_source()` declared both); it now specializes every region except those and passes.
+- **Stale film offsets:** `Film::device_update` does not reset every pass offset (the AOV, mist and cryptomatte offsets
+  of a removed pass stay, and the film's `cryptomatte_passes` setting outlives its passes), so the device checks and
+  writes only enabled passes, and cryptomatte only with cryptomatte passes in the film (the ABI consumer removes its
+  AOV and depth passes and renders again).
+- **Bit identity:** the WGSL of 131 of the 133 committed oracle scenes is byte-identical to the tree before these
+  passes (every region is off for scenes without these passes); the other two (`linux-gates/closed-volumes` and
+  `linux-gates/world-volume`, refused on WebGPU before and after) are now refused earlier, naming the
+  `volume_majorant` pass, so they compile fewer modules. The CPU films of all 133 committed oracle scenes are
+  bit-identical, every repeat. Motion features are decided from the film's pass flags only: `KernelData` can reach
+  the device before `Film::device_update` has written the pass offsets (displacement, background importance), and
+  specialization features only grow per device.
+- **Compile envelope** (`intel_compile_envelope.py`, the 40 largest entries of the pass scenes): all below 60,000,
+  worst 54,486 (`connect_surface_light` of MNEE with the AO pass); `shade_surface_passes` at most 38,434 (875,545
+  inlined bytes), `cryptomatte_postprocess` 90.
+- **Managed and C ABI:** the ABI consumer renders the depth, normal and AOV passes and the light passes on WebGPU as on
+  the CPU; the managed tests compare light, data, denoising feature, AOV and light group passes and cryptomatte on
+  WebGPU with the CPU (practical criterion; indices exactly; cryptomatte as id sets).

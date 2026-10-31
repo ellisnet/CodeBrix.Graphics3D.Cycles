@@ -285,6 +285,12 @@ const SocketType &socket(Entry &entry, const char *name) {
   auto input = entry.node->type->find_input(ustring(name));
   require(input != nullptr, "Unknown input socket"); return *input;
 }
+// The node name of objects and shaders (Node::name, not a socket: their
+// cryptomatte object and material ids hash it) is the string property "name".
+bool node_name_property(Entry &entry, const char *name) {
+  return name && std::strcmp(name, "name") == 0 && !entry.node->type->find_input(ustring("name")) &&
+         (dynamic_cast<Object *>(entry.node) || dynamic_cast<Shader *>(entry.node));
+}
 void count_ok(const void *values, uint64_t count) {
   require(count <= INT_MAX && (count == 0 || values), "Invalid value count or pointer");
 }
@@ -630,7 +636,16 @@ extern "C" int cbc_host_set_ints(CBCHost handle, CBCNode id, const char *name, c
     require(count == 1, "Scalar integer socket required"); auto value = values[0];
     if (input.type == SocketType::BOOLEAN) { require(value == 0 || value == 1, "Boolean must be zero or one"); node.set(input, value != 0); }
     else if (input.type == SocketType::INT || input.type == SocketType::ENUM) { require(value >= INT_MIN && value <= INT_MAX, "Integer exceeds socket range");
-      if (input.type == SocketType::ENUM) { require(input.enum_values && input.enum_values->exists(int(value)), "Unknown enumeration value"); }
+      if (input.type == SocketType::ENUM) {
+        // Film cryptomatte_passes is a CryptomatteType bit set (the kernel reads the bits):
+        // any union of its enumerated flags is accepted, as Blender sets it.
+        auto flag_set = [&] {
+          if (!dynamic_cast<Film *>(&node) || input.name != "cryptomatte_passes" || !input.enum_values || value < 0) return false;
+          int64_t known = 0; for (const auto &[label, flag] : *input.enum_values) known |= flag;
+          return (value & ~known) == 0;
+        };
+        require(input.enum_values && (input.enum_values->exists(int(value)) || flag_set()), "Unknown enumeration value");
+      }
       node.set(input, int(value)); }
     else if (input.type == SocketType::UINT) { require(value >= 0 && uint64_t(value) <= UINT_MAX, "Unsigned socket out of range"); node.set(input, uint(value)); }
     else if (input.type == SocketType::UINT64) { require(value >= 0, "Unsigned socket out of range"); node.set(input, uint64_t(value)); }
@@ -640,7 +655,14 @@ extern "C" int cbc_host_set_ints(CBCHost handle, CBCNode id, const char *name, c
 }
 extern "C" int cbc_host_set_string(CBCHost handle, CBCNode id, const char *name, const char *value) {
   return edit(handle, [&](Host &host) {
-    require(value, "Missing string value"); auto &entry = host.entry(id); auto &input = socket(entry, name);
+    require(value, "Missing string value"); auto &entry = host.entry(id);
+    if (node_name_property(entry, name)) {
+      before_edit(host, entry, name); entry.node->name = ustring(value);
+      // ObjectManager rehashes the cryptomatte ids when the asset name is modified.
+      if (auto object = dynamic_cast<Object *>(entry.node)) object->tag_asset_name_modified();
+      host.changed(entry); return;
+    }
+    auto &input = socket(entry, name);
     stored_property(input); before_edit(host, entry, name);
 #ifdef CBC_HOST_NO_IMAGE_FILES
     // This build contains no image file readers; callers bind decoded pixels.
@@ -714,10 +736,11 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
     buffers.height = buffers.full_height = buffers.window_height = int(config->height);
     host.result = Result{}; host.result.width = buffers.width; host.result.height = buffers.height;
     host.result.pixels.assign(size_t(count), -1000.0f); host.cancellation = false;
-    // Caller-created passes with a name are captured for cbc_host_pass_floats.
+    // Caller-created passes with a name are captured for cbc_host_pass_floats,
+    // light group passes (PASS_COMBINED with a light group) included.
     for (auto &[id, entry] : host.nodes) if (auto pass = dynamic_cast<Pass *>(entry.node)) {
       const std::string name = pass->get_name().string();
-      if (name.empty() || name == "Combined" || pass->get_type() == PASS_COMBINED) continue;
+      if (name.empty() || name == "Combined" || (pass->get_type() == PASS_COMBINED && pass->get_lightgroup().empty())) continue;
       if (std::any_of(host.result.passes.begin(), host.result.passes.end(), [&](auto &p) { return p.name == name; })) continue;
       PassResult value; value.name = name; value.type = int(pass->get_type());
       value.components = unsigned(std::max(1, pass->get_info().num_components));
