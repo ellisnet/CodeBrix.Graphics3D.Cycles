@@ -10,7 +10,14 @@
 //  - image cases (direct light, MIS, HDRI world, transparent shadows, the
 //    approximate shadow catcher, a mesh light): the raw film (Combined and the
 //    shadow catcher passes) against an independent CPU render of the same scene;
-//  - a refusal case: a shadow catcher with a volume fails with the explicit error.
+//  - a refusal case: a shadow catcher with a volume fails with the explicit error;
+//  - ambient occlusion image cases (the AO pass, fast GI's additive AO, both): the
+//    AO shadow rays' film writes through the shadow catcher split
+//    (film_write_direct_light, film_write_combined_pass) and no AO ray for
+//    split-off catcher-pass paths (integrate_surface_ao);
+//  - combination image cases: the shadow catcher with object, deformation and
+//    camera motion, the light tree, light linking, a spot lamp, glass and principled
+//    transmission, shadow terminator offsets and a non-constant mesh emitter.
 // The CPU split (state + 1 in the CPU kernel) is mapped onto the GPU path index the
 // device assigns (ascending path order, wavefront_shadow_catcher_split.wgsl).
 // Device-scene flow (reference_policy.h): images through the scene exchange, the
@@ -28,6 +35,10 @@
 #include "environment_reference.h"
 #include "environment_fixture.h"
 #include "transparent_shadow_fixture.h"
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
+#include "camera_motion_fixture.h"
+#include "shadow_terminator_fixture.h"
 #include "scene/film.h"
 #include "scene/integrator.h"
 #include "scene/camera.h"
@@ -42,15 +53,23 @@
 #include <map>
 using namespace ccl;
 using namespace wavefront_test;
+// The glass and principled graph fixtures are written against namespace ccl.
+#include "glass_fixture.h"
+#include "principled_fixture.h"
 constexpr unsigned width=32,height=24,samples=8,pixels=width*height;
-// 0-3 state cases, 4-9 image cases, 10 volume refusal.
-constexpr int state_cases=4,image_cases=6,cases=state_cases+image_cases+1;
+// 0-3 state cases, 4-9 image cases, 10 volume refusal, 11-13 ambient occlusion image cases,
+// 14-22 combination image cases (object, deformation, camera motion; light tree; light
+// linking; spot lamp; glass and principled transmission; shadow terminator; non-constant emitter).
+constexpr int state_cases=4,image_cases=6,ao_cases=3,combination_cases=9,cases=state_cases+image_cases+1+ao_cases+combination_cases;
+constexpr int first_ao_case=state_cases+image_cases+1,first_combination_case=first_ao_case+ao_cases;
+static bool ao_case(int mode){return mode>=first_ao_case&&mode<first_combination_case;}
+static int combination(int mode){return mode>=first_combination_case?mode-first_combination_case:-1;}
 struct SplitScheduler:Scheduler {
   using Scheduler::Scheduler;
   using PathTraceWorkGPU::shadow_catcher_count_possible_splits;
   void set_active_with_splits(int n){max_active_main_path_index_=n;}
 };
-struct Metrics {uint64_t stages=0,integers=0,floats=0,strict=0,splits=0,background_splits=0,catcher_paths=0,count_checks=0,shadows=0,visible=0,nee=0,repeat_differences=0;double maximum=0;
+struct Metrics {uint64_t stages=0,integers=0,floats=0,strict=0,splits=0,background_splits=0,catcher_paths=0,count_checks=0,shadows=0,visible=0,nee=0,ao=0,ao_visible=0,repeat_differences=0;double maximum=0;
   std::string maximum_field;};
 static void number(float a,float e,const std::string &where,Metrics &m){
   const double error=std::abs(double(a)-e);if(error>m.maximum){m.maximum=error;m.maximum_field=where;}m.floats++;m.strict+=error>1e-7+1e-7*std::abs(double(e));
@@ -76,6 +95,43 @@ static Object *lamp(Scene &scene,Shader *emitter,Light *light,float3 strength,Tr
   light->set_strength(strength);light->set_use_mis(true);array<Node*> slots;slots.push_back_slow(emitter);light->set_used_shaders(slots);
   auto object=scene.create_node<Object>();object->set_geometry(light);object->set_tfm(tfm);object->set_is_shadow_catcher(catcher);return object;
 }
+// Combination cases 14-22 (c = 0-8), all with the point lamp over the catcher floor and
+// the wall (lamps point down: local -Z rotated onto -Y): 0 object motion (both objects), 1 deformation motion (both objects), 2
+// camera motion, 3 the light tree (plus a spot, an area lamp and an emissive panel), 4
+// light linking (the floor receives the point lamp only through light set 0, the blue
+// object a sun of its own set), 5 a spot lamp, 6 glass and principled transmission
+// (materials chosen in fixture()), 7 shadow terminator offsets on two smooth spheres,
+// 8 a non-constant emitter (procedural checker emission on a panel).
+static void combination_fixture(Scene &scene,int c,Object &blue,Object &orange,Object &floor,Object *point){
+  if(c<0)return;
+  require(point!=nullptr,"Combination cases need the point lamp");
+  if(c==0){object_motion_fixture(scene,blue,1);object_motion_fixture(scene,orange,2);}
+  if(c==1){deforming_motion_fixture(scene,blue,1);deforming_motion_fixture(scene,orange,0);}
+  if(c==2)camera_motion_fixture(scene,scene.camera->get_matrix(),3);
+  if(c==3||c==5){auto spot=scene.create_node<SpotLight>();spot->set_radius(.3f);spot->set_is_sphere(true);spot->set_angle(.9f);spot->set_smooth(.3f);
+    lamp(scene,emission_shader(scene,1),spot,make_float3(160,150,140),transform_translate(make_float3(-1.6f,3.2f,-.8f))*transform_rotate(-M_PI_2_F,make_float3(1,0,0)),false);}
+  if(c==3){scene.integrator->set_use_light_tree(true);scene.integrator->set_light_sampling_threshold(0.f);
+    auto area=scene.create_node<AreaLight>();area->set_sizeu(1.2f);area->set_sizev(.8f);area->set_spread(1.2f);
+    lamp(scene,emission_shader(scene,1),area,make_float3(70,80,90),transform_translate(make_float3(.4f,3.f,1.f))*transform_rotate(-M_PI_2_F,make_float3(1,0,0)),false);
+    auto panel_shader=emission_shader(scene,3);panel_shader->set_emission_sampling_method(EMISSION_SAMPLING_FRONT_BACK);
+    auto panel=quad(scene,panel_shader,{make_float3(-.6,-.4,0),make_float3(.6,-.4,0),make_float3(.6,.4,0),make_float3(-.6,.4,0)});
+    // x=-2.45, not -2.4: at -2.4 the tree node holding the spot and this panel has a bounding-box corner
+    // (x=-3, z=-0.5) exactly on the blue quad's plane, so the pinned node horizon test is ~0 for every
+    // shading point on that quad and last-bit differences of the hit point flip discrete tree decisions.
+    panel->set_tfm(transform_translate(make_float3(-2.45f,2.f,-1.f))*transform_rotate(1.1f,make_float3(1,0,0)));}
+  if(c==4){floor.set_receiver_light_set(1);blue.set_receiver_light_set(2);point->set_light_set_membership(1ull<<0);
+    auto sun=scene.create_node<SunLight>();sun->set_angle(.15f);sun->set_normalize(false);
+    auto sun_object=lamp(scene,emission_shader(scene,1),sun,make_float3(.8,.7,.6),transform_rotate(2.85f,make_float3(0,1,0))*transform_rotate(-.9f,make_float3(1,0,0)),false);
+    sun_object->set_light_set_membership((1ull<<1)|(1ull<<2));}
+  if(c==7){auto material=shadow_terminator_material(scene,true);
+    for(int i=0;i<2;i++){auto sphere=scene.create_node<Object>();sphere->set_geometry(shadow_terminator_sphere(scene,material));
+      sphere->set_tfm(transform_translate(make_float3(i?-2.2f:.2f,-1.35f,i?1.2f:-1.4f))*transform_scale(make_float3(.6f,.6f,.6f)));
+      sphere->set_shadow_terminator_geometry_offset(i?.3f:.1f);sphere->set_shadow_terminator_shading_offset(i?1.f:.5f);}
+    floor.set_shadow_terminator_geometry_offset(.1f);}
+  if(c==8){auto panel=quad(scene,environment_emitter(scene,1),{make_float3(-.7,-.5,0),make_float3(.7,-.5,0),make_float3(.7,.5,0),make_float3(-.7,.5,0)});
+    panel->set_tfm(transform_translate(make_float3(-1.8f,2.1f,-1.2f))*transform_rotate(1.1f,make_float3(1,0,0)));}
+  for(auto shader:scene.shaders)if(shader->get_emission_sampling_method()!=EMISSION_SAMPLING_FRONT_BACK)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
+}
 static void fixture(Scene &scene,int mode){
   scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.integrator->set_use_denoise(false);
   scene.integrator->set_aa_samples(samples);scene.integrator->set_min_bounce(2);scene.integrator->set_max_bounce(3);scene.integrator->set_filter_glossy(0);
@@ -87,10 +143,18 @@ static void fixture(Scene &scene,int mode){
   // object; the wall behind is a regular object in some cases.
   auto floor=quad(scene,diffuse_material(scene,make_float3(.6,.55,.5),mode==9?.5f:0.f),{make_float3(-6,-2,-3),make_float3(6,-2,-3),make_float3(6,-2,6),make_float3(-6,-2,6)});
   floor->set_is_shadow_catcher(true);
-  auto object=diffuse_material(scene,make_float3(.2,.45,.75),.35f);
-  quad(scene,object,{make_float3(-1.,-2,0),make_float3(.6f,-2,.4f),make_float3(.6f,.6f,.4f),make_float3(-1.,.6f,0)});
-  quad(scene,diffuse_material(scene,make_float3(.8,.3,.15),0),{make_float3(1.2f,-1.2f,-1.f),make_float3(2.4f,-1.2f,-1.f),make_float3(2.4f,-1.2f,.6f),make_float3(1.2f,-1.2f,.6f)});
-  if(mode==0||mode==4||mode==7)quad(scene,diffuse_material(scene,make_float3(.5,.5,.5),0),{make_float3(-6,-2,5),make_float3(6,-2,5),make_float3(6,4,5),make_float3(-6,4,5)});
+  const int c=combination(mode);
+  // Case 20: GGX glass and a principled transmission material on the two objects.
+  auto material=[&](int which)->Shader*{auto g=make_unique<ShaderGraph>();
+    g->connect(which?principled_material(*g,3):glass_material(*g,13),g->output()->input("Surface"));return graph_shader(scene,std::move(g));};
+  Shader *object=c==6?material(0):diffuse_material(scene,make_float3(.2,.45,.75),.35f);
+  auto blue=quad(scene,object,{make_float3(-1.,-2,0),make_float3(.6f,-2,.4f),make_float3(.6f,.6f,.4f),make_float3(-1.,.6f,0)});
+  auto orange=quad(scene,c==6?material(1):diffuse_material(scene,make_float3(.8,.3,.15),0),{make_float3(1.2f,-1.2f,-1.f),make_float3(2.4f,-1.2f,-1.f),make_float3(2.4f,-1.2f,.6f),make_float3(1.2f,-1.2f,.6f)});
+  if(mode==0||mode==4||mode==7||mode>=first_ao_case)quad(scene,diffuse_material(scene,make_float3(.5,.5,.5),0),{make_float3(-6,-2,5),make_float3(6,-2,5),make_float3(6,4,5),make_float3(-6,4,5)});
+  // Ambient occlusion: 11 the AO pass, 12 fast GI (one AO bounce) with additive AO, 13 both.
+  if(ao_case(mode)){const int ao=mode-first_ao_case;
+    if(ao!=1){auto pass=scene.create_node<Pass>();pass->set_type(PASS_AO);pass->set_name(ustring("AO"));}
+    scene.integrator->set_ao_distance(1.6f);if(ao>=1){scene.integrator->set_ao_bounces(1);scene.integrator->set_ao_factor(.5f);scene.integrator->set_ao_additive_factor(.65f);}}
   if(mode==2||mode==7){scene.integrator->set_transparent_max_bounce(8);auto pane=transparent_material(scene,mode==2?1:2);
     quad(scene,pane,{make_float3(-2.5f,-2,-1.6f),make_float3(-.4f,-2,-1.6f),make_float3(-.4f,1.f,-1.6f),make_float3(-2.5f,1.f,-1.6f)});}
   if(mode==3){auto holdout=quad(scene,diffuse_material(scene,make_float3(.4,.8,.4),0),{make_float3(-3.2f,-2,1),make_float3(-2.f,-2,1),make_float3(-2.f,-.4f,1),make_float3(-3.2f,-.4f,1)});holdout->set_use_holdout(true);}
@@ -100,16 +164,18 @@ static void fixture(Scene &scene,int mode){
     auto absorption=g->create_node<AbsorptionVolumeNode>();absorption->set_color(make_float3(.8,.65,.4));absorption->set_density(.04f);g->connect(absorption->output("Volume"),g->output()->input("Volume"));
     world=graph_shader(scene,std::move(g));scene.background->set_shader(world);scene.integrator->set_max_volume_bounce(2);}
   else world=environment_world(scene,EnvironmentWorld::Constant);
+  Object *point_object=nullptr;
   if(mode>=4&&mode!=6&&mode!=10){
     auto emitter=emission_shader(scene,1);
     auto point=scene.create_node<PointLight>();point->set_radius(.45f);point->set_is_sphere(true);
-    lamp(scene,emitter,point,make_float3(140,100,70),transform_translate(make_float3(2.2f,2.5f,-2)),mode==5);
+    point_object=lamp(scene,emitter,point,make_float3(140,100,70),transform_translate(make_float3(2.2f,2.5f,-2)),mode==5);
     if(mode==5){auto sun=scene.create_node<SunLight>();sun->set_angle(.22f);sun->set_normalize(false);
       lamp(scene,emitter,sun,make_float3(.3,.5,.7),transform_rotate(2.85f,make_float3(0,1,0))*transform_rotate(-.9f,make_float3(1,0,0)),false);}
   }
   if(mode==6){auto area=scene.create_node<AreaLight>();area->set_sizeu(1.4f);area->set_sizev(.9f);area->set_spread(M_PI_F);
     lamp(scene,emission_shader(scene,1),area,make_float3(90,80,60),transform_translate(make_float3(-2,3,-1.5f))*transform_rotate(2.4f,make_float3(1,0,0)),false);}
   for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
+  combination_fixture(scene,c,*blue,*orange,*floor,point_object);
   if(mode==9){auto panel_shader=emission_shader(scene,4);panel_shader->set_emission_sampling_method(EMISSION_SAMPLING_FRONT_BACK);
     auto panel=quad(scene,panel_shader,{make_float3(-.8,-.5,0),make_float3(.8,-.5,0),make_float3(.8,.5,0),make_float3(-.8,.5,0)});
     panel->set_tfm(transform_translate(make_float3(1.6f,2.2f,-1.2f))*transform_rotate(1.1f,make_float3(1,0,0)));}
@@ -137,14 +203,15 @@ static void closest_split(DeviceScene &scene,std::vector<int> ids,std::vector<In
   }
 }
 static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &m){
-  std::vector<IntegratorStateCPU> state(2*pixels);std::vector<IntegratorShadowStateCPU> shadow(2*pixels);
+  std::vector<IntegratorStateCPU> state(2*pixels);std::vector<IntegratorShadowStateCPU> shadow(2*pixels),ao_shadow(2*pixels);
   for(unsigned sample=0;sample<samples;sample++){
     std::fill(state.begin(),state.end(),IntegratorStateCPU{});KernelWorkTile tile{};tile.w=width;tile.h=height;tile.stride=width;tile.num_samples=1;tile.start_sample=sample;
     original_camera(scene,{tile},0,state,film);uint32_t next=pixels;
     for(unsigned step=0;step<150;step++){
       std::map<DeviceKernel,std::vector<int>> queues;
       for(size_t i=0;i<state.size();i++)if(state[i].path.queued_kernel)queues[DeviceKernel(state[i].path.queued_kernel)].push_back(i);
-      if(queues.empty())break;require(step<149,"CPU shadow catcher paths did not terminate");
+      if(queues.empty())break;
+      require(step<149,"CPU shadow catcher paths did not terminate");
       for(auto &[kernel,ids]:queues){
         if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST)closest_split(scene,ids,state,film,next,m,0);
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND)original_background(scene,ids,state,film);
@@ -160,6 +227,12 @@ static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &m){
           std::vector<int> clear;for(int i:pending)if(shadow[i].shadow_path.queued_kernel)clear.push_back(i);
           m.visible+=clear.size();original_shadow(scene,DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW,clear,shadow,film);
           for(int i:ids)if(state[i].shadow.shadow_path.queued_kernel)state[i].shadow=shadow[i];
+          // Ambient occlusion shadow paths (opaque): intersect, then shade the unoccluded ones.
+          std::vector<int> ao;for(int i:ids)if(state[i].ao.shadow_path.queued_kernel){ao_shadow[i]=state[i].ao;ao.push_back(i);}
+          m.ao+=ao.size();original_shadow(scene,DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,ao,ao_shadow,film);
+          std::vector<int> ao_clear;for(int i:ao)if(ao_shadow[i].shadow_path.queued_kernel)ao_clear.push_back(i);
+          m.ao_visible+=ao_clear.size();original_shadow(scene,DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW,ao_clear,ao_shadow,film);
+          for(int i:ao)state[i].ao=ao_shadow[i];
         }else throw std::runtime_error("Unexpected CPU shadow catcher kernel "+std::string(device_kernel_as_string(kernel)));
       }
     }
@@ -252,6 +325,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(data.integrator.has_shadow_catcher&&(data.kernel_features&KERNEL_FEATURE_SHADOW_CATCHER)&&data.film.pass_shadow_catcher!=PASS_UNUSED&&
             data.film.pass_shadow_catcher_sample_count!=PASS_UNUSED&&data.film.pass_shadow_catcher_matte!=PASS_UNUSED,"Missing native shadow catcher configuration");
     require(bool(data.integrator.use_direct_light)==!state_case||mode==10,"Unexpected native direct-light configuration");
+    if(ao_case(mode)){const int ao=mode-first_ao_case;
+      require(bool(data.kernel_features&KERNEL_FEATURE_AO_PASS)==(ao!=1)&&bool(data.kernel_features&KERNEL_FEATURE_AO_ADDITIVE)==(ao>=1)&&(data.film.pass_ao!=PASS_UNUSED)==(ao!=1),"Unexpected native AO configuration");}
     require((data.film.pass_background!=PASS_UNUSED)==(mode==1||mode==8),"Unexpected native background pass");
     if(mode==7)require(data.integrator.transparent_shadows,"Missing native transparent shadows");
     if(mode==10&&(reference_policy::prepare_only()||reference_policy::reference_only()))continue;
@@ -337,9 +412,16 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(state_case&&!recorder)require(m.splits>100&&m.count_checks>0,"Missing lockstep shadow catcher splits");
     if(!state_case)require(cpu.shadows>100&&cpu.visible>100,"Missing direct lighting coverage");
     if(mode==6)require(cpu.nee>0||cpu.shadows>100,"Missing world light coverage");
+    if(const int c=combination(mode);c>=0){
+      require((c<2)==bool(data.bvh.have_motion)&&(c!=2||data.cam.num_motion_steps>1)&&(c==3)==bool(data.integrator.use_light_tree)&&
+              (c==4)==bool(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING),"Unexpected native combination configuration");
+      if(c==7){bool offsets=false;for(size_t i=0;i<scene.dscene.objects.size();i++)offsets|=scene.dscene.objects[i].shadow_terminator_geometry_offset>.2f;
+        require(offsets,"Missing shadow terminator offsets");}
+      if(c==8)require(cpu.nee>100,"Missing non-constant emitter coverage");}
+    if(ao_case(mode))require(cpu.ao>100&&cpu.ao_visible>10&&cpu.ao_visible<cpu.ao,"Missing ambient occlusion shadow ray coverage");
     reports<<",{\"case\":"<<mode<<",\"stateStages\":"<<m.stages<<",\"lockstep\":\""<<(state_case?(recorder?"recorded":"local"):"none")<<"\",\"splits\":"<<cpu.splits<<",\"backgroundSplits\":"<<cpu.background_splits
            <<",\"catcherSurfacePaths\":"<<cpu.catcher_paths<<",\"stateIntegerChecks\":"<<m.integers<<",\"stateFloatChecks\":"<<m.floats<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<std::setprecision(17)<<m.maximum
-           <<",\"shadows\":"<<cpu.shadows<<",\"visible\":"<<cpu.visible<<",\"filmChecks\":"<<cpu.floats<<",\"strictImageDifferences\":"<<cpu.strict<<",\"maximumImageError\":"<<cpu.maximum
+           <<",\"shadows\":"<<cpu.shadows<<",\"visible\":"<<cpu.visible<<",\"aoShadowPaths\":"<<cpu.ao<<",\"aoUnoccluded\":"<<cpu.ao_visible<<",\"filmChecks\":"<<cpu.floats<<",\"strictImageDifferences\":"<<cpu.strict<<",\"maximumImageError\":"<<cpu.maximum
            <<",\"repeatBitwiseDifferences\":"<<m.repeat_differences<<",\"passStride\":"<<data.film.pass_stride<<"}";
     total.stages+=m.stages;total.integers+=m.integers;total.floats+=m.floats+cpu.floats;total.strict+=m.strict+cpu.strict;total.maximum=std::max({total.maximum,m.maximum,cpu.maximum});total.repeat_differences+=m.repeat_differences;
   }

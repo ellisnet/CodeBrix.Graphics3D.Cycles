@@ -159,13 +159,25 @@
       "workItems": [
         "P11-02"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "independent-cpu-state-and-native-scheduler",
-      "evidence": [],
+      "evidence": [
+        "mnee"
+      ],
       "nativeValue": 7,
-      "classificationReviewed": false
+      "notes": "MNEE (shadow caustics) through GGX glass/refraction casters from point and sun lamps, distribution light sampling, opaque shadows; spot/area/background caustic lamps, the light tree, linking, AO, volumes and motion blur with caustics refused; anisotropic casters report error 2.",
+      "implementation": [
+        "native/cycles/mnee.cpp",
+        "native/shaders/wavefront_mnee.wgsl"
+      ],
+      "tests": [
+        "native/cycles/mnee_gate.cpp",
+        "native/cycles/mnee_fixture.h",
+        "native/cycles/mnee_reference.cpp"
+      ],
+      "classificationReviewed": true
     },
     {
       "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND",
@@ -183,6 +195,7 @@
       "evidence": [
         "background-queue",
         "environment-light",
+        "light-tree",
         "native-render"
       ],
       "nativeValue": 8,
@@ -212,10 +225,11 @@
       "fullRequirementVerified": false,
       "testStrategy": "independent-cpu-state-and-native-scheduler",
       "evidence": [
-        "environment-light"
+        "environment-light",
+        "light-tree"
       ],
       "nativeValue": 9,
-      "notes": "Non-constant light shaders: the world for the background light and emissive triangles (image/UV, procedural, mixed emission/BSDF); non-constant point/spot/area/sun shaders refused; no light tree or MNEE.",
+      "notes": "Non-constant light shaders: the world for the background light and emissive triangles (image/UV, procedural, mixed emission/BSDF); non-constant point/spot/area/sun shaders refused; with or without the light tree; no MNEE.",
       "implementation": [
         "native/cycles/surface.cpp",
         "native/shaders/wavefront_light_nee.wgsl",
@@ -278,17 +292,31 @@
       "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE",
       "declaration": "DeviceKernel",
       "source": "third_party/cycles/src/kernel/types.h",
-      "classification": "shader-behavior",
+      "classification": "integrator-kernel",
       "workItems": [
         "P02-11"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "independent-cpu-state-and-native-scheduler",
-      "evidence": [],
+      "evidence": [
+        "ambient-occlusion"
+      ],
       "nativeValue": 12,
-      "classificationReviewed": false
+      "notes": "Surface stage with the raytrace SVM entry prepare_surface_raytrace; other stages shared with SHADE_SURFACE (push word 29). Capture entry 21 (recorder v10).",
+      "implementation": [
+        "native/cycles/surface.cpp",
+        "native/cycles/queue.cpp",
+        "native/shaders/wavefront_ao.wgsl",
+        "native/shaders/wavefront_surface.wgsl"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/ao_reference.cpp"
+      ],
+      "classificationReviewed": true
     },
     {
       "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME",
@@ -363,17 +391,28 @@
       "symbol": "DEVICE_KERNEL_INTEGRATOR_SHADOW_PATH_MNEE_PENDING",
       "declaration": "DeviceKernel",
       "source": "third_party/cycles/src/kernel/types.h",
-      "classification": "shader-behavior",
+      "classification": "scheduler-control",
       "workItems": [
-        "P07-01"
+        "P11-02"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "independent-cpu-state-and-native-scheduler",
-      "evidence": [],
+      "evidence": [
+        "mnee"
+      ],
       "nativeValue": 17,
-      "classificationReviewed": false
+      "notes": "Pending MNEE shadow slot: never dispatched; reused by the surface stage or terminated by mnee_cleanup; compaction ownership repair tested.",
+      "implementation": [
+        "native/shaders/wavefront_mnee.wgsl",
+        "native/shaders/controls.wgsl"
+      ],
+      "tests": [
+        "native/cycles/mnee_gate.cpp",
+        "native/cycles/gate.cpp"
+      ],
+      "classificationReviewed": true
     },
     {
       "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL",
@@ -611,7 +650,7 @@
         "device-queue"
       ],
       "nativeValue": 27,
-      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership repair tested against the pinned moves (two cases); all feature configurations remain open.",
       "implementation": [
         "native/cycles/queue.cpp",
         "native/shaders/controls.wgsl"
@@ -695,7 +734,7 @@
         "device-queue"
       ],
       "nativeValue": 30,
-      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership and all feature configurations remain open.",
+      "notes": "Linux control gate: 123 state fields, bounded arena; MNEE ownership repair tested against the pinned moves (two cases); all feature configurations remain open.",
       "implementation": [
         "native/cycles/queue.cpp",
         "native/shaders/controls.wgsl"
@@ -743,12 +782,24 @@
       "workItems": [
         "P07-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "independent-cpu-state-and-native-scheduler",
-      "evidence": [],
+      "evidence": [
+        "shadow-catcher"
+      ],
       "nativeValue": 32,
+      "notes": "Parallel count over the main paths; compared exactly with the oracle states after every state stage.",
+      "implementation": [
+        "native/cycles/shadow_catcher.cpp",
+        "native/shaders/wavefront_shadow_catcher.wgsl",
+        "native/shaders/wavefront_shadow_catcher_split.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_catcher_gate.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs"
+      ],
       "classificationReviewed": false
     },
     {

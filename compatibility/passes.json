@@ -83,12 +83,27 @@
       "workItems": [
         "P12-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "raw-film-and-pass-metadata",
-      "evidence": [],
+      "evidence": [
+        "ambient-occlusion"
+      ],
       "nativeValue": 4,
+      "notes": "AO pass written by the AO shadow rays (film_write_direct_light AO branch), raw film compared with the CPU (ao_render cases 5, 8 and 9, the latter with object and deformation motion; with the shadow catcher, shadow_catcher_gate cases 11 and 13, no AO for split catcher paths) and read back through the host and the managed ReadPass (managed WebGPU test). ao_render cases 12-23: fast GI replace and additive with transparent shadows at ao_bounces 1; fast GI and the AO node with the light tree, light linking, glass/Principled materials, camera motion and terminator offsets.",
+      "implementation": [
+        "native/shaders/wavefront_shadow.wgsl",
+        "native/shaders/wavefront_ao.wgsl",
+        "native/cycles/shadow.cpp"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/shadow_catcher_gate.cpp",
+        "native/cycles/ao_reference.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuAmbientOcclusionTests.cs"
+      ],
       "classificationReviewed": false
     },
     {
@@ -679,12 +694,24 @@
       "workItems": [
         "P12-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "raw-film-and-pass-metadata",
-      "evidence": [],
+      "evidence": [
+        "shadow-catcher"
+      ],
       "nativeValue": 51,
+      "notes": "Written by the WebGPU device (catcher paths) and read through the pinned pass accessor; raw film against the original CPU kernels with lamps, MIS, HDRI world, transparent shadows, mesh lights and ambient occlusion (AO pass, fast GI additive AO); no volumes, caustics, denoising. Combination cases 14-22 (shadow_catcher_gate, with replays): object, deformation and camera motion, the light tree, light linking, a spot lamp, glass and Principled transmission, shadow terminator offsets and a non-constant emitter.",
+      "implementation": [
+        "native/cycles/shadow_catcher.cpp",
+        "native/shaders/wavefront_shadow_catcher.wgsl",
+        "native/shaders/wavefront_shadow_catcher_split.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_catcher_gate.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs"
+      ],
       "classificationReviewed": false
     },
     {
@@ -696,12 +723,24 @@
       "workItems": [
         "P12-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "raw-film-and-pass-metadata",
-      "evidence": [],
+      "evidence": [
+        "shadow-catcher"
+      ],
       "nativeValue": 52,
+      "notes": "Split bounce sample count written at the closest-hit split; exact in state and image gates.",
+      "implementation": [
+        "native/cycles/shadow_catcher.cpp",
+        "native/shaders/wavefront_shadow_catcher.wgsl",
+        "native/shaders/wavefront_shadow_catcher_split.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_catcher_gate.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs"
+      ],
       "classificationReviewed": false
     },
     {
@@ -713,12 +752,24 @@
       "workItems": [
         "P12-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "raw-film-and-pass-metadata",
-      "evidence": [],
+      "evidence": [
+        "shadow-catcher"
+      ],
       "nativeValue": 53,
+      "notes": "Matte of non-catcher paths with transparency, including the approximate matte with shadow (background pass) and fast GI's additive AO term; state and image gates.",
+      "implementation": [
+        "native/cycles/shadow_catcher.cpp",
+        "native/shaders/wavefront_shadow_catcher.wgsl",
+        "native/shaders/wavefront_shadow_catcher_split.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_catcher_gate.cpp",
+        "tests/CodeBrix.Graphics3D.Cycles.Tests/GpuRenderTests.cs"
+      ],
       "classificationReviewed": false
     },
     {

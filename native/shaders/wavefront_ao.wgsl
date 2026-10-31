@@ -16,8 +16,13 @@
 fn surface_ao(index:u32,slot:u32,sd:SurfaceData,r:SvmResult){
     let features=data_word(D_kernel_features);
     if((features&AO_FEATURE_ADDITIVE)==0u&&(state_byte(S_path_visibility,index)&VIS_CAMERA)==0u){return;}
-    // Shadow-catcher passes (PATH_RAY_SHADOW_CATCHER_PASS) never reach this
-    // stage: SURFACE_UNSUPPORTED_FLAGS rejects them in prepare_surface.
+//#if SHADOW_CATCHER else     // Shadow-catcher passes (PATH_RAY_SHADOW_CATCHER_PASS) never reach this
+    // No AO for paths split off for the shadow catcher (PATH_RAY_SHADOW_CATCHER_PASS),
+    // as the pinned kernel skips them to avoid double counting.
+    if((state_word(S_path_flag,index)&SC_PATH_PASS)!=0u){return;}
+//#endif
+//#if SHADOW_CATCHER else     // stage: SURFACE_UNSUPPORTED_FLAGS rejects them in prepare_surface.
+//#endif
     let rand=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xy;
     // surface_shader_ao: diffuse closure weights times the additive factor and
     // their weighted normal; every sum is rounded before the next term.
@@ -66,45 +71,54 @@ var<private> svm_raytrace:bool=false;
 // scene_intersect_shadow (opaque, any hit) when local is NONE; otherwise
 // scene_intersect_local without hit records: any hit on that object, traversal
 // from its own BVH root, self skip by primitive only (intersection_skip_self_local).
+// The traversal stack (BVH_STACK_SIZE entries) is this invocation's slot of the
+// surface stage's AO stack region (push word 30, surface.cpp), not a private array:
+// with object motion the Adreno 730 driver could not link the entry with the
+// 192-word private array (per-invocation private memory, as the SVM value stack).
+const AO_STACK_BYTES:u32=768u;
 fn ao_trace(origin:vec3<f32>,direction:vec3<f32>,tmax:f32,time:f32,self_object:u32,self_prim:u32,local:u32)->bool{
     // intersection_ray_valid
     if((bitcast<u32>(origin.x)&0x7f800000u)==0x7f800000u||(bitcast<u32>(direction.x)&0x7f800000u)==0x7f800000u||dot(direction,direction)==0.0){return false;}
     if(table_count(G_prim_index)==0u){return false;}
     let visibility=select(AO_VISIBILITY_ALL,AO_VISIBILITY_SHADOW_OPAQUE,local==NONE);
     var pos=origin;var dir=ao_clamp_direction(direction);var inv=ao_inverse_direction(dir);
-    var stack:array<i32,192>;stack[0]=0x76543210i;var sp=0i;
+    if(p(30u)==0u||svm_slot>=p(1u)){fail();return false;}let stack_at=p(30u)+svm_slot*AO_STACK_BYTES;store_word(stack_at,0x76543210u);var sp=0i;
     var node=bitcast<i32>(data_word(D_bvh_root));var object=NONE;var visits=0u;
+    // The object being entered (the local object, or an instance below a leaf): its
+    // transform is applied in one place, at the top of the traversal loop, which keeps
+    // a single copy of the motion transform in the entry (Intel compile envelope).
+    var enter=NONE;
     if(local!=NONE){
         node=bitcast<i32>(load_word(table_at(G_object_node,local,SIZE_object_node)));
-        let flags=load_word(table_at(G_object_flag,local,SIZE_object_flag));
-        if((flags&SD_OBJECT_TRANSFORM_APPLIED)==0u){
-            let obj=table_at(G_objects,local,SIZE_objects);
-            if((flags&SD_OBJECT_MOTION)!=0u){
-//#if MOTION_OBJECT else atomicOr(&heap[p(17u)/4u],2u);return false;
-                let inverse=motion_inverse(motion_object(local,time));pos=ao_transform_rows(inverse.x,inverse.y,inverse.z,origin,true);dir=ao_clamp_direction(ao_transform_rows(inverse.x,inverse.y,inverse.z,direction,false));
-//#endif
-            }else{pos=ao_transform_vector(obj+O_itfm,origin,true);dir=ao_clamp_direction(ao_transform_vector(obj+O_itfm,direction,false));}
-            inv=ao_inverse_direction(dir);object=local;
-        }
+        if((load_word(table_at(G_object_flag,local,SIZE_object_flag))&SD_OBJECT_TRANSFORM_APPLIED)==0u){enter=local;}
     }
     loop{
         visits++;if(visits>1048576u){fail();return false;}
+        if(enter!=NONE){
+            let obj=table_at(G_objects,enter,SIZE_objects);
+            if((load_word(table_at(G_object_flag,enter,SIZE_object_flag))&SD_OBJECT_MOTION)!=0u){
+//#if MOTION_OBJECT else atomicOr(&heap[p(17u)/4u],2u);return false;
+                let inverse=motion_inverse(motion_object(enter,time));pos=ao_transform_rows(inverse.x,inverse.y,inverse.z,origin,true);dir=ao_clamp_direction(ao_transform_rows(inverse.x,inverse.y,inverse.z,direction,false));
+//#endif
+            }else{pos=ao_transform_vector(obj+O_itfm,origin,true);dir=ao_clamp_direction(ao_transform_vector(obj+O_itfm,direction,false));}
+            inv=ao_inverse_direction(dir);object=enter;enter=NONE;
+        }
         while(node>=0&&node!=0x76543210i){
             visits++;if(visits>1048576u){fail();return false;}
             let bounds=ao_bounds_hit(pos,inv,tmax,u32(node),visibility);
             let a=table_at(G_bvh_nodes,u32(node),SIZE_bvh_nodes);
             node=bitcast<i32>(load_word(a+8u));var other=bitcast<i32>(load_word(a+12u));let mask=u32(bounds.x);
             if(mask==3u){if(bounds.z<bounds.y){let tmp=node;node=other;other=tmp;}
-                sp++;if(sp>=192){fail();return false;}stack[u32(sp)]=other;
+                sp++;if(sp>=192){fail();return false;}store_word(stack_at+u32(sp)*4u,bitcast<u32>(other));
             }else if(mask==2u){node=other;}
-            else if(mask==0u){if(sp<0){fail();return false;}node=stack[u32(sp)];sp--;}
+            else if(mask==0u){if(sp<0){fail();return false;}node=bitcast<i32>(load_word(stack_at+u32(sp)*4u));sp--;}
         }
         if(node<0){
             let a=table_at(G_bvh_leaf_nodes,u32(-node-1),SIZE_bvh_leaf_nodes);
             let first=bitcast<i32>(load_word(a));let end=load_word(a+4u);let kind=load_word(a+12u);
             if(first>=0){
                 if(end>table_count(G_prim_index)||u32(first)>end){fail();return false;}
-                if(sp<0){fail();return false;}node=stack[u32(sp)];sp--;
+                if(sp<0){fail();return false;}node=bitcast<i32>(load_word(stack_at+u32(sp)*4u));sp--;
                 if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&u32(first)!=end){fail();return false;}
                 for(var index=u32(first);index<end;index++){
                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
@@ -122,17 +136,8 @@ fn ao_trace(origin:vec3<f32>,direction:vec3<f32>,tmax:f32,time:f32,self_object:u
                 // traversal from the top-level root (transform-applied object
                 // in a scene with instances) is refused, never approximated.
                 if(object!=NONE||local!=NONE){atomicOr(&heap[p(17u)/4u],16u);return false;}
-                object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));
-                let obj=table_at(G_objects,object,SIZE_objects);
-                let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
-                if((flags&SD_OBJECT_MOTION)!=0u){
-//#if MOTION_OBJECT else atomicOr(&heap[p(17u)/4u],2u);return false;
-                    let inverse=motion_inverse(motion_object(object,time));pos=ao_transform_rows(inverse.x,inverse.y,inverse.z,origin,true);dir=ao_clamp_direction(ao_transform_rows(inverse.x,inverse.y,inverse.z,direction,false));
-//#endif
-                }
-                else{pos=ao_transform_vector(obj+O_itfm,origin,true);dir=ao_clamp_direction(ao_transform_vector(obj+O_itfm,direction,false));}
-                inv=ao_inverse_direction(dir);
-                sp++;if(sp>=192){fail();return false;}stack[u32(sp)]=0x76543210i;
+                object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));enter=object;
+                sp++;if(sp>=192){fail();return false;}store_word(stack_at+u32(sp)*4u,bitcast<u32>(0x76543210i));
                 node=bitcast<i32>(load_word(table_at(G_object_node,object,SIZE_object_node)));
             }
         }
@@ -140,7 +145,7 @@ fn ao_trace(origin:vec3<f32>,direction:vec3<f32>,tmax:f32,time:f32,self_object:u
             if(sp<0){break;}
             if(object==NONE||local!=NONE){if(local!=NONE&&sp<0){break;}if(local!=NONE){break;}fail();return false;}
             pos=origin;dir=ao_clamp_direction(direction);inv=ao_inverse_direction(dir);object=NONE;
-            node=stack[u32(sp)];sp--;if(node==0x76543210i){break;}
+            node=bitcast<i32>(load_word(stack_at+u32(sp)*4u));sp--;if(node==0x76543210i){break;}
         }
     }
     return false;

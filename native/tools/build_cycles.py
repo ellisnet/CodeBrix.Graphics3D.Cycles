@@ -8,6 +8,7 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 from build import ROOT,REPO,WORK,REVISION,PACKAGE,audit,generate, SOURCE, verify_cycles
 from native_dependencies import prefix as dependency_prefix
@@ -135,7 +136,10 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('--jobs',default='6')
     p.add_argument('--target', action='append', help='Build selected CMake targets instead of the default host and gates')
     p.add_argument('--rebase-build-tree', action='store_true', help='Re-point a build tree copied from another checkout at this checkout first (tools/rebase_build_tree.py)')
+    p.add_argument('--overlay-only', action='store_true', help='Only regenerate the overlay (the build tree runs this before compiling it)')
     args=p.parse_args()
+    if args.overlay_only:
+        overlay();return
     WORK.mkdir(exist_ok=True)
     rebased=rebase(WORK/'cycles-build',REPO) if args.rebase_build_tree and (WORK/'cycles-build/CMakeCache.txt').exists() else None
     (WORK/'cycles-webgpu-compatibility.json').write_text(json.dumps(audit(allow_rust_documentation_change=True),indent=2)+'\n')
@@ -148,6 +152,9 @@ def main():
         'WITH_CYCLES_NATIVE_ONLY':'OFF','CXX_HAS_AVX2:BOOL':'OFF','CXX_HAS_F16C:BOOL':'OFF',
         'OpenImageIO_DIR':deps/'lib/cmake/OpenImageIO','OpenColorIO_DIR':deps/'lib/cmake/OpenColorIO',
         'CMAKE_PROJECT_Cycles_INCLUDE':ROOT/'tools/inject_cycles.cmake','CODEBRIX_CYCLES_OVERLAY':generated,
+        # Every build of the tree regenerates the overlay first, so a plain
+        # cmake --build never compiles shader text older than native/shaders.
+        'CODEBRIX_CYCLES_OVERLAY_COMMAND':sys.executable+';'+str(Path(__file__).resolve())+';--overlay-only',
         'CODEBRIX_WEBGPU_PACKAGE':PACKAGE}
     options.update({'WITH_CYCLES_'+name:'OFF' for name in ['ALEMBIC','EMBREE','OPENIMAGEDENOISE','OPENSUBDIV','OPENVDB','NANOVDB',
                    'OSL','USD','HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})

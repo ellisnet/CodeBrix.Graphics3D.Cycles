@@ -381,7 +381,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       for(unsigned step=0;step<100;step++){
         std::map<DeviceKernel,std::vector<int>> queues;
         for(size_t i=0;i<state.size();i++)if(state[i].path.queued_kernel)queues[DeviceKernel(state[i].path.queued_kernel)].push_back(i);
-        if(queues.empty())break;require(step<99,"CPU MNEE paths did not terminate");
+        if(queues.empty())break;
+        require(step<99,"CPU MNEE paths did not terminate");
         for(auto &[kernel,ids]:queues){
           if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST){closest_lockstep(d,scene,layout,state,ids,"case "+std::to_string(mode)+" sample "+std::to_string(sample)+" step "+std::to_string(step)+" closest",m);original_closest(scene.dscene,ids,state,film);}
           else if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE)lockstep(d,scene,layout,slots,state,ids,"case "+std::to_string(mode)+" sample "+std::to_string(sample)+" step "+std::to_string(step),m);

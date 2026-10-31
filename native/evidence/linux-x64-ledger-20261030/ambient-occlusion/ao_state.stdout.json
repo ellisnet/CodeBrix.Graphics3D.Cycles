@@ -1,0 +1,75 @@
+{
+ "passed": true,
+ "originalCpuSurfaceAndShadowIntegrator": true,
+ "cases": 20,
+ "paths": 16008,
+ "aoShadowRays": 12016,
+ "aoUnoccluded": 11073,
+ "aoOccluded": 943,
+ "aoNodePaths": 864,
+ "aoNodeSensitivePaths": 465,
+ "shadowCatcherPassPaths": 255,
+ "motionPaths": 3192,
+ "integerChecks": 495465,
+ "floatChecks": 1741478,
+ "strictFloatFailures": 1601,
+ "maximumAbsoluteError": 0.00012111663818359375,
+ "cyclesAllocationBytesAfterCleanup": 0,
+ "pipelineReport": {
+  "tier": "full",
+  "degraded": false,
+  "pipelines": 30,
+  "totalPipelineMs": 178530,
+  "maxPipelineMs": 21149.3,
+  "maxPipelineEntry": "connect_surface_light",
+  "warnings": [],
+  "sizeGuard": {
+   "thresholdBytes": 1110000,
+   "largestEntryBytes": 853446,
+   "largestEntry": "connect_surface_light",
+   "estimatedInstructions": 42672,
+   "warnings": 0
+  },
+  "decision": {
+   "tier": "full",
+   "reason": "table",
+   "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+   "adapter": {
+    "vendor": "Intel open-source Mesa driver",
+    "architecture": "",
+    "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+    "description": "Mesa 25.0.7-2+deb13u1",
+    "vendorId": 32902,
+    "deviceId": 18056,
+    "simulated": false,
+    "mobile": false
+   },
+   "runtime": "codebrix-api=4;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool,0010-wgpu-hal-metal-precise-math,0011-wgpu-native-pipeline-cache-chain,0012-wgpu-hal-metal-queue-accessor,0013-wgpu-native-metal-command-queue",
+   "shaderHash": "fnv1a64:3a8615a3d312098b",
+   "knownAdapter": {
+    "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+    "tier": "full",
+    "budgetMs": 0,
+    "evidence": "Phase C1 2026-10-19 Linux validation"
+   },
+   "budgetSource": "default",
+   "record": {
+    "mode": "none",
+    "path": "",
+    "status": "none",
+    "fullTierCompiles": 0,
+    "conservativeTierCompiles": 0,
+    "failures": 0,
+    "breadcrumbs": []
+   },
+   "canary": {
+    "enabled": false,
+    "result": "not-run",
+    "ms": 0,
+    "detail": ""
+   },
+   "overrides": [],
+   "warnings": []
+  }
+ }
+}

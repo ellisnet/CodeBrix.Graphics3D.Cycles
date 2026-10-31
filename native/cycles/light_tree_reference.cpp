@@ -53,7 +53,8 @@ std::vector<float> original_light_tree_importance(ccl::DeviceScene &scene,const 
   const size_t nodes=scene.light_tree_nodes.size(),emitters=scene.light_tree_emitters.size();std::vector<float> out;
   for(const auto &state:states){const bool transmission=state.path.flag&PATH_RAY_MIS_HAD_TRANSMISSION;
     for(size_t n=0;n<nodes;n++){float lp=-1;const auto &kn=scene.light_tree_nodes[n];
-      if(kn.type==LIGHT_TREE_INNER&&!get_left_probability<false>(kg,state.ray.P,state.ray.D,0.0f,transmission,kn.inner.left_child,kn.inner.right_child,lp))lp=-2;out.push_back(lp);}
+      if(kn.type==LIGHT_TREE_INNER&&!get_left_probability<false>(kg,state.ray.P,state.ray.D,0.0f,transmission,kn.inner.left_child,kn.inner.right_child,lp))lp=-2;
+      out.push_back(lp);}
     for(size_t n=0;n<nodes;n++){float mx=0,mn=0;light_tree_node_importance<false>(state.ray.P,state.ray.D,0.0f,transmission,&scene.light_tree_nodes[n],mx,mn);out.push_back(mx);out.push_back(mn);}
     for(size_t e=0;e<emitters;e++){float mx=0,mn=0;light_tree_emitter_importance<false>(kg,state.ray.P,state.ray.D,0.0f,transmission,int(e),mx,mn);out.push_back(mx);out.push_back(mn);}}
   return out;

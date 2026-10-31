@@ -28,10 +28,12 @@ fn surf_bump(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>,is_eval:bool)->f32{
     let alpha=clamp(0.125*(1.0/(cd*cd)-1.0),0.0,1.0);
     return 2.0/(1.0+sqrt(1.0+alpha*(1.0/(ci*ci)-1.0)));
 }
+// bsdf_oren_nayar_get_intensity with the host's rounding: the SSE dot, every
+// product rounded before its sum and a correctly rounded quotient.
 fn surf_oren(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec3<f32>{
-    let nl=max(dot(c.N,wo),0.0);if(c.b<=0.0){return vec3<f32>(nl*INV_PI);}
-    let nv=max(dot(c.N,wi),0.0);var t=dot(wo,wi)-nl*nv;if(t>0.0){t/=max(nl,nv)+1.1754943508222875e-38;}
-    let el=svm_oren_add(c.a*PI,c.b*svm_oren_g(nl));return nl*(vec3<f32>(c.a+c.b*t)+c.multiscatter*(1.0-el));
+    let nl=max(rounded_dot(c.N,wo),0.0);if(c.b<=0.0){return vec3<f32>(nl*INV_PI);}
+    let nv=max(rounded_dot(c.N,wi),0.0);var t=rounded_add(rounded_dot(wo,wi),-(nl*nv));if(t>0.0){t=rounded_divide(t,max(nl,nv)+1.1754943508222875e-38);}
+    let el=svm_oren_add(c.a*PI,c.b*svm_oren_g(nl));return nl*rounded_add3(vec3<f32>(rounded_add(c.a,c.b*t)),c.multiscatter*(1.0-el));
 }
 // Shadow terminator shading offset (bsdf.h): eval *= shift_cos_in(dot(wo, N))
 // after the bump term when the object's frequency multiplier exceeds 1. Sample
@@ -60,7 +62,7 @@ fn surf_evaluate_closure(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
 //#if SVM_BSDF_PRINCIPLED
     if(c.kind==CLOSURE_BSDF_SHEEN_ID){let value=sheen_evaluate(c,wo);return vec4<f32>(vec3<f32>(value*bump),value);}
 //#endif
-    let cosine=select(dot(c.N,wo),-dot(c.N,wo),c.kind==CLOSURE_BSDF_TRANSLUCENT_ID);let pdf=max(cosine,0.0)*INV_PI;
+    let cosine=select(rounded_dot(c.N,wo),-rounded_dot(c.N,wo),c.kind==CLOSURE_BSDF_TRANSLUCENT_ID);let pdf=max(cosine,0.0)*INV_PI;
     if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){if(cosine>0.0){return vec4<f32>(surf_oren(c,sd.wi,wo)*bump,pdf);}return vec4<f32>(0);}
     return vec4<f32>(vec3<f32>(pdf*bump),pdf);
 }
@@ -70,7 +72,7 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
     var selected=0u;var rand=random;
     if(r.count>1u){var sum=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)){sum+=c.sample_weight;}}
         let pick=random.z*sum;var partial=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)){
-            let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=(pick-partial)/c.sample_weight;break;}partial=next;}}}
+            let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=rounded_divide(pick-partial,c.sample_weight);break;}partial=next;}}}
     let c=svm_closure_read(r,selected);if(!surf_bsdf(c.kind)){return out;}
     var value=vec3<f32>(0);
     if(c.kind==CLOSURE_BSDF_TRANSPARENT_ID){out.wo=-sd.wi;out.pdf=1e6;value=vec3<f32>(1e6);out.label=LABEL_TRANSMIT|LABEL_TRANSPARENT;
@@ -108,9 +110,11 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
     out.roughness=surf_roughness(c);
     if(r.count>1u){var pdf_sum=out.pdf*c.sample_weight;var weight_sum=c.sample_weight;var rough_sum=pdf_sum*out.roughness;
         for(var i=0u;i<r.count;i++){if(i==selected){continue;}let other=svm_closure_read(r,i);if(!surf_bsdf(other.kind)){continue;}
-            let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){out.eval+=e.xyz*other.weight;if(surf_diffuse(other.kind)){out.diffuse+=e.xyz*other.weight;}if(surf_glossy_direction(other,out.wo)){out.glossy+=e.xyz*other.weight;}
-                let w=e.w*other.sample_weight;pdf_sum+=w;rough_sum+=w*surf_roughness(other);}weight_sum+=other.sample_weight;}
-        out.roughness=select(0.0,rough_sum/pdf_sum,pdf_sum>0.0);out.pdf=select(0.0,pdf_sum/weight_sum,weight_sum>0.0);
+            // _surface_shader_bsdf_eval_mis: every product rounded before its sum (no
+            // driver contraction) and correctly rounded scalar quotients, as on the host.
+            let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
+                let w=e.w*other.sample_weight;pdf_sum=rounded_add(pdf_sum,w);rough_sum=rounded_add(rough_sum,w*surf_roughness(other));}weight_sum+=other.sample_weight;}
+        out.roughness=select(0.0,rounded_divide(rough_sum,pdf_sum),pdf_sum>0.0);out.pdf=select(0.0,rounded_divide(pdf_sum,weight_sum),weight_sum>0.0);
     }
     return out;
 }
@@ -402,6 +406,23 @@ fn surface_light_combined(li:SurfaceLightInputs){
     // Holdout may change closure metadata; retain it with the same GPU record.
     surface_stage_write(at,sd,r);store_word(at,2u);
 }
+// Cycles float3 / float (util/math_float3.h): SSE hosts divide each lane, the
+// scalar float3 operator multiplies by 1/f. The bounce's bsdf_eval / bsdf_pdf.
+fn surf_native_div3(v:vec3<f32>,f:f32)->vec3<f32>{
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,f);}
+    return vec3<f32>(rounded_divide(v.x,f),rounded_divide(v.y,f),rounded_divide(v.z,f));
+}
+// safe_divide(float3, float3) (bsdf_eval_pass_*_weight): each lane a correctly
+// rounded quotient, 0 where the divisor is 0 (svm_divide's '/' is not correctly rounded).
+fn surf_safe_divide3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
+    var out=vec3<f32>(0);let count=rounded_steps(3u);
+    for(var k=0u;k<count;k++){
+        let d=select(select(b.z,b.y,k==1u),b.x,k==0u);
+        let q=select(0.0,rounded_divide(select(select(a.z,a.y,k==1u),a.x,k==0u),d),d!=0.0);
+        out=select(out,vec3<f32>(q),vec3<u32>(0u,1u,2u)==vec3<u32>(k));
+    }
+    return out;
+}
 // Lighting and continuation share GPU records, with no native queue transition.
 // The continuation runs only after successful lighting/roulette preparation.
 @compute @workgroup_size(1) fn shade_surface(@builtin(global_invocation_id) id:vec3<u32>){
@@ -413,11 +434,11 @@ fn surface_light_combined(li:SurfaceLightInputs){
     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xyz;
     let sampled=surf_sample(sd,r,random);if(sampled.pdf==0.0||all(sampled.eval==vec3<f32>(0))){surf_finish(index,false);return;}
     if((sampled.label&LABEL_TRANSPARENT)!=0u){let t=sd.ray_length;state_f32(S_ray_tmin,index,select(bitcast<f32>(bitcast<u32>(t)+1u),1.1754943508222875e-38,t==0.0));}
-    else{let direction=surface_normalize(sampled.wo);state_vec3(S_ray_P,index,surf_ray_offset(sd,direction));state_vec3(S_ray_D,index,direction);
+    else{let direction=surface_native_normalize(sampled.wo);state_vec3(S_ray_P,index,surf_ray_offset(sd,direction));state_vec3(S_ray_D,index,direction);
         state_f32(S_ray_tmin,index,0.0);state_f32(S_ray_tmax,index,3.4028234663852886e38);state_f32(S_ray_dP,index,sd.dP);
-        let dd=heap_float(state_address(S_ray_dD,index,4u));state_f32(S_ray_dD,index,select(dd,max(dd,sqrt(sampled.roughness)),sampled.roughness>0.0));}
-    state_vec3(S_path_throughput,index,throughput*(sampled.eval/sampled.pdf));
-    if(p(20u)!=0u&&state_half(S_path_bounce,index)==0u){state_vec3(S_path_pass_diffuse_weight,index,svm_divide(sampled.diffuse,sampled.eval));state_vec3(S_path_pass_glossy_weight,index,svm_divide(sampled.glossy,sampled.eval));}
+        let dd=heap_float(state_address(S_ray_dD,index,4u));state_f32(S_ray_dD,index,select(dd,max(dd,rounded_sqrt(sampled.roughness)),sampled.roughness>0.0));}
+    state_vec3(S_path_throughput,index,throughput*surf_native_div3(sampled.eval,sampled.pdf));
+    if(p(20u)!=0u&&state_half(S_path_bounce,index)==0u){state_vec3(S_path_pass_diffuse_weight,index,surf_safe_divide3(sampled.diffuse,sampled.eval));state_vec3(S_path_pass_glossy_weight,index,surf_safe_divide3(sampled.glossy,sampled.eval));}
     if((sampled.label&LABEL_TRANSPARENT)==0u){state_f32(S_path_mis_ray_pdf,index,sampled.pdf);state_vec3(S_path_mis_origin_n,index,sd.N);
         state_f32(S_path_min_ray_pdf,index,min(sampled.pdf,heap_float(state_address(S_path_min_ray_pdf,index,4u))));
 //#if LIGHT_LINKING

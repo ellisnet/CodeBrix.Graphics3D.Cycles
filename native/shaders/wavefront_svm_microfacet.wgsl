@@ -379,11 +379,8 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
                     default:{c.N=n;(*s).output.runtime_flag|=SR_BSDF|SR_BSDF_HAS_EVAL;
                         if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){
                             // bsdf_oren_nayar_param, as in svm_bsdf (shared rounding adapters).
-                            let pi=3.141592653589793;let a=1.0/(pi+thin_rough*(1.5707963267948966f-2.0f/3.0f));let b=thin_rough*a;
-                            let average=svm_oren_add(a*pi,((6.283185307179586f-5.6f)/3.0f)*b);
-                            let ems=0.3183098861837907f*(clamped_base*clamped_base)*(average/(1.0-average))/(vec3<f32>(1)-clamped_base*(1.0-average));
-                            let ev=svm_oren_add(a*pi,b*svm_oren_g(max(dot(n,wi),0.0)));
-                            c.roughness=thin_rough;c.a=a;c.b=b;c.multiscatter=ems*(1.0-ev);}}
+                            let param=svm_oren_param(thin_rough,clamped_base,rounded_dot(n,wi));
+                            c.roughness=thin_rough;c.a=param.a;c.b=param.b;c.multiscatter=param.multiscatter;}}
                 }
                 // bsdf_microfacet_setup_fresnel_generalized_schlick (exponent < 0, f90 = 1).
                 if((lobe==3u&&!thin_wall)||lobe==5u){c.roughness=4.0;c.multiscatter=clamp(c.multiscatter,vec3<f32>(0),vec3<f32>(1));c.fresnel_f0=c.multiscatter.x;

@@ -54,10 +54,10 @@ by a successful inventory check.
 - `reviews.json` contains deliberate symbol classifications and bounded coverage
   observations. Generic classifications are provisional; only rows with
   `classificationReviewed: true` have an explicit classification review.
-- `evidence.json` links immutable reports in frozen checkpoints: Linux native-host
-  gate reports re-recorded on the Step zero tree (`native/evidence/step-zero-20261022`)
-  and device command replays recorded on the merge wave 4 tree
-  (`native/evidence/merge-20261022`). Every source pin refers to the current
+- `evidence.json` links immutable reports in frozen checkpoints: the Linux x64
+  gate reports and command replays of the 2026-10-30 final Linux run
+  (`native/evidence/linux-x64-ledger-20261030`), with command replays of Android
+  captures from the 2026-10-29 run. Every source pin refers to the current
   tested implementation. Earlier checkpoints remain unchanged. Report hashes,
   explicit assertions and current source hashes are checked; regeneration cannot
   silently refresh stale evidence.

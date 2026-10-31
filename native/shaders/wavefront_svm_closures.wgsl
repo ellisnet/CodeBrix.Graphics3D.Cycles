@@ -83,10 +83,30 @@ fn svm_oren_add(a:f32,b:f32)->f32{
     if(mantissa>=0x1000000u){mantissa>>=1u;exponent++;}
     return bitcast<f32>((exponent<<23u)|(mantissa&0x7fffffu));
 }
+// bsdf_oren_nayar_G with the host's rounding: sin_from_cos, the correctly rounded
+// glibc acosf (trig_acos), every product rounded before its sum, scalar quotient.
 fn svm_oren_g(cosine:f32)->f32{
     if(cosine<1e-6){return (1.5707963267948966f-2.0f/3.0f)-cosine;}
-    let sine=sqrt(max(1.0-cosine*cosine,0.0));let theta=c_safe_acosf(cosine);
-    return sine*(theta-2.0f/3.0f-sine*cosine)+(2.0f/3.0f)*(sine/cosine)*(1.0-sine*sine*sine);
+    let sine=rounded_sqrt(max(rounded_add(1.0,-(cosine*cosine)),0.0));let theta=trig_acos(cosine);
+    return rounded_add(sine*rounded_add(rounded_add(theta,-2.0f/3.0f),-(sine*cosine)),((2.0f/3.0f)*rounded_divide(sine,cosine))*rounded_add(1.0,-((sine*sine)*sine)));
+}
+// bsdf_oren_nayar_param (sigma already saturated, albedo saturated): correctly
+// rounded scalar and per-lane float3 quotients, products rounded before sums.
+struct SvmOrenParam {a:f32,b:f32,multiscatter:vec3<f32>}
+fn svm_oren_param(sigma:f32,albedo:vec3<f32>,nv:f32)->SvmOrenParam{
+    let pi=3.141592653589793;var r:SvmOrenParam;
+    r.a=rounded_divide(1.0,rounded_add(pi,sigma*(1.5707963267948966f-2.0f/3.0f)));r.b=sigma*r.a;
+    let average=svm_oren_add(r.a*pi,((6.283185307179586f-5.6f)/3.0f)*r.b);
+    let scale=(0.3183098861837907f*(albedo*albedo))*rounded_divide(average,1.0-average);
+    let d=rounded_add3(vec3<f32>(1),-(albedo*(1.0-average)));
+    // The three lane quotients through one rounded_divide body (rounded_steps).
+    var ems=vec3<f32>(0);let count=rounded_steps(3u);
+    for(var k=0u;k<count;k++){
+        let q=rounded_divide(select(select(scale.z,scale.y,k==1u),scale.x,k==0u),select(select(d.z,d.y,k==1u),d.x,k==0u));
+        ems=select(ems,vec3<f32>(q),vec3<u32>(0u,1u,2u)==vec3<u32>(k));
+    }
+    let ev=svm_oren_add(r.a*pi,r.b*svm_oren_g(max(nv,0.0)));
+    r.multiscatter=ems*(1.0-ev);return r;
 }
 fn svm_transparent(s:ptr<function,SvmState>,weight:vec3<f32>,flag:u32){
     let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));if(!(sample_weight>=1e-5)){return;}
@@ -133,7 +153,9 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     if(kind==CLOSURE_BSDF_TRANSPARENT_ID){svm_transparent(s,raw_weight,flag);return;}
     let normal_index=svm_byte(data+select(N_SimpleBsdfData_normal_offset,N_DiffuseBsdfData_normal_offset,kind==CLOSURE_BSDF_DIFFUSE_ID));
     var n=(*s).geometry.N;if(normal_index!=SVM_STACK_INVALID){n=svm_load3(s,normal_index);}
-    let magnitude=length(n);if(magnitude!=0.0){n*=1.0/magnitude;}else{n=(*s).geometry.N;}
+    // safe_normalize_fallback(N, sd->N): len() = sqrt(dot) rounded once each, then
+    // N * (1 / len) with a correctly rounded reciprocal (WGSL length and '/' are not).
+    let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
     var roughness=0.0;var color=vec3<f32>(0);
     if(kind==CLOSURE_BSDF_DIFFUSE_ID){roughness=svm_input(s,data+N_DiffuseBsdfData_roughness);
         if(!(roughness<1e-5)){color=clamp(svm_input3(s,data+N_DiffuseBsdfData_color),vec3<f32>(0),vec3<f32>(1));}}
@@ -147,13 +169,9 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     (*s).output.runtime_flag|=SR_BSDF|SR_BSDF_HAS_EVAL;
     if(kind==CLOSURE_BSDF_TRANSLUCENT_ID){(*s).output.runtime_flag|=SR_BSDF_HAS_TRANSMISSION;}
     else if(!(roughness<1e-5)){
-        let pi=3.141592653589793;let sigma=clamp(roughness,0.0,1.0);
-        let a=1.0/(pi+sigma*(1.5707963267948966f-2.0f/3.0f));let b=sigma*a;
-        let average=svm_oren_add(a*pi,((6.283185307179586f-5.6f)/3.0f)*b);
-        let ems=0.3183098861837907f*(color*color)*(average/(1.0-average))/(vec3<f32>(1)-color*(1.0-average));
-        let ev=svm_oren_add(a*pi,b*svm_oren_g(max(dot(n,(*s).geometry.wi),0.0)));
+        let param=svm_oren_param(clamp(roughness,0.0,1.0),color,rounded_dot(n,(*s).geometry.wi));
         closure.kind=CLOSURE_BSDF_OREN_NAYAR_ID;closure.roughness=roughness;
-        closure.a=a;closure.b=b;closure.multiscatter=ems*(1.0-ev);
+        closure.a=param.a;closure.b=param.b;closure.multiscatter=param.multiscatter;
     }
     svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,closure);
 }

@@ -149,7 +149,8 @@ PrincipledCensus principled_census(const std::vector<uint32_t> &w,size_t data){
   PrincipledCensus out;auto field=[&](size_t offset){return w[data+offset/4];};
   auto linked=[](uint32_t bits){return (bits>>8)==(SVM_INPUT_STACK_OFFSET_MASK>>8);};
   auto above=[&](size_t offset,float cutoff,bool saturate){const uint32_t bits=field(offset);if(linked(bits))return true;float v;std::memcpy(&v,&bits,4);
-    if(saturate)v=std::min(std::max(v,0.f),1.f);return v>cutoff;};
+    if(saturate)v=std::min(std::max(v,0.f),1.f);
+    return v>cutoff;};
   if(above(offsetof(SVMNodePrincipledBsdfData,thin_film_thickness),THINFILM_THICKNESS_CUTOFF,false))out.features|=SF_BSDF_THIN_FILM;
   const size_t wall=data+offsetof(SVMNodePrincipledBsdfData,thin_wall)/4;
   if((w[wall]!=0||byte_at(w,wall,offsetof(SVMInputInt,offset))!=SVM_STACK_INVALID)&&above(offsetof(SVMNodePrincipledBsdfData,transmission_weight),CLOSURE_WEIGHT_CUTOFF,true))
@@ -477,10 +478,29 @@ static void salt_driver_cache(std::string &code){
   for(size_t at=code.find("DRIVER_CACHE_SALT_VALUE");at!=std::string::npos;at=code.find("DRIVER_CACHE_SALT_VALUE",at))
     code.replace(at,std::strlen("DRIVER_CACHE_SALT_VALUE"),value);
 }
-bool WebGPUDevice::pipeline_current(const cbc::Pipeline &pipeline,const char *entry){
+bool WebGPUDevice::pipeline_current(const cbc::Pipeline &pipeline,const char *entry,ShaderFeatures removed){
   if(!pipeline.value)return false;
   auto it=pipeline_features.find(entry);
-  return it!=pipeline_features.end()&&!(shader_features()&~it->second).any();
+  return it!=pipeline_features.end()&&!((shader_features()&~removed)&~it->second).any();
+}
+// The raytrace surface queue holds only paths whose shader is flagged
+// SD_HAS_RAYTRACE (the Ambient Occlusion node), and prepare_surface_raytrace
+// evaluates only those shaders' SVM programs: the SVM node and closure regions
+// that only other shaders reach are left out of that entry (scene
+// specialization only; the shared light/connect/shade entries keep every
+// region). An AO node scene with, for example, a Principled floor otherwise
+// carries Principled in its raytrace entry (67,787 Intel instructions, above
+// the 60,000 compile envelope; 1,292,392 inlined bytes, above the size guard).
+ShaderFeatures WebGPUDevice::raytrace_unused_svm_features(){
+  const ShaderFeatures scene=shader_features();
+  if(specialization_mode!=SpecializationMode::Scene)return SF_NONE;
+  std::vector<uint32_t> roots;for(size_t s=0;s<shader_records.size();s++)if(shader_records[s].flags&SD_HAS_RAYTRACE)roots.push_back(uint32_t(s));
+  if(roots.empty())return SF_NONE;
+  const SvmCensus used=svm_census(svm_node_words,shader_records.size(),&roots);
+  // Census-only bits: the SVM node and closure families (lamp, motion,
+  // terminator and light-sampling bits are set from the scene tables).
+  constexpr ShaderFeatures svm=ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32);
+  return scene&svm&~used.features;
 }
 namespace {
 struct ProcessPipelines {std::mutex mutex;uint64_t count=0;double max_ms=0,total_ms=0;std::string max_entry;bool conservative=false;std::vector<std::string> warnings;std::string decision;
@@ -498,8 +518,8 @@ uint32_t WebGPUDevice::workgroup(const char *entry) const{
   auto it=pipeline_workgroups.find(entry);if(it==pipeline_workgroups.end())throw std::runtime_error(std::string("No compiled workgroup size for ")+entry);
   return it->second;
 }
-std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries,ShaderFeatures extra){
-  const ShaderFeatures features=shader_features()|extra|debug_output_features()|(intel_d3d12_cache_salt(gpu)?SF_DRIVER_CACHE_SALT:SF_NONE);
+std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries,ShaderFeatures extra,ShaderFeatures removed){
+  const ShaderFeatures features=(shader_features()&~removed)|extra|debug_output_features()|(intel_d3d12_cache_salt(gpu)?SF_DRIVER_CACHE_SALT:SF_NONE);
   const std::string specialized=specialize_wgsl(source,features);
   using clock=std::chrono::steady_clock;auto ms=[](clock::time_point a,clock::time_point b){return std::chrono::duration<double,std::milli>(b-a).count();};
   auto warn=[&](const std::string &message){

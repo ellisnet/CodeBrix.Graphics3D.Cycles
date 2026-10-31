@@ -1,0 +1,857 @@
+{
+ "cbcOracleScene": 1,
+ "id": "combinations/terminator-fast-gi-additive",
+ "description": "fast GI additive AO with a coarse smooth sphere and shadow terminator offsets (derived from ao/fast-gi-additive)",
+ "sourceFixture": "native/oracle/scenes/ao/fast-gi-additive.json, native/cycles/ao_render_gate.cpp cases 1 and 2 combined (replace-object-distance distances, additive settings)",
+ "render": {
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "filter_glossy": 0.0,
+    "ao_bounces": 1,
+    "ao_factor": 0.5,
+    "ao_distance": 1.2,
+    "ao_additive_factor": 0.7
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.62,
+        0.65
+       ],
+       "roughness": 0.25
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "floor-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.55,
+        0.32,
+        0.18
+       ],
+       "roughness": 0.31
+      }
+     },
+     {
+      "handle": "g",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.2,
+        0.5,
+        0.8
+       ],
+       "roughness": 0.35
+      }
+     },
+     {
+      "handle": "m",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.4
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "m",
+      "Closure1"
+     ],
+     [
+      "g",
+      "BSDF",
+      "m",
+      "Closure2"
+     ],
+     [
+      "m",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "center-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.5,
+        0.45,
+        0.3
+       ],
+       "roughness": 0.25
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -3,
+     3,
+     4,
+     -3,
+     3,
+     4,
+     3,
+     3,
+     -4,
+     3,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -2,
+     -2,
+     4,
+     -2,
+     -2,
+     4,
+     -2,
+     3,
+     -4,
+     -2,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "floor-material"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor",
+    "ao_distance": 1.5
+   }
+  },
+  {
+   "handle": "center",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.8,
+     -2,
+     0,
+     0.8,
+     -2,
+     0,
+     0.8,
+     1.1,
+     0,
+     -0.8,
+     1.1,
+     0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "center-material"
+    ]
+   }
+  },
+  {
+   "handle": "center-object",
+   "create": "object",
+   "set": {
+    "geometry": "center",
+    "ao_distance": 0.35
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.3,
+        0.35,
+        0.42
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "use_mis": true,
+    "strength": [
+     110,
+     90,
+     70
+    ],
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     2.2,
+     0.0,
+     1.0,
+     0.0,
+     2.0,
+     0.0,
+     0.0,
+     1.0,
+     -2.0
+    ]
+   }
+  },
+  {
+   "handle": "coarse",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     0,
+     1.0,
+     0,
+     0.5877853,
+     0.809017,
+     0.0,
+     0.4502696,
+     0.809017,
+     0.3778211,
+     0.1020678,
+     0.809017,
+     0.5788555,
+     -0.2938926,
+     0.809017,
+     0.509037,
+     -0.5523375,
+     0.809017,
+     0.2010344,
+     -0.5523375,
+     0.809017,
+     -0.2010344,
+     -0.2938926,
+     0.809017,
+     -0.509037,
+     0.1020678,
+     0.809017,
+     -0.5788555,
+     0.4502696,
+     0.809017,
+     -0.3778211,
+     0.9510565,
+     0.309017,
+     0.0,
+     0.7285516,
+     0.309017,
+     0.6113273,
+     0.1651492,
+     0.309017,
+     0.9366078,
+     -0.4755283,
+     0.309017,
+     0.8236391,
+     -0.8937008,
+     0.309017,
+     0.3252805,
+     -0.8937008,
+     0.309017,
+     -0.3252805,
+     -0.4755283,
+     0.309017,
+     -0.8236391,
+     0.1651492,
+     0.309017,
+     -0.9366078,
+     0.7285516,
+     0.309017,
+     -0.6113273,
+     0.9510565,
+     -0.309017,
+     0.0,
+     0.7285516,
+     -0.309017,
+     0.6113273,
+     0.1651492,
+     -0.309017,
+     0.9366078,
+     -0.4755283,
+     -0.309017,
+     0.8236391,
+     -0.8937008,
+     -0.309017,
+     0.3252805,
+     -0.8937008,
+     -0.309017,
+     -0.3252805,
+     -0.4755283,
+     -0.309017,
+     -0.8236391,
+     0.1651492,
+     -0.309017,
+     -0.9366078,
+     0.7285516,
+     -0.309017,
+     -0.6113273,
+     0.5877853,
+     -0.809017,
+     0.0,
+     0.4502696,
+     -0.809017,
+     0.3778211,
+     0.1020678,
+     -0.809017,
+     0.5788555,
+     -0.2938926,
+     -0.809017,
+     0.509037,
+     -0.5523375,
+     -0.809017,
+     0.2010344,
+     -0.5523375,
+     -0.809017,
+     -0.2010344,
+     -0.2938926,
+     -0.809017,
+     -0.509037,
+     0.1020678,
+     -0.809017,
+     -0.5788555,
+     0.4502696,
+     -0.809017,
+     -0.3778211,
+     0,
+     -1.0,
+     0
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     0,
+     3,
+     2,
+     0,
+     4,
+     3,
+     0,
+     5,
+     4,
+     0,
+     6,
+     5,
+     0,
+     7,
+     6,
+     0,
+     8,
+     7,
+     0,
+     9,
+     8,
+     0,
+     1,
+     9,
+     1,
+     2,
+     11,
+     1,
+     11,
+     10,
+     2,
+     3,
+     12,
+     2,
+     12,
+     11,
+     3,
+     4,
+     13,
+     3,
+     13,
+     12,
+     4,
+     5,
+     14,
+     4,
+     14,
+     13,
+     5,
+     6,
+     15,
+     5,
+     15,
+     14,
+     6,
+     7,
+     16,
+     6,
+     16,
+     15,
+     7,
+     8,
+     17,
+     7,
+     17,
+     16,
+     8,
+     9,
+     18,
+     8,
+     18,
+     17,
+     9,
+     1,
+     10,
+     9,
+     10,
+     18,
+     10,
+     11,
+     20,
+     10,
+     20,
+     19,
+     11,
+     12,
+     21,
+     11,
+     21,
+     20,
+     12,
+     13,
+     22,
+     12,
+     22,
+     21,
+     13,
+     14,
+     23,
+     13,
+     23,
+     22,
+     14,
+     15,
+     24,
+     14,
+     24,
+     23,
+     15,
+     16,
+     25,
+     15,
+     25,
+     24,
+     16,
+     17,
+     26,
+     16,
+     26,
+     25,
+     17,
+     18,
+     27,
+     17,
+     27,
+     26,
+     18,
+     10,
+     19,
+     18,
+     19,
+     27,
+     19,
+     20,
+     29,
+     19,
+     29,
+     28,
+     20,
+     21,
+     30,
+     20,
+     30,
+     29,
+     21,
+     22,
+     31,
+     21,
+     31,
+     30,
+     22,
+     23,
+     32,
+     22,
+     32,
+     31,
+     23,
+     24,
+     33,
+     23,
+     33,
+     32,
+     24,
+     25,
+     34,
+     24,
+     34,
+     33,
+     25,
+     26,
+     35,
+     25,
+     35,
+     34,
+     26,
+     27,
+     36,
+     26,
+     36,
+     35,
+     27,
+     19,
+     28,
+     27,
+     28,
+     36,
+     28,
+     29,
+     37,
+     29,
+     30,
+     37,
+     30,
+     31,
+     37,
+     31,
+     32,
+     37,
+     32,
+     33,
+     37,
+     33,
+     34,
+     37,
+     34,
+     35,
+     37,
+     35,
+     36,
+     37,
+     36,
+     28,
+     37
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "center-material"
+    ],
+    "smooth": [
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true
+    ]
+   }
+  },
+  {
+   "handle": "coarse-object",
+   "create": "object",
+   "set": {
+    "geometry": "coarse",
+    "tfm": [
+     0.8,
+     0,
+     0,
+     1.9,
+     0,
+     0.8,
+     0,
+     -1.2,
+     0,
+     0,
+     0.8,
+     -0.8
+    ],
+    "shadow_terminator_geometry_offset": 0.1,
+    "shadow_terminator_shading_offset": 0.5
+   }
+  }
+ ],
+ "images": []
+}

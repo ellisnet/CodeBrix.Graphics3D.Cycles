@@ -22,7 +22,7 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
 >    `native/evidence/linux-x64-reference-<date>/` set (now
->    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `linux-x64-reference-20261030`); device-gate exchanges go through
 >    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
 >    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
 >    machine; `linux-x64-docker-reference-20261027` is history only.
@@ -777,7 +777,7 @@ Details: [native/host/WINDOWS_X64.md](../native/host/WINDOWS_X64.md),
 The full battery deferred on 2026-10-27, on a host built from HEAD on the device
 (with the F1 fix) and runtime 1.0.300.210, then again on the restaged payload:
 
-1. `python -I -X utf8 native/tools/windows_host_gate.py --rid win-arm64 --backend d3d12 --output native/work/windows-arm64-validation-d3d12-<n> --references native/evidence/linux-x64-reference-20261029/host-gate --device-gates`
+1. `python -I -X utf8 native/tools/windows_host_gate.py --rid win-arm64 --backend d3d12 --output native/work/windows-arm64-validation-d3d12-<n> --references native/evidence/linux-x64-reference-20261030/host-gate --device-gates`
    (build mode; on the staged payload add `--payload native/binaries/win-arm64`).
    About 11 minutes without device gates on 1.0.290.1433; driver coverage is
    expected to pass except the light tree (F5).
@@ -786,7 +786,7 @@ The full battery deferred on 2026-10-27, on a host built from HEAD on the device
 3. The oracle corpus (about an hour) and the bench scenes (about 8 minutes),
    `--backend cpu-arm64-windows --backend wgsl-windows-arm64-d3d12`, judged
    against the Linux x64 glibc films in
-   `native/evidence/linux-x64-reference-20261029/oracles/` (`corpus/`, `bench/`) with
+   `native/evidence/linux-x64-reference-20261030/oracles/` (`corpus/`, `bench/`) with
    `native/oracle/compare.py` (Linux film first). Mind C1 where the CPU
    references disagree.
 4. F5 with WARP on a cropped scene; F7 with the M1 probe shader; a mirrored

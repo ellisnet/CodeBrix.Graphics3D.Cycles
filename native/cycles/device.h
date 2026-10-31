@@ -93,10 +93,15 @@ class WebGPUDevice final:public Device {
   uint32_t workgroup(const char *entry) const;
   ShaderFeatures shader_features();
   std::string module_wgsl(const std::string &source);
-  bool pipeline_current(const cbc::Pipeline &pipeline,const char *entry);
+  // removed: scene regions an entry never reaches (raytrace_unused_svm_features).
+  bool pipeline_current(const cbc::Pipeline &pipeline,const char *entry,ShaderFeatures removed=SF_NONE);
   // extra: regions compiled in beyond the scene features (the AO node's
-  // traversal for the raytrace surface queue, SVM_NODE_RAYTRACE).
-  std::vector<cbc::Pipeline> build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries,ShaderFeatures extra=SF_NONE);
+  // traversal for the raytrace surface queue, SVM_NODE_RAYTRACE); removed:
+  // scene regions left out of these entries.
+  std::vector<cbc::Pipeline> build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries,ShaderFeatures extra=SF_NONE,ShaderFeatures removed=SF_NONE);
+  // SVM node and closure regions of the scene that no SD_HAS_RAYTRACE shader
+  // reaches (prepare_surface_raytrace evaluates only those shaders).
+  ShaderFeatures raytrace_unused_svm_features();
   std::string pipeline_report_json() const;
   std::string adapter_report_json() const;
   void validate_geometry_motion() const;

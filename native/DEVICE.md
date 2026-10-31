@@ -1894,9 +1894,12 @@ container of `native/tools/linux_reference/`.
 and validation are done on the dedicated Linux x64 machine only, and every Linux
 x64 reference other platforms compare against comes from that machine and is
 committed: the newest `native/evidence/linux-x64-reference-<date>/` (now
-`linux-x64-reference-20261029`, which supersedes the Docker set; its CPU films are
-bitwise identical to the Docker set's), with the Android counterpart
-`native/evidence/android-reference-20261029/`. The Docker route is not used for new
+`linux-x64-reference-20261030`, which supersedes `linux-x64-reference-20261029`
+and the Docker set; its CPU films are bitwise identical to theirs for every scene
+they share), with the Android counterpart
+`native/evidence/android-reference-20261029/` (made at commit `686f79282`; the
+2026-10-30 fixes changed the WGSL modules, so the tablet and the HP are owed a run
+at the 2026-10-30 tree). The Docker route is not used for new
 evidence. Devices without a Linux x64 side (Windows, the Intel Mac, the Raspberry
 Pi) run the device-gate exchanges as a two-visit hand-off with that machine,
 `native/tools/reference_exchange_handoff.py` (`device-dump`, `linux-reference`,
@@ -2842,8 +2845,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    own replays exact; scenes without AO keep the atomic allocator unchanged, so this case still does not replay.
 18. **Ambient occlusion remainder.** The AO node's `only_local` from an object without its own BVH in a scene that
    also has instanced objects is refused (error 16 when the local traversal reaches an instance leaf); ambient
-   occlusion with object or deformation motion has no gate yet; on the Adreno 650 the AO node and the AO shadow rays
-   are refused (see "Ambient occlusion"). Bevel and raycast nodes stay unported (item 6).
+   occlusion with object motion and with deformation motion (AO shadow rays and the AO node) passes the AO state and
+   image gates on Linux (max 1.21e-4 and 1.38e-5; "Ambient occlusion"); on the Adreno 650 the AO node and the AO
+   shadow rays are refused (see "Ambient occlusion"). Bevel and raycast nodes stay unported (item 6).
 19. (resolved, see "Resolved" below) Was: **MNEE on the Adreno 730 (Samsung SM-X700).** The `INTERSECT_MNEE`
    dispatches stopped with the invalid-data error (mask 1) in `mnee` and `mnee_render`; the Adreno 650 failed the same way.
 20. **MNEE with the light tree (refused).** Caustic scenes with the integrator's light tree, light or shadow
@@ -2858,7 +2862,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    `imageInput.fileReading` of the capability report as a Boolean, but the Linux host reports the string
    "development-only", so the managed-reload phase of `native/tools/host_gate.py` aborts (SIGABRT). Every other phase
    passes (1,586 comparisons, 0 practical, 151 strict); the managed-reload films were not compared in this wave.
-23. **Shadow catcher with ambient occlusion (merge wave 8).** Not refused and not gated. In `shade_shadow` the AO
+23. (resolved, see "Resolved" below) Was: **Shadow catcher with ambient occlusion (merge wave 8).** Not refused and not gated. In `shade_shadow` the AO
    branch (AO pass and fast GI's additive term) writes Combined directly and returns before the shadow catcher
    handling, while the pinned `film_write_direct_light` routes the additive term through `film_write_combined_pass`
    (shadow catcher split included). Scenes with both may differ from the CPU.
@@ -2873,12 +2877,75 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    and Android WGSL backends) and cross-ISA pairs are reported, so the bench and HDRI bench read "perfect" with the
    Mac films present; the cross-ISA CPU difference itself stays recorded here (the macOS arm64 recipe is untested at
    the fixed baseline on this side, item 16).
-26. **New compiler warning sites (merge wave 8).** `-Wmisleading-indentation` (a one-line `for`/`if` followed by a
-   statement on the same line) in `ao_state_gate.cpp:187`, `light_tree_reference.cpp:56`,
-   `shadow_catcher_gate.cpp:147`, `mnee_gate.cpp:262`, `mnee_reference.cpp:53,54,83` and `device.cpp:247`
-   (`mnee_entry_of`).
+26. (resolved, see "Resolved" below) Was: **New compiler warning sites (merge wave 8).** `-Wmisleading-indentation`
+   (a one-line `for`/`if` followed by a statement on the same line) in `ao_state_gate.cpp`, `light_tree_reference.cpp`,
+   `shadow_catcher_gate.cpp`, `mnee_gate.cpp`, `mnee_reference.cpp` and `device.cpp` (`mnee_entry_of`).
+27. (resolved, see "Resolved" below) Was: **Emissive triangle edge-on from diffuse walls (lane cov-a, 2026-10-30).**
+   Isolated pixels above the practical bound with an emissive panel inside a diffuse enclosure.
+28. **Remaining driver-arithmetic sites (lane item27b, 2026-10-30).** The Intel/Mesa driver's `dot`, `/`, `sqrt`,
+   `length` and contracted `a-b*c` differ from the host operations (45%, 29%, 8%, 20% and 22% of random inputs). The
+   surface-shading sites were matched to the pinned kernel (Resolved, below); these remain, all within the practical
+   bound, with no known failing configuration: the SVM vector-math node's division (`svm_divide`, pinned
+   `safe_divide` divides correctly rounded), the translator's series `c_acos`/`c_asin` (glibc 2.41's are correctly
+   rounded), `surf_bump`'s division and square root, and `surface_orthogonal` (`v*(1/len)`, pinned `normalize()`),
+   which feeds the texture derivatives (the texture last-bit class of item 14).
 
 Resolved, or closed under the device reference policy:
+- Remaining WGSL-vs-host arithmetic in surface shading: RESOLVED (2026-10-30, lane item27b, found while fixing
+  item 27). On identical inputs (surface_gate state tally) the WGSL now reproduces the pinned SSE4.2 kernel in every
+  state component (28,283 mismatching components before, 0 after). Fixed with the existing correctly rounded adapters:
+  the closure normal renormalization (`safe_normalize_fallback`); the multi-closure pick and MIS pdf/roughness sums in
+  `surf_sample` and `light_bsdf` (correctly rounded quotients, unfused products); Oren-Nayar intensity, G and
+  parameters (the `dot` and divisions, and glibc's correctly rounded `acosf` through `trig_acos` instead of the series
+  `c_acos`); the Lambert/translucent eval `dot`; the diffuse/glossy pass weights (`safe_divide` per lane: 1.0 had come
+  out as 0x1.fffffep-1); the dD widening `sqrtf`; `sd.dP` (a contracted multiply-add in
+  `wavefront_shader_data.wgsl`). Each site attributed by leave-one-out. Gates: the oracle scenes
+  `combinations/enclosure-emissive-panel-{oren-nayar,translucent,mix}` (pass before and after; no configuration was
+  found that these sites push past the practical bound). Modules changed: surface, background, shadow, volume (device
+  runs owed). Remaining sites: item 28.
+- [27 of this list] Emissive triangle edge-on from diffuse walls: RESOLVED (2026-10-30). Not a last-bit libm effect.
+  The WGSL bounce in `shade_surface` wrote `D = wo*(1/len)` (Cycles' `safe_normalize` form) and
+  `throughput*(eval/pdf)` with the WGSL division (not correctly rounded on Intel/Mesa). On SSE hosts the pinned
+  `integrate_surface_bsdf_bssrdf_bounce` uses `normalize(bsdf_wo)` (per-lane `_mm_div_ps`) and a per-lane
+  `bsdf_eval/bsdf_pdf`; the two direction forms differ in 26% of cosine-hemisphere samples. The 1-ulp direction moved
+  the bounce-1 shading point, and a nearly edge-on spherical-triangle sample flipped between valid and invalid. Both
+  now use the host-selected adapters (`surface_native_normalize`, `surf_native_div3`, keyed on
+  `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`), so builds judged against a scalar oracle keep the reciprocal form. Gate: the
+  oracle scene `combinations/enclosure-emissive-panel` (3 practical failures before, 0 after; CPU films unchanged);
+  cov-a's 33 diagnostic scenes go from 25 failing to 0. Only `surface` modules change (device runs owed).
+- [26 of this list] Compiler warning sites: RESOLVED (2026-10-30). Every `-Wmisleading-indentation` site in the overlay
+  (the eight listed in item 26, plus `render_capture.h`, `device.cpp`, `pipelines.cpp`, `emitter_sample_gate.cpp`,
+  `image_gate.cpp`, `light_state_gate.cpp`, `shadow_gate.cpp`, `svm_surface_gate.cpp`, `transparent_shadow_gate.cpp`,
+  the new combination fixture of `shadow_catcher_gate.cpp`, and six sites of the WebGPU backend `native/src/webgpu_device.cpp`)
+  now puts the statement after the guarded one on its own line; `lighting_gate.cpp`'s `center_object` (used only by the
+  motion variants) is `[[maybe_unused]]`. No statement changed. A build of every overlay source on Linux x64 reports no
+  `-Wmisleading-indentation` or `-Wunused-variable` warning; the remaining `-Wclass-memaccess` warnings are deliberate
+  byte copies into GPU-layout Cycles structs (`device.cpp`, `surface_svm_test.h`).
+- Build tree compiled stale shader text: RESOLVED (2026-10-30). The WGSL overlay (`native/work/cycles-overlay`, the
+  shader text compiled into `cycles_device`) was regenerated only by `build_cycles.py`, so a plain
+  `cmake --build native/work/cycles-build` compiled every target with the overlay of the last `build_cycles.py` run,
+  and `build_cycles.py`'s default target list relinks only the host and the core gates. Found when the
+  shadow_catcher_gate binary of the final Linux run carried pre-merge shader text (case 17 failed with the value of
+  the unfixed `sc_triangle_excluded`). `build_cycles.py` now configures the tree with `CODEBRIX_CYCLES_OVERLAY_COMMAND`,
+  and `native/tools/inject_cycles.cmake` adds the `codebrix_cycles_overlay` target, which regenerates the overlay
+  before `cycles_device`, `cycles_integrator` and `cycles_util` on every build (unchanged files keep their times, so
+  nothing recompiles needlessly). Checked by a shader edit that a bare `cmake --build` compiled into the gate binary.
+- [23 of this list] Shadow catcher with ambient occlusion: RESOLVED (on the maintainer's go-ahead, 2026-10-29). Two
+  differences from the pinned kernel, both inside the shadow catcher specialization region: the AO branch of
+  `shadow_write_film` (`wavefront_shadow.wgsl`) now routes fast GI's additive term through the shadow catcher split
+  first (`sc_combined`, as `film_write_combined_pass`: matte for matte paths, the catcher pass instead of Combined and
+  the adaptive buffer for catcher paths), and `surface_ao` (`wavefront_ao.wgsl`) creates no AO ray for paths split off
+  for the catcher (`PATH_RAY_SHADOW_CATCHER_PASS`), as `integrate_surface_ao` does; before, those paths were AO-traced
+  and wrote the AO pass and the additive term a second time. Gates: `ao_state` adds three shadow catcher variants
+  (matte, catcher-hit and catcher-pass input paths; AO ray count, every AO shadow field and the shadow-stage film with
+  the three catcher passes against the CPU) and `shadow_catcher_gate` three images (the AO pass, fast GI with additive
+  AO, both; Combined, the AO pass and the three catcher passes against an independent CPU render) with replays. Before
+  the fix both failed on Linux (`ao_state`: 952 AO rays against the CPU's 713; image case 11: the AO pass doubled);
+  with it they pass (images max 1.88e-5, 9 replays). Modules of scenes without a shadow catcher, or without AO, are
+  byte-identical. Devices (glibc device-scene flow, 2026-10-30): tablet `ao_state` pass, shadow catcher practical 0
+  (strict 4,312, max 1.74e-5, 9 replays), `ao_render` practical 0 (strict 2,556, 12 replays); HP `ao_state` pass,
+  shadow catcher practical 0 (strict 7,145, max 2.67e-5, 9 replays), `ao_render` practical 0 (strict 6,571, 12
+  replays). The S20 refuses AO before compiling (not run).
 - [17 of this list] Replays with shadow-path compaction: RESOLVED (on the maintainer's go-ahead, 2026-10-29). Every
   surface dispatch of a scene with direct light (or ambient occlusion) now reserves one fixed shadow slot per input
   (control op 5, `surface.cpp`; two per input with AO, as before), and every path-array build of such a scene uses the
@@ -4798,6 +4865,21 @@ transparent_lighting 3, 4, 5). Superset on/off identity (glass_render, 5 groups 
 Oracle scenes `light-tree/lamps-and-mesh-lights` and `light-tree/light-linking` (Session through the public host
 API): CPU vs WGSL on Linux "perfect" (0 practical, 825 and 928 strict).
 
+Light tree gate case 7 (lane cov-a, 2026-10-30): a GGX glass/diffuse receiver (transmission at every hit: full-sphere
+importance and `PATH_RAY_MIS_HAD_TRANSMISSION` forward pdfs), with a panel and an area lamp seen through it; the gate
+now has 8 cases and 8 replays.
+
+Approximate shadow catcher with the light tree (lane cov-a, 2026-10-30): the split-off background path keeps its catcher
+primitive in `isect.prim`, which the pinned `integrate_sun_lights` uses as its lamp offset. `integrate_suns`
+(LIGHT_TREE region) now counts the MIS suns below that offset for its tree pdf slots instead of refusing (it failed
+with invalid data before). Only light-tree background modules change. Gated by the oracle scene
+`combinations/tree-catcher-approximate` (perfect).
+
+Combination oracle scenes (lane cov-a, 2026-10-30): `native/oracle/scenes/combinations/` (`author_combinations.py`),
+42 existing scenes with the light tree, light linking, AO, glass/Principled, image textures with normal maps, a
+textured emitter, camera motion, terminator offsets or transparent shadows added, CPU against WGSL on Linux: all
+perfect.
+
 ## Shadow catcher and its film passes (lane m2-shadowcatcher, 2026-10-23/24)
 
 The registered device renders the shadow catcher as the pinned Cycles does and writes the first film passes beyond
@@ -4842,7 +4924,9 @@ sort keys), every film float, the queue counters, `next_main_path_index` and the
 light; a light marked as catcher plus a sun; HDRI world with background-light MIS and an area light; a
 transparent-shadow caster; the approximate catcher with a point light; a mesh light over a glossy catcher) compare the
 raw film (Combined and the three passes) with an independent CPU render (two CPU states per pixel, as the CPU
-megakernel). Case 10 checks the volume refusal. Device-scene flow: images through the scene exchange; the state stages
+megakernel). Case 10 checks the volume refusal. Cases 11-13 (ambient occlusion with a point light: the AO pass, fast
+GI with one AO bounce and additive AO, both) compare the raw film (Combined, the AO pass and the three catcher
+passes) with the independent CPU render, AO shadow paths included; replays of cases 0, 1, 2, 4, 7, 8 and 11-13. Device-scene flow: images through the scene exchange; the state stages
 are recorded per case (`run/case-N/run.stages.bin`) and judged on Linux (`CODEBRIX_CYCLES_STAGE_JUDGE` = the device's
 run directory).
 
@@ -4858,6 +4942,25 @@ Oracle scenes `native/oracle/scenes/shadow-catcher/catcher-point-light.json` and
 oracle on Linux "perfect" (practical 0; 334 and 23 strict). Managed test `gpu_shadow_catcher_passes_match_the_cpu_reference`
 reads the three passes through `ReadPass` on both backends (transparent and approximate film).
 
+Shadow catcher with the light tree and a mesh light (lane cov-b, 2026-10-30): the catcher-pass exclusion of
+non-catcher mesh lights (`sc_triangle_excluded`, pinned `light_sample`) read the emitter object through
+`selection.distribution`, which under LIGHT_SELECT is the light-tree emitter index; it now reads `selection.object`
+(LIGHT_SELECT region; other modules unchanged). `shadow_catcher_gate` cases 14-22 image the catcher with object,
+deformation and camera motion, the light tree, light linking, a spot lamp, glass/Principled transmission, shadow
+terminator offsets and a non-constant emitter (replays 14-22); case 17 failed on the catcher pass before the fix.
+Fixture rule: a light-tree node's bounding-box face lying in a receiver's plane puts every shading point of that
+receiver on the pinned horizon test's zero, and last-bit hit-point differences then flip discrete tree decisions
+(case 17's panel is at x=-2.45 for this reason).
+
+Light linking, light settings, motion and clamp combinations (lane cov-b, 2026-10-30): oracle family
+`native/oracle/scenes/light-motion/` (`author_light_motion_combinations.py`), 14 scenes: light linking with motion,
+transparent shadows, an importance-sampled environment and glass; light `cast_shadow` off and light `max_bounces`, with
+and without the light tree; camera motion with object or deformation motion; motion with glass/Principled, spot and
+area lamps, the environment and a non-constant emitter; sample clamps, caustic filters and light exclude flags. CPU
+against WGSL on Linux: all within the practical criterion; CPU control renders confirm each feature changes its image.
+`light_state_gate` modes 18-19 set `cast_shadow` off and `max_bounces` below the path depth (closest, lamp-forward and
+background stages). Glossy filtering is refused ("WebGPU surface glossy filtering not implemented").
+
 ## Ambient occlusion (lane m2-ao, 2026-10-23)
 
 The registered device implements Cycles' ambient occlusion in its three forms, as the pinned kernels do.
@@ -4870,9 +4973,11 @@ The registered device implements Cycles' ambient occlusion in its three forms, a
   `surface_ao` (`wavefront_ao.wgsl`) after the direct light, before the BSDF bounce: `surface_shader_ao` (diffuse
   closure weights times the additive factor, their weighted normal), the cosine-weighted direction from
   `PRNG_SURFACE_BSDF`, the shadow-terminator origin and self-intersection offset, `tmax = ao_distance`, throughput
-  times `surface_shader_alpha`, flag `PATH_RAY_SHADOW_FOR_AO`, `unshadowed_throughput`. The shadow stage traces it
+  times `surface_shader_alpha`, flag `PATH_RAY_SHADOW_FOR_AO`, `unshadowed_throughput`; no AO ray for paths split
+  off for a shadow catcher (`PATH_RAY_SHADOW_CATCHER_PASS`). The shadow stage traces it
   like every shadow path (opaque or transparent); `shadow_write_film` has the pinned AO branch of
-  `film_write_direct_light` (the AO pass for camera paths, the additive combined term). With AO on, every surface
+  `film_write_direct_light` (the AO pass for camera paths, the additive term through the shadow catcher split of
+  `film_write_combined_pass`). With AO on, every surface
   input gets two fixed shadow slots (control op 5, as every scene with direct light gets one) and the path arrays use
   the stable serial scan: with atomic slots and atomic path-array indices the shadow compaction moved paths in a
   run-dependent order, so the scheduler's counts, and the command replays, differed between runs.
@@ -4884,7 +4989,15 @@ The registered device implements Cycles' ambient occlusion in its three forms, a
   `SVM_NODE_RAYTRACE` (`svm_ao_occlusion`: `num_samples` hemisphere rays from `PRNG_SURFACE_AO` through
   `path_branched_rng_2D`, `inside`, the global radius when the distance is 0 and unlinked, an opaque any-hit
   traversal, or with `only_local` the object's own BVH from `object_node` with the instance transform pushed, as
-  `bvh/local.h`). Every other SVM evaluation runs the node as Cycles' non-raytrace node masks do (`ao = 1`). The
+  `bvh/local.h`). The traversal stack (192 entries, as `BVH_STACK_SIZE`) is a per-input slot of the
+  surface stage's arena records (push word 30), not a private array: with object motion the Adreno 730 driver failed
+  to link `prepare_surface_raytrace` with the private array (`AdrenoVK-0: Failed to link shaders`, then `Parent device
+  is lost`; compile probes on the tablet: the static entry links, the object-motion entry fails, and links with the
+  stack in storage memory or with a 64-entry private stack), the per-invocation private-memory class of "Samsung
+  reference fixes" item 8. The object transform of the traversal (the local object, or an instance below a leaf) is
+  applied in one place at the top of the traversal loop, so the entry holds one copy of the motion transform: on
+  Intel Mesa 25.0.7 the object-motion `prepare_surface_raytrace` measured 62,747 and 69,631 backend instructions
+  before (above the 60,000 envelope) and 47,413 and 54,297 after; the static entry 34,756. Every other SVM evaluation runs the node as Cycles' non-raytrace node masks do (`ao = 1`). The
   other surface entries are shared; push word 29 names the queue. Capture entry 21, recorder v10.
 - **Specialization.** Bits 106 `SVM_NODE_AO` (scene feature), 107 `SVM_NODE_RAYTRACE` (a module variant used only
   for `prepare_surface_raytrace`, not a scene feature and not in the off mode) and 108 `AO_SHADOW`. Modules of
@@ -4892,7 +5005,7 @@ The registered device implements Cycles' ambient occlusion in its three forms, a
   instructions (envelope run over the AO gate modules, worst entry 43,078).
 - **Refused, never approximated.** `only_local` from an object without its own BVH in a scene with instanced objects
   (a local traversal that reaches an instance leaf reports error 16); bevel and raycast nodes stay unported (error
-  2). Ambient occlusion with object or deformation motion has no gate yet. On the Adreno 650 (S20) the AO node and
+  2). Moving transparent shadows stay refused for AO rays as for every shadow ray. On the Adreno 650 (S20) the AO node and
   the AO shadow rays are refused before any pipeline compiles (below).
 
 Gates (Linux, Samsung SM-X700 and HP; images judged against the glibc reference of each device's own scene):
@@ -4905,6 +5018,14 @@ Gates (Linux, Samsung SM-X700 and HP; images judged against the glibc reference 
 | AO oracle scenes (`ao/fast-gi-additive`, `ao/ao-node`, `compare.py`) | perfect (max 1.91e-6) | | |
 | Managed AO pass read-back (`WebGpuAmbientOcclusionTests`) | PASS | | |
 | AO corpus rerun on the final binaries (state + image) | | PASS, 378 s | PASS, 662 s |
+
+Motion and shadow catcher cases (on the maintainer's go-ahead, 2026-10-29): `ao_state` also runs the AO shadow
+rays with a shadow catcher (three variants, item 23 of "Open device items"), with object motion and with deformation
+motion (two variants each; opaque shadows), and the AO node cases with object motion and with deformation motion (an
+only_local instanced box among the moving objects), 20 cases in all; `ao_render` adds four images (fast GI with
+additive AO and the AO pass, and the AO node, each with object motion and with deformation motion), 12 in all. Linux:
+`ao_state` PASS (max 3.8e-6 static and with the shadow catcher, 1.21e-4 with object motion, strict 3,282), `ao_render`
+PASS (max 1.57e-5; the motion images max 1.38e-5).
 
 The fast GI termination and per-object AO distance state checks remain the closest gate's cases. The regression set
 on the same binaries passes on Linux (surface, closest, shadow, transparent shadow and lighting, lighting MIS, broad
@@ -4920,6 +5041,14 @@ shader nodes and ambient occlusion shadow rays (fast GI additive mode, AO pass) 
 GPUs"; `KnownAdapter::also_refused_region` = `AO_ANY`); the capability scope lists it under `renderTimeRejections`.
 On the S20 the three refusals and the replace-mode images pass, as do principled_svm, transparent_shadow, surface,
 closest, shadow, lighting_mis and glass_render.
+
+AO combinations (lane cov-a, 2026-10-30): `ao_render` cases 12-23: fast GI replace and additive with transparent
+shadows at ao_bounces 1; fast GI and the AO node with the light tree, light linking, glass/Principled materials, camera
+motion and terminator offsets; 24 cases, 24 replays. The raytrace surface entry (`prepare_surface_raytrace`) is
+specialized to the SVM node and closure regions of the `SD_HAS_RAYTRACE` shaders only (`raytrace_unused_svm_features`,
+scene specialization mode): an AO node scene with a Principled floor otherwise compiled Principled into it (67,787 Intel
+instructions, 1,292,392 inlined bytes, size-guard warning); after the change the ao_render gate's largest entry is
+916,174 bytes with no warning, films unchanged.
 
 ## Manifold next-event estimation (caustics)
 

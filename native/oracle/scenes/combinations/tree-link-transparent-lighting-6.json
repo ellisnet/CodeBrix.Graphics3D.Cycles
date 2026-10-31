@@ -1,0 +1,529 @@
+{
+ "cbcOracleScene": 1,
+ "id": "combinations/tree-link-transparent-lighting-6",
+ "description": "Light linking on the light tree with transparent shadows, transparent-lighting mode 6 (derived from linux-gates/transparent-lighting-6)",
+ "sourceFixture": "native/oracle/scenes/linux-gates/transparent-lighting-6.json, native/cycles/lighting_gate.cpp fixture(scene, 6) in codebrix_cycles_transparent_lighting_gate (CODEBRIX_TRANSPARENT_LIGHT_GATE, MIS)",
+ "render": {
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": true,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 3,
+    "filter_glossy": 0.0,
+    "transparent_max_bounce": 16
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "diffuse",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.55,
+        0.32,
+        0.18
+       ],
+       "roughness": 0.31
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "mixed",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.55,
+        0.32,
+        0.18
+       ],
+       "roughness": 0.31
+      }
+     },
+     {
+      "handle": "g",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.2,
+        0.5,
+        0.8
+       ],
+       "roughness": 0.35
+      }
+     },
+     {
+      "handle": "m",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.4
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "m",
+      "Closure1"
+     ],
+     [
+      "g",
+      "BSDF",
+      "m",
+      "Closure2"
+     ],
+     [
+      "m",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4.0,
+     -3.0,
+     3.0,
+     4.0,
+     -3.0,
+     3.0,
+     4.0,
+     3.0,
+     3.0,
+     -4.0,
+     3.0,
+     3.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "diffuse"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4.0,
+     -2.0,
+     -2.0,
+     4.0,
+     -2.0,
+     -2.0,
+     4.0,
+     -2.0,
+     3.0,
+     -4.0,
+     -2.0,
+     3.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "mixed"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor",
+    "receiver_light_set": 1
+   }
+  },
+  {
+   "handle": "center",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.8,
+     -1.2,
+     0.0,
+     0.8,
+     -1.2,
+     0.0,
+     0.8,
+     1.1,
+     0.0,
+     -0.8,
+     1.1,
+     0.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "mixed"
+    ]
+   }
+  },
+  {
+   "handle": "center-object",
+   "create": "object",
+   "set": {
+    "geometry": "center",
+    "receiver_light_set": 2
+   }
+  },
+  {
+   "handle": "pane",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "t",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "t",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "pane-0",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -2.9,
+     0.55,
+     -1.8,
+     2.9,
+     0.55,
+     -1.8,
+     2.9,
+     0.55,
+     2.8,
+     -2.9,
+     0.55,
+     2.8
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "pane"
+    ]
+   }
+  },
+  {
+   "handle": "pane-0-object",
+   "create": "object",
+   "set": {
+    "geometry": "pane-0"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "light-0",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "strength": [
+     140,
+     100,
+     70
+    ],
+    "use_mis": true,
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "light-0-object",
+   "create": "object",
+   "set": {
+    "geometry": "light-0",
+    "tfm": [
+     0.9553365,
+     -0.115081,
+     0.2721921,
+     2.2,
+     0.0,
+     0.921061,
+     0.3894183,
+     2.0,
+     -0.2955202,
+     -0.3720256,
+     0.8799232,
+     -2.0
+    ],
+    "light_set_membership": 3
+   }
+  },
+  {
+   "handle": "light-1",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "strength": [
+     140,
+     100,
+     70
+    ],
+    "use_mis": true,
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "light-1-object",
+   "create": "object",
+   "set": {
+    "geometry": "light-1",
+    "tfm": [
+     0.9553365,
+     -0.115081,
+     0.2721921,
+     -2.7,
+     0.0,
+     0.921061,
+     0.3894183,
+     2.0,
+     -0.2955202,
+     -0.3720256,
+     0.8799232,
+     -2.0
+    ],
+    "light_set_membership": 5
+   }
+  },
+  {
+   "handle": "light-2",
+   "create": "sunlight",
+   "set": {
+    "angle": 0.22,
+    "normalize": false,
+    "strength": [
+     0.3,
+     0.5,
+     0.7
+    ],
+    "use_mis": true,
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "light-2-object",
+   "create": "object",
+   "set": {
+    "geometry": "light-2",
+    "tfm": [
+     -0.9577872,
+     -0.1119492,
+     0.2647848,
+     2.2,
+     0.0,
+     0.921061,
+     0.3894183,
+     2.0,
+     -0.287478,
+     0.3729799,
+     -0.8821805,
+     -2.0
+    ],
+    "light_set_membership": 7
+   }
+  }
+ ],
+ "images": []
+}

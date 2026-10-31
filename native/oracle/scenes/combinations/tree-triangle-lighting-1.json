@@ -1,0 +1,393 @@
+{
+ "cbcOracleScene": 1,
+ "id": "combinations/tree-triangle-lighting-1",
+ "description": "Light tree with sampled mesh lights, triangle-lighting mode 1 (derived from linux-gates/triangle-lighting-1)",
+ "sourceFixture": "native/oracle/scenes/linux-gates/triangle-lighting-1.json, native/cycles/lighting_gate.cpp fixture(scene, 1) in codebrix_cycles_triangle_lighting_gate (CODEBRIX_TRIANGLE_LIGHT_GATE, MIS)",
+ "render": {
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": true,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 3,
+    "filter_glossy": 0.0
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "diffuse",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.55,
+        0.32,
+        0.18
+       ],
+       "roughness": 0.31
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "mixed",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.55,
+        0.32,
+        0.18
+       ],
+       "roughness": 0.31
+      }
+     },
+     {
+      "handle": "g",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.2,
+        0.5,
+        0.8
+       ],
+       "roughness": 0.35
+      }
+     },
+     {
+      "handle": "m",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.4
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "m",
+      "Closure1"
+     ],
+     [
+      "g",
+      "BSDF",
+      "m",
+      "Closure2"
+     ],
+     [
+      "m",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4.0,
+     -3.0,
+     3.0,
+     4.0,
+     -3.0,
+     3.0,
+     4.0,
+     3.0,
+     3.0,
+     -4.0,
+     3.0,
+     3.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "diffuse"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4.0,
+     -2.0,
+     -2.0,
+     4.0,
+     -2.0,
+     -2.0,
+     4.0,
+     -2.0,
+     3.0,
+     -4.0,
+     -2.0,
+     3.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "mixed"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor"
+   }
+  },
+  {
+   "handle": "center",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.8,
+     -1.2,
+     0.0,
+     0.8,
+     -1.2,
+     0.0,
+     0.8,
+     1.1,
+     0.0,
+     -0.8,
+     1.1,
+     0.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "mixed"
+    ]
+   }
+  },
+  {
+   "handle": "center-object",
+   "create": "object",
+   "set": {
+    "geometry": "center"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 3
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "front_back"
+   }
+  },
+  {
+   "handle": "panel",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.8,
+     -0.5,
+     0.0,
+     0.8,
+     -0.5,
+     0.0,
+     0.8,
+     0.5,
+     0.0,
+     -0.8,
+     0.5,
+     0.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "panel-object",
+   "create": "object",
+   "set": {
+    "geometry": "panel",
+    "tfm": [
+     0.9838437,
+     0.0944145,
+     0.1571132,
+     1.65,
+     0.0,
+     0.9653408,
+     -0.4794255,
+     1.55,
+     -0.1790296,
+     0.5188478,
+     0.8634041,
+     -1.4
+    ]
+   }
+  }
+ ],
+ "images": []
+}

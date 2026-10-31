@@ -22,7 +22,7 @@
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
 >    `native/evidence/linux-x64-reference-<date>/` set (now
->    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `linux-x64-reference-20261030`); device-gate exchanges go through
 >    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
 >    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
 >    machine; `linux-x64-docker-reference-20261027` is history only.

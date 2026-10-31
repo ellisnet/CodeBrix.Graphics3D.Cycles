@@ -944,12 +944,28 @@ WHAT THIS PACKAGE DOES NOT DO
 - It does not import model formats (glTF and others); convert their data into
   nodes, meshes and attributes yourself (see BRINGING GLTF SCENES).
 - It does not display images or present to a window or swap chain.
-- It does not render passes other than Combined, AO and the shadow catcher passes,
-  non-perspective cameras, denoising, adaptive sampling, path guiding or shadow
-  linking on the WebGPU device (the CPU reference backend does). The
-  integrator's light tree (UseLightTree, on by default) and light linking (an
-  object's ReceiverLightSet and an emitter object's LightSetMembership) do
-  render there, for lamps, mesh emitters and the background light.
+- It never renders OSL shaders or OSL cameras, VDB volume files (OpenVDB or
+  NanoVDB grids), subdivision surfaces (OpenSubdiv) or path guiding, and it
+  never imports USD or Alembic files or acts as a Hydra render delegate, on any
+  backend. These are outside the package's scope. Volumes defined by shader
+  nodes and displacement on the base mesh are in scope.
+- The package aims for the same features on every backend: the WebGPU device
+  (Windows, Linux, Android, macOS on Intel) and Cycles' own Metal device
+  (macOS on Apple Silicon). Until a feature reaches the WebGPU device, a scene
+  that needs it fails there with an error naming the feature; it is never
+  approximated.
+- It does not yet render passes other than Combined, AO and the shadow catcher
+  passes, non-perspective cameras (orthographic, panoramic, depth of field,
+  stereo), sampling patterns other than tabulated Sobol, adaptive sampling or
+  shadow linking on the WebGPU device (the CPU reference backend and the Metal
+  backend do). It does not yet render curves (hair), point clouds,
+  displacement, subsurface scattering, volumes whose density varies through
+  space, the Beckmann, Ashikhmin, toon and hair BSDFs, or the Metallic BSDF
+  node on the WebGPU device (the Principled BSDF's metallic lobe does render).
+  It does not denoise or bake textures on any backend yet. The integrator's
+  light tree (UseLightTree, on by default) and light linking (an object's
+  ReceiverLightSet and an emitter object's LightSetMembership) do render on the
+  WebGPU device, for lamps, mesh emitters and the background light.
 - It does not render background-light portals, sky-texture sun guiding,
   more than one background light, or point, spot, area and sun lamps whose
   emission shader is not constant on the WebGPU device (the render fails with

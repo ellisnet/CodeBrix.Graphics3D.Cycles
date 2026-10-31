@@ -91,7 +91,8 @@ static uint64_t sample_gate(WebGPUDevice &d,Scene &scene,const std::vector<Image
     uint guard[4]={0xa5a5a5a5,0xa5a5a5a5,0xa5a5a5a5,0xa5a5a5a5};d.upload(p[4],guard,sizeof(guard));p[1]=1;p[14]=d.scene_tables();d.dispatch(p,1,shader);
     uint error=0;d.download(d.error_word,&error,4);d.download(p[4],guard,sizeof(guard));
     require(error==(test==2?256u:test==10?16u:128u),"Image rejection "+std::to_string(test)+" error="+std::to_string(error));
-    for(uint v:guard)require(v==0xa5a5a5a5,"Rejected image wrote output");d.zero(d.error_word,4);rejected++;
+    for(uint v:guard)require(v==0xa5a5a5a5,"Rejected image wrote output");
+    d.zero(d.error_word,4);rejected++;
     scene.dscene.image_textures[tex_id]=tex_saved;scene.dscene.image_textures.copy_to_device();d.upload(info_address,&original_info,sizeof(original_info));d.upload(bounds_address,&original_bounds,sizeof(original_bounds));udims[0].tile=2;udims.copy_to_device();
   }
   return probes.size();

@@ -404,14 +404,28 @@
       "source": "third_party/cycles/src/kernel/features.h",
       "classification": "shader-behavior",
       "workItems": [
-        "P00-02"
+        "P07-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "parameter-edge-cases-and-feature-combinations",
-      "evidence": [],
+      "evidence": [
+        "ambient-occlusion"
+      ],
       "nativeValue": 4194304,
+      "notes": "AO pass: AO shadow ray for camera paths, pass_ao write.",
+      "implementation": [
+        "native/shaders/wavefront_ao.wgsl",
+        "native/shaders/wavefront_shadow.wgsl",
+        "native/cycles/surface.cpp",
+        "native/cycles/shadow.cpp"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/ao_reference.cpp"
+      ],
       "classificationReviewed": false
     },
     {
@@ -421,14 +435,28 @@
       "source": "third_party/cycles/src/kernel/features.h",
       "classification": "shader-behavior",
       "workItems": [
-        "P00-02"
+        "P07-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "parameter-edge-cases-and-feature-combinations",
-      "evidence": [],
+      "evidence": [
+        "ambient-occlusion"
+      ],
       "nativeValue": 8388608,
+      "notes": "Fast GI additive mode: AO shadow ray per surface hit with unshadowed_throughput, additive combined write. With transparent shadows at ao_bounces 1 (ao_render cases 12, 22 and 23).",
+      "implementation": [
+        "native/shaders/wavefront_ao.wgsl",
+        "native/shaders/wavefront_shadow.wgsl",
+        "native/cycles/surface.cpp",
+        "native/cycles/shadow.cpp"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/ao_reference.cpp"
+      ],
       "classificationReviewed": false
     },
     {
@@ -456,15 +484,27 @@
       "source": "third_party/cycles/src/kernel/features.h",
       "classification": "shader-behavior",
       "workItems": [
-        "P00-02"
+        "P11-02"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "parameter-edge-cases-and-feature-combinations",
-      "evidence": [],
+      "evidence": [
+        "mnee"
+      ],
       "nativeValue": 16777216,
-      "classificationReviewed": false
+      "notes": "MNEE (shadow caustics) through GGX glass/refraction casters from point and sun lamps, distribution light sampling, opaque shadows; spot/area/background caustic lamps, the light tree, linking, AO, volumes and motion blur with caustics refused; anisotropic casters report error 2.",
+      "implementation": [
+        "native/cycles/mnee.cpp",
+        "native/shaders/wavefront_mnee.wgsl"
+      ],
+      "tests": [
+        "native/cycles/mnee_gate.cpp",
+        "native/cycles/mnee_fixture.h",
+        "native/cycles/mnee_reference.cpp"
+      ],
+      "classificationReviewed": true
     },
     {
       "id": "KernelFeature:KERNEL_FEATURE_PATH_GUIDING",
@@ -524,14 +564,29 @@
       "source": "third_party/cycles/src/kernel/features.h",
       "classification": "shader-behavior",
       "workItems": [
-        "P00-02"
+        "P07-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "parameter-edge-cases-and-feature-combinations",
-      "evidence": [],
+      "evidence": [
+        "light-tree"
+      ],
       "nativeValue": 268435456,
+      "notes": "Receiver light sets and emitter set membership on the flat distribution and on the per-receiver light trees, NEE and forward hits; shadow linking (blocker sets, dedicated-light kernels) refused.",
+      "implementation": [
+        "native/cycles/lighting.cpp",
+        "native/shaders/wavefront_light_tree.wgsl",
+        "native/shaders/wavefront_surface.wgsl",
+        "native/shaders/wavefront_light_eval.wgsl",
+        "native/shaders/wavefront_light_link.wgsl",
+        "native/shaders/wavefront_closest.wgsl"
+      ],
+      "tests": [
+        "native/cycles/light_tree_gate.cpp",
+        "native/cycles/light_tree_reference.cpp"
+      ],
       "classificationReviewed": false
     },
     {
@@ -575,14 +630,27 @@
       "source": "third_party/cycles/src/kernel/features.h",
       "classification": "shader-behavior",
       "workItems": [
-        "P00-02"
+        "P07-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "parameter-edge-cases-and-feature-combinations",
-      "evidence": [],
+      "evidence": [
+        "light-tree"
+      ],
       "nativeValue": 2147483648,
+      "notes": "Light tree sampling (light_tree_sample<false>) and forward MIS pdfs (light_tree_pdf<false>) for lamps, mesh lights (instanced, moving), sun and background lights; volume segments not ported (volumes with direct light refused). With a GGX glass receiver (light_tree_gate case 7: full-sphere importance and PATH_RAY_MIS_HAD_TRANSMISSION forward pdfs), the shadow catcher (shadow_catcher_gate case 17; the approximate catcher in the oracle scene combinations/tree-catcher-approximate), AO (ao_render cases) and the feature-combination oracle scenes (native/oracle/scenes/combinations/, light-motion/).",
+      "implementation": [
+        "native/cycles/lighting.cpp",
+        "native/shaders/wavefront_light_tree.wgsl",
+        "native/shaders/wavefront_surface.wgsl",
+        "native/shaders/wavefront_light_eval.wgsl"
+      ],
+      "tests": [
+        "native/cycles/light_tree_gate.cpp",
+        "native/cycles/light_tree_reference.cpp"
+      ],
       "classificationReviewed": false
     },
     {

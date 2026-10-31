@@ -3,6 +3,7 @@
 #include "device.h"
 #include "wavefront.h"
 #include "surface_closure.h"
+#include "kernel/bvh/types.h"
 #include <cfloat>
 #include <cmath>
 #include <cstring>
@@ -21,6 +22,7 @@ static void require(bool ok,const char *message){if(!ok)throw std::runtime_error
 // Its scalar encoding is in wavefront_surface_stage.wgsl and wavefront_lighting.wgsl.
 static constexpr size_t surface_stage_bytes=surface_data_cache_bytes+38*sizeof(uint32_t);
 static_assert(surface_data_cache_bytes+30*sizeof(uint32_t)==360,"LIGHT_SELECT_RECORD in wavefront_lighting.wgsl");
+static_assert(BVH_STACK_SIZE*sizeof(uint32_t)==768,"AO_STACK_BYTES in wavefront_ao.wgsl");
 static std::string surface_layout(){
   std::ostringstream source;
   auto constant=[&](const char *name,size_t value){source<<"const "<<name<<":u32="<<value<<"u;\n";};
@@ -158,7 +160,11 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // shadow compaction counts then differ between runs). Every slot is one the
   // pinned atomic allocator could also hand out; unused slots stay terminated.
   const bool reserve_shadow=data.integrator.use_direct_light||ao;
-  const size_t needed=records_bytes+(reserve_shadow?sizeof(uint32_t):0);
+  // The Ambient Occlusion node's traversal stacks (wavefront_ao.wgsl ao_trace, push
+  // word 30): one 192-word slot per input of the raytrace entry, after the records.
+  const bool raytrace=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE;
+  const size_t ao_stack_at=records_bytes+(reserve_shadow?sizeof(uint32_t):0);
+  const size_t needed=ao_stack_at+(raytrace?size_t(n)*BVH_STACK_SIZE*sizeof(uint32_t):0);
   if(needed>surface_closure_bytes){
     if(surface_closures){flush();release(surface_closures);surface_closures=0;surface_closure_bytes=0;}
     surface_closures=allocate(needed);surface_closure_bytes=needed;
@@ -167,6 +173,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   p[24]=surface_closures+uint32_t(closure_bytes);
   p[26]=p[24]+4;p[27]=surface_stage_bytes;
   if(reserve_shadow)p[28]=surface_closures+uint32_t(records_bytes);
+  if(raytrace)p[30]=surface_closures+uint32_t(ao_stack_at);
   // With emissive triangles (LIGHT_TRIANGLE) the light stage is two entries
   // (wavefront_surface.wgsl): shade_surface_light samples a lamp and
   // shade_surface_light_triangle does the triangle work, which keeps each entry
@@ -195,8 +202,9 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
     // Shaders flagged SD_HAS_RAYTRACE (the Ambient Occlusion node): the SVM stage
     // with the node's ray tracing (SVM_NODE_RAYTRACE, wavefront_ao.wgsl), built from
     // the same surface source; the other stages are the shared pipelines above.
-    if(!pipeline_current(surface_prepare_raytrace,"prepare_surface_raytrace"))
-      surface_prepare_raytrace=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_raytrace"},SF_NODE_RAYTRACE)[0]);
+    const ShaderFeatures unused=raytrace_unused_svm_features();
+    if(!pipeline_current(surface_prepare_raytrace,"prepare_surface_raytrace",unused))
+      surface_prepare_raytrace=std::move(build_pipelines("surface",surface_source(),{"prepare_surface_raytrace"},SF_NODE_RAYTRACE,unused)[0]);
     dispatch(p,uint32_t(work),surface_prepare_raytrace,workgroup("prepare_surface_raytrace"));
   }else dispatch(p,uint32_t(work),surface_prepare,workgroup("prepare_surface"));
   if(reserve_shadow){

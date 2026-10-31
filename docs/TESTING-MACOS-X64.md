@@ -22,7 +22,7 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
 >    `native/evidence/linux-x64-reference-<date>/` set (now
->    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `linux-x64-reference-20261030`); device-gate exchanges go through
 >    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
 >    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
 >    machine; `linux-x64-docker-reference-20261027` is history only.
@@ -52,8 +52,10 @@ glTF client. The Linux x64 reference data of those runs was
 `native/evidence/linux-x64-docker-reference-20261027/` (produced in Docker on
 this Mac with the dedicated Linux machine's toolchain). **From 2026-10-29 it is
 replaced by `native/evidence/linux-x64-reference-20261029/`**, made on the Linux
-x64 machine; its CPU films are bitwise identical to the Docker set's. The next
-run uses the new set, and the device-gate exchanges go through
+x64 machine; its CPU films are bitwise identical to the Docker set's. From
+2026-10-30 the newest set is `native/evidence/linux-x64-reference-20261030/`
+(the same CPU films for every scene both sets have, plus the feature-combination
+scenes). The next run uses the newest set, and the device-gate exchanges go through
 `native/tools/reference_exchange_handoff.py` instead of Docker (step 7).
 
 The final runs (2026-10-27: gate `macos-x64-validation-7`, corpus
@@ -167,7 +169,7 @@ libobjc, libiconv, libSystem); `lipo` reports x86_64 alone; `codesign` reports
 ### 3. Bring the Linux x64 reference **VALIDATED** (Docker, 2026-10-27; superseded)
 
 From 2026-10-29 the reference comes from the Linux x64 machine only: use
-`native/evidence/linux-x64-reference-20261029/` (overlay hashes in
+`native/evidence/linux-x64-reference-20261030/` (overlay hashes in
 `reference/linux-overlay-hashes.json`, the full host gate in `host-gate/`, the
 oracle and bench films in `oracles/`). No Docker run. The 2026-10-27 record,
 when it was made on this Mac in a container (see

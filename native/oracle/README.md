@@ -135,6 +135,20 @@ these scenes are compared backend against backend (CPU, WebGPU, Metal), never
 with the gates' films. Integrator controls a gate leaves at their defaults stay
 at the pinned Cycles defaults; Session-only denoising is disabled.
 
+## Combination scenes (`scenes/combinations/`, `scenes/light-motion/`)
+
+`author_combinations.py` (`--check`) writes `scenes/combinations/`: committed
+scenes with features added (light tree, light linking, AO, glass/Principled,
+camera motion, terminator offsets, transparent shadows), and the
+`enclosure-emissive-panel*` scenes: an emissive panel sampled nearly edge-on
+inside a diffuse, Oren-Nayar, translucent or mixed-material enclosure, which
+amplifies any last-bit difference in the surface bounce (native/DEVICE.md,
+Resolved, item 27).
+`author_light_motion_combinations.py` writes `scenes/light-motion/` (light
+linking, light `cast_shadow`/`max_bounces`, combined motion, clamps, caustic
+filters and exclude flags; it also writes `sky.float4`). Both are judged CPU
+against WGSL like every scene.
+
 ## Run, compare and bundle
 
 ```sh

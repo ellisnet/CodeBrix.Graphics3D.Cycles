@@ -244,7 +244,8 @@ void WebGPUDevice::const_copy_to(const char *name,void *host,size_t size){guard(
 });}
 // Recorder entries 27-33: the INTERSECT_MNEE entries in dispatch order (35 = unknown; merge wave 8 numbering).
 static unsigned mnee_entry_of(const WebGPUDevice &d,WGPUComputePipeline actual){
-  for(unsigned i=0;i<WebGPUDevice::mnee_entries;i++)if(d.mnee_pipelines[i].value&&actual==d.mnee_pipelines[i].value)return 27+i;return 35;}
+  for(unsigned i=0;i<WebGPUDevice::mnee_entries;i++)if(d.mnee_pipelines[i].value&&actual==d.mnee_pipelines[i].value)return 27+i;
+  return 35;}
 void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,WGPUComputePipeline pipeline,uint32_t workgroup_size){
   require(workgroup_size>0&&workgroup_size<=gpu.limits.maxComputeWorkgroupSizeX&&
           workgroup_size<=gpu.limits.maxComputeInvocationsPerWorkgroup,"Invalid workgroup size");

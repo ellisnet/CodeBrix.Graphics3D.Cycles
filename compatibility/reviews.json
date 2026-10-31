@@ -667,7 +667,7 @@
         "svm-surface",
         "native-render"
       ],
-      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained.",
+      "notes": "Selected native graphs and bounded render: setup, mixtures and surface continuation. General interactions, full parameter corpus and all native RIDs remain open; strict float differences retained. Transparent shadows with the light tree, light linking and glass/Principled receivers in the combination oracle scenes (native/oracle/scenes/combinations/).",
       "implementation": [
         "native/shaders/wavefront_svm_closures.wgsl",
         "native/shaders/wavefront_surface.wgsl"
@@ -2803,7 +2803,7 @@
       "evidence": [
         "light-tree"
       ],
-      "notes": "Light tree sampling (light_tree_sample<false>) and forward MIS pdfs (light_tree_pdf<false>) for lamps, mesh lights (instanced, moving), sun and background lights; volume segments not ported (volumes with direct light refused).",
+      "notes": "Light tree sampling (light_tree_sample<false>) and forward MIS pdfs (light_tree_pdf<false>) for lamps, mesh lights (instanced, moving), sun and background lights; volume segments not ported (volumes with direct light refused). With a GGX glass receiver (light_tree_gate case 7: full-sphere importance and PATH_RAY_MIS_HAD_TRANSMISSION forward pdfs), the shadow catcher (shadow_catcher_gate case 17; the approximate catcher in the oracle scene combinations/tree-catcher-approximate), AO (ao_render cases) and the feature-combination oracle scenes (native/oracle/scenes/combinations/, light-motion/).",
       "implementation": [
         "native/cycles/lighting.cpp",
         "native/shaders/wavefront_light_tree.wgsl",
@@ -2847,7 +2847,7 @@
       "evidence": [
         "shadow-catcher"
       ],
-      "notes": "Written by the WebGPU device (catcher paths) and read through the pinned pass accessor; raw film against the original CPU kernels with lamps, MIS, HDRI world, transparent shadows and mesh lights; no volumes, caustics, denoising.",
+      "notes": "Written by the WebGPU device (catcher paths) and read through the pinned pass accessor; raw film against the original CPU kernels with lamps, MIS, HDRI world, transparent shadows, mesh lights and ambient occlusion (AO pass, fast GI additive AO); no volumes, caustics, denoising. Combination cases 14-22 (shadow_catcher_gate, with replays): object, deformation and camera motion, the light tree, light linking, a spot lamp, glass and Principled transmission, shadow terminator offsets and a non-constant emitter.",
       "implementation": [
         "native/cycles/shadow_catcher.cpp",
         "native/shaders/wavefront_shadow_catcher.wgsl",
@@ -2887,7 +2887,7 @@
       "evidence": [
         "shadow-catcher"
       ],
-      "notes": "Matte of non-catcher paths with transparency, including the approximate matte with shadow (background pass); state and image gates.",
+      "notes": "Matte of non-catcher paths with transparency, including the approximate matte with shadow (background pass) and fast GI's additive AO term; state and image gates.",
       "implementation": [
         "native/cycles/shadow_catcher.cpp",
         "native/shaders/wavefront_shadow_catcher.wgsl",
@@ -2927,7 +2927,7 @@
       "evidence": [
         "ambient-occlusion"
       ],
-      "notes": "Ambient Occlusion node on the SHADE_SURFACE_RAYTRACE queue (prepare_surface_raytrace, SVM_NODE_RAYTRACE): hemisphere sampling, inside, global radius, only_local local traversal; ao = 1 under the non-raytrace node masks. State and image gates against the CPU on Linux, Samsung SM-X700 and HP. Refused on the Adreno 650; only_local from a transform-applied object in a scene with instances and motion combinations untested or refused (native/DEVICE.md).",
+      "notes": "Ambient Occlusion node on the SHADE_SURFACE_RAYTRACE queue (prepare_surface_raytrace, SVM_NODE_RAYTRACE): hemisphere sampling, inside, global radius, only_local local traversal; ao = 1 under the non-raytrace node masks. State and image gates against the CPU on Linux, Samsung SM-X700 and HP. Refused on the Adreno 650; object and deformation motion in the state and image gates; only_local from a transform-applied object in a scene with instances refused (native/DEVICE.md). With the light tree, light linking, glass/Principled materials, camera motion and terminator offsets (ao_render cases 12-23); the raytrace surface entry is specialized to the SD_HAS_RAYTRACE shaders' SVM regions.",
       "implementation": [
         "native/shaders/wavefront_ao.wgsl",
         "native/shaders/wavefront_svm.wgsl",
@@ -2950,7 +2950,7 @@
       "evidence": [
         "ambient-occlusion"
       ],
-      "notes": "AO pass written by the AO shadow rays (film_write_direct_light AO branch), raw film compared with the CPU (ao_render case 5) and read back through the host and the managed ReadPass (managed WebGPU test).",
+      "notes": "AO pass written by the AO shadow rays (film_write_direct_light AO branch), raw film compared with the CPU (ao_render cases 5, 8 and 9, the latter with object and deformation motion; with the shadow catcher, shadow_catcher_gate cases 11 and 13, no AO for split catcher paths) and read back through the host and the managed ReadPass (managed WebGPU test). ao_render cases 12-23: fast GI replace and additive with transparent shadows at ao_bounces 1; fast GI and the AO node with the light tree, light linking, glass/Principled materials, camera motion and terminator offsets.",
       "implementation": [
         "native/shaders/wavefront_shadow.wgsl",
         "native/shaders/wavefront_ao.wgsl",
@@ -2959,6 +2959,7 @@
       "tests": [
         "native/cycles/ao_state_gate.cpp",
         "native/cycles/ao_render_gate.cpp",
+        "native/cycles/shadow_catcher_gate.cpp",
         "native/cycles/ao_reference.cpp",
         "tests/CodeBrix.Graphics3D.Cycles.Tests/WebGpuAmbientOcclusionTests.cs"
       ]
@@ -2995,7 +2996,7 @@
       "evidence": [
         "ambient-occlusion"
       ],
-      "notes": "Fast GI additive mode: AO shadow ray per surface hit with unshadowed_throughput, additive combined write.",
+      "notes": "Fast GI additive mode: AO shadow ray per surface hit with unshadowed_throughput, additive combined write. With transparent shadows at ao_bounces 1 (ao_render cases 12, 22 and 23).",
       "implementation": [
         "native/shaders/wavefront_ao.wgsl",
         "native/shaders/wavefront_shadow.wgsl",

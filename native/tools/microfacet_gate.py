@@ -40,7 +40,7 @@ def native(kind):
             expected = {'compiledGraphs':20, 'cases':167, 'paths':16218,
                         'closureFamilies':6, 'integerChecks':1102824,
                         'floatChecks':28170666, 'stateChecks':23941120,
-                        'untouchedGuardBytes':21376, 'invalidCasesRejected':16}
+                        'untouchedGuardBytes':32064, 'invalidCasesRejected':16}
             assert report['originalCpuSurfaceSvm']
             assert all(report[k] == v for k, v in expected.items()), 'GGX SVM coverage changed'
         elif name == 'bounce':

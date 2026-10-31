@@ -82,6 +82,14 @@ function(codebrix_add_cycles_device)
   list(REMOVE_ITEM util_sources colorspace.cpp)
   set_property(TARGET cycles_util PROPERTY SOURCES "${util_sources}")
   target_sources(cycles_util PRIVATE "${CODEBRIX_CYCLES_OVERLAY}/util/colorspace.cpp")
+  # build_cycles.py's overlay generation, run on every build before the targets
+  # that compile overlay files; unchanged outputs keep their times.
+  if(CODEBRIX_CYCLES_OVERLAY_COMMAND)
+    add_custom_target(codebrix_cycles_overlay COMMAND ${CODEBRIX_CYCLES_OVERLAY_COMMAND} VERBATIM)
+    add_dependencies(cycles_device codebrix_cycles_overlay)
+    add_dependencies(cycles_integrator codebrix_cycles_overlay)
+    add_dependencies(cycles_util codebrix_cycles_overlay)
+  endif()
   set(codebrix_device_libs cycles_device cycles_kernel cycles_scene cycles_session cycles_integrator
     cycles_bvh cycles_subd cycles_graph cycles_util extern_sky)
   cycles_external_libraries_append(codebrix_device_libs)

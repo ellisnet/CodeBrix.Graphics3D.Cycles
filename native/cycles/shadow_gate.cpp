@@ -122,7 +122,8 @@ static ShadowPrecision shadow_precision(const DeviceInfo &info){
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
     Scene scene(params,&d);scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
     precision_fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);configure(scene.dscene.data);
-    for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)p.instances+=scene.dscene.bvh_leaf_nodes[i].x<0;require(p.instances>=5,"Shadow precision fixture lost its instances");
+    for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)p.instances+=scene.dscene.bvh_leaf_nodes[i].x<0;
+    require(p.instances>=5,"Shadow precision fixture lost its instances");
     d.const_copy_to("data",&scene.dscene.data,sizeof(KernelData));bool cancel=false;ShadowScheduler scheduler(&d,scene.film,&scene.dscene,&cancel);
     scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
     const int n=std::min(scheduler.capacity(),4096);const auto rays=precision_rays(scene,n,true);

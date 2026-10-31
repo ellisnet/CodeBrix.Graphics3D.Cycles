@@ -270,7 +270,11 @@ builds the pinned dependency snapshots in third_party/deps, then the native
 Cycles host, the CPU references, the WGSL translation and the WebGPU backend.
 `python3 native/tools/build_cycles.py --jobs 6` rebuilds only the Cycles host
 targets once the dependencies exist. The host library lands at
-native/work/cycles-build/lib/libcodebrix_cycles_host.so.
+native/work/cycles-build/lib/libcodebrix_cycles_host.so. `--target all` builds
+every gate and test program too. The build tree it configures regenerates the
+WGSL overlay (native/work/cycles-overlay, the shader text compiled into the
+host) before every build, so `cmake --build native/work/cycles-build` also
+compiles the current native/shaders sources.
 
 The CPU device in that library is the oracle every GPU result is judged
 against, so it is built at a FIXED arithmetic baseline, never tuned to the build
@@ -326,7 +330,7 @@ LINUX X64 REFERENCE (2026-10-29): Linux x64 and Android testing and validation
 are done on the dedicated Linux x64 machine ONLY, and every Linux x64 reference
 other platforms compare against comes from that machine and is committed:
 the newest native/evidence/linux-x64-reference-<date>/ (now
-linux-x64-reference-20261029: overlay hashes, libm record, the full host gate,
+linux-x64-reference-20261030: overlay hashes, libm record, the full host gate,
 oracle and bench films, managed reference films). Device-gate exchanges of the
 devices without a Linux x64 side (Windows, the Intel Mac, the Raspberry Pi) run
 as the two-visit hand-off of native/tools/reference_exchange_handoff.py

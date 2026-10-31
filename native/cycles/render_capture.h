@@ -61,7 +61,8 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
       meta<<",\"shadowQueuedKernelOffset\":"<<shadow<<",\"shadowPathCapacity\":"<<device.remaining(shadow)/sizeof(uint16_t);}
     meta<<",\"immutableSceneSpans\":[";
     bool first=true;for(auto &[name,address]:device.globals)if(address){if(!first)meta<<',';first=false;meta<<"{\"name\":\""<<name<<"\",\"offset\":"<<address<<",\"bytes\":"<<device.remaining(address)<<'}';}
-    if(!first)meta<<',';auto data=device.constants.at("data");meta<<"{\"name\":\"KernelData\",\"offset\":"<<data<<",\"bytes\":"<<device.remaining(data)<<"}]}\n";
+    if(!first)meta<<',';
+    auto data=device.constants.at("data");meta<<"{\"name\":\"KernelData\",\"offset\":"<<data<<",\"bytes\":"<<device.remaining(data)<<"}]}\n";
     if(!meta)throw std::runtime_error("Capture metadata write failed");
   }
 };

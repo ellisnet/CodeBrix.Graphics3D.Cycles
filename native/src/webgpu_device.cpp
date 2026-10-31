@@ -208,7 +208,8 @@ Device::Device(){
       // Mesa's Dozen names its devices "Microsoft Direct3D12 (<GPU>)": Vulkan
       // layered on D3D12, never native Vulkan evidence.
       if(info.backendType==WGPUBackendType_Vulkan&&device_text.rfind("Microsoft Direct3D12",0)==0)layered_on="Direct3D 12 (Mesa Dozen)";}
-    else wgpuAdapterRelease(a);wgpuAdapterInfoFreeMembers(info);
+    else wgpuAdapterRelease(a);
+    wgpuAdapterInfoFreeMembers(info);
   }
   if(!adapter.value){
     if(choice=="hardware")throw Error(CBC_BACKEND_GPU_ERROR,"No hardware "+backend_name+" adapter");
@@ -260,8 +261,10 @@ Buffer Device::buffer(size_t bytes,WGPUBufferUsage usage,const void *data){
   if(!bytes||bytes%4||bytes>limits.maxBufferSize||((usage&WGPUBufferUsage_Storage)&&bytes>limits.maxStorageBufferBindingSize))
     throw Error(CBC_BACKEND_UNSUPPORTED,"Buffer exceeds WebGPU limits");
   WGPUBufferDescriptor d{};d.size=bytes;d.usage=usage;push_scope();Buffer out(wgpuDeviceCreateBuffer(device,&d));
-  if(data&&out.value)wgpuQueueWriteBuffer(queue,out,0,data,bytes);pop_scope();
-  if(!out.value)throw Error(CBC_BACKEND_GPU_ERROR,"Buffer allocation failed");++buffer_creations;return out;
+  if(data&&out.value)wgpuQueueWriteBuffer(queue,out,0,data,bytes);
+  pop_scope();
+  if(!out.value)throw Error(CBC_BACKEND_GPU_ERROR,"Buffer allocation failed");
+  ++buffer_creations;return out;
 }
 // A Vulkan driver compiler that exhausts its allocator or faults during
 // pipeline creation terminates the process; no WebGPU error can be returned.
@@ -280,7 +283,8 @@ void crash_record(int signal){
   if(crash_record_fd>=0){
     char line[24]="signal=";size_t n=7;char digits[12];size_t d=0;unsigned v=unsigned(signal);
     do{digits[d++]=char('0'+v%10);v/=10;}while(v&&d<sizeof(digits));
-    while(d)line[n++]=digits[--d];line[n++]='\n';
+    while(d)line[n++]=digits[--d];
+    line[n++]='\n';
     (void)_write(crash_record_fd,line,unsigned(n));
   }
 }
@@ -308,7 +312,8 @@ void crash_breadcrumb(int signal){
   if(crash_record_fd>=0){
     char line[24]="signal=";size_t n=7;char digits[12];size_t d=0;unsigned v=unsigned(signal);
     do{digits[d++]=char('0'+v%10);v/=10;}while(v&&d<sizeof(digits));
-    while(d)line[n++]=digits[--d];line[n++]='\n';
+    while(d)line[n++]=digits[--d];
+    line[n++]='\n';
     ssize_t ignored=write(crash_record_fd,line,n);(void)ignored;
   }
   for(size_t i=0;i<5;i++)if(crash_signals[i]==signal)sigaction(signal,&previous_actions[i],nullptr);
@@ -340,12 +345,14 @@ Pipeline Device::pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,cons
   std::string failure;
   for(int i=0;i<3;i++){try{pop_scope();}catch(const Error &e){if(failure.empty())failure=e.what();}}
   if(!failure.empty())throw Error(CBC_BACKEND_GPU_ERROR,std::string("Pipeline '")+entry+"' creation failed: "+failure);
-  if(!result.value)throw Error(CBC_BACKEND_GPU_ERROR,std::string("Pipeline '")+entry+"' creation failed");++pipeline_creations;return result;
+  if(!result.value)throw Error(CBC_BACKEND_GPU_ERROR,std::string("Pipeline '")+entry+"' creation failed");
+  ++pipeline_creations;return result;
 }
 void Device::read(Buffer &buffer,void *out,size_t bytes){
   auto p=std::make_shared<Completion>();WGPUBufferMapCallbackInfo cb{};cb.mode=WGPUCallbackMode_AllowProcessEvents;cb.userdata1=new Pending(p);
   cb.callback=[](WGPUMapAsyncStatus s,WGPUStringView msg,void *data,void*){auto p=take(data);
-    if(s!=WGPUMapAsyncStatus_Success)p->error="Readback: "+text(msg);p->done.store(true,std::memory_order_release);};
+    if(s!=WGPUMapAsyncStatus_Success)p->error="Readback: "+text(msg);
+    p->done.store(true,std::memory_order_release);};
   wgpuBufferMapAsync(buffer,WGPUMapMode_Read,0,bytes,cb);wait(p,true);
   const void *mapped=wgpuBufferGetConstMappedRange(buffer,0,bytes);
   if(!mapped){wgpuBufferUnmap(buffer);throw Error(CBC_BACKEND_GPU_ERROR,"Missing readback data");}

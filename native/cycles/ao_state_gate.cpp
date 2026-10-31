@@ -4,8 +4,12 @@
 // (integrate_surface_ao: direction, origin, interval, self primitives, flags,
 // throughputs, queue) and the shadow stage's AO film writes (the AO pass and the
 // additive combined term), each against the unmodified CPU kernels from the same
-// input states. Fast GI's AO bounce termination and per-object AO distance are
-// the closest gate's cases (closest_gate.cpp).
+// input states; the same with a shadow catcher (matte, catcher-hit and split-off
+// catcher-pass paths: film_write_combined_pass's shadow catcher split, and no AO
+// ray for PATH_RAY_SHADOW_CATCHER_PASS), with object motion and with deformation
+// motion. The AO node cases run static, with object motion and with deformation
+// motion. Fast GI's AO bounce termination and per-object AO distance are the
+// closest gate's cases (closest_gate.cpp).
 #include "wavefront_test.h"
 #include "wavefront.h"
 #include "surface_reference.h"
@@ -30,7 +34,12 @@
 using namespace ccl;
 using namespace wavefront_test;
 #include "surface_fixture.h"
-struct Metrics {uint64_t node_paths=0,node_sensitive=0,cases=0,paths=0,ao_paths=0,ao_clear=0,ao_blocked=0,integers=0,floats=0,strict=0;double maximum=0;};
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
+// Scene modes of the AO shadow-ray and AO node cases.
+enum class Mode {Static,ShadowCatcher,ObjectMotion,DeformingMotion};
+static const char *mode_name(Mode mode){return mode==Mode::ShadowCatcher?"shadow catcher, ":mode==Mode::ObjectMotion?"object motion, ":mode==Mode::DeformingMotion?"deformation motion, ":"";}
+struct Metrics {uint64_t catcher_pass_paths=0,motion_paths=0,node_paths=0,node_sensitive=0,cases=0,paths=0,ao_paths=0,ao_clear=0,ao_blocked=0,integers=0,floats=0,strict=0;double maximum=0;};
 struct AoScheduler:Scheduler {using Scheduler::Scheduler;void next_shadow(int n){integrator_next_shadow_path_index_[0]=n;integrator_next_shadow_path_index_.copy_to_device();}};
 static void number(float a,float e,const std::string &where,Metrics &m){const double error=std::abs(double(a)-e);m.maximum=std::max(m.maximum,error);m.floats++;
   m.strict+=error>1e-7+1e-7*std::abs(double(e));require(std::isfinite(a)&&std::isfinite(e)&&error<=5e-5+2e-4*std::abs(double(e)),where+" actual="+std::to_string(a)+" expected="+std::to_string(e));}
@@ -109,7 +118,7 @@ static void run_case(WebGPUDevice &d,AoScheduler &scheduler,Scene &scene,const s
     }
   }
   film.copy_from_device();healthy(d);for(size_t i=0;i<count;i++)number(film[i],shadow_wanted[i],label+" shadow film="+std::to_string(i),m);
-  m.cases++;m.paths+=ids.size();std::cerr<<"Passed "<<label<<" ("<<ids.size()<<" paths, "<<slots.size()<<" AO rays)\n";
+  m.cases++;m.paths+=ids.size();std::cerr<<"Passed "<<label<<" ("<<ids.size()<<" paths, "<<slots.size()<<" AO rays, running maximum "<<m.maximum<<", strict "<<m.strict<<")\n";
 }
 // Ambient Occlusion node (svm_node_ao) on the SHADE_SURFACE_RAYTRACE queue against the CPU
 // integrator_shade_surface_raytrace, and the same shaders on SHADE_SURFACE against the CPU's
@@ -131,7 +140,7 @@ static Mesh *ao_mesh(Scene &scene,Shader *shader,const std::vector<float3> &v,co
   std::copy(v.begin(),v.end(),mesh->get_position_for_write());std::copy(t.begin(),t.end(),mesh->get_triangles().data());
   std::ranges::fill(mesh->get_smooth(),false);std::ranges::fill(mesh->get_shader(),0);mesh->tag_triangles_modified();return mesh;
 }
-static void ao_node_cases(WebGPUDevice &d,Metrics &m){
+static void ao_node_cases(WebGPUDevice &d,Metrics &m,Mode mode){
   SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);
   scene.integrator->set_ao_distance(2.f);scene.integrator->set_use_light_tree(false);scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->compute_auto_viewplane();
   const std::vector<int> q={0,1,2,0,2,3};std::vector<Object*> targets;
@@ -143,9 +152,13 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m){
   std::vector<float3> bv;for(int i=0;i<8;i++)bv.push_back(make_float3(i&1?.5f:-.5f,i&2?.5f:-.5f,i&4?.5f:-.5f));
   const std::vector<int> bt={0,2,1,1,2,3,4,5,6,5,7,6,0,1,4,1,5,4,2,6,3,3,6,7,0,4,2,2,4,6,1,3,5,3,7,5};auto box=ao_mesh(scene,ao_shader(scene,3),bv,bt);
   for(int k=0;k<2;k++){auto o=scene.create_node<Object>();o->set_geometry(box);o->set_tfm(transform_translate(make_float3(k?1.9f:-1.9f,-1.3f,-.6f))*transform_rotate(k?.6f:-.4f,make_float3(0,1,0))*transform_scale(make_float3(1.1f,1.4f,.9f)));targets.push_back(o);}
+  // Motion: the linked-normal quad and the first instanced box (only_local) move, or both deform.
+  if(mode==Mode::ObjectMotion){object_motion_fixture(scene,*targets[2],1);object_motion_fixture(scene,*targets[4],2);}
+  if(mode==Mode::DeformingMotion){deforming_motion_fixture(scene,*targets[2],1);deforming_motion_fixture(scene,*targets[4],0);}
   for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
   Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"AO node scene preparation failed");
   auto &ds=scene.dscene;auto &data=ds.data;require(data.kernel_features&KERNEL_FEATURE_NODE_RAYTRACE,"Missing native raytrace node feature");
+  if(mode!=Mode::Static)require(data.kernel_features&KERNEL_FEATURE_OBJECT_MOTION,"Missing native motion feature");
   data.background.use_mis=0;data.integrator.num_lights=0;data.integrator.use_light_mis=0;data.integrator.use_direct_light=0;data.integrator.filter_glossy=FLT_MAX;data.max_closures=MAX_CLOSURE;
   auto &f=data.film;f.pass_stride=8;f.pass_combined=0;f.pass_emission=4;f.pass_adaptive_aux_buffer=PASS_UNUSED;f.pass_lightgroup=PASS_UNUSED;f.pass_flag=0;f.light_pass_flag=PASSMASK(COMBINED)|PASSMASK(EMISSION);
   d.const_copy_to("data",&data,sizeof(data));
@@ -158,8 +171,8 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m){
       // Two-thirds of the rays look at the surface from the camera, one third from behind (backfacing, inside).
       const float3 origin=j%3==2?P+(P-camera)*.4f:camera;const float3 D=normalize(P-origin);
       const unsigned i=unsigned(ids.size())*3+1;require(i<initial.size(),"AO node fixture capacity");ids.push_back(int(i));auto &s=initial[i];
-      s.isect.object=object->get_device_index();s.isect.prim=int(mesh->prim_offset)+t;s.isect.type=PRIMITIVE_TRIANGLE;s.isect.u=u;s.isect.v=v;s.isect.t=len(P-origin);
-      s.ray.P=origin;s.ray.D=D;s.ray.tmax=FLT_MAX;s.ray.time=.5f;s.ray.dP=.0002f;s.ray.dD=.0004f;
+      s.isect.object=object->get_device_index();s.isect.prim=int(mesh->prim_offset)+t;s.isect.type=mesh->has_motion_blur()?PRIMITIVE_MOTION_TRIANGLE:PRIMITIVE_TRIANGLE;s.isect.u=u;s.isect.v=v;s.isect.t=len(P-origin);
+      s.ray.P=origin;s.ray.D=D;s.ray.tmax=FLT_MAX;s.ray.time=mode==Mode::Static?.5f:float((j*7)%11)/10.f;s.ray.dP=.0002f;s.ray.dD=.0004f;
       s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.path.rng_pixel=0x9e3779b9u*i+7u;s.path.rng_offset=uint16_t(65000u+i*31u);s.path.sample=j*29u;
       s.path.throughput=make_float3(.7,.8,.6);s.path.continuation_probability=1;s.path.min_ray_pdf=FLT_MAX;s.path.flag=PATH_RAY_MIS_SKIP|PATH_RAY_TRANSPARENT_BACKGROUND;
       s.path.render_pixel_index=unsigned(ids.size()-1);}}
@@ -176,7 +189,7 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m){
     device_vector<int> selected(&d,"ao_node_indices",MEM_READ_WRITE);selected.alloc(ids.size());std::copy(ids.begin(),ids.end(),selected.data());selected.copy_to_device();
     IntegratorQueueCounter counter{};counter.num_queued[kernel]=ids.size();d.upload(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));
     int n=int(ids.size());DeviceKernelArguments args;args.add(&selected.device_pointer);args.add(&film.device_pointer);args.add(&n);
-    const std::string label=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE?"AO node, non-raytrace mask":"AO node, raytrace queue";
+    const std::string label=std::string(mode_name(mode))+(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE?"AO node, non-raytrace mask":"AO node, raytrace queue");
     require(queue->enqueue(kernel,n,args)&&queue->synchronize(),label+": "+d.error_message());
     const auto actual=download(d,layout,input.size());
     for(auto &field:layout)for(int i:ids){auto a=reinterpret_cast<const char*>(&actual[i])+field.offset;auto e=reinterpret_cast<const char*>(&expected[i])+field.offset;
@@ -184,58 +197,81 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m){
       else{require(!std::memcmp(a,e,field.stride),label+" integer "+field.name+" path="+std::to_string(i));m.integers++;}}
     film.copy_from_device();healthy(d);for(size_t i=0;i<count;i++)number(film[i],wanted[i],label+" film="+std::to_string(i),m);
     IntegratorQueueCounter observed{};d.download(uintptr_t(d.state.queue_counter),&observed,sizeof(observed));IntegratorQueueCounter want{};
-    for(int i:ids)if(expected[i].path.queued_kernel)want.num_queued[expected[i].path.queued_kernel]++;require(!std::memcmp(&observed,&want,sizeof(want)),label+": queue counters");
-    m.cases++;m.paths+=ids.size();m.node_paths+=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE?ids.size():0;std::cerr<<"Passed "<<label<<" ("<<ids.size()<<" paths)\n";
+    for(int i:ids)if(expected[i].path.queued_kernel)want.num_queued[expected[i].path.queued_kernel]++;
+    require(!std::memcmp(&observed,&want,sizeof(want)),label+": queue counters");
+    m.cases++;m.paths+=ids.size();m.node_paths+=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE?ids.size():0;if(mode!=Mode::Static)m.motion_paths+=ids.size();std::cerr<<"Passed "<<label<<" ("<<ids.size()<<" paths, running maximum "<<m.maximum<<", strict "<<m.strict<<")\n";
   }
   // The node's ray tracing changes the result: raytrace and non-raytrace CPU throughputs differ.
-  m.node_sensitive=sensitive;require(sensitive>50,"AO node coverage: raytrace and non-raytrace results differ for only "+std::to_string(sensitive)+" paths");
+  m.node_sensitive+=sensitive;require(sensitive>50,"AO node coverage: raytrace and non-raytrace results differ for only "+std::to_string(sensitive)+" paths");
+}
+// AO shadow rays and their shadow-stage film from the same input states, in one scene mode.
+static void ao_ray_cases(WebGPUDevice &d,Metrics &m,Mode mode){
+  SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
+  Scene scene(params,&d);prepare(scene);
+  // A large occluder above the fixture objects: AO rays reach it at the longer distances.
+  Object *occluder;{auto mesh=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(scene.default_surface);mesh->set_used_shaders(slots);mesh->resize_mesh(4,2);
+    const float3 v[]={make_float3(-20,-20,7.5f),make_float3(20,-20,7.5f),make_float3(20,20,7.5f),make_float3(-20,20,7.5f)};std::copy_n(v,4,mesh->get_position_for_write());
+    const int t[]={0,1,2,0,2,3};std::copy_n(t,6,mesh->get_triangles().data());std::ranges::fill(mesh->get_smooth(),false);std::ranges::fill(mesh->get_shader(),0);mesh->tag_triangles_modified();
+    occluder=scene.create_node<Object>();occluder->set_geometry(mesh);}
+  // Motion: the second fixture object moves (5 transform steps), the third deforms (5 steps).
+  if(mode==Mode::ObjectMotion)object_motion_fixture(scene,*scene.objects[1],2);
+  if(mode==Mode::DeformingMotion)deforming_motion_fixture(scene,*scene.objects[2],1);
+  for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
+  Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"AO state scene preparation failed");
+  auto &data=scene.dscene.data;
+  data.background.use_mis=0;data.integrator.num_lights=0;data.integrator.use_light_mis=0;data.integrator.use_direct_light=0;data.integrator.use_caustics=0;
+  data.integrator.filter_glossy=FLT_MAX;data.max_closures=MAX_CLOSURE;
+  auto &f=data.film;f.pass_stride=40;f.pass_combined=0;f.pass_emission=4;f.pass_adaptive_aux_buffer=7;f.pass_ao=11;f.pass_lightgroup=PASS_UNUSED;f.pass_flag=0;
+  f.light_pass_flag=PASSMASK(COMBINED)|PASSMASK(EMISSION)|PASSMASK(AO);
+  if(mode==Mode::ShadowCatcher){data.integrator.has_shadow_catcher=1;data.kernel_features|=KERNEL_FEATURE_SHADOW_CATCHER;
+    f.pass_shadow_catcher=14;f.pass_shadow_catcher_sample_count=17;f.pass_shadow_catcher_matte=18;}
+  // With motion the AO rays trace opaque shadows (the device refuses moving transparent shadows).
+  if(mode==Mode::ObjectMotion||mode==Mode::DeformingMotion){require(data.kernel_features&KERNEL_FEATURE_OBJECT_MOTION,"Missing native motion feature");data.integrator.transparent_shadows=0;}
+  data.kernel_features|=KERNEL_FEATURE_AO;data.integrator.ao_additive_factor=.6f;data.integrator.ao_bounces_distance=1.3f;
+  d.const_copy_to("data",&data,sizeof(data));const auto original=data;
+  bool cancelled=false;AoScheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);auto layout=fields(d);
+  require(d.state.shadow_path.unshadowed_throughput,"Missing AO shadow state");
+  std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto all=states_for(scene,initial);std::vector<int> ids;
+  for(int i:all){if(initial[i].isect.object==int(occluder->get_device_index()))initial[i]=IntegratorStateCPU{};else ids.push_back(i);}
+  // Deforming meshes hold motion triangles (the fixture writes static triangle intersections).
+  for(auto ob:scene.objects)if(ob->get_geometry()->has_motion_blur())for(int i:ids)if(initial[i].isect.object==ob->get_device_index())initial[i].isect.type=PRIMITIVE_MOTION_TRIANGLE;
+  for(size_t j=0;j<ids.size();j++){auto &s=initial[ids[j]];s.path.throughput=make_float3(.6,.8,.4);s.path.continuation_probability=1;s.path.min_ray_pdf=FLT_MAX;s.ray.tmax=FLT_MAX;
+    s.path.flag=PATH_RAY_MIS_SKIP|PATH_RAY_TRANSPARENT_BACKGROUND;
+    s.path.visibility=j%3==2?PATH_RAY_VISIBILITY_DIFFUSE:PATH_RAY_VISIBILITY_CAMERA;if(j%3==2){s.path.bounce=1+j%2;s.path.flag=PATH_RAY_REFLECT|PATH_RAY_SURFACE_PASS;}
+    // Shadow catcher: matte paths, paths that hit the catcher, and split-off catcher-pass paths.
+    if(mode==Mode::ShadowCatcher){if(j%4==1)s.path.flag|=PATH_RAY_SHADOW_CATCHER_HIT;if(j%4==2){s.path.flag|=PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_PASS;m.catcher_pass_paths++;}}}
+  if(mode==Mode::ObjectMotion||mode==Mode::DeformingMotion)m.motion_paths+=ids.size();
+  std::cerr<<mode_name(mode)<<"AO state paths="<<ids.size()<<" transparent shadows="<<data.integrator.transparent_shadows<<'\n';
+  struct Variant {const char *name;uint features;float factor,distance;bool dense;uint filter;float clamp;};
+  const Variant variants[]={{"additive and pass",KERNEL_FEATURE_AO,.6f,1.3f,false,0,0},{"additive",KERNEL_FEATURE_AO_ADDITIVE,.45f,2.f,false,0,0},
+    {"pass only",KERNEL_FEATURE_AO_PASS,0,1.f,false,0,0},{"short distance, clamped",KERNEL_FEATURE_AO,.8f,.25f,false,0,.05f},
+    {"diffuse filtered",KERNEL_FEATURE_AO,.6f,1.3f,false,FILTER_CLOSURE_DIFFUSE,0},{"dense dispatch",KERNEL_FEATURE_AO,.6f,1.3f,true,0,0},{"long distance",KERNEL_FEATURE_AO,.6f,9.f,false,0,0}};
+  for(const auto &v:variants){
+    // With a shadow catcher: the additive and pass variants; with motion: two of them.
+    const std::string name=v.name;
+    if(mode==Mode::ShadowCatcher&&name!="additive and pass"&&name!="additive"&&name!="pass only")continue;
+    if((mode==Mode::ObjectMotion||mode==Mode::DeformingMotion)&&name!="additive and pass"&&name!="long distance")continue;
+    const std::string label=mode_name(mode)+name;
+    data=original;data.kernel_features=(original.kernel_features&~KERNEL_FEATURE_AO)|v.features;data.integrator.ao_additive_factor=v.factor;data.integrator.ao_bounces_distance=v.distance;
+    data.integrator.filter_closures|=v.filter;if(v.clamp>0){data.integrator.sample_clamp_direct=v.clamp;data.integrator.sample_clamp_indirect=v.clamp*.5f;}
+    d.const_copy_to("data",&data,sizeof(data));
+    if(v.dense){auto dense=initial;std::vector<int> dense_ids;for(size_t i=0;i<ids.size();i++){dense[i]=initial[ids[i]];dense_ids.push_back(int(i));}
+      run_case(d,scheduler,scene,layout,dense,dense_ids,label,m,true);}
+    else run_case(d,scheduler,scene,layout,initial,ids,label,m,false);
+  }
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2,"Usage: ao_state_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"ao_state_gate device creation");Metrics m;
-  {
-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
-    Scene scene(params,&d);prepare(scene);
-    // A large occluder above the fixture objects: AO rays reach it at the longer distances.
-    Object *occluder;{auto mesh=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(scene.default_surface);mesh->set_used_shaders(slots);mesh->resize_mesh(4,2);
-      const float3 v[]={make_float3(-20,-20,7.5f),make_float3(20,-20,7.5f),make_float3(20,20,7.5f),make_float3(-20,20,7.5f)};std::copy_n(v,4,mesh->get_position_for_write());
-      const int t[]={0,1,2,0,2,3};std::copy_n(t,6,mesh->get_triangles().data());std::ranges::fill(mesh->get_smooth(),false);std::ranges::fill(mesh->get_shader(),0);mesh->tag_triangles_modified();
-      occluder=scene.create_node<Object>();occluder->set_geometry(mesh);}
-    for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
-    Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"AO state scene preparation failed");
-    auto &data=scene.dscene.data;
-    data.background.use_mis=0;data.integrator.num_lights=0;data.integrator.use_light_mis=0;data.integrator.use_direct_light=0;data.integrator.use_caustics=0;
-    data.integrator.filter_glossy=FLT_MAX;data.max_closures=MAX_CLOSURE;
-    auto &f=data.film;f.pass_stride=40;f.pass_combined=0;f.pass_emission=4;f.pass_adaptive_aux_buffer=7;f.pass_ao=11;f.pass_lightgroup=PASS_UNUSED;f.pass_flag=0;
-    f.light_pass_flag=PASSMASK(COMBINED)|PASSMASK(EMISSION)|PASSMASK(AO);
-    data.kernel_features|=KERNEL_FEATURE_AO;data.integrator.ao_additive_factor=.6f;data.integrator.ao_bounces_distance=1.3f;
-    d.const_copy_to("data",&data,sizeof(data));const auto original=data;
-    bool cancelled=false;AoScheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);auto layout=fields(d);
-    require(d.state.shadow_path.unshadowed_throughput,"Missing AO shadow state");
-    std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto all=states_for(scene,initial);std::vector<int> ids;
-    for(int i:all){if(initial[i].isect.object==int(occluder->get_device_index()))initial[i]=IntegratorStateCPU{};else ids.push_back(i);}
-    for(size_t j=0;j<ids.size();j++){auto &s=initial[ids[j]];s.path.throughput=make_float3(.6,.8,.4);s.path.continuation_probability=1;s.path.min_ray_pdf=FLT_MAX;s.ray.tmax=FLT_MAX;
-      s.path.flag=PATH_RAY_MIS_SKIP|PATH_RAY_TRANSPARENT_BACKGROUND;
-      s.path.visibility=j%3==2?PATH_RAY_VISIBILITY_DIFFUSE:PATH_RAY_VISIBILITY_CAMERA;if(j%3==2){s.path.bounce=1+j%2;s.path.flag=PATH_RAY_REFLECT|PATH_RAY_SURFACE_PASS;}}
-    std::cerr<<"AO state paths="<<ids.size()<<" transparent shadows="<<data.integrator.transparent_shadows<<'\n';
-    struct Variant {const char *name;uint features;float factor,distance;bool dense;uint filter;float clamp;};
-    const Variant variants[]={{"additive and pass",KERNEL_FEATURE_AO,.6f,1.3f,false,0,0},{"additive",KERNEL_FEATURE_AO_ADDITIVE,.45f,2.f,false,0,0},
-      {"pass only",KERNEL_FEATURE_AO_PASS,0,1.f,false,0,0},{"short distance, clamped",KERNEL_FEATURE_AO,.8f,.25f,false,0,.05f},
-      {"diffuse filtered",KERNEL_FEATURE_AO,.6f,1.3f,false,FILTER_CLOSURE_DIFFUSE,0},{"dense dispatch",KERNEL_FEATURE_AO,.6f,1.3f,true,0,0},{"long distance",KERNEL_FEATURE_AO,.6f,9.f,false,0,0}};
-    for(const auto &v:variants){
-      data=original;data.kernel_features=(original.kernel_features&~KERNEL_FEATURE_AO)|v.features;data.integrator.ao_additive_factor=v.factor;data.integrator.ao_bounces_distance=v.distance;
-      data.integrator.filter_closures|=v.filter;if(v.clamp>0){data.integrator.sample_clamp_direct=v.clamp;data.integrator.sample_clamp_indirect=v.clamp*.5f;}
-      d.const_copy_to("data",&data,sizeof(data));
-      if(v.dense){auto dense=initial;std::vector<int> dense_ids;for(size_t i=0;i<ids.size();i++){dense[i]=initial[ids[i]];dense_ids.push_back(int(i));}
-        run_case(d,scheduler,scene,layout,dense,dense_ids,v.name,m,true);}
-      else run_case(d,scheduler,scene,layout,initial,ids,v.name,m,false);
-    }
-  }
-  ao_node_cases(d,m);
+  // The static cases first, in their original order; then the shadow catcher and motion cases.
+  ao_ray_cases(d,m,Mode::Static);ao_node_cases(d,m,Mode::Static);
+  for(const Mode mode:{Mode::ShadowCatcher,Mode::ObjectMotion,Mode::DeformingMotion})ao_ray_cases(d,m,mode);
+  for(const Mode mode:{Mode::ObjectMotion,Mode::DeformingMotion})ao_node_cases(d,m,mode);
   require(stats.mem_used==0,"AO state Cycles allocation leak");
   require(m.ao_clear>100&&m.ao_blocked>100,"Missing AO shadow ray coverage: unoccluded="+std::to_string(m.ao_clear)+" occluded="+std::to_string(m.ao_blocked));
+  require(m.catcher_pass_paths>100&&m.motion_paths>1000,"Missing shadow catcher or motion coverage");
   std::ofstream(std::string(argv[1])+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(std::string(argv[1])+".library.txt")<<d.gpu.library_path;
   std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuSurfaceAndShadowIntegrator\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"aoShadowRays\":"<<m.ao_paths<<",\"aoUnoccluded\":"<<m.ao_clear
-    <<",\"aoOccluded\":"<<m.ao_blocked<<",\"aoNodePaths\":"<<m.node_paths<<",\"aoNodeSensitivePaths\":"<<m.node_sensitive<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum
+    <<",\"aoOccluded\":"<<m.ao_blocked<<",\"aoNodePaths\":"<<m.node_paths<<",\"aoNodeSensitivePaths\":"<<m.node_sensitive<<",\"shadowCatcherPassPaths\":"<<m.catcher_pass_paths<<",\"motionPaths\":"<<m.motion_paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum
     <<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

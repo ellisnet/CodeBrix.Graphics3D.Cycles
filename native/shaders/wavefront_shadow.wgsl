@@ -71,8 +71,13 @@ fn shadow_write_film(index:u32){
         let features=data_word(D_kernel_features);
         if((features&AO_FEATURE_PASS)!=0u&&(state_byte(S_shadow_path_visibility,index)&VIS_CAMERA)!=0u){film_rgb(base,data_word(D_film_pass_ao),value);}
         if((features&AO_FEATURE_ADDITIVE)!=0u){let ao=value*heap_vec3(state_address(S_shadow_path_unshadowed_throughput,index,12u));
-            if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
-            if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
+//#if SHADOW_CATCHER else             if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
+            // film_write_combined_pass: the shadow catcher split first (matte, catcher pass).
+            let ao_handled=sc_combined(flag,base,ao);if(!ao_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
+//#endif
+//#if SHADOW_CATCHER else             if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
+            if(!ao_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
+//#endif
                 film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),2.0*ao);}}
         shadow_transition(index,K_SHADOW_SHADE,0u);return;
     }

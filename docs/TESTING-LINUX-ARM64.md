@@ -20,7 +20,7 @@
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
 >    `native/evidence/linux-x64-reference-<date>/` set (now
->    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `linux-x64-reference-20261030`); device-gate exchanges go through
 >    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
 >    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
 >    machine; `linux-x64-docker-reference-20261027` is history only.
@@ -173,7 +173,7 @@ python3 tools/dependencies/build_linux_arm64.py --jobs 4
 python3 native/tools/build_cycles_linux_arm64.py --jobs 4 --device-set
 export MESA_SHADER_CACHE_DIR=$PWD/native/work/<run>/mesa-cache MESA_SHADER_CACHE_MAX_SIZE=8G
 python3 native/tools/linux_arm64_host_gate.py --output native/work/linux-arm64-validation-<n> \
-  --references native/evidence/linux-x64-reference-20261029/host-gate \
+  --references native/evidence/linux-x64-reference-20261030/host-gate \
   --device-gates [--step-timeout <seconds>]
 python3 native/tools/linux_arm64_lanes.py --output native/work/linux-arm64-lanes-<n> --cap-seconds 36000
 ```

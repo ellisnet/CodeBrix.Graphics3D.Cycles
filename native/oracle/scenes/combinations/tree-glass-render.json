@@ -1,0 +1,4037 @@
+{
+ "cbcOracleScene": 1,
+ "id": "combinations/tree-glass-render",
+ "description": "Light tree with the twenty glass/refraction graphs: point, area and spot lamps and an emissive back panel seen through the glass (derived from linux-gates/glass-render)",
+ "sourceFixture": "native/oracle/scenes/linux-gates/glass-render.json, native/cycles/render_gate.cpp fixture() with CBC_GLASS_FIXTURE (codebrix_cycles_glass_render_gate)",
+ "render": {
+  "width": 64,
+  "height": 48,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": true,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 3,
+    "max_bounce": 4,
+    "max_diffuse_bounce": 4,
+    "max_transmission_bounce": 4,
+    "filter_glossy": 0.0
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 1.1,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -10.0
+    ]
+   }
+  },
+  {
+   "handle": "graph-0",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0,
+       "IOR": 1,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-1",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.003,
+       "IOR": 1.00001,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-2",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.004,
+       "IOR": 1.33,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-3",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.02,
+       "IOR": 1.5,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-4",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.15,
+       "IOR": 0.7,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-5",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.35,
+       "IOR": 2.4,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-6",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "mix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.65,
+       "IOR": 1.5,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     }
+    ],
+    "connect": [
+     [
+      "diffuse",
+      "BSDF",
+      "mix",
+      "Closure1"
+     ],
+     [
+      "transparent",
+      "BSDF",
+      "mix",
+      "Closure2"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-7",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "mix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     },
+     {
+      "handle": "geo",
+      "type": "geometry"
+     },
+     {
+      "handle": "checker",
+      "type": "checker_texture",
+      "set": {
+       "scale": 3.7
+      }
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 1,
+       "IOR": 0.8,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     },
+     {
+      "handle": "gt",
+      "type": "transparent_bsdf"
+     },
+     {
+      "handle": "gadd",
+      "type": "add_closure"
+     }
+    ],
+    "connect": [
+     [
+      "diffuse",
+      "BSDF",
+      "mix",
+      "Closure1"
+     ],
+     [
+      "transparent",
+      "BSDF",
+      "mix",
+      "Closure2"
+     ],
+     [
+      "geo",
+      "Position",
+      "checker",
+      "Vector"
+     ],
+     [
+      "checker",
+      "Fac",
+      "mix",
+      "Fac"
+     ],
+     [
+      "checker",
+      "Color",
+      "diffuse",
+      "Color"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "gadd",
+      "Closure1"
+     ],
+     [
+      "gt",
+      "BSDF",
+      "gadd",
+      "Closure2"
+     ],
+     [
+      "gadd",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-8",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "mix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     },
+     {
+      "handle": "geo",
+      "type": "geometry"
+     },
+     {
+      "handle": "checker",
+      "type": "checker_texture",
+      "set": {
+       "scale": 3.7
+      }
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": -0.2,
+       "IOR": 1.1,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     }
+    ],
+    "connect": [
+     [
+      "diffuse",
+      "BSDF",
+      "mix",
+      "Closure1"
+     ],
+     [
+      "transparent",
+      "BSDF",
+      "mix",
+      "Closure2"
+     ],
+     [
+      "geo",
+      "Position",
+      "checker",
+      "Vector"
+     ],
+     [
+      "checker",
+      "Fac",
+      "mix",
+      "Fac"
+     ],
+     [
+      "checker",
+      "Color",
+      "diffuse",
+      "Color"
+     ],
+     [
+      "mix",
+      "Closure",
+      "add",
+      "Closure1"
+     ],
+     [
+      "emission",
+      "Emission",
+      "add",
+      "Closure2"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-9",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "mix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     },
+     {
+      "handle": "geo",
+      "type": "geometry"
+     },
+     {
+      "handle": "checker",
+      "type": "checker_texture",
+      "set": {
+       "scale": 3.7
+      }
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     },
+     {
+      "handle": "glass",
+      "type": "refraction_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 1.2,
+       "IOR": 1.8,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     },
+     {
+      "handle": "ge",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.2,
+        0.3
+       ]
+      }
+     },
+     {
+      "handle": "gadd",
+      "type": "add_closure"
+     }
+    ],
+    "connect": [
+     [
+      "diffuse",
+      "BSDF",
+      "mix",
+      "Closure1"
+     ],
+     [
+      "transparent",
+      "BSDF",
+      "mix",
+      "Closure2"
+     ],
+     [
+      "geo",
+      "Position",
+      "checker",
+      "Vector"
+     ],
+     [
+      "checker",
+      "Fac",
+      "mix",
+      "Fac"
+     ],
+     [
+      "checker",
+      "Color",
+      "diffuse",
+      "Color"
+     ],
+     [
+      "mix",
+      "Closure",
+      "add",
+      "Closure1"
+     ],
+     [
+      "holdout",
+      "Holdout",
+      "add",
+      "Closure2"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "gadd",
+      "Closure1"
+     ],
+     [
+      "ge",
+      "Emission",
+      "gadd",
+      "Closure2"
+     ],
+     [
+      "gadd",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-10",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "tc",
+      "type": "texture_coordinate"
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0,
+       "IOR": 1,
+       "color": [
+        1,
+        1,
+        1
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "tc",
+      "Object",
+      "emission",
+      "Color"
+     ],
+     [
+      "emission",
+      "Emission",
+      "add",
+      "Closure1"
+     ],
+     [
+      "diffuse",
+      "BSDF",
+      "add",
+      "Closure2"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-11",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "tc",
+      "type": "texture_coordinate"
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.003,
+       "IOR": 1.00001,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "tc",
+      "Normal",
+      "emission",
+      "Color"
+     ],
+     [
+      "emission",
+      "Emission",
+      "add",
+      "Closure1"
+     ],
+     [
+      "diffuse",
+      "BSDF",
+      "add",
+      "Closure2"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-12",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "tc",
+      "type": "texture_coordinate"
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.004,
+       "IOR": 1.33,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "tc",
+      "Reflection",
+      "emission",
+      "Color"
+     ],
+     [
+      "emission",
+      "Emission",
+      "add",
+      "Closure1"
+     ],
+     [
+      "diffuse",
+      "BSDF",
+      "add",
+      "Closure2"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-13",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "tc",
+      "type": "texture_coordinate"
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.02,
+       "IOR": 1.5,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "tc",
+      "Camera",
+      "emission",
+      "Color"
+     ],
+     [
+      "emission",
+      "Emission",
+      "add",
+      "Closure1"
+     ],
+     [
+      "diffuse",
+      "BSDF",
+      "add",
+      "Closure2"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-14",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "tc",
+      "type": "texture_coordinate"
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.15,
+       "IOR": 0.7,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "tc",
+      "Window",
+      "emission",
+      "Color"
+     ],
+     [
+      "emission",
+      "Emission",
+      "add",
+      "Closure1"
+     ],
+     [
+      "diffuse",
+      "BSDF",
+      "add",
+      "Closure2"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-15",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.43
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "tc",
+      "type": "texture_coordinate",
+      "set": {
+       "use_transform": true,
+       "ob_tfm": [
+        0.4,
+        0.0,
+        0.0,
+        0.3,
+        0.0,
+        0.5,
+        0.0,
+        0.2,
+        0.0,
+        0.0,
+        0.6,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.35,
+       "IOR": 2.4,
+       "color": [
+        1,
+        1,
+        1
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     }
+    ],
+    "connect": [
+     [
+      "tc",
+      "Object",
+      "emission",
+      "Color"
+     ],
+     [
+      "emission",
+      "Emission",
+      "add",
+      "Closure1"
+     ],
+     [
+      "diffuse",
+      "BSDF",
+      "add",
+      "Closure2"
+     ],
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-16",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 1e-05
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.65,
+       "IOR": 1.5,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-17",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.0001
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 1,
+       "IOR": 0.8,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     },
+     {
+      "handle": "gt",
+      "type": "transparent_bsdf"
+     },
+     {
+      "handle": "gadd",
+      "type": "add_closure"
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "gadd",
+      "Closure1"
+     ],
+     [
+      "gt",
+      "BSDF",
+      "gadd",
+      "Closure2"
+     ],
+     [
+      "gadd",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-18",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.001
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": -0.2,
+       "IOR": 1.1,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "graph-19",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "diffuse",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ],
+       "roughness": 0.02
+      }
+     },
+     {
+      "handle": "trans",
+      "type": "translucent_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.2,
+        0.1
+       ]
+      }
+     },
+     {
+      "handle": "transparent",
+      "type": "transparent_bsdf",
+      "set": {
+       "color": [
+        0.7,
+        0.8,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "emission",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.4,
+        0.7
+       ],
+       "strength": 2.3
+      }
+     },
+     {
+      "handle": "holdout",
+      "type": "holdout"
+     },
+     {
+      "handle": "glass",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 1.2,
+       "IOR": 1.8,
+       "color": [
+        0.2,
+        0.6,
+        0.9
+       ]
+      }
+     },
+     {
+      "handle": "gd",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.43,
+       "color": [
+        0.7,
+        0.4,
+        0.2
+       ]
+      }
+     },
+     {
+      "handle": "gmix",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.37
+      }
+     },
+     {
+      "handle": "ge",
+      "type": "emission",
+      "set": {
+       "color": [
+        0.1,
+        0.2,
+        0.3
+       ]
+      }
+     },
+     {
+      "handle": "gadd",
+      "type": "add_closure"
+     }
+    ],
+    "connect": [
+     [
+      "glass",
+      "BSDF",
+      "gmix",
+      "Closure1"
+     ],
+     [
+      "gd",
+      "BSDF",
+      "gmix",
+      "Closure2"
+     ],
+     [
+      "gmix",
+      "Closure",
+      "gadd",
+      "Closure1"
+     ],
+     [
+      "ge",
+      "Emission",
+      "gadd",
+      "Closure2"
+     ],
+     [
+      "gadd",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "shared",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     0.0,
+     0.0,
+     0.2,
+     1.3,
+     0.0,
+     0.4,
+     0.0,
+     1.1,
+     -0.1,
+     2.3,
+     0.0,
+     0.2,
+     3.6,
+     0.0,
+     0.4,
+     2.3,
+     1.1,
+     -0.1,
+     4.6,
+     0.0,
+     0.2,
+     5.9,
+     0.0,
+     0.4,
+     4.6,
+     1.1,
+     -0.1,
+     6.9,
+     0.0,
+     0.2,
+     8.2,
+     0.0,
+     0.4,
+     6.9,
+     1.1,
+     -0.1,
+     0.0,
+     2.1,
+     0.2,
+     1.3,
+     2.1,
+     0.4,
+     0.0,
+     3.2,
+     -0.1,
+     2.3,
+     2.1,
+     0.2,
+     3.6,
+     2.1,
+     0.4,
+     2.3,
+     3.2,
+     -0.1,
+     4.6,
+     2.1,
+     0.2,
+     5.9,
+     2.1,
+     0.4,
+     4.6,
+     3.2,
+     -0.1,
+     6.9,
+     2.1,
+     0.2,
+     8.2,
+     2.1,
+     0.4,
+     6.9,
+     3.2,
+     -0.1,
+     0.0,
+     4.2,
+     0.2,
+     1.3,
+     4.2,
+     0.4,
+     0.0,
+     5.3,
+     -0.1,
+     2.3,
+     4.2,
+     0.2,
+     3.6,
+     4.2,
+     0.4,
+     2.3,
+     5.3,
+     -0.1,
+     4.6,
+     4.2,
+     0.2,
+     5.9,
+     4.2,
+     0.4,
+     4.6,
+     5.3,
+     -0.1,
+     6.9,
+     4.2,
+     0.2,
+     8.2,
+     4.2,
+     0.4,
+     6.9,
+     5.3,
+     -0.1,
+     0.0,
+     6.3,
+     0.2,
+     1.3,
+     6.3,
+     0.4,
+     0.0,
+     7.4,
+     -0.1,
+     2.3,
+     6.3,
+     0.2,
+     3.6,
+     6.3,
+     0.4,
+     2.3,
+     7.4,
+     -0.1,
+     4.6,
+     6.3,
+     0.2,
+     5.9,
+     6.3,
+     0.4,
+     4.6,
+     7.4,
+     -0.1,
+     6.9,
+     6.3,
+     0.2,
+     8.2,
+     6.3,
+     0.4,
+     6.9,
+     7.4,
+     -0.1,
+     0.0,
+     8.4,
+     0.2,
+     1.3,
+     8.4,
+     0.4,
+     0.0,
+     9.5,
+     -0.1,
+     2.3,
+     8.4,
+     0.2,
+     3.6,
+     8.4,
+     0.4,
+     2.3,
+     9.5,
+     -0.1,
+     4.6,
+     8.4,
+     0.2,
+     5.9,
+     8.4,
+     0.4,
+     4.6,
+     9.5,
+     -0.1,
+     6.9,
+     8.4,
+     0.2,
+     8.2,
+     8.4,
+     0.4,
+     6.9,
+     9.5,
+     -0.1
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30,
+     31,
+     32,
+     33,
+     34,
+     35,
+     36,
+     37,
+     38,
+     39,
+     40,
+     41,
+     42,
+     43,
+     44,
+     45,
+     46,
+     47,
+     48,
+     49,
+     50,
+     51,
+     52,
+     53,
+     54,
+     55,
+     56,
+     57,
+     58,
+     59
+    ],
+    "attributes": [
+     {
+      "name": "N",
+      "value": "normal",
+      "domain": "vertex_normal",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       -0.2328732,
+       0.2794479,
+       0.9314929,
+       -0.2050797,
+       0.2982978,
+       0.9321806,
+       -0.1770451,
+       0.3168176,
+       0.9318163,
+       -0.1488646,
+       0.3349453,
+       0.9304037,
+       -0.1206344,
+       0.3526236,
+       0.9279569,
+       -0.0953463,
+       0.2860388,
+       0.9534626,
+       -0.066522,
+       0.3041006,
+       0.9503145,
+       -0.2303292,
+       0.3132477,
+       0.9213167,
+       -0.2026983,
+       0.3316881,
+       0.9213558,
+       -0.1748721,
+       0.3497443,
+       0.9203796,
+       -0.1514836,
+       0.2840318,
+       0.9467727,
+       -0.1228769,
+       0.3024661,
+       0.9452066,
+       -0.0942558,
+       0.3204696,
+       0.9425577,
+       -0.0657197,
+       0.3379872,
+       0.9388533,
+       -0.2275644,
+       0.3458979,
+       0.9102577,
+       -0.2061936,
+       0.2811731,
+       0.9372438,
+       -0.1780685,
+       0.2999048,
+       0.9372026,
+       -0.1497749,
+       0.3182717,
+       0.9360933,
+       -0.1214105,
+       0.3362138,
+       0.9339271,
+       -0.0930726,
+       0.3536759,
+       0.930726,
+       -0.0668976,
+       0.2867042,
+       0.9556806,
+       -0.2316305,
+       0.296487,
+       0.9265219,
+       -0.2039136,
+       0.3151392,
+       0.92688,
+       -0.1759787,
+       0.3334334,
+       0.9262039,
+       -0.1479201,
+       0.3513101,
+       0.9245003,
+       -0.1235632,
+       0.2851459,
+       0.9504862,
+       -0.0948134,
+       0.3034027,
+       0.9481335,
+       -0.066129,
+       0.3211981,
+       0.9447003,
+       -0.2289727,
+       0.3297207,
+       0.9158907,
+       -0.2014368,
+       0.3479363,
+       0.9156219,
+       -0.1790462,
+       0.2827045,
+       0.9423485,
+       -0.1506487,
+       0.3012974,
+       0.9415545,
+       -0.1221587,
+       0.3194919,
+       0.939682,
+       -0.093675,
+       0.3372301,
+       0.9367502,
+       -0.0652952,
+       0.3544597,
+       0.9327887,
+       -0.2328732,
+       0.2794479,
+       0.9314929,
+       -0.2050797,
+       0.2982978,
+       0.9321806,
+       -0.1770451,
+       0.3168176,
+       0.9318163,
+       -0.1488646,
+       0.3349453,
+       0.9304037,
+       -0.1206344,
+       0.3526236,
+       0.9279569,
+       -0.0953463,
+       0.2860388,
+       0.9534626,
+       -0.066522,
+       0.3041006,
+       0.9503145,
+       -0.2303292,
+       0.3132477,
+       0.9213167,
+       -0.2026983,
+       0.3316881,
+       0.9213558,
+       -0.1748721,
+       0.3497443,
+       0.9203796,
+       -0.1514836,
+       0.2840318,
+       0.9467727,
+       -0.1228769,
+       0.3024661,
+       0.9452066,
+       -0.0942558,
+       0.3204696,
+       0.9425577,
+       -0.0657197,
+       0.3379872,
+       0.9388533,
+       -0.2275644,
+       0.3458979,
+       0.9102577,
+       -0.2061936,
+       0.2811731,
+       0.9372438,
+       -0.1780685,
+       0.2999048,
+       0.9372026,
+       -0.1497749,
+       0.3182717,
+       0.9360933,
+       -0.1214105,
+       0.3362138,
+       0.9339271,
+       -0.0930726,
+       0.3536759,
+       0.930726,
+       -0.0668976,
+       0.2867042,
+       0.9556806,
+       -0.2316305,
+       0.296487,
+       0.9265219,
+       -0.2039136,
+       0.3151392,
+       0.92688,
+       -0.1759787,
+       0.3334334,
+       0.9262039,
+       -0.1479201,
+       0.3513101,
+       0.9245003
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "graph-0",
+     "graph-1",
+     "graph-2",
+     "graph-3",
+     "graph-4",
+     "graph-5",
+     "graph-6",
+     "graph-7",
+     "graph-8",
+     "graph-9",
+     "graph-10",
+     "graph-11",
+     "graph-12",
+     "graph-13",
+     "graph-14",
+     "graph-15",
+     "graph-16",
+     "graph-17",
+     "graph-18",
+     "graph-19"
+    ],
+    "shader": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ],
+    "smooth": [
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true
+    ]
+   }
+  },
+  {
+   "handle": "copy",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     0.0,
+     0.0,
+     0.2,
+     1.3,
+     0.0,
+     0.4,
+     0.0,
+     1.1,
+     -0.1,
+     2.3,
+     0.0,
+     0.2,
+     3.6,
+     0.0,
+     0.4,
+     2.3,
+     1.1,
+     -0.1,
+     4.6,
+     0.0,
+     0.2,
+     5.9,
+     0.0,
+     0.4,
+     4.6,
+     1.1,
+     -0.1,
+     6.9,
+     0.0,
+     0.2,
+     8.2,
+     0.0,
+     0.4,
+     6.9,
+     1.1,
+     -0.1,
+     0.0,
+     2.1,
+     0.2,
+     1.3,
+     2.1,
+     0.4,
+     0.0,
+     3.2,
+     -0.1,
+     2.3,
+     2.1,
+     0.2,
+     3.6,
+     2.1,
+     0.4,
+     2.3,
+     3.2,
+     -0.1,
+     4.6,
+     2.1,
+     0.2,
+     5.9,
+     2.1,
+     0.4,
+     4.6,
+     3.2,
+     -0.1,
+     6.9,
+     2.1,
+     0.2,
+     8.2,
+     2.1,
+     0.4,
+     6.9,
+     3.2,
+     -0.1,
+     0.0,
+     4.2,
+     0.2,
+     1.3,
+     4.2,
+     0.4,
+     0.0,
+     5.3,
+     -0.1,
+     2.3,
+     4.2,
+     0.2,
+     3.6,
+     4.2,
+     0.4,
+     2.3,
+     5.3,
+     -0.1,
+     4.6,
+     4.2,
+     0.2,
+     5.9,
+     4.2,
+     0.4,
+     4.6,
+     5.3,
+     -0.1,
+     6.9,
+     4.2,
+     0.2,
+     8.2,
+     4.2,
+     0.4,
+     6.9,
+     5.3,
+     -0.1,
+     0.0,
+     6.3,
+     0.2,
+     1.3,
+     6.3,
+     0.4,
+     0.0,
+     7.4,
+     -0.1,
+     2.3,
+     6.3,
+     0.2,
+     3.6,
+     6.3,
+     0.4,
+     2.3,
+     7.4,
+     -0.1,
+     4.6,
+     6.3,
+     0.2,
+     5.9,
+     6.3,
+     0.4,
+     4.6,
+     7.4,
+     -0.1,
+     6.9,
+     6.3,
+     0.2,
+     8.2,
+     6.3,
+     0.4,
+     6.9,
+     7.4,
+     -0.1,
+     0.0,
+     8.4,
+     0.2,
+     1.3,
+     8.4,
+     0.4,
+     0.0,
+     9.5,
+     -0.1,
+     2.3,
+     8.4,
+     0.2,
+     3.6,
+     8.4,
+     0.4,
+     2.3,
+     9.5,
+     -0.1,
+     4.6,
+     8.4,
+     0.2,
+     5.9,
+     8.4,
+     0.4,
+     4.6,
+     9.5,
+     -0.1,
+     6.9,
+     8.4,
+     0.2,
+     8.2,
+     8.4,
+     0.4,
+     6.9,
+     9.5,
+     -0.1
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30,
+     31,
+     32,
+     33,
+     34,
+     35,
+     36,
+     37,
+     38,
+     39,
+     40,
+     41,
+     42,
+     43,
+     44,
+     45,
+     46,
+     47,
+     48,
+     49,
+     50,
+     51,
+     52,
+     53,
+     54,
+     55,
+     56,
+     57,
+     58,
+     59
+    ],
+    "attributes": [
+     {
+      "name": "N",
+      "value": "normal",
+      "domain": "vertex_normal",
+      "flags": [
+       "standard"
+      ],
+      "data": [
+       -0.2328732,
+       0.2794479,
+       0.9314929,
+       -0.2050797,
+       0.2982978,
+       0.9321806,
+       -0.1770451,
+       0.3168176,
+       0.9318163,
+       -0.1488646,
+       0.3349453,
+       0.9304037,
+       -0.1206344,
+       0.3526236,
+       0.9279569,
+       -0.0953463,
+       0.2860388,
+       0.9534626,
+       -0.066522,
+       0.3041006,
+       0.9503145,
+       -0.2303292,
+       0.3132477,
+       0.9213167,
+       -0.2026983,
+       0.3316881,
+       0.9213558,
+       -0.1748721,
+       0.3497443,
+       0.9203796,
+       -0.1514836,
+       0.2840318,
+       0.9467727,
+       -0.1228769,
+       0.3024661,
+       0.9452066,
+       -0.0942558,
+       0.3204696,
+       0.9425577,
+       -0.0657197,
+       0.3379872,
+       0.9388533,
+       -0.2275644,
+       0.3458979,
+       0.9102577,
+       -0.2061936,
+       0.2811731,
+       0.9372438,
+       -0.1780685,
+       0.2999048,
+       0.9372026,
+       -0.1497749,
+       0.3182717,
+       0.9360933,
+       -0.1214105,
+       0.3362138,
+       0.9339271,
+       -0.0930726,
+       0.3536759,
+       0.930726,
+       -0.0668976,
+       0.2867042,
+       0.9556806,
+       -0.2316305,
+       0.296487,
+       0.9265219,
+       -0.2039136,
+       0.3151392,
+       0.92688,
+       -0.1759787,
+       0.3334334,
+       0.9262039,
+       -0.1479201,
+       0.3513101,
+       0.9245003,
+       -0.1235632,
+       0.2851459,
+       0.9504862,
+       -0.0948134,
+       0.3034027,
+       0.9481335,
+       -0.066129,
+       0.3211981,
+       0.9447003,
+       -0.2289727,
+       0.3297207,
+       0.9158907,
+       -0.2014368,
+       0.3479363,
+       0.9156219,
+       -0.1790462,
+       0.2827045,
+       0.9423485,
+       -0.1506487,
+       0.3012974,
+       0.9415545,
+       -0.1221587,
+       0.3194919,
+       0.939682,
+       -0.093675,
+       0.3372301,
+       0.9367502,
+       -0.0652952,
+       0.3544597,
+       0.9327887,
+       -0.2328732,
+       0.2794479,
+       0.9314929,
+       -0.2050797,
+       0.2982978,
+       0.9321806,
+       -0.1770451,
+       0.3168176,
+       0.9318163,
+       -0.1488646,
+       0.3349453,
+       0.9304037,
+       -0.1206344,
+       0.3526236,
+       0.9279569,
+       -0.0953463,
+       0.2860388,
+       0.9534626,
+       -0.066522,
+       0.3041006,
+       0.9503145,
+       -0.2303292,
+       0.3132477,
+       0.9213167,
+       -0.2026983,
+       0.3316881,
+       0.9213558,
+       -0.1748721,
+       0.3497443,
+       0.9203796,
+       -0.1514836,
+       0.2840318,
+       0.9467727,
+       -0.1228769,
+       0.3024661,
+       0.9452066,
+       -0.0942558,
+       0.3204696,
+       0.9425577,
+       -0.0657197,
+       0.3379872,
+       0.9388533,
+       -0.2275644,
+       0.3458979,
+       0.9102577,
+       -0.2061936,
+       0.2811731,
+       0.9372438,
+       -0.1780685,
+       0.2999048,
+       0.9372026,
+       -0.1497749,
+       0.3182717,
+       0.9360933,
+       -0.1214105,
+       0.3362138,
+       0.9339271,
+       -0.0930726,
+       0.3536759,
+       0.930726,
+       -0.0668976,
+       0.2867042,
+       0.9556806,
+       -0.2316305,
+       0.296487,
+       0.9265219,
+       -0.2039136,
+       0.3151392,
+       0.92688,
+       -0.1759787,
+       0.3334334,
+       0.9262039,
+       -0.1479201,
+       0.3513101,
+       0.9245003
+      ]
+     }
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "graph-0",
+     "graph-1",
+     "graph-2",
+     "graph-3",
+     "graph-4",
+     "graph-5",
+     "graph-6",
+     "graph-7",
+     "graph-8",
+     "graph-9",
+     "graph-10",
+     "graph-11",
+     "graph-12",
+     "graph-13",
+     "graph-14",
+     "graph-15",
+     "graph-16",
+     "graph-17",
+     "graph-18",
+     "graph-19"
+    ],
+    "shader": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ],
+    "smooth": [
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true,
+     false,
+     true
+    ]
+   }
+  },
+  {
+   "handle": "prepared-0",
+   "create": "object",
+   "set": {
+    "geometry": "shared",
+    "tfm": [
+     1.1,
+     0.0,
+     0.0,
+     -4.0,
+     0.0,
+     0.8,
+     0.0,
+     -4.0,
+     0.0,
+     0.0,
+     1.4,
+     0.0
+    ]
+   }
+  },
+  {
+   "handle": "prepared-1",
+   "create": "object",
+   "set": {
+    "geometry": "shared",
+    "tfm": [
+     -1.1827017,
+     0.0,
+     0.2368553,
+     -4.0,
+     0.0,
+     0.8,
+     0.0,
+     -4.0,
+     0.2030188,
+     0.0,
+     1.3798187,
+     2.0
+    ]
+   }
+  },
+  {
+   "handle": "prepared-2",
+   "create": "object",
+   "set": {
+    "geometry": "copy",
+    "tfm": [
+     1.0370301,
+     0.0,
+     0.4668819,
+     -4.0,
+     0.0,
+     0.8,
+     0.0,
+     -4.0,
+     -0.3668358,
+     0.0,
+     1.3198565,
+     4.0
+    ]
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.65,
+        0.7
+       ],
+       "roughness": 0.3
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "enclosure",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -6.0,
+     -4.0,
+     -4.0,
+     6.0,
+     -4.0,
+     -4.0,
+     6.0,
+     -4.0,
+     8.0,
+     -6.0,
+     -4.0,
+     8.0,
+     -6.0,
+     -4.0,
+     8.0,
+     6.0,
+     -4.0,
+     8.0,
+     6.0,
+     5.0,
+     8.0,
+     -6.0,
+     5.0,
+     8.0,
+     -6.0,
+     -4.0,
+     -4.0,
+     -6.0,
+     -4.0,
+     8.0,
+     -6.0,
+     5.0,
+     8.0,
+     -6.0,
+     5.0,
+     -4.0,
+     6.0,
+     -4.0,
+     8.0,
+     6.0,
+     -4.0,
+     -4.0,
+     6.0,
+     5.0,
+     -4.0,
+     6.0,
+     5.0,
+     8.0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3,
+     4,
+     5,
+     6,
+     4,
+     6,
+     7,
+     8,
+     9,
+     10,
+     8,
+     10,
+     11,
+     12,
+     13,
+     14,
+     12,
+     14,
+     15
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "enclosure-object",
+   "create": "object",
+   "set": {
+    "geometry": "enclosure"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.25,
+        0.4,
+        0.6
+       ],
+       "strength": 0.8
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "panel-emission",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        0.85,
+        0.7
+       ],
+       "strength": 3.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "front_back"
+   }
+  },
+  {
+   "handle": "panel",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     1.0,
+     0.0,
+     7.9,
+     1.0,
+     3.0,
+     7.9,
+     4.0,
+     3.0,
+     7.9,
+     4.0,
+     0.0,
+     7.9
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "panel-emission"
+    ]
+   }
+  },
+  {
+   "handle": "panel-object",
+   "create": "object",
+   "set": {
+    "geometry": "panel",
+    "tfm": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   }
+  },
+  {
+   "handle": "point-shader",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "point",
+   "create": "pointlight",
+   "set": {
+    "strength": [
+     300,
+     260,
+     220
+    ],
+    "use_mis": true,
+    "cast_shadow": true,
+    "max_bounces": 1024,
+    "is_enabled": true,
+    "normalize": true,
+    "used_shaders": [
+     "point-shader"
+    ],
+    "radius": 0.4,
+    "is_sphere": true
+   }
+  },
+  {
+   "handle": "point-object",
+   "create": "object",
+   "set": {
+    "geometry": "point",
+    "tfm": [
+     1,
+     0,
+     0,
+     -3,
+     0,
+     1,
+     0,
+     3.5,
+     0,
+     0,
+     1,
+     -2
+    ]
+   }
+  },
+  {
+   "handle": "area-shader",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "area",
+   "create": "arealight",
+   "set": {
+    "strength": [
+     250,
+     250,
+     300
+    ],
+    "use_mis": true,
+    "cast_shadow": true,
+    "max_bounces": 1024,
+    "is_enabled": true,
+    "normalize": true,
+    "used_shaders": [
+     "area-shader"
+    ],
+    "sizeu": 2.0,
+    "sizev": 1.5,
+    "ellipse": false,
+    "spread": 1.2,
+    "is_portal": false
+   }
+  },
+  {
+   "handle": "area-object",
+   "create": "object",
+   "set": {
+    "geometry": "area",
+    "tfm": [
+     1,
+     0,
+     0,
+     2.5,
+     0,
+     0,
+     1,
+     4.8,
+     0,
+     -1,
+     0,
+     3.0
+    ]
+   }
+  },
+  {
+   "handle": "spot-shader",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "spot",
+   "create": "spotlight",
+   "set": {
+    "strength": [
+     400,
+     380,
+     360
+    ],
+    "use_mis": true,
+    "cast_shadow": true,
+    "max_bounces": 1024,
+    "is_enabled": true,
+    "normalize": true,
+    "used_shaders": [
+     "spot-shader"
+    ],
+    "radius": 0.2,
+    "is_sphere": true,
+    "angle": 0.9,
+    "smooth": 0.3
+   }
+  },
+  {
+   "handle": "spot-object",
+   "create": "object",
+   "set": {
+    "geometry": "spot",
+    "tfm": [
+     -1,
+     0,
+     0,
+     0.5,
+     0,
+     1,
+     0,
+     1.0,
+     0,
+     0,
+     -1,
+     -6.0
+    ]
+   }
+  }
+ ],
+ "images": []
+}

@@ -14,7 +14,10 @@
 // Cases: 0 lamps (point, spot, area, sun), 1 many-triangle mesh lights, 2 lamps
 // + emissive triangles + HDRI world with its background light, 3 an instanced
 // emitter mesh, 4 a moving and deforming emitter, 5 light linking on the flat
-// CDF (tree off), 6 light linking on the tree. All but case 5 use the tree.
+// CDF (tree off), 6 light linking on the tree, 7 a GGX glass/diffuse centre quad
+// (transmission: full-sphere importance at its shading points and
+// PATH_RAY_MIS_HAD_TRANSMISSION forward-hit pdfs of the lamps and the emissive
+// panel seen through it). All but case 5 use the tree.
 #include "wavefront_test.h"
 #include "render_capture.h"
 #include "reference_policy.h"
@@ -49,7 +52,7 @@
 using namespace ccl;
 using namespace wavefront_test;
 constexpr unsigned width=32,height=24,samples=8,probe_count=4096;
-constexpr int light_tree_cases=7;
+constexpr int light_tree_cases=8;
 struct Metrics {uint64_t exact=0,numeric=0,strict=0,selected=0,valid=0,triangles=0,lamps=0,rejected=0,forward=0,film=0,film_strict=0,repeat=0,shadows=0,visible=0,nee=0,guards=0,stages=0;double maximum=0,film_maximum=0;};
 static void numeric(float actual,float expected,Metrics &m,const std::string &where){
   const double error=std::abs(double(actual)-expected);m.numeric++;m.maximum=std::max(m.maximum,error);m.strict+=error>1e-7+1e-7*std::abs(double(expected));
@@ -61,6 +64,13 @@ static Shader *material(Scene &scene,int variant){
   if(variant){auto glossy=graph->create_node<GlossyBsdfNode>();glossy->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);glossy->set_color(make_float3(.2,.5,.8));glossy->set_roughness(.35f);
     auto mix=graph->create_node<MixClosureNode>();mix->set_fac(.4f);graph->connect(surface,mix->input("Closure1"));graph->connect(glossy->output("BSDF"),mix->input("Closure2"));surface=mix->output("Closure");}
   graph->connect(surface,graph->output()->input("Surface"));auto shader=scene.create_node<Shader>();shader->set_graph(std::move(graph));shader->tag_update(&scene);return shader;
+}
+// Case 7: GGX glass mixed with a diffuse lobe (every hit has a transmission closure).
+static Shader *glass_material(Scene &scene){
+  auto graph=make_unique<ShaderGraph>();auto glass=graph->create_node<GlassBsdfNode>();glass->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);glass->set_roughness(.25f);glass->set_IOR(1.45f);
+  glass->set_color(make_float3(.9,.95,1));auto diffuse=graph->create_node<DiffuseBsdfNode>();diffuse->set_color(make_float3(.55,.32,.18));diffuse->set_roughness(.31f);
+  auto mix=graph->create_node<MixClosureNode>();mix->set_fac(.35f);graph->connect(glass->output("BSDF"),mix->input("Closure1"));graph->connect(diffuse->output("BSDF"),mix->input("Closure2"));
+  graph->connect(mix->output("Closure"),graph->output()->input("Surface"));auto shader=scene.create_node<Shader>();shader->set_graph(std::move(graph));shader->tag_update(&scene);return shader;
 }
 static Mesh *quad_mesh(Scene &scene,Shader *shader,const std::array<float3,4> &vertices){
   auto mesh=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(shader);mesh->set_used_shaders(slots);mesh->resize_mesh(4,2);
@@ -88,7 +98,7 @@ static Object *lamp(Scene &scene,Light *light,Shader *shader,const Transform &tf
 static Transform aim(float3 at,float yaw,float pitch){return transform_translate(at)*transform_rotate(yaw,make_float3(0,1,0))*transform_rotate(pitch,make_float3(1,0,0));}
 struct Fixture {std::vector<Object*> receivers;bool tree=true,linking=false,motion=false,world=false;};
 static Fixture fixture(Scene &scene,int c){
-  Fixture f;f.tree=c!=5;f.linking=c>=5;f.motion=c==4;f.world=c==2;
+  Fixture f;f.tree=c!=5;f.linking=c==5||c==6;f.motion=c==4;f.world=c==2;
   scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(f.tree);scene.integrator->set_use_adaptive_sampling(false);
   scene.integrator->set_aa_samples(samples);scene.integrator->set_min_bounce(2);scene.integrator->set_max_bounce(3);scene.integrator->set_filter_glossy(0);
   scene.film->set_use_sample_count(false);scene.camera->set_full_width(width);scene.camera->set_full_height(height);scene.camera->set_screen_size(width,height);
@@ -96,7 +106,7 @@ static Fixture fixture(Scene &scene,int c){
   auto diffuse=material(scene,0),mixed=material(scene,1);
   auto wall=quad(scene,diffuse,{make_float3(-4,-3,3),make_float3(4,-3,3),make_float3(4,3,3),make_float3(-4,3,3)});
   auto floor=quad(scene,mixed,{make_float3(-4,-2,-2),make_float3(4,-2,-2),make_float3(4,-2,3),make_float3(-4,-2,3)});
-  auto center=quad(scene,mixed,{make_float3(-.8f,-1.2f,0),make_float3(.8f,-1.2f,0),make_float3(.8f,1.1f,0),make_float3(-.8f,1.1f,0)});
+  auto center=quad(scene,c==7?glass_material(scene):mixed,{make_float3(-.8f,-1.2f,0),make_float3(.8f,-1.2f,0),make_float3(.8f,1.1f,0),make_float3(-.8f,1.1f,0)});
   f.receivers={wall,floor,center};
   Shader *world=nullptr;
   if(f.world){world=environment_world(scene,EnvironmentWorld::Hdri,0);environment_light(scene,world,true,64);}
@@ -131,7 +141,12 @@ static Fixture fixture(Scene &scene,int c){
     auto other=quad(scene,emitter,{make_float3(-.5,-.3,0),make_float3(.5,-.3,0),make_float3(.5,.3,0),make_float3(-.5,.3,0)});other->set_tfm(aim(make_float3(-1.8f,1.8f,-1.2f),-.3f,.7f));
     object_motion_fixture(scene,*other,2);
     auto p=scene.create_node<PointLight>();p->set_radius(.45f);p->set_is_sphere(true);lamp(scene,p,emitter,aim(make_float3(-2.f,2.f,-1.f),0,0),warm*.3f);}
-  if(c>=5){
+  if(c==7){
+    // An emissive panel and an area lamp behind the glass quad (seen through it), a point lamp in front.
+    auto panel=quad(scene,emitter,{make_float3(-.7,-.5,0),make_float3(.7,-.5,0),make_float3(.7,.5,0),make_float3(-.7,.5,0)});panel->set_tfm(aim(make_float3(.3f,.2f,1.6f),0,0));
+    auto a=scene.create_node<AreaLight>();a->set_sizeu(.9f);a->set_sizev(.7f);a->set_spread(1.2f);a->set_normalize(true);lamp(scene,a,emitter,aim(make_float3(-.6f,-.3f,2.2f),0,0),cool*.15f);
+    auto p=scene.create_node<PointLight>();p->set_radius(.4f);p->set_is_sphere(true);lamp(scene,p,emitter,aim(make_float3(-2.2f,2.f,-2.f),0,0),warm*.3f);}
+  if(c==5||c==6){
     auto a=scene.create_node<PointLight>();a->set_radius(.4f);a->set_is_sphere(true);auto la=lamp(scene,a,emitter,aim(make_float3(-2.4f,2.f,-2.f),0,0),warm*.6f);
     auto b=scene.create_node<PointLight>();b->set_radius(.3f);b->set_is_sphere(true);auto lb=lamp(scene,b,emitter,aim(make_float3(2.4f,2.f,-2.f),0,0),cool*.6f);
     auto s=scene.create_node<SpotLight>();s->set_radius(.25f);s->set_is_sphere(true);s->set_angle(1.1f);s->set_smooth(.2f);auto ls=lamp(scene,s,emitter,aim(make_float3(0,2.6f,-1.5f),0,1.2f),warm*.5f);

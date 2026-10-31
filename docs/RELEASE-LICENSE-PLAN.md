@@ -97,6 +97,15 @@ not committed, pushed, staged files or rewritten history.
 
 ## Future native deliverables
 
+OpenImageDenoise (denoising) is a planned dependency. Its licence check, trained
+weights included, passed for version 2.5.1, on four build conditions that keep
+it Apache-2.0: build it from a reviewed source snapshot in `third_party/deps`
+(never a prebuilt package); turn on only its CPU device, plus its Metal device
+on osx-arm64; set its CUDA, HIP and SYCL devices explicitly off on every RID (a
+CUDA Runtime build installs Intel's proprietary binary licence instead); and
+turn its apps off. It is not yet a snapshot, so it is not in
+`dependency-license-review.json` or the notices yet.
+
 All nine intended RIDs remain in the continuation plan. This Linux proof does
 not validate unbuilt native hosts. Every actual NuGet payload requires its own
 unpack/hash/notice/dependency audit before publication.

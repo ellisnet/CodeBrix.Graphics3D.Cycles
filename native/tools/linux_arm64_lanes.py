@@ -33,7 +33,7 @@ from build import PACKAGE
 from linux_arm64_host_gate import DRIVER_COVERAGE,DIAGNOSTIC_VARIABLES,PINNED_VARIABLES,NATIVE,report_passed
 BASE=REPO/'native/work/linux/linux-arm64';BIN=BASE/'host/build/bin'
 RUNTIME=PACKAGE/'runtimes/linux-arm64/native/libcodebrix_wgpu.so'
-REFERENCES=REPO/'native/evidence/linux-x64-reference-20261029/host-gate'
+REFERENCES=REPO/'native/evidence/linux-x64-reference-20261030/host-gate'
 # The 10-hour plan of 2026-10-28: driver coverage first; the host gate's GPU steps and one
 # device gate per kernel family; the two largest material modules on their own lane.
 DEFAULT_LANES={

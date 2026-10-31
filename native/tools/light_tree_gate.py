@@ -13,7 +13,7 @@ from device_gate import sha, save
 from render_gate import inputs
 import render_replay
 
-CASES = 7
+CASES = 8
 
 
 def main():
@@ -75,7 +75,7 @@ def main():
         assert source == inputs() and all(sha(Path(name)) == digest for name, digest in pins.items())
         status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
                       scope='Light tree selection, sampling and forward pdfs (lamps, many-triangle, mixed with HDRI world, instanced, '
-                            'moving/deforming emitters) and light linking on the flat CDF and on the tree, against the original CPU kernels.')
+                            'moving/deforming emitters, a glass receiver) and light linking on the flat CDF and on the tree, against the original CPU kernels.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

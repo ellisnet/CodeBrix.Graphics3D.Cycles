@@ -1,0 +1,126 @@
+{
+ "passed": true,
+ "fullCyclesParity": false,
+ "rid": "linux-x64",
+ "tree": "51fc577cc+merged-tree",
+ "producedBy": "final run f32-linux, 2026-10-30, Linux x64 Intel UHD (ADL-S GT1) Mesa 25.0.7-2+deb13u1, WebGPU runtime CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210, every gate binary built clean by build_cycles.py from main 51fc577cc plus the uncommitted merged tree (tree fingerprint b3439b9c8a5553dcfa9ccd3a1eba443c40df9817ca681db218e4f2c3154901af)",
+ "capturedUtc": "2026-10-30T21:08:21+00:00",
+ "reports": {
+  "light_tree": {
+   "file": "native/evidence/linux-x64-ledger-20261030/light-tree/results.json",
+   "sha256": "bcc9878f77119bec01a381f339f7fef25405af4ae535899f183058799ac0f8d6",
+   "gate": "light_tree_gate.py",
+   "run": "native/work/refs-20261030/f32-linux/validation/p8-light-tree/out",
+   "result": {
+    "passed": true,
+    "cases": 8,
+    "probeSelected": 30023,
+    "probeValid": 27527,
+    "forwardPdfs": 14602,
+    "linkRejections": 2496,
+    "guardCases": 10,
+    "exactChecks": 147868,
+    "numericChecks": 300705,
+    "strictDifferences": 32605,
+    "maximumAbsoluteError": 0.0227203369140625,
+    "filmChecks": 49152,
+    "filmStrictDifferences": 5311,
+    "filmMaximumAbsoluteError": 0.0001220703125,
+    "repeatBitwiseDifferences": 5,
+    "cyclesAllocationBytesAfterCleanup": 0,
+    "pipelineReport": {
+     "tier": "full",
+     "degraded": false,
+     "pipelines": 86,
+     "totalPipelineMs": 216093,
+     "maxPipelineMs": 10461.3,
+     "maxPipelineEntry": "prepare_surface",
+     "warnings": [],
+     "sizeGuard": {
+      "thresholdBytes": 1110000,
+      "largestEntryBytes": 914645,
+      "largestEntry": "shade_surface_light",
+      "estimatedInstructions": 45732,
+      "warnings": 0
+     },
+     "decision": {
+      "tier": "full",
+      "reason": "table",
+      "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+      "adapter": {
+       "vendor": "Intel open-source Mesa driver",
+       "architecture": "",
+       "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+       "description": "Mesa 25.0.7-2+deb13u1",
+       "vendorId": 32902,
+       "deviceId": 18056,
+       "simulated": false,
+       "mobile": false
+      },
+      "runtime": "codebrix-api=4;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool,0010-wgpu-hal-metal-precise-math,0011-wgpu-native-pipeline-cache-chain,0012-wgpu-hal-metal-queue-accessor,0013-wgpu-native-metal-command-queue",
+      "shaderHash": "fnv1a64:3a8615a3d312098b",
+      "knownAdapter": {
+       "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+       "tier": "full",
+       "budgetMs": 0,
+       "evidence": "Phase C1 2026-10-19 Linux validation"
+      },
+      "budgetSource": "default",
+      "record": {
+       "mode": "none",
+       "path": "",
+       "status": "none",
+       "fullTierCompiles": 0,
+       "conservativeTierCompiles": 0,
+       "failures": 0,
+       "breadcrumbs": []
+      },
+      "canary": {
+       "enabled": false,
+       "result": "not-run",
+       "ms": 0,
+       "detail": ""
+      },
+      "overrides": [],
+      "warnings": []
+     }
+    }
+   }
+  }
+ },
+ "status": {
+  "file": "native/evidence/linux-x64-ledger-20261030/light-tree/status.json",
+  "sha256": "e8db93cb968db8bb29b32141074e8d02050f588df430a2f414370c5e0e6a345a",
+  "complete": true,
+  "phase": "complete",
+  "passed": true,
+  "inputsUnchanged": true,
+  "scope": "Light tree selection, sampling and forward pdfs (lamps, many-triangle, mixed with HDRI world, instanced, moving/deforming emitters, a glass receiver) and light linking on the flat CDF and on the tree, against the original CPU kernels."
+ },
+ "replays": {
+  "light_tree-replay-0": {
+   "passed": true
+  },
+  "light_tree-replay-1": {
+   "passed": true
+  },
+  "light_tree-replay-2": {
+   "passed": true
+  },
+  "light_tree-replay-3": {
+   "passed": true
+  },
+  "light_tree-replay-4": {
+   "passed": true
+  },
+  "light_tree-replay-5": {
+   "passed": true
+  },
+  "light_tree-replay-6": {
+   "passed": true
+  },
+  "light_tree-replay-7": {
+   "passed": true
+  }
+ }
+}

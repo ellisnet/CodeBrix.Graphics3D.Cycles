@@ -63,7 +63,11 @@ fn light_select(index:u32)->LightSelection{
 // light_sample: mesh lights of objects that are not shadow catchers are not
 // sampled by shadow catcher paths.
 fn sc_triangle_excluded(index:u32,selection:LightSelection)->bool{
-    return (state_word(S_path_flag,index)&SC_PATH_PASS)!=0u&&(load_word(table_at(G_object_flag,load_word(selection.distribution+LD_object),4u))&SC_OBJECT)==0u;
+//#if LIGHT_SELECT else     return (state_word(S_path_flag,index)&SC_PATH_PASS)!=0u&&(load_word(table_at(G_object_flag,load_word(selection.distribution+LD_object),4u))&SC_OBJECT)==0u;
+    // The emitter's object is selection.object: with the light tree,
+    // selection.distribution is the tree emitter index, not a distribution record.
+    return (state_word(S_path_flag,index)&SC_PATH_PASS)!=0u&&(load_word(table_at(G_object_flag,selection.object,4u))&SC_OBJECT)==0u;
+//#endif
 }
 //#endif
 // Emissive-triangle vertices come from triangle_light_prefill, which the caller
@@ -171,12 +175,14 @@ fn light_bsdf(sd:SurfaceData,r:SvmResult,direction:vec3<f32>,shader:u32)->Surfac
                 (surf_glossy(c.kind)&&(shader&SHADER_EXCLUDE_GLOSSY)!=0u)||
                 (surf_refraction(c.kind)&&(shader&SHADER_EXCLUDE_TRANSMIT)!=0u)||
                 (surf_glass(c.kind)&&(shader&(SHADER_EXCLUDE_GLOSSY|SHADER_EXCLUDE_TRANSMIT))==(SHADER_EXCLUDE_GLOSSY|SHADER_EXCLUDE_TRANSMIT));
-            if(!excluded){let value=eval.xyz*c.weight;result.eval+=value;if(surf_diffuse(c.kind)){result.diffuse+=value;}if(surf_glossy_direction(c,direction)){result.glossy+=value;}}
-            let weight=eval.w*c.sample_weight;pdf_sum+=weight;rough_sum+=weight*surf_roughness(c);
+            // _surface_shader_bsdf_eval_mis: products rounded before their sums, correctly
+            // rounded scalar quotients (WGSL '/' is not on every driver).
+            if(!excluded){let value=eval.xyz*c.weight;result.eval=rounded_add3(result.eval,value);if(surf_diffuse(c.kind)){result.diffuse=rounded_add3(result.diffuse,value);}if(surf_glossy_direction(c,direction)){result.glossy=rounded_add3(result.glossy,value);}}
+            let weight=eval.w*c.sample_weight;pdf_sum=rounded_add(pdf_sum,weight);rough_sum=rounded_add(rough_sum,weight*surf_roughness(c));
         }weight_sum+=c.sample_weight;
     }
-    result.roughness=select(0.0,rough_sum/pdf_sum,pdf_sum>0.0);
-    if((shader&SHADER_USE_MIS)!=0u&&weight_sum>0.0){result.pdf=pdf_sum/weight_sum;}
+    result.roughness=select(0.0,rounded_divide(rough_sum,pdf_sum),pdf_sum>0.0);
+    if((shader&SHADER_USE_MIS)!=0u&&weight_sum>0.0){result.pdf=rounded_divide(pdf_sum,weight_sum);}
     return result;
 }
 // Called by connect_surface_light with the sample stored by shade_surface_light;

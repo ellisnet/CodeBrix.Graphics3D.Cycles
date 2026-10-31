@@ -76,7 +76,8 @@ static void run_stage(WebGPUDevice &d,Scheduler &scheduler,DeviceScene &scene,co
   film.copy_from_device();healthy(d);for(size_t i=0;i<film.size();i++){numeric(film[i],expected_film[i],m,"Film "+std::to_string(i));m.film++;}
   IntegratorQueueCounter observed{};d.download(uintptr_t(d.state.queue_counter),&observed,sizeof(observed));
   std::array<int,DEVICE_GPU_KERNEL_INTEGRATOR_NUM> wanted{};for(const auto &s:expected)if(s.path.queued_kernel)wanted.at(s.path.queued_kernel)++;
-  for(size_t k=0;k<wanted.size();k++)require(observed.num_queued[k]==wanted[k],"Light state queue mismatch");require(!observed.cache_miss,"Unexpected light cache miss");
+  for(size_t k=0;k<wanted.size();k++)require(observed.num_queued[k]==wanted[k],"Light state queue mismatch");
+  require(!observed.cache_miss,"Unexpected light cache miss");
   for(int i:ids){m.lamp_hits+=expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD;
     if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD){m.continued+=expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;m.terminated+=expected[i].path.queued_kernel==0;}}
   m.paths+=ids.size();m.cases++;
@@ -92,7 +93,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     std::vector<KernelLight> lights(scene.dscene.lights.data(),scene.dscene.lights.data()+scene.dscene.lights.size());
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
     device_vector<float> film(&d,"mis_state_film",MEM_READ_WRITE);film.alloc(64*48);
-    for(int mode=0;mode<18;mode++){
+    for(int mode=0;mode<20;mode++){
       data=original;std::copy(lights.begin(),lights.end(),scene.dscene.lights.data());
       if(mode==1){for(size_t lamp=0;lamp<scene.dscene.lights.size();lamp++)scene.dscene.lights[lamp].shader_id|=SHADER_EXCLUDE_CAMERA;}
       if(mode==2){for(size_t lamp=0;lamp<scene.dscene.lights.size();lamp++)scene.dscene.lights[lamp].shader_id|=SHADER_EXCLUDE_DIFFUSE;}
@@ -105,8 +106,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       if(mode==9){for(size_t lamp=0;lamp<scene.dscene.lights.size();lamp++)scene.dscene.lights[lamp].shader_id&=~SHADER_USE_MIS;}
       if(mode==10){data.integrator.distribution_pdf_lights=.0001f;}
       if(mode==11){data.integrator.distribution_pdf_lights=.95f;scene.dscene.lights[3].shader_id|=SHADER_USE_MIS;}
+      // A light's cast_shadow off and its max_bounces below the path bounce: both act on light
+      // sampling only (shadow ray tmin, light_select_reached_max_bounces), so the closest, forward
+      // and distant (background) stages must be unchanged by them.
+      if(mode==18){for(size_t lamp=0;lamp<scene.dscene.lights.size();lamp++)scene.dscene.lights[lamp].shader_id&=~SHADER_CAST_SHADOW;}
+      if(mode==19){for(size_t lamp=0;lamp<scene.dscene.lights.size();lamp++)scene.dscene.lights[lamp].max_bounces=lamp%2?0.f:1.f;}
       scene.dscene.lights.copy_to_device();d.const_copy_to("data",&data,sizeof(data));
-      const bool direct=mode>=12;const int count=direct?std::array{1,63,64,65,193,256}[mode-12]:193;
+      const bool direct=mode>=12&&mode<18;const int count=direct?std::array{1,63,64,65,193,256}[mode-12]:193;
       std::vector<int> ids;std::vector<IntegratorStateCPU> initial(scheduler.capacity());
       for(int j=0;j<count;j++){
         const int i=direct?j:1+j*3;ids.push_back(i);auto &s=initial[i];const int lamp=j%

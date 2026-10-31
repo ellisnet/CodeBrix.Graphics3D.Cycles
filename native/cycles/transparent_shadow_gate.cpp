@@ -152,16 +152,19 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       m.paths+=indices.size();m.cases++;m.direct+=indices.size()==size_t(count);
       for(unsigned round=0;round<10;round++){
         std::vector<int> pending;for(int i:indices)if(expected[i].shadow_path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW)pending.push_back(i);
-        if(pending.empty())break;require(round<9,"Transparent shadow loop did not terminate");
+        if(pending.empty())break;
+        require(round<9,"Transparent shadow loop did not terminate");
         original_shadow(scene.dscene,DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,pending,expected,film);
         scheduler.enqueue_path_iteration(DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW);require(scheduler.update_queue_counter_and_cache(),"Transparent intersect failed: "+d.error_message());
-        if(capture)d.observer=nullptr;compare(d,layout,expected,m);film_compare(d,buffers->buffer,film,m);if(capture)d.observer=capture.get();
+        if(capture)d.observer=nullptr;
+        compare(d,layout,expected,m);film_compare(d,buffers->buffer,film,m);if(capture)d.observer=capture.get();
         std::vector<int> visible;for(int i:pending){if(expected[i].shadow_path.queued_kernel)visible.push_back(i);else m.blocked++;}
         m.clear+=visible.size();for(int i:visible){const auto hits=expected[i].shadow_path.packed_num_hits;m.max_hits=std::max(m.max_hits,uint64_t(hits));m.four_hit_stages+=hits==4;m.overflow_stages+=hits>4;}
         const auto before=expected;original_shadow(scene.dscene,DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW,visible,expected,film);
         for(int i:visible){m.attenuated+=expected[i].shadow_path.transparent_bounce>before[i].shadow_path.transparent_bounce;m.resumed+=expected[i].shadow_path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW;}
         if(!visible.empty()){scheduler.enqueue_path_iteration(DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW);require(scheduler.update_queue_counter_and_cache(),"Transparent shade failed: "+d.error_message());}
-        if(capture)d.observer=nullptr;compare(d,layout,expected,m);film_compare(d,buffers->buffer,film,m);if(capture)d.observer=capture.get();
+        if(capture)d.observer=nullptr;
+        compare(d,layout,expected,m);film_compare(d,buffers->buffer,film,m);if(capture)d.observer=capture.get();
       }
       if(capture){
         capture->finish(captured,buffers->buffer.device_pointer,buffers->buffer.memory_size(),

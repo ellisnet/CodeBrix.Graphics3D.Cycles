@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Ambient occlusion image gate: fast GI (replace and additive modes, per-object
 // AO distance, an HDRI world), the AO pass and the Ambient Occlusion shader node,
-// rendered by the original GPU scheduler on the WebGPU device against an
+// each also with object motion and with deformation motion; then (cases 12-23) fast GI
+// replace and additive modes with transparent shadows at ao_bounces 1, and fast GI / the AO node with
+// the light tree, light linking, glass and Principled materials, camera motion and a
+// smooth sphere with shadow terminator offsets, rendered by the original GPU scheduler on the WebGPU device against an
 // independent loop of the unmodified CPU kernels on the same prepared scene.
 // Device-scene flow and replay capture as lighting_gate.cpp.
 #include "wavefront_test.h"
@@ -17,6 +20,10 @@
 #include "environment_reference.h"
 #include "ao_reference.h"
 #include "environment_fixture.h"
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
+#include "camera_motion_fixture.h"
+#include "shadow_terminator_fixture.h"
 #include "scene/camera.h"
 #include "scene/film.h"
 #include "scene/integrator.h"
@@ -35,9 +42,13 @@ using namespace ccl;
 using namespace wavefront_test;
 constexpr unsigned width=32,height=24,samples=8;
 // Fast GI settings (Integrator sockets), the world, the AO pass and the AO node.
-struct Case {const char *name;int ao_bounces;float ao_factor,ao_distance,additive;bool object_distance,hdri,transparent,pass;int node;};
+struct Case {const char *name;int ao_bounces;float ao_factor,ao_distance,additive;bool object_distance,hdri,transparent,pass;int node,motion=0;bool tree=false,linking=false;int material=0;bool terminator=false;};
 // node: -1 none; 0 AO node mixing two BSDFs on the centre quad; 1 the same node with
-// only_local and inside on an instanced object.
+// only_local and inside on an instanced object. motion: 0 none; 1 the centre quad and
+// the ground move (object motion); 2 they deform (deformation motion); 3 camera motion.
+// tree: the light tree with a second (area) lamp; linking: that lamp too, the ground
+// receives only it (light linking); material: 1 glass/diffuse centre quad and Principled
+// ground, 2 Principled ground; terminator: a coarse smooth sphere with offsets.
 static const Case cases[]={
   {"replace",1,.5f,1.f,0,false,false,false,false,-1},
   {"replace-object-distance",1,.8f,3.f,0,true,false,false,false,-1},
@@ -47,6 +58,22 @@ static const Case cases[]={
   {"replace-ao-pass",1,.5f,1.f,0,false,false,false,true,-1},
   {"ao-node",0,0,1.f,0,false,false,false,false,0},
   {"ao-node-local-instanced",0,0,1.f,0,false,false,false,false,1},
+  {"fast-gi-additive-pass-object-motion",1,.5f,1.2f,.7f,false,false,false,true,-1,1},
+  {"fast-gi-additive-pass-deforming-motion",1,.5f,1.2f,.7f,false,false,false,true,-1,2},
+  {"ao-node-object-motion",0,0,1.f,0,false,false,false,false,0,1},
+  {"ao-node-deforming-motion",0,0,1.f,0,false,false,false,false,0,2},
+  {"replace-transparent",1,.5f,1.f,0,false,false,true,false,-1},
+  {"fast-gi-additive-pass-light-tree",1,.5f,1.2f,.7f,false,false,false,true,-1,0,true},
+  {"ao-node-light-tree",0,0,1.f,0,false,false,false,false,0,0,true},
+  {"fast-gi-additive-pass-light-linking",1,.5f,1.2f,.7f,false,false,false,true,-1,0,false,true},
+  {"ao-node-light-linking",0,0,1.f,0,false,false,false,false,0,0,false,true},
+  {"fast-gi-additive-glass-principled",1,.5f,1.2f,.7f,false,false,false,true,-1,0,false,false,1},
+  {"ao-node-principled",0,0,1.f,0,false,false,false,false,0,0,false,false,2},
+  {"fast-gi-additive-pass-camera-motion",1,.5f,1.2f,.7f,false,false,false,true,-1,3},
+  {"ao-node-camera-motion",0,0,1.f,0,false,false,false,false,0,3},
+  {"fast-gi-additive-pass-terminator",1,.5f,1.2f,.7f,false,false,false,true,-1,0,false,false,0,true},
+  {"replace-transparent-light-tree",1,.5f,1.f,0,false,false,true,false,-1,0,true},
+  {"fast-gi-additive-pass-transparent",1,.5f,1.2f,.7f,false,false,true,true,-1},
 };
 constexpr unsigned case_count=sizeof(cases)/sizeof(cases[0]);
 struct Metrics {uint64_t ao_paths=0,ao_blocked=0,shadows=0,nee=0,raytrace=0,ao_terminated=0,stages=0,floats=0,strict=0,repeat_differences=0;double maximum=0,repeat_maximum=0;};
@@ -71,6 +98,18 @@ static Shader *ao_node_shader(Scene &scene,bool local){
   auto mix=g->create_node<MixClosureNode>();g->connect(ao->output("AO"),mix->input("Fac"));g->connect(glossy->output("BSDF"),mix->input("Closure1"));g->connect(d->output("BSDF"),mix->input("Closure2"));
   g->connect(mix->output("Closure"),g->output()->input("Surface"));auto s=scene.create_node<Shader>();s->set_graph(std::move(g));s->tag_update(&scene);return s;
 }
+static Shader *glass_shader(Scene &scene){
+  auto g=make_unique<ShaderGraph>();auto glass=g->create_node<GlassBsdfNode>();glass->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);glass->set_roughness(.25f);glass->set_IOR(1.45f);
+  glass->set_color(make_float3(.9,.95,1));auto d=g->create_node<DiffuseBsdfNode>();d->set_color(make_float3(.5,.45,.3));d->set_roughness(.25f);
+  auto mix=g->create_node<MixClosureNode>();mix->set_fac(.35f);g->connect(glass->output("BSDF"),mix->input("Closure1"));g->connect(d->output("BSDF"),mix->input("Closure2"));
+  g->connect(mix->output("Closure"),g->output()->input("Surface"));auto s=scene.create_node<Shader>();s->set_graph(std::move(g));s->tag_update(&scene);return s;
+}
+static Shader *principled_shader(Scene &scene){
+  auto g=make_unique<ShaderGraph>();auto p=g->create_node<PrincipledBsdfNode>();p->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
+  p->set_base_color(make_float3(.8f,.5f,.25f));p->set_metallic(.1f);p->set_roughness(.3f);p->set_ior(1.45f);p->set_transmission_weight(.6f);
+  p->set_coat_weight(.3f);p->set_coat_roughness(.1f);p->set_coat_ior(1.5f);p->set_sheen_weight(.4f);p->set_sheen_roughness(.3f);p->set_subsurface_weight(0);
+  g->connect(p->output("BSDF"),g->output()->input("Surface"));auto s=scene.create_node<Shader>();s->set_graph(std::move(g));s->tag_update(&scene);return s;
+}
 static Object *quad(Scene &scene,Shader *shader,const std::array<float3,4> &v){
   auto mesh=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(shader);mesh->set_used_shaders(slots);mesh->resize_mesh(4,2);
   std::copy(v.begin(),v.end(),mesh->get_position_for_write());const int indices[]={0,1,2,0,2,3};std::copy_n(indices,6,mesh->get_triangles().data());
@@ -90,12 +129,19 @@ static void fixture(Scene &scene,const Case &c){
   scene.film->set_use_sample_count(false);scene.camera->set_full_width(width);scene.camera->set_full_height(height);scene.camera->set_screen_size(width,height);
   scene.camera->set_fov(.9f);scene.camera->set_matrix(transform_translate(make_float3(0,0,-7)));scene.camera->compute_auto_viewplane();
   if(c.pass){auto pass=scene.create_node<Pass>();pass->set_type(PASS_AO);pass->set_name(ustring("AO"));}
-  auto wall=diffuse_shader(scene,make_float3(.6,.62,.65)),floor=mixed_shader(scene,false);
+  if(c.tree)scene.integrator->set_use_light_tree(true);
+  if(c.motion==3)camera_motion_fixture(scene,transform_translate(make_float3(0,0,-7)),2);
+  auto wall=diffuse_shader(scene,make_float3(.6,.62,.65)),floor=c.material?principled_shader(scene):mixed_shader(scene,false);
   auto back=quad(scene,wall,{make_float3(-4,-3,3),make_float3(4,-3,3),make_float3(4,3,3),make_float3(-4,3,3)});
   auto ground=quad(scene,floor,{make_float3(-4,-2,-2),make_float3(4,-2,-2),make_float3(4,-2,3),make_float3(-4,-2,3)});
-  Shader *center=c.node==0?ao_node_shader(scene,false):diffuse_shader(scene,make_float3(.5,.45,.3));
+  Shader *center=c.node==0?ao_node_shader(scene,false):c.material==1?glass_shader(scene):diffuse_shader(scene,make_float3(.5,.45,.3));
   auto middle=quad(scene,center,{make_float3(-.8f,-2,0),make_float3(.8f,-2,0),make_float3(.8f,1.1f,0),make_float3(-.8f,1.1f,0)});
   if(c.object_distance){middle->set_ao_distance(.35f);ground->set_ao_distance(1.5f);(void)back;}
+  if(c.motion==1){object_motion_fixture(scene,*middle,2);object_motion_fixture(scene,*ground,1);}
+  if(c.motion==2){deforming_motion_fixture(scene,*middle,1);deforming_motion_fixture(scene,*ground,0);}
+  if(c.terminator){auto sphere=scene.create_node<Object>();sphere->set_geometry(shadow_terminator_sphere(scene,diffuse_shader(scene,make_float3(.5,.45,.3))));
+    sphere->set_tfm(transform_translate(make_float3(1.9f,-1.2f,-.8f))*transform_scale(make_float3(.8f,.8f,.8f)));
+    sphere->set_shadow_terminator_geometry_offset(.1f);sphere->set_shadow_terminator_shading_offset(.5f);}
   if(c.transparent)quad(scene,mixed_shader(scene,true),{make_float3(-2.9f,.6f,-1.8f),make_float3(2.9f,.6f,-1.8f),make_float3(2.9f,.6f,2.8f),make_float3(-2.9f,.6f,2.8f)});
   if(c.node==1){auto box=box_mesh(scene,ao_node_shader(scene,true));
     for(int k=0;k<2;k++){auto o=scene.create_node<Object>();o->set_geometry(box);
@@ -107,6 +153,11 @@ static void fixture(Scene &scene,const Case &c){
   eg->connect(emission->output("Emission"),eg->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(eg));emitter->tag_update(&scene);
   auto point=scene.create_node<PointLight>();point->set_radius(.45f);point->set_is_sphere(true);point->set_use_mis(true);point->set_strength(make_float3(110,90,70));
   array<Node*> slots;slots.push_back_slow(emitter);point->set_used_shaders(slots);auto lamp=scene.create_node<Object>();lamp->set_geometry(point);lamp->set_tfm(transform_translate(make_float3(2.2f,2,-2)));
+  if(c.tree||c.linking){auto area=scene.create_node<AreaLight>();area->set_sizeu(1.f);area->set_sizev(1.f);area->set_spread(1.2f);area->set_normalize(true);area->set_use_mis(true);
+    area->set_strength(make_float3(40,50,60));array<Node*> area_slots;area_slots.push_back_slow(emitter);area->set_used_shaders(area_slots);auto second=scene.create_node<Object>();second->set_geometry(area);
+    // Area lights emit along -Z: rotate it to point down.
+    second->set_tfm(transform_translate(make_float3(-2.5f,2.5f,-1))*transform_rotate(-M_PI_2_F,make_float3(1,0,0)));
+    if(c.linking){ground->set_receiver_light_set(1);lamp->set_light_set_membership(1ull<<0);second->set_light_set_membership((1ull<<0)|(1ull<<1));}}
   for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
 }
 // Shadow paths of one surface queue: light NEE (non-constant world), intersect, shade.
@@ -169,11 +220,15 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     Scene scene(params,&device);fixture(scene,c);Progress progress;scene.device_update(&device,progress);healthy(device);require(!progress.get_error(),"AO scene preparation failed");
     const auto &data=scene.dscene.data;const unsigned stride=unsigned(data.film.pass_stride);
     std::cerr<<"native ao_bounces="<<data.integrator.ao_bounces<<" factor="<<data.integrator.ao_bounces_factor<<" distance="<<data.integrator.ao_bounces_distance<<" additive="<<data.integrator.ao_additive_factor
-             <<" features=0x"<<std::hex<<data.kernel_features<<std::dec<<" stride="<<stride<<" pass_ao="<<data.film.pass_ao<<" transparent="<<data.integrator.transparent_shadows<<"\n";
+             <<" features=0x"<<std::hex<<data.kernel_features<<std::dec<<" stride="<<stride<<" pass_ao="<<data.film.pass_ao<<" transparent="<<data.integrator.transparent_shadows<<" lights="<<data.integrator.num_lights<<"\n";
     require(bool(data.kernel_features&KERNEL_FEATURE_AO_ADDITIVE)==(c.additive!=0)&&bool(data.kernel_features&KERNEL_FEATURE_AO_PASS)==c.pass,"Unexpected native AO features");
     require(data.integrator.ao_bounces==(c.ao_factor!=0?c.ao_bounces:0),"Unexpected native AO bounces");
     require(bool(data.kernel_features&KERNEL_FEATURE_NODE_RAYTRACE)==(c.node>=0)&&bool(data.integrator.transparent_shadows)==c.transparent,"Unexpected native AO node or transparency configuration");
     require(c.pass?stride==7&&data.film.pass_ao==4:stride==4,"Unexpected AO film layout");
+    require(bool(data.kernel_features&KERNEL_FEATURE_OBJECT_MOTION)==(c.motion==1||c.motion==2),"Unexpected native motion configuration");
+    require(bool(data.integrator.use_light_tree)==c.tree&&bool(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)==c.linking,"Unexpected native light tree or linking configuration");
+    require(data.integrator.num_lights==(c.tree||c.linking?2:1)+(c.hdri?1:0),"Unexpected native lamp count");
+    if(c.motion==3)require(data.cam.num_motion_steps>1&&scene.camera->get_motion().size()>1,"Camera motion fixture lacks motion");
     if(c.object_distance){unsigned set=0;for(size_t i=0;i<scene.dscene.objects.size();i++)set+=scene.dscene.objects[i].ao_distance!=0;require(set==2,"Per-object AO distance not uploaded");}
     const std::string key="case-"+std::to_string(image);
     const bool exchange_only=reference_policy::exchange_scene(scene.dscene,key,{});

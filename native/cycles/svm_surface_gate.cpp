@@ -318,7 +318,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     for(unsigned kind=0;kind<=NODE_INFO_OB_RANDOM;kind++){
       Program p(ds);begin(p);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=10,.value=make_float3(.4f,.5f,.6f)});
       p.add(NODE_OBJECT_INFO,SVMNodeObjectInfo{.info_type=NodeObjectInfo(kind),.out_offset=uint8_t(kind<=NODE_INFO_OB_COLOR?10:13)});
-      if(kind<=NODE_INFO_OB_COLOR)p.add(NODE_SEPARATE_VECTOR,SVMNodeSeparateVector{.vector=stack_in3(10),.vector_index=0,.out_offset=13});finish(p,"object info "+std::to_string(kind));
+      if(kind<=NODE_INFO_OB_COLOR)p.add(NODE_SEPARATE_VECTOR,SVMNodeSeparateVector{.vector=stack_in3(10),.vector_index=0,.out_offset=13});
+      finish(p,"object info "+std::to_string(kind));
     }
     {Program p(ds);begin(p);p.add(NODE_CAMERA,SVMNodeCamera{.vector_offset=10,.zdepth_offset=13,.distance_offset=14});
       p.add(NODE_MATH,SVMNodeMath{.math_type=NODE_MATH_ADD,.value1=stack_in(13),.value2=stack_in(14),.value3=value(0),.result_offset=13});finish(p,"camera");}

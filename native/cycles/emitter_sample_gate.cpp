@@ -91,7 +91,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(reference_policy::reference_only())for(unsigned i=0;i<count;i++){auto &s=states[i];const auto &in=inputs[i];
       s.path.sample=in.sample;s.path.rng_pixel=in.rng_pixel;s.path.rng_offset=in.rng_offset;s.path.bounce=in.bounce;s.path.flag=in.flag;s.ray.time=in.time;
       s.ray.P=make_float3(in.P[0],in.P[1],in.P[2]);s.ray.D=make_float3(in.D[0],in.D[1],in.D[2]);}
-    if(!exchange_only)upload(d,layout,states);const auto local=original_light_samples(scene.dscene,states);reference_policy::record_local("samples",local);
+    if(!exchange_only)upload(d,layout,states);
+    const auto local=original_light_samples(scene.dscene,states);reference_policy::record_local("samples",local);
     // Pass/fail reference: local, or the imported correctly rounded one (reference_policy.h).
     const auto expected=reference_policy::resolve("samples",local,std::string(argv[1])+".reference-diagnostic.jsonl");
     if(!exchange_only){
@@ -140,7 +141,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     save(".reference.bin",local.data(),local.size());save(".actual.bin",output.data()+8,expected.size());
     unsigned valid=0;for(unsigned i=0;i<count;i++){const auto at=i*12;require(output[at+8]==expected[at],"Emitter validity differs index="+std::to_string(i));metrics.exact++;if(!expected[at])continue;valid++;
       for(unsigned j=1;j<12;j++)numeric(output[at+j+8],expected[at+j],metrics,"Emitter sample="+std::to_string(i)+" field="+std::to_string(j));}
-    for(unsigned i=0;i<8;i++)require(output[i]==-1234.f&&output[output.size()-1-i]==-1234.f,"Emitter sample output guard overwritten");require(valid>100,"Insufficient valid emitter samples");metrics.paths=count;metrics.lamp_hits=valid;
+    for(unsigned i=0;i<8;i++)require(output[i]==-1234.f&&output[output.size()-1-i]==-1234.f,"Emitter sample output guard overwritten");
+    require(valid>100,"Insufficient valid emitter samples");metrics.paths=count;metrics.lamp_hits=valid;
 #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE
     const auto saved=d.light_distribution_records;const auto data=d.data;
     // The sampler fixture includes static instanced emitters; the renderer

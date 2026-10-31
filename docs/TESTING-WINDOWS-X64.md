@@ -22,7 +22,7 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
 >    `native/evidence/linux-x64-reference-<date>/` set (now
->    `linux-x64-reference-20261029`); device-gate exchanges go through
+>    `linux-x64-reference-20261030`); device-gate exchanges go through
 >    `native/tools/reference_exchange_handoff.py` with that machine as the Linux
 >    side. **Do NOT** produce Linux x64 references in Docker, WSL or any other
 >    machine; `linux-x64-docker-reference-20261027` is history only.
@@ -199,7 +199,7 @@ python -I -X utf8 native/oracle/render_oracles.py --output native/work/oracles/w
   the Linux x64 glibc CPU film while the Mac's own CPU film fails there - so the
   Windows CPU reference is the likely outlier; docs/TESTING-MACOS-X64.md, step 8.
   Confirm with the Windows films against
-  `native/evidence/linux-x64-reference-20261029/oracles/`.) Both WebGPU backends differ
+  `native/evidence/linux-x64-reference-20261030/oracles/`.) Both WebGPU backends differ
   from the CPU film identically (6 practical failures, worst pixel 24,15 R: CPU
   0.04195, GPU 0.03668), while D3D12 and Vulkan agree to 1.1e-7 and the Windows
   CPU film agrees with the macOS arm64 CPU oracle

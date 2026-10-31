@@ -1,0 +1,122 @@
+commit 51fc577cc4abbf716a24fbb37210009a3f7b33f9
+ M MAINTAINER-README.txt
+ M compatibility/README.md
+ M compatibility/closures.json
+ M compatibility/evidence.json
+ M compatibility/features.json
+ M compatibility/kernels.json
+ M compatibility/opcodes.json
+ M compatibility/passes.json
+ M compatibility/reviews.json
+ M docs/PARITY.md
+ M docs/TESTING-LINUX-ARM64.md
+ M docs/TESTING-MACOS-ARM64.md
+ M docs/TESTING-MACOS-X64.md
+ M docs/TESTING-WINDOWS-ARM64.md
+ M docs/TESTING-WINDOWS-X64.md
+ M native/DEVICE.md
+ M native/cycles/ao_render_gate.cpp
+ M native/cycles/ao_state_gate.cpp
+ M native/cycles/device.cpp
+ M native/cycles/device.h
+ M native/cycles/emitter_sample_gate.cpp
+ M native/cycles/image_gate.cpp
+ M native/cycles/light_state_gate.cpp
+ M native/cycles/light_tree_gate.cpp
+ M native/cycles/light_tree_reference.cpp
+ M native/cycles/lighting_gate.cpp
+ M native/cycles/mnee_gate.cpp
+ M native/cycles/mnee_reference.cpp
+ M native/cycles/pipelines.cpp
+ M native/cycles/render_capture.h
+ M native/cycles/shadow_catcher_gate.cpp
+ M native/cycles/shadow_gate.cpp
+ M native/cycles/surface.cpp
+ M native/cycles/svm_surface_gate.cpp
+ M native/cycles/transparent_shadow_gate.cpp
+ M native/oracle/README.md
+ M native/shaders/wavefront_ao.wgsl
+ M native/shaders/wavefront_light_eval.wgsl
+ M native/shaders/wavefront_lighting.wgsl
+ M native/shaders/wavefront_shader_data.wgsl
+ M native/shaders/wavefront_shadow.wgsl
+ M native/shaders/wavefront_surface.wgsl
+ M native/shaders/wavefront_svm_closures.wgsl
+ M native/shaders/wavefront_svm_microfacet.wgsl
+ M native/src/webgpu_device.cpp
+ M native/tools/build_cycles.py
+ M native/tools/inject_cycles.cmake
+ M native/tools/light_tree_gate.py
+ M native/tools/linux_arm64_lanes.py
+ M native/tools/microfacet_gate.py
+ M native/tools/shadow_catcher_gate.py
+?? native/evidence/linux-x64-reference-20261030/environment/cycles-build.json
+?? native/evidence/linux-x64-reference-20261030/environment/fingerprint-end.txt
+?? native/evidence/linux-x64-reference-20261030/environment/fingerprint-start.txt
+?? native/evidence/linux-x64-reference-20261030/environment/ldd.txt
+?? native/evidence/linux-x64-reference-20261030/environment/linux-bin-sha256.txt
+?? native/evidence/linux-x64-reference-20261030/environment/toolchain.txt
+?? native/oracle/scenes/author_combinations.py
+?? native/oracle/scenes/author_light_motion_combinations.py
+?? native/oracle/scenes/combinations/camera-motion-ao-node.json
+?? native/oracle/scenes/combinations/camera-motion-fast-gi-additive.json
+?? native/oracle/scenes/combinations/enclosure-emissive-panel-mix.json
+?? native/oracle/scenes/combinations/enclosure-emissive-panel-oren-nayar.json
+?? native/oracle/scenes/combinations/enclosure-emissive-panel-translucent.json
+?? native/oracle/scenes/combinations/enclosure-emissive-panel.json
+?? native/oracle/scenes/combinations/glass-fast-gi-additive.json
+?? native/oracle/scenes/combinations/glass-receiver-transparent-lighting-4.json
+?? native/oracle/scenes/combinations/link-ao-node.json
+?? native/oracle/scenes/combinations/link-fast-gi-additive.json
+?? native/oracle/scenes/combinations/link-transparent-lighting-4.json
+?? native/oracle/scenes/combinations/link-transparent-lighting-5.json
+?? native/oracle/scenes/combinations/principled-ao-node.json
+?? native/oracle/scenes/combinations/principled-receiver-transparent-lighting-5.json
+?? native/oracle/scenes/combinations/replace-transparent-fast-gi.json
+?? native/oracle/scenes/combinations/terminator-fast-gi-additive.json
+?? native/oracle/scenes/combinations/textured-plane.fixture-729.byte4
+?? native/oracle/scenes/combinations/tree-ao-node.json
+?? native/oracle/scenes/combinations/tree-camera-motion.json
+?? native/oracle/scenes/combinations/tree-catcher-approximate.json
+?? native/oracle/scenes/combinations/tree-catcher-point-light.json
+?? native/oracle/scenes/combinations/tree-deforming-motion-5.json
+?? native/oracle/scenes/combinations/tree-fast-gi-additive.json
+?? native/oracle/scenes/combinations/tree-glass-receiver-transparent-lighting-6.json
+?? native/oracle/scenes/combinations/tree-glass-render.json
+?? native/oracle/scenes/combinations/tree-glass-sphere.json
+?? native/oracle/scenes/combinations/tree-link-transparent-lighting-6.json
+?? native/oracle/scenes/combinations/tree-link-transparent-lighting-7.json
+?? native/oracle/scenes/combinations/tree-object-motion-4.json
+?? native/oracle/scenes/combinations/tree-principled-receiver-transparent-lighting-7.json
+?? native/oracle/scenes/combinations/tree-principled.json
+?? native/oracle/scenes/combinations/tree-replace-transparent-fast-gi.json
+?? native/oracle/scenes/combinations/tree-shadow-terminator.json
+?? native/oracle/scenes/combinations/tree-textured-emitter.json
+?? native/oracle/scenes/combinations/tree-textured-plane-normal-map.json
+?? native/oracle/scenes/combinations/tree-transparent-lighting-0.json
+?? native/oracle/scenes/combinations/tree-transparent-lighting-1.json
+?? native/oracle/scenes/combinations/tree-transparent-lighting-2.json
+?? native/oracle/scenes/combinations/tree-transparent-lighting-3.json
+?? native/oracle/scenes/combinations/tree-transparent-lighting-4.json
+?? native/oracle/scenes/combinations/tree-transparent-lighting-5.json
+?? native/oracle/scenes/combinations/tree-transparent-lighting-6.json
+?? native/oracle/scenes/combinations/tree-transparent-lighting-7.json
+?? native/oracle/scenes/combinations/tree-triangle-lighting-1.json
+?? native/oracle/scenes/combinations/tree-triangle-lighting-2.json
+?? native/oracle/scenes/combinations/tree-triangle-lighting-3.json
+?? native/oracle/scenes/combinations/tree-triangle-lighting-5.json
+?? native/oracle/scenes/light-motion/camera-deforming-motion.json
+?? native/oracle/scenes/light-motion/camera-object-motion.json
+?? native/oracle/scenes/light-motion/clamps-filters-exclude.json
+?? native/oracle/scenes/light-motion/light-cast-shadow-tree.json
+?? native/oracle/scenes/light-motion/light-cast-shadow.json
+?? native/oracle/scenes/light-motion/light-max-bounces-tree.json
+?? native/oracle/scenes/light-motion/light-max-bounces.json
+?? native/oracle/scenes/light-motion/linking-glass.json
+?? native/oracle/scenes/light-motion/linking-hdri.json
+?? native/oracle/scenes/light-motion/linking-motion-flat.json
+?? native/oracle/scenes/light-motion/linking-motion-tree.json
+?? native/oracle/scenes/light-motion/linking-transparent.json
+?? native/oracle/scenes/light-motion/motion-glass-principled-lamps.json
+?? native/oracle/scenes/light-motion/motion-hdri-emitter.json
+?? native/oracle/scenes/light-motion/sky.float4

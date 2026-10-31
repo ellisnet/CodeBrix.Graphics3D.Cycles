@@ -79,8 +79,12 @@ fn integrate_suns(index:u32,base:u32){
     let direction=heap_vec3(state_address(S_ray_D,index,12u));let visibility=state_byte(S_path_visibility,index);let flag=state_word(S_path_flag,index);
     let previous=state_word(S_isect_prim,index);let start=select(previous,0u,previous==NONE);
 //#if LIGHT_TREE
-    // Tree pdf slots number the MIS suns from lamp 0 (no shading cache misses here).
-    var sun_slot=0u;if(start!=0u&&data_word(LT_D_use_light_tree)!=0u){fail();return;}
+    // Tree pdf slots number the MIS suns from lamp 0 (no shading cache misses here). A
+    // shadow catcher background path still holds its catcher prim, which the pinned
+    // integrate_sun_lights takes as the lamp offset: the MIS suns below it keep their slots.
+    var sun_slot=0u;
+    for(var lamp=0u;lamp<min(start,data_word(D_integrator_num_lights));lamp++){let light=table_at(G_lights,lamp,SIZE_lights);
+        if(load_word(light+L_type)==LIGHT_SUN&&(load_word(light+L_shader_id)&SHADER_USE_MIS)!=0u){sun_slot++;}}
 //#endif
     for(var lamp=start;lamp<data_word(D_integrator_num_lights);lamp++){
         let light=table_at(G_lights,lamp,SIZE_lights);let shader=load_word(light+L_shader_id);

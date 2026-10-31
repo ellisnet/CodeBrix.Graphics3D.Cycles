@@ -50,8 +50,10 @@ MneeTrace original_mnee_trace(ccl::DeviceScene &scene,const ccl::IntegratorState
           const float eta=(sd_mnee->runtime_flag&SR_BACKFACING)?1.0f/m->ior:m->ior;float2 h=zero_float2();
           if(m->alpha_x>0&&m->alpha_y>0){const float2 uv=path_state_rng_2D(kg,&rng,PRNG_SURFACE_BSDF);h=mnee_sample_bsdf_dh(bsdf->type,m->alpha_x,m->alpha_y,uv.x,uv.y);}
           mnee_setup_manifold_vertex(kg,&v[count],bsdf,eta,h,&probe,&isect,sd_mnee);out.n_offset[count][0]=h.x;out.n_offset[count][1]=h.y;
-          for(int c=0;c<3;c++)out.seed_p[count][c]=v[count].p[c];break;}}
-      if(!found)return out;count++;
+          for(int c=0;c<3;c++)out.seed_p[count][c]=v[count].p[c];
+          break;}}
+      if(!found)return out;
+      count++;
     }
     probe.self.object=isect.object;probe.self.prim=isect.prim;probe.tmin=intersection_t_offset(isect.t);
   }
@@ -80,7 +82,8 @@ MneeTrace original_mnee_trace(ccl::DeviceScene &scene,const ccl::IntegratorState
     if(!reduce)for(int i=0;i<count;i++){const ManifoldVertex &tv=tentative[i];const float3 wi=(i==0?sd.P:tentative[i-1].p)-tv.p;
       const float3 wo=(i==count-1)?(fixed?ls.D:ls.P-tv.p):tentative[i+1].p-tv.p;if(dot(tv.n,wi)*dot(tv.n,wo)>=0.f){reduce=true;break;}}
     if(reduce){reduce=false;resolve=false;beta*=.5f;if(beta<MNEE_MINIMUM_STEP_SIZE){out.solved=5;break;}continue;}
-    for(int i=0;i<count;i++)v[i]=tentative[i];resolve=true;beta=min(1.f,2.f*beta);
+    for(int i=0;i<count;i++)v[i]=tentative[i];
+    resolve=true;beta=min(1.f,2.f*beta);
   }
   if(!out.solved)out.solved=6;
   for(int i=0;i<count;i++)for(int c=0;c<3;c++)out.final_p[i][c]=v[i].p[c];

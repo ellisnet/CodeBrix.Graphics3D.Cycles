@@ -2441,12 +2441,27 @@
       "workItems": [
         "P05-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "native-graph-and-typed-program",
-      "evidence": [],
+      "evidence": [
+        "ambient-occlusion"
+      ],
       "nativeValue": 97,
+      "notes": "Ambient Occlusion node on the SHADE_SURFACE_RAYTRACE queue (prepare_surface_raytrace, SVM_NODE_RAYTRACE): hemisphere sampling, inside, global radius, only_local local traversal; ao = 1 under the non-raytrace node masks. State and image gates against the CPU on Linux, Samsung SM-X700 and HP. Refused on the Adreno 650; object and deformation motion in the state and image gates; only_local from a transform-applied object in a scene with instances refused (native/DEVICE.md). With the light tree, light linking, glass/Principled materials, camera motion and terminator offsets (ao_render cases 12-23); the raytrace surface entry is specialized to the SD_HAS_RAYTRACE shaders' SVM regions.",
+      "implementation": [
+        "native/shaders/wavefront_ao.wgsl",
+        "native/shaders/wavefront_svm.wgsl",
+        "native/cycles/surface.cpp",
+        "native/cycles/pipelines.cpp",
+        "native/cycles/svm_layout.cpp"
+      ],
+      "tests": [
+        "native/cycles/ao_state_gate.cpp",
+        "native/cycles/ao_render_gate.cpp",
+        "native/cycles/ao_reference.cpp"
+      ],
       "classificationReviewed": false
     },
     {

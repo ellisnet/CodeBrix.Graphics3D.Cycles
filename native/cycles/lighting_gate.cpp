@@ -124,7 +124,7 @@ static void fixture(Scene &scene,int mode,bool stationary=false){
   graph->connect(diffuse_motion->output("BSDF"),graph->output()->input("Surface"));
   center=scene.create_node<Shader>();center->set_graph(std::move(graph));center->tag_update(&scene);
 #endif
-  auto center_object=quad(scene,center,{make_float3(-.8f,-1.2f,0),make_float3(.8f,-1.2f,0),make_float3(.8f,1.1f,0),make_float3(-.8f,1.1f,0)});
+  [[maybe_unused]] auto center_object=quad(scene,center,{make_float3(-.8f,-1.2f,0),make_float3(.8f,-1.2f,0),make_float3(.8f,1.1f,0),make_float3(-.8f,1.1f,0)});
 #ifdef CODEBRIX_OBJECT_MOTION_GATE
   scene.integrator->set_motion_blur(true);scene.camera->set_shuttertime(.6f);
   center_object->set_tfm(transform_scale(make_float3(mode%2?-1.1f:1.f,.9f,1.2f)));

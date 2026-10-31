@@ -180,7 +180,8 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
     sd.shader_flag=load_word(table_at(G_shaders,shader_id,SIZE_shaders)+SH_flags);
     if(dot(sd.Ng,sd.wi)<0.0){sd.runtime_flag|=SR_BACKFACING;sd.N=-sd.N;sd.Ng=-sd.Ng;sd.dPdu=-sd.dPdu;sd.dPdv=-sd.dPdv;}
     sd.dI=ray_dD;
-    sd.dP=ray_dP+sd.ray_length*sd.dI;surface_differentials(&sd);
+    // differential_transfer_compact: the product rounded before the sum (no contraction).
+    sd.dP=rounded_add(ray_dP,sd.ray_length*sd.dI);surface_differentials(&sd);
     return sd;
 }
 
