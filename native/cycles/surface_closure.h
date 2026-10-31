@@ -9,8 +9,12 @@ namespace ccl {
 // Oren-Nayar: roughness/a/b/multiscatter. Microfacet: roughness holds the
 // native MicrofacetFresnel model as a float (0 none or Glass-node scalar
 // fresnel_f0 in specialized scenes without Principled, 1 dielectric,
-// 4 generalized Schlick with exponent < 0 and f90 = 1, 5 F82 tint), multiscatter
-// the Fresnel f0, and an F82 closure stores its b term in reflection_tint.
+// 3 conductor (the Metallic BSDF's physical conductor: multiscatter = n,
+// reflection_tint = k), 4 generalized Schlick with exponent < 0 and f90 = 1,
+// 5 F82 tint), multiscatter the Fresnel f0, and an F82 closure stores its b term
+// in reflection_tint. Beckmann and Ashikhmin-Shirley records are microfacet
+// records with energy_scale 0. Velvet: roughness = sigma, a = 1/max(sigma, 0.01)^2.
+// Toon: a = size, b = smooth (both scaled by pi/2).
 // An active Principled thin film (thickness > 0.1) is a = thickness, b = film
 // IOR; zero otherwise. The thin-walled transmission lobe is a GGX record.
 // Sheen: roughness, a/b = LTC transformA/B, T = T and multiscatter = B.

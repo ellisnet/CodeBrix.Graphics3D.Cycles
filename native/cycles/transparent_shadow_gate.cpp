@@ -5,6 +5,10 @@
 #include "wavefront.h"
 #include "render_capture.h"
 #include "transparent_shadow_fixture.h"
+#ifdef CODEBRIX_TRANSPARENT_SHADOW_MOTION
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
+#endif
 #include "scene/scene.h"
 #include "scene/mesh.h"
 #include "scene/object.h"
@@ -79,12 +83,23 @@ static void prepare(Scene &scene){
     const float positions[][3]={{-1,-1,0},{1,-1,0},{1,1,0},{-1,1,0}};for(int i=0;i<4;i++)mesh->get_position_for_write()[i]=make_float3(positions[i][0],positions[i][1],positions[i][2]);
     const int triangles[]={0,1,2,0,2,3};std::copy_n(triangles,6,mesh->get_triangles().data());std::ranges::fill(mesh->get_smooth(),false);std::ranges::fill(mesh->get_shader(),0);mesh->tag_triangles_modified();
   }
+#ifdef CODEBRIX_TRANSPARENT_SHADOW_MOTION
+  std::vector<Object*> moving;
+#endif
   auto hidden=scene.create_node<Object>();hidden->set_geometry(meshes[1]);hidden->set_tfm(transform_translate(make_float3(-2.7f,0,.2f)));hidden->set_visibility(PATH_RAY_VISIBILITY_CAMERA);
   // Columns: clear, one colored pane, transparent+opaque, seven transparent panes.
   for(int column=1;column<4;column++)for(int layer=0;layer<(column==1?1:column==2?2:7);layer++){
     auto object=scene.create_node<Object>();object->set_geometry(meshes[column==2&&layer==1?4:column==1?1:layer%4]);
     object->set_tfm(transform_translate(make_float3((column-1)*2.7f,0,layer*.37f))*transform_scale(make_float3(column==2?-1.2f:1.f,.8f+.2f*column,1.5f)));
+#ifdef CODEBRIX_TRANSPARENT_SHADOW_MOTION
+    moving.push_back(object);
+#endif
   }
+#ifdef CODEBRIX_TRANSPARENT_SHADOW_MOTION
+  // Motion blur: moving panes in every column (2, 3 and 5 transform steps) and a deforming pane mesh.
+  for(size_t k=0;k<moving.size();k+=2)object_motion_fixture(scene,*moving[k],unsigned(k/2));
+  deforming_motion_fixture(scene,*moving[3],1);
+#endif
 }
 static void configure(KernelData &data){
   data.integrator.transparent_shadows=1;data.integrator.transparent_max_bounce=16;data.kernel_features|=KERNEL_FEATURE_LIGHT_PASSES;
@@ -102,6 +117,9 @@ static States initial(int count,int variant){
     p.lightgroup=i%3;p.packed_num_hits=333;p.rng_offset=17;p.rng_pixel=123456+i;p.transparent_bounce=i%4;
     s.shadow_ray.P=make_float3((i%4-1)*2.7f+.31f,-.23f,-3);s.shadow_ray.D=make_float3(0,0,1);
     s.shadow_ray.tmin=variant==3?4.f:0.f;s.shadow_ray.tmax=variant==4?2.f:100.f;s.shadow_ray.time=.5f;
+#ifdef CODEBRIX_TRANSPARENT_SHADOW_MOTION
+    s.shadow_ray.time=float(i%9)*.125f;
+#endif
     s.shadow_ray.self_light_object=OBJECT_NONE;s.shadow_ray.self_light_prim=PRIM_NONE;
     for(auto &hit:s.shadow_isect){hit.object=OBJECT_NONE;hit.prim=PRIM_NONE;}
     if(variant==5){

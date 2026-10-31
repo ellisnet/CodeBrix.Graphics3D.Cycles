@@ -1236,9 +1236,9 @@ with matching dispatch sizing, passes the unchanged corpus. Opaque traversal
 retains 64; the original crash/backtraces are preserved in `all-lanes-crash-v1`.
 Large-scene performance and wider driver coverage remain unmeasured.
 
-- Transparent/colored shadows support static triangles and bounded hit storage
-  with resumed traversal. Moving transparent shadows, volume shadow attenuation,
-  light/shadow linking, AO, MNEE and shadow catchers remain guarded. The stable
+- Transparent/colored shadows support static, moving and deforming triangles and
+  bounded hit storage with resumed traversal. Volume shadow attenuation and shadow
+  linking remain guarded. The stable
   GPU queue gather scans path capacity serially; large-scene cost is unmeasured.
 - Deforming triangles use native motion frames, interpolated vertex/corner
   normals, instance transforms and opaque-shadow traversal. Curves, points,
@@ -2005,9 +2005,10 @@ on the geometric normal's side, and the self-intersection offset applies to
 the lifted origin) and the `shadow_terminator_shading_offset` as
 `closure/bsdf.h` `shift_cos_in` (after the bump term in BSDF evaluation for
 `cos >= 0` and in sampling for every reflection). The cosine uses the existing
-`native_disk_sincos` adapter, so the device rejects shading offsets above 1
-(multiplier above 2) with "WebGPU shadow terminator shading offset outside [0,
-1] not implemented". Both are scene-specialized: `SHADOW_TERMINATOR_GEOMETRY`
+`native_disk_sincos` adapter for angles up to pi; shading offsets above 1 (multiplier
+above 2, or negative above an offset of 2) take the wide cosine of
+`SHADOW_TERMINATOR_WIDE` (see "Integrator features added with the BSDF port"); only a
+NaN offset is rejected. Both are scene-specialized: `SHADOW_TERMINATOR_GEOMETRY`
 when direct lighting, a smooth triangle and an object with a positive geometry
 offset are uploaded, `SHADOW_TERMINATOR_SHADING` when an object's multiplier
 exceeds 1. Gate: `native/tools/shadow_terminator_gate.py`
@@ -2799,8 +2800,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    Cycles' flags for now).
 6. **Not yet ported** [14]: true displacement (`NODE_SET_DISPLACEMENT`, displacement and vector displacement) and the
    bump-state branch that needs the undisplaced position; tangent and motion-triangle smooth-normal derivatives
-   (rejected, error 16); `NODE_RADIAL_TILING`; AOV output; sky, IES, light falloff, bevel, raycast, volume
-   coefficient and particle/hair/point info nodes.
+   (rejected, error 16); AOV output; sky, IES, light falloff, volume coefficient and particle/hair/point info
+   nodes. The radial tiling, bevel and raycast nodes are ported (see "Remaining SVM BSDFs and the bevel, raycast
+   and radial tiling nodes"); radial tiling with two sides and a roundness strictly between 0 and 1 is refused.
 7. **Feature mask** [15]. CLOSED (Step zero, 2026-10-22): the mask is 256 bits (`ShaderFeatures`, four 64-bit
    words); bits 0-61 and 63 keep their meaning, bit 62 and bits 64-255 are free. See "Step zero" below.
 8. **Contractible ShaderData differentials** [16]. `du`, `dv` and `dP` still differ by ULPs between Intel and the
@@ -2847,7 +2849,8 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    also has instanced objects is refused (error 16 when the local traversal reaches an instance leaf); ambient
    occlusion with object motion and with deformation motion (AO shadow rays and the AO node) passes the AO state and
    image gates on Linux (max 1.21e-4 and 1.38e-5; "Ambient occlusion"); on the Adreno 650 the AO node and the AO
-   shadow rays are refused (see "Ambient occlusion"). Bevel and raycast nodes stay unported (item 6).
+   shadow rays are refused (see "Ambient occlusion"). The bevel and raycast nodes run on the same raytrace queue
+   (see "Remaining SVM BSDFs and the bevel, raycast and radial tiling nodes").
 19. (resolved, see "Resolved" below) Was: **MNEE on the Adreno 730 (Samsung SM-X700).** The `INTERSECT_MNEE`
    dispatches stopped with the invalid-data error (mask 1) in `mnee` and `mnee_render`; the Adreno 650 failed the same way.
 20. **MNEE with the light tree (refused).** Caustic scenes with the integrator's light tree, light or shadow
@@ -2882,14 +2885,53 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    `shadow_catcher_gate.cpp`, `mnee_gate.cpp`, `mnee_reference.cpp` and `device.cpp` (`mnee_entry_of`).
 27. (resolved, see "Resolved" below) Was: **Emissive triangle edge-on from diffuse walls (lane cov-a, 2026-10-30).**
    Isolated pixels above the practical bound with an emissive panel inside a diffuse enclosure.
-28. **Remaining driver-arithmetic sites (lane item27b, 2026-10-30).** The Intel/Mesa driver's `dot`, `/`, `sqrt`,
+28. (partly resolved, see "Integrator features added with the BSDF port"; the rest is item 35) **Remaining driver-arithmetic sites (lane item27b, 2026-10-30).** The Intel/Mesa driver's `dot`, `/`, `sqrt`,
    `length` and contracted `a-b*c` differ from the host operations (45%, 29%, 8%, 20% and 22% of random inputs). The
    surface-shading sites were matched to the pinned kernel (Resolved, below); these remain, all within the practical
    bound, with no known failing configuration: the SVM vector-math node's division (`svm_divide`, pinned
    `safe_divide` divides correctly rounded), the translator's series `c_acos`/`c_asin` (glibc 2.41's are correctly
    rounded), `surf_bump`'s division and square root, and `surface_orthogonal` (`v*(1/len)`, pinned `normalize()`),
    which feeds the texture derivatives (the texture last-bit class of item 14).
+29. **Velvet subnormal values (interim judgment).** At grazing half vectors the Ashikhmin velvet value and its
+   products with the closure weight and throughput fall below FLT_MIN. The CPU keeps them subnormal, so the path
+   continues with a negligible throughput; the GPU flushes them to zero and terminates the path. The WGSL applies
+   flush-to-zero explicitly (`velvet_ftz`), because the driver's own flushing point depends on how it compiles the
+   chain. The bounce and image gates of fixture set 3 therefore differ from the CPU oracle in path state at these paths
+   (velvet only, about 100 path evaluations in the bounce gate and 12 paths in the image gate's stages). With the CPU
+   oracle run with the x86 FTZ and DAZ bits set, every difference disappears (0 mismatches), and the films equal the
+   normal CPU films within the practical criterion (0 failures, the CPU films with and without FTZ are bit-identical).
+   Under the current interim decision such a difference is judged on the film; whether pinned Cycles-with-Metal flushes
+   the same values is to be compared on Apple Silicon.
+30. **Radial tiling with two sides (refused, provisional pending the Metal comparison).** Sides at most 2 with a
+   roundness strictly between 0 and 1: the CPU
+   outputs are binary32 rounding residue (tangent and secant of the binary32 pi/2, cancellation of terms near 1e14,
+   subnormal and NaN intermediates). Constant inputs are refused before any pipeline compiles; linked inputs report
+   error 16.
+31. **`trig_atan2` below 2^-40.** The shared correctly rounded atan2 adapter (`wavefront_trig.wgsl`) returns wrong
+   values or NaN when the reduced angle is below about 2^-40 (atan2(y, x) with |y/x| or |x/y| below about 9e-13):
+   `trig_product`'s scale exponent `ae+be-173` wraps as an unsigned value. Its callers in the Ashikhmin-Shirley and
+   radial tiling regions guard those arguments (`family_atan`, `rt_atan2_precise`). The other caller, the
+   equirectangular lookup in `wavefront_images.wgsl` (`atan2(direction.y, direction.x)`), is unchanged: a direction
+   within about 1e-12 of the x axis can return NaN there. Not reached by any gate; fixing it changes every module
+   with environment images.
+32. **Metallic BSDF thin film with the physical conductor (refused).** Thickness above 0.1 or linked: Cycles' polarized
+   conductor iridescence is not implemented; the F82 tint Fresnel with a thin film renders.
 
+33. **MNEE with a moving caustic caster (refused).** With object motion on a caustic caster, about 34 of 5,800 walks
+   of the state gate's fixture end with another outcome or iteration count than the CPU's, although the `MNEE_MOTION`
+   motion transforms are host-exact (iteration-0 constraint norms one ULP apart). Not isolated; candidates are glibc's
+   sinf/cosf, which are not correctly rounded for about 0.65% / 0.015% of arguments in [1e-4, 0.5] (the device's are),
+   and the moving instance's traversal. Moving and deforming receivers and deforming casters render.
+34. **AO / bevel / raycast `only_local` from a transform-applied object in a scene with instances (refused, error 16).**
+   The pinned BVH2 local traversal starts at the scene root there (the object has no own BVH) and runs its triangle
+   loop over the instance leaves' negative primitive addresses: the CPU result is undefined, so there is nothing to
+   match.
+35. **`surf_bump` and `c_acos`/`c_asin` arithmetic, and `trig_acos` near 0.** Host-exact versions exist (see item 28's
+   resolution) but exceed the size guard (arcsine/arccosine, raytrace-node entries) or the compile envelope (`surf_bump`,
+   the shadow catcher's `shade_surface`, already at 59,267 instructions). The shared
+   `trig_acos` is one ULP off for some arguments near 0 (5 of 300,000 sampled on the GPU against glibc acosf, all with
+   |x| < 0.05); pi/2 - asin(x) in double-float up to |x| = 0.5 fixes it (0 of 300,000) but adds one series evaluation per
+   call site. These need an entry split or a smaller series before they fit.
 Resolved, or closed under the device reference policy:
 - Remaining WGSL-vs-host arithmetic in surface shading: RESOLVED (2026-10-30, lane item27b, found while fixing
   item 27). On identical inputs (surface_gate state tally) the WGSL now reproduces the pinned SSE4.2 kernel in every
@@ -4959,7 +5001,7 @@ and without the light tree; camera motion with object or deformation motion; mot
 area lamps, the environment and a non-constant emitter; sample clamps, caustic filters and light exclude flags. CPU
 against WGSL on Linux: all within the practical criterion; CPU control renders confirm each feature changes its image.
 `light_state_gate` modes 18-19 set `cast_shadow` off and `max_bounces` below the path depth (closest, lamp-forward and
-background stages). Glossy filtering is refused ("WebGPU surface glossy filtering not implemented").
+background stages). Glossy filtering renders (`SURFACE_FILTER_GLOSSY`, see "Integrator features added with the BSDF port").
 
 ## Ambient occlusion (lane m2-ao, 2026-10-23)
 
@@ -5005,7 +5047,7 @@ The registered device implements Cycles' ambient occlusion in its three forms, a
   instructions (envelope run over the AO gate modules, worst entry 43,078).
 - **Refused, never approximated.** `only_local` from an object without its own BVH in a scene with instanced objects
   (a local traversal that reaches an instance leaf reports error 16); bevel and raycast nodes stay unported (error
-  2). Moving transparent shadows stay refused for AO rays as for every shadow ray. On the Adreno 650 (S20) the AO node and
+  2). Transparent shadows with motion blur render for AO rays as for every shadow ray (`SHADOW_TRANSPARENT_MOTION`). On the Adreno 650 (S20) the AO node and
   the AO shadow rays are refused before any pipeline compiles (below).
 
 Gates (Linux, Samsung SM-X700 and HP; images judged against the glibc reference of each device's own scene):
@@ -5183,3 +5225,216 @@ Android:
 | Samsung SM-X700 | queue control gate, closest gate | 3 s, 16 s | PASS |
 | S20 (Adreno 650, not a reference device) | `principled_svm`, `transparent_shadow` | 415 s, 16 s | PASS (shared-WGSL regression) |
 | S20 | `mnee_render`, `mnee` | about 1 s each | refused before any pipeline compiles (caustics on the Adreno 650), no image |
+
+## Remaining SVM BSDFs and the bevel, raycast and radial tiling nodes
+
+The WebGPU device implements every BSDF the SVM compiler can emit except subsurface scattering
+(which stays refused, see below) and the hair BSDFs: the Metallic BSDF (physical conductor and
+F82 tint, with GGX, multiscatter GGX or Beckmann), Beckmann glossy, refraction and glass,
+Ashikhmin-Shirley, Ashikhmin velvet and diffuse and glossy Toon. It also implements the Bevel,
+Raycast and Radial Tiling surface nodes. Each family is its own specialization feature, so a scene
+that does not reach it compiles byte-identical WGSL:
+
+| Bit | Feature | Regions (WGSL) |
+| --- | --- | --- |
+| 128 | `SVM_BSDF_METALLIC` | Metallic closure setup (`svm_metallic`), conductor Fresnel model 3 |
+| 129 | `SVM_BSDF_BECKMANN` | Beckmann setup, distribution, Smith terms, VNDF sampling, unified microfacet eval/sample |
+| 130 | `SVM_BSDF_ASHIKHMIN_SHIRLEY` | setup, eval, sample |
+| 131 | `SVM_BSDF_VELVET` | setup, eval, sample |
+| 132 | `SVM_BSDF_TOON` | diffuse and glossy setup, eval, sample |
+| 133 | `SVM_NODE_BEVEL` | bevel node, shared local traversal |
+| 134 | `SVM_NODE_RAYCAST` | raycast node, shared local traversal, closest-hit traversal in the surface module |
+| 135 | `SVM_NODE_RADIAL_TILING` | radial tiling node |
+
+Group names: `SVM_BSDF_FAMILIES` (128-132: the range-based closure classification and the family
+eval/sample hooks), `SVM_BSDF_FRESNEL_MODELS` (Principled or Metallic), `SVM_BSDF_ROTATE`,
+`SVM_BSDF_ROTATION` (Beckmann or Ashikhmin-Shirley: the precise tangent rotation of the Glossy
+node), `SVM_RAYTRACE_NODES` (133-134: the shared traversal, hit setup and the one dispatch case) and
+`SVM_RAYTRACE_QUEUE` (AO, bevel or raycast: the SHADE_SURFACE_RAYTRACE queue in `surf_queue`). All eight bits are
+superset scene-only. Region markers may be negated (`//#if !NAME`), so an old line can be swapped for a scene that
+reaches a new family while every other scene's specialized WGSL stays byte-identical.
+
+### What is implemented
+
+- **Metallic BSDF** (`svm_metallic`, pinned `svm/closure.h` NODE_CLOSURE_BSDF metallic case): the physical conductor
+  (Fresnel model 3, complex IOR n in `multiscatter`, k in `reflection_tint`) and the F82 tint (model 5), on GGX,
+  multiscatter GGX or Beckmann records, anisotropy and rotation through the precise `rotate_around_axis`. F82 tint with
+  a thin film uses the Principled thin-film handler. A Metallic closure that `closure_alloc_extra` removes stays in slot 0
+  and the native pick samples it when no closure is left, as the CPU does (marker `a = -1`).
+- **Beckmann** glossy, refraction and glass: the pinned distribution, Smith G1 (`beckmann_smith`), VNDF sampling
+  (`microfacet_beckmann_sample_vndf`: erf, its inverse, Newton/bisection) with expf through a double-float adapter
+  (`family_exp`; the driver exp flipped a Newton decision), one unified microfacet eval/sample (one Fresnel inline).
+- **Ashikhmin-Shirley**: the lobe hn^n has exponents up to about 2e8, so one ULP of hn changes the pdf by n x 6e-8.
+  Every value feeding the half vector is host-exact: correctly rounded dot products, normalize and quotients, correctly rounded
+  tanf, atanf, sinf and cosf (`family_tan`, `family_atan`, `family_sincos`: double-float series of the
+  two-part reduced angle, rounded once; glibc's tanf and atanf are correctly rounded, its sinf and cosf are not for about 0.65%
+  and 0.015% of arguments in [1e-4, 0.5], and the Ashikhmin-Shirley gates pass with the correctly rounded values) and powf
+  through `family_pow` (double-float log/exp). The precise adapter
+  `trig_sincos_wide` is one ULP off for some angles (cos(2.5302267)), which moved the pdf of a roughness-0.05 lobe by 3.7%.
+- **Ashikhmin velvet**: expf and the products after it reach the subnormal range at grazing half vectors, which the CPU
+  keeps and the GPU flushes. The chain runs scaled by expf's power of two (exact for normal values) and flushes every
+  intermediate whose unscaled value is below FLT_MIN to zero (`velvet_ftz`): the pinned chain on a flush-to-zero
+  processor, independent of where the driver would flush (open item 29).
+- **Toon** (diffuse and glossy): size and smooth scaled by pi/2, glibc's correctly rounded acosf (`trig_acos`), the
+  precise cosine.
+- **Bevel and Raycast** (pinned `svm/bevel.h`, `svm/raycast.h`, `bvh/local.h`): on the SHADE_SURFACE_RAYTRACE queue
+  (`prepare_surface_raytrace`) like the AO node; every other evaluation runs them with Cycles' non-raytrace node masks
+  (bevel: sd->N; raycast: a miss with zero attribute outputs). One traversal (`raytrace_traverse`) serves both: the
+  local mode records hits with the native reservoir (`local_intersect_get_record_index`, lcg seeded `0x64c6a40e`) or
+  the closest local hit, from the shading object's BVH root with the shading point's motion transform; the scene mode
+  is the raycast node's `scene_intersect` with `PATH_RAY_VISIBILITY_RAYCAST` (the closest stage's traversal arithmetic,
+  instances pushed and popped, the hit object's motion transform kept for the hit setup). The raycast node's attribute
+  records are evaluated at the hit. Both nodes share one dispatch case and one function, so the traversal, the motion
+  transform and the hit setup each have one call site: with motion blur the entry otherwise exceeded the Intel Mesa
+  25.0.7 compile envelope (84,207 backend instructions). An `only_local` ray from an object without its own BVH in a
+  scene with instances reports error 16, as for AO.
+- **Radial Tiling** (pinned `svm/radial_tiling.h` and the SVM build of `radial_tiling_shared.h`), translated statement by
+  statement. The driver's sin, cos and tan moved outputs beyond the practical bound and lose the tangent pole at two
+  sides: sine, cosine and tangent go through `rt_sincos` (three-part Cody-Waite reduction, Taylor series, a few ULP),
+  atanf and atan2f through glibc's correctly rounded ones at one call site (`rt_prepare` computes the three atanf arguments
+  and the polar angle once; `rt_atan`/`rt_atan2` return the cached value for a bitwise equal argument). Two sides with a
+  roundness strictly between 0 and 1 is refused, provisionally pending a comparison with Cycles' Metal device (census for
+  constant inputs, error 16 for linked ones): there the CPU
+  outputs are binary32 rounding residue (tangent and secant of the binary32 pi/2, cancellation of terms near 1e14,
+  subnormal and NaN intermediates).
+
+**The BSDF sample stage.** In scenes with any of these families (`SVM_BSDF_FAMILIES`) the surface stage's BSDF
+continuation is two entries: `shade_surface_sample` samples the picked closure and writes a 64-byte record per input
+(push word 0, after the stage records), and `shade_surface` evaluates the other closures for MIS and continues the
+path. Each one inlines a single copy of the microfacet, Fresnel and family code. With Metallic (F82 thin film),
+Beckmann, GGX and multiscatter GGX in one scene, the single entry had reached 65,432 Intel backend instructions, over
+the 60,000 envelope. Command captures record the new entry as recorder entry 35 (`render_replay`). Other scenes keep
+the single entry and byte-identical WGSL.
+
+Not ported, by design: Burley diffuse (`bsdf_burley_setup` is reached only from OSL closures; the Diffuse BSDF node has
+no Burley mode), diffuse and Phong ramp (OSL only), and the rough translucent closure, which SVM creates only through
+`bsdf_thin_subsurface_setup` (a thin-walled Principled BSDF with subsurface), refused with subsurface.
+
+Gates (`native/tools/bsdf_gate.py` drives the nine BSDF gates; fixtures `cycles/bsdf_fixture.h` in three sets so each
+gate's `shade_surface` stays under the size guard: 1 Metallic and Beckmann, 2 Ashikhmin-Shirley, 3 velvet, Toon and
+radial tiling; `cycles/raytrace_nodes_fixture.h` for the bevel and raycast nodes on the AO state and image gates):
+
+- `bsdf*_svm`, closure setup against the original CPU SVM: 20 Cycles-compiled graphs per set plus typed programs over
+  the parameter extremes (every Metallic Fresnel and distribution, anisotropy with and without a tangent, thin film,
+  closure capacity; Beckmann glossy/refraction/glass; Ashikhmin-Shirley roughness 0 to 2 and anisotropy -2 to 2;
+  velvet sigma; Toon size and smooth; radial tiling sides, roundness and normalize), the shared rejection cases, and
+  for set 3 the radial tiling refusals (four constant-input programs refused natively, one linked program reporting 16).
+- `bsdf*_bounce`, surface integration against the original CPU integrator: 29 cases (closure limits, evaluation
+  modes, transparent, emission, mixtures) and 21 rejected cases per set.
+- `bsdf*_render`, independent original-Cycles images (64 x 48, 8 samples, five bounces) with every lockstep stage.
+- `raytrace_nodes_state` (static, object motion, deforming motion; raytrace queue and non-raytrace mask) and
+  `raytrace_nodes_render` (nine images: bevel, raycast hit distance, raycast attributes, bevel with a linked normal and
+  an only_local raycast into instanced boxes, bevel radius and hit normal, object and deforming motion, the light tree,
+  camera motion).
+
+Linux x64 (Intel UHD, Mesa 25.0.7), practical criterion `5e-5 + 2e-4 |ref|`:
+
+| Gate | Result |
+| --- | --- |
+| `bsdf_svm` (Metallic, Beckmann) | PASS: 434 cases, 29,835 paths, 9 closure families; strict 5,033, maximum 7.15e-7 |
+| `bsdf_bounce` | PASS: 29 cases, 28,560 paths; maximum practical ratio 0.065, strict 4,824 |
+| `bsdf_render` | PASS: 147 stages, stage ratio 0.0078, strict stages 892; image strict 1, maximum 4.77e-7; repeat bitwise identical |
+| `bsdf2_svm` (Ashikhmin-Shirley) | PASS: 71 cases, 11,322 paths; strict 0, maximum 5.96e-8 |
+| `bsdf2_bounce` | PASS: 29 cases; ratio 0.061, strict 1,000 |
+| `bsdf2_render` | PASS: 151 stages, stage ratio 0.101, strict stages 202; image strict 2, maximum 2.38e-7 |
+| `bsdf3_svm` (velvet, Toon, radial tiling) | PASS: 166 cases, 16,167 paths; strict 2,233, maximum 1.91e-6; 4 native refusals |
+| `bsdf3_bounce` | Path state differs at velvet subnormal paths (open item 29); 0 differences with the FTZ/DAZ CPU oracle |
+| `bsdf3_render` | Stage state differs at 12 velvet subnormal paths (open item 29), 0 with the FTZ/DAZ CPU oracle; image against the normal CPU: 0 practical failures, strict 39, maximum 3.81e-6 |
+| `raytrace_nodes_state` | PASS: 6 cases, 1,728 paths (1,152 with motion); strict 320, maximum 9.06e-5 |
+| `raytrace_nodes_render` | PASS: 9 images, 7,151 raytrace paths; strict 11,091, maximum 1.38e-5 |
+| Intel compile envelope (Mesa 25.0.7) | PASS, 51 entries of the largest gate modules: largest `prepare_surface_raytrace` 53,580 instructions (deforming motion), `shade_surface_sample` 39,948 (Ashikhmin-Shirley), `prepare_surface` 42,989 (Metallic and Beckmann) |
+
+The radial tiling WGSL was also checked outside the gates: about 900,000 inputs (regular and irregular sides from
+1.5 to 16, roundness outside and inside [0, 1], normalize, coordinates from 1e-3 to 10) through a GPU replay of the
+node code against the glibc build of `radial_tiling_shared.h`: no practical failure, one NaN mismatch, at two sides
+(refused).
+
+Scenes without the new closures and nodes compile byte-identical specialized WGSL (every module of the reference
+dumps) and render bit-identical films.
+
+## Integrator features added with the BSDF port
+
+Further integrator features that the WebGPU device used to refuse, each its own specialization feature (scenes that
+do not reach it compile byte-identical WGSL), each gated on Linux x64 (Intel UHD, Mesa 25.0.7) against the unmodified
+CPU kernels with the practical criterion `5e-5 + 2e-4 |ref|`:
+
+| Bit | Feature | What it adds |
+| --- | --- | --- |
+| 136 | `SURFACE_FILTER_GLOSSY` | Integrator glossy filtering (`filter_glossy` below FLT_MAX) |
+| 137 | `SHADOW_TERMINATOR_WIDE` | Shadow terminator shading offsets above 1 |
+| 138 | `SHADOW_TRANSPARENT_MOTION` | Transparent shadows with object and deformation motion blur |
+| 139 | `MNEE_MOTION` | Shadow caustics (MNEE) with motion blur |
+| 140 | `SVM_NODE_DISPLACEMENT` | The Displacement and Vector Displacement nodes and the displacement output |
+| 141 | `SHADER_EVAL_DISPLACE` | True displacement: `DEVICE_KERNEL_SHADER_EVAL_DISPLACE` |
+| 142 | `SVM_BUMP_UNDISPLACED` | The bump from displacement at the undisplaced position (method Both) |
+
+- **Glossy filtering** (`surface_shader_prepare_closures`' `bsdf_blur` after the closure filtering): the blur roughness
+  `sqrt(1 - filter_glossy * min_ray_pdf) * 0.5` (each sum and the square root correctly rounded) raises the alpha of
+  every GGX, multiscatter GGX, Beckmann, refraction, glass and Ashikhmin-Shirley closure to at least that value and
+  marks the evaluation flag as `bsdf_blur` does. Gates: `bsdf_bounce`/`bsdf2_bounce` case 27 (filter_glossy 1 and 0.8,
+  a spread of `min_ray_pdf`), oracle `bsdf/glossy-filter` (perfect, strict 274, maximum 1.91e-6; the filter changes
+  811 of 3,072 CPU film values against the same scene without it).
+- **Shading offsets above 1.** The kernel multiplier `1/(1 - offset/2)` exceeds 2 there, is infinite at 2 and negative
+  above (then `shift_cos_in` returns its input unchanged). `shift_cos_in`'s cosine of `angle * frequency` beyond pi
+  runs through a correctly rounded wide cosine (`terminator_wide_cos`: the existing adapter up to pi, a two-part
+  reduction beyond); a NaN offset is the only refusal left. Gate: `shadow_terminator_gate.py` 14 cases (modes 10-13:
+  offsets 1.5, 1.9, 2 and 3), maximum 3.0e-5, with 14 command replays.
+- **Transparent shadows with motion blur.** The all-hits traversal (`wavefront_shadow_traversal.wgsl`) intersects motion
+  triangles at the shadow ray's time, records the hit's primitive type without the motion bit (as
+  `integrator_intersect_shadow` stores it) and pushes moving instances with their motion transform. Gates:
+  `transparent_shadow_gate.py` with the new `transparent_shadow_motion` state gate (60 cases, maximum 4.77e-7) and
+  transparent lighting images 8-9 (moving panes; a deforming pane, maximum 6.9e-6); AO render gate cases 24-25 (AO and
+  light shadow rays through a moving and a deforming transparent pane, maximum 4.29e-6); oracle
+  `combinations/moving-transparent-fast-gi`.
+- **Shadow caustics (MNEE) with fast GI, the AO pass and motion blur.** With AO the surface stage reserves the AO
+  shadow slot `n + id` beside the MNEE path's own slot, as without caustics; nothing else changes. With motion blur the
+  MNEE walk follows the last bit of every motion transform (iteration counts and outcomes are compared exactly), so in
+  `MNEE_MOTION` scenes the motion transforms are the host's: `transform_point`/`transform_direction` in the host order with
+  every product rounded, `transform_compose` with rounded sums and DPPS-ordered dot products, the step fraction
+  `time*maxstep - step` with the product rounded, and `quat_interpolate`'s acosf, sinf and cosf correctly rounded; static
+  and moving objects share one transform body per call there (pipeline size guard). A deforming caster keeps its
+  centre-frame corners, as the pinned `mnee_setup_manifold_vertex` does (its `type & PRIMITIVE_TRIANGLE` test is true
+  for motion triangles), so walks through deforming casters mostly fail on the CPU as on the device. Moving caustic
+  casters (object motion) stay refused ("WebGPU MNEE with a moving caustic caster (object motion blur) not
+  implemented"): with a moving caster, 34 of about 5,800 walks of the state gate's fixture still end with another
+  outcome or iteration count than the CPU's (a last-bit difference the walk amplifies; INFER: one of
+  glibc's sinf/cosf results, which are not correctly rounded for about 0.65% / 0.015% of arguments in [1e-4, 0.5], or the
+  moving instance's traversal). Gates: `mnee_gate.py` (state gate cases 5 fast GI, 6 a moving receiver, 7 deforming
+  receivers, 8 a deforming caster, and the moving-caster refusal; image gate cases 5-8), AO render gate case 26 (fast GI,
+  the AO pass and caustics), oracle scenes `mnee/glass-sphere-fast-gi`, `glass-sphere-object-motion` and
+  `glass-sphere-deforming` (perfect).
+- **Displacement without subdivision.** The host's `GeometryManager::displace` (pinned, unchanged) evaluates the
+  displacement programs through `DEVICE_KERNEL_SHADER_EVAL_DISPLACE` before the BVH build: `shader_eval_displace` in
+  the surface module sets the shading point up as `shader_setup_from_displace` does (object space unless the transform
+  is applied, smooth normal forced, time 0.5, `wi = N`, triangle-sized differentials), runs the displacement program
+  (`NODE_SHADER_JUMP` takes `offset_displacement`), and adds the object-space offset (`ensure_finite`) to the output.
+  The Displacement node (object and world space), the Vector Displacement node (object, world and tangent space; the
+  UV-map tangent and sign attributes, or `normalize(dPdu)` without them) and `NODE_SET_DISPLACEMENT` run in bump and
+  displacement programs (`IF_KERNEL_NODES_FEATURE(BUMP)`: other evaluations store zero). For displacement method Both,
+  `enter_bump_eval` moves the shading point to `ATTR_STD_POSITION_UNDISPLACED` (value and differentials through the
+  object transform; the full differential saved for `set_bump`) and sets the undisplaced normal (the smooth
+  `ATTR_STD_NORMAL_UNDISPLACED`, or the face normal of the undisplaced corners). The displacement programs are censused on
+  their own; nodes there whose pinned handlers need a path or the BVH (light path, AO, bevel, raycast, wireframe,
+  Principled) are refused, and `shader_eval_displace` is compiled without the scene's other SVM handlers (closures,
+  bump), which keeps it inside the pipeline size guard. Gates: `codebrix_cycles_displacement_gate` (7 cases: height in
+  object space under a rotated, scaled object and in world space on a flat grid; vector displacement in object, world and
+  tangent space, with and without a UV map; method Both; 24,192 offset components at the corners and centres of every
+  triangle against `kernel_displace_evaluate` on the same scene tables; strict 4,125, maximum 1.13e-6; the host path moved
+  1,183 grid vertices) and the oracle scenes `displacement/true-height`, `true-vector`, `both` and `bump` (all perfect;
+  methods True and Both change 141 to 158 of 3,072 CPU film values against the same scenes with method Bump).
+- **Open item 28, the remaining driver-arithmetic sites (partly resolved).** `svm_divide` (the Vector Math node's
+  division and the MNEE pass weights) divides each lane correctly rounded, 0 where the divisor is 0, as the pinned
+  `safe_divide`; `surface_orthogonal` is `make_orthonormals`' `normalize()` (a division per lane on SSE hosts, not the
+  reciprocal product of `safe_normalize`) and the cross products after it (`make_orthonormals`,
+  `differential_from_compact`) are unfused. These add at most about 6 KB to the inlined entries. The shared shader data
+  carries them, so 139 of the 150 modules of the f32 reference dumps compile different WGSL. Film changes, every Linux
+  gate film against its CPU film before and after: 3,786 components changed; 1,934 moved closer to the CPU value, 1,642
+  farther (at most 2 ULP, except in the volume image: up to 256 ULP), 51 are run-to-run variation; the summed distance to
+  the CPU over the changed components fell by 10.5%; strict differences 55,302 to 55,277; no practical failure before or
+  after (Node SVM strict failures 10,174 to 10,157; volume stage strict failures 76,204 to 74,928). Two sites stay as
+  they were (open item 35): `surf_bump` with the pinned `bsdf_G<GGX>` form and correctly rounded operations (written out
+  it passed the size guard in MNEE entries; a compact form, its nine steps through one quotient, sum and square-root
+  body, fits the guard but takes the shadow catcher's `shade_surface` from 59,267 to 61,276 Intel instructions, over the
+  60,000 envelope), and correctly rounded `c_acos`/`c_asin` (through `trig_acos` and a double-float `trig_asin`; 0 of
+  300,000 GPU samples differed from glibc), which inline up to 78 KB more into the raytrace-node entries, past the
+  1,110,000-byte size guard.

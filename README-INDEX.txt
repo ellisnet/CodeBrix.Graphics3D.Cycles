@@ -34,6 +34,9 @@ MAINTAINER AND EXTRAS
   docs/TESTING-LINUX-ARM64.md
       Test procedure for the Raspberry Pi 5: WGSL on the V3D GPU and the glibc
       ARM64 reference.
+  docs/TESTING-LINUX-ARM64-ORACLE.md
+      The Linux ARM64 CPU oracle corpus rendered in a Debian arm64 Docker
+      container on an Apple Silicon Mac.
   docs/TESTING-WINDOWS-X64.md
       Test procedure for Windows x64 and ARM64: WGSL on Direct3D 12 (DXC) and
       Vulkan; win-arm64 is cross-built on x64 and validated on an ARM64 device.

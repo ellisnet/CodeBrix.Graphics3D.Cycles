@@ -57,9 +57,23 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SVM_NODES_HASH",SF_TEX_NOISE|SF_TEX_WHITE_NOISE|SF_TEX_WAVE|SF_TEX_BRICK|SF_TEX_VORONOI|SF_TEX_GABOR},
     {"SVM_NODES_FMOD",SF_TEX_NOISE|SF_TEX_WAVE|SF_TEX_MAGIC},{"SVM_NODES_NOISE",SF_TEX_NOISE|SF_TEX_WAVE},
     {"SVM_NODES_TRANSFORM",SF_MAPPING|SF_VECTOR_ROTATE|SF_MAPPING_DERIVATIVE},{"SVM_NODES_HSV",SF_MIX|SF_HSV|SF_COLOR_SEPCOMB},
-    // Region kept when any microfacet family is reachable.
-    {"SVM_BSDF_MICROFACET",SF_BSDF_GLOSSY|SF_BSDF_GLASS|SF_BSDF_PRINCIPLED},
-    {"SVM_BSDF_PRINCIPLED",SF_BSDF_PRINCIPLED},{"SVM_BSDF_THIN_FILM",SF_BSDF_THIN_FILM},{"SVM_BSDF_THIN_WALL",SF_BSDF_THIN_WALL}};
+    // Region kept when any GGX microfacet family is reachable (the Metallic BSDF makes GGX records).
+    {"SVM_BSDF_MICROFACET",SF_BSDF_GLOSSY|SF_BSDF_GLASS|SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC},
+    {"SVM_BSDF_PRINCIPLED",SF_BSDF_PRINCIPLED},{"SVM_BSDF_THIN_FILM",SF_BSDF_THIN_FILM},{"SVM_BSDF_THIN_WALL",SF_BSDF_THIN_WALL},
+    // Remaining SVM BSDF families (pipelines.h, bits 128 onwards); FAMILIES keeps the shared
+    // closure classification, FRESNEL_MODELS the microfacet Fresnel models beyond the Glass node's.
+    {"SVM_BSDF_METALLIC",SF_BSDF_METALLIC},{"SVM_BSDF_BECKMANN",SF_BSDF_BECKMANN},{"SVM_BSDF_ASHIKHMIN_SHIRLEY",SF_BSDF_ASHIKHMIN_SHIRLEY},
+    {"SVM_BSDF_VELVET",SF_BSDF_VELVET},{"SVM_BSDF_TOON",SF_BSDF_TOON},{"SVM_BSDF_FAMILIES",SF_BSDF_FAMILIES},
+    {"SVM_BSDF_FRESNEL_MODELS",SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC},
+    // The precise rotate_around_axis (Principled, Metallic) and its use for the Glossy BSDF node's tangent
+    // in modules with Beckmann or Ashikhmin-Shirley closures.
+    {"SVM_BSDF_ROTATE",SF_BSDF_PRINCIPLED|SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY},
+    {"SVM_BSDF_ROTATION",SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY},
+    // Bevel and Raycast nodes; RAYTRACE_NODES their shared traversal (local and scene).
+    {"SVM_NODE_BEVEL",SF_NODE_BEVEL},{"SVM_NODE_RAYCAST",SF_NODE_RAYCAST},{"SVM_RAYTRACE_NODES",SF_NODE_BEVEL|SF_NODE_RAYCAST},
+    // The SHADE_SURFACE_RAYTRACE queue (surf_queue): shaders with an AO, Bevel or Raycast node.
+    {"SVM_RAYTRACE_QUEUE",SF_NODE_AO|SF_NODE_BEVEL|SF_NODE_RAYCAST},
+    {"SURFACE_FILTER_GLOSSY",SF_FILTER_GLOSSY},{"SHADOW_TERMINATOR_WIDE",SF_TERMINATOR_WIDE},{"SHADOW_TRANSPARENT_MOTION",SF_SHADOW_MOTION},{"MNEE_MOTION",SF_MNEE_MOTION},{"SVM_NODE_DISPLACEMENT",SF_NODE_DISPLACEMENT},{"SHADER_EVAL_DISPLACE",SF_EVAL_DISPLACE},{"SVM_BUMP_UNDISPLACED",SF_BUMP_UNDISPLACED},{"SVM_NODE_RADIAL_TILING",SF_NODE_RADIAL_TILING}};
   return names;
 }
 std::string shader_feature_list(ShaderFeatures features){
@@ -70,12 +84,13 @@ std::string shader_feature_list(ShaderFeatures features){
 
 // Mask layout invariants (pipelines.h): assigned bits keep their numbers.
 static_assert(SF_GEOMETRY.test(0)&&SF_MAPPING_DERIVATIVE.test(61)&&SF_TEX_GABOR.test(63)&&!SF_ALL.test(62));
-static_assert(SF_ALL.count()==72&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+static_assert(SF_ALL.count()==87&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
 static_assert(SF_DEBUG_OUTPUT.test(116)&&!(SF_ALL&SF_DEBUG_OUTPUT).any());
 static_assert(SF_DRIVER_CACHE_SALT.test(117)&&!(SF_ALL&SF_DRIVER_CACHE_SALT).any());
+static_assert(SF_BSDF_METALLIC.test(128)&&SF_BSDF_BECKMANN.test(129)&&SF_BSDF_ASHIKHMIN_SHIRLEY.test(130)&&SF_BSDF_VELVET.test(131)&&SF_BSDF_TOON.test(132)&&SF_NODE_BEVEL.test(133)&&SF_NODE_RAYCAST.test(134)&&SF_NODE_RADIAL_TILING.test(135)&&(SF_SUPERSET_SCENE_ONLY&SF_NODE_RAYCAST).any()&&(SF_SUPERSET_SCENE_ONLY&SF_BSDF_FAMILIES)==SF_BSDF_FAMILIES);
 
 namespace {
 // Record size and handler feature for every opcode the WGSL size switch accepts.
@@ -114,7 +129,10 @@ OpInfo op_info(uint32_t op){
     OP(NODE_OBJECT_INFO,ObjectInfo,SF_SHADING_INFO) OP(NODE_CAMERA,Camera,SF_SHADING_INFO) OP(NODE_SCENE_TIME,SceneTime,SF_SHADING_INFO)
     OP(NODE_VECTOR_TRANSFORM,VectorTransform,SF_SHADING_INFO) OP(NODE_LIGHT_PATH,LightPath,SF_LIGHT_PATH)
     OP(NODE_WAVELENGTH,Wavelength,SF_WAVELENGTH) OP(NODE_WIREFRAME,Wireframe,SF_WIREFRAME) OP(NODE_TEX_GABOR,TexGabor,SF_TEX_GABOR)
-    OP(NODE_AMBIENT_OCCLUSION,AmbientOcclusion,SF_NODE_AO)
+    OP(NODE_AMBIENT_OCCLUSION,AmbientOcclusion,SF_NODE_AO) OP(NODE_BEVEL,Bevel,SF_NODE_BEVEL) OP(NODE_RAYCAST,Raycast,SF_NODE_RAYCAST|SF_ATTR)
+    OP(NODE_RADIAL_TILING,RadialTiling,SF_NODE_RADIAL_TILING)
+    OP(NODE_SET_DISPLACEMENT,SetDisplacement,SF_NODE_DISPLACEMENT) OP(NODE_DISPLACEMENT,Displacement,SF_NODE_DISPLACEMENT)
+    OP(NODE_VECTOR_DISPLACEMENT,VectorDisplacement,SF_NODE_DISPLACEMENT|SF_ATTR)
     OP(NODE_SET_BUMP,SetBump,SF_BUMP) OP(NODE_ENTER_BUMP_EVAL,EnterBumpEval,SF_BUMP_STATE) OP(NODE_LEAVE_BUMP_EVAL,LeaveBumpEval,SF_BUMP_STATE)
     OP(NODE_GEOMETRY_DERIVATIVE,Geometry,SF_GEOMETRY_DERIVATIVE) OP(NODE_TEX_COORD_DERIVATIVE,TexCoord,SF_TEX_COORD|SF_TEX_COORD_DERIVATIVE)
     OP(NODE_VALUE_F_DERIVATIVE,ValueF,SF_VALUE_DERIVATIVE) OP(NODE_VALUE_V_DERIVATIVE,ValueV,SF_VALUE_DERIVATIVE)
@@ -135,6 +153,13 @@ OpInfo bsdf_info(uint32_t kind){
     case CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:return {uint32_t(sizeof(SVMNodeGlassBsdfData)),SF_BSDF_GLASS};
     case CLOSURE_BSDF_MICROFACET_GGX_ID:case CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID:return {uint32_t(sizeof(SVMNodeGlossyBsdfData)),SF_BSDF_GLOSSY};
     case CLOSURE_BSDF_PRINCIPLED_ID:return {uint32_t(sizeof(SVMNodePrincipledBsdfData)),SF_BSDF_PRINCIPLED};
+    case CLOSURE_BSDF_PHYSICAL_CONDUCTOR:case CLOSURE_BSDF_F82_CONDUCTOR:return {uint32_t(sizeof(SVMNodeMetallicBsdfData)),SF_BSDF_METALLIC};
+    case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:return {uint32_t(sizeof(SVMNodeGlossyBsdfData)),SF_BSDF_BECKMANN};
+    case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:return {uint32_t(sizeof(SVMNodeRefractionBsdfData)),SF_BSDF_BECKMANN};
+    case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID:return {uint32_t(sizeof(SVMNodeGlassBsdfData)),SF_BSDF_BECKMANN};
+    case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:return {uint32_t(sizeof(SVMNodeGlossyBsdfData)),SF_BSDF_ASHIKHMIN_SHIRLEY};
+    case CLOSURE_BSDF_ASHIKHMIN_VELVET_ID:return {uint32_t(sizeof(SVMNodeSimpleBsdfData)),SF_BSDF_VELVET};
+    case CLOSURE_BSDF_DIFFUSE_TOON_ID:case CLOSURE_BSDF_GLOSSY_TOON_ID:return {uint32_t(sizeof(SVMNodeToonBsdfData)),SF_BSDF_TOON};
     default:return {0,SF_NONE};
   }
 }
@@ -159,9 +184,24 @@ PrincipledCensus principled_census(const std::vector<uint32_t> &w,size_t data){
     out.unsupported="Unsupported feature: Principled BSDF subsurface scattering (subsurface weight above 0 or linked) is not implemented by the WebGPU device; the scene is rejected, not approximated";
   return out;
 }
+// Metallic BSDF record census (svm/closure.h CLOSURE_BSDF_PHYSICAL_CONDUCTOR /
+// CLOSURE_BSDF_F82_CONDUCTOR): the Beckmann distribution (its region) and the thin film
+// (thickness max(input, 1e-5) above 0.1, or linked). F82 tint iridescence uses the
+// Principled thin-film handler; the physical conductor's polarized iridescence
+// is not implemented and is refused.
+PrincipledCensus metallic_census(const std::vector<uint32_t> &w,size_t data,uint32_t kind){
+  PrincipledCensus out;const uint32_t bits=w[data+offsetof(SVMNodeMetallicBsdfData,thin_film_thickness)/4];
+  float thickness;std::memcpy(&thickness,&bits,4);
+  const bool film=(bits>>8)==(SVM_INPUT_STACK_OFFSET_MASK>>8)||std::max(thickness,1e-5f)>THINFILM_THICKNESS_CUTOFF;
+  if(w[data+offsetof(SVMNodeMetallicBsdfData,distribution)/4]==CLOSURE_BSDF_MICROFACET_BECKMANN_ID)out.features|=SF_BSDF_BECKMANN;
+  if(film&&kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR)
+    out.unsupported="Unsupported feature: Metallic BSDF thin film (thickness above 0.1 or linked) with the physical conductor Fresnel is not implemented by the WebGPU device; the scene is rejected, not approximated";
+  else if(film)out.features|=SF_BSDF_THIN_FILM;
+  return out;
+}
 }
 
-SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const std::vector<uint32_t> *roots){
+SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const std::vector<uint32_t> *roots,bool displacement){
   SvmCensus out;const uint64_t n=w.size();
   constexpr uint32_t header=1+sizeof(SVMNodeShaderJump)/4;
   std::vector<uint32_t> work;std::unordered_set<uint32_t> started,decoded;
@@ -179,6 +219,8 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
       if(decoded.insert(uint32_t(opcode_at)).second)out.decoded_nodes++;
       out.features|=info.feature;
       if(op==NODE_SHADER_JUMP){
+        // displacement: the displacement program alone (SHADER_TYPE_DISPLACEMENT, SHADER_EVAL_DISPLACE).
+        if(displacement){work.push_back(w[node+offsetof(SVMNodeShaderJump,offset_displacement)/4]);break;}
         work.push_back(w[node+offsetof(SVMNodeShaderJump,offset_surface)/4]);
         work.push_back(w[node+offsetof(SVMNodeShaderJump,offset_volume)/4]);break;
       }
@@ -193,6 +235,26 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
         out.features|=data.feature;
         if(kind==CLOSURE_BSDF_PRINCIPLED_ID){const auto principled=principled_census(w,data_at);out.features|=principled.features;
           if(principled.unsupported&&out.unsupported.empty())out.unsupported=principled.unsupported;}
+        if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR||kind==CLOSURE_BSDF_F82_CONDUCTOR){const auto metallic=metallic_census(w,data_at,kind);out.features|=metallic.features;
+          if(metallic.unsupported&&out.unsupported.empty())out.unsupported=metallic.unsupported;}
+      }
+      // Radial Tiling with two sides and a roundness strictly between 0 and 1: the CPU kernel's
+      // outputs there are binary32 rounding residue (tangent and secant of the binary32 pi/2,
+      // cancelling terms near 1e14, subnormal intermediates) that the device does not
+      // reproduce. Constant inputs are refused here; linked ones report 16 at run time.
+      if(op==NODE_RADIAL_TILING&&out.unsupported.empty()){
+        const uint32_t sb=w[node+offsetof(SVMNodeRadialTiling,r_gon_sides)/4],rb=w[node+offsetof(SVMNodeRadialTiling,r_gon_roundness)/4];
+        const auto linked_input=[](uint32_t bits){return (bits>>8)==(SVM_INPUT_STACK_OFFSET_MASK>>8);};
+        float sides,roundness;std::memcpy(&sides,&sb,4);std::memcpy(&roundness,&rb,4);
+        if(!linked_input(sb)&&!linked_input(rb)&&std::max(sides,2.0f)==2.0f&&std::clamp(roundness,0.0f,1.0f)>0.0f&&std::clamp(roundness,0.0f,1.0f)<1.0f)
+          out.unsupported="Unsupported feature: Radial Tiling node with two sides (r_gon_sides at most 2) and a roundness strictly between 0 and 1 is not implemented by the WebGPU device "
+                          "(the Cycles CPU outputs there are binary32 rounding residue); the scene is rejected, not approximated";
+      }
+      // The Raycast node's attribute records (NODE_ATTR opcode + SVMNodeAttr each) follow its record.
+      if(op==NODE_RAYCAST){
+        const uint64_t count=(w[node+offsetof(SVMNodeRaycast,num_attributes)/4]>>(8*(offsetof(SVMNodeRaycast,num_attributes)%4)))&0xffffu;
+        bool ok=true;for(uint64_t i=0;i<count&&ok;i++){const uint64_t at=pc;ok=take(pc,4)&&w[at]==NODE_ATTR&&take(pc,sizeof(SVMNodeAttr));}
+        if(!ok){out.stopped_paths++;break;}
       }
       // Ramp and curve tables follow their record (svm_ramp_node: size>=2, sizes it decodes).
       if(op==NODE_RGB_RAMP||op==NODE_CURVES||op==NODE_FLOAT_CURVE){
@@ -217,9 +279,11 @@ std::string specialize_wgsl(const std::string &source,ShaderFeatures enabled){
       const size_t space=line.find(' ',6);const std::string name=line.substr(6,space==std::string::npos?std::string::npos:space-6);
       std::string fallback;
       if(space!=std::string::npos){if(line.compare(space,6," else ")!=0)throw std::runtime_error("Malformed WGSL feature marker: "+line);fallback=line.substr(space+6);}
-      ShaderFeatures bit;for(auto &n:shader_feature_names())if(name==n.name)bit=n.bit;
+      // "!NAME" keeps the region when NAME is not reached (the alternative of a NAME region).
+      const bool negated=name.size()>1&&name[0]=='!';const std::string base=negated?name.substr(1):name;
+      ShaderFeatures bit;for(auto &n:shader_feature_names())if(base==n.name)bit=n.bit;
       if(!bit)throw std::runtime_error("Unknown WGSL feature marker: "+name);
-      const bool outer=active();stack.push_back({(enabled&bit).any(),fallback});
+      const bool outer=active();stack.push_back({(enabled&bit).any()!=negated,fallback});
       if(outer&&!stack.back().keep&&!fallback.empty())out<<fallback<<'\n';
       continue;
     }
@@ -358,6 +422,19 @@ ShaderFeatures WebGPUDevice::shader_features(){
     std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
     const SvmCensus referenced=svm_census(svm_node_words,shader_records.size(),&roots);
     unsupported_feature=referenced.unsupported;principled_features=referenced.features&SF_PRINCIPLED_ALL;unsupported_generation=svm_generation;
+    // True displacement (displacement method True or Both): the displacement programs of the referenced shaders
+    // run in shader_eval_displace (SHADER_EVAL_DISPLACE) during scene preparation, without integrator state.
+    // Nodes whose pinned handlers need a path or the scene's BVH there are refused, never approximated.
+    displacement_features=SF_NONE;displacement_program_features=SF_NONE;
+    {std::vector<uint32_t> displaced;for(uint32_t s:roots)if(s<shader_records.size()&&(shader_records[s].flags&SD_HAS_DISPLACEMENT))displaced.push_back(s);
+     if(!displaced.empty()){const SvmCensus program=svm_census(svm_node_words,shader_records.size(),&displaced,true);
+       displacement_features=program.features|SF_EVAL_DISPLACE;displacement_program_features=program.features;
+       for(uint32_t s:displaced)if(shader_records[s].flags&SD_HAS_BUMP_FROM_DISPLACEMENT)displacement_features|=SF_BUMP_UNDISPLACED;
+       if(unsupported_feature.empty())unsupported_feature=program.unsupported;
+       if(unsupported_feature.empty()&&program.stopped_paths)unsupported_feature="Unsupported feature: a displacement shader node the WebGPU device does not implement";
+       const ShaderFeatures stateful=program.features&(SF_LIGHT_PATH|SF_NODE_AO|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_WIREFRAME|SF_PRINCIPLED_ALL);
+       if(unsupported_feature.empty()&&stateful.any())
+         unsupported_feature="Unsupported feature: "+shader_feature_list(stateful)+" in a displacement shader (true displacement) is not implemented by the WebGPU device; the scene is rejected, not approximated";}}
     // Adapter-class refusal from the known-adapter table (device_tier.cpp), for
     // example texture, colour and utility nodes on the Adreno 650.
     const KnownAdapter *known=tier_policy.known_adapter();
@@ -388,7 +465,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
   if(specialization_mode==SpecializationMode::Off)return SF_ALL;
   if(census_generation!=svm_generation){
     census=svm_census(svm_node_words,shader_records.size());census_generation=svm_generation;
-    enabled_features|=(census.features&~SF_PRINCIPLED_ALL)|principled_features;
+    enabled_features|=(census.features&~SF_PRINCIPLED_ALL)|principled_features|displacement_features;
     for(const KernelLight &light:light_records)if(light.type==LIGHT_AREA)enabled_features|=SF_LIGHT_AREA;
     // The last distribution entry is the CDF end marker (prim 0), not an emitter.
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0)enabled_features|=SF_LIGHT_TRIANGLE;
@@ -410,8 +487,14 @@ ShaderFeatures WebGPUDevice::shader_features(){
     if(data.integrator.has_shadow_catcher)enabled_features|=SF_SHADOW_CATCHER;
     if(data.kernel_features&KERNEL_FEATURE_AO)enabled_features|=SF_AO_SHADOW;
     if(data.integrator.use_caustics)enabled_features|=SF_MNEE;
+    if(data.integrator.filter_glossy!=FLT_MAX)enabled_features|=SF_FILTER_GLOSSY;
+    if(data.integrator.transparent_shadows&&data.bvh.have_motion)enabled_features|=SF_SHADOW_MOTION;
+    if(data.integrator.use_caustics&&data.bvh.have_motion)enabled_features|=SF_MNEE_MOTION;
     for(const KernelObject &object:object_records){
       if(object.shadow_terminator_shading_offset>1.0f)enabled_features|=SF_TERMINATOR_SHADING;
+      // The kernel multiplier 1/(1-offset/2) above 2 (offsets in (1, 2], infinite at 2) needs the wide cosine;
+      // offsets above 2 give a negative multiplier, which the kernel ignores (frequency_multiplier > 1).
+      if(object.shadow_terminator_shading_offset>2.0f)enabled_features|=SF_TERMINATOR_WIDE;
       if(object.shadow_terminator_geometry_offset>0.0f&&smooth_triangles&&(data.integrator.use_direct_light||(data.kernel_features&KERNEL_FEATURE_AO)))enabled_features|=SF_TERMINATOR_GEOMETRY;
     }
   }
@@ -491,6 +574,16 @@ bool WebGPUDevice::pipeline_current(const cbc::Pipeline &pipeline,const char *en
 // region). An AO node scene with, for example, a Principled floor otherwise
 // carries Principled in its raytrace entry (67,787 Intel instructions, above
 // the 60,000 compile envelope; 1,292,392 inlined bytes, above the size guard).
+// shader_eval_displace runs the displacement programs only: the scene's other SVM handlers
+// (closures, the bump nodes, families) are left out of its pipeline's module, as for
+// prepare_surface_raytrace, which keeps the entry inside the pipeline size guard.
+ShaderFeatures WebGPUDevice::displacement_unused_svm_features(){
+  const ShaderFeatures scene=shader_features();
+  if(specialization_mode!=SpecializationMode::Scene)return SF_NONE;
+  constexpr ShaderFeatures svm=ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32);
+  const ShaderFeatures handlers=svm|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_BUMP_UNDISPLACED;
+  return scene&handlers&~displacement_program_features;
+}
 ShaderFeatures WebGPUDevice::raytrace_unused_svm_features(){
   const ShaderFeatures scene=shader_features();
   if(specialization_mode!=SpecializationMode::Scene)return SF_NONE;

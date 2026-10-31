@@ -184,9 +184,9 @@ with matching dispatch sizing, passes the unchanged corpus. Opaque traversal
 retains 64; the original crash/backtraces are preserved in `all-lanes-crash-v1`.
 Large-scene performance and wider driver coverage remain unmeasured.
 
-- Transparent/colored shadows support static triangles and bounded hit storage
-  with resumed traversal. Moving transparent shadows, volume shadow attenuation,
-  light/shadow linking, AO, MNEE and shadow catchers remain guarded. The stable
+- Transparent/colored shadows support static, moving and deforming triangles and
+  bounded hit storage with resumed traversal. Volume shadow attenuation and shadow
+  linking remain guarded. The stable
   GPU queue gather scans path capacity serially; large-scene cost is unmeasured.
 - Deforming triangles use native motion frames, interpolated vertex/corner
   normals, instance transforms and opaque-shadow traversal. Curves, points,

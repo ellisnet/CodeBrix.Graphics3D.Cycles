@@ -39,7 +39,7 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
   for(unsigned test=0;test<rejection_count;test++){
     ds.data=original;
     Program program(ds);program.weight(.2,.4,.6);
-    if(test==0)program.simple(CLOSURE_BSDF_ASHIKHMIN_VELVET_ID); // unsupported closure (Principled is implemented)
+    if(test==0)program.simple(CLOSURE_BSDF_RAY_PORTAL_ID); // unsupported closure (velvet and Principled are implemented)
     if(test==1)program.words.push_back(NODE_LIGHT_FALLOFF);
     if(test==2)program.diffuse(0,253);
     if(test==3)program.diffuse(0);
@@ -48,7 +48,7 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
     if(test==6)program.add(NODE_TEX_COORD,SVMNodeTexCoord{.texco_type=NODE_TEXCO_VOLUME_GENERATED,.out_offset=0});
     if(test==7)program.add(NODE_CLOSURE_HOLDOUT,SVMNodeClosureHoldout{.mix_weight_offset=7});
 #ifdef CBC_MICROFACET_FIXTURE
-    if(test==11)program.glossy(CLOSURE_BSDF_MICROFACET_BECKMANN_ID,.3f);
+    if(test==11)program.glossy(CLOSURE_BSDF_HAIR_REFLECTION_ID,.3f); // unsupported microfacet-record kind (Beckmann is implemented)
     if(test==12)program.glossy(CLOSURE_BSDF_MICROFACET_GGX_ID,.3f);
     if(test==13)program.glossy(CLOSURE_BSDF_MICROFACET_GGX_ID,.3f,.5f,0,7);
     if(test==14||test==15){program.glossy(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID,.3f);
@@ -72,7 +72,7 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
     if(test==13)program.glass(.3f,1.5f,0,7);
     if(test==14){program.glass(.3f,1.5f);ds.data.tables.ggx_gen_schlick_ior_s=ds.lookup_table.size()-4095;}
     if(test==15)program.glass(.3f,1.5f,0,SVM_STACK_INVALID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
-    if(test==16)program.refraction(.3f,1.5f,SVM_STACK_INVALID,CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID);
+    if(test==16)program.refraction(.3f,1.5f,SVM_STACK_INVALID,CLOSURE_BSDF_HAIR_TRANSMISSION_ID); // unsupported refraction-record kind (Beckmann is implemented)
 #endif
     program.install(ds);ds.data.max_closures=test==3?MAX_CLOSURE+1:MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
     device_vector<uint> out(&d,"invalid_surface_svm",MEM_READ_WRITE);out.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(out.data(),out.size(),0xa5a5a5a5u);out.copy_to_device();
@@ -107,7 +107,7 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
   const uint expected[count]={2,2,2,2,16,16,16,4,16,16,16,16,16,2,2,2,2,2,2,2,16};
   for(unsigned test=0;test<count;test++){
     Program program(ds);program.weight(.2,.4,.6);program.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
-    const uint deferred[]={NODE_RAYCAST,NODE_LIGHT_FALLOFF,NODE_IES,NODE_AOV_START};
+    const uint deferred[]={NODE_AOV_COLOR,NODE_LIGHT_FALLOFF,NODE_IES,NODE_AOV_START}; // Raycast, Bevel and Radial Tiling are implemented
     if(test<4)program.words.push_back(deferred[test]);
     if(test==4||test==5)program.add(NODE_TEX_NOISE,SVMNodeTexNoise{.dimensions=test==4?5u:3u,.noise_type=NodeNoiseType(test==4?1:7),.normalize=1,.w=value(0),.scale=value(1),.detail=value(2),
       .roughness=value(.5f),.lacunarity=value(2),.offset=value(0),.gain=value(1),.distortion=value(0),.vector=0,.value_offset=3,.color_offset=SVM_STACK_INVALID});
@@ -118,7 +118,8 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
     if(test==10)program.add(NODE_MIX_COLOR,SVMNodeMixColor{.blend_type=NodeMix(77),.a=stack_in3(0),.b=color(1,1,1),.fac=value(.5f),.use_clamp=0,.use_clamp_result=0,.result_offset=3});
     if(test==11)program.add(NODE_TEX_WHITE_NOISE,SVMNodeTexWhiteNoise{.dimensions=0,.vector=stack_in3(0),.w=value(0),.value_offset=3,.color_offset=SVM_STACK_INVALID});
     if(test==12)program.add(NODE_MAP_RANGE,SVMNodeMapRange{.range_type=NodeMapRangeType(9),.value=stack_in(0),.from_min=value(0),.from_max=value(1),.to_min=value(0),.to_max=value(1),.steps=value(4),.result_offset=3});
-    const uint more[]={NODE_VECTOR_DISPLACEMENT,NODE_BEVEL,NODE_PARTICLE_INFO,NODE_HAIR_INFO,NODE_TEX_SKY,NODE_RADIAL_TILING,NODE_POINT_INFO};
+    // The displacement and vector displacement nodes are implemented (SVM_NODE_DISPLACEMENT): two volume-only opcodes stand in.
+    const uint more[]={NODE_PRINCIPLED_VOLUME,NODE_VOLUME_COEFFICIENTS,NODE_PARTICLE_INFO,NODE_HAIR_INFO,NODE_TEX_SKY,NODE_AOV_VALUE,NODE_POINT_INFO};
     if(test>=13&&test<20)program.words.push_back(more[test-13]);
     // Gabor is implemented: an invalid Gabor type reports 16.
     if(test==20)program.add(NODE_TEX_GABOR,SVMNodeTexGabor{.gabor_type=NodeGaborType(2),.orientation_3d=color(1,0,0),.scale=value(1),.frequency=value(2),.anisotropy=value(1),
@@ -491,6 +492,112 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     run({.metallic=.3f,.ior=1.6f,.transmission=.4f,.coat=.6f,.sheen=.7f,.level=.7f,.anisotropic=.6f,.alpha=.8f,.emission=1,.diffuse_roughness=.4f,.tinted=true,.tangent=0,.coat_normal=6,.linked=9});
     for(int cap:{1,2,3,5}){limit(cap);run({.metallic=.3f,.transmission=.4f,.coat=.6f,.sheen=.7f,.alpha=.8f,.tinted=true});}limit(MAX_CLOSURE);
 #endif
+#if CBC_BSDF_FIXTURE==1
+    // Metallic BSDF records over parameter extremes: both Fresnel types, every
+    // distribution the device implements, anisotropy with and without a tangent,
+    // thin film (F82 tint only), linked normal, closure capacity.
+    unsigned typed=0;
+    auto metallic=[&](Program &p,ClosureType fresnel,ClosureType distribution,float rough,float aniso,float rotation,float film,SVMStackOffset tangent,SVMStackOffset normal){
+      p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=fresnel,.mix_weight_offset=SVM_STACK_INVALID});
+      SVMNodeMetallicBsdfData n{};n.distribution=distribution;
+      n.base_ior=fresnel==CLOSURE_BSDF_PHYSICAL_CONDUCTOR?color(.18f,.42f,1.37f):color(.9f,.62f,.31f);
+      n.edge_tint_k=fresnel==CLOSURE_BSDF_PHYSICAL_CONDUCTOR?color(3.42f,2.35f,1.77f):color(typed%3?.95f:1,typed%3?.86f:1,typed%3?.7f:1);
+      n.roughness=value(rough);n.anisotropy=value(aniso);n.rotation=value(rotation);n.thin_film_thickness=value(film);n.thin_film_ior=value(1.45f);
+      n.normal_offset=normal;n.tangent_offset=tangent;
+      auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());};
+    for(auto fresnel:{CLOSURE_BSDF_F82_CONDUCTOR,CLOSURE_BSDF_PHYSICAL_CONDUCTOR})
+      for(auto distribution:{CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID,CLOSURE_BSDF_MICROFACET_BECKMANN_ID})
+        for(float rough:{0.f,.003f,.004f,.2f,.7f,1.f,1.5f,-1.f})
+          for(float aniso:{0.f,1e-6f,.5f,1.f,2.f}){
+            Program p(ds);p.weight(.2,.5,.9);
+            p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(.8,.3,.2)});
+            p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+            const float film=fresnel==CLOSURE_BSDF_F82_CONDUCTOR&&typed%4==1?(typed%8==1?.05f:350.f):0.f;
+            metallic(p,fresnel,distribution,rough,aniso,.17f*float(typed%11)-.6f,film,typed%5?SVMStackOffset(0):SVMStackOffset(SVM_STACK_INVALID),typed%3==2?SVMStackOffset(3):SVMStackOffset(SVM_STACK_INVALID));
+            p.install(ds);evaluate(d,scene,shader,layout,initial,small,"Typed metallic "+std::to_string(typed++),m);
+          }
+    for(int cap:{1,2,3}){limit(cap);Program p(ds);p.weight(.2,.5,.9);
+      metallic(p,CLOSURE_BSDF_PHYSICAL_CONDUCTOR,CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID,.3f,0,0,0,SVM_STACK_INVALID,SVM_STACK_INVALID);
+      metallic(p,CLOSURE_BSDF_F82_CONDUCTOR,CLOSURE_BSDF_MICROFACET_GGX_ID,.3f,0,0,0,SVM_STACK_INVALID,SVM_STACK_INVALID);p.diffuse(0);
+      p.install(ds);evaluate(d,scene,shader,layout,initial,small,"Typed metallic capacity "+std::to_string(cap),m);}
+    limit(MAX_CLOSURE);
+    // Beckmann glossy (isotropic and anisotropic), refraction and glass records.
+    for(float rough:{0.f,.0001f,.003f,.004f,.1f,.5f,1.f,2.f,-1.f})
+      for(float aniso:{-2.f,-.99f,-.3f,0.f,1e-4f,.5f,.99f,2.f}){
+        Program p(ds);p.weight(.2,.5,.9);
+        p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(.8,.3,.2)});
+        p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+        p.glossy(CLOSURE_BSDF_MICROFACET_BECKMANN_ID,rough,aniso,.17f*float(typed%11)-.6f,0,3);p.install(ds);
+        evaluate(d,scene,shader,layout,initial,small,"Typed Beckmann "+std::to_string(typed++),m);
+      }
+    for(bool glass:{false,true})for(float rough:{0.f,.003f,.004f,.1f,.5f,1.f,2.f,-1.f})for(float ior:{0.f,.7f,1.f,1.00001f,1.5f,2.4f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+      if(glass)p.glass(rough,ior,0,0,CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);else p.refraction(rough,ior,0,CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID);p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed Beckmann glass/refraction "+std::to_string(typed++),m);
+    }
+#endif
+#if CBC_BSDF_FIXTURE==2
+    unsigned typed=0;
+    // Ashikhmin-Shirley records (alpha clamped to [1e-4, 1], always evaluable).
+    for(float rough:{0.f,.0001f,.003f,.01f,.3f,1.f,2.f,-1.f})
+      for(float aniso:{-.99f,-.3f,0.f,1e-4f,.5f,.99f}){
+        Program p(ds);p.weight(.2,.5,.9);
+        p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(.8,.3,.2)});
+        p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+        p.glossy(CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID,rough,aniso,.17f*float(typed%11)-.6f,0,3);p.install(ds);
+        evaluate(d,scene,shader,layout,initial,small,"Typed Ashikhmin-Shirley "+std::to_string(typed++),m);
+      }
+#endif
+#if CBC_BSDF_FIXTURE==3
+    unsigned typed=0;
+    // Velvet records: sigma = saturate(param1), max 0.01 in the inverse.
+    for(float sigma:{-1.f,0.f,.005f,.01f,.3f,1.f,2.f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+      p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=CLOSURE_BSDF_ASHIKHMIN_VELVET_ID,.mix_weight_offset=SVM_STACK_INVALID});
+      auto n=SVMNodeSimpleBsdfData{.param1=value(sigma),.normal_offset=SVMStackOffset(typed%3?3:SVM_STACK_INVALID)};
+      auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed velvet "+std::to_string(typed++),m);
+    }
+    // Toon records: size clamped to [1e-5, 1], smooth saturated, both scaled by pi/2.
+    for(auto kind:{CLOSURE_BSDF_DIFFUSE_TOON_ID,CLOSURE_BSDF_GLOSSY_TOON_ID})for(float size:{-1.f,0.f,1e-6f,.3f,1.f,2.f})for(float smooth:{-1.f,0.f,.2f,1.f,3.f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=typed%2?make_float3(.2,.3,1):zero_float3()});
+      p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=kind,.mix_weight_offset=SVM_STACK_INVALID});
+      auto n=SVMNodeToonBsdfData{.size=value(size),.smooth=value(smooth),.normal_offset=SVMStackOffset(typed%3?3:SVM_STACK_INVALID)};
+      auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed toon "+std::to_string(typed++),m);
+    }
+    // Radial Tiling records: integer and fractional sides, roundness extremes (clamped), normalize,
+    // every output (segment coordinates, id, width, rotation) feeding closure weights.
+    // Two sides with 0 < roundness < 1 is refused (below), the other combinations evaluated.
+    const auto radial=[&](Program &p,SVMInputFloat sides,SVMInputFloat roundness,uint8_t normalize){
+      p.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
+      const SVMInputFloat3 linked{{SVM_INPUT_STACK_OFFSET_MASK|0u},value(0),value(0)};
+      p.add(NODE_RADIAL_TILING,SVMNodeRadialTiling{.vector=linked,.r_gon_sides=sides,.r_gon_roundness=roundness,.normalize_r_gon_parameter=normalize,
+        .segment_coordinates_offset=30,.segment_id_offset=33,.max_unit_parameter_offset=34,.x_axis_A_angle_bisector_offset=35});
+      p.diffuse(0);};
+    for(float sides:{-1.f,2.f})for(float roundness:{.3f,.75f}){Program p(ds);p.weight(.2,.4,.6);radial(p,value(sides),value(roundness),0);p.install(ds);std::string message;
+      try{d.shader_features();}catch(const std::exception &e){message=e.what();}
+      require(message.find("Unsupported feature: Radial Tiling node with two sides")!=std::string::npos,"Missing native Radial Tiling rejection: "+message);host_rejections++;}
+    {Program p(ds);p.weight(.2,.4,.6);p.add(NODE_VALUE_F,SVMNodeValueF{.value=2.f,.out_offset=40});p.add(NODE_VALUE_F,SVMNodeValueF{.value=.5f,.out_offset=41});
+      radial(p,{SVM_INPUT_STACK_OFFSET_MASK|40u},{SVM_INPUT_STACK_OFFSET_MASK|41u},1);p.install(ds);require(d.shader_features().any(),"Linked Radial Tiling program refused by the census");
+      device_vector<uint> out(&d,"radial_tiling_svm",MEM_READ_WRITE);out.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(out.data(),out.size(),0xa5a5a5a5u);out.copy_to_device();
+      device_vector<uint> scratch(&d,"radial_tiling_closures",MEM_READ_WRITE);scratch.alloc(MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);scratch.zero_to_device();
+      std::array<uint32_t,32> q{};q[1]=1;q[4]=out.device_pointer;q[6]=d.constants.at("data");q[7]=d.constants.at("integrator_state");q[10]=1;q[14]=d.scene_tables();q[17]=d.error_word;q[21]=ds.svm_nodes.device_pointer;q[22]=ds.svm_nodes.size();q[23]=scratch.device_pointer;
+      refresh_probe(d,shader);PreparedSurfaceCache cache(d,q);d.dispatch(q,1,shader);uint error=0;d.download(d.error_word,&error,4);
+      require(error==16,"Linked two-sided Radial Tiling did not report 16: "+std::to_string(error));out.copy_from_device();healthy(d);
+      require(std::all_of(out.data(),out.data()+out.size(),[](uint v){return v==0xa5a5a5a5u;}),"Rejected Radial Tiling wrote output");cache.verify();d.zero(d.error_word,4);invalid++;}
+    for(float sides:{-1.f,2.f,3.f,3.5f,5.f,7.25f,12.f})for(float roundness:{-1.f,0.f,.3f,.75f,1.f,2.f})for(uint8_t normalize:{uint8_t(0),uint8_t(1)}){
+      if(sides<=2.f&&roundness>0.f&&roundness<1.f)continue;
+      Program p(ds);p.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
+      const SVMInputFloat3 linked{{SVM_INPUT_STACK_OFFSET_MASK|0u},value(0),value(0)};
+      p.add(NODE_RADIAL_TILING,SVMNodeRadialTiling{.vector=linked,.r_gon_sides=value(sides),.r_gon_roundness=value(roundness),.normalize_r_gon_parameter=normalize,
+        .segment_coordinates_offset=30,.segment_id_offset=33,.max_unit_parameter_offset=34,.x_axis_A_angle_bisector_offset=35});
+      for(unsigned slot:{30u,33u}){const SVMInputFloat3 in{{SVM_INPUT_STACK_OFFSET_MASK|slot},value(0),value(0)};
+        p.add(NODE_VECTOR_MATH,SVMNodeVectorMath{.math_type=NODE_VECTOR_MATH_ABSOLUTE,.a=in,.b=color(0,0,0),.c=color(0,0,0),.param1=value(1),.value_offset=SVM_STACK_INVALID,.vector_offset=SVMStackOffset(slot+10)});
+        p.add(NODE_CLOSURE_WEIGHT,SVMNodeClosureWeight{.weight_offset=SVMStackOffset(slot+10)});if(slot==30u)p.simple(CLOSURE_BSDF_TRANSLUCENT_ID);else p.diffuse(0);}
+      p.install(ds);evaluate(d,scene,shader,layout,initial,small,"Typed radial tiling "+std::to_string(typed++),m);
+    }
+#endif
 #ifdef CBC_GLASS_FIXTURE
     unsigned typed=0;
     for(bool glass:{false,true})for(float rough:{0.f,.003f,.004f,.1f,.5f,1.f,2.f,-1.f})for(float ior:{0.f,.7f,1.f,1.00001f,1.5f,2.4f}){
@@ -501,7 +608,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #endif
     // The scene-exchange passes (reference_policy.h) do no GPU work; the rejections run in the import pass.
     if(!svm_exchange_mode()){
-    invalid=rejections(d,scene,shader);
+    invalid+=rejections(d,scene,shader);
 #ifdef CBC_NODES_FIXTURE
     invalid+=node_rejections(d,scene,shader);
 #endif
@@ -528,6 +635,18 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(m.closures.count(kind),"Missing Principled closure family "+std::to_string(kind));
 #elif defined(CBC_MICROFACET_FIXTURE)
   require(m.closures.size()==6,"Missing microfacet closure families");
+#elif CBC_BSDF_FIXTURE==1
+  for(uint kind:{uint(CLOSURE_BSDF_DIFFUSE_ID),uint(CLOSURE_BSDF_OREN_NAYAR_ID),uint(CLOSURE_BSDF_MICROFACET_GGX_ID),uint(CLOSURE_BSDF_TRANSPARENT_ID),
+                 uint(CLOSURE_BSDF_MICROFACET_BECKMANN_ID),uint(CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID),uint(CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID)})
+    require(m.closures.count(kind),"Missing BSDF fixture closure family "+std::to_string(kind));
+#elif CBC_BSDF_FIXTURE==2
+  for(uint kind:{uint(CLOSURE_BSDF_DIFFUSE_ID),uint(CLOSURE_BSDF_OREN_NAYAR_ID),uint(CLOSURE_BSDF_MICROFACET_GGX_ID),uint(CLOSURE_BSDF_TRANSPARENT_ID),uint(CLOSURE_BSDF_TRANSLUCENT_ID),
+                 uint(CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID)})
+    require(m.closures.count(kind),"Missing BSDF fixture closure family "+std::to_string(kind));
+#elif CBC_BSDF_FIXTURE==3
+  for(uint kind:{uint(CLOSURE_BSDF_DIFFUSE_ID),uint(CLOSURE_BSDF_OREN_NAYAR_ID),uint(CLOSURE_BSDF_MICROFACET_GGX_ID),uint(CLOSURE_BSDF_TRANSPARENT_ID),uint(CLOSURE_BSDF_TRANSLUCENT_ID),
+                 uint(CLOSURE_BSDF_ASHIKHMIN_VELVET_ID),uint(CLOSURE_BSDF_DIFFUSE_TOON_ID),uint(CLOSURE_BSDF_GLOSSY_TOON_ID)})
+    require(m.closures.count(kind),"Missing BSDF fixture closure family "+std::to_string(kind));
 #else
   require(m.closures.size()==5,"Missing closure families");
 #endif

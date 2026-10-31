@@ -5,7 +5,9 @@
 // each also with object motion and with deformation motion; then (cases 12-23) fast GI
 // replace and additive modes with transparent shadows at ao_bounces 1, and fast GI / the AO node with
 // the light tree, light linking, glass and Principled materials, camera motion and a
-// smooth sphere with shadow terminator offsets, rendered by the original GPU scheduler on the WebGPU device against an
+// smooth sphere with shadow terminator offsets; cases 24-25 fast GI with a moving and a deforming transparent pane
+// (AO and light shadow rays through transparency with motion blur); case 26 fast GI and the AO pass with shadow
+// caustics (MNEE), rendered by the original GPU scheduler on the WebGPU device against an
 // independent loop of the unmodified CPU kernels on the same prepared scene.
 // Device-scene flow and replay capture as lighting_gate.cpp.
 #include "wavefront_test.h"
@@ -24,6 +26,8 @@
 #include "deforming_motion_fixture.h"
 #include "camera_motion_fixture.h"
 #include "shadow_terminator_fixture.h"
+#include "mnee_fixture.h"
+#include "mnee_reference.h"
 #include "scene/camera.h"
 #include "scene/film.h"
 #include "scene/integrator.h"
@@ -40,15 +44,34 @@
 #include <sstream>
 using namespace ccl;
 using namespace wavefront_test;
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+#include "raytrace_nodes_fixture.h"
+#endif
 constexpr unsigned width=32,height=24,samples=8;
 // Fast GI settings (Integrator sockets), the world, the AO pass and the AO node.
-struct Case {const char *name;int ao_bounces;float ao_factor,ao_distance,additive;bool object_distance,hdri,transparent,pass;int node,motion=0;bool tree=false,linking=false;int material=0;bool terminator=false;};
+struct Case {const char *name;int ao_bounces;float ao_factor,ao_distance,additive;bool object_distance,hdri,transparent,pass;int node,motion=0;bool tree=false,linking=false;int material=0;bool terminator=false,caustics=false;};
 // node: -1 none; 0 AO node mixing two BSDFs on the centre quad; 1 the same node with
 // only_local and inside on an instanced object. motion: 0 none; 1 the centre quad and
 // the ground move (object motion); 2 they deform (deformation motion); 3 camera motion.
 // tree: the light tree with a second (area) lamp; linking: that lamp too, the ground
 // receives only it (light linking); material: 1 glass/diffuse centre quad and Principled
-// ground, 2 Principled ground; terminator: a coarse smooth sphere with offsets.
+// ground, 2 Principled ground; terminator: a coarse smooth sphere with offsets; caustics: a sharp glass
+// sphere caustic caster over the ground and back wall (caustic receivers) under the point lamp (MNEE).
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+// Bevel and Raycast nodes (raytrace_nodes_fixture.h): node 2+v uses raytrace_node_shader(v)
+// on the centre quad (v 3: on the instanced box, the only_local Raycast).
+static const Case cases[]={
+  {"bevel",0,0,1.f,0,false,false,false,false,2},
+  {"raycast-hit-distance",0,0,1.f,0,false,false,false,false,3},
+  {"raycast-attributes",0,0,1.f,0,false,false,false,false,4},
+  {"bevel-linked-normal-raycast-local-instanced",0,0,1.f,0,false,false,false,false,5},
+  {"bevel-raycast-hit-normal",0,0,1.f,0,false,false,false,false,6},
+  {"bevel-object-motion",0,0,1.f,0,false,false,false,false,2,1},
+  {"raycast-deforming-motion",0,0,1.f,0,false,false,false,false,3,2},
+  {"bevel-raycast-light-tree",0,0,1.f,0,false,false,false,false,6,0,true},
+  {"raycast-attributes-camera-motion",0,0,1.f,0,false,false,false,false,4,3},
+};
+#else
 static const Case cases[]={
   {"replace",1,.5f,1.f,0,false,false,false,false,-1},
   {"replace-object-distance",1,.8f,3.f,0,true,false,false,false,-1},
@@ -74,9 +97,13 @@ static const Case cases[]={
   {"fast-gi-additive-pass-terminator",1,.5f,1.2f,.7f,false,false,false,true,-1,0,false,false,0,true},
   {"replace-transparent-light-tree",1,.5f,1.f,0,false,false,true,false,-1,0,true},
   {"fast-gi-additive-pass-transparent",1,.5f,1.2f,.7f,false,false,true,true,-1},
+  {"fast-gi-additive-pass-transparent-object-motion",1,.5f,1.2f,.7f,false,false,true,true,-1,1},
+  {"replace-transparent-deforming-motion",1,.5f,1.f,0,false,false,true,false,-1,2},
+  {"fast-gi-additive-pass-caustics",1,.5f,1.2f,.7f,false,false,false,true,-1,0,false,false,0,false,true},
 };
+#endif
 constexpr unsigned case_count=sizeof(cases)/sizeof(cases[0]);
-struct Metrics {uint64_t ao_paths=0,ao_blocked=0,shadows=0,nee=0,raytrace=0,ao_terminated=0,stages=0,floats=0,strict=0,repeat_differences=0;double maximum=0,repeat_maximum=0;};
+struct Metrics {uint64_t mnee_paths=0,mnee_sampled=0,ao_paths=0,ao_blocked=0,shadows=0,nee=0,raytrace=0,ao_terminated=0,stages=0,floats=0,strict=0,repeat_differences=0;double maximum=0,repeat_maximum=0;};
 static Shader *diffuse_shader(Scene &scene,float3 color){
   auto g=make_unique<ShaderGraph>();auto d=g->create_node<DiffuseBsdfNode>();d->set_color(color);d->set_roughness(.25f);
   g->connect(d->output("BSDF"),g->output()->input("Surface"));auto s=scene.create_node<Shader>();s->set_graph(std::move(g));s->tag_update(&scene);return s;
@@ -90,7 +117,7 @@ static Shader *mixed_shader(Scene &scene,bool transparent){
 }
 // The AO node's colour output drives a diffuse BSDF and its factor mixes it with
 // a glossy one (svm_node_ao: ao and color * ao).
-static Shader *ao_node_shader(Scene &scene,bool local){
+[[maybe_unused]] static Shader *ao_node_shader(Scene &scene,bool local){
   auto g=make_unique<ShaderGraph>();auto ao=g->create_node<AmbientOcclusionNode>();ao->set_color(make_float3(.9,.7,.4));ao->set_distance(local?.9f:1.4f);
   ao->set_samples(local?6:4);ao->set_only_local(local);ao->set_inside(local);
   auto d=g->create_node<DiffuseBsdfNode>();d->set_roughness(.2f);g->connect(ao->output("Color"),d->input("Color"));
@@ -98,7 +125,7 @@ static Shader *ao_node_shader(Scene &scene,bool local){
   auto mix=g->create_node<MixClosureNode>();g->connect(ao->output("AO"),mix->input("Fac"));g->connect(glossy->output("BSDF"),mix->input("Closure1"));g->connect(d->output("BSDF"),mix->input("Closure2"));
   g->connect(mix->output("Closure"),g->output()->input("Surface"));auto s=scene.create_node<Shader>();s->set_graph(std::move(g));s->tag_update(&scene);return s;
 }
-static Shader *glass_shader(Scene &scene){
+[[maybe_unused]] static Shader *glass_shader(Scene &scene){
   auto g=make_unique<ShaderGraph>();auto glass=g->create_node<GlassBsdfNode>();glass->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);glass->set_roughness(.25f);glass->set_IOR(1.45f);
   glass->set_color(make_float3(.9,.95,1));auto d=g->create_node<DiffuseBsdfNode>();d->set_color(make_float3(.5,.45,.3));d->set_roughness(.25f);
   auto mix=g->create_node<MixClosureNode>();mix->set_fac(.35f);g->connect(glass->output("BSDF"),mix->input("Closure1"));g->connect(d->output("BSDF"),mix->input("Closure2"));
@@ -134,7 +161,11 @@ static void fixture(Scene &scene,const Case &c){
   auto wall=diffuse_shader(scene,make_float3(.6,.62,.65)),floor=c.material?principled_shader(scene):mixed_shader(scene,false);
   auto back=quad(scene,wall,{make_float3(-4,-3,3),make_float3(4,-3,3),make_float3(4,3,3),make_float3(-4,3,3)});
   auto ground=quad(scene,floor,{make_float3(-4,-2,-2),make_float3(4,-2,-2),make_float3(4,-2,3),make_float3(-4,-2,3)});
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+  Shader *center=raytrace_node_shader(scene,c.node==5?0u:unsigned(c.node-2));
+#else
   Shader *center=c.node==0?ao_node_shader(scene,false):c.material==1?glass_shader(scene):diffuse_shader(scene,make_float3(.5,.45,.3));
+#endif
   auto middle=quad(scene,center,{make_float3(-.8f,-2,0),make_float3(.8f,-2,0),make_float3(.8f,1.1f,0),make_float3(-.8f,1.1f,0)});
   if(c.object_distance){middle->set_ao_distance(.35f);ground->set_ao_distance(1.5f);(void)back;}
   if(c.motion==1){object_motion_fixture(scene,*middle,2);object_motion_fixture(scene,*ground,1);}
@@ -142,8 +173,14 @@ static void fixture(Scene &scene,const Case &c){
   if(c.terminator){auto sphere=scene.create_node<Object>();sphere->set_geometry(shadow_terminator_sphere(scene,diffuse_shader(scene,make_float3(.5,.45,.3))));
     sphere->set_tfm(transform_translate(make_float3(1.9f,-1.2f,-.8f))*transform_scale(make_float3(.8f,.8f,.8f)));
     sphere->set_shadow_terminator_geometry_offset(.1f);sphere->set_shadow_terminator_shading_offset(.5f);}
-  if(c.transparent)quad(scene,mixed_shader(scene,true),{make_float3(-2.9f,.6f,-1.8f),make_float3(2.9f,.6f,-1.8f),make_float3(2.9f,.6f,2.8f),make_float3(-2.9f,.6f,2.8f)});
+  if(c.transparent){auto pane=quad(scene,mixed_shader(scene,true),{make_float3(-2.9f,.6f,-1.8f),make_float3(2.9f,.6f,-1.8f),make_float3(2.9f,.6f,2.8f),make_float3(-2.9f,.6f,2.8f)});
+    // With motion the transparent pane moves or deforms too: AO and light shadow rays through moving transparency.
+    if(c.motion==1)object_motion_fixture(scene,*pane,1);if(c.motion==2)deforming_motion_fixture(scene,*pane,0);}
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+  if(c.node==5){auto box=box_mesh(scene,raytrace_node_shader(scene,3));
+#else
   if(c.node==1){auto box=box_mesh(scene,ao_node_shader(scene,true));
+#endif
     for(int k=0;k<2;k++){auto o=scene.create_node<Object>();o->set_geometry(box);
       o->set_tfm(transform_translate(make_float3(k?1.9f:-1.9f,-1.3f,-.6f))*transform_rotate(k?.6f:-.4f,make_float3(0,1,0))*transform_scale(make_float3(1.1f,1.4f,.9f)));}}
   if(c.hdri){auto world=environment_world(scene,EnvironmentWorld::Hdri,0);environment_light(scene,world,true,64);}
@@ -153,6 +190,8 @@ static void fixture(Scene &scene,const Case &c){
   eg->connect(emission->output("Emission"),eg->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(eg));emitter->tag_update(&scene);
   auto point=scene.create_node<PointLight>();point->set_radius(.45f);point->set_is_sphere(true);point->set_use_mis(true);point->set_strength(make_float3(110,90,70));
   array<Node*> slots;slots.push_back_slow(emitter);point->set_used_shaders(slots);auto lamp=scene.create_node<Object>();lamp->set_geometry(point);lamp->set_tfm(transform_translate(make_float3(2.2f,2,-2)));
+  if(c.caustics){auto sphere=mnee_sphere(scene,mnee_shader(scene,1),make_float3(1.5f,-1.15f,-.9f),.8f);sphere->set_is_caustics_caster(true);
+    ground->set_is_caustics_receiver(true);back->set_is_caustics_receiver(true);point->set_use_caustics(true);}
   if(c.tree||c.linking){auto area=scene.create_node<AreaLight>();area->set_sizeu(1.f);area->set_sizev(1.f);area->set_spread(1.2f);area->set_normalize(true);area->set_use_mis(true);
     area->set_strength(make_float3(40,50,60));array<Node*> area_slots;area_slots.push_back_slow(emitter);area->set_used_shaders(area_slots);auto second=scene.create_node<Object>();second->set_geometry(area);
     // Area lights emit along -Z: rotate it to point down.
@@ -194,8 +233,11 @@ static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &m){
           for(int i:before)m.ao_terminated+=!state[i].path.queued_kernel&&scene.data.integrator.ao_bounces;}
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND)original_background(scene,ids,state,film);
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD)original_light_forward(scene,ids,state,film);
+        else if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE){m.mnee_paths+=ids.size();original_mnee(scene,ids,state);
+          for(int i:ids)m.mnee_sampled+=(state[i].path.mnee&PATH_MNEE_SAMPLED)!=0;}
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE){
-          for(int i:ids){state[i].shadow.shadow_path.queued_kernel=0;state[i].ao.shadow_path.queued_kernel=0;}
+          // A path with PATH_MNEE_SAMPLED keeps the MNEE shadow slot intersect_mnee left pending for its direct light.
+          for(int i:ids){if(!(state[i].path.mnee&PATH_MNEE_SAMPLED))state[i].shadow.shadow_path.queued_kernel=0;state[i].ao.shadow_path.queued_kernel=0;}
           if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)original_surface(scene,ids,state,film);
           else{m.raytrace+=ids.size();original_surface_raytrace(scene,ids,state,film);}
           cpu_shadows(scene,state,ids,film,m,false);cpu_shadows(scene,state,ids,film,m,true);
@@ -261,6 +303,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(c.additive!=0||c.pass)require(metrics.ao_paths>100&&metrics.ao_blocked>10&&metrics.ao_blocked<metrics.ao_paths,"Missing AO shadow ray coverage");
     if(c.ao_factor!=0)require(metrics.ao_terminated>10,"Missing fast GI AO termination coverage");
     if(c.node>=0)require(metrics.raytrace>100,"Missing raytrace surface queue coverage");
+    require(c.caustics?metrics.mnee_paths>100&&metrics.mnee_sampled>=5:metrics.mnee_paths==0,"Missing MNEE coverage");
     if(c.pass){double sum=0;for(size_t i=4;i<first.size();i+=stride)sum+=first[i];require(sum>1,"Empty AO pass");}
     auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"case\":"<<image<<",\"name\":\""<<c.name<<"\",\"aoShadowPaths\":"<<metrics.ao_paths<<",\"aoBlocked\":"<<metrics.ao_blocked
       <<",\"aoTerminations\":"<<metrics.ao_terminated<<",\"raytracePaths\":"<<metrics.raytrace<<",\"lightShadows\":"<<metrics.shadows<<",\"lightNeePaths\":"<<metrics.nee<<",\"stages\":"<<metrics.stages

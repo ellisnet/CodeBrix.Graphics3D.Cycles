@@ -36,13 +36,20 @@
 #include <sstream>
 using namespace ccl;
 using namespace wavefront_test;
+// Diagnostic (CODEBRIX_GATE_ALL_MISMATCHES=1): every practical or integer mismatch is
+// reported and the gate fails at the end instead of at the first one; the criterion and
+// the verdict are unchanged.
+static unsigned long gate_mismatches=0;
+static void gate_require(bool ok,const std::string &message){
+  if(ok)return;static const bool all=std::getenv("CODEBRIX_GATE_ALL_MISMATCHES")!=nullptr;
+  if(!all)wavefront_test::require(false,message);gate_mismatches++;std::cerr<<"MISMATCH "<<message<<'\n';}
 #include "surface_fixture.h"
 #ifdef CBC_CLOSED_VOLUME_FIXTURE
 #include "volume_boundary_fixture.h"
 #endif
 struct Metrics {uint64_t integers=0,floats=0,strict=0,stages=0,paths=0,equivalent_edge_hits=0,volume_scatter=0,volume_transmit=0,volume_terminated=0;double maximum=0,maximum_bound_ratio=0;float maximum_actual=0,maximum_expected=0;std::string maximum_field;unsigned max_bounce=0,max_transparent=0,max_volume_bounds=0;std::map<int,uint64_t> kernels;std::set<uint> shaders;std::vector<std::string> edge_records;};
 static void number(float a,float e,const std::string &where,Metrics &m){double error=std::abs(double(a)-e);if(error>m.maximum){m.maximum=error;m.maximum_actual=a;m.maximum_expected=e;m.maximum_field=where;}m.maximum_bound_ratio=std::max(m.maximum_bound_ratio,error/(5e-5+2e-4*std::abs(double(e))));m.floats++;m.strict+=error>1e-7+1e-7*std::abs(double(e));
-  require(std::isfinite(a)&&std::isfinite(e)&&error<=5e-5+2e-4*std::abs(double(e)),where+" actual="+std::to_string(a)+" expected="+std::to_string(e));}
+  gate_require(std::isfinite(a)&&std::isfinite(e)&&error<=5e-5+2e-4*std::abs(double(e)),where+" actual="+std::to_string(a)+" expected="+std::to_string(e));}
 static void oracle(DeviceKernel kernel,DeviceScene &scene,const std::vector<int>&ids,std::vector<IntegratorStateCPU>&states,std::vector<float>&film){
   if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST)original_closest(scene,ids,states,film);
   else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)original_surface(scene,ids,states,film);
@@ -97,12 +104,12 @@ static void compare_stage(DeviceScene &scene,bool clay,const std::vector<Field>&
           <<" expected="<<e0.path.bounce<<'/'<<e0.path.queued_kernel<<'/'<<e0.path.mis_ray_pdf
           <<" prim/object="<<e0.isect.prim<<'/'<<e0.isect.object<<" actual D="<<a0.ray.D.x<<','<<a0.ray.D.y<<','<<a0.ray.D.z
           <<" expected D="<<e0.ray.D.x<<','<<e0.ray.D.y<<','<<e0.ray.D.z<<'\n';}
-      require(!std::memcmp(a,e,f.stride),"stage "+std::to_string(m.stages)+" integer "+f.name+" path="+std::to_string(i));m.integers++;
+      gate_require(!std::memcmp(a,e,f.stride),"stage "+std::to_string(m.stages)+" integer "+f.name+" path="+std::to_string(i));m.integers++;
     }
   }
   for(size_t i=0;i<wanted.size();i++)number(film[i],wanted[i],"Stage "+std::to_string(m.stages)+" film "+std::to_string(i)+" pixel="+std::to_string(i/scene.data.film.pass_stride)+" offset="+std::to_string(i%scene.data.film.pass_stride),m);
   IntegratorQueueCounter wanted_counter{};for(auto &s:expected)if(s.path.queued_kernel)wanted_counter.num_queued[s.path.queued_kernel]++;
-  require(!std::memcmp(&counter,&wanted_counter,sizeof(counter)),"Render queue counters differ");m.stages++;
+  gate_require(!std::memcmp(&counter,&wanted_counter,sizeof(counter)),"Render queue counters differ");m.stages++;
 }
 static IntegratorQueueCounter queue_counter(WebGPUDevice &d){IntegratorQueueCounter counter{};d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));healthy(d);return counter;}
 static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&expected,device_vector<float>&film,const std::vector<float>&wanted,Metrics &m){
@@ -412,6 +419,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(m.max_bounce>=3,"Missing multiple bounce coverage");if(!asset){require(m.max_transparent>=1,"Missing transparent bounce coverage");require(m.shaders.size()>=10,"Insufficient compiled shader coverage");}
     }}
   }
+  require(gate_mismatches==0,std::to_string(gate_mismatches)+" mismatches (CODEBRIX_GATE_ALL_MISMATCHES)");
   require(stats.mem_used==0,"Render Cycles allocation leak");std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
   {std::ofstream edges(prefix+".shared-edges.json");edges<<'[';for(size_t i=0;i<m.edge_records.size();i++){if(i)edges<<',';edges<<m.edge_records[i];}edges<<"]\n";}
   if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";

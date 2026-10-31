@@ -43,9 +43,14 @@ void WebGPUDevice::validate_mnee() const{
   require(data.kernel_features&KERNEL_FEATURE_MNEE,"Invalid native MNEE feature flags");
   require(!data.integrator.use_light_tree,"WebGPU MNEE with the light tree not implemented");
   require(!(data.kernel_features&KERNEL_FEATURE_VOLUME),"WebGPU MNEE with volumes not implemented");
-  require(!data.bvh.have_motion,"WebGPU MNEE with motion blur not implemented");
-  require(!(data.kernel_features&(KERNEL_FEATURE_LIGHT_TREE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO)),
-          "WebGPU MNEE with light linking, shadow linking or AO not implemented");
+  // Motion blur (MNEE_MOTION: moving and deforming receivers, deforming casters) and ambient occlusion (fast GI and the AO pass;
+  // the AO shadow takes the surface stage's reserved slot n + id.x, the MNEE shadow its own) are supported.
+  require(!(data.kernel_features&(KERNEL_FEATURE_LIGHT_TREE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING)),
+          "WebGPU MNEE with light linking or shadow linking not implemented");
+  // A moving caustic caster (object motion): the device's walks differ from the CPU's in outcome and iteration count
+  // (last-bit differences that the walk amplifies); moving and deforming receivers and deforming casters render.
+  for(const uint flags:object_flag_records)
+    require(!((flags&SD_OBJECT_CAUSTICS_CASTER)&&(flags&SD_OBJECT_MOTION)),"WebGPU MNEE with a moving caustic caster (object motion blur) not implemented");
   for(const KernelLight &light:light_records)if(light.use_caustics)
     require(light.type==LIGHT_POINT||light.type==LIGHT_SUN,"WebGPU MNEE caustics from spot, area or background lights not implemented");
 }

@@ -124,6 +124,10 @@ static void run_case(WebGPUDevice &d,AoScheduler &scheduler,Scene &scene,const s
 // integrator_shade_surface_raytrace, and the same shaders on SHADE_SURFACE against the CPU's
 // non-raytrace node mask (ao = 1). Variants: default, global radius (distance 0), inside,
 // only_local on an instanced box, linked normal and distance.
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+#include "raytrace_nodes_fixture.h"
+static Shader *ao_shader(Scene &scene,unsigned variant){return raytrace_node_shader(scene,variant);}
+#else
 static Shader *ao_shader(Scene &scene,unsigned variant){
   auto g=make_unique<ShaderGraph>();auto ao=g->create_node<AmbientOcclusionNode>();ao->set_color(make_float3(.9,.7,.4));
   ao->set_distance(variant==1?0.f:1.4f);ao->set_samples(variant==2?8:variant==3?6:4);ao->set_inside(variant==2||variant==3);ao->set_only_local(variant==3);
@@ -135,6 +139,7 @@ static Shader *ao_shader(Scene &scene,unsigned variant){
   auto mix=g->create_node<MixClosureNode>();g->connect(ao->output("AO"),mix->input("Fac"));g->connect(glossy->output("BSDF"),mix->input("Closure1"));g->connect(d->output("BSDF"),mix->input("Closure2"));
   g->connect(mix->output("Closure"),g->output()->input("Surface"));auto sh=scene.create_node<Shader>();sh->set_graph(std::move(g));sh->tag_update(&scene);return sh;
 }
+#endif
 static Mesh *ao_mesh(Scene &scene,Shader *shader,const std::vector<float3> &v,const std::vector<int> &t){
   auto mesh=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(shader);mesh->set_used_shaders(slots);mesh->resize_mesh(v.size(),t.size()/3);
   std::copy(v.begin(),v.end(),mesh->get_position_for_write());std::copy(t.begin(),t.end(),mesh->get_triangles().data());
@@ -205,7 +210,7 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m,Mode mode){
   m.node_sensitive+=sensitive;require(sensitive>50,"AO node coverage: raytrace and non-raytrace results differ for only "+std::to_string(sensitive)+" paths");
 }
 // AO shadow rays and their shadow-stage film from the same input states, in one scene mode.
-static void ao_ray_cases(WebGPUDevice &d,Metrics &m,Mode mode){
+[[maybe_unused]] static void ao_ray_cases(WebGPUDevice &d,Metrics &m,Mode mode){
   SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
   Scene scene(params,&d);prepare(scene);
   // A large occluder above the fixture objects: AO rays reach it at the longer distances.
@@ -263,6 +268,11 @@ static void ao_ray_cases(WebGPUDevice &d,Metrics &m,Mode mode){
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2,"Usage: ao_state_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"ao_state_gate device creation");Metrics m;
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+  // The Bevel and Raycast node shaders on the AO node cases' scenes (raytrace_nodes_fixture.h).
+  for(const Mode mode:{Mode::Static,Mode::ObjectMotion,Mode::DeformingMotion})ao_node_cases(d,m,mode);
+  require(stats.mem_used==0,"Raytrace node state Cycles allocation leak");require(m.motion_paths>1000,"Missing motion coverage");
+#else
   // The static cases first, in their original order; then the shadow catcher and motion cases.
   ao_ray_cases(d,m,Mode::Static);ao_node_cases(d,m,Mode::Static);
   for(const Mode mode:{Mode::ShadowCatcher,Mode::ObjectMotion,Mode::DeformingMotion})ao_ray_cases(d,m,mode);
@@ -270,6 +280,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(stats.mem_used==0,"AO state Cycles allocation leak");
   require(m.ao_clear>100&&m.ao_blocked>100,"Missing AO shadow ray coverage: unoccluded="+std::to_string(m.ao_clear)+" occluded="+std::to_string(m.ao_blocked));
   require(m.catcher_pass_paths>100&&m.motion_paths>1000,"Missing shadow catcher or motion coverage");
+#endif
   std::ofstream(std::string(argv[1])+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(std::string(argv[1])+".library.txt")<<d.gpu.library_path;
   std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuSurfaceAndShadowIntegrator\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"aoShadowRays\":"<<m.ao_paths<<",\"aoUnoccluded\":"<<m.ao_clear
     <<",\"aoOccluded\":"<<m.ao_blocked<<",\"aoNodePaths\":"<<m.node_paths<<",\"aoNodeSensitivePaths\":"<<m.node_sensitive<<",\"shadowCatcherPassPaths\":"<<m.catcher_pass_paths<<",\"motionPaths\":"<<m.motion_paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum

@@ -519,11 +519,30 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
   - a PrincipledBsdfNode with subsurface (a SubsurfaceWeight above the closure
     cutoff, 1e-5, or a linked SubsurfaceWeight input): "Unsupported feature:
     Principled BSDF subsurface scattering";
-  - shader nodes the WebGPU device does not implement (for example true
-    displacement, bevel, sky, IES and AOV output nodes; the
-    bump node and the Gabor texture (GaborTextureNode, 2D and 3D) are
-    implemented, but tangent and motion-triangle smooth-normal derivatives
-    inside a bump height are rejected);
+  - shader nodes the WebGPU device does not implement (for example sky, IES
+    and AOV output nodes; the bump node, the Gabor texture (GaborTextureNode,
+    2D and 3D), the displacement and vector displacement nodes and the bevel,
+    raycast and radial tiling nodes are implemented, but tangent and
+    motion-triangle smooth-normal derivatives inside a bump height are
+    rejected);
+  - in a shader with true displacement (DisplacementMethod True or Both), a
+    light path, ambient occlusion, bevel, raycast, wireframe or Principled BSDF
+    node feeding the displacement output: "... in a displacement shader (true
+    displacement) is not implemented";
+  - shadow caustics with an object-motion-blurred caustic caster (an object
+    with IsCausticsCaster and motion steps): "WebGPU MNEE with a moving
+    caustic caster (object motion blur) not implemented" (moving and
+    deforming receivers and deforming casters render);
+  - a MetallicBsdfNode with the physical-conductor Fresnel and a thin film (a
+    ThinFilmThickness above 0.1 or linked): "Unsupported feature: Metallic BSDF
+    thin film ... with the physical conductor Fresnel" (the F82 tint Fresnel
+    with a thin film renders);
+  - a RadialTilingNode with at most two sides and a roundness strictly
+    between 0 and 1: "Unsupported feature: Radial Tiling node with two sides"
+    (the Cycles CPU outputs there are binary32 rounding residue; this refusal is
+    provisional); when Sides
+    or Roundness is linked the render fails with an unsupported-parameter
+    error instead;
   - an AmbientOcclusionNode with OnlyLocal on an object that is not instanced
     while the scene also has instanced objects (the render fails with an
     unsupported-parameter error);
@@ -819,10 +838,6 @@ COMMON PITFALLS TO AVOID
 - READING THE REGISTRY AS A FEATURE LIST. A node type being registered (and
   generated) does not mean a GPU backend implements it; the CPU reference is
   the complete implementation.
-- SHADOW TERMINATOR SHADING OFFSETS ABOVE 1 ON WEBGPU. The WebGPU backend
-  implements ObjectNode.ShadowTerminatorGeometryOffset and
-  ShadowTerminatorShadingOffset in 0..1; a shading offset above 1 fails the
-  render with "shadow terminator shading offset outside [0, 1]".
 - JUDGING ANDROID GPU OUTPUT AGAINST AN ON-DEVICE CPU RENDER. Android's C
   library (bionic) does not round acosf/asinf/atan2f/tanf correctly; the GPU
   backend follows correctly rounded math. A CyclesBackend.CpuReference render
@@ -959,9 +974,11 @@ WHAT THIS PACKAGE DOES NOT DO
   stereo), sampling patterns other than tabulated Sobol, adaptive sampling or
   shadow linking on the WebGPU device (the CPU reference backend and the Metal
   backend do). It does not yet render curves (hair), point clouds,
-  displacement, subsurface scattering, volumes whose density varies through
-  space, the Beckmann, Ashikhmin, toon and hair BSDFs, or the Metallic BSDF
-  node on the WebGPU device (the Principled BSDF's metallic lobe does render).
+  subsurface scattering, volumes whose density varies through space or the
+  hair BSDFs on the WebGPU device. True displacement of the base mesh
+  (DisplacementMethod True and Both) renders there. The Metallic (physical
+  conductor and F82 tint), Beckmann glossy, refraction and glass,
+  Ashikhmin-Shirley, velvet and toon BSDFs render there.
   It does not denoise or bake textures on any backend yet. The integrator's
   light tree (UseLightTree, on by default) and light linking (an object's
   ReceiverLightSet and an emitter object's LightSetMembership) do render on the
@@ -976,9 +993,11 @@ WHAT THIS PACKAGE DOES NOT DO
   is_caustics_caster / is_caustics_receiver and lights with use_caustics)
   render on the WebGPU device through glass and refraction BSDFs from point and
   sun lights. It does not render shadow caustics through anisotropic glass,
-  from spot, area or background lights, or together with light trees, light or
-  shadow linking, ambient occlusion, volumes or motion blur, on the WebGPU
-  device: the render fails with an error naming the feature. On Adreno 650
+  from spot, area or background lights, with a moving (object motion blur)
+  caustic caster, or together with light trees, light or shadow linking or
+  volumes, on the WebGPU device: the render fails with an error naming the
+  feature. Fast GI, the AO pass and motion blur of the receivers and of
+  deforming casters do render with shadow caustics there. On Adreno 650
   GPUs (for example the Samsung Galaxy S20) scenes with shadow caustics are
   refused with an error message before rendering starts.
 - It does not render texture, colour and utility shader nodes (noise, Voronoi,

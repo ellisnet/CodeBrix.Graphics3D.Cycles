@@ -6,8 +6,42 @@ struct NativeTransform {x:vec4<f32>,y:vec4<f32>,z:vec4<f32>}
 fn motion_transform_load(address:u32)->NativeTransform{
     return NativeTransform(heap_vec4(address),heap_vec4(address+16u),heap_vec4(address+32u));
 }
+//#if MNEE_MOTION
+// MNEE with motion blur: its walk (iteration counts and outcomes) follows the last bit of every
+// motion transform, so the motion transforms there are the host's: transform_point and
+// transform_direction as the host CPU kernel evaluates them (the native triangle arithmetic of the
+// closest stage), and transform_compose with every product rounded and DPPS-ordered dot products.
+// Each helper runs its sums through one rounded_add body in a loop (rounded_steps), so the walk
+// entries stay inside the pipeline size guard.
+// surface_transform_row (wavefront_shader_data.wgsl, which not every module includes).
+fn motion_exact_row(t:vec4<f32>,v:vec3<f32>,point:bool)->f32{
+    // Scalar hosts: (x*tx + y*ty) + (z*tz + w). SSE hosts: ((w + z*tz) + y*ty) + x*tx (w only for a point).
+    // Both orders through one rounded_add body: three sums, operands chosen per step.
+    let scalar=NATIVE_TRIANGLE_ARITHMETIC==0u;let count=rounded_steps(3u);
+    let w=select(bitcast<f32>(bitcast<u32>(t.w)&0x80000000u),t.w,point);
+    var s1=0.0;var s2=0.0;var sum=v.z*t.z;
+    for(var k=0u;k<count;k++){
+        var a=select(select(sum,sum,k==1u),t.w,k==0u);var b=select(select(v.x*t.x,v.y*t.y,k==1u),sum,k==0u);
+        if(scalar){a=select(select(s1,v.z*t.z,k==1u),v.x*t.x,k==0u);b=select(select(s2,w,k==1u),v.y*t.y,k==0u);}
+        let r=rounded_add(a,b);
+        if(scalar){s1=select(s1,r,k==0u||k==2u);s2=select(s2,r,k==1u);}
+        else{sum=select(sum,r,(k!=0u||point)&&k<3u);}
+    }
+    return select(sum,s1,scalar);
+}
+fn motion_exact_vector(t:NativeTransform,v:vec3<f32>,point:bool)->vec3<f32>{
+    var out=vec3<f32>(0);let rows=rounded_steps(3u);
+    for(var i=0u;i<rows;i++){
+        let row=select(select(t.z,t.y,i==1u),t.x,i==0u);
+        out=select(out,vec3<f32>(motion_exact_row(row,v,point)),vec3<u32>(0u,1u,2u)==vec3<u32>(i));
+    }
+    return out;
+}
+//#endif
 fn motion_direction(t:NativeTransform,v:vec3<f32>)->vec3<f32>{
-    return vec3<f32>(t.x.x,t.y.x,t.z.x)*v.x+(vec3<f32>(t.x.y,t.y.y,t.z.y)*v.y+vec3<f32>(t.x.z,t.y.z,t.z.z)*v.z);
+//#if MNEE_MOTION else     return vec3<f32>(t.x.x,t.y.x,t.z.x)*v.x+(vec3<f32>(t.x.y,t.y.y,t.z.y)*v.y+vec3<f32>(t.x.z,t.y.z,t.z.z)*v.z);
+    return motion_exact_vector(t,v,false);
+//#endif
 }
 // Original numerical adapter: paired binary32 sums match native float4 dot;
 // arcsine Taylor coefficients derive from C(2n,n)/(4^n*(2n+1)). Reducing acos
@@ -84,25 +118,65 @@ fn motion_sincos(angle:f32)->vec2<f32>{
 fn motion_rotation(a:vec4<f32>,b:vec4<f32>,t:f32)->vec4<f32>{
     let costheta=motion_dot4(a,b);
     if(costheta>0.9995){return motion_normalize4(motion_add4((1.0-t)*a,t*b));}
-    let theta=motion_acos(costheta);let perpendicular=motion_normalize4(motion_add4(b,-a*costheta));
-    let angle=theta*t;let sc=motion_sincos(angle);return motion_add4(a*sc.y,perpendicular*sc.x);
+//#if MNEE_MOTION else     let theta=motion_acos(costheta);let perpendicular=motion_normalize4(motion_add4(b,-a*costheta));
+    let theta=trig_acos(costheta);let perpendicular=motion_normalize4(motion_add4(b,-a*costheta));
+//#endif
+//#if MNEE_MOTION else     let angle=theta*t;let sc=motion_sincos(angle);return motion_add4(a*sc.y,perpendicular*sc.x);
+    let angle=theta*t;let sc=motion_exact_sincos(angle);return motion_add4(a*sc.y,perpendicular*sc.x);
+//#endif
 }
+//#if MNEE_MOTION
+// quat_interpolate's acosf (trig_acos, as glibc's), sinf and cosf correctly rounded (glibc's sinf and cosf are not for a small share of arguments): the
+// double-float series of the two-part reduced angle, each rounded once (family_sincos,
+// wavefront_microfacet.wgsl; motion_sincos can be one ULP off).
+fn motion_exact_sincos(angle:f32)->vec2<f32>{
+    let n=i32(floor(angle*0.6366197723675814+0.5));let product=trig_product(f32(n),1.5707963705062866);
+    let head=trig_two_sum(angle,-product.x);let r=trig_two_sum(head.x,rounded_add(head.y,rounded_add(-product.y,f32(n)*4.3711390001862426e-8)));
+    let sc=select(trig_sincos_series(r),vec4<f32>(r,1.0,0.0),abs(r.x)<1e-6);let q=((n%4)+4)%4;var sn=sc.xy;var cs=sc.zw;
+    if(q==1){sn=sc.zw;cs=-sc.xy;}else if(q==2){sn=-sc.xy;cs=-sc.zw;}else if(q==3){sn=-sc.zw;cs=sc.xy;}
+    return vec2<f32>(rounded_add(sn.x,sn.y),rounded_add(cs.x,cs.y));
+}
+//#endif
 fn motion_compose(q:vec4<f32>,y:vec4<f32>,z:vec4<f32>,w:vec4<f32>)->NativeTransform{
     let q0=1.4142135623730951*q.w;let q1=1.4142135623730951*q.x;
     let q2=1.4142135623730951*q.y;let q3=1.4142135623730951*q.z;
     let qda=q0*q1;let qdb=q0*q2;let qdc=q0*q3;let qaa=q1*q1;let qab=q1*q2;
     let qac=q1*q3;let qbb=q2*q2;let qbc=q2*q3;let qcc=q3*q3;
+//#if !MNEE_MOTION
     let rx=vec3<f32>(1.0-qbb-qcc,-qdc+qab,qdb+qac);
     let ry=vec3<f32>(qdc+qab,1.0-qaa-qcc,-qda+qbc);
     let rz=vec3<f32>(-qdb+qac,qda+qbc,1.0-qaa-qbb);
+//#endif
+//#if MNEE_MOTION
+    // Rotation entries: (1-a)-b on the diagonal, c+d elsewhere (the second sum adds +0), in that order.
+    var first=array<f32,9>(1.0,-qdc,qdb,qdc,1.0,-qda,-qdb,qda,1.0);
+    var second=array<f32,9>(-qbb,qab,qac,qab,-qaa,qbc,qac,qbc,-qaa);
+    var third=array<f32,9>(-qcc,0.0,0.0,0.0,-qcc,0.0,0.0,0.0,-qbb);
+    var r:array<f32,9>;let sums=rounded_steps(18u);
+    for(var k=0u;k<sums;k++){let i=k/2u;let odd=(k&1u)!=0u;r[i]=rounded_add(select(first[i],r[i],odd),select(second[i],third[i],odd));}
+    let rx=vec3<f32>(r[0],r[1],r[2]);let ry=vec3<f32>(r[3],r[4],r[5]);let rz=vec3<f32>(r[6],r[7],r[8]);
+//#endif
     let sx=vec3<f32>(y.w,z.z,w.y);let sy=vec3<f32>(z.x,z.w,w.z);let sz=vec3<f32>(z.y,w.x,w.w);
+//#if !MNEE_MOTION
     return NativeTransform(vec4<f32>(dot(rx,sx),dot(rx,sy),dot(rx,sz),y.x),
                            vec4<f32>(dot(ry,sx),dot(ry,sy),dot(ry,sz),y.y),
                            vec4<f32>(dot(rz,sx),dot(rz,sy),dot(rz,sz),y.z));
+//#endif
+//#if MNEE_MOTION
+    var m:array<f32,9>;let entries=rounded_steps(9u);
+    for(var k=0u;k<entries;k++){
+        let row=select(select(rz,ry,k/3u==1u),rx,k<3u);let column=select(select(sz,sy,k%3u==1u),sx,k%3u==0u);
+        m[k]=rounded_dot(row,column);
+    }
+    return NativeTransform(vec4<f32>(m[0],m[1],m[2],y.x),vec4<f32>(m[3],m[4],m[5],y.y),vec4<f32>(m[6],m[7],m[8],y.z));
+//#endif
 }
 fn motion_interpolate(table:u32,first:u32,steps:u32,time:f32)->NativeTransform{
     if(steps<2u||!(time>=0.0&&time<=1.0)){fail();return NativeTransform();}
-    let maximum=steps-1u;let step=min(u32(time*f32(maximum)),maximum-1u);let t=time*f32(maximum)-f32(step);
+//#if MNEE_MOTION else     let maximum=steps-1u;let step=min(u32(time*f32(maximum)),maximum-1u);let t=time*f32(maximum)-f32(step);
+    // t = time*maxstep - step with the product rounded first (a driver may contract it).
+    let maximum=steps-1u;let step=min(u32(time*f32(maximum)),maximum-1u);let t=rounded_add(time*f32(maximum),-f32(step));
+//#endif
     let a=table_at(table,first+step,MOTION_SIZE);let b=table_at(table,first+step+1u,MOTION_SIZE);
     let rotation=motion_rotation(heap_vec4(a+MOTION_X),heap_vec4(b+MOTION_X),t);
     let translation=motion_add4((1.0-t)*heap_vec4(a+MOTION_Y),t*heap_vec4(b+MOTION_Y));
@@ -113,7 +187,9 @@ fn motion_interpolate(table:u32,first:u32,steps:u32,time:f32)->NativeTransform{
 // Native object transform/inverse evaluation. The inverse mirrors the reviewed
 // Cycles determinant/adjugate implementation, including its degenerate fallback.
 fn motion_point(t:NativeTransform,v:vec3<f32>)->vec3<f32>{
-    return motion_direction(t,v)+vec3<f32>(t.x.w,t.y.w,t.z.w);
+//#if MNEE_MOTION else     return motion_direction(t,v)+vec3<f32>(t.x.w,t.y.w,t.z.w);
+    return motion_exact_vector(t,v,true);
+//#endif
 }
 fn motion_transpose(t:NativeTransform,v:vec3<f32>)->vec3<f32>{
     return rounded_add3(rounded_add3(v.x*t.x.xyz,v.y*t.y.xyz),v.z*t.z.xyz);

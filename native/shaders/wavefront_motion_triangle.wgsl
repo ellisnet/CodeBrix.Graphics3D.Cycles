@@ -9,7 +9,9 @@ fn native_triangle_kind(kind:u32)->bool{return kind==PRIMITIVE_TRIANGLE||kind==P
 fn triangle_motion_time(object:u32,time:f32)->TriangleTime{
     let at=table_at(G_objects,object,SIZE_objects);let steps=load_half(at+O_num_geom_steps);
     if(steps<2u||!(time>=0.0&&time<=1.0)){fail();return TriangleTime(0u,0u,0.0,1u);}
-    let step=min(u32(time*f32(steps-1u)),steps-2u);let t=time*f32(steps-1u)-f32(step);let center=(steps-1u)/2u;
+//#if MNEE_MOTION else     let step=min(u32(time*f32(steps-1u)),steps-2u);let t=time*f32(steps-1u)-f32(step);let center=(steps-1u)/2u;
+    let step=min(u32(time*f32(steps-1u)),steps-2u);let t=rounded_add(time*f32(steps-1u),-f32(step));let center=(steps-1u)/2u;
+//#endif
     let a=select(select(step,step+1u,step<center),0u,step==center);
     let b=select(select(step+1u,step+2u,step+1u<center),0u,step+1u==center);
     return TriangleTime(a,b,t,0u);

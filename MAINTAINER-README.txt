@@ -181,8 +181,9 @@ research that back it.
                                           and license readiness) and the
                                           per-platform test procedures
                                           TESTING-MACOS-ARM64.md,
-                                          TESTING-MACOS-X64.md and
+                                          TESTING-MACOS-X64.md,
                                           TESTING-LINUX-ARM64.md,
+                                          TESTING-LINUX-ARM64-ORACLE.md and
                                           TESTING-WINDOWS-X64.md
 
     NOTICE                                generated Apache-2.0 NOTICE file
@@ -241,6 +242,9 @@ MAP OF THE NATIVE DOCUMENTATION
                                   WGSL on Direct3D 12 and Vulkan
     docs/TESTING-LINUX-ARM64.md   test procedure for the Raspberry Pi 5: WGSL
                                   on the V3D GPU and the glibc ARM64 reference
+    docs/TESTING-LINUX-ARM64-ORACLE.md
+                                  the Linux ARM64 CPU oracle corpus in a
+                                  Debian arm64 container on an Apple Silicon Mac
     compatibility/README.md       the compatibility inventory and its checks
     prototype/README.md           the native scene-to-image prototype
     parity/README.md              material tests, real-model renders, multi-

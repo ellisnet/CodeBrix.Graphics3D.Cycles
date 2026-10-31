@@ -83,7 +83,7 @@ fn bgl_world_data(direction:vec3<f32>,dD:f32,time:f32)->SurfaceData{
     if(shader_id>=table_count(G_shaders)){surface_failure(&sd);return sd;}
     sd.P=direction;sd.N=-direction;sd.Ng=-direction;sd.wi=-direction;sd.object_id=NONE;sd.prim=NONE;
     sd.shader=data_word(D_background_surface_shader);sd.shader_flag=load_word(table_at(G_shaders,shader_id,SIZE_shaders)+SH_flags);
-    sd.dPdu=surface_orthogonal(sd.Ng);sd.dPdv=cross(sd.Ng,sd.dPdu);
+    sd.dPdu=surface_orthogonal(sd.Ng);sd.dPdv=rounded_cross(sd.Ng,sd.dPdu);
     sd.time=time;sd.ray_length=bitcast<f32>(0x7f7fffffu);
     sd.dP=dD;sd.dI=sd.dP;sd.du=vec2<f32>(sd.dP,0);sd.dv=vec2<f32>(0,sd.dP);
     return sd;

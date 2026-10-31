@@ -26,6 +26,10 @@ const SVM_STACK_WORDS:u32=263u;
 var<private> svm_slot:u32=0xffffffffu;
 var<private> svm_stack_at:u32=0u;
 fn svm_invocation(id:u32){svm_slot=id;}
+//#if SHADER_EVAL_DISPLACE
+// True for the displacement program of shader_eval_displace (NODE_SHADER_JUMP's offset_displacement).
+var<private> svm_displace_program:bool=false;
+//#endif
 fn svm_stack_get(word:u32)->u32{return load_word(svm_stack_at+word*4u);}
 fn svm_stack_set(word:u32,value:u32){store_word(svm_stack_at+word*4u,value);}
 struct SvmState {
@@ -76,7 +80,13 @@ fn svm_int(s:ptr<function,SvmState>,value:f32)->u32{
     return bitcast<u32>(i32(value));
 }
 fn svm_normalize(v:vec3<f32>)->vec3<f32>{let len=length(v);if(len!=0.0){return v*(1.0/len);}return v;}
-fn svm_divide(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{return vec3<f32>(c_safe_divide(a.x,b.x),c_safe_divide(a.y,b.y),c_safe_divide(a.z,b.z));}
+// safe_divide(float3, float3): each lane a correctly rounded quotient, 0 where the divisor is 0 (the WGSL
+// division is not correctly rounded on Intel/Mesa). One rounded_divide body for the three lanes.
+fn svm_divide(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
+    var out=vec3<f32>(0);let lanes=rounded_steps(3u);
+    for(var k=0u;k<lanes;k++){let d=b[min(k,2u)];out=select(out,vec3<f32>(select(rounded_divide(a[min(k,2u)],d),0.0,d==0.0)),vec3<u32>(0u,1u,2u)==vec3<u32>(k));}
+    return out;
+}
 fn svm_vector(s:ptr<function,SvmState>,node:u32){
     let kind=load_word(node+N_VectorMath_math_type);
     let a=svm_input3(s,node+N_VectorMath_a);let b=svm_input3(s,node+N_VectorMath_b);let c=svm_input3(s,node+N_VectorMath_c);let scale=svm_input(s,node+N_VectorMath_param1);
@@ -320,6 +330,20 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_AO
             case NODE_AMBIENT_OCCLUSION:{size=SZ_AmbientOcclusion;}
 //#endif
+//#if SVM_NODE_BEVEL
+            case OP_BEVEL:{size=SZ_Bevel;}
+//#endif
+//#if SVM_NODE_RAYCAST
+            case OP_RAYCAST:{size=SZ_Raycast;}
+//#endif
+//#if SVM_NODE_RADIAL_TILING
+            case OP_RADIAL_TILING:{size=SZ_RadialTiling;}
+//#endif
+//#if SVM_NODE_DISPLACEMENT
+            case OP_SET_DISPLACEMENT:{size=SZ_SetDisplacement;}
+            case OP_DISPLACEMENT:{size=SZ_Displacement;}
+            case OP_VECTOR_DISPLACEMENT:{size=SZ_VectorDisplacement;}
+//#endif
 //#if SVM_NODE_BUMP
             case NODE_SET_BUMP:{size=SZ_SetBump;}
 //#endif
@@ -351,7 +375,10 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
         }
         let node=svm_take(&s,size);if(s.error!=0u){return s.output;}
         switch(opcode){
-            case NODE_SHADER_JUMP:{s.pc=load_word(node+select(N_ShaderJump_offset_surface,N_ShaderJump_offset_volume,volume));}
+//#if SHADER_EVAL_DISPLACE else             case NODE_SHADER_JUMP:{s.pc=load_word(node+select(N_ShaderJump_offset_surface,N_ShaderJump_offset_volume,volume));}
+            // shader_eval_displace runs the displacement program (SHADER_TYPE_DISPLACEMENT).
+            case NODE_SHADER_JUMP:{s.pc=load_word(node+select(select(N_ShaderJump_offset_surface,N_ShaderJump_offset_volume,volume),N_ShaderJump_offset_displacement,svm_displace_program));}
+//#endif
             case NODE_JUMP_IF_ZERO,NODE_JUMP_IF_ONE:{
                 var offset=N_JumpIfZero_stack_offset;var jump_offset=N_JumpIfZero_jump_offset;
                 if(opcode==NODE_JUMP_IF_ONE){offset=N_JumpIfOne_stack_offset;jump_offset=N_JumpIfOne_jump_offset;}
@@ -647,6 +674,17 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 if(color_offset!=SVM_STACK_INVALID){svm_store3(&s,color_offset,ao*svm_input3(&s,node+N_AmbientOcclusion_color));}
             }
 //#endif
+//#if SVM_RAYTRACE_NODES
+            // svm_node_bevel and svm_node_raycast: one case, so their ray tracing
+            // (wavefront_ao.wgsl, prepare_surface_raytrace only) has one call site.
+            case OP_BEVEL,OP_RAYCAST:{svm_raytrace_node(&s,node,index,opcode==OP_BEVEL);}
+//#endif
+//#if SVM_NODE_RADIAL_TILING
+            case OP_RADIAL_TILING:{svm_radial_tiling(&s,node);}
+//#endif
+//#if SVM_NODE_DISPLACEMENT
+            case OP_SET_DISPLACEMENT,OP_DISPLACEMENT,OP_VECTOR_DISPLACEMENT:{svm_displacement(&s,node,opcode);}
+//#endif
 //#if SVM_NODE_BUMP
             case NODE_SET_BUMP:{
                 svm_set_bump(&s,node);
@@ -688,7 +726,7 @@ fn svm_world(index:u32,shader_id:u32)->vec3<f32>{
     var sd:SurfaceData;let direction=heap_vec3(state_address(S_ray_D,index,12u));
     sd.P=direction;sd.N=-direction;sd.Ng=-direction;sd.wi=-direction;sd.object_id=NONE;sd.prim=NONE;
     sd.shader=shader_id;sd.shader_flag=load_word(p(18u)+shader_id*SIZE_shaders+SH_flags);
-    sd.dPdu=surface_orthogonal(sd.Ng);sd.dPdv=cross(sd.Ng,sd.dPdu);
+    sd.dPdu=surface_orthogonal(sd.Ng);sd.dPdv=rounded_cross(sd.Ng,sd.dPdu);
     sd.time=heap_float(state_address(S_ray_time,index,4u));sd.ray_length=bitcast<f32>(0x7f7fffffu);
     sd.dP=heap_float(state_address(S_ray_dD,index,4u));
     // background_light_clamp_dD for indirect rays (importance map resolution).
@@ -719,3 +757,57 @@ fn svm_evaluate_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,closure_
     if(index!=NONE){flag=state_word(S_path_flag,index);visibility=state_byte(S_path_visibility,index);lcg=svm_lcg(index);}
     return svm_evaluate_context_seeded(index,geometry,closure_limit,closure_base,flag,visibility,lcg,volume,previous);
 }
+//#if SVM_RAYTRACE_NODES
+// svm_node_bevel (pinned svm/bevel.h) and svm_node_raycast (svm/raycast.h): the
+// bevel normal (sd->N under every node mask without KERNEL_FEATURE_NODE_RAYTRACE,
+// i.e. every evaluation but prepare_surface_raytrace), and the raycast hit outputs
+// with the attribute records that follow the node, evaluated at the hit
+// (svm_raycast_attr_eval_and_store) or stored as zero (no hit, or no ray tracing).
+fn svm_raytrace_node(s:ptr<function,SvmState>,node:u32,index:u32,bevel:bool){
+//#if !SVM_NODE_BEVEL
+    if(bevel){svm_error(s,2u);return;}
+//#endif
+//#if !SVM_NODE_RAYCAST
+    if(!bevel){svm_error(s,2u);return;}
+//#endif
+    var radius=0.0;var samples=0u;var position=vec3<f32>(0);var direction=vec3<f32>(0);var distance=0.0;var only_local=false;var bump_filter_width=0.0;var count=0u;
+//#if SVM_NODE_BEVEL
+    if(bevel){radius=svm_input(s,node+N_Bevel_radius);samples=svm_byte(node+N_Bevel_num_samples);}
+//#endif
+//#if SVM_NODE_RAYCAST
+    if(!bevel){position=svm_input3(s,node+N_Raycast_position);direction=svm_input3(s,node+N_Raycast_direction);distance=svm_input(s,node+N_Raycast_distance);
+        only_local=svm_byte(node+N_Raycast_only_local)!=0u;bump_filter_width=heap_float(node+N_Raycast_bump_filter_width);count=load_half(node+N_Raycast_num_attributes);}
+//#endif
+    var traced=false;var bevel_N=(*s).geometry.N;var hit:SurfaceData;hit.object_id=NONE;
+//#if SVM_NODE_RAYTRACE
+    if(svm_raytrace){let result=raytrace_node_trace(index,(*s).geometry,bevel,radius,samples,position,direction,distance,only_local,bump_filter_width);
+        if(result.error!=0u){return;}traced=true;bevel_N=result.N;hit=result.hit;}
+//#endif
+//#if SVM_NODE_BEVEL
+    if(bevel){
+        let normal_offset=svm_byte(node+N_Bevel_normal_offset);
+        if(traced&&normal_offset!=SVM_STACK_INVALID){bevel_N=surface_native_normalize(svm_load3(s,normal_offset)+(bevel_N-(*s).geometry.N));}
+        svm_store3(s,svm_byte(node+N_Bevel_out_offset),bevel_N);return;
+    }
+//#endif
+//#if SVM_NODE_RAYCAST
+    var is_hit=0.0;var is_self_hit=0.0;var hit_distance=distance;var hit_position=vec3<f32>(0);var hit_normal=vec3<f32>(0);
+    if(hit.object_id!=NONE){
+        is_hit=1.0;is_self_hit=select(0.0,1.0,(*s).geometry.object_id==hit.object_id);hit_distance=hit.ray_length;
+        hit_position=rounded_add3(position,direction*hit_distance);hit_normal=hit.N;
+        let geometry=(*s).geometry;(*s).geometry=hit;
+        for(var i=0u;i<count;i++){let opcode=load_word(svm_take(s,4u));let attribute_record=svm_take(s,SZ_Attr);if((*s).error!=0u){break;}
+            if(opcode!=OP_RAYCAST_ATTR){svm_error(s,4u);break;}svm_attribute(s,attribute_record,false);}
+        (*s).geometry=geometry;
+    }else{
+        for(var i=0u;i<count;i++){let opcode=load_word(svm_take(s,4u));let attribute_record=svm_take(s,SZ_Attr);if((*s).error!=0u){return;}
+            if(opcode!=OP_RAYCAST_ATTR){svm_error(s,4u);return;}
+            let output=svm_byte(attribute_record+N_Attr_output_type);let out_offset=svm_byte(attribute_record+N_Attr_out_offset);
+            if(output==NODE_ATTR_OUTPUT_FLOAT3){svm_store3(s,out_offset,vec3<f32>(0));}else{svm_store(s,out_offset,0.0);}}
+    }
+    svm_optional_store(s,svm_byte(node+N_Raycast_is_hit_offset),is_hit);svm_optional_store(s,svm_byte(node+N_Raycast_is_self_hit_offset),is_self_hit);
+    svm_optional_store(s,svm_byte(node+N_Raycast_hit_distance_offset),hit_distance);
+    svm_optional_store3(s,svm_byte(node+N_Raycast_hit_position_offset),hit_position);svm_optional_store3(s,svm_byte(node+N_Raycast_hit_normal_offset),hit_normal);
+//#endif
+}
+//#endif

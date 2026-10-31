@@ -38,6 +38,7 @@ static std::string surface_layout(){
   DATA(integrator,max_diffuse_bounce);DATA(integrator,max_transmission_bounce);
   DATA(integrator,max_glossy_bounce);
   DATA(background,transparent_roughness_squared_threshold);
+  source<<"//#if SURFACE_FILTER_GLOSSY\n";DATA(integrator,filter_glossy);source<<"//#endif\n";
 #undef DATA
   constant("O_shadow_terminator_shading_offset",offsetof(KernelObject,shadow_terminator_shading_offset));
 #define ENUM(name) constant(#name,uint32_t(name))
@@ -66,13 +67,11 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   validate_geometry_motion();
   validate_volume();
   validate_lighting(data.integrator.use_direct_light);
-  // Shadow terminator: the shading multiplier 1/(1-offset/2) is implemented
-  // for offsets in [0,1] (multiplier at most 2, keeping shift_cos_in's cosine
-  // argument inside [0,pi]); larger offsets are rejected, never approximated.
+  // Shadow terminator: the shading multiplier 1/(1-offset/2) for every offset (multipliers above 2,
+  // infinite or negative through the wide cosine, SHADOW_TERMINATOR_WIDE); NaN is rejected.
   for(const KernelObject &object:object_records){
     require(std::isfinite(object.shadow_terminator_geometry_offset),"Invalid native shadow terminator geometry offset");
-    require(!(object.shadow_terminator_shading_offset>2.0f)&&!std::isnan(object.shadow_terminator_shading_offset),
-            "WebGPU shadow terminator shading offset outside [0, 1] not implemented");
+    require(!std::isnan(object.shadow_terminator_shading_offset),"Invalid native shadow terminator shading offset");
   }
   require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_SHADOW_LINKING)),
           "WebGPU surface optional integration features not implemented");
@@ -80,7 +79,6 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   if(data.integrator.use_caustics)validate_mnee();
   require((data.film.pass_flag&~shadow_catcher_pass_mask())==0,"WebGPU surface data passes not implemented");
   validate_shadow_catcher();
-  require(data.integrator.filter_glossy==FLT_MAX,"WebGPU surface glossy filtering not implemented");
   // Native Scene::get_max_closure_count() preserves a global minimum of one.
   // Local zero-storage SVM evaluation for termination remains valid.
   require(data.max_closures>=1&&data.max_closures<=MAX_CLOSURE,"Invalid surface closure capacity");
@@ -164,7 +162,11 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // word 30): one 192-word slot per input of the raytrace entry, after the records.
   const bool raytrace=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE;
   const size_t ao_stack_at=records_bytes+(reserve_shadow?sizeof(uint32_t):0);
-  const size_t needed=ao_stack_at+(raytrace?size_t(n)*BVH_STACK_SIZE*sizeof(uint32_t):0);
+  // With the remaining SVM BSDF families (pipelines.h SF_BSDF_FAMILIES) the BSDF sample is its own entry,
+  // shade_surface_sample, whose 64-byte record per input (push word 0) shade_surface reads.
+  const bool sample_stage=(shader_features()&SF_BSDF_FAMILIES).any();
+  const size_t sample_at=ao_stack_at+(raytrace?size_t(n)*BVH_STACK_SIZE*sizeof(uint32_t):0);
+  const size_t needed=sample_at+(sample_stage?size_t(n)*64:0);
   if(needed>surface_closure_bytes){
     if(surface_closures){flush();release(surface_closures);surface_closures=0;surface_closure_bytes=0;}
     surface_closures=allocate(needed);surface_closure_bytes=needed;
@@ -174,6 +176,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   p[26]=p[24]+4;p[27]=surface_stage_bytes;
   if(reserve_shadow)p[28]=surface_closures+uint32_t(records_bytes);
   if(raytrace)p[30]=surface_closures+uint32_t(ao_stack_at);
+  if(sample_stage)p[0]=surface_closures+uint32_t(sample_at);
   // With emissive triangles (LIGHT_TRIANGLE) the light stage is two entries
   // (wavefront_surface.wgsl): shade_surface_light samples a lamp and
   // shade_surface_light_triangle does the triangle work, which keeps each entry
@@ -182,6 +185,8 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // shade_surface_light_select (light tree or light linking) runs first whenever
   // the module carries it: the samplers then read its selection record.
   const bool select_stage=(shader_features()&SF_LIGHT_SELECT).any();
+  if(sample_stage&&(!pipeline_current(surface_sample,"shade_surface_sample")||!surface_sample.value))
+    surface_sample=std::move(build_pipelines("surface",surface_source(),{"shade_surface_sample"})[0]);
   if(select_stage&&(!pipeline_current(surface_light_select,"shade_surface_light_select")||!surface_light_select.value))
     surface_light_select=std::move(build_pipelines("surface",surface_source(),{"shade_surface_light_select"})[0]);
   if(!pipeline_current(surface,"shade_surface")||(triangle_stage&&!surface_light_triangle.value)){
@@ -224,6 +229,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   dispatch(p,uint32_t(work),surface_light,workgroup("shade_surface_light"));
   if(triangle_stage)dispatch(p,uint32_t(work),surface_light_triangle,workgroup("shade_surface_light_triangle"));
   dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
+  if(sample_stage)dispatch(p,uint32_t(work),surface_sample,workgroup("shade_surface_sample"));
   dispatch(p,uint32_t(work),surface,workgroup("shade_surface"));
   // integrator_shade_surface's MNEE cleanup (wavefront_mnee.wgsl), caustic scenes only.
   if(data.integrator.use_caustics){
@@ -277,5 +283,37 @@ void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args)
   // Dispatch ordering makes the cached ShaderData visible to the evaluation.
   dispatch(p,uint32_t(work),light_nee_prepare,workgroup("prepare_light_nee"));
   dispatch(p,uint32_t(work),light_nee,workgroup("shade_light_nee"));
+}
+
+// DEVICE_KERNEL_SHADER_EVAL_DISPLACE (integrator/shader_eval.cpp eval_gpu, for
+// GeometryManager::displace before the BVH build): the KernelShaderEvalInput array,
+// the float3 output (added to), the cache-miss word (always false: no tiled images),
+// the chunk offset and the chunk size. The displacement programs run in the surface
+// module's shader_eval_displace (SHADER_EVAL_DISPLACE), at most svm_stack_slots items
+// per dispatch (one SVM stack slot per invocation).
+void WebGPUDevice::enqueue_displace(int work,const DeviceKernelArguments &args){
+  require(args.count==5,"Displacement evaluation argument count");
+  auto scalar=[&](unsigned i){require(args.types[i]==DeviceKernelArguments::INT32&&args.sizes[i]==4,"Invalid displacement evaluation integer");
+    int value;std::memcpy(&value,args.values[i],4);require(value>=0,"Negative displacement evaluation range");return uint32_t(value);};
+  const uint32_t offset=scalar(3),count=scalar(4);require(uint32_t(work)>=count,"Incomplete displacement evaluation dispatch");
+  auto pointer=[&](unsigned i,size_t bytes){require(args.types[i]==DeviceKernelArguments::POINTER&&args.sizes[i]==sizeof(device_ptr),"Invalid displacement evaluation pointer");
+    device_ptr address;std::memcpy(&address,args.values[i],sizeof(address));validate(address,bytes);require(address%4==0,"Unaligned displacement evaluation pointer");return uint32_t(address);};
+  std::array<uint32_t,32> p{};p[1]=count;p[3]=offset;p[17]=error_word;
+  p[2]=pointer(0,(size_t(offset)+count)*sizeof(KernelShaderEvalInput));p[4]=pointer(1,(size_t(offset)+count)*3*sizeof(float));
+  {uint32_t miss=pointer(2,4);uint32_t zero=0;upload(miss,&zero,4);}
+  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU displacement currently requires triangle primitives");
+  // Runs during scene preparation, before any integrator state exists (p[7] stays 0).
+  p[6]=constants.at("data");p[18]=globals.at("shaders");
+  require(remaining(p[18])%sizeof(KernelShader)==0,"Invalid displacement shader table");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));
+  if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid SVM word table");p[22]=uint32_t(remaining(p[21])/4);}
+  p[14]=scene_tables();
+  if(!count||!work)return;
+  require((shader_features()&SF_EVAL_DISPLACE).any(),"Invalid native displacement evaluation without a displacement shader");
+  const ShaderFeatures unused=displacement_unused_svm_features();
+  if(!pipeline_current(surface_displace,"shader_eval_displace",unused))
+    surface_displace=std::move(build_pipelines("surface",surface_source(),{"shader_eval_displace"},SF_NONE,unused)[0]);
+  for(uint32_t first=0;first<count;first+=svm_stack_slots){
+    p[30]=first;dispatch(p,std::min<uint32_t>(svm_stack_slots,count-first),surface_displace,workgroup("shader_eval_displace"));
+  }
 }
 }

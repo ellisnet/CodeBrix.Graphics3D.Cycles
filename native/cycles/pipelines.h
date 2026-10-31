@@ -184,9 +184,53 @@ unsigned debug_output_mode();
 // Direct3D 12 adapters unless CODEBRIX_CYCLES_DRIVER_WORKAROUNDS=none (a
 // diagnostic, to test a new driver) is set.
 inline constexpr ShaderFeatures SF_DRIVER_CACHE_SALT=ShaderFeatures::bit(117);
-// Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108 and 110;
-// bit 62 is unassigned; 107 is the raytrace module variant).
-inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE;
+// Closures and surface nodes of the remaining SVM BSDF and raytrace node
+// families (bits 128 onwards). METALLIC: the Metallic BSDF node (physical
+// conductor and F82 tint Fresnel, svm/closure.h CLOSURE_BSDF_PHYSICAL_CONDUCTOR
+// and CLOSURE_BSDF_F82_CONDUCTOR); the closures it makes are GGX or Beckmann
+// microfacet records with the conductor (model 3) or F82 tint (model 5) Fresnel.
+inline constexpr ShaderFeatures SF_BSDF_METALLIC=ShaderFeatures::bit(128);
+// BECKMANN: the Beckmann distribution (Glossy, Anisotropic, Refraction, Glass and
+// Metallic BSDF nodes): CLOSURE_BSDF_MICROFACET_BECKMANN_ID, _REFRACTION_ID, _GLASS_ID.
+inline constexpr ShaderFeatures SF_BSDF_BECKMANN=ShaderFeatures::bit(129);
+// ASHIKHMIN_SHIRLEY: the Glossy BSDF node's Ashikhmin-Shirley distribution.
+// VELVET: the Sheen BSDF node's Ashikhmin velvet distribution. TOON: the Toon
+// BSDF node (diffuse and glossy components).
+inline constexpr ShaderFeatures SF_BSDF_ASHIKHMIN_SHIRLEY=ShaderFeatures::bit(130);
+inline constexpr ShaderFeatures SF_BSDF_VELVET=ShaderFeatures::bit(131);
+inline constexpr ShaderFeatures SF_BSDF_TOON=ShaderFeatures::bit(132);
+// BEVEL and RAYCAST: the Bevel and Raycast shader nodes (svm/bevel.h, svm/raycast.h):
+// their records everywhere, their ray tracing only in prepare_surface_raytrace
+// (SVM_NODE_RAYTRACE, the SHADE_SURFACE_RAYTRACE queue of the AO node).
+inline constexpr ShaderFeatures SF_NODE_BEVEL=ShaderFeatures::bit(133);
+inline constexpr ShaderFeatures SF_NODE_RAYCAST=ShaderFeatures::bit(134);
+// RADIAL_TILING: the Radial Tiling node (svm/radial_tiling.h, radial_tiling_shared.h).
+inline constexpr ShaderFeatures SF_NODE_RADIAL_TILING=ShaderFeatures::bit(135);
+// Integrator glossy filtering (filter_glossy != FLT_MAX; surface_shader_prepare_closures' bsdf_blur).
+inline constexpr ShaderFeatures SF_FILTER_GLOSSY=ShaderFeatures::bit(136);
+// Shadow terminator shading offsets above 1 (kernel multiplier above 2, infinite or negative).
+inline constexpr ShaderFeatures SF_TERMINATOR_WIDE=ShaderFeatures::bit(137);
+// Transparent shadows in scenes with motion blur (object or deformation motion): the all-hits traversal
+// at the shadow ray's time.
+inline constexpr ShaderFeatures SF_SHADOW_MOTION=ShaderFeatures::bit(138);
+// MNEE (caustics) in scenes with motion blur: caster vertices of deforming objects from the centre frame,
+// as the pinned mnee_setup_manifold_vertex fetches them.
+inline constexpr ShaderFeatures SF_MNEE_MOTION=ShaderFeatures::bit(139);
+// Displacement nodes (svm/displace.h: NODE_SET_DISPLACEMENT, NODE_DISPLACEMENT, NODE_VECTOR_DISPLACEMENT), in a bump
+// or a displacement program.
+inline constexpr ShaderFeatures SF_NODE_DISPLACEMENT=ShaderFeatures::bit(140);
+// True displacement (a referenced shader with SD_HAS_DISPLACEMENT): DEVICE_KERNEL_SHADER_EVAL_DISPLACE (the
+// shader_eval_displace entry and the displacement program's jump).
+inline constexpr ShaderFeatures SF_EVAL_DISPLACE=ShaderFeatures::bit(141);
+// Bump from displacement over displaced geometry (displacement method Both): enter_bump_eval's undisplaced
+// position and normal.
+inline constexpr ShaderFeatures SF_BUMP_UNDISPLACED=ShaderFeatures::bit(142);
+// Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108, 110
+// and 128-142; bit 62 is unassigned; 107 is the raytrace module variant).
+inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
+  SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED;
+// The families above, for regions shared by all of them (closure classification).
+inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
 // Superset specialization mode (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset,
 // desktop diagnostic): every handler is compiled in except these regions, which
@@ -194,7 +238,8 @@ inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THI
 // pushed the unspecialized entry points past what Intel Mesa 25.0.7 compiles
 // correctly (native/DEVICE.md, "Linux reference fixes on the updated Mesa").
 inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
-  SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE;
+  SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|
+  SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //
@@ -271,7 +316,7 @@ struct SvmCensus {
 // transforms. Paths stop where the GPU would stop (END, unknown opcode/closure,
 // or a bounds error); the result is a superset of executable handlers.
 // `roots` (optional) limits the program starts to these shader indices.
-SvmCensus svm_census(const std::vector<uint32_t> &words,size_t shader_count,const std::vector<uint32_t> *roots=nullptr);
+SvmCensus svm_census(const std::vector<uint32_t> &words,size_t shader_count,const std::vector<uint32_t> *roots=nullptr,bool displacement=false);
 
 // Applies feature markers. Unknown feature names or malformed regions throw.
 std::string specialize_wgsl(const std::string &source,ShaderFeatures enabled);

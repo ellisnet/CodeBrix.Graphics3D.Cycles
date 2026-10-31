@@ -40,11 +40,11 @@ def inputs(capture):
         # and 20 (prepare_light_nee in surface.wgsl); v10 adds entry 21
         # (shade_surface_light_select in surface.wgsl), 22 (light_tree_forward in background.wgsl) and 23-25 (the
         # shadow catcher split module, shadow_catcher.wgsl), 26 (prepare_surface_raytrace in surface_raytrace.wgsl)
-        # and 27-34 (the seven MNEE entries and mnee_cleanup, all in surface.wgsl).
+        # and 27-34 (the seven MNEE entries and mnee_cleanup, all in surface.wgsl), 35 (shade_surface_sample).
         names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
                  'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow',
                  'surface', 'surface', 'background', 'surface', 'surface', 'background', 'shadow_catcher', 'shadow_catcher', 'shadow_catcher',
-                 'surface_raytrace']+['surface']*8
+                 'surface_raytrace']+['surface']*9
         counts = meta['pipelineDispatches']
         assert len(counts) <= len(names) and all(isinstance(n, int) and n >= 0 for n in counts), 'Unknown pipeline metadata'
         assert all(names[i] is not None for i, count in enumerate(counts) if count), 'Reserved pipeline metadata'

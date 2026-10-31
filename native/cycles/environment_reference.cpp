@@ -37,6 +37,11 @@ std::vector<float> original_background_evaluate(ccl::DeviceScene &scene,const st
   for(size_t i=0;i<inputs.size();i++)ccl::kernel_background_evaluate(g.kg(),inputs.data(),out.data(),&miss,int(i));
   return out;
 }
+std::vector<float> original_displace_evaluate(ccl::DeviceScene &scene,const std::vector<ccl::KernelShaderEvalInput> &inputs){
+  Globals g(scene);std::vector<float> out(inputs.size()*3,0.0f);ccl::uint miss=0;
+  for(size_t i=0;i<inputs.size();i++)ccl::kernel_displace_evaluate(g.kg(),inputs.data(),out.data(),&miss,int(i));
+  return out;
+}
 std::vector<float> original_light_sample_evals(ccl::DeviceScene &scene,const std::vector<ccl::IntegratorStateCPU> &states){
   using namespace ccl;Globals g(scene);KernelGlobals kg=g.kg();std::vector<float> out(states.size()*4);
   for(size_t i=0;i<states.size();i++){auto state=states[i];RNGState rng;path_state_rng_load(&state,&rng);const auto random=path_state_rng_3D(kg,&rng,PRNG_LIGHT);LightSample ls{};

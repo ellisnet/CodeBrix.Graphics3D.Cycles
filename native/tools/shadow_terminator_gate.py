@@ -22,7 +22,7 @@ from device_gate import sha, save
 from render_gate import inputs
 import render_replay
 
-CASES = 10
+CASES = 14
 # Pairs that differ only in one offset (same light and material): offset case, control.
 ISOLATED = {'sun-geometry': (0, 3), 'sun-shading': (1, 3), 'point-geometry': (4, 7), 'point-shading': (5, 7)}
 
@@ -96,8 +96,9 @@ def main():
                       offsetChangesCpuImage=isolated,
                       scope='Object shadow_terminator_geometry_offset (shadow-ray origin lift on smooth triangles, static, '
                             'instanced, moving and deforming) and shadow_terminator_shading_offset (shift_cos_in in BSDF '
-                            'evaluation and sampling, offsets 0 to 1) under sun and point lights against original CPU '
-                            'images, with native command replays. Shading offsets above 1 are rejected before dispatch.')
+                            'evaluation and sampling, offsets 0 to 3, the wide cosine beyond pi for offsets above 2) under sun '
+                            'and point lights against original CPU images, with native command replays. A NaN shading offset '
+                            'is rejected before dispatch.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

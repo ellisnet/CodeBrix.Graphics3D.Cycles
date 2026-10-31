@@ -524,3 +524,38 @@ bring them back verbatim.
   new and changed paths (`git status --porcelain`) first; build output under
   `native/work/` stays uncommitted (it is ignored).
 - Record every MISSING step that blocked or limited the run.
+
+## 9. Metal comparison: Velvet subnormal paths and Radial Tiling with two sides
+
+Two WebGPU-device behaviours are provisional until this comparison is done on the Apple Silicon Metal build: the
+Velvet interim subnormal rule and the refusal of Radial Tiling with two sides and `0 < roundness < 1`. Inputs and the
+Linux x64 references are frozen in `native/evidence/metal-comparison-linux-x64-<date>/` (its README explains both
+questions). Build first as in sections 3 and 4 (steps 1-2) at the checked-out commit.
+
+1. Render the comparison scenes with the three macOS backends (zsh: build the `--scene` list as an array):
+
+   ```sh
+   bash -c 'E=native/evidence/metal-comparison-linux-x64-<date>; scenes=(); for f in $E/scenes/*.json native/oracle/scenes/bsdf/velvet.json; do scenes+=(--scene "$f"); done
+   python3 native/oracle/render_oracles.py --output native/work/oracles/metal-comparison-<run> \
+     --runner native/work/macos/osx-arm64/oracle-build/codebrix_cycles_oracle \
+     --host-library native/work/macos/osx-arm64/host/build/lib/libcodebrix_cycles_host.dylib \
+     --backend cpu-arm64-macos --backend metal-m2pro --backend metal-m2pro-metalrt "${scenes[@]}"'
+   ```
+
+2. Velvet (`velvet-subnormal`, `bsdf/velvet`):
+   - Compare each Metal film with `cpu-x64-linux/` and `cpu-x64-linux-ftz/` of the evidence folder and with
+     `cpu-arm64-macos`: `python3 native/oracle/compare.py <reference backend dir> <candidate backend dir> --json <out>`;
+     record practical failures, strict differences and maxima.
+   - The decisive observation is kernel-level: does Metal flush subnormal floats in the velvet chain? With the
+     inputs of `probes/velvet_chain.c` (sigma 0.3), does `expf(-87.1811905)` come out as 1.37306174e-38 on Metal, and
+     is the BSDF value 9.97e-37 (CPU-like) or 0 (flushed)? Answer it with a small Metal compute probe compiled with
+     `fastMathEnabled = YES`, the option pinned Cycles uses, and once with fast math off. Record both results, the
+     Metal Shading Language version and the `MTLCompileOptions` the Cycles build passes.
+3. Radial Tiling (`radial-sides2-*`, control `radial-sides3-r0.5`):
+   - Record whether the Metal build renders or refuses each scene (only the WebGPU device has the refusal).
+   - For each rendered scene compare the Metal films with `cpu-x64-linux/` and with `cpu-arm64-macos`: practical
+     failures, strict differences, maxima, and any NaN or Inf values. The WebGPU device on Linux renders roundness 0
+     and 1 and refuses 0.3, 0.5 and 0.75 (`wgsl-linux-intel/` in the evidence folder).
+4. Commit the run as a new folder `native/evidence/cycles-oracles-macos-metal-comparison-<date>/` (the oracle films,
+   `run.json`, the comparison JSON files, the probe source and its output, and a README with the observations of
+   steps 2 and 3). Never write into the frozen input folder.

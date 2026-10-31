@@ -74,7 +74,7 @@ def overlay(out=None):
     def without_node_regions(text):
         kept,stack=[],[]
         for line in text.split('\n'):
-            m=re.match(r'//#if (\w+)',line)
+            m=re.match(r'//#if !?(\w+)',line)  # negated regions (//#if !NAME) included
             if m:stack.append(m.group(1) in node_features);continue
             if line.startswith('//#endif'):stack.pop();continue
             if not any(stack):kept.append(line)

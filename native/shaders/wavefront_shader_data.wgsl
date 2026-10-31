@@ -33,8 +33,9 @@ fn surface_native_normalize(v:vec3<f32>)->vec3<f32>{
     return out;
 }
 fn surface_orthogonal(n:vec3<f32>)->vec3<f32>{
-    if(n.x!=n.y||n.x!=n.z){return surface_normalize(vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x));}
-    return surface_normalize(vec3<f32>(n.z-n.y,n.x+n.z,-n.y-n.x));
+    // make_orthonormals: normalize(), not safe_normalize().
+    if(n.x!=n.y||n.x!=n.z){return surface_native_normalize(vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x));}
+    return surface_native_normalize(vec3<f32>(n.z-n.y,n.x+n.z,-n.y-n.x));
 }
 // Static object transforms (util/transform.h transform_point/direction) with the
 // originating oracle's grouping and every product rounded before its sum, as in
@@ -73,6 +74,7 @@ fn surface_transform_normal(address:u32,v:vec3<f32>)->vec3<f32>{
     let x=heap_vec3(address);let y=heap_vec3(address+16u);let z=heap_vec3(address+32u);
     return surface_native_normalize(rounded_add3(rounded_add3(v.x*x,v.y*y),v.z*z));
 }
+//#if !MNEE_MOTION
 fn surface_object_direction(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
     if((sd.object_flag&SD_OBJECT_MOTION)!=0u){if(inverse){return motion_direction(sd.motion_itfm,v);}return motion_direction(sd.motion_tfm,v);}
     let object=table_at(G_objects,sd.object_id,SIZE_objects);return surface_transform_direction(object+select(O_tfm,O_itfm,inverse),v);
@@ -85,6 +87,20 @@ fn surface_object_normal(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{
     if((sd.object_flag&SD_OBJECT_MOTION)!=0u){if(inverse){return surface_native_normalize(motion_transpose(sd.motion_tfm,v));}return surface_native_normalize(motion_transpose(sd.motion_itfm,v));}
     let object=table_at(G_objects,sd.object_id,SIZE_objects);return surface_transform_normal(object+select(O_itfm,O_tfm,inverse),v);
 }
+//#endif
+//#if MNEE_MOTION
+// MNEE with motion blur (host-exact motion transforms, wavefront_motion.wgsl): static and moving objects
+// share one transform body per call (the same operations as surface_transform_point/direction/normal on
+// the loaded rows), which keeps the entries inside the pipeline size guard.
+fn surface_object_transform(sd:SurfaceData,inverse:bool)->NativeTransform{
+    var t=sd.motion_tfm;if(inverse){t=sd.motion_itfm;}
+    if((sd.object_flag&SD_OBJECT_MOTION)==0u){t=motion_transform_load(table_at(G_objects,sd.object_id,SIZE_objects)+select(O_tfm,O_itfm,inverse));}
+    return t;
+}
+fn surface_object_direction(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{return motion_exact_vector(surface_object_transform(sd,inverse),v,false);}
+fn surface_object_point(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{return motion_exact_vector(surface_object_transform(sd,inverse),v,true);}
+fn surface_object_normal(sd:SurfaceData,v:vec3<f32>,inverse:bool)->vec3<f32>{return surface_native_normalize(motion_transpose(surface_object_transform(sd,!inverse),v));}
+//#endif
 fn surface_decode_normal(value:u32)->vec3<f32>{
     let raw=vec2<f32>(f32(value&65535u),f32(value>>16u))*(2.0/65535.0);
     // The six sums through one rounded_add body (rounded_steps), in this order:
@@ -104,7 +120,7 @@ fn surface_decode_normal(value:u32)->vec3<f32>{
 }
 fn surface_differentials(sd:ptr<function,SurfaceData>){
     let n=(*sd).Ng;let tangent=surface_orthogonal(n);
-    var dx=tangent*(*sd).dP;var dy=cross(n,tangent)*(*sd).dP;
+    var dx=tangent*(*sd).dP;var dy=rounded_cross(n,tangent)*(*sd).dP;
     var a=(*sd).dPdu;var b=(*sd).dPdv;let axis=abs(n);
     if(axis.z<axis.x||axis.z<axis.y){
         if(axis.y<axis.x||axis.y<axis.z){a.x=a.y;b.x=b.y;dx.x=dx.y;dy.x=dy.y;}

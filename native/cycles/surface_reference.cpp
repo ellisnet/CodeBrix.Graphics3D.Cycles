@@ -16,9 +16,10 @@
 #include "scene/scene.h"
 #include "wavefront.h"
 #include "surface_reference.h"
-#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
+#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE) || defined(CBC_BSDF_FIXTURE)
 #include <cstdlib>
 #include <fstream>
+#include <memory>
 #include <iomanip>
 #endif
 void original_surface(ccl::DeviceScene &scene,const std::vector<int> &indices,
@@ -30,12 +31,27 @@ void original_surface(ccl::DeviceScene &scene,const std::vector<int> &indices,
   TABLE(svm_nodes,uint) TABLE(lookup_table,float) TABLE(sample_pattern_lut,float)
 #undef TABLE
   Profiler profiler;ThreadKernelGlobalsCPU thread(base,nullptr,profiler,0);KernelGlobals kg=&thread;
-#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
+#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE) || defined(CBC_BSDF_FIXTURE)
   const char *debug_index=std::getenv("CODEBRIX_MICROFACET_DIAGNOSTIC_INDEX");
   const int diagnostic_index=debug_index?std::atoi(debug_index):162;
+  // Diagnostic (CODEBRIX_SURFACE_KIND_LIST=PREFIX): one file per call, PREFIX.N, with each path's
+  // sampled closure kind and BSDF sample value (the reference result is unchanged).
+  static int kind_list_call=0;std::unique_ptr<std::ofstream> kind_list;
+  if(const char *prefix=std::getenv("CODEBRIX_SURFACE_KIND_LIST"))kind_list=std::make_unique<std::ofstream>(std::string(prefix)+"."+std::to_string(kind_list_call++));
 #endif
   for(int i:indices){
-#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
+#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE) || defined(CBC_BSDF_FIXTURE)
+    if(kind_list){
+      auto state=states[i];Ray ray{};Intersection isect{};ShaderData sd{};
+      integrator_state_read_ray(&state,&ray);integrator_state_read_isect(&state,&isect);shader_setup_from_ray(kg,&sd,&ray,&isect);
+      surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE>(kg,&state,&sd,nullptr,PathRayVisibility(state.path.visibility),state.path.flag);
+      RNGState rng;path_state_rng_load(&state,&rng);auto rand=path_state_rng_3D(kg,&rng,PRNG_SURFACE_BSDF);
+      *kind_list<<i<<' '<<sd.num_closure;
+      if(sd.num_closure){auto sc=surface_shader_bsdf_bssrdf_pick(&sd,&rand);*kind_list<<' '<<sc->type;
+        if(CLOSURE_IS_BSDF(sc->type)){Spectrum eval=zero_spectrum();float3 wo=zero_float3();float pdf=0,eta=0;float2 roughness=make_float2(0,0);
+          const int label=bsdf_sample(kg,&sd,sc,rand,&eval,&wo,&pdf,&roughness,&eta);*kind_list<<std::setprecision(9)<<' '<<label<<' '<<eval.x<<' '<<sc->weight.x;}}
+      *kind_list<<'\n';
+    }
     if(i==diagnostic_index)if(const char *path=std::getenv("CODEBRIX_MICROFACET_DIAGNOSTIC")){
       auto state=states[i];Ray ray{};Intersection isect{};ShaderData sd{};
       integrator_state_read_ray(&state,&ray);integrator_state_read_isect(&state,&isect);shader_setup_from_ray(kg,&sd,&ray,&isect);

@@ -21,11 +21,15 @@ namespace ccl {
 // light); mode 8 renders two instances of one sphere (non-uniform scale,
 // object-space offset) with geometry 0.3 and shading 1 (multiplier 2); mode 9
 // a moving, deforming sphere with geometry 0.1 and shading 0.5. The sphere is
-// diffuse under the sun (modes 0-3) and a diffuse/GGX mix otherwise. Native Cycles
-// generates the vertex normals, bounds and packed uploads.
-inline constexpr int shadow_terminator_cases=10;
-inline float shadow_terminator_geometry(int mode){return mode==8?.3f:mode==9?.1f:(mode%4==0||mode%4==2)?.1f:0.f;}
-inline float shadow_terminator_shading(int mode){return mode==8?1.f:mode==9?.5f:(mode%4==1||mode%4==2)?.5f:0.f;}
+// diffuse under the sun (modes 0-3) and a diffuse/GGX mix otherwise. Modes 10-13 take
+// shading offsets above 1 under the sun and the point light with geometry 0.1: 1.5
+// (multiplier 4), 1.9 (20), 2 (infinite) and 3 (negative, ignored by the kernel). Native
+// Cycles generates the vertex normals, bounds and packed uploads.
+inline constexpr int shadow_terminator_cases=14;
+inline float shadow_terminator_geometry(int mode){return mode==8?.3f:mode>=9?.1f:(mode%4==0||mode%4==2)?.1f:0.f;}
+inline float shadow_terminator_shading(int mode){
+  if(mode>=10){const float wide[]={1.5f,1.9f,2.f,3.f};return wide[mode-10];}
+  return mode==8?1.f:mode==9?.5f:(mode%4==1||mode%4==2)?.5f:0.f;}
 inline Shader *shadow_terminator_material(Scene &scene,bool glossy_mix){
   auto graph=make_unique<ShaderGraph>();auto diffuse=graph->create_node<DiffuseBsdfNode>();diffuse->set_color(make_float3(.7,.45,.25));diffuse->set_roughness(0);
   ShaderOutput *surface=diffuse->output("BSDF");

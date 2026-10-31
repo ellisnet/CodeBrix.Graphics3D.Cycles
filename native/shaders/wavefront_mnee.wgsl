@@ -191,7 +191,14 @@ fn mn_static_vertices(object:u32,prim:u32)->TriangleVertices{
     var result:TriangleVertices;
     if(object>=table_count(G_objects)||object>=table_count(G_object_flag)||prim>=table_count(G_tri_vindex)){fail();result.error=1u;return result;}
     let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
+//#if !MNEE_MOTION
     if((flags&SD_OBJECT_HAS_VERTEX_MOTION)!=0u){fail();result.error=1u;return result;}
+//#endif
+//#if MNEE_MOTION
+    // With motion blur a deforming caster keeps its centre-frame corners: the pinned vertex fetch tests
+    // type & PRIMITIVE_TRIANGLE, which PRIMITIVE_MOTION_TRIANGLE also sets (motion_triangle_vertices_and_normals
+    // is never reached), and shader_setup_from_sample and shadow_ray_smooth_surface_offset see PRIMITIVE_TRIANGLE.
+//#endif
     let at=table_at(G_tri_vindex,prim,SIZE_tri_vindex);let i0=load_word(at);let i1=load_word(at+4u);let i2=load_word(at+8u);
     result.a=triangle_position(object,i0,0u);result.b=triangle_position(object,i1,0u);result.c=triangle_position(object,i2,0u);
     if(load_word(p(17u))!=0u){result.error=1u;}return result;
@@ -235,6 +242,10 @@ fn mn_terminator_shadow_origin(sd:SurfaceData,L:vec3<f32>)->vec4<f32>{
 fn mn_setup_vertex(object:u32,prim:u32,u:f32,v:f32,time:f32,eta:f32,n_offset:vec2<f32>,ci:u32)->MnVertex{
     var vtx:MnVertex;var sd:SurfaceData;
     sd.object_id=object;sd.prim=prim;sd.primitive_type=PRIMITIVE_TRIANGLE;sd.time=time;sd.object_flag=mn_object_flag(object);sd.u=u;sd.v=v;
+//#if MOTION_OBJECT
+    // shader_setup_object_transforms at the ray time (MNEE with object motion).
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){sd.motion_tfm=motion_object(object,time);sd.motion_itfm=motion_inverse(sd.motion_tfm);}
+//#endif
     let shader=load_word(table_at(G_tri_shader,prim,4u));sd.shader=shader;
     let vertices=mn_static_vertices(object,prim);
     var verts=array<vec3<f32>,3>(vertices.a,vertices.b,vertices.c);var normals=terminator_normals(sd);
@@ -554,6 +565,10 @@ fn mn_setup_from_sample(P:vec3<f32>,Ng:vec3<f32>,I:vec3<f32>,shader:u32,object:u
     sd.u=u;sd.v=v;sd.time=time;sd.ray_length=t;sd.runtime_flag=0u;
     let shader_id=shader&SHADER_MASK;if(shader_id>=table_count(G_shaders)){surface_failure(&sd);return sd;}
     sd.shader_flag=load_word(table_at(G_shaders,shader_id,SIZE_shaders)+SH_flags);sd.object_flag=mn_object_flag(object);
+//#if MOTION_OBJECT
+    // shader_setup_object_transforms at the sample time (MNEE with object motion).
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){sd.motion_tfm=motion_object(object,time);sd.motion_itfm=motion_inverse(sd.motion_tfm);}
+//#endif
     let applied=(sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
     if((shader&SHADER_SMOOTH_NORMAL)!=0u){
         let normals=terminator_normals(sd);let w=rounded_add(rounded_add(1.0,-u),-v);

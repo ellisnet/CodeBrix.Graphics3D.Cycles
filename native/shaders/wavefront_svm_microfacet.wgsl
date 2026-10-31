@@ -43,7 +43,11 @@ fn svm_glossy(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibili
     c.alpha_x=rough;c.alpha_y=rough;
     if(ti!=SVM_STACK_INVALID&&abs(anisotropy)>1e-4){
         c.T=svm_load3(s,ti);let rotation=svm_input(s,data+N_GlossyBsdfData_rotation);
-        if(rotation!=0.0){c.T=microfacet_rotate(c.T,c.N,rotation*6.283185307179586f);}
+//#if SVM_BSDF_ROTATION else         if(rotation!=0.0){c.T=microfacet_rotate(c.T,c.N,rotation*6.283185307179586f);}
+        // rotate_around_axis with the host's sinf/cosf (the Beckmann and Ashikhmin-Shirley lobes are sharp
+        // enough that the driver's sin/cos, about 2^-11 relative, moves their pdf beyond the bound).
+        if(rotation!=0.0){c.T=principled_rotate(c.T,c.N,rotation*6.283185307179586f);}
+//#endif
         if(anisotropy<0.0){c.alpha_x=rough/(1.0+anisotropy);c.alpha_y=rough*(1.0+anisotropy);}
         else{c.alpha_x=rough*(1.0-anisotropy);c.alpha_y=rough/(1.0-anisotropy);}
     }
@@ -138,6 +142,8 @@ fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibilit
 // keeps transformA/B in a/b, T in T and B in multiscatter. Subsurface is reported
 // (error 16) and refused natively before rendering; it is never approximated.
 const PRINCIPLED_LOCAL:u32=0xfffffffeu;
+//#endif
+//#if SVM_BSDF_ROTATE
 fn principled_average(v:vec3<f32>)->f32{return (v.x+v.y+v.z)*(1.0/3.0);}
 // rotate_around_axis with binary32 sinf/cosf: quadrant reduction by a split
 // pi/2 and the bounded precise_disk_sincos adapter (driver sin/cos are only
@@ -166,6 +172,8 @@ fn principled_rotate(pt:vec3<f32>,axis:vec3<f32>,angle:f32)->vec3<f32>{
     }
     return out;
 }
+//#endif
+//#if SVM_BSDF_PRINCIPLED
 fn principled_new(kind:u32,weight:vec3<f32>)->SvmClosure{
     var c:SvmClosure;c.kind=kind;c.weight=max(weight,vec3<f32>(0));c.sample_weight=abs(principled_average(c.weight));return c;
 }
@@ -185,10 +193,14 @@ fn principled_normal(s:ptr<function,SvmState>,index:u32,fallback:vec3<f32>)->vec
     var n=fallback;if(index!=SVM_STACK_INVALID){n=svm_load3(s,index);}
     if(any(n!=vec3<f32>(0))){return surface_normalize(n);}return (*s).geometry.N;
 }
+//#endif
+//#if SVM_BSDF_FRESNEL_MODELS
 fn principled_valid(s:ptr<function,SvmState>,n:vec3<f32>)->vec3<f32>{
     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){return svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
     return n;
 }
+//#endif
+//#if SVM_BSDF_PRINCIPLED
 fn principled_ggx(s:ptr<function,SvmState>,c:ptr<function,SvmClosure>,glass:bool){
     (*c).alpha_x=clamp((*c).alpha_x,0.0,1.0);(*c).alpha_y=select(clamp((*c).alpha_y,0.0,1.0),(*c).alpha_x,glass);(*c).energy_scale=1.0;
     (*c).kind=select(CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,glass);
@@ -197,6 +209,8 @@ fn principled_ggx(s:ptr<function,SvmState>,c:ptr<function,SvmClosure>,glass:bool
 fn principled_fss(eta:f32)->f32{
     if(eta<1.0){return 0.997118+eta*(0.1014-eta*(0.965241+eta*0.130607));}return (eta-1.0)/(4.08567+1.00071*eta);
 }
+//#endif
+//#if SVM_BSDF_FRESNEL_MODELS
 // Native microfacet_fresnel for the models carried in a record's `roughness`
 // (surface_closure.h): 1 dielectric, 4 generalized Schlick (exponent < 0,
 // f90 = 1; the Glass-node arithmetic, per channel), 5 F82 tint; `a`/`b` carry
@@ -217,6 +231,9 @@ fn principled_fresnel(c:SvmClosure,cosine:f32)->PrincipledFresnel{
         if(real_f0>1e-5&&any(value!=vec3<f32>(1))){for(var i=0u;i<3u;i++){let s=clamp((value[i]-1.0)/(real_f0-1.0),0.0,1.0);value[i]*=1.0+s*(c.multiscatter[i]/real_f0-1.0);}}
         f.reflection=value*c.reflection_tint;if(glass){f.transmission=(vec3<f32>(1)-value)*c.transmission_tint;}return f;
     }
+//#endif
+//#if SVM_BSDF_METALLIC
+    if(model==3u){f.reflection=metallic_conductor(cosine,c.multiscatter,c.reflection_tint);return f;}
 //#endif
     if(model==5u){let s=clamp(1.0-cosine,0.0,1.0);let s5=(s*s)*(s*s)*s;
         f.reflection=clamp(c.multiscatter+s5*(vec3<f32>(1)-c.multiscatter)-c.reflection_tint*cosine*s5*s,vec3<f32>(0),vec3<f32>(1));return f;}
@@ -254,6 +271,8 @@ fn principled_preserve(s:ptr<function,SvmState>,c:ptr<function,SvmClosure>,wi:ve
     if(any(fss!=vec3<f32>(1))){let fms=fss*average/(vec3<f32>(1)-fss*(1.0-average));let darkening=(vec3<f32>(1)+fms*missing)/(*c).energy_scale;
         (*c).weight*=darkening;(*c).sample_weight*=principled_average(darkening);}
 }
+//#endif
+//#if SVM_BSDF_PRINCIPLED
 fn principled_orthonormals(n:vec3<f32>,wi:vec3<f32>)->array<vec3<f32>,2>{
     let b=surface_normalize(rounded_cross(n,wi));
     if(rounded_dot(b,b)>=0.99){return array<vec3<f32>,2>(rounded_cross(b,n),b);}
@@ -458,5 +477,104 @@ fn thin_film_channel(channel:u32,thickness:f32,film:f32,n:f32,k:f32,f82:f32,cosi
     // Airy summation per polarization, then their average.
     var sum=0.0;for(var pol=0u;pol<2u;pol++){sum+=thin_film_airy(channel,top.r[pol],r23[pol],opd,select(phase_s*-top.phase.x,phase_p*-top.phase.y,pol==1u));}
     return vec2<f32>(clamp(0.5*sum,0.0,1.0),cos3);
+}
+//#endif
+//#if SVM_BSDF_METALLIC
+// Native Metallic BSDF (pinned svm/closure.h CLOSURE_BSDF_PHYSICAL_CONDUCTOR and
+// CLOSURE_BSDF_F82_CONDUCTOR; closure/bsdf_microfacet.h setup, Fresnel setup and
+// energy preservation; closure/bsdf_util.h fresnel_conductor and F82 tint). The
+// record is a GGX microfacet closure whose `roughness` carries the Fresnel model
+// (surface_closure.h): 3 conductor with n in `multiscatter` and k in
+// `reflection_tint`, 5 F82 tint as the Principled metallic lobe.
+// fresnel_conductor_polarized for one channel (ambient IOR 1, no F82 fit): every
+// product rounded before its sum, correctly rounded roots and quotients, and
+// safe_divide's zero for a zero denominator.
+fn metallic_conductor_channel(cosi:f32,eta2:f32,k2:f32)->f32{
+    let eta2_sq=eta2*eta2;let k2_sq=k2*k2;let two_eta2_k2=(2.0*eta2)*k2;let difference=rounded_add(eta2_sq,-k2_sq);
+    let t1=rounded_add(difference,-rounded_add(1.0,-(cosi*cosi)));let t2=rounded_sqrt(rounded_add(t1*t1,two_eta2_k2*two_eta2_k2));
+    let u_sq=max(0.5*rounded_add(t2,t1),0.0);let v_sq=max(0.5*rounded_add(t2,-t1),0.0);let u=rounded_sqrt(u_sq);let v=rounded_sqrt(v_sq);
+    let a=rounded_add(cosi,-u);let b=rounded_add(cosi,u);let rs_den=rounded_add(b*b,v_sq);
+    let rs=select(0.0,rounded_divide(rounded_add(a*a,v_sq),rs_den),rs_den!=0.0);
+    let t3=difference*cosi;let t4=two_eta2_k2*cosi;
+    let p1=rounded_add(t3,-u);let p2=rounded_add(t4,-v);let p3=rounded_add(t3,u);let p4=rounded_add(t4,v);
+    let rp_den=rounded_add(p3*p3,p4*p4);let rp=select(0.0,rounded_divide(rounded_add(p1*p1,p2*p2),rp_den),rp_den!=0.0);
+    return rounded_add(rs,rp)*0.5;
+}
+// fresnel_conductor: the three channels through one body (opaque loop bound).
+fn metallic_conductor(cosi:f32,eta:vec3<f32>,k:vec3<f32>)->vec3<f32>{
+    var r=vec3<f32>(0);let count=rounded_steps(3u);
+    for(var i=0u;i<count;i++){let j=min(i,2u);r=select(r,vec3<f32>(metallic_conductor_channel(cosi,eta[j],k[j])),vec3<u32>(0u,1u,2u)==vec3<u32>(i));}
+    return r;
+}
+// fresnel_conductor_Fss: the F82 fit through F0 and F(1/7), saturated.
+fn metallic_conductor_fss(eta:vec3<f32>,k:vec3<f32>)->vec3<f32>{
+    let f0=metallic_conductor(1.0,eta,k);let f82=metallic_conductor(1.0/7.0,eta,k);let f=6.0/7.0;let f5=(f*f)*(f*f)*f;
+    let b=(7.0/(f5*f))*((f0+f5*(vec3<f32>(1)-f0))-f82);
+    return clamp((f0+(1.0/21.0)*(vec3<f32>(1)-f0))-b*(1.0/126.0),vec3<f32>(0),vec3<f32>(1));
+}
+fn svm_metallic(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibility:u32){
+    let distribution=load_word(data+N_MetallicBsdfData_distribution);
+    let thickness=max(svm_input(s,data+N_MetallicBsdfData_thin_film_thickness),1e-5);
+    // Refused natively before rendering (pipelines.cpp metallic_census); never approximated.
+    if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR&&thickness>0.1){svm_error(s,16u);return;}
+//#if SVM_BSDF_BECKMANN else     if(distribution==CLOSURE_BSDF_MICROFACET_BECKMANN_ID){svm_error(s,16u);return;}
+//#endif
+    if(data_word(D_caustics_reflective)==0u&&(visibility&PATH_RAY_VISIBILITY_DIFFUSE)!=0u){return;}
+    let weight=max(vec3<f32>(mix_weight),vec3<f32>(0));let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));
+    if(!(sample_weight>=1e-5)){return;}
+    let i=svm_allocate(s,CLOSURE_BSDF_MICROFACET_GGX_ID,weight);if(i==NONE){return;}
+    var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;
+    // safe_normalize_fallback(N, sd->N) as in svm_bsdf.
+    var n=(*s).geometry.N;let ni=svm_byte(data+N_MetallicBsdfData_normal_offset);if(ni!=SVM_STACK_INVALID){n=svm_load3(s,ni);}
+    let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){n*=rounded_divide(1.0,magnitude);}else{n=(*s).geometry.N;}
+    let valid=principled_valid(s,n);
+    let anisotropy=clamp(svm_input(s,data+N_MetallicBsdfData_anisotropy),0.0,1.0);let r=clamp(svm_input(s,data+N_MetallicBsdfData_roughness),0.0,1.0);
+    c.alpha_x=r*r;c.alpha_y=c.alpha_x;c.T=vec3<f32>(0);let ti=svm_byte(data+N_MetallicBsdfData_tangent_offset);
+    if(anisotropy>0.0&&ti!=SVM_STACK_INVALID){
+        c.T=svm_load3(s,ti);let aspect=rounded_sqrt(rounded_add(1.0,-(anisotropy*0.9)));c.alpha_x=rounded_divide(c.alpha_x,aspect);c.alpha_y*=aspect;
+        let rotation=svm_input(s,data+N_MetallicBsdfData_rotation);if(rotation!=0.0){c.T=principled_rotate(c.T,n,rotation*6.283185307179586f);}
+    }
+    c.N=valid;c.ior=1.0;let film=max(svm_input(s,data+N_MetallicBsdfData_thin_film_ior),1e-5);
+    // bsdf_microfacet_ggx_setup: its flags stand even when the Fresnel record does not fit.
+    c.alpha_x=clamp(c.alpha_x,0.0,1.0);c.alpha_y=clamp(c.alpha_y,0.0,1.0);c.energy_scale=1.0;c.kind=CLOSURE_BSDF_MICROFACET_GGX_ID;
+//#if SVM_BSDF_BECKMANN
+    // bsdf_microfacet_beckmann_setup: the same clamps and flags, no energy scale.
+    if(distribution==CLOSURE_BSDF_MICROFACET_BECKMANN_ID){c.energy_scale=0.0;c.kind=CLOSURE_BSDF_MICROFACET_BECKMANN_ID;}
+//#endif
+    (*s).output.runtime_flag|=SR_BSDF|select(0u,SR_BSDF_HAS_EVAL,c.alpha_x*c.alpha_y>2e-10);
+    // closure_alloc_extra (FresnelConductor or FresnelF82Tint, one slot) removes the closure when it fails;
+    // the set-up closure (no Fresnel model) stays in its slot, marked a = -1, as in the native closure
+    // array: with no closure left the native pick samples it (surf_removed_metallic).
+    if((*s).output.remaining<1u){(*s).output.count--;(*s).output.remaining++;c.a=-1.0;svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);return;}
+    (*s).output.remaining-=1u;
+    let multi=distribution==CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID;let wi=(*s).geometry.wi;
+    if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR){
+        let eta=max(svm_input3(s,data+N_MetallicBsdfData_base_ior),vec3<f32>(0));let k=max(svm_input3(s,data+N_MetallicBsdfData_edge_tint_k),vec3<f32>(0));
+        c.roughness=3.0;c.multiscatter=eta;c.reflection_tint=k;
+        // bsdf_microfacet_estimate_albedo without a table: microfacet_fresnel at dot(wi, N).
+        c.sample_weight*=principled_average(metallic_conductor(rounded_dot(wi,c.N),eta,k));
+        if(multi){principled_preserve(s,&c,wi,metallic_conductor_fss(eta,k));}
+    }else{
+        let color=clamp(svm_input3(s,data+N_MetallicBsdfData_base_ior),vec3<f32>(0),vec3<f32>(1));let tint=clamp(svm_input3(s,data+N_MetallicBsdfData_edge_tint_k),vec3<f32>(0),vec3<f32>(1));
+        c.roughness=5.0;c.multiscatter=color;if(thickness>0.1){c.a=thickness;c.b=film;}
+        if(any(tint!=vec3<f32>(1))){let f=6.0/7.0;let f5=(f*f)*(f*f)*f;c.reflection_tint=(color+f5*(vec3<f32>(1)-color))*(7.0/(f5*f))*(vec3<f32>(1)-tint);}
+        c.sample_weight*=principled_average(principled_albedo(s,c,false));
+        if(multi){principled_preserve(s,&c,wi,color+(1.0/21.0)*(vec3<f32>(1)-color)-c.reflection_tint*(1.0/126.0));}
+    }
+    svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);
+}
+//#endif
+//#if SVM_BSDF_BECKMANN
+// Beckmann Glossy/Anisotropic, Refraction and Glass BSDF setup (pinned
+// svm/closure.h): the GGX node setup with bsdf_microfacet_beckmann_setup,
+// _refraction_setup or _glass_setup in place of the GGX ones, which differ only
+// in the closure type and the undefined energy scale (stored 0, never read).
+fn svm_beckmann(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibility:u32){
+    let count=(*s).output.count;
+    if(kind==CLOSURE_BSDF_MICROFACET_BECKMANN_ID){svm_glossy(s,data,kind,mix_weight,visibility);}
+    else{svm_glass(s,data,select(CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID,CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,kind==CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID),mix_weight,visibility);}
+    if((*s).error!=0u||(*s).output.count==count){return;}
+    let i=(*s).output.count-1u;var c=svm_closure_read((*s).output,i);c.kind=kind;c.energy_scale=0.0;
+    svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);
 }
 //#endif

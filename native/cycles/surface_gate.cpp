@@ -21,6 +21,13 @@
 #include <iomanip>
 using namespace ccl;
 using namespace wavefront_test;
+// Diagnostic (CODEBRIX_GATE_ALL_MISMATCHES=1): every practical or integer mismatch is
+// reported and the gate fails at the end instead of at the first one; the criterion and
+// the verdict are unchanged.
+static unsigned long gate_mismatches=0;
+static void gate_require(bool ok,const std::string &message){
+  if(ok)return;static const bool all=std::getenv("CODEBRIX_GATE_ALL_MISMATCHES")!=nullptr;
+  if(!all)wavefront_test::require(false,message);gate_mismatches++;std::cerr<<"MISMATCH "<<message<<'\n';}
 #include "surface_fixture.h"
 struct Metrics {uint64_t paths=0,integers=0,floats=0,strict=0;unsigned cases=0;double maximum=0,maximum_bound_ratio=0;float maximum_actual=0,maximum_expected=0;std::string maximum_field;};
 static void configure(KernelData &data){
@@ -50,15 +57,15 @@ static void evaluate(WebGPUDevice &d,Scene &scene,const std::vector<Field>&layou
   require(queue->enqueue(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,n? n+63:0,args),label+": "+d.error_message());require(queue->synchronize(),label+": "+d.error_message());
   auto actual=download(d,layout,input.size());
   auto number=[&](float a,float e,const std::string &where){double error=std::abs(double(a)-e);if(error>m.maximum){m.maximum=error;m.maximum_actual=a;m.maximum_expected=e;m.maximum_field=where;}m.maximum_bound_ratio=std::max(m.maximum_bound_ratio,error/(5e-5+2e-4*std::abs(double(e))));m.floats++;m.strict+=error>1e-7+1e-7*std::abs(double(e));
-    require(std::isfinite(a)&&std::isfinite(e)&&error<=5e-5+2e-4*std::abs(double(e)),label+" "+where+" actual="+std::to_string(a)+" expected="+std::to_string(e));};
+    gate_require(std::isfinite(a)&&std::isfinite(e)&&error<=5e-5+2e-4*std::abs(double(e)),label+" "+where+" actual="+std::to_string(a)+" expected="+std::to_string(e));};
   for(auto &f:layout)for(size_t i=0;i<expected.size();i++){
     auto a=reinterpret_cast<const char*>(&actual[i])+f.offset;auto e=reinterpret_cast<const char*>(&expected[i])+f.offset;
     if(f.floating){for(size_t k=0;k<f.stride;k+=4){float av,ev;std::memcpy(&av,a+k,4);std::memcpy(&ev,e+k,4);number(av,ev,f.name+" path="+std::to_string(i)+" component="+std::to_string(k/4));}}
-    else{require(!std::memcmp(a,e,f.stride),label+" integer "+f.name+" path="+std::to_string(i));m.integers++;}
+    else{gate_require(!std::memcmp(a,e,f.stride),label+" integer "+f.name+" path="+std::to_string(i));m.integers++;}
   }
   film.copy_from_device();healthy(d);for(size_t i=0;i<count;i++)number(film[i],wanted[i],"film="+std::to_string(i));
   IntegratorQueueCounter expected_counter{};for(int i:ids){auto kernel=expected[i].path.queued_kernel;if(kernel)expected_counter.num_queued[kernel]++;}
-  d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));require(!std::memcmp(&counter,&expected_counter,sizeof(counter)),label+" queue counters");
+  d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));gate_require(!std::memcmp(&counter,&expected_counter,sizeof(counter)),label+" queue counters");
   m.cases++;m.paths+=ids.size();std::cerr<<"Passed "<<label<<" ("<<ids.size()<<" paths)\n";
 }
 struct RejectionMetrics {unsigned cases=0;size_t zero_capacity_paths=0;};
@@ -92,14 +99,15 @@ static RejectionMetrics rejections(const DeviceInfo &info){
     if(test==2){data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional integration";}
     if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
     if(test==4){data.film.pass_flag=PASSMASK(DEPTH);reason="data passes";}
-    if(test==5){data.integrator.filter_glossy=1;reason="glossy filtering";}
+    // Glossy filtering is implemented (SURFACE_FILTER_GLOSSY); another refused integration feature instead.
+    if(test==5){data.kernel_features|=KERNEL_FEATURE_DENOISING;reason="optional integration";}
     if(test==6){data.max_closures=MAX_CLOSURE+1;reason="closure capacity";}
     if(test==7){data.film.pass_combined=data.film.pass_stride-3;reason="pass offset";}
     if(test==8)state.path.render_pixel_index=1;
     if(test==9)state.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;
     if(test==10)state.path.flag=PATH_RAY_SUBSURFACE;
-    // Shading offsets above 1 (multiplier above 2) are rejected before dispatch.
-    if(test==12){ds.objects[state.isect.object].shadow_terminator_shading_offset=3;ds.objects.copy_to_device();reason="shadow terminator shading offset";}
+    // Every finite shading offset is implemented; a NaN multiplier is rejected before dispatch.
+    if(test==12){ds.objects[state.isect.object].shadow_terminator_shading_offset=std::numeric_limits<float>::quiet_NaN();ds.objects.copy_to_device();reason="shadow terminator shading offset";}
     if(test==13){data.integrator.distribution_pdf_triangles=-1;reason="Invalid native triangle selection probability";}
     if(test==14){data.integrator.sampling_pattern=999;reason="tabulated Sobol";}
     if(test==15)reason="Incomplete surface";
@@ -135,7 +143,10 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     std::vector<IntegratorStateCPU> initial(scheduler.capacity());auto ids=initialize_paths(scene,initial);
     std::ofstream(std::string(argv[1])+".wgsl")<<surface_source();
     evaluate(d,scene,layout,initial,ids,"Compiled materials",m);
-#if defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
+#if defined(CBC_BSDF_FIXTURE)
+    // Case 27: glossy filtering (integrator filter_glossy) over spread min_ray_pdf values.
+    constexpr unsigned test_count=28;
+#elif defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
     constexpr unsigned test_count=27;
 #elif defined(CBC_MICROFACET_FIXTURE)
     constexpr unsigned test_count=20;
@@ -160,17 +171,19 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       if(test==13)data.max_closures=1;
       if(test==14)data.film.light_pass_flag=0;
       if(test==15)data.background.transparent_roughness_squared_threshold=-1;
-#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
+#if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE) || defined(CBC_BSDF_FIXTURE)
       if(test==16)data.integrator.filter_closures=FILTER_CLOSURE_GLOSSY;
       if(test==17){for(int i:ids){states[i].path.glossy_bounce=data.integrator.max_glossy_bounce-1;}}
       if(test==18||test==19){data.integrator.caustics_reflective=0;
         for(int i:ids)states[i].path.visibility=test==18?PATH_RAY_VISIBILITY_DIFFUSE:PATH_RAY_VISIBILITY_GLOSSY;}
 #endif
-#if defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE)
+#if defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE) || defined(CBC_BSDF_FIXTURE)
       if(test==20)data.integrator.filter_closures=FILTER_CLOSURE_TRANSMISSION;
       if(test==21)data.integrator.filter_closures=FILTER_CLOSURE_GLOSSY|FILTER_CLOSURE_TRANSMISSION;
       if(test>=22&&test<=25){data.integrator.caustics_reflective=(test-22)&1;data.integrator.caustics_refractive=((test-22)>>1)&1;for(int i:ids)states[i].path.visibility=PATH_RAY_VISIBILITY_DIFFUSE;}
       if(test==26)data.background.transparent_roughness_squared_threshold=.01f;
+      if(test==27){data.integrator.filter_glossy=1.0f/.8f;
+        for(int i:ids){const float pdfs[]={FLT_MAX,1e-4f,.05f,.2f,.5f,.79f,.8f,1.5f,4.f,30.f};states[i].path.min_ray_pdf=pdfs[i%10];}}
 #endif
       d.const_copy_to("data",&data,sizeof(data));evaluate(d,scene,layout,states,ids,"Surface case "+std::to_string(test),m);
     }
@@ -178,6 +191,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     auto dense=initial;std::vector<int> dense_ids;for(size_t i=0;i<ids.size();i++){dense[i]=initial[ids[i]];dense_ids.push_back(i);}evaluate(d,scene,layout,dense,dense_ids,"Dense dispatch",m,true);
     evaluate(d,scene,layout,initial,{},"Zero work",m);
   }
+  require(gate_mismatches==0,std::to_string(gate_mismatches)+" mismatches (CODEBRIX_GATE_ALL_MISMATCHES)");
   require(stats.mem_used==0,"Surface Cycles allocation leak");auto rejected=rejections(infos[0]);std::ofstream(std::string(argv[1])+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(std::string(argv[1])+".library.txt")<<d.gpu.library_path;
   std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuSurfaceIntegrator\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"maximumErrorField\":\""<<m.maximum_field<<"\",\"maximumErrorActual\":"<<m.maximum_actual<<",\"maximumErrorExpected\":"<<m.maximum_expected<<",\"maximumPracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"invalidCasesRejected\":"<<rejected.cases<<",\"zeroCapacityPathsRejected\":"<<rejected.zero_capacity_paths<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

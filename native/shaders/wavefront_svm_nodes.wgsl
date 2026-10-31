@@ -1120,7 +1120,7 @@ fn svm_wireframe(s:ptr<function,SvmState>,node:u32){
     let g=(*s).geometry;var f=0.0;
     if(!(*s).volume&&g.prim!=NONE&&native_triangle_kind(g.primitive_type)){
         // differential_from_compact(Ng, dP): make_orthonormals frame scaled by dP.
-        let tangent=surface_orthogonal(g.Ng);let dx=tangent*g.dP;let dy=cross(g.Ng,tangent)*g.dP;
+        let tangent=surface_orthogonal(g.Ng);let dx=tangent*g.dP;let dy=rounded_cross(g.Ng,tangent)*g.dP;
         var position=g.P;let bump=svm_byte(node+N_Wireframe_bump_offset);let width=bitcast<f32>(load_word(node+N_Wireframe_bump_filter_width));
         if(bump==NODE_BUMP_OFFSET_DX){position+=dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){position+=dy*width;}
         let vertices=native_triangle_vertices(g.object_id,g.prim,g.primitive_type,g.time);
@@ -1180,4 +1180,747 @@ fn svm_mapping_derivative(s:ptr<function,SvmState>,node:u32,opcode:u32){
     let out=svm_byte(node+N_Mapping_result_offset);svm_store3(s,out,r.value);svm_store3(s,out+3u,r.dx);svm_store3(s,out+6u,r.dy);
 }
 //#endif
+//#endif
+//#if SVM_NODE_RADIAL_TILING
+// SPDX-FileCopyrightText: 2024-2025 Blender Authors (Apache-2.0; native/THIRD-PARTY-NOTICES.txt)
+// Radial Tiling node (pinned svm/radial_tiling.h svm_node_radial_tiling and the
+// SVM build of svm/radial_tiling_shared.h: calculate_out_variables,
+// calculate_out_variables_irregular_circular, calculate_out_segment_id),
+// translated statement by statement; mix is Cycles' a + t (b - a). The driver's
+// sin/cos/tan differ from glibc by enough to move the outputs beyond the practical
+// bound (and lose the tangent pole at two sides): sine, cosine and tangent through
+// rt_sincos (three-part Cody-Waite reduction by pi/2, Taylor series to r^11 and r^12,
+// a few ULP); atanf and atan2f below (rt_prepare).
+fn rt_sincos(x:f32)->vec2<f32>{
+    let n=round(x*0.6366197723675814);let r=((x-n*1.5703125)-n*4.837512969970703125e-4)-n*7.54978995489188216e-8;let z=r*r;
+    let sn=r+(r*z)*(-0.16666666666666666+z*(0.008333333333333333+z*(-0.0001984126984126984+z*(2.7557319223985893e-6-z*2.505210838544172e-8))));
+    let cs=1.0+z*(-0.5+z*(0.041666666666666664+z*(-0.001388888888888889+z*(2.48015873015873e-5+z*(-2.755731922398589e-7+z*2.08767569878681e-9)))));
+    let q=i32(n)&3;
+    if(q==1){return vec2<f32>(cs,-sn);}
+    if(q==2){return vec2<f32>(-sn,-cs);}
+    if(q==3){return vec2<f32>(-cs,sn);}
+    return vec2<f32>(sn,cs);
+}
+// atanf and atan2f must round like glibc's (correctly rounded): at two sides and just
+// above, pi/2 - atan((1 - roundness) tan(pi/2)) and the polar angle near pi cancel.
+// Their arguments do not depend on the branch taken: rt_prepare computes the three
+// atanf arguments of calculate_out_variables_irregular_circular (the first is also the
+// regular rounded polygon's) and atan2f(coord.y, coord.x) with one trig_atan2 call site,
+// and rt_atan / rt_atan2 return the cached value for a bitwise equal argument.
+// Otherwise (not reached by the translated code) they fall back to the Cephes
+// reduction with two-part pi/2, pi/4 and pi in plain sums (a few ULP).
+var<private> rt_atan_argument:array<f32,3>;
+var<private> rt_atan_value:array<f32,3>;
+var<private> rt_polar:vec3<f32>;
+fn rt_prepare(r_gon_sides:f32,r_gon_roundness:f32,coord:vec2<f32>){
+    let segment_divider_A_angle_bisector=f32(3.14159265358979323846)/r_gon_sides;
+    let last_angle_bisector_A_x_axis=f32(3.14159265358979323846)-floor(r_gon_sides)*segment_divider_A_angle_bisector;
+    var y=0.0;var x=1.0;
+    for(var k=0u;k<4u;k++){
+        if(k==0u){y=(f32(1.0)-r_gon_roundness)*rt_tan(segment_divider_A_angle_bisector);x=1.0;}
+        else if(k==1u){y=(f32(1.0)-r_gon_roundness)*rt_tan(last_angle_bisector_A_x_axis);x=1.0;}
+        else if(k==2u){
+            let inner_last_bevel_start_A_x_axis=last_angle_bisector_A_x_axis-rt_atan_value[1];
+            let l_last_circle_radius=r_gon_roundness*rt_tan(last_angle_bisector_A_x_axis)/rt_tan(f32(0.5)*(segment_divider_A_angle_bisector+last_angle_bisector_A_x_axis));
+            let last_circle_center=vec2<f32>(
+                (rt_cos(inner_last_bevel_start_A_x_axis)/rt_cos(last_angle_bisector_A_x_axis-inner_last_bevel_start_A_x_axis))-l_last_circle_radius*rt_cos(last_angle_bisector_A_x_axis),
+                l_last_circle_radius*rt_sin(last_angle_bisector_A_x_axis)-(rt_sin(inner_last_bevel_start_A_x_axis)/rt_cos(last_angle_bisector_A_x_axis-inner_last_bevel_start_A_x_axis)));
+            let outer_last_bevel_start=last_circle_center+l_last_circle_radius*vec2<f32>(rt_cos(segment_divider_A_angle_bisector),rt_sin(segment_divider_A_angle_bisector));
+            y=outer_last_bevel_start.y/outer_last_bevel_start.x;x=1.0;
+        }else{y=coord.y;x=coord.x;}
+        let v=select(rt_atan_fallback(y),rt_atan2_precise(y,x),abs(y)<=3.4028234663852886e38&&abs(x)<=3.4028234663852886e38);
+        if(k<3u){rt_atan_argument[k]=y;rt_atan_value[k]=v;}else{rt_polar=vec3<f32>(coord.y,coord.x,v);}
+    }
+}
+// trig_atan2 for finite arguments. Its exact products need exponent sums of at least
+// 174 (trig_product), which a reduced angle below about 2^-40 does not have: within
+// 1e-6 of the axes atan2f is 0, pi/2 or pi times the sign plus the correctly rounded
+// quotient (the cubic term, below 3.4e-13 relative, practically never moves the rounding),
+// with two-part pi/2 and pi, summed through rounded_add (the shader compiler
+// reassociates plain sums with constants).
+fn rt_atan2_precise(y:f32,x:f32)->f32{
+    if(y!=0.0&&abs(y)<1e-6*abs(x)){let q=rounded_divide(y,x);if(x>0.0){return q;}
+        return select(rounded_add(-3.1415927410125732,rounded_add(8.742278e-8,q)),rounded_add(3.1415927410125732,rounded_add(-8.742278e-8,q)),y>0.0);}
+    if(x!=0.0&&abs(x)<1e-6*abs(y)){let q=rounded_divide(x,y);
+        return select(rounded_add(-1.5707963705062866,rounded_add(4.371139000186243e-8,-q)),rounded_add(1.5707963705062866,rounded_add(-4.371139000186243e-8,-q)),y>0.0);}
+    return trig_atan2(y,x);
+}
+fn rt_atan_fallback(x:f32)->f32{
+    let a=abs(x);var t=a;var hi=0.0;var lo=0.0;
+    if(a>2.414213562373095){t=-1.0/a;hi=1.5707963705062866;lo=-4.371139000186243e-8;}
+    else if(a>0.4142135623730951){t=(a-1.0)/(a+1.0);hi=0.7853981852531433;lo=-2.1855695000931214e-8;}
+    let z=t*t;let y=((((0.0805374449538*z-0.138776856032)*z+0.199777106478)*z-0.333329491539)*z)*t+t;
+    return sign(x)*(hi+(y+lo));
+}
+fn rt_atan(x:f32)->f32{
+    for(var k=0u;k<3u;k++){if(x==rt_atan_argument[k]){return rt_atan_value[k];}}
+    return rt_atan_fallback(x);
+}
+fn rt_atan2(y:f32,x:f32)->f32{
+    if(y==rt_polar.x&&x==rt_polar.y){return rt_polar.z;}
+    if(x==0.0){if(y==0.0){return 0.0;}return select(-1.5707963705062866,1.5707963705062866,y>0.0);}
+    let a=rt_atan_fallback(y/x);if(x>0.0){return a;}
+    if(y>=0.0){return 3.1415927410125732+(a-8.742278e-8);}
+    return -3.1415927410125732+(a+8.742278e-8);
+}
+fn rt_tan(x:f32)->f32{let sc=rt_sincos(x);return sc.x/sc.y;}
+fn rt_cos(x:f32)->f32{return rt_sincos(x).y;}
+fn rt_sin(x:f32)->f32{return rt_sincos(x).x;}
+fn rt_fract(x:f32)->f32{return x-floor(x);}
+fn rt_sqr(x:f32)->f32{return x*x;}
+fn rt_mix(a:f32,b:f32,t:f32)->f32{return a+t*(b-a);}
+ fn rt_calculate_out_variables_irregular_circular(calculate_r_gon_parameter_field:bool,calculate_max_unit_parameter:bool,normalize_r_gon_parameter:bool,r_gon_sides:f32,r_gon_roundness:f32,coord:vec2<f32>,l_coord:f32)->vec4<f32>
+{
+  var x_axis_A_coord:f32= rt_atan2(coord.y, coord.x) + f32(coord.y < f32(0.0)) * f32(6.28318530717958647692);
+  var segment_divider_A_angle_bisector:f32= f32(3.14159265358979323846) / r_gon_sides;
+  var segment_divider_A_next_segment_divider:f32= f32(2.0) * segment_divider_A_angle_bisector;
+  var segment_id:f32= floor(x_axis_A_coord / segment_divider_A_next_segment_divider);
+  var segment_divider_A_coord:f32= x_axis_A_coord -
+                                  segment_id * segment_divider_A_next_segment_divider;
+  var segment_divider_A_bevel_start:f32= segment_divider_A_angle_bisector -
+                                        rt_atan((f32(1.0) - r_gon_roundness) *
+                                              rt_tan(segment_divider_A_angle_bisector));
+  var last_angle_bisector_A_x_axis:f32= f32(3.14159265358979323846) -
+                                       floor(r_gon_sides) * segment_divider_A_angle_bisector;
+  var last_segment_divider_A_x_axis:f32= f32(2.0) * last_angle_bisector_A_x_axis;
+  var inner_last_bevel_start_A_x_axis:f32= last_angle_bisector_A_x_axis -
+                                          rt_atan((f32(1.0) - r_gon_roundness) *
+                                                rt_tan(last_angle_bisector_A_x_axis));
+  var l_last_circle_radius:f32= r_gon_roundness * rt_tan(last_angle_bisector_A_x_axis) /
+                               rt_tan(f32(0.5) * (segment_divider_A_angle_bisector +
+                                                  last_angle_bisector_A_x_axis));
+  var last_circle_center:vec2<f32>= vec2<f32>(
+      (rt_cos(inner_last_bevel_start_A_x_axis) /
+       rt_cos(last_angle_bisector_A_x_axis - inner_last_bevel_start_A_x_axis)) -
+          l_last_circle_radius * rt_cos(last_angle_bisector_A_x_axis),
+      l_last_circle_radius * rt_sin(last_angle_bisector_A_x_axis) -
+          (rt_sin(inner_last_bevel_start_A_x_axis) /
+           rt_cos(last_angle_bisector_A_x_axis - inner_last_bevel_start_A_x_axis)));
+  var outer_last_bevel_start:vec2<f32>= last_circle_center +
+                                  l_last_circle_radius *
+                                      vec2<f32>(rt_cos(segment_divider_A_angle_bisector),
+                                                  rt_sin(segment_divider_A_angle_bisector));
+  var x_axis_A_outer_last_bevel_start:f32= rt_atan(outer_last_bevel_start.y /
+                                                outer_last_bevel_start.x);
+  var outer_last_bevel_start_A_angle_bisector:f32= segment_divider_A_angle_bisector -
+                                                  x_axis_A_outer_last_bevel_start;
+  if ((x_axis_A_coord >= x_axis_A_outer_last_bevel_start) &&
+      (x_axis_A_coord < f32(6.28318530717958647692) - last_segment_divider_A_x_axis - x_axis_A_outer_last_bevel_start))
+  {
+    var bevel_start_A_angle_bisector:f32= segment_divider_A_angle_bisector -
+                                         segment_divider_A_bevel_start;
+    if (((segment_divider_A_coord >= segment_divider_A_bevel_start) &&
+         (segment_divider_A_coord <
+          segment_divider_A_next_segment_divider - segment_divider_A_bevel_start)) ||
+        (x_axis_A_coord >=
+         f32(6.28318530717958647692) - last_segment_divider_A_x_axis - segment_divider_A_bevel_start) ||
+        (x_axis_A_coord < segment_divider_A_bevel_start))
+    {
+      var l_angle_bisector:f32= f32(0.0);
+      var r_gon_parameter:f32= f32(0.0);
+      var max_unit_parameter:f32= f32(0.0);
+      l_angle_bisector = l_coord *
+                         rt_cos(segment_divider_A_angle_bisector - segment_divider_A_coord);
+      var spline_start_A_bevel_start:f32= (f32(1.0) - r_gon_roundness) *
+                                         segment_divider_A_bevel_start;
+      if ((x_axis_A_coord >=
+           f32(6.28318530717958647692) - last_segment_divider_A_x_axis - segment_divider_A_angle_bisector) ||
+          (x_axis_A_coord < segment_divider_A_angle_bisector))
+      {
+        var effective_roundness:f32= f32(1.0) - rt_tan(segment_divider_A_angle_bisector -
+                                                      x_axis_A_outer_last_bevel_start) /
+                                                     rt_tan(segment_divider_A_angle_bisector);
+        var spline_start_outer_last_bevel_start:f32= (f32(1.0) - effective_roundness) *
+                                                    x_axis_A_outer_last_bevel_start;
+        if (true) {
+          r_gon_parameter = l_angle_bisector * rt_tan(abs(segment_divider_A_angle_bisector -
+                                                          segment_divider_A_coord));
+          if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+            r_gon_parameter *= -f32(1.0);
+          }
+          if (normalize_r_gon_parameter) {
+            var normalize_based_on_l_angle_bisector:f32=
+                l_angle_bisector * rt_tan(outer_last_bevel_start_A_angle_bisector) +
+                spline_start_outer_last_bevel_start *
+                    (f32(0.5) * l_angle_bisector + f32(0.5)) +
+                effective_roundness * x_axis_A_outer_last_bevel_start;
+            r_gon_parameter /= normalize_based_on_l_angle_bisector;
+          }
+        }
+      }
+      else {
+        var spline_start_A_bevel_start:f32= (f32(1.0) - r_gon_roundness) *
+                                           segment_divider_A_bevel_start;
+        if (true) {
+          r_gon_parameter = l_angle_bisector * rt_tan(abs(segment_divider_A_angle_bisector -
+                                                          segment_divider_A_coord));
+          if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+            r_gon_parameter *= -f32(1.0);
+          }
+          if (normalize_r_gon_parameter) {
+            var normalize_based_on_l_angle_bisector:f32=
+                l_angle_bisector * rt_tan(bevel_start_A_angle_bisector) +
+                spline_start_A_bevel_start * (f32(0.5) * l_angle_bisector + f32(0.5)) +
+                r_gon_roundness * segment_divider_A_bevel_start;
+            r_gon_parameter /= normalize_based_on_l_angle_bisector;
+          }
+        }
+      }
+      if (true) {
+        r_gon_parameter = l_angle_bisector *
+                          rt_tan(abs(segment_divider_A_angle_bisector - segment_divider_A_coord));
+        if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+          r_gon_parameter *= -f32(1.0);
+        }
+        if (normalize_r_gon_parameter) {
+          if ((x_axis_A_coord >=
+               f32(6.28318530717958647692) - last_segment_divider_A_x_axis - segment_divider_A_angle_bisector) ||
+              (x_axis_A_coord < segment_divider_A_angle_bisector))
+          {
+            var effective_roundness:f32= f32(1.0) - rt_tan(segment_divider_A_angle_bisector -
+                                                          x_axis_A_outer_last_bevel_start) /
+                                                         rt_tan(segment_divider_A_angle_bisector);
+            var spline_start_outer_last_bevel_start:f32= (f32(1.0) - effective_roundness) *
+                                                        x_axis_A_outer_last_bevel_start;
+            var normalize_based_on_l_angle_bisector:f32=
+                l_angle_bisector * rt_tan(outer_last_bevel_start_A_angle_bisector) +
+                spline_start_outer_last_bevel_start *
+                    (f32(0.5) * l_angle_bisector + f32(0.5)) +
+                effective_roundness * x_axis_A_outer_last_bevel_start;
+            r_gon_parameter /= normalize_based_on_l_angle_bisector;
+          }
+          else {
+            var spline_start_A_bevel_start:f32= (f32(1.0) - r_gon_roundness) *
+                                               segment_divider_A_bevel_start;
+            var normalize_based_on_l_angle_bisector:f32=
+                l_angle_bisector * rt_tan(bevel_start_A_angle_bisector) +
+                spline_start_A_bevel_start * (f32(0.5) * l_angle_bisector + f32(0.5)) +
+                r_gon_roundness * segment_divider_A_bevel_start;
+            r_gon_parameter /= normalize_based_on_l_angle_bisector;
+          }
+        }
+      }
+      if (true) {
+        max_unit_parameter = rt_tan(bevel_start_A_angle_bisector) + spline_start_A_bevel_start +
+                             r_gon_roundness * segment_divider_A_bevel_start;
+      }
+      return vec4<f32>(l_angle_bisector,
+                         r_gon_parameter,
+                         max_unit_parameter,
+                         segment_id * segment_divider_A_next_segment_divider +
+                             segment_divider_A_angle_bisector);
+    }
+    else {
+      var nearest_segment_divider_SA_coord:f32= segment_divider_A_coord -
+                                               f32(segment_divider_A_coord >
+                                                     segment_divider_A_angle_bisector) *
+                                                   segment_divider_A_next_segment_divider;
+      var l_angle_bisector:f32= f32(0.0);
+      var r_gon_parameter:f32= f32(0.0);
+      var max_unit_parameter:f32= f32(0.0);
+      var l_circle_center:f32= (f32(1.0) - r_gon_roundness) /
+                              rt_cos(segment_divider_A_angle_bisector);
+      var l_coord_R_l_bevel_start:f32= rt_cos(nearest_segment_divider_SA_coord) * l_circle_center +
+                                      sqrt(rt_sqr(rt_cos(nearest_segment_divider_SA_coord) *
+                                                l_circle_center) +
+                                            rt_sqr(r_gon_roundness) - rt_sqr(l_circle_center));
+      l_angle_bisector = l_coord / l_coord_R_l_bevel_start;
+      var spline_start_A_bevel_start:f32= (f32(1.0) - r_gon_roundness) *
+                                         segment_divider_A_bevel_start;
+      if (true) {
+        var coord_A_bevel_start:f32= segment_divider_A_bevel_start -
+                                    abs(nearest_segment_divider_SA_coord);
+        r_gon_parameter = l_coord * rt_sin(bevel_start_A_angle_bisector);
+        if (coord_A_bevel_start < spline_start_A_bevel_start) {
+          r_gon_parameter += l_coord * rt_cos(bevel_start_A_angle_bisector) * coord_A_bevel_start +
+                             f32(0.5) *
+                                 (f32(1.0) - l_coord * rt_cos(bevel_start_A_angle_bisector)) *
+                                 rt_sqr(coord_A_bevel_start) / spline_start_A_bevel_start;
+        }
+        else {
+          r_gon_parameter += spline_start_A_bevel_start *
+                                 (f32(0.5) * l_coord * rt_cos(bevel_start_A_angle_bisector) -
+                                  f32(0.5)) +
+                             coord_A_bevel_start;
+        }
+        if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+          r_gon_parameter *= -f32(1.0);
+        }
+        if (normalize_r_gon_parameter) {
+          var normalize_based_on_l_angle_bisector:f32=
+              l_angle_bisector * rt_tan(bevel_start_A_angle_bisector) +
+              spline_start_A_bevel_start * (f32(0.5) * l_angle_bisector + f32(0.5)) +
+              r_gon_roundness * segment_divider_A_bevel_start;
+          var normalize_based_on_l_coord:f32=
+              l_coord * rt_sin(bevel_start_A_angle_bisector) +
+              spline_start_A_bevel_start *
+                  (f32(0.5) * l_coord * rt_cos(bevel_start_A_angle_bisector) + f32(0.5)) +
+              r_gon_roundness * segment_divider_A_bevel_start;
+          r_gon_parameter /= rt_mix(normalize_based_on_l_angle_bisector,
+                                 normalize_based_on_l_coord,
+                                 coord_A_bevel_start / segment_divider_A_bevel_start);
+        }
+      }
+      if (true) {
+        max_unit_parameter = rt_tan(bevel_start_A_angle_bisector) + spline_start_A_bevel_start +
+                             r_gon_roundness * segment_divider_A_bevel_start;
+      }
+      return vec4<f32>(l_angle_bisector,
+                         r_gon_parameter,
+                         max_unit_parameter,
+                         segment_id * segment_divider_A_next_segment_divider +
+                             segment_divider_A_angle_bisector);
+    }
+  }
+  else {
+    var inner_last_bevel_start_A_last_angle_bisector:f32= last_angle_bisector_A_x_axis -
+                                                         inner_last_bevel_start_A_x_axis;
+    if ((x_axis_A_coord >=
+         f32(6.28318530717958647692) - last_segment_divider_A_x_axis + inner_last_bevel_start_A_x_axis) &&
+        (x_axis_A_coord < f32(6.28318530717958647692) - inner_last_bevel_start_A_x_axis))
+    {
+      var l_angle_bisector:f32= f32(0.0);
+      var r_gon_parameter:f32= f32(0.0);
+      var max_unit_parameter:f32= f32(0.0);
+      var l_angle_bisector_R_l_last_angle_bisector:f32= rt_cos(segment_divider_A_angle_bisector) /
+                                                       rt_cos(last_angle_bisector_A_x_axis);
+      var l_last_angle_bisector:f32= l_coord *
+                                    rt_cos(last_angle_bisector_A_x_axis - segment_divider_A_coord);
+      l_angle_bisector = l_angle_bisector_R_l_last_angle_bisector * l_last_angle_bisector;
+      var spline_start_A_bevel_start:f32= (f32(1.0) - r_gon_roundness) *
+                                         inner_last_bevel_start_A_x_axis;
+      if (true) {
+        r_gon_parameter = l_angle_bisector_R_l_last_angle_bisector * l_last_angle_bisector *
+                          rt_tan(abs(last_angle_bisector_A_x_axis - segment_divider_A_coord));
+        if (segment_divider_A_coord < last_angle_bisector_A_x_axis) {
+          r_gon_parameter *= -f32(1.0);
+        }
+        if (normalize_r_gon_parameter) {
+          var normalize_based_on_l_l_angle_bisector:f32=
+              l_angle_bisector_R_l_last_angle_bisector *
+              (l_last_angle_bisector * rt_tan(inner_last_bevel_start_A_last_angle_bisector) +
+               spline_start_A_bevel_start * (f32(0.5) * l_last_angle_bisector + f32(0.5)) +
+               r_gon_roundness * inner_last_bevel_start_A_x_axis);
+          r_gon_parameter /= normalize_based_on_l_l_angle_bisector;
+        }
+      }
+      if (true) {
+        max_unit_parameter = rt_tan(inner_last_bevel_start_A_last_angle_bisector) +
+                             l_angle_bisector_R_l_last_angle_bisector *
+                                 (spline_start_A_bevel_start *
+                                      ((f32(0.5) / l_angle_bisector_R_l_last_angle_bisector) +
+                                       f32(0.5)) +
+                                  r_gon_roundness * inner_last_bevel_start_A_x_axis);
+      }
+      return vec4<f32>(l_angle_bisector,
+                         r_gon_parameter,
+                         max_unit_parameter,
+                         segment_id * segment_divider_A_next_segment_divider +
+                             last_angle_bisector_A_x_axis);
+    }
+    else {
+      var nearest_segment_divider_MSA_coord:f32= rt_atan2(coord.y, coord.x);
+      if ((x_axis_A_coord >=
+           f32(6.28318530717958647692) - last_segment_divider_A_x_axis - x_axis_A_outer_last_bevel_start) &&
+          (x_axis_A_coord < f32(6.28318530717958647692) - last_angle_bisector_A_x_axis))
+      {
+        nearest_segment_divider_MSA_coord += last_segment_divider_A_x_axis;
+        nearest_segment_divider_MSA_coord *= -f32(1.0);
+      }
+      var l_angle_bisector:f32= f32(0.0);
+      var r_gon_parameter:f32= f32(0.0);
+      var max_unit_parameter:f32= f32(0.0);
+      var x_axis_A_angle_bisector:f32= f32(0.0);
+      var l_coord_R_l_last_angle_bisector:f32=
+          rt_sin(nearest_segment_divider_MSA_coord) * last_circle_center.y +
+          rt_cos(nearest_segment_divider_MSA_coord) * last_circle_center.x +
+          sqrt(rt_sqr(rt_sin(nearest_segment_divider_MSA_coord) * last_circle_center.y +
+                    rt_cos(nearest_segment_divider_MSA_coord) * last_circle_center.x) +
+                rt_sqr(l_last_circle_radius) - rt_sqr(last_circle_center.x) - rt_sqr(last_circle_center.y));
+      var l_angle_bisector_R_l_last_angle_bisector:f32= rt_cos(segment_divider_A_angle_bisector) /
+                                                       rt_cos(last_angle_bisector_A_x_axis);
+      var l_last_angle_bisector:f32= l_coord / l_coord_R_l_last_angle_bisector;
+      l_angle_bisector = l_angle_bisector_R_l_last_angle_bisector * l_last_angle_bisector;
+      if (nearest_segment_divider_MSA_coord < f32(0.0)) {
+        var spline_start_A_bevel_start:f32= (f32(1.0) - r_gon_roundness) *
+                                           inner_last_bevel_start_A_x_axis;
+        if (true) {
+          var coord_A_bevel_start:f32= inner_last_bevel_start_A_x_axis -
+                                      abs(nearest_segment_divider_MSA_coord);
+          r_gon_parameter = l_angle_bisector_R_l_last_angle_bisector * l_coord *
+                            rt_sin(inner_last_bevel_start_A_last_angle_bisector);
+          if (coord_A_bevel_start < spline_start_A_bevel_start) {
+            r_gon_parameter +=
+                l_angle_bisector_R_l_last_angle_bisector *
+                (l_coord * rt_cos(inner_last_bevel_start_A_last_angle_bisector) *
+                     coord_A_bevel_start +
+                 f32(0.5) *
+                     (f32(1.0) - l_coord * rt_cos(inner_last_bevel_start_A_last_angle_bisector)) *
+                     rt_sqr(coord_A_bevel_start) / spline_start_A_bevel_start);
+          }
+          else {
+            r_gon_parameter += l_angle_bisector_R_l_last_angle_bisector *
+                               (spline_start_A_bevel_start *
+                                    (f32(0.5) * l_coord *
+                                         rt_cos(inner_last_bevel_start_A_last_angle_bisector) -
+                                     f32(0.5)) +
+                                coord_A_bevel_start);
+          }
+          if (segment_divider_A_coord < last_angle_bisector_A_x_axis) {
+            r_gon_parameter *= -f32(1.0);
+          }
+          if (normalize_r_gon_parameter) {
+            var normalize_based_on_l_l_angle_bisector:f32=
+                l_last_angle_bisector * rt_tan(inner_last_bevel_start_A_last_angle_bisector) +
+                spline_start_A_bevel_start * (f32(0.5) * l_last_angle_bisector + f32(0.5)) +
+                r_gon_roundness * inner_last_bevel_start_A_x_axis;
+            var normalize_based_on_l_coord:f32=
+                l_coord * rt_sin(inner_last_bevel_start_A_last_angle_bisector) +
+                spline_start_A_bevel_start *
+                    (f32(0.5) * l_coord * rt_cos(inner_last_bevel_start_A_last_angle_bisector) +
+                     f32(0.5)) +
+                r_gon_roundness * inner_last_bevel_start_A_x_axis;
+            r_gon_parameter /= l_angle_bisector_R_l_last_angle_bisector *
+                               rt_mix(normalize_based_on_l_l_angle_bisector,
+                                   normalize_based_on_l_coord,
+                                   coord_A_bevel_start / inner_last_bevel_start_A_x_axis);
+          }
+        }
+        if (true) {
+          max_unit_parameter = rt_tan(inner_last_bevel_start_A_last_angle_bisector) +
+                               l_angle_bisector_R_l_last_angle_bisector *
+                                   (spline_start_A_bevel_start *
+                                        ((f32(0.5) / l_angle_bisector_R_l_last_angle_bisector) +
+                                         f32(0.5)) +
+                                    r_gon_roundness * inner_last_bevel_start_A_x_axis);
+        }
+        x_axis_A_angle_bisector = segment_id * segment_divider_A_next_segment_divider +
+                                  last_angle_bisector_A_x_axis;
+      }
+      else {
+        var effective_roundness:f32= f32(1.0) - rt_tan(segment_divider_A_angle_bisector -
+                                                      x_axis_A_outer_last_bevel_start) /
+                                                     rt_tan(segment_divider_A_angle_bisector);
+        var spline_start_outer_last_bevel_start:f32= (f32(1.0) - effective_roundness) *
+                                                    x_axis_A_outer_last_bevel_start;
+        if (true) {
+          var coord_A_bevel_start:f32= x_axis_A_outer_last_bevel_start -
+                                      abs(nearest_segment_divider_MSA_coord);
+          r_gon_parameter = l_coord * rt_sin(outer_last_bevel_start_A_angle_bisector);
+          if (coord_A_bevel_start < spline_start_outer_last_bevel_start) {
+            r_gon_parameter += l_coord * rt_cos(outer_last_bevel_start_A_angle_bisector) *
+                                   coord_A_bevel_start +
+                               f32(0.5) *
+                                   (f32(1.0) -
+                                    l_coord * rt_cos(outer_last_bevel_start_A_angle_bisector)) *
+                                   rt_sqr(coord_A_bevel_start) / spline_start_outer_last_bevel_start;
+          }
+          else {
+            r_gon_parameter += spline_start_outer_last_bevel_start *
+                                   (f32(0.5) * l_coord *
+                                        rt_cos(outer_last_bevel_start_A_angle_bisector) -
+                                    f32(0.5)) +
+                               coord_A_bevel_start;
+          }
+          if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+            r_gon_parameter *= -f32(1.0);
+          }
+          if (normalize_r_gon_parameter) {
+            var normalize_based_on_l_angle_bisector:f32=
+                l_angle_bisector * rt_tan(outer_last_bevel_start_A_angle_bisector) +
+                spline_start_outer_last_bevel_start *
+                    (f32(0.5) * l_angle_bisector + f32(0.5)) +
+                effective_roundness * x_axis_A_outer_last_bevel_start;
+            var normalize_based_on_l_coord:f32=
+                l_coord * rt_sin(outer_last_bevel_start_A_angle_bisector) +
+                spline_start_outer_last_bevel_start *
+                    (f32(0.5) * l_coord * rt_cos(outer_last_bevel_start_A_angle_bisector) +
+                     f32(0.5)) +
+                effective_roundness * x_axis_A_outer_last_bevel_start;
+            r_gon_parameter /= rt_mix(normalize_based_on_l_angle_bisector,
+                                   normalize_based_on_l_coord,
+                                   coord_A_bevel_start / x_axis_A_outer_last_bevel_start);
+          }
+        }
+        if (true) {
+          var bevel_start_A_angle_bisector:f32= segment_divider_A_angle_bisector -
+                                               segment_divider_A_bevel_start;
+          var spline_start_A_bevel_start:f32= (f32(1.0) - r_gon_roundness) *
+                                             segment_divider_A_bevel_start;
+          max_unit_parameter = rt_tan(bevel_start_A_angle_bisector) + spline_start_A_bevel_start +
+                               r_gon_roundness * segment_divider_A_bevel_start;
+        }
+        x_axis_A_angle_bisector = segment_id * segment_divider_A_next_segment_divider +
+                                  segment_divider_A_angle_bisector;
+      }
+      return vec4<f32>(
+          l_angle_bisector, r_gon_parameter, max_unit_parameter, x_axis_A_angle_bisector);
+    }
+  }
+}
+ fn rt_calculate_out_variables(calculate_r_gon_parameter_field:bool,calculate_max_unit_parameter:bool,normalize_r_gon_parameter:bool,r_gon_sides:f32,r_gon_roundness:f32,coord:vec2<f32>)->vec4<f32>
+{
+  var l_coord:f32= sqrt(rt_sqr(coord.x) + rt_sqr(coord.y));
+  var out_variables:vec4<f32>;
+  if (rt_fract(r_gon_sides) == f32(0.0)) {
+    var x_axis_A_coord:f32= rt_atan2(coord.y, coord.x) + f32(coord.y < f32(0.0)) * f32(6.28318530717958647692);
+    var segment_divider_A_angle_bisector:f32= f32(3.14159265358979323846) / r_gon_sides;
+    var segment_divider_A_next_segment_divider:f32= f32(2.0) * segment_divider_A_angle_bisector;
+    var segment_id:f32= floor(x_axis_A_coord / segment_divider_A_next_segment_divider);
+    var segment_divider_A_coord:f32= x_axis_A_coord -
+                                    segment_id * segment_divider_A_next_segment_divider;
+    if (r_gon_roundness == f32(0.0)) {
+      var l_angle_bisector:f32= f32(0.0);
+      var r_gon_parameter:f32= f32(0.0);
+      var max_unit_parameter:f32= f32(0.0);
+      l_angle_bisector = l_coord *
+                         rt_cos(segment_divider_A_angle_bisector - segment_divider_A_coord);
+      if (true) {
+        r_gon_parameter = l_angle_bisector *
+                          rt_tan(abs(segment_divider_A_angle_bisector - segment_divider_A_coord));
+        if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+          r_gon_parameter *= -f32(1.0);
+        }
+        if (normalize_r_gon_parameter && (r_gon_sides != f32(2.0))) {
+          r_gon_parameter /= l_angle_bisector * rt_tan(segment_divider_A_angle_bisector);
+        }
+      }
+      if (true) {
+        max_unit_parameter = select(f32(0.0), rt_tan(segment_divider_A_angle_bisector), r_gon_sides != f32(2.0));
+      }
+      out_variables = vec4<f32>(l_angle_bisector,
+                                  r_gon_parameter,
+                                  max_unit_parameter,
+                                  segment_id * segment_divider_A_next_segment_divider +
+                                      segment_divider_A_angle_bisector);
+    }
+    else if (r_gon_roundness == f32(1.0)) {
+      var r_gon_parameter:f32= f32(0.0);
+      if (true) {
+        r_gon_parameter = abs(segment_divider_A_angle_bisector - segment_divider_A_coord);
+        if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+          r_gon_parameter *= -f32(1.0);
+        }
+        if (normalize_r_gon_parameter) {
+          r_gon_parameter /= segment_divider_A_angle_bisector;
+        }
+      }
+      out_variables = vec4<f32>(l_coord,
+                                  r_gon_parameter,
+                                  segment_divider_A_angle_bisector,
+                                  segment_id * segment_divider_A_next_segment_divider +
+                                      segment_divider_A_angle_bisector);
+    }
+    else {
+      var segment_divider_A_bevel_start:f32= segment_divider_A_angle_bisector -
+                                            rt_atan((f32(1.0) - r_gon_roundness) *
+                                                  rt_tan(segment_divider_A_angle_bisector));
+      var bevel_start_A_angle_bisector:f32= segment_divider_A_angle_bisector -
+                                           segment_divider_A_bevel_start;
+      if ((segment_divider_A_coord >=
+           segment_divider_A_next_segment_divider - segment_divider_A_bevel_start) ||
+          (segment_divider_A_coord < segment_divider_A_bevel_start))
+      {
+        var nearest_segment_divider_SA_coord:f32= segment_divider_A_coord -
+                                                 f32(segment_divider_A_coord >
+                                                       segment_divider_A_angle_bisector) *
+                                                     segment_divider_A_next_segment_divider;
+        var l_angle_bisector:f32= f32(0.0);
+        var r_gon_parameter:f32= f32(0.0);
+        var max_unit_parameter:f32= f32(0.0);
+        var l_circle_center:f32= (f32(1.0) - r_gon_roundness) /
+                                rt_cos(segment_divider_A_angle_bisector);
+        var l_coord_R_l_bevel_start:f32= rt_cos(nearest_segment_divider_SA_coord) * l_circle_center +
+                                        sqrt(rt_sqr(rt_cos(nearest_segment_divider_SA_coord) *
+                                                  l_circle_center) +
+                                              rt_sqr(r_gon_roundness) - rt_sqr(l_circle_center));
+        l_angle_bisector = l_coord / l_coord_R_l_bevel_start;
+        var spline_start_A_bevel_start:f32= (f32(1.0) - r_gon_roundness) *
+                                           segment_divider_A_bevel_start;
+        if (true) {
+          var coord_A_bevel_start:f32= segment_divider_A_bevel_start -
+                                      abs(nearest_segment_divider_SA_coord);
+          r_gon_parameter = l_coord * rt_sin(bevel_start_A_angle_bisector);
+          if (coord_A_bevel_start < spline_start_A_bevel_start) {
+            r_gon_parameter += l_coord * rt_cos(bevel_start_A_angle_bisector) * coord_A_bevel_start +
+                               f32(0.5) *
+                                   (f32(1.0) - l_coord * rt_cos(bevel_start_A_angle_bisector)) *
+                                   rt_sqr(coord_A_bevel_start) / spline_start_A_bevel_start;
+          }
+          else {
+            r_gon_parameter += spline_start_A_bevel_start *
+                                   (f32(0.5) * l_coord * rt_cos(bevel_start_A_angle_bisector) -
+                                    f32(0.5)) +
+                               coord_A_bevel_start;
+          }
+          if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+            r_gon_parameter *= -f32(1.0);
+          }
+          if (normalize_r_gon_parameter) {
+            var normalize_based_on_l_angle_bisector:f32=
+                l_angle_bisector * rt_tan(bevel_start_A_angle_bisector) +
+                spline_start_A_bevel_start * (f32(0.5) * l_angle_bisector + f32(0.5)) +
+                r_gon_roundness * segment_divider_A_bevel_start;
+            var normalize_based_on_l_coord:f32=
+                l_coord * rt_sin(bevel_start_A_angle_bisector) +
+                spline_start_A_bevel_start *
+                    (f32(0.5) * l_coord * rt_cos(bevel_start_A_angle_bisector) + f32(0.5)) +
+                r_gon_roundness * segment_divider_A_bevel_start;
+            r_gon_parameter /= rt_mix(normalize_based_on_l_angle_bisector,
+                                   normalize_based_on_l_coord,
+                                   coord_A_bevel_start / segment_divider_A_bevel_start);
+          }
+        }
+        if (true) {
+          max_unit_parameter = rt_tan(bevel_start_A_angle_bisector) + spline_start_A_bevel_start +
+                               r_gon_roundness * segment_divider_A_bevel_start;
+        }
+        out_variables = vec4<f32>(l_angle_bisector,
+                                    r_gon_parameter,
+                                    max_unit_parameter,
+                                    segment_id * segment_divider_A_next_segment_divider +
+                                        segment_divider_A_angle_bisector);
+      }
+      else {
+        var l_angle_bisector:f32= f32(0.0);
+        var r_gon_parameter:f32= f32(0.0);
+        var max_unit_parameter:f32= f32(0.0);
+        l_angle_bisector = l_coord *
+                           rt_cos(segment_divider_A_angle_bisector - segment_divider_A_coord);
+        var spline_start_A_bevel_start:f32= (f32(1.0) - r_gon_roundness) *
+                                           segment_divider_A_bevel_start;
+        if (true) {
+          r_gon_parameter = l_angle_bisector * rt_tan(abs(segment_divider_A_angle_bisector -
+                                                          segment_divider_A_coord));
+          if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+            r_gon_parameter *= -f32(1.0);
+          }
+          if (normalize_r_gon_parameter) {
+            var normalize_based_on_l_angle_bisector:f32=
+                l_angle_bisector * rt_tan(bevel_start_A_angle_bisector) +
+                spline_start_A_bevel_start * (f32(0.5) * l_angle_bisector + f32(0.5)) +
+                r_gon_roundness * segment_divider_A_bevel_start;
+            r_gon_parameter /= normalize_based_on_l_angle_bisector;
+          }
+        }
+        if (true) {
+          max_unit_parameter = rt_tan(bevel_start_A_angle_bisector) + spline_start_A_bevel_start +
+                               r_gon_roundness * segment_divider_A_bevel_start;
+        }
+        out_variables = vec4<f32>(l_angle_bisector,
+                                    r_gon_parameter,
+                                    max_unit_parameter,
+                                    segment_id * segment_divider_A_next_segment_divider +
+                                        segment_divider_A_angle_bisector);
+      }
+    }
+  }
+  else {
+    if (r_gon_roundness == f32(0.0)) {
+      var x_axis_A_coord:f32= rt_atan2(coord.y, coord.x) + f32(coord.y < f32(0.0)) * f32(6.28318530717958647692);
+      var segment_divider_A_angle_bisector:f32= f32(3.14159265358979323846) / r_gon_sides;
+      var segment_divider_A_next_segment_divider:f32= f32(2.0) * segment_divider_A_angle_bisector;
+      var segment_id:f32= floor(x_axis_A_coord / segment_divider_A_next_segment_divider);
+      var segment_divider_A_coord:f32= x_axis_A_coord -
+                                      segment_id * segment_divider_A_next_segment_divider;
+      var last_angle_bisector_A_x_axis:f32= f32(3.14159265358979323846) -
+                                           floor(r_gon_sides) * segment_divider_A_angle_bisector;
+      var last_segment_divider_A_x_axis:f32= f32(2.0) * last_angle_bisector_A_x_axis;
+      if (x_axis_A_coord < f32(6.28318530717958647692) - last_segment_divider_A_x_axis) {
+        var l_angle_bisector:f32= f32(0.0);
+        var r_gon_parameter:f32= f32(0.0);
+        var max_unit_parameter:f32= f32(0.0);
+        l_angle_bisector = l_coord *
+                           rt_cos(segment_divider_A_angle_bisector - segment_divider_A_coord);
+        if (true) {
+          r_gon_parameter = l_angle_bisector * rt_tan(abs(segment_divider_A_angle_bisector -
+                                                          segment_divider_A_coord));
+          if (segment_divider_A_coord < segment_divider_A_angle_bisector) {
+            r_gon_parameter *= -f32(1.0);
+          }
+          if (normalize_r_gon_parameter) {
+            r_gon_parameter /= l_angle_bisector * rt_tan(segment_divider_A_angle_bisector);
+          }
+        }
+        if (true) {
+          max_unit_parameter = rt_tan(segment_divider_A_angle_bisector);
+        }
+        out_variables = vec4<f32>(l_angle_bisector,
+                                    r_gon_parameter,
+                                    max_unit_parameter,
+                                    segment_id * segment_divider_A_next_segment_divider +
+                                        segment_divider_A_angle_bisector);
+      }
+      else {
+        var l_angle_bisector:f32= f32(0.0);
+        var r_gon_parameter:f32= f32(0.0);
+        var max_unit_parameter:f32= f32(0.0);
+        var l_angle_bisector_R_l_last_angle_bisector:f32= rt_cos(segment_divider_A_angle_bisector) /
+                                                         rt_cos(last_angle_bisector_A_x_axis);
+        var l_last_angle_bisector:f32= l_coord *
+                                      rt_cos(last_angle_bisector_A_x_axis - segment_divider_A_coord);
+        l_angle_bisector = l_angle_bisector_R_l_last_angle_bisector * l_last_angle_bisector;
+        if (true) {
+          r_gon_parameter = l_angle_bisector_R_l_last_angle_bisector * l_last_angle_bisector *
+                            rt_tan(abs(last_angle_bisector_A_x_axis - segment_divider_A_coord));
+          if (segment_divider_A_coord < last_angle_bisector_A_x_axis) {
+            r_gon_parameter *= -f32(1.0);
+          }
+          if (normalize_r_gon_parameter) {
+            r_gon_parameter /= l_angle_bisector_R_l_last_angle_bisector * l_last_angle_bisector *
+                               rt_tan(last_angle_bisector_A_x_axis);
+          }
+        }
+        if (true) {
+          max_unit_parameter = rt_tan(last_angle_bisector_A_x_axis);
+        }
+        out_variables = vec4<f32>(l_angle_bisector,
+                                    r_gon_parameter,
+                                    max_unit_parameter,
+                                    segment_id * segment_divider_A_next_segment_divider +
+                                        last_angle_bisector_A_x_axis);
+      }
+    }
+    else {
+      out_variables = rt_calculate_out_variables_irregular_circular(calculate_r_gon_parameter_field,
+                                                                 calculate_max_unit_parameter,
+                                                                 normalize_r_gon_parameter,
+                                                                 r_gon_sides,
+                                                                 r_gon_roundness,
+                                                                 coord,
+                                                                 l_coord);
+    }
+  }
+  if ((coord.x == f32(0.0)) && (coord.y == f32(0.0))) {
+    out_variables.y = f32(0.0);
+  }
+  if (normalize_r_gon_parameter) {
+    out_variables.y = f32(0.5) * out_variables.y + f32(0.5);
+  }
+  else {
+    out_variables.x -= f32(1.0);
+  }
+  return out_variables;
+}
+ fn rt_calculate_out_segment_id(r_gon_sides:f32,coord:vec2<f32>)->f32
+{
+  return floor(r_gon_sides *
+                ((rt_atan2(coord.y, coord.x) / f32(6.28318530717958647692)) + f32(coord.y < f32(0.0))));
+}
+
+fn svm_radial_tiling(s:ptr<function,SvmState>,node:u32){
+    let segment_coordinates=svm_byte(node+N_RadialTiling_segment_coordinates_offset);let segment_id=svm_byte(node+N_RadialTiling_segment_id_offset);
+    let max_unit=svm_byte(node+N_RadialTiling_max_unit_parameter_offset);let bisector=svm_byte(node+N_RadialTiling_x_axis_A_angle_bisector_offset);
+    let coord=svm_input3(s,node+N_RadialTiling_vector);let sides=svm_input(s,node+N_RadialTiling_r_gon_sides);let roundness=svm_input(s,node+N_RadialTiling_r_gon_roundness);
+    let field=segment_coordinates!=SVM_STACK_INVALID;let unit=max_unit!=SVM_STACK_INVALID;
+    // Two sides with 0 < roundness < 1 (refused by the census for constant inputs): the
+    // CPU outputs are rounding residue the device does not reproduce; report 16.
+    if(max(sides,2.0)==2.0&&clamp(roundness,0.0,1.0)>0.0&&clamp(roundness,0.0,1.0)<1.0){svm_error(s,16u);return;}
+    rt_prepare(max(sides,2.0),clamp(roundness,0.0,1.0),coord.xy);
+    if(field||unit||bisector!=SVM_STACK_INVALID){
+        let out=rt_calculate_out_variables(field,unit,svm_byte(node+N_RadialTiling_normalize_r_gon_parameter)!=0u,max(sides,2.0),clamp(roundness,0.0,1.0),coord.xy);
+        svm_optional_store3(s,segment_coordinates,vec3<f32>(out.y,out.x,0.0));svm_optional_store(s,max_unit,out.z);svm_optional_store(s,bisector,out.w);
+    }
+    svm_optional_store(s,segment_id,select(0.0,rt_calculate_out_segment_id(max(sides,2.0),coord.xy),segment_id!=SVM_STACK_INVALID));
+}
 //#endif

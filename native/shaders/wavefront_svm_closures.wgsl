@@ -132,10 +132,43 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
 //#if SVM_BSDF_PRINCIPLED
         case CLOSURE_BSDF_PRINCIPLED_ID:{bytes=SZ_PrincipledBsdfData;}
 //#endif
+//#if SVM_BSDF_METALLIC
+        case CLOSURE_BSDF_PHYSICAL_CONDUCTOR,CLOSURE_BSDF_F82_CONDUCTOR:{bytes=SZ_MetallicBsdfData;}
+//#endif
+//#if SVM_BSDF_ASHIKHMIN_SHIRLEY
+        case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:{bytes=SZ_GlossyBsdfData;}
+//#endif
+//#if SVM_BSDF_VELVET
+        case CLOSURE_BSDF_ASHIKHMIN_VELVET_ID:{bytes=SZ_SimpleBsdfData;}
+//#endif
+//#if SVM_BSDF_TOON
+        case CLOSURE_BSDF_DIFFUSE_TOON_ID,CLOSURE_BSDF_GLOSSY_TOON_ID:{bytes=SZ_ToonBsdfData;}
+//#endif
+//#if SVM_BSDF_BECKMANN
+        case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:{bytes=SZ_GlossyBsdfData;}
+        case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:{bytes=SZ_RefractionBsdfData;}
+        case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID:{bytes=SZ_GlassBsdfData;}
+//#endif
         default:{svm_error(s,16u);return;}}
     let data=svm_take(s,bytes);if((*s).error!=0u||mix_weight==0.0){return;}
 //#if SVM_BSDF_PRINCIPLED
     if(kind==CLOSURE_BSDF_PRINCIPLED_ID){svm_principled(s,data,mix_weight,flag,visibility);return;}
+//#endif
+//#if SVM_BSDF_METALLIC
+    if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR||kind==CLOSURE_BSDF_F82_CONDUCTOR){svm_metallic(s,data,kind,mix_weight,visibility);return;}
+//#endif
+//#if SVM_BSDF_ASHIKHMIN_SHIRLEY
+    if(kind==CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID){svm_ashikhmin_shirley(s,data,mix_weight,visibility);return;}
+//#endif
+//#if SVM_BSDF_VELVET
+    if(kind==CLOSURE_BSDF_ASHIKHMIN_VELVET_ID){svm_velvet(s,data,mix_weight);return;}
+//#endif
+//#if SVM_BSDF_TOON
+    if(kind==CLOSURE_BSDF_DIFFUSE_TOON_ID||kind==CLOSURE_BSDF_GLOSSY_TOON_ID){svm_toon(s,data,kind,mix_weight,visibility);return;}
+//#endif
+//#if SVM_BSDF_BECKMANN
+    if(kind==CLOSURE_BSDF_MICROFACET_BECKMANN_ID||kind==CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID||kind==CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID){
+        svm_beckmann(s,data,kind,mix_weight,visibility);return;}
 //#endif
     // Scene specialization (pipelines.h) removes closure setup the uploaded SVM
     // programs cannot reach; reaching a removed handler is reported, never shaded.
@@ -194,3 +227,53 @@ fn svm_volume(s:ptr<function,SvmState>,node:u32){
     }
     (*s).output.transparency+=weight;(*s).output.runtime_flag|=SR_EXTINCTION;
 }
+//#if SVM_BSDF_FAMILIES
+// safe_normalize_fallback(N, sd->N) of an optional SVM normal input, as in svm_bsdf.
+fn svm_family_normal(s:ptr<function,SvmState>,index:u32)->vec3<f32>{
+    var n=(*s).geometry.N;if(index!=SVM_STACK_INVALID){n=svm_load3(s,index);}
+    let magnitude=rounded_sqrt(rounded_dot(n,n));if(magnitude!=0.0){return n*rounded_divide(1.0,magnitude);}return (*s).geometry.N;
+}
+// bsdf_alloc with closure_weight * mix_weight (closure_sample_weight cutoff).
+fn svm_family_allocate(s:ptr<function,SvmState>,kind:u32,mix_weight:f32)->u32{
+    let weight=max((*s).weight*mix_weight,vec3<f32>(0));let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));
+    if(!(sample_weight>=1e-5)){return NONE;}
+    let i=svm_allocate(s,kind,weight);if(i==NONE){return NONE;}
+    var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);return i;
+}
+//#endif
+//#if SVM_BSDF_VELVET
+// Sheen BSDF node, Ashikhmin velvet distribution (pinned svm/closure.h and
+// bsdf_ashikhmin_velvet_setup): sigma = saturate(param1) in `roughness`,
+// 1/max(sigma, 0.01)^2 in `a`.
+fn svm_velvet(s:ptr<function,SvmState>,data:u32,mix_weight:f32){
+    let n=svm_family_normal(s,svm_byte(data+N_SimpleBsdfData_normal_offset));
+    let i=svm_family_allocate(s,CLOSURE_BSDF_ASHIKHMIN_VELVET_ID,mix_weight);if(i==NONE){return;}
+    var c=svm_closure_read((*s).output,i);c.N=n;c.roughness=clamp(svm_input(s,data+N_SimpleBsdfData_param1),0.0,1.0);
+    let sigma=max(c.roughness,0.01);c.a=rounded_divide(1.0,sigma*sigma);
+    (*s).output.runtime_flag|=SR_BSDF|SR_BSDF_HAS_EVAL;svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);
+}
+//#endif
+//#if SVM_BSDF_TOON
+// Toon BSDF node (pinned svm/closure.h and bsdf_toon.h setup): size = clamp(size,
+// 1e-5, 1) * pi/2 in `a`, smooth = saturate(smooth) * pi/2 in `b`.
+fn svm_toon(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibility:u32){
+    if(kind==CLOSURE_BSDF_GLOSSY_TOON_ID&&data_word(D_caustics_reflective)==0u&&(visibility&PATH_RAY_VISIBILITY_DIFFUSE)!=0u){return;}
+    let n=svm_family_normal(s,svm_byte(data+N_ToonBsdfData_normal_offset));
+    let i=svm_family_allocate(s,kind,mix_weight);if(i==NONE){return;}
+    var c=svm_closure_read((*s).output,i);c.N=n;
+    c.a=clamp(svm_input(s,data+N_ToonBsdfData_size),1e-5,1.0)*1.5707963267948966;c.b=clamp(svm_input(s,data+N_ToonBsdfData_smooth),0.0,1.0)*1.5707963267948966;
+    (*s).output.runtime_flag|=SR_BSDF|SR_BSDF_HAS_EVAL;svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);
+}
+//#endif
+//#if SVM_BSDF_ASHIKHMIN_SHIRLEY
+// Glossy BSDF node, Ashikhmin-Shirley distribution (pinned svm/closure.h and
+// bsdf_ashikhmin_shirley_setup): the GGX node setup with alpha clamped to
+// [1e-4, 1] and an always-evaluable lobe (undefined energy scale stored 0).
+fn svm_ashikhmin_shirley(s:ptr<function,SvmState>,data:u32,mix_weight:f32,visibility:u32){
+    let count=(*s).output.count;svm_glossy(s,data,CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID,mix_weight,visibility);
+    if((*s).error!=0u||(*s).output.count==count){return;}
+    let i=(*s).output.count-1u;var c=svm_closure_read((*s).output,i);c.kind=CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID;c.energy_scale=0.0;
+    c.alpha_x=clamp(c.alpha_x,1e-4,1.0);c.alpha_y=clamp(c.alpha_y,1e-4,1.0);(*s).output.runtime_flag|=SR_BSDF_HAS_EVAL;
+    svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);
+}
+//#endif

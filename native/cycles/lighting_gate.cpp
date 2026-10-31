@@ -30,6 +30,8 @@ using namespace ccl;
 using namespace wavefront_test;
 #ifdef CODEBRIX_TRANSPARENT_LIGHT_GATE
 #include "transparent_shadow_fixture.h"
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
 #endif
 #ifdef CODEBRIX_FEATURE_COMBINATION_GATE
 #include "glass_fixture.h"
@@ -59,6 +61,9 @@ constexpr int lighting_cases=12;
 constexpr int lighting_cases=shadow_terminator_cases;
 #elif defined(CODEBRIX_MNEE_GATE)
 constexpr int lighting_cases=mnee_cases;
+#elif defined(CODEBRIX_TRANSPARENT_LIGHT_GATE)
+// Modes 8-9: transparent shadows with motion blur (moving panes; a deforming checker pane).
+constexpr int lighting_cases=10;
 #else
 constexpr int lighting_cases=8;
 #endif
@@ -67,7 +72,7 @@ constexpr bool use_mis=true;
 #else
 constexpr bool use_mis=false;
 #endif
-struct Metrics {uint64_t mnee_paths=0,mnee_sampled=0,unsupported_emitters=0,mesh_mis_paths=0,deforming_paths=0,transparent_hits=0,max_shadow_hits=0,transmissions=0,shadows=0,blocked=0,visible=0,forward=0,stages=0,floats=0,strict=0,repeat_differences=0;double maximum=0,repeat_maximum=0;};
+struct Metrics {uint64_t mnee_paths=0,mnee_sampled=0,ao_paths=0,unsupported_emitters=0,mesh_mis_paths=0,deforming_paths=0,transparent_hits=0,max_shadow_hits=0,transmissions=0,shadows=0,blocked=0,visible=0,forward=0,stages=0,floats=0,strict=0,repeat_differences=0;double maximum=0,repeat_maximum=0;};
 static Shader *material(Scene &scene,int variant){
   auto graph=make_unique<ShaderGraph>();auto diffuse=graph->create_node<DiffuseBsdfNode>();diffuse->set_color(make_float3(.55,.32,.18));diffuse->set_roughness(.31f);
   ShaderOutput *surface=diffuse->output("BSDF");
@@ -145,10 +150,12 @@ static void fixture(Scene &scene,int mode,bool stationary=false){
 #endif
 #ifdef CODEBRIX_TRANSPARENT_LIGHT_GATE
   scene.integrator->set_transparent_max_bounce(mode==7?3:16);
-  const int layers=mode==4?4:mode==5?7:1;
-  auto pane=transparent_material(scene,mode<4?mode:mode==6?4:1);
+  const int layers=mode==4?4:mode==5?7:mode==8?3:1;
+  auto pane=transparent_material(scene,mode<4?mode:mode==6?4:mode==8?2:mode==9?3:1);
   for(int layer=0;layer<layers;layer++){const float y=.55f+.13f*layer;
-    quad(scene,pane,{make_float3(-2.9f,y,-1.8f),make_float3(2.9f,y,-1.8f),make_float3(2.9f,y,2.8f),make_float3(-2.9f,y,2.8f)});}
+    auto object=quad(scene,pane,{make_float3(-2.9f,y,-1.8f),make_float3(2.9f,y,-1.8f),make_float3(2.9f,y,2.8f),make_float3(-2.9f,y,2.8f)});
+    if(mode==8)object_motion_fixture(scene,*object,unsigned(layer));
+    if(mode==9){deforming_motion_fixture(scene,*object,1);object_motion_fixture(scene,*object,2);}}
 #endif
   auto background=make_unique<ShaderGraph>();auto bg=background->create_node<BackgroundNode>();bg->set_color(zero_float3());background->connect(bg->output("Background"),background->output()->input("Surface"));
   auto world=scene.create_node<Shader>();world->set_graph(std::move(background));world->tag_update(&scene);scene.background->set_shader(world);
@@ -238,6 +245,13 @@ static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &metr
           original_shadow(scene,DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW,clear,shadow,film);
           uint64_t after=0;for(int i:clear)after+=shadow[i].shadow_path.transparent_bounce;metrics.transparent_hits+=after-before;
           for(int i:pending)state[i].shadow=shadow[i];
+#ifdef CODEBRIX_MNEE_GATE
+          // Fast GI's additive mode (mnee_fixture.h case 5): each input's AO shadow path, opaque.
+          {std::vector<int> ao;for(int i:ids)if(state[i].ao.shadow_path.queued_kernel){shadow[i]=state[i].ao;ao.push_back(i);}
+           metrics.ao_paths+=ao.size();original_shadow(scene,DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,ao,shadow,film);
+           std::vector<int> open;for(int i:ao)if(shadow[i].shadow_path.queued_kernel)open.push_back(i);
+           original_shadow(scene,DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW,open,shadow,film);for(int i:ao)state[i].ao=shadow[i];}
+#endif
         }else throw std::runtime_error("Unexpected CPU lighting kernel");
       }
     }
@@ -272,7 +286,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native broad-light configuration");
 #elif defined(CODEBRIX_MNEE_GATE)
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows&&bool(data.integrator.use_caustics)==(mode!=3)&&
-            bool(data.kernel_features&KERNEL_FEATURE_MNEE)==bool(data.integrator.use_caustics),"Unexpected native MNEE configuration");
+            bool(data.kernel_features&KERNEL_FEATURE_MNEE)==bool(data.integrator.use_caustics)&&bool(data.kernel_features&KERNEL_FEATURE_AO_ADDITIVE)==(mode==5)&&
+            bool(data.bvh.have_motion)==(mode>=6),"Unexpected native MNEE configuration");
 #elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native shadow-terminator configuration");
     {bool smooth=false;for(size_t i=0;i<scene.dscene.tri_shader.size();i++)smooth|=(scene.dscene.tri_shader[i]&SHADER_SMOOTH_NORMAL)!=0;require(smooth,"Shadow-terminator fixture lacks smooth triangles");
@@ -347,13 +362,14 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(metrics.shadows>100&&metrics.visible>100,"Missing MNEE direct lighting coverage");
     std::cerr<<"mnee paths="<<metrics.mnee_paths<<" sampled="<<metrics.mnee_sampled<<"\n";
     if(mode==3)require(metrics.mnee_paths==0,"MNEE ran without a caustic receiver");
-    else require(metrics.mnee_paths>100&&(mode==2||metrics.mnee_sampled>=5),"Missing MNEE coverage");
+    else require(metrics.mnee_paths>100&&(mode==2||mode==8||metrics.mnee_sampled>=5),"Missing MNEE coverage");
+    require((mode==5)==(metrics.ao_paths>100)&&(mode<7||metrics.deforming_paths>100),"Missing MNEE fast GI or deformation coverage");
 #elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
     require(metrics.shadows>100&&metrics.visible>100&&metrics.blocked>10,"Missing shadow-terminator direct lighting coverage");
 #else
     require(metrics.shadows>100&&metrics.visible>100,"Missing direct lighting coverage");if(mode!=6)require(metrics.blocked>10,"Missing occlusion coverage");
 #endif
-    auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"mode\":"<<mode<<",\"mneePaths\":"<<metrics.mnee_paths<<",\"mneeSampled\":"<<metrics.mnee_sampled<<",\"transparentSurfaceHits\":"<<metrics.transparent_hits<<",\"maximumShadowHitCount\":"<<metrics.max_shadow_hits<<",\"forwardLightPaths\":"<<metrics.forward<<",\"meshMisPaths\":"<<metrics.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<metrics.deforming_paths<<",\"shadows\":"<<metrics.shadows<<",\"blocked\":"<<metrics.blocked<<",\"visible\":"<<metrics.visible<<",\"stages\":"<<metrics.stages<<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat_differences<<",\"repeatMaximumError\":"<<metrics.repeat_maximum<<"}\n";};
+    auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"mode\":"<<mode<<",\"mneePaths\":"<<metrics.mnee_paths<<",\"mneeSampled\":"<<metrics.mnee_sampled<<",\"aoPaths\":"<<metrics.ao_paths<<",\"transparentSurfaceHits\":"<<metrics.transparent_hits<<",\"maximumShadowHitCount\":"<<metrics.max_shadow_hits<<",\"forwardLightPaths\":"<<metrics.forward<<",\"meshMisPaths\":"<<metrics.mesh_mis_paths<<",\"deformingSurfacePaths\":"<<metrics.deforming_paths<<",\"shadows\":"<<metrics.shadows<<",\"blocked\":"<<metrics.blocked<<",\"visible\":"<<metrics.visible<<",\"stages\":"<<metrics.stages<<",\"filmChecks\":"<<metrics.floats<<",\"strictDifferences\":"<<metrics.strict<<",\"maximumAbsoluteError\":"<<metrics.maximum<<",\"repeatBitwiseDifferences\":"<<metrics.repeat_differences<<",\"repeatMaximumError\":"<<metrics.repeat_maximum<<"}\n";};
     std::ofstream details(folder/"result.json");report(details);report(std::cerr);total.mesh_mis_paths+=metrics.mesh_mis_paths;total.deforming_paths+=metrics.deforming_paths;total.transparent_hits+=metrics.transparent_hits;total.max_shadow_hits=std::max(total.max_shadow_hits,metrics.max_shadow_hits);total.transmissions+=metrics.transmissions;total.forward+=metrics.forward;total.shadows+=metrics.shadows;total.blocked+=metrics.blocked;total.visible+=metrics.visible;total.stages+=metrics.stages;total.floats+=metrics.floats;total.strict+=metrics.strict;total.maximum=std::max(total.maximum,metrics.maximum);total.repeat_differences+=metrics.repeat_differences;
   }
   const bool exchange_only=reference_policy::prepare_only()||reference_policy::reference_only();

@@ -21,7 +21,7 @@ fn svm_set_bump(s:ptr<function,SvmState>,node:u32){
     var n=sd.N;if(normal_index!=SVM_STACK_INVALID){n=svm_load3(s,normal_index);}
     // differential_from_compact(Ng, dP), or the full differential saved by enter_bump_eval.
     let state=svm_byte(node+N_SetBump_bump_state_offset);var dPdx:vec3<f32>;var dPdy:vec3<f32>;
-    if(state==SVM_STACK_INVALID){let tangent=surface_orthogonal(sd.Ng);dPdx=sd.dP*tangent;dPdy=sd.dP*cross(sd.Ng,tangent);}
+    if(state==SVM_STACK_INVALID){let tangent=surface_orthogonal(sd.Ng);dPdx=sd.dP*tangent;dPdy=sd.dP*rounded_cross(sd.Ng,tangent);}
     else{dPdx=svm_load3(s,state+4u);dPdy=svm_load3(s,state+7u);}
     let h_c=svm_load(s,svm_byte(node+N_SetBump_center_offset));
     let h_x=svm_load(s,svm_byte(node+N_SetBump_dx_offset));
@@ -49,6 +49,52 @@ fn svm_set_bump(s:ptr<function,SvmState>,node:u32){
     svm_store3(s,out,n);
 }
 //#endif
+//#if SVM_NODE_DISPLACEMENT
+// displace.h svm_node_set_displacement, svm_node_displacement and svm_node_vector_displacement, one
+// case and one call site. IF_KERNEL_NODES_FEATURE(BUMP): the surface and displacement node masks have
+// it; other evaluations store zero (set_displacement leaves P). svm_displaced_P carries the displaced
+// position out of the displacement program (shader_eval_displace).
+var<private> svm_displaced_P:vec3<f32>;
+fn svm_displacement(s:ptr<function,SvmState>,node:u32,opcode:u32){
+    if(opcode==OP_SET_DISPLACEMENT){
+        if(!SVM_SURFACE){return;}
+        let dP=svm_load3(s,svm_byte(node+N_SetDisplacement_fac_offset));if((*s).error!=0u){return;}
+        (*s).geometry.P=rounded_add3((*s).geometry.P,dP);svm_displaced_P=(*s).geometry.P;return;
+    }
+    let vector=opcode==OP_VECTOR_DISPLACEMENT;
+    let out=svm_byte(node+select(N_Displacement_out_offset,N_VectorDisplacement_displacement_offset,vector));
+    if(!SVM_SURFACE){svm_store3(s,out,vec3<f32>(0));return;}
+    let sd=(*s).geometry;
+    let space=load_word(node+select(N_Displacement_space,N_VectorDisplacement_space,vector));
+    let midlevel=svm_input(s,node+select(N_Displacement_midlevel,N_VectorDisplacement_midlevel,vector));
+    let scale=svm_input(s,node+select(N_Displacement_scale,N_VectorDisplacement_scale,vector));
+    var dP:vec3<f32>;var to_world=false;
+    if(!vector){
+        let height=svm_input(s,node+N_Displacement_height);
+        let normal_index=svm_byte(node+N_Displacement_normal_offset);
+        dP=sd.N;if(normal_index!=SVM_STACK_INVALID){dP=svm_load3(s,normal_index);}
+        // Object space: the inverse normal transform, the scale, then the object direction transform.
+        to_world=space==DSP_SPACE_OBJECT;if(to_world){dP=surface_object_normal(sd,dP,true);}
+        dP*=rounded_add(height,-midlevel)*scale;
+    }else{
+        dP=rounded_add3(svm_input3(s,node+N_VectorDisplacement_vector),-vec3<f32>(midlevel))*scale;
+        if(space==DSP_SPACE_TANGENT){
+            let normal=surface_object_normal(sd,sd.N,true);
+            let id=load_word(node+N_VectorDisplacement_attr);let sign_id=load_word(node+N_VectorDisplacement_attr_sign);
+            let attr=attribute_find(s,id,select(0u,0xffffffffu,(id&0x80000000u)!=0u));
+            var tangent=surface_native_normalize(sd.dPdu);if(attr.found){tangent=attribute_read(s,attr).value.xyz;}
+            var bitangent=surface_normalize(rounded_cross(normal,tangent));
+            let sign_attr=attribute_find(s,sign_id,select(0u,0xffffffffu,(sign_id&0x80000000u)!=0u));
+            if(sign_attr.found){bitangent*=attribute_read(s,sign_attr).value.x;}
+            dP=rounded_add3(rounded_add3(tangent*dP.x,normal*dP.y),bitangent*dP.z);
+        }
+        to_world=space!=DSP_SPACE_WORLD;
+    }
+    if((*s).error!=0u){return;}
+    if(to_world){dP=surface_object_direction(sd,dP,false);}
+    svm_store3(s,out,dP);
+}
+//#endif
 //#if SVM_NODE_BUMP_STATE
 // bump.h enter/leave_bump_eval: save and restore P and the compact dP. The
 // undisplaced-position branch needs true displacement, which this device does
@@ -58,7 +104,34 @@ fn svm_bump_state(s:ptr<function,SvmState>,node:u32,enter:bool){
     if(enter){
         let offset=svm_byte(node+N_EnterBumpEval_state_offset);
         svm_store3(s,offset,(*s).geometry.P);svm_store(s,offset+3u,(*s).geometry.dP);
-        let desc=attribute_find(s,ATTR_STD_POSITION_UNDISPLACED,0u);if(desc.found){svm_error(s,16u);}
+//#if SVM_BUMP_UNDISPLACED else         let desc=attribute_find(s,ATTR_STD_POSITION_UNDISPLACED,0u);if(desc.found){svm_error(s,16u);}
+        // Displacement method Both: the bump runs at the undisplaced position (primitive_surface_attribute<dual3>
+        // and object_position_transform), with its full differential saved for set_bump, and the undisplaced
+        // normal (primitive_normal_set_undisplaced).
+        let desc=attribute_find(s,ATTR_STD_POSITION_UNDISPLACED,0u);
+        if(desc.found){
+            let sd=(*s).geometry;let attr=attribute_read(s,desc);if((*s).error!=0u){return;}
+            let P=surface_object_point(sd,attr.value.xyz,false);
+            let dx=surface_object_direction(sd,attr.dx.xyz,false);let dy=surface_object_direction(sd,attr.dy.xyz,false);
+            (*s).geometry.P=P;(*s).geometry.dP=0.5*rounded_add(rounded_sqrt(rounded_dot(dx,dx)),rounded_sqrt(rounded_dot(dy,dy)));
+            svm_store3(s,offset+4u,dx);svm_store3(s,offset+7u,dy);
+            var N:vec3<f32>;var has_normal=true;
+            if((sd.shader&SHADER_SMOOTH_NORMAL)!=0u){
+                let ndesc=attribute_find(s,ATTR_STD_NORMAL_UNDISPLACED,0u);has_normal=ndesc.found;
+                if(has_normal){N=surface_normalize(attribute_read(s,ndesc).value.xyz);}
+            }else{
+                // triangle_face_normal_undisplaced: the undisplaced corners from the position attribute.
+                let at=table_at(G_tri_vindex,sd.prim,SIZE_tri_vindex);
+                var V:array<vec3<f32>,3>;
+                for(var k=0u;k<3u;k++){V[k]=attribute_fetch(s,desc,load_word(at+k*4u)).xyz;}
+                let applied_negative=(sd.object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0u&&(sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
+                let e1=rounded_add3(V[1],-V[0]);let e2=rounded_add3(V[2],-V[0]);
+                N=surface_native_normalize(rounded_cross(select(e1,e2,applied_negative),select(e2,e1,applied_negative)));
+            }
+            if((*s).error!=0u){return;}
+            if(has_normal){N=surface_object_normal(sd,N,false);(*s).geometry.N=select(N,-N,(sd.runtime_flag&SR_BACKFACING)!=0u);}
+        }
+//#endif
     }else{
         let offset=svm_byte(node+N_LeaveBumpEval_state_offset);
         let P=svm_load3(s,offset);let dP=svm_load(s,offset+3u);if((*s).error!=0u){return;}
@@ -82,7 +155,7 @@ fn svmd_input1(s:ptr<function,SvmState>,address:u32)->vec3<f32>{
 }
 // util/svm/util.h dPdx/dPdy and shading_position/shading_incoming.
 fn svmd_position(sd:SurfaceData)->NormalDual{return NormalDual(sd.P,sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x,sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y);}
-fn svmd_incoming(sd:SurfaceData)->NormalDual{let a=surface_orthogonal(sd.wi);return NormalDual(sd.wi,sd.dI*a,sd.dI*cross(sd.wi,a));}
+fn svmd_incoming(sd:SurfaceData)->NormalDual{let a=surface_orthogonal(sd.wi);return NormalDual(sd.wi,sd.dI*a,sd.dI*rounded_cross(sd.wi,a));}
 fn svmd_const(v:vec3<f32>)->NormalDual{return NormalDual(v,vec3<f32>(0),vec3<f32>(0));}
 // First-order bump offset, then the full dual or only its value.
 fn svmd_output(s:ptr<function,SvmState>,data_in:NormalDual,bump:u32,width:f32,store:u32,out:u32,normalize:bool){

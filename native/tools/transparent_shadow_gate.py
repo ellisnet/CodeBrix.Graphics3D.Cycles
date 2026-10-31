@@ -27,7 +27,7 @@ def main():
     runtime = PACKAGE/'runtimes/linux-x64/native/libcodebrix_wgpu.so'
     pins = {str(runtime): sha(runtime)}
     reports = {}
-    kinds = ['transparent_shadow', 'transparent_lighting', 'shadow', 'broad_lighting', 'shader_data', 'svm_surface', 'device', 'lighting_mis', 'feature_combination']
+    kinds = ['transparent_shadow', 'transparent_shadow_motion', 'transparent_lighting', 'shadow', 'broad_lighting', 'shader_data', 'svm_surface', 'device', 'lighting_mis', 'feature_combination']
     save(out/'invocation.json', {'productionSourceSha256': source, 'fileSha256': pins})
     try:
         if not args.skip_build:
@@ -59,13 +59,13 @@ def main():
             library = directory/'run/library.txt' if is_image else directory/'run.library.txt'
             assert Path(library.read_text().strip()).resolve() == runtime.resolve()
             if is_image:
-                assert report['cases'] == (12 if kind == 'broad_lighting' else 8) and report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage']
+                assert report['cases'] == {'broad_lighting': 12, 'transparent_lighting': 10}.get(kind, 8) and report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage']
             reports[kind] = report
             save(out/'results.json', reports)
         for kind in ('transparent_lighting',):
             status['phase'] = kind+'-replay'
             save(out/'status.json', status)
-            for case in range(12 if kind == 'broad_lighting' else 8):
+            for case in range({'broad_lighting': 12, 'transparent_lighting': 10}.get(kind, 8)):
                 name = kind+'-replay-'+str(case)
                 with (out/(name+'.log')).open('w') as log, contextlib.redirect_stdout(log):
                     render_replay.run('linux-x64', out/kind/'run'/('case-'+str(case)), out/name)
@@ -79,7 +79,7 @@ def main():
             save(out/'results.json', reports)
         assert source == inputs() and all(sha(Path(name)) == digest for name, digest in pins.items())
         status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
-                      scope='Static supported triangle material transparent shadows, closest-four resumable batches, native throughput/pass state and independent CPU images. Volume/hair, object motion, linking, AO, ray portals and tiled-cache resume remain unsupported.')
+                      scope='Supported triangle material transparent shadows, static and with motion blur (moving instances and deforming triangles), closest-four resumable batches, native throughput/pass state and independent CPU images. Volume/hair, linking, AO, ray portals and tiled-cache resume remain unsupported.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

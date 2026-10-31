@@ -195,6 +195,9 @@ python3 native/tools/linux_arm64_lanes.py --output native/work/linux-arm64-lanes
 - `render_oracles.py` has the backends `cpu-arm64-linux` and
   `wgsl-linux-arm64-vulkan` and records the board model and `vulkaninfo`; the
   corpus has not been rendered on the Pi yet.
+  The `cpu-arm64-linux` corpus is rendered faster in a Debian arm64 container on an
+  Apple Silicon Mac ([TESTING-LINUX-ARM64-ORACLE.md](TESTING-LINUX-ARM64-ORACLE.md));
+  the Pi then renders only the WebGPU backend and compares against those films.
 - The managed tests load `native/work/linux/linux-arm64/host/build/lib/libcodebrix_cycles_host.so`
   on Linux ARM64 (its RUNPATH names the prefix and the package's runtime).
 

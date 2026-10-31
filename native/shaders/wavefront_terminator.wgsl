@@ -30,8 +30,27 @@ fn terminator_fast_acos(x:f32)->f32{
 // multipliers), so angle*frequency stays inside native_disk_sincos' [-pi,pi].
 fn terminator_shift_cos_in(cos_value:f32,frequency:f32)->f32{
     let cos_in=min(cos_value,1.0);let angle=terminator_fast_acos(cos_in);
-    return rounded_divide(max(native_disk_sincos(angle*frequency).y,0.0),cos_in);
+//#if SHADOW_TERMINATOR_WIDE else     return rounded_divide(max(native_disk_sincos(angle*frequency).y,0.0),cos_in);
+    return rounded_divide(max(terminator_wide_cos(angle*frequency),0.0),cos_in);
+//#endif
 }
+//#if SHADOW_TERMINATOR_WIDE
+// Shading offsets in (1, 2] (multiplier above 2, infinite at 2; above 2 the multiplier is
+// negative and the kernel skips the term): cosf of
+// angle * multiplier beyond [-pi, pi] is a correctly rounded cosf (glibc's is, but for a small share of arguments), the double-float
+// series of the two-part reduced angle rounded once; inside [-pi, pi] the platform
+// polynomial as for offsets up to 1. A non-finite argument (offset 2) gives NaN on the
+// CPU, which fmaxf(NaN, 0) turns into 0: returned as -1 here, so max(.., 0) is 0.
+fn terminator_wide_cos(x:f32)->f32{
+    if(!(abs(x)<=3.4028234663852886e38)){return -1.0;}
+    if(abs(x)<=3.1415927410125732){return native_disk_sincos(x).y;}
+    let n=i32(floor(x*0.6366197723675814+0.5));let product=trig_product(f32(n),1.5707963705062866);
+    let head=trig_two_sum(x,-product.x);let r=trig_two_sum(head.x,rounded_add(head.y,rounded_add(-product.y,f32(n)*4.3711390001862426e-8)));
+    let sc=select(trig_sincos_series(r),vec4<f32>(r,1.0,0.0),abs(r.x)<1e-6);let q=((n%4)+4)%4;var cs=sc.zw;
+    if(q==1){cs=-sc.xy;}else if(q==2){cs=-sc.zw;}else if(q==3){cs=sc.xy;}
+    return rounded_add(cs.x,cs.y);
+}
+//#endif
 // Raw triangle normals for the offset: center frame, or the interpolated and
 // normalized pair of frames for deforming triangles (motion_triangle_normals).
 fn terminator_normals(sd:SurfaceData)->array<vec3<f32>,3>{

@@ -10,6 +10,9 @@
 #ifdef CBC_PRINCIPLED_FIXTURE
 #include "principled_fixture.h"
 #endif
+#ifdef CBC_BSDF_FIXTURE
+#include "bsdf_fixture.h"
+#endif
 #ifdef CBC_NODES_FIXTURE
 #include "nodes_fixture.h"
 static constexpr unsigned GRAPH_COUNT=NODES_GRAPH_COUNT;
@@ -47,6 +50,9 @@ static void prepare(Scene &scene){
 #endif
 #ifdef CBC_PRINCIPLED_FIXTURE
     result=principled_material(*g,test);
+#endif
+#ifdef CBC_BSDF_FIXTURE
+    result=bsdf_material(*g,test);
 #endif
 #ifdef CBC_NODES_FIXTURE
     result=nodes_material(*g,test);

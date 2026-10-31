@@ -55,18 +55,28 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
             if(first>=0){
                 if(end>table_count(G_prim_index)||u32(first)>end){fail();return result;}
                 if(sp<0){fail();return result;}node=bitcast<i32>(load_word(st+u32(sp)*4u));sp--;
-                if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return result;}
+//#if SHADOW_TRANSPARENT_MOTION else                 if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return result;}
+                if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&u32(first)!=end){fail();return result;}
+//#endif
                 for(var index=u32(first);index<end;index++){
                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
                     let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
                     if(prim_object==self_object&&prim==self_prim){continue;}
                     if(prim_object==light_object&&prim==light_prim){continue;}
                     if((load_word(table_at(G_prim_visibility,index,SIZE_prim_visibility))&visibility)==0u){continue;}
+//#if !SHADOW_TRANSPARENT_MOTION
                     let obj=table_at(G_objects,prim_object,SIZE_objects);let offset=load_word(obj+O_position_offset);
                     let vi=table_at(G_tri_vindex,prim,SIZE_tri_vindex);
                     let va=heap_vec3(table_at(G_tri_verts,offset+load_word(vi),SIZE_tri_verts));
                     let vb=heap_vec3(table_at(G_tri_verts,offset+load_word(vi+4u),SIZE_tri_verts));
                     let vc=heap_vec3(table_at(G_tri_verts,offset+load_word(vi+8u),SIZE_tri_verts));
+//#endif
+//#if SHADOW_TRANSPARENT_MOTION
+                    // Moving objects and deforming (motion) triangles at the shadow ray's time,
+                    // the closest traversal's vertex fetch (native_triangle_vertices).
+                    let vertices=native_triangle_vertices(prim_object,prim,kind&PRIMITIVE_ALL,heap_float(state_address(S_shadow_ray_time,path,4u)));
+                    if(vertices.error!=0u){return result;}let va=vertices.a;let vb=vertices.b;let vc=vertices.c;
+//#endif
                     var u:f32;var v:f32;var t:f32;
                     if(c_ray_triangle_intersect(pos,dir,tmin,tmax,va,vb,vc,&u,&v,&t)){
                         let shader=load_word(table_at(G_tri_shader,prim,4u))&SHADER_MASK;
@@ -77,7 +87,9 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
                         if(duplicate){continue;}result.count++;
                         if(result.count>max_hits){result.opaque=true;return result;}
                         if(result.count<=SHADOW_HIT_CAPACITY||t<farthest){
-                            shadow_hit_store(path,record_index,NativeHit(t,u,v,prim_object,prim,PRIMITIVE_TRIANGLE));
+//#if SHADOW_TRANSPARENT_MOTION else                             shadow_hit_store(path,record_index,NativeHit(t,u,v,prim_object,prim,PRIMITIVE_TRIANGLE));
+                            shadow_hit_store(path,record_index,NativeHit(t,u,v,prim_object,prim,kind&PRIMITIVE_ALL));
+//#endif
                             if(result.count>=SHADOW_HIT_CAPACITY){record_index=0u;farthest=shadow_hit_load(path,0u).t;
                                 for(var k=1u;k<SHADOW_HIT_CAPACITY;k++){let candidate=shadow_hit_load(path,k).t;if(candidate>farthest){record_index=k;farthest=candidate;}}
                             }else{record_index=result.count;}
@@ -88,7 +100,13 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
                 if(object!=NONE){fail();return result;}
                 object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));
                 let obj=table_at(G_objects,object,SIZE_objects);
-                pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));inv=inverse_direction(dir);
+//#if SHADOW_TRANSPARENT_MOTION else                 pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));inv=inverse_direction(dir);
+                if((load_word(table_at(G_object_flag,object,SIZE_object_flag))&SD_OBJECT_MOTION)!=0u){
+                    let inverse=motion_inverse(motion_object(object,heap_float(state_address(S_shadow_ray_time,path,4u))));
+                    pos=transform_rows(inverse.x,inverse.y,inverse.z,origin,true);dir=clamp_direction(transform_rows(inverse.x,inverse.y,inverse.z,direction,false));}
+                else{pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));}
+                inv=inverse_direction(dir);
+//#endif
                 sp++;if(sp>=192){fail();return result;}store_word(st+u32(sp)*4u,bitcast<u32>(0x76543210i));
                 node=bitcast<i32>(load_word(table_at(G_object_node,object,SIZE_object_node)));
             }

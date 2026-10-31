@@ -138,6 +138,16 @@ function(codebrix_add_cycles_device)
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_transparent_shadow_gate PRIVATE ${codebrix_device_libs})
   target_compile_definitions(codebrix_cycles_transparent_shadow_gate PRIVATE CODEBRIX_TRANSPARENT_SHADOW_STATE_GATE)
+  # Transparent shadows with object and deformation motion (the same state gate, moving fixture).
+  add_executable(codebrix_cycles_transparent_shadow_motion_gate "${CODEBRIX_NATIVE_ROOT}/cycles/transparent_shadow_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp")
+  target_compile_features(codebrix_cycles_transparent_shadow_motion_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_transparent_shadow_motion_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_transparent_shadow_motion_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_transparent_shadow_motion_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_transparent_shadow_motion_gate PRIVATE ${codebrix_device_libs})
+  target_compile_definitions(codebrix_cycles_transparent_shadow_motion_gate PRIVATE CODEBRIX_TRANSPARENT_SHADOW_STATE_GATE CODEBRIX_TRANSPARENT_SHADOW_MOTION)
   add_executable(codebrix_cycles_transparent_lighting_gate "${CODEBRIX_NATIVE_ROOT}/cycles/lighting_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
@@ -204,6 +214,18 @@ function(codebrix_add_cycles_device)
   target_include_directories(codebrix_cycles_environment_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_environment_gate PRIVATE ${codebrix_device_libs})
+  # True displacement: shader_eval_displace against kernel_displace_evaluate.
+  add_executable(codebrix_cycles_displacement_gate "${CODEBRIX_NATIVE_ROOT}/cycles/displacement_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp")
+  target_compile_features(codebrix_cycles_displacement_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_displacement_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_displacement_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_displacement_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_displacement_gate PRIVATE ${codebrix_device_libs})
   # Lane m2-lighttree: light tree sampling/MIS and light linking (state probe, images, host guards).
   add_executable(codebrix_cycles_light_tree_gate "${CODEBRIX_NATIVE_ROOT}/cycles/light_tree_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
@@ -234,7 +256,8 @@ function(codebrix_add_cycles_device)
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
-    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/ao_reference.cpp")
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/ao_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/mnee_reference.cpp")
   target_compile_features(codebrix_cycles_ao_render_gate PRIVATE cxx_std_20)
   target_compile_options(codebrix_cycles_ao_render_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
   target_compile_definitions(codebrix_cycles_ao_render_gate PRIVATE ${definitions})
@@ -250,6 +273,29 @@ function(codebrix_add_cycles_device)
   target_include_directories(codebrix_cycles_ao_state_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_ao_state_gate PRIVATE ${codebrix_device_libs})
+  # Bevel and Raycast nodes on the raytrace surface queue: the AO node gates' sources
+  # with the raytrace-node shaders (raytrace_nodes_fixture.h).
+  add_executable(codebrix_cycles_raytrace_nodes_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/ao_render_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/ao_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/mnee_reference.cpp")
+  target_compile_features(codebrix_cycles_raytrace_nodes_render_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_raytrace_nodes_render_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_raytrace_nodes_render_gate PRIVATE ${definitions} CBC_RAYTRACE_NODES_FIXTURE=1)
+  target_include_directories(codebrix_cycles_raytrace_nodes_render_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_raytrace_nodes_render_gate PRIVATE ${codebrix_device_libs})
+  add_executable(codebrix_cycles_raytrace_nodes_state_gate "${CODEBRIX_NATIVE_ROOT}/cycles/ao_state_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/ao_reference.cpp")
+  target_compile_features(codebrix_cycles_raytrace_nodes_state_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_raytrace_nodes_state_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_raytrace_nodes_state_gate PRIVATE ${definitions} CBC_RAYTRACE_NODES_FIXTURE=1)
+  target_include_directories(codebrix_cycles_raytrace_nodes_state_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_raytrace_nodes_state_gate PRIVATE ${codebrix_device_libs})
   # Manifold next-event estimation lockstep state gate (mnee_gate.cpp).
   add_executable(codebrix_cycles_mnee_gate "${CODEBRIX_NATIVE_ROOT}/cycles/mnee_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
@@ -516,6 +562,48 @@ function(codebrix_add_cycles_device)
     target_compile_features(${gate_target} PRIVATE cxx_std_20)
     target_compile_options(${gate_target} PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
     target_compile_definitions(${gate_target} PRIVATE ${definitions} CBC_PRINCIPLED_FIXTURE=1)
+    target_include_directories(${gate_target} PRIVATE "${PROJECT_SOURCE_DIR}/src"
+      "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+    target_link_libraries(${gate_target} PRIVATE ${codebrix_device_libs})
+  endforeach()
+  # Remaining SVM BSDF families: original-CPU closure setup, surface integration and
+  # render; bsdf = Metallic and Beckmann, bsdf2 = Ashikhmin-Shirley, bsdf3 = velvet
+  # and Toon (native/cycles/bsdf_fixture.h).
+  foreach(target_kind IN ITEMS svm bounce render svm2 bounce2 render2 svm3 bounce3 render3)
+    string(REGEX REPLACE "[23]$" "" kind "${target_kind}")
+    if(target_kind MATCHES "2$")
+      set(gate_family bsdf2)
+      set(gate_fixture 2)
+    elseif(target_kind MATCHES "3$")
+      set(gate_family bsdf3)
+      set(gate_fixture 3)
+    else()
+      set(gate_family bsdf)
+      set(gate_fixture 1)
+    endif()
+    if(kind STREQUAL "svm")
+      set(gate_source svm_surface_gate.cpp)
+      set(reference_source svm_surface_reference.cpp)
+    elseif(kind STREQUAL "bounce")
+      set(gate_source surface_gate.cpp)
+      set(reference_source surface_reference.cpp)
+    else()
+      set(gate_source render_gate.cpp)
+      set(reference_source surface_reference.cpp)
+    endif()
+    set(gate_target codebrix_cycles_${gate_family}_${kind}_gate)
+    add_executable(${gate_target} "${CODEBRIX_NATIVE_ROOT}/cycles/${gate_source}"
+      "${CODEBRIX_NATIVE_ROOT}/cycles/${reference_source}")
+    if(kind STREQUAL "render")
+      target_sources(${gate_target} PRIVATE "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp"
+        "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp")
+    endif()
+    target_compile_features(${gate_target} PRIVATE cxx_std_20)
+    target_compile_options(${gate_target} PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+    target_compile_definitions(${gate_target} PRIVATE ${definitions} CBC_BSDF_FIXTURE=${gate_fixture})
+    if(kind STREQUAL "render")
+      target_compile_definitions(${gate_target} PRIVATE CBC_BSDF_RENDER=1)
+    endif()
     target_include_directories(${gate_target} PRIVATE "${PROJECT_SOURCE_DIR}/src"
       "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
     target_link_libraries(${gate_target} PRIVATE ${codebrix_device_libs})

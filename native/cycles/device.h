@@ -61,7 +61,7 @@ class WebGPUDevice final:public Device {
   uint64_t svm_generation=0,census_generation=~uint64_t(0);ShaderFeatures enabled_features;
   SvmCensus census;
   // Principled features refused at upload (pipelines.cpp shader_features).
-  uint64_t unsupported_generation=~uint64_t(0);ShaderFeatures principled_features;std::string unsupported_feature;
+  uint64_t unsupported_generation=~uint64_t(0);ShaderFeatures principled_features;ShaderFeatures displacement_features;ShaderFeatures displacement_program_features;std::string unsupported_feature;
   std::vector<uint32_t> tri_shader_words; // per-triangle shader words (Principled census roots)
   bool specialization_enabled=true; // false only for SpecializationMode::Off
   SpecializationMode specialization_mode=SpecializationMode::Scene;
@@ -102,6 +102,8 @@ class WebGPUDevice final:public Device {
   // SVM node and closure regions of the scene that no SD_HAS_RAYTRACE shader
   // reaches (prepare_surface_raytrace evaluates only those shaders).
   ShaderFeatures raytrace_unused_svm_features();
+  // The scene's SVM handler regions the displacement programs never reach (shader_eval_displace).
+  ShaderFeatures displacement_unused_svm_features();
   std::string pipeline_report_json() const;
   std::string adapter_report_json() const;
   void validate_geometry_motion() const;
@@ -135,6 +137,8 @@ class WebGPUDevice final:public Device {
   // DEVICE_KERNEL_SHADER_EVAL_BACKGROUND (background module) and
   // DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE (surface module, wavefront_light_nee.wgsl).
   cbc::Pipeline background_eval;
+  // DEVICE_KERNEL_SHADER_EVAL_DISPLACE (surface module, SHADER_EVAL_DISPLACE: true displacement).
+  cbc::Pipeline surface_displace;
   cbc::Pipeline light_nee,light_nee_prepare;
   uint32_t light_nee_cache=0;size_t light_nee_cache_bytes=0;
   cbc::Pipeline volume;
@@ -148,6 +152,8 @@ class WebGPUDevice final:public Device {
   // Emissive-triangle half of the light stage (LIGHT_TRIANGLE scenes only; surface.cpp).
   cbc::Pipeline surface_light_triangle;
   cbc::Pipeline surface_light_select;
+  // BSDF sample stage of scenes with the remaining SVM BSDF families (surface.cpp).
+  cbc::Pipeline surface_sample;
   // Light tree forward pdfs (background module) and their per-path scratch.
   cbc::Pipeline light_tree_forward;uint32_t light_tree_forward_scratch=0;size_t light_tree_forward_bytes=0;
   cbc::Pipeline surface_connect;
@@ -202,6 +208,7 @@ class WebGPUDevice final:public Device {
   void enqueue_shadow(DeviceKernel,int,const DeviceKernelArguments&);
   void enqueue_background(int,const DeviceKernelArguments&,DeviceKernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
   void enqueue_background_eval(int,const DeviceKernelArguments&);
+  void enqueue_displace(int,const DeviceKernelArguments&);
   void enqueue_light_nee(int,const DeviceKernelArguments&);
   void enqueue_volume_density(int,const DeviceKernelArguments&);
   void enqueue_volume_stack(int,const DeviceKernelArguments&);

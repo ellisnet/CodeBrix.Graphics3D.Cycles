@@ -44,6 +44,42 @@ std::string svm_layout(bool surface){
   FIELD(AmbientOcclusion,normal_offset);FIELD(AmbientOcclusion,out_ao_offset);FIELD(AmbientOcclusion,out_color_offset);
   constant("AO_NODE_ONLY_LOCAL",NODE_AO_ONLY_LOCAL);constant("AO_NODE_INSIDE",NODE_AO_INSIDE);constant("AO_NODE_GLOBAL_RADIUS",NODE_AO_GLOBAL_RADIUS);
   source<<"//#endif\n";
+  // Bevel and Raycast nodes (svm/bevel.h, svm/raycast.h; ray tracing in wavefront_ao.wgsl).
+  // OP_ names: opcode names in the WGSL would join every module's enum list.
+  // Both opcodes in either node's modules: one dispatch case and one call site for the
+  // shared ray tracing (drivers inline every WGSL call).
+  source<<"//#if SVM_RAYTRACE_NODES\n";
+  constant("OP_BEVEL",NODE_BEVEL);constant("OP_RAYCAST",NODE_RAYCAST);constant("OP_RAYCAST_ATTR",NODE_ATTR);
+  source<<"//#endif\n//#if SVM_NODE_BEVEL\n";
+  SIZE(Bevel);FIELD(Bevel,radius);FIELD(Bevel,num_samples);FIELD(Bevel,normal_offset);FIELD(Bevel,out_offset);
+  source<<"//#endif\n//#if SVM_NODE_RAYCAST\n";
+  SIZE(Raycast);FIELD(Raycast,position);FIELD(Raycast,direction);FIELD(Raycast,distance);
+  FIELD(Raycast,bump_filter_width);FIELD(Raycast,only_local);FIELD(Raycast,num_attributes);FIELD(Raycast,is_hit_offset);FIELD(Raycast,is_self_hit_offset);
+  FIELD(Raycast,hit_distance_offset);FIELD(Raycast,hit_position_offset);FIELD(Raycast,hit_normal_offset);
+  static_assert(offsetof(SVMNodeRaycast,num_attributes)%4<=2);
+  source<<"//#endif\n//#if SVM_NODE_RADIAL_TILING\n";
+  constant("OP_RADIAL_TILING",NODE_RADIAL_TILING);SIZE(RadialTiling);FIELD(RadialTiling,vector);FIELD(RadialTiling,r_gon_sides);FIELD(RadialTiling,r_gon_roundness);
+  FIELD(RadialTiling,normalize_r_gon_parameter);FIELD(RadialTiling,segment_coordinates_offset);FIELD(RadialTiling,segment_id_offset);
+  FIELD(RadialTiling,max_unit_parameter_offset);FIELD(RadialTiling,x_axis_A_angle_bisector_offset);
+  // Displacement nodes (svm/displace.h; wavefront_svm_derivatives.wgsl) and the true-displacement
+  // evaluation (shader_eval_displace). DSP_ names: NODE_ and ATTR_ names in the WGSL would join every
+  // module's enum list.
+  source<<"//#endif\n//#if SVM_NODE_DISPLACEMENT\n";
+  constant("OP_SET_DISPLACEMENT",NODE_SET_DISPLACEMENT);constant("OP_DISPLACEMENT",NODE_DISPLACEMENT);constant("OP_VECTOR_DISPLACEMENT",NODE_VECTOR_DISPLACEMENT);
+  SIZE(SetDisplacement);FIELD(SetDisplacement,fac_offset);
+  SIZE(Displacement);FIELD(Displacement,space);FIELD(Displacement,height);FIELD(Displacement,midlevel);FIELD(Displacement,scale);
+  FIELD(Displacement,normal_offset);FIELD(Displacement,out_offset);
+  SIZE(VectorDisplacement);FIELD(VectorDisplacement,space);FIELD(VectorDisplacement,vector);FIELD(VectorDisplacement,midlevel);
+  FIELD(VectorDisplacement,scale);FIELD(VectorDisplacement,attr);FIELD(VectorDisplacement,attr_sign);FIELD(VectorDisplacement,displacement_offset);
+  constant("DSP_SPACE_OBJECT",NODE_NORMAL_MAP_OBJECT);constant("DSP_SPACE_TANGENT",NODE_NORMAL_MAP_TANGENT);constant("DSP_SPACE_WORLD",NODE_NORMAL_MAP_WORLD);
+  static_assert(sizeof(NodeNormalMapSpace)==4&&offsetof(SVMNodeDisplacement,space)%4==0&&offsetof(SVMNodeVectorDisplacement,space)%4==0);
+  source<<"//#endif\n//#if SHADER_EVAL_DISPLACE\n";
+  constant("DSP_INPUT_BYTES",sizeof(KernelShaderEvalInput));constant("DSP_INPUT_object",offsetof(KernelShaderEvalInput,object));
+  constant("DSP_INPUT_prim",offsetof(KernelShaderEvalInput,prim));constant("DSP_INPUT_u",offsetof(KernelShaderEvalInput,u));constant("DSP_INPUT_v",offsetof(KernelShaderEvalInput,v));
+  source<<"//#endif\n//#if SVM_NODE_RAYTRACE\n//#if SVM_RAYTRACE_NODES\n";
+  constant("RAYTRACE_LOCAL_MAX_HITS",LOCAL_MAX_HITS);constant("RAYTRACE_PRNG_SURFACE_BEVEL",PRNG_SURFACE_BEVEL);
+  constant("RAYTRACE_VISIBILITY_RAYCAST",PATH_RAY_VISIBILITY_RAYCAST);
+  source<<"//#endif\n//#endif\n";
   source<<"//#if SVM_NODE_RAYTRACE\n";
   constant("AO_VISIBILITY_ALL",PATH_RAY_VISIBILITY_ALL);constant("AO_VISIBILITY_SHADOW_OPAQUE",PATH_RAY_VISIBILITY_SHADOW_OPAQUE);constant("AO_PRNG_SURFACE_AO",PRNG_SURFACE_AO);
   source<<"//#endif\n";
@@ -208,10 +244,39 @@ std::string svm_layout(bool surface){
 #undef ENUM
   constant("PRINCIPLED_CLOSURE_NONE",uint32_t(CLOSURE_NONE_ID));
   constant("PRINCIPLED_THIN_GLASS",uint32_t(CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID));
+  // Lookup tables of the shared Fresnel albedo and energy preservation helpers
+  // (Principled and Metallic BSDF). Principled modules keep the same text.
+  source<<"//#endif\n//#if SVM_BSDF_FRESNEL_MODELS\n";
   constant("D_ggx_gen_schlick_s",offsetof(KernelData,tables.ggx_gen_schlick_s));
   constant("D_ggx_glass_E",offsetof(KernelData,tables.ggx_glass_E));constant("D_ggx_glass_Eavg",offsetof(KernelData,tables.ggx_glass_Eavg));
   constant("D_ggx_glass_inv_E",offsetof(KernelData,tables.ggx_glass_inv_E));constant("D_ggx_glass_inv_Eavg",offsetof(KernelData,tables.ggx_glass_inv_Eavg));
+  source<<"//#endif\n//#if SVM_BSDF_PRINCIPLED\n";
   constant("D_sheen_ltc",offsetof(KernelData,tables.sheen_ltc));
+  source<<"//#endif\n";
+  // Metallic BSDF layout and closure enums (svm/node_types.h SVMNodeMetallicBsdfData).
+  source<<"//#if SVM_BSDF_METALLIC\n";
+#define FIELD(member) constant("N_MetallicBsdfData_" #member,offsetof(SVMNodeMetallicBsdfData,member))
+  constant("SZ_MetallicBsdfData",sizeof(SVMNodeMetallicBsdfData));
+  FIELD(distribution);FIELD(base_ior);FIELD(edge_tint_k);FIELD(roughness);FIELD(anisotropy);FIELD(rotation);
+  FIELD(thin_film_thickness);FIELD(thin_film_ior);FIELD(normal_offset);FIELD(tangent_offset);
+#undef FIELD
+  constant("CLOSURE_BSDF_PHYSICAL_CONDUCTOR",uint32_t(CLOSURE_BSDF_PHYSICAL_CONDUCTOR));constant("CLOSURE_BSDF_F82_CONDUCTOR",uint32_t(CLOSURE_BSDF_F82_CONDUCTOR));
+  source<<"//#endif\n//#if SVM_BSDF_FAMILIES\n";
+  // Closure kinds and the svm/types.h CLOSURE_IS_* range bounds of the shared
+  // classification (wavefront_surface.wgsl); FAMILY_ names avoid the enum names
+  // other regions emit (CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID, ...).
+  constant("CLOSURE_BSDF_MICROFACET_BECKMANN_ID",uint32_t(CLOSURE_BSDF_MICROFACET_BECKMANN_ID));
+  constant("CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID",uint32_t(CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID));
+  constant("CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID",uint32_t(CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID));
+  constant("CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID",uint32_t(CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID));
+  constant("CLOSURE_BSDF_ASHIKHMIN_VELVET_ID",uint32_t(CLOSURE_BSDF_ASHIKHMIN_VELVET_ID));
+  constant("CLOSURE_BSDF_DIFFUSE_TOON_ID",uint32_t(CLOSURE_BSDF_DIFFUSE_TOON_ID));constant("CLOSURE_BSDF_GLOSSY_TOON_ID",uint32_t(CLOSURE_BSDF_GLOSSY_TOON_ID));
+  constant("FAMILY_NONE",uint32_t(CLOSURE_NONE_ID));constant("FAMILY_GLOSSY_LAST",uint32_t(CLOSURE_BSDF_HAIR_REFLECTION_ID));
+  constant("FAMILY_TRANSMISSION_LAST",uint32_t(CLOSURE_BSDF_HAIR_TRANSMISSION_ID));constant("FAMILY_THIN_GLASS",uint32_t(CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID));
+  constant("FAMILY_GLASS_LAST",uint32_t(CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID));
+  source<<"//#endif\n//#if SVM_BSDF_TOON\n";
+  constant("SZ_ToonBsdfData",sizeof(SVMNodeToonBsdfData));constant("N_ToonBsdfData_size",offsetof(SVMNodeToonBsdfData,size));
+  constant("N_ToonBsdfData_smooth",offsetof(SVMNodeToonBsdfData,smooth));constant("N_ToonBsdfData_normal_offset",offsetof(SVMNodeToonBsdfData,normal_offset));
   source<<"//#endif\n";
   source<<"//#if SVM_BSDF_THIN_FILM\n";
   constant("D_thin_film_table",offsetof(KernelData,tables.thin_film_table));constant("THIN_FILM_TABLE_SIZE",THIN_FILM_TABLE_SIZE);

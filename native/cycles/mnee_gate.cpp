@@ -317,8 +317,11 @@ static void surface_lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Fiel
       else{verdict(!std::memcmp(a,e,f.stride),label+" surface integer "+f.name+" path="+std::to_string(i));m.integers++;}}}
   exchange::read("plain surface film",film.data(),film.size()*4,[&]{film.copy_from_device();healthy(d);});for(size_t k=0;k<film.size();k++)number(film[k],wanted_film[k],"surface film="+std::to_string(k));
   uint32_t allocated=0;exchange::read("plain surface allocated",&allocated,4,[&]{d.download(uintptr_t(d.state.next_shadow_path_index),&allocated,4);});uint32_t live=0;for(int i:ids)live+=wanted[i].shadow.shadow_path.queued_kernel!=0;
+  // With fast GI (case 5) every input may add an AO shadow path too (slot n + id, surface.cpp).
+  const bool ao=scene.dscene.data.kernel_features&KERNEL_FEATURE_AO;if(ao)for(int i:ids)live+=wanted[i].ao.shadow_path.queued_kernel!=0;
+  const size_t reserved=ao?2*ids.size():ids.size();
   // Caustic scenes reserve one stable shadow slot per surface input (surface.cpp); the live ones follow the CPU.
-  verdict(allocated==ids.size(),label+" surface shadow reservation "+std::to_string(allocated)+" expected "+std::to_string(ids.size()));
+  verdict(allocated==reserved,label+" surface shadow reservation "+std::to_string(allocated)+" expected "+std::to_string(reserved));
   std::vector<uint16_t> queued(allocated);exchange::read("plain surface queued",queued.data(),allocated*2,[&]{if(allocated)d.download(uintptr_t(d.state.shadow_path.queued_kernel),queued.data(),allocated*2);});
   uint32_t used=0;for(auto q:queued)used+=q!=0;
   verdict(used==live,label+" surface shadow count "+std::to_string(used)+" expected "+std::to_string(live));m.integers++;
@@ -402,7 +405,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     }
     }
     exchange::end_case();
-    require(m.paths>100&&m.sampled>=(mode==0||mode==1?5u:0u),"Missing MNEE state coverage case "+std::to_string(mode));
+    require(m.paths>100&&m.sampled>=(mnee_samples(mode)?5u:0u),"Missing MNEE state coverage case "+std::to_string(mode));
     auto histogram=[&](const std::map<unsigned,uint64_t> &h){std::ostringstream o;o<<'{';bool first=true;for(auto [k,v]:h){if(!first)o<<',';first=false;o<<'"'<<k<<"\":"<<v;}o<<'}';return o.str();};
     if(cases.tellp()>0)cases<<',';
     cases<<std::setprecision(17)<<"{\"case\":"<<mode<<",\"paths\":"<<m.paths<<",\"sampled\":"<<m.sampled<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strict\":"<<m.strict
@@ -411,6 +414,19 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(m.maximum>total.maximum){total.maximum=m.maximum;total.maximum_field=m.maximum_field;}
   }
   exchange::finish();
+  // Refusal: a moving caustic caster (mnee_fixture.h variant 9) stops the first MNEE dispatch with its reason.
+  bool refused=false;
+  if(exchange::gpu()&&!reference_policy::prepare_only()){
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
+    Scene scene(params,&d);fixture(scene,mnee_refused_moving_caster);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"MNEE refusal scene preparation failed");
+    require(scene.dscene.data.integrator.use_caustics&&scene.dscene.data.bvh.have_motion,"MNEE refusal scene without caustics or motion");
+    bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);
+    device_vector<int> selected(&d,"mnee_refusal_indices",MEM_READ_WRITE);selected.alloc(1);selected.data()[0]=0;selected.copy_to_device();
+    auto queue=d.gpu_queue_create();int n=1;DeviceKernelArguments args;args.add(&selected.device_pointer);args.add(&n);
+    const bool ran=queue->enqueue(DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE,n,args)&&queue->synchronize();
+    refused=!ran&&d.error_message().find("moving caustic caster")!=std::string::npos;
+    require(refused,"Moving caustic caster was not refused: "+d.error_message());
+  }
   if(reference_policy::prepare_only()){std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\"dump\"}\n";TaskScheduler::exit();return 0;}
   // CODEBRIX_MNEE_GATE_DIAGNOSE reports every difference instead of stopping at the first; it still fails.
   require(diagnosed==0,"MNEE gate differences: "+std::to_string(diagnosed));
@@ -420,7 +436,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   if(exchange::tape.mode==exchange::Judge)result<<"\"stageJudge\":true,\"stageChecks\":"<<exchange::tape.checks<<",";
   if(exchange::tape.mode==exchange::Record)result<<"\"stageRecord\":true,\"stageChecks\":"<<exchange::tape.checks<<",\"localDifferencesDiagnostic\":"<<exchange::tape.local_differences
     <<",\"firstLocalDifference\":\""<<reference_policy::escape(exchange::tape.first_local_difference)<<"\",";
-  result<<"\"originalCpuIntersectMnee\":true,\"paths\":"<<total.paths<<",\"sampled\":"<<total.sampled<<",\"dispatches\":"<<total.dispatches
+  result<<"\"movingCasterRefused\":"<<(refused?"true":"false")<<",\"originalCpuIntersectMnee\":true,\"paths\":"<<total.paths<<",\"sampled\":"<<total.sampled<<",\"dispatches\":"<<total.dispatches
     <<",\"integerChecks\":"<<total.integers<<",\"floatChecks\":"<<total.floats<<",\"strictFloatFailures\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum<<",\"maximumErrorField\":\""<<total.maximum_field<<"\",\"cases\":["<<cases.str()<<"]}\n";
   std::ofstream(prefix+".result.json")<<result.str();std::cout<<result.str();
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

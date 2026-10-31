@@ -64,10 +64,8 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   if(p[2])validate(p[2],size_t(n)*4);
   require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU shadow currently requires triangle primitives");
   validate_geometry_motion();
-  // Transparent-shadow proof covers static triangle surfaces only. Motion,
-  // volume attenuation, linking, AO and shadow catchers remain guarded below;
-  // passing opaque-motion tests does not enable those combinations.
-  require(!data.integrator.transparent_shadows||!data.bvh.have_motion,"WebGPU moving transparent shadows not implemented");
+  // Transparent shadows with motion blur trace at the shadow ray's time (SHADOW_TRANSPARENT_MOTION). Volume
+  // attenuation, linking, AO and shadow catchers remain guarded below.
   if(data.integrator.transparent_shadows)require(data.integrator.transparent_max_bounce>=0&&data.integrator.transparent_max_bounce<=4095,"WebGPU transparent shadow hit limit exceeds packed state");
   require(!(data.kernel_features&(KERNEL_FEATURE_VOLUME|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
           "WebGPU shadow optional integration features not implemented");

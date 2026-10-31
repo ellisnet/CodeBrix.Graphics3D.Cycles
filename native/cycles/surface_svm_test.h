@@ -69,7 +69,7 @@ static ShaderFeatures probe_scene_features(WebGPUDevice &d){
   // roughness, f0 in multiscatter) only in modules with the Principled region;
   // the probe compares those canonical records, so it keeps that region whenever
   // glass is reachable (the arithmetic is identical either way; films match).
-  try{ShaderFeatures f=d.shader_features();if(f&SF_BSDF_GLASS)f|=SF_BSDF_PRINCIPLED;return f;}
+  try{ShaderFeatures f=d.shader_features();if(f&(SF_BSDF_GLASS|SF_BSDF_BECKMANN))f|=SF_BSDF_PRINCIPLED;return f;}
   catch(const std::exception&){return probe_features;}
 }
 static cbc::Pipeline pipeline(WebGPUDevice &d,const std::string &probe){
@@ -204,7 +204,16 @@ static void evaluate(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,const st
   for(unsigned i=0;i<32;i++){require(bytes[i]==0xa5&&bytes[output.size()*4-1-i]==0xa5,label+" output guard");m.guards+=2;}
   scratch.copy_from_device();healthy(d);auto sb=reinterpret_cast<const uint8_t*>(scratch.data());
   for(unsigned i=0;i<32;i++){require(sb[i]==0xa5&&sb[scratch.size()*4-1-i]==0xa5,label+" closure scratch guard");m.guards+=2;}
+#if CBC_BSDF_FIXTURE==1
+  // A Metallic BSDF closure removed by closure_alloc_extra stays set up in its slot beyond the
+  // count (marked a = -1), as in the native closure array; every other slot matches the output.
+  for(size_t i=0;i<ids.size();i++)for(unsigned j=0;j<MAX_CLOSURE;j++){
+    const uint8_t *slot=sb+32+(i*MAX_CLOSURE+j)*sizeof(SurfaceClosureRecord);SurfaceClosureRecord scratch_record;std::memcpy(&scratch_record,slot,sizeof(scratch_record));
+    const bool removed=scratch_record.a==-1.0f&&(scratch_record.kind==CLOSURE_BSDF_MICROFACET_GGX_ID||scratch_record.kind==CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
+    require(removed||!std::memcmp(slot,bytes+32+i*sizeof(SurfaceSvmRecord)+offsetof(SurfaceSvmRecord,closures)+j*sizeof(SurfaceClosureRecord),sizeof(SurfaceClosureRecord)),label+" closure scratch mismatch");}
+#else
   for(size_t i=0;i<ids.size();i++)require(!std::memcmp(sb+32+i*MAX_CLOSURE*sizeof(SurfaceClosureRecord),bytes+32+i*sizeof(SurfaceSvmRecord)+offsetof(SurfaceSvmRecord,closures),MAX_CLOSURE*sizeof(SurfaceClosureRecord)),label+" closure scratch mismatch");
+#endif
   auto unchanged=download(d,layout,states.size());for(auto &f:layout)for(size_t i=0;i<states.size();i++){require(!std::memcmp(reinterpret_cast<const char*>(&unchanged[i])+f.offset,reinterpret_cast<const char*>(&states[i])+f.offset,f.stride),label+" changed path state "+f.name);m.state_checks++;}
   cache.verify();healthy(d);m.guards+=64;
   m.cases++;m.paths+=ids.size();std::cerr<<"Passed "<<label<<" ("<<ids.size()<<" paths)\n";

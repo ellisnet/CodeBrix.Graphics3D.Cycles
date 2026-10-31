@@ -6,7 +6,16 @@
 // point light; 1 rough refractive slab under a spherical point light; 2 glass
 // sphere and a glossy (reflective, no refractive closure) caster under a sun;
 // 3 casters without a receiver flag (caustics off); 4 glass sphere with one
-// caustic and one ordinary point light.
+// caustic and one ordinary point light; 5 case 0 with fast GI in its additive mode
+// (KERNEL_FEATURE_AO_ADDITIVE: an AO shadow path beside the MNEE shadow path); 6 case 0
+// with object motion blur on the floor receiver; 7 case 0 with
+// deformation motion blur on the floor and wall receivers; 8 case 1 with the slab caster and the
+// floor deforming (the pinned walk takes a deforming caster's centre-frame corners against its
+// deformed intersection, so these walks mostly fail on the CPU too: the state gate compares
+// their outcomes and iteration counts). Variant 9 (not a gated case): case 0 with the caster
+// sphere moving, which the device refuses (mnee.cpp).
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
 #include "scene/scene.h"
 #include "scene/background.h"
 #include "scene/camera.h"
@@ -17,7 +26,12 @@
 #include "scene/shader_graph.h"
 #include "scene/shader_nodes.h"
 #include <cmath>
-constexpr int mnee_cases=5;
+constexpr int mnee_cases=9;
+// The geometry and lamps of cases 5-8 are those of case 0 or 1.
+inline int mnee_base(int mode){return mode==8?1:mode>=5?0:mode;}
+constexpr int mnee_refused_moving_caster=9;
+// Cases whose CPU walks sample MNEE paths (at least five).
+inline bool mnee_samples(int mode){const int base=mnee_base(mode);return (base==0||base==1)&&mode!=8;}
 inline ccl::Shader *mnee_shader(ccl::Scene &scene,int kind){
   using namespace ccl;auto graph=std::make_unique<ShaderGraph>();ShaderOutput *out;
   if(kind==0){auto n=graph->create_node<DiffuseBsdfNode>();n->set_color(make_float3(.7f,.65f,.6f));out=n->output("BSDF");}
@@ -47,8 +61,8 @@ inline ccl::Object *mnee_box(ccl::Scene &scene,ccl::Shader *shader,ccl::float3 l
   const std::vector<int> t={0,2,3,0,3,1,4,5,7,4,7,6,0,1,5,0,5,4,2,6,7,2,7,3,0,4,6,0,6,2,1,3,7,1,7,5};
   return mnee_mesh(scene,shader,P,t,true);
 }
-inline void mnee_fixture(ccl::Scene &scene,int mode,ccl::Shader *emitter){
-  using namespace ccl;
+inline void mnee_fixture(ccl::Scene &scene,int variant,ccl::Shader *emitter){
+  using namespace ccl;const int mode=mnee_base(variant);
   auto floor=mnee_mesh(scene,mnee_shader(scene,0),{make_float3(-5,-2,-3),make_float3(5,-2,-3),make_float3(5,-2,4),make_float3(-5,-2,4)},{0,2,1,0,3,2},false);
   auto wall=mnee_mesh(scene,mnee_shader(scene,0),{make_float3(-5,-2,3),make_float3(5,-2,3),make_float3(5,4,3),make_float3(-5,4,3)},{0,1,2,0,2,3},false);
   const bool receivers=mode!=3;floor->set_is_caustics_receiver(receivers);wall->set_is_caustics_receiver(receivers);
@@ -57,6 +71,11 @@ inline void mnee_fixture(ccl::Scene &scene,int mode,ccl::Shader *emitter){
   else casters.push_back(mnee_sphere(scene,mnee_shader(scene,1),make_float3(-.1f,-.95f,.6f),1.f));
   if(mode==2)casters.push_back(mnee_box(scene,mnee_shader(scene,3),make_float3(1.3f,-2.f,-.2f),make_float3(2.1f,-1.f,.6f)));
   for(auto c:casters)c->set_is_caustics_caster(true);
+  if(variant==5){scene.integrator->set_ao_bounces(1);scene.integrator->set_ao_factor(.5f);scene.integrator->set_ao_distance(1.2f);scene.integrator->set_ao_additive_factor(.7f);}
+  if(variant==6)object_motion_fixture(scene,*floor,2);
+  if(variant==9)object_motion_fixture(scene,*casters[0],1);
+  if(variant==7){deforming_motion_fixture(scene,*floor,1);deforming_motion_fixture(scene,*wall,0);}
+  if(variant==8){deforming_motion_fixture(scene,*casters[0],0);deforming_motion_fixture(scene,*floor,1);}
   for(int lamp=0;lamp<(mode==4?2:1);lamp++){
     Light *light;
     if(mode==2){auto sun=scene.create_node<SunLight>();sun->set_angle(.05f);sun->set_normalize(false);light=sun;light->set_strength(make_float3(2.5f,2.4f,2.2f));}
