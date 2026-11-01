@@ -32,6 +32,59 @@ fn native_rng(sample_id:u32,pixel:u32,dimension:u32)->vec4<f32>{
     }
     return value;
 }
+//#if SAMPLING_SOBOL_BURLEY
+// Sobol-Burley and the blue-noise patterns (pinned kernel/sample/pattern.h path_rng_1D-4D,
+// blue_noise_indexing; sample/sobol_burley.h; sample/util.h; util/hash.h hash_hp_uint and
+// uint_to_float_excl). Integer arithmetic throughout; the final conversion is the correctly
+// rounded binary32 of the integer (cvtsi2ss) times 1/4294967808, made opaque to the compiler (OR with
+// push word 31, which no dispatch sets) so no consumer's sum can contract the product.
+fn sb_hash_hp(value:u32)->u32{var i=value;i^=i>>16u;i*=0x21f0aaadu;i^=i>>15u;i*=0xd35a2d97u;i^=i>>15u;return i^0xe6fe3bebu;}
+fn sb_reversed_bit_owen(value:u32,seed:u32)->u32{var n=value;n^=n*0x3d20adeau;n+=seed;n*=(seed>>16u)|1u;n^=n*0x05526c56u;n^=n*0x53a22864u;return n;}
+fn sb_unit(n:u32)->f32{
+    // (float)n rounded to nearest even, then the product with 1/4294967808 (correctly rounded).
+    var f=f32(n&0xffffffu);
+    if(n>=0x1000000u){let shift=8u-countLeadingZeros(n);var m=n>>shift;let tail=n&((1u<<shift)-1u);let half=1u<<(shift-1u);
+        if(tail>half||(tail==half&&(m&1u)!=0u)){m++;}f=f32(m)*bitcast<f32>((127u+shift)<<23u);}
+    return bitcast<f32>(bitcast<u32>(f*(1.0/4294967808.0))|p(31u));
+}
+fn sb_sample(rev_index:u32,dimension:u32,scramble:u32)->f32{
+    var result=0u;
+    if(dimension==0u){result=reverseBits(rev_index);}
+    else{var index=rev_index;var i=0u;
+        loop{if(index==0u){break;}let j=countLeadingZeros(index);result^=SB_TABLE[dimension*32u+i+j];i+=j+1u;index=(index<<j)<<1u;}}
+    return sb_unit(reverseBits(sb_reversed_bit_owen(result,scramble)));
+}
+// path_rng_1D..4D (count 1-4) for the patterns other than tabulated Sobol; unused components are 0.
+fn native_rng_pattern(sample_id:u32,pixel:u32,dimension:u32,count:u32)->vec4<f32>{
+    let pattern=data_word(SB_D_sampling_pattern);
+    if(pattern==SB_TABULATED_SOBOL){return native_rng(sample_id,pixel,dimension);}
+    var index=sample_id;var seed=pixel;var mask=data_word(SB_D_sobol_index_mask);
+    if(pattern!=SB_SOBOL_BURLEY){
+        let length=data_word(SB_D_blue_noise_sequence_length);mask=0xffffffffu;
+        if(pattern==SB_BLUE_NOISE_FIRST&&sample_id==0u){index=pixel;seed=0x0cd0519fu;}
+        else{index=select(sample_id,sample_id-1u,pattern==SB_BLUE_NOISE_FIRST)+pixel*length;seed=0u;}
+    }
+    seed^=sb_hash_hp(dimension);
+    // Per-dimension-count salts of sobol_burley_sample_1D..4D.
+    var shuffle=0xbff95bfeu;var salts=vec4<u32>(0x635c77bdu,0u,0u,0u);
+    if(count==2u){shuffle=0xf8ade99au;salts=vec4<u32>(0xe0aaaf76u,0x94964d4eu,0u,0u);}
+    else if(count==3u){shuffle=0xcaa726acu;salts=vec4<u32>(0x9e78e391u,0x67c33241u,0x78c395c5u,0u);}
+    else if(count==4u){shuffle=0xc2c1a055u;salts=vec4<u32>(0x39468210u,0xe9d8a845u,0x5f32b482u,0x1524cc56u);}
+    let shuffled=sb_reversed_bit_owen(reverseBits(index),seed^shuffle)&mask;
+    var out=vec4<f32>(0);
+    // One sb_sample body for every component (one inlined copy).
+    for(var k=0u;k<count;k++){let salt=select(select(select(salts.w,salts.z,k==2u),salts.y,k==1u),salts.x,k==0u);
+        out=select(out,vec4<f32>(sb_sample(shuffled,k,seed^salt)),vec4<u32>(0u,1u,2u,3u)==vec4<u32>(k));}
+    return out;
+}
+// path_rng_pixel_init for the blue-noise patterns: nested_uniform_scramble_base4(morton2d(x, y), seed).
+fn sb_expand(value:u32)->u32{var x=value&0xffffu;x=(x^(x<<8u))&0x00ff00ffu;x=(x^(x<<4u))&0x0f0f0f0fu;x=(x^(x<<2u))&0x33333333u;x=(x^(x<<1u))&0x55555555u;return x;}
+fn sb_pixel(x:u32,y:u32,seed:u32)->u32{
+    var n=reverseBits((sb_expand(x)<<1u)|sb_expand(y));
+    n^=n*0x3d20adeau;n^=(n>>1u)&(n<<1u)&0x55555555u;n+=seed;n*=(seed>>16u)|1u;
+    n^=(n>>1u)&(n<<1u)&0x55555555u;n^=n*0x05526c56u;n^=n*0x53a22864u;return reverseBits(n);
+}
+//#endif
 
 fn table_count(table:u32)->u32{return load_word(p(14u)+table*8u+4u);}
 fn table_at(table:u32,item:u32,stride:u32)->u32{

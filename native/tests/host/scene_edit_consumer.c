@@ -6,7 +6,7 @@
 // a second time in a new host ("replay"), and a fresh CPU host renders the
 // edited scene from scratch (built with the same node creation order) as the
 // oracle. argv: output prefix, "cpu" or "gpu". GPU mode also provokes the
-// known WebGPU render-time rejections (a non-Combined pass, a non-perspective
+// known WebGPU render-time rejections (a volume majorant pass, a custom (OSL)
 // camera), removes the cause and renders again on the same host (recovery).
 // Prints one JSON line; the gate compares the saved films.
 #define _POSIX_C_SOURCE 200809L
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
     CHECK(cbc_host_delete_node(s.host, depth));
     after_pass = cbc_host_render(s.host, &config, after, FLOATS);
     if (after_pass == CBC_OK) save(prefix, "recovery-pass", after);
-    CHECK(cbc_host_set_string(s.host, s.camera, "camera_type", "orthograph"));
+    CHECK(cbc_host_set_string(s.host, s.camera, "camera_type", "custom"));
     failed_camera = cbc_host_render(s.host, &config, replay_after, FLOATS);
     CHECK(cbc_host_set_string(s.host, s.camera, "camera_type", "perspective"));
     after_camera = cbc_host_render(s.host, &config, replay_after, FLOATS);

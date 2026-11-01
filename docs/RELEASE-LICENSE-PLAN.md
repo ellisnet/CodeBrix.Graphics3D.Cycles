@@ -100,14 +100,28 @@ not committed, pushed, staged files or rewritten history.
 
 ## Future native deliverables
 
-OpenImageDenoise (denoising) is a planned dependency. Its licence check, trained
-weights included, passed for version 2.5.1, on four build conditions that keep
-it Apache-2.0: build it from a reviewed source snapshot in `third_party/deps`
-(never a prebuilt package); turn on only its CPU device, plus its Metal device
-on osx-arm64; set its CUDA, HIP and SYCL devices explicitly off on every RID (a
-CUDA Runtime build installs Intel's proprietary binary licence instead); and
-turn its apps off. It is not yet a snapshot, so it is not in
-`dependency-license-review.json` or the notices yet.
+OpenImageDenoise (denoising) is a dependency (OIDN build conditions). Its licence
+check, trained weights included, passed for version 2.5.1, on four build
+conditions that keep it Apache-2.0: build it from a reviewed source snapshot in
+`third_party/deps` (never a prebuilt package); turn on only its CPU device, plus
+its Metal device on osx-arm64; set its CUDA, HIP and SYCL devices explicitly off
+on every RID (a CUDA Runtime build installs Intel's proprietary binary licence
+instead); and turn its apps off (`OIDN_APPS` OFF, `OIDN_INSTALL_DEPENDENCIES` OFF:
+the package ships the reviewed oneTBB snapshot). The snapshot is
+`third_party/deps/oidn`, imported from the release archive (SHA-256 pinned in
+`tools/licensing/dependency_sources.py`) by its `add` action with the per-file
+review `third_party/oidn-license-review.json`; the CUDA, HIP and SYCL devices,
+their external libraries, the apps, the training scripts, the documentation
+(including `doc/BINARY-LICENSE.txt`) and the notice inventories of components it
+does not import are not in the snapshot. Three upstream build files carry
+recorded CodeBrix adaptations (documentation install list, relocatable run path,
+Android thread affinity). `tools/dependencies/build.py` builds it on every RID
+with those switches set explicitly; its `LICENSE.txt` and the weights' licence
+ship with its libraries (the device modules are separate shared libraries and
+ship with the core library). ISPC (BSD-3-Clause) compiles its CPU kernels at
+build time and is not shipped. Only the RT filter's weights are built
+(`OIDN_FILTER_RTLIGHTMAP` OFF on every RID: Cycles creates only the RT filter);
+the lightmap weights remain in the reviewed snapshot but are not compiled in.
 
 All nine intended RIDs remain in the continuation plan. This Linux proof does
 not validate unbuilt native hosts. Every actual NuGet payload requires its own

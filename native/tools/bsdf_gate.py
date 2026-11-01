@@ -41,6 +41,7 @@ def main():
             pins[str(binary)] = sha(binary)
         save(out/'invocation.json', {'productionSourceSha256': sources, 'fileSha256': pins})
         failed = []
+        velvet = {}
         for kind in kinds:
             status['phase'] = kind
             save(out/'status.json', status)
@@ -69,14 +70,21 @@ def main():
                 assert report['originalCpuSurfaceIntegrator'] and report['cases'] == 30 and report['invalidCasesRejected'] == 21
             if kind.endswith('_render'):
                 assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
+            # Velvet subnormal rule (native/DEVICE.md open item 29): the differences the gate accepted, judged on its
+            # flush-to-zero CPU oracle and (bsdf*_render) on the image against the normal CPU render.
+            if 'velvetSubnormalRule' in report:
+                rule = report['velvetSubnormalRule']
+                assert rule['ftzDazOracleMismatches'] == 0
+                velvet[kind] = rule
             reports[kind] = report
             save(out/'results.json', reports)
         assert sources == inputs() and all(sha(Path(name)) == digest for name, digest in pins.items())
         assert not failed, 'Failed gates: '+', '.join(f['gate'] for f in failed)
-        status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
+        status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True, velvetSubnormalRule=velvet,
                       scope='Metallic (physical conductor and F82 tint; GGX, multiscatter GGX, Beckmann), Beckmann glossy/refraction/glass, '
                             'Ashikhmin-Shirley, Ashikhmin velvet, diffuse/glossy Toon and the Radial Tiling node (two sides with 0 < roundness < 1 refused): closure setup against the original CPU SVM, '
-                            'surface integration against the original CPU integrator, independent original-Cycles images.')
+                            'surface integration against the original CPU integrator, independent original-Cycles images; velvet path-state '
+                            'differences that the flush-to-zero CPU oracle removes are judged by the velvet rule (native/DEVICE.md open item 29).')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

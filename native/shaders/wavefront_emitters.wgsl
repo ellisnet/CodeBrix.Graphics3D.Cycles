@@ -5,9 +5,17 @@
 // Adapted from the reviewed Cycles kernel/light/{spot,area,common}.h snapshot.
 const EMITTER_PI:f32=3.141592653589793;
 const EMITTER_INV_PI:f32=0.3183098861837907;
+// safe_normalize_len and normalize of the oracle host: per-component division
+// (SSE) or reciprocal multiplication (scalar float3, ARM64), selected by the
+// generated NATIVE_FLOAT3_RECIPROCAL_NORMALIZE.
 fn emitter_normalize_len(v:vec3<f32>)->vec4<f32>{
     let t=rounded_sqrt(rounded_dot(v,v));if(t==0.0){return vec4<f32>(0);}
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return vec4<f32>(v*rounded_divide(1.0,t),t);}
     return vec4<f32>(rounded_divide(v.x,t),rounded_divide(v.y,t),rounded_divide(v.z,t),t);
+}
+fn emitter_native_normalize(v:vec3<f32>)->vec3<f32>{
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,rounded_sqrt(rounded_dot(v,v)));}
+    return rounded_normalize(v);
 }
 fn emitter_sphere_hit(origin:vec3<f32>,direction:vec3<f32>,position:vec3<f32>,radius:f32)->f32{
     let delta=position-origin;let d2=dot(delta,delta);let r2=radius*radius;let cosine=dot(delta,direction);
@@ -85,7 +93,7 @@ fn area_region(light:u32,P:vec3<f32>)->AreaRegion{
             if(abs(radius*radius-spread*spread)<distance*distance){let x=distance+(spread*spread-radius*radius)/distance;len_v=sqrt(max(4.0*spread*spread-x*x,0.0));}
             let rectangle_area=len_u*len_v;let circle_area=EMITTER_PI*radius*radius;let spread_area=EMITTER_PI*spread*spread;
             if(rectangle_area<min(circle_area,spread_area)){
-                r.rectangle=true;r.U=rounded_normalize(r.P-closest);r.V=emitter_quarter_turn(r.U,N);r.len_u=len_u;r.len_v=len_v;
+                r.rectangle=true;r.U=emitter_native_normalize(r.P-closest);r.V=emitter_quarter_turn(r.U,N);r.len_u=len_u;r.len_v=len_v;
                 r.P=0.5*(r.P+closest+r.U*(spread-radius));return r;
             }sample_spread=spread_area<circle_area;
         }
@@ -145,3 +153,77 @@ fn area_evaluate(light:u32,origin:vec3<f32>,direction:vec3<f32>,distance:f32,ran
         else if(abs(u)>eu||abs(v)>ev){return out;}
     }out.valid=true;return out;
 }
+//#if LIGHT_LAMP_SHADER
+// Point, spot, area and sun lights whose emission shader is not constant: the ShaderData at the light point,
+// light_normal_uv_from_position (light/light.h with point.h point_light_uv, spot.h spot_light_to_local and
+// spot_light_uv, area.h area_light_uv, sun.h sun_light_uv) and shader_setup_from_sample for a lamp
+// (geom/shader_data.h), every sum, quotient and square root correctly rounded in the host's order.
+// The host's transform_direction (SSE: x*c0 + (y*c1 + z*c2); scalar float4 dots: (x*c0 + y*c1) + z*c2).
+fn lamp_direction(t:NativeTransform,v:vec3<f32>)->vec3<f32>{
+    let c0=vec3<f32>(t.x.x,t.y.x,t.z.x)*v.x;let c1=vec3<f32>(t.x.y,t.y.y,t.z.y)*v.y;let c2=vec3<f32>(t.x.z,t.y.z,t.z.z)*v.z;
+    if(CAMERA_NATIVE_VECTOR_DIVIDE!=0u){return rounded_add3(c0,rounded_add3(c1,c2));}
+    return rounded_add3(rounded_add3(c0,c1),c2);
+}
+fn lamp_itfm(light:u32)->NativeTransform{return motion_transform_load(table_at(G_objects,load_word(light+L_object_id),SIZE_objects)+O_itfm);}
+// float3 / float: SSE hosts divide each lane, the scalar operator multiplies by 1/f.
+fn lamp_div3(v:vec3<f32>,f:f32)->vec3<f32>{
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,f);}
+    return vec3<f32>(rounded_divide(v.x,f),rounded_divide(v.y,f),rounded_divide(v.z,f));
+}
+struct LampNormalUV {Ng:vec3<f32>,uv:vec2<f32>}
+fn lamp_normal_uv(light:u32,P:vec3<f32>,D:vec3<f32>)->LampNormalUV{
+    var out:LampNormalUV;let kind=load_word(light+L_type);
+    if(kind==LIGHT_SPOT||kind==LIGHT_POINT){
+        out.Ng=-D;if(load_word(light+L_is_sphere)!=0u){out.Ng=surface_native_normalize(rounded_add3(P,-heap_vec3(light+L_co)));}
+        if(kind==LIGHT_SPOT){
+            var ray=rounded_safe_normalize(lamp_direction(lamp_itfm(light),-D));ray.z=-ray.z;
+            let factor=rounded_divide(heap_float(light+LS_half_cot_half_spot_angle),ray.z);
+            out.uv=vec2<f32>(rounded_add(ray.y*factor,0.5),-(rounded_add(ray.x,ray.y)*factor));
+        }else{
+            // map_to_sphere of the normal in the light's object space.
+            let co=lamp_direction(lamp_itfm(light),out.Ng);let l=rounded_dot(co,co);var u=0.0;var v=0.0;
+            if(l>0.0){
+                if(!(co.x==0.0&&co.y==0.0)){u=rounded_add(0.5,-(trig_atan2_guarded(co.x,co.y)*0.15915493667125702));}
+                v=rounded_add(1.0,-(trig_acos(rounded_divide(co.z,rounded_sqrt(l)))*0.31830987334251404));
+            }
+            out.uv=vec2<f32>(v,rounded_add(rounded_add(1.0,-u),-v));
+        }
+    }else if(kind==LIGHT_AREA){
+        out.Ng=heap_vec3(light+L_area_dir);
+        let inv_u=lamp_div3(heap_vec3(light+L_area_axis_u),heap_float(light+L_area_len_u));
+        let inv_v=lamp_div3(heap_vec3(light+L_area_axis_v),heap_float(light+L_area_len_v));
+        let inplane=rounded_add3(P,-heap_vec3(light+L_co));
+        let u=clamp(rounded_dot(inplane,inv_u),-0.5,0.5);let v=clamp(rounded_dot(inplane,inv_v),-0.5,0.5);
+        out.uv=vec2<f32>(rounded_add(v,0.5),rounded_add(-u,-v));
+    }else{
+        out.Ng=-D;let delta=rounded_add3(D,-heap_vec3(light+L_co));
+        let fac=rounded_divide(heap_float(light+LS_half_inv_sin_half_angle),rounded_sqrt(rounded_dot(delta,delta)));
+        let t=lamp_itfm(light);let u=rounded_dot(D,t.x.xyz)*fac;let v=rounded_dot(D,t.y.xyz)*fac;
+        out.uv=vec2<f32>(rounded_add(v,0.5),rounded_add(-u,-v));
+    }
+    return out;
+}
+// shader_setup_from_sample(P, Ng, -D, shader, object, light, u, v, t, time, object_space false, is_lamp true).
+fn lamp_shader_data(light_index:u32,P:vec3<f32>,D:vec3<f32>,t:f32,time:f32)->SurfaceData{
+    var sd:SurfaceData;
+    if(light_index>=table_count(G_lights)){surface_failure(&sd);return sd;}
+    let light=table_at(G_lights,light_index,SIZE_lights);let shader=load_word(light+L_shader_id);
+    if((shader&SHADER_MASK)>=table_count(G_shaders)){surface_failure(&sd);return sd;}
+    let nuv=lamp_normal_uv(light,P,D);
+    sd.P=P;sd.N=nuv.Ng;sd.Ng=nuv.Ng;sd.wi=-D;sd.shader=shader;sd.primitive_type=PRIMITIVE_LAMP;
+    sd.object_id=load_word(light+L_object_id);sd.prim=light_index;sd.u=nuv.uv.x;sd.v=nuv.uv.y;sd.time=time;sd.ray_length=t;
+    sd.runtime_flag=0u;sd.shader_flag=load_word(table_at(G_shaders,shader&SHADER_MASK,SIZE_shaders)+SH_flags);
+    sd.object_flag=0u;if(sd.object_id!=NONE){sd.object_flag=load_word(table_at(G_object_flag,sd.object_id,4u));}
+    if(rounded_dot(sd.Ng,sd.wi)<0.0){sd.runtime_flag|=SR_BACKFACING;sd.Ng=-sd.Ng;sd.N=-sd.N;}
+    return sd;
+}
+//#endif
+//#if LIGHT_LAMP_SHADER
+// The emission of a lamp's (non-constant) shader at a light point (shade_light.h integrate_light_nee and
+// light/sample.h light_sample_shader_eval_forward: surface_shader_eval with PATH_RAY_EMISSION for all closures).
+fn lamp_shader_emission(light_index:u32,P:vec3<f32>,D:vec3<f32>,t:f32,time:f32)->vec3<f32>{
+    let sd=lamp_shader_data(light_index,P,D,t,time);if(sd.error!=0u){return vec3<f32>(0);}
+    let r=svm_evaluate_context(NONE,sd,0u,0u,PATH_RAY_EMISSION,0u,0u,false);if(r.error!=0u){return vec3<f32>(0);}
+    return r.emission;
+}
+//#endif

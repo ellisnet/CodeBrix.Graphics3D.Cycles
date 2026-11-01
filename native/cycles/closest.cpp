@@ -43,6 +43,7 @@ uint32_t WebGPUDevice::scene_tables(){
 #define TABLE(name,type) {auto it=globals.find(#name);uint32_t address=it==globals.end()?0:it->second;size_t bytes=address?remaining(address):0; \
     require(bytes%sizeof(type)==0,"Invalid native scene table size: " #name);descriptors.insert(descriptors.end(),{address,uint32_t(bytes/sizeof(type))});}
   CBC_SCENE_CORE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE) CBC_LIGHT_TREE_TABLES(TABLE)
+  TABLE(ies,float)
 #undef TABLE
   if(!intersection_tables)intersection_tables=allocate(descriptors.size()*4);
   if(descriptors!=intersection_table_cache){upload(intersection_tables,descriptors.data(),descriptors.size()*4);intersection_table_cache=descriptors;}
@@ -67,12 +68,8 @@ void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
   validate_volume();
   validate_lighting(false);
   if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
-  require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU closest requires tabulated Sobol");
   require(data.max_shaders>0&&state.sort_partition_divisor>0,"Invalid closest sort configuration");
-  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=globals.at("sample_pattern_lut");
-  const auto sequence=data.integrator.tabulated_sobol_sequence_size;
-  require(sequence>1&&(sequence&(sequence-1))==0,"Invalid closest Sobol sequence size");
-  validate(p[9],size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
+  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=sample_pattern_table("closest");
   p[10]=uint32_t(remaining(uintptr_t(state.path.render_pixel_index))/4);p[11]=uint32_t(remaining(p[4])/4);
   if(!p[2])require(uint32_t(n)<=p[10],"Closest dispatch exceeds path capacity");
 #define KERNEL_STRUCT_BEGIN(name)

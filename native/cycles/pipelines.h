@@ -164,6 +164,10 @@ inline constexpr ShaderFeatures SF_AO_SHADOW=ShaderFeatures::bit(108);
 // background culling (wavefront_mnee.wgsl and MNEE regions). Bits 111-115 are
 // reserved for MNEE entry splits.
 inline constexpr ShaderFeatures SF_MNEE=ShaderFeatures::bit(110);
+// The seven INTERSECT_MNEE entry points (mnee_receiver to mnee_contribute). A module-variant bit like
+// SVM_NODE_RAYTRACE, never a scene feature and not in SF_ALL: only the MNEE module (mnee.cpp, built with the caustic
+// casters' SVM regions only) carries them, so no other surface module holds an entry the device never builds there.
+inline constexpr ShaderFeatures SF_MNEE_ENTRIES=ShaderFeatures::bit(111);
 // Diagnostic debug output (CODEBRIX_CYCLES_DEBUG_OUTPUT, off by default): the
 // first camera hit writes one SurfaceData field to the Combined film instead of
 // radiance (wavefront_surface.wgsl, DEBUG_OUTPUT region). A module-variant bit
@@ -246,10 +250,43 @@ inline constexpr ShaderFeatures SF_FILM_MOTION=ShaderFeatures::bit(147);
 // MNEE_MOTION regions (the colour passes divide the direct and indirect light passes,
 // so last-bit differences of a near-zero colour are amplified by the pass accessor).
 inline constexpr ShaderFeatures SF_FILM_MOTION_EXACT=ShaderFeatures::bit(148);
+// Image texture projections that only some image nodes reach (compiler pressure: the
+// shared svm_image handler otherwise inlines every projection into each SVM entry).
+// TEX_ENVIRONMENT: the Environment Texture node's projections (NODE_TEX_ENVIRONMENT:
+// equirectangular and mirror ball). TEX_IMAGE_BOX: the Image Texture node's box
+// projection (NODE_TEX_IMAGE_BOX, three blended lookups).
+inline constexpr ShaderFeatures SF_TEX_ENVIRONMENT=ShaderFeatures::bit(149);
+inline constexpr ShaderFeatures SF_TEX_IMAGE_BOX=ShaderFeatures::bit(150);
+// A sampling pattern other than tabulated Sobol (integrator.sampling_pattern: Sobol-Burley or a
+// blue-noise pattern; kernel/sample/pattern.h): every random number of the path (native_rng_pattern)
+// and the blue-noise pixel seed (wavefront_common.wgsl, wavefront_camera.wgsl).
+inline constexpr ShaderFeatures SF_SAMPLING_PATTERN=ShaderFeatures::bit(151);
+// Every camera but the pinhole perspective camera (kernel/camera/camera.h): orthographic and panoramic
+// cameras and depth of field (wavefront_camera.wgsl camera_projected_ray), and the panoramic depth pass.
+inline constexpr ShaderFeatures SF_CAMERA_PROJECTIONS=ShaderFeatures::bit(152);
+// The Light Falloff shader node (svm/light_path.h svm_node_light_falloff).
+inline constexpr ShaderFeatures SF_LIGHT_FALLOFF=ShaderFeatures::bit(153);
+// A point, spot, area or sun light whose emission shader is not constant (with LIGHT_NEE): the shader evaluated
+// at the light point for next-event estimation and for hits (light/light.h light_normal_uv_from_position).
+inline constexpr ShaderFeatures SF_LIGHT_LAMP_SHADER=ShaderFeatures::bit(154);
+// The IES Texture node (svm/ies.h, util/ies.h kernel_ies_interp).
+inline constexpr ShaderFeatures SF_NODE_IES=ShaderFeatures::bit(155);
+// A Metallic BSDF thin film over the physical conductor Fresnel (with BSDF_THIN_FILM): the polarized
+// conductor reflectance at the film's bottom interface (closure/bsdf_util.h fresnel_conductor_polarized
+// without the F82 fit, fresnel_iridescence_channel<true>).
+inline constexpr ShaderFeatures SF_BSDF_THIN_FILM_CONDUCTOR=ShaderFeatures::bit(156);
+// The Sky Texture node's analytic models (svm/sky.h: Preetham, Hosek-Wilkie).
+inline constexpr ShaderFeatures SF_TEX_SKY=ShaderFeatures::bit(157);
+// A scattering Sky Texture node with the sun disc (with SVM_TEX_SKY): background light sun guiding
+// (light/background.h background_sun_sample / _pdf, the sun strategy of background_light_sample / _pdf).
+inline constexpr ShaderFeatures SF_BACKGROUND_SUN=ShaderFeatures::bit(158);
+// The Sky Texture node's single and multiple scattering models (their precomputed sky image and sun disc).
+inline constexpr ShaderFeatures SF_TEX_SKY_SCATTERING=ShaderFeatures::bit(159);
 // Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108, 110
-// and 128-148; bit 62 is unassigned; 107 is the raytrace module variant).
+// and 128-159; bit 62 is unassigned; 107 is the raytrace module variant).
 inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
-  SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT;
+  SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
+  SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING;
 // The families above, for regions shared by all of them (closure classification).
 inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
@@ -260,7 +297,8 @@ inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THI
 // correctly (native/DEVICE.md, "Linux reference fixes on the updated Mesa").
 inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|
-  SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT;
+  SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
+  SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //

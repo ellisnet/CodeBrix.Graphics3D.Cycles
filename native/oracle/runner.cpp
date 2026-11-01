@@ -256,6 +256,42 @@ void read_passes(CBCHost host, size_t pixels, uint32_t repeat, std::vector<PassF
   if (index != out.size()) fail("The captured pass list changed between repeats");
 }
 
+// The runtime identifier this runner was built for (recorded in meta.json beside wgslArithmetic).
+constexpr const char *runner_rid() {
+#if defined(__ANDROID__) && defined(__aarch64__)
+  return "android-arm64";
+#elif defined(__ANDROID__) && defined(__x86_64__)
+  return "android-x64";
+#elif defined(__APPLE__) && defined(__aarch64__)
+  return "osx-arm64";
+#elif defined(__APPLE__) && defined(__x86_64__)
+  return "osx-x64";
+#elif defined(_WIN32) && defined(_M_ARM64)
+  return "win-arm64";
+#elif defined(_WIN32)
+  return "win-x64";
+#elif defined(__linux__) && defined(__aarch64__)
+  return "linux-arm64";
+#elif defined(__linux__) && defined(__x86_64__)
+  return "linux-x64";
+#else
+  return "unknown";
+#endif
+}
+
+// The WebGPU device report's wgslArithmetic (empty for the CPU and Metal backends): which CPU oracle's
+// rounding the WGSL reproduced, so compare.py judges the film against that ISA family's CPU film.
+std::string wgsl_arithmetic(CBCHost host) {
+  uint64_t required = 0;
+  if (cbc_host_device_report_json(host, nullptr, 0, &required) != CBC_SMALL_BUFFER || !required) return {};
+  std::string text(size_t(required), '\0');
+  if (cbc_host_device_report_json(host, text.data(), required, &required) != CBC_OK) return {};
+  text.resize(text.find('\0') == std::string::npos ? text.size() : text.find('\0'));
+  const auto report = oracle::JsonReader(text).document();
+  const auto *value = report.find("wgslArithmetic");
+  return value && value->is(Json::String) ? value->string() : std::string();
+}
+
 Options parse(int argc, char **argv) {
   Options options;
   for (int i = 1; i < argc; ++i) {
@@ -305,6 +341,7 @@ int run(int argc, char **argv) {
   // cbc_host_pass_floats: one entry per pass, its films in repeat order.
   struct PassFilm { std::string name, type; uint32_t components = 0; bool written = false; std::vector<std::vector<float>> films; };
   std::vector<PassFilm> pass_films;
+  std::string arithmetic;
   try {
     if (auto images = scene.find("images")) for (auto &image : images->items) loader.image(image);
     for (auto &entry : scene.at("nodes").items) loader.entry(entry);
@@ -317,6 +354,7 @@ int run(int argc, char **argv) {
       films.push_back(std::move(film));
       read_passes(host, size_t(width) * height, i, pass_films);
     }
+    if (options.backend == "webgpu") arithmetic = wgsl_arithmetic(host);
   } catch (...) { cbc_host_destroy(host); throw; }
   check(cbc_host_destroy(host), "cbc_host_destroy");
 
@@ -359,6 +397,8 @@ int run(int argc, char **argv) {
   meta << "{\n  \"sceneId\": " << oracle::json_quote(scene.at("id").string())
        << ",\n  \"sceneSha256\": \"" << scene_sha << "\",\n  \"backend\": " << oracle::json_quote(options.label)
        << ",\n  \"hostBackend\": " << oracle::json_quote(options.backend) << ",\n  \"hostAbi\": " << cbc_host_abi_version()
+       << ",\n  \"rid\": \"" << runner_rid() << '"'
+       << (arithmetic.empty() ? std::string() : ",\n  \"wgslArithmetic\": " + oracle::json_quote(arithmetic))
        << ",\n  \"threads\": " << options.threads << ",\n  \"width\": " << width << ",\n  \"height\": " << height
        << ",\n  \"samples\": " << samples << ",\n  \"repeats\": " << repeats
        << ",\n  \"repeatBitwiseIdentical\": " << (identical ? "true" : "false")

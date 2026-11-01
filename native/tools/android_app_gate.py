@@ -260,6 +260,10 @@ def main():
         save(folder/'comparisons.json',[row])
         # The device films in the oracle output layout, for native/oracle/compare.py.
         scene_sha=sha(bundle_files['scene.json']);device=label.lower()
+        # The arithmetic the device's WGSL reproduced (the device report's wgslArithmetic inside the capability
+        # report): compare.py gates the GPU film against the CPU gold standard of that ISA family.
+        capability=json.loads(report['capability']['json']) if report['capability'].get('json') else {}
+        arithmetic=((capability.get('host') or {}).get('deviceReport') or {}).get('wgslArithmetic')
         for backend,names,hashes in [('wgsl-android-'+device,[f'gpu-{i}.f32' for i in range(report['repeats'])],report['gpuSha256']),
                                      ('cpu-'+('arm64' if rid=='android-arm64' else 'x64')+'-android-'+device,['cpu-0.f32'],[report['cpuSha256']])]:
             target=folder/'oracle'/backend;target.mkdir(parents=True)
@@ -270,7 +274,8 @@ def main():
                 repeatMaxAbsDifference=max([0.0]+[max(abs(p-q) for p,q in zip(struct.unpack('<%df'%count,d),struct.unpack('<%df'%count,data[0]))) for d in data[1:]]),
                 renderSeconds=report['gpuSeconds'] if backend.startswith('wgsl') else [report['cpuSeconds']],filmSha256=hashes,
                 deviceName=report['capability']['deviceDescription'],apiLevel=report['apiLevel'],
-                referenceOracle=report['referenceOracle'],warnings=report['capability']['warnings'] if backend.startswith('wgsl') else [],
+                referenceOracle=report['referenceOracle'],rid=rid,**({'wgslArithmetic':arithmetic} if backend.startswith('wgsl') and arithmetic else {}),
+                warnings=report['capability']['warnings'] if backend.startswith('wgsl') else [],
                 filmLayout='float32 little-endian RGBA, width*height*4 values, lower-left origin'))
         (folder/'capability-report.json').write_text(report['capability']['json'])
         state.update(perScene=[row],practicalFailures=row['practicalFailures'],strictDifferences=row['strictDifferences'],

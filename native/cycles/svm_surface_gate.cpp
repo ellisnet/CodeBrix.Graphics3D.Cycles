@@ -40,7 +40,7 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
     ds.data=original;
     Program program(ds);program.weight(.2,.4,.6);
     if(test==0)program.simple(CLOSURE_BSDF_RAY_PORTAL_ID); // unsupported closure (velvet and Principled are implemented)
-    if(test==1)program.words.push_back(NODE_LIGHT_FALLOFF);
+    if(test==1)program.words.push_back(NODE_POINT_INFO); // unsupported opcode (Light Falloff is implemented)
     if(test==2)program.diffuse(0,253);
     if(test==3)program.diffuse(0);
     if(test==4)program.diffuse(.4f);
@@ -107,8 +107,9 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
   const uint expected[count]={2,2,2,2,16,16,16,4,16,16,16,16,16,2,2,2,2,2,2,2,16};
   for(unsigned test=0;test<count;test++){
     Program program(ds);program.weight(.2,.4,.6);program.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
-    // Raycast, Bevel, Radial Tiling and the AOV nodes are implemented: still-unsupported opcodes stand in.
-    const uint deferred[]={NODE_TEX_SKY,NODE_LIGHT_FALLOFF,NODE_IES,NODE_POINT_INFO};
+    // Raycast, Bevel, Radial Tiling, the AOV nodes, Sky Texture, Light Falloff and IES are implemented:
+    // still-unsupported opcodes and opcodes past the last one stand in.
+    const uint deferred[]={NODE_PARTICLE_INFO,NODE_HAIR_INFO,NODE_NUM,NODE_POINT_INFO};
     if(test<4)program.words.push_back(deferred[test]);
     if(test==4||test==5)program.add(NODE_TEX_NOISE,SVMNodeTexNoise{.dimensions=test==4?5u:3u,.noise_type=NodeNoiseType(test==4?1:7),.normalize=1,.w=value(0),.scale=value(1),.detail=value(2),
       .roughness=value(.5f),.lacunarity=value(2),.offset=value(0),.gain=value(1),.distortion=value(0),.vector=0,.value_offset=3,.color_offset=SVM_STACK_INVALID});
@@ -120,7 +121,7 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
     if(test==11)program.add(NODE_TEX_WHITE_NOISE,SVMNodeTexWhiteNoise{.dimensions=0,.vector=stack_in3(0),.w=value(0),.value_offset=3,.color_offset=SVM_STACK_INVALID});
     if(test==12)program.add(NODE_MAP_RANGE,SVMNodeMapRange{.range_type=NodeMapRangeType(9),.value=stack_in(0),.from_min=value(0),.from_max=value(1),.to_min=value(0),.to_max=value(1),.steps=value(4),.result_offset=3});
     // The displacement and vector displacement nodes are implemented (SVM_NODE_DISPLACEMENT): two volume-only opcodes stand in.
-    const uint more[]={NODE_PRINCIPLED_VOLUME,NODE_VOLUME_COEFFICIENTS,NODE_PARTICLE_INFO,NODE_HAIR_INFO,NODE_TEX_SKY,NODE_LIGHT_FALLOFF,NODE_POINT_INFO};
+    const uint more[]={NODE_PRINCIPLED_VOLUME,NODE_VOLUME_COEFFICIENTS,NODE_PARTICLE_INFO,NODE_HAIR_INFO,NODE_NUM+1u,0xffffu,NODE_POINT_INFO};
     if(test>=13&&test<20)program.words.push_back(more[test-13]);
     // Gabor is implemented: an invalid Gabor type reports 16.
     if(test==20)program.add(NODE_TEX_GABOR,SVMNodeTexGabor{.gabor_type=NodeGaborType(2),.orientation_3d=color(1,0,0),.scale=value(1),.frequency=value(2),.anisotropy=value(1),
@@ -496,7 +497,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #if CBC_BSDF_FIXTURE==1
     // Metallic BSDF records over parameter extremes: both Fresnel types, every
     // distribution the device implements, anisotropy with and without a tangent,
-    // thin film (F82 tint only), linked normal, closure capacity.
+    // thin film (both Fresnel types), linked normal, closure capacity.
     unsigned typed=0;
     auto metallic=[&](Program &p,ClosureType fresnel,ClosureType distribution,float rough,float aniso,float rotation,float film,SVMStackOffset tangent,SVMStackOffset normal){
       p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=fresnel,.mix_weight_offset=SVM_STACK_INVALID});
@@ -522,6 +523,17 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       metallic(p,CLOSURE_BSDF_F82_CONDUCTOR,CLOSURE_BSDF_MICROFACET_GGX_ID,.3f,0,0,0,SVM_STACK_INVALID,SVM_STACK_INVALID);p.diffuse(0);
       p.install(ds);evaluate(d,scene,shader,layout,initial,small,"Typed metallic capacity "+std::to_string(cap),m);}
     limit(MAX_CLOSURE);
+    // Physical conductor thin film (polarized conductor iridescence), including the sub-1 nm blend
+    // and a film at the cutoff.
+    unsigned conductor_film=0;
+    for(auto distribution:{CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID})
+      for(float film:{.05f,.1f,.6f,120.f,350.f,1500.f})
+        for(float rough:{0.f,.2f,.7f}){
+          Program p(ds);p.weight(.2,.5,.9);
+          p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(.8,.3,.2)});
+          metallic(p,CLOSURE_BSDF_PHYSICAL_CONDUCTOR,distribution,rough,conductor_film%3?.4f:0.f,.3f,film,SVMStackOffset(0),SVM_STACK_INVALID);
+          p.install(ds);evaluate(d,scene,shader,layout,initial,small,"Typed metallic conductor film "+std::to_string(conductor_film++),m);
+        }
     // Beckmann glossy (isotropic and anisotropic), refraction and glass records.
     for(float rough:{0.f,.0001f,.003f,.004f,.1f,.5f,1.f,2.f,-1.f})
       for(float aniso:{-2.f,-.99f,-.3f,0.f,1e-4f,.5f,.99f,2.f}){

@@ -37,7 +37,14 @@ if(WITH_CYCLES_PUGIXML OR OPENIMAGEIO_PUGIXML_FOUND)
   target_link_libraries(codebrix_optional_pugixml INTERFACE ${PUGIXML_LIBRARIES})
   target_include_directories(codebrix_optional_pugixml SYSTEM INTERFACE ${PUGIXML_INCLUDE_DIR})
 endif()
-foreach(feature WITH_CYCLES_EMBREE WITH_OPENIMAGEDENOISE WITH_CYCLES_PATH_GUIDING
+# Open Image Denoise: the reviewed snapshot (third_party/deps/oidn) built into the
+# dependency prefix; FindOpenImageDenoise.cmake supplies the variables.
+if(WITH_OPENIMAGEDENOISE)
+  target_compile_definitions(codebrix_optional_openimagedenoise INTERFACE WITH_OPENIMAGEDENOISE)
+  target_link_libraries(codebrix_optional_openimagedenoise INTERFACE ${OPENIMAGEDENOISE_LIBRARIES})
+  target_include_directories(codebrix_optional_openimagedenoise SYSTEM INTERFACE ${OPENIMAGEDENOISE_INCLUDE_DIRS})
+endif()
+foreach(feature WITH_CYCLES_EMBREE WITH_CYCLES_PATH_GUIDING
                 WITH_OPENSUBDIV WITH_OPENVDB WITH_NANOVDB WITH_CYCLES_OSL)
   if(${feature})
     message(FATAL_ERROR "${feature} needs a reviewed CodeBrix dependency adapter before enabling")

@@ -9,7 +9,7 @@ a new host (replay), and a fresh CPU host renders the edited scene from scratch
 as the oracle. CPU: edited, replay and fresh films must be bit-identical. WebGPU:
 edited and replay films must meet the practical criterion against the fresh CPU
 film (strict differences are reported). WebGPU also provokes the render-time
-rejections of a volume majorant pass and an orthographic camera, removes the cause and
+rejections of a volume majorant pass and a custom (OSL) camera, removes the cause and
 renders again on the same host (recovery).
 """
 import argparse
@@ -116,7 +116,7 @@ def main():
                       scope='Scene edits after a render (object tfm, object/camera/deformation motion, motion blur, '
                             'material value, light, mesh replacement, instancing, attributes, smooth flags) through the '
                             'C ABI versus a fresh CPU render of the edited scene; replay = the same edit sequence in a new '
-                            'host; WebGPU device-error recovery after a rejected volume majorant pass and orthographic camera.')
+                            'host; WebGPU device-error recovery after a rejected volume majorant pass and custom (OSL) camera.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

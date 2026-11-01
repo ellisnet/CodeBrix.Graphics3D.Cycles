@@ -95,9 +95,16 @@ struct Graph {
   bool dirty = true;
   std::map<ImageSlotTextureNode *,std::shared_ptr<const MemoryImageData>> images;
 };
-struct Entry { Node *node; Graph *graph = nullptr; };
+struct Entry {
+  Node *node; Graph *graph = nullptr;
+  // A pass node's mode as the caller set it (-1: never set). Cycles'
+  // Film::finalize_passes overwrites the node's mode when a render does not
+  // denoise, so the request is kept here (render_pass_modes).
+  int requested_pass_mode = -1; bool pass_mode_edit = false;
+};
 struct PassResult {
   std::string name;
+  std::string source; // the Cycles pass read (a noisy request without denoising reads its pass's twin)
   int type = 0;
   unsigned components = 0;
   std::vector<float> pixels;
@@ -123,7 +130,7 @@ class HostOutput final : public OutputDriver {
       tile.get_pass_pixels("Combined", 4, result.pixels.data());
     if (!result.valid) return;
     for (auto &pass : result.passes)
-      pass.written = tile.get_pass_pixels(pass.name, int(pass.components), pass.pixels.data());
+      pass.written = tile.get_pass_pixels(pass.source.empty() ? pass.name : pass.source, int(pass.components), pass.pixels.data());
   }
 };
 std::mutex configuration_mutex;
@@ -196,6 +203,10 @@ struct Host {
   }
   void changed(Entry &entry) {
     entry.node->tag_modified();
+    if (entry.pass_mode_edit) {
+      entry.pass_mode_edit = false;
+      if (auto pass = dynamic_cast<Pass *>(entry.node)) entry.requested_pass_mode = int(pass->get_mode());
+    }
     if (entry.graph) { entry.graph->dirty = true; return; }
     Scene *scene = session->scene.get();
     if (auto shader = dynamic_cast<Shader *>(entry.node)) { edited_shaders.insert(shader); shader->tag_update(scene); }
@@ -345,6 +356,8 @@ namespace ccl {
 void host_tier_config(uint32_t tier, bool record_off, bool read_only, bool canary, const char *directory);
 std::string webgpu_device_report_json(Device *device);
 std::string webgpu_adapter_report_json(Device *device);
+// The oracle arithmetic the generated WGSL adapters reproduce (native/cycles/camera.cpp).
+std::string wgsl_arithmetic();
 bool webgpu_recover(Device *device, std::string &reason);
 std::string webgpu_unavailable_reason();
 }
@@ -383,6 +396,9 @@ std::string device_report(Host &host) {
       // The adapter and WebGPU backend (Vulkan, D3D12, Metal) the device runs on.
       const std::string adapter = webgpu_adapter_report_json(device);
       if (!adapter.empty()) out << ",\"webgpu\":" << adapter;
+      // Which CPU oracle's rounding the WGSL reproduces: oracle films record it and compare.py gates
+      // the film against the CPU gold standard of that ISA family.
+      out << ",\"wgslArithmetic\":\"" << wgsl_arithmetic() << '"';
     } else
 #endif
     out << (device->info.type == DEVICE_METAL ? "\"metal\"" : "\"cpu\"") << ",\"pipelines\":null";
@@ -711,6 +727,73 @@ extern "C" int cbc_host_mesh(CBCHost handle, CBCNode id, const float *xyz, uint6
     mesh->tag_triangles_modified(); host.changed(entry);
   });
 }
+// Denoised passes are the default, the noisy version an explicit request.
+// Cycles' Film::finalize_passes switches every pass to noisy mode whenever a
+// render does not denoise, and nothing switches it back (Blender re-syncs its
+// passes before every render). When the integrator asks for denoising, give
+// the passes Cycles' Open Image Denoise denoiser writes (integrator/
+// denoiser_oidn.cpp: combined, shadow catcher, shadow catcher matte) the mode
+// requested: denoised, unless the caller set the pass's mode to noisy. Renders
+// that do not denoise are left to Cycles unchanged.
+// Without denoising every pass is noisy, so a noisy request duplicates another
+// pass of its type; two named passes of one type and mode both get buffers but
+// the kernel writes only one. For that render the request's pass is parked
+// (type none) and read from its twin: Combined, or the other pass of that type.
+struct ParkedPasses {
+  Scene &scene; std::vector<std::pair<Pass *, PassType>> parked;
+  ~ParkedPasses() {
+    for (auto &[pass, type] : parked) pass->set_type(type);
+    if (!parked.empty()) scene.film->tag_modified();
+  }
+};
+bool denoisable_pass(PassType type) { return type == PASS_COMBINED || type == PASS_SHADOW_CATCHER || type == PASS_SHADOW_CATCHER_MATTE; }
+void render_pass_modes(Host &host, ParkedPasses &parking) {
+  Scene &scene = *host.session->scene;
+  auto noisy_request = [](const Entry &entry, const Pass *pass) {
+    return denoisable_pass(pass->get_type()) && pass->get_lightgroup().empty() &&
+           entry.requested_pass_mode == int(PassMode::NOISY);
+  };
+  if (!scene.integrator->get_use_denoise()) {
+    for (auto &result : host.result.passes) {
+      for (auto &[id, entry] : host.nodes) {
+        auto pass = dynamic_cast<Pass *>(entry.node);
+        if (!pass || pass->get_name().string() != result.name || !noisy_request(entry, pass)) continue;
+        std::string twin = pass->get_type() == PASS_COMBINED ? "Combined" : "";
+        for (auto &[other_id, other] : host.nodes) {
+          auto candidate = dynamic_cast<Pass *>(other.node);
+          if (twin.empty() && candidate && candidate != pass && candidate->get_type() == pass->get_type() &&
+              !candidate->get_name().empty() && !noisy_request(other, candidate))
+            twin = candidate->get_name().string();
+        }
+        if (twin.empty()) break;  // the only pass of its type: no duplicate
+        result.source = twin;
+        parking.parked.emplace_back(pass, pass->get_type());
+        pass->set_type(PASS_NONE);
+        break;
+      }
+    }
+    if (!parking.parked.empty()) scene.film->tag_modified();
+    return;
+  }
+  bool changed = false;
+  auto apply = [&](Pass *pass, PassMode mode) {
+    if (pass->get_mode() != mode) { pass->set_mode(mode); changed = true; }
+  };
+  for (Pass *pass : scene.passes)
+    if (pass->get_type() == PASS_COMBINED && pass->get_name() == "Combined") apply(pass, PassMode::DENOISED);
+  for (auto &[id, entry] : host.nodes) {
+    auto pass = dynamic_cast<Pass *>(entry.node);
+    if (!pass || !denoisable_pass(pass->get_type())) continue;
+    // Light group passes are combined passes Cycles never denoises; with denoising
+    // their buffers are laid out as denoised passes nothing writes (the noisy mode
+    // instead makes finalize_passes merge the main noisy combined pass into the light
+    // group). Refused until the light groups are routed separately.
+    require(!(pass->get_type() == PASS_COMBINED && !pass->get_lightgroup().empty()),
+            "Light group passes are not supported together with denoising yet", CBC_UNSUPPORTED);
+    apply(pass, noisy_request(entry, pass) ? PassMode::NOISY : PassMode::DENOISED);
+  }
+  if (changed) scene.film->tag_modified();
+}
 extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, float *rgba, uint64_t count) {
   return edit(handle, [&](Host &host) {
     require(config && config->struct_size == sizeof(*config), "Invalid render configuration");
@@ -740,7 +823,10 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
     // light group passes (PASS_COMBINED with a light group) included.
     for (auto &[id, entry] : host.nodes) if (auto pass = dynamic_cast<Pass *>(entry.node)) {
       const std::string name = pass->get_name().string();
-      if (name.empty() || name == "Combined" || (pass->get_type() == PASS_COMBINED && pass->get_lightgroup().empty())) continue;
+      // A plain combined pass is captured only when the caller asked for its
+      // noisy version (mode noisy); otherwise it would duplicate Combined.
+      if (name.empty() || name == "Combined" || (pass->get_type() == PASS_COMBINED && pass->get_lightgroup().empty() &&
+          entry.requested_pass_mode != int(PassMode::NOISY))) continue;
       if (std::any_of(host.result.passes.begin(), host.result.passes.end(), [&](auto &p) { return p.name == name; })) continue;
       PassResult value; value.name = name; value.type = int(pass->get_type());
       value.components = unsigned(std::max(1, pass->get_info().num_components));
@@ -749,6 +835,8 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
     }
     host.requested_samples = config->samples; host.last_sample = -1; host.last_status.clear();
     struct Active { Host &host; Active(Host &h) : host(h) { host.rendering = true; } ~Active() { host.rendering = false; } } active(host);
+    ParkedPasses parking{scene};
+    render_pass_modes(host, parking);
     session.progress.reset();
     session.reset(params, buffers); session.start(); session.wait();
     try {

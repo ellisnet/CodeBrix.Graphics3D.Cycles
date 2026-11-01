@@ -25,6 +25,8 @@ std::string lighting_layout(){
 #undef AREA
   constant("L_sun_eval",offsetof(KernelLight,sun.eval_fac));
   constant("L_sun_half_angle",offsetof(KernelLight,sun.angle));constant("L_sun_pdf",offsetof(KernelLight,sun.pdf));
+  out<<"//#if LIGHT_LAMP_SHADER\n";constant("LS_half_cot_half_spot_angle",offsetof(KernelLight,spot.half_cot_half_spot_angle));
+  constant("LS_half_inv_sin_half_angle",offsetof(KernelLight,sun.half_inv_sin_half_angle));out<<"//#endif\n";
   constant("LD_totarea",offsetof(KernelLightDistribution,totarea));constant("LD_prim",offsetof(KernelLightDistribution,prim));
   constant("LD_object",offsetof(KernelLightDistribution,object_id));constant("LD_visibility",offsetof(KernelLightDistribution,visibility_flag));
   constant("O_shadow_terminator_geometry_offset",offsetof(KernelObject,shadow_terminator_geometry_offset));
@@ -100,9 +102,8 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
   if(data.integrator.use_light_tree)validate_light_tree();
   require(data.integrator.num_lights>=0&&size_t(data.integrator.num_lights)==light_records.size(),"Invalid native light table");
   // Background (world) light: importance-map sampling, MIS and non-constant
-  // worlds (shade_light_nee). Portals and sky-texture sun guiding are refused.
+  // worlds (shade_light_nee), sky-texture sun guiding (BACKGROUND_SUN). Portals are refused.
   require(data.integrator.num_portals==0&&data.background.portal_weight==0,"WebGPU background light portals not implemented");
-  require(data.background.sun_weight==0,"WebGPU background sun guiding (sky texture sun disc) not implemented");
   unsigned background_lights=0;
   for(const auto &light:light_records){
     require(light.type==LIGHT_POINT||light.type==LIGHT_SUN||light.type==LIGHT_SPOT||light.type==LIGHT_AREA||light.type==LIGHT_BACKGROUND,"WebGPU direct lighting emitter type not implemented");
@@ -115,7 +116,8 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
       require(!data.background.use_mis||(data.background.map_res_x>0&&data.background.map_res_y>0),"Invalid native background importance map");
       continue;
     }
-    require(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION,"WebGPU nonconstant point, spot, area or sun light emission not implemented");
+    // A point, spot, area or sun light whose emission shader is not constant is evaluated at the light point
+    // (LIGHT_LAMP_SHADER: shade_light_nee for next-event estimation, shade_light_forward and the sun lights for hits).
     require(std::isfinite(light.co.x)&&std::isfinite(light.co.y)&&std::isfinite(light.co.z),"Invalid native light position/direction");
     for(float strength:light.strength)require(std::isfinite(strength),"Invalid native light strength");
     if(light.type==LIGHT_POINT||light.type==LIGHT_SPOT){require(std::isfinite(light.spot.radius)&&light.spot.radius>=0&&

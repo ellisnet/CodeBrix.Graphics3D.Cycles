@@ -56,6 +56,8 @@ fn motion_add4(a:vec4<f32>,b:vec4<f32>)->vec4<f32>{
 }
 fn motion_normalize4(a:vec4<f32>)->vec4<f32>{
     let norm=rounded_sqrt(motion_dot4(a,a));
+    // float4 / float multiplies by the reciprocal (math_float4.h); scalar float3 hosts (ARM64) take that form.
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return a*rounded_divide(1.0,norm);}
     return vec4<f32>(rounded_divide(a.x,norm),rounded_divide(a.y,norm),rounded_divide(a.z,norm),rounded_divide(a.w,norm));
 }
 // The Horner steps run as loops over the coefficient pairs (lane L, 2026-10-22):
@@ -148,13 +150,14 @@ fn motion_compose(q:vec4<f32>,y:vec4<f32>,z:vec4<f32>,w:vec4<f32>)->NativeTransf
     let rz=vec3<f32>(-qdb+qac,qda+qbc,1.0-qaa-qbb);
 //#endif
 //#if MNEE_MOTION
-    // Rotation entries: (1-a)-b on the diagonal, c+d elsewhere (the second sum adds +0), in that order.
-    var first=array<f32,9>(1.0,-qdc,qdb,qdc,1.0,-qda,-qdb,qda,1.0);
-    var second=array<f32,9>(-qbb,qab,qac,qab,-qaa,qbc,qac,qbc,-qaa);
-    var third=array<f32,9>(-qcc,0.0,0.0,0.0,-qcc,0.0,0.0,0.0,-qbb);
-    var r:array<f32,9>;let sums=rounded_steps(18u);
-    for(var k=0u;k<sums;k++){let i=k/2u;let odd=(k&1u)!=0u;r[i]=rounded_add(select(first[i],r[i],odd),select(second[i],third[i],odd));}
-    let rx=vec3<f32>(r[0],r[1],r[2]);let ry=vec3<f32>(r[3],r[4],r[5]);let rz=vec3<f32>(r[6],r[7],r[8]);
+    // Rotation entries: (1-a)-b on the diagonal, c+d elsewhere (the second sum adds +0), in that order,
+    // in straight-line code. Not function-scope arrays: beside the MNEE walk's own arrays they make the
+    // Adreno 730 driver fail to link the MNEE entries (native/DEVICE.md, private-memory class). Not a loop
+    // over select-stored registers either: on the Adreno 730 that form left the rotation rows at zero
+    // (the moving object's inverse fell back to the degenerate case and every ray missed it).
+    let rx=vec3<f32>(rounded_add(rounded_add(1.0,-qbb),-qcc),rounded_add(rounded_add(-qdc,qab),0.0),rounded_add(rounded_add(qdb,qac),0.0));
+    let ry=vec3<f32>(rounded_add(rounded_add(qdc,qab),0.0),rounded_add(rounded_add(1.0,-qaa),-qcc),rounded_add(rounded_add(-qda,qbc),0.0));
+    let rz=vec3<f32>(rounded_add(rounded_add(-qdb,qac),0.0),rounded_add(rounded_add(qda,qbc),0.0),rounded_add(rounded_add(1.0,-qaa),-qbb));
 //#endif
     let sx=vec3<f32>(y.w,z.z,w.y);let sy=vec3<f32>(z.x,z.w,w.z);let sz=vec3<f32>(z.y,w.x,w.w);
 //#if !MNEE_MOTION
@@ -163,12 +166,8 @@ fn motion_compose(q:vec4<f32>,y:vec4<f32>,z:vec4<f32>,w:vec4<f32>)->NativeTransf
                            vec4<f32>(dot(rz,sx),dot(rz,sy),dot(rz,sz),y.z));
 //#endif
 //#if MNEE_MOTION
-    var m:array<f32,9>;let entries=rounded_steps(9u);
-    for(var k=0u;k<entries;k++){
-        let row=select(select(rz,ry,k/3u==1u),rx,k<3u);let column=select(select(sz,sy,k%3u==1u),sx,k%3u==0u);
-        m[k]=rounded_dot(row,column);
-    }
-    return NativeTransform(vec4<f32>(m[0],m[1],m[2],y.x),vec4<f32>(m[3],m[4],m[5],y.y),vec4<f32>(m[6],m[7],m[8],y.z));
+    // The nine products (rounded, DPPS order) in straight-line code.
+    return NativeTransform(vec4<f32>(rounded_dot(rx,sx),rounded_dot(rx,sy),rounded_dot(rx,sz),y.x),vec4<f32>(rounded_dot(ry,sx),rounded_dot(ry,sy),rounded_dot(ry,sz),y.y),vec4<f32>(rounded_dot(rz,sx),rounded_dot(rz,sy),rounded_dot(rz,sz),y.z));
 //#endif
 }
 fn motion_interpolate(table:u32,first:u32,steps:u32,time:f32)->NativeTransform{
@@ -208,9 +207,12 @@ fn motion_inverse(t:NativeTransform)->NativeTransform{
         determinant=rounded_dot(x,rounded_cross(y,z));if(determinant==0.0){determinant=bitcast<f32>(0x7f7fffffu);}
     }
     let a=motion_inverse_cross(y,z);let b=motion_inverse_cross(z,x);let c=motion_inverse_cross(x,y);
-    let ix=vec3<f32>(rounded_divide(a.x,determinant),rounded_divide(a.y,determinant),rounded_divide(a.z,determinant));
-    let iy=vec3<f32>(rounded_divide(b.x,determinant),rounded_divide(b.y,determinant),rounded_divide(b.z,determinant));
-    let iz=vec3<f32>(rounded_divide(c.x,determinant),rounded_divide(c.y,determinant),rounded_divide(c.z,determinant));
+    // cross / det: float3 / float divides per lane on SSE hosts and multiplies by the reciprocal on scalar
+    // float3 hosts (ARM64), selected by the generated NATIVE_FLOAT3_RECIPROCAL_NORMALIZE.
+    var ix=vec3<f32>(rounded_divide(a.x,determinant),rounded_divide(a.y,determinant),rounded_divide(a.z,determinant));
+    var iy=vec3<f32>(rounded_divide(b.x,determinant),rounded_divide(b.y,determinant),rounded_divide(b.z,determinant));
+    var iz=vec3<f32>(rounded_divide(c.x,determinant),rounded_divide(c.y,determinant),rounded_divide(c.z,determinant));
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){let r=rounded_divide(1.0,determinant);ix=a*r;iy=b*r;iz=c*r;}
     return NativeTransform(vec4<f32>(ix,-rounded_dot(ix,w)),vec4<f32>(iy,-rounded_dot(iy,w)),vec4<f32>(iz,-rounded_dot(iz,w)));
 }
 fn motion_object(object:u32,time:f32)->NativeTransform{

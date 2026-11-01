@@ -155,6 +155,21 @@ std::string svm_layout(bool surface){
   SIZE(SceneTime);FIELD(SceneTime,seconds_out);FIELD(SceneTime,frame_out);
   SIZE(VectorTransform);FIELD(VectorTransform,transform_type);FIELD(VectorTransform,convert_from);FIELD(VectorTransform,convert_to);FIELD(VectorTransform,vector_in);FIELD(VectorTransform,vector_out_offset);
   SIZE(LightPath);FIELD(LightPath,path_type);FIELD(LightPath,out_offset);
+  // The Light Falloff node's opcode and types under their own names (scenes without the node keep their WGSL).
+  source<<"//#if SVM_NODE_LIGHT_FALLOFF\n";SIZE(LightFalloff);FIELD(LightFalloff,falloff_type);FIELD(LightFalloff,strength);FIELD(LightFalloff,smooth);
+  FIELD(LightFalloff,out_offset);constant("LF_OPCODE",NODE_LIGHT_FALLOFF);constant("LF_LINEAR",NODE_LIGHT_FALLOFF_LINEAR);
+  constant("LF_CONSTANT",NODE_LIGHT_FALLOFF_CONSTANT);source<<"//#endif\n";
+  source<<"//#if SVM_NODE_IES\n";SIZE(IES);FIELD(IES,strength);FIELD(IES,slot);FIELD(IES,vector_offset);FIELD(IES,fac_offset);
+  constant("IES_OPCODE",NODE_IES);source<<"//#endif\n";
+  source<<"//#if SVM_TEX_SKY\n";SIZE(TexSky);FIELD(TexSky,sky_type);FIELD(TexSky,dir_offset);FIELD(TexSky,out_offset);
+  SIZE(TexSkyPreethamData);FIELD(TexSkyPreethamData,phi);FIELD(TexSkyPreethamData,theta);FIELD(TexSkyPreethamData,radiance_x);
+  FIELD(TexSkyPreethamData,radiance_y);FIELD(TexSkyPreethamData,radiance_z);FIELD(TexSkyPreethamData,config_x);FIELD(TexSkyPreethamData,config_y);
+  FIELD(TexSkyPreethamData,config_z);SIZE(TexSkyNishitaData);FIELD(TexSkyNishitaData,pixel_bottom_x);FIELD(TexSkyNishitaData,pixel_top_x);
+  FIELD(TexSkyNishitaData,sun_elevation);FIELD(TexSkyNishitaData,sun_rotation);FIELD(TexSkyNishitaData,angular_diameter);
+  FIELD(TexSkyNishitaData,sun_intensity);FIELD(TexSkyNishitaData,earth_intersection_angle);FIELD(TexSkyNishitaData,texture_id);
+  constant("SKY_OPCODE",NODE_TEX_SKY);constant("SKY_PREETHAM",NODE_SKY_PREETHAM);constant("SKY_HOSEK",NODE_SKY_HOSEK);
+  constant("SKY_PATH_RAY_IMPORTANCE_BAKE",PATH_RAY_IMPORTANCE_BAKE);constant("SKY_D_use_sun_guiding",offsetof(KernelData,background.use_sun_guiding));
+  source<<"//#endif\n";
   SIZE(TexVoronoi);FIELD(TexVoronoi,dimensions);FIELD(TexVoronoi,feature);FIELD(TexVoronoi,metric);FIELD(TexVoronoi,w);FIELD(TexVoronoi,scale);FIELD(TexVoronoi,detail);
   FIELD(TexVoronoi,roughness);FIELD(TexVoronoi,lacunarity);FIELD(TexVoronoi,smoothness);FIELD(TexVoronoi,exponent);FIELD(TexVoronoi,randomness);FIELD(TexVoronoi,normalize);
   FIELD(TexVoronoi,coord);FIELD(TexVoronoi,distance_offset);FIELD(TexVoronoi,color_offset);FIELD(TexVoronoi,position_offset);FIELD(TexVoronoi,w_out_offset);FIELD(TexVoronoi,radius_offset);

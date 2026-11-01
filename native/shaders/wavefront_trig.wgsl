@@ -171,3 +171,15 @@ fn trig_atan2(y:f32,x:f32)->f32{
     let delta=rounded_divide(numerator,denominator);
     let sum=trig_coeff(vec2<f32>(theta,0.0),vec2<f32>(delta,0.0));return rounded_add(sum.x,sum.y);
 }
+//#if TRIG_ATAN2_GUARD
+// trig_atan2 for every argument (DEVICE.md open item 31): trig_product's residual scale wraps when the reduced
+// angle is below about 2^-40, so the near-axis cases take atan(t) = t (|t| < 1e-6: the next term is below a
+// thousandth of an ulp) and the pole and pi offsets as two-part sums, each correctly rounded.
+fn trig_atan2_guarded(y:f32,x:f32)->f32{
+    if(y!=0.0&&abs(y)<1e-6*abs(x)){let q=rounded_divide(y,x);if(x>0.0){return q;}
+        return select(rounded_add(-3.1415927410125732,rounded_add(8.742278e-8,q)),rounded_add(3.1415927410125732,rounded_add(-8.742278e-8,q)),y>0.0);}
+    if(x!=0.0&&abs(x)<1e-6*abs(y)){let q=rounded_divide(x,y);
+        return select(rounded_add(-1.5707963705062866,rounded_add(4.371139000186243e-8,-q)),rounded_add(1.5707963705062866,rounded_add(-4.371139000186243e-8,-q)),y>0.0);}
+    return trig_atan2(y,x);
+}
+//#endif

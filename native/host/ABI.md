@@ -79,7 +79,7 @@ UTF-8, at most 2,047 bytes). A successful call clears it.
 
 **Device errors.** A render that fails with `CBC_FAILED` because the device
 rejected the scene (for example an unimplemented WebGPU feature such as a
-non-perspective camera) leaves the error on the Cycles
+custom (OSL) camera) leaves the error on the Cycles
 device. The next `cbc_host_render` on that host recovers it:
 
 - The WebGPU device clears the error when the device itself is intact (no lost
@@ -102,7 +102,7 @@ device. The next `cbc_host_render` on that host recovers it:
   host and create a new one.
 
 Measured on Linux WebGPU (native/tools/scene_edit_gate.py): after a rejected
-orthographic camera, removing the cause and rendering again on the
+custom camera, removing the cause and rendering again on the
 same host meets the practical criterion against a fresh CPU render.
 
 ## Threading and ownership
@@ -174,7 +174,11 @@ the device. Fields (schemaVersion 1): `abiVersion`, `libraryVersion`,
 classes of scene features the device rejects at render time; `cpu.arithmetic`
 states the CPU kernels' `isa`, `fpContract` and `reciprocalMath`, from a
 translation unit compiled with their flags), `optionalLibraries`
-(OSL, Embree, OpenImageDenoise, OpenVDB: compiled or not), `imageInput` (the
+(OSL, Embree, OpenImageDenoise, OpenVDB: compiled or not), `denoising`
+(added within schema 1: `available`; when true also `denoiser`,
+`openimagedenoise`, and `denoiseDevice`, the Open Image Denoise device per
+compiled backend: `cpu` for the CPU and WebGPU backends, whose renders Cycles
+denoises on the host, `metal` for Metal), `imageInput` (the
 eight formats, origin, whether texture filenames are read), `output`,
 `passTypes` (every registered Cycles pass type and value), `events`, `limits`,
 `determinism` (a pointer to the section below) and, with a host, `host`
@@ -187,20 +191,28 @@ guard's warnings, and its `sizeGuard` object states the guard's threshold
 (`largestEntryBytes`, `largestEntry`), its instruction estimate
 (`estimatedInstructions`) and the number of size warnings (`warnings`); each
 pipeline row adds `inlinedBytes`. A size warning never sets `degraded` and never
-changes the compiled variant (native/cycles/pipelines.h, size guard). The report states what this source tree does today; scene features
+changes the compiled variant (native/cycles/pipelines.h, size guard). A WebGPU device report also
+states `wgslArithmetic`, the CPU oracle arithmetic the generated WGSL adapters reproduce: `x64-sse4.2`
+(every x86-64 build, and Android ARM64 with `CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2`),
+`arm64-scalar` (the Android ARM64 product default and Linux ARM64) or `arm64-sse2neon`; oracle films
+record it and `native/oracle/compare.py` gates them against the CPU gold standard of that ISA family. The report states what this source tree does today; scene features
 it does not list as supported may still fail at render time with `CBC_FAILED`.
 
 Facts measured for the current WebGPU device (Linux host gate): object shadow
 terminator offsets are implemented (geometry offset; shading offset 0 to 1, larger
-shading offsets are rejected at render time); only the
-perspective camera; it writes the light passes (diffuse, glossy and transmission direct, indirect and colour,
+shading offsets render too); perspective, orthographic and panoramic cameras with depth of field (not stereo),
+every sampling pattern and adaptive sampling; it writes the light passes (diffuse, glossy and transmission direct, indirect and colour,
 emission, background, AO), light groups, the data passes (depth, position, normal, roughness, UV, object and
 material index, mist, sample count, the motion pass and motion weight without motion blur; render time stays zero,
 as on Cycles' Metal device), AOVs, cryptomatte and the denoising feature passes (albedo, normal, specular albedo,
-roughness, depth, backward and specular motion), and refuses by name every other pass (for example the adaptive
-sampling, path guiding and volume passes) and the motion pass with deforming geometry; the integrator defaults
-(denoising, adaptive sampling, guiding enabled) must be switched
-off for WebGPU renders; the light tree and light linking render.
+roughness, depth, backward and specular motion), and refuses by name every other pass (for example the path
+guiding and volume passes) and the motion pass with deforming geometry; path guiding must be switched
+off for WebGPU renders (adaptive sampling renders); the light tree and light linking render. Denoising
+(the integrator's `use_denoise`, off by default, and its other denoise sockets, set like any integrator
+property) works on every backend: Cycles denoises a WebGPU render with Open Image Denoise on the CPU (the
+render buffers are copied to the host) and a CPU render the same way; the Combined output is then the
+denoised image, also when denoising is switched on between two renders of one scene (see Passes for
+the noisy version and the shadow catcher passes).
 
 ## Scene authoring
 
@@ -281,7 +293,19 @@ pixels on the next render; bindings made before a release keep their pixels.
 
 `Combined` is always captured. Other passes are captured when a pass node has a
 nonempty `name` (other than `Combined`); the first pass of a duplicated name
-wins. After a successful render, `cbc_host_render_passes_json` lists
+wins.
+
+Denoising (integrator `use_denoise`): the passes Cycles' Open Image Denoise
+denoiser writes, `Combined`, `shadow_catcher` and `shadow_catcher_matte`
+(caller-created ones included), are captured denoised by default. A pass
+node's `mode` socket set to `noisy` (added within ABI 1; no new export)
+requests the undenoised version in the same render, for example a `combined`
+pass named `Noisy Image` with `mode` `noisy` beside `Combined`; use one noisy
+request per pass type. In a render without denoising a noisy request reads the
+same values as its twin (Combined, or the other pass of its type). Every other
+pass type is never denoised and its `mode` has no effect. Light group passes
+together with denoising are refused (`CBC_UNSUPPORTED`, "Light group passes
+are not supported together with denoising yet"). After a successful render, `cbc_host_render_passes_json` lists
 `name`, `type`, `components` and `written`, and `cbc_host_pass_floats` copies
 one pass (`components` floats per pixel, raw scene-linear values, lower-left
 origin). A render that starts clears earlier results; until a render succeeds

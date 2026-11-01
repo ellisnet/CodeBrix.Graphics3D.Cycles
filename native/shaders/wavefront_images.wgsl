@@ -114,17 +114,22 @@ fn image_projection(s:ptr<function,SvmState>,co:vec3<f32>,projection:u32)->vec2<
 // lookups near bright texels beyond the practical criterion.
 fn image_equirectangular(direction:vec3<f32>)->vec2<f32>{
     if(all(direction==vec3<f32>(0))){return vec2<f32>(0);}
-    let u=rounded_divide(rounded_add(trig_atan2(direction.y,direction.x),-3.1415927410125732),-6.2831854820251465);
+//#if TRIG_ATAN2_GUARD else     let u=rounded_divide(rounded_add(trig_atan2(direction.y,direction.x),-3.1415927410125732),-6.2831854820251465);
+    let u=rounded_divide(rounded_add(trig_atan2_guarded(direction.y,direction.x),-3.1415927410125732),-6.2831854820251465);
+//#endif
     let length=rounded_sqrt(rounded_dot(direction,direction));
     let v=rounded_divide(rounded_add(trig_acos(rounded_divide(direction.z,length)),-3.1415927410125732),-3.1415927410125732);
     return vec2<f32>(u,v);
 }
+//#if SVM_TEX_ENVIRONMENT
 fn environment_projection(s:ptr<function,SvmState>,input:vec3<f32>,projection:u32)->vec2<f32>{
     var v=surface_normalize(input);
     if(projection==0u){return image_equirectangular(v);}
     if(projection!=1u){svm_error(s,16u);return vec2<f32>(0);}
     v.y-=1.0;let div=2.0*sqrt(max(-0.5*v.y,0.0));if(div>0.0){v/=div;}return (v.xz+vec2<f32>(1))*0.5;
 }
+//#endif
+//#if SVM_TEX_IMAGE_BOX
 fn image_box(s:ptr<function,SvmState>,co:vec3<f32>,id:i32,blend:f32,flags:u32)->vec4<f32>{
     var n=(*s).geometry.N;let object=(*s).geometry.object_id;
     if(object!=NONE){n=surface_object_normal((*s).geometry,n,true);}
@@ -150,6 +155,7 @@ fn image_box(s:ptr<function,SvmState>,co:vec3<f32>,id:i32,blend:f32,flags:u32)->
     }
     return result;
 }
+//#endif
 fn svm_image(s:ptr<function,SvmState>,node:u32,mode:u32,derivative:bool){
     // These native records have matching offsets, checked by the layout generator.
     let offset=svm_byte(node+N_TexImage_co);let co=svm_load3(s,offset);
@@ -157,9 +163,13 @@ fn svm_image(s:ptr<function,SvmState>,node:u32,mode:u32,derivative:bool){
         if(!all(abs(dx)<=vec3<f32>(3.402823e38))||!all(abs(dy)<=vec3<f32>(3.402823e38))){svm_error(s,128u);}}
     if((*s).error!=0u){return;}
     let id=bitcast<i32>(load_word(node+N_TexImage_id));let flags=svm_byte(node+N_TexImage_flags);var result:vec4<f32>;
+//#if SVM_TEX_IMAGE_BOX else     if(false){}
     if(mode==1u){result=image_box(s,co,id,heap_float(node+N_TexImageBox_blend),flags);}
+//#endif
     else{var uv:vec2<f32>;let projection=load_word(node+N_TexImage_projection);
+//#if SVM_TEX_ENVIRONMENT else         uv=image_projection(s,co,projection);
         if(mode==2u){uv=environment_projection(s,co,projection);}else{uv=image_projection(s,co,projection);}
+//#endif
         if((*s).error==0u){result=svm_image_sample(s,id,uv,flags);}}
     if((*s).error!=0u){return;}
     svm_optional_store3(s,svm_byte(node+N_TexImage_out_offset),result.xyz);svm_optional_store(s,svm_byte(node+N_TexImage_alpha_offset),result.w);

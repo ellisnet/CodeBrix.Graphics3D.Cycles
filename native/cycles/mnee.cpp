@@ -5,6 +5,7 @@
 #include "device.h"
 #include "wavefront.h"
 #include "surface_closure.h"
+#include "kernel/bvh/types.h"
 #include <cmath>
 #include <cstring>
 #include <sstream>
@@ -13,9 +14,16 @@ namespace ccl {
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
 // Per dispatched path: stage word, receiver ShaderData, light sample, walk
 // metadata, six caster hits, the manifold vertices and their tentative copies,
-// the result, then SVM closure storage (wavefront_mnee.wgsl MR_* offsets).
+// the result, SVM closure storage (wavefront_mnee.wgsl MR_* offsets), then the BVH traversal
+// stack of the MNEE walk (BVH_STACK_SIZE entries): in the record, not a private array, because
+// per-invocation private memory beside the walk's own arrays fails to link the MNEE entries with
+// motion blur on the Adreno 730 (native/DEVICE.md, "Samsung reference fixes" item 8 class).
 static constexpr size_t mnee_closure_offset=2720;
-static constexpr size_t mnee_record_bytes=mnee_closure_offset+MAX_CLOSURE*sizeof(SurfaceClosureRecord);
+static constexpr size_t mnee_stack_offset=mnee_closure_offset+MAX_CLOSURE*sizeof(SurfaceClosureRecord);
+static constexpr size_t mnee_stack_entries=192;
+static_assert(mnee_stack_entries==BVH_STACK_SIZE,"MNEE traversal stack (wavefront_closest.wgsl uses 192)");
+static constexpr size_t mnee_record_bytes=mnee_stack_offset+mnee_stack_entries*4;
+size_t mnee_record_stride(){return mnee_record_bytes;}
 static_assert(surface_data_cache_bytes==240&&mnee_record_bytes%16==0,"wavefront_mnee.wgsl record layout");
 // Constants of every MNEE region (closest, surface and background modules). The
 // block is itself one MNEE region, so modules of scenes without caustics are unchanged.
@@ -29,7 +37,7 @@ std::string mnee_layout(){
   constant("SD_OBJECT_CAUSTICS_CASTER",SD_OBJECT_CAUSTICS_CASTER);constant("SD_OBJECT_CAUSTICS_RECEIVER",SD_OBJECT_CAUSTICS_RECEIVER);
   constant("MNEE_CLOSURE_REFRACTION_FIRST",CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID);constant("MNEE_CLOSURE_REFRACTION_LAST",CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
   constant("MNEE_CLOSURE_GLASS_FIRST",CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);constant("MNEE_CLOSURE_GLASS_LAST",CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
-  constant("MNEE_CAUSTICS_MAX_CLOSURE",CAUSTICS_MAX_CLOSURE);constant("MR_CLOSURES",mnee_closure_offset);constant("MNEE_RECORD_BYTES",mnee_record_bytes);
+  constant("MNEE_CAUSTICS_MAX_CLOSURE",CAUSTICS_MAX_CLOSURE);constant("MR_CLOSURES",mnee_closure_offset);constant("MR_STACK",mnee_stack_offset);constant("MNEE_RECORD_BYTES",mnee_record_bytes);
 #define ISECT(index,member) constant("MNEE_S_I" #index "_" #member,offsetof(IntegratorStateGPU,shadow_isect[index].member))
   ISECT(0,t);ISECT(0,u);ISECT(0,v);ISECT(0,object);ISECT(0,prim);ISECT(0,type);
   ISECT(1,t);ISECT(1,u);ISECT(1,v);ISECT(1,object);ISECT(1,prim);ISECT(1,type);ISECT(2,prim);
@@ -53,6 +61,8 @@ void WebGPUDevice::validate_mnee() const{
     require(!((flags&SD_OBJECT_CAUSTICS_CASTER)&&(flags&SD_OBJECT_MOTION)),"WebGPU MNEE with a moving caustic caster (object motion blur) not implemented");
   for(const KernelLight &light:light_records)if(light.use_caustics)
     require(light.type==LIGHT_POINT||light.type==LIGHT_SUN,"WebGPU MNEE caustics from spot, area or background lights not implemented");
+  for(const KernelLight &light:light_records)if(light.use_caustics&&uint(light.shader_id&SHADER_MASK)<shader_records.size())
+    require(shader_records[light.shader_id&SHADER_MASK].flags&SD_HAS_CONSTANT_EMISSION,"WebGPU MNEE caustics from a light with an emission shader that is not constant not implemented");
 }
 void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   require(args.count==2,"MNEE argument count");
@@ -64,9 +74,8 @@ void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU MNEE currently requires triangle primitives");
   require(data.integrator.use_caustics,"Invalid native MNEE dispatch without caustics");
   validate_mnee();validate_geometry_motion();validate_lighting(data.integrator.use_direct_light);
-  require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU MNEE requires tabulated Sobol");
   require(data.max_shaders>0&&state.sort_partition_divisor>0,"Invalid MNEE sort configuration");
-  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=globals.at("sample_pattern_lut");p[18]=globals.at("shaders");
+  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=sample_pattern_table("MNEE");p[18]=globals.at("shaders");
   require(remaining(p[18])%sizeof(KernelShader)==0,"Invalid MNEE shader table");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));
   if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid SVM word table");p[22]=uint32_t(remaining(p[21])/4);}
   p[10]=uint32_t(remaining(uintptr_t(state.path.render_pixel_index))/4);
@@ -93,9 +102,6 @@ void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   p[25]=uint32_t(remaining(uintptr_t(state.shadow_path.render_pixel_index))/4);
   for(int k=0;k<3;k++){validate(uintptr_t(state.shadow_isect[k].t),size_t(p[25])*4);validate(uintptr_t(state.shadow_isect[k].prim),size_t(p[25])*4);}
   validate(uintptr_t(state.next_shadow_path_index),4);
-  const auto sequence=data.integrator.tabulated_sobol_sequence_size;
-  require(sequence>1&&(sequence&(sequence-1))==0,"Invalid MNEE Sobol sequence size");
-  validate(p[9],size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
   p[14]=scene_tables();
   if(!work||!n)return;
   const size_t needed=size_t(work)*mnee_record_bytes+16;
@@ -111,8 +117,10 @@ void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   // unused reservations stay terminated and compaction removes them.
   const size_t reserve_bytes=sizeof(uint32_t);
   static const char *const entries[mnee_entries]={"mnee_receiver","mnee_seed","mnee_eval","mnee_setup","mnee_solve","mnee_transfer","mnee_contribute"};
-  if(!pipeline_current(mnee_pipelines[mnee_entries-1],"mnee_contribute")){
-    auto built=build_pipelines("surface",surface_source(),{entries[0],entries[1],entries[2],entries[3],entries[4],entries[5],entries[6]});
+  // mnee_eval and mnee_contribute evaluate only the caustic casters' shaders (mnee_unused_svm_features).
+  const ShaderFeatures unused=mnee_unused_svm_features();
+  if(!pipeline_current(mnee_pipelines[mnee_entries-1],"mnee_contribute",unused)){
+    auto built=build_pipelines("surface",surface_source(),{entries[0],entries[1],entries[2],entries[3],entries[4],entries[5],entries[6]},SF_MNEE_ENTRIES,unused);
     for(unsigned i=0;i<mnee_entries;i++)mnee_pipelines[i]=std::move(built[i]);
   }
   p[28]=mnee_records+uint32_t(size_t(work)*mnee_record_bytes);(void)reserve_bytes;

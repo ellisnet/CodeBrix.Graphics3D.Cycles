@@ -68,6 +68,20 @@ public interface ICapabilityReport
     /// <summary>Gets the optional native libraries (OSL, Embree, OpenImageDenoise, OpenVDB) and whether each is compiled in.</summary>
     IReadOnlyDictionary<string, bool> OptionalLibraries { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether the native binary can denoise (Cycles' Open Image Denoise denoiser is
+    /// compiled in). Denoising is off unless requested: set <see cref="Generated.Scene.IntegratorNode.UseDenoise"/>
+    /// and the other denoise sockets of <see cref="CyclesScene.Integrator"/>.
+    /// </summary>
+    bool CanDenoise { get; }
+
+    /// <summary>
+    /// Gets, per compiled backend name, the Open Image Denoise device that denoises that backend's renders
+    /// (<c>cpu</c> for the CPU and WebGPU backends, <c>metal</c> for Metal); empty when <see cref="CanDenoise"/>
+    /// is <see langword="false"/>.
+    /// </summary>
+    IReadOnlyDictionary<string, string> DenoiseDevices { get; }
+
     /// <summary>Gets the accepted raw image input formats (<c>float</c>, <c>float4</c>, <c>half</c>, ...).</summary>
     IReadOnlyList<string> ImageFormats { get; }
 

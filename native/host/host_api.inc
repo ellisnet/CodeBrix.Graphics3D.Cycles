@@ -93,13 +93,13 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
         << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"arithmetic\":"
         << codebrix_cpu_arithmetic_json << "}";
 #ifdef WITH_WEBGPU
-    out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\"],\"primitives\":[\"triangle\"],"
+    out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\"],\"primitives\":[\"triangle\"],"
            "\"passes\":[\"combined\",\"emission\",\"background\",\"ao\",\"diffuse\",\"diffuse_direct\",\"diffuse_indirect\",\"diffuse_color\",\"glossy\",\"glossy_direct\",\"glossy_indirect\",\"glossy_color\","
            "\"transmission\",\"transmission_direct\",\"transmission_indirect\",\"transmission_color\",\"depth\",\"position\",\"normal\",\"roughness\",\"uv\",\"object_id\",\"material_id\",\"motion\",\"motion_weight\","
            "\"cryptomatte\",\"aov_color\",\"aov_value\",\"mist\",\"render_time\",\"sample_count\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\",\"denoising_albedo\",\"denoising_normal\","
            "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\"],\"lightGroups\":true,"
-           "\"renderTimeRejections\":[\"non-perspective or stereo cameras\",\"shadow linking\",\"motion pass and denoising motion features with deforming geometry\",\"adaptive sampling passes\",\"volume passes\","
-           "\"volume light passes\",\"background light portals and sky sun guiding\",\"nonconstant point, spot, area and sun light shaders\",\"heterogeneous volumes\",\"moving transparent shadows\","
+           "\"renderTimeRejections\":[\"stereo cameras\",\"shadow linking\",\"motion pass and denoising motion features with deforming geometry\",\"volume passes\","
+           "\"volume light passes\",\"background light portals\",\"heterogeneous volumes\","
            "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL
@@ -136,6 +136,23 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
         << "false"
 #endif
         << "}";
+    // Denoising (native/DEVICE.md): Cycles' Open Image Denoise denoiser. Off unless
+    // the integrator asks for it. Per compiled backend, the OIDN device that runs
+    // it: the CPU device for the CPU backend and for WebGPU (Cycles' CPU fallback
+    // copies the render buffers to the host), OIDN's Metal device for Metal.
+    out << ",\"denoising\":{\"available\":"
+#ifdef WITH_OPENIMAGEDENOISE
+        << "true,\"denoiser\":\"openimagedenoise\",\"denoiseDevice\":{\"cpu\":\"cpu\""
+#  ifdef WITH_WEBGPU
+        << ",\"webgpu\":\"cpu\""
+#  endif
+#  ifdef WITH_METAL
+        << ",\"metal\":\"metal\""
+#  endif
+        << "}}";
+#else
+        << "false}";
+#endif
     out << ",\"imageInput\":{\"formats\":[\"float\",\"float4\",\"half\",\"half4\",\"byte\",\"byte4\",\"ushort\",\"ushort4\"],"
            "\"origin\":\"lower-left\",\"fileReading\":"
 #ifdef CBC_HOST_NO_IMAGE_FILES

@@ -86,6 +86,8 @@ def profile(source):
   # No NASM, as on Windows: the scalar JPEG fallback. On an Intel Mac CMake would
   # otherwise find Homebrew's nasm in /usr/local/bin.
   if name=='jpeg':settings=dict(settings,WITH_SIMD='OFF')
+  # OIDN: CPU device only (the Metal device is osx-arm64's alone).
+  if name=='oidn':settings=dict(settings,OIDN_DEVICE_METAL='OFF')
   rows.append((name,path,settings))
  return rows
 

@@ -106,6 +106,10 @@ def scenes():
         single('m-f82', 'metallic_bsdf', metallic('f82', 'ggx', 0.35)),
         single('m-film', 'metallic_bsdf', metallic('f82', 'multi_ggx', 0.3, thin_film_thickness=320.0, thin_film_ior=1.45)),
         tangent_shader('m-physical', 'metallic_bsdf', metallic('physical_conductor', 'multi_ggx', 0.45, anisotropy=0.6, rotation=0.2))])
+    out['metallic-film.json'] = scene('bsdf/metallic-film', 'Metallic BSDF thin film over the physical conductor Fresnel: GGX, a sub-nanometre film (multiscatter GGX), and anisotropic with a high-IOR film (multiscatter GGX)', [
+        single('c-film', 'metallic_bsdf', metallic('physical_conductor', 'ggx', 0.25, thin_film_thickness=320.0, thin_film_ior=1.45)),
+        single('c-thin', 'metallic_bsdf', metallic('physical_conductor', 'multi_ggx', 0.3, thin_film_thickness=0.6, thin_film_ior=1.6)),
+        tangent_shader('c-aniso', 'metallic_bsdf', metallic('physical_conductor', 'multi_ggx', 0.4, anisotropy=0.5, rotation=0.1, thin_film_thickness=900.0, thin_film_ior=2.0))])
     out['beckmann.json'] = scene('bsdf/beckmann', 'Beckmann distribution: anisotropic glossy, glass, and a physical-conductor Metallic BSDF mixed with rough refraction', [
         tangent_shader('b-glossy', 'glossy_bsdf', {'distribution': 'beckmann', 'roughness': 0.4, 'anisotropy': -0.5, 'rotation': 0.15, 'color': [0.3, 0.6, 0.85]}),
         single('b-glass', 'glass_bsdf', {'distribution': 'beckmann', 'roughness': 0.3, 'IOR': 1.5, 'color': [0.8, 0.9, 0.95]}),

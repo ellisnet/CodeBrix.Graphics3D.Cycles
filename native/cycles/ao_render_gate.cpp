@@ -175,7 +175,8 @@ static void fixture(Scene &scene,const Case &c){
     sphere->set_shadow_terminator_geometry_offset(.1f);sphere->set_shadow_terminator_shading_offset(.5f);}
   if(c.transparent){auto pane=quad(scene,mixed_shader(scene,true),{make_float3(-2.9f,.6f,-1.8f),make_float3(2.9f,.6f,-1.8f),make_float3(2.9f,.6f,2.8f),make_float3(-2.9f,.6f,2.8f)});
     // With motion the transparent pane moves or deforms too: AO and light shadow rays through moving transparency.
-    if(c.motion==1)object_motion_fixture(scene,*pane,1);if(c.motion==2)deforming_motion_fixture(scene,*pane,0);}
+    if(c.motion==1)object_motion_fixture(scene,*pane,1);
+    if(c.motion==2)deforming_motion_fixture(scene,*pane,0);}
 #ifdef CBC_RAYTRACE_NODES_FIXTURE
   if(c.node==5){auto box=box_mesh(scene,raytrace_node_shader(scene,3));
 #else

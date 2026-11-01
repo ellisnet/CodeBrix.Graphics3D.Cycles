@@ -82,6 +82,12 @@ public sealed class CapabilityReport : ICapabilityReport
     public IReadOnlyDictionary<string, bool> OptionalLibraries { get; private set; } = new Dictionary<string, bool>();
 
     /// <inheritdoc/>
+    public bool CanDenoise { get; private set; }
+
+    /// <inheritdoc/>
+    public IReadOnlyDictionary<string, string> DenoiseDevices { get; private set; } = new Dictionary<string, string>();
+
+    /// <inheritdoc/>
     public IReadOnlyList<string> ImageFormats { get; private set; } = NoStrings;
 
     /// <inheritdoc/>
@@ -167,6 +173,15 @@ public sealed class CapabilityReport : ICapabilityReport
         if (root.TryGetProperty("optionalLibraries", out JsonElement optional) && optional.ValueKind == JsonValueKind.Object)
             foreach (JsonProperty entry in optional.EnumerateObject()) libraries[entry.Name] = entry.Value.ValueKind == JsonValueKind.True;
         OptionalLibraries = libraries;
+        Dictionary<string, string> denoiseDevices = [];
+        if (root.TryGetProperty("denoising", out JsonElement denoising) && denoising.ValueKind == JsonValueKind.Object)
+        {
+            CanDenoise = denoising.TryGetProperty("available", out JsonElement available) && available.ValueKind == JsonValueKind.True;
+            if (denoising.TryGetProperty("denoiseDevice", out JsonElement devices) && devices.ValueKind == JsonValueKind.Object)
+                foreach (JsonProperty entry in devices.EnumerateObject())
+                    if (entry.Value.ValueKind == JsonValueKind.String) denoiseDevices[entry.Name] = entry.Value.GetString();
+        }
+        DenoiseDevices = denoiseDevices;
         if (root.TryGetProperty("imageInput", out JsonElement images) && images.ValueKind == JsonValueKind.Object) ImageFormats = Strings(images, "formats");
         Dictionary<string, int> passTypes = [];
         if (root.TryGetProperty("passTypes", out JsonElement types) && types.ValueKind == JsonValueKind.Array)

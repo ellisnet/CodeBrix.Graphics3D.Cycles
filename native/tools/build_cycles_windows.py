@@ -159,6 +159,9 @@ def main():
    # x64 (no AVX2/FMA kernel, never -march=native); the shared injection switches
    # contraction and reciprocal math off in clang-cl's /clang: form.
    WITH_CYCLES_NATIVE_ONLY='OFF',WITH_CYCLES_PATH_GUIDING='OFF',
+   # Open Image Denoise from the reviewed snapshot in the dependency prefix
+   # (CPU device).
+   WITH_CYCLES_OPENIMAGEDENOISE='ON',OPENIMAGEDENOISE_ROOT_DIR=prefix,
    **{'CXX_HAS_AVX2:BOOL':'OFF','CXX_HAS_F16C:BOOL':'OFF'},
    # ARM64: the ARMv8-A base level and no x86 flag probe (clang-cl may accept
    # -msse4.2 for an ARM64 target with only a warning), as in the Linux ARM64 recipe.
@@ -175,7 +178,7 @@ def main():
   # the linker finds those in the prefix, never anywhere else.
   for name in ['CMAKE_EXE_LINKER_FLAGS','CMAKE_SHARED_LINKER_FLAGS','CMAKE_MODULE_LINKER_FLAGS']:
    values[name]=values[name]+' /LIBPATH:'+(prefix/'lib').as_posix()+' /DEBUG /OPT:REF /OPT:ICF /PDBALTPATH:%_PDB%'
-  values.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','EMBREE','OPENIMAGEDENOISE','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD',
+  values.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','EMBREE','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD',
    'HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI','DEVICE_METAL']})
   build=WORK/'build'
   commands=[[str(toolchain.cmake),'-G','Ninja','-S',str(SOURCE),'-B',str(build),*['-D'+k+'='+slash(v) for k,v in values.items()]],
@@ -211,6 +214,11 @@ def main():
   for source in [runtime,dxc['dll'],dxc['license']]:shutil.copy2(source,bin_dir/source.name);copied[source.name]=sha(source)
   if sha(bin_dir/RUNTIME_NAME)!=RUNTIME_SHA256[a.rid] or sha(bin_dir/'dxcompiler.dll')!=dxc['sha256']:raise RuntimeError('Copied runtime or DXC differs from the pinned binary')
   loaded=closure(toolchain,host,[prefix/'bin',runtime.parent])
+  # OIDN's core loads its device modules at run time from its own directory (not as
+  # imports): they ship beside it with their own closure.
+  for module in sorted((prefix/'bin').glob('OpenImageDenoise_device_*.dll')):
+   loaded[module.name.lower()]=module;loaded.update(closure(toolchain,module,[prefix/'bin',runtime.parent]))
+  if 'openimagedenoise_device_cpu.dll' not in loaded:raise RuntimeError('OIDN CPU device module missing')
   allowed=[p.name for p in loaded.values()]
   wt.check_binary(toolchain,host,allowed)
   for dll in loaded.values():

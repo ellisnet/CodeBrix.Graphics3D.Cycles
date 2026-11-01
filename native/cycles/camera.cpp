@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "device.h"
 #include "wavefront.h"
+#include "kernel/tables.h"
 #include <cfloat>
 #include <cmath>
 #include <cstdlib>
@@ -14,6 +15,7 @@
 #endif
 namespace ccl {
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
+static void require(bool ok,const std::string &message){if(!ok)throw std::runtime_error(message);}
 #if defined(__KERNEL_SSE__) && !defined(__KERNEL_NEON__)
 // Cycles' ray_triangle_reciprocal uses this host's RCPSS estimate. The WGSL
 // models it as the 12-bit mantissa nearest to 2^25/(4097+2i), where i is the
@@ -35,13 +37,32 @@ static bool host_rcpss_modelled(){
   return true;
 }
 #endif
+// Test hook (every build): CODEBRIX_CYCLES_WGSL_ARITHMETIC=arm64-scalar makes the device generate the
+// scalar ARM64 oracle's adapters on any host, so the Android ARM64 product arithmetic can be rendered
+// and bisected on the desktop GPU against the Linux ARM64 CPU oracle (cpu-arm64-linux). Unset, nothing
+// changes.
+static bool scalar_arithmetic_requested(){const char *set=std::getenv("CODEBRIX_CYCLES_WGSL_ARITHMETIC");return set&&std::strcmp(set,"arm64-scalar")==0;}
 bool reference_oracle_sse(){
+  if(scalar_arithmetic_requested())return false;
 #ifdef __KERNEL_SSE__
   return true;
 #elif defined(__ANDROID__)
   const char *oracle=std::getenv("CODEBRIX_CYCLES_REFERENCE_ORACLE");return oracle&&std::strcmp(oracle,"linux-x64-sse4.2")==0;
 #else
   return false;
+#endif
+}
+// The arithmetic the generated adapters reproduce, for reports and oracle films (compare.py picks the
+// CPU gold standard of the same ISA family from it): "x64-sse4.2" (the Linux x64 SSE4.2 oracle; every
+// x86-64 build, and an Android scalar build with CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2),
+// "arm64-scalar" (the scalar ARM64 oracle: the Android ARM64 product default and Linux ARM64) or
+// "arm64-sse2neon" (an SSE2NEON build: SSE grouping, not oracle-exact).
+std::string wgsl_arithmetic(){
+  if(!reference_oracle_sse())return "arm64-scalar";
+#if defined(__KERNEL_SSE__) && defined(__KERNEL_NEON__)
+  return "arm64-sse2neon";
+#else
+  return "x64-sse4.2";
 #endif
 }
 static constexpr char camera_source[]=
@@ -63,9 +84,10 @@ std::string wavefront_layout(){
   // (dot x+(y+z), RCPSS + Newton step), 2 SSE build not modelled (SSE2NEON or
   // an x86 RCPSS that differs): SSE grouping with 1/x, not oracle-exact.
   // An Android scalar build judged against the Linux x64 reference emits 1.
+  if(!oracle_sse&&scalar_arithmetic_requested())constant("NATIVE_TRIANGLE_ARITHMETIC",0);else
 #if defined(__KERNEL_SSE__) && !defined(__KERNEL_NEON__)
-  static const bool rcpss_modelled=host_rcpss_modelled();
-  constant("NATIVE_TRIANGLE_ARITHMETIC",rcpss_modelled?1:2);
+  {static const bool rcpss_modelled=host_rcpss_modelled();
+  constant("NATIVE_TRIANGLE_ARITHMETIC",rcpss_modelled?1:2);}
 #elif defined(__KERNEL_SSE__)
   constant("NATIVE_TRIANGLE_ARITHMETIC",2);
 #else
@@ -88,6 +110,30 @@ std::string wavefront_layout(){
   DATA(bvh,root);DATA(integrator,min_bounce);DATA(integrator,transparent_min_bounce);
   DATA(integrator,ao_bounces);DATA(integrator,ao_bounces_distance);DATA(integrator,filter_closures);
   constant("D_max_shaders",offsetof(KernelData,max_shaders));
+  // Sobol-Burley and the blue-noise patterns (SAMPLING_SOBOL_BURLEY, wavefront_common.wgsl): the integrator's
+  // pattern settings and sobol_burley_table (kernel/tables.h).
+  source<<"//#if SAMPLING_SOBOL_BURLEY\n";
+  constant("SB_D_sampling_pattern",offsetof(KernelData,integrator.sampling_pattern));
+  constant("SB_D_sobol_index_mask",offsetof(KernelData,integrator.sobol_index_mask));
+  constant("SB_D_blue_noise_sequence_length",offsetof(KernelData,integrator.blue_noise_sequence_length));
+  constant("SB_TABULATED_SOBOL",SAMPLING_PATTERN_TABULATED_SOBOL);constant("SB_SOBOL_BURLEY",SAMPLING_PATTERN_SOBOL_BURLEY);
+  constant("SB_BLUE_NOISE_PURE",SAMPLING_PATTERN_BLUE_NOISE_PURE);constant("SB_BLUE_NOISE_FIRST",SAMPLING_PATTERN_BLUE_NOISE_FIRST);
+  source<<"const SB_TABLE=array<u32,128>(";
+  for(int d=0;d<4;d++)for(int i=0;i<32;i++)source<<(d||i?",":"")<<sobol_burley_table[d][i]<<'u';
+  source<<");\n//#endif\n";
+  // Orthographic and panoramic cameras and depth of field (CAMERA_PROJECTIONS, wavefront_camera.wgsl).
+  source<<"//#if CAMERA_PROJECTIONS\n";
+#define CAM(member) constant("CP_D_" #member,offsetof(KernelData,cam.member))
+  CAM(type);CAM(aperturesize);CAM(blades);CAM(bladesrotation);CAM(focaldistance);CAM(inv_aperture_ratio);CAM(panorama_type);
+  CAM(fisheye_fov);CAM(fisheye_lens);CAM(fisheye_lens_polynomial_bias);CAM(equirectangular_range);
+  CAM(fisheye_lens_polynomial_coefficients);CAM(central_cylindrical_range);CAM(sensorwidth);CAM(sensorheight);
+#undef CAM
+  constant("CP_CAMERA_PERSPECTIVE",CAMERA_PERSPECTIVE);constant("CP_CAMERA_ORTHOGRAPHIC",CAMERA_ORTHOGRAPHIC);
+  constant("CP_PANORAMA_EQUIRECTANGULAR",PANORAMA_EQUIRECTANGULAR);constant("CP_PANORAMA_FISHEYE_EQUIDISTANT",PANORAMA_FISHEYE_EQUIDISTANT);
+  constant("CP_PANORAMA_FISHEYE_EQUISOLID",PANORAMA_FISHEYE_EQUISOLID);constant("CP_PANORAMA_MIRRORBALL",PANORAMA_MIRRORBALL);
+  constant("CP_PANORAMA_FISHEYE_LENS_POLYNOMIAL",PANORAMA_FISHEYE_LENS_POLYNOMIAL);constant("CP_PANORAMA_EQUIANGULAR_CUBEMAP_FACE",PANORAMA_EQUIANGULAR_CUBEMAP_FACE);
+  constant("CP_PANORAMA_CENTRAL_CYLINDRICAL",PANORAMA_CENTRAL_CYLINDRICAL);
+  source<<"//#endif\n";
 #undef DATA
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
@@ -120,6 +166,8 @@ std::string wavefront_layout(){
 #define TABLE(name,type) constant("G_" #name,table_index++);constant("SIZE_" #name,sizeof(type));
   CBC_SCENE_CORE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE) CBC_LIGHT_TREE_TABLES(TABLE)
 #undef TABLE
+  // The IES table follows the others (closest.cpp scene_tables); its index only where the IES node is reachable.
+  source<<"//#if SVM_NODE_IES\n";constant("G_ies",table_index);source<<"//#endif\n";
   constant("O_tfm",offsetof(KernelObject,tfm));constant("O_motion_offset",offsetof(KernelObject,motion_offset));
   constant("O_num_tfm_steps",offsetof(KernelObject,num_tfm_steps));
   constant("O_num_geom_steps",offsetof(KernelObject,num_geom_steps));constant("O_numverts",offsetof(KernelObject,numverts));constant("O_numprims",offsetof(KernelObject,numprims));constant("MOTION_SIZE",sizeof(DecomposedTransform));
@@ -169,6 +217,23 @@ std::string wavefront_layout(){
   return source.str();
 }
 std::string camera_wgsl(){return wavefront_layout()+camera_source;}
+// The sampling pattern (kernel/sample/pattern.h): tabulated Sobol reads sample_pattern_lut (its
+// address, push word 9); Sobol-Burley and the blue-noise patterns compute their samples
+// (SAMPLING_SOBOL_BURLEY regions) and need no table (0). Integrator::device_update turns
+// blue_noise_round into blue_noise_pure.
+uint32_t WebGPUDevice::sample_pattern_table(const char *stage){
+  const int pattern=data.integrator.sampling_pattern;
+  if(pattern!=SAMPLING_PATTERN_TABULATED_SOBOL){
+    require(pattern==SAMPLING_PATTERN_SOBOL_BURLEY||pattern==SAMPLING_PATTERN_BLUE_NOISE_PURE||pattern==SAMPLING_PATTERN_BLUE_NOISE_FIRST,
+            std::string("Invalid ")+stage+" sampling pattern");
+    return 0;
+  }
+  const auto sequence=data.integrator.tabulated_sobol_sequence_size;
+  require(sequence>1&&(sequence&(sequence-1))==0,std::string("Invalid ")+stage+" Sobol sequence size");
+  const uint32_t table=globals.at("sample_pattern_lut");
+  validate(table,size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
+  return table;
+}
 void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
   require(args.count==6,"Camera argument count");
   auto scalar=[&](unsigned i){require(args.types[i]==DeviceKernelArguments::INT32&&args.sizes[i]==4,"Invalid camera integer argument");
@@ -181,8 +246,24 @@ void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
   p[12]=pointer(4,true);p[13]=scalar(5);p[17]=error_word;
   if(p[2]){require(p[3]&&p[5]&&uint64_t(p[3])*p[5]<=uint32_t(work),"Incomplete camera tile dispatch");validate(p[2],size_t(p[3])*sizeof(KernelWorkTile));}
   else{require(p[13]<=uint32_t(work),"Incomplete camera retry dispatch");if(p[12])validate(p[12],size_t(p[13])*4);}
-  require(data.cam.type==CAMERA_PERSPECTIVE&&data.cam.aperturesize==0&&data.cam.interocular_offset==0,
-          "WebGPU camera currently requires perspective pinhole without stereo");
+  // Perspective, orthographic and panoramic cameras with depth of field (CAMERA_PROJECTIONS for every case
+  // but the pinhole perspective camera); custom (OSL) cameras are outside the package and stereo is refused.
+  require(data.cam.type==CAMERA_PERSPECTIVE||data.cam.type==CAMERA_ORTHOGRAPHIC||data.cam.type==CAMERA_PANORAMA,
+          "WebGPU custom camera (OSL) not implemented");
+  require(data.cam.interocular_offset==0,"WebGPU stereo camera not implemented");
+  require(std::isfinite(data.cam.aperturesize)&&data.cam.aperturesize>=0,"Invalid camera aperture size");
+  if(data.cam.aperturesize>0){
+    require(std::isfinite(data.cam.focaldistance)&&std::isfinite(data.cam.inv_aperture_ratio)&&
+            (data.cam.blades==0||(data.cam.blades>=3&&data.cam.blades<=1e6f))&&std::fabs(data.cam.bladesrotation)<=8,"Invalid camera depth of field");
+  }
+  require(data.cam.type==CAMERA_PERSPECTIVE||!data.cam.have_perspective_motion,"Invalid camera perspective motion");
+  if(data.cam.type==CAMERA_PANORAMA){
+    require(data.cam.panorama_type>=0&&data.cam.panorama_type<PANORAMA_NUM_TYPES,"Invalid panorama camera type");
+    // Angles beyond the sine/cosine adapters' range (equirectangular and central cylindrical ranges).
+    const float4 e=data.cam.equirectangular_range,c=data.cam.central_cylindrical_range;
+    for(float v:{e.x,e.y,e.z,e.w,c.x,c.y,c.z,c.w,data.cam.fisheye_fov,data.cam.fisheye_lens,data.cam.sensorwidth,data.cam.sensorheight,
+                 data.cam.fisheye_lens_polynomial_bias})require(std::isfinite(v)&&std::fabs(v)<=64,"Invalid panorama camera parameters");
+  }
   require(data.cam.num_motion_steps==0||data.cam.num_motion_steps>=2,"Invalid camera motion step count");
   if(data.cam.num_motion_steps){
     const auto motion=globals.find("camera_motion");
@@ -201,11 +282,8 @@ void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
   if(data.kernel_features&KERNEL_FEATURE_DENOISING)validate(uintptr_t(state.path.denoising_feature_throughput),
     remaining(uintptr_t(state.path.render_pixel_index))/4*sizeof(PackedSpectrum));
   if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
-  require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU camera requires tabulated Sobol");
-  const auto sequence=data.integrator.tabulated_sobol_sequence_size;
-  require(sequence>1&&(sequence&(sequence-1))==0,"Invalid Sobol sequence size");
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");
-  p[8]=globals.at("lookup_table");p[9]=globals.at("sample_pattern_lut");
+  p[8]=globals.at("lookup_table");p[9]=sample_pattern_table("camera");
   require(data.tables.filter_table_offset>=0,"Invalid camera filter offset");
   validate(p[8],(size_t(data.tables.filter_table_offset)+FILTER_TABLE_SIZE)*4);
   if(data.cam.shuttertime!=-1){
@@ -213,7 +291,6 @@ void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
     validate(p[8],(size_t(data.cam.shutter_table_offset)+SHUTTER_TABLE_SIZE)*4);
   }
   p[14]=scene_tables();
-  validate(p[9],size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
   require(data.film.pass_stride>0,"Invalid camera film stride");
   for(auto [offset,length]:{std::pair{data.film.pass_sample_count,1},std::pair{data.film.pass_adaptive_aux_buffer,4}})
     require(offset==PASS_UNUSED||(offset>=0&&offset<=data.film.pass_stride-length),"Invalid camera film pass offset");

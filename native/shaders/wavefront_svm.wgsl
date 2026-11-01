@@ -337,6 +337,15 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_LIGHT_PATH
             case NODE_LIGHT_PATH:{size=SZ_LightPath;}
 //#endif
+//#if SVM_NODE_LIGHT_FALLOFF
+            case LF_OPCODE:{size=SZ_LightFalloff;}
+//#endif
+//#if SVM_NODE_IES
+            case IES_OPCODE:{size=SZ_IES;}
+//#endif
+//#if SVM_TEX_SKY
+            case SKY_OPCODE:{size=SZ_TexSky;}
+//#endif
 //#if SVM_NODE_TEX_GABOR
             case NODE_TEX_GABOR:{size=SZ_TexGabor;}
 //#endif
@@ -667,6 +676,21 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_LIGHT_PATH
             case NODE_LIGHT_PATH:{
                 svm_light_path(&s,node,index,flag,visibility);
+            }
+//#endif
+//#if SVM_NODE_LIGHT_FALLOFF
+            case LF_OPCODE:{
+                svm_light_falloff(&s,node);
+            }
+//#endif
+//#if SVM_NODE_IES
+            case IES_OPCODE:{
+                svm_ies(&s,node);
+            }
+//#endif
+//#if SVM_TEX_SKY
+            case SKY_OPCODE:{
+                svm_sky(&s,node,flag);
             }
 //#endif
 //#if SVM_NODE_TEX_GABOR

@@ -19,6 +19,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <set>
 using namespace ccl;
 using namespace wavefront_test;
 // Diagnostic (CODEBRIX_GATE_ALL_MISMATCHES=1): every practical or integer mismatch is
@@ -26,8 +27,23 @@ using namespace wavefront_test;
 // the verdict are unchanged.
 static unsigned long gate_mismatches=0;
 static void gate_require(bool ok,const std::string &message){
-  if(ok)return;static const bool all=std::getenv("CODEBRIX_GATE_ALL_MISMATCHES")!=nullptr;
-  if(!all)wavefront_test::require(false,message);gate_mismatches++;std::cerr<<"MISMATCH "<<message<<'\n';}
+  if(ok)return;
+  static const bool all=std::getenv("CODEBRIX_GATE_ALL_MISMATCHES")!=nullptr;
+  if(!all)wavefront_test::require(false,message);
+  gate_mismatches++;std::cerr<<"MISMATCH "<<message<<'\n';}
+// One evaluation's mismatches, collected before they are judged: path >= 0 is a state field of that path,
+// kind 1 the film, kind 2 the queue counters.
+struct Miss {int path;int kind;bool queued_kernel;std::string message;};
+#if defined(CBC_BSDF_FIXTURE)
+// Velvet subnormal rule (Jeremy's ruling, native/DEVICE.md open item 29). A path-state difference is accepted only when
+// (a) every differing path's evaluated closures contain an Ashikhmin velvet closure (the original CPU surface shader on
+// the input state), (b) the queue counters differ only together with a differing velvet path's next kernel, (c) the
+// film written by the stage matches the normal CPU oracle by the practical criterion (no film difference is accepted),
+// and (d) the whole evaluation (state, film and counters) matches, by the same criterion, the original CPU oracle run
+// with flush-to-zero and denormals-are-zero (original_surface_flush_to_zero). Any other difference fails the gate.
+struct VelvetRule {unsigned evaluations=0;uint64_t mismatches=0,paths=0,ftz_checks=0;std::vector<std::string> lines;};
+static VelvetRule velvet_rule;
+#endif
 #include "surface_fixture.h"
 struct Metrics {uint64_t paths=0,integers=0,floats=0,strict=0;unsigned cases=0;double maximum=0,maximum_bound_ratio=0;float maximum_actual=0,maximum_expected=0;std::string maximum_field;};
 static void configure(KernelData &data){
@@ -56,16 +72,43 @@ static void evaluate(WebGPUDevice &d,Scene &scene,const std::vector<Field>&layou
   DeviceKernelArguments args;args.add(&selection);args.add(&film.device_pointer);args.add(&n);
   require(queue->enqueue(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,n? n+63:0,args),label+": "+d.error_message());require(queue->synchronize(),label+": "+d.error_message());
   auto actual=download(d,layout,input.size());
-  auto number=[&](float a,float e,const std::string &where){double error=std::abs(double(a)-e);if(error>m.maximum){m.maximum=error;m.maximum_actual=a;m.maximum_expected=e;m.maximum_field=where;}m.maximum_bound_ratio=std::max(m.maximum_bound_ratio,error/(5e-5+2e-4*std::abs(double(e))));m.floats++;m.strict+=error>1e-7+1e-7*std::abs(double(e));
-    gate_require(std::isfinite(a)&&std::isfinite(e)&&error<=5e-5+2e-4*std::abs(double(e)),label+" "+where+" actual="+std::to_string(a)+" expected="+std::to_string(e));};
-  for(auto &f:layout)for(size_t i=0;i<expected.size();i++){
-    auto a=reinterpret_cast<const char*>(&actual[i])+f.offset;auto e=reinterpret_cast<const char*>(&expected[i])+f.offset;
-    if(f.floating){for(size_t k=0;k<f.stride;k+=4){float av,ev;std::memcpy(&av,a+k,4);std::memcpy(&ev,e+k,4);number(av,ev,f.name+" path="+std::to_string(i)+" component="+std::to_string(k/4));}}
-    else{gate_require(!std::memcmp(a,e,f.stride),label+" integer "+f.name+" path="+std::to_string(i));m.integers++;}
+  film.copy_from_device();healthy(d);d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));
+  // Judges the GPU result against one oracle result; every mismatch is collected in misses.
+  auto judge=[&](const std::vector<IntegratorStateCPU>&oracle,const std::vector<float>&oracle_film,Metrics &mm,std::vector<Miss>&misses){
+    auto number=[&](float a,float e,const std::string &where,int path,int kind){double error=std::abs(double(a)-e);if(error>mm.maximum){mm.maximum=error;mm.maximum_actual=a;mm.maximum_expected=e;mm.maximum_field=where;}mm.maximum_bound_ratio=std::max(mm.maximum_bound_ratio,error/(5e-5+2e-4*std::abs(double(e))));mm.floats++;mm.strict+=error>1e-7+1e-7*std::abs(double(e));
+      if(!(std::isfinite(a)&&std::isfinite(e)&&error<=5e-5+2e-4*std::abs(double(e))))misses.push_back({path,kind,false,label+" "+where+" actual="+std::to_string(a)+" expected="+std::to_string(e)});};
+    for(auto &f:layout)for(size_t i=0;i<oracle.size();i++){
+      auto a=reinterpret_cast<const char*>(&actual[i])+f.offset;auto e=reinterpret_cast<const char*>(&oracle[i])+f.offset;
+      if(f.floating){for(size_t k=0;k<f.stride;k+=4){float av,ev;std::memcpy(&av,a+k,4);std::memcpy(&ev,e+k,4);number(av,ev,f.name+" path="+std::to_string(i)+" component="+std::to_string(k/4),int(i),0);}}
+      else{if(std::memcmp(a,e,f.stride))misses.push_back({int(i),0,f.name=="path.queued_kernel",label+" integer "+f.name+" path="+std::to_string(i)});mm.integers++;}
+    }
+    for(size_t i=0;i<count;i++)number(film[i],oracle_film[i],"film="+std::to_string(i),-1,1);
+    IntegratorQueueCounter expected_counter{};for(int i:ids){auto kernel=oracle[i].path.queued_kernel;if(kernel)expected_counter.num_queued[kernel]++;}
+    if(std::memcmp(&counter,&expected_counter,sizeof(counter)))misses.push_back({-1,2,false,label+" queue counters"});
+  };
+  std::vector<Miss> misses;judge(expected,wanted,m,misses);
+#if defined(CBC_BSDF_FIXTURE)
+  if(!misses.empty()){
+    const auto velvet_list=original_surface_velvet_paths(scene.dscene,ids,input);const std::set<int> velvet(velvet_list.begin(),velvet_list.end());
+    std::set<int> paths;bool attributable=true,velvet_next_kernel=false;
+    for(auto &x:misses){if(x.kind==0){attributable&=velvet.contains(x.path);paths.insert(x.path);velvet_next_kernel|=x.queued_kernel;}else if(x.kind==1)attributable=false;}
+    for(auto &x:misses)if(x.kind==2)attributable&=velvet_next_kernel;
+    if(!attributable)std::cerr<<"Velvet rule not applied: a difference outside the state of a path with a velvet closure (film, queue counters without a velvet path's next-kernel difference, or a path without a velvet closure)\n";
+    if(attributable){
+      auto flushed=input;std::vector<float> flushed_film(count,.125f);
+      if(original_surface_flush_to_zero(scene.dscene,ids,flushed,flushed_film)){
+        Metrics scratch;std::vector<Miss> remaining;judge(flushed,flushed_film,scratch,remaining);
+        if(!remaining.empty())std::cerr<<"Velvet rule not applied: "<<remaining.size()<<" differences remain against the flush-to-zero CPU oracle, first: "<<remaining[0].message<<'\n';
+        if(remaining.empty()){
+          velvet_rule.evaluations++;velvet_rule.mismatches+=misses.size();velvet_rule.paths+=paths.size();velvet_rule.ftz_checks+=scratch.floats+scratch.integers;
+          for(auto &x:misses){velvet_rule.lines.push_back(x.message);std::cerr<<"VELVET-RULE "<<x.message<<'\n';}
+          misses.clear();
+        }
+      }
+    }
   }
-  film.copy_from_device();healthy(d);for(size_t i=0;i<count;i++)number(film[i],wanted[i],"film="+std::to_string(i));
-  IntegratorQueueCounter expected_counter{};for(int i:ids){auto kernel=expected[i].path.queued_kernel;if(kernel)expected_counter.num_queued[kernel]++;}
-  d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));gate_require(!std::memcmp(&counter,&expected_counter,sizeof(counter)),label+" queue counters");
+#endif
+  for(auto &x:misses)gate_require(false,x.message);
   m.cases++;m.paths+=ids.size();std::cerr<<"Passed "<<label<<" ("<<ids.size()<<" paths)\n";
 }
 struct RejectionMetrics {unsigned cases=0;size_t zero_capacity_paths=0;};
@@ -110,7 +153,7 @@ static RejectionMetrics rejections(const DeviceInfo &info){
     // Every finite shading offset is implemented; a NaN multiplier is rejected before dispatch.
     if(test==12){ds.objects[state.isect.object].shadow_terminator_shading_offset=std::numeric_limits<float>::quiet_NaN();ds.objects.copy_to_device();reason="shadow terminator shading offset";}
     if(test==13){data.integrator.distribution_pdf_triangles=-1;reason="Invalid native triangle selection probability";}
-    if(test==14){data.integrator.sampling_pattern=999;reason="tabulated Sobol";}
+    if(test==14){data.integrator.sampling_pattern=999;reason="sampling pattern";}
     if(test==15)reason="Incomplete surface";
     if(test==16){ds.svm_nodes[(ds.tri_shader[state.isect.prim]&SHADER_MASK)*4]=NODE_NUM;ds.svm_nodes.copy_to_device();}
     if(test==17)state.isect.object=ds.objects.size();
@@ -194,5 +237,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   }
   require(gate_mismatches==0,std::to_string(gate_mismatches)+" mismatches (CODEBRIX_GATE_ALL_MISMATCHES)");
   require(stats.mem_used==0,"Surface Cycles allocation leak");auto rejected=rejections(infos[0]);std::ofstream(std::string(argv[1])+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(std::string(argv[1])+".library.txt")<<d.gpu.library_path;
-  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuSurfaceIntegrator\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"maximumErrorField\":\""<<m.maximum_field<<"\",\"maximumErrorActual\":"<<m.maximum_actual<<",\"maximumErrorExpected\":"<<m.maximum_expected<<",\"maximumPracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"invalidCasesRejected\":"<<rejected.cases<<",\"zeroCapacityPathsRejected\":"<<rejected.zero_capacity_paths<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+#if defined(CBC_BSDF_FIXTURE)
+  // The differences the velvet rule accepted, every one, beside the report (and on stderr as VELVET-RULE lines).
+  {std::ofstream lines(std::string(argv[1])+".velvet-rule.txt");for(auto &line:velvet_rule.lines)lines<<line<<'\n';}
+  const std::string velvet_json=",\"velvetSubnormalRule\":{\"evaluations\":"+std::to_string(velvet_rule.evaluations)+",\"normalCpuMismatches\":"+std::to_string(velvet_rule.mismatches)+
+    ",\"paths\":"+std::to_string(velvet_rule.paths)+",\"ftzDazOracleChecks\":"+std::to_string(velvet_rule.ftz_checks)+",\"ftzDazOracleMismatches\":0}";
+#else
+  const std::string velvet_json;
+#endif
+  std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuSurfaceIntegrator\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFloatFailures\":"<<m.strict<<",\"maximumAbsoluteError\":"<<m.maximum<<",\"maximumErrorField\":\""<<m.maximum_field<<"\",\"maximumErrorActual\":"<<m.maximum_actual<<",\"maximumErrorExpected\":"<<m.maximum_expected<<",\"maximumPracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"invalidCasesRejected\":"<<rejected.cases<<",\"zeroCapacityPathsRejected\":"<<rejected.zero_capacity_paths<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<velvet_json<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

@@ -5,7 +5,7 @@
 namespace ccl {inline constexpr unsigned surface_data_cache_bytes=60*4;
 std::string volume_source();std::string volume_stack_source();std::string wavefront_layout();std::string svm_layout(bool surface=false);
 std::string shadow_source();std::string shadow_catcher_layout();std::string shadow_catcher_split_wgsl();int shadow_catcher_pass_mask();
-int film_data_pass_mask();std::string film_passes_layout();std::string film_post_wgsl();std::string film_motion_layout();
+int film_data_pass_mask();std::string film_passes_layout();std::string film_post_wgsl();std::string film_adaptive_wgsl();std::string film_motion_layout();
 std::string shadow_layout();std::string lighting_layout();
 // Generated arithmetic-adapter constants (CAMERA_NATIVE_VECTOR_DIVIDE,
 // NATIVE_FLOAT3_RECIPROCAL_NORMALIZE, NATIVE_TRIANGLE_ARITHMETIC,
@@ -18,6 +18,10 @@ std::string shadow_layout();std::string lighting_layout();
 // use_reference_oracle_arithmetic; native/DEVICE.md "Validation reference
 // policy"). Otherwise it keeps its own scalar oracle (local CPU checks).
 bool reference_oracle_sse();
+// "x64-sse4.2", "arm64-scalar" or "arm64-sse2neon": the oracle arithmetic the adapters reproduce (camera.cpp).
+std::string wgsl_arithmetic();
+// Bytes per MNEE walk record (mnee.cpp; gates read the records back).
+size_t mnee_record_stride();
 std::string shader_data_layout();std::string shader_data_source();std::string svm_surface_source();std::string background_layout();std::string surface_source();std::string camera_wgsl();std::string closest_wgsl();std::string mnee_layout();std::string background_wgsl();}
 // A descriptor contains a native virtual address and an element count. The
 // original arrays are never repacked or converted to synthetic scene records.

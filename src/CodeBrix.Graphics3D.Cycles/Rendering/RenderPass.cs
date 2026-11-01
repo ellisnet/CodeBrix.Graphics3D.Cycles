@@ -13,7 +13,7 @@ public enum RenderPass
     Combined = 0,
 
     /// <summary>
-    /// A named pass or AOV enabled with a pass node (<see cref="CyclesScene.AddPass"/>) and read with
+    /// A named pass or AOV enabled with a pass node (<see cref="CyclesScene.AddPass(Generated.Scene.PassType, string)"/>) and read with
     /// <see cref="CyclesScene.ReadPass"/>. The WebGPU device writes only <see cref="Combined"/> today.
     /// </summary>
     Named = 1

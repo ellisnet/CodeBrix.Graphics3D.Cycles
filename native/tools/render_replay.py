@@ -40,12 +40,15 @@ def inputs(capture):
         # and 20 (prepare_light_nee in surface.wgsl); v10 adds entry 21
         # (shade_surface_light_select in surface.wgsl), 22 (light_tree_forward in background.wgsl) and 23-25 (the
         # shadow catcher split module, shadow_catcher.wgsl), 26 (prepare_surface_raytrace in surface_raytrace.wgsl)
-        # and 27-34 (the seven MNEE entries and mnee_cleanup, all in surface.wgsl), 35 (shade_surface_sample), 36
-        # (shade_surface_passes in surface.wgsl) and 37 (cryptomatte_postprocess in film_post.wgsl).
+        # and 27-34 (the seven MNEE entries in surface_mnee.wgsl, mnee_cleanup in surface.wgsl), 35 (shade_surface_sample), 36
+        # (shade_surface_passes in surface.wgsl), 37 (cryptomatte_postprocess in film_post.wgsl), 38
+        # (connect_surface_ao in surface.wgsl) and 39-41 (the adaptive sampling kernels in film_adaptive.wgsl).
+        # Entries 27-33 come from the MNEE module (surface_mnee.wgsl); captures without it carry them in surface.wgsl.
+        mnee = 'surface_mnee' if (capture/'surface_mnee.wgsl').exists() else 'surface'
         names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
                  'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow',
                  'surface', 'surface', 'background', 'surface', 'surface', 'background', 'shadow_catcher', 'shadow_catcher', 'shadow_catcher',
-                 'surface_raytrace']+['surface']*10+['film_post']
+                 'surface_raytrace']+[mnee]*7+['surface']*3+['film_post', 'surface']+['film_adaptive']*3
         counts = meta['pipelineDispatches']
         assert len(counts) <= len(names) and all(isinstance(n, int) and n >= 0 for n in counts), 'Unknown pipeline metadata'
         assert all(names[i] is not None for i, count in enumerate(counts) if count), 'Reserved pipeline metadata'

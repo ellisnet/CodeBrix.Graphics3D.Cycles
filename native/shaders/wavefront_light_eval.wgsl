@@ -33,7 +33,7 @@ fn point_forward_pdf(index:u32,light:u32)->f32{
         return max(dot(heap_vec3(state_address(S_path_mis_origin_n,index,12u)),direction),0.0)*0.3183098861837907;
     }
     let t=heap_float(state_address(S_isect_t,index,4u));if(t==bitcast<f32>(0x7f7fffffu)){return 0.0;}
-    let normal=rounded_normalize(delta);let cosine=dot(normal,-direction);
+    let normal=surface_native_normalize(delta);let cosine=dot(normal,-direction);
     let inverse_area=select(1.0,1.0/(r2*3.141592653589793),r2>0.0);
     return select(0.0,inverse_area*(t*t/cosine),cosine>0.0);
 }
@@ -78,6 +78,16 @@ fn forward_constant_emission(light:u32)->vec3<f32>{
     let shader=table_at(G_shaders,load_word(light+L_shader_id)&SHADER_MASK,SIZE_shaders);
     return heap_vec3(shader+SH_constant_emission)*heap_vec3(light+L_strength);
 }
+//#if LIGHT_LAMP_SHADER
+// light_sample_shader_eval_forward for a lamp hit (point, spot, area at distance t) or a sun (t = FLT_MAX):
+// the constant emission or the shader's, times the light's strength.
+fn forward_lamp_emission(lamp:u32,light:u32,origin:vec3<f32>,direction:vec3<f32>,t:f32,time:f32)->vec3<f32>{
+    let shader=table_at(G_shaders,load_word(light+L_shader_id)&SHADER_MASK,SIZE_shaders);
+    if((load_word(shader+SH_flags)&SD_HAS_CONSTANT_EMISSION)!=0u){return forward_constant_emission(light);}
+    let P=select(rounded_add3(origin,direction*t),-direction,t==3.4028234663852886e38);
+    return lamp_shader_emission(lamp,P,direction,t,time)*heap_vec3(light+L_strength);
+}
+//#endif
 fn integrate_suns(index:u32,base:u32){
     let direction=heap_vec3(state_address(S_ray_D,index,12u));let visibility=state_byte(S_path_visibility,index);let flag=state_word(S_path_flag,index);
     let previous=state_word(S_isect_prim,index);let start=select(previous,0u,previous==NONE);
@@ -102,7 +112,9 @@ fn integrate_suns(index:u32,base:u32){
 //#if LIGHT_LINKING
         if(!light_link_forward_visible(index,load_word(light+L_object_id))){continue;}
 //#endif
-        let eval=forward_constant_emission(light)*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
+//#if LIGHT_LAMP_SHADER else         let eval=forward_constant_emission(light)*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
+        let eval=forward_lamp_emission(lamp,light,vec3<f32>(0),direction,3.4028234663852886e38,heap_float(state_address(S_ray_time,index,4u)))*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
+//#endif
         forward_emission(index,base,light,eval,forward_mis_weight(index,heap_float(light+L_sun_pdf)));
     }
 }
@@ -127,7 +139,9 @@ fn integrate_suns(index:u32,base:u32){
         }
         else{pdf=point_forward_pdf(index,light);if(load_word(light+L_type)==LIGHT_SPOT){let delta=origin-heap_vec3(light+L_co);let radius=heap_float(light+L_radius);
             if(load_word(light+L_is_sphere)==0u||dot(delta,delta)>radius*radius){factor*=spot_attenuation(light,-direction);}}}
-        let eval=forward_constant_emission(light)*factor;
+//#if LIGHT_LAMP_SHADER else         let eval=forward_constant_emission(light)*factor;
+        let eval=forward_lamp_emission(lamp,light,origin,direction,t,heap_float(state_address(S_ray_time,index,4u)))*factor;
+//#endif
 //#if LIGHT_TREE
         forward_light_slot=0u;
 //#endif

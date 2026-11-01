@@ -101,6 +101,14 @@ Pinned revision: 45587e94dfb6dfe00220c5f520020a5bc745e92f
 Conditions: Full per-file grants, embedded variants, modifications and exclusions are recorded in third_party/dependency-imports.json and dependency-license-review.json. Original third-party licenses remain in force; no relicensing to Apache-2.0.
 Retained file/license forms: Apache-2.0; Apache-2.0 AND BSD-3-Clause
 
+Intel Open Image Denoise v2.5.1
+Origin: https://github.com/RenderKit/oidn/releases/download/v2.5.1/oidn-2.5.1.src.tar.gz
+Selected license: Apache-2.0
+Use: Reviewed source snapshot in third_party/deps/oidn (CPU device, plus the Metal device on osx-arm64; the CUDA, HIP and SYCL devices, apps, training scripts and documentation are not imported), built from this repository; its RT filter's trained weights (Apache-2.0) are compiled into the core library (the RTLightmap weights are not built). Cycles' denoiser.
+Attribution: Intel Corporation
+Conditions: Built only under the OIDN build conditions of docs/RELEASE-LICENSE-PLAN.md (CPU device; Metal on osx-arm64 only; CUDA, HIP and SYCL explicitly off; no apps; no bundled dependencies). The device modules are separate shared libraries and ship with these notices. Full per-file grants, modifications and exclusions are recorded in third_party/dependency-imports.json and third_party/oidn-license-review.json. ISPC compiles the CPU kernels at build time and is not shipped.
+Retained file/license forms: Apache-2.0
+
 OpenEXR v3.1.13
 Origin: https://github.com/AcademySoftwareFoundation/openexr
 Selected license: BSD-3-Clause

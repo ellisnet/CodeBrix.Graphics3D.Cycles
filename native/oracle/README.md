@@ -175,6 +175,23 @@ weight) slots (ids exactly, weights by the practical criterion, the slot order
 of equal weights reported), and render time reported only (it is this run's
 timing). A missing pass, a different shape, NaN/Inf or a hash mismatch fails.
 
+## Camera, sampling, lamp and sky scenes (`scenes/cameras/`, `scenes/sampling/`, `scenes/lamps/`, `scenes/sky/`)
+
+`author_sampling.py` (`--check`) writes `scenes/sampling/`: glossy, glass and
+diffuse spheres in a lit room rendered with adaptive sampling (thresholds,
+automatic settings, a render that ends when every pixel converges; the
+`Sample Count` pass makes the per-pixel convergence comparable), with the
+Sobol-Burley and blue-noise patterns, with scrambling distance, and pattern
+variants of committed scenes (raw files stay beside the source scene).
+`author_cameras.py` (`--check`) writes `scenes/cameras/`: the same room seen
+through orthographic and panoramic cameras (every panorama type) and with depth
+of field (disk and polygonal apertures, anamorphic ratio). `author_lamps.py`
+(`--check`) writes `scenes/lamps/`: the Light Falloff and IES Texture nodes and
+point, spot, area and sun lights with emission shaders that are not constant.
+`author_sky.py` (`--check`) writes `scenes/sky/`: the room under a Sky Texture
+world (Preetham, Hosek-Wilkie, single and multiple scattering), with the sun
+disc sampled through the importance map or with sun guiding.
+
 ## Run, compare and bundle
 
 ```sh
@@ -227,11 +244,22 @@ repeat films re-read and compared with film-0.
 Two gold standards. The unmodified pinned Cycles CPU kernels (`cpu-*` backends)
 and the unmodified pinned Cycles Metal backend (`metal-*`) are both reference
 renderers; every other backend (`wgsl-*`) is a candidate. A candidate is judged
-against the CPU gold standard of its own host ISA family (`wgsl-linux-intel` and
-every `wgsl-android-*` backend, validated through the Linux x64 glibc flow,
-against `cpu-x64-linux`; an arm64-host candidate against `cpu-arm64-*`; when no
-same-ISA CPU film is present, against the CPU film that is, and the report says
-so): that pair is `gating`, with the CPU film as the reference `b`, and the practical criterion
+against the CPU gold standard of its own ISA family (`wgsl-linux-intel` against
+`cpu-x64-linux`; an arm64-host candidate against `cpu-arm64-*`; when no same-ISA
+CPU film is present, against the CPU film that is, and the report says so). A
+WGSL film's `meta.json` records `rid` and `wgslArithmetic`, the CPU oracle
+arithmetic its generated adapters reproduced (from the device report,
+native/host/ABI.md), and that decides its family: an Android ARM64 film in the
+product default (`arm64-scalar`) gates against the Linux ARM64 CPU oracle
+`cpu-arm64-linux` (native/evidence/linux-arm64-cpu-oracle-20261031/), a film
+rendered with `CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2` (`x64-sse4.2`)
+and every Android x64 film against `cpu-x64-linux` (native/DEVICE.md, "Validation
+reference policy", Option A). A `wgsl-android-*` film without the field (made
+before it was recorded) is judged as x64; the report marks it (`isaSource`,
+`legacyAndroidIsa`). For an Android oracle-corpus run, put the device film beside
+both CPU films (`cpu-x64-linux` from the Linux x64 run of the same tree,
+`cpu-arm64-linux` from the ARM64 oracle) and the verdict follows the film's own
+arithmetic; the other pair is reported. That pair is `gating`, with the CPU film as the reference `b`, and the practical criterion
 `abs(a - b) <= 5e-5 + 2e-4 * abs(b)` must hold for every component; strict
 differences (`1e-7 + 1e-7 * abs(b)`) are reported. Cross-ISA pairs (a CPU x64
 film against a CPU arm64 film, an x64 candidate against a CPU arm64 film),

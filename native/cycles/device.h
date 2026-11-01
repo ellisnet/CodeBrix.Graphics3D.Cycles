@@ -63,6 +63,9 @@ class WebGPUDevice final:public Device {
   // Principled features refused at upload (pipelines.cpp shader_features).
   uint64_t unsupported_generation=~uint64_t(0);ShaderFeatures principled_features;ShaderFeatures displacement_features;ShaderFeatures displacement_program_features;std::string unsupported_feature;
   std::vector<uint32_t> tri_shader_words; // per-triangle shader words (Principled census roots)
+  // BVH primitive -> triangle and object (the MNEE caster census, mnee_unused_svm_features); mnee_generation counts
+  // their uploads, and the census is kept per (svm_generation, mnee_generation).
+  std::vector<int> prim_index_words,prim_object_words;uint64_t mnee_generation=0,mnee_census_key[2]={~uint64_t(0),~uint64_t(0)};ShaderFeatures mnee_unused;
   bool specialization_enabled=true; // false only for SpecializationMode::Off
   SpecializationMode specialization_mode=SpecializationMode::Scene;
   // Superset mode (pipelines.h): requested group, the scene features the groups
@@ -104,6 +107,9 @@ class WebGPUDevice final:public Device {
   ShaderFeatures raytrace_unused_svm_features();
   // The scene's SVM handler regions the displacement programs never reach (shader_eval_displace).
   ShaderFeatures displacement_unused_svm_features();
+  // The scene's SVM handler regions the caustic casters' shaders never reach (mnee_eval and mnee_contribute
+  // evaluate only those shaders).
+  ShaderFeatures mnee_unused_svm_features();
   std::string pipeline_report_json() const;
   std::string adapter_report_json() const;
   void validate_geometry_motion() const;
@@ -173,9 +179,18 @@ class WebGPUDevice final:public Device {
   bool film_surface_passes() const;
   bool film_cryptomatte() const;
   cbc::Pipeline surface_passes;
+  // connect_surface_ao: the AO shadow ray of fast GI's additive mode and the AO pass, after
+  // connect_surface_light (AO_SHADOW regions, wavefront_surface.wgsl).
+  cbc::Pipeline surface_ao;
   // DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS (film_passes.cpp, wavefront_film_post.wgsl).
   cbc::Pipeline film_post;
   void enqueue_cryptomatte_postprocess(int,const DeviceKernelArguments&);
+  // DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK, _FILTER_X and _FILTER_Y (film_passes.cpp,
+  // wavefront_film_adaptive.wgsl).
+  cbc::Pipeline film_adaptive_check,film_adaptive_x,film_adaptive_y;
+  void enqueue_adaptive_sampling(DeviceKernel,int,const DeviceKernelArguments&);
+  // The sampling pattern's table for push word 9 (camera.cpp): tabulated Sobol's sample_pattern_lut, or 0.
+  uint32_t sample_pattern_table(const char *stage);
   uint32_t shadow_catcher_marks(uint32_t capacity);
   void shadow_catcher_pipelines();
   void split_shadow_catcher(uint32_t capacity);

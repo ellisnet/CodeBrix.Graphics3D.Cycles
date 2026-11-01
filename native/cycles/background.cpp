@@ -25,6 +25,7 @@ std::string background_layout(){
   // Background light importance map and MIS (wavefront_background_light.wgsl).
   DATA(background,use_mis);DATA(background,map_res_x);DATA(background,map_res_y);DATA(background,map_weight);
   DATA(background,portal_weight);DATA(background,sun_weight);DATA(background,map_dD);
+  source<<"//#if BACKGROUND_SUN\n";DATA(background,sun);source<<"//#endif\n";
 #undef DATA
   constant("O_lightgroup",offsetof(KernelObject,lightgroup));
   constant("SH_constant_emission",offsetof(KernelShader,constant_emission));
@@ -143,7 +144,7 @@ void WebGPUDevice::enqueue_background_eval(int work,const DeviceKernelArguments 
   p[2]=pointer(0,(size_t(offset)+count)*sizeof(KernelShaderEvalInput));p[4]=pointer(1,(size_t(offset)+count)*3*sizeof(float));
   {uint32_t miss=pointer(2,4);uint32_t zero=0;upload(miss,&zero,4);}
   require(data.background.map_res_x>0&&data.background.map_res_y>0,"Background evaluation without an importance map");
-  require(!data.background.use_sun_guiding||data.background.sun_weight==0,"WebGPU background sun guiding (sky texture sun disc) not implemented");
+  // Sun guiding (use_sun_guiding): the sky node leaves the sun disc out of the importance map (svm_sky).
   // Runs during scene preparation, before any integrator state exists (p[7] stays 0).
   p[6]=constants.at("data");p[18]=globals.at("shaders");
   require(remaining(p[18])%sizeof(KernelShader)==0,"Invalid background shader table");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));

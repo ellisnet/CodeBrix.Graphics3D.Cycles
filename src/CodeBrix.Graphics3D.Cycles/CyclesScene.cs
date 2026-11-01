@@ -398,6 +398,27 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
+    /// Enables a render pass like <see cref="AddPass(PassType, string)"/> with an explicit
+    /// denoising mode. With denoising on (<see cref="IntegratorNode.UseDenoise"/>) the passes
+    /// Cycles' denoiser writes (<see cref="PassType.Combined"/> light-group-free, <see cref="PassType.ShadowCatcher"/>,
+    /// <see cref="PassType.ShadowCatcherMatte"/>) are denoised by default; <see cref="PassMode.Noisy"/>
+    /// requests the undenoised version in the same render, for example
+    /// <c>AddPass(PassType.Combined, "Noisy Image", PassMode.Noisy)</c> beside the denoised <c>Combined</c>.
+    /// Every other pass type, and a light group pass, is never denoised and reads the same in either mode.
+    /// </summary>
+    /// <param name="type">The native pass type.</param>
+    /// <param name="name">The unique pass name (not <c>Combined</c>).</param>
+    /// <param name="mode">The requested mode (<see cref="PassMode.Denoised"/> is the default of the other overload).</param>
+    /// <returns>The pass node; remove it with <see cref="Remove"/>.</returns>
+    /// <exception cref="ArgumentException"><paramref name="name"/> is empty.</exception>
+    public PassNode AddPass(PassType type, string name, PassMode mode)
+    {
+        PassNode pass = AddPass(type, name);
+        pass.Mode = mode;
+        return pass;
+    }
+
+    /// <summary>
     /// Lists the passes captured by the most recent successful render (<c>Combined</c> first).
     /// </summary>
     /// <returns>The passes.</returns>
@@ -409,7 +430,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// lower-left origin, <see cref="FilmBuffer.Components"/> floats per pixel. <c>Combined</c> is
     /// always present and equals the rendered film bit for bit.
     /// </summary>
-    /// <param name="name">The pass name (<c>Combined</c> or a name given to <see cref="AddPass"/>).</param>
+    /// <param name="name">The pass name (<c>Combined</c> or a name given to <see cref="AddPass(PassType, string)"/>).</param>
     /// <returns>The pass film.</returns>
     /// <exception cref="ArgumentException">No pass of that name was captured.</exception>
     /// <exception cref="InvalidOperationException">No render has succeeded since the last render started.</exception>

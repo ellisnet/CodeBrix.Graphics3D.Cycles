@@ -697,6 +697,209 @@ fn svm_shading_info(s:ptr<function,SvmState>,node:u32,opcode:u32){
     }
 }
 //#endif
+//#if SVM_NODE_IES
+// svm/ies.h svm_node_ies and util/ies.h kernel_ies_interp: the IES table (scene table G_ies) looked up at the
+// vector's spherical angles with bicubic interpolation; every sum, product order and quotient as the host's.
+fn ies_value(at:u32)->f32{return bitcast<f32>(load_word(table_at(G_ies,at,4u)));}
+// util/math_base.h cubic_interp: 0.5*(((d + 3*(b - c) - a)*x + (2a - 5b + 4c - d))*x + (c - a))*x + b.
+fn ies_cubic(a:f32,b:f32,c:f32,d:f32,x:f32)->f32{
+    let k=rounded_add(rounded_add(d,3.0*rounded_add(b,-c)),-a);
+    let l=rounded_add(rounded_add(rounded_add(2.0*a,-(5.0*b)),4.0*c),-d);
+    let q=rounded_add(rounded_add(k*x,l)*x,rounded_add(c,-a));
+    return rounded_add((0.5*q)*x,b);
+}
+fn ies_vertical(ofs:u32,wrap_low:bool,wrap_high:bool,v:u32,v_num:u32,v_frac:f32,h:u32)->f32{
+    let row=ofs+h*v_num;let c=ies_value(row+v+1u);let b=ies_value(row+v);
+    var a=b;if(v>0u){a=ies_value(row+v-1u);}else if(wrap_low){a=ies_value(row+1u);}
+    var d=c;if(v+2u<v_num){d=ies_value(row+v+2u);}else if(wrap_high){d=ies_value(row+v_num-2u);}
+    return ies_cubic(a,b,c,d,v_frac);
+}
+fn ies_interp(slot:u32,h_angle:f32,v_angle:f32)->f32{
+    let first=bitcast<i32>(load_word(table_at(G_ies,slot,4u)));if(first== -1){return 100.0;}
+    var ofs=u32(first);let h_num=bitcast<u32>(load_word(table_at(G_ies,ofs,4u)));let v_num=bitcast<u32>(load_word(table_at(G_ies,ofs+1u,4u)));ofs+=2u;
+    let v_low=ies_value(ofs+h_num);let v_high=ies_value(ofs+h_num+v_num-1u);let h_low=ies_value(ofs);let h_high=ies_value(ofs+h_num-1u);
+    if(v_angle<v_low||v_angle>=v_high){return 0.0;}if(h_angle<h_low||h_angle>=h_high){return 0.0;}
+    let wrap_h=h_low<1e-7&&h_high>6.2831854820251465;let wrap_low=v_low<1e-7;let wrap_high=v_high>3.1415927410125732;
+    var h_i=0u;loop{if(h_i+1u>=h_num||!(ies_value(ofs+h_i+1u)<h_angle)){break;}h_i++;}
+    var v_i=0u;loop{if(v_i+1u>=v_num||!(ies_value(ofs+h_num+v_i+1u)<v_angle)){break;}v_i++;}
+    let h0=ies_value(ofs+h_i);let v0=ies_value(ofs+h_num+v_i);
+    let h_frac=rounded_divide(rounded_add(h_angle,-h0),rounded_add(ies_value(ofs+h_i+1u),-h0));
+    let v_frac=rounded_divide(rounded_add(v_angle,-v0),rounded_add(ies_value(ofs+h_num+v_i+1u),-v0));
+    let data=ofs+h_num+v_num;
+    // The four vertical interpolations through one inlined body: h_i, h_i + 1, then the neighbours.
+    var column=array<u32,4>(h_i,h_i+1u,h_i,h_i);var valid=array<bool,4>(true,true,false,false);
+    if(h_i>0u){column[2]=h_i-1u;valid[2]=true;}else if(wrap_h){column[2]=h_num-2u;valid[2]=true;}
+    if(h_i+2u<h_num){column[3]=h_i+2u;valid[3]=true;}else if(wrap_h){column[3]=1u;valid[3]=true;}
+    var values=array<f32,4>(0.0,0.0,0.0,0.0);
+    for(var k=0u;k<rounded_steps(4u);k++){if(valid[k]){values[k]=ies_vertical(data,wrap_low,wrap_high,v_i,v_num,v_frac,column[k]);}}
+    let b=values[0];let c=values[1];let a=select(b,values[2],valid[2]);let d=select(b,values[3],valid[3]);
+    return max(ies_cubic(a,b,c,d,h_frac),0.0);
+}
+fn svm_ies(s:ptr<function,SvmState>,node:u32){
+    let vector=surface_native_normalize(svm_load3(s,svm_byte(node+N_IES_vector_offset)));let strength=svm_input(s,node+N_IES_strength);
+    let v_angle=trig_acos(-vector.z);let h_angle=rounded_add(trig_atan2_guarded(vector.x,vector.y),3.1415927410125732);
+    let fac=strength*ies_interp(load_word(node+N_IES_slot),h_angle,v_angle);
+    let out=svm_byte(node+N_IES_fac_offset);if(out!=SVM_STACK_INVALID){svm_store(s,out,fac);}
+}
+//#endif
+//#if SVM_TEX_SKY
+// svm/sky.h svm_node_tex_sky: Preetham and Hosek-Wilkie analytic skies (the three channels through one
+// body) and the single/multiple scattering models (the precomputed sky image and the sun disc with limb
+// darkening). sinf/cosf, acosf and atan2f through the precise adapters, expf and powf in double-float
+// (as family_exp/family_pow), quotients and square roots correctly rounded, sums of products rounded
+// before they add (no contraction). The analytic and the scattering models are separate regions.
+//#if SVM_TEX_SKY_ANALYTIC
+fn sky_exp_parts(x2:vec2<f32>)->vec2<f32>{
+    let x=x2.x;
+    if(!(x==x)){return vec2<f32>(x,0.0);}if(x>88.72284){return vec2<f32>(bitcast<f32>(0x7f800000u),0.0);}if(x< -103.97208){return vec2<f32>(0.0,0.0);}
+    let k=round(x*1.4426950408889634);let p=trig_product(k,0.6931471824645996);let head=trig_two_sum(x,-p.x);
+    let r=vec2<f32>(head.x,rounded_add(rounded_add(rounded_add(head.y,x2.y),-p.y),k*1.904654323148236e-09));
+    var coefficients=array<vec2<f32>,10>(vec2<f32>(2.7557318844628753e-06,3.793571224297229e-14),vec2<f32>(2.4801587642286904e-05,-3.40699609366682e-13),
+        vec2<f32>(0.00019841270113829523,-2.725596874933456e-12),vec2<f32>(0.0013888889225199819,-3.3631094437103215e-11),vec2<f32>(0.008333333767950535,-4.34617203337595e-10),
+        vec2<f32>(0.0416666679084301,-1.2417634698280722e-09),vec2<f32>(0.1666666716337204,-4.967053879312289e-09),vec2<f32>(0.5,0.0),vec2<f32>(1.0,0.0),vec2<f32>(1.0,0.0));
+    var polynomial=vec2<f32>(2.755731998149713e-07,-7.575112209051195e-15);
+    for(var i=0u;i<10u;i++){polynomial=trig_coeff(coefficients[i],trig_mul(polynomial,r));}
+    return vec2<f32>(rounded_add(polynomial.x,polynomial.y),k);
+}
+fn sky_exp(x:f32)->f32{let e=sky_exp_parts(vec2<f32>(x,0.0));return ldexp(e.x,i32(e.y));}
+fn sky_log_parts(x:f32)->vec2<f32>{
+    var bits=bitcast<u32>(x);var e=f32(i32(bits>>23u)-127);var m=bitcast<f32>((bits&0x007fffffu)|0x3f800000u);
+    if(m>1.4142135){m*=0.5;e+=1.0;}
+    let num=m-1.0;let den=trig_two_sum(m,1.0);let q=rounded_divide(num,den.x);let qd=trig_product(q,den.x);
+    let sl=rounded_divide(rounded_add(rounded_add(rounded_add(num,-qd.x),-qd.y),-(q*den.y)),den.x);let sv=vec2<f32>(q,sl);
+    let z=trig_mul(sv,sv);
+    var coefficients=array<vec2<f32>,10>(vec2<f32>(0.05263157933950424,-3.9213582381236733e-10),vec2<f32>(0.05882352963089943,-2.1913472425527658e-10),
+        vec2<f32>(0.06666667014360428,-3.47693762670076e-09),vec2<f32>(0.07692307978868484,-2.8656079731348427e-09),vec2<f32>(0.09090909361839294,-2.709302115988521e-09),
+        vec2<f32>(0.1111111119389534,-8.278422947149977e-10),vec2<f32>(0.1428571492433548,-6.38621200366174e-09),vec2<f32>(0.20000000298023224,-2.9802322831784522e-09),
+        vec2<f32>(0.3333333432674408,-9.934107758624577e-09),vec2<f32>(1.0,0.0));
+    var polynomial=vec2<f32>(0.0476190485060215,-8.869738832295582e-10);
+    for(var i=0u;i<10u;i++){polynomial=trig_coeff(coefficients[i],trig_mul(polynomial,z));}
+    let lm=trig_mul(vec2<f32>(2.0*sv.x,2.0*sv.y),polynomial);
+    let le=trig_product(e,0.6931471824645996);let tail=rounded_add(le.y,e*-1.9046542121259336e-09);
+    let sum=trig_two_sum(le.x,lm.x);return vec2<f32>(sum.x,rounded_add(rounded_add(sum.y,lm.y),tail));
+}
+// powf(x, 1.5) for the Hosek-Wilkie Mie term (x > 0 normal; 0, infinities and NaN by the driver's pow).
+fn sky_pow15(x:f32)->f32{
+    if(!(x>1.1754944e-38)||x>3.4028234e38){return pow(x,1.5);}
+    let t=trig_mul(vec2<f32>(1.5,0.0),sky_log_parts(x));let e=sky_exp_parts(t);return ldexp(e.x,i32(e.y));
+}
+//#endif
+fn sky_safe_acos(x:f32)->f32{if(x>=1.0){return 0.0;}if(x<=-1.0){return 3.1415927410125732;}return trig_acos(x);}
+fn sky_xyz_to_rgb_clamped(xyz:vec3<f32>)->vec3<f32>{
+    let film=p(6u);
+    return max(vec3<f32>(svmn_dot(heap_vec3(film+SVMN_D_film_xyz_to_r),xyz),svmn_dot(heap_vec3(film+SVMN_D_film_xyz_to_g),xyz),svmn_dot(heap_vec3(film+SVMN_D_film_xyz_to_b),xyz)),vec3<f32>(0));
+}
+//#if SVM_TEX_SKY_ANALYTIC
+// direction_to_spherical: (theta, phi).
+fn sky_spherical(dir:vec3<f32>)->vec2<f32>{return vec2<f32>(sky_safe_acos(dir.z),trig_atan2_guarded(dir.y,dir.x));}
+// Preetham (hosek false) or Hosek-Wilkie: sky_angle_between, the theta clamp, then per channel
+// sky_perez_function or sky_radiance_internal with its radiance; xyY_to_xyz (Preetham) or the 2 pi / 683
+// scale (Hosek), and xyz_to_rgb_clamped.
+fn sky_analytic(dir:vec3<f32>,data:u32,hosek:bool)->vec3<f32>{
+    let spherical=sky_spherical(dir);var theta=spherical.x;let phi=rounded_add(-spherical.y,1.5707963705062866);
+    let sunphi=heap_float(data+N_TexSkyPreethamData_phi);let suntheta=heap_float(data+N_TexSkyPreethamData_theta);
+    // sinf/cosf of thetav (the sun), theta and phi - phiv through one body.
+    var sc=array<vec2<f32>,3>();let count=rounded_steps(3u);
+    for(var i=0u;i<count;i++){let j=min(i,2u);sc[j]=trig_sincos_wide(select(select(rounded_add(phi,-sunphi),theta,j==1u),suntheta,j==0u));}
+    let cospsi=rounded_add((sc[0].x*sc[1].x)*sc[2].y,sc[0].y*sc[1].y);let gamma=sky_safe_acos(cospsi);
+    theta=min(theta,1.5697963237762451);
+    var cs=array<f32,2>();let pair=rounded_steps(2u);
+    for(var i=0u;i<pair;i++){let j=min(i,1u);cs[j]=trig_sincos_wide(select(theta,gamma,j==1u)).y;}
+    let ctheta=cs[0];let cgamma=cs[1];
+    // Channels in the order the host computes them: config_x (radiance_x), config_y, config_z.
+    var value=vec3<f32>(0);
+    for(var i=0u;i<count;i++){let j=min(i,2u);
+        let c=data+select(select(N_TexSkyPreethamData_config_z,N_TexSkyPreethamData_config_y,j==1u),N_TexSkyPreethamData_config_x,j==0u);
+        let radiance=heap_float(data+select(select(N_TexSkyPreethamData_radiance_z,N_TexSkyPreethamData_radiance_y,j==1u),N_TexSkyPreethamData_radiance_x,j==0u));
+        var f:f32;
+        if(!hosek){
+            let a=rounded_add(1.0,heap_float(c)*sky_exp(rounded_divide(heap_float(c+4u),ctheta)));
+            let b=rounded_add(rounded_add(1.0,heap_float(c+8u)*sky_exp(heap_float(c+12u)*gamma)),(heap_float(c+16u)*cgamma)*cgamma);
+            f=a*b;
+        }else{
+            let c8=heap_float(c+32u);let exp_m=sky_exp(heap_float(c+16u)*gamma);let ray_m=cgamma*cgamma;
+            let mie_m=rounded_divide(rounded_add(1.0,ray_m),sky_pow15(rounded_add(rounded_add(1.0,c8*c8),-((2.0*c8)*cgamma))));
+            let zenith=rounded_sqrt(ctheta);
+            let a=rounded_add(1.0,heap_float(c)*sky_exp(rounded_divide(heap_float(c+4u),rounded_add(ctheta,0.01))));
+            let b=rounded_add(rounded_add(rounded_add(rounded_add(heap_float(c+8u),heap_float(c+12u)*exp_m),heap_float(c+20u)*ray_m),heap_float(c+24u)*mie_m),heap_float(c+28u)*zenith);
+            f=a*b;
+        }
+        // Preetham: x = radiance_y * perez(config_y), y = radiance_z * perez(config_z), Y = radiance_x * perez(config_x);
+        // Hosek: the channel times its radiance.
+        value=select(value,vec3<f32>(select(radiance*f,f*radiance,hosek)),vec3<u32>(0u,1u,2u)==vec3<u32>(j));
+    }
+    if(hosek){return sky_xyz_to_rgb_clamped(value)*0.009199392981827259;}
+    // xyY_to_xyz(x, y, Y) with x = value.y, y = value.z, Y = value.x.
+    let x=value.y;let y=value.z;let big_y=value.x;var xyz=vec3<f32>(0,big_y,0);
+    if(y!=0.0){xyz.x=rounded_divide(x,y)*big_y;}
+    if(y!=0.0&&big_y!=0.0){xyz.z=rounded_divide(rounded_add(rounded_add(1.0,-x),-y),y)*big_y;}
+    return sky_xyz_to_rgb_clamped(xyz);
+}
+//#endif
+//#if SVM_TEX_SKY_SCATTERING
+// sky_radiance_nishita (single and multiple scattering). direction_to_spherical's atan2f and precise_angle's
+// through one arctangent body.
+fn sky_scattering(s:ptr<function,SvmState>,dir:vec3<f32>,data:u32,flag:u32)->vec3<f32>{
+    let sun_elevation=heap_float(data+N_TexSkyNishitaData_sun_elevation);let sun_rotation=heap_float(data+N_TexSkyNishitaData_sun_rotation);
+    let angular_diameter=heap_float(data+N_TexSkyNishitaData_angular_diameter);let sun_intensity=heap_float(data+N_TexSkyNishitaData_sun_intensity);
+    let earth_intersection_angle=heap_float(data+N_TexSkyNishitaData_earth_intersection_angle);
+    let sun_disc=angular_diameter>=0.0;var xyz=vec3<f32>(0);
+    // spherical_to_direction(sun_elevation - pi/2, sun_rotation - pi/2).
+    var sc=array<vec2<f32>,2>();let pair=rounded_steps(2u);
+    for(var i=0u;i<pair;i++){let j=min(i,1u);sc[j]=trig_sincos_wide(rounded_add(select(sun_elevation,sun_rotation,j==1u),-1.5707963705062866));}
+    let sun_dir=vec3<f32>(sc[0].x*sc[1].y,sc[0].x*sc[1].x,sc[0].y);
+    // direction_to_spherical (theta, then atan2f(dir.y, dir.x)) and precise_angle: 2 atan2f(len(dir - sun_dir), len(dir + sun_dir)).
+    let d=rounded_add3(dir,-sun_dir);let e=rounded_add3(dir,sun_dir);let ld=rounded_sqrt(rounded_dot(d,d));let le=rounded_sqrt(rounded_dot(e,e));
+    var angles=array<f32,2>();
+    for(var i=0u;i<pair;i++){let j=min(i,1u);angles[j]=trig_atan2_guarded(select(dir.y,ld,j==1u),select(dir.x,le,j==1u));}
+    let direction=vec2<f32>(sky_safe_acos(dir.z),angles[0]);let sun_dir_angle=2.0*angles[1];
+    let half_angular=angular_diameter*0.5;let dir_elevation=rounded_add(1.5707963705062866,-direction.x);
+    if(sun_disc&&sun_dir_angle<half_angular&&dir_elevation>earth_intersection_angle&&!((flag&SKY_PATH_RAY_IMPORTANCE_BAKE)!=0u&&data_word(SKY_D_use_sun_guiding)!=0u)){
+        let y=rounded_add(rounded_divide(rounded_add(dir_elevation,-sun_elevation),angular_diameter),0.5);
+        let q=rounded_divide(sun_dir_angle,half_angular);
+        let limb_darkening=rounded_add(1.0,-(0.6*rounded_add(1.0,-rounded_sqrt(rounded_add(1.0,-(q*q))))));
+        let bottom=heap_vec3(data+N_TexSkyNishitaData_pixel_bottom_x);let top=heap_vec3(data+N_TexSkyNishitaData_pixel_top_x);
+        xyz=(rounded_add3(bottom,y*rounded_add3(top,-bottom))*sun_intensity)*limb_darkening;
+    }
+    let t=rounded_add(rounded_add(-direction.y,-1.5707963705062866),sun_rotation)*0.15915493667125702;let x=rounded_add(t,-floor(t));
+    let y=rounded_add(sign(dir_elevation)*abs(rounded_sqrt(abs(dir_elevation)*0.6366197466850281))*0.5,0.5);
+    let image=image_sample(s,bitcast<i32>(load_word(data+N_TexSkyNishitaData_texture_id)),vec2<f32>(x,y));
+    if((*s).error!=0u){return vec3<f32>(0);}
+    return sky_xyz_to_rgb_clamped(rounded_add3(xyz,image.xyz));
+}
+//#endif
+fn svm_sky(s:ptr<function,SvmState>,node:u32,flag:u32){
+    let kind=svm_byte(node+N_TexSky_sky_type);let analytic=kind==SKY_PREETHAM||kind==SKY_HOSEK;
+    let data=svm_take(s,select(SZ_TexSkyNishitaData,SZ_TexSkyPreethamData,analytic));if((*s).error!=0u){return;}
+    let dir=svm_load3(s,svm_byte(node+N_TexSky_dir_offset));var rgb:vec3<f32>;
+    if(analytic){
+//#if SVM_TEX_SKY_ANALYTIC else         svm_error(s,16u);return;
+        rgb=sky_analytic(dir,data,kind==SKY_HOSEK);
+//#endif
+    }else{
+//#if SVM_TEX_SKY_SCATTERING else         svm_error(s,16u);return;
+        rgb=sky_scattering(s,dir,data,flag);
+//#endif
+    }
+    if((*s).error!=0u){return;}
+    svm_store3(s,svm_byte(node+N_TexSky_out_offset),rgb);
+}
+//#endif
+//#if SVM_NODE_LIGHT_FALLOFF
+// light_path.h svm_node_light_falloff: the strength scaled by the ray length (linear) or its square (constant),
+// then the smooth term squared / (smooth + squared) with a correctly rounded quotient and sum. Distant lights
+// (ray length FLT_MAX) pass the strength through.
+fn svm_light_falloff(s:ptr<function,SvmState>,node:u32){
+    var strength=svm_input(s,node+N_LightFalloff_strength);let length=(*s).geometry.ray_length;
+    let out=svm_byte(node+N_LightFalloff_out_offset);
+    if(length==3.4028234663852886e38){svm_store(s,out,strength);return;}
+    let kind=load_word(node+N_LightFalloff_falloff_type);
+    if(kind==LF_LINEAR){strength*=length;}else if(kind==LF_CONSTANT){strength*=length*length;}
+    let smoothing=svm_input(s,node+N_LightFalloff_smooth);
+    if(smoothing>0.0){let squared=length*length;strength*=rounded_divide(squared,rounded_add(smoothing,squared));}
+    svm_store(s,out,strength);
+}
+//#endif
 //#if SVM_NODE_LIGHT_PATH
 // light_path.h. Ray-type flags, backfacing and ray length come from the
 // evaluation's path flag/visibility and ShaderData in every surface, background

@@ -87,7 +87,6 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // Native Scene::get_max_closure_count() preserves a global minimum of one.
   // Local zero-storage SVM evaluation for termination remains valid.
   require(data.max_closures>=1&&data.max_closures<=MAX_CLOSURE,"Invalid surface closure capacity");
-  require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU surface requires tabulated Sobol");
   require(data.film.pass_stride>0,"Invalid surface film stride");
   auto pass=[&](int offset,int length){require(offset==PASS_UNUSED||(offset>=0&&offset<=data.film.pass_stride-length),"Invalid surface film pass offset");};
   pass(data.film.pass_combined,4);pass(data.film.pass_emission,3);pass(data.film.pass_adaptive_aux_buffer,4);pass(data.film.pass_lightgroup,3);
@@ -125,7 +124,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
 #undef KERNEL_STRUCT_END
 #undef KERNEL_STRUCT_END_ARRAY
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
-  p[9]=globals.at("sample_pattern_lut");p[14]=scene_tables();
+  p[9]=sample_pattern_table("surface");p[14]=scene_tables();
   // Push word 29 names the queue for the shared stages (0: SHADE_SURFACE).
   p[29]=kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE?uint32_t(kernel):0;
   if(data.integrator.use_direct_light||ao){
@@ -150,9 +149,6 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
     validate(uintptr_t(state.shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1].prim),size_t(p[25])*4);
     validate(uintptr_t(state.next_shadow_path_index),4);
   }
-  const auto sequence=data.integrator.tabulated_sobol_sequence_size;
-  require(sequence>1&&(sequence&(sequence-1))==0,"Invalid surface Sobol sequence size");
-  validate(p[9],size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
   if(!work||!n)return;
   const size_t closure_bytes=size_t(n)*MAX_CLOSURE*sizeof(SurfaceClosureRecord);
   const size_t records_bytes=closure_bytes+size_t(n)*surface_stage_bytes;
@@ -235,6 +231,13 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   dispatch(p,uint32_t(work),surface_light,workgroup("shade_surface_light"));
   if(triangle_stage)dispatch(p,uint32_t(work),surface_light_triangle,workgroup("shade_surface_light_triangle"));
   dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
+  // integrate_surface_ao (AO_SHADOW: fast GI's additive mode or the AO pass): its own entry after the
+  // direct light, for compiler pressure (wavefront_surface.wgsl connect_surface_ao).
+  if((shader_features()&SF_AO_SHADOW).any()){
+    if(!pipeline_current(surface_ao,"connect_surface_ao")||!surface_ao.value)
+      surface_ao=std::move(build_pipelines("surface",surface_source(),{"connect_surface_ao"})[0]);
+    dispatch(p,uint32_t(work),surface_ao,workgroup("connect_surface_ao"));
+  }
   // film_write_data_passes (FILM_DATA_PASSES, wavefront_film_passes.wgsl): after
   // holdout, emission and termination (connect_surface_light), before the bounce
   // changes the path's flag and throughput (shade_surface); the same records.
@@ -265,7 +268,7 @@ void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args)
   require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),"WebGPU light NEE optional integration features not implemented");
   validate_geometry_motion();
   validate_lighting(true);
-  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=globals.at("sample_pattern_lut");p[18]=globals.at("shaders");
+  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=sample_pattern_table("light NEE");p[18]=globals.at("shaders");
   require(remaining(p[18])%sizeof(KernelShader)==0,"Invalid light NEE shader table");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));
   if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid SVM word table");p[22]=uint32_t(remaining(p[21])/4);}
   p[10]=uint32_t(remaining(uintptr_t(state.shadow_path.render_pixel_index))/4);
@@ -278,9 +281,6 @@ void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args)
   field(state.shadow_ray.P,12);field(state.shadow_ray.D,12);field(state.shadow_ray.tmax,4);field(state.shadow_ray.time,4);
   field(state.shadow_ray.dP,4);field(state.shadow_ray.dD,4);field(state.shadow_ray.self_light_object,4);field(state.shadow_ray.self_light_prim,4);
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
-  const auto sequence=data.integrator.tabulated_sobol_sequence_size;
-  require(sequence>1&&(sequence&(sequence-1))==0,"Invalid light NEE Sobol sequence size");
-  validate(p[9],size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
   p[14]=scene_tables();
   if(!n||!work)return;
   // GPU-private ShaderData of each dispatched path's light point (prepare_light_nee -> shade_light_nee).

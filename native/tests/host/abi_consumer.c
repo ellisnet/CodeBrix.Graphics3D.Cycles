@@ -252,11 +252,11 @@ int main(int argc, char **argv) {
 
   /* Cameras: projection types through the generic layer. */
   unsigned projections = 0, error_events = 0; int after_failure = -1;
+  /* Orthographic and panoramic cameras render on every backend (the WebGPU
+   * device's render-time failure path is exercised at the end of this test). */
   text(camera, "camera_type", "orthograph");
-  /* The WebGPU device rejects non-perspective cameras (capability report);
-   * its render-time failure path is exercised at the end of this test. */
-  if (!gpu) { render(film_b); REQUIRE(!same(film_b, base)); projections++; }
-  if (!gpu) { text(camera, "camera_type", "panorama"); text(camera, "panorama_type", "equirectangular"); render(film_b); REQUIRE(!same(film_b, base)); projections++; }
+  render(film_b); REQUIRE(!same(film_b, base)); projections++;
+  text(camera, "camera_type", "panorama"); text(camera, "panorama_type", "equirectangular"); render(film_b); REQUIRE(!same(film_b, base)); projections++;
   text(camera, "camera_type", "perspective");
   render(film_c); if (!gpu) REQUIRE(same(film_c, base));
 
@@ -366,8 +366,8 @@ int main(int argc, char **argv) {
     CHECK(cbc_host_connect(host, bsdf, "BSDF", output_of(surface), "Surface"));
     mesh = create("mesh"); nodes(mesh, "used_shaders", surface); CHECK(cbc_host_mesh(host, mesh, xyz, 3, tri, 1));
     object = create("object"); nodes(object, "geometry", mesh);
-    /* The cause: an orthographic camera (the WebGPU device renders the perspective camera only). */
-    text(camera, "camera_type", "orthograph");
+    /* The cause: a custom camera (it needs OSL, which the package does not include; WebGPU refuses it). */
+    text(camera, "camera_type", "custom");
     for (unsigned i = 0; i < FLOATS; ++i) film_b[i] = -99;
     REQUIRE(cbc_host_render(host, &pass_config, film_b, FLOATS) == CBC_FAILED);
     for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(film_b[i] == -99);

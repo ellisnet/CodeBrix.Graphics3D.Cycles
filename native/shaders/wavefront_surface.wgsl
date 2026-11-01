@@ -108,14 +108,16 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#if SVM_BSDF_METALLIC else     let c=svm_closure_read(r,selected);if(!surf_bsdf(c.kind)){return out;}
     var picked=r;picked.count=max(r.count,1u);let c=svm_closure_read(picked,selected);if(!surf_bsdf(c.kind)){return out;}
 //#endif
-    var value=vec3<f32>(0);
+    // shade_terminator: the sampled reflection takes the shadow terminator shading offset and the
+    // bump term, applied once below (one inlined copy of each for every closure kind).
+    var value=vec3<f32>(0);var shade_terminator=false;
     if(c.kind==CLOSURE_BSDF_TRANSPARENT_ID){out.wo=-sd.wi;out.pdf=1e6;value=vec3<f32>(1e6);out.label=LABEL_TRANSMIT|LABEL_TRANSPARENT;
         if(data_float(D_background_transparent_roughness_squared_threshold)>=0.0){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
 //#if SVM_BSDF_FAMILIES
     else if(surf_family(c.kind)){out=surf_family_sample(sd,c,rand,family_disk);value=out.eval;
         if((out.label&LABEL_TRANSMIT)!=0u){let threshold=data_float(D_background_transparent_roughness_squared_threshold);
             if(threshold>=0.0&&(out.label&LABEL_DIFFUSE)==0u&&surf_roughness(c)<=threshold){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
-        else if(out.label!=0u){value=surf_terminator(sd,c,out.wo,value,false);value*=surf_bump(sd,c,out.wo,false);}}
+        else if(out.label!=0u){shade_terminator=true;}}
 //#endif
     else if(surf_microfacet(c.kind)){
 //#if !SVM_BSDF_BECKMANN
@@ -131,12 +133,12 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#endif
         if((out.label&LABEL_TRANSMIT)!=0u){let threshold=data_float(D_background_transparent_roughness_squared_threshold);
             if(threshold>=0.0&&c.alpha_x*c.alpha_y<=threshold){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
-        else{value=surf_terminator(sd,c,out.wo,value,false);value*=surf_bump(sd,c,out.wo,false);}
+        else{shade_terminator=true;}
 //#endif
 //#endif
     }
 //#if SVM_BSDF_PRINCIPLED
-    else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(sd,c,rand.xy);value=surf_terminator(sd,c,out.wo,out.eval,false);value*=surf_bump(sd,c,out.wo,false);}
+    else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(sd,c,rand.xy);value=out.eval;shade_terminator=true;}
 //#endif
     else{
 //#if SVM_BSDF_FAMILIES else         let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=surface_cos_hemisphere(select(c.N,-c.N,transmission),random.xy);
@@ -145,9 +147,10 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
         out.wo=sampled.xyz;out.pdf=sampled.w;out.label=LABEL_DIFFUSE|select(LABEL_REFLECT,LABEL_TRANSMIT,transmission);
         let valid=select(dot(sd.Ng,out.wo)>0.0,dot(sd.Ng,out.wo)<0.0,transmission);
         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
-            if(!transmission){value=surf_terminator(sd,c,out.wo,value,false);value*=surf_bump(sd,c,out.wo,false);}}
+            shade_terminator=!transmission;}
         else{out.pdf=0.0;}
     }
+    if(shade_terminator){value=surf_terminator(sd,c,out.wo,value,false);value*=surf_bump(sd,c,out.wo,false);}
     if(out.pdf==0.0){return out;}
     out.eval=value*c.weight;if(surf_diffuse(c.kind)){out.diffuse=out.eval;}
     if(surf_glossy_direction(c,out.wo)){out.glossy=out.eval;}
@@ -203,7 +206,9 @@ fn surf_sample_mis(sd:SurfaceData,r:SvmResult,sampled:SurfaceSample)->SurfaceSam
     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=2u){return;}
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);
-    let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xyz;
+//#if SAMPLING_SOBOL_BURLEY else     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xyz;
+    let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF,3u).xyz;
+//#endif
     let sampled=surf_sample(stage.sd,stage.r,random);surf_sample_store(p(0u)+id.x*SURF_SAMPLE_BYTES,sampled,surf_sampled_closure);
 }
 //#endif
@@ -433,7 +438,9 @@ fn light_selection_compute(index:u32,sd:SurfaceData,r:SvmResult,sample:bool,forw
             let offset=load_word(table_at(G_object_lookup_offset,sd.object_id,4u));let first=load_word(table_at(G_object_prim_offset,sd.object_id,4u));
             goal=load_word(table_at(G_triangle_to_tree,sd.prim-first+offset,4u));
         }
-        let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
+//#if SAMPLING_SOBOL_BURLEY else         let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
+        let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT,3u).xyz;
+//#endif
         let walk=light_tree_walk(k==0u,P,N,transmission,receiver,random.z,sd.object_id,goal);
         if(k==1u){out.forward_pdf=walk.pdf;continue;}
         out.selection.random=random;
@@ -531,12 +538,25 @@ fn surface_light_combined(li:SurfaceLightInputs){
 //#endif
 //#endif
     surface_direct_light(index,id.x,sd,r,light_sample_read(at+308u));if(load_word(p(17u))!=0u){return;}
-//#if AO_SHADOW
-    if((data_word(D_kernel_features)&(AO_FEATURE_ADDITIVE|AO_FEATURE_PASS))!=0u){surface_ao(index,id.x,sd,r);if(load_word(p(17u))!=0u){return;}}
-//#endif
     // Holdout may change closure metadata; retain it with the same GPU record.
-    surface_stage_write(at,sd,r);store_word(at,2u);
+//#if AO_SHADOW else     surface_stage_write(at,sd,r);store_word(at,2u);
+    // The AO shadow ray follows in its own entry, connect_surface_ao (state 6 -> 2).
+    surface_stage_write(at,sd,r);store_word(at,select(2u,6u,(data_word(D_kernel_features)&(AO_FEATURE_ADDITIVE|AO_FEATURE_PASS))!=0u));
+//#endif
 }
+//#if AO_SHADOW
+// integrate_surface_ao after integrate_surface_direct_light (compiler pressure: one entry
+// with both inlined both shadow-ray setups): the same record, path state and reserved
+// slot n + id.x as when connect_surface_light called surface_ao itself.
+@compute @workgroup_size(1) fn connect_surface_ao(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=6u){return;}store_word(at,0u);
+    var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    let stage=surface_stage_read(at);
+    surface_ao(index,id.x,stage.sd,stage.r);if(load_word(p(17u))!=0u){return;}
+    store_word(at,2u);
+}
+//#endif
 // Cycles float3 / float (util/math_float3.h): SSE hosts divide each lane, the
 // scalar float3 operator multiplies by 1/f. The bounce's bsdf_eval / bsdf_pdf.
 fn surf_native_div3(v:vec3<f32>,f:f32)->vec3<f32>{
@@ -562,7 +582,9 @@ fn surf_safe_divide3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);let sd=stage.sd;let r=stage.r;
     let throughput=heap_vec3(state_address(S_path_throughput,index,12u));
-    let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xyz;
+//#if SAMPLING_SOBOL_BURLEY else     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xyz;
+    let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF,3u).xyz;
+//#endif
 //#if SVM_BSDF_FAMILIES else     let sampled=surf_sample(sd,r,random);if(sampled.pdf==0.0||all(sampled.eval==vec3<f32>(0))){surf_finish(index,false);return;}
     let sampled=surf_sample_mis(sd,r,surf_sample_load(p(0u)+id.x*SURF_SAMPLE_BYTES));if(sampled.pdf==0.0||all(sampled.eval==vec3<f32>(0))){surf_finish(index,false);return;}
 //#endif

@@ -25,9 +25,15 @@ GCC 14 and glibc. The result is the Linux ARM64 CPU oracle film set, committed a
 a new frozen evidence folder, so that WGSL renders on ARM64 devices can be compared
 against a CPU rendering of the same architecture.
 
-These films are **evidence, not yet a gold standard**: which CPU oracle the WGSL
-device on ARM64 is judged against is an open decision (see native/DEVICE.md). The
-x64 gold standard stays `native/evidence/linux-x64-reference-<date>/`.
+These films are the **gold standard for ARM64**: an Android ARM64 WGSL film in the
+product default arithmetic (`wgslArithmetic` `arm64-scalar` in its `meta.json`) is
+judged against them (native/DEVICE.md, "Validation reference policy", Option A).
+Films rendered with the reference-oracle arithmetic (`x64-sse4.2`) and all x64
+films keep the x64 gold standard, `native/evidence/linux-x64-reference-<date>/`.
+Because they are the gold standard, the corpus is rendered again at the commit
+under test whenever CPU-kernel or host scene-preparation code changes; the folder
+of an earlier commit stays valid only while the Linux x64 CPU films of the corpus
+are bit for bit those of that commit.
 
 Why a container on the Mac and not the Raspberry Pi 5: the oracle is deterministic
 for a given ISA baseline, compiler and C library, so any ARM64 machine gives the

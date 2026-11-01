@@ -17,10 +17,15 @@ directories.
 Two gold standards: the unmodified Cycles CPU kernels (backends named cpu-*) and the unmodified
 Cycles Metal backend (metal-*) are both reference renderers. Every other backend (wgsl-*) is a
 candidate. Every pair is compared and reported; the role of a pair decides whether it gates:
-- gating: a candidate against the CPU gold standard of its own host ISA family (the CPU film is
-  the reference b): wgsl-linux-intel and every wgsl-android-* backend (validated through the
-  Linux x64 glibc flow) against cpu-x64-*, an arm64-host candidate against cpu-arm64-*; when no
-  same-ISA CPU film is present, against the CPU film that is (the report says so);
+- gating: a candidate against the CPU gold standard of its own ISA family (the CPU film is
+  the reference b): wgsl-linux-intel against cpu-x64-*, an arm64-host candidate against
+  cpu-arm64-*; when no same-ISA CPU film is present, against the CPU film that is (the report
+  says so). A WGSL film whose meta.json records wgslArithmetic (the CPU oracle arithmetic its
+  WGSL adapters reproduced, from the device report) takes the family of that arithmetic:
+  arm64-scalar (the Android ARM64 product default) gates against cpu-arm64-* (the Linux ARM64
+  CPU oracle), x64-sse4.2 (the reference-oracle arithmetic) against cpu-x64-*. A wgsl-android-*
+  film without the field (films made before it was recorded) is taken as x64, and the report
+  says so (isaSource per backend);
 - reported: every cross-ISA pair, a candidate against a Metal gold standard, the gold standards
   against each other, and two candidates against each other (same numbers, never a failure).
 For a pair, the reference b of the practical criterion abs(a - b) <= 5e-5 + 2e-4 * abs(b) is
@@ -170,19 +175,36 @@ def role_of(backend):
  return 'cpu' if backend.startswith('cpu-') else 'metal' if backend.startswith('metal-') else 'candidate'
 
 
-def isa_of(backend):
- """Host ISA family: wgsl-android-* candidates are validated through the Linux x64 glibc flow, so x64."""
- if backend.startswith('wgsl-android-'):return 'x64'
- return 'arm64' if 'arm64' in backend else 'x64'
+LEGACY_ANDROID='no wgslArithmetic in meta.json (legacy wgsl-android film): judged as x64'
 
 
-def pair_role(a,b,cpu_isas):
- """Gating: a candidate against the CPU gold standard of its own host ISA family (or against any CPU film when no
- same-ISA CPU film is present). Everything else, cross-ISA pairs included, is reported."""
+def isa_source(backend,meta=None):
+ """(ISA family, how it was decided). A WGSL film's recorded wgslArithmetic decides (arm64-* -> arm64, x64-* ->
+ x64); a wgsl-android-* film without it is taken as x64 (the legacy rule: validated through the Linux x64 glibc
+ flow); every other backend by its name."""
+ arithmetic=(meta or {}).get('wgslArithmetic')
+ if role_of(backend)=='candidate' and arithmetic:
+  if arithmetic.startswith('arm64'):return 'arm64','wgslArithmetic '+arithmetic
+  if arithmetic.startswith('x64'):return 'x64','wgslArithmetic '+arithmetic
+  raise Invalid(f'{backend}: unknown wgslArithmetic {arithmetic!r}')
+ if backend.startswith('wgsl-android-'):return 'x64',LEGACY_ANDROID
+ return ('arm64' if 'arm64' in backend else 'x64'),'backend name'
+
+
+def isa_of(backend,meta=None):
+ """Host ISA family of a backend (see isa_source)."""
+ return isa_source(backend,meta)[0]
+
+
+def pair_role(a,b,cpu_isas,isas=None):
+ """Gating: a candidate against the CPU gold standard of its own ISA family (or against any CPU film when no
+ same-ISA CPU film is present). Everything else, cross-ISA pairs included, is reported. ISAS maps a backend to its
+ family (from its meta.json); without it the family comes from the name."""
  roles={role_of(a),role_of(b)}
  if roles!={'candidate','cpu'}:return 'reported'
  cand,cpu=(a,b) if role_of(a)=='candidate' else (b,a)
- return 'gating' if isa_of(cand)==isa_of(cpu) or isa_of(cand) not in cpu_isas else 'reported'
+ family=(isas or {}).get(cand) or isa_of(cand);cpu_family=(isas or {}).get(cpu) or isa_of(cpu)
+ return 'gating' if family==cpu_family or family not in cpu_isas else 'reported'
 
 
 def run(directories):
@@ -219,18 +241,21 @@ def run(directories):
    repeatBitwiseIdentical=m.get('repeatBitwiseIdentical'),repeatMaxAbsDifference=m.get('repeatMaxAbsDifference'),
    measuredRepeats=rows,measuredRepeatBitwiseIdentical=all(r['bitwiseEqual'] for r in rows),
    measuredRepeatMaxAbsDifference=max([0.0]+[r['maxAbsoluteDifference'] for r in rows]),
-   deviceName=m.get('deviceName'),renderSeconds=m.get('renderSeconds'),nonfiniteComponents=nonfinite(v)))
+   deviceName=m.get('deviceName'),renderSeconds=m.get('renderSeconds'),nonfiniteComponents=nonfinite(v),
+   rid=m.get('rid'),wgslArithmetic=m.get('wgslArithmetic'),isaFamily=isa_source(m['backend'],m)[0],isaSource=isa_source(m['backend'],m)[1]))
  report=dict(sceneId=first['sceneId'],sceneSha256=first['sceneSha256'],width=first['width'],height=first['height'],
   practicalCriterion='abs(a-b) <= 5e-5 + 2e-4*abs(b)',strictCriterion='abs(a-b) <= 1e-7 + 1e-7*abs(b)',backends=backends,
   goldStandards=[m['backend'] for _,m,_ in films if role_of(m['backend'])!='candidate'],
   candidates=[m['backend'] for _,m,_ in films if role_of(m['backend'])=='candidate'],pairs=[])
  rank={'cpu':0,'metal':1,'candidate':2}
- cpu_isas={isa_of(m['backend']) for _,m,_ in films if role_of(m['backend'])=='cpu'}
- report['crossIsaGating']=sorted(m['backend'] for _,m,_ in films if role_of(m['backend'])=='candidate' and isa_of(m['backend']) not in cpu_isas)
+ isas={m['backend']:isa_of(m['backend'],m) for _,m,_ in films}
+ cpu_isas={isas[m['backend']] for _,m,_ in films if role_of(m['backend'])=='cpu'}
+ report['crossIsaGating']=sorted(m['backend'] for _,m,_ in films if role_of(m['backend'])=='candidate' and isas[m['backend']] not in cpu_isas)
+ report['legacyAndroidIsa']=sorted(m['backend'] for _,m,_ in films if isa_source(m['backend'],m)[1]==LEGACY_ANDROID)
  for x,y in itertools.combinations(films,2):
   # The gold standard is the reference (the CPU one when both are gold); otherwise the earlier directory.
   (rd,rm,rv),(cd,cm,cv)=(y,x) if rank[role_of(y[1]['backend'])]<rank[role_of(x[1]['backend'])] else (x,y)
-  role=pair_role(rm['backend'],cm['backend'],cpu_isas)
+  role=pair_role(rm['backend'],cm['backend'],cpu_isas,isas)
   result=compare(rv,cv,first['width']);result.update(reference=rm['backend'],candidate=cm['backend'],role=role)
   result['practicalPassed']=result['practicalFailures']==0;result['samplesMatch']=rm['samples']==cm['samples']
   if role=='gating':
@@ -270,7 +295,8 @@ def table(report):
  lines=[f"{report['sceneId']} ({report['width']}x{report['height']})"]
  for b in report['backends']:
   lines.append(f"  {b['backend']:<26} {role_of(b['backend']):<9} samples {b['samples']:<5} repeats {b['repeats']} bitwise={b['measuredRepeatBitwiseIdentical']} "
-               f"repeatMaxAbs={b['measuredRepeatMaxAbsDifference']:.3g} nonfinite={b['nonfiniteComponents']}")
+               f"repeatMaxAbs={b['measuredRepeatMaxAbsDifference']:.3g} nonfinite={b['nonfiniteComponents']}"
+               +(f" isa={b['isaFamily']} ({b['isaSource']})" if role_of(b['backend'])=='candidate' else ''))
  lines.append(f"  {'candidate vs reference':<52} {'maxAbs':>10} {'maxRel':>10} {'rms':>10} {'practicalFail':>13} {'strictDiff':>10}")
  for p in report['pairs']:
   lines.append(f"  {p['candidate']+' vs '+p['reference']+' ['+p['role']+']':<52} {p['maxAbsoluteDifference']:>10.3g} {p['maxRelativeError']:>10.3g} "
@@ -283,6 +309,7 @@ def table(report):
    extra=f" slotOrderDiff={q['slotOrderDifferences']}" if 'slotOrderDifferences' in q else ''
    mx='exact' if q['kind']=='exact' else f"{q['maxAbsoluteDifference']:.3g}"
    lines.append(f"      pass {q['name']:<24} {q['type']:<22} maxAbs={mx:>10} practicalFail={q['practicalFailures']} strictDiff={q['strictDifferences']}{extra}")
+ if report.get('legacyAndroidIsa'):lines.append('  note: '+', '.join(report['legacyAndroidIsa'])+': '+LEGACY_ANDROID)
  if report.get('crossIsaGating'):lines.append('  note: no same-ISA CPU gold standard for '+', '.join(report['crossIsaGating'])+'; gated against the CPU film present')
  lines.append(f"  verdict: {report['verdict']}"+('' if report['passed'] else '; FAILED: '+'; '.join(report['problems'])))
  return '\n'.join(lines)
@@ -291,7 +318,7 @@ def table(report):
 def self_test():
  """The comparator must reject NaN/Inf, shape mismatch, corruption and real differences."""
  root=Path(tempfile.mkdtemp(prefix='compare-self-test-'))
- def film(name,values,width=2,height=1,scene='s',repeat_values=None,passes=None):
+ def film(name,values,width=2,height=1,scene='s',repeat_values=None,passes=None,**extra):
   d=root/name;d.mkdir();hashes=[];entries=[]
   for k,(pname,ptype,components,pvalues) in enumerate(passes or []):
    data=array.array('f',pvalues)
@@ -303,7 +330,7 @@ def self_test():
    if sys.byteorder!='little':data.byteswap()
    raw=data.tobytes();(d/f'film-{r}.f32').write_bytes(raw);hashes.append(hashlib.sha256(raw).hexdigest())
   (d/'meta.json').write_text(json.dumps(dict(sceneId='self-test',sceneSha256=scene,backend=name,width=width,height=height,samples=1,repeats=len(hashes),
-   repeatBitwiseIdentical=True,repeatMaxAbsDifference=0,filmSha256=hashes,**({'passes':entries} if entries else {}))))
+   repeatBitwiseIdentical=True,repeatMaxAbsDifference=0,filmSha256=hashes,**({'passes':entries} if entries else {}),**extra)))
   return d
  base=[0.5,0.25,1.0,1.0,0.0,2.0,3.0,1.0]
  try:
@@ -372,6 +399,26 @@ def self_test():
   checks['renderTimeReportedOnly']=r['verdict']=='perfect' and 'notJudged' in r['pairs'][0]['passes'][0]
   bad=film('wgsl-p9',base,passes=depth);raw=bytearray((bad/'pass-0-0.f32').read_bytes());raw[0]^=1;(bad/'pass-0-0.f32').write_bytes(bytes(raw))
   checks['corruptedPassFails']=invalid([film('cpu-p9',base,passes=depth),bad])
+  # Android films record the arithmetic their WGSL reproduced (wgslArithmetic): the product default arm64-scalar
+  # gates against the ARM64 CPU oracle, the reference-oracle arithmetic x64-sse4.2 against x64; legacy films
+  # without the field stay x64 and are flagged.
+  def roles(r):return {(p['candidate'],p['reference'],p['role']) for p in r['pairs'] if p['candidate'].startswith('wgsl')}
+  r=run([film('cpu-x64-a1',base),film('cpu-arm64-a1',far),film('wgsl-android-a1',far,rid='android-arm64',wgslArithmetic='arm64-scalar')])
+  checks['androidArm64ScalarGatesOnArm64']=r['verdict']=='perfect' and roles(r)=={('wgsl-android-a1','cpu-arm64-a1','gating'),('wgsl-android-a1','cpu-x64-a1','reported')} \
+   and r['backends'][2]['isaFamily']=='arm64' and r['legacyAndroidIsa']==[]
+  r=run([film('cpu-x64-a2',base),film('cpu-arm64-a2',near),film('wgsl-android-a2',base,rid='android-arm64',wgslArithmetic='arm64-scalar')])
+  checks['androidArm64ScalarNearArm64Perfect']=r['verdict']=='perfect' and roles(r)=={('wgsl-android-a2','cpu-arm64-a2','gating'),('wgsl-android-a2','cpu-x64-a2','reported')}
+  r=run([film('cpu-x64-a3',far),film('cpu-arm64-a3',base),film('wgsl-android-a3',far,rid='android-arm64',wgslArithmetic='arm64-scalar')])
+  checks['androidArm64ScalarNotPerfect']=r['verdict']=='not perfect' and r['problems']==['wgsl-android-a3 vs cpu-arm64-a3: 1 practical failures']
+  r=run([film('cpu-x64-a4',base),film('cpu-arm64-a4',far),film('wgsl-android-a4',near,rid='android-arm64',wgslArithmetic='x64-sse4.2')])
+  checks['androidReferenceOracleGatesOnX64']=r['verdict']=='perfect' and roles(r)=={('wgsl-android-a4','cpu-x64-a4','gating'),('wgsl-android-a4','cpu-arm64-a4','reported')} \
+   and r['backends'][2]['isaFamily']=='x64'
+  r=run([film('cpu-x64-a5',base),film('cpu-arm64-a5',far),film('wgsl-android-a5',near)])
+  checks['legacyAndroidFilmIsX64AndFlagged']=r['verdict']=='perfect' and roles(r)=={('wgsl-android-a5','cpu-x64-a5','gating'),('wgsl-android-a5','cpu-arm64-a5','reported')} \
+   and r['legacyAndroidIsa']==['wgsl-android-a5'] and r['backends'][2]['isaSource']==LEGACY_ANDROID
+  r=run([film('cpu-arm64-a6',base),film('wgsl-linux-a6',far,rid='linux-x64',wgslArithmetic='arm64-scalar')])
+  checks['desktopArm64ScalarGatesOnArm64']=r['verdict']=='not perfect' and r['pairs'][0]['role']=='gating' and r['crossIsaGating']==[]
+  checks['unknownArithmeticInvalid']=invalid([film('cpu-x64-a7',base),film('wgsl-android-a7',base,wgslArithmetic='mips')])
  finally:shutil.rmtree(root)
  print(json.dumps(checks,indent=2))
  return all(checks.values())

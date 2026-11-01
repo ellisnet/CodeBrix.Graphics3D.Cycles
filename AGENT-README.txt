@@ -151,6 +151,9 @@ CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
                                output nodes.
     PassNode AddPass(PassType type, string name)
                                enables a pass/AOV (e.g. PassType.Depth)
+    PassNode AddPass(PassType type, string name, PassMode mode)
+                               the same with a denoising mode: PassMode.Noisy
+                               = the undenoised version of a denoised pass
     IReadOnlyList<RenderPassInfo> GetRenderedPasses()
                                passes of the last successful render
     FilmBuffer ReadPass(string name)
@@ -216,7 +219,8 @@ values come through Cycles' own pass accessor (for example Mist is already
     "CryptoObject01", "CryptoMaterial00", ...). The ids hash ObjectNode.Name,
     ShaderNode.Name and ObjectNode.AssetName: give them distinct names, or
     every object (material) shares one id.
-  - Denoising features (no denoiser runs): DenoisingAlbedo, DenoisingNormal,
+  - Denoising features (the denoiser's guides, written with or without
+    denoising): DenoisingAlbedo, DenoisingNormal,
     DenoisingSpecularAlbedo, DenoisingRoughness, DenoisingDepth,
     DenoisingBackwardMotion and DenoisingSpecularMotion (the last two with
     MotionBlur false), shaped by FilmNode.DenoisingPassFollowReflections and
@@ -542,19 +546,25 @@ What a consumer can observe:
 WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
 render runs (the render fails with NativeStatus.Failed, not at edit time):
   - the passes the WebGPU device does not write fail the render with
-    "WebGPU film pass <name> not implemented" (the adaptive sampling,
-    path guiding and volume passes), as do the motion pass and the
-    denoising motion features with deforming geometry (vertex motion);
-  - cameras other than perspective (orthographic, panorama);
-  - the integrator defaults: switch off UseDenoise, UseAdaptiveSampling and
-    UseGuiding before a WebGPU render (the light tree, UseLightTree, renders);
+    "WebGPU film pass <name> not implemented" (the path guiding and volume
+    passes), as do the motion pass and the denoising motion features with
+    deforming geometry (vertex motion) and the motion pass with a camera that
+    is not perspective;
+  - stereo cameras (an InterocularDistance with a StereoEye other than None):
+    "WebGPU stereo camera not implemented"; custom cameras need OSL, which is
+    outside the package; a texture coordinate node's Window output with a
+    panoramic camera fails with an unsupported-parameter error;
+  - the integrator defaults: switch off UseGuiding before a WebGPU render
+    (the light tree, UseLightTree, adaptive sampling, UseAdaptiveSampling, and
+    denoising, UseDenoise, render);
   - shadow linking (an object's BlockerShadowSet or ShadowSetMembership other
     than the defaults): "optional integration features not implemented";
   - a PrincipledBsdfNode with subsurface (a SubsurfaceWeight above the closure
     cutoff, 1e-5, or a linked SubsurfaceWeight input): "Unsupported feature:
     Principled BSDF subsurface scattering";
-  - shader nodes the WebGPU device does not implement (for example sky, IES
-    nodes; the AOV output nodes, the bump node, the Gabor texture (GaborTextureNode,
+  - shader nodes the WebGPU device does not implement (for example the point
+    info, particle info and hair info nodes; the sky texture, IES texture and
+    light falloff nodes, the AOV output nodes, the bump node, the Gabor texture (GaborTextureNode,
     2D and 3D), the displacement and vector displacement nodes and the bevel,
     raycast and radial tiling nodes are implemented, but tangent and
     motion-triangle smooth-normal derivatives inside a bump height are
@@ -567,10 +577,6 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
     with IsCausticsCaster and motion steps): "WebGPU MNEE with a moving
     caustic caster (object motion blur) not implemented" (moving and
     deforming receivers and deforming casters render);
-  - a MetallicBsdfNode with the physical-conductor Fresnel and a thin film (a
-    ThinFilmThickness above 0.1 or linked): "Unsupported feature: Metallic BSDF
-    thin film ... with the physical conductor Fresnel" (the F82 tint Fresnel
-    with a thin film renders);
   - a RadialTilingNode with at most two sides and a roundness strictly
     between 0 and 1: "Unsupported feature: Radial Tiling node with two sides"
     (the Cycles CPU outputs there are binary32 rounding residue, and Cycles' own
@@ -589,7 +595,7 @@ returns it.
 The CPU reference backend renders all of these.
 
 DEVICE ERRORS. After a render fails with NativeStatus.Failed (scene.IsFaulted
-is true), remove the cause (for example the non-perspective
+is true), remove the cause (for example a custom
 camera on WebGPU, or an image wider or taller than Metal's 16384-pixel texture
 limit on Metal) and render again: the native host recovers the GPU device
 (WebGPU or Metal), uploads the whole scene again and raises a
@@ -1007,25 +1013,41 @@ WHAT THIS PACKAGE DOES NOT DO
   (macOS on Apple Silicon). Until a feature reaches the WebGPU device, a scene
   that needs it fails there with an error naming the feature; it is never
   approximated.
-- It does not yet render non-perspective cameras (orthographic, panoramic, depth of field,
-  stereo), sampling patterns other than tabulated Sobol, adaptive sampling or
-  shadow linking on the WebGPU device (the CPU reference backend and the Metal
-  backend do). It does not yet render curves (hair), point clouds,
+- It does not yet render stereo cameras or shadow linking on the WebGPU
+  device (the CPU reference backend and the Metal backend do). Orthographic
+  and panoramic cameras (equirectangular, equiangular cubemap face, mirror
+  ball, the three fisheye models, central cylindrical) with depth of field
+  (disk or polygonal apertures, rotation, anamorphic ratio), every sampling
+  pattern (tabulated Sobol, Sobol-Burley, the blue-noise patterns, scrambling
+  distance) and adaptive sampling render there. It does not yet render curves (hair), point clouds,
   subsurface scattering, volumes whose density varies through space or the
   hair BSDFs on the WebGPU device. True displacement of the base mesh
   (DisplacementMethod True and Both) renders there. The Metallic (physical
-  conductor and F82 tint), Beckmann glossy, refraction and glass,
+  conductor and F82 tint, with or without a thin film), Beckmann glossy, refraction and glass,
   Ashikhmin-Shirley, velvet and toon BSDFs render there.
-  It does not denoise or bake textures on any backend yet. The integrator's
+  It does not bake textures on any backend yet. It denoises on every backend
+  with Cycles' Open Image Denoise denoiser, off by default: set
+  scene.Integrator.UseDenoise = true (and, if wanted, DenoiserType
+  Openimagedenoise, DenoiserPrefilter, DenoiserQuality, DenoiseStartSample;
+  the albedo and normal guides are on by default); the film is then the
+  denoised image, and so are the ShadowCatcher and ShadowCatcherMatte passes.
+  AddPass(PassType.Combined, "Noisy Image", PassMode.Noisy) (or the same with
+  a shadow catcher type) also returns the undenoised version in the same
+  render; one noisy pass per type. Light group passes together with
+  denoising fail the render (NativeStatus.Unsupported). A WebGPU render is denoised on the CPU (Open Image
+  Denoise's CPU device; the render buffers are copied to the host), so it adds
+  CPU time; Metal renders can denoise on the GPU. GetCapabilities().CanDenoise
+  and DenoiseDevices report it. The integrator's
   light tree (UseLightTree, on by default) and light linking (an object's
   ReceiverLightSet and an emitter object's LightSetMembership) do render on the
   WebGPU device, for lamps, mesh emitters and the background light.
-- It does not render background-light portals, sky-texture sun guiding,
-  more than one background light, or point, spot, area and sun lamps whose
-  emission shader is not constant on the WebGPU device (the render fails with
-  an error naming the feature). Environment-texture and procedural worlds with
-  importance sampling, and mesh emitters with textured or node emission, do
-  render there.
+- It does not render background-light portals or more than one background
+  light on the WebGPU device (the render fails with an error naming the
+  feature). Environment-texture, sky-texture (every sky type, the sun disc and
+  sun guiding) and procedural worlds with importance sampling, mesh emitters with textured or node emission, and point,
+  spot, area and sun lamps with node emission shaders (light falloff, IES
+  texture, textures on the lamp's coordinates) do render there; shadow caustics
+  from a lamp whose emission shader is not constant are refused.
 - Shadow caustics (manifold next-event estimation: objects with
   is_caustics_caster / is_caustics_receiver and lights with use_caustics)
   render on the WebGPU device through glass and refraction BSDFs from point and

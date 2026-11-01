@@ -6,7 +6,7 @@ namespace CodeBrix.Graphics3D.Cycles.Rendering;
 /// <summary>
 /// The size and sample budget of one render. Scene settings (camera, film, integrator) live on the
 /// scene's typed singletons, not here; passes beyond Combined are pass nodes in the scene
-/// (<see cref="CyclesScene.AddPass"/>).
+/// (<see cref="CyclesScene.AddPass(Generated.Scene.PassType, string)"/>).
 /// </summary>
 /// <param name="Width">The image width in pixels.</param>
 /// <param name="Height">The image height in pixels.</param>

@@ -118,6 +118,17 @@ fn trace_native(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,time:f32,
     return trace_native_filtered(origin,direction,tmin,tmax,time,visibility,self_object,self_prim,NONE,NONE);
 }
 // Point emitters use the same native geometry and strict ray interval tests as Cycles.
+// float3 / float and normalize of the oracle host: per-component division (SSE)
+// or reciprocal multiplication (scalar float3, ARM64), selected by the generated
+// NATIVE_FLOAT3_RECIPROCAL_NORMALIZE.
+fn closest_native_div3(v:vec3<f32>,f:f32)->vec3<f32>{
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,f);}
+    return vec3<f32>(rounded_divide(v.x,f),rounded_divide(v.y,f),rounded_divide(v.z,f));
+}
+fn closest_native_normalize(v:vec3<f32>)->vec3<f32>{
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,rounded_sqrt(rounded_dot(v,v)));}
+    return rounded_normalize(v);
+}
 fn intersect_point_lights(index:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,input:NativeHit)->NativeHit{
     var hit=input;let visibility=state_byte(S_path_visibility,index);let flag=state_word(S_path_flag,index);
     for(var lamp=0u;lamp<data_word(D_integrator_num_lights);lamp++){
@@ -142,9 +153,9 @@ fn intersect_point_lights(index:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
             t=rounded_divide(-rounded_add(rounded_dot(origin,N),-rounded_dot(position,N)),facing);if(!(t>tmin&&t<tmax)){continue;}
             let plane=rounded_add3(origin,t*direction)-position;
             let axis_u=heap_vec3(light+L_area_axis_u);let len_u=heap_float(light+L_area_len_u);let axis_v=heap_vec3(light+L_area_axis_v);let len_v=heap_float(light+L_area_len_v);
-            let u=rounded_dot(plane,vec3<f32>(rounded_divide(axis_u.x,len_u),rounded_divide(axis_u.y,len_u),rounded_divide(axis_u.z,len_u)));
+            let u=rounded_dot(plane,closest_native_div3(axis_u,len_u));
             if(u< -0.5||u>0.5){continue;}
-            let v=rounded_dot(plane,vec3<f32>(rounded_divide(axis_v.x,len_v),rounded_divide(axis_v.y,len_v),rounded_divide(axis_v.z,len_v)));
+            let v=rounded_dot(plane,closest_native_div3(axis_v,len_v));
             if(v< -0.5||v>0.5){continue;}if(heap_float(light+L_area_invarea)<0.0&&rounded_add(u*u,v*v)>0.25){continue;}
         }else{
         if(light_kind==LIGHT_SPOT&&rounded_dot(direction,origin-position)>=0.0){continue;}
@@ -156,7 +167,7 @@ fn intersect_point_lights(index:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
             t=rounded_add(cosine,-bitcast<f32>((bitcast<u32>(root)&0x7fffffffu)|(bitcast<u32>(rounded_add(d2,-r2))&0x80000000u)));
             if(!(t>tmin&&t<tmax)){continue;}
         }else{
-            let vp=origin-position;let normal=rounded_normalize(vp);let dp=rounded_dot(vp,normal);let cosine=rounded_dot(normal,-direction);
+            let vp=origin-position;let normal=closest_native_normalize(vp);let dp=rounded_dot(vp,normal);let cosine=rounded_dot(normal,-direction);
             if(!(dp*cosine>0.0)){continue;}t=rounded_divide(dp,cosine);if(t<0.0){continue;}
             let point=rounded_add3(origin,t*direction);let delta=point-position;
             if(!(rounded_dot(delta,delta)<radius*radius&&t>tmin&&t<tmax)){continue;}
@@ -178,7 +189,9 @@ fn terminate_surface(index:u32,shader_flags:u32)->bool{
     if(use_rr){let beta=abs(heap_vec3(state_address(S_path_throughput,index,12u)));probability=min(sqrt(max(beta.x,max(beta.y,beta.z))),1.0);}
     state_f32(S_path_continuation_probability,index,probability);
     if(probability!=1.0){
-        let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_TERMINATE).x;
+//#if SAMPLING_SOBOL_BURLEY else         let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_TERMINATE).x;
+        let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_TERMINATE,1u).x;
+//#endif
         if(probability==0.0||random>=probability){
             if((shader_flags&SD_HAS_EMISSION)!=0u){state_u32(S_path_flag,index,flag|PATH_RAY_TERMINATE_ON_NEXT_SURFACE);}
             else if(volume_active(index)){state_u32(S_path_flag,index,flag|PATH_RAY_TERMINATE_IN_NEXT_VOLUME);}

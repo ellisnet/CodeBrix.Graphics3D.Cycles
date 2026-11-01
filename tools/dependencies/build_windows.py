@@ -105,6 +105,8 @@ def profile(source):
   # format plugins are disabled; OpenEXR is a configure-time requirement of OIIO).
   # expat sets CMAKE_MSVC_RUNTIME_LIBRARY itself; its static-CRT switch selects /MT.
   if name=='expat':settings['EXPAT_MSVC_STATIC_CRT']='ON'
+  # OIDN: CPU device only (the Metal device is osx-arm64's alone).
+  if name=='oidn':settings['OIDN_DEVICE_METAL']='OFF'
   if name=='openexr':settings['CMAKE_C_FLAGS']=(settings.get('CMAKE_C_FLAGS','')+' /clang:-Wno-error=incompatible-pointer-types').strip()
   rows.append((name,path,settings))
  return rows

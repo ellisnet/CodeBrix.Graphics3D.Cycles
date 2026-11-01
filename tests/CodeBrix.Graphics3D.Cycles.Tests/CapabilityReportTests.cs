@@ -90,7 +90,7 @@ public class CapabilityReportTests
         }
         report.CompiledBackends.Should().Equal("cpu", "webgpu");
         report.GpuBackendName.Should().Be("webgpu");
-        report.BackendScopes["webgpu"].CameraTypes.Should().Equal("perspective");
+        report.BackendScopes["webgpu"].CameraTypes.Should().Equal("perspective", "orthograph", "panorama");
         report.BackendScopes["webgpu"].WrittenPasses.Should().Equal("combined", "emission", "background", "ao", "diffuse", "diffuse_direct",
             "diffuse_indirect", "diffuse_color", "glossy", "glossy_direct", "glossy_indirect", "glossy_color", "transmission", "transmission_direct",
             "transmission_indirect", "transmission_color", "depth", "position", "normal", "roughness", "uv", "object_id", "material_id", "motion",

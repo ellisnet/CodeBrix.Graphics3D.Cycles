@@ -93,8 +93,6 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
     if(data.film.light_pass_flag&PASSMASK(COMBINED))require(data.film.pass_combined!=PASS_UNUSED,"Missing shadow combined film pass");
     require(std::isfinite(data.integrator.sample_clamp_direct)&&data.integrator.sample_clamp_direct>=0&&
             std::isfinite(data.integrator.sample_clamp_indirect)&&data.integrator.sample_clamp_indirect>=0,"Invalid shadow clamp");
-    require(data.film.pass_adaptive_aux_buffer==PASS_UNUSED||data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,
-            "WebGPU shadow adaptive buffer requires tabulated Sobol");
     field(state.shadow_path.sample,4);field(state.shadow_path.bounce,2);field(state.shadow_path.throughput,12);field(state.shadow_path.lightgroup,1);
     p[20]=(data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)!=0;
     if(p[20]){field(state.shadow_path.pass_diffuse_weight,12);field(state.shadow_path.pass_glossy_weight,12);}

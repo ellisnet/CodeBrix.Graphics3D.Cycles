@@ -1755,6 +1755,38 @@ are reported as information (`native/oracle/compare.py`, `native/oracle/README.m
 2026-10-19 record of Metal's texture filtering as a bounded deviation (`native/host/MACOS_ARM64.md`,
 "Results and findings (2026-10-19)") stays as history; this rule supersedes its wording.
 
+**Per-ISA gold standard for Android ARM64 films (Option A).** On Android ARM64 the WGSL device's
+product default (no `CODEBRIX_CYCLES_REFERENCE_ORACLE`) reproduces the rounding of the scalar ARM64
+Cycles CPU kernel (normalize as `v * (1 / len)`, `float3 / float` as a multiply by the reciprocal,
+the scalar triangle arithmetic), not the x64 SSE4.2 kernel. Such a film is judged against the
+**Linux ARM64 CPU oracle** (`cpu-arm64-linux`: the unmodified pinned Cycles CPU kernels at the
+fixed ARM64 baseline, GCC 14 and glibc 2.41; `native/evidence/linux-arm64-cpu-oracle-20261031/`,
+docs/TESTING-LINUX-ARM64-ORACLE.md), which is the gold standard for ARM64 and is re-rendered at the
+commit under test whenever CPU-kernel or host scene-preparation code changes. A film rendered with
+`CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2` (the device gates on reference import and the
+managed app's bundle mode with a Linux reference film) reproduces the x64 SSE4.2 kernel and keeps
+gating against the Linux x64 CPU oracle; Android x64 films always do. The device states which
+arithmetic it generated in its device report (`wgslArithmetic`: `arm64-scalar` or `x64-sse4.2`,
+native/host/ABI.md); the oracle runner and the managed app's bundle mode record it, with the RID,
+in each film's `meta.json`, and `native/oracle/compare.py` gates the film against the CPU film of
+that ISA family. A film without the field (made before it was recorded) is judged as x64, and the
+comparison says so. Host-API and oracle-corpus renders have no device-scene reference: the
+tablet's scene preparation matches Linux ARM64's.
+
+**ARM64 rounding rule (the maintainer's ruling).** ARM64 rounding is acceptable on an ARM64 device when
+the render matches what ARM64 CPU-only rendering gives, or what Cycles-with-Metal gives on Apple Silicon
+(unless Cycles-with-Metal is known to render that scenario badly); the device does not have to emulate the
+x64 arithmetic. On Android ARM64 this governs every check: the gating runs use the product-default
+arithmetic (`arm64-scalar`). The oracle corpus is judged against the Linux ARM64 CPU oracle
+(`cpu-arm64-linux`); the device gates and their replays are judged against the device's own CPU kernels
+(bionic ARM64), which on the Samsung SM-X700 render the oracle corpus within the practical criterion of
+`cpu-arm64-linux` (no practical difference on the 17 scenes compared, maximum 6.4e-6). Runs with
+`CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2` (the x64 adapters, judged against Linux x64) are
+reported cross-checks only: they mix the x64 GPU arithmetic with the device's ARM64 scene preparation and
+no consumer renders that way, so their differences are recorded findings, not failures. Criteria do not
+change (practical must pass, strict reported, NaN/Inf fail). Host scene preparation is not changed to
+imitate another ISA. Android x64 keeps the x64 references.
+
 **Why bionic is a diagnostic.** Cycles calls the C library's binary32 functions (`safe_acosf` and
 `safe_asinf` in light and emitter sampling, `atan2f`/`sinf`/`cosf`/`tanf`/`expf`/`logf`/`powf` in
 closures, camera, SVM nodes and scene preparation). glibc 2.41 returns the correctly rounded
@@ -2800,8 +2832,8 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    baseline): the same code prepares the scene the device's GPU renders.
 6. **Not yet ported** [14]: true displacement (`NODE_SET_DISPLACEMENT`, displacement and vector displacement) and the
    bump-state branch that needs the undisplaced position; tangent and motion-triangle smooth-normal derivatives
-   (rejected, error 16); sky, IES, light falloff, volume coefficient and particle/hair/point info
-   nodes. The AOV output nodes are ported (see "Film passes, light groups, AOVs, cryptomatte and denoising
+   (rejected, error 16); volume coefficient and particle/hair/point info nodes (the IES texture, light falloff
+   and sky texture nodes are ported, see "Entry splits, cameras, sampling patterns, adaptive sampling and lamps"). The AOV output nodes are ported (see "Film passes, light groups, AOVs, cryptomatte and denoising
    features"). The radial tiling, bevel and raycast nodes are ported (see "Remaining SVM BSDFs and the bevel, raycast
    and radial tiling nodes"); radial tiling with two sides and a roundness strictly between 0 and 1 is refused.
 7. **Feature mask** [15]. CLOSED (Step zero, 2026-10-22): the mask is 256 bits (`ShaderFeatures`, four 64-bit
@@ -2877,10 +2909,16 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    bench (16 samples) differ from the Linux x64 CPU films in 32 and 67 components beyond the practical criterion
    (max 0.0042 and 0.012). With both CPU films gating, the WGSL bench and HDRI bench are "not perfect" against the
    arm64 CPU film while perfect against the Linux one; the four starter scenes are perfect against both. Resolved in
-   the comparator (merge wave 8): a candidate gates against the CPU film of its own host ISA family (x64 for the Linux
-   and Android WGSL backends) and cross-ISA pairs are reported, so the bench and HDRI bench read "perfect" with the
-   Mac films present; the cross-ISA CPU difference itself stays recorded here (the macOS arm64 recipe is untested at
-   the fixed baseline on this side, item 16).
+   the comparator (merge wave 8): a candidate gates against the CPU film of its own ISA family and cross-ISA pairs
+   are reported, so the bench and HDRI bench read "perfect" with the Mac films present; the cross-ISA CPU difference
+   itself stays recorded here (the macOS arm64 recipe is untested at the fixed baseline on this side, item 16). The
+   ISA family of an Android WGSL film follows the arithmetic it was rendered with (Option A, "Validation reference
+   policy"): `wgslArithmetic` `arm64-scalar` (the Android ARM64 product default) gates against the Linux ARM64 CPU
+   oracle `cpu-arm64-linux`, `x64-sse4.2` (the reference-oracle arithmetic, and every Android x64 film) against
+   `cpu-x64-linux`; films without the field are judged as x64 and flagged. The x64 and ARM64 CPU oracles themselves
+   differ beyond the practical criterion on 14 corpus scenes (an ISA difference of the pinned kernel, scalar versus
+   SSE float3 arithmetic; `native/evidence/linux-arm64-cpu-oracle-20261031/README.md`), so an ARM64 product film is
+   never judged against the x64 film.
 26. (resolved, see "Resolved" below) Was: **New compiler warning sites (merge wave 8).** `-Wmisleading-indentation`
    (a one-line `for`/`if` followed by a statement on the same line) in `ao_state_gate.cpp`, `light_tree_reference.cpp`,
    `shadow_catcher_gate.cpp`, `mnee_gate.cpp`, `mnee_reference.cpp` and `device.cpp` (`mnee_entry_of`).
@@ -2902,7 +2940,16 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    oracle run with the x86 FTZ and DAZ bits set, every difference disappears (0 mismatches), and the films equal the
    normal CPU films within the practical criterion (0 failures, the CPU films with and without FTZ are bit-identical).
    Such a difference is judged on the film (practical criterion), with the difference and the flush-to-zero evidence
-   reported; the rule applies to the velvet closure only. Pinned Cycles-with-Metal flushes the same way: on the Apple
+   reported; the rule applies to the velvet closure only. The BSDF family gates implement it (`surface_gate.cpp`,
+   `render_gate.cpp` with `CBC_BSDF_FIXTURE`; `original_surface_flush_to_zero` and `original_surface_velvet_paths` in
+   `surface_reference.cpp`): an evaluation or lockstep stage that differs from the normal CPU oracle passes only when
+   every differing path's evaluated closures contain a velvet closure, the queue counters differ only together with
+   such a path's next kernel, the stage's film matches the normal CPU oracle, and the whole stage (state, film and
+   counters) matches the same CPU oracle run with the FTZ and DAZ bits set on the gate's thread for that call (x86-64;
+   other hosts have no such oracle and report the difference as a failure). The independent image of `bsdf3_render`
+   is judged against the normal CPU render as before. Every accepted difference is listed (`VELVET-RULE` lines on
+   stderr and `<prefix>.velvet-rule.txt`) and counted in the report (`velvetSubnormalRule`); any other difference
+   fails the gate. Pinned Cycles-with-Metal flushes the same way: on the Apple
    M2 Pro every binary32 arithmetic operation reads a subnormal operand as zero and writes a result below FLT_MIN as
    zero, with fast math on and off, and its velvet films are within the practical criterion of every CPU film
    (`native/evidence/cycles-oracles-macos-metal-comparison-20261031/`).
@@ -2913,15 +2960,17 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    error 16. Pinned Cycles-with-Metal does not reproduce the CPU there either: it renders these scenes about 700
    practical failures away from the CPU films (pixels black where the CPU is not), while roundness 0 and 1 and three
    sides are within the practical criterion (`native/evidence/cycles-oracles-macos-metal-comparison-20261031/`). The refusal stays.
-31. **`trig_atan2` below 2^-40.** The shared correctly rounded atan2 adapter (`wavefront_trig.wgsl`) returns wrong
+31. **`trig_atan2` below 2^-40 (resolved).** The shared correctly rounded atan2 adapter (`wavefront_trig.wgsl`) returns wrong
    values or NaN when the reduced angle is below about 2^-40 (atan2(y, x) with |y/x| or |x/y| below about 9e-13):
    `trig_product`'s scale exponent `ae+be-173` wraps as an unsigned value. Its callers in the Ashikhmin-Shirley and
    radial tiling regions guard those arguments (`family_atan`, `rt_atan2_precise`). The other caller, the
-   equirectangular lookup in `wavefront_images.wgsl` (`atan2(direction.y, direction.x)`), is unchanged: a direction
-   within about 1e-12 of the x axis can return NaN there. Not reached by any gate; fixing it changes every module
-   with environment images.
-32. **Metallic BSDF thin film with the physical conductor (refused).** Thickness above 0.1 or linked: Cycles' polarized
-   conductor iridescence is not implemented; the F82 tint Fresnel with a thin film renders.
+   equirectangular lookup in `wavefront_images.wgsl` (`atan2(direction.y, direction.x)`), and the lamp and IES
+   coordinates now use `trig_atan2_guarded` (composite `TRIG_ATAN2_GUARD`; see "Entry splits, cameras, sampling
+   patterns, adaptive sampling and lamps"). Resolved; it changes the modules of scenes with a background light map or
+   an environment texture.
+32. **Metallic BSDF thin film with the physical conductor (resolved).** Thickness above 0.1 or linked renders: the
+   polarized conductor reflectance at the film's bottom interface (`SVM_BSDF_THIN_FILM_CONDUCTOR`, bit 156; see "Entry
+   splits, cameras, sampling patterns, adaptive sampling and lamps").
 
 33. **MNEE with a moving caustic caster (refused).** With object motion on a caustic caster, about 34 of 5,800 walks
    of the state gate's fixture end with another outcome or iteration count than the CPU's, although the `MNEE_MOTION`
@@ -2946,7 +2995,88 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    pinned kernel adds every further weight to the last slot, which keeps the id that claimed it first: an accumulation
    order effect on any GPU (atomics), so the last slot of such pixels can hold another id than the CPU's. The oracle
    scenes keep the id count within the slots; `compare.py` compares the slots of a pixel as an id set.
+   Accepted as documented: first-come slot claiming is pinned Cycles' own GPU behaviour (`__ATOMIC_PASS_WRITE__` in
+   `kernel/film/cryptomatte_passes.h`, the same on Cycles' Metal device), so the WebGPU device matches it; a scene
+   whose pixels see more ids than slots raises the Cryptomatte depth, as in Blender.
+38. **The AO render gate's last cases above the compile envelope (resolved).** The gate renders its 27 cases on one
+   device, and specialization features only grow per device, so its last case compiled every earlier case's handlers
+   into the MNEE entries: `mnee_eval` 1,367,842 inlined bytes / 68,031 Intel backend instructions and `mnee_contribute`
+   1,507,262 / 77,871, above the 60,000-instruction envelope and the size guard. `mnee_eval` and `mnee_contribute`
+   evaluate only the caustic casters' shaders, so the INTERSECT_MNEE module now leaves out the SVM node and closure
+   regions no caster shader reaches (`mnee_unused_svm_features`, as `prepare_surface_raytrace` does for the raytrace
+   queue; casters found through the top-level BVH primitives of transform-applied caster objects, a scene with an
+   instanced caster keeps every region). The seven INTERSECT_MNEE entry points are a module-variant region
+   (`MNEE_ENTRIES`, bit 111, not a scene feature), so only that module carries them, and command captures record it
+   as `surface_mnee.wgsl` (replay entries 27-33; captures without it keep them in `surface.wgsl`). In the gate's last
+   case they are 750,521 / 35,138 and 853,644 / 42,349; the other MNEE entries' code is unchanged and the case's GPU
+   and CPU films are bit-identical to before.
+39. **Cameras the WebGPU device refuses.** Stereo (a non-zero interocular offset) is refused by name; custom cameras
+   need OSL (outside the package). A texture coordinate node's Window output with a panoramic camera reports an
+   unsupported parameter (the inverse panorama mappings are not ported), and the motion pass keeps its perspective-camera
+   requirement.
+40. **Samsung SM-X700, x64-adapter cross-check (reported, not a failure; ARM64 rounding rule above): three oracle
+   scenes follow the tablet's scene preparation.** With
+   `CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2` the tablet's films of `combinations/tree-triangle-lighting-2`
+   (3 components beyond the practical criterion), `combinations/tree-glass-render` (2) and
+   `light-motion/motion-hdri-emitter` (12) are not within the practical criterion of the Linux x64 CPU film. The GPU
+   renders the scene tables the tablet prepared, and Android ARM64 prepares them with the scalar ARM64 arithmetic of the
+   pinned kernel (for example `transform_point` without SSE: one ULP in two vertices of the emissive panel of
+   `tree-triangle-lighting-2`, which moves a grazing shadow ray across an edge), while the x64 film comes from tables
+   prepared with SSE. In the product default (judged against the Linux ARM64 CPU oracle, Option A) all three are
+   within the practical criterion. Closing the item needs either x64-equal scene preparation on Android ARM64 (a
+   change of host CPU arithmetic, which also changes the ARM64 CPU oracle) or a reference computed from the device's
+   own prepared scene for host-API renders, which the validation reference policy does not use for oracle-corpus renders.
+   Under the ARM64 rounding rule neither is wanted: the item stays a recorded finding.
+41. (resolved, see "Resolved" below) Was: **Samsung SM-X700: MNEE with a moving receiver.** `mnee_render` and the
+   `mnee` state gate's case 6 (object motion on the caustic receiver) missed the moving floor in both arithmetics.
 Resolved, or closed under the device reference policy:
+- **MNEE entries on the Adreno 730: per-invocation private memory and accumulated SVM handlers.** With motion blur
+  on a caustic receiver (`mnee_render`/`mnee` case 6) creating `mnee_solve` failed in the driver
+  (`AdrenoVK-0: Failed to link shaders`, then `Parent device is lost`), and the AO combination of `ao_render`
+  (case 26) lost the device after a 266 s `mnee_eval` compile. A compile-only probe on the tablet
+  (`native/tools/compile_probe.cpp` built for android-arm64, the dumped module with the device's arithmetic
+  constants) reproduces the link failure; it links when the per-invocation private memory is reduced, the class of
+  "Samsung reference fixes" item 8. Fixes, each with the same operations in the same order: `motion_compose`
+  (`wavefront_motion.wgsl`, MNEE-with-motion region) computes its nine rotation sums and nine products in
+  straight-line code instead of a loop over function-scope arrays; the MNEE copy of the closest traversal keeps its
+  192-entry stack in the MNEE walk record (`MR_STACK`, `mnee.cpp`; the copy is made by `native/tools/build_cycles.py`)
+  instead of a private array; and the INTERSECT_MNEE module leaves out the SVM handler regions no caustic caster
+  shader reaches (`mnee_unused_svm_features`, `pipelines.cpp`; casters found through the top-level BVH primitives of
+  transform-applied caster objects, none removed for an instanced caster). Either of the first two alone still
+  fails to link; together every MNEE entry links (`mnee_solve` 38 s). A loop over registers stored by `select`
+  (vector or scalar masks) links too, but on the Adreno 730 it left the rotation rows at zero: the moving
+  receiver's interpolated transform fell into the inverse's degenerate fallback (`x.x` of the inverse 1e8) and every
+  ray missed it (open item 41; found with an instrumented closest module through `CODEBRIX_CYCLES_WGSL_LOAD`). The
+  scalar ARM64 forms of two motion helpers complete it: `motion_inverse` multiplies the adjugate rows by `1 / det`
+  on scalar float3 hosts (pinned `transform_inverse_impl`, `float3 / float`), and `motion_normalize4` multiplies by
+  the reciprocal length there (pinned `float4 / float`), both keyed on the generated
+  `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`, so SSE hosts keep the previous text; without them one MNEE walk of case 6
+  ended differently from the device's CPU (outcome 5 after 40 iterations against 4 after 38). On the tablet in the
+  product-default arithmetic `mnee_render` and the `mnee` state gate pass all nine cases. `mnee_gate.cpp` reads the walk records with
+  the record stride from `mnee.cpp` (`mnee_record_stride()`), and `CODEBRIX_MNEE_GATE_DIAGNOSE` also reports the
+  closest stage's differing fields (and keeps going; the gate still fails).
+- **Unspecialized shader-data probe.** `codebrix_cycles_shader_data_gate` compiled the raw shader-data module, which
+  holds both alternatives of the MNEE-with-motion regions (`rx`, `ry`, `rz` declared twice in `motion_compose`); it
+  now compiles the module specialized to every feature except `MNEE_MOTION` (the default lines). Its result is
+  unchanged from the run before those regions existed.
+- **Android ARM64 product arithmetic: light sampling's float3 division and normalize.** In the product default
+  (`wgslArithmetic` `arm64-scalar`) six oracle scenes were beyond the practical criterion of the Linux ARM64 CPU oracle
+  (`combinations/enclosure-emissive-panel`, `-mix` and `-oren-nayar` 18 components each,
+  `combinations/tree-triangle-lighting-2` 3, `combinations/tree-glass-render` 3, `light-motion/motion-hdri-emitter` 5).
+  Cause: the pinned kernel's `safe_normalize_len` (`a / len`) and `normalize` (`a / len(a)`) and `float3 / float`
+  divide each lane on SSE hosts and multiply by the reciprocal on scalar float3 hosts (ARM64), and several light-sampling
+  sites of the WGSL used the per-lane division unconditionally: the NEE shadow-ray direction and the triangle-light
+  normal (`light_normalize_len`, `wavefront_lighting.wgsl`), the area-light sample direction and rectangle axis
+  (`emitter_normalize_len`, `emitter_native_normalize`, `wavefront_emitters.wgsl`), the light tree's
+  `safe_normalize_len`, local-space normal and triangle centroid (`wavefront_light_tree.wgsl`), the point-light normal of
+  the forward pdf (`wavefront_light_eval.wgsl`) and the area-light extents and point-light disk normal of the light
+  intersection (`wavefront_closest.wgsl`). They now follow the generated `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`, as
+  `surface_native_normalize` and `surf_native_div3` already did; on SSE hosts the generated text is the previous code
+  and nothing changes. Found with `CODEBRIX_CYCLES_WGSL_ARITHMETIC=arm64-scalar`, which makes any host generate the
+  scalar ARM64 adapters (test hook; unset, nothing changes): the Linux Intel GPU then reproduced the tablet's films of
+  the three enclosure scenes (within 2.3e-6), so the gap was in the WGSL, not the Adreno compiler. After the change the
+  tablet's product-default films of all six scenes are within the practical criterion of `cpu-arm64-linux` (strict
+  differences 0 to 1,015, maximum 5.7e-6).
 - Remaining WGSL-vs-host arithmetic in surface shading: RESOLVED (2026-10-30, lane item27b, found while fixing
   item 27). On identical inputs (surface_gate state tally) the WGSL now reproduces the pinned SSE4.2 kernel in every
   state component (28,283 mismatching components before, 0 after). Fixed with the existing correctly rounded adapters:
@@ -4279,8 +4409,9 @@ shaders at the sampled point.
   its `map_resolution` (with 0 the pinned code picks 4,096 x 2,048 when there is no sky-texture sun, whose evaluation
   buffers exceed one 128 MiB storage binding and fail with an allocation error).
 - **Light stage.** A `LIGHT_BACKGROUND` lamp samples the map (`background_map_sample`, binary32 steps in the host's
-  order, precise sine/cosine/arccosine; `wavefront_background_light.wgsl`). Portals, sky-texture sun guiding, more than
-  one background light and non-constant point/spot/area/sun shaders are refused on the host.
+  order, precise sine/cosine/arccosine; `wavefront_background_light.wgsl`) and, with a sky-texture sun, the sun's cone
+  (`BACKGROUND_SUN`, see "Entry splits, cameras, sampling patterns, adaptive sampling and lamps"). Portals and more than
+  one background light are refused on the host.
 - **SHADE_LIGHT_NEE.** When the sampled light's shader has no constant emission, `connect_surface_light` skips the
   light-threshold roulette and queues the shadow path to `DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE`
   (`light_sample_shader_eval_nee_constant`). That kernel is two entries (`prepare_light_nee` writes the light point's
@@ -5274,8 +5405,9 @@ reaches a new family while every other scene's specialized WGSL stays byte-ident
 
 - **Metallic BSDF** (`svm_metallic`, pinned `svm/closure.h` NODE_CLOSURE_BSDF metallic case): the physical conductor
   (Fresnel model 3, complex IOR n in `multiscatter`, k in `reflection_tint`) and the F82 tint (model 5), on GGX,
-  multiscatter GGX or Beckmann records, anisotropy and rotation through the precise `rotate_around_axis`. F82 tint with
-  a thin film uses the Principled thin-film handler. A Metallic closure that `closure_alloc_extra` removes stays in slot 0
+  multiscatter GGX or Beckmann records, anisotropy and rotation through the precise `rotate_around_axis`. Both Fresnel
+  types with a thin film use the Principled thin-film handler (the physical conductor's polarized bottom interface in
+  the `SVM_BSDF_THIN_FILM_CONDUCTOR` region). A Metallic closure that `closure_alloc_extra` removes stays in slot 0
   and the native pick samples it when no closure is left, as the CPU does (marker `a = -1`).
 - **Beckmann** glossy, refraction and glass: the pinned distribution, Smith G1 (`beckmann_smith`), VNDF sampling
   (`microfacet_beckmann_sample_vndf`: erf, its inverse, Newton/bisection) with expf through a double-float adapter
@@ -5354,8 +5486,8 @@ Linux x64 (Intel UHD, Mesa 25.0.7), practical criterion `5e-5 + 2e-4 |ref|`:
 | `bsdf2_bounce` | PASS: 29 cases; ratio 0.061, strict 1,000 |
 | `bsdf2_render` | PASS: 151 stages, stage ratio 0.101, strict stages 202; image strict 2, maximum 2.38e-7 |
 | `bsdf3_svm` (velvet, Toon, radial tiling) | PASS: 166 cases, 16,167 paths; strict 2,233, maximum 1.91e-6; 4 native refusals |
-| `bsdf3_bounce` | Path state differs at velvet subnormal paths (open item 29); 0 differences with the FTZ/DAZ CPU oracle |
-| `bsdf3_render` | Stage state differs at 12 velvet subnormal paths (open item 29), 0 with the FTZ/DAZ CPU oracle; image against the normal CPU: 0 practical failures, strict 39, maximum 3.81e-6 |
+| `bsdf3_bounce` | PASS under the velvet rule (open item 29): 2,804 path-state differences at 104 velvet paths in 24 evaluations against the normal CPU, 0 against the FTZ/DAZ CPU oracle |
+| `bsdf3_render` | PASS under the velvet rule (open item 29): 255 stage-state differences at 12 velvet paths in 10 stages, 0 against the FTZ/DAZ CPU oracle; image against the normal CPU: 0 practical failures, strict 39, maximum 3.81e-6 |
 | `raytrace_nodes_state` | PASS: 6 cases, 1,728 paths (1,152 with motion); strict 320, maximum 9.06e-5 |
 | `raytrace_nodes_render` | PASS: 9 images, 7,151 raytrace paths; strict 11,091, maximum 1.38e-5 |
 | Intel compile envelope (Mesa 25.0.7) | PASS, 51 entries of the largest gate modules: largest `prepare_surface_raytrace` 53,580 instructions (deforming motion), `shade_surface_sample` 39,948 (Ashikhmin-Shirley), `prepare_surface` 42,989 (Metallic and Beckmann) |
@@ -5512,9 +5644,9 @@ Group name: `FILM_PASSES_ANY` (143 or 146: the `shade_surface_passes` entry and 
 - **Motion**: the object motion pass transforms come in push words 5 and 8 (the `object_motion_pass` table), the
   camera's pre/post projections from KernelData; the motion pass and the denoising motion features with deforming
   geometry are refused (open item 36).
-- **Refused**: the adaptive sampling passes (adaptive sampling itself is not ported), the path guiding passes (path
-  guiding is outside the target) and the volume passes (`volume_majorant`, the volume light passes; volumes are not
-  ported), each by name.
+- **Refused**: the path guiding passes (path guiding is outside the target) and the volume passes (`volume_majorant`,
+  the volume light passes; volumes are not ported), each by name. The adaptive sampling buffer is written (see
+  "Entry splits, cameras, sampling patterns, adaptive sampling and lamps").
 
 ### Gates (Linux x64, Intel UHD, Mesa 25.0.7, against the unmodified CPU kernels)
 
@@ -5555,3 +5687,166 @@ Group name: `FILM_PASSES_ANY` (143 or 146: the `shade_surface_passes` entry and 
 - **Managed and C ABI:** the ABI consumer renders the depth, normal and AOV passes and the light passes on WebGPU as on
   the CPU; the managed tests compare light, data, denoising feature, AOV and light group passes and cryptomatte on
   WebGPU with the CPU (practical criterion; indices exactly; cryptomatte as id sets).
+
+## Denoising (Open Image Denoise on the CPU)
+
+The WebGPU device has no denoiser of its own and needs none: Cycles' `Denoiser::create`
+(`integrator/denoiser.cpp`, unmodified) finds no GPU denoiser for a WebGPU device (no OptiX, no GPU Open Image
+Denoise) and falls back to `OIDNDenoiser` on the CPU fallback device ("Always fallback to OIDN on CPU"): the render
+buffers are copied to the host, denoised by Open Image Denoise's CPU device, and the result is read back through the
+same film path. The WGSL side only writes the denoising feature passes (albedo, normal; see the section above); the
+`FILTER_*` kernels serve GPU denoisers only and are not ported. Open Image Denoise 2.5.1 is built from the reviewed
+snapshot `third_party/deps/oidn` with its CPU device on every RID (its Metal device as well on osx-arm64, where Cycles'
+Metal device can denoise on the GPU), under the build conditions of `docs/RELEASE-LICENSE-PLAN.md`.
+
+- **Off by default.** The integrator's `use_denoise` is false (the pinned default); renders that do not ask for
+  denoising are unchanged: CPU films bit-identical with and without Open Image Denoise compiled in, WGSL modules
+  byte-identical (the denoise switch does not reach the shader specialization).
+- **Controls** are the integrator's sockets: `use_denoise`, `denoiser_type` (`openimagedenoise`),
+  `denoise_start_sample`, `denoiser_passes` (albedo and normal guides by default), `denoiser_prefilter`,
+  `denoiser_quality`, `denoise_use_gpu` (a WebGPU render denoises on the CPU either way). The capability report states
+  `denoising.available` and the Open Image Denoise device per backend (`denoising.denoiseDevice`).
+- **Host pass modes:** Cycles' `Film::finalize_passes` switches a pass to noisy mode whenever a render does not
+  denoise and nothing switches it back (Blender re-syncs its passes before every render). With denoising,
+  `cbc_host_render` gives the passes the Open Image Denoise denoiser writes (Combined, shadow catcher, shadow catcher
+  matte, caller-created included) denoised mode unless the caller set `mode` noisy, so denoising switched on between
+  two renders takes effect and the noisy version is an explicit request (Blender's "Noisy Image"). Without
+  denoising, a noisy request would be a second named pass of the same type and mode, which gets a buffer the kernel
+  never writes; for that render the host parks it (type none) and reads its twin. Light group passes with denoising
+  are refused: their denoised-mode buffers are never written (and corrupted the host's capture), and noisy mode
+  makes `finalize_passes` merge the main noisy combined pass into the light group.
+- **Determinism:** the same input denoised twice gives the same bits (CPU renders, repeated). A WGSL film that varies
+  run to run (film atomics, at the 1e-7 level) varies more after denoising (a neural filter; 1e-5 level in the first
+  scenes measured on Linux x64). The judging criterion for denoised films is not defined yet.
+- **Device modules:** Open Image Denoise's core library loads `libOpenImageDenoise_device_cpu` (`_metal` on
+  osx-arm64) at run time from its own directory; every staging step ships it beside the core library (Android:
+  unversioned file names, bionic's thread affinity through `sched_{get,set}affinity`).
+
+## Entry splits, cameras, sampling patterns, adaptive sampling and lamps
+
+**Compiler pressure (entry splits).** The largest consumer and gate entries sat near or above the 1,110,000-byte size
+guard (the glTF Blender-mapping `prepare_surface` 1,212,771 bytes, the shadow catcher's 1,117,147, MNEE
+`connect_surface_light` 1,078,476). Four changes make room; each keeps every operation, operand and order, so results
+are unchanged:
+- **Image texture projections** (bits 149 `SVM_TEX_ENVIRONMENT`, 150 `SVM_TEX_IMAGE_BOX`, census-driven): the shared
+  `svm_image` handler inlined the environment projections (equirectangular with the precise arctangent and arccosine,
+  mirror ball) and the three-lookup box projection into every SVM entry with an image texture. They are now compiled
+  only when a reachable Environment Texture node or a box-projected Image Texture node needs them (about 179,000
+  inlined bytes less in each image-textured SVM entry).
+- **One terminator and bump body in `surf_sample`**: the BSDF sample applies the shadow terminator shading offset and
+  the bump term once, after the closure branch, instead of in four branches (about 117,000 bytes less in the shadow
+  catcher's `shade_surface`).
+- **`connect_surface_ao`** (surface module, recorder entry 38): the AO shadow ray of fast GI's additive mode and of the
+  AO pass (`integrate_surface_ao`) is its own entry, dispatched right after `connect_surface_light` (stage record state
+  6 -> 2), with the same record, path state and reserved shadow slot `n + id.x` (about 307,000 bytes less in
+  `connect_surface_light`).
+
+Inlined bytes / Intel backend instructions (Mesa 25.0.7, `intel_compile_envelope.py`) after the change: glTF
+Blender-mapping `prepare_surface` 1,033,878 / 48,236; shadow catcher `prepare_surface` 1,021,748 / 50,140 (834,991 in
+the gate's heaviest catcher module); MNEE with fast GI `connect_surface_light` 768,199 (was 1,075,652);
+`connect_surface_ao` at most 317,224 / 16,527; raytrace-node `prepare_surface_raytrace` 1,091,931 / 52,983
+(unchanged, its own handlers). Validation: the shadow catcher, MNEE image, raytrace node image, AO image and state,
+light tree, Principled, node, terminator and BSDF image gates give the same results as before (every stage count and
+maximum identical; image strict counts move by at most two, only in cases whose repeat renders differ: film atomics),
+and 34 representative oracle scenes (image textures and environments, AO and fast GI, MNEE, raytrace nodes, shadow
+catcher, light tree, terminator, the BSDF families, with pass variants) are perfect with strict counts inside the
+run-to-run spread of the tree before.
+
+**Cameras** (bit 152 `CAMERA_PROJECTIONS`: every camera but the pinhole perspective camera, `camera_projected_ray` in
+`wavefront_camera.wgsl`): orthographic, panoramic (equirectangular with its latitude and longitude ranges,
+equiangular cubemap face, mirror ball, fisheye equidistant, fisheye equisolid, fisheye lens polynomial, central
+cylindrical) and depth of field for all three (`camera_sample_aperture`: the concentric disk or `regular_polygon_sample`
+with blades and rotation, the anamorphic ratio), with ray differentials as `camera_sample_to_ray` and the pinned
+near-clip handling of each type. Every sum, quotient and square root is a correctly rounded binary32 step in the pinned
+order; sines and cosines follow the scalar platform polynomial (`native_disk_sincos`, up to 5*pi/4) or the wide
+correctly rounded adapter; arccosine, arcsine and tangent are correctly rounded (as glibc's). Each trigonometric stage has
+one inlined body (the three panorama directions of a sample in one loop, the lens and shutter time from one
+`rand_time_lens` sample as `integrate_camera_sample`): a first form inlined `init_camera` to 3.5 MB and the Intel driver
+died compiling it; now at most 799,438 bytes / 41,574 instructions. Samples a panorama maps outside its image (fisheye
+circle, mirror ball) start no path, as the pinned camera. The depth and denoising depth passes take the panoramic
+`camera_z_depth` (distance to the camera). Refused: stereo, custom (OSL) cameras; open item 39.
+Gate: `codebrix_cycles_camera_gate --projections` (24 cases over 13 projections and four sampling patterns, 22,751
+paths, 65 retries): every ray component (origin, direction, differentials, tmin, tmax, time) bit-identical to the
+pinned CPU camera kernel; 12 rejection cases (custom camera, stereo, unknown pattern added). Oracle scenes
+`native/oracle/scenes/cameras/` (13, `author_cameras.py`): perfect.
+
+**Sampling patterns** (bit 151 `SAMPLING_SOBOL_BURLEY`: a pattern other than tabulated Sobol): Sobol-Burley and the
+blue-noise patterns (pure, first; round becomes pure in `Integrator::device_update`) through `native_rng_pattern`
+(`kernel/sample/pattern.h` path_rng_1D-4D with each call site's dimension count, `sobol_burley.h`, the blue-noise
+indexing and the scrambled Morton pixel seed of `path_rng_pixel_init`), integer arithmetic throughout, the final
+conversion the correctly rounded binary32 of the integer times 1/4294967808 and made opaque to contraction. Every
+random-number site of the device swaps to it in these scenes only (light sampling and termination, the BSDF pick, AO,
+the AO and Bevel nodes, MNEE, the camera); volumes keep their tabulated-Sobol refusal. Oracle scenes
+`native/oracle/scenes/sampling/` (`author_sampling.py`): the patterns, scrambling distance 0.25 and ten pattern
+variants of committed scenes: perfect; the variants differ from the tabulated CPU films in 1,243 to 3,793 values.
+
+**Adaptive sampling** (module `film_adaptive`, `wavefront_film_adaptive.wgsl`; recorder entries 39-41):
+`DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK` (`film_adaptive_sampling_convergence_check`: the error in the
+pinned order with correctly rounded steps, the active pixel count), `_FILTER_X` and `_FILTER_Y` (the box filter, a row
+or a column per invocation); the camera's converged-pixel skip and the auxiliary buffer writes already followed the
+pinned film code, and the pass is accepted. Oracle scenes `sampling/adaptive-*` (5, with the per-pixel sample count
+compared exactly, so the convergence decisions are equal): perfect, including the render ending at the first check
+when every pixel converges and with the Sobol-Burley and blue-noise patterns.
+
+| Bit | Feature | What it adds |
+| --- | --- | --- |
+| 149 | `SVM_TEX_ENVIRONMENT` | The Environment Texture node's projections in `svm_image` |
+| 150 | `SVM_TEX_IMAGE_BOX` | The Image Texture node's box projection |
+| 151 | `SAMPLING_SOBOL_BURLEY` | Sobol-Burley and the blue-noise patterns |
+| 152 | `CAMERA_PROJECTIONS` | Orthographic and panoramic cameras and depth of field |
+| 153 | `SVM_NODE_LIGHT_FALLOFF` | The Light Falloff node |
+| 154 | `LIGHT_LAMP_SHADER` | Point, spot, area and sun lights with emission shaders that are not constant |
+| 155 | `SVM_NODE_IES` | The IES Texture node (scene table `ies`) |
+| 156 | `SVM_BSDF_THIN_FILM_CONDUCTOR` | The Metallic BSDF thin film over the physical conductor Fresnel |
+| 157 | `SVM_TEX_SKY_ANALYTIC` | The Sky Texture node's Preetham and Hosek-Wilkie models |
+| 158 | `BACKGROUND_SUN` | Background light sun guiding (a scattering sky with the sun disc) |
+| 159 | `SVM_TEX_SKY_SCATTERING` | The Sky Texture node's single and multiple scattering models |
+
+**Lamps.** The Light Falloff node (`svm_node_light_falloff`: the ray length's linear or squared scale and the smooth
+term with a correctly rounded quotient; distant lights pass the strength through) and the IES Texture node
+(`svm_node_ies`, `kernel_ies_interp`: the table looked up at the vector's spherical angles, bicubic interpolation in the
+pinned order, the four vertical interpolations through one body) render in surface, mesh emitter, world and lamp
+shaders. Point, spot, area and sun lights whose emission shader is not constant render: next-event estimation defers
+them to `shade_light_nee` as the pinned `integrate_light_nee` (the light point `P + tmax * D`, or `-D` for a sun, then
+`light_normal_uv_from_position` and `shader_setup_from_sample` for a lamp: the lamp normal and the point, spot, area
+and sun coordinates of `light/point.h`, `spot.h`, `area.h` and `sun.h`), and camera and bounce hits evaluate the shader
+in `shade_light_forward` and the sun lights as `light_sample_shader_eval_forward`. Shadow caustics from such a light
+are refused. An area light of size zero never reaches the device: `Light::has_contribution` disables it on the host
+(the device's area-light check only guards invalid records). Oracle scenes `native/oracle/scenes/lamps/`
+(`author_lamps.py`: light falloff on mesh emitters and surfaces, lamp shaders with light falloff, checker textures on
+the spot, area and point coordinates, the sun disc coordinates, an IES distribution, a zero-size area light): perfect;
+each shader scene differs from the same scene with constant emission in 1,082 to 1,372 values.
+
+**Metallic thin film on the physical conductor** (bit 156, with `SVM_BSDF_THIN_FILM`): `fresnel_iridescence_channel<true>`
+with the conductor's own n and k per channel and `fresnel_conductor_polarized` without the F82 fit at the film's bottom
+interface (s and p reflectances, `safe_divide`'s zero), in `microfacet_fresnel` and in the albedo estimate; the energy
+preservation keeps `fresnel_conductor_Fss` of the bare conductor, as pinned. Gate: `bsdf_svm` (fixture 1) adds 36
+physical-conductor film records (film 0.05 to 1,500 nm, the 0.1 cutoff, the sub-nanometre blend). Oracle scene
+`bsdf/metallic-film` (`author_bsdf.py`).
+
+**Sky texture** (bits 157 and 159, composite `SVM_TEX_SKY`; `svm_node_tex_sky`): Preetham and Hosek-Wilkie (`sky_angle_between`, the theta clamp, the
+Perez and Hosek-Wilkie radiance functions, the three channels through one body, xyY to XYZ, the 2 pi / 683 scale) and
+the single and multiple scattering models (the host-precomputed sky image read as `kernel_image_interp`, the sun disc
+with limb darkening between the precomputed bottom and top pixels, left out of the importance-map bake under sun
+guiding), then `xyz_to_rgb_clamped`. sinf/cosf, acosf and atan2f go through the precise adapters, expf and powf through
+double-float (as the BSDF families' `family_exp`/`family_pow`), quotients and roots are correctly rounded and sums of
+products rounded before they add. **Sun guiding** (bit 158, census: a scattering sky node with the sun disc): the
+background light's sun strategy (`background_sun_sample`: `sample_uniform_cone` around `kernel_data.background.sun`;
+`background_sun_pdf`: `pdf_uniform_cone` with `precise_angle`) with the map strategy and MIS in the pinned order of
+`background_light_sample` and `background_light_pdf` (the sun's `precise_angle` and the map's equirectangular arctangent
+share one body, and `one_minus_cos` is evaluated once per call, which keeps `shade_surface_light` at 57,567 Intel
+instructions in the sun-guided scenes). The two model families are separate regions so a scene compiles
+only the one it uses (the node is inlined into every entry that runs the SVM interpreter). Oracle scenes
+`native/oracle/scenes/sky/` (`author_sky.py`).
+
+**Small-angle arctangent** (composite `TRIG_ATAN2_GUARD`: environment textures, the background light, lamp shaders,
+the IES node and the sky texture): the equirectangular lookup and the lamp and IES coordinates use `trig_atan2_guarded`: for |y/x| or
+|x/y| below 1e-6 (which covers open item 31's 2^-40) the correctly rounded quotient, offset by pi or pi/2 in two
+rounded steps (atan t and t differ there by a relative t^2/3, below 3.4e-13, so this is the correctly rounded atan2 except
+at rare rounding boundaries); otherwise the shared adapter. It changes the
+modules of scenes with a background light map or an environment texture.
+
+All eleven are superset scene-only. Scenes that reach none of them (and no `TRIG_ATAN2_GUARD` feature) compile the same WGSL as before the cameras, patterns,
+adaptive sampling, lamp, thin-film and sky features (every module of the committed oracle scenes); the entry splits change the surface modules of
+most scenes, as above. Shadow terminator shading offsets above 1, glossy filtering and moving transparent shadows
+(bits 136-138, "Integrator features added with the BSDF port") were already implemented.

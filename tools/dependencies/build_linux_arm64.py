@@ -50,6 +50,9 @@ def main():
  manifest=recipe.verify();WORK.mkdir(parents=True,exist_ok=True);source=WORK/'sources';prefix=WORK/'install';prefix.mkdir(exist_ok=True)
  expected={str(Path(c['id'])/f['path']):f['sha256'] for c in manifest['components'] for f in c['files']}
  if not source.exists():shutil.copytree(recipe.SOURCE,source)
+ # A component added to the reviewed snapshots after this copy was made.
+ for c in manifest['components']:
+  if not (source/c['id']).exists():shutil.copytree(recipe.SOURCE/c['id'],source/c['id'])
  def verify_copy():
   assert all(sha(source/name)==digest for name,digest in expected.items()),'Cross dependency source copy changed'
  verify_copy();pin=identity();save(WORK/'provenance.json',pin)

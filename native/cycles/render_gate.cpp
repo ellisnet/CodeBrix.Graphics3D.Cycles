@@ -40,9 +40,16 @@ using namespace wavefront_test;
 // reported and the gate fails at the end instead of at the first one; the criterion and
 // the verdict are unchanged.
 static unsigned long gate_mismatches=0;
+// A lockstep stage's mismatches can be collected before they are judged (the velvet rule below): path >= 0 is a state
+// field of that path, kind 1 the film, kind 2 the queue counters (compare_stage sets the context of every check).
+struct Miss {int path;int kind;bool queued_kernel;std::string message;};
+static std::vector<Miss> *collected_misses=nullptr;static Miss miss_context{-1,0,false,{}};
 static void gate_require(bool ok,const std::string &message){
-  if(ok)return;static const bool all=std::getenv("CODEBRIX_GATE_ALL_MISMATCHES")!=nullptr;
-  if(!all)wavefront_test::require(false,message);gate_mismatches++;std::cerr<<"MISMATCH "<<message<<'\n';}
+  if(ok)return;
+  if(collected_misses){Miss miss=miss_context;miss.message=message;collected_misses->push_back(miss);return;}
+  static const bool all=std::getenv("CODEBRIX_GATE_ALL_MISMATCHES")!=nullptr;
+  if(!all)wavefront_test::require(false,message);
+  gate_mismatches++;std::cerr<<"MISMATCH "<<message<<'\n';}
 #include "surface_fixture.h"
 #ifdef CBC_CLOSED_VOLUME_FIXTURE
 #include "volume_boundary_fixture.h"
@@ -94,6 +101,7 @@ static void compare_stage(DeviceScene &scene,bool clay,const std::vector<Field>&
     auto &a=actual[i].isect;auto &e=expected[i].isect;std::ostringstream record;record<<std::setprecision(10)<<"{\"stage\":"<<m.stages<<",\"path\":"<<i<<",\"object\":"<<a.object<<",\"gpuPrimitive\":"<<a.prim<<",\"cpuPrimitive\":"<<e.prim<<",\"gpuTuv\":["<<a.t<<','<<a.u<<','<<a.v<<"],\"cpuTuv\":["<<e.t<<','<<e.u<<','<<e.v<<"],\"equivalence\":\"shared edge; matching flat normal, shader and position; constant clay fixture only\"}";m.edge_records.push_back(record.str());}
   for(auto &f:layout)for(size_t i=0;i<expected.size();i++){
     if(edge_hits.contains(i)&&(f.name=="isect.prim"||f.name=="isect.u"||f.name=="isect.v"))continue;
+    miss_context={int(i),0,f.name=="path.queued_kernel",{}};
     auto a=reinterpret_cast<const char*>(&actual[i])+f.offset;auto e=reinterpret_cast<const char*>(&expected[i])+f.offset;
     if(f.floating){for(size_t k=0;k<f.stride;k+=4){float av,ev;std::memcpy(&av,a+k,4);std::memcpy(&ev,e+k,4);
       if(std::abs(double(av)-ev)>5e-5+2e-4*std::abs(double(ev))){auto &a0=actual[i];auto &e0=expected[i];std::cerr<<std::setprecision(10)<<"Intersection diagnostic actual prim/object/t="<<a0.isect.prim<<'/'<<a0.isect.object<<'/'<<a0.isect.t<<" expected="<<e0.isect.prim<<'/'<<e0.isect.object<<'/'<<e0.isect.t<<" P="<<e0.ray.P.x<<','<<e0.ray.P.y<<','<<e0.ray.P.z<<" D="<<e0.ray.D.x<<','<<e0.ray.D.y<<','<<e0.ray.D.z<<" rayBitsIdentical="<<(!std::memcmp(&a0.ray.P,&e0.ray.P,sizeof(e0.ray.P))&&!std::memcmp(&a0.ray.D,&e0.ray.D,sizeof(e0.ray.D))&&a0.ray.tmin==e0.ray.tmin&&a0.ray.time==e0.ray.time)<<" tmin="<<e0.ray.tmin<<" bounce="<<e0.path.bounce<<'\n';}
@@ -107,13 +115,58 @@ static void compare_stage(DeviceScene &scene,bool clay,const std::vector<Field>&
       gate_require(!std::memcmp(a,e,f.stride),"stage "+std::to_string(m.stages)+" integer "+f.name+" path="+std::to_string(i));m.integers++;
     }
   }
+  miss_context={-1,1,false,{}};
   for(size_t i=0;i<wanted.size();i++)number(film[i],wanted[i],"Stage "+std::to_string(m.stages)+" film "+std::to_string(i)+" pixel="+std::to_string(i/scene.data.film.pass_stride)+" offset="+std::to_string(i%scene.data.film.pass_stride),m);
   IntegratorQueueCounter wanted_counter{};for(auto &s:expected)if(s.path.queued_kernel)wanted_counter.num_queued[s.path.queued_kernel]++;
-  gate_require(!std::memcmp(&counter,&wanted_counter,sizeof(counter)),"Render queue counters differ");m.stages++;
+  miss_context={-1,2,false,{}};
+  gate_require(!std::memcmp(&counter,&wanted_counter,sizeof(counter)),"Render queue counters differ");m.stages++;miss_context={-1,0,false,{}};
 }
 static IntegratorQueueCounter queue_counter(WebGPUDevice &d){IntegratorQueueCounter counter{};d.download(uintptr_t(d.state.queue_counter),&counter,sizeof(counter));healthy(d);return counter;}
-static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&expected,device_vector<float>&film,const std::vector<float>&wanted,Metrics &m){
-  auto actual=download(d,layout,expected.size());film.copy_from_device();healthy(d);compare_stage(scene,clay,layout,expected,actual,film.data(),wanted,queue_counter(d),m);
+#if defined(CBC_BSDF_FIXTURE)
+// Velvet subnormal rule (Jeremy's ruling, native/DEVICE.md open item 29), surface stages of the BSDF family images. A
+// stage's state difference is accepted only when (a) every differing path's evaluated closures contain an Ashikhmin
+// velvet closure (the original CPU surface shader on the stage's input state), (b) the queue counters differ only
+// together with a differing velvet path's next kernel, (c) the stage's film matches the normal CPU oracle by the
+// practical criterion (no film difference is accepted), and (d) the whole stage (state, film and counters) matches,
+// by the same criterion, the original CPU oracle run with flush-to-zero and denormals-are-zero on the same input
+// (original_surface_flush_to_zero). The independent image is always judged against the normal CPU render. Any other
+// difference fails the gate.
+struct VelvetRule {unsigned stages=0;uint64_t mismatches=0,paths=0,ftz_checks=0;std::vector<std::string> lines;};
+static VelvetRule velvet_rule;
+#endif
+struct StageInput {const std::vector<IntegratorStateCPU> *states=nullptr;const std::vector<float> *film=nullptr;const std::vector<int> *ids=nullptr;};
+static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&expected,device_vector<float>&film,const std::vector<float>&wanted,Metrics &m,StageInput input={}){
+  auto actual=download(d,layout,expected.size());film.copy_from_device();healthy(d);const auto counter=queue_counter(d);
+#if defined(CBC_BSDF_FIXTURE)
+  if(input.states){
+    std::vector<Miss> misses;collected_misses=&misses;compare_stage(scene,clay,layout,expected,actual,film.data(),wanted,counter,m);collected_misses=nullptr;
+    if(!misses.empty()){
+      const auto velvet_list=original_surface_velvet_paths(scene,*input.ids,*input.states);const std::set<int> velvet(velvet_list.begin(),velvet_list.end());
+      std::set<int> paths;bool attributable=true,velvet_next_kernel=false;
+      for(auto &x:misses){if(x.kind==0){attributable&=velvet.contains(x.path);paths.insert(x.path);velvet_next_kernel|=x.queued_kernel;}else if(x.kind==1)attributable=false;}
+      for(auto &x:misses)if(x.kind==2)attributable&=velvet_next_kernel;
+      if(!attributable)std::cerr<<"Velvet rule not applied: a difference outside the state of a path with a velvet closure (film, queue counters without a velvet path's next-kernel difference, or a path without a velvet closure)\n";
+      if(attributable){
+        auto flushed=*input.states;auto flushed_film=*input.film;
+        if(original_surface_flush_to_zero(scene,*input.ids,flushed,flushed_film)){
+          Metrics scratch;scratch.stages=m.stages-1;std::vector<Miss> remaining;collected_misses=&remaining;
+          compare_stage(scene,clay,layout,flushed,actual,film.data(),flushed_film,counter,scratch);collected_misses=nullptr;
+          if(!remaining.empty())std::cerr<<"Velvet rule not applied: "<<remaining.size()<<" differences remain against the flush-to-zero CPU oracle, first: "<<remaining[0].message<<'\n';
+          if(remaining.empty()){
+            velvet_rule.stages++;velvet_rule.mismatches+=misses.size();velvet_rule.paths+=paths.size();velvet_rule.ftz_checks+=scratch.floats+scratch.integers;
+            for(auto &x:misses){velvet_rule.lines.push_back(x.message);std::cerr<<"VELVET-RULE "<<x.message<<'\n';}
+            misses.clear();
+          }
+        }
+      }
+    }
+    for(auto &x:misses)gate_require(false,x.message);
+    return;
+  }
+#else
+  (void)input;
+#endif
+  compare_stage(scene,clay,layout,expected,actual,film.data(),wanted,counter,m);
 }
 // Stage-state exchange (native/DEVICE.md "Validation reference policy"). In the device pass of the device-scene flow
 // (CODEBRIX_CYCLES_REFERENCE_IMPORT with CODEBRIX_CYCLES_SCENE_VERIFY) the GPU generates the reference oracle's
@@ -362,10 +415,16 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         for(unsigned step=0;step<100;step++){
           auto kernel=scheduler.get_most_queued_kernel();if(kernel==DEVICE_KERNEL_NUM)break;require(step<99,"GPU render did not terminate");
           std::vector<IntegratorStateCPU> expected;std::vector<float> wanted;std::vector<int> ids;
+          // The surface stage's input, kept for the velvet rule's flush-to-zero oracle (BSDF family images only).
+          std::vector<IntegratorStateCPU> stage_input;std::vector<float> stage_film;StageInput velvet_input;
           if(repeat==0){expected=download(d,layout,scheduler.capacity());buffers->buffer.copy_from_device();wanted.assign(buffers->buffer.data(),buffers->buffer.data()+buffers->buffer.size());
             for(size_t i=0;i<expected.size();i++){auto &s=expected[i];if(s.path.queued_kernel==kernel){ids.push_back(i);m.max_bounce=std::max(m.max_bounce,unsigned(s.path.bounce));m.max_transparent=std::max(m.max_transparent,unsigned(s.path.transparent_bounce));m.max_volume_bounds=std::max(m.max_volume_bounds,unsigned(s.path.volume_bounds_bounce));if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)m.shaders.insert(scene.dscene.tri_shader[s.isect.prim]&SHADER_MASK);}}
             if(recorder)recorder->input(kernel,sample,expected,wanted);
-            else{oracle(kernel,scene.dscene,ids,expected,wanted);
+            else{
+#if defined(CBC_BSDF_FIXTURE)
+            if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){stage_input=expected;stage_film=wanted;velvet_input={&stage_input,&stage_film,&ids};}
+#endif
+            oracle(kernel,scene.dscene,ids,expected,wanted);
             if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids)if(expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)expected[i].path.shader_sort_key=(scene.dscene.tri_shader[expected[i].isect.prim]&SHADER_MASK)+data.max_shaders*(i/d.state.sort_partition_divisor);}
             if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME&&!recorder)for(int i:ids){auto next=expected[i].path.queued_kernel;
               if(next==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST)m.volume_scatter++;
@@ -392,7 +451,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
               else if(next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE||next==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND||next==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD)m.volume_transmit++;
               else if(!next)m.volume_terminated++;
             }}
-          else if(repeat==0)compare(d,scene.dscene,asset!=nullptr,layout,expected,buffers->buffer,wanted,m);
+          else if(repeat==0)compare(d,scene.dscene,asset!=nullptr,layout,expected,buffers->buffer,wanted,m,velvet_input);
         }
         std::cerr<<"Rendered repeat="<<repeat<<" sample="<<sample<<" stages="<<m.stages<<'\n';
       }
@@ -420,9 +479,17 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     }}
   }
   require(gate_mismatches==0,std::to_string(gate_mismatches)+" mismatches (CODEBRIX_GATE_ALL_MISMATCHES)");
+#if defined(CBC_BSDF_FIXTURE)
+  // The differences the velvet rule accepted, every one, beside the report (and on stderr as VELVET-RULE lines).
+  {std::ofstream lines(prefix+".velvet-rule.txt");for(auto &line:velvet_rule.lines)lines<<line<<'\n';}
+  const std::string velvet_json=",\"velvetSubnormalRule\":{\"stages\":"+std::to_string(velvet_rule.stages)+",\"normalCpuMismatches\":"+std::to_string(velvet_rule.mismatches)+
+    ",\"paths\":"+std::to_string(velvet_rule.paths)+",\"ftzDazOracleChecks\":"+std::to_string(velvet_rule.ftz_checks)+",\"ftzDazOracleMismatches\":0}";
+#else
+  const std::string velvet_json;
+#endif
   require(stats.mem_used==0,"Render Cycles allocation leak");std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
   {std::ofstream edges(prefix+".shared-edges.json");edges<<'[';for(size_t i=0;i<m.edge_records.size();i++){if(i)edges<<',';edges<<m.edge_records[i];}edges<<"]\n";}
   if(exchange_only)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
   else if(preview_mode)std::cout<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"highResolutionPreviewOnly\":true,\"materialSubstitution\":\"rough diffuse clay\",\"width\":"<<width<<",\"height\":"<<height<<",\"samples\":"<<samples<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
-  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentCpuImage\":true,\"repeatBitwiseIdentical\":true,\"nativeImageTextures\":"<<(image_mode?"true":"false")<<",\"nativeNormalMaps\":"<<(normal_mode?"true":"false")<<",\"width\":64,\"height\":48,\"samples\":"<<samples<<",\"stages\":"<<m.stages<<",\"paths\":"<<m.paths<<",\"volumeScatterEvents\":"<<m.volume_scatter<<",\"volumeTransmitEvents\":"<<m.volume_transmit<<",\"volumeTerminatedEvents\":"<<m.volume_terminated<<",\"volumeStackInitializations\":"<<m.kernels[DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK]<<",\"maxVolumeBoundaryBounce\":"<<m.max_volume_bounds<<",\"maxBounce\":"<<m.max_bounce<<",\"maxTransparentBounce\":"<<m.max_transparent<<",\"surfaceShaders\":"<<m.shaders.size()<<",\"lockstepStageChecks\":\""<<(recorder?"exchanged":"local")<<"\",\"stageExchangeRecords\":"<<(recorder?recorder->count:0)<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"equivalentSharedEdgeComparisons\":"<<m.equivalent_edge_hits<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<m.maximum<<",\"maximumStageErrorField\":\""<<m.maximum_field<<"\",\"maximumStageErrorActual\":"<<m.maximum_actual<<",\"maximumStageErrorExpected\":"<<m.maximum_expected<<",\"maximumStagePracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"strictImageFailures\":"<<image.strict<<",\"maximumImageError\":"<<image.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
+  else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"nativeSceneAndScheduler\":true,\"independentCpuImage\":true,\"repeatBitwiseIdentical\":true,\"nativeImageTextures\":"<<(image_mode?"true":"false")<<",\"nativeNormalMaps\":"<<(normal_mode?"true":"false")<<",\"width\":64,\"height\":48,\"samples\":"<<samples<<",\"stages\":"<<m.stages<<",\"paths\":"<<m.paths<<",\"volumeScatterEvents\":"<<m.volume_scatter<<",\"volumeTransmitEvents\":"<<m.volume_transmit<<",\"volumeTerminatedEvents\":"<<m.volume_terminated<<",\"volumeStackInitializations\":"<<m.kernels[DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK]<<",\"maxVolumeBoundaryBounce\":"<<m.max_volume_bounds<<",\"maxBounce\":"<<m.max_bounce<<",\"maxTransparentBounce\":"<<m.max_transparent<<",\"surfaceShaders\":"<<m.shaders.size()<<",\"lockstepStageChecks\":\""<<(recorder?"exchanged":"local")<<"\",\"stageExchangeRecords\":"<<(recorder?recorder->count:0)<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"equivalentSharedEdgeComparisons\":"<<m.equivalent_edge_hits<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<m.maximum<<",\"maximumStageErrorField\":\""<<m.maximum_field<<"\",\"maximumStageErrorActual\":"<<m.maximum_actual<<",\"maximumStageErrorExpected\":"<<m.maximum_expected<<",\"maximumStagePracticalToleranceRatio\":"<<m.maximum_bound_ratio<<",\"strictImageFailures\":"<<image.strict<<",\"maximumImageError\":"<<image.maximum<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<velvet_json<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

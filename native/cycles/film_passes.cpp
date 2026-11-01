@@ -24,12 +24,14 @@ int film_data_pass_mask(){
   return shadow_catcher_pass_mask()|PASSMASK(DEPTH)|PASSMASK(POSITION)|PASSMASK(NORMAL)|PASSMASK(ROUGHNESS)|PASSMASK(UV)|
          PASSMASK(OBJECT_ID)|PASSMASK(MATERIAL_ID)|PASSMASK(DIFFUSE_COLOR)|PASSMASK(GLOSSY_COLOR)|PASSMASK(TRANSMISSION_COLOR)|
          PASSMASK(MIST)|PASSMASK(RENDER_TIME)|PASSMASK(AOV_COLOR)|PASSMASK(AOV_VALUE)|PASSMASK(CRYPTOMATTE)|PASSMASK(MOTION)|PASSMASK(MOTION_WEIGHT)|
-         PASSMASK(SAMPLE_COUNT);
+         PASSMASK(SAMPLE_COUNT)|PASSMASK(ADAPTIVE_AUX_BUFFER);
 }
 // Data passes written by the surface stage's film_write_data_passes (the
 // shade_surface_passes entry; FILM_DATA_PASSES).
 // (The camera stage counts samples, film_write_sample; AOVs are written by shader evaluation.)
-static int surface_data_pass_mask(){return film_data_pass_mask()&~shadow_catcher_pass_mask()&~(PASSMASK(RENDER_TIME)|PASSMASK(AOV_COLOR)|PASSMASK(AOV_VALUE)|PASSMASK(SAMPLE_COUNT));}
+// The adaptive sampling buffer is written with the combined pass (film_write_adaptive_buffer) and
+// read by the adaptive sampling kernels (enqueue_adaptive_sampling).
+static int surface_data_pass_mask(){return film_data_pass_mask()&~shadow_catcher_pass_mask()&~(PASSMASK(RENDER_TIME)|PASSMASK(AOV_COLOR)|PASSMASK(AOV_VALUE)|PASSMASK(SAMPLE_COUNT)|PASSMASK(ADAPTIVE_AUX_BUFFER));}
 bool WebGPUDevice::film_surface_passes() const{return (data.film.pass_flag&surface_data_pass_mask())!=0;}
 bool WebGPUDevice::film_cryptomatte() const{return data.film.cryptomatte_passes&&(data.film.pass_flag&PASSMASK(CRYPTOMATTE));}
 static const char *data_pass_name(int bit){
@@ -126,6 +128,7 @@ std::string film_passes_layout(){
   ENUM(CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);ENUM(CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);ENUM(CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
   ENUM(CLOSURE_BSDF_HAIR_CHIANG_ID);ENUM(CLOSURE_BSDF_HAIR_HUANG_ID);ENUM(CLOSURE_BSDF_RAY_PORTAL_ID);ENUM(CLOSURE_BSDF_TRANSPARENT_ID);
   ENUM(CLOSURE_BSSRDF_BURLEY_ID);ENUM(CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID);ENUM(CLOSURE_NONE_ID);
+  out<<"//#if CAMERA_PROJECTIONS\n";ENUM(CAMERA_PANORAMA);out<<"//#endif\n";
 #undef ENUM
 #define PASS(name) constant("FP_MASK_" #name,uint32_t(PASSMASK(name)))
   PASS(NORMAL);PASS(ROUGHNESS);PASS(UV);PASS(DIFFUSE_COLOR);PASS(GLOSSY_COLOR);PASS(TRANSMISSION_COLOR);PASS(MIST);
@@ -195,5 +198,57 @@ void WebGPUDevice::enqueue_cryptomatte_postprocess(int work,const DeviceKernelAr
   // film_cryptomatte_post sorts 2 * cryptomatte_depth slots from pass_cryptomatte.
   require(size_t(data.film.pass_cryptomatte)+4*size_t(data.film.cryptomatte_depth)<=size_t(data.film.pass_stride),"Invalid cryptomatte post-processing range");
   dispatch(p,uint32_t(n),film_post,workgroup("cryptomatte_postprocess"));
+}
+static constexpr char film_adaptive_fragment[]=
+#include "film_adaptive_shader.inc"
+;
+// The adaptive sampling module (wavefront_film_adaptive.wgsl): the controls module
+// header, the contraction-proof binary32 helpers (wavefront_float.wgsl) and
+// DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK, _FILTER_X and _FILTER_Y.
+std::string film_adaptive_wgsl(){
+  const std::string controls=controls_wgsl();const auto entry=controls.find("@compute");
+  require(entry!=std::string::npos,"Controls module header");
+  return controls.substr(0,entry)+film_adaptive_fragment;
+}
+// Adaptive sampling (PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active,
+// enqueue_adaptive_sampling_filter_x/_y): the render buffer, the effective buffer's full_x,
+// full_y, width and height, (convergence check: the threshold, reset and the active pixel
+// counter), and the buffer offset and stride, as the pinned GPU kernels take them.
+void WebGPUDevice::enqueue_adaptive_sampling(DeviceKernel kernel,int work,const DeviceKernelArguments &args){
+  const bool check=kernel==DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK;
+  require(args.count==(check?10u:7u),"Adaptive sampling argument count");
+  auto integer=[&](unsigned i){require(args.types[i]==DeviceKernelArguments::INT32&&args.sizes[i]==4,"Invalid adaptive sampling integer argument");
+    int32_t v;std::memcpy(&v,args.values[i],4);return v;};
+  auto pointer=[&](unsigned i){require(args.types[i]==DeviceKernelArguments::POINTER&&args.sizes[i]==sizeof(device_ptr),"Invalid adaptive sampling pointer argument");
+    device_ptr v;std::memcpy(&v,args.values[i],sizeof(v));require(v%4==0,"Unaligned adaptive sampling pointer");return v;};
+  const device_ptr buffer=pointer(0);
+  const int sx=integer(1),sy=integer(2),sw=integer(3),sh=integer(4);
+  float threshold=0;int reset=0;device_ptr active=0;unsigned at=5;
+  if(check){
+    require(args.types[5]==DeviceKernelArguments::FLOAT32&&args.sizes[5]==4,"Invalid adaptive sampling threshold");std::memcpy(&threshold,args.values[5],4);
+    reset=integer(6);at=7;active=pointer(9);validate(active,4);
+  }
+  const int offset=integer(at),stride=integer(at+1);
+  require(sx>=0&&sy>=0&&sw>0&&sh>0&&stride>=sx+sw,"Invalid adaptive sampling region");
+  require(work>=(check?sw*sh:kernel==DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_X?sh:sw),"Incomplete adaptive sampling dispatch");
+  require(data.film.pass_adaptive_aux_buffer!=PASS_UNUSED&&data.film.pass_adaptive_aux_buffer>=0&&data.film.pass_adaptive_aux_buffer<=data.film.pass_stride-4,
+          "Invalid adaptive sampling buffer pass");
+  if(check)require(data.film.pass_sample_count!=PASS_UNUSED&&data.film.pass_sample_count>=0&&data.film.pass_sample_count<data.film.pass_stride&&
+                   data.film.pass_combined!=PASS_UNUSED&&data.film.pass_combined>=0&&data.film.pass_combined<=data.film.pass_stride-4,"Invalid adaptive sampling passes");
+  // Every pixel the kernels index (offset + x + y * stride) lies in the render buffer.
+  const int64_t first=int64_t(offset)+sx+int64_t(sy)*stride,last=int64_t(offset)+sx+sw-1+int64_t(sy+sh-1)*stride;
+  require(first>=0&&last<int64_t(INT32_MAX),"Invalid adaptive sampling buffer offset");
+  validate(buffer,size_t(last+1)*data.film.pass_stride*4);
+  if(!film_adaptive_check.value){
+    auto built=build_pipelines("film_adaptive",film_adaptive_wgsl(),{"adaptive_convergence_check","adaptive_filter_x","adaptive_filter_y"});
+    film_adaptive_check=std::move(built[0]);film_adaptive_x=std::move(built[1]);film_adaptive_y=std::move(built[2]);
+  }
+  std::array<uint32_t,32> p{};p[1]=uint32_t(work);p[4]=uint32_t(buffer);p[5]=uint32_t(data.film.pass_stride);
+  p[6]=uint32_t(sx);p[7]=uint32_t(sy);p[8]=uint32_t(sw);p[9]=uint32_t(sh);p[10]=uint32_t(offset);p[12]=uint32_t(stride);
+  std::memcpy(&p[13],&threshold,4);p[14]=uint32_t(reset!=0);p[15]=uint32_t(active);p[16]=uint32_t(data.film.pass_adaptive_aux_buffer);
+  p[17]=error_word;p[18]=uint32_t(data.film.pass_combined);p[19]=uint32_t(data.film.pass_sample_count);std::memcpy(&p[20],&data.film.exposure,4);
+  if(check)dispatch(p,uint32_t(work),film_adaptive_check,workgroup("adaptive_convergence_check"));
+  else if(kernel==DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_X)dispatch(p,uint32_t(work),film_adaptive_x,workgroup("adaptive_filter_x"));
+  else dispatch(p,uint32_t(work),film_adaptive_y,workgroup("adaptive_filter_y"));
 }
 }

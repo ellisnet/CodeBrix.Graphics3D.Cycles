@@ -66,6 +66,10 @@ def main():
                 for component in manifest['components'] for entry in component['files']}
     if not source.exists():
         shutil.copytree(recipe.SOURCE, source)
+    for component in manifest['components']:
+        # A component added to the reviewed snapshots after this copy was made.
+        if not (source/component['id']).exists():
+            shutil.copytree(recipe.SOURCE/component['id'], source/component['id'])
 
     def verify_copy():
         for name, digest in expected.items():
@@ -86,6 +90,11 @@ def main():
                         **options}
             if name in ('imath', 'openexr', 'oiio'):
                 settings['CLANG_FORMAT_EXE:FILEPATH'] = 'OFF'
+            if name == 'oidn':
+                # Unversioned file names (the APK packages lib*.so only; OIDN's core
+                # loads its CPU device module by that name), ISPC objects for Android.
+                settings.update({'OIDN_LIBRARY_VERSIONED':'OFF',
+                                 'ISPC_ADDITIONAL_ARGS:STRING':'--target-os=android'})
             commands = [['cmake', '-S', str(path), '-B', str(build),
                          *['-D'+k+'='+str(v) for k, v in settings.items()]],
                         ['cmake', '--build', str(build), '--parallel', str(args.jobs)],

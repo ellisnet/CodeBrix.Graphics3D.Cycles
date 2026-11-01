@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Build the reviewed native dependency profile entirely from local snapshots.
 
-Compiler, CMake, Ninja/Make, NASM and platform SDKs are external build tools.
+Compiler, CMake, Ninja/Make, NASM, ISPC and platform SDKs are external build tools.
 No implementation sources are fetched by this script or its configure steps.
 The initial executable recipe is Linux; other RID recipes need native proof.
 """
@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -21,6 +22,37 @@ from dependency_sources import verify
 SOURCE=ROOT/'third_party/deps'
 WORK=ROOT/'native/work/dependencies'
 PREFIX=WORK/'install'
+
+ISPC_VERSION='1.30.0'
+
+
+def ispc():
+    """The ISPC compiler for Open Image Denoise's CPU kernels (build-time only).
+
+    CODEBRIX_ISPC names the executable; otherwise ispc is taken from PATH. The
+    official release of the pinned version is required on every build host."""
+    path=os.environ.get('CODEBRIX_ISPC') or shutil.which('ispc')
+    if not path or not Path(path).is_file():
+        raise RuntimeError('ISPC '+ISPC_VERSION+' is required: set CODEBRIX_ISPC to its executable or put ispc on PATH')
+    version=subprocess.run([path,'--version'],capture_output=True,text=True,check=True).stdout
+    if ', '+ISPC_VERSION+' ' not in version:
+        raise RuntimeError('ISPC '+ISPC_VERSION+' is required, found: '+version.strip())
+    return Path(path).resolve()
+
+
+def oidn_options(metal=False):
+    """Open Image Denoise build conditions (docs/RELEASE-LICENSE-PLAN.md): CPU
+    device everywhere, Metal only on osx-arm64, every other device explicitly off,
+    no apps, no bundled dependencies (oneTBB is the reviewed snapshot), every RT
+    filter weight, no RTLightmap weights."""
+    return dict(OIDN_DEVICE_CPU='ON',OIDN_DEVICE_METAL='ON' if metal else 'OFF',
+                OIDN_DEVICE_CUDA='OFF',OIDN_DEVICE_HIP='OFF',OIDN_DEVICE_SYCL='OFF',
+                OIDN_APPS='OFF',OIDN_INSTALL_DEPENDENCIES='OFF',OIDN_STATIC_LIB='OFF',
+                OIDN_FILTER_RT='ON',
+                # Only the RT filter is ever created (Cycles' denoiser, bake included):
+                # the lightmap weights are not compiled in.
+                OIDN_FILTER_RTLIGHTMAP='OFF',OIDN_WARN_AS_ERRORS='OFF',
+                ISPC_EXECUTABLE=ispc())
 
 
 def profile(source):
@@ -35,6 +67,7 @@ def profile(source):
       ('tiff',source/'tiff',dict(**{'tiff-tools':'OFF','tiff-tests':'OFF','tiff-contrib':'OFF','tiff-docs':'OFF','lzw':'OFF','jbig':'OFF','lzma':'OFF','webp':'OFF','lerc':'OFF','libdeflate':'OFF','CMAKE_DISABLE_FIND_PACKAGE_JBIG':'ON','CMAKE_DISABLE_FIND_PACKAGE_LibLZMA':'ON','CMAKE_DISABLE_FIND_PACKAGE_WebP':'ON','CMAKE_DISABLE_FIND_PACKAGE_LERC':'ON','CMAKE_DISABLE_FIND_PACKAGE_Deflate':'ON'})),
       ('expat',source/'expat/expat',dict(EXPAT_BUILD_TOOLS='OFF',EXPAT_BUILD_EXAMPLES='OFF',EXPAT_BUILD_TESTS='OFF',EXPAT_BUILD_DOCS='OFF',EXPAT_SHARED_LIBS='ON')),
       ('tbb',source/'tbb',dict(TBB_TEST='OFF',TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH='ON',TBB_EXAMPLES='OFF',TBB_STRICT='OFF',TBBMALLOC_BUILD='OFF',TBBMALLOC_PROXY_BUILD='OFF',TBB_ENABLE_IPO='OFF')),
+      ('oidn',source/'oidn',oidn_options()),
       ('pugixml',source/'pugixml',dict(PUGIXML_BUILD_TESTS='OFF')),
       ('boost',ROOT/'tools/dependencies/boost',dict(BOOST_SOURCE_ROOT=source/'boost')),
       ('fmt',source/'fmt',dict(FMT_DOC='OFF',FMT_TEST='OFF',FMT_INSTALL='ON',BUILD_SHARED_LIBS='OFF')),

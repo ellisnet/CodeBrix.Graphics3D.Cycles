@@ -49,6 +49,36 @@ static std::vector<Field> fields(WebGPUDevice &d){std::vector<Field> out;
 #undef KERNEL_STRUCT_END_ARRAY
   return out;
 }
+// --projections: orthographic and panoramic cameras and depth of field (CAMERA_PROJECTIONS), with the
+// sampling patterns other than tabulated Sobol on alternate cases.
+struct Projection {CameraType type;PanoramaType panorama;float aperture,focal,blades,rotation,ratio,fov,lens;SamplingPattern pattern;};
+static const Projection projections[]={
+  {CAMERA_ORTHOGRAPHIC,PANORAMA_EQUIRECTANGULAR,0,0,0,0,1,0,0,SAMPLING_PATTERN_TABULATED_SOBOL},
+  {CAMERA_ORTHOGRAPHIC,PANORAMA_EQUIRECTANGULAR,.05f,3,0,0,1,0,0,SAMPLING_PATTERN_SOBOL_BURLEY},
+  {CAMERA_PERSPECTIVE,PANORAMA_EQUIRECTANGULAR,.2f,4,0,0,1,0,0,SAMPLING_PATTERN_TABULATED_SOBOL},
+  {CAMERA_PERSPECTIVE,PANORAMA_EQUIRECTANGULAR,.3f,2.5f,6,.4f,1.6f,0,0,SAMPLING_PATTERN_BLUE_NOISE_PURE},
+  {CAMERA_PERSPECTIVE,PANORAMA_EQUIRECTANGULAR,.3f,2.5f,5,-2.9f,.7f,0,0,SAMPLING_PATTERN_BLUE_NOISE_FIRST},
+  {CAMERA_PANORAMA,PANORAMA_EQUIRECTANGULAR,0,0,0,0,1,0,0,SAMPLING_PATTERN_TABULATED_SOBOL},
+  {CAMERA_PANORAMA,PANORAMA_EQUIRECTANGULAR,.08f,3,0,0,1,0,0,SAMPLING_PATTERN_SOBOL_BURLEY},
+  {CAMERA_PANORAMA,PANORAMA_EQUIANGULAR_CUBEMAP_FACE,0,0,0,0,1,0,0,SAMPLING_PATTERN_TABULATED_SOBOL},
+  {CAMERA_PANORAMA,PANORAMA_MIRRORBALL,0,0,0,0,1,0,0,SAMPLING_PATTERN_BLUE_NOISE_PURE},
+  {CAMERA_PANORAMA,PANORAMA_FISHEYE_EQUIDISTANT,0,0,0,0,1,3.14159265f,0,SAMPLING_PATTERN_TABULATED_SOBOL},
+  {CAMERA_PANORAMA,PANORAMA_FISHEYE_EQUISOLID,0,0,0,0,1,3.14159265f,10.5f,SAMPLING_PATTERN_SOBOL_BURLEY},
+  {CAMERA_PANORAMA,PANORAMA_FISHEYE_LENS_POLYNOMIAL,.05f,2,0,0,1,3.4f,0,SAMPLING_PATTERN_TABULATED_SOBOL},
+  {CAMERA_PANORAMA,PANORAMA_CENTRAL_CYLINDRICAL,0,0,0,0,1,0,0,SAMPLING_PATTERN_BLUE_NOISE_FIRST}};
+static void configure_projection(Scene &scene,const Projection &c){
+  Camera &camera=*scene.camera;camera.set_camera_type(c.type);camera.set_panorama_type(c.panorama);camera.set_aperturesize(c.aperture);
+  camera.set_focaldistance(c.focal);camera.set_blades(uint(c.blades));camera.set_bladesrotation(c.rotation);camera.set_aperture_ratio(c.ratio);
+  if(c.fov>0)camera.set_fisheye_fov(c.fov);
+  if(c.lens>0)camera.set_fisheye_lens(c.lens);
+  camera.set_sensorwidth(36);camera.set_sensorheight(24);
+  camera.set_fisheye_polynomial_k0(-1.1735e-5f);camera.set_fisheye_polynomial_k1(-.019928f);camera.set_fisheye_polynomial_k2(-3.3601e-6f);
+  camera.set_fisheye_polynomial_k3(3.0997e-8f);camera.set_fisheye_polynomial_k4(-6.4e-11f);
+  camera.set_latitude_min(-1.2f);camera.set_latitude_max(1.4f);camera.set_longitude_min(-3.1f);camera.set_longitude_max(2.9f);
+  camera.set_central_cylindrical_range_u_min(-2.6f);camera.set_central_cylindrical_range_u_max(2.6f);
+  camera.set_central_cylindrical_range_v_min(-1.2f);camera.set_central_cylindrical_range_v_max(1.2f);
+  camera.compute_auto_viewplane();scene.integrator->set_sampling_pattern(c.pattern);
+}
 struct Metrics {uint64_t paths=0,integer_checks=0,float_checks=0,guard_bytes=0,strict_float_failures=0;double max_ray_error=0,max_differential_error=0,max_tmax_error=0;unsigned cases=0,retries=0;
   // Per-component bit comparison of every ray field against the CPU oracle
   // (direction, origin, differentials, tmax, ...), reported per field.
@@ -107,9 +137,11 @@ static unsigned rejections(const DeviceInfo &info,bool motion){
     CameraScheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Negative camera setup reset failed");
     auto &data=scene.dscene.data;data.film.pass_stride=12;data.film.pass_sample_count=PASS_UNUSED;data.film.pass_adaptive_aux_buffer=PASS_UNUSED;
     std::string reason;
-    if(test==0){data.cam.type=CAMERA_ORTHOGRAPHIC;reason="perspective pinhole";}
-    if(test==1){data.cam.aperturesize=1;reason="perspective pinhole";}
-    if(test==2){data.integrator.sampling_pattern=SAMPLING_PATTERN_SOBOL_BURLEY;reason="tabulated Sobol";}
+    // Orthographic and panoramic cameras, depth of field and every sampling pattern render; custom (OSL)
+    // cameras, stereo and unknown patterns are refused.
+    if(test==0){data.cam.type=CAMERA_CUSTOM;reason="custom camera";}
+    if(test==1){data.cam.interocular_offset=.1f;reason="stereo camera";}
+    if(test==2){data.integrator.sampling_pattern=99;reason="sampling pattern";}
     // The denoising features are implemented (FILM_DENOISING); light portals stay refused.
     if(test==3){data.kernel_features|=KERNEL_FEATURE_NODE_PORTAL;reason="optional path features";}
     if(test==4){data.film.pass_sample_count=12;reason="film pass offset";}
@@ -144,7 +176,8 @@ static unsigned rejections(const DeviceInfo &info,bool motion){
   return rejected;
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
-  require(argc==2||(argc==3&&std::string(argv[2])=="--motion"),"Usage: camera_gate OUTPUT_PREFIX [--motion]");const bool motion=argc==3;auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+  require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--projections")),"Usage: camera_gate OUTPUT_PREFIX [--motion|--projections]");
+  const bool motion=argc==3&&std::string(argv[2])=="--motion",projected=argc==3&&std::string(argv[2])=="--projections";auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto *device=dynamic_cast<WebGPUDevice*>(owner.get());require(device,"WebGPU creation failed");auto &d=*device;Metrics m;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
@@ -165,6 +198,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       auto &data=scene.dscene.data;
       if(motion){camera_motion_fixture(scene,transform,test%8,test<8?1.f:test<16?4.f:8.5f);scene.device_update(&d,progress);healthy(d);original=scene.dscene.data;
         require(original.cam.num_motion_steps>=2&&scene.dscene.camera_motion.size()==size_t(original.cam.num_motion_steps),"Native camera motion preparation failed");}
+      // Cases 16-23 reserve samples atomically; reorder_atomic_samples pairs every GPU lane with a CPU
+      // ray, so they take the projections that always produce a ray (the mirror ball and the fisheyes
+      // leave samples without one: cases 8-12).
+      const Projection &projection=projections[test<16?test%std::size(projections):(test-16)%8];
+      if(projected){configure_projection(scene,projection);scene.device_update(&d,progress);healthy(d);original=scene.dscene.data;
+        require(original.cam.type==projection.type,"Camera projection preparation failed");}
       data=original;data.integrator.scrambling_distance=std::array{.125f,.75f,.9f,1.f}[test%4];
       data.integrator.seed=test==15?0xffffffffu:17u+test*43;data.cam.nearclip=test%2?.1f:1e-5f;data.cam.cliplength=1000;
       const bool adaptive=(test>=12&&test<16)||test>=20;
@@ -215,7 +254,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   std::cout<<"{\"passed\":true,\"originalSchedulerTileDispatch\":true,\"directNativeSceneTables\":true,\"originalCpuCameraOracle\":true,\"rayDifferentials\":true,\"cases\":"<<m.cases
     <<",\"initializedPaths\":"<<m.paths<<",\"retryPaths\":"<<m.retries<<",\"integerAndGuardChecks\":"<<m.integer_checks<<",\"floatChecks\":"<<m.float_checks<<",\"untouchedGuardBytes\":"<<m.guard_bytes
     <<",\"strictFloatFailures\":"<<m.strict_float_failures<<",\"maximumRayErrorExcludingTmax\":"<<m.max_ray_error<<",\"maximumDifferentialError\":"<<m.max_differential_error
-    <<",\"cameraMotionCases\":"<<(motion?m.cases:0)<<",\"maximumTmaxError\":"<<m.max_tmax_error
+    <<",\"cameraMotionCases\":"<<(motion?m.cases:0)<<",\"cameraProjectionCases\":"<<(projected?m.cases:0)<<",\"maximumTmaxError\":"<<m.max_tmax_error
     <<",\"rayBitDifferences\":{";
   {bool first=true;for(const auto &[name,count]:m.ray_bit_differences){std::cout<<(first?"":",")<<'"'<<name<<"\":"<<count;first=false;}}
   std::cout<<"},\"rayBitDifferencesByCase\":{";

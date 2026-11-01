@@ -195,7 +195,8 @@ def main():
                     assert [(p['name'], p['components'], p['written']) for p in passes] == [
                         ('Combined', 4, True), ('Depth', 1, True), ('Normal', 3, True), ('Mask', 1, True)]
                 else:
-                    assert row['litRenders'] == 4 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
+                    # Orthographic and panoramic cameras render on WebGPU too.
+                    assert row['litRenders'] == 4 and row['projections'] == 2 and row['errorEvents'] == 1 and row['renderAfterDeviceFailure'] == 0
                 abi[mode] = folder
             for name in ['base', 'object-motion', 'deforming']:
                 compare(abi['gpu']/f'run.{name}.rgba.bin', abi['cpu']/f'run.{name}.rgba.bin')

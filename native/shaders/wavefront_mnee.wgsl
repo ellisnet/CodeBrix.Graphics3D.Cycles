@@ -58,9 +58,13 @@ const MM_D:u32=16u;
 const MM_FIXED:u32=28u;
 const MM_BOUNCES:u32=32u;
 
+// The invocation's traversal stack (MR_STACK of its record): the surface module's copy of the
+// closest traversal keeps its stack there (native/tools/build_cycles.py, mnee_traversal).
+var<private> mn_stack_at:u32=0u;
 fn mn_record(slot:u32)->u32{
     let bytes=arrayLength(&heap)*4u;let base=p(26u);
     if(base==0u||base%16u!=0u||base>bytes||MNEE_RECORD_BYTES>bytes-base||slot>(bytes-base-MNEE_RECORD_BYTES)/MNEE_RECORD_BYTES){fail();return 0u;}
+    mn_stack_at=base+slot*MNEE_RECORD_BYTES+MR_STACK;
     return base+slot*MNEE_RECORD_BYTES;
 }
 fn mn_index(id:u32)->u32{var index=id;if(p(2u)!=0u){index=load_word(p(2u)+id*4u);}return index;}
@@ -334,12 +338,17 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     return true;
 }
 
+// The INTERSECT_MNEE entry points are compiled only into the MNEE module (MNEE_ENTRIES, a module-variant bit:
+// mnee.cpp builds them with the caustic casters' SVM regions only); other surface modules leave them out.
+//#if MNEE_ENTRIES
 @compute @workgroup_size(64) fn mnee_receiver(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}store_word(at+MR_STAGE,0u);
     let index=mn_index(id.x);if(index>=p(10u)){fail();return;}
     if(state_half(S_path_queued_kernel,index)!=MNEE_K_INTERSECT){fail();return;}
     let sd=surface_from_ray(index);if(sd.error!=0u){return;}surface_data_write(at+MR_SD,sd);store_word(at+MR_STAGE,MN_DONE);
 }
+//#endif
+//#if MNEE_ENTRIES
 @compute @workgroup_size(64) fn mnee_seed(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_DONE){return;}
     let index=mn_index(id.x);let sd=surface_data_read(at+MR_SD);
@@ -386,6 +395,8 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     if(count==0u){state_u8(S_path_mnee,index,state_byte(S_path_mnee,index)&~MNEE_PATH_VALID);return;}
     store_word(at+MR_STAGE,MN_EVAL);
 }
+//#endif
+//#if MNEE_ENTRIES
 @compute @workgroup_size(64) fn mnee_eval(@builtin(global_invocation_id) id:vec3<u32>){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_EVAL){return;}
@@ -405,7 +416,9 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
                 var eta=c.ior;if((r.runtime_flag&SR_BACKFACING)!=0u){eta=rounded_divide(1.0,c.ior);}
                 var n_offset=vec2<f32>(0);
                 if(c.alpha_x>0.0&&c.alpha_y>0.0){
-                    let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xy;
+//#if SAMPLING_SOBOL_BURLEY else                     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xy;
+                    let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF,2u).xy;
+//#endif
                     n_offset=mn_sample_dh(c.alpha_x,c.alpha_y,random.x,random.y);if(load_word(p(17u))!=0u){return;}
                 }
                 store_word(h+24u,ci);mn_sf(h+28u,eta);mn_s2(at+MR_T+k*MN_VERTEX_BYTES+108u,n_offset);
@@ -426,6 +439,8 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     store_word(at+MR_META+MM_FIXED,select(0u,1u,fixed));
     store_word(at+MR_STAGE,MN_SETUP);
 }
+//#endif
+//#if MNEE_ENTRIES
 @compute @workgroup_size(64) fn mnee_setup(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_SETUP){return;}
     let time=surface_data_read(at+MR_SD).time;let count=load_word(at+MR_META+MM_COUNT);
@@ -435,6 +450,8 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     if(load_word(p(17u))!=0u){return;}
     store_word(at+MR_STAGE,MN_SOLVE);
 }
+//#endif
+//#if MNEE_ENTRIES
 @compute @workgroup_size(64) fn mnee_solve(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_SOLVE){return;}
     store_word(at+MR_STAGE,MN_DONE);
@@ -498,6 +515,7 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     store_word(at+MR_META+MM_ITERATIONS,iterations);store_word(at+MR_META+MM_SOLVER,select(solved,6u,solved==0u));
     if(solved==1u){store_word(at+MR_STAGE,MN_TRANSFER);}
 }
+//#endif
 // light_sample_update for the lamp types the device accepts with caustics
 // (point and sun; spot and area casters are refused in mnee.cpp).
 fn mn_light_update(ls:ptr<function,MnLight>,P:vec3<f32>,N:vec3<f32>,path_flag:u32){
@@ -597,6 +615,7 @@ fn mn_bsdf_contribution(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec3<f32>{
 // mnee_path_contribution up to the solution shaders: the light update, the
 // bounce counters, the transfer matrix and the visibility of every vertex.
 // An empty result leaves the bounce counters as the pinned kernel leaves them.
+//#if MNEE_ENTRIES
 @compute @workgroup_size(64) fn mnee_transfer(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_TRANSFER){return;}
     store_word(at+MR_STAGE,MN_DONE);store_word(at+MR_META+MM_RESULT,1u);
@@ -629,6 +648,8 @@ fn mn_bsdf_contribution(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec3<f32>{
     mn_s3(at+MR_OUT,throughput);mn_s3(at+MR_OUT+12u,wo);
     store_word(at+MR_STAGE,MN_CONTRIBUTE);
 }
+//#endif
+//#if MNEE_ENTRIES
 @compute @workgroup_size(64) fn mnee_contribute(@builtin(global_invocation_id) id:vec3<u32>){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}
@@ -638,6 +659,7 @@ fn mn_bsdf_contribution(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec3<f32>{
     store_word(at+MR_STAGE,0u);
     mn_queue(index,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,sd.shader&SHADER_MASK);
 }
+//#endif
 fn mn_contribution(at:u32,index:u32,slot:u32,sd:SurfaceData){
     let count=load_word(at+MR_META+MM_COUNT);let fixed=load_word(at+MR_META+MM_FIXED)!=0u;let ls=mn_light_read(at+MR_LS);
     var throughput=heap_vec3(at+MR_OUT);let receiver_wo=heap_vec3(at+MR_OUT+12u);var wo=receiver_wo;

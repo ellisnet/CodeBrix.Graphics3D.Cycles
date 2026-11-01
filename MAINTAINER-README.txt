@@ -11,6 +11,28 @@ build, how they are tested, how the package is produced, and the conventions
 the source follows.
 
 
+********************************************************************************
+*** IMPORTANT - WINDOWS AND MACOS BUILD HOSTS: READ BEFORE YOUR NEXT BUILD ***
+********************************************************************************
+OpenImageDenoise (OIDN) is now part of every RID's build. On every Windows
+(win-x64, win-arm64) and macOS (osx-x64, osx-arm64) build host, before the
+next build:
+
+  1. Get ISPC 1.30.0 for THAT host (the official release archive from
+     github.com/ispc/ispc/releases; build-time only, never shipped) and set
+     CODEBRIX_ISPC to its ispc executable, or put ispc on PATH. The build
+     refuses any other ISPC version. See "ISPC 1.30.0" under BUILDING.
+  2. DELETE any old copied Cycles source folder left from an earlier build:
+       native/work/windows/<rid>/host/cycles-source
+       native/work/macos/osx-arm64/host/cycles-source
+       native/work/macos/osx-x64/host/cycles-source
+     The build scripts copy that folder only when it is missing, and then
+     refuse it because a reviewed build file in it has changed.
+  3. Do a FULL dependency rebuild for that host (the dependency prefixes from
+     earlier builds are stale), then build Cycles as usual.
+********************************************************************************
+
+
 STANDING INSTRUCTIONS
 =====================
 These apply to every person and agent changing this repository. Read them
@@ -305,13 +327,44 @@ fixed baseline (frozen evidence) came from -march=native builds with contraction
 and are not comparable bit for bit (native/DEVICE.md, "Fixed-baseline CPU
 oracle"). Build outputs stay in
 ignored work directories. Python 3, CMake, Make, a C/C++20 toolchain and Clang
-(for the AST translation) are external build tools; NASM is optional (JPEG SIMD;
+(for the AST translation) are external build tools, as is ISPC (below); NASM is optional (JPEG SIMD;
 the verified build uses the scalar fallback). The unchanged
 CodeBrix.WebGpu.Native.MitLicenseForever package (the exact version pinned by
 the build scripts) must be in the normal NuGet cache or at
 CODEBRIX_WEBGPU_PACKAGE, including its original archive for integrity
 verification. Source fetches and sibling implementation checkouts are never
-build inputs. Windows (win-x64 and win-arm64, both built on an x64 Windows
+build inputs.
+
+Every Cycles feature the WebGPU (WGSL) build turns on is turned on for every
+RID that build targets, without exception; a feature is never enabled for only
+some RIDs. The backend choice is not a feature: osx-arm64 builds Cycles' Metal
+device, every other RID the WebGPU device. Build scripts must therefore carry
+identical WITH_CYCLES_* feature switches, apart from the device switches.
+
+Open Image Denoise (third_party/deps/oidn, a reviewed source snapshot of the
+release archive) is built with the other dependencies on every RID, under the
+OIDN build conditions of docs/RELEASE-LICENSE-PLAN.md: its CPU device
+everywhere, its Metal device on osx-arm64 only, the CUDA, HIP and SYCL devices
+explicitly off, no apps, no bundled dependencies (oneTBB is the reviewed
+snapshot). Every Cycles build script sets WITH_CYCLES_OPENIMAGEDENOISE ON and
+WITH_CYCLES_PATH_GUIDING OFF explicitly. The weights of OIDN's RT filter (the
+only filter Cycles creates, baking included) are compiled into its core
+library (about 44 MB); OIDN_FILTER_RTLIGHTMAP is OFF on every RID, so the
+lightmap weights are not built (they stay in the reviewed snapshot). The
+core library loads its device modules (libOpenImageDenoise_device_cpu, plus
+_metal on osx-arm64) at run time from its own directory, so they are not in the
+host's link closure: every staging step must copy them beside the core library.
+Android builds use unversioned file names (libOpenImageDenoise.so, _core.so,
+_device_cpu.so).
+
+ISPC 1.30.0 (Intel's Implicit SPMD Program Compiler, BSD-3-Clause) is a
+build-time prerequisite on every build host: it compiles OIDN's CPU kernels and
+is never shipped. Use the official release archive of that version for the
+build host from github.com/ispc/ispc/releases (Linux x86_64:
+ispc-v1.30.0-linux.tar.gz, which also compiles for aarch64, so it serves the
+Linux ARM64 and Android ARM64 cross builds; the macOS and Windows archives of the
+same release on those hosts). Set CODEBRIX_ISPC to its bin/ispc executable, or
+put ispc on PATH; tools/dependencies/build.py refuses any other version. Windows (win-x64 and win-arm64, both built on an x64 Windows
 machine with Visual Studio's clang-cl) is described in native/host/WINDOWS_X64.md:
 `python -I -X utf8 tools/dependencies/build_windows.py --rid <rid>`, then
 `python -I -X utf8 native/tools/build_cycles_windows.py --rid <rid>`.
@@ -443,7 +496,7 @@ What the tests need:
     and the CPU comparison is reported only (GpuReferences.cs;
     docs/TESTING-MACOS-ARM64.md, step 7, records how to re-record them). They
     skip with a reason when the GPU device is not available. They also recover
-    a scene after a rejected render (an orthographic camera on WebGPU, an image larger
+    a scene after a rejected render (a custom camera on WebGPU, an image larger
     than Metal's 16384-pixel texture limit on Metal) and move an object after a
     render (Phase E3 semantics). On WebGPU, run them once with a cold scratch
     MESA_SHADER_CACHE_DIR after changing GPU code (the whole class takes about
@@ -571,8 +624,20 @@ Gold standards and candidates: the pinned Cycles CPU kernels (cpu-* backends)
 and the pinned Cycles Metal backend (metal-*, the osx-arm64 product device) are
 both reference renderers ("gold standards"); the WGSL backends (wgsl-*) are the
 candidates. compare.py judges every candidate against the CPU gold standard of
-its own host ISA family (x64 for the Linux and Android WGSL backends; gating
-pairs: practical criterion required, strict recorded) and reports the
+its own ISA family (gating pairs: practical criterion required, strict
+recorded). The family of a WGSL film is the arithmetic its meta.json records
+(wgslArithmetic, from the device report): arm64-scalar, the Android ARM64
+product default, gates against the Linux ARM64 CPU oracle (cpu-arm64-linux),
+x64-sse4.2 (Linux x64, Android x64, and Android ARM64 with
+CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2) against cpu-x64-linux; an
+Android film without the field is judged as x64 and flagged. To check the
+Android ARM64 arithmetic on a desktop GPU, render with
+CODEBRIX_CYCLES_WGSL_ARITHMETIC=arm64-scalar (a test hook: the device then
+generates the scalar ARM64 adapters and reports wgslArithmetic arm64-scalar;
+unset, nothing changes) and judge the films against
+native/evidence/linux-arm64-cpu-oracle-<date>/ (scene preparation stays the
+host's, so scenes whose prepared tables depend on the ISA, such as object
+transforms, can still differ) and reports the
 cross-ISA, candidate-versus-Metal and CPU-versus-Metal pairs without judging them; Metal
 films are never failed against CPU films. Its verdict is "perfect" when every
 gating pair passes, and a run without a CPU backend is invalid input.
@@ -604,7 +669,9 @@ staging folder is removed before the app starts. With --reference-film the app
 selects the Linux x64 oracle's arithmetic adapters (as the native gates do on
 reference import) and the in-app CPU film is a diagnostic. The device films are
 also written in the oracle output layout (oracle/wgsl-android-<label>,
-oracle/cpu-<arch>-android-<label>) for compare.py.
+oracle/cpu-<arch>-android-<label>) for compare.py; the GPU film's meta.json
+records rid and wgslArithmetic (from the device report), so compare.py gates it
+against the CPU gold standard of the arithmetic it was rendered with.
 
 
 GENERATED OBJECT MODEL

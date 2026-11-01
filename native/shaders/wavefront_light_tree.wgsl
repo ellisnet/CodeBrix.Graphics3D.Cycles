@@ -52,10 +52,21 @@ fn lt_sin_from_cos(c:f32)->f32{return rounded_sqrt(max(rounded_add(1.0,-(c*c)),0
 fn lt_len(v:vec3<f32>)->f32{return rounded_sqrt(rounded_dot(v,v));}
 // normalize_len: a * (1 / len).
 fn lt_normalize_len(v:vec3<f32>)->vec4<f32>{let t=lt_len(v);return vec4<f32>(v*rounded_divide(1.0,t),t);}
-// safe_normalize_len: a / len, per component.
+// safe_normalize_len: a / len, per component on SSE hosts, a * (1 / len) on
+// scalar float3 hosts (ARM64; generated NATIVE_FLOAT3_RECIPROCAL_NORMALIZE).
 fn lt_safe_normalize_len(v:vec3<f32>)->vec4<f32>{
     let t=lt_len(v);if(t==0.0){return vec4<f32>(v,t);}
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return vec4<f32>(v*rounded_divide(1.0,t),t);}
     return vec4<f32>(rounded_divide(v.x,t),rounded_divide(v.y,t),rounded_divide(v.z,t),t);
+}
+// float3 / float and normalize of the oracle host (see lt_safe_normalize_len).
+fn lt_native_div3(v:vec3<f32>,f:f32)->vec3<f32>{
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,f);}
+    return vec3<f32>(rounded_divide(v.x,f),rounded_divide(v.y,f),rounded_divide(v.z,f));
+}
+fn lt_native_normalize(v:vec3<f32>)->vec3<f32>{
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,lt_len(v));}
+    return rounded_normalize(v);
 }
 fn lt_safe_normalize(v:vec3<f32>)->vec3<f32>{let t=lt_len(v);if(t==0.0){return v;}return v*rounded_divide(1.0,t);}
 fn lt_smoothstep(f:f32)->f32{if(f<=0.0){return 0.0;}if(f>=1.0){return 1.0;}let ff=f*f;return rounded_add(3.0*ff,-((2.0*ff)*f));}
@@ -78,7 +89,7 @@ fn lt_to_local(object:u32,P:ptr<function,vec3<f32>>,N:ptr<function,vec3<f32>>){
     let at=table_at(G_objects,object,SIZE_objects);var itfm=motion_transform_load(at+LT_O_itfm);
     if((flags&LT_SD_OBJECT_MOTION)!=0u){itfm=motion_inverse(light_tree_object_motion(object));}
     *P=lt_transform_point(itfm,*P);
-    if(any(*N!=vec3<f32>(0))){*N=rounded_normalize(motion_transpose(motion_transform_load(at+LT_O_tfm),*N));}
+    if(any(*N!=vec3<f32>(0))){*N=lt_native_normalize(motion_transpose(motion_transform_load(at+LT_O_tfm),*N));}
 }
 // Tree root of the receiver's light set (light_tree_root_node_index).
 fn lt_root(receiver:u32)->u32{
@@ -152,7 +163,7 @@ fn lt_item_importance(P:vec3<f32>,N:vec3<f32>,transmission:bool,item:u32,item_is
             // Emissive triangle in its mesh's (local) space: compute_emitter_centroid_and_dir.
             kind=16u;corners=3u;let object=load_word(e+LTE_object);let at=table_at(G_tri_vindex,u32(id),SIZE_tri_vindex);
             v[0]=triangle_position(object,load_word(at),0u);v[1]=triangle_position(object,load_word(at+4u),0u);v[2]=triangle_position(object,load_word(at+8u),0u);
-            let sum=rounded_add3(rounded_add3(v[0],v[1]),v[2]);centroid=vec3<f32>(rounded_divide(sum.x,3.0),rounded_divide(sum.y,3.0),rounded_divide(sum.z,3.0));
+            let sum=rounded_add3(rounded_add3(v[0],v[1]),v[2]);centroid=lt_native_div3(sum,3.0);
             let sampling=load_word(e+LTE_emission_sampling);
             if(sampling==LT_EMISSION_SAMPLING_FRONT||sampling==LT_EMISSION_SAMPLING_BACK){
                 var dir=lt_safe_normalize(rounded_cross(v[1]-v[0],v[2]-v[0]));if(sampling==LT_EMISSION_SAMPLING_BACK){dir=-dir;}

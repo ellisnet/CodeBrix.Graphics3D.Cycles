@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CodeBrix.Graphics3D.Cycles.Diagnostics;
 using CodeBrix.Graphics3D.Cycles.Generated.Geometry;
+using CodeBrix.Graphics3D.Cycles.Generated.Lights;
 using CodeBrix.Graphics3D.Cycles.Generated.Scene;
 using CodeBrix.Graphics3D.Cycles.Generated.Shaders;
 using CodeBrix.Graphics3D.Cycles.GltfRender;
@@ -177,7 +178,8 @@ public class GpuRenderTests(ITestOutputHelper output)
         }
         else
         {
-            gpu.Camera.CameraType = CameraCameraType.Orthograph;
+            // Custom (OSL) cameras are outside the package; WebGPU refuses them by name.
+            gpu.Camera.CameraType = CameraCameraType.Custom;
             removeCause = () => gpu.Camera.CameraType = CameraCameraType.Perspective;
         }
         Func<Task> rejected = () => gpu.RenderAsync(WebGpuValidationScenes.Settings, null, Token);
@@ -295,6 +297,173 @@ public class GpuRenderTests(ITestOutputHelper output)
         }
         // The catcher is hit: the sample count pass is not empty.
         gpu.ReadPass(ShadowCatcherPasses[2]).Span.ToArray().Max().Should().BeGreaterThan(0);
+    }
+
+    // Orthographic and panoramic cameras with depth of field, the sampling patterns other than
+    // tabulated Sobol and adaptive sampling, set through the managed API on both backends.
+    private static void ConfigureCameraAndSampling(CyclesScene scene, string variant)
+    {
+        CameraNode camera = scene.Camera;
+        IntegratorNode integrator = scene.Integrator;
+        switch (variant)
+        {
+            case "orthographic-dof":
+                camera.CameraType = CameraCameraType.Orthograph;
+                camera.Aperturesize = 0.02f;
+                camera.Focaldistance = 4f;
+                break;
+            case "fisheye-equisolid":
+                camera.CameraType = CameraCameraType.Panorama;
+                camera.PanoramaType = CameraPanoramaType.FisheyeEquisolid;
+                camera.FisheyeLens = 10.5f;
+                camera.FisheyeFov = MathF.PI;
+                break;
+            case "bokeh-sobol-burley":
+                camera.Aperturesize = 0.15f;
+                camera.Focaldistance = 4f;
+                camera.Blades = 6;
+                camera.Bladesrotation = 0.3f;
+                integrator.SamplingPattern = IntegratorSamplingPattern.SobolBurley;
+                break;
+            case "adaptive-blue-noise":
+                integrator.UseAdaptiveSampling = true;
+                integrator.AdaptiveThreshold = 0.05f;
+                integrator.AdaptiveMinSamples = 4;
+                integrator.SamplingPattern = IntegratorSamplingPattern.BlueNoisePure;
+                break;
+        }
+    }
+
+    [Theory]
+    [InlineData("orthographic-dof")]
+    [InlineData("fisheye-equisolid")]
+    [InlineData("bokeh-sobol-burley")]
+    [InlineData("adaptive-blue-noise")]
+    public async Task gpu_cameras_and_sampling_features_match_the_cpu_reference(string variant)
+    {
+        //Arrange
+        RenderSettings settings = variant == "adaptive-blue-noise" ? WebGpuValidationScenes.Settings with { Samples = 32 } : WebGpuValidationScenes.Settings;
+        using CyclesScene gpu = CreateGpuScene();
+        WebGpuValidationScenes.Build(gpu, WebGpuValidationScenes.DiffuseSun);
+        ConfigureCameraAndSampling(gpu, variant);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        WebGpuValidationScenes.Build(cpu, WebGpuValidationScenes.DiffuseSun);
+        ConfigureCameraAndSampling(cpu, variant);
+        FilmBuffer reference = cpu.Render(settings);
+        using CyclesScene plain = TestScenes.CreateCpuScene();
+        WebGpuValidationScenes.Build(plain, WebGpuValidationScenes.DiffuseSun);
+        FilmBuffer unchanged = plain.Render(settings);
+
+        //Act
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
+
+        //Assert
+        gpu.IsFaulted.Should().BeFalse();
+        (double maximum, int practical, int strict) = WebGpuValidationScenes.Compare(film.Span, reference.Span);
+        output.WriteLine($"{variant}: max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
+        practical.Should().Be(0);
+        // The feature changes the image: the reference differs from the same scene without it.
+        WebGpuValidationScenes.Compare(reference.Span, unchanged.Span).Practical.Should().BeGreaterThan(0);
+    }
+
+    // A point light whose emission strength is the Light Falloff node's linear output, a Metallic
+    // BSDF box with the physical conductor Fresnel and a thin film, or a multiple-scattering Sky
+    // Texture world with the sun disc and sun guiding (a background light object); without the
+    // feature the lamp's emission is constant, the conductor has no film and the world is constant.
+    private static void AddLampOrMaterial(CyclesScene scene, string variant, bool feature)
+    {
+        ShaderNode shader = scene.CreateShader();
+        switch (variant)
+        {
+            case "point-light-falloff":
+                EmissionNode emission = shader.Add<EmissionNode>();
+                emission.Color = System.Numerics.Vector3.One;
+                emission.Strength = 1f;
+                if (feature)
+                {
+                    LightFalloffNode falloff = shader.Add<LightFalloffNode>();
+                    falloff.Strength = 1f;
+                    falloff.Smooth = .5f;
+                    shader.Connect(falloff.LinearOutput, emission.StrengthInput);
+                }
+                shader.Connect(emission.EmissionOutput, shader.Output.SurfaceInput);
+                PointLightNode light = scene.CreateLight<PointLightNode>();
+                light.Strength = new System.Numerics.Vector3(40f, 38f, 35f);
+                light.Radius = .1f;
+                light.UsedShaders = [shader];
+                scene.CreateObject(light, Transform3x4.CreateTranslation(.3f, 2.2f, -1.2f));
+                break;
+            case "metallic-conductor-film":
+                MetallicBsdfNode metallic = shader.Add<MetallicBsdfNode>();
+                metallic.FresnelType = MetallicBsdfFresnelType.PhysicalConductor;
+                metallic.Distribution = MetallicBsdfDistribution.Ggx;
+                metallic.Roughness = .25f;
+                metallic.Ior = new System.Numerics.Vector3(.18f, .42f, 1.37f);
+                metallic.K = new System.Numerics.Vector3(3.42f, 2.35f, 1.77f);
+                metallic.ThinFilmThickness = feature ? 320f : 0f;
+                metallic.ThinFilmIor = 1.45f;
+                shader.Connect(metallic.BsdfOutput, shader.Output.SurfaceInput);
+                shader.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
+                float[] p = [-.5f, 0, -.5f, .5f, 0, -.5f, .5f, 1, -.5f, -.5f, 1, -.5f, -.5f, 0, .5f, .5f, 0, .5f, .5f, 1, .5f, -.5f, 1, .5f];
+                uint[] i = [0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 4, 7, 0, 7, 3, 1, 2, 6, 1, 6, 5, 3, 7, 6, 3, 6, 2, 0, 1, 5, 0, 5, 4];
+                scene.CreateObject(scene.CreateMesh(p, i, shader), Transform3x4.CreateTranslation(.1f, 0, -1.3f));
+                break;
+            case "sky-sun-guiding":
+                if (!feature)
+                    break;
+                SkyTextureNode sky = shader.Add<SkyTextureNode>();
+                sky.SkyType = SkyTextureSkyType.MultipleScattering;
+                sky.SunDisc = true;
+                sky.SunSize = .2f;
+                sky.SunIntensity = .2f;
+                sky.SunElevation = .5f;
+                sky.SunRotation = 1.1f;
+                BackgroundShaderNode background = shader.Add<BackgroundShaderNode>();
+                background.Strength = 1f;
+                shader.Connect(sky.ColorOutput, background.ColorInput);
+                shader.Connect(background.BackgroundOutput, shader.Output.SurfaceInput);
+                shader.EmissionSamplingMethod = ShaderEmissionSamplingMethod.Auto;
+                scene.Background.Shader = shader;
+                BackgroundLightNode world = scene.CreateLight<BackgroundLightNode>();
+                world.MapResolution = 256;
+                world.UseMis = true;
+                world.Strength = System.Numerics.Vector3.One;
+                world.UsedShaders = [shader];
+                scene.CreateObject(world);
+                break;
+        }
+    }
+
+    [Theory]
+    [InlineData("point-light-falloff")]
+    [InlineData("metallic-conductor-film")]
+    [InlineData("sky-sun-guiding")]
+    public async Task gpu_lamp_shaders_conductor_thin_films_and_sky_worlds_match_the_cpu_reference(string variant)
+    {
+        //Arrange
+        RenderSettings settings = WebGpuValidationScenes.Settings;
+        using CyclesScene gpu = CreateGpuScene();
+        WebGpuValidationScenes.Build(gpu, WebGpuValidationScenes.DiffuseSun);
+        AddLampOrMaterial(gpu, variant, true);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        WebGpuValidationScenes.Build(cpu, WebGpuValidationScenes.DiffuseSun);
+        AddLampOrMaterial(cpu, variant, true);
+        FilmBuffer reference = cpu.Render(settings);
+        using CyclesScene plain = TestScenes.CreateCpuScene();
+        WebGpuValidationScenes.Build(plain, WebGpuValidationScenes.DiffuseSun);
+        AddLampOrMaterial(plain, variant, false);
+        FilmBuffer unchanged = plain.Render(settings);
+
+        //Act
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
+
+        //Assert
+        gpu.IsFaulted.Should().BeFalse();
+        (double maximum, int practical, int strict) = WebGpuValidationScenes.Compare(film.Span, reference.Span);
+        output.WriteLine($"{variant}: max abs error {maximum:G6}, practical failures {practical}, strict differences {strict}");
+        practical.Should().Be(0);
+        // The feature changes the image: the reference differs from the same scene without it.
+        WebGpuValidationScenes.Compare(reference.Span, unchanged.Span).Practical.Should().BeGreaterThan(0);
     }
 
     // A diffuse material (the Cycles default surface shader is not implemented on WebGPU).

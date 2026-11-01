@@ -116,13 +116,16 @@ def main():
    # and the AVX2 kernel would use FMA; neither is built. inject_cycles.cmake
    # removes contraction and reciprocal math. UNTESTED on an Intel Mac so far.
    WITH_CYCLES_NATIVE_ONLY='OFF',WITH_CYCLES_DEVICE_METAL='OFF',WITH_CYCLES_PATH_GUIDING='OFF',
+   # Open Image Denoise from the reviewed snapshot in the dependency prefix
+   # (CPU device).
+   WITH_CYCLES_OPENIMAGEDENOISE='ON',OPENIMAGEDENOISE_ROOT_DIR=prefix,
    **{'CXX_HAS_AVX2:BOOL':'OFF','CXX_HAS_F16C:BOOL':'OFF'},
    OpenImageIO_DIR=prefix/'lib/cmake/OpenImageIO',OpenColorIO_DIR=prefix/'lib/cmake/OpenColorIO',
    CMAKE_PROJECT_Cycles_INCLUDE=REPO/'native/tools/inject_cycles_macos_x64.cmake',CODEBRIX_CYCLES_OVERLAY=generated,
    CODEBRIX_WEBGPU_PACKAGE=PACKAGE,CODEBRIX_WEBGPU_RID='osx-x64',
    CMAKE_C_FLAGS='-gline-tables-only '+deps.PATH_MAP,CMAKE_CXX_FLAGS='-gline-tables-only '+deps.PATH_MAP,
    CMAKE_OBJCXX_FLAGS='-gline-tables-only '+deps.PATH_MAP,CODEBRIX_OSO_PREFIX=f'{REPO}/')
-  values.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','EMBREE','OPENIMAGEDENOISE','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD',
+  values.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','EMBREE','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD',
    'HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
   build=WORK/'build'
   commands=[['cmake','-S',str(SOURCE),'-B',str(build),*['-D'+k+'='+str(v) for k,v in values.items()]],
@@ -156,6 +159,12 @@ def main():
   if '@rpath/'+RUNTIME_NAME not in deps.linked(host):raise RuntimeError('The host does not load the WebGPU runtime by @rpath')
   if any('/Metal.framework/' in n for n in deps.linked(host)):raise RuntimeError('The host links Metal directly; only the runtime may')
   symbols=exports(host);loaded=closure(host,prefix)
+  # OIDN's core loads its device modules at run time from its own directory (not by
+  # install name): they ship beside it with their own closure.
+  for module in sorted((prefix/'lib').glob('libOpenImageDenoise_device_*.dylib')):
+   if module.is_symlink():continue
+   loaded[module.name]=str(module.resolve().relative_to(prefix.resolve()));loaded.update(closure(module,prefix))
+  if not any(n.startswith('libOpenImageDenoise_device_cpu') for n in loaded):raise RuntimeError('OIDN CPU device module missing')
   forbidden=[name for name in loaded if re.match(r'lib(jpeg|png|tiff|webp|gif|heif|raw|openjp|avif|jxl)',name)]
   if forbidden:raise RuntimeError('Image codec libraries are loaded by the host: '+', '.join(forbidden))
   # The runtime sits beside the host (found by @loader_path from lib and

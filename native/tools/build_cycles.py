@@ -35,7 +35,8 @@ def overlay(out=None):
     sampling=(REPO/'parity/shaders/sampling.wgsl').read_text()
     sampling=sampling[sampling.index('fn wang_hash'):sampling.index('fn sobol_index')]
     common=shader+sampling+(ROOT/'shaders/wavefront_common.wgsl').read_text()+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_trig.wgsl').read_text()+(ROOT/'shaders/wavefront_motion.wgsl').read_text()+(ROOT/'shaders/wavefront_motion_triangle.wgsl').read_text()
-    camera=common+(ROOT/'shaders/wavefront_camera.wgsl').read_text()
+    # Orthographic and panoramic cameras and depth of field (CAMERA_PROJECTIONS) use the disk-angle sine and cosine.
+    camera=common+'//#if CAMERA_PROJECTIONS\n'+(ROOT/'shaders/wavefront_native_trig.wgsl').read_text()+'//#endif\n'+(ROOT/'shaders/wavefront_camera.wgsl').read_text()
     _write(out/'camera_shader.inc','R"CBWGSL('+camera+')CBWGSL"\n')
     shader_data=common+(ROOT/'shaders/wavefront_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_shader_data_cache.wgsl').read_text()
     _write(out/'shader_data_shader.inc','R"CBWGSL('+shader_data+')CBWGSL"\n')
@@ -95,12 +96,24 @@ def overlay(out=None):
     # MNEE (wavefront_mnee.wgsl) needs the closest traversal inside the surface
     # module; both sit in MNEE regions, so other scenes' surface WGSL is unchanged.
     mnee_traversal=(ROOT/'shaders/wavefront_closest.wgsl').read_text().split('// Point emitters use')[0]
+    # Its traversal stack lives in the MNEE record (MR_STACK, mn_stack_at), not in a private
+    # array: the same pushes and pops in the same order, in storage memory (the Adreno 730 fails
+    # to link the MNEE entries with motion blur when the 192-entry stack is private).
+    for old,new,count in (('var stack:array<i32,192>;stack[0]=0x76543210i;var sp=0i;','if(mn_stack_at==0u){fail();return result;}store_word(mn_stack_at,0x76543210u);var sp=0i;',1),
+                          ('stack[u32(sp)]=other;','store_word(mn_stack_at+u32(sp)*4u,bitcast<u32>(other));',1),
+                          ('stack[u32(sp)]=0x76543210i;','store_word(mn_stack_at+u32(sp)*4u,0x76543210u);',1),
+                          ('node=stack[u32(sp)];','node=bitcast<i32>(load_word(mn_stack_at+u32(sp)*4u));',3)):
+        assert mnee_traversal.count(old)==count,old
+        mnee_traversal=mnee_traversal.replace(old,new)
+    assert 'stack[' not in mnee_traversal
     surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_film_passes.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_background_light.wgsl','wavefront_lighting.wgsl','wavefront_light_nee.wgsl','wavefront_ao.wgsl'))+light_tree+'//#if MNEE\n'+mnee_traversal+'//#endif\n'+(ROOT/'shaders/wavefront_mnee.wgsl').read_text()
     _write(out/'surface_shader.inc','R"CBWGSL('+surface+')CBWGSL"\n')
     volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_volume.wgsl'))
     _write(out/'volume_shader.inc','R"CBWGSL('+volume+')CBWGSL"\n')
     closest=common+translated+(ROOT/'shaders/wavefront_shadow_catcher.wgsl').read_text()+(ROOT/'shaders/wavefront_closest.wgsl').read_text()+(ROOT/'shaders/wavefront_light_link.wgsl').read_text()
     _write(out/'film_post_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_film_post.wgsl').read_text()+')CBWGSL"\n')
+    # Adaptive sampling (film_passes.cpp): the contraction-proof binary32 helpers and the three kernels.
+    _write(out/'film_adaptive_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_film_adaptive.wgsl').read_text()+')CBWGSL"\n')
     _write(out/'shadow_catcher_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_shadow_catcher_split.wgsl').read_text()+')CBWGSL"\n')
     _write(out/'closest_shader.inc','R"CBWGSL('+closest+')CBWGSL"\n')
     traversal=(ROOT/'shaders/wavefront_closest.wgsl').read_text().split('// Point emitters use')[0]
@@ -157,7 +170,10 @@ def main():
         # cmake --build never compiles shader text older than native/shaders.
         'CODEBRIX_CYCLES_OVERLAY_COMMAND':sys.executable+';'+str(Path(__file__).resolve())+';--overlay-only',
         'CODEBRIX_WEBGPU_PACKAGE':PACKAGE}
-    options.update({'WITH_CYCLES_'+name:'OFF' for name in ['ALEMBIC','EMBREE','OPENIMAGEDENOISE','OPENSUBDIV','OPENVDB','NANOVDB',
+    # Open Image Denoise (CPU device) from the reviewed snapshot built into the
+    # dependency prefix; path guiding stays off explicitly.
+    options.update({'WITH_CYCLES_OPENIMAGEDENOISE':'ON','OPENIMAGEDENOISE_ROOT_DIR':deps,'WITH_CYCLES_PATH_GUIDING':'OFF'})
+    options.update({'WITH_CYCLES_'+name:'OFF' for name in ['ALEMBIC','EMBREE','OPENSUBDIV','OPENVDB','NANOVDB',
                    'OSL','USD','HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
     commands=[['cmake','-S',str(UPSTREAM),'-B',str(build),*['-D'+k+'='+str(v) for k,v in options.items()]],
               ['cmake','--build',str(build),'--target','codebrix_cycles_device_gate','codebrix_cycles_camera_gate','codebrix_cycles_closest_gate','codebrix_cycles_background_gate','codebrix_cycles_svm_world_gate','codebrix_cycles_shader_data_gate','codebrix_cycles_svm_surface_gate','codebrix_cycles_attribute_gate','codebrix_cycles_normal_gate','codebrix_cycles_image_gate','codebrix_cycles_image_file_gate','codebrix_cycles_surface_gate','codebrix_cycles_microfacet_svm_gate','codebrix_cycles_microfacet_bounce_gate','codebrix_cycles_microfacet_render_gate','codebrix_cycles_render_gate','codebrix_cycles_atomic_film_gate','--parallel',args.jobs]]

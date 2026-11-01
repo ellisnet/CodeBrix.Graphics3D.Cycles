@@ -91,6 +91,15 @@ fn fp_camera_distance(P:vec3<f32>)->f32{
     if(data_word(FP_D_type)==FP_CAMERA_ORTHOGRAPHIC){return abs(rounded_dot(d,vec3<f32>(heap_float(t+8u),heap_float(t+24u),heap_float(t+40u))));}
     return rounded_sqrt(rounded_dot(d,d));
 }
+//#if CAMERA_PROJECTIONS
+// camera_z_depth: the camera-space z for perspective and orthographic cameras, the distance to the
+// camera position for panoramic ones.
+fn fp_z_depth(P:vec3<f32>)->f32{
+    if(data_word(FP_D_type)!=FP_CAMERA_PANORAMA){return surface_transform_point(p(6u)+FP_D_worldtocamera,P).z;}
+    let t=p(6u)+FP_D_cameratoworld;let d=rounded_add3(P,-vec3<f32>(heap_float(t+12u),heap_float(t+28u),heap_float(t+44u)));
+    return rounded_sqrt(rounded_dot(d,d));
+}
+//#endif
 // primitive_uv: the ATTR_STD_UV attribute (0 when the mesh has none).
 fn fp_uv(sd:SurfaceData)->vec3<f32>{
     var st:SvmState;st.geometry=sd;let desc=attribute_find(&st,FP_ATTR_STD_UV,0u);
@@ -165,7 +174,9 @@ fn film_data_passes(index:u32,sd:SurfaceData,r:SvmResult){
     let alpha=clamp(vec3<f32>(1)-transparency,vec3<f32>(0),vec3<f32>(1));
     if((flag&PATH_RAY_SINGLE_PASS_DONE)==0u){
         if(state_word(S_path_sample,index)==0u){
-            if((pass_flag&MASK_DEPTH)!=0u){fp_film_store(base+data_word(D_film_pass_depth)*4u,surface_transform_point(p(6u)+FP_D_worldtocamera,sd.P).z);}
+//#if CAMERA_PROJECTIONS else             if((pass_flag&MASK_DEPTH)!=0u){fp_film_store(base+data_word(D_film_pass_depth)*4u,surface_transform_point(p(6u)+FP_D_worldtocamera,sd.P).z);}
+            if((pass_flag&MASK_DEPTH)!=0u){fp_film_store(base+data_word(D_film_pass_depth)*4u,fp_z_depth(sd.P));}
+//#endif
             if((pass_flag&MASK_OBJECT_ID)!=0u){
                 var id=0.0;if(sd.object_id!=FP_OBJECT_NONE){id=heap_float(table_at(G_objects,sd.object_id,SIZE_objects)+FP_O_pass_id);}
                 fp_film_store(base+data_word(D_film_pass_object_id)*4u,id);
@@ -293,7 +304,9 @@ fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
             // denoising_depth_compute: the ray length minus tmin, or the camera z depth step.
             let d=rounded_add(sd.ray_length,-heap_float(state_address(S_ray_tmin,index,4u)));var depth=d;
             if(!follow){let prev=rounded_add3(sd.P,sd.wi*d);
-                depth=rounded_add(surface_transform_point(p(6u)+FP_D_worldtocamera,sd.P).z,-surface_transform_point(p(6u)+FP_D_worldtocamera,prev).z);}
+//#if CAMERA_PROJECTIONS else                 depth=rounded_add(surface_transform_point(p(6u)+FP_D_worldtocamera,sd.P).z,-surface_transform_point(p(6u)+FP_D_worldtocamera,prev).z);}
+                depth=rounded_add(fp_z_depth(sd.P),-fp_z_depth(prev));}
+//#endif
             film_add(base+data_word(DN_D_pass_denoising_depth)*4u,fp_finite(depth*fp_average(throughput)));
         }
         if(data_word(DN_D_pass_denoising_normal)!=PASS_NONE&&feature_weight>0.0){

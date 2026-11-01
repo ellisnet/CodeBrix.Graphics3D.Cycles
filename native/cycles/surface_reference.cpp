@@ -16,6 +16,9 @@
 #include "scene/scene.h"
 #include "wavefront.h"
 #include "surface_reference.h"
+#if defined(__x86_64__) || defined(_M_X64)
+#include <xmmintrin.h>
+#endif
 #if defined(CBC_MICROFACET_FIXTURE) || defined(CBC_GLASS_FIXTURE) || defined(CBC_PRINCIPLED_FIXTURE) || defined(CBC_BSDF_FIXTURE)
 #include <cstdlib>
 #include <fstream>
@@ -84,4 +87,31 @@ void original_surface(ccl::DeviceScene &scene,const std::vector<int> &indices,
 #endif
     integrator_shade_surface(kg,&states[i],film.data());
   }
+}
+bool original_surface_flush_to_zero(ccl::DeviceScene &scene,const std::vector<int> &indices,
+    std::vector<ccl::IntegratorStateCPU> &states,std::vector<float> &film){
+#if defined(__x86_64__) || defined(_M_X64)
+  const unsigned saved=_mm_getcsr();_mm_setcsr(saved|0x8040u);
+  try{original_surface(scene,indices,states,film);}catch(...){_mm_setcsr(saved);throw;}
+  _mm_setcsr(saved);return true;
+#else
+  (void)scene;(void)indices;(void)states;(void)film;return false;
+#endif
+}
+std::vector<int> original_surface_velvet_paths(ccl::DeviceScene &scene,const std::vector<int> &indices,
+    const std::vector<ccl::IntegratorStateCPU> &states){
+  using namespace ccl;KernelGlobalsCPU base;base.data=scene.data;
+  auto images=original_image_info(scene);base.image_info.data=images.data();base.image_info.width=images.size();
+#define TABLE(name,type) base.name.data=reinterpret_cast<decltype(base.name.data)>(scene.name.data());base.name.width=int(scene.name.size());
+  CBC_SCENE_TABLES(TABLE)
+  TABLE(svm_nodes,uint) TABLE(lookup_table,float) TABLE(sample_pattern_lut,float)
+#undef TABLE
+  Profiler profiler;ThreadKernelGlobalsCPU thread(base,nullptr,profiler,0);KernelGlobals kg=&thread;std::vector<int> out;
+  for(int i:indices){
+    auto state=states[i];Ray ray{};Intersection isect{};ShaderData sd{};
+    integrator_state_read_ray(&state,&ray);integrator_state_read_isect(&state,&isect);shader_setup_from_ray(kg,&sd,&ray,&isect);
+    surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE>(kg,&state,&sd,nullptr,PathRayVisibility(state.path.visibility),state.path.flag);
+    for(int c=0;c<sd.num_closure;c++)if(sd.closure[c].type==CLOSURE_BSDF_ASHIKHMIN_VELVET_ID){out.push_back(i);break;}
+  }
+  return out;
 }

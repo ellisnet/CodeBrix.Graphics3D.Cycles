@@ -1,0 +1,171 @@
+## Copyright 2018 Intel Corporation
+## SPDX-License-Identifier: Apache-2.0
+
+# Append to a variable
+#   var = var + value
+macro(append var value)
+  set(${var} "${${var}} ${value}")
+endmacro()
+
+# Set variable depending on condition:
+#   var = cond ? val_if_true : val_if_false
+macro(set_ternary var condition val_if_true val_if_false)
+  if (${condition})
+    set(${var} "${val_if_true}")
+  else()
+    set(${var} "${val_if_false}")
+  endif()
+endmacro()
+
+# Conditionally set a variable
+#   if (cond) var = value
+macro(set_if condition var value)
+  if (${condition})
+    set(${var} "${value}")
+  endif()
+endmacro()
+
+# Conditionally append
+#   if (cond) var = var + value
+macro(append_if condition var value)
+  if (${condition})
+    append(${var} "${value}")
+  endif()
+endmacro()
+
+# Helper function for converting a source path to a corresponding build path
+function(oidn_get_build_path build_path path)
+  get_filename_component(path "${path}" ABSOLUTE)
+  string(FIND "${path}" "${CMAKE_CURRENT_BINARY_DIR}" _path_binary_dir_pos)
+  if(_path_binary_dir_pos EQUAL 0)
+    set(build_path ${path})
+  else()
+    file(RELATIVE_PATH bpath ${CMAKE_CURRENT_SOURCE_DIR} ${path})
+    string(REGEX REPLACE "^[/]+" "" bpath "${bpath}")
+    string(REPLACE ":" "_" bpath "${bpath}")
+    string(REPLACE "../" "__/" bpath "${bpath}")
+    get_filename_component(bpath "${bpath}" ABSOLUTE BASE_DIR ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
+  set(${build_path} "${bpath}" PARENT_SCOPE)
+endfunction()
+
+# Generates C++ files from the specified binary blobs
+find_package(Python REQUIRED)
+function(oidn_generate_cpp_from_blob out_sources namespace)
+  set(${out_sources})
+  foreach(in ${ARGN})
+    get_filename_component(in_file ${in} ABSOLUTE)
+    get_filename_component(in_name ${in} NAME_WE)
+    get_filename_component(in_dir  ${in_file} DIRECTORY)
+    file(RELATIVE_PATH in_file_rel ${CMAKE_BINARY_DIR} ${in_file})
+
+    oidn_get_build_path(out_dir ${in_dir})
+    set(out_cpp_file ${out_dir}/${in_name}.cpp)
+    set(out_hpp_file ${out_dir}/${in_name}.h)
+    list(APPEND ${out_sources} ${out_cpp_file} ${out_hpp_file})
+
+    set(blob_to_cpp ${OIDN_ROOT_SOURCE_DIR}/scripts/blob_to_cpp.py)
+    add_custom_command(
+      OUTPUT ${out_cpp_file} ${out_hpp_file}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${out_dir}
+      COMMAND ${Python_EXECUTABLE}
+      ARGS ${blob_to_cpp} ${in_file} -o ${out_cpp_file} -H ${out_hpp_file} -n ${namespace}
+      DEPENDS ${in_file} ${blob_to_cpp}
+      COMMENT "Generating CXX source files from blob ${in_file_rel}"
+      VERBATIM
+    )
+  endforeach()
+
+  set_source_files_properties(${${out_sources}} PROPERTIES GENERATED TRUE)
+  set(${out_sources} ${${out_sources}} PARENT_SCOPE)
+endfunction()
+
+# Export all symbols in the specified target
+function(oidn_export_all_symbols target)
+  if(WIN32)
+    set_property(TARGET ${target} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+  endif()
+endfunction()
+
+# Strip all non-API symbols from the specified target
+function(oidn_strip_symbols target)
+  if(UNIX OR MINGW)
+    set_target_properties(${target} PROPERTIES COMPILE_FLAGS "-fvisibility=internal -fvisibility-inlines-hidden")
+  endif()
+
+  if(APPLE)
+    set_target_properties(${target} PROPERTIES LINK_FLAGS -Wl,-exported_symbols_list,${OIDN_ROOT_BINARY_DIR}/common/export.macos.map)
+    set_target_properties(${target} PROPERTIES LINK_DEPENDS ${OIDN_ROOT_BINARY_DIR}/common/export.macos.map)
+  elseif(UNIX)
+    set_target_properties(${target} PROPERTIES LINK_FLAGS -Wl,--version-script=${OIDN_ROOT_BINARY_DIR}/common/export.linux.map)
+    set_target_properties(${target} PROPERTIES LINK_DEPENDS ${OIDN_ROOT_BINARY_DIR}/common/export.linux.map)
+  endif()
+endfunction()
+
+function(oidn_install_module target)
+  install(TARGETS ${target}
+    LIBRARY
+      DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT devel
+      NAMELINK_SKIP
+    RUNTIME
+      DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT lib
+  )
+endfunction()
+
+function(oidn_install_static_module target)
+  install(TARGETS ${target}
+    EXPORT
+      OpenImageDenoise_Exports
+    ARCHIVE
+      DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT devel
+  )
+endfunction()
+
+function(oidn_install_lib_files)
+  if(WIN32)
+    if(CMAKE_INSTALL_BINDIR)
+      set(_dest_dir ${CMAKE_INSTALL_BINDIR})
+    else()
+      set(_dest_dir bin)
+    endif()
+  else()
+    if(CMAKE_INSTALL_LIBDIR)
+      set(_dest_dir ${CMAKE_INSTALL_LIBDIR})
+    else()
+      set(_dest_dir lib)
+    endif()
+  endif()
+
+  foreach(_file ${ARGN})
+    install(CODE
+      "file(INSTALL \"${_file}\" DESTINATION \${CMAKE_INSTALL_PREFIX}/${_dest_dir} FOLLOW_SYMLINK_CHAIN)"
+      COMPONENT lib
+    )
+  endforeach()
+endfunction()
+
+function(oidn_install_imported_lib target)
+  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    get_target_property(_lib_path   ${target} IMPORTED_LOCATION_DEBUG)
+    get_target_property(_lib_sopath ${target} IMPORTED_SONAME_DEBUG)
+  else()
+    get_target_property(_lib_path   ${target} IMPORTED_LOCATION_RELEASE)
+    get_target_property(_lib_sopath ${target} IMPORTED_SONAME_RELEASE)
+  endif()
+
+  if(APPLE AND _lib_sopath)
+    get_filename_component(_lib_dir ${_lib_path} DIRECTORY)
+    string(REPLACE "@rpath" ${_lib_dir} _lib_path ${_lib_sopath})
+  endif()
+
+  oidn_install_lib_files(${_lib_path})
+endfunction()
+
+function(oidn_install_imported_implib target)
+  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    get_target_property(_implib_path ${target} IMPORTED_IMPLIB_DEBUG)
+  else()
+    get_target_property(_implib_path ${target} IMPORTED_IMPLIB_RELEASE)
+  endif()
+  install(PROGRAMS ${_implib_path} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib)
+endfunction()

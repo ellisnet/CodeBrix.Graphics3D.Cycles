@@ -86,6 +86,7 @@ const char *const volume_refusal = "Volume geometry was baked with its object tr
 // authored data; edits that would need a baked volume restored are refused.
 void before_edit(Host &host, Entry &entry, const char *socket_name) {
   if (entry.graph) return;
+  if (dynamic_cast<Pass *>(entry.node) && socket_name && std::strcmp(socket_name, "mode") == 0) entry.pass_mode_edit = true;
   if (auto geometry = dynamic_cast<Geometry *>(entry.node)) {
     if (geometry->transform_applied && geometry->is_volume()) throw Failure(CBC_NOT_READY, volume_refusal);
     if (geometry->transform_applied && bake_restorable(geometry)) unbake(host, geometry);

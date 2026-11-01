@@ -1,0 +1,47 @@
+// Copyright 2024 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+// -------------------------------------------------------------------------------------------------
+// Macros
+// -------------------------------------------------------------------------------------------------
+
+#if defined(ISPC_TARGET_AVX512SKX) || defined(ISPC_TARGET_AVX512ICL) || defined(ISPC_TARGET_AVX512SPR)
+  #define OIDN_ARCH_AVX512
+#elif defined(ISPC_TARGET_AVX512GNR)
+  #define OIDN_ARCH_AVX512
+  #define OIDN_ARCH_AVX512_AMXFP16
+#elif defined(ISPC_TARGET_AVX2)
+  #define OIDN_ARCH_AVX2
+#elif defined(ISPC_TARGET_SSE4)
+  #define OIDN_ARCH_SSE4
+#elif defined(ISPC_TARGET_SSE2)
+  #define OIDN_ARCH_SSE2
+#elif defined(ISPC_TARGET_NEON)
+  #define OIDN_ARCH_NEON
+#else
+  #error "Unsupported ISPC target"
+#endif
+
+#define _OIDN_CONCAT(a, b) a##b
+#define OIDN_CONCAT(a, b) _OIDN_CONCAT(a, b)
+
+// -------------------------------------------------------------------------------------------------
+// Types
+// -------------------------------------------------------------------------------------------------
+
+enum DataType
+{
+  DataType_Undefined,
+  DataType_UInt8,
+  DataType_Float16,
+  DataType_Float32,
+};
+
+enum Fusion
+{
+  Fusion_None,
+  Fusion_UpsampleSrc0,
+  Fusion_PoolDst
+};

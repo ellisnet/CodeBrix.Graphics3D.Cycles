@@ -227,7 +227,7 @@ static void lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Field> &layo
   // and the walk itself against the pinned helpers replayed step by step (original_mnee_trace):
   // solver outcome and iteration count exact, n_offset and final vertex positions practical.
   std::vector<uint32_t> record(2720/4);
-  for(size_t k=0;k<ids.size();k++){exchange::read("mnee walk record",record.data(),record.size()*4,[&]{d.download(d.mnee_records+uint32_t(k*(2720+MAX_CLOSURE*sizeof(SurfaceClosureRecord))),record.data(),record.size()*4);});
+  for(size_t k=0;k<ids.size();k++){exchange::read("mnee walk record",record.data(),record.size()*4,[&]{d.download(d.mnee_records+uint32_t(k*mnee_record_stride()),record.data(),record.size()*4);});
     const uint32_t solver=record[(316+8)/4],iterations=record[(316+4)/4],count=record[316/4];
     m.casters[count]++;if(solver)m.solver[solver]++;if(iterations)m.iterations[iterations]++;
     if(!solver)continue;
@@ -341,8 +341,14 @@ static void closest_lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Fiel
   for(auto &f:layout){if(f.name=="path.mnee_shadow_state"||f.name=="path.shader_sort_key")continue;
     for(int i:ids){auto a=reinterpret_cast<const char*>(&actual[i])+f.offset;auto e=reinterpret_cast<const char*>(&wanted[i])+f.offset;
       if(f.floating){for(size_t k=0;k<f.stride;k+=4){float av,ev;std::memcpy(&av,a+k,4);std::memcpy(&ev,e+k,4);double error=std::abs(double(av)-ev);m.floats++;
-          verdict(std::isfinite(av)==std::isfinite(ev)&&(!std::isfinite(ev)||error<=5e-5+2e-4*std::abs(double(ev))),label+" closest "+f.name+" path="+std::to_string(i));}}
-      else{verdict(!std::memcmp(a,e,f.stride),label+" closest integer "+f.name+" path="+std::to_string(i)+" gpu="+std::to_string(int(*(const uint8_t*)a))+" cpu="+std::to_string(int(*(const uint8_t*)e)));m.integers++;}}}
+          const bool ok=std::isfinite(av)==std::isfinite(ev)&&(!std::isfinite(ev)||error<=5e-5+2e-4*std::abs(double(ev)));
+          if(std::getenv("CODEBRIX_MNEE_GATE_DIAGNOSE")){if(av!=ev){if(!ok)diagnosed++;std::cerr<<"DIAGNOSE "<<label<<" closest "<<f.name<<" path="<<i<<" actual="<<av<<" expected="<<ev<<"\n";}continue;}
+          verdict(ok,label+" closest "+f.name+" path="+std::to_string(i));}}
+      else{const std::string where=label+" closest integer "+f.name+" path="+std::to_string(i)+" gpu="+std::to_string(int(*(const uint8_t*)a))+" cpu="+std::to_string(int(*(const uint8_t*)e));m.integers++;
+        // CODEBRIX_MNEE_GATE_DIAGNOSE: every differing closest field is reported (words as hex) and the gate continues; it still fails.
+        if(std::getenv("CODEBRIX_MNEE_GATE_DIAGNOSE")){if(std::memcmp(a,e,f.stride)){diagnosed++;std::ostringstream o;o<<"DIAGNOSE "<<where<<" words";
+          for(size_t k=0;k+4<=f.stride;k+=4){uint32_t x,y;std::memcpy(&x,a+k,4);std::memcpy(&y,e+k,4);o<<" "<<std::hex<<x<<"/"<<y;}std::cerr<<o.str()<<"\n";}continue;}
+        verdict(!std::memcmp(a,e,f.stride),where);}}}
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   reference_policy::use_reference_oracle_arithmetic();exchange::open();

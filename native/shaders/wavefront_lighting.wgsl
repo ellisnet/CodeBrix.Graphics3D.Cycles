@@ -14,8 +14,12 @@ fn light_sample_read(at:u32)->NativeLightSample{
     var ls:NativeLightSample;ls.P=heap_vec3(at);ls.D=heap_vec3(at+12u);ls.t=heap_float(at+24u);ls.pdf=heap_float(at+28u);ls.eval_fac=heap_float(at+32u);
     ls.shader=load_word(at+36u);ls.object_id=load_word(at+40u);ls.prim=load_word(at+44u);ls.is_light=load_word(at+48u)!=0u;return ls;
 }
+// Cycles safe_normalize_len (a / len): float3 / float divides per component on
+// SSE hosts and multiplies by the reciprocal on scalar float3 hosts (ARM64),
+// selected by the generated NATIVE_FLOAT3_RECIPROCAL_NORMALIZE.
 fn light_normalize_len(v:vec3<f32>)->vec4<f32>{
     let length=rounded_sqrt(rounded_dot(v,v));if(length==0.0){return vec4<f32>(0);}
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return vec4<f32>(v*rounded_divide(1.0,length),length);}
     return vec4<f32>(rounded_divide(v.x,length),rounded_divide(v.y,length),rounded_divide(v.z,length),length);
 }
 fn light_basis(n:vec3<f32>)->MicrofacetBasis{var c:SvmClosure;c.N=n;return ggx_basis(c);}
@@ -45,7 +49,9 @@ fn light_selection_read(at:u32,random:vec3<f32>)->LightSelection{
 }
 //#endif
 fn light_select(index:u32)->LightSelection{
-    let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
+//#if SAMPLING_SOBOL_BURLEY else     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
+    let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT,3u).xyz;
+//#endif
 //#if LIGHT_SELECT
     if(light_select_record!=0xffffffffu){return light_selection_read(light_select_record,random);}
 //#endif
@@ -227,7 +233,9 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
 //#endif
     let rr=data_float(D_integrator_light_inv_rr_threshold);
     let probability=select(1.0,max(abs(bsdf.eval.x),max(abs(bsdf.eval.y),abs(bsdf.eval.z)))*rr,rr>0.0);
-    if(probability<1.0){let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
+//#if SAMPLING_SOBOL_BURLEY else     if(probability<1.0){let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
+    if(probability<1.0){let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE,1u).x;
+//#endif
         if(random>=probability){return;}let inverse=1.0/probability;bsdf.eval*=inverse;bsdf.diffuse*=inverse;bsdf.glossy*=inverse;}
 //#if LIGHT_NEE
     }

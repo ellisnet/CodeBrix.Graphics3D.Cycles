@@ -91,7 +91,8 @@ buffers, callbacks and queries.
 
 Known limits found while closing them (see ABI.md): the WebGPU device writes
 only Combined, AO and the shadow catcher passes, only supports the perspective camera and needs the integrator's
-denoising, adaptive sampling and guiding switched off.
+denoising, adaptive sampling and guiding switched off (since lifted: the film passes, the orthographic and panoramic
+cameras and adaptive sampling render; denoising and guiding stay off, ABI.md).
 
 Phase E3 closed three of the original limits. Edits after a render apply as for
 a scene built with them (`host_edits.inc`: the host keeps the authored
@@ -115,7 +116,7 @@ broad- and transparent-lighting gates (phaseE3 report).
 `native/tests/host/scene_edit_consumer.c` (`codebrix_host_scene_edit_test`) and
 `native/tools/scene_edit_gate.py` check the edits (13 scenarios, CPU bit for bit
 against a fresh host, WebGPU with the practical criterion, each sequence replayed
-in a new host) and the recovery after a rejected volume majorant pass and orthographic
+in a new host) and the recovery after a rejected volume majorant pass and custom (OSL)
 camera:
 
 ```sh

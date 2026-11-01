@@ -11,6 +11,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,6 +26,37 @@ EXCLUDED = {
     'boost/boost/outcome/outcome.gdb.py': 'Unlicensed optional debugger helper.',
     'tiff/libtiff/tif_lzw.c': 'Legacy Berkeley advertising condition; unused TIFF decoder omitted from this metadata-header dependency profile.',
     'zstd/COPYING': 'Unselected GPL alternative text; BSD alternative retained in LICENSE and original dual-license headers.',
+}
+
+
+# Components added after the initial import come from one reviewed release
+# archive each (pinned by SHA-256). The archive is an explicit input of the
+# 'add' action and is never fetched; the per-file licence review is a separate
+# committed input whose own SHA-256 is recorded in the component entry.
+ARCHIVES = {
+    'oidn': dict(source='https://github.com/RenderKit/oidn/releases/download/v2.5.1/oidn-2.5.1.src.tar.gz',
+                 archiveSha256='e71fd043a70f1cc80e301d1b90df6c1f536098c4dd94baa612742f6db3369c36',
+                 version='v2.5.1', root='oidn-2.5.1/', license='Apache-2.0',
+                 review=ROOT/'third_party/oidn-license-review.json',
+                 # CPU (and, for osx-arm64, Metal) device profile: the GPU device
+                 # sources, their vendored external libraries, test/example apps,
+                 # training scripts and documentation are not imported.
+                 excludedDirectories={
+                     'external/': 'CUTLASS, Composable Kernel, Level Zero and Catch2: used only by the CUDA, HIP and SYCL devices and the test app, all disabled.',
+                     'devices/cuda/': 'CUDA device: disabled on every RID (a CUDA Runtime build installs a proprietary licence).',
+                     'devices/hip/': 'HIP device: disabled on every RID.',
+                     'devices/sycl/': 'SYCL device: disabled on every RID.',
+                     'apps/': 'Example and test applications: OIDN_APPS is OFF.',
+                     'training/': 'Python training scripts: not built and not shipped.',
+                     'doc/': 'Documentation sources, including doc/BINARY-LICENSE.txt (installed only by a CUDA Runtime build, never made).',
+                 },
+                 excludedFiles={
+                     'readme.pdf': 'Generated documentation.',
+                     'third-party-programs.txt': 'Notice inventory of the binary release (oneTBB, PyTorch, pytorch-msssim, Catch2, CUTLASS, DPC++); none of those is imported or built here except oneTBB, which ships from its own reviewed snapshot with its own notices.',
+                     'third-party-programs-DPCPP.txt': 'DPC++ notices: SYCL device only, disabled.',
+                     'third-party-programs-oneTBB.txt': 'oneTBB notices: oneTBB ships from its own reviewed snapshot with its own notices.',
+                 },
+                 scripts={'scripts/blob_to_cpp.py'}),
 }
 
 
@@ -79,6 +111,14 @@ def policy():
                            ['atomic','chrono','date_time','filesystem','iostreams','regex','system','thread']],license='BSL-1.0')
 
 
+def selected_archive(id,name):
+    spec=ARCHIVES[id];path=Path(name)
+    if any(p.startswith('.') for p in path.parts): return False
+    if name in spec['excludedFiles'] or any(name.startswith(d) for d in spec['excludedDirectories']): return False
+    if name.startswith('scripts/'): return name in spec['scripts']
+    return True
+
+
 def selected(id,name,includes):
     path=Path(name)
     # No repository metadata, tests, docs with separate asset licenses, binaries,
@@ -119,6 +159,49 @@ def transform(id,name,data):
         ('tiff','libtiff/CMakeLists.txt'): [('        tif_lzw.c\n','')],
         ('jpeg','CMakeLists.txt'): [('add_subdirectory(md5)',
             '# CodeBrix: omit the unused standalone checksum test utility.')],
+        ('oidn','CMakeLists.txt'): [(
+            '    ${PROJECT_SOURCE_DIR}/README.md\n'
+            '    ${PROJECT_SOURCE_DIR}/readme.pdf\n'
+            '    ${PROJECT_SOURCE_DIR}/CHANGELOG.md\n'
+            '    ${PROJECT_SOURCE_DIR}/third-party-programs.txt\n'
+            '    ${PROJECT_SOURCE_DIR}/third-party-programs-DPCPP.txt\n'
+            '    ${PROJECT_SOURCE_DIR}/third-party-programs-oneTBB.txt\n',
+            '    ${PROJECT_SOURCE_DIR}/README.md\n'
+            '    ${PROJECT_SOURCE_DIR}/CHANGELOG.md\n')],
+        ('oidn','cmake/oidn_package.cmake'): [(
+            '  # Normally we would use ${CMAKE_INSTALL_FULL_LIBDIR} but since the final install prefix is in\n'
+            '  # OIDN_INSTALL_RPATH_PREFIX for external projects, we need to determine the full path manually.\n'
+            '  if(CMAKE_INSTALL_LIBDIR)\n'
+            '    if(IS_ABSOLUTE ${CMAKE_INSTALL_LIBDIR})\n'
+            '      set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_LIBDIR}")\n'
+            '    else()\n'
+            '      set(CMAKE_INSTALL_RPATH "${OIDN_INSTALL_RPATH_PREFIX}/${CMAKE_INSTALL_LIBDIR}")\n'
+            '    endif()\n'
+            '  else()\n'
+            '    set(CMAKE_INSTALL_RPATH "${OIDN_INSTALL_RPATH_PREFIX}/lib")\n'
+            '  endif()\n',
+            '  # CodeBrix: the libraries are packaged side by side; each finds the others in its own\n'
+            '  # directory, never in the build prefix.\n'
+            '  if(APPLE)\n'
+            '    set(CMAKE_INSTALL_RPATH "@loader_path")\n'
+            '  else()\n'
+            '    set(CMAKE_INSTALL_RPATH "$ORIGIN")\n'
+            '  endif()\n')],
+        ('oidn','core/thread.cpp'): [(
+            '#if defined(__linux__)\n'
+            '  #include <sched.h>\n'
+            '  #include <unordered_set>\n'
+            '#elif defined(__APPLE__)\n',
+            '#if defined(__linux__)\n'
+            '  #include <sched.h>\n'
+            '  #include <unordered_set>\n'
+            '  #if defined(__ANDROID__)\n'
+            '    // CodeBrix: bionic has no pthread_{get,set}affinity_np. Every call below acts on the\n'
+            '    // calling thread (pthread_self()), which sched_{get,set}affinity address as pid 0.\n'
+            '    #define pthread_getaffinity_np(thread, size, set) sched_getaffinity(0, size, set)\n'
+            '    #define pthread_setaffinity_np(thread, size, set) sched_setaffinity(0, size, set)\n'
+            '  #endif\n'
+            '#elif defined(__APPLE__)\n')],
     }
     if (id,name) not in changes: return data
     content=data.decode()
@@ -127,8 +210,12 @@ def transform(id,name,data):
         content=content.replace(before,after)
     description={'oiio':'omit disabled test scaffolding and standalone CPack installers.',
                  'tiff':'omit the disabled legacy LZW decoder from the source list.',
-                 'jpeg':'omit the unused checksum test program; image codecs are unchanged.'}[id]
-    return ('# Modified by CodeBrix: '+description+'\n# Copyright (c) 2026 Jeremy Ellis and contributors\n'+content).encode()
+                 'jpeg':'omit the unused checksum test program; image codecs are unchanged.',
+                 'oidn':{'CMakeLists.txt':'install only the imported documentation files (the PDF and the notice inventories of unimported components are not in the snapshot).',
+                         'cmake/oidn_package.cmake':'relocatable install run path (the libraries find each other in their own directory, never the build prefix).',
+                         'core/thread.cpp':'Android (bionic) thread affinity through sched_getaffinity/sched_setaffinity; other platforms unchanged.'}[name]}[id]
+    comment='// ' if Path(name).suffix in {'.c','.cpp','.h','.hpp'} else '# '
+    return (comment+'Modified by CodeBrix: '+description+'\n'+comment+'Copyright (c) 2026 Jeremy Ellis and contributors\n'+content).encode()
 
 
 def prepare(destination):
@@ -180,6 +267,56 @@ def import_reviewed(candidate,review):
     verify()
 
 
+def archive_rows(id,archive):
+    """Selected (name, original bytes, imported bytes) of a reviewed archive."""
+    spec=ARCHIVES[id]
+    if digest(archive)!=spec['archiveSha256']:raise RuntimeError('Archive is not the reviewed release: '+str(archive))
+    rows=[];excluded=[]
+    with tarfile.open(archive,'r:gz') as tar:
+        for member in sorted(tar.getmembers(),key=lambda m:m.name):
+            if member.isdir():continue
+            if not member.name.startswith(spec['root']):raise RuntimeError('Unexpected archive path: '+member.name)
+            name=member.name[len(spec['root']):]
+            if not member.isfile():raise RuntimeError('Unreviewed archive link or special file: '+member.name)
+            if not selected_archive(id,name):
+                reason=spec['excludedFiles'].get(name) or next((r for d,r in spec['excludedDirectories'].items() if name.startswith(d)),
+                    'Repository metadata or unused maintenance script.')
+                excluded.append(dict(path=name,reason=reason));continue
+            original=tar.extractfile(member).read()
+            rows.append((name,original,transform(id,name,original)))
+    return rows,excluded
+
+
+def add_archive_component(id,archive):
+    """Import one reviewed archive component into an existing verified import."""
+    # The importer itself changes when a component is added; the snapshot
+    # contents are verified first and the new importer hash is recorded below.
+    verify(importer=False);spec=ARCHIVES[id]
+    manifest=json.loads(MANIFEST.read_text())
+    if any(c['id']==id for c in manifest['components']) or (DEST/id).exists():
+        raise RuntimeError('Component already imported: '+id)
+    review=json.loads(spec['review'].read_text())
+    if review.get('approved') is not True or review.get('archiveSha256')!=spec['archiveSha256']:
+        raise RuntimeError('Archive has no matching completed license review')
+    rows,excluded=archive_rows(id,archive)
+    imported={name:hashlib.sha256(data).hexdigest() for name,_,data in rows}
+    if {k:v['sha256'] for k,v in review['files'].items()}!=imported:
+        raise RuntimeError('Selected files differ from the reviewed file list')
+    files=[]
+    for name,original,data in rows:
+        row=review['files'][name]
+        if not row.get('license') or not row.get('basis'):raise RuntimeError('Incomplete per-file license review: '+name)
+        dest=DEST/id/name;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(data)
+        files.append(dict(path=name,sourceSha256=hashlib.sha256(original).hexdigest(),sha256=imported[name],
+                          modified=data!=original,license=row['license'],licenseBasis=row['basis']))
+    manifest['components'].append(dict(source=spec['source'],archiveSha256=spec['archiveSha256'],version=spec['version'],
+        license=spec['license'],id=id,reviewSha256=digest(spec['review']),files=files,excluded=excluded))
+    manifest['importerSha256']=digest(Path(__file__))
+    MANIFEST.write_text(json.dumps(manifest,indent=2)+'\n')
+    verify()
+    return len(files)
+
+
 def stage():
     if STAGE.exists(): raise RuntimeError('Staging directory exists; review it before another import')
     components=[]
@@ -204,9 +341,9 @@ def stage():
     (MIGRATION/'dependency-stage.json').write_text(json.dumps(dict(schemaVersion=1,components=components),indent=2)+'\n')
 
 
-def verify():
+def verify(importer=True):
     m=json.loads(MANIFEST.read_text())
-    if m['importerSha256']!=digest(Path(__file__)):raise RuntimeError('Dependency import policy changed without review')
+    if importer and m['importerSha256']!=digest(Path(__file__)):raise RuntimeError('Dependency import policy changed without review')
     expected=set()
     for c in m['components']:
         for f in c['files']:
@@ -219,9 +356,11 @@ def verify():
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['stage','prepare','import','verify'])
-    p.add_argument('--candidate',type=Path);p.add_argument('--review',type=Path);a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['stage','prepare','import','add','verify'])
+    p.add_argument('--candidate',type=Path);p.add_argument('--review',type=Path)
+    p.add_argument('--component',choices=sorted(ARCHIVES));p.add_argument('--archive',type=Path);a=p.parse_args()
     if a.action=='stage':stage()
     elif a.action=='prepare':prepare(a.candidate.resolve())
     elif a.action=='import':import_reviewed(a.candidate.resolve(),a.review.resolve())
+    elif a.action=='add':print(add_archive_component(a.component,a.archive.resolve()),'files imported')
     else:print(len(verify()['components']),'dependency snapshots verified')

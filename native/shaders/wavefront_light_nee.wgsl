@@ -30,7 +30,12 @@ fn light_nee_setup(object:u32,prim:u32,P:vec3<f32>,D:vec3<f32>,tmax:f32,time:f32
     if(object>=table_count(G_objects)){surface_failure(&sd);return sd;}
     let kind=load_word(table_at(G_objects,object,SIZE_objects)+O_primitive_type);
     if(kind==PRIMITIVE_LAMP){
-        if(prim>=table_count(G_lights)||load_word(table_at(G_lights,prim,SIZE_lights)+L_type)!=LIGHT_BACKGROUND){surface_failure(&sd);return sd;}
+//#if LIGHT_LAMP_SHADER else         if(prim>=table_count(G_lights)||load_word(table_at(G_lights,prim,SIZE_lights)+L_type)!=LIGHT_BACKGROUND){surface_failure(&sd);return sd;}
+        if(prim>=table_count(G_lights)){surface_failure(&sd);return sd;}
+        // A point, spot, area or sun light: the light point P + tmax * D (-D for a sun), light_normal_uv_from_position.
+        if(load_word(table_at(G_lights,prim,SIZE_lights)+L_type)!=LIGHT_BACKGROUND){
+            return lamp_shader_data(prim,select(rounded_add3(P,tmax*D),-D,tmax==3.4028234663852886e38),D,tmax,time);}
+//#endif
 //#if LIGHT_BACKGROUND else surface_failure(&sd);return sd;
         sd=bgl_world_data(D,min(dD,data_float(D_background_map_dD)),time);
 //#endif
@@ -78,7 +83,9 @@ fn light_nee_path(id:vec3<u32>)->u32{
         let weighted=light*heap_float(state_address(S_shadow_path_bsdf_eval_average,index,4u));
         let probability=select(1.0,max(abs(weighted.x),max(abs(weighted.y),abs(weighted.z)))*rr,rr>0.0);
         if(probability<1.0){
-            let random=native_rng(state_word(S_shadow_path_sample,index),state_word(S_shadow_path_rng_pixel,index),state_half(S_shadow_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
+//#if SAMPLING_SOBOL_BURLEY else             let random=native_rng(state_word(S_shadow_path_sample,index),state_word(S_shadow_path_rng_pixel,index),state_half(S_shadow_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
+            let random=native_rng_pattern(state_word(S_shadow_path_sample,index),state_word(S_shadow_path_rng_pixel,index),state_half(S_shadow_path_rng_offset,index)+PRNG_LIGHT_TERMINATE,1u).x;
+//#endif
             if(random>=probability){next=0u;}else{light*=rounded_divide(1.0,probability);}
         }
     }

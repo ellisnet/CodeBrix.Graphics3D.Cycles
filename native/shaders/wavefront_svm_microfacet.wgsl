@@ -225,8 +225,14 @@ fn principled_fresnel(c:SvmClosure,cosine:f32)->PrincipledFresnel{
         for(var i=0u;i<3u;i++){var n=c.ior;var k=0.0;var g=-1.0;
             if(model==5u){let f0=c.multiscatter[i];let r=min(f0,0.999);g=thin_film_f82(1.0/7.0,f0,c.reflection_tint[i]);let root=sqrt(r);
                 let a=rounded_divide(1.0+root,1.0-root);n=a+g*((1.0-r)/(1.0+r)-a);k=sqrt(max((r*((n+1.0)*(n+1.0))-(n-1.0)*(n-1.0))/(1.0-r),0.0));}
-            let r=thin_film_channel(i,c.a,c.b,n,k,g,cosine,model==5u);value[i]=r.x;if(model!=5u){f.cos_transmit=r.y;}}
-        if(model==5u){f.reflection=value;return f;}
+//#if SVM_BSDF_THIN_FILM_CONDUCTOR else             let r=thin_film_channel(i,c.a,c.b,n,k,g,cosine,model==5u);value[i]=r.x;if(model!=5u){f.cos_transmit=r.y;}}
+            // The physical conductor (model 3): its n and k, the polarized bottom interface (g = -1).
+            let conductor=model==5u||model==3u;if(model==3u){n=c.multiscatter[i];k=c.reflection_tint[i];}
+            let r=thin_film_channel(i,c.a,c.b,n,k,g,cosine,conductor);value[i]=r.x;if(!conductor){f.cos_transmit=r.y;}}
+//#endif
+//#if SVM_BSDF_THIN_FILM_CONDUCTOR else         if(model==5u){f.reflection=value;return f;}
+        if(model==5u||model==3u){f.reflection=value;return f;}
+//#endif
         let real_f0=ggx_f0(c.ior);
         if(real_f0>1e-5&&any(value!=vec3<f32>(1))){for(var i=0u;i<3u;i++){let s=clamp((value[i]-1.0)/(real_f0-1.0),0.0,1.0);value[i]*=1.0+s*(c.multiscatter[i]/real_f0-1.0);}}
         f.reflection=value*c.reflection_tint;if(glass){f.transmission=(vec3<f32>(1)-value)*c.transmission_tint;}return f;
@@ -464,7 +470,15 @@ fn thin_film_channel(channel:u32,thickness:f32,film:f32,n:f32,k:f32,f82:f32,cosi
         let cosi=-top.cos_t;let e1=film_ior*film_ior;let e2=n*n;let k2=k*k;let cross=2.0*n*k;
         let t1=e2-k2-e1*(1.0-cosi*cosi);let t2=sqrt(t1*t1+cross*cross);let u2=max(0.5*(t2+t1),0.0);let v2=max(0.5*(t2-t1),0.0);let u=sqrt(u2);let v=sqrt(v2);
         let rn=n/film_ior;let rk=(k/film_ior)*(k/film_ior);let f0=((rn-1.0)*(rn-1.0)+rk)/((rn+1.0)*(rn+1.0)+rk);
-        let f=6.0/7.0;let f5=(f*f)*(f*f)*f;let b=(7.0/(f5*f))*(f0+f5*(1.0-f0)-f82);let rs=thin_film_f82(cosi,f0,b);r23=vec2<f32>(rs);
+//#if SVM_BSDF_THIN_FILM_CONDUCTOR else         let f=6.0/7.0;let f5=(f*f)*(f*f)*f;let b=(7.0/(f5*f))*(f0+f5*(1.0-f0)-f82);let rs=thin_film_f82(cosi,f0,b);r23=vec2<f32>(rs);
+        if(f82>=0.0){let f=6.0/7.0;let f5=(f*f)*(f*f)*f;let b=(7.0/(f5*f))*(f0+f5*(1.0-f0)-f82);let rs=thin_film_f82(cosi,f0,b);r23=vec2<f32>(rs);}
+        else{
+            // fresnel_conductor_polarized without the F82 fit (eta1 the film IOR): safe_divide's zero for a zero denominator.
+            let a=film_ior*cosi;let rs_den=(a+u)*(a+u)+v2;let rs=select(0.0,((a-u)*(a-u)+v2)/rs_den,rs_den!=0.0);
+            let t3=(e2-k2)*cosi;let t4=cross*cosi;let p1=t3-film_ior*u;let p2=t4-film_ior*v;let p3=t3+film_ior*u;let p4=t4+film_ior*v;
+            let rp_den=p3*p3+p4*p4;let rp=select(0.0,(p1*p1+p2*p2)/rp_den,rp_den!=0.0);r23=vec2<f32>(rs,rp);
+        }
+//#endif
         let re_s=-u2-v2+(film_ior*cosi)*(film_ior*cosi);let im_s=-2.0*film_ior*cosi*v;let mag_s=sqrt(re_s*re_s+im_s*im_s);
         phase_s=select(vec2<f32>(re_s/mag_s,im_s/mag_s),vec2<f32>(1,0),mag_s==0.0);
         let re_p=((e2+k2)*cosi)*((e2+k2)*cosi)-e1*(u2+v2);let im_p=2.0*film_ior*cosi*(cross*u-(e2-k2)*v);let mag_p=sqrt(re_p*re_p+im_p*im_p);
@@ -516,7 +530,9 @@ fn svm_metallic(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibi
     let distribution=load_word(data+N_MetallicBsdfData_distribution);
     let thickness=max(svm_input(s,data+N_MetallicBsdfData_thin_film_thickness),1e-5);
     // Refused natively before rendering (pipelines.cpp metallic_census); never approximated.
-    if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR&&thickness>0.1){svm_error(s,16u);return;}
+//#if SVM_BSDF_THIN_FILM_CONDUCTOR else     if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR&&thickness>0.1){svm_error(s,16u);return;}
+    // The physical conductor's thin film: its polarized iridescence (thin_film_channel).
+//#endif
 //#if SVM_BSDF_BECKMANN else     if(distribution==CLOSURE_BSDF_MICROFACET_BECKMANN_ID){svm_error(s,16u);return;}
 //#endif
     if(data_word(D_caustics_reflective)==0u&&(visibility&PATH_RAY_VISIBILITY_DIFFUSE)!=0u){return;}
@@ -550,9 +566,15 @@ fn svm_metallic(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibi
     let multi=distribution==CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID;let wi=(*s).geometry.wi;
     if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR){
         let eta=max(svm_input3(s,data+N_MetallicBsdfData_base_ior),vec3<f32>(0));let k=max(svm_input3(s,data+N_MetallicBsdfData_edge_tint_k),vec3<f32>(0));
-        c.roughness=3.0;c.multiscatter=eta;c.reflection_tint=k;
+//#if SVM_BSDF_THIN_FILM_CONDUCTOR else         c.roughness=3.0;c.multiscatter=eta;c.reflection_tint=k;
+        c.roughness=3.0;c.multiscatter=eta;c.reflection_tint=k;if(thickness>0.1){c.a=thickness;c.b=film;}
+//#endif
         // bsdf_microfacet_estimate_albedo without a table: microfacet_fresnel at dot(wi, N).
-        c.sample_weight*=principled_average(metallic_conductor(rounded_dot(wi,c.N),eta,k));
+//#if SVM_BSDF_THIN_FILM_CONDUCTOR else         c.sample_weight*=principled_average(metallic_conductor(rounded_dot(wi,c.N),eta,k));
+        // With a thin film microfacet_fresnel is the iridescence (no table).
+        if(thickness>0.1){c.sample_weight*=principled_average(principled_fresnel(c,rounded_dot(wi,c.N)).reflection);}
+        else{c.sample_weight*=principled_average(metallic_conductor(rounded_dot(wi,c.N),eta,k));}
+//#endif
         if(multi){principled_preserve(s,&c,wi,metallic_conductor_fss(eta,k));}
     }else{
         let color=clamp(svm_input3(s,data+N_MetallicBsdfData_base_ior),vec3<f32>(0),vec3<f32>(1));let tint=clamp(svm_input3(s,data+N_MetallicBsdfData_edge_tint_k),vec3<f32>(0),vec3<f32>(1));

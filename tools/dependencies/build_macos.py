@@ -82,6 +82,9 @@ def profile(source):
    settings.update({'ENABLE_'+plugin:'OFF' for plugin in oiio_plugins(source)})
    settings['USE_PNG']='OFF'
   if name in ['imath','openexr','oiio']:settings['CLANG_FORMAT_EXE:FILEPATH']='OFF'
+  # osx-arm64 is the one RID with OIDN's Metal device (licence plan, OIDN build
+  # conditions); the osx-x64 and Windows siblings turn it back off.
+  if name=='oidn':settings['OIDN_DEVICE_METAL']='ON'
   rows.append((name,path,settings))
  return rows
 

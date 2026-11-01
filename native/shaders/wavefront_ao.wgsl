@@ -23,7 +23,9 @@ fn surface_ao(index:u32,slot:u32,sd:SurfaceData,r:SvmResult){
 //#endif
 //#if SHADOW_CATCHER else     // stage: SURFACE_UNSUPPORTED_FLAGS rejects them in prepare_surface.
 //#endif
-    let rand=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xy;
+//#if SAMPLING_SOBOL_BURLEY else     let rand=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xy;
+    let rand=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF,2u).xy;
+//#endif
     // surface_shader_ao: diffuse closure weights times the additive factor and
     // their weighted normal; every sum is rounded before the next term.
     let factor=data_float(D_integrator_ao_additive_factor);var weight=vec3<f32>(0);var normal=vec3<f32>(0);
@@ -196,7 +198,9 @@ fn svm_ao_occlusion(index:u32,sd:SurfaceData,normal:vec3<f32>,distance:f32,sampl
     let sample_id=state_word(S_path_sample,index);let pixel=state_word(S_path_rng_pixel,index);let offset=state_half(S_path_rng_offset,index);
     var unoccluded=0u;
     for(var i=0u;i<samples;i++){
-        let rand=native_rng(sample_id*samples+i,pixel,offset+AO_PRNG_SURFACE_AO).xy;
+//#if SAMPLING_SOBOL_BURLEY else         let rand=native_rng(sample_id*samples+i,pixel,offset+AO_PRNG_SURFACE_AO).xy;
+        let rand=native_rng_pattern(sample_id*samples+i,pixel,offset+AO_PRNG_SURFACE_AO,2u).xy;
+//#endif
         let D=surface_cos_hemisphere(N,rand).xyz;
         let local=select(NONE,sd.object_id,(flags&AO_NODE_ONLY_LOCAL)!=0u);
         if(!ao_trace(sd.P,D,max_dist,sd.time,sd.object_id,sd.prim,local)){unoccluded++;}
@@ -463,7 +467,9 @@ fn raytrace_node_trace(index:u32,sd:SurfaceData,bevel:bool,radius:f32,samples:u3
         var disk_N=sd.Ng;var disk_T=basis.X;var disk_B=basis.Y;var pick=vec3<f32>(0.5,0.25,0.25);var disk_r=0.0;
         if(bevel){
 //#if SVM_NODE_BEVEL
-            var rand=native_rng(sample_id*samples+i,pixel,offset+RAYTRACE_PRNG_SURFACE_BEVEL).xy;
+//#if SAMPLING_SOBOL_BURLEY else             var rand=native_rng(sample_id*samples+i,pixel,offset+RAYTRACE_PRNG_SURFACE_BEVEL).xy;
+            var rand=native_rng_pattern(sample_id*samples+i,pixel,offset+RAYTRACE_PRNG_SURFACE_BEVEL,2u).xy;
+//#endif
             if(rand.x<0.5){rand.x*=2.0;}
             else if(rand.x<0.75){disk_N=basis.X;disk_T=sd.Ng;pick=vec3<f32>(0.25,0.5,0.25);rand.x=rounded_add(rand.x,-0.5)*4.0;}
             else{disk_N=basis.Y;disk_B=sd.Ng;pick=vec3<f32>(0.25,0.25,0.5);rand.x=rounded_add(rand.x,-0.75)*4.0;}
