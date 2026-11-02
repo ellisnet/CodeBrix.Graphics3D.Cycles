@@ -184,3 +184,37 @@ code (MAINTAINER-README.txt, "Licensing and source checks").
 - Build and render walls; `uname -m`; the Mac model.
 - Per-scene repeat identity, refusals, failures (verbatim).
 - The section 6 comparison summary.
+
+## 9. Re-rendering at a new commit (checklist)
+
+The ARM64 CPU oracle is the gold standard for ARM64 (section 1), so it must exist
+for the commit an ARM64 device validates. Re-render when any of these changed since
+the commit of the newest `native/evidence/linux-arm64-cpu-oracle-<date>/` folder:
+Cycles CPU-kernel code or build flags, host scene-preparation code
+(`native/host`, `native/cycles`, `native/src`, the Cycles overlay), or the committed
+scene set under `native/oracle/scenes/` (new or changed scene documents). When in
+doubt, re-render: the run takes minutes.
+
+Steps (sections 3 to 7, with these requirements):
+
+1. Check out the exact commit under test, clean tree (`git status --short` empty);
+   record the hash. Nothing from a working tree or another branch.
+2. Build and render the WHOLE committed corpus (section 5, the loop without
+   `--scene` filtering) plus the two bench bundle documents. Scene documents added
+   since the previous folder MUST be included; the count of rendered scenes must
+   equal `find native/oracle/scenes -name "*.json" ! -name manifest.json ! -path "*/assets/*" | wc -l`
+   plus two for the bundle. A missing scene is a gap in the gold standard, so a
+   refusal or failure is recorded verbatim in the README with the scene path.
+3. Repeat identity (`repeatBitwiseIdentical`) true for every scene; any `false`
+   is recorded verbatim.
+4. Compare with the newest `native/evidence/linux-x64-reference-<date>/` (section 6)
+   and name it in the README; the x64 folder may be of an earlier commit when the
+   current commit has no Linux x64 evidence yet. Per-scene results go in `vs-x64/`.
+5. Commit the run as a NEW folder `native/evidence/linux-arm64-cpu-oracle-<date>/`
+   with the layout of section 7. The README states: the commit hash, that the folder
+   is the ARM64 gold standard for that commit (section 1), the x64 folder compared
+   against, the scene count, and the refused, failed or non-identical scenes
+   (or "none"). Earlier `linux-arm64-cpu-oracle-*` folders stay untouched.
+6. After the commit, Android ARM64 validation of that commit judges product-default
+   films against this folder (native/DEVICE.md, "Validation reference policy",
+   Option A); the Linux x64 host must `git pull` before it starts.
