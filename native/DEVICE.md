@@ -2924,7 +2924,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    `shadow_catcher_gate.cpp`, `mnee_gate.cpp`, `mnee_reference.cpp` and `device.cpp` (`mnee_entry_of`).
 27. (resolved, see "Resolved" below) Was: **Emissive triangle edge-on from diffuse walls (lane cov-a, 2026-10-30).**
    Isolated pixels above the practical bound with an emissive panel inside a diffuse enclosure.
-28. (partly resolved, see "Integrator features added with the BSDF port"; the rest is item 35) **Remaining driver-arithmetic sites (lane item27b, 2026-10-30).** The Intel/Mesa driver's `dot`, `/`, `sqrt`,
+28. (resolved, see "Resolved" below) Was: **Remaining driver-arithmetic sites (lane item27b, 2026-10-30).** The Intel/Mesa driver's `dot`, `/`, `sqrt`,
    `length` and contracted `a-b*c` differ from the host operations (45%, 29%, 8%, 20% and 22% of random inputs). The
    surface-shading sites were matched to the pinned kernel (Resolved, below); these remain, all within the practical
    bound, with no known failing configuration: the SVM vector-math node's division (`svm_divide`, pinned
@@ -2981,7 +2981,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    The pinned BVH2 local traversal starts at the scene root there (the object has no own BVH) and runs its triangle
    loop over the instance leaves' negative primitive addresses: the CPU result is undefined, so there is nothing to
    match.
-35. **`surf_bump` and `c_acos`/`c_asin` arithmetic, and `trig_acos` near 0.** Host-exact versions exist (see item 28's
+35. (resolved, see "Resolved" below) Was: **`surf_bump` and `c_acos`/`c_asin` arithmetic, and `trig_acos` near 0.** Host-exact versions exist (see item 28's
    resolution) but exceed the size guard (arcsine/arccosine, raytrace-node entries) or the compile envelope (`surf_bump`,
    the shadow catcher's `shade_surface`, already at 59,267 instructions). The shared
    `trig_acos` is one ULP off for some arguments near 0 (5 of 300,000 sampled on the GPU against glibc acosf, all with
@@ -3030,6 +3030,32 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
 41. (resolved, see "Resolved" below) Was: **Samsung SM-X700: MNEE with a moving receiver.** `mnee_render` and the
    `mnee` state gate's case 6 (object motion on the caustic receiver) missed the moving floor in both arithmetics.
 Resolved, or closed under the device reference policy:
+- [28 and 35 of this list] **The remaining driver-arithmetic sites: `surf_bump`, `c_acos`/`c_asin` and `trig_acos`
+  near 0: RESOLVED (Linux x64).** `surf_bump` (`wavefront_surface.wgsl`) is pinned `bump_shadowing_term`: the three SSE
+  dot products (`rounded_dot`), `tan2_d = 1/sqr(cos_d) - 1`, `alpha2 = saturate(0.125*tan2_d)` and
+  `bsdf_G<GGX>(alpha2, cos_i) = 1/(1 + 0.5*(sqrt(1 + alpha2*max(1/sqr(cos_i) - 1, 0)) - 1))`, every quotient, sum and
+  square root correctly rounded (it was the driver's `dot`, `/` and `sqrt` and the algebraically equal
+  `2/(1 + sqrt(...))`). The arccosine and arcsine are one adapter, `trig_arc` (`wavefront_trig.wgsl`; `trig_acos` and
+  the new `trig_asin` call it): one double-float series evaluation per call, `asin(|x|) = |x|*series(x^2)` up to
+  |x| = 0.5 (`acos(x) = pi/2 - asin(x)` there, with the subtraction residual kept before the final rounding; below
+  2^-12 `asinf(x)` returns the argument) and the previous half-angle form above 0.5 with the same operations as
+  before, so `trig_acos` changes only for |x| <= 0.5, where the half-angle form was one ULP off near 0. Its ten
+  correctly rounded sums outside the series run as steps of one loop through one `rounded_add` body (compiler
+  pressure: 15,567 inlined bytes per call against 26,550 for the previous `trig_acos`). The translator's float series
+  `c_asin`/`c_acos` (the Math node and the image sphere projection) now return `trig_asin`/`trig_acos`
+  (`native/tools/build_cycles.py`), and the Math node's arcsine and arccosine share one `trig_arc` call that is
+  compiled only when a reachable Math node uses one of them (bit 160 `SVM_MATH_ARC`, census of the node type, as the
+  image projections of bits 149 and 150; otherwise the case reports error bit 2). GPU probe on Linux (Intel UHD,
+  Mesa 25.0.7; 300,000 inputs in [-1, 1] against this host's glibc 2.41 asinf and acosf, which are correctly rounded):
+  before, `trig_acos` 5 differences (all |x| < 0.05) and the series `c_asin`/`c_acos` 100,056 and 117,000; after, 0
+  and 0, and 0 and 0 on 1,005,034 further inputs (every binary32 value within 100,000 steps of 0.5 and 1, within 50,000
+  of 2^-12, subnormals and special values). Evidence: `native/work/e3/gpu/`. Compiler pressure on the gate dumps after
+  the change: every entry of the distinct modules the 30 Linux gates dumped (Intel Mesa 25.0.7) stays below 60,000
+  backend instructions (worst `mnee_solve` 55,505, 57,173 before; the shadow catcher's `shade_surface` at most 53,304,
+  51,626 before: the 59,267 of item 35 predates the single `surf_sample` body, so no entry split was needed), and the
+  raytrace-node `prepare_surface_raytrace` is 1,100,976 inlined bytes (1,113,806 before, over the size guard). The
+  node-world gate's `shade_background` entries were above the size guard before and still are (1,335,455 to 1,465,410
+  bytes, at most 45,436 instructions).
 - **MNEE entries on the Adreno 730: per-invocation private memory and accumulated SVM handlers.** With motion blur
   on a caustic receiver (`mnee_render`/`mnee` case 6) creating `mnee_solve` failed in the driver
   (`AdrenoVK-0: Failed to link shaders`, then `Parent device is lost`), and the AO combination of `ao_render`
@@ -5570,7 +5596,7 @@ CPU kernels with the practical criterion `5e-5 + 2e-4 |ref|`:
   triangle against `kernel_displace_evaluate` on the same scene tables; strict 4,125, maximum 1.13e-6; the host path moved
   1,183 grid vertices) and the oracle scenes `displacement/true-height`, `true-vector`, `both` and `bump` (all perfect;
   methods True and Both change 141 to 158 of 3,072 CPU film values against the same scenes with method Bump).
-- **Open item 28, the remaining driver-arithmetic sites (partly resolved).** `svm_divide` (the Vector Math node's
+- **Open item 28, the remaining driver-arithmetic sites (resolved).** `svm_divide` (the Vector Math node's
   division and the MNEE pass weights) divides each lane correctly rounded, 0 where the divisor is 0, as the pinned
   `safe_divide`; `surface_orthogonal` is `make_orthonormals`' `normalize()` (a division per lane on SSE hosts, not the
   reciprocal product of `safe_normalize`) and the cross products after it (`make_orthonormals`,
@@ -5579,13 +5605,9 @@ CPU kernels with the practical criterion `5e-5 + 2e-4 |ref|`:
   gate film against its CPU film before and after: 3,786 components changed; 1,934 moved closer to the CPU value, 1,642
   farther (at most 2 ULP, except in the volume image: up to 256 ULP), 51 are run-to-run variation; the summed distance to
   the CPU over the changed components fell by 10.5%; strict differences 55,302 to 55,277; no practical failure before or
-  after (Node SVM strict failures 10,174 to 10,157; volume stage strict failures 76,204 to 74,928). Two sites stay as
-  they were (open item 35): `surf_bump` with the pinned `bsdf_G<GGX>` form and correctly rounded operations (written out
-  it passed the size guard in MNEE entries; a compact form, its nine steps through one quotient, sum and square-root
-  body, fits the guard but takes the shadow catcher's `shade_surface` from 59,267 to 61,276 Intel instructions, over the
-  60,000 envelope), and correctly rounded `c_acos`/`c_asin` (through `trig_acos` and a double-float `trig_asin`; 0 of
-  300,000 GPU samples differed from glibc), which inline up to 78 KB more into the raytrace-node entries, past the
-  1,110,000-byte size guard.
+  after (Node SVM strict failures 10,174 to 10,157; volume stage strict failures 76,204 to 74,928). The last sites,
+  `surf_bump` with the pinned `bsdf_G<GGX>` form and the correctly rounded `c_acos`/`c_asin` and `trig_acos` near 0
+  (open item 35), are resolved too (open items, "Resolved").
 
 ## Film passes, light groups, AOVs, cryptomatte and denoising features
 
@@ -5801,6 +5823,7 @@ when every pixel converges and with the Sobol-Burley and blue-noise patterns.
 | 157 | `SVM_TEX_SKY_ANALYTIC` | The Sky Texture node's Preetham and Hosek-Wilkie models |
 | 158 | `BACKGROUND_SUN` | Background light sun guiding (a scattering sky with the sun disc) |
 | 159 | `SVM_TEX_SKY_SCATTERING` | The Sky Texture node's single and multiple scattering models |
+| 160 | `SVM_MATH_ARC` | The Math node's arcsine and arccosine (correctly rounded `trig_arc`) |
 
 **Lamps.** The Light Falloff node (`svm_node_light_falloff`: the ray length's linear or squared scale and the smooth
 term with a correctly rounded quotient; distant lights pass the strength through) and the IES Texture node

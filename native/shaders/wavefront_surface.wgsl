@@ -37,12 +37,15 @@ fn surf_bsdf(kind:u32)->bool{return kind!=FAMILY_NONE&&kind<=CLOSURE_BSDF_TRANSP
 fn surf_roughness(c:SvmClosure)->f32{if(surf_microfacet(c.kind)){return c.alpha_x*c.alpha_y;}return select(1.0,0.0,c.kind==CLOSURE_BSDF_TRANSPARENT_ID);}
 fn surf_bump(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>,is_eval:bool)->f32{
     if(all(c.N==sd.N)){return 1.0;}
-    let ns_i=dot(sd.N,wo);let ns_n=dot(sd.N,c.N);let n_i=dot(c.N,wo);let diffuse=surf_diffuse(c.kind);
+    let ns_i=rounded_dot(sd.N,wo);let ns_n=rounded_dot(sd.N,c.N);let n_i=rounded_dot(c.N,wo);let diffuse=surf_diffuse(c.kind);
     if(ns_i*ns_n*n_i<0.0&&(is_eval||diffuse)){return 0.0;}
     if(!diffuse||(sd.shader_flag&SD_USE_BUMP_MAP_CORRECTION)==0u){return 1.0;}
     let ci=abs(ns_i);let cd=abs(ns_n);if(cd>=1.0||ci>=1.0){return 1.0;}if(ci<1e-6){return 0.0;}
-    let alpha=clamp(0.125*(1.0/(cd*cd)-1.0),0.0,1.0);
-    return 2.0/(1.0+sqrt(1.0+alpha*(1.0/(ci*ci)-1.0)));
+    // tan2_d = 1/sqr(cos_d) - 1, alpha2 = saturate(0.125*tan2_d), then bsdf_G<GGX>(alpha2, cos_i) =
+    // 1/(1 + 0.5*(sqrt(1 + alpha2*max(1/sqr(cos_i) - 1, 0)) - 1)), every operation rounded as on the host.
+    let alpha=clamp(0.125*rounded_add(rounded_divide(1.0,cd*cd),-1.0),0.0,1.0);
+    let lambda=0.5*rounded_add(rounded_sqrt(rounded_add(1.0,alpha*max(rounded_add(rounded_divide(1.0,ci*ci),-1.0),0.0))),-1.0);
+    return rounded_divide(1.0,rounded_add(1.0,lambda));
 }
 // bsdf_oren_nayar_get_intensity with the host's rounding: the SSE dot, every
 // product rounded before its sum and a correctly rounded quotient.

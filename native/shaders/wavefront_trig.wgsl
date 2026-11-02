@@ -84,29 +84,77 @@ fn trig_sincos_wide(angle:f32)->vec2<f32>{
     if(q==3){return vec2<f32>(-sc.y,sc.x);}
     return sc;
 }
-// Correctly rounded acosf for the environment light (glibc 2.41 acosf is correctly
-// rounded): the triangle-light double-float arccosine, whose pi - acos(|x|) keeps the
-// subtraction residual before the final rounding (motion_acos rounds the high part
-// first and is one ULP off for about 9% of negative inputs).
-fn trig_acos(value:f32)->f32{
-    let absolute=abs(clamp(value,-1.0,1.0));let high=rounded_add(1.0,-absolute);
-    let low=rounded_add(rounded_add(1.0,-high),-absolute);
-    let x=vec2<f32>(high*.5,low*.5);let root=rounded_sqrt(x.x);
-    if(root==0.0){return select(0.0,3.141592653589793,value<0.0);}
-    let product=trig_product(root,root);
-    let residual=rounded_add(rounded_add(x.x,-product.x),rounded_add(x.y,-product.y));
-    let z=vec2<f32>(root,rounded_divide(residual,2.0*root));
-    // One Horner step per iteration: the same operations in the same order as
-    // the unrolled form, but one inlined copy instead of 29 per call site.
+// asin(sqrt(x))/sqrt(x) as a double-float polynomial in x (x <= 0.5): one Horner step per iteration, the same
+// operations in the same order as the unrolled form, but one inlined copy instead of 29 per call site.
+fn trig_asin_series(x:vec2<f32>)->vec2<f32>{
     var coefficients=array<vec2<f32>,29>(vec2<f32>(0.0018622264033183455,3.0847819958157441e-12),vec2<f32>(0.0019650335889309645,2.7346319219495596e-11),vec2<f32>(0.0020776609890162945,4.3501873110696199e-11),vec2<f32>(0.0022014740388840437,-6.5173905335058624e-11),vec2<f32>(0.0023380918428301811,4.9281793923494632e-11),vec2<f32>(0.0024894487578421831,-7.9595299535412112e-11),vec2<f32>(0.0026578705292195082,1.0898778190701619e-10),vec2<f32>(0.0028461783658713102,3.5237631822865323e-11),vec2<f32>(0.0030578216537833214,-4.5252907324155878e-12),vec2<f32>(0.0032970595639199018,-6.0446416969006656e-11),vec2<f32>(0.0035692052915692329,1.0225670180399882e-10),vec2<f32>(0.0038809645920991898,-3.3261520707844605e-11),vec2<f32>(0.0042409072630107403,-1.6933137704511214e-10),vec2<f32>(0.0046601435169577599,-3.004266366929409e-11),vec2<f32>(0.005153309553861618,1.2845828654267644e-10),vec2<f32>(0.0057400376535952091,1.7246714473229119e-11),vec2<f32>(0.0064472104422748089,-1.3038516013391677e-10),vec2<f32>(0.0073125259950757027,-1.2147685721913826e-10),vec2<f32>(0.0083903353661298752,4.4348693988005561e-10),vec2<f32>(0.0097616091370582581,3.9213582034292038e-10),vec2<f32>(0.011551801115274429,-2.1913472425527658e-10),vec2<f32>(0.013964843936264515,-1.8626451422920631e-10),vec2<f32>(0.017352763563394547,8.5968237736877562e-10),vec2<f32>(0.022372158244252205,8.4665688696028418e-10),vec2<f32>(0.0303819440305233,4.139211438880519e-10),vec2<f32>(0.0446428582072258,-1.0643686557121335e-09),vec2<f32>(0.075000002980232239,-2.9802322415450888e-09),vec2<f32>(0.1666666716337204,-4.9670537405344106e-09),vec2<f32>(1,0));
     var polynomial=vec2<f32>(0.0017680810997262597,2.0789158589051837e-11);
     for(var k=0u;k<29u;k++){polynomial=trig_coeff(coefficients[k],trig_mul(polynomial,x));}
-    let result=2.0*trig_mul(z,polynomial);
-    // Retain the subtraction residual before the final rounding. Rounding the
-    // high subtraction first can move acos by one ULP and amplify triangle samples.
-    if(value<0.0){let reduced=trig_coeff(vec2<f32>(3.1415927410125732,-8.742278000372485e-8),-result);return rounded_add(reduced.x,reduced.y);}
-    return rounded_add(result.x,result.y);
+    return polynomial;
 }
+// Correctly rounded acosf and asinf (glibc 2.41's are correctly rounded), one series evaluation per call.
+// Up to |x| = 0.5: asin(|x|) = |x| * series(x^2) in double-float, and acos(x) = pi/2 - asin(x) keeping the
+// subtraction residual (the half-angle form below is one ULP off for some arguments near 0); below 2^-12 asinf(x)
+// rounds to x. Above 0.5: the triangle-light double-float arccosine acos(|x|) = 2 asin(sqrt((1-|x|)/2)), whose
+// pi - acos(|x|) and pi/2 - acos(|x|) keep the subtraction residual before the final rounding (motion_acos rounds
+// the high part first and is one ULP off for about 9% of negative inputs). Compiler pressure: the ten correctly
+// rounded sums outside the series run as steps of one loop through one rounded_add body (the same operations in the
+// same order as the straight-line form); step 6 evaluates the series, steps 6-8 are trig_coeff's three sums.
+fn trig_arc(value:f32,arccosine:bool)->f32{
+    let clamped=clamp(value,-1.0,1.0);let absolute=abs(clamped);let small=absolute<=0.5;
+    if(!arccosine&&absolute<0.000244140625){return value;}
+    let large_acos=arccosine&&!small;
+    // Series argument s and factor m: (x^2, |x|) up to 0.5, else ((1-|x|)/2, its square root), both double-float.
+    var s=vec2<f32>(0);var m=vec2<f32>(absolute,0.0);if(small){s=trig_product(absolute,absolute);}
+    var high=0.0;var partial=0.0;var root=0.0;var product=vec2<f32>(0);var r1=0.0;var r2=0.0;
+    var result=vec2<f32>(0);var k=vec2<f32>(0);var b=vec2<f32>(0);var coeff_high=0.0;var coeff_inner=0.0;
+    var step=select(0u,6u,small);
+    loop{
+        if(step==6u){
+            result=trig_mul(m,trig_asin_series(s));if(!small){result=2.0*result;}
+            k=select(vec2<f32>(1.5707963705062866,-4.371139000186243e-8),vec2<f32>(3.1415927410125732,-8.742278000372485e-8),large_acos);
+            b=select(-result,result,arccosine&&small&&value<0.0);
+            if(!((arccosine&&small)||(large_acos&&value<0.0)||(!arccosine&&!small))){step=9u;}
+        }
+        var x=result.x;var y=result.y;
+        switch(step){
+            case 0u:{x=1.0;y=-absolute;}
+            case 1u:{x=1.0;y=-high;}
+            case 2u:{x=partial;y=-absolute;}
+            case 3u:{x=s.x;y=-product.x;}
+            case 4u:{x=s.y;y=-product.y;}
+            case 5u:{x=r1;y=r2;}
+            case 6u:{x=k.x;y=b.x;}
+            case 7u:{x=k.x;y=-coeff_high;}
+            case 8u:{x=b.x;y=coeff_inner;}
+            default:{}
+        }
+        let sum=rounded_add(x,y);
+        switch(step){
+            case 0u:{high=sum;}
+            case 1u:{partial=sum;}
+            case 2u:{
+                s=vec2<f32>(high*.5,sum*.5);root=rounded_sqrt(s.x);
+                if(root==0.0){
+                    if(arccosine){return select(0.0,3.141592653589793,value<0.0);}
+                    return select(1.5707963705062866,-1.5707963705062866,value<0.0);
+                }
+                product=trig_product(root,root);
+            }
+            case 3u:{r1=sum;}
+            case 4u:{r2=sum;}
+            case 5u:{m=vec2<f32>(root,rounded_divide(sum,2.0*root));}
+            case 6u:{coeff_high=sum;}
+            case 7u:{coeff_inner=sum;}
+            case 8u:{result=vec2<f32>(coeff_high,(sum+k.y)+b.y);}
+            default:{return select(sum,-sum,!arccosine&&value<0.0);}
+        }
+        step++;
+    }
+    return result.x;
+}
+fn trig_acos(value:f32)->f32{return trig_arc(value,true);}
+fn trig_asin(value:f32)->f32{return trig_arc(value,false);}
 
 // sin/cos of a reduced angle |x| <= pi/4 as double-float pairs (sin.hi, sin.lo,
 // cos.hi, cos.lo): the precise_disk_sincos_pair series without the final rounding.

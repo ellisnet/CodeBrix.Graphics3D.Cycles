@@ -65,6 +65,20 @@ def overlay(out=None):
     if translated.count('fn c_ray_triangle_intersect(')!=1:raise RuntimeError('Triangle intersection translation anchor changed')
     translated=translated.replace('fn c_ray_triangle_intersect(', 'fn c_ray_triangle_intersect_ast(')
     translated=translated.replace('fn c_ray_triangle_dot(', 'fn c_ray_triangle_dot_scalar(')+(ROOT/'shaders/wavefront_triangle.wgsl').read_text()
+    # c_asin/c_acos (the translator's float series): glibc's asinf/acosf are correctly rounded, so the renderer
+    # modules take the correctly rounded double-float adapters (wavefront_trig.wgsl trig_asin/trig_acos).
+    for name in ('c_asin','c_acos'):
+        head='fn '+name+'(x: f32) -> f32 {'
+        if translated.count(head)!=1:raise RuntimeError('Arcsine/arccosine translation anchor changed')
+        start=translated.index(head);end=translated.index('\n}\n',start)+3
+        translated=translated[:start]+head+' return trig_'+name[2:]+'(x); }\n'+translated[end:]
+    # The Math node's arcsine and arccosine share one inlined adapter body (compiler pressure: the same operations),
+    math_cases='case 7u: {\nreturn c_safe_asinf(v_a);\n}\ncase 8u: {\nreturn c_safe_acosf(v_a);\n}'
+    if translated.count(math_cases)!=1:raise RuntimeError('Math node arcsine/arccosine translation anchor changed')
+    # Compiled only when a reachable Math node uses them (census bit SVM_MATH_ARC, pipelines.cpp); otherwise the
+    # case reports error bit 2 (a missed node is refused, never rendered differently).
+    translated=translated.replace(math_cases,'case 7u, 8u: {\n//#if SVM_MATH_ARC else atomicOr(&heap[p(17u)/4u],2u);return 0.0;\n'
+                                  'return trig_arc(clamp(v_a, (-1.0f), 1.0f), v_type == 8u);\n//#endif\n}')
     svm=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm.wgsl','wavefront_attributes.wgsl','wavefront_images.wgsl','wavefront_normals.wgsl','wavefront_svm_nodes.wgsl','wavefront_svm_derivatives.wgsl'))
     closures=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm_closures.wgsl','wavefront_svm_microfacet.wgsl'))
     enum_pattern=r'\b(?:NODE_[A-Za-z0-9_]+|ATTR_[A-Za-z0-9_]+|IMAGE_[A-Za-z0-9_]+|INTERPOLATION_[A-Za-z0-9_]+|EXTENSION_[A-Za-z0-9_]+|KERNEL_(?:IMAGE_NONE|TILE_LOAD_NONE)|SVM_(?:STACK_SIZE|STACK_INVALID|INPUT_STACK_OFFSET_MASK)|CAMERA_(?:PERSPECTIVE|ORTHOGRAPHIC))\b'

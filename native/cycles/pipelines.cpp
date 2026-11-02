@@ -24,7 +24,7 @@ namespace ccl {
 const std::vector<ShaderFeatureName> &shader_feature_names(){
   static const std::vector<ShaderFeatureName> names={
     {"SVM_NODE_GEOMETRY",SF_GEOMETRY},{"SVM_NODE_TEX_COORD",SF_TEX_COORD},{"SVM_NODE_IMAGE",SF_IMAGE},
-    {"SVM_TEX_ENVIRONMENT",SF_TEX_ENVIRONMENT},{"SVM_TEX_IMAGE_BOX",SF_TEX_IMAGE_BOX},{"SAMPLING_SOBOL_BURLEY",SF_SAMPLING_PATTERN},{"CAMERA_PROJECTIONS",SF_CAMERA_PROJECTIONS},{"SVM_NODE_LIGHT_FALLOFF",SF_LIGHT_FALLOFF},{"LIGHT_LAMP_SHADER",SF_LIGHT_LAMP_SHADER},{"SVM_NODE_IES",SF_NODE_IES},{"SVM_BSDF_THIN_FILM_CONDUCTOR",SF_BSDF_THIN_FILM_CONDUCTOR},{"SVM_TEX_SKY_ANALYTIC",SF_TEX_SKY},{"SVM_TEX_SKY_SCATTERING",SF_TEX_SKY_SCATTERING},{"SVM_TEX_SKY",SF_TEX_SKY|SF_TEX_SKY_SCATTERING},{"BACKGROUND_SUN",SF_BACKGROUND_SUN},
+    {"SVM_TEX_ENVIRONMENT",SF_TEX_ENVIRONMENT},{"SVM_TEX_IMAGE_BOX",SF_TEX_IMAGE_BOX},{"SAMPLING_SOBOL_BURLEY",SF_SAMPLING_PATTERN},{"CAMERA_PROJECTIONS",SF_CAMERA_PROJECTIONS},{"SVM_NODE_LIGHT_FALLOFF",SF_LIGHT_FALLOFF},{"LIGHT_LAMP_SHADER",SF_LIGHT_LAMP_SHADER},{"SVM_NODE_IES",SF_NODE_IES},{"SVM_BSDF_THIN_FILM_CONDUCTOR",SF_BSDF_THIN_FILM_CONDUCTOR},{"SVM_TEX_SKY_ANALYTIC",SF_TEX_SKY},{"SVM_TEX_SKY_SCATTERING",SF_TEX_SKY_SCATTERING},{"SVM_TEX_SKY",SF_TEX_SKY|SF_TEX_SKY_SCATTERING},{"BACKGROUND_SUN",SF_BACKGROUND_SUN},{"SVM_MATH_ARC",SF_MATH_ARC},
     // The guarded arctangent (wavefront_trig.wgsl): the equirectangular lookups of environment textures and the
     // background light, the lamp and IES coordinates.
     {"TRIG_ATAN2_GUARD",SF_TEX_ENVIRONMENT|SF_LIGHT_BACKGROUND|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_TEX_SKY|SF_TEX_SKY_SCATTERING},
@@ -91,7 +91,7 @@ std::string shader_feature_list(ShaderFeatures features){
 
 // Mask layout invariants (pipelines.h): assigned bits keep their numbers.
 static_assert(SF_GEOMETRY.test(0)&&SF_MAPPING_DERIVATIVE.test(61)&&SF_TEX_GABOR.test(63)&&!SF_ALL.test(62));
-static_assert(SF_ALL.count()==104&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+static_assert(SF_ALL.count()==105&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(SF_MNEE_ENTRIES.test(111)&&!(SF_ALL&SF_MNEE_ENTRIES).any());
@@ -99,7 +99,7 @@ static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_fe
 static_assert(SF_DEBUG_OUTPUT.test(116)&&!(SF_ALL&SF_DEBUG_OUTPUT).any());
 static_assert(SF_DRIVER_CACHE_SALT.test(117)&&!(SF_ALL&SF_DRIVER_CACHE_SALT).any());
 static_assert(SF_FILM_DATA_PASSES.test(143)&&SF_NODE_AOV.test(144)&&SF_FILM_CRYPTOMATTE.test(145)&&SF_FILM_DENOISING.test(146)&&SF_FILM_MOTION.test(147)&&SF_FILM_MOTION_EXACT.test(148)&&(SF_SUPERSET_SCENE_ONLY&SF_FILM_MOTION_EXACT).any()&&(SF_SUPERSET_SCENE_ONLY&(SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION))==(SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION));
-static_assert(SF_TEX_ENVIRONMENT.test(149)&&SF_TEX_IMAGE_BOX.test(150)&&SF_SAMPLING_PATTERN.test(151)&&SF_CAMERA_PROJECTIONS.test(152)&&SF_LIGHT_FALLOFF.test(153)&&SF_LIGHT_LAMP_SHADER.test(154)&&SF_NODE_IES.test(155)&&SF_BSDF_THIN_FILM_CONDUCTOR.test(156)&&SF_TEX_SKY.test(157)&&SF_BACKGROUND_SUN.test(158)&&SF_TEX_SKY_SCATTERING.test(159)&&
+static_assert(SF_TEX_ENVIRONMENT.test(149)&&SF_TEX_IMAGE_BOX.test(150)&&SF_SAMPLING_PATTERN.test(151)&&SF_CAMERA_PROJECTIONS.test(152)&&SF_LIGHT_FALLOFF.test(153)&&SF_LIGHT_LAMP_SHADER.test(154)&&SF_NODE_IES.test(155)&&SF_BSDF_THIN_FILM_CONDUCTOR.test(156)&&SF_TEX_SKY.test(157)&&SF_BACKGROUND_SUN.test(158)&&SF_TEX_SKY_SCATTERING.test(159)&&SF_MATH_ARC.test(160)&&(SF_SUPERSET_SCENE_ONLY&SF_MATH_ARC).any()&&
   (SF_SUPERSET_SCENE_ONLY&(SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING))==(SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING));
 static_assert(SF_BSDF_METALLIC.test(128)&&SF_BSDF_BECKMANN.test(129)&&SF_BSDF_ASHIKHMIN_SHIRLEY.test(130)&&SF_BSDF_VELVET.test(131)&&SF_BSDF_TOON.test(132)&&SF_NODE_BEVEL.test(133)&&SF_NODE_RAYCAST.test(134)&&SF_NODE_RADIAL_TILING.test(135)&&(SF_SUPERSET_SCENE_ONLY&SF_NODE_RAYCAST).any()&&(SF_SUPERSET_SCENE_ONLY&SF_BSDF_FAMILIES)==SF_BSDF_FAMILIES);
 
@@ -285,6 +285,8 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
         if(!analytic){out.features|=SF_IMAGE;float angular;std::memcpy(&angular,&w[data_at+offsetof(SVMNodeTexSkyNishitaData,angular_diameter)/4],4);
           if(angular>=0.0f)out.features|=SF_BACKGROUND_SUN;}
       }
+      // The Math node's arcsine and arccosine (SVM_MATH_ARC): the correctly rounded adapter only when a reachable node uses them.
+      if(op==NODE_MATH){const uint32_t type=w[node+offsetof(SVMNodeMath,math_type)/4];if(type==NODE_MATH_ARCSINE||type==NODE_MATH_ARCCOSINE)out.features|=SF_MATH_ARC;}
       if((op==NODE_TEX_COORD||op==NODE_TEX_COORD_DERIVATIVE)&&byte_at(w,node,offsetof(SVMNodeTexCoord,texco_type))==NODE_TEXCO_OBJECT_WITH_TRANSFORM){
         if(!take(pc,sizeof(PackedTransform))){out.stopped_paths++;break;}
       }
@@ -614,7 +616,7 @@ bool WebGPUDevice::pipeline_current(const cbc::Pipeline &pipeline,const char *en
 ShaderFeatures WebGPUDevice::displacement_unused_svm_features(){
   const ShaderFeatures scene=shader_features();
   if(specialization_mode!=SpecializationMode::Scene)return SF_NONE;
-  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX;
+  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC;
   const ShaderFeatures handlers=svm|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_BUMP_UNDISPLACED;
   return scene&handlers&~displacement_program_features;
 }
@@ -626,7 +628,7 @@ ShaderFeatures WebGPUDevice::raytrace_unused_svm_features(){
   const SvmCensus used=svm_census(svm_node_words,shader_records.size(),&roots);
   // Census-only bits: the SVM node and closure families (lamp, motion,
   // terminator and light-sampling bits are set from the scene tables).
-  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX;
+  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC;
   return scene&svm&~used.features;
 }
 // The MNEE walk evaluates SVM programs only at caustic casters: mnee_eval at the caster hits of the seed's probe
@@ -653,7 +655,7 @@ ShaderFeatures WebGPUDevice::mnee_unused_svm_features(){
   const SvmCensus used=svm_census(svm_node_words,shader_records.size(),&roots);
   // Census-only bits: the SVM node and closure handlers (lamp, motion, terminator, light-sampling, displacement and
   // film bits are set from the scene tables and stay).
-  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|
+  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC|
     SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_NODE_IES|SF_LIGHT_FALLOFF|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_TEX_SKY_SCATTERING;
   mnee_unused=svm&~used.features;
   return scene&mnee_unused;
