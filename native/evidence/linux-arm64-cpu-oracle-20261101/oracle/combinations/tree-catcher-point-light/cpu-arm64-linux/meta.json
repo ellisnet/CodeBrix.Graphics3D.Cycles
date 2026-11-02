@@ -1,0 +1,114 @@
+{
+  "sceneId": "combinations/tree-catcher-point-light",
+  "sceneSha256": "31631c1f965f61960118212c006e2183c4195f1e8044d3cec3ec60b847a72ef2",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-arm64",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00991225,
+    0.00754454
+  ],
+  "filmSha256": [
+    "e2b4566b5ed68b409eb5fdb5f600a0ebfb515605d756f37f93a7679f1a905c4d",
+    "e2b4566b5ed68b409eb5fdb5f600a0ebfb515605d756f37f93a7679f1a905c4d"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Shadow Catcher",
+      "type": "shadow_catcher",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "55be2859b3bc41c85a3b2b8a9bafbc72bd82cc0600ca72d0b2c9b09663dda30b",
+        "55be2859b3bc41c85a3b2b8a9bafbc72bd82cc0600ca72d0b2c9b09663dda30b"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Shadow Catcher Matte",
+      "type": "shadow_catcher_matte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "e2b4566b5ed68b409eb5fdb5f600a0ebfb515605d756f37f93a7679f1a905c4d",
+        "e2b4566b5ed68b409eb5fdb5f600a0ebfb515605d756f37f93a7679f1a905c4d"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Shadow Catcher Sample Count",
+      "type": "shadow_catcher_sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990",
+        "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux 646eb2a478e1 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 16 11:55:50 UTC 2026 aarch64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "e782069a3f657b93afe606a2aab03dcc2e6b9073",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "deviceModel": "unavailable: no /proc/device-tree/model (no device tree, for example in a container)",
+    "vulkan": "unavailable: [Errno 2] No such file or directory: 'vulkaninfo'"
+  },
+  "hostLibrarySha256": "2deea0c1c74833e547d06966a68333683a6586b055b57e91bab3c5e84c5435c1",
+  "runnerSha256": "ea7e800832d90936f1c766c663d77790675375087ad3293a626aafd2c528da8c",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/linux/linux-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/combinations/tree-catcher-point-light.json",
+  "backendDescription": "Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.046,
+  "runnerCommand": [
+    "native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/work/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/combinations/tree-catcher-point-light.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-linux",
+    "--output",
+    "/work/CodeBrix.Graphics3D.Cycles/native/work/oracles/linux-arm64-20261101/oracle/combinations/tree-catcher-point-light/cpu-arm64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": " (the C API does not expose Cycles' DeviceInfo)"
+}

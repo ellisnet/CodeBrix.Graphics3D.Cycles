@@ -166,7 +166,11 @@ records its SHA-256.
 Requirements on the Pi, beyond section 2: `gcc-14`/`g++-14`, `clang` (the WGSL
 translation's AST dump), `cmake`, `make`, `time`, the .NET 10 SDK **10.0.403 only**
 (no earlier version) for the managed steps, and the package
-(`dotnet restore research/GpuProbe/GpuProbe.csproj`).
+(`dotnet restore research/GpuProbe/GpuProbe.csproj`). Since commit `80f9c5e6b` also
+ISPC 1.30.0 **for Linux aarch64** (`ispc-v1.30.0-linux.aarch64.tar.gz` from
+github.com/ispc/ispc/releases; the x86_64 archive cannot run on the Pi), named with
+`CODEBRIX_ISPC` or on `PATH` (MAINTAINER-README.txt, "ISPC 1.30.0";
+docs/TESTING-LINUX-ARM64-ORACLE.md section 2).
 
 ```sh
 python3 tools/dependencies/build_linux_arm64.py --jobs 4

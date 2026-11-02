@@ -1,0 +1,136 @@
+{
+  "sceneId": "passes/sample-count",
+  "sceneSha256": "f5e19d4a21c88a8ff8dd3397ef48f63c5721e5532faaa68aee718e9331733dbb",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-arm64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00432937,
+    0.00284783
+  ],
+  "filmSha256": [
+    "c950abfb26e693fc59c2a7ba3daac9e12428b36d09862a3f54f0a7be50693482",
+    "c950abfb26e693fc59c2a7ba3daac9e12428b36d09862a3f54f0a7be50693482"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Sample Count",
+      "type": "sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "6fa6d4b52efb1fc80b80dbcec512ef4a45f694e61ba474a5ab7de58c95c49a3c",
+        "6fa6d4b52efb1fc80b80dbcec512ef4a45f694e61ba474a5ab7de58c95c49a3c"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "DiffDir",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "8d650f6ea66a3219a1537f4761f36563654481399a36b50d8d4570425f41b560",
+        "8d650f6ea66a3219a1537f4761f36563654481399a36b50d8d4570425f41b560"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "07889d79eb823cdb964bb94b50afaceb4e158b0ca474290831573c5466214fa4",
+        "07889d79eb823cdb964bb94b50afaceb4e158b0ca474290831573c5466214fa4"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Normal",
+      "type": "normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "fd607dfe2d01edd718a11c1685aedcf6747d80d936ee7c1c429aad0d9948326b",
+        "fd607dfe2d01edd718a11c1685aedcf6747d80d936ee7c1c429aad0d9948326b"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "Mist",
+      "type": "mist",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "a258cc4d71a6e39d5909f808f625ba783cd8b47ee35b1744904992c7133b51b2",
+        "a258cc4d71a6e39d5909f808f625ba783cd8b47ee35b1744904992c7133b51b2"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux 646eb2a478e1 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 16 11:55:50 UTC 2026 aarch64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "e782069a3f657b93afe606a2aab03dcc2e6b9073",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "deviceModel": "unavailable: no /proc/device-tree/model (no device tree, for example in a container)",
+    "vulkan": "unavailable: [Errno 2] No such file or directory: 'vulkaninfo'"
+  },
+  "hostLibrarySha256": "2deea0c1c74833e547d06966a68333683a6586b055b57e91bab3c5e84c5435c1",
+  "runnerSha256": "ea7e800832d90936f1c766c663d77790675375087ad3293a626aafd2c528da8c",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/linux/linux-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/sample-count.json",
+  "backendDescription": "Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.035,
+  "runnerCommand": [
+    "native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/work/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/passes/sample-count.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-linux",
+    "--output",
+    "/work/CodeBrix.Graphics3D.Cycles/native/work/oracles/linux-arm64-20261101/oracle/passes/sample-count/cpu-arm64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": " (the C API does not expose Cycles' DeviceInfo)"
+}

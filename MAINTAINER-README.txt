@@ -363,7 +363,9 @@ is never shipped. Use the official release archive of that version for the
 build host from github.com/ispc/ispc/releases (Linux x86_64:
 ispc-v1.30.0-linux.tar.gz, which also compiles for aarch64, so it serves the
 Linux ARM64 and Android ARM64 cross builds; the macOS and Windows archives of the
-same release on those hosts). Set CODEBRIX_ISPC to its bin/ispc executable, or
+same release on those hosts; a native Linux ARM64 build, on the Raspberry Pi 5 or
+in the Debian arm64 container of docs/TESTING-LINUX-ARM64-ORACLE.md, runs ISPC on
+aarch64 and needs ispc-v1.30.0-linux.aarch64.tar.gz). Set CODEBRIX_ISPC to its bin/ispc executable, or
 put ispc on PATH; tools/dependencies/build.py refuses any other version. Windows (win-x64 and win-arm64, both built on an x64 Windows
 machine with Visual Studio's clang-cl) is described in native/host/WINDOWS_X64.md:
 `python -I -X utf8 tools/dependencies/build_windows.py --rid <rid>`, then

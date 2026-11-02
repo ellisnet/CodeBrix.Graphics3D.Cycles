@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/work/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles_linux_arm64.py", line 96, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/work/CodeBrix.Graphics3D.Cycles/native/tools/build_cycles_linux_arm64.py", line 32, in main
+    prefix=deps.prefix();marker=prefix/'codebrix-linux-arm64-build.json';dependency=json.loads(marker.read_text());assert dependency['identity']==deps.identity()
+  File "/work/CodeBrix.Graphics3D.Cycles/tools/dependencies/build_linux_arm64.py", line 39, in prefix
+    if not marker.exists():raise RuntimeError('Build Linux ARM64 dependencies first: python3 tools/dependencies/build_linux_arm64.py')
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Build Linux ARM64 dependencies first: python3 tools/dependencies/build_linux_arm64.py

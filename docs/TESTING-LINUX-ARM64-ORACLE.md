@@ -52,6 +52,16 @@ On the Mac (the maintainer installs these; nothing is installed by the procedure
   (restore it once on the Mac, e.g. `dotnet restore research/GpuProbe/GpuProbe.csproj`
   with SDK 10.0.403). The package contains every RID, including
   `runtimes/linux-arm64/native/libcodebrix_wgpu.so`.
+- ISPC 1.30.0 **for Linux aarch64** (build-time only: it compiles Open Image
+  Denoise's CPU kernels, part of every dependency build since commit `80f9c5e6b`;
+  MAINTAINER-README.txt, "ISPC 1.30.0"): the official release archive
+  `ispc-v1.30.0-linux.aarch64.tar.gz` from github.com/ispc/ispc/releases (SHA-256
+  `509399c399ec162d746889458a10cc13797a1aed1c0164b2bd3faddf7d023f13`, as published
+  there), unpacked in a new folder under the checkout's ignored `native/work/` so
+  that the container sees it, for example `native/work/ispc/extracted/`. The
+  `ispc-v1.30.0-linux.tar.gz` archive is x86_64 and serves only cross builds on a
+  Linux x64 host. Without ISPC the dependency build stops at once with
+  `ISPC 1.30.0 is required: set CODEBRIX_ISPC to its executable or put ispc on PATH`.
 - Free disk: about 15 GB in the checkout's `native/work/linux/linux-arm64/`.
 
 Container image (pinned): **Debian 13 "trixie", arm64**, the same Debian release and
@@ -101,6 +111,8 @@ which no macOS build uses. Confirm the native mode: `uname -m` prints `aarch64`.
 
 ```sh
 git config --global --add safe.directory /work/CodeBrix.Graphics3D.Cycles
+export CODEBRIX_ISPC=/work/CodeBrix.Graphics3D.Cycles/native/work/ispc/extracted/ispc-v1.30.0-linux.aarch64/bin/ispc
+"$CODEBRIX_ISPC" --version     # Intel(r) ISPC, 1.30.0 (...); record it and its SHA-256
 python3 tools/dependencies/build_linux_arm64.py --jobs 8
 python3 native/tools/build_cycles_linux_arm64.py --jobs 8 --device-set
 RUNNER=$(find native/work/linux/linux-arm64 -name codebrix_cycles_oracle -type f -perm -u+x | head -1)
@@ -180,7 +192,8 @@ code (MAINTAINER-README.txt, "Licensing and source checks").
 ## 8. What to record
 
 - Commit hash and whether the tree was clean.
-- Image digest, `gcc-14`, glibc, CMake and Python versions.
+- Image digest, `gcc-14`, glibc, CMake and Python versions; the ISPC archive, its
+  version line and the SHA-256 of its `bin/ispc`.
 - Build and render walls; `uname -m`; the Mac model.
 - Per-scene repeat identity, refusals, failures (verbatim).
 - The section 6 comparison summary.
