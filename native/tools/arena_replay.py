@@ -5,6 +5,7 @@
 import argparse
 import json
 import math
+import re
 import shlex
 import shutil
 import struct
@@ -65,6 +66,14 @@ def validate(out):
             begin = scratch['offset']+n*scratch['stride']
             result_begin = offset+n*size+scratch['recordOffset']
             assert actual[begin:begin+scratch['stride']] == actual[result_begin:result_begin+scratch['stride']], 'Scratch differs from evaluated closure records'
+    # The per-invocation SVM stack slots (WebGPUDevice: the arena header after the error word holds the slot region's
+    # byte address and slot count; cycles/device.h svm_stack_words) are scratch every SVM evaluation rewrites, not
+    # scene, state or guard bytes.
+    # Hand-built probe arenas (trig, float, packed state) have no such header: a region outside the arena is ignored.
+    region, slots = struct.unpack_from('<2I', before, meta['errorOffset']+4)
+    words = int(re.search(r'const SVM_STACK_WORDS:u32=(\d+)u;', (ROOT/'shaders/wavefront_svm.wgsl').read_text()).group(1))
+    if region and slots and region+slots*words*4 <= len(before):
+        spans.append((region, region+slots*words*4))
     last = 0
     for begin, end in sorted(spans):
         assert last <= begin <= end <= len(before), 'Invalid/overlapping capture output spans'

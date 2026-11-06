@@ -28,6 +28,9 @@ BACKENDS={
  # Linux x64 (native/host/targets.cmake builds the runner as codebrix_cycles_oracle).
  'cpu-x64-linux':('cpu',{},'Cycles CPU device, GCC x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math'),
  'wgsl-linux-intel':('webgpu',{},'CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)'),
+ # The product CPU device with Embree (a candidate, not a gold standard: compare.py treats only cpu-* names as
+ # gold standards): compared with cpu-x64-linux, reported, a documented deviation (native/DEVICE.md, open item 46).
+ 'embree-cpu-x64-linux':('cpu-embree',{},'Cycles CPU device with Embree (Cycles automatic BVH), GCC x86-64, the same kernel flags as the oracle'),
  # macOS x64 (Intel Mac; tools/build_macos_x64.py builds the runner in oracle-build).
  'cpu-x64-macos':('cpu',{},'Cycles CPU device, Apple Clang x86-64, fixed-baseline oracle: SSE4.2 kernels only (no AVX2 kernel is built), no FMA contraction, no reciprocal math'),
  # Kept for comparison with runs made before the fixed baseline: without an AVX2 kernel the variable has no effect.

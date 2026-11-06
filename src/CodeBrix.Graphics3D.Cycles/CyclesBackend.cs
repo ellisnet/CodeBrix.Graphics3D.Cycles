@@ -17,5 +17,12 @@ public enum CyclesBackend
     Gpu = 0,
 
     /// <summary>The explicit CPU reference backend, which runs the native CPU kernels.</summary>
-    CpuReference = 1
+    CpuReference = 1,
+
+    /// <summary>
+    /// The CPU backend with Embree ray tracing (<see cref="Backend.Cpu"/>): the native CPU kernels with Cycles'
+    /// automatic BVH choice. Its films agree with <see cref="CpuReference"/> closely, not bit for bit (a different
+    /// BVH visits primitives in another order, and a rare single pixel can differ visibly).
+    /// </summary>
+    Cpu = 2
 }

@@ -45,11 +45,12 @@ public sealed class CapabilityReport : ICapabilityReport
         null => Backend.Gpu,
         "webgpu" => Backend.WebGpu,
         "metal" => Backend.Metal,
+        "cpu-embree" => Backend.Cpu,
         _ => Backend.CpuReference
     };
 
     /// <inheritdoc/>
-    public bool IsGpu => HasDevice && Backend != Backend.CpuReference;
+    public bool IsGpu => HasDevice && Backend != Backend.CpuReference && Backend != Backend.Cpu;
 
     /// <inheritdoc/>
     public string DeviceDescription { get; private set; }

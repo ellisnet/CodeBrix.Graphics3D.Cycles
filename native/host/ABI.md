@@ -155,6 +155,7 @@ Rules:
 | `CBC_HOST_CPU_REFERENCE` | 2 | Cycles CPU device; always compiled |
 | `CBC_HOST_METAL` | 3 | Cycles' Metal device; osx-arm64 (Apple Silicon) build only |
 | `CBC_HOST_GPU` | 4 | "the GPU backend of this binary": Metal in the osx-arm64 build, WebGPU in every other build, osx-x64 included |
+| `CBC_HOST_CPU` | 5 | Cycles CPU device with Cycles' automatic BVH (Embree); compiled in builds with Embree (every build script). `CBC_HOST_CPU_REFERENCE` keeps Cycles' BVH2: it is the reference the GPU backends are validated against; the two agree closely, not bit for bit (native/DEVICE.md, open item 46). The capability report names it `cpu-embree` |
 
 The GPU backend is fixed per RID. macOS on Apple Silicon (osx-arm64) renders
 with Cycles' own Metal device; macOS on Intel (osx-x64) and every Windows, Linux
@@ -205,8 +206,9 @@ every sampling pattern and adaptive sampling; it writes the light passes (diffus
 emission, background, AO), light groups, the data passes (depth, position, normal, roughness, UV, object and
 material index, mist, sample count, the motion pass and motion weight without motion blur; render time stays zero,
 as on Cycles' Metal device), AOVs, cryptomatte and the denoising feature passes (albedo, normal, specular albedo,
-roughness, depth, backward and specular motion), and refuses by name every other pass (for example the path
-guiding and volume passes) and the motion pass with deforming geometry; path guiding must be switched
+roughness, depth, backward and specular motion; with deforming geometry too) and the volume majorant passes that volume
+scattering guidance reads, and refuses by name every other pass (for example the path guiding passes and, with volumes,
+the volume light passes); path guiding must be switched
 off for WebGPU renders (adaptive sampling renders); the light tree and light linking render. Denoising
 (the integrator's `use_denoise`, off by default, and its other denoise sockets, set like any integrator
 property) works on every backend: Cycles denoises a WebGPU render with Open Image Denoise on the CPU (the

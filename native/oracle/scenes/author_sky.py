@@ -9,7 +9,8 @@ scattering) lighting the sampling family's room through a background light
 scene feeds the node through a Vector Math node, so the host samples the sun
 from the importance map instead of guiding towards it; the sun-guiding scenes
 leave the Generated direction unlinked, so the background light also samples
-the sun's cone (sun guiding).
+the sun's cone (sun guiding). Three sun-guiding scenes add an emissive panel, the
+light tree, or both (the triangle light and light selection stages).
 Usage: python3 native/oracle/scenes/author_sky.py [--check]."""
 import argparse
 import json
@@ -33,8 +34,17 @@ def sky_world(values, strength, normalized_vector=False):
             'set': {'emission_sampling_method': 'auto'}}
 
 
-def scene(scene_id, description, values, strength, normalized_vector=False):
-    document = room.scene(scene_id, description, {}, samples=16)
+def emissive_panel():
+    """A small emissive quad above the spheres (an emissive triangle in the light distribution)."""
+    material = {'handle': 'panel-emission', 'create': 'shader',
+                'graph': {'nodes': [{'handle': 'e', 'type': 'emission', 'set': {'color': [1.0, 0.85, 0.6], 'strength': 6.0}}],
+                          'connect': [['e', 'Emission', 'output', 'Surface']]},
+                'set': {'emission_sampling_method': 'front'}}
+    return [material, *room.quad('panel', 'panel-emission', [(-1.2, 2.6, -0.6), (1.2, 2.6, -0.6), (1.2, 2.6, 1.2), (-1.2, 2.6, 1.2)])]
+
+
+def scene(scene_id, description, values, strength, normalized_vector=False, integrator=None, panel=False):
+    document = room.scene(scene_id, description, integrator or {}, samples=16)
     document['sourceFixture'] = 'native/oracle/scenes/author_sky.py (the sampling family room under a sky)'
     nodes = []
     for entry in document['nodes']:
@@ -46,6 +56,8 @@ def scene(scene_id, description, values, strength, normalized_vector=False):
             nodes.append({'handle': 'world-light-object', 'create': 'object', 'set': {'geometry': 'world-light'}})
             continue
         nodes.append(entry)
+    if panel:
+        nodes += emissive_panel()
     document['nodes'] = nodes
     return document
 
@@ -71,6 +83,19 @@ def scenes():
         'single-scattering-sun-guiding.json': scene('sky/single-scattering-sun-guiding', 'Single-scattering sky with a small sun disc and sun guiding', {
             'sky_type': 'single_scattering', 'sun_disc': True, 'sun_size': 0.05, 'sun_intensity': 1.0, 'sun_elevation': 0.6, 'sun_rotation': 2.4,
             'altitude': 100.0, 'air_density': 1.0, 'aerosol_density': 1.0, 'ozone_density': 1.0}, 1.0),
+        # Sun guiding with the other light-stage forms: an emissive triangle (the triangle light stage), the light
+        # tree (the light selection stage), and both.
+        'sun-guiding-emissive-panel.json': scene('sky/sun-guiding-emissive-panel', 'Multiple-scattering sky with sun guiding and an '
+                                                 'emissive panel (emissive triangles in the light distribution)', {
+            'sky_type': 'multiple_scattering', 'sun_disc': True, 'sun_size': 0.2, 'sun_intensity': 0.2, **scattering}, 1.0, panel=True),
+        'sun-guiding-light-tree.json': scene('sky/sun-guiding-light-tree', 'Multiple-scattering sky with sun guiding, sampled through '
+                                             'the light tree', {
+            'sky_type': 'multiple_scattering', 'sun_disc': True, 'sun_size': 0.2, 'sun_intensity': 0.2, **scattering}, 1.0,
+            integrator={'use_light_tree': True}),
+        'sun-guiding-light-tree-panel.json': scene('sky/sun-guiding-light-tree-panel', 'Single-scattering sky with sun guiding, an emissive '
+                                                   'panel and the light tree', {
+            'sky_type': 'single_scattering', 'sun_disc': True, 'sun_size': 0.05, 'sun_intensity': 1.0, 'sun_elevation': 0.6, 'sun_rotation': 2.4,
+            'altitude': 100.0, 'air_density': 1.0, 'aerosol_density': 1.0, 'ozone_density': 1.0}, 1.0, integrator={'use_light_tree': True}, panel=True),
     }
 
 

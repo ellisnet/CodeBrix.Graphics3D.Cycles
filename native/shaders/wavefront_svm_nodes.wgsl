@@ -62,6 +62,10 @@ fn svmn_fmod(a:f32,b:f32,sse:bool)->f32{
 //#if SVM_NODES_NOISE
 // noise.h perlin_1d (scalar) and perlin_2d/3d/4d (SSE): lattice gradients are
 // combined along x, then y, z and w with mix(a,b,t)=a+t*(b-a), as the SSE lanes.
+// A scalar oracle (an ARM64 build without SSE2NEON, NATIVE_FLOAT3_RECIPROCAL_NORMALIZE)
+// compiles noise.h's scalar branch instead: fade(t)=((t*t)*t)*inner for every
+// dimension, bi_mix/tri_mix as (1-x)*a+x*b per axis, quad_mix mixing the two
+// tri_mix results along w with mix(a,b,t), and fmodf per component.
 // The fade products keep the oracle's grouping through svmn_order: the Adreno 730
 // driver (EV031.36.08.33) reassociated (t*t)*(t*inner), which moved high-octave
 // noise by up to 7 times the practical bound (nodes_svm typed 2D noise, lane S).
@@ -71,9 +75,10 @@ fn svmn_order(x:f32,order:u32)->f32{return bitcast<f32>(bitcast<u32>(x)^order);}
 fn svmn_order_word()->u32{return load_word(p(17u)+12u);}
 fn svmn_perlin(p:vec4<f32>,dims:u32)->f32{
     let lattice=floor(p);let cell=vec4<i32>(lattice);let fr=p-lattice;var fade=vec4<f32>(0);let order=svmn_order_word();
+    let scalar=NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u;
     for(var d=0u;d<dims;d++){
         let t=fr[d];let inner=rounded_add(t*rounded_add(t*6.0,-15.0),10.0);let tt=svmn_order(t*t,order);
-        fade[d]=svmn_order(select(svmn_order(tt*svmn_order(t*inner,order),order),svmn_order(svmn_order(tt*t,order)*inner,order),dims==1u),order);
+        fade[d]=svmn_order(select(svmn_order(tt*svmn_order(t*inner,order),order),svmn_order(svmn_order(tt*t,order)*inner,order),dims==1u||scalar),order);
     }
     var partial=vec4<f32>(0);var result=0.0;let corners=1u<<dims;
     for(var c=0u;c<corners;c++){
@@ -89,7 +94,12 @@ fn svmn_perlin(p:vec4<f32>,dims:u32)->f32{
                 g=(select(u,-u,(hh&1u)!=0u)+select(v,-v,(hh&2u)!=0u))+select(s,-s,(hh&4u)!=0u);}
         }
         var level=0u;
-        for(;level<dims&&((c>>level)&1u)!=0u;level++){g=rounded_add(partial[level],fade[level]*rounded_add(g,-partial[level]));}
+        // SSE: partial+f*(g-partial); scalar (dims>1, x/y/z): partial*(1-f)+g*f; one difference and one sum each.
+        for(;level<dims&&((c>>level)&1u)!=0u;level++){
+            let f=fade[level];let weights=scalar&&dims>1u&&level<3u;
+            let d=rounded_add(select(g,1.0,weights),-select(partial[level],f,weights));
+            g=rounded_add(select(partial[level],partial[level]*d,weights),select(f*d,g*f,weights));
+        }
         if(level==dims){result=g;}else{partial[level]=g;}
     }
     return result;
@@ -97,7 +107,7 @@ fn svmn_perlin(p:vec4<f32>,dims:u32)->f32{
 // noise.h snoise_1d..snoise_4d: repeat every 100000 with the precision correction.
 fn svmn_snoise(input:vec4<f32>,dims:u32)->f32{
     var p=input;
-    for(var d=0u;d<dims;d++){let correction=select(0.0,0.5,abs(p[d])>=1000000.0);p[d]=svmn_fmod(p[d],100000.0,dims>=3u)+correction;}
+    for(var d=0u;d<dims;d++){let correction=select(0.0,0.5,abs(p[d])>=1000000.0);p[d]=svmn_fmod(p[d],100000.0,dims>=3u&&NATIVE_FLOAT3_RECIPROCAL_NORMALIZE==0u)+correction;}
     var scale=0.25;if(dims==2u){scale=0.6616;}else if(dims==3u){scale=0.982;}else if(dims==4u){scale=0.8344;}
     return scale*svmn_perlin(p,dims);
 }

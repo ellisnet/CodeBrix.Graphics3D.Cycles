@@ -1,0 +1,394 @@
+{
+  "sceneId": "passes/with-bsdf-glossy-filter",
+  "sceneSha256": "ebeab85d3129c868b6cf45f23021747690ec2ded15c8c1aa86061a5a70493215",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 5.960464477539063e-08,
+  "renderSeconds": [
+    46.9366,
+    0.26097
+  ],
+  "filmSha256": [
+    "28a105105baa0d68b26e38af3c4a61401ce7748ffa188bbd05f61e85522b4312",
+    "f155fc65e1dd335f4c55f2c8ef74c19e84d26ab5728da6cbe3630ee306212ed0"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "DiffDir",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2b94cbb5602c827885173c10b8edac26ecb1ae49f4828fc86cb5c36ecdf8c555",
+        "3dab885f68561085b26f0eedd2c2f8a041e63736c325e02cc949ec42664e2752"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "DiffInd",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "3cb879d07ca8917ac52337f918c0374183f38cd9f115da9fb635882f8208d2ed",
+        "5e7080291ccfbed07a47f05b92f8128878beaafb21e95d2ad5f5efca9870a686"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "DiffCol",
+      "type": "diffuse_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "26d632b68acde2ee52f15eb3b39e6379ac1eb02079fd86b8c50a1fb061be90aa",
+        "26d632b68acde2ee52f15eb3b39e6379ac1eb02079fd86b8c50a1fb061be90aa"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "GlossDir",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "b866baebf15238ca815aaa88c48b80f1fcf6d6d92da7f2c39de785ec251ccf6d",
+        "044ca8ead19abb0b8e80213017b8e4e307fbabb0cce6ffae2d5eda091bf26242"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "GlossInd",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "7a6405b1bc2056e59a3871a489442c345884bcef124b28e9cc2d1c41f6f79d07",
+        "e3f34dff6f5313982b76c2d2732d9934d1d72dc88c8db7fbe12b13f356e1fb55"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "GlossCol",
+      "type": "glossy_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "e430863f022688bb44383143d79d539610c89ea3e1460167fc4a1754d7bb246f",
+        "8fc3b201669c45a521dd2c37cdd4f710b5be4302e7acef656106557be3ba9b21"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "TransDir",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "TransInd",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "7af7e3f0d4eb5770c420483070da2970277744ee99b2b3e3df26252856afe909",
+        "3d34cf0c0c33bf52ac54dfd2675e2dc8788081e285d26e33a1e482b7bfeee110"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "TransCol",
+      "type": "transmission_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a2ba43d42f50b1cb8208f556fc3852dfee6ae3d9c148cf0ec4995742cf32bd93",
+        "73d02ae2f96410756a09a6eb006303bf0dac966fa8361ccd896d95236990ccba"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "Emit",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "9dd62bc5ac67343e280a0f25c26f0eb1af9c1c64ef5b9d795a0ecd14202f0e7c",
+        "9dd62bc5ac67343e280a0f25c26f0eb1af9c1c64ef5b9d795a0ecd14202f0e7c"
+      ]
+    },
+    {
+      "index": 10,
+      "name": "Env",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1473b80f9db7b2f8141b4ef0eaba7bca134a4818284f2009c15ab444f4fc5328",
+        "1473b80f9db7b2f8141b4ef0eaba7bca134a4818284f2009c15ab444f4fc5328"
+      ]
+    },
+    {
+      "index": 11,
+      "name": "Diffuse",
+      "type": "diffuse",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "b82cbbf1d965e179e38c279b5cea067cd45c7cbe3683ebd9460e88d64f6aeca8",
+        "c8e18c83b33b2b5fcf017f1d99f5138f4353d003c54216cbba086b20bdbe9447"
+      ]
+    },
+    {
+      "index": 12,
+      "name": "Glossy",
+      "type": "glossy",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2bafaf9303cefdb75de03377753a8509c46a576e123b0435e30d97085f0b0cc2",
+        "b7cd719501fc4f687b71d676e1d26c6550776ac63c3f9cc0063191f75cc22be3"
+      ]
+    },
+    {
+      "index": 13,
+      "name": "Transmission",
+      "type": "transmission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "7af7e3f0d4eb5770c420483070da2970277744ee99b2b3e3df26252856afe909",
+        "3d34cf0c0c33bf52ac54dfd2675e2dc8788081e285d26e33a1e482b7bfeee110"
+      ]
+    },
+    {
+      "index": 14,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "315b96befdf07add15b2c946cd1f57454c504be33ab7f284e84784f188e00173",
+        "315b96befdf07add15b2c946cd1f57454c504be33ab7f284e84784f188e00173"
+      ]
+    },
+    {
+      "index": 15,
+      "name": "Position",
+      "type": "position",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "4e38e790d13d246160498ad84c264ea8d7d1ea405441f408f145ea530d44a261",
+        "4e38e790d13d246160498ad84c264ea8d7d1ea405441f408f145ea530d44a261"
+      ]
+    },
+    {
+      "index": 16,
+      "name": "Normal",
+      "type": "normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a8e67f14042a6f41853fa998428c35347c129eb513d884a23242d6eae6183e20",
+        "ca6693e9c52034fb857cbce7f9e2c5a1080732d60d8d9a98a3e3600855dde5ea"
+      ]
+    },
+    {
+      "index": 17,
+      "name": "Roughness",
+      "type": "roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "417b8123bb86422d495f2902eb55b0bac6d28cad01ac938cea874b4e381bae42",
+        "efc779e9fb4390ae4a9b8c88b3a4395ea6bb31ced91329b81ab35bdb5d618242"
+      ]
+    },
+    {
+      "index": 18,
+      "name": "UV",
+      "type": "uv",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 19,
+      "name": "IndexOB",
+      "type": "object_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293",
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293"
+      ]
+    },
+    {
+      "index": 20,
+      "name": "IndexMA",
+      "type": "material_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293",
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293"
+      ]
+    },
+    {
+      "index": 21,
+      "name": "Mist",
+      "type": "mist",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "0ecfcf9d10d99ca44fbbab7a456eae67c06118222f211df4329ca753b1bb7897",
+        "f49b3d842302b81be7d29db4823b3f7d098e3959d7f14b36076570a911d33603"
+      ]
+    },
+    {
+      "index": 22,
+      "name": "AO",
+      "type": "ao",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2a14a8ce25954844286dfb6686c9505e3a539ef439c3cde3e4aa0b25ab8bc54b",
+        "2a14a8ce25954844286dfb6686c9505e3a539ef439c3cde3e4aa0b25ab8bc54b"
+      ]
+    },
+    {
+      "index": 23,
+      "name": "Denoising Albedo",
+      "type": "denoising_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "b760dc7cf377cfb5a506e776163f58c9495108cadd71ca331eccea79b825c240",
+        "d254214931df6d0c33164f5b5c151865e4fb8b3e757a0bf8c0a9164416961464"
+      ]
+    },
+    {
+      "index": 24,
+      "name": "Denoising Normal",
+      "type": "denoising_normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "08f5fc9a3dd221a0522f153ebc6ff644eb047019e7ea299f65e78c46a09269c9",
+        "cb47e1939e8cbda2c29bad6c40ce38358296abd154919c40894d647d9090855d"
+      ]
+    },
+    {
+      "index": 25,
+      "name": "Denoising Specular Albedo",
+      "type": "denoising_specular_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "176b21d77a7dbf33a260009e552402bccc32d3499bde38ce1a5c00cb3d5a0d57",
+        "bf65787482fac2b051a01e3318a0901595918eab82ad5285339793bd719d375d"
+      ]
+    },
+    {
+      "index": 26,
+      "name": "Denoising Roughness",
+      "type": "denoising_roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "62c2314fea23d17127264e02196872526ebd12331094246c2814f8b2516e3ea2",
+        "62c2314fea23d17127264e02196872526ebd12331094246c2814f8b2516e3ea2"
+      ]
+    },
+    {
+      "index": 27,
+      "name": "Denoising Depth",
+      "type": "denoising_depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "bc5fb58b7e1e0a31af0d0e66b507454a07f732fce8c660b595e26e2a6c7fdaac",
+        "1b816dd7010dcd276b1f8fd043fd27bb954b3499e3feb0d632877c8084c1d4e8"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "f1ed54307656855716087ddaf195169376da6d29",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "fe8231c8ff9989135d55e334ab00917b38c7697b7da413d0c149f4b02e2a0a3f",
+  "runnerSha256": "87701039b44a2499b9f1759cfb58426ef556c624e5f37321b3200e09629a12d1",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/with-bsdf-glossy-filter.json",
+  "backendDescription": "CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)",
+  "environment": {},
+  "processSeconds": 47.324,
+  "runnerCommand": [
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/oracle/scenes/passes/with-bsdf-glossy-filter.json",
+    "--backend",
+    "webgpu",
+    "--label",
+    "wgsl-linux-intel",
+    "--output",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/val35/oracles/corpus/oracle/passes/with-bsdf-glossy-filter/wgsl-linux-intel",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json"
+}

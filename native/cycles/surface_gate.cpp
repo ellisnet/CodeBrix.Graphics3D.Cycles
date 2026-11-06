@@ -140,7 +140,8 @@ static RejectionMetrics rejections(const DeviceInfo &info){
     if(test==0){data.integrator.use_direct_light=1;reason="native light distribution";}
     if(test==1){data.integrator.use_light_mis=1;data.integrator.use_light_tree=1;data.integrator.use_direct_light=1;reason="Missing native light tree";}
     if(test==2){data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional integration";}
-    if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
+    // Biased ray marching is implemented; a volume stack size below two stays a volume rejection.
+    if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.volume_stack_size=1;reason="volume stack size";}
     // The data passes are implemented (FILM_DATA_PASSES); a path guiding pass (outside the scope) is refused by name.
     if(test==4){data.film.pass_flag=PASSMASK(GUIDING_COLOR);reason="film pass guiding_color";}
     // Glossy filtering and the denoising features are implemented; shadow linking stays refused.

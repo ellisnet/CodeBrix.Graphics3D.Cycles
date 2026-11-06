@@ -357,6 +357,27 @@ host's link closure: every staging step must copy them beside the core library.
 Android builds use unversioned file names (libOpenImageDenoise.so, _core.so,
 _device_cpu.so).
 
+Embree (third_party/deps/embree, a reviewed source snapshot of the 4.4.1
+release archive) is built with the other dependencies on every RID, under the
+Embree build conditions of docs/RELEASE-LICENSE-PLAN.md: a static library
+(libembree4 plus its SSE4.2/AVX/AVX2 kernel libraries on x86-64, NEON on ARM64,
+and its lexers/math/simd/sys/tasking libraries) with oneTBB as its tasking
+system, SYCL, ISPC and tutorials explicitly off. Every Cycles build script sets
+WITH_CYCLES_EMBREE ON with EMBREE_ROOT_DIR at the dependency prefix; Embree is
+linked into the native host, so there is no extra library to stage. Upstream
+Embree configures headers into its source tree; the snapshot's recorded
+CMakeLists.txt adaptation writes them to the build tree, so a dependency build
+leaves third_party/deps/embree unchanged (dependency_sources.py verify). The CPU
+reference backend and the CPU oracle keep Cycles' BVH2 (the host sets it); the
+Embree CPU backend (CBC_HOST_CPU) leaves the layout to Cycles; the two do not
+agree bit for bit, a documented deviation (native/DEVICE.md, open item 46).
+Android is not officially supported upstream: the android-arm64 and android-x64
+hosts build with it on the pinned NDK, and so does the linux-arm64 cross build;
+the macOS and Windows recipes are wired and not yet compiled. A source copy made
+before a change to the pinned Cycles import (native/work/linux/linux-arm64/host/
+cycles-source, native/work/android/<rid>/host/cycles-source) is refused by its
+recipe: remove it and the recipe makes a new one.
+
 ISPC 1.30.0 (Intel's Implicit SPMD Program Compiler, BSD-3-Clause) is a
 build-time prerequisite on every build host: it compiles OIDN's CPU kernels and
 is never shipped. Use the official release archive of that version for the
@@ -391,7 +412,7 @@ LINUX X64 REFERENCE (2026-10-29): Linux x64 and Android testing and validation
 are done on the dedicated Linux x64 machine ONLY, and every Linux x64 reference
 other platforms compare against comes from that machine and is committed:
 the newest native/evidence/linux-x64-reference-<date>/ (now
-linux-x64-reference-20261030: overlay hashes, libm record, the full host gate,
+linux-x64-reference-20261101: overlay hashes, libm record, the full host gate,
 oracle and bench films, managed reference films). Device-gate exchanges of the
 devices without a Linux x64 side (Windows, the Intel Mac, the Raspberry Pi) run
 as the two-visit hand-off of native/tools/reference_exchange_handoff.py

@@ -21,11 +21,12 @@ void WebGPUDevice::validate_geometry_motion() const{
   if(motion!=globals.end())require(remaining(motion->second)%sizeof(DecomposedTransform)==0,"Invalid object motion table size");
   for(size_t i=0;i<object_records.size();i++){
     const auto flags=object_flag_records[i];const auto &object=object_records[i];
-    // The motion pass without motion blur keeps deforming meshes as plain triangles (film_passes.cpp).
-    if((flags&SD_OBJECT_HAS_VERTEX_MOTION)&&film_motion_vectors())
-      require(false,"WebGPU motion pass with deforming geometry (vertex motion) not implemented");
     if(flags&SD_OBJECT_HAS_VERTEX_MOTION){
-      moving=true;require(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE,"Invalid deforming triangle flags/type");
+      // The motion pass without motion blur keeps a deforming mesh as plain triangles with its motion steps in the
+      // position table (FILM_MOTION_DEFORM); with motion blur it is a motion-triangle mesh. The flags and type first
+      // (the base order of these rejections), then the steps.
+      if(object.primitive_type==PRIMITIVE_TRIANGLE)require(film_motion_vectors(),"Invalid deforming triangle flags/type");
+      else{moving=true;require(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE,"Invalid deforming triangle flags/type");}
       require(object.num_geom_steps>=2&&object.numverts>0&&object.numprims>0,"Invalid deforming triangle steps/size");
     }else require(object.primitive_type!=PRIMITIVE_MOTION_TRIANGLE,"Invalid deforming triangle flags/type");
     if(flags&SD_OBJECT_MOTION){
@@ -44,6 +45,7 @@ uint32_t WebGPUDevice::scene_tables(){
     require(bytes%sizeof(type)==0,"Invalid native scene table size: " #name);descriptors.insert(descriptors.end(),{address,uint32_t(bytes/sizeof(type))});}
   CBC_SCENE_CORE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE) CBC_LIGHT_TREE_TABLES(TABLE)
   TABLE(ies,float)
+  TABLE(volume_tree_nodes,KernelOctreeNode) TABLE(volume_tree_roots,KernelOctreeRoot) TABLE(volume_tree_root_ids,int) TABLE(volume_step_size,float)
 #undef TABLE
   if(!intersection_tables)intersection_tables=allocate(descriptors.size()*4);
   if(descriptors!=intersection_table_cache){upload(intersection_tables,descriptors.data(),descriptors.size()*4);intersection_table_cache=descriptors;}

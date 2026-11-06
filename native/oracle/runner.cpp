@@ -304,7 +304,7 @@ Options parse(int argc, char **argv) {
     else fail("Unknown option " + key);
   }
   if (options.scene.empty() || options.output.empty() || options.backend.empty())
-    fail("Usage: codebrix_cycles_oracle --scene FILE --backend cpu|metal|webgpu --output DIR [--label NAME] [--threads N]");
+    fail("Usage: codebrix_cycles_oracle --scene FILE --backend cpu|cpu-embree|metal|webgpu --output DIR [--label NAME] [--threads N]");
   if (options.label.empty()) options.label = options.backend;
   return options;
 }
@@ -312,7 +312,9 @@ Options parse(int argc, char **argv) {
 int run(int argc, char **argv) {
   static_assert(std::endian::native == std::endian::little, "Films are written as little-endian float32");
   auto options = parse(argc, argv);
-  const std::map<std::string, uint32_t> backends = {{"cpu", CBC_HOST_CPU_REFERENCE}, {"metal", CBC_HOST_METAL}, {"webgpu", CBC_HOST_WEBGPU}};
+  // cpu-embree: the product CPU device with Embree (CBC_HOST_CPU), judged against the BVH2 CPU oracle (cpu).
+  const std::map<std::string, uint32_t> backends = {{"cpu", CBC_HOST_CPU_REFERENCE}, {"metal", CBC_HOST_METAL}, {"webgpu", CBC_HOST_WEBGPU},
+                                                    {"cpu-embree", CBC_HOST_CPU}};
   auto backend = backends.find(options.backend);
   if (backend == backends.end()) fail("Unknown backend " + options.backend);
   const auto text = read_file(options.scene);

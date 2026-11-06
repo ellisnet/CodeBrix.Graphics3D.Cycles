@@ -79,6 +79,7 @@ def main():
     FETCHCONTENT_FULLY_DISCONNECTED='ON',FETCHCONTENT_UPDATES_DISCONNECTED='ON')
    settings['CMAKE_INSTALL_LIBDIR:STRING']='lib';settings.update(options)
    if name in ['imath','openexr','oiio']:settings['CLANG_FORMAT_EXE:FILEPATH']='OFF'
+   if name=='embree':settings['EMBREE_MAX_ISA']='NEON'
    commands=[['cmake','-S',str(path),'-B',str(build),*['-D'+k+'='+str(v) for k,v in settings.items()]],
     ['cmake','--build',str(build),'--parallel',str(args.jobs)],['cmake','--install',str(build)]]
    save(build/'commands.json',commands)

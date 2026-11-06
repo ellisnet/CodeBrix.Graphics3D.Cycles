@@ -159,7 +159,8 @@ static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
     auto &data=scene.dscene.data;std::string reason="reported invalid data";
     if(test==0){data.integrator.transparent_shadows=1;data.integrator.transparent_max_bounce=4096;reason="packed state";}
     if(test==1){data.bvh.have_motion=1;reason="motion flag/table mismatch";}
-    if(test==2){data.kernel_features|=KERNEL_FEATURE_VOLUME;reason="optional integration";}
+    // Shadow paths through volumes are supported (VOLUME_SHADOW); path guiding stays refused.
+    if(test==2){data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional integration";}
     if(test==3){data.kernel_features|=KERNEL_FEATURE_SHADOW_LINKING;reason="optional integration";}
     if(test==4||test==10)states[0].shadow_path.flag|=PATH_RAY_SHADOW_FOR_AO;
     if(test==5){data.bvh.root=INT_MAX;}

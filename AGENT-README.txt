@@ -248,7 +248,8 @@ CyclesImage : IDisposable                               (sealed)
     Dispose() releases YOUR reference; bound textures keep the pixels
     (textures bound before Dispose keep the pixels they had).
 
-CyclesBackend   Gpu, CpuReference
+CyclesBackend   Gpu, CpuReference, Cpu (the CPU device with Embree ray
+                tracing; CpuReference keeps BVH2 and stays the reference)
 CyclesVersion (static)
     uint Abi                   ABI integer of the loaded native host
     const uint ExpectedAbi     the ABI this assembly was built against
@@ -413,7 +414,8 @@ Shared value types and enums (root namespace)
     PropertyInfo(ValueType, Flags, Components, Count) + Kind, PropertyFlags
     Backend         WebGpu, CpuReference, Metal (osx-arm64 builds only),
                     Gpu (the backend-neutral request; the native host
-                    resolves it, a host never reports it)
+                    resolves it, a host never reports it), Cpu (the CPU
+                    device with Embree; capability name cpu-embree)
     NativeStatus    Ok, Invalid, Unsupported, Failed, Cancelled, NotReady,
                     SmallBuffer
     ValueKind       Unsupported, Boolean, Int, UInt, UInt64, Float, Color,
@@ -469,7 +471,12 @@ OracleSceneBundle                                       (sealed)
 BACKEND SELECTION
 -----------------
 Use CyclesBackend.Gpu for "the GPU of this platform" and CyclesBackend.
-CpuReference for the CPU. A GPU render never falls back to the CPU: if no
+CpuReference for the CPU. CyclesBackend.Cpu is the CPU device with Embree ray
+tracing (Cycles' automatic BVH): usually faster on large scenes; its films agree
+with CpuReference closely but not bit for bit (a different BVH visits primitives
+in another order, and a rare single pixel can differ visibly), and
+CpuReference (BVH2) stays the reference the GPU backends are validated
+against. A GPU render never falls back to the CPU: if no
 usable GPU exists, scene creation or the render fails with a CyclesException.
 CyclesBackend.Gpu resolves by platform:
 
@@ -546,10 +553,11 @@ What a consumer can observe:
 WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
 render runs (the render fails with NativeStatus.Failed, not at edit time):
   - the passes the WebGPU device does not write fail the render with
-    "WebGPU film pass <name> not implemented" (the path guiding and volume
-    passes), as do the motion pass and the denoising motion features with
-    deforming geometry (vertex motion) and the motion pass with a camera that
-    is not perspective;
+    "WebGPU film pass <name> not implemented" (the path guiding passes; the
+    volume light passes fail with "WebGPU volume light passes not
+    implemented"), as does the motion pass with a camera that is not
+    perspective (the motion pass and the denoising motion features with
+    deforming geometry render);
   - stereo cameras (an InterocularDistance with a StereoEye other than None):
     "WebGPU stereo camera not implemented"; custom cameras need OSL, which is
     outside the package; a texture coordinate node's Window output with a
@@ -559,9 +567,13 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
     denoising, UseDenoise, render);
   - shadow linking (an object's BlockerShadowSet or ShadowSetMembership other
     than the defaults): "optional integration features not implemented";
-  - a PrincipledBsdfNode with subsurface (a SubsurfaceWeight above the closure
-    cutoff, 1e-5, or a linked SubsurfaceWeight input): "Unsupported feature:
-    Principled BSDF subsurface scattering";
+  - subsurface scattering with the Christensen-Burley method, or a thin-walled
+    PrincipledBsdfNode with subsurface: "Unsupported feature: subsurface
+    scattering with the Christensen-Burley method" / "Unsupported feature:
+    Principled BSDF thin-wall subsurface scattering"; the random walk methods
+    render, but not together with volumes, MNEE caustics, the shadow catcher,
+    light or shadow linking, data/denoising/AOV/cryptomatte passes, motion blur
+    or holdout objects ("WebGPU subsurface scattering with ... not implemented");
   - shader nodes the WebGPU device does not implement (for example the point
     info, particle info and hair info nodes; the sky texture, IES texture and
     light falloff nodes, the AOV output nodes, the bump node, the Gabor texture (GaborTextureNode,
@@ -935,7 +947,7 @@ interpolation "closest", otherwise "linear"; Cycles has no mipmaps.
 Textures need decoded pixels: the example decodes the glTF's images with
 CodeBrix.Imaging (Image.Load<Rgba32>, rows flipped to bottom-first) and passes
 the RGBA8 bytes to CreateImage. The WebGPU backend renders PrincipledBsdfNode
-(every lobe except subsurface, see WEBGPU RENDER-TIME LIMITS).
+(every lobe; subsurface with the random walk methods, see WEBGPU RENDER-TIME LIMITS).
 
 
 NOT SUPPORTED ON ADRENO 640 (PIXEL 4 XL CLASS DEVICES)
@@ -1020,8 +1032,14 @@ WHAT THIS PACKAGE DOES NOT DO
   (disk or polygonal apertures, rotation, anamorphic ratio), every sampling
   pattern (tabulated Sobol, Sobol-Burley, the blue-noise patterns, scrambling
   distance) and adaptive sampling render there. It does not yet render curves (hair), point clouds,
-  subsurface scattering, volumes whose density varies through space or the
-  hair BSDFs on the WebGPU device. True displacement of the base mesh
+  Christensen-Burley subsurface scattering or the hair BSDFs on the WebGPU
+  device. Volumes of constant density and volumes whose density varies through
+  space (with or without biased ray marching) render there with direct light
+  from point, sun and world lights and shadows through them, the Henyey-Greenstein, Fournier-Forand,
+  Rayleigh, Draine and Mie phase functions, the Volume Coefficients and
+  Principled Volume nodes and volume emission; spot, area and mesh lights, the
+  light tree and light passes together with volumes fail with an error naming
+  the feature. True displacement of the base mesh
   (DisplacementMethod True and Both) renders there. The Metallic (physical
   conductor and F82 tint, with or without a thin film), Beckmann glossy, refraction and glass,
   Ashikhmin-Shirley, velvet and toon BSDFs render there.

@@ -120,20 +120,21 @@ def overlay(out=None):
         assert mnee_traversal.count(old)==count,old
         mnee_traversal=mnee_traversal.replace(old,new)
     assert 'stack[' not in mnee_traversal
-    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_film_passes.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_background_light.wgsl','wavefront_lighting.wgsl','wavefront_light_nee.wgsl','wavefront_ao.wgsl'))+light_tree+'//#if MNEE\n'+mnee_traversal+'//#endif\n'+(ROOT/'shaders/wavefront_mnee.wgsl').read_text()
+    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_film_passes.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_background_light.wgsl','wavefront_lighting.wgsl','wavefront_light_nee.wgsl','wavefront_ao.wgsl','wavefront_volume_light.wgsl','wavefront_subsurface.wgsl'))+light_tree+'//#if MNEE\n'+mnee_traversal+'//#endif\n'+(ROOT/'shaders/wavefront_mnee.wgsl').read_text()
     _write(out/'surface_shader.inc','R"CBWGSL('+surface+')CBWGSL"\n')
-    volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_volume.wgsl'))
+    volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_volume.wgsl','wavefront_volume_octree.wgsl','wavefront_volume_heterogeneous.wgsl'))
     _write(out/'volume_shader.inc','R"CBWGSL('+volume+')CBWGSL"\n')
     closest=common+translated+(ROOT/'shaders/wavefront_shadow_catcher.wgsl').read_text()+(ROOT/'shaders/wavefront_closest.wgsl').read_text()+(ROOT/'shaders/wavefront_light_link.wgsl').read_text()
     _write(out/'film_post_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_film_post.wgsl').read_text()+')CBWGSL"\n')
     # Adaptive sampling (film_passes.cpp): the contraction-proof binary32 helpers and the three kernels.
     _write(out/'film_adaptive_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_film_adaptive.wgsl').read_text()+')CBWGSL"\n')
+    _write(out/'film_volume_guiding_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_film_volume_guiding.wgsl').read_text()+')CBWGSL"\n')
     _write(out/'shadow_catcher_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_shadow_catcher_split.wgsl').read_text()+')CBWGSL"\n')
     _write(out/'closest_shader.inc','R"CBWGSL('+closest+')CBWGSL"\n')
     traversal=(ROOT/'shaders/wavefront_closest.wgsl').read_text().split('// Point emitters use')[0]
     volume_stack=shader_data+translated+traversal+(ROOT/'shaders/wavefront_volume_stack.wgsl').read_text()
     _write(out/'volume_stack_shader.inc','R"CBWGSL('+volume_stack+')CBWGSL"\n')
-    shadow=traversal+film+(ROOT/'shaders/wavefront_shadow_traversal.wgsl').read_text()+(ROOT/'shaders/wavefront_shadow.wgsl').read_text()
+    shadow=traversal+film+(ROOT/'shaders/wavefront_shadow_traversal.wgsl').read_text()+(ROOT/'shaders/wavefront_volume_octree.wgsl').read_text()+(ROOT/'shaders/wavefront_shadow.wgsl').read_text()
     _write(out/'shadow_shader.inc','R"CBWGSL('+shadow+')CBWGSL"\n')
     # Compile the untouched upstream scalar prefix/sorted helpers and state-copy
     # function bodies as the oracle. The GPU-specific wrapper uses native pointers
@@ -187,7 +188,10 @@ def main():
     # Open Image Denoise (CPU device) from the reviewed snapshot built into the
     # dependency prefix; path guiding stays off explicitly.
     options.update({'WITH_CYCLES_OPENIMAGEDENOISE':'ON','OPENIMAGEDENOISE_ROOT_DIR':deps,'WITH_CYCLES_PATH_GUIDING':'OFF'})
-    options.update({'WITH_CYCLES_'+name:'OFF' for name in ['ALEMBIC','EMBREE','OPENSUBDIV','OPENVDB','NANOVDB',
+    # Embree (static, from the reviewed snapshot built into the dependency prefix): the product CPU device's BVH;
+    # the host keeps BVH2 for the CPU reference backend and the oracle (docs/RELEASE-LICENSE-PLAN.md, Embree).
+    options.update({'WITH_CYCLES_EMBREE':'ON','EMBREE_ROOT_DIR':deps})
+    options.update({'WITH_CYCLES_'+name:'OFF' for name in ['ALEMBIC','OPENSUBDIV','OPENVDB','NANOVDB',
                    'OSL','USD','HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
     commands=[['cmake','-S',str(UPSTREAM),'-B',str(build),*['-D'+k+'='+str(v) for k,v in options.items()]],
               ['cmake','--build',str(build),'--target','codebrix_cycles_device_gate','codebrix_cycles_camera_gate','codebrix_cycles_closest_gate','codebrix_cycles_background_gate','codebrix_cycles_svm_world_gate','codebrix_cycles_shader_data_gate','codebrix_cycles_svm_surface_gate','codebrix_cycles_attribute_gate','codebrix_cycles_normal_gate','codebrix_cycles_image_gate','codebrix_cycles_image_file_gate','codebrix_cycles_surface_gate','codebrix_cycles_microfacet_svm_gate','codebrix_cycles_microfacet_bounce_gate','codebrix_cycles_microfacet_render_gate','codebrix_cycles_render_gate','codebrix_cycles_atomic_film_gate','--parallel',args.jobs]]

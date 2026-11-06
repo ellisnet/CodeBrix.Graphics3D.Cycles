@@ -56,6 +56,10 @@ fn forward_emission(index:u32,base:u32,light:u32,eval:vec3<f32>,weight:f32){
 //#if SHADOW_CATCHER else     let flags=data_word(D_film_light_pass_flag);if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
     let flags=data_word(D_film_light_pass_flag);let sc_handled=sc_combined(state_word(S_path_flag,index),base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
 //#endif
+//#if VOLUME_SHADOW
+    // film_write_combined_pass: the volume scattering probability guiding pass of a lamp hit.
+    volume_guidance_pass(index,base,value);
+//#endif
 //#if SHADOW_CATCHER else     if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
     if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
 //#endif
@@ -123,8 +127,16 @@ fn integrate_suns(index:u32,base:u32){
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD){fail();return;}
     let flag=state_word(S_path_flag,index);let visibility=state_byte(S_path_visibility,index);
+//#if VOLUME_LIGHT
+    // Paths scattered in a volume reach lamps too (forward MIS with the phase pdf; no light tree with volumes).
+//#if SHADOW_CATCHER else     if((flag&BACKGROUND_UNSUPPORTED_FLAGS)!=0u){fail();return;}
+    if((flag&(BACKGROUND_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u){fail();return;}
+//#endif
+//#endif
+//#if !VOLUME_LIGHT
 //#if SHADOW_CATCHER else     if((flag&BACKGROUND_UNSUPPORTED_FLAGS)!=0u||(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return;}
     if((flag&(BACKGROUND_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u||(visibility&PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return;}
+//#endif
 //#endif
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);if(pixel>=p(11u)/stride){fail();return;}
     let lamp=state_word(S_isect_prim,index);if(lamp>=table_count(G_lights)||state_word(S_isect_type,index)!=PRIMITIVE_LAMP){fail();return;}

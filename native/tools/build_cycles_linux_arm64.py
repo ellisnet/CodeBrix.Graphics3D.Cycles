@@ -65,7 +65,8 @@ def main():
   # Open Image Denoise (CPU device) from the reviewed snapshot in the target
   # dependency prefix; path guiding stays off explicitly.
   options.update(WITH_CYCLES_OPENIMAGEDENOISE='ON',OPENIMAGEDENOISE_ROOT_DIR=prefix,WITH_CYCLES_PATH_GUIDING='OFF')
-  options.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','EMBREE','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD','HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
+  options.update(WITH_CYCLES_EMBREE='ON',EMBREE_ROOT_DIR=prefix)
+  options.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD','HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
   build=work/'build';runtime=PACKAGE/'runtimes/linux-arm64/native/libcodebrix_wgpu.so'
   commands=[['cmake','-S',str(source),'-B',str(build),*['-D'+k+'='+str(v) for k,v in options.items()]],
     ['cmake','--build',str(build),'--target',*(targets or HOST_TARGETS+GATE_TARGETS),'--parallel',str(a.jobs)]]

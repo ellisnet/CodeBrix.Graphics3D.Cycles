@@ -90,6 +90,8 @@ def main():
                         **options}
             if name in ('imath', 'openexr', 'oiio'):
                 settings['CLANG_FORMAT_EXE:FILEPATH'] = 'OFF'
+            if name == 'embree' and args.rid == 'android-arm64':
+                settings['EMBREE_MAX_ISA'] = 'NEON'
             if name == 'oidn':
                 # Unversioned file names (the APK packages lib*.so only; OIDN's core
                 # loads its CPU device module by that name), ISPC objects for Android.

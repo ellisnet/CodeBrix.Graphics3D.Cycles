@@ -8,6 +8,13 @@
 // Shadow paths flagged for ambient occlusion exist only in scenes with
 // KERNEL_FEATURE_AO (AO_SHADOW); elsewhere the flag is invalid input.
 fn shadow_flag_supported(flag:u32)->bool{
+//#if VOLUME_SHADOW
+    // Shadow paths from and through volumes carry the volume pass and primary-transmit flags.
+    let volume_flags=flag&~VL_SHADOW_VOLUME_FLAGS;
+//#if AO_SHADOW else     return (volume_flags&(SHADOW_UNSUPPORTED_FLAGS|AO_SHADOW_FLAG))==0u;
+    return (volume_flags&SHADOW_UNSUPPORTED_FLAGS)==0u;
+//#endif
+//#endif
 //#if AO_SHADOW else return (flag&(SHADOW_UNSUPPORTED_FLAGS|AO_SHADOW_FLAG))==0u;
     return (flag&SHADOW_UNSUPPORTED_FLAGS)==0u;
 //#endif
@@ -71,6 +78,9 @@ fn shadow_write_film(index:u32){
         let features=data_word(D_kernel_features);
         if((features&AO_FEATURE_PASS)!=0u&&(state_byte(S_shadow_path_visibility,index)&VIS_CAMERA)!=0u){film_rgb(base,data_word(D_film_pass_ao),value);}
         if((features&AO_FEATURE_ADDITIVE)!=0u){let ao=value*heap_vec3(state_address(S_shadow_path_unshadowed_throughput,index,12u));
+//#if VOLUME_SHADOW
+            vl_shadow_guidance(base,flag,state_byte(S_shadow_path_visibility,index),ao);
+//#endif
 //#if SHADOW_CATCHER else             if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
             // film_write_combined_pass: the shadow catcher split first (matte, catcher pass).
             let ao_handled=sc_combined(flag,base,ao);if(!ao_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
@@ -84,6 +94,10 @@ fn shadow_write_film(index:u32){
 //#endif
 //#if SHADOW_CATCHER else     if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
     let sc_handled=sc_combined(flag,base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+//#endif
+//#if VOLUME_SHADOW
+    // film_write_combined_pass: the volume scattering probability guiding pass (no shadow catcher with volumes).
+    vl_shadow_guidance(base,flag,state_byte(S_shadow_path_visibility,index),value);
 //#endif
 //#if SHADOW_CATCHER else     if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
     if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
@@ -142,6 +156,54 @@ fn shadow_write_film(index:u32){
     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_SHADE||!shadow_flag_supported(flag&~SC_FLAGS)||count>4095u){fail();return;}
 //#endif
     let recorded=min(count,SHADOW_HIT_CAPACITY);
+//#if VOLUME_SHADOW
+    // integrate_transparent_shadow with volumes: the medium before each recorded hit, the hit's surface (a
+    // volume-only boundary counts a volume bounds bounce and is fully transparent), the stack enter or exit;
+    // then the medium after the last hit when no hit is left to record (the world volume included).
+    // One SVM evaluation site for the media (vl_shadow_step) and the hit surfaces (compile size: the scene's SVM
+    // handlers inline once): stage 0 starts the medium before hit 'slot', 1 evaluates it, 2 shades the hit.
+    var slot=0u;var stage=0u;var seg:VlShadow;var evaluated=false;var r:SvmResult;
+    for(var guard=0u;guard<0x7fffffffu;guard++){
+        if(stage==0u){
+            stage=2u;if(slot<recorded||count<SHADOW_HIT_CAPACITY){if(vl_shadow_begin(index,slot,recorded,&seg)){stage=1u;evaluated=false;}}
+        }
+        // Loop-local declarations take explicit assignments (naga does not re-run declaration initializers).
+        var geometry:SurfaceData;var volume:bool;volume=false;var need:bool;need=false;
+        if(stage==1u){
+            if(evaluated){geometry=vl_shadow_geometry(index,seg);volume=true;need=true;}
+        }else{
+            if(slot==recorded){break;}
+            geometry=surface_cached(id.x*SHADOW_HIT_CAPACITY+slot);
+            if(geometry.error!=0u){return;}
+            if((geometry.shader_flag&SHADOW_ONLY_VOLUME)!=0u){state_u16(S_shadow_path_volume_bounds_bounce,index,state_half(S_shadow_path_volume_bounds_bounce,index)+1u);}
+            else{need=true;}
+        }
+        r=SvmResult();r.transparency=vec3<f32>(1);
+        if(need){
+            var previous:SvmResult;previous=SvmResult();var flag:u32;flag=0u;var path:u32;path=index;if(volume){previous=seg.r;flag=PATH_RAY_EXTINCTION;path=NONE;}
+            r=svm_evaluate_context_seeded(path,geometry,0u,0u,flag,PATH_RAY_VISIBILITY_SHADOW,0u,volume,previous);
+        }
+        if(stage==1u){
+            // The medium: evaluate the next stack entry, or the segment's next position, until it ends.
+            let step=vl_shadow_step(index,&seg,r,evaluated);evaluated=true;
+            if(step==2u){shadow_transition(index,K_SHADOW_SHADE,0u);return;}
+            if(load_word(p(17u))!=0u){return;}
+            if(step==1u){stage=2u;}
+            continue;
+        }
+        if(r.error!=0u){return;}
+        let sd=geometry;let transparency=r.transparency;
+        vl_shadow_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);
+        let throughput=heap_vec3(state_address(S_shadow_path_throughput,index,12u))*transparency;
+        if(all(throughput==vec3<f32>(0))){shadow_transition(index,K_SHADOW_SHADE,0u);return;}
+        state_vec3(S_shadow_path_throughput,index,throughput);
+        state_u16(S_shadow_path_transparent_bounce,index,state_half(S_shadow_path_transparent_bounce,index)+1u);
+        state_u16(S_shadow_path_rng_offset,index,state_half(S_shadow_path_rng_offset,index)+RNG_BOUNCE);
+        if(state_half(S_shadow_path_volume_bounds_bounce,index)>SHADOW_VOLUME_BOUNDS_MAX){shadow_transition(index,K_SHADOW_SHADE,0u);return;}
+        slot++;stage=0u;
+    }
+//#endif
+//#if !VOLUME_SHADOW
     for(var slot=0u;slot<recorded;slot++){
         let hit=shadow_hit_load(index,slot);
         let sd=surface_cached(id.x*SHADOW_HIT_CAPACITY+slot);
@@ -154,9 +216,238 @@ fn shadow_write_film(index:u32){
         state_u16(S_shadow_path_rng_offset,index,state_half(S_shadow_path_rng_offset,index)+RNG_BOUNCE);
         if(state_half(S_shadow_path_volume_bounds_bounce,index)>SHADOW_VOLUME_BOUNDS_MAX){shadow_transition(index,K_SHADOW_SHADE,0u);return;}
     }
+//#endif
     if(state_half(S_shadow_path_volume_bounds_bounce,index)>SHADOW_VOLUME_BOUNDS_MAX){shadow_transition(index,K_SHADOW_SHADE,0u);return;}
     if(count>=SHADOW_HIT_CAPACITY){let last=shadow_hit_load(index,recorded-1u).t;
         state_f32(S_shadow_ray_tmin,index,select(bitcast<f32>(bitcast<u32>(last)+1u),1.1754943508222875e-38,last==0.0));
         shadow_transition(index,K_SHADOW_SHADE,K_SHADOW_INTERSECT);return;}
     shadow_write_film(index);
 }
+//#if VOLUME_SHADOW
+// film_write_volume_scattering_guiding_pass for a shadow path's contribution.
+fn vl_shadow_guidance(base:u32,flag:u32,visibility:u32,value:vec3<f32>){
+    var offset=PASS_NONE;
+    if((flag&PATH_RAY_VOLUME_PRIMARY_TRANSMIT)!=0u){offset=data_word(D_film_pass_volume_transmit);}
+    else if((visibility&VIS_VOLUME)!=0u){offset=data_word(D_film_pass_volume_scatter);}
+    if(offset!=PASS_NONE){for(var k=0u;k<3u;k++){volume_atomic_add(base+(offset+k)*4u,value[k]);}}
+}
+// The shadow path's volume stack (shadow_volume_stack).
+fn vl_shadow_stack_address(shadow:u32,slot:u32,member:u32)->u32{return load_word(p(7u)+VL_S_shadow_volume_stack+slot*VL_SVS_stride+member)+shadow*4u;}
+fn vl_shadow_stack_count(index:u32)->u32{
+    let limit=data_word(D_volume_stack_size);
+    for(var slot=0u;slot<limit;slot++){
+        let shader=load_word(vl_shadow_stack_address(index,slot,VL_SVS_shader));if(shader==NONE){return slot;}
+        if((shader&SHADER_MASK)>=table_count(G_shaders)){fail();return NONE;}
+    }
+    fail();return NONE;
+}
+// volume_stack_enter_exit<shadow>: the main path's rules on the shadow path's stack.
+fn vl_shadow_stack_enter_exit(index:u32,object:u32,shader:u32,backfacing:bool){
+    let flags=load_word(table_at(G_shaders,shader&SHADER_MASK,SIZE_shaders)+SH_flags);if((flags&VS_HAS_VOLUME)==0u){return;}
+    let count=vl_shadow_stack_count(index);if(count==NONE){return;}
+    var found=NONE;for(var slot=0u;slot<count;slot++){
+        if(load_word(vl_shadow_stack_address(index,slot,VL_SVS_object))==object&&load_word(vl_shadow_stack_address(index,slot,VL_SVS_shader))==shader){found=slot;break;}}
+    if(backfacing){
+        if(found==NONE){return;}
+        let last=count-1u;if(found!=last){
+            store_word(vl_shadow_stack_address(index,found,VL_SVS_object),load_word(vl_shadow_stack_address(index,last,VL_SVS_object)));
+            store_word(vl_shadow_stack_address(index,found,VL_SVS_shader),load_word(vl_shadow_stack_address(index,last,VL_SVS_shader)));}
+        store_word(vl_shadow_stack_address(index,last,VL_SVS_object),NONE);store_word(vl_shadow_stack_address(index,last,VL_SVS_shader),NONE);
+    }else if(found==NONE&&count<data_word(D_volume_stack_size)-1u){
+        store_word(vl_shadow_stack_address(index,count,VL_SVS_object),object);store_word(vl_shadow_stack_address(index,count,VL_SVS_shader),shader);
+        store_word(vl_shadow_stack_address(index,count+1u,VL_SVS_object),NONE);store_word(vl_shadow_stack_address(index,count+1u,VL_SVS_shader),NONE);
+    }
+}
+// integrate_transparent_volume_shadow + volume_shadow_null_scattering, as a stepper around the caller's one SVM
+// evaluation site: vl_shadow_begin sets up the medium before recorded hit 'hit' (false: no medium), then each
+// vl_shadow_step consumes one evaluation (every stack entry at one position: closures merged as the native
+// volume_shader_eval) and names the next; 0 needs an evaluation, 1 the medium is done, 2 the shadow is opaque.
+// Homogeneous media: the stack's extinction at the segment start, the transmittance over the segment.
+struct VlShadow {
+    sd:SurfaceData, r:SvmResult, entry:u32, count:u32, tmin:f32, tmax:f32, origin:vec3<f32>, direction:vec3<f32>, throughput:vec3<f32>,
+//#if VOLUME_HETEROGENEOUS
+    hs:VhShadow,
+//#endif
+//#if VOLUME_RAY_MARCHING
+    rm:bool, vt:vec2<f32>, size:f32, shade_offset:f32, max_steps:i32, step:i32, sum:vec3<f32>, tp:vec3<f32>,
+//#endif
+}
+fn vl_shadow_begin(index:u32,hit:u32,recorded:u32,seg:ptr<function,VlShadow>)->bool{
+    let count=vl_shadow_stack_count(index);if(count==NONE||count==0u){return false;}
+    (*seg).count=count;(*seg).entry=0u;
+    (*seg).origin=heap_vec3(state_address(S_shadow_ray_P,index,12u));(*seg).direction=heap_vec3(state_address(S_shadow_ray_D,index,12u));
+    var tmin=heap_float(state_address(S_shadow_ray_tmin,index,4u));if(hit>0u){tmin=shadow_hit_load(index,hit-1u).t;}
+    var tmax=heap_float(state_address(S_shadow_ray_tmax,index,4u));if(hit<recorded){tmax=shadow_hit_load(index,hit).t;}
+    (*seg).tmin=tmin;(*seg).tmax=tmax;
+    var sd:SurfaceData;sd.P=rounded_add3((*seg).origin,(*seg).direction*tmin);sd.N=-(*seg).direction;sd.Ng=-(*seg).direction;sd.wi=-(*seg).direction;sd.prim=NONE;sd.primitive_type=VL_PRIMITIVE_VOLUME;
+    sd.time=heap_float(state_address(S_shadow_ray_time,index,4u));sd.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;(*seg).sd=sd;
+    (*seg).r=SvmResult();(*seg).r.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
+    (*seg).throughput=heap_vec3(state_address(S_shadow_path_throughput,index,12u));
+//#if VOLUME_HETEROGENEOUS
+    var hs:VhShadow;hs.walk=vh_shadow_heterogeneous(index,count);
+    if(hs.walk){
+        // volume_shadow_null_scattering for a heterogeneous stack: the octree segments with volume_transmittance<true>.
+        hs.sample=state_word(S_shadow_path_sample,index);hs.pixel=state_word(S_shadow_path_rng_pixel,index);
+        hs.offset=vh_scramble(state_half(S_shadow_path_rng_offset,index),0x8647ace4u);
+        hs.o.t=vec2<f32>(tmin,bitcast<f32>(0x7f7fffffu));hs.o.node=NONE;hs.o.object=NONE;hs.o.shader=NONE;hs.o.scale=VH_MANTISSA_BITS;
+    }
+//#if VOLUME_RAY_MARCHING
+    // volume_shadow_ray_marching with volume_step_init<true> (shadow_path_state_rng_load, no scramble).
+    (*seg).rm=data_word(VR_D_volume_ray_marching)!=0u;
+    if((*seg).rm){
+        hs.walk=false;let object_step=vr_step_size(index,count);(*seg).vt=vec2<f32>(tmin,tmin);(*seg).shade_offset=0.0;(*seg).max_steps=1;
+        if(object_step==bitcast<f32>(0x7f7fffffu)){(*seg).size=rounded_add(tmax,-tmin);}
+        else{
+            (*seg).max_steps=bitcast<i32>(data_word(VR_D_volume_max_steps));let length=rounded_add(tmax,-tmin);var size=min(object_step,length);
+            if(length>f32((*seg).max_steps)*size){size=rounded_divide(length,f32((*seg).max_steps));}(*seg).size=size;
+            (*seg).shade_offset=native_rng(state_word(S_shadow_path_sample,index),state_word(S_shadow_path_rng_pixel,index),state_half(S_shadow_path_rng_offset,index)+VR_PRNG_SHADE_OFFSET).x;
+        }
+        (*seg).step=0;(*seg).sum=vec3<f32>(0);(*seg).tp=(*seg).throughput;
+    }
+//#endif
+    (*seg).hs=hs;
+//#endif
+    return true;
+}
+// The geometry of the current stack entry's evaluation.
+fn vl_shadow_geometry(index:u32,seg:VlShadow)->SurfaceData{
+    var sd=seg.sd;
+    sd.object_id=load_word(vl_shadow_stack_address(index,seg.entry,VL_SVS_object));sd.shader=load_word(vl_shadow_stack_address(index,seg.entry,VL_SVS_shader));
+    sd.shader_flag=load_word(table_at(G_shaders,sd.shader&SHADER_MASK,SIZE_shaders)+SH_flags);sd.object_flag=0u;
+    if(sd.object_id!=NONE){sd.object_flag=load_word(table_at(G_object_flag,sd.object_id,SIZE_object_flag));}
+    sd.runtime_flag=seg.r.runtime_flag;return sd;
+}
+fn vl_shadow_step(index:u32,seg:ptr<function,VlShadow>,r:SvmResult,evaluated:bool)->u32{
+    var walk=false;var rm=false;
+//#if VOLUME_HETEROGENEOUS
+    walk=(*seg).hs.walk;
+//#endif
+//#if VOLUME_RAY_MARCHING
+    rm=(*seg).rm;
+//#endif
+    if(evaluated){
+        if(r.error!=0u){return 1u;}
+        (*seg).r=r;(*seg).entry++;if((*seg).entry<(*seg).count){return 0u;}
+//#if VOLUME_RAY_MARCHING
+        if(rm){
+            // The attenuation over the step; exp() every 8th step with the early exit.
+            let sigma=select(vec3<f32>(0),r.transparency,(r.runtime_flag&SR_EXTINCTION)!=0u);
+            (*seg).sum+=-sigma*rounded_add((*seg).vt.y,-(*seg).vt.x);
+            var stop=false;
+            if(((*seg).step&7)==0){(*seg).tp=(*seg).throughput*exp((*seg).sum);stop=max((*seg).tp.x,max((*seg).tp.y,(*seg).tp.z))<VH_THROUGHPUT_EPSILON;}
+            (*seg).step++;
+            if(stop){return vr_shadow_finish(index,seg);}
+        }
+//#endif
+        if(!walk&&!rm){
+            if(all(r.transparency==vec3<f32>(0))){return 1u;}
+            let throughput=(*seg).throughput*exp(-r.transparency*((*seg).tmax-(*seg).tmin));
+            if(all(throughput==vec3<f32>(0))){return 2u;}
+            state_vec3(S_shadow_path_throughput,index,throughput);return 1u;
+        }
+    }else if(!walk&&!rm){return 0u;}
+//#if VOLUME_RAY_MARCHING
+    if(rm){
+        // volume_ray_marching_advance.
+        if((*seg).vt.y==(*seg).tmax){return vr_shadow_finish(index,seg);}
+        (*seg).vt.x=(*seg).vt.y;(*seg).vt.y=min((*seg).tmax,rounded_add((*seg).tmin,(f32((*seg).step)+1.0)*(*seg).size));
+        let shade_t=rounded_add((*seg).vt.x,(*seg).shade_offset*rounded_add((*seg).vt.y,-(*seg).vt.x));
+        if((*seg).step>=(*seg).max_steps){return vr_shadow_finish(index,seg);}
+        (*seg).sd.P=rounded_add3((*seg).origin,(*seg).direction*shade_t);(*seg).entry=0u;(*seg).r=SvmResult();(*seg).r.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
+        return 0u;
+    }
+//#endif
+//#if VOLUME_HETEROGENEOUS
+    if(evaluated){(*seg).hs.extinction=select(vec3<f32>(0),r.transparency,(r.runtime_flag&SR_EXTINCTION)!=0u);}
+    var hs=(*seg).hs;var throughput=(*seg).throughput;
+    let more=vh_shadow_next(&hs,index,(*seg).origin,(*seg).direction,(*seg).tmax,&throughput,evaluated);
+    (*seg).hs=hs;(*seg).throughput=throughput;
+    if(!more){if(vh_shadow_store(index,throughput)){return 1u;}return 2u;}
+    (*seg).sd.P=rounded_add3((*seg).origin,(*seg).direction*hs.shade_t);(*seg).entry=0u;(*seg).r=SvmResult();(*seg).r.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
+//#endif
+    return 0u;
+}
+//#if VOLUME_RAY_MARCHING
+fn vr_shadow_finish(index:u32,seg:ptr<function,VlShadow>)->u32{
+    if((*seg).vt.y==(*seg).tmax){(*seg).tp=(*seg).throughput*exp((*seg).sum);}
+    if(all((*seg).tp==vec3<f32>(0))){return 2u;}
+    state_vec3(S_shadow_path_throughput,index,(*seg).tp);return 1u;
+}
+//#endif
+//#if VOLUME_HETEROGENEOUS
+// The shadow volume stack for the shared octree tracer.
+fn vh_stack_shader(index:u32,slot:u32)->u32{return load_word(vl_shadow_stack_address(index,slot,VL_SVS_shader));}
+fn vh_stack_object(index:u32,slot:u32)->u32{return load_word(vl_shadow_stack_address(index,slot,VL_SVS_object));}
+fn vh_shadow_heterogeneous(index:u32,count:u32)->bool{
+    for(var i=0u;i<count;i++){if((load_word(table_at(G_shaders,vh_stack_shader(index,i)&SHADER_MASK,SIZE_shaders)+SH_flags)&VH_HETEROGENEOUS)!=0u){return true;}}
+    return false;
+}
+// The shadow estimator's state: the octree, the scrambled sequence, the transmittance counters (as VhState).
+struct VhShadow {
+    walk:bool, o:VhOctree, sample:u32, pixel:u32, offset:u32, tr_N:u32, tr_k:u32, tr_n:u32, tr_i:u32, tr_step:f32, tr_shade:f32,
+    tr_t:vec2<f32>, tr_pmf:f32, tau_k:vec3<f32>, tau_j0:vec3<f32>, tau_j1:vec3<f32>, tau_j_1:vec3<f32>, T_k:vec3<f32>, shade_t:f32,
+    extinction:vec3<f32>, in_segment:bool, started:bool,
+}
+fn vh_shadow_store(index:u32,throughput:vec3<f32>)->bool{
+    if(all(throughput==vec3<f32>(0))){return false;}
+    state_vec3(S_shadow_path_throughput,index,throughput);return true;
+}
+// One step of volume_shadow_null_scattering's loop: consumes the evaluation (when evaluated), finishes segments
+// (volume_transmittance<true>), advances the octree (volume_octree_advance_shadow) and names the next shading
+// distance; false when the segment walk ends.
+fn vh_shadow_next(hs:ptr<function,VhShadow>,index:u32,origin:vec3<f32>,direction:vec3<f32>,ray_tmax:f32,throughput:ptr<function,vec3<f32>>,evaluated:bool)->bool{
+    if(evaluated){
+        let step=(*hs).tr_i*(*hs).tr_N+(*hs).tr_n;
+        if((*hs).tr_N==1u){(*hs).tau_k+=(*hs).extinction;}
+        else{let tau=(*hs).tr_step*(*hs).extinction;(*hs).tau_k+=tau*f32((*hs).tr_N);
+            if(step%2u==0u){(*hs).tau_j0+=tau*2.0;}else{(*hs).tau_j1+=tau*2.0;}(*hs).tau_j_1+=tau;}
+        (*hs).tr_i++;
+        if((*hs).tr_i>=(*hs).tr_k){
+            var done=false;
+            if((*hs).tr_N==1u){*throughput*=select(exp(-(*hs).tau_k*(*hs).tr_step),vec3<f32>(1),all((*hs).tau_k==vec3<f32>(0)));done=true;}
+            else{(*hs).T_k+=exp(-(*hs).tau_k);(*hs).tau_k=vec3<f32>(0);(*hs).tr_i=0u;(*hs).tr_n++;
+                if((*hs).tr_n>=(*hs).tr_N){
+                    let T_j_1=exp(-(*hs).tau_j_1);let T_k=(*hs).T_k/f32((*hs).tr_N);let T_j=0.5*(exp(-(*hs).tau_j0)+exp(-(*hs).tau_j1));
+                    *throughput*=T_k+(T_j_1-T_j)/(*hs).tr_pmf;done=true;
+                }}
+            if(done){
+                (*hs).in_segment=false;
+                if(max(abs((*throughput).x),max(abs((*throughput).y),abs((*throughput).z)))<VH_THROUGHPUT_EPSILON){return false;}
+                (*hs).o.t.x=(*hs).o.t.y;
+            }
+        }
+        if((*hs).in_segment){(*hs).shade_t=min((*hs).tr_t.y,(*hs).tr_t.x+((*hs).tr_shade+f32((*hs).tr_i*(*hs).tr_N+(*hs).tr_n))*(*hs).tr_step);return true;}
+    }
+    // The first call: volume_octree_setup<true> (false: no medium, the throughput unchanged); then
+    // volume_octree_advance_shadow. One setup call site for both (compile size).
+    var first=!(*hs).started;(*hs).started=true;
+    var empty=false;var sigma=vec2<f32>(0);var tmin=0.0;
+    if(!first){
+        (*hs).offset+=VH_PRNG_BOUNCE_NUM;empty=!((*hs).o.t.x<(*hs).o.t.y);
+        sigma=select((*hs).o.sigma,vec2<f32>(bitcast<f32>(0x7f7fffffu),-bitcast<f32>(0x7f7fffffu)),empty);tmin=(*hs).o.t.x;
+    }
+    for(var guard=0u;guard<65536u;guard++){
+        if(!first&&!(empty||(sigma.y-sigma.x)*((*hs).o.t.y-(*hs).o.t.x)<1.0)){break;}
+        var o=(*hs).o;var ok=true;if(!first){ok=vh_octree_advance(index,origin,direction,ray_tmax,&o);}if(ok){ok=vh_octree_setup(index,origin,direction,ray_tmax,&o);}(*hs).o=o;
+        if(first){
+            if(!ok){return false;}first=false;
+            (*hs).offset+=VH_PRNG_BOUNCE_NUM;empty=!((*hs).o.t.x<(*hs).o.t.y);
+            sigma=select((*hs).o.sigma,vec2<f32>(bitcast<f32>(0x7f7fffffu),-bitcast<f32>(0x7f7fffffu)),empty);tmin=(*hs).o.t.x;continue;
+        }
+        if(!ok){if(!((*hs).o.t.x<(*hs).o.t.y)){return false;}break;}
+        sigma=vec2<f32>(min(sigma.x,(*hs).o.sigma.x),max(sigma.y,(*hs).o.sigma.y));(*hs).o.sigma=sigma;(*hs).o.t.x=tmin;
+        empty=!((*hs).o.t.x<(*hs).o.t.y);
+    }
+    // volume_transmittance<true> over the segment.
+    let t=(*hs).o.t;let sigma_c=(*hs).o.sigma.y-(*hs).o.sigma.x;let length=t.y-t.x;
+    let expected=sigma_c*length;let whole=floor(expected);let k=u32(clamp(i32(select(whole,whole+1.0,expected-whole>=0.5)),1,VH_MAX_STEPS));
+    let rand=native_rng((*hs).sample,0u,(*hs).offset+VH_PRNG_EXPANSION_ORDER).x;
+    var N=1u;(*hs).tr_pmf=1.0;
+    if(sigma_c!=0.0){let r=vh_geometric_r();let q=1.0-r;let n=min(i32(floor(log(rand)/log(q))),4);(*hs).tr_pmf=select(r*pow(q,f32(n)),pow(q,f32(n)),n==4);N=1u<<u32(max(n,0));}
+    (*hs).tr_N=N;(*hs).tr_k=k;(*hs).tr_n=0u;(*hs).tr_i=0u;(*hs).tr_t=t;
+    (*hs).tr_shade=native_rng((*hs).sample,(*hs).pixel,(*hs).offset+VH_PRNG_SHADE_OFFSET).x;(*hs).tr_step=length/f32(N*k);
+    (*hs).tau_k=vec3<f32>(0);(*hs).tau_j0=vec3<f32>(0);(*hs).tau_j1=vec3<f32>(0);(*hs).tau_j_1=vec3<f32>(0);(*hs).T_k=vec3<f32>(0);
+    (*hs).in_segment=true;(*hs).shade_t=min(t.y,t.x+(*hs).tr_shade*(*hs).tr_step);return true;
+}
+//#endif
+//#endif

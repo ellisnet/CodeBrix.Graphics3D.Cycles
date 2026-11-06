@@ -37,6 +37,16 @@ def registration_overlay(out):
             '#ifdef WITH_WEBGPU\n  if (mask & DEVICE_MASK_WEBGPU) {\n    device_webgpu_info(devices);\n  }\n#endif\n\n  if (mask & DEVICE_MASK_CPU) {\n    if (!(devices_initialized_mask')
     replace('integrator/path_trace.cpp','    case DEVICE_METAL:\n      return "Metal";',
             '    case DEVICE_METAL:\n      return "Metal";\n    case DEVICE_WEBGPU:\n      return "WebGPU";')
+    # Volumes: the scatter probability guidance of a primary ray reads the volume majorant passes that the
+    # pixel's earlier samples wrote when their paths ended. The CPU device renders a pixel's samples one after
+    # another; a wavefront GPU device runs the samples of one update side by side, so their reads see a
+    # different set of earlier samples. One sample per update gives the WebGPU device the CPU device's order.
+    replace('integrator/path_trace.cpp','    render_scheduler_.set_limit_samples_per_update(limit);\n  }\n',
+            '    render_scheduler_.set_limit_samples_per_update(limit);\n'
+            '    /* CodeBrix WebGPU: one sample per update with volumes (the CPU device\'s sample order). */\n'
+            '    if (device_->info.type == DEVICE_WEBGPU) {\n'
+            '      render_scheduler_.set_limit_samples_per_update(1);\n'
+            '    }\n  }\n')
     # Configuration transforms may change while scene-linear names stay equal.
     replace('util/colorspace.cpp', '#include "util/colorspace.h"',
             '// Modifications: Copyright (c) 2026 Jeremy Ellis and contributors\n#include "util/colorspace.h"')

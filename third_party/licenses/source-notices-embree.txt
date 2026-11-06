@@ -1,0 +1,519 @@
+Source notice supplement for embree
+Origin: https://github.com/RenderKit/embree/archive/refs/tags/v4.4.1.tar.gz
+Pin: dcf338cc61b636c871ccf370e673bfd380c5ecb71ce49ad50f28e1d4ec9995dc
+Collected verbatim comment blocks from the reviewed snapshot.
+Identical notices are grouped; original source notices remain intact.
+Complete component license texts and selected licenses are in the root notices.
+
+Sources:
+third_party/deps/embree/CMakeLists.txt
+
+# Modified by CodeBrix: omit the test tree, which is not imported; generate the configured headers in the build tree, never in the source snapshot.
+# Copyright (c) 2026 Jeremy Ellis and contributors
+## Copyright 2009-2021 Intel Corporation
+## SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/deps/embree/common/CMakeLists.txt
+third_party/deps/embree/common/cmake/FindOpenImageIO.cmake
+third_party/deps/embree/common/cmake/FindPNG.cmake
+third_party/deps/embree/common/cmake/FindTBB.cmake
+third_party/deps/embree/common/cmake/check_globals.cmake
+third_party/deps/embree/common/cmake/check_stack_frame_size.cmake
+third_party/deps/embree/common/cmake/clang.cmake
+third_party/deps/embree/common/cmake/create_isa_dummy_file.cmake
+third_party/deps/embree/common/cmake/embree-config-builddir.cmake
+third_party/deps/embree/common/cmake/embree-config-version.cmake
+third_party/deps/embree/common/cmake/embree-config.cmake
+third_party/deps/embree/common/cmake/gnu.cmake
+third_party/deps/embree/common/cmake/installTBB.cmake
+third_party/deps/embree/common/cmake/intel.cmake
+third_party/deps/embree/common/cmake/ispc.cmake
+third_party/deps/embree/common/cmake/msvc.cmake
+third_party/deps/embree/common/cmake/msvc_post.cmake
+third_party/deps/embree/common/cmake/rpm_ldconfig.sh
+third_party/deps/embree/common/cmake/test.cmake
+third_party/deps/embree/common/cmake/tutorial.cmake
+third_party/deps/embree/common/lexers/CMakeLists.txt
+third_party/deps/embree/common/math/CMakeLists.txt
+third_party/deps/embree/common/simd/CMakeLists.txt
+third_party/deps/embree/common/sys/CMakeLists.txt
+third_party/deps/embree/common/tasking/CMakeLists.txt
+third_party/deps/embree/kernels/CMakeLists.txt
+
+## Copyright 2009-2021 Intel Corporation
+## SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/deps/embree/common/algorithms/parallel_any_of.h
+third_party/deps/embree/common/algorithms/parallel_filter.h
+third_party/deps/embree/common/algorithms/parallel_for.h
+third_party/deps/embree/common/algorithms/parallel_for_for.h
+third_party/deps/embree/common/algorithms/parallel_for_for_prefix_sum.h
+third_party/deps/embree/common/algorithms/parallel_map.h
+third_party/deps/embree/common/algorithms/parallel_partition.h
+third_party/deps/embree/common/algorithms/parallel_prefix_sum.h
+third_party/deps/embree/common/algorithms/parallel_reduce.h
+third_party/deps/embree/common/algorithms/parallel_set.h
+third_party/deps/embree/common/algorithms/parallel_sort.h
+third_party/deps/embree/common/lexers/parsestream.h
+third_party/deps/embree/common/lexers/stream.h
+third_party/deps/embree/common/lexers/streamfilters.h
+third_party/deps/embree/common/lexers/stringstream.cpp
+third_party/deps/embree/common/lexers/stringstream.h
+third_party/deps/embree/common/lexers/tokenstream.cpp
+third_party/deps/embree/common/lexers/tokenstream.h
+third_party/deps/embree/common/math/affinespace.h
+third_party/deps/embree/common/math/bbox.h
+third_party/deps/embree/common/math/col3.h
+third_party/deps/embree/common/math/col4.h
+third_party/deps/embree/common/math/color.h
+third_party/deps/embree/common/math/color_sycl.h
+third_party/deps/embree/common/math/constants.cpp
+third_party/deps/embree/common/math/constants.h
+third_party/deps/embree/common/math/emath.h
+third_party/deps/embree/common/math/interval.h
+third_party/deps/embree/common/math/lbbox.h
+third_party/deps/embree/common/math/linearspace2.h
+third_party/deps/embree/common/math/linearspace3.h
+third_party/deps/embree/common/math/math_sycl.h
+third_party/deps/embree/common/math/obbox.h
+third_party/deps/embree/common/math/quaternion.h
+third_party/deps/embree/common/math/range.h
+third_party/deps/embree/common/math/transcendental.h
+third_party/deps/embree/common/math/vec2.h
+third_party/deps/embree/common/math/vec2fa.h
+third_party/deps/embree/common/math/vec2fa_sycl.h
+third_party/deps/embree/common/math/vec3.h
+third_party/deps/embree/common/math/vec3ba.h
+third_party/deps/embree/common/math/vec3ba_sycl.h
+third_party/deps/embree/common/math/vec3fa.h
+third_party/deps/embree/common/math/vec3fa_sycl.h
+third_party/deps/embree/common/math/vec3ia.h
+third_party/deps/embree/common/math/vec3ia_sycl.h
+third_party/deps/embree/common/math/vec4.h
+third_party/deps/embree/common/simd/avx.h
+third_party/deps/embree/common/simd/avx512.h
+third_party/deps/embree/common/simd/simd.h
+third_party/deps/embree/common/simd/sse.cpp
+third_party/deps/embree/common/simd/sse.h
+third_party/deps/embree/common/simd/varying.h
+third_party/deps/embree/common/simd/vboold4_avx.h
+third_party/deps/embree/common/simd/vboold4_avx512.h
+third_party/deps/embree/common/simd/vboold8_avx512.h
+third_party/deps/embree/common/simd/vboolf16_avx512.h
+third_party/deps/embree/common/simd/vboolf4_avx512.h
+third_party/deps/embree/common/simd/vboolf4_sse2.h
+third_party/deps/embree/common/simd/vboolf8_avx.h
+third_party/deps/embree/common/simd/vboolf8_avx512.h
+third_party/deps/embree/common/simd/vdouble4_avx.h
+third_party/deps/embree/common/simd/vdouble8_avx512.h
+third_party/deps/embree/common/simd/vfloat16_avx512.h
+third_party/deps/embree/common/simd/vfloat4_sse2.h
+third_party/deps/embree/common/simd/vfloat8_avx.h
+third_party/deps/embree/common/simd/vint16_avx512.h
+third_party/deps/embree/common/simd/vint4_sse2.h
+third_party/deps/embree/common/simd/vint8_avx.h
+third_party/deps/embree/common/simd/vint8_avx2.h
+third_party/deps/embree/common/simd/vllong4_avx2.h
+third_party/deps/embree/common/simd/vllong8_avx512.h
+third_party/deps/embree/common/simd/vuint16_avx512.h
+third_party/deps/embree/common/simd/vuint4_sse2.h
+third_party/deps/embree/common/simd/vuint8_avx.h
+third_party/deps/embree/common/simd/vuint8_avx2.h
+third_party/deps/embree/common/sys/alloc.cpp
+third_party/deps/embree/common/sys/alloc.h
+third_party/deps/embree/common/sys/array.h
+third_party/deps/embree/common/sys/atomic.h
+third_party/deps/embree/common/sys/barrier.cpp
+third_party/deps/embree/common/sys/barrier.h
+third_party/deps/embree/common/sys/condition.cpp
+third_party/deps/embree/common/sys/condition.h
+third_party/deps/embree/common/sys/estring.cpp
+third_party/deps/embree/common/sys/estring.h
+third_party/deps/embree/common/sys/filename.cpp
+third_party/deps/embree/common/sys/filename.h
+third_party/deps/embree/common/sys/intrinsics.h
+third_party/deps/embree/common/sys/library.cpp
+third_party/deps/embree/common/sys/library.h
+third_party/deps/embree/common/sys/mutex.cpp
+third_party/deps/embree/common/sys/mutex.h
+third_party/deps/embree/common/sys/platform.h
+third_party/deps/embree/common/sys/ref.h
+third_party/deps/embree/common/sys/regression.cpp
+third_party/deps/embree/common/sys/regression.h
+third_party/deps/embree/common/sys/sycl.h
+third_party/deps/embree/common/sys/sysinfo.cpp
+third_party/deps/embree/common/sys/sysinfo.h
+third_party/deps/embree/common/sys/thread.cpp
+third_party/deps/embree/common/sys/thread.h
+third_party/deps/embree/common/sys/vector.h
+third_party/deps/embree/common/tasking/taskscheduler.h
+third_party/deps/embree/common/tasking/taskschedulerinternal.cpp
+third_party/deps/embree/common/tasking/taskschedulerinternal.h
+third_party/deps/embree/common/tasking/taskschedulerppl.cpp
+third_party/deps/embree/common/tasking/taskschedulerppl.h
+third_party/deps/embree/common/tasking/taskschedulertbb.cpp
+third_party/deps/embree/common/tasking/taskschedulertbb.h
+third_party/deps/embree/include/embree4/rtcore.h
+third_party/deps/embree/include/embree4/rtcore_buffer.h
+third_party/deps/embree/include/embree4/rtcore_builder.h
+third_party/deps/embree/include/embree4/rtcore_common.h
+third_party/deps/embree/include/embree4/rtcore_device.h
+third_party/deps/embree/include/embree4/rtcore_geometry.h
+third_party/deps/embree/include/embree4/rtcore_quaternion.h
+third_party/deps/embree/include/embree4/rtcore_ray.h
+third_party/deps/embree/include/embree4/rtcore_scene.h
+third_party/deps/embree/kernels/builders/bvh_builder_hair.h
+third_party/deps/embree/kernels/builders/bvh_builder_morton.h
+third_party/deps/embree/kernels/builders/bvh_builder_msmblur.h
+third_party/deps/embree/kernels/builders/bvh_builder_msmblur_hair.h
+third_party/deps/embree/kernels/builders/bvh_builder_sah.h
+third_party/deps/embree/kernels/builders/heuristic_binning.h
+third_party/deps/embree/kernels/builders/heuristic_binning_array_aligned.h
+third_party/deps/embree/kernels/builders/heuristic_binning_array_unaligned.h
+third_party/deps/embree/kernels/builders/heuristic_openmerge_array.h
+third_party/deps/embree/kernels/builders/heuristic_spatial.h
+third_party/deps/embree/kernels/builders/heuristic_spatial_array.h
+third_party/deps/embree/kernels/builders/heuristic_strand_array.h
+third_party/deps/embree/kernels/builders/heuristic_timesplit_array.h
+third_party/deps/embree/kernels/builders/priminfo.h
+third_party/deps/embree/kernels/builders/priminfo_mb.h
+third_party/deps/embree/kernels/builders/primref.h
+third_party/deps/embree/kernels/builders/primref_mb.h
+third_party/deps/embree/kernels/builders/primrefgen.cpp
+third_party/deps/embree/kernels/builders/primrefgen.h
+third_party/deps/embree/kernels/builders/primrefgen_presplit.h
+third_party/deps/embree/kernels/builders/splitter.h
+third_party/deps/embree/kernels/bvh/bvh.cpp
+third_party/deps/embree/kernels/bvh/bvh.h
+third_party/deps/embree/kernels/bvh/bvh4_factory.cpp
+third_party/deps/embree/kernels/bvh/bvh4_factory.h
+third_party/deps/embree/kernels/bvh/bvh8_factory.cpp
+third_party/deps/embree/kernels/bvh/bvh8_factory.h
+third_party/deps/embree/kernels/bvh/bvh_builder.cpp
+third_party/deps/embree/kernels/bvh/bvh_builder.h
+third_party/deps/embree/kernels/bvh/bvh_builder_hair.cpp
+third_party/deps/embree/kernels/bvh/bvh_builder_hair_mb.cpp
+third_party/deps/embree/kernels/bvh/bvh_builder_morton.cpp
+third_party/deps/embree/kernels/bvh/bvh_builder_sah.cpp
+third_party/deps/embree/kernels/bvh/bvh_builder_sah_mb.cpp
+third_party/deps/embree/kernels/bvh/bvh_builder_sah_spatial.cpp
+third_party/deps/embree/kernels/bvh/bvh_builder_subdiv.cpp
+third_party/deps/embree/kernels/bvh/bvh_builder_twolevel.cpp
+third_party/deps/embree/kernels/bvh/bvh_builder_twolevel.h
+third_party/deps/embree/kernels/bvh/bvh_builder_twolevel_internal.h
+third_party/deps/embree/kernels/bvh/bvh_collider.cpp
+third_party/deps/embree/kernels/bvh/bvh_collider.h
+third_party/deps/embree/kernels/bvh/bvh_factory.h
+third_party/deps/embree/kernels/bvh/bvh_intersector1.cpp
+third_party/deps/embree/kernels/bvh/bvh_intersector1.h
+third_party/deps/embree/kernels/bvh/bvh_intersector1_bvh4.cpp
+third_party/deps/embree/kernels/bvh/bvh_intersector1_bvh8.cpp
+third_party/deps/embree/kernels/bvh/bvh_intersector_hybrid.cpp
+third_party/deps/embree/kernels/bvh/bvh_intersector_hybrid.h
+third_party/deps/embree/kernels/bvh/bvh_intersector_hybrid16_bvh4.cpp
+third_party/deps/embree/kernels/bvh/bvh_intersector_hybrid16_bvh8.cpp
+third_party/deps/embree/kernels/bvh/bvh_intersector_hybrid4_bvh4.cpp
+third_party/deps/embree/kernels/bvh/bvh_intersector_hybrid4_bvh8.cpp
+third_party/deps/embree/kernels/bvh/bvh_intersector_hybrid8_bvh4.cpp
+third_party/deps/embree/kernels/bvh/bvh_intersector_hybrid8_bvh8.cpp
+third_party/deps/embree/kernels/bvh/bvh_node_aabb.h
+third_party/deps/embree/kernels/bvh/bvh_node_aabb_mb.h
+third_party/deps/embree/kernels/bvh/bvh_node_aabb_mb4d.h
+third_party/deps/embree/kernels/bvh/bvh_node_base.h
+third_party/deps/embree/kernels/bvh/bvh_node_obb.h
+third_party/deps/embree/kernels/bvh/bvh_node_obb_mb.h
+third_party/deps/embree/kernels/bvh/bvh_node_qaabb.h
+third_party/deps/embree/kernels/bvh/bvh_node_ref.h
+third_party/deps/embree/kernels/bvh/bvh_refit.cpp
+third_party/deps/embree/kernels/bvh/bvh_refit.h
+third_party/deps/embree/kernels/bvh/bvh_rotate.cpp
+third_party/deps/embree/kernels/bvh/bvh_rotate.h
+third_party/deps/embree/kernels/bvh/bvh_statistics.cpp
+third_party/deps/embree/kernels/bvh/bvh_statistics.h
+third_party/deps/embree/kernels/bvh/bvh_traverser1.h
+third_party/deps/embree/kernels/bvh/node_intersector.h
+third_party/deps/embree/kernels/bvh/node_intersector1.h
+third_party/deps/embree/kernels/bvh/node_intersector_frustum.h
+third_party/deps/embree/kernels/bvh/node_intersector_packet.h
+third_party/deps/embree/kernels/common/accel.h
+third_party/deps/embree/kernels/common/accelinstance.h
+third_party/deps/embree/kernels/common/acceln.cpp
+third_party/deps/embree/kernels/common/acceln.h
+third_party/deps/embree/kernels/common/accelset.cpp
+third_party/deps/embree/kernels/common/accelset.h
+third_party/deps/embree/kernels/common/alloc.cpp
+third_party/deps/embree/kernels/common/alloc.h
+third_party/deps/embree/kernels/common/buffer.h
+third_party/deps/embree/kernels/common/builder.h
+third_party/deps/embree/kernels/common/context.h
+third_party/deps/embree/kernels/common/default.h
+third_party/deps/embree/kernels/common/device.cpp
+third_party/deps/embree/kernels/common/device.h
+third_party/deps/embree/kernels/common/geometry.cpp
+third_party/deps/embree/kernels/common/geometry.h
+third_party/deps/embree/kernels/common/hit.h
+third_party/deps/embree/kernels/common/instance_stack.h
+third_party/deps/embree/kernels/common/isa.h
+third_party/deps/embree/kernels/common/motion_derivative.cpp
+third_party/deps/embree/kernels/common/motion_derivative.h
+third_party/deps/embree/kernels/common/point_query.h
+third_party/deps/embree/kernels/common/profile.h
+third_party/deps/embree/kernels/common/ray.h
+third_party/deps/embree/kernels/common/rtcore.cpp
+third_party/deps/embree/kernels/common/rtcore.h
+third_party/deps/embree/kernels/common/rtcore_builder.cpp
+third_party/deps/embree/kernels/common/scene.cpp
+third_party/deps/embree/kernels/common/scene.h
+third_party/deps/embree/kernels/common/scene_curves.cpp
+third_party/deps/embree/kernels/common/scene_curves.h
+third_party/deps/embree/kernels/common/scene_grid_mesh.cpp
+third_party/deps/embree/kernels/common/scene_grid_mesh.h
+third_party/deps/embree/kernels/common/scene_instance.cpp
+third_party/deps/embree/kernels/common/scene_instance.h
+third_party/deps/embree/kernels/common/scene_instance_array.cpp
+third_party/deps/embree/kernels/common/scene_instance_array.h
+third_party/deps/embree/kernels/common/scene_line_segments.cpp
+third_party/deps/embree/kernels/common/scene_line_segments.h
+third_party/deps/embree/kernels/common/scene_points.cpp
+third_party/deps/embree/kernels/common/scene_points.h
+third_party/deps/embree/kernels/common/scene_quad_mesh.cpp
+third_party/deps/embree/kernels/common/scene_quad_mesh.h
+third_party/deps/embree/kernels/common/scene_subdiv_mesh.cpp
+third_party/deps/embree/kernels/common/scene_subdiv_mesh.h
+third_party/deps/embree/kernels/common/scene_triangle_mesh.cpp
+third_party/deps/embree/kernels/common/scene_triangle_mesh.h
+third_party/deps/embree/kernels/common/scene_user_geometry.cpp
+third_party/deps/embree/kernels/common/scene_user_geometry.h
+third_party/deps/embree/kernels/common/scene_verify.cpp
+third_party/deps/embree/kernels/common/stack_item.h
+third_party/deps/embree/kernels/common/stat.cpp
+third_party/deps/embree/kernels/common/stat.h
+third_party/deps/embree/kernels/common/state.cpp
+third_party/deps/embree/kernels/common/state.h
+third_party/deps/embree/kernels/common/vector.h
+third_party/deps/embree/kernels/geometry/cone.h
+third_party/deps/embree/kernels/geometry/coneline_intersector.h
+third_party/deps/embree/kernels/geometry/conelinei_intersector.h
+third_party/deps/embree/kernels/geometry/curveNi.h
+third_party/deps/embree/kernels/geometry/curveNi_intersector.h
+third_party/deps/embree/kernels/geometry/curveNi_mb.h
+third_party/deps/embree/kernels/geometry/curveNi_mb_intersector.h
+third_party/deps/embree/kernels/geometry/curveNv.h
+third_party/deps/embree/kernels/geometry/curveNv_intersector.h
+third_party/deps/embree/kernels/geometry/curve_intersector.h
+third_party/deps/embree/kernels/geometry/curve_intersector_distance.h
+third_party/deps/embree/kernels/geometry/curve_intersector_oriented.h
+third_party/deps/embree/kernels/geometry/curve_intersector_precalculations.h
+third_party/deps/embree/kernels/geometry/curve_intersector_ribbon.h
+third_party/deps/embree/kernels/geometry/curve_intersector_sweep.h
+third_party/deps/embree/kernels/geometry/curve_intersector_virtual.h
+third_party/deps/embree/kernels/geometry/curve_intersector_virtual_4i.cpp
+third_party/deps/embree/kernels/geometry/curve_intersector_virtual_4i_mb.cpp
+third_party/deps/embree/kernels/geometry/curve_intersector_virtual_4v.cpp
+third_party/deps/embree/kernels/geometry/curve_intersector_virtual_8i.cpp
+third_party/deps/embree/kernels/geometry/curve_intersector_virtual_8i_mb.cpp
+third_party/deps/embree/kernels/geometry/curve_intersector_virtual_8v.cpp
+third_party/deps/embree/kernels/geometry/cylinder.h
+third_party/deps/embree/kernels/geometry/disc_intersector.h
+third_party/deps/embree/kernels/geometry/disci_intersector.h
+third_party/deps/embree/kernels/geometry/filter.h
+third_party/deps/embree/kernels/geometry/filter_sycl.h
+third_party/deps/embree/kernels/geometry/grid_intersector.h
+third_party/deps/embree/kernels/geometry/grid_soa.cpp
+third_party/deps/embree/kernels/geometry/grid_soa.h
+third_party/deps/embree/kernels/geometry/grid_soa_intersector1.h
+third_party/deps/embree/kernels/geometry/grid_soa_intersector_packet.h
+third_party/deps/embree/kernels/geometry/instance.h
+third_party/deps/embree/kernels/geometry/instance_array.h
+third_party/deps/embree/kernels/geometry/instance_array_intersector.cpp
+third_party/deps/embree/kernels/geometry/instance_array_intersector.h
+third_party/deps/embree/kernels/geometry/instance_intersector.cpp
+third_party/deps/embree/kernels/geometry/instance_intersector.h
+third_party/deps/embree/kernels/geometry/intersector_epilog.h
+third_party/deps/embree/kernels/geometry/intersector_epilog_sycl.h
+third_party/deps/embree/kernels/geometry/intersector_iterators.h
+third_party/deps/embree/kernels/geometry/line_intersector.h
+third_party/deps/embree/kernels/geometry/linei.h
+third_party/deps/embree/kernels/geometry/linei_intersector.h
+third_party/deps/embree/kernels/geometry/object.h
+third_party/deps/embree/kernels/geometry/object_intersector.h
+third_party/deps/embree/kernels/geometry/plane.h
+third_party/deps/embree/kernels/geometry/pointi.h
+third_party/deps/embree/kernels/geometry/primitive.h
+third_party/deps/embree/kernels/geometry/primitive4.cpp
+third_party/deps/embree/kernels/geometry/primitive8.cpp
+third_party/deps/embree/kernels/geometry/quad_intersector.h
+third_party/deps/embree/kernels/geometry/quad_intersector_moeller.h
+third_party/deps/embree/kernels/geometry/quad_intersector_pluecker.h
+third_party/deps/embree/kernels/geometry/quadi.h
+third_party/deps/embree/kernels/geometry/quadi_intersector.h
+third_party/deps/embree/kernels/geometry/quadv.h
+third_party/deps/embree/kernels/geometry/quadv_intersector.h
+third_party/deps/embree/kernels/geometry/roundline_intersector.h
+third_party/deps/embree/kernels/geometry/roundlinei_intersector.h
+third_party/deps/embree/kernels/geometry/sphere_intersector.h
+third_party/deps/embree/kernels/geometry/spherei_intersector.h
+third_party/deps/embree/kernels/geometry/subdivpatch1.h
+third_party/deps/embree/kernels/geometry/subdivpatch1_intersector.h
+third_party/deps/embree/kernels/geometry/subgrid.h
+third_party/deps/embree/kernels/geometry/subgrid_intersector.h
+third_party/deps/embree/kernels/geometry/subgrid_intersector_moeller.h
+third_party/deps/embree/kernels/geometry/subgrid_intersector_pluecker.h
+third_party/deps/embree/kernels/geometry/subgrid_mb_intersector.h
+third_party/deps/embree/kernels/geometry/triangle.h
+third_party/deps/embree/kernels/geometry/triangle_intersector.h
+third_party/deps/embree/kernels/geometry/triangle_intersector_moeller.h
+third_party/deps/embree/kernels/geometry/triangle_intersector_pluecker.h
+third_party/deps/embree/kernels/geometry/triangle_intersector_woop.h
+third_party/deps/embree/kernels/geometry/triangle_triangle_intersector.h
+third_party/deps/embree/kernels/geometry/trianglei.h
+third_party/deps/embree/kernels/geometry/trianglei_intersector.h
+third_party/deps/embree/kernels/geometry/trianglev.h
+third_party/deps/embree/kernels/geometry/trianglev_intersector.h
+third_party/deps/embree/kernels/geometry/trianglev_mb.h
+third_party/deps/embree/kernels/geometry/trianglev_mb_intersector.h
+third_party/deps/embree/kernels/subdiv/bezier_curve.cpp
+third_party/deps/embree/kernels/subdiv/bezier_curve.h
+third_party/deps/embree/kernels/subdiv/bezier_patch.h
+third_party/deps/embree/kernels/subdiv/bilinear_patch.h
+third_party/deps/embree/kernels/subdiv/bspline_curve.cpp
+third_party/deps/embree/kernels/subdiv/bspline_curve.h
+third_party/deps/embree/kernels/subdiv/bspline_patch.h
+third_party/deps/embree/kernels/subdiv/catmullclark_coefficients.cpp
+third_party/deps/embree/kernels/subdiv/catmullclark_coefficients.h
+third_party/deps/embree/kernels/subdiv/catmullclark_patch.h
+third_party/deps/embree/kernels/subdiv/catmullclark_ring.h
+third_party/deps/embree/kernels/subdiv/catmullrom_curve.cpp
+third_party/deps/embree/kernels/subdiv/catmullrom_curve.h
+third_party/deps/embree/kernels/subdiv/feature_adaptive_eval.h
+third_party/deps/embree/kernels/subdiv/feature_adaptive_eval_grid.h
+third_party/deps/embree/kernels/subdiv/feature_adaptive_eval_simd.h
+third_party/deps/embree/kernels/subdiv/gregory_patch.h
+third_party/deps/embree/kernels/subdiv/gregory_patch_dense.h
+third_party/deps/embree/kernels/subdiv/gridrange.h
+third_party/deps/embree/kernels/subdiv/half_edge.h
+third_party/deps/embree/kernels/subdiv/hermite_curve.h
+third_party/deps/embree/kernels/subdiv/linear_bezier_patch.h
+third_party/deps/embree/kernels/subdiv/patch.h
+third_party/deps/embree/kernels/subdiv/patch_eval.h
+third_party/deps/embree/kernels/subdiv/patch_eval_grid.h
+third_party/deps/embree/kernels/subdiv/patch_eval_simd.h
+third_party/deps/embree/kernels/subdiv/subdivpatch1base.cpp
+third_party/deps/embree/kernels/subdiv/subdivpatch1base.h
+third_party/deps/embree/kernels/subdiv/subdivpatch1base_eval.cpp
+third_party/deps/embree/kernels/subdiv/tessellation.h
+third_party/deps/embree/kernels/subdiv/tessellation_cache.cpp
+third_party/deps/embree/kernels/subdiv/tessellation_cache.h
+
+// Copyright 2009-2021 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/deps/embree/common/cmake/check_arm_neon.cpp
+third_party/deps/embree/common/simd/arm/emulation.h
+third_party/deps/embree/common/simd/wasm/emulation.h
+
+// Copyright 2009-2020 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/deps/embree/common/cmake/check_isa.cpp
+
+// ======================================================================== //
+// Copyright 2017 Kitware, Inc.                                             //
+//                                                                          //
+// Licensed under the Apache License, Version 2.0 (the "License");          //
+// you may not use this file except in compliance with the License.         //
+// You may obtain a copy of the License at                                  //
+//                                                                          //
+//     http://www.apache.org/licenses/LICENSE-2.0                           //
+//                                                                          //
+// Unless required by applicable law or agreed to in writing, software      //
+// distributed under the License is distributed on an "AS IS" BASIS,        //
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. //
+// See the License for the specific language governing permissions and      //
+// limitations under the License.                                           //
+// ======================================================================== //
+
+Sources:
+third_party/deps/embree/common/cmake/check_isa_default.cmake
+third_party/deps/embree/common/cmake/crayprgenv.cmake
+
+## ======================================================================== ##
+## Copyright 2017 Kitware, Inc.                                             ##
+##                                                                          ##
+## Licensed under the Apache License, Version 2.0 (the "License");          ##
+## you may not use this file except in compliance with the License.         ##
+## You may obtain a copy of the License at                                  ##
+##                                                                          ##
+##     http://www.apache.org/licenses/LICENSE-2.0                           ##
+##                                                                          ##
+## Unless required by applicable law or agreed to in writing, software      ##
+## distributed under the License is distributed on an "AS IS" BASIS,        ##
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. ##
+## See the License for the specific language governing permissions and      ##
+## limitations under the License.                                           ##
+## ======================================================================== ##
+
+Sources:
+third_party/deps/embree/common/cmake/dpcpp.cmake
+
+## Copyright 2009-2022 Intel Corporation
+## SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/deps/embree/common/cmake/package.cmake
+
+# Modified by CodeBrix: install only the imported documentation files (the man pages, the PDF and the notice inventories of the binary releases are not in the snapshot) and the configured header from the build tree.
+# Copyright (c) 2026 Jeremy Ellis and contributors
+## Copyright 2009-2021 Intel Corporation
+## SPDX-License-Identifier: Apache-2.0
+
+Sources:
+third_party/deps/embree/common/cmake/package.cmake
+
+# point to readme and license files
+
+Sources:
+third_party/deps/embree/common/simd/arm/sse2neon.h
+
+/*
+ * sse2neon is freely redistributable under the MIT License.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+Sources:
+third_party/deps/embree/common/simd/arm/sse2neon.h
+
+// In the absence of crypto extensions, implement aesenc using regular neon
+// intrinsics instead. See:
+// https://www.workofard.com/2017/01/accelerated-aes-for-the-arm64-linux-kernel/
+// https://www.workofard.com/2017/07/ghash-for-low-end-cores/ and
+// https://github.com/ColinIanKing/linux-next-mirror/blob/b5f466091e130caaf0735976648f72bd5e09aa84/crypto/aegis128-neon-inner.c#L52
+// for more information Reproduced with permission of the author.
+
+Sources:
+third_party/deps/embree/common/simd/arm/sse2neon.h
+
+// Read the user mode Performance Monitoring Unit (PMU)
+    // User Enable Register (PMUSERENR) access permissions.
+

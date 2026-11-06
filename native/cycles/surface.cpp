@@ -57,7 +57,7 @@ static std::string surface_layout(){
   source<<"//#endif\n";
   return source.str();
 }
-std::string surface_source(){return svm_surface_source()+background_layout()+shadow_layout()+lighting_layout()+surface_layout()+shadow_catcher_layout()+film_passes_layout()+film_motion_layout()+mnee_layout()+surface_fragment;}
+std::string surface_source(){return svm_surface_source()+background_layout()+shadow_layout()+lighting_layout()+surface_layout()+shadow_catcher_layout()+film_passes_layout()+film_motion_layout()+mnee_layout()+volume_light_layout()+subsurface_layout()+surface_fragment;}
 void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,DeviceKernel kernel){
   require(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,"Invalid surface kernel");
   require(args.count==3,"Surface argument count");
@@ -187,20 +187,47 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // shade_surface_light_select (light tree or light linking) runs first whenever
   // the module carries it: the samplers then read its selection record.
   const bool select_stage=(shader_features()&SF_LIGHT_SELECT).any();
+  // With sun guiding (BACKGROUND_SUN) the background light's sample is one more entry,
+  // shade_surface_light_background, after shade_surface_light (SF_BACKGROUND_SAMPLE_ENTRY,
+  // pipelines.h): the light entries come from the module variant with that bit.
+  const bool background_stage=(shader_features()&SF_BACKGROUND_SUN).any();
+  const ShaderFeatures light_variant=background_stage?SF_BACKGROUND_SAMPLE_ENTRY:SF_NONE;
   if(sample_stage&&(!pipeline_current(surface_sample,"shade_surface_sample")||!surface_sample.value))
     surface_sample=std::move(build_pipelines("surface",surface_source(),{"shade_surface_sample"})[0]);
   if(select_stage&&(!pipeline_current(surface_light_select,"shade_surface_light_select")||!surface_light_select.value))
     surface_light_select=std::move(build_pipelines("surface",surface_source(),{"shade_surface_light_select"})[0]);
-  if(!pipeline_current(surface,"shade_surface")||(triangle_stage&&!surface_light_triangle.value)){
-    if(triangle_stage){
-      auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","shade_surface_light_triangle","connect_surface_light","shade_surface"});
+  // prepare_surface evaluates only the hit triangles' shaders: the SVM node regions no triangle shader reaches (the
+  // world's, the lamps') are left out of its pipeline (surface_unused_svm_features), built on its own below; scenes
+  // without such regions keep it in the shared build.
+  const ShaderFeatures prepare_unused=surface_unused_svm_features();
+  if(!pipeline_current(surface,"shade_surface")||(triangle_stage&&!surface_light_triangle.value)||(background_stage&&!surface_light_background.value)){
+    if(prepare_unused.any()){
+      if(triangle_stage){
+        auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","shade_surface_light","shade_surface_light_triangle","connect_surface_light","shade_surface"},light_variant);
+        surface_geometry=std::move(built[0]);surface_light=std::move(built[1]);
+        surface_light_triangle=std::move(built[2]);surface_connect=std::move(built[3]);surface=std::move(built[4]);
+      }else{
+        auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","shade_surface_light","connect_surface_light","shade_surface"},light_variant);
+        surface_geometry=std::move(built[0]);surface_light=std::move(built[1]);
+        surface_connect=std::move(built[2]);surface=std::move(built[3]);surface_light_triangle={};
+      }
+      surface_prepare={};
+    }else if(triangle_stage){
+      auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","shade_surface_light_triangle","connect_surface_light","shade_surface"},light_variant);
       surface_geometry=std::move(built[0]);surface_prepare=std::move(built[1]);surface_light=std::move(built[2]);
       surface_light_triangle=std::move(built[3]);surface_connect=std::move(built[4]);surface=std::move(built[5]);
     }else{
-      auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","connect_surface_light","shade_surface"});
+      auto built=build_pipelines("surface",surface_source(),{"prepare_shader_data","prepare_surface","shade_surface_light","connect_surface_light","shade_surface"},light_variant);
       surface_geometry=std::move(built[0]);surface_prepare=std::move(built[1]);surface_light=std::move(built[2]);
       surface_connect=std::move(built[3]);surface=std::move(built[4]);surface_light_triangle={};
     }
+    if(background_stage)surface_light_background=std::move(build_pipelines("surface",surface_source(),{"shade_surface_light_background"},light_variant)[0]);
+    else surface_light_background={};
+    surface_prepare_removed=SF_NONE;
+  }
+  if(!surface_prepare.value||prepare_unused!=surface_prepare_removed){
+    surface_prepare=std::move(build_pipelines("surface",surface_source(),{"prepare_surface"},light_variant,prepare_unused)[0]);
+    surface_prepare_removed=prepare_unused;
   }
   // Dispatch ordering makes the GPU-private preparation records visible to the
   // sampling stage without a CPU readback or a native scheduler queue transition.
@@ -229,6 +256,8 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // connection are separate dispatches to bound compiler pressure.
   if(select_stage)dispatch(p,uint32_t(work),surface_light_select,workgroup("shade_surface_light_select"));
   dispatch(p,uint32_t(work),surface_light,workgroup("shade_surface_light"));
+  // The light entries built with the background-sample variant leave such records to this entry.
+  if(surface_light_background.value)dispatch(p,uint32_t(work),surface_light_background,workgroup("shade_surface_light_background"));
   if(triangle_stage)dispatch(p,uint32_t(work),surface_light_triangle,workgroup("shade_surface_light_triangle"));
   dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
   // integrate_surface_ao (AO_SHADOW: fast GI's additive mode or the AO pass): its own entry after the

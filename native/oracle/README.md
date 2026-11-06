@@ -156,9 +156,9 @@ passes with `pass` nodes. `light-passes` (diffuse, glossy and transmission direc
 indirect, colour and their combined passes, emission, background), `data-passes`
 (depth, position, normal, roughness, UV, object and material index, mist, render
 time), `light-groups`, `aovs`, `cryptomatte` (object, material and asset ids; named
-objects and shaders), `motion` (the motion pass without motion blur),
-`denoising-features`, `denoising-features-weighted` and `denoising-motion` (the
-denoising feature passes; no denoiser runs), and `with-<family>-<scene>`: committed
+objects and shaders), `motion` and `motion-deforming` (the motion pass without motion
+blur; the latter with deforming meshes), `denoising-features`, `denoising-features-weighted`,
+`denoising-motion` and `denoising-motion-deforming` (the denoising feature passes; no denoiser runs), and `with-<family>-<scene>`: committed
 scenes of the other families with every light, data, AO and denoising feature pass
 added (raw files stay beside the source scene).
 
@@ -190,7 +190,35 @@ of field (disk and polygonal apertures, anamorphic ratio). `author_lamps.py`
 point, spot, area and sun lights with emission shaders that are not constant.
 `author_sky.py` (`--check`) writes `scenes/sky/`: the room under a Sky Texture
 world (Preetham, Hosek-Wilkie, single and multiple scattering), with the sun
-disc sampled through the importance map or with sun guiding.
+disc sampled through the importance map or with sun guiding, and sun guiding with
+an emissive panel, the light tree, or both.
+
+## Volume scenes (`scenes/volumes/`)
+
+`author_volumes.py` (`--check`) writes `scenes/volumes/`: a homogeneous medium box around the
+middle sphere of the sampling family's room, lit by a point light (MIS, distance and
+equiangular scatter sampling), a sun or the world through a background light, with an
+absorbing-only medium, a world volume, the Volume Coefficients and Principled Volume nodes, an
+emissive medium and the Rayleigh, Draine, Fournier-Forand and Mie (two droplet sizes) phase functions.
+
+## Denoising scenes (`scenes/denoise/`)
+
+`author_denoise.py` (`--check`) writes `scenes/denoise/` from committed scenes:
+`enclosure-emissive-panel` (combinations), `beckmann` (bsdf) and
+`catcher-point-light` (shadow-catcher), each with Open Image Denoise on (`-on`:
+prefilter accurate, quality high, start sample 0, CPU device) and as a control
+with denoising off (`-off`); the shadow catcher pair also requests the noisy
+passes (`-on-noisy`, `-off-noisy`). Every backend denoises with CPU Open Image
+Denoise, so the WGSL film is judged against the CPU film denoised the same way,
+with `compare.py` like every scene. Light groups with denoising are refused by
+the product, so that combination has no scene.
+
+## Subsurface scenes (`scenes/subsurface/`)
+
+`author_subsurface.py` (`--check`) writes `scenes/subsurface/`: the sampling family's room whose middle (and right)
+spheres carry subsurface materials: the Principled BSDF's random walk, skin, wax (forward anisotropy) and marble-like
+(half subsurface, backward anisotropy, a zero radius channel) settings and the Subsurface Scattering node with the
+random walk, legacy random walk and skin methods.
 
 ## Run, compare and bundle
 

@@ -1,0 +1,152 @@
+{
+  "sceneId": "passes/cryptomatte",
+  "sceneSha256": "aadfe5327a1b07d22ded2905b8d49677ab94b00e497578fc2781b3705e1a4fd9",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 4.76837158203125e-07,
+  "renderSeconds": [
+    20.8897,
+    0.360728
+  ],
+  "filmSha256": [
+    "7067155a345b84cced9bf73c1af396f9e0808e52751ba3466529b5b89f250e40",
+    "91b00f171d6ff1992d48f1d1e9bd1dc4a30d188caaa5d932f54cab38dc5e9c49"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "CryptoObject00",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "0d096b41a34f3ffb21906e28f3faa824062bc932ec263138f527d68302114c52",
+        "0d096b41a34f3ffb21906e28f3faa824062bc932ec263138f527d68302114c52"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "CryptoObject01",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "7112a1106fc025871dd47e346ca930a2cfb98db242840395531a2fe3ae21511a",
+        "7112a1106fc025871dd47e346ca930a2cfb98db242840395531a2fe3ae21511a"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "CryptoMaterial00",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "8074b5edbfacfcc6e01723069f830382c7967f8edc588de501ee61533dec3b11",
+        "1d9bbcee33adc00bf248bdecb042eb55b1e8bc4367cbf2d220a908c944878b55"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "CryptoMaterial01",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "efddd2d0fcce412f916cd029719f723dc22fea20a515e4b224aa7acf4c24b33f",
+        "4dc3c2cc52dc7e742dc7c5f5d3783c49e89f0e98acaa20df113f037a0e0c8fcb"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "CryptoAsset00",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "1ba5d92cfc5a823d3401adc17bb6c3cc4eb218e525d7a524f1153467bd56c784",
+        "1ba5d92cfc5a823d3401adc17bb6c3cc4eb218e525d7a524f1153467bd56c784"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "CryptoAsset01",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "e52dbd090389adc44b8c111674c673c98371c07a726c8723852e280d9290cb43",
+        "e52dbd090389adc44b8c111674c673c98371c07a726c8723852e280d9290cb43"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "f1ed54307656855716087ddaf195169376da6d29",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "fe8231c8ff9989135d55e334ab00917b38c7697b7da413d0c149f4b02e2a0a3f",
+  "runnerSha256": "87701039b44a2499b9f1759cfb58426ef556c624e5f37321b3200e09629a12d1",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/cryptomatte.json",
+  "backendDescription": "CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)",
+  "environment": {},
+  "processSeconds": 21.367,
+  "runnerCommand": [
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/oracle/scenes/passes/cryptomatte.json",
+    "--backend",
+    "webgpu",
+    "--label",
+    "wgsl-linux-intel",
+    "--output",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/val35/oracles/corpus/oracle/passes/cryptomatte/wgsl-linux-intel",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json"
+}

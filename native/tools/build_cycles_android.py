@@ -106,12 +106,14 @@ def main():
                    'CMAKE_PROJECT_Cycles_INCLUDE':ROOT/'tools/inject_cycles.cmake',
                    'CODEBRIX_CYCLES_OVERLAY':generated, 'CODEBRIX_WEBGPU_PACKAGE':PACKAGE,
                    'CODEBRIX_WEBGPU_RID':args.rid}
+        # Embree (static, the product CPU device's BVH) from the reviewed snapshot in the target dependency prefix.
+        options.update({'WITH_CYCLES_EMBREE':'ON', 'EMBREE_ROOT_DIR':prefix})
         # Open Image Denoise (CPU device) from the reviewed snapshot in the target
         # dependency prefix; path guiding stays off explicitly.
         options.update({'WITH_CYCLES_OPENIMAGEDENOISE':'ON', 'OPENIMAGEDENOISE_ROOT_DIR':prefix,
                         'WITH_CYCLES_PATH_GUIDING':'OFF'})
         options.update({'WITH_CYCLES_'+name:'OFF' for name in
-            ['ALEMBIC', 'EMBREE', 'OPENSUBDIV', 'OPENVDB', 'NANOVDB', 'OSL',
+            ['ALEMBIC', 'OPENSUBDIV', 'OPENVDB', 'NANOVDB', 'OSL',
              'USD', 'HYDRA_RENDER_DELEGATE', 'DEVICE_CUDA', 'DEVICE_OPTIX', 'DEVICE_HIP',
              'DEVICE_HIPRT', 'DEVICE_ONEAPI']})
         targets = args.target or HOST_TARGETS+GATE_TARGETS

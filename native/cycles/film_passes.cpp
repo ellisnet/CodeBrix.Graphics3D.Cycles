@@ -24,14 +24,14 @@ int film_data_pass_mask(){
   return shadow_catcher_pass_mask()|PASSMASK(DEPTH)|PASSMASK(POSITION)|PASSMASK(NORMAL)|PASSMASK(ROUGHNESS)|PASSMASK(UV)|
          PASSMASK(OBJECT_ID)|PASSMASK(MATERIAL_ID)|PASSMASK(DIFFUSE_COLOR)|PASSMASK(GLOSSY_COLOR)|PASSMASK(TRANSMISSION_COLOR)|
          PASSMASK(MIST)|PASSMASK(RENDER_TIME)|PASSMASK(AOV_COLOR)|PASSMASK(AOV_VALUE)|PASSMASK(CRYPTOMATTE)|PASSMASK(MOTION)|PASSMASK(MOTION_WEIGHT)|
-         PASSMASK(SAMPLE_COUNT)|PASSMASK(ADAPTIVE_AUX_BUFFER);
+         PASSMASK(SAMPLE_COUNT)|PASSMASK(ADAPTIVE_AUX_BUFFER)|PASSMASK(VOLUME_MAJORANT)|PASSMASK(VOLUME_MAJORANT_SAMPLE_COUNT);
 }
 // Data passes written by the surface stage's film_write_data_passes (the
 // shade_surface_passes entry; FILM_DATA_PASSES).
 // (The camera stage counts samples, film_write_sample; AOVs are written by shader evaluation.)
 // The adaptive sampling buffer is written with the combined pass (film_write_adaptive_buffer) and
 // read by the adaptive sampling kernels (enqueue_adaptive_sampling).
-static int surface_data_pass_mask(){return film_data_pass_mask()&~shadow_catcher_pass_mask()&~(PASSMASK(RENDER_TIME)|PASSMASK(AOV_COLOR)|PASSMASK(AOV_VALUE)|PASSMASK(SAMPLE_COUNT)|PASSMASK(ADAPTIVE_AUX_BUFFER));}
+static int surface_data_pass_mask(){return film_data_pass_mask()&~shadow_catcher_pass_mask()&~(PASSMASK(RENDER_TIME)|PASSMASK(AOV_COLOR)|PASSMASK(AOV_VALUE)|PASSMASK(SAMPLE_COUNT)|PASSMASK(ADAPTIVE_AUX_BUFFER)|PASSMASK(VOLUME_MAJORANT)|PASSMASK(VOLUME_MAJORANT_SAMPLE_COUNT));}
 bool WebGPUDevice::film_surface_passes() const{return (data.film.pass_flag&surface_data_pass_mask())!=0;}
 bool WebGPUDevice::film_cryptomatte() const{return data.film.cryptomatte_passes&&(data.film.pass_flag&PASSMASK(CRYPTOMATTE));}
 static const char *data_pass_name(int bit){
@@ -87,7 +87,7 @@ void WebGPUDevice::validate_film_passes() const{
     require(data.cam.type==CAMERA_PERSPECTIVE,"WebGPU motion pass requires the perspective camera");
     const auto table=globals.find("object_motion_pass");
     require(table!=globals.end()&&remaining(table->second)>=object_records.size()*OBJECT_MOTION_PASS_SIZE*sizeof(Transform),"Missing native object motion pass transforms");
-    for(const uint flags:object_flag_records)require(!(flags&SD_OBJECT_HAS_VERTEX_MOTION),"WebGPU motion pass with deforming geometry (vertex motion) not implemented");
+    // Deforming geometry (SD_OBJECT_HAS_VERTEX_MOTION on plain triangles): FILM_MOTION_DEFORM (pipelines.h).
   }
   // AOV passes: the first colour and value AOV (each node's offset is checked when it writes).
   pass(data.film.pass_aov_color,4,PASSMASK(AOV_COLOR));pass(data.film.pass_aov_value,1,PASSMASK(AOV_VALUE));
@@ -209,6 +209,45 @@ std::string film_adaptive_wgsl(){
   const std::string controls=controls_wgsl();const auto entry=controls.find("@compute");
   require(entry!=std::string::npos,"Controls module header");
   return controls.substr(0,entry)+film_adaptive_fragment;
+}
+static constexpr char film_volume_guiding_fragment[]=
+#include "film_volume_guiding_shader.inc"
+;
+// The volume guiding module (wavefront_film_volume_guiding.wgsl): the controls module header, the
+// contraction-proof binary32 helpers (wavefront_float.wgsl) and DEVICE_KERNEL_VOLUME_GUIDING_FILTER_X and _Y.
+std::string film_volume_guiding_wgsl(){
+  const std::string controls=controls_wgsl();const auto entry=controls.find("@compute");
+  require(entry!=std::string::npos,"Controls module header");
+  return controls.substr(0,entry)+film_volume_guiding_fragment;
+}
+// Volume scattering probability guiding (PathTraceWorkGPU::denoise_volume_guiding_buffers): the render buffer,
+// the effective buffer's full_x, full_y, width and height, and the buffer offset and stride. FILTER_X filters
+// each pixel's scatter and transmit passes along x into the RGBE-encoded denoised passes, FILTER_Y each
+// column of those along y in place, as the pinned GPU kernels.
+void WebGPUDevice::enqueue_volume_guiding(DeviceKernel kernel,int work,const DeviceKernelArguments &args){
+  require(args.count==7u,"Volume guiding argument count");
+  auto integer=[&](unsigned i){require(args.types[i]==DeviceKernelArguments::INT32&&args.sizes[i]==4,"Invalid volume guiding integer argument");
+    int32_t v;std::memcpy(&v,args.values[i],4);return v;};
+  require(args.types[0]==DeviceKernelArguments::POINTER&&args.sizes[0]==sizeof(device_ptr),"Invalid volume guiding pointer argument");
+  device_ptr buffer;std::memcpy(&buffer,args.values[0],sizeof(buffer));require(buffer%4==0,"Unaligned volume guiding pointer");
+  const int sx=integer(1),sy=integer(2),sw=integer(3),sh=integer(4),offset=integer(5),stride=integer(6);
+  const bool x_pass=kernel==DEVICE_KERNEL_VOLUME_GUIDING_FILTER_X;
+  require(sx>=0&&sy>=0&&sw>0&&sh>0&&stride>=sx+sw,"Invalid volume guiding region");
+  require(work>=(x_pass?sw*sh:sw),"Incomplete volume guiding dispatch");
+  auto pass=[&](int at,int length){require(at!=PASS_UNUSED&&at>=0&&at<=data.film.pass_stride-length,"Invalid volume guiding pass");return uint32_t(at);};
+  const int64_t first=int64_t(offset)+sx+int64_t(sy)*stride,last=int64_t(offset)+sx+sw-1+int64_t(sy+sh-1)*stride;
+  require(first>=0&&last<int64_t(INT32_MAX),"Invalid volume guiding buffer offset");
+  validate(buffer,size_t(last+1)*data.film.pass_stride*4);
+  if(!film_volume_x.value){
+    auto built=build_pipelines("film_volume_guiding",film_volume_guiding_wgsl(),{"volume_guiding_filter_x","volume_guiding_filter_y"});
+    film_volume_x=std::move(built[0]);film_volume_y=std::move(built[1]);
+  }
+  std::array<uint32_t,32> p{};p[1]=uint32_t(work);p[4]=uint32_t(buffer);p[5]=uint32_t(data.film.pass_stride);
+  p[6]=uint32_t(sx);p[7]=uint32_t(sy);p[8]=uint32_t(sw);p[9]=uint32_t(sh);p[10]=uint32_t(offset);p[12]=uint32_t(stride);
+  p[16]=pass(data.film.pass_volume_scatter,3);p[18]=pass(data.film.pass_volume_transmit,3);p[19]=pass(data.film.pass_sample_count,1);
+  p[20]=pass(data.film.pass_volume_scatter_denoised,1);p[21]=pass(data.film.pass_volume_transmit_denoised,1);p[17]=error_word;
+  if(x_pass)dispatch(p,uint32_t(work),film_volume_x,workgroup("volume_guiding_filter_x"));
+  else dispatch(p,uint32_t(work),film_volume_y,workgroup("volume_guiding_filter_y"));
 }
 // Adaptive sampling (PathTraceWorkGPU::adaptive_sampling_convergence_check_count_active,
 // enqueue_adaptive_sampling_filter_x/_y): the render buffer, the effective buffer's full_x,

@@ -83,11 +83,11 @@ std::string svm_layout(bool surface){
   source<<"//#endif\n//#if SHADER_EVAL_DISPLACE\n";
   constant("DSP_INPUT_BYTES",sizeof(KernelShaderEvalInput));constant("DSP_INPUT_object",offsetof(KernelShaderEvalInput,object));
   constant("DSP_INPUT_prim",offsetof(KernelShaderEvalInput,prim));constant("DSP_INPUT_u",offsetof(KernelShaderEvalInput,u));constant("DSP_INPUT_v",offsetof(KernelShaderEvalInput,v));
-  source<<"//#endif\n//#if SVM_NODE_RAYTRACE\n//#if SVM_RAYTRACE_NODES\n";
+  source<<"//#endif\n//#if RAYTRACE_ANY\n//#if RAYTRACE_LOCAL\n";
   constant("RAYTRACE_LOCAL_MAX_HITS",LOCAL_MAX_HITS);constant("RAYTRACE_PRNG_SURFACE_BEVEL",PRNG_SURFACE_BEVEL);
   constant("RAYTRACE_VISIBILITY_RAYCAST",PATH_RAY_VISIBILITY_RAYCAST);
   source<<"//#endif\n//#endif\n";
-  source<<"//#if SVM_NODE_RAYTRACE\n";
+  source<<"//#if RAYTRACE_ANY\n";
   constant("AO_VISIBILITY_ALL",PATH_RAY_VISIBILITY_ALL);constant("AO_VISIBILITY_SHADOW_OPAQUE",PATH_RAY_VISIBILITY_SHADOW_OPAQUE);constant("AO_PRNG_SURFACE_AO",PRNG_SURFACE_AO);
   source<<"//#endif\n";
   SIZE(VertexColor);FIELD(VertexColor,layer_id);FIELD(VertexColor,color_offset);FIELD(VertexColor,alpha_offset);FIELD(VertexColor,bump_offset);FIELD(VertexColor,bump_filter_width);
@@ -100,6 +100,20 @@ std::string svm_layout(bool surface){
   SIZE(ClosureEmission);FIELD(ClosureEmission,mix_weight_offset);
   SIZE(ClosureHoldout);FIELD(ClosureHoldout,mix_weight_offset);
   SIZE(ClosureVolume);FIELD(ClosureVolume,closure_type);FIELD(ClosureVolume,density);FIELD(ClosureVolume,param1);FIELD(ClosureVolume,mix_weight_offset);
+  // Volume phase functions, the Volume Coefficients and Principled Volume nodes (VOLUME_PHASES, SVM_NODE_* regions).
+  source<<"//#if VOLUME_PHASES\n";FIELD(ClosureVolume,param_extra);
+  constant("VP_CLOSURE_VOLUME_FOURNIER_FORAND_ID",CLOSURE_VOLUME_FOURNIER_FORAND_ID);constant("VP_CLOSURE_VOLUME_RAYLEIGH_ID",CLOSURE_VOLUME_RAYLEIGH_ID);
+  constant("VP_CLOSURE_VOLUME_DRAINE_ID",CLOSURE_VOLUME_DRAINE_ID);constant("VP_CLOSURE_VOLUME_MIE_ID",CLOSURE_VOLUME_MIE_ID);
+  source<<"//#endif\n//#if SVM_NODE_VOLUME_COEFFICIENTS\n";
+  constant("VC_OP_VOLUME_COEFFICIENTS",NODE_VOLUME_COEFFICIENTS);SIZE(VolumeCoefficients);FIELD(VolumeCoefficients,closure_type);
+  FIELD(VolumeCoefficients,absorption_coeffs);FIELD(VolumeCoefficients,emission_coeffs);FIELD(VolumeCoefficients,param1);FIELD(VolumeCoefficients,param_extra);
+  FIELD(VolumeCoefficients,mix_weight_offset);
+  source<<"//#endif\n//#if SVM_NODE_PRINCIPLED_VOLUME\n";
+  constant("VC_OP_PRINCIPLED_VOLUME",NODE_PRINCIPLED_VOLUME);SIZE(PrincipledVolume);FIELD(PrincipledVolume,absorption_color);
+  FIELD(PrincipledVolume,emission_color);FIELD(PrincipledVolume,blackbody_tint);FIELD(PrincipledVolume,density);FIELD(PrincipledVolume,anisotropy);
+  FIELD(PrincipledVolume,emission);FIELD(PrincipledVolume,blackbody);FIELD(PrincipledVolume,temperature);FIELD(PrincipledVolume,attr_density);
+  FIELD(PrincipledVolume,attr_color);FIELD(PrincipledVolume,attr_temperature);FIELD(PrincipledVolume,mix_weight_offset);
+  source<<"//#endif\n";
   SIZE(ClosureBsdf);FIELD(ClosureBsdf,closure_type);FIELD(ClosureBsdf,mix_weight_offset);
   SIZE(DiffuseBsdfData);FIELD(DiffuseBsdfData,color);FIELD(DiffuseBsdfData,roughness);FIELD(DiffuseBsdfData,normal_offset);
   SIZE(SimpleBsdfData);FIELD(SimpleBsdfData,param1);FIELD(SimpleBsdfData,normal_offset);
@@ -274,6 +288,23 @@ std::string svm_layout(bool surface){
   constant("D_ggx_glass_inv_E",offsetof(KernelData,tables.ggx_glass_inv_E));constant("D_ggx_glass_inv_Eavg",offsetof(KernelData,tables.ggx_glass_inv_Eavg));
   source<<"//#endif\n//#if SVM_BSDF_PRINCIPLED\n";
   constant("D_sheen_ltc",offsetof(KernelData,tables.sheen_ltc));
+  source<<"//#endif\n";
+  // Subsurface scattering (svm/closure.h: the Principled BSDF's subsurface lobe and the Subsurface Scattering node,
+  // closure/bssrdf.h): emitted only into modules whose scene reaches a BSSRDF closure.
+  source<<"//#if SUBSURFACE\n";
+  constant("N_PrincipledBsdfData_subsurface_method",offsetof(SVMNodePrincipledBsdfData,subsurface_method));
+  constant("N_PrincipledBsdfData_subsurface_radius",offsetof(SVMNodePrincipledBsdfData,subsurface_radius));
+  constant("N_PrincipledBsdfData_subsurface_scale",offsetof(SVMNodePrincipledBsdfData,subsurface_scale));
+  constant("N_PrincipledBsdfData_subsurface_ior",offsetof(SVMNodePrincipledBsdfData,subsurface_ior));
+  constant("N_PrincipledBsdfData_subsurface_anisotropy",offsetof(SVMNodePrincipledBsdfData,subsurface_anisotropy));
+  constant("SZ_BssrdfData",sizeof(SVMNodeBssrdfData));constant("N_BssrdfData_radius",offsetof(SVMNodeBssrdfData,radius));
+  constant("N_BssrdfData_scale",offsetof(SVMNodeBssrdfData,scale));constant("N_BssrdfData_ior",offsetof(SVMNodeBssrdfData,ior));
+  constant("N_BssrdfData_anisotropy",offsetof(SVMNodeBssrdfData,anisotropy));constant("N_BssrdfData_roughness",offsetof(SVMNodeBssrdfData,roughness));
+  constant("N_BssrdfData_normal_offset",offsetof(SVMNodeBssrdfData,normal_offset));
+  constant("SS_CLOSURE_BURLEY",CLOSURE_BSSRDF_BURLEY_ID);constant("SS_CLOSURE_RANDOM_WALK",CLOSURE_BSSRDF_RANDOM_WALK_ID);
+  constant("SS_CLOSURE_RANDOM_WALK_LEGACY",CLOSURE_BSSRDF_RANDOM_WALK_LEGACY_ID);constant("SS_CLOSURE_RANDOM_WALK_SKIN",CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID);
+  constant("SS_SR_BSSRDF",SR_BSSRDF);constant("SS_CLOSURE_NONE",CLOSURE_NONE_ID);constant("SS_PATH_RAY_DIFFUSE_ANCESTOR",PATH_RAY_DIFFUSE_ANCESTOR);
+  static_assert(CLOSURE_BSSRDF_BURLEY_ID==CLOSURE_BSDF_TRANSPARENT_ID+1&&CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID==CLOSURE_BSSRDF_BURLEY_ID+3,"BSSRDF closure range");
   source<<"//#endif\n";
   // Metallic BSDF layout and closure enums (svm/node_types.h SVMNodeMetallicBsdfData).
   source<<"//#if SVM_BSDF_METALLIC\n";

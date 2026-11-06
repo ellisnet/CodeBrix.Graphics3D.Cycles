@@ -160,7 +160,8 @@ static unsigned rejections(const DeviceInfo &info){
     if(test==0){data.bvh.have_motion=1;reason="motion flag/table mismatch";}
     if(test==1){data.bvh.have_curves=1;reason="triangle primitives";}
     if(test==2){data.bvh.have_points=1;reason="triangle primitives";}
-    if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
+    // Biased ray marching is implemented; a volume stack size below two stays a volume rejection.
+    if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.volume_stack_size=1;reason="volume stack size";}
     if(test==4){data.integrator.use_caustics=1;reason="Invalid native MNEE feature flags";}
     if(test==5){data.integrator.use_light_mis=1;data.integrator.use_light_tree=1;data.integrator.use_direct_light=1;reason="Missing native light tree";}
     if(test==6){data.integrator.sampling_pattern=999;reason="sampling pattern";}

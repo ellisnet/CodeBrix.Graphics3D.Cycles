@@ -210,6 +210,29 @@ def scenes():
     denoise_motion['nodes'] = [n for n in denoise_motion['nodes'] if n.get('create') != 'pass']+passes(
         [('denoising_backward_motion', 'Denoising Backward Motion', {}), ('denoising_specular_motion', 'Denoising Specular Motion', {}),
          ('denoising_albedo', 'Denoising Albedo', {}), ('denoising_normal', 'Denoising Normal', {})])
+    # Deforming geometry in the motion pass (no motion blur): the right wall and the floor panel deform (three
+    # motion steps, the centre in the middle; plain triangles with SD_OBJECT_HAS_VERTEX_MOTION), beside the moving
+    # objects and the moving camera; the denoising motion features over the same scene.
+    def deforming(nodes):
+        out = copy.deepcopy(nodes)
+        for node in out:
+            if node.get('create') == 'mesh' and node['handle'] in ('right', 'panel'):
+                pos = node['mesh']['positions']
+                shift = (0.18, -0.06, 0.12) if node['handle'] == 'right' else (-0.1, 0.07, -0.15)
+                pre = [round(v-shift[i % 3]+0.03*(i % 4), 4) for i, v in enumerate(pos)]
+                post = [round(v+1.4*shift[i % 3]-0.02*(i % 5), 4) for i, v in enumerate(pos)]
+                node['mesh']['motion'] = {'steps': 3, 'positions': pre+pos+post}
+        return out
+    motion_deform = copy.deepcopy(motion)
+    motion_deform['id'] = 'passes/motion-deforming'
+    motion_deform['description'] = ('motion and motion weight passes without motion blur with deforming geometry (vertex motion of plain '
+                                    'triangles), moving objects and a moving camera')
+    motion_deform['nodes'] = deforming(motion_deform['nodes'])
+    denoise_motion_deform = copy.deepcopy(denoise_motion)
+    denoise_motion_deform['id'] = 'passes/denoising-motion-deforming'
+    denoise_motion_deform['description'] = ('denoising motion features (backward and specular motion) without motion blur with deforming '
+                                            'geometry, moving objects and a moving camera')
+    denoise_motion_deform['nodes'] = deforming(denoise_motion_deform['nodes'])
     # The sample count pass (film use_sample_count): the camera stage's atomic sample counter.
     count = scene('passes/sample-count', 'the sample count pass (film_write_sample in the camera stage) with the light and data passes',
                   room, room_objects, [('sample_count', 'Sample Count', {}), ('diffuse_direct', 'DiffDir', {}), ('depth', 'Depth', {}),
@@ -231,7 +254,8 @@ def scenes():
                     [('denoising_albedo', 'Denoising Albedo', {}), ('denoising_normal', 'Denoising Normal', {}), ('denoising_depth', 'Denoising Depth', {})],
                     film={'mist_start': 1.0, 'mist_depth': 12.0, 'mist_falloff': 0.5, 'pass_alpha_threshold': 0.0},
                     world={'transparent': True})
-    return {'holdout-transparent-film.json': holdout, 'sample-count.json': count, 'denoising-motion.json': denoise_motion, 'motion.json': motion, 'light-passes.json': light, 'data-passes.json': data, 'light-groups.json': groups, 'aovs.json': aov, 'cryptomatte.json': crypto,
+    return {'holdout-transparent-film.json': holdout, 'sample-count.json': count, 'denoising-motion.json': denoise_motion, 'motion.json': motion, 'motion-deforming.json': motion_deform,
+            'denoising-motion-deforming.json': denoise_motion_deform, 'light-passes.json': light, 'data-passes.json': data, 'light-groups.json': groups, 'aovs.json': aov, 'cryptomatte.json': crypto,
             'denoising-features.json': denoise, 'denoising-features-weighted.json': denoise_weighted}
 
 

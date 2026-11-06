@@ -109,6 +109,14 @@ Attribution: Intel Corporation
 Conditions: Built only under the OIDN build conditions of docs/RELEASE-LICENSE-PLAN.md (CPU device; Metal on osx-arm64 only; CUDA, HIP and SYCL explicitly off; no apps; no bundled dependencies). The device modules are separate shared libraries and ship with these notices. Full per-file grants, modifications and exclusions are recorded in third_party/dependency-imports.json and third_party/oidn-license-review.json. ISPC compiles the CPU kernels at build time and is not shipped.
 Retained file/license forms: Apache-2.0
 
+Intel Embree v4.4.1
+Origin: https://github.com/RenderKit/embree/archive/refs/tags/v4.4.1.tar.gz
+Selected license: Apache-2.0 AND MIT
+Use: Reviewed source snapshot in third_party/deps/embree (the CPU library: kernels, common and include; the SYCL GPU kernels and Level Zero headers, tutorials, tests, superbuild, documentation and packaging scripts are not imported), built from this repository as a static library linked into the product CPU device as its BVH (the CPU reference backend and the CPU oracle keep Cycles' BVH2).
+Attribution: Intel Corporation; Kitware, Inc. (CMake helpers); the sse2neon contributors (common/simd/arm/sse2neon.h, MIT)
+Conditions: Built only under the Embree build conditions of docs/RELEASE-LICENSE-PLAN.md (SYCL, ISPC and tutorials explicitly off; oneTBB from its reviewed snapshot as the tasking system; static library). Full per-file grants, modifications and exclusions are recorded in third_party/dependency-imports.json and third_party/embree-license-review.json. The MIT notice of sse2neon (compiled on ARM64 only) is retained in the source notice supplement.
+Retained file/license forms: Apache-2.0; MIT
+
 OpenEXR v3.1.13
 Origin: https://github.com/AcademySoftwareFoundation/openexr
 Selected license: BSD-3-Clause

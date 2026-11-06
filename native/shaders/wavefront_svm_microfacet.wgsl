@@ -365,7 +365,9 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
                     else{enabled_lobe=true;kind=PRINCIPLED_THIN_GLASS;}}}
             case 5u:{enabled_lobe=reflective&&(eta!=1.0||thickness>0.1);extra=true;}
             default:{let subsurface=clamp(svm_input(s,data+N_PrincipledBsdfData_subsurface_weight),0.0,1.0);
-                if(subsurface>1e-5){svm_error(s,16u);return;}
+//#if SUBSURFACE else                 if(subsurface>1e-5){svm_error(s,16u);return;}
+                if(subsurface>1e-5){if(thin_wall){svm_error(s,16u);return;}principled_subsurface(s,data,subsurface,clamped_base,weight,valid,roughness,eta,flag);if((*s).error!=0u){return;}}
+//#endif
                 let diffuse_roughness=clamp(svm_input(s,data+N_PrincipledBsdfData_diffuse_roughness),0.0,1.0);
                 enabled_lobe=true;kind=select(CLOSURE_BSDF_DIFFUSE_ID,CLOSURE_BSDF_OREN_NAYAR_ID,!(diffuse_roughness<1e-5));w=base_color*(1.0-subsurface)*weight;
                 thin_rough=diffuse_roughness;}

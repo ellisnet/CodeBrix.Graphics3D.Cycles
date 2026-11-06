@@ -262,7 +262,9 @@ fn sc_split_mark(index:u32,object:u32,shader:u32,next:u32){
     var next=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND;var shader=0u;var sorted=false;
     if(volume_active(index)){
         var flags=0u;if(hit.prim!=NONE&&(hit.kind&PRIMITIVE_LAMP)==0u){let id=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader))&SHADER_MASK;flags=load_word(table_at(G_shaders,id,SIZE_shaders)+SH_flags);}
-        next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME,0u,terminate_surface(index,flags));
+//#if VOLUME_RAY_MARCHING else         next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME,0u,terminate_surface(index,flags));
+        next=select(vr_volume_kernel(),0u,terminate_surface(index,flags));
+//#endif
     }
     else if(hit.prim!=NONE&&(hit.kind&PRIMITIVE_LAMP)!=0u){next=DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD;}
     else if(hit.prim!=NONE){

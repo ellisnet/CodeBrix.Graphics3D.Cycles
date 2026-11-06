@@ -55,6 +55,18 @@ def oidn_options(metal=False):
                 ISPC_EXECUTABLE=ispc())
 
 
+def embree_options(arm=False):
+    """Embree build conditions (docs/RELEASE-LICENSE-PLAN.md): the CPU library only (SYCL, ISPC and tutorials off),
+    oneTBB from its reviewed snapshot as the tasking system, a static library linked into the product CPU device.
+    The features Cycles' Embree BVH uses are on (ray masks, filter functions, curve and sphere backface culling);
+    x86-64 builds the SSE4.2, AVX and AVX2 kernels Cycles' FindEmbree links, ARM64 NEON."""
+    return dict(EMBREE_SYCL_SUPPORT='OFF',EMBREE_ISPC_SUPPORT='OFF',EMBREE_TUTORIALS='OFF',EMBREE_STATIC_LIB='ON',EMBREE_ZIP_MODE='OFF',
+                EMBREE_TASKING_SYSTEM='TBB',EMBREE_TBB_COMPONENT='tbb',EMBREE_INSTALL_DEPENDENCIES='OFF',
+                EMBREE_RAY_MASK='ON',EMBREE_FILTER_FUNCTION='ON',EMBREE_BACKFACE_CULLING='OFF',
+                EMBREE_BACKFACE_CULLING_CURVES='ON',EMBREE_BACKFACE_CULLING_SPHERES='ON',EMBREE_NO_SPLASH='ON',
+                EMBREE_MAX_ISA='NEON' if arm else 'AVX2',BUILD_SHARED_LIBS='OFF')
+
+
 def profile(source):
     def off(*names):return {name:'OFF' for name in names}
     return [
@@ -68,6 +80,7 @@ def profile(source):
       ('expat',source/'expat/expat',dict(EXPAT_BUILD_TOOLS='OFF',EXPAT_BUILD_EXAMPLES='OFF',EXPAT_BUILD_TESTS='OFF',EXPAT_BUILD_DOCS='OFF',EXPAT_SHARED_LIBS='ON')),
       ('tbb',source/'tbb',dict(TBB_TEST='OFF',TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH='ON',TBB_EXAMPLES='OFF',TBB_STRICT='OFF',TBBMALLOC_BUILD='OFF',TBBMALLOC_PROXY_BUILD='OFF',TBB_ENABLE_IPO='OFF')),
       ('oidn',source/'oidn',oidn_options()),
+      ('embree',source/'embree',embree_options()),
       ('pugixml',source/'pugixml',dict(PUGIXML_BUILD_TESTS='OFF')),
       ('boost',ROOT/'tools/dependencies/boost',dict(BOOST_SOURCE_ROOT=source/'boost')),
       ('fmt',source/'fmt',dict(FMT_DOC='OFF',FMT_TEST='OFF',FMT_INSTALL='ON',BUILD_SHARED_LIBS='OFF')),

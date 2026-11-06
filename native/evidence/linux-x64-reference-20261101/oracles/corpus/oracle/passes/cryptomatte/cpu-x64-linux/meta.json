@@ -1,0 +1,151 @@
+{
+  "sceneId": "passes/cryptomatte",
+  "sceneSha256": "aadfe5327a1b07d22ded2905b8d49677ab94b00e497578fc2781b3705e1a4fd9",
+  "backend": "cpu-x64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00683357,
+    0.00473402
+  ],
+  "filmSha256": [
+    "fda3b4ab0cc865d96604d3dd4974e7b53d488f4257d67041d26f03579e840da6",
+    "fda3b4ab0cc865d96604d3dd4974e7b53d488f4257d67041d26f03579e840da6"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "CryptoObject00",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "7423be32e14a403a54d909fdfb735f78c682db524f30f52b0ecb972087969928",
+        "7423be32e14a403a54d909fdfb735f78c682db524f30f52b0ecb972087969928"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "CryptoObject01",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "7112a1106fc025871dd47e346ca930a2cfb98db242840395531a2fe3ae21511a",
+        "7112a1106fc025871dd47e346ca930a2cfb98db242840395531a2fe3ae21511a"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "CryptoMaterial00",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "395cd44fb46a9bc3631c1e4c3c4c47f95190b64b6cb5cd0a51e26bc3366eea57",
+        "395cd44fb46a9bc3631c1e4c3c4c47f95190b64b6cb5cd0a51e26bc3366eea57"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "CryptoMaterial01",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "4dc3c2cc52dc7e742dc7c5f5d3783c49e89f0e98acaa20df113f037a0e0c8fcb",
+        "4dc3c2cc52dc7e742dc7c5f5d3783c49e89f0e98acaa20df113f037a0e0c8fcb"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "CryptoAsset00",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "8d78eef299cc5aa3918a922ac73c5ef9b99566a9fb424f673263f314d75de1f6",
+        "8d78eef299cc5aa3918a922ac73c5ef9b99566a9fb424f673263f314d75de1f6"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "CryptoAsset01",
+      "type": "cryptomatte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "e52dbd090389adc44b8c111674c673c98371c07a726c8723852e280d9290cb43",
+        "e52dbd090389adc44b8c111674c673c98371c07a726c8723852e280d9290cb43"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "f1ed54307656855716087ddaf195169376da6d29",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "fe8231c8ff9989135d55e334ab00917b38c7697b7da413d0c149f4b02e2a0a3f",
+  "runnerSha256": "87701039b44a2499b9f1759cfb58426ef556c624e5f37321b3200e09629a12d1",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/cryptomatte.json",
+  "backendDescription": "Cycles CPU device, GCC x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.028,
+  "runnerCommand": [
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/oracle/scenes/passes/cryptomatte.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-x64-linux",
+    "--output",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/val35/oracles/corpus/oracle/passes/cryptomatte/cpu-x64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)"
+}

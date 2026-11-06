@@ -71,6 +71,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     {
         CyclesBackend.CpuReference => Backend.CpuReference,
         CyclesBackend.Gpu => Backend.Gpu,
+        CyclesBackend.Cpu => Backend.Cpu,
         _ => throw new ArgumentOutOfRangeException(nameof(backend))
     }, threads)
     {
@@ -112,6 +113,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     {
         CyclesBackend.CpuReference => Backend.CpuReference,
         CyclesBackend.Gpu => CyclesHost.ResolveBackend(Backend.Gpu),
+        CyclesBackend.Cpu => CyclesHost.ResolveBackend(Backend.Cpu),
         _ => throw new ArgumentOutOfRangeException(nameof(backend))
     };
 

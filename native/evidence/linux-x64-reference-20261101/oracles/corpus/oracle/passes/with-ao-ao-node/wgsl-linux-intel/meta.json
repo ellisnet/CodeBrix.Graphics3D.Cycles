@@ -1,0 +1,394 @@
+{
+  "sceneId": "passes/with-ao-ao-node",
+  "sceneSha256": "3bf96a89abadc75f009c88926b38bdf121b47461c6ce13e1ba99da53527177a4",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 5.960464477539063e-08,
+  "renderSeconds": [
+    30.4829,
+    0.326092
+  ],
+  "filmSha256": [
+    "5a3e58083baaefc774a29b7305b02ad49dd55667f2fb440253711cd93ae94a72",
+    "99134077d0f6331f07798a60b771af2d5723cd7417c688401681544038ff7406"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "DiffDir",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "71850d4c7b339e054e1d6a6a228bcc133ad9e61f14a88b00099b0f0940ec7ca1",
+        "840d2cc30b1b6981a6b5bfca81647f56dd3d3ee1531a6d1ddba32c177ab19a77"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "DiffInd",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1d16643525749c0b690afc24a2c084c21e220044f005b08a86dffa474cf6b9a0",
+        "b98928214afd0f0f8fc786464022473230dc6a56f65b21fc05c2d9ff81b0f3d6"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "DiffCol",
+      "type": "diffuse_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "c092a4efe12b13a680c3d74c79c8e83c59240b6f674c9baae4aded41b1c0ae80",
+        "66e8abf61ba3fe8b62fe37f95dd7b91bac197fd4f0a6d4d11379564fdf28de76"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "GlossDir",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "91d3f3db42ae88a4ccfb79c29375bd27112f583678dbae99fad5ba3b16baac07",
+        "27b4a63db737de500be9d140ab436f24e04127d0fdf29570ca964b672b0c211c"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "GlossInd",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "6fb571338bb4bc9ab33384a4d476857b1dbe741ec9c1e27563f4b2ff73745f78",
+        "5fc65cc17c996aa960b5e47004dae5c2d075a840944f7430e3c9f24c3ff5f49c"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "GlossCol",
+      "type": "glossy_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "9771da4176d7b51dbd7b1e9775b791cf78ea3b035068a057b3ae8bb2dc4332a7",
+        "62848d0056894cbab34c960951f4405fa23ba5073e37ce7dec36eb99eb870001"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "TransDir",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "TransInd",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "TransCol",
+      "type": "transmission_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "Emit",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "9dd62bc5ac67343e280a0f25c26f0eb1af9c1c64ef5b9d795a0ecd14202f0e7c",
+        "9dd62bc5ac67343e280a0f25c26f0eb1af9c1c64ef5b9d795a0ecd14202f0e7c"
+      ]
+    },
+    {
+      "index": 10,
+      "name": "Env",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "4396af8ddc80e26862019f1e7a407158e4fefae9da4d2e7f60966012adad729f",
+        "4396af8ddc80e26862019f1e7a407158e4fefae9da4d2e7f60966012adad729f"
+      ]
+    },
+    {
+      "index": 11,
+      "name": "Diffuse",
+      "type": "diffuse",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a206037be343579e3229a7b1ff1c0f71896d6fa88d06913f079b25326ec40763",
+        "8df19719d9d6e041b8335106e7c3ad84ae693f12b7e3b3c41e7db2765e228393"
+      ]
+    },
+    {
+      "index": 12,
+      "name": "Glossy",
+      "type": "glossy",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a35dcb2d6a4f752ef15f106a61b2afd6b911d702621ff319d20d690ae2f1cee3",
+        "b5cc712276cc87140c3b83d58029aa928123868a8ee73e8c468e13b646d06621"
+      ]
+    },
+    {
+      "index": 13,
+      "name": "Transmission",
+      "type": "transmission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 14,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "4ce363d84585463e6e2870d21ca9db2824d00f35e904470b06a95e16b6ce9ef6",
+        "4ce363d84585463e6e2870d21ca9db2824d00f35e904470b06a95e16b6ce9ef6"
+      ]
+    },
+    {
+      "index": 15,
+      "name": "Position",
+      "type": "position",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "52347f79f5f43ef9265048be269c6f2517283dc50e18fc96eba45148658404df",
+        "52347f79f5f43ef9265048be269c6f2517283dc50e18fc96eba45148658404df"
+      ]
+    },
+    {
+      "index": 16,
+      "name": "Normal",
+      "type": "normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "d0bff5556e9acd454205ccbd576640dc3b81d655866551196d94e161250a4dff",
+        "0ddf63934ef0194b531b7806e27a6c5f845e11823bf48082c1edd1782a114686"
+      ]
+    },
+    {
+      "index": 17,
+      "name": "Roughness",
+      "type": "roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "632c1c88acf378d4f7e358cab9a9ed6ce7d77a96a34cc85ca8c15864d59f36d4",
+        "a3531a99e90310af809912f8e724a170e5846b68a69ae1196fd3e5616020fd88"
+      ]
+    },
+    {
+      "index": 18,
+      "name": "UV",
+      "type": "uv",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 19,
+      "name": "IndexOB",
+      "type": "object_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293",
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293"
+      ]
+    },
+    {
+      "index": 20,
+      "name": "IndexMA",
+      "type": "material_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293",
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293"
+      ]
+    },
+    {
+      "index": 21,
+      "name": "Mist",
+      "type": "mist",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "7f3657b5149548e63958dba7f58d1d04fc83333e9a7dc82a8783c866e175a070",
+        "d6156d21c4daad0915fce3529a78bbfd6d943d2d12c1f480647ddb5b2fee0628"
+      ]
+    },
+    {
+      "index": 22,
+      "name": "AO",
+      "type": "ao",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "123ccd1f26e69446e44b130c9e811d54f9ed5c93e1f493b4b41391a684b6653a",
+        "123ccd1f26e69446e44b130c9e811d54f9ed5c93e1f493b4b41391a684b6653a"
+      ]
+    },
+    {
+      "index": 23,
+      "name": "Denoising Albedo",
+      "type": "denoising_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "616bb5d4a5f026b2245d3e98316e533d05599ffb68bf058ee7e8ab5bc12a4e08",
+        "20c8359394e437461b026765f366abcf749deac6cd3c891a6f72226959c03569"
+      ]
+    },
+    {
+      "index": 24,
+      "name": "Denoising Normal",
+      "type": "denoising_normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "6d9fa4e8a7181651a8391e15874304dd0bd7c951f5c10b7b8cc177951712cfd8",
+        "5ef686981259e21c8080022f56279d569586c4eebeda3ae70510234b83f1caac"
+      ]
+    },
+    {
+      "index": 25,
+      "name": "Denoising Specular Albedo",
+      "type": "denoising_specular_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "aae40b3e944beb8d56e8c4aa93a19502cbe945e355b59d92ea030c1e87caf05c",
+        "fe8f81454d8801422149c8d884f2683f3419f846fb69c28ca116b0c2367dcf1f"
+      ]
+    },
+    {
+      "index": 26,
+      "name": "Denoising Roughness",
+      "type": "denoising_roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "26fe204ca43bb53b395455d0bcb917f879cb2a32631b8ef6dd11559eb5e43772",
+        "0f85af6d5a0df58ac7d26b3199153e55f7fb3200f3aac4181fab7ac646e0c5c4"
+      ]
+    },
+    {
+      "index": 27,
+      "name": "Denoising Depth",
+      "type": "denoising_depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "0ac88b4a0989f2f3b617ced4a89a4e5eb65c2e955d5d5f43eaa4a097a8da1514",
+        "19f3c5ac2aab793d14be4cea893d4d167945b6b9138543c331561ce414b5d5ea"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "f1ed54307656855716087ddaf195169376da6d29",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "fe8231c8ff9989135d55e334ab00917b38c7697b7da413d0c149f4b02e2a0a3f",
+  "runnerSha256": "87701039b44a2499b9f1759cfb58426ef556c624e5f37321b3200e09629a12d1",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/with-ao-ao-node.json",
+  "backendDescription": "CodeBrix WGSL device on the unchanged CodeBrix.WebGpu.Native runtime (Vulkan, Intel Mesa)",
+  "environment": {},
+  "processSeconds": 30.928,
+  "runnerCommand": [
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/oracle/scenes/passes/with-ao-ao-node.json",
+    "--backend",
+    "webgpu",
+    "--label",
+    "wgsl-linux-intel",
+    "--output",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/val35/oracles/corpus/oracle/passes/with-ao-ao-node/wgsl-linux-intel",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json"
+}

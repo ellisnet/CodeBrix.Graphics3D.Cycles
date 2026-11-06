@@ -168,6 +168,22 @@ std::string wavefront_layout(){
 #undef TABLE
   // The IES table follows the others (closest.cpp scene_tables); its index only where the IES node is reachable.
   source<<"//#if SVM_NODE_IES\n";constant("G_ies",table_index);source<<"//#endif\n";
+  // The majorant octree of heterogeneous volumes follows the IES table (closest.cpp scene_tables).
+  source<<"//#if VOLUME_HETEROGENEOUS\n";
+  constant("G_volume_tree_nodes",table_index+1);constant("SIZE_volume_tree_nodes",sizeof(KernelOctreeNode));
+  constant("G_volume_tree_roots",table_index+2);constant("SIZE_volume_tree_roots",sizeof(KernelOctreeRoot));
+  constant("G_volume_tree_root_ids",table_index+3);constant("VH_ATTR_GENERATED_TRANSFORM",ATTR_STD_GENERATED_TRANSFORM);
+  constant("VH_TRANSFORM_APPLIED",SD_OBJECT_TRANSFORM_APPLIED);constant("VH_HETEROGENEOUS",SD_HETEROGENEOUS_VOLUME);
+  source<<"//#endif\n";
+  // Biased ray marching: the per-object step sizes follow the octree tables (closest.cpp scene_tables).
+  source<<"//#if VOLUME_RAY_MARCHING\n";
+  constant("G_volume_step_size",table_index+4);constant("VR_D_volume_max_steps",offsetof(KernelData,integrator.volume_max_steps));
+  constant("VR_D_volume_ray_marching",offsetof(KernelData,integrator.volume_ray_marching));
+  constant("VR_PRNG_COLOR_CHANNEL",PRNG_VOLUME_COLOR_CHANNEL);constant("VR_PRNG_OFFSET",PRNG_VOLUME_OFFSET);constant("VR_PRNG_SHADE_OFFSET",PRNG_VOLUME_SHADE_OFFSET);
+  // The volume kernel the path queues (a run-time choice: modules compiled with every region keep both).
+  source<<"fn vr_volume_kernel()->u32{return select("<<uint32_t(DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)<<"u,"<<uint32_t(DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING)
+        <<"u,load_word(p(6u)+VR_D_volume_ray_marching)!=0u);}\n";
+  source<<"//#endif\n";
   constant("O_tfm",offsetof(KernelObject,tfm));constant("O_motion_offset",offsetof(KernelObject,motion_offset));
   constant("O_num_tfm_steps",offsetof(KernelObject,num_tfm_steps));
   constant("O_num_geom_steps",offsetof(KernelObject,num_geom_steps));constant("O_numverts",offsetof(KernelObject,numverts));constant("O_numprims",offsetof(KernelObject,numprims));constant("MOTION_SIZE",sizeof(DecomposedTransform));

@@ -101,7 +101,9 @@ int main(int argc, char **argv) {
   REQUIRE(gpu_backend == CBC_HOST_WEBGPU || gpu_backend == CBC_HOST_METAL);
   CHECK(cbc_host_resolve_backend(CBC_HOST_CPU_REFERENCE, &resolved)); REQUIRE(resolved == CBC_HOST_CPU_REFERENCE);
   REQUIRE(cbc_host_resolve_backend(gpu_backend == CBC_HOST_WEBGPU ? CBC_HOST_METAL : CBC_HOST_WEBGPU, &resolved) == CBC_UNSUPPORTED && resolved == 0);
-  REQUIRE(cbc_host_resolve_backend(0, &resolved) == CBC_INVALID && cbc_host_resolve_backend(5, &resolved) == CBC_INVALID);
+  REQUIRE(cbc_host_resolve_backend(0, &resolved) == CBC_INVALID && cbc_host_resolve_backend(CBC_HOST_CPU + 1, &resolved) == CBC_INVALID);
+  { const int cpu = cbc_host_resolve_backend(CBC_HOST_CPU, &resolved);
+    REQUIRE((cpu == CBC_OK && resolved == CBC_HOST_CPU) || (cpu == CBC_UNSUPPORTED && resolved == 0)); }
   REQUIRE(cbc_host_resolve_backend(CBC_HOST_GPU, NULL) == CBC_INVALID);
   REQUIRE(cbc_host_backend(12345, &resolved) == CBC_INVALID);
 
@@ -110,7 +112,7 @@ int main(int argc, char **argv) {
   REQUIRE(cbc_host_capabilities_json(987654, NULL, 0, &(uint64_t){0}) == CBC_INVALID);
 
   CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE, 1, {0}};
-  config.backend = 5; REQUIRE(cbc_host_create(&config, &host) == CBC_INVALID && host == 0);
+  config.backend = CBC_HOST_CPU + 1; REQUIRE(cbc_host_create(&config, &host) == CBC_INVALID && host == 0);
   config.backend = gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE;
   CHECK(cbc_host_create(&config, &host));
   uint32_t backend = 0; CHECK(cbc_host_backend(host, &backend)); REQUIRE(backend == (gpu ? gpu_backend : CBC_HOST_CPU_REFERENCE));

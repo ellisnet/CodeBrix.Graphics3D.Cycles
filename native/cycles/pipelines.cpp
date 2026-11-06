@@ -24,7 +24,7 @@ namespace ccl {
 const std::vector<ShaderFeatureName> &shader_feature_names(){
   static const std::vector<ShaderFeatureName> names={
     {"SVM_NODE_GEOMETRY",SF_GEOMETRY},{"SVM_NODE_TEX_COORD",SF_TEX_COORD},{"SVM_NODE_IMAGE",SF_IMAGE},
-    {"SVM_TEX_ENVIRONMENT",SF_TEX_ENVIRONMENT},{"SVM_TEX_IMAGE_BOX",SF_TEX_IMAGE_BOX},{"SAMPLING_SOBOL_BURLEY",SF_SAMPLING_PATTERN},{"CAMERA_PROJECTIONS",SF_CAMERA_PROJECTIONS},{"SVM_NODE_LIGHT_FALLOFF",SF_LIGHT_FALLOFF},{"LIGHT_LAMP_SHADER",SF_LIGHT_LAMP_SHADER},{"SVM_NODE_IES",SF_NODE_IES},{"SVM_BSDF_THIN_FILM_CONDUCTOR",SF_BSDF_THIN_FILM_CONDUCTOR},{"SVM_TEX_SKY_ANALYTIC",SF_TEX_SKY},{"SVM_TEX_SKY_SCATTERING",SF_TEX_SKY_SCATTERING},{"SVM_TEX_SKY",SF_TEX_SKY|SF_TEX_SKY_SCATTERING},{"BACKGROUND_SUN",SF_BACKGROUND_SUN},{"SVM_MATH_ARC",SF_MATH_ARC},
+    {"SVM_TEX_ENVIRONMENT",SF_TEX_ENVIRONMENT},{"SVM_TEX_IMAGE_BOX",SF_TEX_IMAGE_BOX},{"SAMPLING_SOBOL_BURLEY",SF_SAMPLING_PATTERN|SF_VOLUME_HETEROGENEOUS},{"VOLUME_HETEROGENEOUS",SF_VOLUME_HETEROGENEOUS},{"VOLUME_RAY_MARCHING",SF_VOLUME_RAY_MARCHING},{"CAMERA_PROJECTIONS",SF_CAMERA_PROJECTIONS},{"SVM_NODE_LIGHT_FALLOFF",SF_LIGHT_FALLOFF},{"LIGHT_LAMP_SHADER",SF_LIGHT_LAMP_SHADER},{"SVM_NODE_IES",SF_NODE_IES},{"SVM_BSDF_THIN_FILM_CONDUCTOR",SF_BSDF_THIN_FILM_CONDUCTOR},{"SVM_TEX_SKY_ANALYTIC",SF_TEX_SKY},{"SVM_TEX_SKY_SCATTERING",SF_TEX_SKY_SCATTERING},{"SVM_TEX_SKY",SF_TEX_SKY|SF_TEX_SKY_SCATTERING},{"BACKGROUND_SUN",SF_BACKGROUND_SUN},{"SVM_MATH_ARC",SF_MATH_ARC},
     // The guarded arctangent (wavefront_trig.wgsl): the equirectangular lookups of environment textures and the
     // background light, the lamp and IES coordinates.
     {"TRIG_ATAN2_GUARD",SF_TEX_ENVIRONMENT|SF_LIGHT_BACKGROUND|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_TEX_SKY|SF_TEX_SKY_SCATTERING},
@@ -40,7 +40,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"LIGHT_AREA",SF_LIGHT_AREA},{"MOTION_OBJECT",SF_MOTION_OBJECT},{"MOTION_CAMERA",SF_MOTION_CAMERA},
     {"LIGHT_TRIANGLE",SF_LIGHT_TRIANGLE},{"LIGHT_BACKGROUND",SF_LIGHT_BACKGROUND},{"LIGHT_NEE",SF_LIGHT_NEE},
     {"LIGHT_TREE",SF_LIGHT_TREE},{"LIGHT_LINKING",SF_LIGHT_LINKING},{"LIGHT_SELECT",SF_LIGHT_SELECT},
-    {"SHADOW_CATCHER",SF_SHADOW_CATCHER},{"MNEE",SF_MNEE},{"MNEE_ENTRIES",SF_MNEE_ENTRIES},{"DEBUG_OUTPUT",SF_DEBUG_OUTPUT},{"DRIVER_CACHE_SALT",SF_DRIVER_CACHE_SALT},
+    {"SHADOW_CATCHER",SF_SHADOW_CATCHER},{"MNEE",SF_MNEE},{"MNEE_ENTRIES",SF_MNEE_ENTRIES},{"BACKGROUND_SAMPLE_ENTRY",SF_BACKGROUND_SAMPLE_ENTRY},{"VOLUME_SHADOW",SF_VOLUME_SHADOW},{"VOLUME_LIGHT",SF_VOLUME_LIGHT},{"VOLUME_PHASES",SF_VOLUME_PHASES},{"PHASE_FOURNIER_FORAND",SF_PHASE_FOURNIER_FORAND},{"PHASE_RAYLEIGH",SF_PHASE_RAYLEIGH},{"PHASE_DRAINE",SF_PHASE_DRAINE},{"PHASE_MIE",SF_PHASE_MIE},{"VL_RECORD",SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_VOLUME_HETEROGENEOUS},{"PHASE_STAGE",SF_VOLUME_PHASES|SF_VOLUME_HETEROGENEOUS},{"VL_SAMPLING",SF_VOLUME_LIGHT|SF_VOLUME_HETEROGENEOUS},{"SVM_NODE_VOLUME_COEFFICIENTS",SF_NODE_VOLUME_COEFFICIENTS},{"SVM_NODE_PRINCIPLED_VOLUME",SF_NODE_PRINCIPLED_VOLUME},{"VOLUME_EMISSION",SF_VOLUME_EMISSION},{"SUBSURFACE",SF_SUBSURFACE},{"FILM_MOTION_DEFORM",SF_FILM_MOTION_DEFORM},{"SUBSURFACE_ENTRY",SF_SUBSURFACE_ENTRY},{"PHASE_HG",SF_VOLUME_LIGHT|SF_SUBSURFACE_ENTRY},{"VP_MATH",SF_VOLUME_PHASES|SF_SUBSURFACE|SF_SUBSURFACE_ENTRY},{"VP_ALLOC",SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME},{"RAYTRACE_ANY",SF_NODE_RAYTRACE|SF_SUBSURFACE_ENTRY},{"RAYTRACE_LOCAL",SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_SUBSURFACE_ENTRY},{"DEBUG_OUTPUT",SF_DEBUG_OUTPUT},{"DRIVER_CACHE_SALT",SF_DRIVER_CACHE_SALT},
     {"SHADOW_TERMINATOR_GEOMETRY",SF_TERMINATOR_GEOMETRY},{"SHADOW_TERMINATOR_SHADING",SF_TERMINATOR_SHADING},
     {"SVM_NODE_TEX_NOISE",SF_TEX_NOISE},{"SVM_NODE_TEX_WHITE_NOISE",SF_TEX_WHITE_NOISE},{"SVM_NODE_TEX_WAVE",SF_TEX_WAVE},
     {"SVM_NODE_TEX_MAGIC",SF_TEX_MAGIC},{"SVM_NODE_TEX_BRICK",SF_TEX_BRICK},{"SVM_NODE_MAPPING",SF_MAPPING},
@@ -91,10 +91,14 @@ std::string shader_feature_list(ShaderFeatures features){
 
 // Mask layout invariants (pipelines.h): assigned bits keep their numbers.
 static_assert(SF_GEOMETRY.test(0)&&SF_MAPPING_DERIVATIVE.test(61)&&SF_TEX_GABOR.test(63)&&!SF_ALL.test(62));
-static_assert(SF_ALL.count()==105&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+static_assert(SF_ALL.count()==119&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(SF_MNEE_ENTRIES.test(111)&&!(SF_ALL&SF_MNEE_ENTRIES).any());
+static_assert(SF_BACKGROUND_SAMPLE_ENTRY.test(161)&&!(SF_ALL&SF_BACKGROUND_SAMPLE_ENTRY).any());
+static_assert(SF_VOLUME_SHADOW.test(162)&&SF_VOLUME_LIGHT.test(163)&&SF_VOLUME_PHASES.test(164)&&SF_NODE_VOLUME_COEFFICIENTS.test(165)&&SF_NODE_PRINCIPLED_VOLUME.test(166)&&SF_VOLUME_EMISSION.test(167));
+static_assert(SF_SUBSURFACE.test(168)&&SF_SUBSURFACE_ENTRY.test(169)&&!(SF_ALL&SF_SUBSURFACE_ENTRY).any()&&SF_FILM_MOTION_DEFORM.test(170));
+static_assert(SF_PHASE_FOURNIER_FORAND.test(171)&&SF_PHASE_RAYLEIGH.test(172)&&SF_PHASE_DRAINE.test(173)&&SF_PHASE_MIE.test(174)&&SF_VOLUME_HETEROGENEOUS.test(175)&&SF_VOLUME_RAY_MARCHING.test(176));
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
 static_assert(SF_DEBUG_OUTPUT.test(116)&&!(SF_ALL&SF_DEBUG_OUTPUT).any());
 static_assert(SF_DRIVER_CACHE_SALT.test(117)&&!(SF_ALL&SF_DRIVER_CACHE_SALT).any());
@@ -121,6 +125,7 @@ OpInfo op_info(uint32_t op){
     OP(NODE_VERTEX_COLOR,VertexColor,SF_VERTEX_COLOR) OP(NODE_VERTEX_COLOR_DERIVATIVE,VertexColor,SF_VERTEX_COLOR)
     OP(NODE_VECTOR_MATH,VectorMath,SF_VECTOR_MATH) OP(NODE_SEPARATE_VECTOR,SeparateVector,SF_SEPARATE_VECTOR)
     OP(NODE_COMBINE_VECTOR,CombineVector,SF_COMBINE_VECTOR) OP(NODE_CLOSURE_VOLUME,ClosureVolume,SF_CLOSURE_VOLUME)
+    OP(NODE_VOLUME_COEFFICIENTS,VolumeCoefficients,SF_NODE_VOLUME_COEFFICIENTS) OP(NODE_PRINCIPLED_VOLUME,PrincipledVolume,SF_NODE_PRINCIPLED_VOLUME)
     OP(NODE_CLOSURE_BSDF,ClosureBsdf,SF_NONE) OP(NODE_CLOSURE_HOLDOUT,ClosureHoldout,SF_CLOSURE_HOLDOUT)
     OP(NODE_CLOSURE_SET_NORMAL,ClosureSetNormal,SF_CLOSURE_SET_NORMAL) OP(NODE_CLOSURE_SET_WEIGHT,ClosureSetWeight,SF_NONE)
     OP(NODE_CLOSURE_WEIGHT,ClosureWeight,SF_NONE) OP(NODE_CLOSURE_BACKGROUND,ClosureBackground,SF_NONE)
@@ -171,16 +176,22 @@ OpInfo bsdf_info(uint32_t kind){
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:return {uint32_t(sizeof(SVMNodeGlossyBsdfData)),SF_BSDF_ASHIKHMIN_SHIRLEY};
     case CLOSURE_BSDF_ASHIKHMIN_VELVET_ID:return {uint32_t(sizeof(SVMNodeSimpleBsdfData)),SF_BSDF_VELVET};
     case CLOSURE_BSDF_DIFFUSE_TOON_ID:case CLOSURE_BSDF_GLOSSY_TOON_ID:return {uint32_t(sizeof(SVMNodeToonBsdfData)),SF_BSDF_TOON};
+    case CLOSURE_BSSRDF_BURLEY_ID:case CLOSURE_BSSRDF_RANDOM_WALK_ID:case CLOSURE_BSSRDF_RANDOM_WALK_LEGACY_ID:case CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID:
+      return {uint32_t(sizeof(SVMNodeBssrdfData)),SF_SUBSURFACE};
     default:return {0,SF_NONE};
   }
 }
 uint32_t byte_at(const std::vector<uint32_t> &w,size_t word,size_t offset){
   const size_t index=word+offset/4;return index<w.size()?(w[index]>>(8*(offset%4)))&255u:0u;
 }
-// Principled record census: optional thin-film/thin-wall handlers, and the
-// subsurface lobe the WebGPU device does not implement. A linked input may
-// enable a feature at run time, so it counts like an enabling constant.
+// Principled record census: optional thin-film/thin-wall handlers and the
+// subsurface lobe (a BSSRDF closure; with a thin wall the device does not implement
+// it). A linked input may enable a feature at run time, so it counts like an
+// enabling constant.
 struct PrincipledCensus {ShaderFeatures features;const char *unsupported=nullptr;};
+// The Christensen-Burley BSSRDF (integrator/subsurface_disk.h: disk sampling with up to four local hits) is not
+// ported; the random walk methods are.
+constexpr const char *burley_unsupported="Unsupported feature: subsurface scattering with the Christensen-Burley method is not implemented by the WebGPU device; the scene is rejected, not approximated";
 PrincipledCensus principled_census(const std::vector<uint32_t> &w,size_t data){
   PrincipledCensus out;auto field=[&](size_t offset){return w[data+offset/4];};
   auto linked=[](uint32_t bits){return (bits>>8)==(SVM_INPUT_STACK_OFFSET_MASK>>8);};
@@ -191,8 +202,13 @@ PrincipledCensus principled_census(const std::vector<uint32_t> &w,size_t data){
   const size_t wall=data+offsetof(SVMNodePrincipledBsdfData,thin_wall)/4;
   if((w[wall]!=0||byte_at(w,wall,offsetof(SVMInputInt,offset))!=SVM_STACK_INVALID)&&above(offsetof(SVMNodePrincipledBsdfData,transmission_weight),CLOSURE_WEIGHT_CUTOFF,true))
     out.features|=SF_BSDF_THIN_WALL;
-  if(above(offsetof(SVMNodePrincipledBsdfData,subsurface_weight),CLOSURE_WEIGHT_CUTOFF,true))
-    out.unsupported="Unsupported feature: Principled BSDF subsurface scattering (subsurface weight above 0 or linked) is not implemented by the WebGPU device; the scene is rejected, not approximated";
+  if(above(offsetof(SVMNodePrincipledBsdfData,subsurface_weight),CLOSURE_WEIGHT_CUTOFF,true)){
+    out.features|=SF_SUBSURFACE;
+    // bsdf_thin_subsurface_setup (diffuse or Oren-Nayar with a translucent lobe) is not ported.
+    if(w[wall]!=0||byte_at(w,wall,offsetof(SVMInputInt,offset))!=SVM_STACK_INVALID)
+      out.unsupported="Unsupported feature: Principled BSDF thin-wall subsurface scattering is not implemented by the WebGPU device; the scene is rejected, not approximated";
+    else if(field(offsetof(SVMNodePrincipledBsdfData,subsurface_method))==CLOSURE_BSSRDF_BURLEY_ID)out.unsupported=burley_unsupported;
+  }
   return out;
 }
 // Metallic BSDF record census (svm/closure.h CLOSURE_BSDF_PHYSICAL_CONDUCTOR /
@@ -239,11 +255,26 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
         const size_t field=op==NODE_JUMP_IF_ZERO?offsetof(SVMNodeJumpIfZero,jump_offset):offsetof(SVMNodeJumpIfOne,jump_offset);
         work.push_back(uint32_t(pc)+w[node+field/4]);  // u32 wrap, as in WGSL.
       }
+      // Volume phase functions beyond Henyey-Greenstein, and volume programs that can emit (VOLUME_EMISSION is
+      // kept only in scenes with volumes, shader_features).
+      if(op==NODE_CLOSURE_VOLUME||op==NODE_VOLUME_COEFFICIENTS){
+        const uint32_t kind=op==NODE_CLOSURE_VOLUME?w[node+offsetof(SVMNodeClosureVolume,closure_type)/4]:w[node+offsetof(SVMNodeVolumeCoefficients,closure_type)/4];
+        // The phase functions other than Henyey-Greenstein (VOLUME_PHASES regions plus one bit per family): their phase
+        // scatter runs in the volume module's shade_volume_phase entry (compile envelope; native/DEVICE.md,
+        // "Shader-defined volumes").
+        if(kind==CLOSURE_VOLUME_FOURNIER_FORAND_ID||kind==CLOSURE_VOLUME_RAYLEIGH_ID||kind==CLOSURE_VOLUME_DRAINE_ID||kind==CLOSURE_VOLUME_MIE_ID){
+          out.features|=SF_VOLUME_PHASES;
+          out.features|=kind==CLOSURE_VOLUME_FOURNIER_FORAND_ID?SF_PHASE_FOURNIER_FORAND:kind==CLOSURE_VOLUME_RAYLEIGH_ID?SF_PHASE_RAYLEIGH:
+                        kind==CLOSURE_VOLUME_DRAINE_ID?SF_PHASE_DRAINE:SF_PHASE_MIE|SF_PHASE_DRAINE;
+        }
+      }
+      if(op==NODE_CLOSURE_EMISSION||op==NODE_VOLUME_COEFFICIENTS||op==NODE_PRINCIPLED_VOLUME)out.features|=SF_VOLUME_EMISSION;
       if(op==NODE_CLOSURE_BSDF){
         const uint32_t kind=w[node+offsetof(SVMNodeClosureBsdf,closure_type)/4];const uint64_t data_at=pc;
         const OpInfo data=bsdf_info(kind);
         if(!data.bytes||!take(pc,data.bytes)){out.stopped_paths++;break;}
         out.features|=data.feature;
+        if(kind==CLOSURE_BSSRDF_BURLEY_ID&&out.unsupported.empty())out.unsupported=burley_unsupported;
         if(kind==CLOSURE_BSDF_PRINCIPLED_ID){const auto principled=principled_census(w,data_at);out.features|=principled.features;
           if(principled.unsupported&&out.unsupported.empty())out.unsupported=principled.unsupported;}
         if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR||kind==CLOSURE_BSDF_F82_CONDUCTOR){const auto metallic=metallic_census(w,data_at,kind);out.features|=metallic.features;
@@ -492,6 +523,11 @@ ShaderFeatures WebGPUDevice::shader_features(){
     census=svm_census(svm_node_words,shader_records.size());census_generation=svm_generation;
     enabled_features|=(census.features&~SF_PRINCIPLED_ALL)|principled_features|displacement_features;
     for(const KernelLight &light:light_records)if(light.type==LIGHT_AREA)enabled_features|=SF_LIGHT_AREA;
+    // Shader-defined volumes: shadow paths through media, and the volume direct light (volume.cpp).
+    if(data.kernel_features&KERNEL_FEATURE_VOLUME){enabled_features|=SF_VOLUME_SHADOW;if(data.integrator.use_direct_light)enabled_features|=SF_VOLUME_LIGHT;
+      for(auto &shader:shader_records)if((shader.flags&SD_HAS_VOLUME)&&(shader.flags&SD_HETEROGENEOUS_VOLUME)){enabled_features|=SF_VOLUME_HETEROGENEOUS;break;}
+      if(data.integrator.volume_ray_marching)enabled_features|=SF_VOLUME_RAY_MARCHING|SF_VOLUME_HETEROGENEOUS;}
+    else enabled_features&=~SF_VOLUME_EMISSION;
     // The last distribution entry is the CDF end marker (prim 0), not an emitter.
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0)enabled_features|=SF_LIGHT_TRIANGLE;
     for(const KernelShader &shader:shader_records)if(shader.flags&(SD_MIS_FRONT|SD_MIS_BACK))enabled_features|=SF_LIGHT_TRIANGLE;
@@ -520,6 +556,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
     if(film_cryptomatte())enabled_features|=SF_FILM_CRYPTOMATTE;
     if(data.kernel_features&KERNEL_FEATURE_DENOISING)enabled_features|=SF_FILM_DENOISING;
     if(film_motion_vectors())enabled_features|=SF_FILM_MOTION;
+    if(film_motion_vectors())for(const uint flags:object_flag_records)if(flags&SD_OBJECT_HAS_VERTEX_MOTION)enabled_features|=SF_FILM_MOTION_DEFORM;
     if(data.bvh.have_motion&&(data.film.pass_flag&(PASSMASK(DIFFUSE_COLOR)|PASSMASK(GLOSSY_COLOR)|PASSMASK(TRANSMISSION_COLOR))))enabled_features|=SF_FILM_MOTION_EXACT;
     if(data.integrator.transparent_shadows&&data.bvh.have_motion)enabled_features|=SF_SHADOW_MOTION;
     if(data.integrator.use_caustics&&data.bvh.have_motion)enabled_features|=SF_MNEE_MOTION;
@@ -616,7 +653,7 @@ bool WebGPUDevice::pipeline_current(const cbc::Pipeline &pipeline,const char *en
 ShaderFeatures WebGPUDevice::displacement_unused_svm_features(){
   const ShaderFeatures scene=shader_features();
   if(specialization_mode!=SpecializationMode::Scene)return SF_NONE;
-  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC;
+  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME;
   const ShaderFeatures handlers=svm|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_BUMP_UNDISPLACED;
   return scene&handlers&~displacement_program_features;
 }
@@ -628,8 +665,27 @@ ShaderFeatures WebGPUDevice::raytrace_unused_svm_features(){
   const SvmCensus used=svm_census(svm_node_words,shader_records.size(),&roots);
   // Census-only bits: the SVM node and closure families (lamp, motion,
   // terminator and light-sampling bits are set from the scene tables).
-  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC;
+  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME;
   return scene&svm&~used.features;
+}
+// prepare_surface evaluates the SVM programs of the hit triangles' shaders only (tri_shader): the SVM node regions
+// that only other shaders reach (the world, lamps) are left out of that entry (scene specialization only), as for
+// prepare_surface_raytrace. A world Environment Texture otherwise carries the equirectangular projection's arc
+// adapters into the bench HDRI scene's prepare_surface (1,113,668 inlined bytes, above the size guard).
+ShaderFeatures WebGPUDevice::surface_unused_svm_features(){
+  const ShaderFeatures scene=shader_features();
+  if(specialization_mode!=SpecializationMode::Scene)return SF_NONE;
+  if(surface_census_key==svm_generation)return scene&surface_unused;
+  surface_census_key=svm_generation;surface_unused=SF_NONE;
+  std::vector<uint32_t> roots;for(uint32_t s:tri_shader_words)roots.push_back(s&SHADER_MASK);
+  std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
+  if(roots.empty())return SF_NONE;
+  const SvmCensus used=svm_census(svm_node_words,shader_records.size(),&roots);
+  // Census-only bits, as for prepare_surface_raytrace: the SVM node families (lamp, motion, terminator and
+  // light-sampling bits are set from the scene tables and stay).
+  constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC;
+  surface_unused=svm&~used.features;
+  return scene&surface_unused;
 }
 // The MNEE walk evaluates SVM programs only at caustic casters: mnee_eval at the caster hits of the seed's probe
 // ray and mnee_contribute at the solution vertices, both on caster triangles. The SVM node and closure regions
@@ -656,7 +712,7 @@ ShaderFeatures WebGPUDevice::mnee_unused_svm_features(){
   // Census-only bits: the SVM node and closure handlers (lamp, motion, terminator, light-sampling, displacement and
   // film bits are set from the scene tables and stay).
   constexpr ShaderFeatures svm=(ShaderFeatures::range(0,64)&~ShaderFeatures::range(26,32))|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_MATH_ARC|
-    SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_NODE_IES|SF_LIGHT_FALLOFF|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_TEX_SKY_SCATTERING;
+    SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_NODE_AO|SF_NODE_IES|SF_LIGHT_FALLOFF|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME;
   mnee_unused=svm&~used.features;
   return scene&mnee_unused;
 }

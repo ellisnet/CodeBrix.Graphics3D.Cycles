@@ -107,6 +107,7 @@ def profile(source):
   if name=='expat':settings['EXPAT_MSVC_STATIC_CRT']='ON'
   # OIDN: CPU device only (the Metal device is osx-arm64's alone).
   if name=='oidn':settings['OIDN_DEVICE_METAL']='OFF'
+  if name=='embree':settings['EMBREE_MAX_ISA']='AVX2'
   if name=='openexr':settings['CMAKE_C_FLAGS']=(settings.get('CMAKE_C_FLAGS','')+' /clang:-Wno-error=incompatible-pointer-types').strip()
   rows.append((name,path,settings))
  return rows

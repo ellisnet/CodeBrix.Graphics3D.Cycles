@@ -44,7 +44,15 @@ if(WITH_OPENIMAGEDENOISE)
   target_link_libraries(codebrix_optional_openimagedenoise INTERFACE ${OPENIMAGEDENOISE_LIBRARIES})
   target_include_directories(codebrix_optional_openimagedenoise SYSTEM INTERFACE ${OPENIMAGEDENOISE_INCLUDE_DIRS})
 endif()
-foreach(feature WITH_CYCLES_EMBREE WITH_CYCLES_PATH_GUIDING
+# Embree: the reviewed snapshot (third_party/deps/embree) built as a static library into
+# the dependency prefix; FindEmbree.cmake supplies the variables. Its tasking system is
+# the reviewed oneTBB.
+if(WITH_CYCLES_EMBREE)
+  target_compile_definitions(codebrix_optional_embree INTERFACE WITH_EMBREE)
+  target_link_libraries(codebrix_optional_embree INTERFACE ${EMBREE_LIBRARIES} ${TBB_LIBRARIES})
+  target_include_directories(codebrix_optional_embree SYSTEM INTERFACE ${EMBREE_INCLUDE_DIRS})
+endif()
+foreach(feature WITH_CYCLES_PATH_GUIDING
                 WITH_OPENSUBDIV WITH_OPENVDB WITH_NANOVDB WITH_CYCLES_OSL)
   if(${feature})
     message(FATAL_ERROR "${feature} needs a reviewed CodeBrix dependency adapter before enabling")

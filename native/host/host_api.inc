@@ -9,12 +9,16 @@ const char *backend_name(uint32_t backend) {
     case CBC_HOST_WEBGPU: return "webgpu";
     case CBC_HOST_CPU_REFERENCE: return "cpu";
     case CBC_HOST_METAL: return "metal";
+    case CBC_HOST_CPU: return "cpu-embree";
     default: return "none";
   }
 }
 bool compiled(uint32_t backend) {
   switch (backend) {
     case CBC_HOST_CPU_REFERENCE: return true;
+#ifdef WITH_EMBREE
+    case CBC_HOST_CPU: return true;
+#endif
 #ifdef WITH_WEBGPU
     case CBC_HOST_WEBGPU: return true;
 #endif
@@ -62,7 +66,7 @@ extern "C" int cbc_host_resolve_backend(uint32_t requested, uint32_t *resolved) 
   if (resolved) *resolved = 0;
   return boundary([&] {
     require(resolved, "Missing output pointer");
-    require(requested >= CBC_HOST_WEBGPU && requested <= CBC_HOST_GPU, "Unknown backend");
+    require(requested >= CBC_HOST_WEBGPU && requested <= CBC_HOST_CPU, "Unknown backend");
     const uint32_t backend = requested == CBC_HOST_GPU ? gpu_backend() : requested;
     require(backend && compiled(backend), "Backend is not compiled into this binary", CBC_UNSUPPORTED);
     *resolved = backend;
@@ -81,7 +85,7 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
     out << "{\"schemaVersion\":1,\"abiVersion\":" << CBC_HOST_ABI << ",\"libraryVersion\":\"" << CBC_HOST_LIBRARY_VERSION
         << "\",\"cyclesRevision\":\"" << CBC_HOST_CYCLES_REVISION << "\",\"backends\":{\"compiled\":[";
     bool first = true;
-    for (uint32_t backend : {uint32_t(CBC_HOST_CPU_REFERENCE), uint32_t(CBC_HOST_WEBGPU), uint32_t(CBC_HOST_METAL)})
+    for (uint32_t backend : {uint32_t(CBC_HOST_CPU_REFERENCE), uint32_t(CBC_HOST_WEBGPU), uint32_t(CBC_HOST_METAL), uint32_t(CBC_HOST_CPU)})
       if (compiled(backend)) { out << (first ? "" : ",") << '"' << backend_name(backend) << '"'; first = false; }
     out << "],\"gpu\":\"" << backend_name(gpu_backend()) << "\",\"gpuFallbackToCpu\":false}";
     // Scope statements are facts about this source tree. Unsupported scene
@@ -92,14 +96,21 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
 #endif
         << "],\"passes\":\"registered pass types written by the Cycles CPU device\",\"arithmetic\":"
         << codebrix_cpu_arithmetic_json << "}";
+#ifdef WITH_EMBREE
+    out << ",\"cpu-embree\":{\"device\":\"Cycles CPU device with Cycles' automatic BVH (Embree); the CPU reference keeps BVH2\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\""
+#ifdef WITH_OSL
+        << ",\"custom\""
+#endif
+        << "],\"passes\":\"registered pass types written by the Cycles CPU device\"}";
+#endif
 #ifdef WITH_WEBGPU
     out << ",\"webgpu\":{\"device\":\"CodeBrix WGSL device (native/DEVICE.md)\",\"cameraTypes\":[\"perspective\",\"orthograph\",\"panorama\"],\"primitives\":[\"triangle\"],"
            "\"passes\":[\"combined\",\"emission\",\"background\",\"ao\",\"diffuse\",\"diffuse_direct\",\"diffuse_indirect\",\"diffuse_color\",\"glossy\",\"glossy_direct\",\"glossy_indirect\",\"glossy_color\","
            "\"transmission\",\"transmission_direct\",\"transmission_indirect\",\"transmission_color\",\"depth\",\"position\",\"normal\",\"roughness\",\"uv\",\"object_id\",\"material_id\",\"motion\",\"motion_weight\","
            "\"cryptomatte\",\"aov_color\",\"aov_value\",\"mist\",\"render_time\",\"sample_count\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\",\"denoising_albedo\",\"denoising_normal\","
-           "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\"],\"lightGroups\":true,"
-           "\"renderTimeRejections\":[\"stereo cameras\",\"shadow linking\",\"motion pass and denoising motion features with deforming geometry\",\"volume passes\","
-           "\"volume light passes\",\"background light portals\",\"heterogeneous volumes\","
+           "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\",\"volume_majorant\",\"volume_majorant_sample_count\"],\"lightGroups\":true,"
+           "\"renderTimeRejections\":[\"stereo cameras\",\"shadow linking\","
+           "\"volume light passes\",\"background light portals\",\"Christensen-Burley and thin-walled subsurface scattering\","
            "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL

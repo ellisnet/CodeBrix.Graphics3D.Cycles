@@ -199,7 +199,7 @@ def main():
     assert re.fullmatch(r'1\.0\.\d{8}\.\d+',row['libraryVersion']) and row['cyclesRevision']==REVISION
     binary_caps=json.loads((target/'run.capabilities-binary.json').read_text());host_caps=json.loads((target/'run.capabilities-host.json').read_text())
     assert binary_caps['abiVersion']==1 and binary_caps['cyclesRevision']==REVISION and 'host' not in binary_caps
-    assert binary_caps['backends']==dict(compiled=['cpu','webgpu'],gpu='webgpu',gpuFallbackToCpu=False),binary_caps['backends']
+    assert binary_caps['backends']==dict(compiled=['cpu','webgpu','cpu-embree'],gpu='webgpu',gpuFallbackToCpu=False),binary_caps['backends']
     assert binary_caps['imageInput']['formats']==['float','float4','half','half4','byte','byte4','ushort','ushort4']
     assert host_caps['host']['backend']==('cpu' if mode=='cpu' else 'webgpu')
     assert host_caps['host']['deviceReport']['backend']==host_caps['host']['backend']

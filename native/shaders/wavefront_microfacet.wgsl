@@ -238,13 +238,17 @@ fn beckmann_log(value:f32)->f32{
     for(var i=0u;i<6u;i++){if(i<4u){hi=rounded_add(f*hi,coefficients[i]);}else{lo=rounded_add(f*lo,coefficients[i]);}}
     return rounded_add(rounded_add(f4*hi,f*lo),f32(exponent))*0.69314718056;
 }
+// Both coefficient sets live in one private array that is never reassigned: the Adreno 730
+// compiler (EV031.36.08.33) miscompiled the earlier form, which reassigned the array in the
+// tail branch before the loop (wrong values for most inputs on that GPU only; the same class
+// as the motion_compose loop forms, native/DEVICE.md "MNEE entries on the Adreno 730").
 fn beckmann_ierf(x:f32)->f32{
-    let a=min(abs(x),0.99999994);var w=-beckmann_log(rounded_add(1.0,-a)*rounded_add(1.0,a));
-    var coefficients=array<f32,8>(3.43273939e-07,-3.5233877e-06,-4.39150654e-06,0.00021858087,-0.00125372503,-0.00417768164,0.246640727,1.50140941);var p=2.81022636e-08;
-    if(w<5.0){w=rounded_add(w,-2.5);}
-    else{w=rounded_add(rounded_sqrt(w),-3.0);p=-0.000200214257;
-        coefficients=array<f32,8>(0.000100950558,0.00134934322,-0.00367342844,0.00573950773,-0.0076224613,0.00943887047,1.00167406,2.83297682);}
-    for(var i=0u;i<8u;i++){p=rounded_add(p*w,coefficients[i]);}
+    let a=min(abs(x),0.99999994);var w=-beckmann_log(rounded_add(1.0,-a)*rounded_add(1.0,a));let central=w<5.0;
+    var coefficients=array<f32,16>(3.43273939e-07,-3.5233877e-06,-4.39150654e-06,0.00021858087,-0.00125372503,-0.00417768164,0.246640727,1.50140941,
+        0.000100950558,0.00134934322,-0.00367342844,0.00573950773,-0.0076224613,0.00943887047,1.00167406,2.83297682);
+    var p=select(-0.000200214257,2.81022636e-08,central);let offset=select(8u,0u,central);
+    if(central){w=rounded_add(w,-2.5);}else{w=rounded_add(rounded_sqrt(w),-3.0);}
+    for(var i=0u;i<8u;i++){p=rounded_add(p*w,coefficients[offset+i]);}
     return p*x;
 }
 fn beckmann_signf(x:f32)->f32{return select(1.0,-1.0,x<0.0);}

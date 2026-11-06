@@ -57,6 +57,33 @@ ARCHIVES = {
                      'third-party-programs-oneTBB.txt': 'oneTBB notices: oneTBB ships from its own reviewed snapshot with its own notices.',
                  },
                  scripts={'scripts/blob_to_cpp.py'}),
+    'embree': dict(source='https://github.com/RenderKit/embree/archive/refs/tags/v4.4.1.tar.gz',
+                   archiveSha256='dcf338cc61b636c871ccf370e673bfd380c5ecb71ce49ad50f28e1d4ec9995dc',
+                   version='v4.4.1', root='embree-4.4.1/', license='Apache-2.0 AND MIT',
+                   review=ROOT/'third_party/embree-license-review.json',
+                   # CPU library profile (the product CPU device's BVH): the SYCL GPU kernels and their Level Zero
+                   # headers, tutorials, tests, the superbuild, documentation and packaging scripts are not imported.
+                   excludedDirectories={
+                       'kernels/sycl/': 'SYCL GPU kernels: EMBREE_SYCL_SUPPORT is OFF on every RID.',
+                       'kernels/level_zero/': 'Level Zero headers (MIT): used only by the SYCL GPU build, disabled.',
+                       'tutorials/': 'Example applications and their third-party libraries (ImGui, GLFW, stb, TinyEXR, OpenEXR, USD and others): EMBREE_TUTORIALS is OFF.',
+                       'tests/': 'Test scripts, models and Catch2: not built (the top-level CMakeLists.txt is adapted).',
+                       'superbuild/': 'Dependency superbuild of the binary releases: not used (oneTBB ships from its own reviewed snapshot).',
+                       'doc/': 'Documentation sources.',
+                       'man/': 'Generated man pages (package.cmake is adapted not to install them).',
+                   },
+                   excludedFiles={
+                       'readme.pdf': 'Generated documentation.',
+                       'third-party-programs.txt': 'Notice inventory of the binary releases (tutorial and SYCL components, oneTBB, OIDN); only the library sources are imported, and sse2neon (MIT) is recorded per file.',
+                       'third-party-programs-DPCPP.txt': 'DPC++ notices: SYCL only, disabled.',
+                       'third-party-programs-oneAPI-DPCPP.txt': 'oneAPI DPC++ compiler EULA notices: SYCL only, disabled.',
+                       'third-party-programs-TBB.txt': 'oneTBB notices: oneTBB ships from its own reviewed snapshot with its own notices.',
+                       'third-party-programs-OIDN.txt': 'Open Image Denoise notices: OIDN ships from its own reviewed snapshot.',
+                       'common/cmake/dep_level_zero.cmake': 'Level Zero dependency for the SYCL build, disabled.',
+                       'requirements.txt': 'Python requirements of the test and benchmark scripts.',
+                       'CTestConfig.cmake': 'CDash test configuration (tests are not built).',
+                   },
+                   scripts=set()),
 }
 
 
@@ -187,6 +214,36 @@ def transform(id,name,data):
             '  else()\n'
             '    set(CMAKE_INSTALL_RPATH "$ORIGIN")\n'
             '  endif()\n')],
+        ('embree','CMakeLists.txt'): [('ADD_SUBDIRECTORY(tests)\n','# CodeBrix: the test tree is not imported.\n'),(
+            'CONFIGURE_FILE(\n  "${PROJECT_SOURCE_DIR}/kernels/config.h.in"\n  "${PROJECT_SOURCE_DIR}/kernels/config.h"\n  )\n\n'
+            'INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})\n\n'
+            'CONFIGURE_FILE(\n  "${PROJECT_SOURCE_DIR}/kernels/rtcore_config.h.in"\n  "${PROJECT_SOURCE_DIR}/include/embree4/rtcore_config.h"\n)\n\n'
+            'CONFIGURE_FILE(\n  "${PROJECT_SOURCE_DIR}/kernels/hash.h.in"\n  "${PROJECT_SOURCE_DIR}/kernels/hash.h"\n)\n'
+            'CONFIGURE_FILE(\n  "${PROJECT_SOURCE_DIR}/kernels/export.linux.map.in"\n  "${PROJECT_SOURCE_DIR}/kernels/export.linux.map"\n)\n'
+            'CONFIGURE_FILE(\n  "${PROJECT_SOURCE_DIR}/kernels/export.macosx.map.in"\n  "${PROJECT_SOURCE_DIR}/kernels/export.macosx.map"\n)\n',
+            '# CodeBrix: the generated headers go to the build tree, never into the reviewed source snapshot. They keep\n'
+            '# their relative layout, so the sources\' "../config.h", "../hash.h" and "../include/embree4/rtcore_config.h"\n'
+            '# resolve through the include directories below; the export maps are the shipped ones (no API namespace).\n'
+            'CONFIGURE_FILE(\n  "${PROJECT_SOURCE_DIR}/kernels/config.h.in"\n  "${PROJECT_BINARY_DIR}/kernels/config.h"\n  )\n\n'
+            'INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})\n\n'
+            'CONFIGURE_FILE(\n  "${PROJECT_SOURCE_DIR}/kernels/rtcore_config.h.in"\n  "${PROJECT_BINARY_DIR}/include/embree4/rtcore_config.h"\n)\n\n'
+            'CONFIGURE_FILE(\n  "${PROJECT_SOURCE_DIR}/kernels/hash.h.in"\n  "${PROJECT_BINARY_DIR}/kernels/hash.h"\n)\n'
+            'FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/kernels/common")\n'
+            'INCLUDE_DIRECTORIES("${PROJECT_BINARY_DIR}/kernels/common" "${PROJECT_BINARY_DIR}/kernels" "${PROJECT_BINARY_DIR}/include/embree4")\n')],
+        ('embree','common/cmake/package.cmake'): [(
+            'IF (NOT WIN32)\n  INSTALL(DIRECTORY man/man3 DESTINATION "${CMAKE_INSTALL_MANDIR}" COMPONENT devel)\nENDIF()\n',
+            '# CodeBrix: the generated man pages are not imported.\n'),(
+            'INSTALL(DIRECTORY include/embree4 DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT devel)\n',
+            'INSTALL(DIRECTORY include/embree4 DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT devel)\n'
+            '# CodeBrix: the configured header is generated in the build tree (CMakeLists.txt).\n'
+            'INSTALL(FILES "${PROJECT_BINARY_DIR}/include/embree4/rtcore_config.h" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/embree4" COMPONENT devel)\n'),(
+            'INSTALL(FILES "${PROJECT_SOURCE_DIR}/readme.pdf" DESTINATION "${CMAKE_INSTALL_DOCDIR}" COMPONENT lib)\n'
+            'INSTALL(FILES "${PROJECT_SOURCE_DIR}/third-party-programs.txt" DESTINATION "${CMAKE_INSTALL_DOCDIR}" COMPONENT lib)\n'
+            'INSTALL(FILES "${PROJECT_SOURCE_DIR}/third-party-programs-TBB.txt" DESTINATION "${CMAKE_INSTALL_DOCDIR}" COMPONENT lib)\n'
+            'INSTALL(FILES "${PROJECT_SOURCE_DIR}/third-party-programs-OIDN.txt" DESTINATION "${CMAKE_INSTALL_DOCDIR}" COMPONENT lib)\n'
+            'INSTALL(FILES "${PROJECT_SOURCE_DIR}/third-party-programs-DPCPP.txt" DESTINATION "${CMAKE_INSTALL_DOCDIR}" COMPONENT lib)\n'
+            'INSTALL(FILES "${PROJECT_SOURCE_DIR}/third-party-programs-oneAPI-DPCPP.txt" DESTINATION "${CMAKE_INSTALL_DOCDIR}" COMPONENT lib)\n',
+            '# CodeBrix: the PDF and the notice inventories of the binary releases are not imported.\n')],
         ('oidn','core/thread.cpp'): [(
             '#if defined(__linux__)\n'
             '  #include <sched.h>\n'
@@ -209,11 +266,13 @@ def transform(id,name,data):
         if content.count(before)!=1:raise RuntimeError('Upstream build adaptation changed: '+id+'/'+name)
         content=content.replace(before,after)
     description={'oiio':'omit disabled test scaffolding and standalone CPack installers.',
+                 'embree':{'CMakeLists.txt':'omit the test tree, which is not imported; generate the configured headers in the build tree, never in the source snapshot.',
+                           'common/cmake/package.cmake':'install only the imported documentation files (the man pages, the PDF and the notice inventories of the binary releases are not in the snapshot) and the configured header from the build tree.'}.get(name),
                  'tiff':'omit the disabled legacy LZW decoder from the source list.',
                  'jpeg':'omit the unused checksum test program; image codecs are unchanged.',
                  'oidn':{'CMakeLists.txt':'install only the imported documentation files (the PDF and the notice inventories of unimported components are not in the snapshot).',
                          'cmake/oidn_package.cmake':'relocatable install run path (the libraries find each other in their own directory, never the build prefix).',
-                         'core/thread.cpp':'Android (bionic) thread affinity through sched_getaffinity/sched_setaffinity; other platforms unchanged.'}[name]}[id]
+                         'core/thread.cpp':'Android (bionic) thread affinity through sched_getaffinity/sched_setaffinity; other platforms unchanged.'}.get(name)}[id]
     comment='// ' if Path(name).suffix in {'.c','.cpp','.h','.hpp'} else '# '
     return (comment+'Modified by CodeBrix: '+description+'\n'+comment+'Copyright (c) 2026 Jeremy Ellis and contributors\n'+content).encode()
 

@@ -1,0 +1,140 @@
+{
+  "sceneId": "passes/light-groups",
+  "sceneSha256": "3cb03425e1eae3eec53b6656fcab83b4d5a92e68d79087628dd87933a89bff4b",
+  "backend": "cpu-x64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00655644,
+    0.00423739
+  ],
+  "filmSha256": [
+    "4c1fa27af4e48d68e30432c7a2d5626f41b456a0ebf6abcd24a25a25ff45092f",
+    "4c1fa27af4e48d68e30432c7a2d5626f41b456a0ebf6abcd24a25a25ff45092f"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "LG lamp",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "7ecea315a247f6360b6351ac334f662c24bfb7f336abc516d36ad65b67f1af68",
+        "7ecea315a247f6360b6351ac334f662c24bfb7f336abc516d36ad65b67f1af68"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "LG panel",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "7ff7a826cdf31d2fde0613a118a14fca4dfe173e30ee8f0873eaffc3f0106eaa",
+        "7ff7a826cdf31d2fde0613a118a14fca4dfe173e30ee8f0873eaffc3f0106eaa"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "LG world",
+      "type": "combined",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a2079c0f1a41b85eb6884048af42ee01ade5aed7ba87586d979bb5728af16433",
+        "a2079c0f1a41b85eb6884048af42ee01ade5aed7ba87586d979bb5728af16433"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "DiffDir",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "150c4e448085dd02b85d27e36621beab2e65637b6ffe276ead666a538bd9bf9e",
+        "150c4e448085dd02b85d27e36621beab2e65637b6ffe276ead666a538bd9bf9e"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "GlossDir",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "29703d583ae6b7d5b827320ac2c9e95fdad299e1f48a3a29a5629c94b9f9ec28",
+        "29703d583ae6b7d5b827320ac2c9e95fdad299e1f48a3a29a5629c94b9f9ec28"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "f1ed54307656855716087ddaf195169376da6d29",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "fe8231c8ff9989135d55e334ab00917b38c7697b7da413d0c149f4b02e2a0a3f",
+  "runnerSha256": "87701039b44a2499b9f1759cfb58426ef556c624e5f37321b3200e09629a12d1",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/light-groups.json",
+  "backendDescription": "Cycles CPU device, GCC x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.027,
+  "runnerCommand": [
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/oracle/scenes/passes/light-groups.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-x64-linux",
+    "--output",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/val35/oracles/corpus/oracle/passes/light-groups/cpu-x64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)"
+}

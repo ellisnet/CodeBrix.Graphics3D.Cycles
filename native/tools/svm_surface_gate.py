@@ -36,8 +36,10 @@ def run(android=False):
         raise RuntimeError(result.stderr)
     report = json.loads(result.stdout)
     assert report['passed'] and report['originalCpuSurfaceSvm']
+    # untouchedGuardBytes 4416: the shader-data cache guard check (surface_svm_test.h, 64 bytes per verified cache) is
+    # counted beside the output and closure-scratch guards.
     expected = {'compiledGraphs':20, 'cases':23, 'paths':8874, 'closureFamilies':5,
-                'integerChecks':603432, 'floatChecks':15414138, 'stateChecks':3297280, 'untouchedGuardBytes':2944}
+                'integerChecks':603432, 'floatChecks':15414138, 'stateChecks':3297280, 'untouchedGuardBytes':4416}
     assert all(report[k] == v for k, v in expected.items()), 'Surface SVM coverage changed'
     assert report['invalidCasesRejected'] == 11 and report['cyclesAllocationBytesAfterCleanup'] == 0
     loaded = Path((OUT/'run.library.txt').read_text()).resolve()

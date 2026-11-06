@@ -58,6 +58,9 @@ fn surface_ao(index:u32,slot:u32,sd:SurfaceData,r:SvmResult){
     state_u32(S_shadow_path_flag,shadow,state_word(S_path_flag,index)|AO_SHADOW_FLAG);
     state_u16(S_shadow_path_bounce,shadow,state_half(S_path_bounce,index));state_u16(S_shadow_path_transparent_bounce,shadow,state_half(S_path_transparent_bounce,index));
     state_u16(S_shadow_path_volume_bounds_bounce,shadow,state_half(S_path_volume_bounds_bounce,index));
+//#if VOLUME_SHADOW
+    vl_copy_volume_stack(index,shadow);
+//#endif
     // surface_shader_alpha: saturate(1 - transparency); transparency is zero without SD_TRANSPARENT.
     let alpha=select(vec3<f32>(1),clamp(vec3<f32>(1)-r.transparency,vec3<f32>(0),vec3<f32>(1)),(r.runtime_flag&SR_TRANSPARENT)!=0u);
     state_vec3(S_shadow_path_throughput,shadow,heap_vec3(state_address(S_path_throughput,index,12u))*alpha);
@@ -65,7 +68,7 @@ fn surface_ao(index:u32,slot:u32,sd:SurfaceData,r:SvmResult){
     state_u16(S_shadow_path_queued_kernel,shadow,K_SHADOW_INTERSECT);let counter=load_word(p(7u)+S_queue_counter)/4u;atomicAdd(&heap[counter+K_SHADOW_INTERSECT],1u);
 }
 //#endif
-//#if SVM_NODE_RAYTRACE
+//#if RAYTRACE_ANY
 // The Ambient Occlusion shader node's ray tracing (svm_ao), compiled only into
 // prepare_surface_raytrace (DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE). Every
 // other SVM evaluation runs the node with Cycles' non-raytrace node masks (ao = 1).
@@ -216,8 +219,8 @@ fn svm_ao_occlusion(index:u32,sd:SurfaceData,normal:vec3<f32>,distance:f32,sampl
     svm_raytrace=true;surface_prepare(id);
 }
 //#endif
-//#if SVM_NODE_RAYTRACE
-//#if SVM_RAYTRACE_NODES
+//#if RAYTRACE_ANY
+//#if RAYTRACE_LOCAL
 // SPDX-FileCopyrightText: 2011-2025 Blender Foundation (svm/raycast.h; Apache-2.0)
 // The Bevel and Raycast nodes' ray tracing (pinned svm/bevel.h, svm/raycast.h,
 // bvh/local.h with geom/geom_intersect.h local_intersect_get_record_index), compiled
@@ -339,6 +342,10 @@ fn raytrace_traverse(sd:SurfaceData,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
     }
     return hits;
 }
+//#endif
+//#endif
+//#if SVM_NODE_RAYTRACE
+//#if SVM_RAYTRACE_NODES
 // The geometry of a hit (shader_setup_from_ray, the steps of surface_setup_hit with
 // the hit object's motion transform from the traversal or the shading point instead
 // of a second motion_object, and without the unused differentials), without the

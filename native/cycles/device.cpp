@@ -247,7 +247,9 @@ void WebGPUDevice::const_copy_to(const char *name,void *host,size_t size){guard(
   upload(address,host,size);
 });}
 // Recorder entries 27-33: the INTERSECT_MNEE entries in dispatch order (35 = shade_surface_sample, 36 =
-// shade_surface_passes, 37 = cryptomatte_postprocess, 38 = unknown).
+// shade_surface_passes, 37 = cryptomatte_postprocess, 38 = connect_surface_ao, 42 = shade_surface_light_background,
+// 43-44 = volume_guiding_filter_x/_y, 45-46 = shade_volume_segment, shade_volume_light, 47 = intersect_subsurface,
+// 48 = shade_volume_phase, 49 = shade_volume_heterogeneous, 50 = shade_volume_ray_marching).
 static unsigned mnee_entry_of(const WebGPUDevice &d,WGPUComputePipeline actual){
   for(unsigned i=0;i<WebGPUDevice::mnee_entries;i++)if(d.mnee_pipelines[i].value&&actual==d.mnee_pipelines[i].value)return 27+i;
   return ~0u;}
@@ -258,8 +260,8 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
   require(work>0&&groups<=gpu.limits.maxComputeWorkgroupsPerDimension,"Dispatch exceeds device limits");
   if(observer){
     const WGPUComputePipeline actual=pipeline?pipeline:controls.value;
-    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:actual==light_nee.value?18:actual==background_eval.value?19:actual==light_nee_prepare.value?20:actual==surface_light_select.value?21:actual==light_tree_forward.value?22:actual==sc_assign.value?23:actual==sc_split.value?24:actual==sc_count.value?25:actual==surface_prepare_raytrace.value?26:actual==mnee_cleanup.value?34:actual==surface_sample.value?35:actual==surface_passes.value?36:actual==film_post.value?37:actual==surface_ao.value?38:actual==film_adaptive_check.value?39:actual==film_adaptive_x.value?40:actual==film_adaptive_y.value?41:mnee_entry_of(*this,actual);
-    require(entry<42,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
+    unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:actual==light_nee.value?18:actual==background_eval.value?19:actual==light_nee_prepare.value?20:actual==surface_light_select.value?21:actual==light_tree_forward.value?22:actual==sc_assign.value?23:actual==sc_split.value?24:actual==sc_count.value?25:actual==surface_prepare_raytrace.value?26:actual==mnee_cleanup.value?34:actual==surface_sample.value?35:actual==surface_passes.value?36:actual==film_post.value?37:actual==surface_ao.value?38:actual==film_adaptive_check.value?39:actual==film_adaptive_x.value?40:actual==film_adaptive_y.value?41:actual==surface_light_background.value?42:actual==film_volume_x.value?43:actual==film_volume_y.value?44:actual==volume_segment.value?45:actual==volume_light.value?46:actual==subsurface_walk.value?47:actual==volume_phase.value?48:actual==volume_heterogeneous.value?49:actual==volume_ray_marching.value?50:mnee_entry_of(*this,actual);
+    require(entry<51,"Recorder encountered an unknown pipeline");observer->dispatch(params,work,entry,workgroup_size);
   }
   auto uniform=gpu.buffer(sizeof(params),WGPUBufferUsage_Uniform|WGPUBufferUsage_CopyDst,params.data());
   std::array<WGPUBindGroupEntry,2> entries{};entries[0].binding=0;entries[0].buffer=arena;entries[0].size=arena_bytes;

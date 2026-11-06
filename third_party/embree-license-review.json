@@ -1,0 +1,2118 @@
+{
+ "approved": true,
+ "component": "embree",
+ "name": "Intel Embree",
+ "version": "v4.4.1",
+ "archiveSha256": "dcf338cc61b636c871ccf370e673bfd380c5ecb71ce49ad50f28e1d4ec9995dc",
+ "scope": "CPU library profile (the BVH of the product CPU device on every RID): the SYCL GPU kernels and their Level Zero headers, tutorials, tests, the superbuild, documentation, man pages, packaging scripts and the notice inventories of the binary releases are excluded (see the component exclusions in dependency-imports.json).",
+ "reference": "Licence check of the release source archive: verdict PASS with build conditions (docs/RELEASE-LICENSE-PLAN.md, \"Embree build conditions\"). Every imported file is Apache-2.0 except common/simd/arm/sse2neon.h (MIT, compiled on ARM64 only); the proprietary texts of the release (oneAPI DPC++ EULA notices, Visual C++ redistributables) concern the binary releases and are not imported.",
+ "buildConditions": [
+  "EMBREE_SYCL_SUPPORT OFF, EMBREE_ISPC_SUPPORT OFF, EMBREE_TUTORIALS OFF on every RID",
+  "EMBREE_TASKING_SYSTEM TBB with the reviewed third_party/deps/tbb snapshot (no second TBB)",
+  "Static library (EMBREE_STATIC_LIB ON) linked into the product CPU device; EMBREE_ZIP_MODE OFF",
+  "Ship LICENSE.txt (Apache-2.0) and the sse2neon MIT notice in THIRD-PARTY-NOTICES.txt"
+ ],
+ "fileCount": 420,
+ "files": {
+  "CHANGELOG.md": {
+   "sha256": "a7c7e8103e8e0cb387fbf28c3ab873204304109586aa8606deb0f1c545e67e43",
+   "license": "Apache-2.0",
+   "basis": "Upstream component license embree/LICENSE.txt: build/template/documentation/data file within that component; no separate restrictive grant detected."
+  },
+  "CMakeLists.txt": {
+   "sha256": "fd02686324d732f0ec9a69ce18bbbdc82cc30892e65bc3bc184d2beab9ec5b53",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt. Modified by CodeBrix (build adaptation recorded in tools/licensing/dependency_sources.py)."
+  },
+  "LICENSE.txt": {
+   "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+   "license": "Apache-2.0",
+   "basis": "The component licence text (Apache License 2.0)."
+  },
+  "README.md": {
+   "sha256": "6fcf12b3f085e1b6c379f84cb32516b8a5e9af5a7cb2ad8e84bb0886bc878b63",
+   "license": "Apache-2.0",
+   "basis": "Upstream component license embree/LICENSE.txt: build/template/documentation/data file within that component; no separate restrictive grant detected."
+  },
+  "SECURITY.md": {
+   "sha256": "1eb57a442ed14208db112f98010ad255947c37b92221218cc19a3af36be9aca1",
+   "license": "Apache-2.0",
+   "basis": "Upstream component license embree/LICENSE.txt: build/template/documentation/data file within that component; no separate restrictive grant detected."
+  },
+  "common/CMakeLists.txt": {
+   "sha256": "a804bd446797c8569f59a129c80ba08b8ad44d56edd0a2eddc2cc5a1996f1c72",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_any_of.h": {
+   "sha256": "9e58b43fe98d60d2e4a2a6e31cd157e110755b59198420a13f96b2d084f544c4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_filter.h": {
+   "sha256": "8765224610f337e6c4efa8ccb39294692944644b7b9b987dbcde1905581e8944",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_for.h": {
+   "sha256": "2829492dd4d2dfc9076b6edb5fadc1ac9a9684bfe7117d5b68da1949c93f5ade",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_for_for.h": {
+   "sha256": "dc8014a3cfb1205fbbdae0429dfc99438f58edef744f49c5124c02d7f85a5336",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_for_for_prefix_sum.h": {
+   "sha256": "c83eff9e06bc4da945fd2580878633ee982ffce9a41831ece65eac9d445a3ce2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_map.h": {
+   "sha256": "b59ec2f7bae54be4693b8fbadb867a60c2d37a4188c2da8ea37aa2d85941dc54",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_partition.h": {
+   "sha256": "984ef8463c2d3c5509bdb97abcc3cdeb7ad5e652de4e62edb47bb2e198591776",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_prefix_sum.h": {
+   "sha256": "e3942b65b2649b12f81d88758f9b112ef2806cda3e25f1565cf1b04a4c372bd4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_reduce.h": {
+   "sha256": "ef4089cc0293c14a25c29a907078d4ee477f662e2f1a01f8a1db0bbb708bdd3b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_set.h": {
+   "sha256": "9ea585ec68d98ad0212db95140b46c8d2629769d4edeb4853edbaf5d4ab9676f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/algorithms/parallel_sort.h": {
+   "sha256": "5db5689828e247bcdbb64214fd67e6b72be1145b824178a770f2bdfb63a95f55",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/FindOpenImageIO.cmake": {
+   "sha256": "959e17123f5b9f46326cc2e80fe2aab8575e0081249b110178446a6b72213c20",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/FindPNG.cmake": {
+   "sha256": "ddb7ca6fe5e13bf6df23d079f1822b105fa1a14a7f9ec798c29dd7d5b3db8412",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/FindTBB.cmake": {
+   "sha256": "56b57d3f7e00fa43a67a4ee1053d37924beab67c7a129e7cfe49255fcae16204",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/check_arm_neon.cpp": {
+   "sha256": "ca16dc3e5a2af386315e8a9d6baa28657bdf9a59bea0063dc4d95494e5f61871",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/check_globals.cmake": {
+   "sha256": "b2cdf9e9163002026d15fc25ed34bbf376a5c1d2518414e9eab17cdd71d6c788",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/check_isa.cpp": {
+   "sha256": "360c498469d200b84068b3f15601125b82686186b3bf1b568748362f5a2120d5",
+   "license": "Apache-2.0",
+   "basis": "In-file Apache License 2.0 notice and retained Kitware copyright (CMake helper); embree/LICENSE.txt."
+  },
+  "common/cmake/check_isa_default.cmake": {
+   "sha256": "6d65bc8bf33840d815ea18cd8a42d5cff4efd0080d4c863aa7fa43c0cb98356c",
+   "license": "Apache-2.0",
+   "basis": "In-file Apache License 2.0 notice and retained Kitware copyright (CMake helper); embree/LICENSE.txt."
+  },
+  "common/cmake/check_stack_frame_size.cmake": {
+   "sha256": "66a4d6fff8f8f7f1d7a25f7208da3d0525bed7657f6b9ccc40e0bb4dfd038bc5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/clang.cmake": {
+   "sha256": "9d8b848acbf0af90630ec02044d1ca9aea0c9f0117551185a08824580495f9ff",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/crayprgenv.cmake": {
+   "sha256": "f9c175dd2bd1cea8c4a90ab73f7b8c73f07505657aea4a9a6447d2cb524d56f8",
+   "license": "Apache-2.0",
+   "basis": "In-file Apache License 2.0 notice and retained Kitware copyright (CMake helper); embree/LICENSE.txt."
+  },
+  "common/cmake/create_isa_dummy_file.cmake": {
+   "sha256": "2d6f979a18e5376361dfd424a0b8da5c2bdc5d4a227a36c58c6e424946506a98",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/dpcpp.cmake": {
+   "sha256": "d542ddfdb748da0416ec3ad199ad7a28f0b865a800c53e1d05eb7443a4bf892e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/embree-config-builddir.cmake": {
+   "sha256": "59c6dd23734bc3c7a9cba9d1c05249413f2b6beed67331110589010e04329cd2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/embree-config-version.cmake": {
+   "sha256": "ed1c4fd4b007674c8827c70ee50f8a821dd252aed80aafbad88ec87425e789a8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/embree-config.cmake": {
+   "sha256": "6e3cd6a3f11f7eb70ab59f97a656bb09d61570089d9a315d73cf261560309762",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/embree.entitlements": {
+   "sha256": "7dfc81db3e5e4a8337b49aa59b01820abcaef80bd74bada5b489e32473e17a54",
+   "license": "Apache-2.0",
+   "basis": "Upstream component license embree/LICENSE.txt: build/template/documentation/data file within that component; no separate restrictive grant detected."
+  },
+  "common/cmake/gnu.cmake": {
+   "sha256": "8dfa9b2983d5b9fb71871a51d365337a50afd1207f9e3dd87c395eee932b82c2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/installTBB.cmake": {
+   "sha256": "1c683a7e437eebf765a305dff8603d7c5844dd2d7565ea37d267b85f0743132c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/intel.cmake": {
+   "sha256": "9d19395852928e01a881f2232cb1a146792b3d219d29264a9bb9e3851087e429",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/ispc.cmake": {
+   "sha256": "321f8eab1d848da585159e8537e39a2cccdc0dfdbc4120b0deac8a8b48cd848e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/msvc.cmake": {
+   "sha256": "a9ec62ceb5efb45c02149dae0963206944655b8316dbfb673c06c28349524b17",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/msvc_post.cmake": {
+   "sha256": "f7015e1be961c252187f4aed7b1a1ca13e8f59718b2a091152741b12fe0b9fd1",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/package.cmake": {
+   "sha256": "305f1a59e6e911891063aca20695817affdb5a76aa82c531869271e7f21185b7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt. Modified by CodeBrix (build adaptation recorded in tools/licensing/dependency_sources.py)."
+  },
+  "common/cmake/rpm_ldconfig.sh": {
+   "sha256": "ac96d56cabedadb619e50542ec8a254d1e33a590cfd712b8ee4d510e009770c0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/test.cmake": {
+   "sha256": "bd23eee57e9795edfc4a00a0feeed4cd312e0dabc7e8c0dc18b2782012436943",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/tutorial.cmake": {
+   "sha256": "1d7aa6874b478324d4fe61df5eb4081694190619803e092aa1e870a2c9b4331f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/cmake/uninstall.cmake.in": {
+   "sha256": "72f49ffae0c36a43b4b4007295836e22a6ac4513a10e10b2a3c011a0b7026eab",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/lexers/CMakeLists.txt": {
+   "sha256": "2fc7f109e194ef8aa1c74421bd9ae78192df65f60fd1036abda4ddfd2ea5c0a1",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/lexers/parsestream.h": {
+   "sha256": "b72bd3b5efe1c1d5605d1ce62b3c233187a5ff5f6779d7517d576e7318ac43ee",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/lexers/stream.h": {
+   "sha256": "3c291063843f92b152a14e2509f9fb3664a1950fdd7b989f7a7d17c9810d3b61",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/lexers/streamfilters.h": {
+   "sha256": "e071e967874decfdb8644a8011b02b14c5a4ae253a955ec726319735df8000ee",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/lexers/stringstream.cpp": {
+   "sha256": "584f49ac25dfafa239d27ce923a2e9bb907e22db7e790bbe84b83b7c05a73671",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/lexers/stringstream.h": {
+   "sha256": "1b552a09135576433820f7a5ddfab3f5a9a67fc98b9a043ba36a60d80d006cfe",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/lexers/tokenstream.cpp": {
+   "sha256": "3e5e5976b5342d0be7b3ce8f02e13d24e3c31e3d560c9e856b254720360ee5e4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/lexers/tokenstream.h": {
+   "sha256": "dd490036d4cd104736241e77fa35481a95c87a8ceb11950d9efc1d54cb6eda1e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/CMakeLists.txt": {
+   "sha256": "c790ade08860ce89e9449e60e62f402dd347ffefd2fe0e3dcc2b4f4bf329af14",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/affinespace.h": {
+   "sha256": "cd414195c33007265f93b3fe216a3a2e212fd34d8272359a07420ad3df3d47a0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/bbox.h": {
+   "sha256": "1012c76fc6450858c81817f81c70cce2f94098aea058e5ca0b1e071b81d2a4e7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/col3.h": {
+   "sha256": "c2358100da1a873111a31f124aa9ed78d853fbb5b6220adb4cf411d15e75b5c7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/col4.h": {
+   "sha256": "5e2bb6399fc131b41516c922fcc8e1441da23eff3661ff71f222446f9780f204",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/color.h": {
+   "sha256": "43ce7f716012a9f1d7ab0157acf19d789c758a8feaa526a0fceee43d7246150b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/color_sycl.h": {
+   "sha256": "ab623d27ec6199bb66b1a527f835f29b4e92bb56c7d8c4ede5d41205b7237824",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/constants.cpp": {
+   "sha256": "1ca1706469cd2e7a8db66a17d24ef5727572ce1c25d5e5e2ae463669c4edf5fb",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/constants.h": {
+   "sha256": "913466f6c808d64148af12190364ae4c88eb80383c3c07aec733a362bf23088f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/emath.h": {
+   "sha256": "de47e7cbd067820a990e4047445cf545501f637c45a55d512ca8703f6080dcd8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/interval.h": {
+   "sha256": "5ceb63b0b0f98316eb2f51644caa8ddb5d73011b2ca11988b391aa3e8916b214",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/lbbox.h": {
+   "sha256": "75e32d0ab5c41befdb04d9fcff3bf7b66238fb21f4e346b9b4ee7e146b457e1d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/linearspace2.h": {
+   "sha256": "c536704a61cc85ca010154f377ed28a439985f633e26d51c604ab5643bcc8ba3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/linearspace3.h": {
+   "sha256": "87efc6eacb3d71257317b388b496b2ff57f7c93326f00e11161a5e8e9baccdea",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/math_sycl.h": {
+   "sha256": "5e4795ba836e805173d06ab41db847f227e75f7f8e6abfad8e0998dbafd9371e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/obbox.h": {
+   "sha256": "7dae24c7da82e11600d8e6af50d046c18820b3ce2fc44da5e32ab14d45403627",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/quaternion.h": {
+   "sha256": "11cf92aa2c8f3d8936f369a9413783346f5fcdf9f385148417181cc6023700c9",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/range.h": {
+   "sha256": "5c8dd22adde4b65130fcebb48f15e3945df39df3d86fac8dda9a38f7e51356e0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/transcendental.h": {
+   "sha256": "99c48eb6dec2708bbfdb50bad121d235a9a3005e641b81a254f9628d90667063",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec2.h": {
+   "sha256": "953c6099733b8d5b6a5693c445e33396349a694572fc2478ebcc7b334e29aa26",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec2fa.h": {
+   "sha256": "7738ce21f39e1309f61c7c1829f2cf95de9f2998e1bd54bafbb50c0af0b38867",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec2fa_sycl.h": {
+   "sha256": "e975dfe614af3369a4153f8eab6d5ea6c45dfcf707619a978954c7be1a8b63c9",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec3.h": {
+   "sha256": "c8203cd5638771565bead21611e2dd93dc64f5b75f299b8b1f3e4d0f9843089a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec3ba.h": {
+   "sha256": "f1adb25fd2700d92bc51193d30aa46325c76b498fa815d9f3d49e5d6064b9aba",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec3ba_sycl.h": {
+   "sha256": "78804eeda0f3f70a0594846ec55908dec2f3fa5252a93abc421cfea1616bc265",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec3fa.h": {
+   "sha256": "4af00e993b2e7accf9f76a29a2de0a6d9902c60a37e82ba7083c91bd96bc01c9",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec3fa_sycl.h": {
+   "sha256": "fadeb2e51336851a12e50a56cfceb6507fcb9ba8254af61759f672a501438b7f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec3ia.h": {
+   "sha256": "8fd5fcca42d215ee6e41fcc9963eef9a97802eb570ee703830ab55a8776e91f4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec3ia_sycl.h": {
+   "sha256": "83a5610f74d0c62d29a8f32027d15c964fc3f8bd019384839373876aa587b678",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/math/vec4.h": {
+   "sha256": "2c29ff0fb7b4cd9ab541090ceeb49517f148963f572fdc1673ace48ee1aeb63b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/CMakeLists.txt": {
+   "sha256": "950feb581c2717fa67e07d44139a2dd61994965f3eeba0290f3895f7c8f5f489",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/arm/avx2neon.h": {
+   "sha256": "97181bf56139010234b3ce235ab45f57f397bfff9c6da6d66f7a6f0ed39f0623",
+   "license": "Apache-2.0",
+   "basis": "No file header; Embree's own ARM translation header (not a listed third-party program), under the component licence embree/LICENSE.txt."
+  },
+  "common/simd/arm/emulation.h": {
+   "sha256": "923aa3093b7479d9c25e791f10d1c4e819c6179f03cf139649cc113f47d18eba",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/arm/sse2neon.h": {
+   "sha256": "de3d5f5e27578c2c638733ab9df668d4cb467f760fcf3c7afa4797c7b9c6281d",
+   "license": "MIT",
+   "basis": "In-file MIT notice (\"sse2neon is freely redistributable under the MIT License\"); listed in the release's third-party-programs.txt (MIT, SSE2NEON)."
+  },
+  "common/simd/avx.h": {
+   "sha256": "747e1b9ce36166a49328ebd5ce1463fac70c9958b93ad8d3a43878d55cf3959d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/avx512.h": {
+   "sha256": "804323b9aa476a87f6ef27423ddb59cf19f828eb5e292bfc3c7bedb14abe23f5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/simd.h": {
+   "sha256": "81849b561b4ca6a8da10751862f770ac982aa4546a88e1ed3dba457b94ccac02",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/sse.cpp": {
+   "sha256": "21af8689eec8a43148fa647b8a7c208a5f3b2716982c44dbdba2b2ffcc2db87a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/sse.h": {
+   "sha256": "3f728383218981434454befcea3730c48ab0630d37e846188fdc4b5a9973689e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/varying.h": {
+   "sha256": "f914c902f9257455bf747cb78e4a0740cb11fa2117317a58013f1e23937689e8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vboold4_avx.h": {
+   "sha256": "75017f991a86342a84da8eeda102992f24dfb746877e8fc34bd5ecb73c938ce2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vboold4_avx512.h": {
+   "sha256": "e3d79fd2cd5d6bdd0424d6f5a8bcec693d974ebb69fabb1dd23e29117b247879",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vboold8_avx512.h": {
+   "sha256": "8dc3c0269014e2fd6edf6e4cbbbf583fca4d431e9821bfa680ecacf90608f5a3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vboolf16_avx512.h": {
+   "sha256": "e2496419d2091f760399203aa9520f3eaf6ed351010484bbe46f320a52dad951",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vboolf4_avx512.h": {
+   "sha256": "8061a0f5f33f591e13aa8c02a45eaf00d8ac5b77bed4accb24fd191131bd1e01",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vboolf4_sse2.h": {
+   "sha256": "a68dd08424122f4b022c52971f98c7438b8df075815cac0b9158486625ba6eca",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vboolf8_avx.h": {
+   "sha256": "e33924ef5617db5042748c81b6163705cd0704d159be82c006d82c0aafe8bc65",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vboolf8_avx512.h": {
+   "sha256": "f7b22b0aa4bace069042fb89ad182f97180099f2a8317982c5d0be9aa0d0636a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vdouble4_avx.h": {
+   "sha256": "b75995fe631dc7b3242a4acf19b3e8357d3deebd5bdb3902004ed7dd903f10d6",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vdouble8_avx512.h": {
+   "sha256": "cd8f6181732520b7939c4839340ea851d10e3945bf71d54789ba554f9a8f03a6",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vfloat16_avx512.h": {
+   "sha256": "a0360f15e3ee265561650d31d42495d0b02ff4ea78f2c5fc4c8a3007733d1033",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vfloat4_sse2.h": {
+   "sha256": "8b77a5d239c2b1894bab92ec73f75f79f4929b5765b694b618148c43812d92a6",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vfloat8_avx.h": {
+   "sha256": "ba8c9888ce8fecf002ea275db3ff09fc952e95b89b90ef094a48ebc3fd548747",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vint16_avx512.h": {
+   "sha256": "020d270f47775f96bda512756c4f429b19405486d5ec73c903cebc93ae0f12b2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vint4_sse2.h": {
+   "sha256": "94e12a39d8ce140adc87de2b04f0faad21de703a5fd7cacd03b8ebef20e3cb69",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vint8_avx.h": {
+   "sha256": "f0445f34c8d64ea4597b1ee17c15621f7c7dfbc48a17836f6783f148ccd61389",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vint8_avx2.h": {
+   "sha256": "75898771b9293b8327f9b34ab028b229811a4a5a8e56daa77c9083cedcbd8091",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vllong4_avx2.h": {
+   "sha256": "801355304d6d1dbd1c073fa7d444ea7c38d33c2a25000d653aae5c34fdb6e5da",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vllong8_avx512.h": {
+   "sha256": "fdfd20bb077e2d1ec21cbae215463aba18119d0ba18d9e85e0f9a590d66038e1",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vuint16_avx512.h": {
+   "sha256": "8ac6a186346244b6c2eab5ba89cf9e93b65d9a053bf26e03bc68486a2d25b6b9",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vuint4_sse2.h": {
+   "sha256": "3b3648e104b4a998713404a615dbacc17d98451eaef00b3c3c6e1ef78db33e0e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vuint8_avx.h": {
+   "sha256": "406fbeb975ba91f15c353a3651269314979508d2e8045757c030638752c149df",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/vuint8_avx2.h": {
+   "sha256": "22ab94046f3f94e6e04b3eebb46a9459c6dad2be984df674ad4b6585f727c8d6",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/simd/wasm/emulation.h": {
+   "sha256": "2577c6e1dfb0eb1f04f766c3ee346ef693f4a35d226f3ac440d130f9e39fa70f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/CMakeLists.txt": {
+   "sha256": "05c4946a2a44e60f21a9d91f469f803197ebd09599b66cfb2e022e1e1d38891b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/alloc.cpp": {
+   "sha256": "c6c60e9a72e9779029d67a1f796a8ef5678f1114cf4586f535d78380da9fe4ac",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/alloc.h": {
+   "sha256": "baf3de1def1cb8592d3b44d8d5933bc45cb4fbe4fef8517116236fa2d44da3b4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/array.h": {
+   "sha256": "28a26e178bda788f43b0ae5aa61363d02fd1eed25f10cc887123ac12511e87bc",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/atomic.h": {
+   "sha256": "15f8a75fc0c2b73c51eda1bf2b860b35235ec056a35927ab3a03bc6d5234bd43",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/barrier.cpp": {
+   "sha256": "378c379d4dfa4a4034c75267ec23b7053b153de90a8841fe368d48ee47d698ca",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/barrier.h": {
+   "sha256": "b21673503639fae048f7f40fabc9fed3288ca1bee3c31600f5186da800bcb2f5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/condition.cpp": {
+   "sha256": "4e2676cdae86f54840af8693889c129b4c2cb666779eef193915ed5e44c7aaf3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/condition.h": {
+   "sha256": "ce178f2093aa723e6dc9d684b1f825f832d815e08d5182e1d05e24a359d8a97f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/estring.cpp": {
+   "sha256": "34c9210008abcdaa512f9a1a5355eab3fdfcf1411a91b669dc9706c8035c93ea",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/estring.h": {
+   "sha256": "aad2ff70d17481b88bd220b1a07da085f075fac33135a0f34b59c1845846b78a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/filename.cpp": {
+   "sha256": "12e58543c127856d4f42dab7b69b942449326b2fe3a91bfcc711be25d04745b7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/filename.h": {
+   "sha256": "571c786bd409a2efab7ff5247a48777bd3d1fc3b4140fff53e618576f0b287f3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/intrinsics.h": {
+   "sha256": "83521715e4aae0e846fe937331953ac231d54882c983095eb052a8205dc2eaf9",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/library.cpp": {
+   "sha256": "8028962b1506d85e02af01716625a4ddc29a6fc2752a05f20b1c26caff6ae94d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/library.h": {
+   "sha256": "3f338158a7ba01f5d4917800c2009df988837af3f2b9fb742bbe43ab873314b3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/mutex.cpp": {
+   "sha256": "c40477ee466bc2dbf116fee4bfcfee04fc7e25392fd54b027581fe8dcf7c4895",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/mutex.h": {
+   "sha256": "6f6aab1ab3b120023845ff86fbe3d51b3572f72a330d39ba2c09701005826e5d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/platform.h": {
+   "sha256": "ee0a5f31e0a0356651b62adc874eedf4afbaf03dac6921ba8099ca3cff18299b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/ref.h": {
+   "sha256": "c69f8369a483aa6b37b898672f10ec92b2d93740409424e6430df1de9053afac",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/regression.cpp": {
+   "sha256": "f77f36f95e35c2eb5b34ab4ceb347dfc02e1e626fb7e15199a650b13393eeb73",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/regression.h": {
+   "sha256": "2cedb47fafb84ee2ff14d200d285ae0e776b4277c6548c0daec64faa042b609c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/sycl.h": {
+   "sha256": "165f228a6e1d1ebd4a2776fd6d3953b0aaec8d0e0509b692d5d34739601bc750",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/sysinfo.cpp": {
+   "sha256": "3d822367b2daa63be6fd8f6720676a4aca68ae42559807cc44cd48af1802cea7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/sysinfo.h": {
+   "sha256": "8c6c87f52ad0777917c9945478aa272a86ce214aa8cdddfc279bb562694d94bd",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/thread.cpp": {
+   "sha256": "1c468ba59550428e453f51f346c0b6ecf09ba6840c0b0303c3b2b2b6df13fac4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/thread.h": {
+   "sha256": "76249369c54b315ae5fc133c5d11868e84ace640f6ce157ddebabb05da8faa1d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/sys/vector.h": {
+   "sha256": "24e84732cb00ce43930de1279e34ee1aaf5fd3c4c36f7d688268264e48276b79",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/tasking/CMakeLists.txt": {
+   "sha256": "befe5353db27cc915e252cc34b5991ab7cdffd99946f73f6e85f78c28ef0677f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/tasking/taskscheduler.h": {
+   "sha256": "f404f98c5ae820365466abeddd9780ec85ef5e6b73800c48af83111c6694a3ff",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/tasking/taskschedulerinternal.cpp": {
+   "sha256": "a57d91fdcea452f81f9a96a2a80fad1babeaf8f2c405c721ca9276b35f1e50e2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/tasking/taskschedulerinternal.h": {
+   "sha256": "03bd0eeec055e6e442d182f92f8d574054fe04632fbacc348579b63f9eaee7b8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/tasking/taskschedulerppl.cpp": {
+   "sha256": "2f1057e54dd00334968dfe9c991007e5f79b975101b2dde27d8299c0ad84ed16",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/tasking/taskschedulerppl.h": {
+   "sha256": "af2f73b65e9860cec4c110959b3af7fa8a69408cecabc7254870b2c1c1e2834b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/tasking/taskschedulertbb.cpp": {
+   "sha256": "9e30cd6dbc28d11d0097a4279d3819d5f05294f309f5dd47f2026c5ef496902c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "common/tasking/taskschedulertbb.h": {
+   "sha256": "d12170a7af9a8b94848ed391a597a6f6be2f4e836cabdd9fde744653463da909",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore.h": {
+   "sha256": "c12461525b0fef4fe67a2bdc65a824b8338ff9f530a457982e09e3d6ac86f418",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore.isph": {
+   "sha256": "b29af03589636f99816fb6ef6a9b195b2f1b5104ddbd11999bebe7595b815890",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_buffer.h": {
+   "sha256": "fc2884a40dbd741e7ecda7a55bf3c260318dc826266ea4a38bd1d5234c08e1d8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_buffer.isph": {
+   "sha256": "d3d2d1eccc61e2ffdc951b81b8f7fe575a514d522c3188564643599a0e6f6c5a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_builder.h": {
+   "sha256": "069e3beb13a98d97a4dff4d818b9f54bbf448562151cbf2800c8edd30ba06d89",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_common.h": {
+   "sha256": "4821826751be6837324b04bb725f8182dacd7c27583fe0eea4a16e6c395b0b56",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_common.isph": {
+   "sha256": "6241bcbb13ebf50620b0d5e3cff56c58f409a1b52829b71e9ba1b92520556180",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_device.h": {
+   "sha256": "ff6661e622dd133b3b59857f0ef16d8b327970d65cdee888500b711ece292c4a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_device.isph": {
+   "sha256": "dea0c7befaa9f259795dd9f7553fcd0502050187107a83c79c37a9301474ce00",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_geometry.h": {
+   "sha256": "555603773896d8ff5ed2b35cc9917fe966755cfff0e8024ed7fc2ba616fb6348",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_geometry.isph": {
+   "sha256": "5a311cd5af0749240d83d326e416ff95b638597b3132bac3931647b91acdb4ee",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_quaternion.h": {
+   "sha256": "671aa7ac66e3236d16c8e64849fe624c9294a132417d1fa9ea596abb712b2e99",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_quaternion.isph": {
+   "sha256": "8fe7678172247993b35fe1ad2e8558d148cc3696e76718472ca1ce32541eb7bc",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_ray.h": {
+   "sha256": "011b7fdea10911f36e830452df9855657ba446b1d0a1699c4537de24cab63d06",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_ray.isph": {
+   "sha256": "8cfe60d8a9d9063929f577dca03e3bdcb0b0066932c9c7d3c35cb8f7c8311529",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_scene.h": {
+   "sha256": "7a7e99381d577b06ac596d0d78d91862f4f793b00410305507fa29e50342e6f7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "include/embree4/rtcore_scene.isph": {
+   "sha256": "b4689edb863f16c58a87cd8cd6f9ac6d797460089534faf1ea671a49eea5a8ca",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/CMakeLists.txt": {
+   "sha256": "ea4f8c56723b3f82fce548c58d47e9bb643d9fd3f629450472f47930aa7f83d5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/bvh_builder_hair.h": {
+   "sha256": "9a51ef474bc646950acf383c79e96c485ebb82c4887252339215f597929e2480",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/bvh_builder_morton.h": {
+   "sha256": "453861fd7f6e929259fea9f91696bb8f0a8e46a426456dcf38a4a9dcfe8b046c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/bvh_builder_msmblur.h": {
+   "sha256": "cef97b84c0fdb4a73824af9d06601c698870b35d37653daf56f86f73853ab9de",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/bvh_builder_msmblur_hair.h": {
+   "sha256": "b60f89a8c179d4e866a0f5a6c2554210c75adf82525a7123d3039d27ca2ed51c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/bvh_builder_sah.h": {
+   "sha256": "e52615141645b444f9dd7b2edf9e8abcb6e239c6931bdbae1a90d8883d165abb",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/heuristic_binning.h": {
+   "sha256": "cf99f3d5eb5a09ab60c8c5865dbb3882fe0c7f54db3d7e75e9221ad1efb416e8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/heuristic_binning_array_aligned.h": {
+   "sha256": "5f99515bafd5a2115e16b12f702d8fb453c544a6e60cd0893489bb46e60962d7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/heuristic_binning_array_unaligned.h": {
+   "sha256": "0db8572b231fac8b1f4d1633a4cc27ecf98890fb05772b633b47612b15903b27",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/heuristic_openmerge_array.h": {
+   "sha256": "d7de94971b6e4e09f4b6c81c29ce75bf975b045d139099aae475708fb75fd8fa",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/heuristic_spatial.h": {
+   "sha256": "a6eb8965fb5ea789a1e065813cafdcca7776460e1d78130c54fef660d0dc8cfe",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/heuristic_spatial_array.h": {
+   "sha256": "68ccb444091258dc1fc9f692143f1b9001fd69115ed8182d93f5515fc785627d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/heuristic_strand_array.h": {
+   "sha256": "c8a15b53dc88059905fd07b6728a00e72ba6d4823523f2ba57f7cfbf0bebaa82",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/heuristic_timesplit_array.h": {
+   "sha256": "05e172ce5c5d8f7a81fbca54fe0b20e57a4a56ab035d96d379b4cccadc6a11d3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/priminfo.h": {
+   "sha256": "34305b48c395a9fa6f3b74de784437bcbda24b807429a7e8481d3d8cf5282e10",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/priminfo_mb.h": {
+   "sha256": "5ca3c560f0b4daec6fb859e169dfe08249df86df00bb6405de1a196f8f80a9f8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/primref.h": {
+   "sha256": "980a9e06bd9c755b3ea0d9cbe450ac1123ca5d72fcb822a90de4dd528e83f89f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/primref_mb.h": {
+   "sha256": "f4a7f072f18ff393c6dd06d1b38c888db6b72224e4dcde2f1d99e69d57588420",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/primrefgen.cpp": {
+   "sha256": "13e706e228c00d62c196a9eefc3940b942b986ae7524c8e76f83e765b4069c50",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/primrefgen.h": {
+   "sha256": "206ad6fc76909aff349437ef2bfa22959765e7dca651514514af31b1a4022a05",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/primrefgen_presplit.h": {
+   "sha256": "fb2f4b6277e5fa2a4420a0ae6b0767827f62580297dafa3376f3f33b8f55833d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/builders/splitter.h": {
+   "sha256": "b08b1cd50df00849e706bf2008d8564e42525f9980cbc9543dabf2a0d75d9c2e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh.cpp": {
+   "sha256": "ad033cd06e4860e8076a620255ab00eac41d3ca16d005e08505097e7fcaa13a3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh.h": {
+   "sha256": "429ff7b5f4f52c209c11b10d73716d2cf8c63aaab054ddb42e50e1647fdb33bc",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh4_factory.cpp": {
+   "sha256": "1f88b4027951bdd6834199f1a61122d3725189e458ccb84d91b6d7f522d2f7fb",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh4_factory.h": {
+   "sha256": "f14b8dc29fa1b31a315c86621c9dfdc7c7cae396114f803a9b671e6b2ca6363f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh8_factory.cpp": {
+   "sha256": "eb3b1d2ee1e6c174817b188bb0c262c01fd3564d8e69341ae4b1b77d89d33777",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh8_factory.h": {
+   "sha256": "7c7173db19babf49062d57816b717b5744128d19902b5367d6b814d1e19b743d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder.cpp": {
+   "sha256": "3e6e46808087613ae4c91101ca745f215f3749f731f88f980f4589c9c4c4bda9",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder.h": {
+   "sha256": "4aa95752cdae90c167175883326310effeba2466ed0debb732b7a557be7aecdc",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_hair.cpp": {
+   "sha256": "6883d498325ec76f15861584371c95d409f91d7af590b05f964bdd9aad05399a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_hair_mb.cpp": {
+   "sha256": "f0289ac04617dea799f80048f3f5141fcc417ce186d22046bc03b26fc5ff43d3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_morton.cpp": {
+   "sha256": "395f282f88a197400a9443e74acd204777498be4217ab3f4f8d2c7c11a68ea0b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_sah.cpp": {
+   "sha256": "0bf97c180dc3885f041955a2cabbc2ebce034a590033a7fbe4f3d56fcedad0bc",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_sah_mb.cpp": {
+   "sha256": "be6009154e35fbb1d9090bf19ac8c2b3a966c82c8a52f759e63d668def212301",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_sah_spatial.cpp": {
+   "sha256": "e5d61124bbaf41e55faeb0865efaaa14b4dcf72b61ae03eca5ee28624639f566",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_subdiv.cpp": {
+   "sha256": "151d9e9710e28cd16dcd876d6337511ed4a3c596bfb8793fb0d083673372329e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_twolevel.cpp": {
+   "sha256": "b7c2c7851a23a5e1ded3b5062d4c86e29f752de8785a1e76ecfd8b8ca35408b4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_twolevel.h": {
+   "sha256": "63bf476eda162f5dace6ea08f46ec5b15635de68dedc04329dc3d3fc00ed6b2d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_builder_twolevel_internal.h": {
+   "sha256": "242694ca5e265ba2a7c6e31f1897e092232f3df960c346a14cc9bb495de54d9a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_collider.cpp": {
+   "sha256": "92f920fe116037cc2cfc56f0f30ae97a6d2a9fa33c68e71d17c2c27ca03d8541",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_collider.h": {
+   "sha256": "42a891898ef94805945f07f0c6184f0c742c7ca378538c0bd4a9dc240c583998",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_factory.h": {
+   "sha256": "cad8cb09fae916329bac550cb19f3db779735578aa7bde60b17eb8c2ccd32e96",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector1.cpp": {
+   "sha256": "714d3443b6d7bb23e0a6ecf3a8da08b0e22f01a1f8059eb645c91188e563f0f5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector1.h": {
+   "sha256": "4a8febdaf18c3d317a7c064efebe71f3724cc32b9a4753fd2438fcbe6a79f74c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector1_bvh4.cpp": {
+   "sha256": "f3eb93934cfcaf8012385083d2903ca24d1cf9f4da4a2dd465f44a072a2c9f94",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector1_bvh8.cpp": {
+   "sha256": "d7a1717e409d3dfe3c9a6695d081d4700754b755097c6eb6dac140ed33ad8f4e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector_hybrid.cpp": {
+   "sha256": "7731d6e8041a885392f702a177b1a9925faa8fd7268ac418e9fb409ae87d208a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector_hybrid.h": {
+   "sha256": "ca1e90281cf4243397e19725fb9d8c3cd59736572de2faf89bd7795e20f2f18e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector_hybrid16_bvh4.cpp": {
+   "sha256": "f510996a6a65b40b9c7658c8234e61af98fd5418c82188936d9834ca8f3b66b2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector_hybrid16_bvh8.cpp": {
+   "sha256": "80b03160941b1c1184c33d498a6789beea7512eccb5045fd32b11671ab580562",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector_hybrid4_bvh4.cpp": {
+   "sha256": "e36572e52f564462cfde902b51abd9f73a8123a355ec71e6520309ebaad6d4a4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector_hybrid4_bvh8.cpp": {
+   "sha256": "f57c3395016eaeda69755b06782d74095f4fb950a48d87b637c87214a0c4645f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector_hybrid8_bvh4.cpp": {
+   "sha256": "5cf4d1bd01c779eecf59c459d8669a264d6a995f24abfb12b56d6fee90fcd1b5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_intersector_hybrid8_bvh8.cpp": {
+   "sha256": "9ad05076958e80759490fdeaf69f1f6ad39fc7f0db9bd29e917f4185e32cf503",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_node_aabb.h": {
+   "sha256": "2f0181b6ffb237602642d7aac08eb84386c1e6361823bb58d49f06dc2ab728cc",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_node_aabb_mb.h": {
+   "sha256": "f6099b93ca2711139685aae55807e8052600358edb2012c56e064c6e5c3c8bea",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_node_aabb_mb4d.h": {
+   "sha256": "2d3c297bb7a96954f6e269fdf246ccce38a072aae325f67be7fa7e15bef324eb",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_node_base.h": {
+   "sha256": "ebda51b19c639fb07f25d58369b597541a46312d4169bdb90f0382469ebbb256",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_node_obb.h": {
+   "sha256": "431408001c478d5cf742695a956e70b592fafcad3f48bf434bd4ec04d93b839b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_node_obb_mb.h": {
+   "sha256": "bfde2a14b9ea870cca19355b18df7b482568035fe17f915b455d5fd4e4f4ea88",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_node_qaabb.h": {
+   "sha256": "bccff6e4839494d74bf213cfbf281f141ffe4e5bfeb9f5a0f4be2c21e140c9c6",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_node_ref.h": {
+   "sha256": "efd052b86bd35f985cd8f90ea064fc3bfbf531746bb0f4d0743bf19cc1c97ca3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_refit.cpp": {
+   "sha256": "0123dbe290e626d87d4562b484d07858951bc583c1f0658070daec6163123b18",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_refit.h": {
+   "sha256": "ae25867ecf9e69e3b2745489df6f0b6c6f6f726149fdc2c8f5e89eddc522000e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_rotate.cpp": {
+   "sha256": "93cec64f8d706738f294691bc0a35c51ecdabf973e366662683b3763de40a8f9",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_rotate.h": {
+   "sha256": "34fd97cc0c47b6b12a7d3ddcaa8119ffffae6ffc52f42c4debf1152a370530a0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_statistics.cpp": {
+   "sha256": "cec1235e47271063e0faf490f4ebf28520e64827d47605feb1511e0b6c05eb10",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_statistics.h": {
+   "sha256": "c1a3d65569fdc26a2377b97864e7314dba79ea47770525385cbd97e37d4095b3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/bvh_traverser1.h": {
+   "sha256": "072e3347b9f9c51bb1644823fcff9866dab150236a028b4dbed5401264bd7a1c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/node_intersector.h": {
+   "sha256": "fe04e3567f258f3ee0feefdc8c2767895ae29f1bb649793e575eaf9bc9d2d0f7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/node_intersector1.h": {
+   "sha256": "68178b37714a856aa1540c3ca129ab229b63b2836215035edb51341b61419f88",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/node_intersector_frustum.h": {
+   "sha256": "ac513f71dda4a52457a68aef30d51badb07ab77ed6ad25a43f05c50a84551db8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/bvh/node_intersector_packet.h": {
+   "sha256": "1b54a05979d2a3b6169622f257fc1834c8e9d7f03cf713357c2be148aeb80b06",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/accel.h": {
+   "sha256": "cd88b797c70465a0c1bdc3201bd9d3b0cf1de9bad32dba2ff10f3aec59b96bd0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/accelinstance.h": {
+   "sha256": "fb28b656982621f0f5bdd83df226a5c8a339ed62e7a7996b9a46928d255b1fb3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/acceln.cpp": {
+   "sha256": "8f454758be5f43191917a1c21080c42308c79bac774ee92eab5d6c85e612f238",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/acceln.h": {
+   "sha256": "e8d0f643d3ba8617d512abd98d25b72f25cee85c27e7a95061bc7bc7b20ddf0a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/accelset.cpp": {
+   "sha256": "566689ab1dbb243bb017aa9f46c5bc1d2bc4f796aec496e31890e4dc51e642c0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/accelset.h": {
+   "sha256": "d133db63792410e194a3935b91b4d9769de53a85d33c108e1493b1d1e714e443",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/alloc.cpp": {
+   "sha256": "19fe02445098209515ed27a86f9de0d9462430c375b193d4fbd3c8f4f45bbc9e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/alloc.h": {
+   "sha256": "c2f5e00d79b1a0eb91f68d623e5359062920f8932d04b1a3ba38c89cab4f53d8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/buffer.h": {
+   "sha256": "9a8b72979947e1cce921c9db9adf843af6a0feaf275cda2e7ddcb843f06a02fb",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/builder.h": {
+   "sha256": "01ef3dfe12e3e2747f7d242bb9a23f2512ff3bd9ce4cfba2d89371006a3bcb09",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/context.h": {
+   "sha256": "e93015d6e0a8b00fe0fe33f429744384bbab606dcb8b9f1ecc92d7dcb8e74490",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/default.h": {
+   "sha256": "3638ae1255f27dae7c70619c7e7b33acef08719c8d0dd0a78498240c827720f4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/device.cpp": {
+   "sha256": "3af95ea3bc954be297978be6280e8310f7d69cbcc3eb99d52f7fe5a4abd20e62",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/device.h": {
+   "sha256": "9fbec8bf0e26ddd2246aa2d64ed65c0ef04d4682f7a9fb1fceb030a33eb8e113",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/geometry.cpp": {
+   "sha256": "e02eb68064ed90f5b27b912ccd00a10fee76a33bc85dbb70d3a7eea81b76135b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/geometry.h": {
+   "sha256": "fc1bf819c7b441ee389eebb73dc23e26ccd6438bfd92c1ac61f8b0a6780cf57f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/hit.h": {
+   "sha256": "4c6b0558b2d6b226beaede132d672a8cb2c72943b9349085b1e30c109ccc77d5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/instance_stack.h": {
+   "sha256": "f5763e72901ec5f592d577ac6f00d21f982a9f1cb45dfa7acbafea65807e4a3f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/isa.h": {
+   "sha256": "62b15654754c992743da97ee4d1841065804d1c3c0c5ac700b3986bacd5d6ae0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/motion_derivative.cpp": {
+   "sha256": "6e713a0489ebac7020f2467a31ca92e2f294a28690c21e9084b4878aaff350d8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/motion_derivative.h": {
+   "sha256": "fb2c523716de4da48f9d6c180b55df209c0e9d9819e80df64fb551f7a81d31b7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/point_query.h": {
+   "sha256": "a163613f903a1a86866445febcab292ff7c812efaaae70ad47f64ec8970be578",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/profile.h": {
+   "sha256": "5648488df7b962bc584cf96d87cad8b99c8609aa969dbe186238d5c1b56a5e65",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/ray.h": {
+   "sha256": "7bd1614af92cc45b3ce756081be8358a53d3a1da4ea1175d624000370f64d3e8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/rtcore.cpp": {
+   "sha256": "43be649cfc46bb980ddfdea27a2df761d5291eaf0bd830290cebe04b16fb77f4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/rtcore.h": {
+   "sha256": "3a44158084b3b508b68cbff0d88788fbb39582692bfb00718d6111be9f83261e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/rtcore_builder.cpp": {
+   "sha256": "c4cf1a27c8966fdcbf814bd564156ea51158fd7190f7e85f0256e870f9fc5372",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene.cpp": {
+   "sha256": "0e499057cc019e561fc9a1016912dd6b90e3a2698b6921ed2d0db260f9f74158",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene.h": {
+   "sha256": "6a3a6cb0bb1ed537fe24cff0ca8da14263a9d2d3bcfeb0291ebe86be472ef04e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_curves.cpp": {
+   "sha256": "2bb7a0cddb536f492624c26a7947a98ed3f2bc6c1e1222d9835edc3250a89359",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_curves.h": {
+   "sha256": "bef770dd8b80514efa7a1044dbca00d3f270ca23c6759bcec97b53b0634d9ee2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_grid_mesh.cpp": {
+   "sha256": "c1d5ce4d2cdcc284cf0cb4de9b9b57d1052f023cc34fd9d81bb7248e05d4c213",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_grid_mesh.h": {
+   "sha256": "2e7bf37dff9cee275247f29aa560217c5d22e143e5e1b5e8ec2ec02409afceb8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_instance.cpp": {
+   "sha256": "a11dc0a2359f51712d498ae1ab81b72ce4a6c4daf7882135e4b3307023f9b2de",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_instance.h": {
+   "sha256": "840b4872e4a8c0ddfe1410f1323addc3501f2d8fdd6d7b687fe0a92dd7af2d49",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_instance_array.cpp": {
+   "sha256": "f72d3cc94771cd5dde51bdac2c43b131c4811c28eaaac506bd3ceab72b79f01f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_instance_array.h": {
+   "sha256": "3ec0d091e90e12d86cb68c20bb65ab8d705325072559049dcdcd03ee99aeeb5e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_line_segments.cpp": {
+   "sha256": "1737adf1eb83e2f27b347f868bd82c6d6fef3a40e51fb8af96463a204c58b89b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_line_segments.h": {
+   "sha256": "acb7f1de95df37cefe43603f00842d9a4202d6ca2ef62e586cc84fdb43319fc6",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_points.cpp": {
+   "sha256": "2cd6096166a393e1f5fb9acbbf73d3f5d33f29a0a841ebe90411b3464299ba9a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_points.h": {
+   "sha256": "1a0ccb35d934c80c4771720b622f079d0cec386af5da596afb4ec423bf9b7dc2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_quad_mesh.cpp": {
+   "sha256": "9231ff02721fea30e7b647b9a996a0957f5f0008d7043cb4cae071f78f4e625c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_quad_mesh.h": {
+   "sha256": "b73f7ac71ecdedd5e6e468083da43825ca13ca1f1a855c3e5aaab60f3268eb7e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_subdiv_mesh.cpp": {
+   "sha256": "c2269d3a6fa82069f6042b37e5b721e84c704b6ed08d864bcdd166db0f0366e5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_subdiv_mesh.h": {
+   "sha256": "ce35295a9df5d9d8a2695c09d22cbaddb52bb6347f1fa554f6e8797d66c8297d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_triangle_mesh.cpp": {
+   "sha256": "c94f5aa5b56ba50fec5777b4384d5496e9c7a4737eb355a7cabc78555c0fd1ad",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_triangle_mesh.h": {
+   "sha256": "8ad9ff0cef740e0dda26dc4bfdacebee45cf3c16ce91b286179d087b174434bb",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_user_geometry.cpp": {
+   "sha256": "45b4f4adbb665947c9a854121bab38df6b6fd9418733826b9fb02c63e4eef82d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_user_geometry.h": {
+   "sha256": "a56b57b2544da858e4fb71bee8ea14f32f2af64674d2c48f0f92f2d1835d6337",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/scene_verify.cpp": {
+   "sha256": "69bf873073693b70e4c07e729e1bab61f964fbbbe660399019478c97382d92fb",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/stack_item.h": {
+   "sha256": "670407d3abab4b067d63deceb197c3dadb4079208b7238c466c0f30b59bf5a37",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/stat.cpp": {
+   "sha256": "c05e1afe438e17885d759b99f69a12334a7d9a4cd8237eb63402b196025b3e71",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/stat.h": {
+   "sha256": "34ced4bc997b8b66ae8fe0500f4d1bcda6e2907aabb41b26b19d045339fa2e65",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/state.cpp": {
+   "sha256": "35b68fc73ae06d576ccd6969e6f83879585526baf5cbf9ab06a3daa646171b6b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/state.h": {
+   "sha256": "450d4147f78245c8e4b9ce14488ec3f2d3c32afec1c6d504b61afdb57b5594c7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/common/vector.h": {
+   "sha256": "9cd78763a99d609754b7654d98e9d835ef7603c15dcef368f6b12164cc8399ef",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/config.h.in": {
+   "sha256": "1ddf3b7b18165cb8e153dbfe77da4ba34af158d78d6430c222d1ea4091281a49",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/embree.rc": {
+   "sha256": "26da05399248d5ae2130e21644aa0f3fe269b6fa5181d4285703c2445753b23c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/export.linux.map": {
+   "sha256": "f3184bf9b3065a631276461d1c888982845d05e2f54d32e769f6e0be82fafb9d",
+   "license": "Apache-2.0",
+   "basis": "Upstream component license embree/LICENSE.txt: build/template/documentation/data file within that component; no separate restrictive grant detected."
+  },
+  "kernels/export.linux.map.in": {
+   "sha256": "5d806501f3649f2b6cec95570ff753d08e168c0d18b53b0cb687458316a03454",
+   "license": "Apache-2.0",
+   "basis": "Upstream component license embree/LICENSE.txt: build/template/documentation/data file within that component; no separate restrictive grant detected."
+  },
+  "kernels/export.macosx.map": {
+   "sha256": "91d1d0998ea2291c4dd09cc5383ff4010b12fb2410ad67b8786045dd47932bf0",
+   "license": "Apache-2.0",
+   "basis": "Upstream component license embree/LICENSE.txt: build/template/documentation/data file within that component; no separate restrictive grant detected."
+  },
+  "kernels/export.macosx.map.in": {
+   "sha256": "d15976c0d4e460da893973adf62f954aa231f55eb747fa8b59dad13b5001f138",
+   "license": "Apache-2.0",
+   "basis": "Upstream component license embree/LICENSE.txt: build/template/documentation/data file within that component; no separate restrictive grant detected."
+  },
+  "kernels/geometry/cone.h": {
+   "sha256": "2efcf3d0a38a25a9ec975401eefb296e6abfa59670c1d98f420aa1fcc5ce7197",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/coneline_intersector.h": {
+   "sha256": "a824fd0525e0e5935897d1e9a331e407452a41a158defff5b2b68287388509f0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/conelinei_intersector.h": {
+   "sha256": "ab81bae4d0220e5b93e850d71ae7d75a0057dd9019c732817843598f613e7899",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curveNi.h": {
+   "sha256": "c3ed8700ef254ccacc560ca15a13afddee03f5120f95e00f916b48dcdf4886bc",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curveNi_intersector.h": {
+   "sha256": "81bd1d74e2aab7edc8d6cbee8f12f2e7ae1f4afe7f41a258486c13f8fdb56dd3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curveNi_mb.h": {
+   "sha256": "b3b31c5762875a6748fcde36bb8e76dd8cc7f4f8e2b65cbc0d408ef8702a5b0f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curveNi_mb_intersector.h": {
+   "sha256": "be8f2a9dc19624dd87efba6510d6d644bc20f053a1e52801102835ad0f8a2dc4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curveNv.h": {
+   "sha256": "7c09632a296a62fbba05d3a15b64d8f3fc99f6739fd556bd229e84e4d35eb9d8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curveNv_intersector.h": {
+   "sha256": "064cc2a10a7eeac6432f144eb5f2949fd8f59001fe17b377a14ab7044f27958d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector.h": {
+   "sha256": "1641042b452b207363e56fa6f90b0b17be9db07593bc671f38a00de635afe662",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_distance.h": {
+   "sha256": "f3514ad8d1bd1b90b2f51a6ca53d5a5d85c5db418313f18e56239f1a5c0c5cf5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_oriented.h": {
+   "sha256": "48969030d537db003fc9af003013708866d3daff5429927977719436a0448cd0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_precalculations.h": {
+   "sha256": "65b4095b80b6f149c8c7e840bcf0a50335e7395a444b824f3fa7ca7f2895cdc7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_ribbon.h": {
+   "sha256": "e042408e84aecd8f28ad72c82b2bd3e266bf08b78f332a9ba4641682bd80c397",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_sweep.h": {
+   "sha256": "805d98924625a3d29d69815fafc24fafd48f080ae4d16a4fc5f383a3e835f459",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_virtual.h": {
+   "sha256": "9c249ef9808405398d429b26b24d3897cf06d2c696d798d95694b2ca24811f00",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_virtual_4i.cpp": {
+   "sha256": "fcc23bbbb42774a3ed5628da5cef46d7b1d8171951a5bacfa6bea2e28d772e77",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_virtual_4i_mb.cpp": {
+   "sha256": "56901776d121fbaa01512054faabc03f88fed024c507a15dccc93bad7ff4b2e8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_virtual_4v.cpp": {
+   "sha256": "f4c7323f0a16cd8cda01d88bf490e419ea9d76ce0b0dd6ad04e89f621ba48aa1",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_virtual_8i.cpp": {
+   "sha256": "58f33636b98da854baee17a017120bbd7686d048740d899880e4dd7300c6e3ff",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_virtual_8i_mb.cpp": {
+   "sha256": "0dfa3030780cd4ce7e927f924318258fa62c79621f678f80c09b5a6bf9d101a4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/curve_intersector_virtual_8v.cpp": {
+   "sha256": "55482c081df33159a914b15eb238b7d20530698f4a24f71e858f17bd91156088",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/cylinder.h": {
+   "sha256": "b42f7392ff538af1d2d1c9147b6ecf1ec1ac8fc73fd905a55c3ef6a5aab3fbf2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/disc_intersector.h": {
+   "sha256": "a02e6281ae9bdef9bd77e3e49d9505cc7cdd25a44dd441908d05433cb64ba033",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/disci_intersector.h": {
+   "sha256": "a21b9fdc129d88abb47e5a6466159c314516f401e1836c957c061254d20fc6f0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/filter.h": {
+   "sha256": "edd54106baf5de99d3fc86c56406ce187829b6df16d171a9245e12483ffa8895",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/filter_sycl.h": {
+   "sha256": "72acc23dba1e01ef68b20dfafff1da0076ca761051ad185d0c5156fcb66f324c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/grid_intersector.h": {
+   "sha256": "a7054766539abd82a2d1f2c778033a5175221a1d3f21ad6fe617606ad667a2fe",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/grid_soa.cpp": {
+   "sha256": "dedea9f34ba2bdcdec24636b435ab36c7df36f999b3601c8ed5d97eb3c014482",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/grid_soa.h": {
+   "sha256": "91b1aa15b4e0567d3563863ab5c0e2194ef36652f81e82eb94921b5b60eceeda",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/grid_soa_intersector1.h": {
+   "sha256": "04f554aef0101499ef26adfd9ca83b4386febf7e4797b7207d4afcf432bdc0ae",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/grid_soa_intersector_packet.h": {
+   "sha256": "4521fc0a048676e0960597d4218c1aa8bc6f9a850adcd1a290e38bd6f02e20ac",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/instance.h": {
+   "sha256": "5685f2cc4aab87b26b962a63302592d4bb3961c83fd1de8c59b667a95755d6d3",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/instance_array.h": {
+   "sha256": "f745220adcfb18e66103b7c189c580a79a0e91bef58155cdc2d350cf89f00bb8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/instance_array_intersector.cpp": {
+   "sha256": "2a53ed4908d09fcb66b86321019533d34eefe8497a3f58fc91a9cecc5461a8bb",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/instance_array_intersector.h": {
+   "sha256": "4b0949529cdbe20a5cb6fa4230654fb7e2e039beb25525be46160d662b4edd88",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/instance_intersector.cpp": {
+   "sha256": "ef6ec8b9fd0871f69d5029cea871302884f4751498cf1cb0c6b7eff2192a6093",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/instance_intersector.h": {
+   "sha256": "9dd8abd0cdfdb200a76976a9dac7b46860101cfe3d4c15a5fc3098d9d88c999d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/intersector_epilog.h": {
+   "sha256": "8da4676190e8357fd46e836b29ccb374fc04bb4e2aff6f9005ea87bbaaea716c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/intersector_epilog_sycl.h": {
+   "sha256": "ea894ea441f7958d5a01b4cf4f45d8121c4914af5fb50132210d2295e303d1d7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/intersector_iterators.h": {
+   "sha256": "2a50df7b58125e66fcc2c2bb5641450e460aa0a3473b4736bf2bb4f88bf90442",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/line_intersector.h": {
+   "sha256": "e305430549fdcaf94a9154ae6623a2d52beac2cbcda7f18eef6ef8c2480e14f8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/linei.h": {
+   "sha256": "6ae87cd3530c0abdceffefc4f555bcc09b5b8517f28ebff82ffe24ba2ad715e8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/linei_intersector.h": {
+   "sha256": "7c148c37c8364d04f6fef022d273314a2c27c012fef8b33588e624f4a280d10e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/object.h": {
+   "sha256": "73e7bd61137d8df4da04ab7a8bf8c5fce53091cdb5a599edf75189f5340ee434",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/object_intersector.h": {
+   "sha256": "3d0af9e08349508bcec55e1eb1de0420e7873f1cc7e7f9bd4ba39ff8565aa7c9",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/plane.h": {
+   "sha256": "db6d9cab7d37901a6824a3c20e01c248547b4398392880da7fd4facada0f0eb5",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/pointi.h": {
+   "sha256": "739d7419494251492b5292431b131ef9c259508543887ee575237580e58b6309",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/primitive.h": {
+   "sha256": "f5e05d78c1e9cf9e5a92968e31a91628a748b796e8996ad903cdd89c0321ae46",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/primitive4.cpp": {
+   "sha256": "3ef88b5353d26d2789aac6de8a7d35445a3214a3db5a09b7c085da64808d4014",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/primitive8.cpp": {
+   "sha256": "16f01ab83ed37cf27bf5850a368aede39f6a0d8257550a4d065cb39e99db1463",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/quad_intersector.h": {
+   "sha256": "2b95d9bb8e0437ad7340795dea4ef8caad5ff6de647b912e977ef5de4d98d7b6",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/quad_intersector_moeller.h": {
+   "sha256": "6b4f65469ff8adf0d2a3f421405de3e3f80148644eeddcff62183340395bc166",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/quad_intersector_pluecker.h": {
+   "sha256": "3c6c856f72c54d133a0ed7114734f18e225b8b78543b07363396479c442ec765",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/quadi.h": {
+   "sha256": "ae31c7cf459fafbfb6839e5da5ba9d51b5209f62e5397c51823db7cb6ebe76b8",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/quadi_intersector.h": {
+   "sha256": "48a5f8a47a5721b5e10158b639f703af2522cf4f31c058f65dee12212c600cab",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/quadv.h": {
+   "sha256": "d67853184d29c8919d65149915bcb9d02e92facd6d93e7d10370060f6dd0d1a7",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/quadv_intersector.h": {
+   "sha256": "ee34a1e4e4f4f0242dc2a44fa2bcef81c9649ed821e88f5dd1efc8ca112c7a59",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/roundline_intersector.h": {
+   "sha256": "9e92d0b88769493a3274b76aa25c92cb5f361ca63b7627289b95044eec6bacae",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/roundlinei_intersector.h": {
+   "sha256": "6ab9a9455311ca6b3021023c92719da05ec35e10bd3dfa58e1f04c065bf0da66",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/sphere_intersector.h": {
+   "sha256": "b444c5ceb1e2535c54ec96f2b0593ed13c5614878c0e5660cf16d7c0e94061c1",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/spherei_intersector.h": {
+   "sha256": "f244989668c8ef328e0d5bac9045d9938abbabe55498e3fbb42f1dfa9b91b700",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/subdivpatch1.h": {
+   "sha256": "24bfca6024c0fbb3b3abdb392030bae2aae142b9835e85e5142c804107197761",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/subdivpatch1_intersector.h": {
+   "sha256": "5971537014e7e662e68806af5cd3d3951f68c27023a31651f9647bbb8824bfce",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/subgrid.h": {
+   "sha256": "5cd979ae181e07ead106da643fcf1ccbe7284cbb51d896f1e2f3506450a3eae0",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/subgrid_intersector.h": {
+   "sha256": "109365fbde50a382de984db14782555035eb3e5ff3ad914ee0e49535360f900a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/subgrid_intersector_moeller.h": {
+   "sha256": "b0b4049030fdf913aad0f3b2cab07ff3f1d02f51434da4ae01daf36eea0c2852",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/subgrid_intersector_pluecker.h": {
+   "sha256": "c33ae9dbacb394928a4de28dbbf502da4aa3535dbd0f0c9a033c3f0cba15a9da",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/subgrid_mb_intersector.h": {
+   "sha256": "3e22c94559f22614f0d7cf3856bf46272f62f13e1974de072a0a65cfd0626a63",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/triangle.h": {
+   "sha256": "b1eb63d95c6a5d782d6acb0654e8905290dc130e11ba9327e4a8c78bbc7e6b4b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/triangle_intersector.h": {
+   "sha256": "ede81666da1e6b22eeb10423014135f63396b2a80734adb578cae224af5ce1d6",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/triangle_intersector_moeller.h": {
+   "sha256": "bc551a0306c71f0bd609738a7e5187f59fa4603b7524b1f228a45994398cc3ab",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/triangle_intersector_pluecker.h": {
+   "sha256": "91c0cf79c752c81c339af1b31f4f8f11ec1c236ca307d2298204c8e472c0b0dd",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/triangle_intersector_woop.h": {
+   "sha256": "eede9d1819557c8c9010ddd54dac1469adc56ccd359b843f03cbbdca611034b9",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/triangle_triangle_intersector.h": {
+   "sha256": "f9ed3d2ffcd0cbf3cf86b77eed11f19760f924f82fa70a0954c11762bd29a032",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/trianglei.h": {
+   "sha256": "5a2852ddc139cecb0774ff4e83fc921213c754a6349500ee3dd8de8ef343576b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/trianglei_intersector.h": {
+   "sha256": "372a87c677fab58596ba753dc40b14c916ca837ecf88e3ee0df19726ee15945e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/trianglev.h": {
+   "sha256": "10b35c51626dc7ee3b8dc004b5adf52438d785e3f19229078c4ddc712c62b70b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/trianglev_intersector.h": {
+   "sha256": "ed9d7a2df02065d7308feaeae34ef0d0b73e629a97e975d853f8de75b682ed1b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/trianglev_mb.h": {
+   "sha256": "8fd9b9a99396301d1166d9653aa3a702c2d0e334faeab2d6e997ca765e86e7ce",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/geometry/trianglev_mb_intersector.h": {
+   "sha256": "baa31c47ef06c30ffdc60e8a15cf1761e41c950ae8067cbc3cc05a2edc9a9eb4",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/hash.h.in": {
+   "sha256": "72fd3118710b17370b059fb677cb521ae3b5029352a56a4a8a3fb83fc69b0b3e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/rtcore_config.h.in": {
+   "sha256": "1fcfc57bb4af51bda4bfa808228d26306e75479ca72cb679bdfc563883490b89",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/bezier_curve.cpp": {
+   "sha256": "8c0ddb027ddcd44765fa98e8d067394e4363d3248158278bf3673a477b570e5f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/bezier_curve.h": {
+   "sha256": "52bfaec0605bf1083963d31147dd2b2f5dd9d2de5e52ed0da1bc4506f966631a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/bezier_patch.h": {
+   "sha256": "a96be5ee4d0caaa48c3a2a7abad4fe47623dbd60b51f075ca2ee7170f2b4cc41",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/bilinear_patch.h": {
+   "sha256": "92acf4e7b0835f9595e7d67b4b7dd01cb4cadbbb58285743e96b53c79161660b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/bspline_curve.cpp": {
+   "sha256": "7cf5f4244663a2eb2637e477832a78d450eea472e58f7eb94bc20356c38e2e25",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/bspline_curve.h": {
+   "sha256": "6992f5075e1274a2f7e6e045a0a8746a4fd1272f0749b673daf91b28f8a6240b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/bspline_patch.h": {
+   "sha256": "d7aa5527e5dbad1127176a84ec01a94838e0c5cc9bc9770b7f1e075a61066bcf",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/catmullclark_coefficients.cpp": {
+   "sha256": "f93e9f1cbf7feb90383c487b8ef5a9468fac5f18056581e4b6c1d62c141aa344",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/catmullclark_coefficients.h": {
+   "sha256": "9a3a7e9e419d2fc1a8fce986550272b932ad01c8f214365a1a40df44cce3f904",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/catmullclark_patch.h": {
+   "sha256": "adf1cf7a12205fada0363baec0a78d9aae63a33f8aa41e18a0fcc0c558237a49",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/catmullclark_ring.h": {
+   "sha256": "19b477047bcb803c2fcba18b41c52b1a70fdd2f1e0fb62e9faa5b22d28bedb6b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/catmullrom_curve.cpp": {
+   "sha256": "4e0357e9dae64a4e645d21249c674d97603bce2f5a774a8874640a9c091aea5f",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/catmullrom_curve.h": {
+   "sha256": "1440b5aff8e29c7d3841e3d1dd7d0d2f12a268e34949e6963bbb841b5350a918",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/feature_adaptive_eval.h": {
+   "sha256": "87349c495704a857099f9854cf8979a49d85cd0f2b226c9a4a53aa7acf07465b",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/feature_adaptive_eval_grid.h": {
+   "sha256": "2a6203c8f4d24ab99b1d695d93749b1750214b21da909507796aa36cdea816d2",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/feature_adaptive_eval_simd.h": {
+   "sha256": "e8db50668de01d473595f0eba2faa99eaa9af9c87fe1f8dd0a711b282c6ad623",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/gregory_patch.h": {
+   "sha256": "6a83ce9aea0acfbdd082a28496d7453b875a834418b7e6c40ca982e2229ae74d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/gregory_patch_dense.h": {
+   "sha256": "7e4ccd6a3f3dc0f5b99a162077df99ce01c8e7f15f95ab0fc009aeab67dca353",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/gridrange.h": {
+   "sha256": "e1878d12597223e32396b64412c7f9428aec67a108dc96fd2828277b1e604d11",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/half_edge.h": {
+   "sha256": "955b1ab6fb23db43b9084f4eb1c7c427c809e1e3684e474fbac3ff8cc7b64731",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/hermite_curve.h": {
+   "sha256": "8157171cd36b2513cb9c62c76f91181dfe4ec799e828d586b5484389104c1c07",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/linear_bezier_patch.h": {
+   "sha256": "25086af12ba4f3b04a8f688d0918ce2b7d6938ede06f8a6968772550a6bd252a",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/patch.h": {
+   "sha256": "af86e28629f3a84d190f77ae69d09a70af8fa088b5818346691fd90c91f96583",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/patch_eval.h": {
+   "sha256": "7bb6c1bc5765c585afd28ce8d43e34027425c8c74b4c3da4cc7390d5f6348b4c",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/patch_eval_grid.h": {
+   "sha256": "8ce1f95fe261921103ac1dea516ae2c273e3a787be59acd02f7eb94358db4e6d",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/patch_eval_simd.h": {
+   "sha256": "5ebf8d8d3a8a23d90bb292b680cf89d3da45f48ef142f12657e5d2d5a350b7e1",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/subdivpatch1base.cpp": {
+   "sha256": "9825259f7a7a0e0cf26960822d0ddffb3ccb48ae7bb5419ab731cbee4e0bf116",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/subdivpatch1base.h": {
+   "sha256": "39d2c359d7899a4efd41488d596b01c02a14406597c97cc4ffd28c899cb76f66",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/subdivpatch1base_eval.cpp": {
+   "sha256": "9319bb515a2b5e36fa7ee4631a8d8030ca793da4c9277639a0d9df2dfd3a1bd6",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/tessellation.h": {
+   "sha256": "85772358edce44753440997a6ff47c406e29a0291ceb02c32596f31a5e282952",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/tessellation_cache.cpp": {
+   "sha256": "7d8955d154807efff73f646a5b1cb09bd8869f16ee333ed5a9ec6a06012eb981",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  },
+  "kernels/subdiv/tessellation_cache.h": {
+   "sha256": "e2056aa52ccf14977717c7e4c3f5c6c500044e1c758070488fab35d5ec99a03e",
+   "license": "Apache-2.0",
+   "basis": "File SPDX-License-Identifier Apache-2.0 and retained Intel copyright; embree/LICENSE.txt."
+  }
+ }
+}

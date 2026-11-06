@@ -6,7 +6,7 @@
 // a second time in a new host ("replay"), and a fresh CPU host renders the
 // edited scene from scratch (built with the same node creation order) as the
 // oracle. argv: output prefix, "cpu" or "gpu". GPU mode also provokes the
-// known WebGPU render-time rejections (a volume majorant pass, a custom (OSL)
+// known WebGPU render-time rejections (a stereo eye, a custom (OSL)
 // camera), removes the cause and renders again on the same host (recovery).
 // Prints one JSON line; the gate compares the saved films.
 #define _POSIX_C_SOURCE 200809L
@@ -257,14 +257,14 @@ int main(int argc, char **argv) {
     Params p; base_params(&p, 0); Scene s; build(&s, backend, &p);
     CHECK(cbc_host_set_event_callback(s.host, on_event, &events));
     render(s.host, before);
-    /* The volume majorant pass: the WebGPU device refuses it by name (volume passes are not written there). */
-    CBCNode depth = create(s.host, "pass");
-    CHECK(cbc_host_set_string(s.host, depth, "type", "volume_majorant")); CHECK(cbc_host_set_string(s.host, depth, "name", "Majorant"));
+    /* A stereo eye: the WebGPU device refuses stereo cameras by name. (This was a volume majorant pass until the
+     * device wrote the majorant passes; a release build has no other pass the device refuses in a scene without volumes.) */
+    CHECK(cbc_host_set_string(s.host, s.camera, "stereo_eye", "left"));
     CBCRenderConfig config = {sizeof(config), W, H, SAMPLES, {0}};
     for (unsigned i = 0; i < FLOATS; ++i) after[i] = -99;
     failed_pass = cbc_host_render(s.host, &config, after, FLOATS);
     for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(after[i] == -99);
-    CHECK(cbc_host_delete_node(s.host, depth));
+    CHECK(cbc_host_set_string(s.host, s.camera, "stereo_eye", "none"));
     after_pass = cbc_host_render(s.host, &config, after, FLOATS);
     if (after_pass == CBC_OK) save(prefix, "recovery-pass", after);
     CHECK(cbc_host_set_string(s.host, s.camera, "camera_type", "custom"));

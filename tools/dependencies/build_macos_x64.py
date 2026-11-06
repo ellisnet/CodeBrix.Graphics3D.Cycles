@@ -88,6 +88,7 @@ def profile(source):
   if name=='jpeg':settings=dict(settings,WITH_SIMD='OFF')
   # OIDN: CPU device only (the Metal device is osx-arm64's alone).
   if name=='oidn':settings=dict(settings,OIDN_DEVICE_METAL='OFF')
+  if name=='embree':settings=dict(settings,EMBREE_MAX_ISA='AVX2')
   rows.append((name,path,settings))
  return rows
 

@@ -47,6 +47,41 @@ public class CyclesSceneTests
     }
 
     [Fact]
+    public void ResolveBackend_maps_cpu_to_the_embree_cpu_backend()
+    {
+        //Arrange
+        TestScenes.RequireNativeHost();
+
+        //Act
+        Backend backend = CyclesScene.ResolveBackend(CyclesBackend.Cpu);
+
+        //Assert
+        backend.Should().Be(Backend.Cpu);
+    }
+
+    [Fact]
+    public void Render_on_the_embree_cpu_backend_agrees_with_the_cpu_reference()
+    {
+        //Arrange
+        using CyclesScene reference = TestScenes.CreateCpuScene();
+        using CyclesScene embree = new(CyclesBackend.Cpu);
+        TestScenes.BuildTyped(reference);
+        TestScenes.BuildTyped(embree);
+
+        //Act
+        float[] expected = reference.Render(Small).Span.ToArray();
+        float[] actual = embree.Render(Small).Span.ToArray();
+
+        //Assert
+        embree.Backend.Should().Be(Backend.Cpu);
+        embree.GetCapabilities().IsGpu.Should().BeFalse();
+        actual.Should().HaveCount(expected.Length);
+        actual.All(float.IsFinite).Should().BeTrue();
+        for (int i = 0; i < expected.Length; i++)
+            Math.Abs(actual[i] - expected[i]).Should().BeLessThanOrEqualTo(5e-5f + 2e-4f * Math.Abs(expected[i]), $"component {i}");
+    }
+
+    [Fact]
     public void Render_of_a_typed_scene_is_finite_and_bit_identical_across_runs()
     {
         //Arrange

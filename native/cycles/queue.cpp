@@ -83,7 +83,7 @@ class WebGPUQueue final:public DeviceQueue {
       if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK){
         debug_enqueue_begin(kernel,work);d.enqueue_volume_stack(work,args);debug_enqueue_end();return;
       }
-      if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME){
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING){
         debug_enqueue_begin(kernel,work);d.enqueue_volume(work,args);debug_enqueue_end();return;
       }
       if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADOW_CATCHER_COUNT_POSSIBLE_SPLITS){
@@ -92,9 +92,15 @@ class WebGPUQueue final:public DeviceQueue {
       if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE){
         debug_enqueue_begin(kernel,work);d.enqueue_mnee(work,args);debug_enqueue_end();return;
       }
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE){
+        debug_enqueue_begin(kernel,work);d.enqueue_subsurface(work,args);debug_enqueue_end();return;
+      }
       if(kernel==DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK||kernel==DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_X||
          kernel==DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_FILTER_Y){
         debug_enqueue_begin(kernel,work);d.enqueue_adaptive_sampling(kernel,work,args);debug_enqueue_end();return;
+      }
+      if(kernel==DEVICE_KERNEL_VOLUME_GUIDING_FILTER_X||kernel==DEVICE_KERNEL_VOLUME_GUIDING_FILTER_Y){
+        debug_enqueue_begin(kernel,work);d.enqueue_volume_guiding(kernel,work,args);debug_enqueue_end();return;
       }
       if(kernel==DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS){
         debug_enqueue_begin(kernel,work);d.enqueue_cryptomatte_postprocess(work,args);debug_enqueue_end();return;

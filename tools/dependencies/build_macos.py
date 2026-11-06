@@ -85,6 +85,8 @@ def profile(source):
   # osx-arm64 is the one RID with OIDN's Metal device (licence plan, OIDN build
   # conditions); the osx-x64 and Windows siblings turn it back off.
   if name=='oidn':settings['OIDN_DEVICE_METAL']='ON'
+  # Embree: NEON kernels on Apple Silicon (the osx-x64 and Windows siblings select AVX2 again).
+  if name=='embree':settings['EMBREE_MAX_ISA']='NEON'
   rows.append((name,path,settings))
  return rows
 

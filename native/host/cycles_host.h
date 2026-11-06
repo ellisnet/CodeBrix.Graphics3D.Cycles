@@ -165,6 +165,10 @@ int cbc_host_version(CBCVersionInfo *info);
  * Silicon) build, WebGPU in every other build, osx-x64 (Intel macOS) included.
  * Accepted by cbc_host_create and the queries below. */
 enum { CBC_HOST_GPU = 4 };
+/* The Cycles CPU device with Cycles' own BVH choice: Embree in builds that include it (every
+ * shipped RID). CBC_HOST_CPU_REFERENCE keeps Cycles' BVH2 (the reference whose films the GPU
+ * backends are validated against). CBC_UNSUPPORTED in a build without Embree. */
+enum { CBC_HOST_CPU = 5 };
 /* Maps a requested backend (CBC_HOST_GPU, CBC_HOST_WEBGPU, CBC_HOST_METAL or
  * CBC_HOST_CPU_REFERENCE) to the concrete backend this binary would create.
  * Returns CBC_UNSUPPORTED when the backend is not compiled into this binary.

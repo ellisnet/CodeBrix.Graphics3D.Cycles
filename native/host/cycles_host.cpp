@@ -401,7 +401,7 @@ std::string device_report(Host &host) {
       out << ",\"wgslArithmetic\":\"" << wgsl_arithmetic() << '"';
     } else
 #endif
-    out << (device->info.type == DEVICE_METAL ? "\"metal\"" : "\"cpu\"") << ",\"pipelines\":null";
+    out << (device->info.type == DEVICE_METAL ? "\"metal\"" : host.backend == CBC_HOST_CPU ? "\"cpu-embree\"" : "\"cpu\"") << ",\"pipelines\":null";
     out << '}';
     return out.str();
 }
@@ -477,7 +477,7 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
     require(std::all_of(std::begin(config->reserved), std::end(config->reserved), [](auto v) { return v == 0; }), "Unknown configuration flags");
     require(config->threads <= 1024, "Invalid thread count");
     require(config->backend == CBC_HOST_WEBGPU || config->backend == CBC_HOST_CPU_REFERENCE || config->backend == CBC_HOST_METAL ||
-            config->backend == CBC_HOST_GPU, "Explicit backend selection required");
+            config->backend == CBC_HOST_GPU || config->backend == CBC_HOST_CPU, "Explicit backend selection required");
     const uint32_t backend = config->backend == CBC_HOST_GPU ? gpu_backend() : config->backend;
     require(backend != 0, "This binary has no GPU backend", CBC_UNSUPPORTED);
 #ifdef __APPLE__
@@ -486,6 +486,9 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
 #endif
 #ifndef WITH_METAL
     require(backend != CBC_HOST_METAL, "The Metal backend exists only in Apple Silicon builds", CBC_UNSUPPORTED);
+#endif
+#ifndef WITH_EMBREE
+    require(backend != CBC_HOST_CPU, "The Embree CPU backend exists only in builds with Embree", CBC_UNSUPPORTED);
 #endif
     std::lock_guard configuration_lock(configuration_mutex);
     auto host = std::make_shared<Host>();
@@ -511,7 +514,9 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
     params.denoise_device = params.device;
     params.headless = true; params.background = true; params.threads = int(config->threads);
     params.use_auto_tile = false; params.use_resolution_divider = false;
-    SceneParams scene; scene.bvh_layout = BVH_LAYOUT_BVH2; scene.bvh_type = BVH_TYPE_STATIC;
+    // Every backend builds Cycles' BVH2 (the CPU reference and the exact WGSL traversal agree on it), except the
+    // Embree CPU backend, which leaves the layout to the CPU device (Embree).
+    SceneParams scene; scene.bvh_layout = backend == CBC_HOST_CPU ? BVH_LAYOUT_AUTO : BVH_LAYOUT_BVH2; scene.bvh_type = BVH_TYPE_STATIC;
     scene.use_bvh_unaligned_nodes = false; scene.use_texture_cache = false;
     host->session = std::make_unique<Session>(params, scene);
     require(!host->session->progress.get_error(), host->session->progress.get_error_message().c_str(), CBC_FAILED);

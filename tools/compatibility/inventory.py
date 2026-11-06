@@ -336,7 +336,8 @@ def generate(values, enums, features, tables, reviews, evidence):
             'workItems': ['P13-01', 'P17-18'], 'status': 'source-reviewed',
             'sourceManifest': 'third_party/dependency-imports.json',
             'allRidValidation': 'pending', 'fullRequirementVerified': False})
-    for name in ('embree', 'oidn', 'osl', 'llvm', 'openvdb', 'nanovdb', 'opensubdiv', 'openpgl'):
+    # oidn and embree are imported components (third_party/dependency-imports.json, above).
+    for name in ('osl', 'llvm', 'openvdb', 'nanovdb', 'opensubdiv', 'openpgl'):
         documents['dependencies'].append(dict(id=name, status='unassessed',
                                               workItems=['P13-01', 'P13-05'],
                                               sourceManifest=None, allRidValidation='pending',

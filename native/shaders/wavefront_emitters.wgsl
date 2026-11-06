@@ -81,20 +81,23 @@ struct AreaRegion {P:vec3<f32>,U:vec3<f32>,V:vec3<f32>,len_u:f32,len_v:f32,recta
 fn area_region(light:u32,P:vec3<f32>)->AreaRegion{
     var r=AreaRegion(heap_vec3(light+L_co),heap_vec3(light+L_area_axis_u),heap_vec3(light+L_area_axis_v),heap_float(light+L_area_len_u),heap_float(light+L_area_len_v),heap_float(light+L_area_invarea)>0.0,true);
     if(heap_float(light+L_area_normalize_spread)<=0.0){return r;}
-    let N=heap_vec3(light+L_area_dir);let t=dot(N,P-r.P);let closest=P-t*N;
-    let spread=t*heap_float(light+L_area_tan_half_spread);let su=dot(r.U,closest-r.P);let sv=dot(r.V,closest-r.P);
+    // area_light_spread_clamp_light in the pinned association, every product rounded before its sum (rounded_dot,
+    // rounded_add, rounded_add3: the oracle kernels' -ffp-contract=off order), so no driver contraction changes it.
+    let N=heap_vec3(light+L_area_dir);let t=rounded_dot(N,P-r.P);let closest=rounded_add3(P,-(t*N));
+    let spread=t*heap_float(light+L_area_tan_half_spread);let su=rounded_dot(r.U,closest-r.P);let sv=rounded_dot(r.V,closest-r.P);
     let round= !r.rectangle&&r.len_u==r.len_v;var sample_spread=spread==0.0;
     if(round&&!sample_spread){
-        let distance=length(vec2<f32>(su,sv));let radius=r.len_u*0.5;
+        let distance=rounded_sqrt(rounded_add(su*su,sv*sv));let radius=r.len_u*0.5;
         if(distance>=radius+spread){r.valid=false;return r;}
         sample_spread=distance<=abs(radius-spread)&&spread<radius;
         if(distance>abs(radius-spread)){
             let len_u=radius+spread-distance;var len_v=2.0*min(radius,spread);
-            if(abs(radius*radius-spread*spread)<distance*distance){let x=distance+(spread*spread-radius*radius)/distance;len_v=sqrt(max(4.0*spread*spread-x*x,0.0));}
-            let rectangle_area=len_u*len_v;let circle_area=EMITTER_PI*radius*radius;let spread_area=EMITTER_PI*spread*spread;
+            if(abs(rounded_add(radius*radius,-(spread*spread)))<distance*distance){let x=rounded_add(distance,rounded_divide(rounded_add(spread*spread,-(radius*radius)),distance));
+                len_v=rounded_sqrt(max(rounded_add((2.0*spread)*(2.0*spread),-(x*x)),0.0));}
+            let rectangle_area=len_u*len_v;let circle_area=EMITTER_PI*(radius*radius);let spread_area=EMITTER_PI*(spread*spread);
             if(rectangle_area<min(circle_area,spread_area)){
                 r.rectangle=true;r.U=emitter_native_normalize(r.P-closest);r.V=emitter_quarter_turn(r.U,N);r.len_u=len_u;r.len_v=len_v;
-                r.P=0.5*(r.P+closest+r.U*(spread-radius));return r;
+                r.P=0.5*rounded_add3(r.P+closest,r.U*(spread-radius));return r;
             }sample_spread=spread_area<circle_area;
         }
     }else if(!round&&!sample_spread){
@@ -102,12 +105,12 @@ fn area_region(light:u32,P:vec3<f32>)->AreaRegion{
         let min_v=max(sv-spread,-r.len_v*0.5);let max_v=min(sv+spread,r.len_v*0.5);
         if(min_u>=max_u||min_v>=max_v){r.valid=false;return r;}
         let lu=max_u-min_u;let lv=max_v-min_v;let rectangle_area=lu*lv;
-        let ellipse_area=select((EMITTER_PI*0.25)*r.len_u*r.len_v,bitcast<f32>(0x7f7fffffu),r.rectangle);let spread_area=EMITTER_PI*spread*spread;
+        let ellipse_area=select((EMITTER_PI*0.25)*r.len_u*r.len_v,bitcast<f32>(0x7f7fffffu),r.rectangle);let spread_area=EMITTER_PI*(spread*spread);
         if(r.rectangle||rectangle_area<min(ellipse_area,spread_area)){
-            r.rectangle=true;r.len_u=lu;r.len_v=lv;r.P+=r.U*(0.5*(min_u+max_u))+r.V*(0.5*(min_v+max_v));return r;
+            r.rectangle=true;r.len_u=lu;r.len_v=lv;r.P=rounded_add3(rounded_add3(r.P,r.U*(0.5*(min_u+max_u))),r.V*(0.5*(min_v+max_v)));return r;
         }r.rectangle=false;sample_spread=spread_area<ellipse_area;
     }
-    if(sample_spread){r.rectangle=false;r.P+=r.U*su+r.V*sv;r.len_u=2.0*spread;r.len_v=2.0*spread;}
+    if(sample_spread){r.rectangle=false;r.P=rounded_add3(rounded_add3(r.P,r.U*su),r.V*sv);r.len_u=spread*2.0;r.len_v=spread*2.0;}
     return r;
 }
 struct AreaRect {P:vec3<f32>,pdf:f32}

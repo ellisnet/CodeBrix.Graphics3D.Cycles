@@ -27,5 +27,12 @@ public enum Backend : uint
     /// (Intel macOS) included. A host never reports it as its concrete backend;
     /// <see cref="CyclesHost.GetBackend"/> returns what was chosen.
     /// </summary>
-    Gpu = 4
+    Gpu = 4,
+
+    /// <summary>
+    /// The Cycles CPU device with Cycles' own BVH choice, Embree in builds that include it
+    /// (<c>CBC_HOST_CPU</c>). <see cref="CpuReference"/> keeps Cycles' BVH2: it is the reference the GPU
+    /// backends are validated against. Builds without Embree reject this backend as unsupported.
+    /// </summary>
+    Cpu = 5
 }

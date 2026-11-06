@@ -24,6 +24,7 @@ public class NativeHeaderConstantMatching
         { "CBC_HOST_CPU_REFERENCE", (long)Backend.CpuReference },
         { "CBC_HOST_METAL", (long)Backend.Metal },
         { "CBC_HOST_GPU", (long)Backend.Gpu },
+        { "CBC_HOST_CPU", (long)Backend.Cpu },
         { "CBC_EVENT_STATUS", (long)RenderEventKind.Status },
         { "CBC_EVENT_PROGRESS", (long)RenderEventKind.Progress },
         { "CBC_EVENT_ERROR", (long)RenderEventKind.Error },

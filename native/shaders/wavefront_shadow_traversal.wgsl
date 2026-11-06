@@ -82,7 +82,10 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
                         let shader=load_word(table_at(G_tri_shader,prim,4u))&SHADER_MASK;
                         let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);
                         if((flags&SD_HAS_TRANSPARENT_SHADOW)==0u){result.opaque=true;return result;}
-                        if((flags&SHADOW_ONLY_VOLUME)!=0u){fail();return result;}
+//#if VOLUME_SHADOW else                         if((flags&SHADOW_ONLY_VOLUME)!=0u){fail();return result;}
+                        // A volume-only boundary is a transparent hit: shade_shadow_transparent attenuates the
+                        // medium between hits and enters or exits the volume (VOLUME_SHADOW).
+//#endif
                         var duplicate=false;for(var k=0u;k<min(result.count,SHADOW_HIT_CAPACITY);k++){let old=shadow_hit_load(path,k);if(old.object==prim_object&&old.prim==prim){duplicate=true;break;}}
                         if(duplicate){continue;}result.count++;
                         if(result.count>max_hits){result.opaque=true;return result;}

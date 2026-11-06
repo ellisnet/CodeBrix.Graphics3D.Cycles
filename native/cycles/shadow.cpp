@@ -46,6 +46,14 @@ std::string shadow_layout(){
   // shared by the surface module (ray setup) and the shadow module (film writes).
   constant("AO_SHADOW_FLAG",PATH_RAY_SHADOW_FOR_AO);constant("AO_FEATURE_ADDITIVE",KERNEL_FEATURE_AO_ADDITIVE);constant("AO_FEATURE_PASS",KERNEL_FEATURE_AO_PASS);
   constant("D_integrator_ao_additive_factor",offsetof(KernelData,integrator.ao_additive_factor));constant("D_film_pass_ao",offsetof(KernelData,film.pass_ao));
+  // The shadow path's volume stack (VOLUME_SHADOW regions, shadow_state_template.h shadow_volume_stack).
+  out<<"//#if VOLUME_SHADOW\n";
+  constant("VL_S_shadow_volume_stack",offsetof(IntegratorStateGPU,shadow_volume_stack));
+  constant("VL_SVS_stride",sizeof(IntegratorStateGPU{}.shadow_volume_stack[0]));
+  constant("VL_SVS_object",offsetof(std::remove_reference_t<decltype(IntegratorStateGPU{}.shadow_volume_stack[0])>,object));
+  constant("VL_SVS_shader",offsetof(std::remove_reference_t<decltype(IntegratorStateGPU{}.shadow_volume_stack[0])>,shader));
+  constant("VL_SHADOW_VOLUME_FLAGS",PATH_RAY_VOLUME_PASS|PATH_RAY_VOLUME_PRIMARY_TRANSMIT);constant("VL_PRIMITIVE_VOLUME",PRIMITIVE_VOLUME);
+  out<<"//#endif\n";
   return out.str();
 }
 std::string shadow_source(){return svm_surface_source()+background_layout()+shadow_layout()+shadow_catcher_layout()+fragment;}
@@ -64,15 +72,25 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   if(p[2])validate(p[2],size_t(n)*4);
   require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU shadow currently requires triangle primitives");
   validate_geometry_motion();
-  // Transparent shadows with motion blur trace at the shadow ray's time (SHADOW_TRANSPARENT_MOTION). Volume
-  // attenuation, linking, AO and shadow catchers remain guarded below.
+  // Transparent shadows with motion blur trace at the shadow ray's time (SHADOW_TRANSPARENT_MOTION). Shadow
+  // paths through volumes carry the volume stack (VOLUME_SHADOW: homogeneous media, heterogeneous media through
+  // the majorant octree, ray-marched media; the other volume limits are refused in validate_volume); linking, AO
+  // and shadow catchers remain guarded below.
   if(data.integrator.transparent_shadows)require(data.integrator.transparent_max_bounce>=0&&data.integrator.transparent_max_bounce<=4095,"WebGPU transparent shadow hit limit exceeds packed state");
-  require(!(data.kernel_features&(KERNEL_FEATURE_VOLUME|KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
+  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
           "WebGPU shadow optional integration features not implemented");
+  if(data.kernel_features&KERNEL_FEATURE_VOLUME)validate_volume();
   validate_shadow_catcher();
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[14]=scene_tables();
   if(data.integrator.transparent_shadows&&shading){
     if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid shadow SVM table");p[22]=uint32_t(remaining(p[21])/4);}
+  }
+  // Heterogeneous volumes (VOLUME_HETEROGENEOUS): the shadow transmittance estimator draws its expansion order and
+  // shading offsets from the tabulated Sobol sequence (native_rng reads push word 9).
+  if(shading&&(shader_features()&SF_VOLUME_HETEROGENEOUS).any()){
+    require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU heterogeneous volume shadows require tabulated Sobol");
+    p[9]=globals.at("sample_pattern_lut");const unsigned sequence=data.integrator.tabulated_sobol_sequence_size;
+    require(sequence>1&&(sequence&(sequence-1))==0,"Invalid shadow Sobol sequence size");validate(p[9],size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
   }
   p[10]=uint32_t(remaining(uintptr_t(state.shadow_path.render_pixel_index))/4);
   if(!p[2])require(uint32_t(n)<=p[10],"Shadow dispatch exceeds path capacity");
@@ -82,6 +100,8 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
     field(state.shadow_path.transparent_bounce,2);field(state.shadow_path.throughput,12);field(state.shadow_path.rng_offset,2);field(state.shadow_path.volume_bounds_bounce,2);
     field(state.shadow_ray.time,4);field(state.shadow_ray.dP,4);field(state.shadow_ray.dD,4);field(state.shadow_ray.D,12);field(state.shadow_ray.tmin,4);
     for(unsigned i=0;i<INTEGRATOR_SHADOW_ISECT_SIZE_GPU;i++){field(state.shadow_isect[i].t,4);field(state.shadow_isect[i].u,4);field(state.shadow_isect[i].v,4);field(state.shadow_isect[i].object,4);field(state.shadow_isect[i].prim,4);field(state.shadow_isect[i].type,4);}
+    if(data.kernel_features&KERNEL_FEATURE_VOLUME)
+      for(unsigned slot=0;slot<data.volume_stack_size;slot++){field(state.shadow_volume_stack[slot].object,4);field(state.shadow_volume_stack[slot].shader,4);}
   }
   if(shading){
     p[4]=pointer(1,false);p[11]=uint32_t(remaining(p[4])/4);
@@ -119,11 +139,12 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   const char *entry=shading?(data.integrator.transparent_shadows?"shade_shadow_transparent":"shade_shadow"):"intersect_shadow";
   if(transparent_shading){
     // Both transparent entries come from the same specialized shadow module.
-    if(!pipeline_current(pipeline,entry)||!pipeline_current(shadow_shader_data,"prepare_shadow_shader_data")){
-      auto built=build_pipelines("shadow",shadow_source(),{"prepare_shadow_shader_data",entry});
+    if(!pipeline_current(pipeline,entry,SF_VOLUME_PHASE_KINDS)||!pipeline_current(shadow_shader_data,"prepare_shadow_shader_data",SF_VOLUME_PHASE_KINDS)){
+      // Shadow paths allocate no volume closures: the phase families' closure setup is left out (pipeline size guard).
+      auto built=build_pipelines("shadow",shadow_source(),{"prepare_shadow_shader_data",entry},SF_NONE,SF_VOLUME_PHASE_KINDS);
       shadow_shader_data=std::move(built[0]);pipeline=std::move(built[1]);
     }
-  }else if(!pipeline_current(pipeline,entry))pipeline=std::move(build_pipelines("shadow",shadow_source(),{entry})[0]);
+  }else if(!pipeline_current(pipeline,entry,SF_VOLUME_PHASE_KINDS))pipeline=std::move(build_pipelines("shadow",shadow_source(),{entry},SF_NONE,SF_VOLUME_PHASE_KINDS)[0]);
   // Dispatch ordering makes the cached hit ShaderData visible to the SVM stage.
   if(transparent_shading)dispatch(p,uint32_t(work),shadow_shader_data,workgroup("prepare_shadow_shader_data"));
   // Match the smaller transparent SVM workgroup; opaque traversal stays at 64.

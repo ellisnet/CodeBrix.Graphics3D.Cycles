@@ -6,6 +6,7 @@
 #ifdef CBC_PRINCIPLED_FIXTURE
 struct PrincipledArgs {float metallic=0,roughness=.5f,ior=1.45f,transmission=0,coat=0,coat_roughness=.1f,coat_ior=1.5f,sheen=0,sheen_roughness=.5f,
   level=.5f,anisotropic=0,rotation=0,alpha=1,emission=0,diffuse_roughness=0,subsurface=0,thin_film=0,film_ior=1.33f;int thin_wall=0;bool multi=true,tinted=false;
+  ClosureType ss_method=CLOSURE_BSSRDF_RANDOM_WALK_ID;float3 ss_radius=make_float3(1,.5f,.2f);float ss_scale=.05f,ss_ior=1.4f,ss_anisotropy=0;
   SVMStackOffset normal=SVM_STACK_INVALID,tangent=SVM_STACK_INVALID,coat_normal=SVM_STACK_INVALID,linked=SVM_STACK_INVALID;};
 // One NODE_CLOSURE_BSDF Principled record; `linked` routes roughness and the
 // base colour through the SVM stack (the encoding the native compiler emits).
@@ -18,7 +19,7 @@ static void principled(Program &p,const PrincipledArgs &a){
   n.specular_tint=a.tinted?color(.9f,.7f,.5f):color(1,1,1);n.specular_ior_level=value(a.level);n.anisotropic=value(a.anisotropic);n.anisotropic_rotation=value(a.rotation);
   n.emission_color=color(1,.6f,.3f);n.emission_strength=value(a.emission);n.sheen_tint=a.tinted?color(.9f,.5f,.7f):color(1,1,1);n.sheen_roughness=value(a.sheen_roughness);
   n.coat_tint=a.tinted?color(.6f,.8f,.9f):color(1,1,1);n.coat_roughness=value(a.coat_roughness);n.coat_ior=value(a.coat_ior);
-  n.subsurface_method=CLOSURE_BSSRDF_RANDOM_WALK_ID;n.subsurface_radius=color(1,.5f,.2f);n.subsurface_scale=value(.05f);n.subsurface_ior=value(1.4f);n.subsurface_anisotropy=value(0);
+  n.subsurface_method=a.ss_method;n.subsurface_radius=color(a.ss_radius.x,a.ss_radius.y,a.ss_radius.z);n.subsurface_scale=value(a.ss_scale);n.subsurface_ior=value(a.ss_ior);n.subsurface_anisotropy=value(a.ss_anisotropy);
   n.thin_film_thickness=value(a.thin_film);n.thin_film_ior=value(a.film_ior);n.thin_wall=SVMInputInt{.value=a.thin_wall,.offset=SVM_STACK_INVALID};
   if(a.linked!=SVM_STACK_INVALID){n.roughness={SVM_INPUT_STACK_OFFSET_MASK|a.linked};n.base_color={{SVM_INPUT_STACK_OFFSET_MASK|uint(a.linked+1)},value(0),value(0)};}
   auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());
@@ -56,15 +57,15 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
       else ds.data.tables.ggx_Eavg=ds.lookup_table.size()-31;}
 #endif
 #ifdef CBC_PRINCIPLED_FIXTURE
-    // Deferred Principled features are refused, never approximated.
-    if(test==11)principled(program,{.subsurface=.5f});
+    // Deferred Principled features are refused, never approximated (thin-wall subsurface scattering).
+    if(test==11)principled(program,{.subsurface=.5f,.thin_wall=1});
     if(test==12)principled(program,{}); // truncated record (bytecode bounds)
     if(test==13){principled(program,{.metallic=1,.thin_film=300});ds.data.tables.thin_film_table=ds.lookup_table.size()-3000;}
     if(test==14){principled(program,{.sheen=1});ds.data.tables.sheen_ltc=ds.lookup_table.size()-1000;}
     if(test==15){principled(program,{.transmission=1});ds.data.tables.ggx_glass_E=ds.lookup_table.size()-4000;}
     if(test==16){principled(program,{.metallic=1});ds.data.tables.ggx_gen_schlick_s=ds.lookup_table.size();}
-    if(test==17)principled(program,{.subsurface=1});
-    if(test==18)principled(program,{.subsurface=1e-4f});
+    if(test==17)principled(program,{.transmission=.5f,.subsurface=1,.thin_wall=1});
+    if(test==18)principled(program,{.subsurface=1e-4f,.thin_wall=1});
 #endif
 #ifdef CBC_GLASS_FIXTURE
     if(test==11)program.glass(.3f,1.5f,100);
@@ -486,6 +487,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     for(float alpha:{0.f,.5f,1.f})for(float emission:{0.f,2.f})run({.coat=.5f,.sheen=.5f,.alpha=alpha,.emission=emission,.tinted=true});
     for(float dr:{0.f,9.999e-6f,1e-5f,.5f,1.f})run({.diffuse_roughness=dr,.subsurface=1e-6f,.thin_film=.1f});
     run({.thin_wall=1,.normal=3}); // thin wall without transmission weight
+    // Subsurface lobes (BSSRDF closures, bssrdf_setup): the random walk methods, partial weights with the diffuse lobe,
+    // channels below the minimum radius (a diffuse closure), the skin model's dipole radius fit, a linked base colour.
+    for(auto method:{CLOSURE_BSSRDF_RANDOM_WALK_ID,CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID,CLOSURE_BSSRDF_RANDOM_WALK_LEGACY_ID})
+      for(float ss:{1e-4f,.5f,1.f})run({.roughness=.4f,.ior=1.6f,.subsurface=ss,.ss_method=method,.ss_scale=.3f,.ss_ior=1.2f,.ss_anisotropy=method==CLOSURE_BSSRDF_RANDOM_WALK_ID?.995f:-.95f});
+    run({.subsurface=1,.ss_radius=make_float3(1,.5f,0)});run({.subsurface=.7f,.ss_radius=zero_float3()});run({.subsurface=1,.ss_radius=make_float3(1,-2,1e-9f)});
+    run({.metallic=.3f,.coat=.4f,.sheen=.3f,.diffuse_roughness=.5f,.subsurface=.6f,.ss_method=CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID,.linked=9});
+    run({.subsurface=1,.ss_method=CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID,.ss_ior=5,.normal=3});
     // Thin-film iridescence on dielectric, metallic and transmissive lobes, including the sub-1 nm blend.
     for(float film:{.1f,.5f,100.f,400.f,1500.f})for(float film_ior:{1.f,1.33f,2.f}){run({.roughness=.3f,.ior=1.5f,.thin_film=film,.film_ior=film_ior});
       run({.metallic=1,.roughness=.2f,.thin_film=film,.film_ior=film_ior,.tinted=film_ior>1.5f});run({.roughness=.1f,.ior=1.4f,.transmission=1,.thin_film=film,.film_ior=film_ior,.multi=film_ior<1.5f});}
@@ -629,11 +637,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #ifdef CBC_PRINCIPLED_FIXTURE
     // Native-layer rejection before any pipeline or dispatch: a clear
     // unsupported-feature message, never an approximation.
-    const std::pair<PrincipledArgs,const char*> host_cases[]={{{.subsurface=.5f},"subsurface"},{{.subsurface=1},"subsurface"},{{.subsurface=1e-4f},"subsurface"},
+    const std::pair<PrincipledArgs,const char*> host_cases[]={{{.subsurface=.5f,.thin_wall=1},"thin-wall subsurface"},{{.subsurface=1,.ss_method=CLOSURE_BSSRDF_BURLEY_ID},"Christensen-Burley"},
+      {{.subsurface=1e-4f},nullptr},{{.subsurface=1,.ss_method=CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID},nullptr},
       {{.subsurface=1e-6f,.thin_film=.1f},nullptr},{{.thin_film=250},nullptr},{{.transmission=1,.thin_wall=1},nullptr},{{.thin_wall=1},nullptr}};
     for(auto &[args,reason]:host_cases){Program p(ds);principled(p,args);p.install(ds);std::string message;
       try{d.shader_features();}catch(const std::exception &e){message=e.what();}
-      if(reason)require(message.find("Unsupported feature: Principled BSDF")!=std::string::npos&&message.find(reason)!=std::string::npos,"Missing native Principled rejection: "+message);
+      if(reason)require(message.find("Unsupported feature: ")!=std::string::npos&&message.find(reason)!=std::string::npos,"Missing native Principled rejection: "+message);
       else require(message.empty(),"Supported Principled program rejected: "+message);
       host_rejections+=reason!=nullptr;}
     Program restore(ds);restore.diffuse(0);restore.install(ds);d.shader_features();

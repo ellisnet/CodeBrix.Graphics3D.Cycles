@@ -11,7 +11,7 @@
 // subsequent native scheduling; it may not inject those CPU decisions as data.
 struct RenderCapture final:ccl::WebGPUCommandObserver {
   ccl::WebGPUDevice &device;std::ofstream commands;size_t arena_size;uint64_t count=0;bool sized_dispatch=false;
-  std::array<uint64_t,42> pipeline_dispatches{};
+  std::array<uint64_t,50> pipeline_dispatches{};
   static void file(const std::string &name,const void *data,size_t bytes){std::ofstream out(name,std::ios::binary);out.write(static_cast<const char*>(data),bytes);if(!out)throw std::runtime_error("Capture write failed: "+name);}
   void header(uint32_t kind,uint32_t address,uint32_t bytes){uint32_t h[]={kind,address,bytes};commands.write(reinterpret_cast<const char*>(h),sizeof(h));count++;}
   RenderCapture(ccl::WebGPUDevice &d,const std::string &prefix):device(d),commands(prefix+".commands.bin",std::ios::binary),arena_size(d.arena_bytes){
@@ -23,6 +23,7 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
     if(d.data.integrator.has_shadow_catcher)std::ofstream(out/"shadow_catcher.wgsl")<<d.module_wgsl(ccl::shadow_catcher_split_wgsl());
     if(d.film_cryptomatte())std::ofstream(out/"film_post.wgsl")<<ccl::film_post_wgsl();
     if(d.data.film.pass_adaptive_aux_buffer!=PASS_UNUSED)std::ofstream(out/"film_adaptive.wgsl")<<ccl::film_adaptive_wgsl();
+    if(d.data.film.pass_volume_scatter_denoised!=PASS_UNUSED)std::ofstream(out/"film_volume_guiding.wgsl")<<ccl::film_volume_guiding_wgsl();
     std::ofstream(out/"surface_raytrace.wgsl")<<ccl::specialize_wgsl(ccl::surface_source(),d.shader_features()|ccl::SF_NODE_RAYTRACE);
     // The INTERSECT_MNEE module (entries 27-33): the caustic casters' SVM regions and the MNEE entry points (mnee.cpp).
     if((d.shader_features()&ccl::SF_MNEE).any())std::ofstream(out/"surface_mnee.wgsl")<<ccl::specialize_wgsl(ccl::surface_source(),(d.shader_features()&~d.mnee_unused_svm_features())|ccl::SF_MNEE_ENTRIES);
@@ -43,7 +44,9 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
     // 27-33 (mnee_receiver, mnee_seed, mnee_eval, mnee_setup, mnee_solve, mnee_transfer, mnee_contribute, in the MNEE
     // module surface_mnee.wgsl; older captures carry them in surface.wgsl) and 34 (mnee_cleanup, surface.wgsl), 35 (shade_surface_sample, surface.wgsl), 36 (shade_surface_passes,
     // surface.wgsl), 37 (cryptomatte_postprocess, film_post.wgsl), 38 (connect_surface_ao, surface.wgsl) and 39-41
-    // (adaptive_convergence_check, adaptive_filter_x, adaptive_filter_y, film_adaptive.wgsl). All follow the
+    // (adaptive_convergence_check, adaptive_filter_x, adaptive_filter_y, film_adaptive.wgsl) and 42
+    // (shade_surface_light_background, surface.wgsl), 43-44 (volume_guiding_filter_x, volume_guiding_filter_y,
+    // film_volume_guiding.wgsl), 45-46 (shade_volume_segment, shade_volume_light, surface.wgsl), 47 (intersect_subsurface, surface.wgsl), 48 (shade_volume_phase, volume.wgsl), 49 (shade_volume_heterogeneous, volume.wgsl). All follow the
     // v5 slots 9-14.
     pipeline_dispatches[entry]++;
     // Kind 3 retains the original implicit size 64. Kind 5 stores the explicit

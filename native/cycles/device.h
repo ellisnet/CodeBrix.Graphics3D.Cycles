@@ -66,6 +66,8 @@ class WebGPUDevice final:public Device {
   // BVH primitive -> triangle and object (the MNEE caster census, mnee_unused_svm_features); mnee_generation counts
   // their uploads, and the census is kept per (svm_generation, mnee_generation).
   std::vector<int> prim_index_words,prim_object_words;uint64_t mnee_generation=0,mnee_census_key[2]={~uint64_t(0),~uint64_t(0)};ShaderFeatures mnee_unused;
+  // surface_unused_svm_features cache (svm_generation counts tri_shader uploads too).
+  uint64_t surface_census_key=~uint64_t(0);ShaderFeatures surface_unused;
   bool specialization_enabled=true; // false only for SpecializationMode::Off
   SpecializationMode specialization_mode=SpecializationMode::Scene;
   // Superset mode (pipelines.h): requested group, the scene features the groups
@@ -105,6 +107,8 @@ class WebGPUDevice final:public Device {
   // SVM node and closure regions of the scene that no SD_HAS_RAYTRACE shader
   // reaches (prepare_surface_raytrace evaluates only those shaders).
   ShaderFeatures raytrace_unused_svm_features();
+  // The scene's SVM node regions no triangle shader reaches (prepare_surface evaluates only those shaders).
+  ShaderFeatures surface_unused_svm_features();
   // The scene's SVM handler regions the displacement programs never reach (shader_eval_displace).
   ShaderFeatures displacement_unused_svm_features();
   // The scene's SVM handler regions the caustic casters' shaders never reach (mnee_eval and mnee_contribute
@@ -151,12 +155,28 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline volume_stack;
   cbc::Pipeline volume_density;
   uint32_t volume_closures=0;size_t volume_closure_bytes=0;
+  // Volume direct light (volume.cpp, VOLUME_LIGHT): the light segment and light entries of the surface module
+  // and their per-input records.
+  cbc::Pipeline volume_segment,volume_light;
+  // The indirect phase scatter with phase functions beyond Henyey-Greenstein (volume module, VOLUME_PHASES).
+  cbc::Pipeline volume_phase;
+  // Paths through heterogeneous volumes (volume module, VOLUME_HETEROGENEOUS).
+  cbc::Pipeline volume_heterogeneous;
+  cbc::Pipeline volume_ray_marching;
+  // INTERSECT_SUBSURFACE (subsurface.cpp): the walk entry and its traversal stacks.
+  cbc::Pipeline subsurface_walk;uint32_t subsurface_stack=0;size_t subsurface_stack_bytes=0;
+  uint32_t volume_light_records=0;size_t volume_light_record_size=0;
   cbc::Pipeline surface;
   cbc::Pipeline surface_geometry;
   cbc::Pipeline surface_prepare;
+  // The node regions left out of surface_prepare (surface_unused_svm_features; none = the shared surface build).
+  ShaderFeatures surface_prepare_removed;
   cbc::Pipeline surface_light;
   // Emissive-triangle half of the light stage (LIGHT_TRIANGLE scenes only; surface.cpp).
   cbc::Pipeline surface_light_triangle;
+  // shade_surface_light_background: the background light's sample after shade_surface_light (sun guiding;
+  // SF_BACKGROUND_SAMPLE_ENTRY, wavefront_surface.wgsl).
+  cbc::Pipeline surface_light_background;
   cbc::Pipeline surface_light_select;
   // BSDF sample stage of scenes with the remaining SVM BSDF families (surface.cpp).
   cbc::Pipeline surface_sample;
@@ -188,6 +208,9 @@ class WebGPUDevice final:public Device {
   // DEVICE_KERNEL_ADAPTIVE_SAMPLING_CONVERGENCE_CHECK, _FILTER_X and _FILTER_Y (film_passes.cpp,
   // wavefront_film_adaptive.wgsl).
   cbc::Pipeline film_adaptive_check,film_adaptive_x,film_adaptive_y;
+  // DEVICE_KERNEL_VOLUME_GUIDING_FILTER_X and _Y (film_passes.cpp, wavefront_film_volume_guiding.wgsl).
+  cbc::Pipeline film_volume_x,film_volume_y;
+  void enqueue_volume_guiding(DeviceKernel,int,const DeviceKernelArguments&);
   void enqueue_adaptive_sampling(DeviceKernel,int,const DeviceKernelArguments&);
   // The sampling pattern's table for push word 9 (camera.cpp): tabulated Sobol's sample_pattern_lut, or 0.
   uint32_t sample_pattern_table(const char *stage);
@@ -242,6 +265,7 @@ class WebGPUDevice final:public Device {
   void enqueue_surface(int,const DeviceKernelArguments&,DeviceKernel=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE);
   // DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE (mnee.cpp, wavefront_mnee.wgsl).
   void enqueue_mnee(int,const DeviceKernelArguments&);
+  void enqueue_subsurface(int,const DeviceKernelArguments&);void validate_subsurface();
   void validate_mnee() const;
   void update_state(const IntegratorStateGPU&);
   uint32_t scene_tables();

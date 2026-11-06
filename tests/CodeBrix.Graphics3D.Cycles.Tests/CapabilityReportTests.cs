@@ -78,17 +78,18 @@ public class CapabilityReportTests
         report.IsGpu.Should().BeFalse();
         report.Scope.Should().BeNull();
         report.BackendScopes["cpu"].PassesNote.Should().NotBeNullOrEmpty();
+        report.BackendScopes["cpu-embree"].PassesNote.Should().NotBeNullOrEmpty();
         if (CyclesScene.ResolveBackend(CyclesBackend.Gpu) == Backend.Metal)
         {
             // Apple Silicon: Cycles' own Metal device, the full upstream feature set.
-            report.CompiledBackends.Should().Equal("cpu", "metal");
+            report.CompiledBackends.Should().Equal("cpu", "metal", "cpu-embree");
             report.GpuBackendName.Should().Be("metal");
             report.BackendScopes["metal"].CameraTypes.Should().Equal("perspective", "orthograph", "panorama");
             report.BackendScopes["metal"].PassesNote.Should().NotBeNullOrEmpty();
             report.BackendScopes["metal"].RenderTimeRejections.Should().BeEmpty();
             return;
         }
-        report.CompiledBackends.Should().Equal("cpu", "webgpu");
+        report.CompiledBackends.Should().Equal("cpu", "webgpu", "cpu-embree");
         report.GpuBackendName.Should().Be("webgpu");
         report.BackendScopes["webgpu"].CameraTypes.Should().Equal("perspective", "orthograph", "panorama");
         report.BackendScopes["webgpu"].WrittenPasses.Should().Equal("combined", "emission", "background", "ao", "diffuse", "diffuse_direct",
@@ -96,7 +97,7 @@ public class CapabilityReportTests
             "transmission_indirect", "transmission_color", "depth", "position", "normal", "roughness", "uv", "object_id", "material_id", "motion",
             "motion_weight", "cryptomatte", "aov_color", "aov_value", "mist", "render_time", "sample_count", "shadow_catcher", "shadow_catcher_sample_count",
             "shadow_catcher_matte", "denoising_albedo", "denoising_normal", "denoising_specular_albedo", "denoising_roughness", "denoising_depth",
-            "denoising_backward_motion", "denoising_specular_motion");
+            "denoising_backward_motion", "denoising_specular_motion", "volume_majorant", "volume_majorant_sample_count");
         report.BackendScopes["webgpu"].RenderTimeRejections.Should().NotBeEmpty();
     }
 

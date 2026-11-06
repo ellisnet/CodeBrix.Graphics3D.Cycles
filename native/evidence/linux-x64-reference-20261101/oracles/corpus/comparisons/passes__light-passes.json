@@ -1,0 +1,598 @@
+{
+  "sceneId": "passes/light-passes",
+  "sceneSha256": "ddb4a6d25d92598baf5f575d13dea1f90cc832882db6d33946a8e6c7faf4a257",
+  "width": 48,
+  "height": 36,
+  "practicalCriterion": "abs(a-b) <= 5e-5 + 2e-4*abs(b)",
+  "strictCriterion": "abs(a-b) <= 1e-7 + 1e-7*abs(b)",
+  "backends": [
+    {
+      "directory": "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/val35/oracles/corpus/oracle/passes/light-passes/cpu-x64-linux",
+      "backend": "cpu-x64-linux",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "DiffDir",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "DiffInd",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "DiffCol",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "GlossDir",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "GlossInd",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "GlossCol",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "TransDir",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "TransInd",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "TransCol",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Emit",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Env",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Diffuse",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Glossy",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Transmission",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        }
+      ],
+      "repeatBitwiseIdentical": true,
+      "repeatMaxAbsDifference": 0,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": true,
+      "measuredRepeatMaxAbsDifference": 0.0,
+      "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)",
+      "renderSeconds": [
+        0.00620969,
+        0.00394421
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": null,
+      "isaFamily": "x64",
+      "isaSource": "backend name"
+    },
+    {
+      "directory": "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/val35/oracles/corpus/oracle/passes/light-passes/wgsl-linux-intel",
+      "backend": "wgsl-linux-intel",
+      "samples": 8,
+      "repeats": 2,
+      "passRepeats": [
+        {
+          "name": "DiffDir",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.7881393432617188e-07
+        },
+        {
+          "name": "DiffInd",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08
+        },
+        {
+          "name": "DiffCol",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "GlossDir",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.5367431640625e-07
+        },
+        {
+          "name": "GlossInd",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 8.940696716308594e-08
+        },
+        {
+          "name": "GlossCol",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 7.450580596923828e-09
+        },
+        {
+          "name": "TransDir",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 2.220446049250313e-16
+        },
+        {
+          "name": "TransInd",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "TransCol",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        },
+        {
+          "name": "Emit",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Env",
+          "repeat": 1,
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0
+        },
+        {
+          "name": "Diffuse",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.7881393432617188e-07
+        },
+        {
+          "name": "Glossy",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.5367431640625e-07
+        },
+        {
+          "name": "Transmission",
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-07
+        }
+      ],
+      "repeatBitwiseIdentical": false,
+      "repeatMaxAbsDifference": 4.76837158203125e-07,
+      "measuredRepeats": [
+        {
+          "repeat": 1,
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 4.76837158203125e-07,
+          "nonfinite": 0
+        }
+      ],
+      "measuredRepeatBitwiseIdentical": false,
+      "measuredRepeatMaxAbsDifference": 4.76837158203125e-07,
+      "deviceName": "WebGPU adapter: see machine.gpu and cbc_host_capabilities_json",
+      "renderSeconds": [
+        0.707153,
+        0.367213
+      ],
+      "nonfiniteComponents": 0,
+      "rid": "linux-x64",
+      "wgslArithmetic": "x64-sse4.2",
+      "isaFamily": "x64",
+      "isaSource": "wgslArithmetic x64-sse4.2"
+    }
+  ],
+  "goldStandards": [
+    "cpu-x64-linux"
+  ],
+  "candidates": [
+    "wgsl-linux-intel"
+  ],
+  "pairs": [
+    {
+      "bitwiseEqual": false,
+      "maxAbsoluteDifference": 4.57763671875e-05,
+      "maxRelativeError": 6.826751971929989e-05,
+      "rms": 1.162487752638554e-06,
+      "practicalFailures": 0,
+      "strictDifferences": 486,
+      "worstPixel": {
+        "x": 12,
+        "y": 6,
+        "channel": "G",
+        "reference": 0.26935258507728577,
+        "candidate": 0.269370973110199,
+        "absoluteDifference": 1.8388032913208008e-05,
+        "criterionRatio": 0.17702841423684887
+      },
+      "reference": "cpu-x64-linux",
+      "candidate": "wgsl-linux-intel",
+      "role": "gating",
+      "practicalPassed": true,
+      "samplesMatch": true,
+      "passes": [
+        {
+          "name": "DiffDir",
+          "type": "diffuse_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.5795230865478516e-06,
+          "maxRelativeError": 2.550408800069094e-05,
+          "rms": 1.2957524723218562e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 562,
+          "worstPixel": {
+            "x": 33,
+            "y": 29,
+            "channel": 0,
+            "reference": 0.1022389754652977,
+            "candidate": 0.10224052518606186,
+            "absoluteDifference": 1.5497207641601562e-06,
+            "criterionRatio": 0.021998144329613424
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "DiffInd",
+          "type": "diffuse_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.2159347534179688e-05,
+          "maxRelativeError": 4.242686540297046e-05,
+          "rms": 2.722604570752042e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 50,
+          "worstPixel": {
+            "x": 12,
+            "y": 6,
+            "channel": 0,
+            "reference": 0.1591026335954666,
+            "candidate": 0.15910938382148743,
+            "absoluteDifference": 6.750226020812988e-06,
+            "criterionRatio": 0.08250039802344343
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "DiffCol",
+          "type": "diffuse_color",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "maxRelativeError": 1.690911805591135e-07,
+          "rms": 2.5766383438451284e-09,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 18,
+            "y": 10,
+            "channel": 1,
+            "reference": 0.3525000214576721,
+            "candidate": 0.35249996185302734,
+            "absoluteDifference": 5.960464477539063e-08,
+            "criterionRatio": 0.0004946443373660366
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "GlossDir",
+          "type": "glossy_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.7220458984375e-05,
+          "maxRelativeError": 2.2800775584810024e-05,
+          "rms": 1.8724361500494126e-06,
+          "practicalFailures": 0,
+          "strictDifferences": 176,
+          "worstPixel": {
+            "x": 10,
+            "y": 22,
+            "channel": 0,
+            "reference": 0.5986403226852417,
+            "candidate": 0.5986539721488953,
+            "absoluteDifference": 1.3649463653564453e-05,
+            "criterionRatio": 0.08041960350396289
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "GlossInd",
+          "type": "glossy_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.00012123584747314453,
+          "maxRelativeError": 9.54448230849963e-05,
+          "rms": 2.3391328879066545e-06,
+          "practicalFailures": 0,
+          "strictDifferences": 119,
+          "worstPixel": {
+            "x": 12,
+            "y": 6,
+            "channel": 0,
+            "reference": 1.2702192068099976,
+            "candidate": 1.2703404426574707,
+            "absoluteDifference": 0.00012123584747314453,
+            "criterionRatio": 0.39874462488716933
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "GlossCol",
+          "type": "glossy_color",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 5.960464477539063e-08,
+          "maxRelativeError": 1.430398865293188e-07,
+          "rms": 2.0112212877282677e-09,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 13,
+            "y": 7,
+            "channel": 0,
+            "reference": 0.5300000309944153,
+            "candidate": 0.5299999713897705,
+            "absoluteDifference": 5.960464477539063e-08,
+            "criterionRatio": 0.0003820810410699675
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "TransDir",
+          "type": "transmission_direct",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.678825123363481e-08,
+          "maxRelativeError": 8.537246308570877,
+          "rms": 2.6414268250677056e-10,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 28,
+            "y": 7,
+            "channel": 0,
+            "reference": 4.26290513999561e-09,
+            "candidate": -1.25253460936392e-08,
+            "absoluteDifference": 1.678825123363481e-08,
+            "criterionRatio": 0.0003357650189473585
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "TransInd",
+          "type": "transmission_indirect",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.424984455108643e-07,
+          "maxRelativeError": 2.3249250267034246e-05,
+          "rms": 4.1813070806673615e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 122,
+          "worstPixel": {
+            "x": 19,
+            "y": 13,
+            "channel": 0,
+            "reference": 0.04319370910525322,
+            "candidate": 0.04319465160369873,
+            "absoluteDifference": 9.424984455108643e-07,
+            "criterionRatio": 0.016072965009841293
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "TransCol",
+          "type": "transmission_color",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.7881393432617188e-07,
+          "maxRelativeError": 2.0562075294618555e-07,
+          "rms": 1.1648773550548727e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 24,
+            "y": 17,
+            "channel": 1,
+            "reference": 0.8696298003196716,
+            "candidate": 0.8696296215057373,
+            "absoluteDifference": 1.7881393432617188e-07,
+            "criterionRatio": 0.0007985404384338365
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Emit",
+          "type": "emission",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.0,
+            "candidate": 0.0,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Env",
+          "type": "background",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": true,
+          "maxAbsoluteDifference": 0.0,
+          "maxRelativeError": 0.0,
+          "rms": 0.0,
+          "practicalFailures": 0,
+          "strictDifferences": 0,
+          "worstPixel": {
+            "x": 0,
+            "y": 0,
+            "channel": 0,
+            "reference": 0.29999998211860657,
+            "candidate": 0.29999998211860657,
+            "absoluteDifference": 0.0,
+            "criterionRatio": 0.0
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Diffuse",
+          "type": "diffuse",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 1.1920928955078125e-05,
+          "maxRelativeError": 1.9190832922929376e-05,
+          "rms": 3.014548977191277e-07,
+          "practicalFailures": 0,
+          "strictDifferences": 582,
+          "worstPixel": {
+            "x": 12,
+            "y": 6,
+            "channel": 0,
+            "reference": 0.37270697951316833,
+            "candidate": 0.3727141320705414,
+            "absoluteDifference": 7.152557373046875e-06,
+            "criterionRatio": 0.057431164322573815
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Glossy",
+          "type": "glossy",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 0.00012111663818359375,
+          "maxRelativeError": 9.48171154225731e-05,
+          "rms": 2.9964670130724176e-06,
+          "practicalFailures": 0,
+          "strictDifferences": 293,
+          "worstPixel": {
+            "x": 12,
+            "y": 6,
+            "channel": 0,
+            "reference": 1.2773710489273071,
+            "candidate": 1.2774921655654907,
+            "absoluteDifference": 0.00012111663818359375,
+            "criterionRatio": 0.3964872788071227
+          },
+          "status": "compared",
+          "passed": true
+        },
+        {
+          "name": "Transmission",
+          "type": "transmission",
+          "components": 3,
+          "kind": "float",
+          "bitwiseEqual": false,
+          "maxAbsoluteDifference": 9.424984455108643e-07,
+          "maxRelativeError": 2.3249250267034246e-05,
+          "rms": 4.181108601381967e-08,
+          "practicalFailures": 0,
+          "strictDifferences": 122,
+          "worstPixel": {
+            "x": 19,
+            "y": 13,
+            "channel": 0,
+            "reference": 0.04319370910525322,
+            "candidate": 0.04319465160369873,
+            "absoluteDifference": 9.424984455108643e-07,
+            "criterionRatio": 0.016072965009841293
+          },
+          "status": "compared",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "crossIsaGating": [],
+  "legacyAndroidIsa": [],
+  "gatingPairs": 1,
+  "problems": [],
+  "passed": true,
+  "verdict": "perfect"
+}

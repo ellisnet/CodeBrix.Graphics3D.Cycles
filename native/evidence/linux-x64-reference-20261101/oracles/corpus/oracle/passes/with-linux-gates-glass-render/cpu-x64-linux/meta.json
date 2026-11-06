@@ -1,0 +1,393 @@
+{
+  "sceneId": "passes/with-linux-gates-glass-render",
+  "sceneSha256": "0cc82b68bf2a4bf2a152f0321d439fce6f8b1089633f67b88d137da577d38c8c",
+  "backend": "cpu-x64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0135061,
+    0.00987586
+  ],
+  "filmSha256": [
+    "e9aa6e308a8bc762a6c02955dedd30c2907f1e2eaf191daaa1683f3328675cac",
+    "e9aa6e308a8bc762a6c02955dedd30c2907f1e2eaf191daaa1683f3328675cac"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "DiffDir",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a9615018d8a83b403c7a3d4d78b046fc05f32412c544867c096e131177ed988a",
+        "a9615018d8a83b403c7a3d4d78b046fc05f32412c544867c096e131177ed988a"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "DiffInd",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "d1096f5c1dbc755123940d0892f65193f078881c4ac77aecffbc606283fe509b",
+        "d1096f5c1dbc755123940d0892f65193f078881c4ac77aecffbc606283fe509b"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "DiffCol",
+      "type": "diffuse_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2a30cd0a403f5d9c01bd90d2ef772f90b477ff50501ff99af962764cdfcaca6c",
+        "2a30cd0a403f5d9c01bd90d2ef772f90b477ff50501ff99af962764cdfcaca6c"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "GlossDir",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "5443108082463fa98310fd8b6846249194c9f03e95f2ac5c1afd1d75d43a5d4d",
+        "5443108082463fa98310fd8b6846249194c9f03e95f2ac5c1afd1d75d43a5d4d"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "GlossInd",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "91420764cabacd74fb6f84b09f013b06a05ce3de99e552fbae68a1f22fc2ea13",
+        "91420764cabacd74fb6f84b09f013b06a05ce3de99e552fbae68a1f22fc2ea13"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "GlossCol",
+      "type": "glossy_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "74e49636296bde9bbfa653cfe6874d2ff09fc1f72b666aa1400da014cee2f29f",
+        "74e49636296bde9bbfa653cfe6874d2ff09fc1f72b666aa1400da014cee2f29f"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "TransDir",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "14dfb5934f8773016ad04ece6ff0b4b60593924693c836f450644e0979f1a199",
+        "14dfb5934f8773016ad04ece6ff0b4b60593924693c836f450644e0979f1a199"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "TransInd",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "f924c105d88b133a0c0687c8a40355c12bb3eaff1efcb1c011b5f13a86700c5e",
+        "f924c105d88b133a0c0687c8a40355c12bb3eaff1efcb1c011b5f13a86700c5e"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "TransCol",
+      "type": "transmission_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "74961044a1e055a64f1cfa93bc05edb3764de967d111197f166496b644ab2622",
+        "74961044a1e055a64f1cfa93bc05edb3764de967d111197f166496b644ab2622"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "Emit",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "d606438403749f3435a6e4eacb70e9fcbc62e7e81bebf481f9c940024eafd8af",
+        "d606438403749f3435a6e4eacb70e9fcbc62e7e81bebf481f9c940024eafd8af"
+      ]
+    },
+    {
+      "index": 10,
+      "name": "Env",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "12e68ae68a6b4f35f148ee7ba521b8e105ae71aecb3547388e40532cd5727a03",
+        "12e68ae68a6b4f35f148ee7ba521b8e105ae71aecb3547388e40532cd5727a03"
+      ]
+    },
+    {
+      "index": 11,
+      "name": "Diffuse",
+      "type": "diffuse",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "9afae0409bd0577984f84577b49fbd90f12bb885929959673a2fa323e7276097",
+        "9afae0409bd0577984f84577b49fbd90f12bb885929959673a2fa323e7276097"
+      ]
+    },
+    {
+      "index": 12,
+      "name": "Glossy",
+      "type": "glossy",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "4d106f03faedd4cea9749fc035909908d25974d646d26cae333a87a3221235c8",
+        "4d106f03faedd4cea9749fc035909908d25974d646d26cae333a87a3221235c8"
+      ]
+    },
+    {
+      "index": 13,
+      "name": "Transmission",
+      "type": "transmission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "8b24f2ea14a5d08f090d453eec391ea2ed0273d1920a0194cb1fd739b4a23777",
+        "8b24f2ea14a5d08f090d453eec391ea2ed0273d1920a0194cb1fd739b4a23777"
+      ]
+    },
+    {
+      "index": 14,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "6a0edb715bc432ba3e4a0bbabf19e1bb10fb0dc12c2b92adc111ea052751e211",
+        "6a0edb715bc432ba3e4a0bbabf19e1bb10fb0dc12c2b92adc111ea052751e211"
+      ]
+    },
+    {
+      "index": 15,
+      "name": "Position",
+      "type": "position",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "7d2e9cd9621b33177fb9d902b283bc911bceb4891138ff8bfb7f85c803a1541a",
+        "7d2e9cd9621b33177fb9d902b283bc911bceb4891138ff8bfb7f85c803a1541a"
+      ]
+    },
+    {
+      "index": 16,
+      "name": "Normal",
+      "type": "normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "c903471902c80a1e78db666ac45188a6e3247e088e2f22b7ad3b12768404286a",
+        "c903471902c80a1e78db666ac45188a6e3247e088e2f22b7ad3b12768404286a"
+      ]
+    },
+    {
+      "index": 17,
+      "name": "Roughness",
+      "type": "roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "429526e09850ff1b7e8e69969a18dc3309d8cf11249765f9b194080ca06253f5",
+        "429526e09850ff1b7e8e69969a18dc3309d8cf11249765f9b194080ca06253f5"
+      ]
+    },
+    {
+      "index": 18,
+      "name": "UV",
+      "type": "uv",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75",
+        "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75"
+      ]
+    },
+    {
+      "index": 19,
+      "name": "IndexOB",
+      "type": "object_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a",
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a"
+      ]
+    },
+    {
+      "index": 20,
+      "name": "IndexMA",
+      "type": "material_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a",
+        "f3cc103136423a57975750907ebc1d367e2985ac6338976d4d5a439f50323f4a"
+      ]
+    },
+    {
+      "index": 21,
+      "name": "Mist",
+      "type": "mist",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "9e78b7a2fed9aa47d8463c33b8a4e7ee7d3962004d487db728613b12d5c251ce",
+        "9e78b7a2fed9aa47d8463c33b8a4e7ee7d3962004d487db728613b12d5c251ce"
+      ]
+    },
+    {
+      "index": 22,
+      "name": "AO",
+      "type": "ao",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "f34777b2a3886cbe4a49d50299e805636daff681cec0b3c072806f9a91edad35",
+        "f34777b2a3886cbe4a49d50299e805636daff681cec0b3c072806f9a91edad35"
+      ]
+    },
+    {
+      "index": 23,
+      "name": "Denoising Albedo",
+      "type": "denoising_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "efdb03fc6d23f7f26de5763a087365fd1afeb7f0f9882dc18eb8c767d93f959c",
+        "efdb03fc6d23f7f26de5763a087365fd1afeb7f0f9882dc18eb8c767d93f959c"
+      ]
+    },
+    {
+      "index": 24,
+      "name": "Denoising Normal",
+      "type": "denoising_normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "82f7cb1c27f736326f39d2a03d8f1593911ad1af8c62bb94037519f3b557225e",
+        "82f7cb1c27f736326f39d2a03d8f1593911ad1af8c62bb94037519f3b557225e"
+      ]
+    },
+    {
+      "index": 25,
+      "name": "Denoising Specular Albedo",
+      "type": "denoising_specular_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "3728aaaff3401181ba5ef5a9768866f07704eff9949ed7554c639b09aa1655fa",
+        "3728aaaff3401181ba5ef5a9768866f07704eff9949ed7554c639b09aa1655fa"
+      ]
+    },
+    {
+      "index": 26,
+      "name": "Denoising Roughness",
+      "type": "denoising_roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "ff8fa02a031b683061b19a7455f747f4a5716ef8bb7ee2314fe39c28d7de2f5b",
+        "ff8fa02a031b683061b19a7455f747f4a5716ef8bb7ee2314fe39c28d7de2f5b"
+      ]
+    },
+    {
+      "index": 27,
+      "name": "Denoising Depth",
+      "type": "denoising_depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "d9721746ef76f6fd1f249184d109bc626cb41518c0ce6dd27cf2b11d60196f9c",
+        "d9721746ef76f6fd1f249184d109bc626cb41518c0ce6dd27cf2b11d60196f9c"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.113+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.113-1 (2026-10-15) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "f1ed54307656855716087ddaf195169376da6d29",
+    "repoWorkingTreeClean": false,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "fe8231c8ff9989135d55e334ab00917b38c7697b7da413d0c149f4b02e2a0a3f",
+  "runnerSha256": "87701039b44a2499b9f1759cfb58426ef556c624e5f37321b3200e09629a12d1",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/with-linux-gates-glass-render.json",
+  "backendDescription": "Cycles CPU device, GCC x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.047,
+  "runnerCommand": [
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/oracle/scenes/passes/with-linux-gates-glass-render.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-x64-linux",
+    "--output",
+    "/home/jeremy/ClaudeHome/cycles-worktrees/val35/native/work/val35/oracles/corpus/oracle/passes/with-linux-gates-glass-render/cpu-x64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)"
+}

@@ -35,7 +35,11 @@ fn native_triangle_vertices(object:u32,prim:u32,kind:u32,time:f32)->TriangleVert
     var result:TriangleVertices;
     if(!native_triangle_kind(kind)||object>=table_count(G_objects)||object>=table_count(G_object_flag)||prim>=table_count(G_tri_vindex)){fail();result.error=1u;return result;}
     let flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));let moving=kind==PRIMITIVE_MOTION_TRIANGLE;
-    if(moving!=((flags&SD_OBJECT_HAS_VERTEX_MOTION)!=0u)){fail();result.error=1u;return result;}
+//#if FILM_MOTION_DEFORM else     if(moving!=((flags&SD_OBJECT_HAS_VERTEX_MOTION)!=0u)){fail();result.error=1u;return result;}
+    // The motion pass without motion blur: a deforming mesh's plain triangles (SD_OBJECT_HAS_VERTEX_MOTION) are the
+    // centre positions (frame 0).
+    if(moving&&(flags&SD_OBJECT_HAS_VERTEX_MOTION)==0u){fail();result.error=1u;return result;}
+//#endif
     let at=table_at(G_tri_vindex,prim,SIZE_tri_vindex);let vi=vec3<u32>(load_word(at),load_word(at+4u),load_word(at+8u));
     var a=0u;var b=0u;var t=0.0;
     if(moving){let mt=triangle_motion_time(object,time);if(mt.error!=0u){result.error=1u;return result;}a=mt.a;b=mt.b;t=mt.t;}

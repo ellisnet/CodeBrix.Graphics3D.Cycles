@@ -154,7 +154,15 @@ fn svm_texco(s:ptr<function,SvmState>,node:u32,index:u32)->vec3<f32>{
     var object=0u;if(!world){object=table_at(G_objects,sd.object_id,SIZE_objects);}
     switch(kind){
         case NODE_TEXCO_OBJECT:{if(world){return sd.P;}return surface_object_point(sd,sd.P,true);}
-        case NODE_TEXCO_VOLUME_GENERATED:{if(!world){svm_error(s,16u);}return sd.P;}
+//#if VOLUME_HETEROGENEOUS else         case NODE_TEXCO_VOLUME_GENERATED:{if(!world){svm_error(s,16u);}return sd.P;}
+        case NODE_TEXCO_VOLUME_GENERATED:{
+            // volume_normalized_position: object space, then the mesh's generated-coordinate transform when present.
+            if(world){return sd.P;}var P=surface_object_point(sd,sd.P,true);
+            let desc=attribute_find(s,VH_ATTR_GENERATED_TRANSFORM,0u);
+            if(desc.found){let row=table_at(G_attributes_float4,u32(desc.offset),SIZE_attributes_float4);P=surface_transform_point(row,P);}
+            return P;
+        }
+//#endif
         case NODE_TEXCO_NORMAL:{if(world){return sd.N;}return surface_object_normal(sd,sd.N,true);}
         case NODE_TEXCO_REFLECTION:{if(world){return sd.wi;}return 2.0*dot(sd.wi,sd.N)*sd.N-sd.wi;}
         case NODE_TEXCO_DUPLI_GENERATED:{if(world){return vec3<f32>(0);}return heap_vec3(object+O_dupli_generated);}
@@ -227,6 +235,12 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
             case NODE_SEPARATE_VECTOR:{size=SZ_SeparateVector;}
             case NODE_COMBINE_VECTOR:{size=SZ_CombineVector;}
             case NODE_CLOSURE_VOLUME:{size=SZ_ClosureVolume;}
+//#if SVM_NODE_VOLUME_COEFFICIENTS
+            case VC_OP_VOLUME_COEFFICIENTS:{size=SZ_VolumeCoefficients;}
+//#endif
+//#if SVM_NODE_PRINCIPLED_VOLUME
+            case VC_OP_PRINCIPLED_VOLUME:{size=SZ_PrincipledVolume;}
+//#endif
             case NODE_CLOSURE_BSDF:{size=SZ_ClosureBsdf;}
             case NODE_CLOSURE_HOLDOUT:{size=SZ_ClosureHoldout;}
             case NODE_CLOSURE_SET_NORMAL:{size=SZ_ClosureSetNormal;}
@@ -532,6 +546,12 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                 if(volume){svm_volume(&s,node);}
 //#endif
             }
+//#if SVM_NODE_VOLUME_COEFFICIENTS
+            case VC_OP_VOLUME_COEFFICIENTS:{if(volume){svm_volume_coefficients(&s,node,flag,visibility);}}
+//#endif
+//#if SVM_NODE_PRINCIPLED_VOLUME
+            case VC_OP_PRINCIPLED_VOLUME:{if(volume){svm_principled_volume(&s,node,flag,visibility);}}
+//#endif
             case NODE_CLOSURE_BSDF:{svm_closure_bsdf(&s,node,flag,visibility);}
             case NODE_CLOSURE_HOLDOUT:{
 //#if SVM_NODE_CLOSURE_HOLDOUT else svm_error(&s,2u);

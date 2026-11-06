@@ -65,6 +65,8 @@ std::vector<ccl::SurfaceSvmRecord> original_surface_svm(ccl::DeviceScene &scene,
       // Velvet: sigma in roughness, 1/max(sigma, 0.01)^2 in a. Toon: size and smooth (scaled) in a and b.
       if(c.type==CLOSURE_BSDF_ASHIKHMIN_VELVET_ID){auto &p=*reinterpret_cast<const VelvetBsdf*>(&c);r.roughness=p.sigma;r.a=p.invsigma2;}
       if(c.type==CLOSURE_BSDF_DIFFUSE_TOON_ID||c.type==CLOSURE_BSDF_GLOSSY_TOON_ID){auto &p=*reinterpret_cast<const ToonBsdf*>(&c);r.a=p.size;r.b=p.smooth;}
+      // Bssrdf (wavefront_svm_closures.wgsl): radius in multiscatter, albedo in T, anisotropy in a, ior, alpha in roughness.
+      if(CLOSURE_IS_BSSRDF(c.type)){auto &p=*reinterpret_cast<const Bssrdf*>(&c);r.multiscatter=p.radius;r.T=p.albedo;r.a=p.anisotropy;r.ior=p.ior;r.roughness=p.alpha;}
       if(c.type==CLOSURE_BSDF_SHEEN_ID){auto &p=*reinterpret_cast<const SheenBsdf*>(&c);
         r.roughness=p.roughness;r.a=p.transformA;r.b=p.transformB;r.T=p.T;r.multiscatter=p.B;}
     }

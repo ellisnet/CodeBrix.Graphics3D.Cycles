@@ -161,7 +161,7 @@ def main():
    WITH_CYCLES_NATIVE_ONLY='OFF',WITH_CYCLES_PATH_GUIDING='OFF',
    # Open Image Denoise from the reviewed snapshot in the dependency prefix
    # (CPU device).
-   WITH_CYCLES_OPENIMAGEDENOISE='ON',OPENIMAGEDENOISE_ROOT_DIR=prefix,
+   WITH_CYCLES_EMBREE='ON',EMBREE_ROOT_DIR=prefix,WITH_CYCLES_OPENIMAGEDENOISE='ON',OPENIMAGEDENOISE_ROOT_DIR=prefix,
    **{'CXX_HAS_AVX2:BOOL':'OFF','CXX_HAS_F16C:BOOL':'OFF'},
    # ARM64: the ARMv8-A base level and no x86 flag probe (clang-cl may accept
    # -msse4.2 for an ARM64 target with only a warning), as in the Linux ARM64 recipe.
@@ -178,7 +178,7 @@ def main():
   # the linker finds those in the prefix, never anywhere else.
   for name in ['CMAKE_EXE_LINKER_FLAGS','CMAKE_SHARED_LINKER_FLAGS','CMAKE_MODULE_LINKER_FLAGS']:
    values[name]=values[name]+' /LIBPATH:'+(prefix/'lib').as_posix()+' /DEBUG /OPT:REF /OPT:ICF /PDBALTPATH:%_PDB%'
-  values.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','EMBREE','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD',
+  values.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD',
    'HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI','DEVICE_METAL']})
   build=WORK/'build'
   commands=[[str(toolchain.cmake),'-G','Ninja','-S',str(SOURCE),'-B',str(build),*['-D'+k+'='+slash(v) for k,v in values.items()]],

@@ -115,13 +115,27 @@ fn fp_perspective(address:u32,a:vec3<f32>)->vec3<f32>{
     let w=fp_dot4(heap_vec4(address+48u),b);if(w==0.0){return vec3<f32>(0);}
     return vec3<f32>(rounded_divide(c.x,w),rounded_divide(c.y,w),rounded_divide(c.z,w));
 }
-// primitive_motion_data_without_camera for triangles without deformation (refused):
-// the shading point through the object motion pass transforms (push words 5 and 8).
+// primitive_motion_data_without_camera for triangles: the shading point (with deforming geometry, FILM_MOTION_DEFORM,
+// the pre and post positions of the motion steps) through the object motion pass transforms (push words 5 and 8).
 struct MotionData {center:vec3<f32>,pre:vec3<f32>,post:vec3<f32>,error:bool}
 fn fp_motion_data(sd:SurfaceData)->MotionData{
     var m:MotionData;if(sd.object_id>=p(8u)/FPM_TRANSFORMS_PER_OBJECT){fail();m.error=true;return m;}
     let tfm=p(5u)+sd.object_id*FPM_TRANSFORMS_PER_OBJECT*FPM_TRANSFORM_BYTES;
-    m.center=sd.P;m.pre=surface_transform_point(tfm+FPM_PRE*FPM_TRANSFORM_BYTES,sd.P);m.post=surface_transform_point(tfm+FPM_POST*FPM_TRANSFORM_BYTES,sd.P);
+//#if FILM_MOTION_DEFORM else     m.center=sd.P;m.pre=surface_transform_point(tfm+FPM_PRE*FPM_TRANSFORM_BYTES,sd.P);m.post=surface_transform_point(tfm+FPM_POST*FPM_TRANSFORM_BYTES,sd.P);
+    var pre=sd.P;var post=sd.P;
+    if((sd.object_flag&SD_OBJECT_HAS_VERTEX_MOTION)!=0u){
+        // primitive_motion_position: the motion steps after the centre positions, triangle_interpolate with every
+        // product rounded before its sum; with two steps the post position is the centre in object space.
+        let at=table_at(G_tri_vindex,sd.prim,SIZE_tri_vindex);let vi=vec3<u32>(load_word(at),load_word(at+4u),load_word(at+8u));
+        let w=rounded_add(1.0-sd.u,-sd.v);
+        pre=rounded_add3(rounded_add3(w*triangle_position(sd.object_id,vi.x,1u),sd.u*triangle_position(sd.object_id,vi.y,1u)),sd.v*triangle_position(sd.object_id,vi.z,1u));
+        if(load_half(table_at(G_objects,sd.object_id,SIZE_objects)+O_num_geom_steps)>2u){
+            post=rounded_add3(rounded_add3(w*triangle_position(sd.object_id,vi.x,2u),sd.u*triangle_position(sd.object_id,vi.y,2u)),sd.v*triangle_position(sd.object_id,vi.z,2u));}
+        else{post=surface_transform_point(table_at(G_objects,sd.object_id,SIZE_objects)+O_itfm,sd.P);}
+        if(load_word(p(17u))!=0u){m.error=true;return m;}
+    }
+    m.center=sd.P;m.pre=surface_transform_point(tfm+FPM_PRE*FPM_TRANSFORM_BYTES,pre);m.post=surface_transform_point(tfm+FPM_POST*FPM_TRANSFORM_BYTES,post);
+//#endif
     return m;
 }
 // project_reflection (Ray Tracing Gems chapter 32.4.3): the point seen in a planar reflector.

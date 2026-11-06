@@ -284,11 +284,61 @@ inline constexpr ShaderFeatures SF_BACKGROUND_SUN=ShaderFeatures::bit(158);
 inline constexpr ShaderFeatures SF_TEX_SKY_SCATTERING=ShaderFeatures::bit(159);
 // The Math node's arcsine and arccosine (the correctly rounded trig_arc adapter; census of the Math node type).
 inline constexpr ShaderFeatures SF_MATH_ARC=ShaderFeatures::bit(160);
-// Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108, 110
-// and 128-160; bit 62 is unassigned; 107 is the raytrace module variant).
+// The background light's sample in its own surface entry (compiler pressure): shade_surface_light leaves a
+// sampled background light pending and shade_surface_light_background, dispatched next, runs bgl_sample with the
+// same inputs (wavefront_surface.wgsl). Set for scenes with sun guiding (BACKGROUND_SUN), whose two-strategy
+// background sampler with MIS kept shade_surface_light at 57,567 Intel instructions. A module-variant bit like
+// SVM_NODE_RAYTRACE, never a scene feature and not in SF_ALL: surface.cpp builds the light entries with it.
+inline constexpr ShaderFeatures SF_BACKGROUND_SAMPLE_ENTRY=ShaderFeatures::bit(161);
+// Shader-defined volumes with shadow paths (KERNEL_FEATURE_VOLUME): the shadow path carries the volume stack
+// (integrator_state_copy_volume_stack_to_shadow) and the shadow stage attenuates through the homogeneous media
+// between the recorded boundary hits (integrate_transparent_volume_shadow, volume_shadow_null_scattering).
+inline constexpr ShaderFeatures SF_VOLUME_SHADOW=ShaderFeatures::bit(162);
+// Volume direct light (volumes with integrator.use_direct_light): the light segment entry, distance, equiangular
+// and MIS direct scatter sampling in shade_volume and the volume light entry (integrate_volume_direct_light).
+inline constexpr ShaderFeatures SF_VOLUME_LIGHT=ShaderFeatures::bit(163);
+// Volume phase functions other than Henyey-Greenstein (census of the Volume Scatter and Volume Coefficients nodes'
+// closure types): Fournier-Forand, Rayleigh, Draine and Mie (closure/volume_*.h).
+inline constexpr ShaderFeatures SF_VOLUME_PHASES=ShaderFeatures::bit(164);
+// The Volume Coefficients and Principled Volume nodes (svm/closure.h svm_node_volume_coefficients,
+// svm_node_principled_volume).
+inline constexpr ShaderFeatures SF_NODE_VOLUME_COEFFICIENTS=ShaderFeatures::bit(165);
+inline constexpr ShaderFeatures SF_NODE_PRINCIPLED_VOLUME=ShaderFeatures::bit(166);
+// Volume emission (volume_emission_integrate, film_write_volume_emission): volumes whose programs can emit.
+inline constexpr ShaderFeatures SF_VOLUME_EMISSION=ShaderFeatures::bit(167);
+// Subsurface scattering (KERNEL_FEATURE_SUBSURFACE): the BSSRDF closures of the Principled BSDF and the Subsurface
+// Scattering node (closure/bssrdf.h bssrdf_alloc, bssrdf_setup), their pick and subsurface_bounce in the surface
+// stages, and the diffuse closure at the exit point (subsurface_shader_data_setup).
+inline constexpr ShaderFeatures SF_SUBSURFACE=ShaderFeatures::bit(168);
+// The DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE entry (subsurface_random_walk, subsurface_scatter) in the surface
+// module. A module-variant bit like SVM_NODE_RAYTRACE, never a scene feature and not in SF_ALL: subsurface.cpp builds
+// the entry with it.
+inline constexpr ShaderFeatures SF_SUBSURFACE_ENTRY=ShaderFeatures::bit(169);
+// The motion pass (or a denoising motion feature) with deforming geometry: without motion blur a deforming mesh keeps
+// plain triangles with SD_OBJECT_HAS_VERTEX_MOTION and its motion steps after the centre positions
+// (primitive_motion_data_without_camera's deformation motion).
+inline constexpr ShaderFeatures SF_FILM_MOTION_DEFORM=ShaderFeatures::bit(170);
+// The phase function families beyond Henyey-Greenstein, one bit each (census of the closure types, alongside
+// VOLUME_PHASES): a module keeps only the lobes its scenes use (compile envelope). Mie sets the Draine bit too (its
+// fit is a Henyey-Greenstein and a Draine lobe).
+inline constexpr ShaderFeatures SF_PHASE_FOURNIER_FORAND=ShaderFeatures::bit(171);
+inline constexpr ShaderFeatures SF_PHASE_RAYLEIGH=ShaderFeatures::bit(172);
+inline constexpr ShaderFeatures SF_PHASE_DRAINE=ShaderFeatures::bit(173);
+inline constexpr ShaderFeatures SF_PHASE_MIE=ShaderFeatures::bit(174);
+// Heterogeneous volumes (a volume shader with SD_HETEROGENEOUS_VOLUME): the density prepass's 16 Sobol-Burley samples
+// per voxel (kernel_volume_density_evaluate), the majorant octree tracer, null scattering and the heterogeneous shadows.
+inline constexpr ShaderFeatures SF_VOLUME_HETEROGENEOUS=ShaderFeatures::bit(175);
+// Biased volume ray marching (KernelIntegrator::volume_ray_marching): the shade_volume_ray_marching entry
+// (DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING) and the ray-marched shadows (volume_shadow_ray_marching); set
+// together with VOLUME_HETEROGENEOUS, whose shader evaluation and phase records it shares.
+inline constexpr ShaderFeatures SF_VOLUME_RAY_MARCHING=ShaderFeatures::bit(176);
+inline constexpr ShaderFeatures SF_VOLUME_PHASE_KINDS=SF_PHASE_FOURNIER_FORAND|SF_PHASE_RAYLEIGH|SF_PHASE_DRAINE|SF_PHASE_MIE;
+// Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108, 110,
+// 128-160, 162-168, 170-176; bit 62 is unassigned; 107, 161 and 169 are module variants).
 inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
   SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
-  SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC;
+  SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|
+  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM;
 // The families above, for regions shared by all of them (closure classification).
 inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
@@ -300,7 +350,8 @@ inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THI
 inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|
   SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
-  SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC;
+  SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|
+  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //

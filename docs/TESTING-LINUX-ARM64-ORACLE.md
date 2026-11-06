@@ -121,7 +121,18 @@ echo "$RUNNER"; ls -l "$HOSTLIB"
 ```
 
 - The dependency build runs natively (`platform.machine()` aarch64): system GCC 14
-  and glibc from the container, the in-repo pinned snapshots, no network.
+  and glibc from the container, the in-repo pinned snapshots, no network. It builds
+  Embree too (static, NEON on ARM64; it needs no extra package and no tool beyond
+  section 2). The CPU oracle does not use Embree: `cpu-arm64-linux` keeps Cycles'
+  BVH2 (native/DEVICE.md, open item 46).
+- On a checkout that already has an earlier Linux ARM64 build, first remove the
+  generated Cycles copy, or `build_cycles_linux_arm64.py` stops with an
+  `AssertionError` in `verify_copy` whenever the pinned Cycles import changed:
+
+  ```sh
+  rm -rf native/work/linux/linux-arm64/host/cycles-source
+  ```
+
 - `build_cycles_linux_arm64.py` checks that the CPU kernels are at the fixed oracle
   baseline and fails otherwise. `--device-set` builds the default set (including
   the host library), every device gate and, natively, the oracle runner
@@ -152,8 +163,9 @@ RUN=native/work/oracles/linux-arm64-<date>
     --backend cpu-arm64-linux "${scenes[@]}"
   ```
 
-  Record any scene the runner refuses or fails, verbatim (the two shader-volume
-  scenes render on the CPU backends; only the WebGPU device refuses them).
+  Record any scene the runner refuses or fails, verbatim. The `denoise/` scenes
+  run CPU Open Image Denoise on the CPU backend (its device library comes from the
+  dependency prefix; no extra step).
 - Every film is rendered twice; `repeatBitwiseIdentical` must be `true` for every
   scene. Films are written once and never adjusted.
 - Budget (INFERENCE): about 10-20 min for the whole corpus.

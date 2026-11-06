@@ -302,6 +302,26 @@
       ]
     },
     {
+      "id": "embree",
+      "name": "Intel Embree",
+      "version": "v4.4.1",
+      "license": "Apache-2.0 AND MIT",
+      "source": "https://github.com/RenderKit/embree/archive/refs/tags/v4.4.1.tar.gz",
+      "use": "Reviewed source snapshot in third_party/deps/embree (the CPU library: kernels, common and include; the SYCL GPU kernels and Level Zero headers, tutorials, tests, superbuild, documentation and packaging scripts are not imported), built from this repository as a static library linked into the product CPU device as its BVH (the CPU reference backend and the CPU oracle keep Cycles' BVH2).",
+      "attribution": "Intel Corporation; Kitware, Inc. (CMake helpers); the sse2neon contributors (common/simd/arm/sse2neon.h, MIT)",
+      "notices": [
+        "third_party/deps/embree/LICENSE.txt",
+        "third_party/licenses/source-notices-embree.txt"
+      ],
+      "sonames": [],
+      "conditions": "Built only under the Embree build conditions of docs/RELEASE-LICENSE-PLAN.md (SYCL, ISPC and tutorials explicitly off; oneTBB from its reviewed snapshot as the tasking system; static library). Full per-file grants, modifications and exclusions are recorded in third_party/dependency-imports.json and third_party/embree-license-review.json. The MIT notice of sse2neon (compiled on ARM64 only) is retained in the source notice supplement.",
+      "archiveSha256": "dcf338cc61b636c871ccf370e673bfd380c5ecb71ce49ad50f28e1d4ec9995dc",
+      "embeddedLicenseForms": [
+        "Apache-2.0",
+        "MIT"
+      ]
+    },
+    {
       "id": "openexr",
       "name": "OpenEXR",
       "version": "v3.1.13",
@@ -971,7 +991,9 @@
     "third_party/licenses/DirectXShaderCompiler-LICENSE-LLVM.txt": "729615317e28dd03907e46f0fc3b5e88f7853cee61d1a1471d2749335516b46f",
     "third_party/deps/oidn/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "third_party/deps/oidn/weights/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-    "third_party/licenses/source-notices-oidn.txt": "ac38aa72ff6dacdb697d230f49322b7e625d6c7d22a8a3bc933f261977284fa7"
+    "third_party/licenses/source-notices-oidn.txt": "ac38aa72ff6dacdb697d230f49322b7e625d6c7d22a8a3bc933f261977284fa7",
+    "third_party/deps/embree/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "third_party/licenses/source-notices-embree.txt": "971312384b33415bfc8aa19319b1fcd52fce7f2f8020f1d89d7d48afe0a78a41"
   },
   "historicalLinuxSystemPackages": [
     {

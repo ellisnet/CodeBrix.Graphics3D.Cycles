@@ -118,7 +118,7 @@ def main():
    WITH_CYCLES_NATIVE_ONLY='OFF',WITH_CYCLES_DEVICE_METAL='ON',WITH_CYCLES_PATH_GUIDING='OFF',
    # Open Image Denoise from the reviewed snapshot in the dependency prefix
    # (CPU device, plus OIDN's Metal device on osx-arm64).
-   WITH_CYCLES_OPENIMAGEDENOISE='ON',OPENIMAGEDENOISE_ROOT_DIR=prefix,
+   WITH_CYCLES_EMBREE='ON',EMBREE_ROOT_DIR=prefix,WITH_CYCLES_OPENIMAGEDENOISE='ON',OPENIMAGEDENOISE_ROOT_DIR=prefix,
    # Apple Clang accepts the -msse4.2 probe for arm64, so Cycles would add x86
    # SSE/AVX flags. Upstream avoids that branch only when sse2neon is present,
    # which this profile omits; record Cycles' own probe results as absent.
@@ -130,7 +130,7 @@ def main():
    # Prefix maps keep build paths out of strings, line tables and the debug map.
    CMAKE_C_FLAGS='-gline-tables-only '+deps.PATH_MAP,CMAKE_CXX_FLAGS='-gline-tables-only '+deps.PATH_MAP,
    CMAKE_OBJCXX_FLAGS='-gline-tables-only '+deps.PATH_MAP,CODEBRIX_OSO_PREFIX=f'{REPO}/')
-  values.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','EMBREE','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD',
+  values.update({'WITH_CYCLES_'+n:'OFF' for n in ['ALEMBIC','OPENSUBDIV','OPENVDB','NANOVDB','OSL','USD',
    'HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
   build=WORK/'build'
   commands=[['cmake','-S',str(source),'-B',str(build),*['-D'+k+'='+str(v) for k,v in values.items()]],

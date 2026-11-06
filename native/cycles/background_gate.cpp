@@ -65,7 +65,8 @@ static unsigned rejections(const DeviceInfo &info){
     // Background MIS is implemented (environment gate); portals stay refused.
     if(test==0){data.background.portal_weight=1;data.background.use_mis=1;reason="portals";}
     if(test==1){data.integrator.num_lights=1;reason="native light table";}
-    if(test==2){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.integrator.volume_ray_marching=1;reason="biased volume ray marching";}
+    // Biased ray marching is implemented; a volume stack size below two stays a volume rejection.
+    if(test==2){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.volume_stack_size=1;reason="volume stack size";}
     // The motion pass is implemented (FILM_MOTION); a path guiding pass (outside the scope) is refused by name.
     if(test==3){data.film.pass_flag|=PASSMASK(GUIDING_COLOR);reason="film pass guiding_color";}
     if(test==4){data.film.pass_combined=data.film.pass_stride-3;reason="film pass offset";}

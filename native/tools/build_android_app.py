@@ -138,7 +138,9 @@ def main():
             prefix=host.parent/'dependencies/install'
             files=sorted({p.resolve() for p in (prefix/'lib').glob('*.so')})
             files += [build/'lib/libcodebrix_cycles_host.so',toolchain.runtime,PACKAGE/'runtimes'/rid/'native/libcodebrix_wgpu.so']
-            assert len(files)==28 and len({p.name for p in files})==28
+            # 31 = the dependency prefix's libraries (Open Image Denoise's loader, core and CPU device
+            # included; the core loads the device module from its own directory), the host and the runtimes.
+            assert len(files)==31 and len({p.name for p in files})==31
             folder=app/'native'/abi;folder.mkdir(parents=True);payload['native'][abi]={}
             for path in files:
                 assert sha(path)==reviewed[str(path.resolve())],path

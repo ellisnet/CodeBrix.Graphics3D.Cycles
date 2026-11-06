@@ -27,6 +27,7 @@ void original_volume(ccl::DeviceScene &scene,const std::vector<int> &indices,std
 #define TABLE(name,type) base.name.data=reinterpret_cast<decltype(base.name.data)>(scene.name.data());base.name.width=int(scene.name.size());
   CBC_SCENE_TABLES(TABLE)
   TABLE(svm_nodes,uint) TABLE(sample_pattern_lut,float)
+  TABLE(volume_tree_nodes,KernelOctreeNode) TABLE(volume_tree_roots,KernelOctreeRoot) TABLE(volume_tree_root_ids,int) TABLE(volume_step_size,float)
 #undef TABLE
   Profiler profiler;ThreadKernelGlobalsCPU thread(base,nullptr,profiler,0);KernelGlobals kg=&thread;
   for(int i:indices){
@@ -36,7 +37,8 @@ void original_volume(ccl::DeviceScene &scene,const std::vector<int> &indices,std
       for(int j=0;j<sd.num_closure;j++){const auto &c=sd.closure[j];const auto *hg=reinterpret_cast<const HenyeyGreensteinVolume*>(&c);std::fprintf(stderr,"CPU phase g=%.9g sample=%.9g weight=%.9g,%.9g,%.9g\n",hg->g,c.sample_weight,c.weight.x,c.weight.y,c.weight.z);}
       RNGState rng;path_state_rng_load(&states[i],&rng);auto random=path_state_rng_2D(kg,&rng,PRNG_VOLUME_PHASE);std::fprintf(stderr,"CPU random %.9g %.9g\n",random.x,random.y);
     }
-    integrator_shade_volume(kg,&states[i],film.data());
+    if(states[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING)integrator_shade_volume_ray_marching(kg,&states[i],film.data());
+    else integrator_shade_volume(kg,&states[i],film.data());
   }
 }
 

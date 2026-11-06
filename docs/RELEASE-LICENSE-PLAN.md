@@ -123,6 +123,27 @@ build time and is not shipped. Only the RT filter's weights are built
 (`OIDN_FILTER_RTLIGHTMAP` OFF on every RID: Cycles creates only the RT filter);
 the lightmap weights remain in the reviewed snapshot but are not compiled in.
 
+Embree (the BVH of the product CPU device; the CPU oracle keeps BVH2) is a
+dependency (Embree build conditions). Its licence check passed for version 4.4.1
+(the release's source archive, the series the pinned Cycles is written against,
+`RTC_VERSION >= 40400`): every imported file is Apache-2.0 (Intel, plus three
+Kitware CMake helpers) except `common/simd/arm/sse2neon.h`, which is MIT and is
+compiled on ARM64 only. The build conditions: build it from the reviewed source
+snapshot `third_party/deps/embree` (never a prebuilt release), imported from the
+pinned archive by the `add` action of `tools/licensing/dependency_sources.py` with
+the per-file review `third_party/embree-license-review.json`; set
+`EMBREE_SYCL_SUPPORT`, `EMBREE_ISPC_SUPPORT` and `EMBREE_TUTORIALS` explicitly off
+on every RID; use the reviewed oneTBB snapshot as its tasking system (no second
+TBB); build it as a static library linked into the product CPU device. The SYCL
+GPU kernels and their Level Zero headers (MIT), the tutorials and their
+third-party libraries, the tests, the superbuild, the documentation, the man
+pages, the packaging scripts and the notice inventories of the binary releases
+(which include Intel's oneAPI DPC++ EULA notices and the Visual C++
+redistributables) are not in the snapshot. Two upstream build files carry
+recorded CodeBrix adaptations (the test tree omitted, the documentation install
+list). Its `LICENSE.txt` and the sse2neon MIT notice are listed in
+THIRD-PARTY-NOTICES.txt.
+
 All nine intended RIDs remain in the continuation plan. This Linux proof does
 not validate unbuilt native hosts. Every actual NuGet payload requires its own
 unpack/hash/notice/dependency audit before publication.

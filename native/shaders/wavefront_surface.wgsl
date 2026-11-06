@@ -92,10 +92,19 @@ fn surf_evaluate_closure(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
 }
 struct SurfaceSample {wo:vec3<f32>,pdf:f32,eval:vec3<f32>,label:u32,diffuse:vec3<f32>,glossy:vec3<f32>,roughness:f32}
 fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
+//#if !SUBSURFACE
 //#if SVM_BSDF_METALLIC else     var out:SurfaceSample;if((r.runtime_flag&SR_BSDF)==0u||r.count==0u){return out;}
     // Pinned surface_shader_bsdf_bssrdf_pick returns closure 0 when no closure is left: a Metallic BSDF
     // whose Fresnel record did not fit (closure_alloc_extra) leaves its set-up closure there (svm_metallic).
     var out:SurfaceSample;if((r.runtime_flag&SR_BSDF)==0u||(r.count==0u&&!surf_removed_metallic(r))){return out;}
+//#endif
+//#endif
+//#if SUBSURFACE
+//#if SVM_BSDF_METALLIC else     var out:SurfaceSample;if((r.runtime_flag&(SR_BSDF|SS_SR_BSSRDF))==0u||r.count==0u){return out;}
+    // Pinned surface_shader_bsdf_bssrdf_pick returns closure 0 when no closure is left: a Metallic BSDF
+    // whose Fresnel record did not fit (closure_alloc_extra) leaves its set-up closure there (svm_metallic).
+    var out:SurfaceSample;if((r.runtime_flag&(SR_BSDF|SS_SR_BSSRDF))==0u||(r.count==0u&&!surf_removed_metallic(r))){return out;}
+//#endif
 //#endif
     var selected=0u;var rand=random;
 //#if SVM_BSDF_FAMILIES
@@ -105,9 +114,22 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
     // sample_uniform_disk of rand.xy, shared by the diffuse, velvet and Toon samplers (one inlined copy).
     let family_disk=ggx_disk_sample(random.xy);
 //#endif
+//#if !SUBSURFACE
     if(r.count>1u){var sum=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)){sum+=c.sample_weight;}}
         let pick=random.z*sum;var partial=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)){
             let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=rounded_divide(pick-partial,c.sample_weight);break;}partial=next;}}}
+//#endif
+//#if SUBSURFACE
+    if(r.count>1u){var sum=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)||ss_bssrdf_kind(c.kind)){sum+=c.sample_weight;}}
+        let pick=random.z*sum;var partial=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)||ss_bssrdf_kind(c.kind)){
+            let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=rounded_divide(pick-partial,c.sample_weight);break;}partial=next;}}}
+    // A picked BSSRDF closure: subsurface_bounce in shade_surface (ss_bounce).
+    {let b=svm_closure_read(r,selected);if(ss_bssrdf_kind(b.kind)){out.label=SS_LABEL_SUBSURFACE_SCATTER;out.pdf=1.0;out.eval=vec3<f32>(1);ss_selected=selected;
+//#if SVM_BSDF_FAMILIES
+        surf_sampled_closure=selected;
+//#endif
+        return out;}}
+//#endif
 //#if SVM_BSDF_METALLIC else     let c=svm_closure_read(r,selected);if(!surf_bsdf(c.kind)){return out;}
     var picked=r;picked.count=max(r.count,1u);let c=svm_closure_read(picked,selected);if(!surf_bsdf(c.kind)){return out;}
 //#endif
@@ -163,7 +185,9 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#endif
 //#if !SVM_BSDF_FAMILIES
     if(r.count>1u){var pdf_sum=out.pdf*c.sample_weight;var weight_sum=c.sample_weight;var rough_sum=pdf_sum*out.roughness;
-        for(var i=0u;i<r.count;i++){if(i==selected){continue;}let other=svm_closure_read(r,i);if(!surf_bsdf(other.kind)){continue;}
+//#if SUBSURFACE else         for(var i=0u;i<r.count;i++){if(i==selected){continue;}let other=svm_closure_read(r,i);if(!surf_bsdf(other.kind)){continue;}
+        for(var i=0u;i<r.count;i++){if(i==selected){continue;}let other=svm_closure_read(r,i);if(!surf_bsdf(other.kind)){if(ss_bssrdf_kind(other.kind)){weight_sum+=other.sample_weight;}continue;}
+//#endif
             // _surface_shader_bsdf_eval_mis: every product rounded before its sum (no
             // driver contraction) and correctly rounded scalar quotients, as on the host.
             let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
@@ -194,8 +218,13 @@ fn surf_sample_load(at:u32)->SurfaceSample{
 // The MIS part of surf_sample (_surface_shader_bsdf_eval_mis) for a stored sample.
 fn surf_sample_mis(sd:SurfaceData,r:SvmResult,sampled:SurfaceSample)->SurfaceSample{
     var out=sampled;let selected=surf_sampled_closure;if(out.pdf==0.0||r.count<=1u){return out;}let c=svm_closure_read(r,selected);
+//#if SUBSURFACE
+    if((out.label&SS_LABEL_SUBSURFACE_SCATTER)!=0u){return out;}
+//#endif
     if(r.count>1u){var pdf_sum=out.pdf*c.sample_weight;var weight_sum=c.sample_weight;var rough_sum=pdf_sum*out.roughness;
-        for(var i=0u;i<r.count;i++){if(i==selected){continue;}let other=svm_closure_read(r,i);if(!surf_bsdf(other.kind)){continue;}
+//#if SUBSURFACE else         for(var i=0u;i<r.count;i++){if(i==selected){continue;}let other=svm_closure_read(r,i);if(!surf_bsdf(other.kind)){continue;}
+        for(var i=0u;i<r.count;i++){if(i==selected){continue;}let other=svm_closure_read(r,i);if(!surf_bsdf(other.kind)){if(ss_bssrdf_kind(other.kind)){weight_sum+=other.sample_weight;}continue;}
+//#endif
             // _surface_shader_bsdf_eval_mis: every product rounded before its sum (no
             // driver contraction) and correctly rounded scalar quotients, as on the host.
             let e=surf_evaluate(sd,other,out.wo);if(e.w!=0.0){let value=e.xyz*other.weight;out.eval=rounded_add3(out.eval,value);if(surf_diffuse(other.kind)){out.diffuse=rounded_add3(out.diffuse,value);}if(surf_glossy_direction(other,out.wo)){out.glossy=rounded_add3(out.glossy,value);}
@@ -360,18 +389,34 @@ fn surface_prepare(id:vec3<u32>){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}store_word(p(24u)+id.x*SURFACE_STAGE_BYTES,0u);var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}if(state_half(S_path_queued_kernel,index)!=surf_queue()){fail();return;}
+//#if !SUBSURFACE
 //#if SHADOW_CATCHER else     let flag=state_word(S_path_flag,index);if((flag&SURFACE_UNSUPPORTED_FLAGS)!=0u){fail();return;}
     let flag=state_word(S_path_flag,index);if((flag&(SURFACE_UNSUPPORTED_FLAGS&~SC_FLAGS))!=0u){fail();return;}
+//#endif
+//#endif
+//#if SUBSURFACE
+//#if SHADOW_CATCHER else     let flag=state_word(S_path_flag,index);if((flag&(SURFACE_UNSUPPORTED_FLAGS&~SS_PATH_RAY_SUBSURFACE))!=0u){fail();return;}
+    let flag=state_word(S_path_flag,index);if((flag&(SURFACE_UNSUPPORTED_FLAGS&~(SC_FLAGS|SS_PATH_RAY_SUBSURFACE)))!=0u){fail();return;}
+//#endif
 //#endif
     let stride=data_word(D_film_pass_stride);let pixel=state_word(S_path_render_pixel_index,index);if(pixel>=p(11u)/stride){fail();return;}let base=p(4u)+pixel*stride*4u;
     var sd=surface_cached(id.x);if(sd.error!=0u){return;}let object=table_at(G_objects,sd.object_id,SIZE_objects);
     let group=load_word(object+O_lightgroup);let go=data_word(D_film_pass_lightgroup);if(group!=NONE&&go!=PASS_NONE&&(group>=stride/3u||go>stride-3u*(group+1u))){fail();return;}
     if(volume_enabled()&&(sd.shader_flag&VS_HAS_VOLUME)!=0u){if(volume_stack_count(index)==NONE){return;}}
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){var empty:SvmResult;surface_stage_write(p(24u)+id.x*SURFACE_STAGE_BYTES,sd,empty);return;}
+//#if SUBSURFACE
+    // The subsurface exit point (ss_exit): the shader runs only for a bump-mapped BSSRDF normal, through this
+    // function's one SVM evaluation (a second call site would inline the SVM interpreter twice).
+    let ss_exit_point=(flag&SS_PATH_RAY_SUBSURFACE)!=0u;
+    if(ss_exit_point&&(sd.shader_flag&SS_SD_HAS_BSSRDF_BUMP)==0u){var none:SvmResult;ss_exit(id.x,sd,none,false);return;}
+//#endif
 //#if SVM_NODE_AOV
     svm_aov_base=base;
 //#endif
     var r=svm_evaluate(index,sd,data_word(D_max_closures),p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES);if(r.error!=0u){return;}
+//#if SUBSURFACE
+    if(ss_exit_point){ss_exit(id.x,sd,r,true);return;}
+//#endif
 //#if DEBUG_OUTPUT
     if(debug_output_first_hit(index,base,sd,r)){surf_finish(index,false);return;}
 //#endif
@@ -478,7 +523,9 @@ fn surface_light_combined(li:SurfaceLightInputs){
     var ls:NativeLightSample;
     if(sample){ls=light_sample_native(index,sd,r);}
     if(load_word(p(17u))!=0u){return;}
-    store_word(at+304u,bitcast<u32>(weight));light_sample_write(at+308u,ls);store_word(at,3u);
+//#if BACKGROUND_SAMPLE_ENTRY else     store_word(at+304u,bitcast<u32>(weight));light_sample_write(at+308u,ls);store_word(at,3u);
+    store_word(at+304u,bitcast<u32>(weight));light_sample_write(at+308u,ls);store_word(at,select(3u,7u,light_background_pending));
+//#endif
 }
 @compute @workgroup_size(1) fn shade_surface_light(@builtin(global_invocation_id) id:vec3<u32>){
     svm_invocation(id.x);
@@ -487,9 +534,34 @@ fn surface_light_combined(li:SurfaceLightInputs){
     var ls:NativeLightSample;
     if(li.sample){let selection=light_select(li.index);if(selection.prim<0){ls=light_sample_lamp(li.index,li.sd,li.r,selection);}}
     if(load_word(p(17u))!=0u){return;}
-    light_sample_write(li.at+308u,ls);store_word(li.at,5u);
+//#if BACKGROUND_SAMPLE_ENTRY else     light_sample_write(li.at+308u,ls);store_word(li.at,5u);
+    light_sample_write(li.at+308u,ls);store_word(li.at,select(5u,8u,light_background_pending));
+//#endif
 //#endif
 }
+//#if BACKGROUND_SAMPLE_ENTRY
+// The background light's sample (compiler pressure, SF_BACKGROUND_SAMPLE_ENTRY in pipelines.h), dispatched right
+// after shade_surface_light. A record that sampled a background light there waits in state 7 (the combined light
+// stage, next state 3) or 8 (with emissive triangles, next state 5). This entry recomputes the same selection from
+// the unchanged stage record and path state, reads the lamp fields shade_surface_light stored and completes the
+// sample as light_sample_lamp does: bgl_sample, then the selection's pdf factor, the same operations in the same
+// order, so the stored sample is identical.
+@compute @workgroup_size(1) fn shade_surface_light_background(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}
+    let state=load_word(p(24u)+id.x*SURFACE_STAGE_BYTES);if(state!=7u&&state!=8u){return;}
+    let li=surface_light_inputs(id,state);if(li.at==NONE){return;}
+    let selection=light_select(li.index);
+    var ls=light_sample_read(li.at+308u);
+    let sampled=bgl_sample(selection.random.xy);
+    ls.D=sampled.xyz;ls.P=-sampled.xyz;ls.pdf=sampled.w;ls.t=bitcast<f32>(0x7f7fffffu);ls.eval_fac=1.0;
+//#if LIGHT_SELECT else     ls.pdf*=data_float(D_integrator_distribution_pdf_lights);
+    ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);
+//#endif
+    if(load_word(p(17u))!=0u){return;}
+    light_sample_write(li.at+308u,ls);store_word(li.at,select(3u,5u,state==8u));
+}
+//#endif
 //#if LIGHT_TRIANGLE
 @compute @workgroup_size(1) fn shade_surface_light_triangle(@builtin(global_invocation_id) id:vec3<u32>){
     svm_invocation(id.x);
@@ -512,6 +584,10 @@ fn surface_light_combined(li:SurfaceLightInputs){
     let stage=surface_stage_read(at);var sd=stage.sd;var r=stage.r;
     let flag=state_word(S_path_flag,index);let stride=data_word(D_film_pass_stride);
     let pixel=state_word(S_path_render_pixel_index,index);let base=p(4u)+pixel*stride*4u;
+//#if SUBSURFACE
+    // The subsurface exit point: the flag cleared before the direct light, no termination (ss_exit).
+    let ss_exit_point=(flag&SS_PATH_RAY_SUBSURFACE)!=0u;if(ss_exit_point){state_u32(S_path_flag,index,flag&~SS_PATH_RAY_SUBSURFACE);}
+//#endif
     if(((r.runtime_flag&SR_HOLDOUT)!=0u||(sd.object_flag&SD_OBJECT_HOLDOUT_MASK)!=0u)&&(flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u){
         let weight=surf_holdout(sd,&r);let contribution=weight*heap_vec3(state_address(S_path_throughput,index,12u));
         if((data_word(D_film_light_pass_flag)&MASK_COMBINED)!=0u){film_add(base+(data_word(D_film_pass_combined)+3u)*4u,(contribution.x+contribution.y+contribution.z)*(1.0/3.0));}
@@ -525,7 +601,9 @@ fn surface_light_combined(li:SurfaceLightInputs){
     // integrate_surface_emission: an indirect ray sees only emitters linked to its receiver.
     if((r.runtime_flag&SR_EMISSION)!=0u&&light_link_forward_visible(index,sd.object_id)){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0),heap_float(at+304u));}
 //#endif
-    let probability=select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)!=0u);
+//#if SUBSURFACE else     let probability=select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)!=0u);
+    let probability=select(select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)!=0u),1.0,ss_exit_point);
+//#endif
     if(probability==0.0){surf_finish(index,false);return;}
     var throughput=heap_vec3(state_address(S_path_throughput,index,12u));if(probability!=1.0){throughput/=probability;state_vec3(S_path_throughput,index,throughput);}
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){
@@ -590,6 +668,9 @@ fn surf_safe_divide3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
 //#endif
 //#if SVM_BSDF_FAMILIES else     let sampled=surf_sample(sd,r,random);if(sampled.pdf==0.0||all(sampled.eval==vec3<f32>(0))){surf_finish(index,false);return;}
     let sampled=surf_sample_mis(sd,r,surf_sample_load(p(0u)+id.x*SURF_SAMPLE_BYTES));if(sampled.pdf==0.0||all(sampled.eval==vec3<f32>(0))){surf_finish(index,false);return;}
+//#endif
+//#if SUBSURFACE
+    if((sampled.label&SS_LABEL_SUBSURFACE_SCATTER)!=0u){ss_bounce(index,sd,r,ss_picked());return;}
 //#endif
     if((sampled.label&LABEL_TRANSPARENT)!=0u){let t=sd.ray_length;state_f32(S_ray_tmin,index,select(bitcast<f32>(bitcast<u32>(t)+1u),1.1754943508222875e-38,t==0.0));}
     else{let direction=surface_native_normalize(sampled.wo);state_vec3(S_ray_P,index,surf_ray_offset(sd,direction));state_vec3(S_ray_D,index,direction);

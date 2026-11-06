@@ -103,6 +103,10 @@ fn light_sample_triangle(sd:SurfaceData,selection:LightSelection)->NativeLightSa
     ls.shader|=selection.visibility;return ls;
 //#endif
 }
+//#if BACKGROUND_SAMPLE_ENTRY
+// Set by light_sample_lamp when a sampled background light is left to shade_surface_light_background.
+var<private> light_background_pending:bool=false;
+//#endif
 // The lamp chosen by light_select (selection.prim < 0). With emissive triangles in
 // the scene, shade_surface_light calls this directly and the triangle work runs in
 // shade_surface_light_triangle, so neither entry inlines both samplers.
@@ -133,8 +137,14 @@ fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelecti
         // Infinite area light (light.h): D = -background_light_sample, P = Ng = D.
         // Removed by scene specialization when no background light is uploaded.
 //#if LIGHT_BACKGROUND else atomicOr(&heap[p(17u)/4u],2u);return ls;
+//#if BACKGROUND_SAMPLE_ENTRY
+        // shade_surface_light_background completes this sample (bgl_sample, then the pdf factor below).
+        light_background_pending=true;return ls;
+//#endif
+//#if !BACKGROUND_SAMPLE_ENTRY
         let sampled=bgl_sample(random.xy);
         ls.D=sampled.xyz;ls.P=-sampled.xyz;ls.pdf=sampled.w;ls.t=bitcast<f32>(0x7f7fffffu);ls.eval_fac=1.0;
+//#endif
 //#endif
     }else{
         let spot=load_word(light+L_type)==LIGHT_SPOT;
@@ -174,7 +184,10 @@ fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelecti
 }
 fn light_bsdf(sd:SurfaceData,r:SvmResult,direction:vec3<f32>,shader:u32)->SurfaceSample{
     var result:SurfaceSample;var weight_sum=0.0;var pdf_sum=0.0;var rough_sum=0.0;
-    for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(!surf_bsdf(c.kind)){continue;}
+//#if SUBSURFACE else     for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(!surf_bsdf(c.kind)){continue;}
+    // _surface_shader_bsdf_eval_mis: a BSSRDF closure's sample weight counts in the sum (CLOSURE_IS_BSDF_OR_BSSRDF).
+    for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(!surf_bsdf(c.kind)){if(ss_bssrdf_kind(c.kind)){weight_sum+=c.sample_weight;}continue;}
+//#endif
         let eval=surf_evaluate(sd,c,direction);
         if(eval.w!=0.0){
             let excluded=(surf_diffuse(c.kind)&&(shader&SHADER_EXCLUDE_DIFFUSE)!=0u)||
@@ -273,6 +286,9 @@ fn surface_direct_light(index:u32,slot:u32,sd:SurfaceData,r:SvmResult,ls:NativeL
     state_u16(S_shadow_path_diffuse_bounce,shadow,state_half(S_path_diffuse_bounce,index));state_u16(S_shadow_path_glossy_bounce,shadow,state_half(S_path_glossy_bounce,index));
     state_u16(S_shadow_path_transmission_bounce,shadow,state_half(S_path_transmission_bounce,index));state_u16(S_shadow_path_transparent_bounce,shadow,state_half(S_path_transparent_bounce,index));
     state_u16(S_shadow_path_volume_bounds_bounce,shadow,state_half(S_path_volume_bounds_bounce,index));
+//#if VOLUME_SHADOW
+    vl_copy_volume_stack(index,shadow);
+//#endif
     state_vec3(S_shadow_path_throughput,shadow,heap_vec3(state_address(S_path_throughput,index,12u))*bsdf.eval);
     let group=load_word(table_at(G_objects,ls.object_id,SIZE_objects)+O_lightgroup);state_u8(S_shadow_path_lightgroup,shadow,group+1u);
     var flag=state_word(S_path_flag,index);

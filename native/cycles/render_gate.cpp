@@ -135,11 +135,10 @@ struct VelvetRule {unsigned stages=0;uint64_t mismatches=0,paths=0,ftz_checks=0;
 static VelvetRule velvet_rule;
 #endif
 struct StageInput {const std::vector<IntegratorStateCPU> *states=nullptr;const std::vector<float> *film=nullptr;const std::vector<int> *ids=nullptr;};
-static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&expected,device_vector<float>&film,const std::vector<float>&wanted,Metrics &m,StageInput input={}){
-  auto actual=download(d,layout,expected.size());film.copy_from_device();healthy(d);const auto counter=queue_counter(d);
 #if defined(CBC_BSDF_FIXTURE)
-  if(input.states){
-    std::vector<Miss> misses;collected_misses=&misses;compare_stage(scene,clay,layout,expected,actual,film.data(),wanted,counter,m);collected_misses=nullptr;
+// One surface stage under the velvet rule: local lockstep (compare) and the Linux stage judge (judge_stages) judge alike.
+static void velvet_stage(DeviceScene &scene,bool clay,const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&expected,const std::vector<IntegratorStateCPU>&actual,const float *film,const std::vector<float>&wanted,const IntegratorQueueCounter &counter,Metrics &m,StageInput input){
+    std::vector<Miss> misses;collected_misses=&misses;compare_stage(scene,clay,layout,expected,actual,film,wanted,counter,m);collected_misses=nullptr;
     if(!misses.empty()){
       const auto velvet_list=original_surface_velvet_paths(scene,*input.ids,*input.states);const std::set<int> velvet(velvet_list.begin(),velvet_list.end());
       std::set<int> paths;bool attributable=true,velvet_next_kernel=false;
@@ -150,7 +149,7 @@ static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vect
         auto flushed=*input.states;auto flushed_film=*input.film;
         if(original_surface_flush_to_zero(scene,*input.ids,flushed,flushed_film)){
           Metrics scratch;scratch.stages=m.stages-1;std::vector<Miss> remaining;collected_misses=&remaining;
-          compare_stage(scene,clay,layout,flushed,actual,film.data(),flushed_film,counter,scratch);collected_misses=nullptr;
+          compare_stage(scene,clay,layout,flushed,actual,film,flushed_film,counter,scratch);collected_misses=nullptr;
           if(!remaining.empty())std::cerr<<"Velvet rule not applied: "<<remaining.size()<<" differences remain against the flush-to-zero CPU oracle, first: "<<remaining[0].message<<'\n';
           if(remaining.empty()){
             velvet_rule.stages++;velvet_rule.mismatches+=misses.size();velvet_rule.paths+=paths.size();velvet_rule.ftz_checks+=scratch.floats+scratch.integers;
@@ -161,8 +160,12 @@ static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vect
       }
     }
     for(auto &x:misses)gate_require(false,x.message);
-    return;
-  }
+}
+#endif
+static void compare(WebGPUDevice &d,DeviceScene &scene,bool clay,const std::vector<Field>&layout,const std::vector<IntegratorStateCPU>&expected,device_vector<float>&film,const std::vector<float>&wanted,Metrics &m,StageInput input={}){
+  auto actual=download(d,layout,expected.size());film.copy_from_device();healthy(d);const auto counter=queue_counter(d);
+#if defined(CBC_BSDF_FIXTURE)
+  if(input.states){velvet_stage(scene,clay,layout,expected,actual,film.data(),wanted,counter,m,input);return;}
 #else
   (void)input;
 #endif
@@ -229,10 +232,17 @@ static void judge_stages(const std::string &path,DeviceScene &scene,bool clay,co
     const auto kernel=DeviceKernel(u32());const unsigned sample=u32();(void)sample;delta();
     std::vector<IntegratorStateCPU> expected(capacity),actual(capacity);snap.unpack(order,expected);std::vector<float> wanted=snap.film;std::vector<int> ids;
     for(size_t i=0;i<expected.size();i++)if(expected[i].path.queued_kernel==kernel)ids.push_back(int(i));
+#if defined(CBC_BSDF_FIXTURE)
+    // The surface stage's recorded input, kept for the velvet rule's flush-to-zero oracle (as in local lockstep).
+    std::vector<IntegratorStateCPU> stage_input;std::vector<float> stage_film;if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){stage_input=expected;stage_film=wanted;}
+#endif
     oracle(kernel,scene,ids,expected,wanted);
     if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids)if(expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)expected[i].path.shader_sort_key=(scene.tri_shader[expected[i].isect.prim]&SHADER_MASK)+max_shaders*(i/divisor);
     m.paths+=ids.size();m.kernels[kernel]+=ids.size();
     delta();snap.unpack(order,actual);IntegratorQueueCounter counter{};take(&counter,sizeof(counter));
+#if defined(CBC_BSDF_FIXTURE)
+    if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){velvet_stage(scene,clay,order,expected,actual,snap.film.data(),wanted,counter,m,{&stage_input,&stage_film,&ids});stages++;continue;}
+#endif
     compare_stage(scene,clay,order,expected,actual,snap.film.data(),wanted,counter,m);stages++;
   }
   require(stages>0,"Empty stage exchange");
@@ -388,7 +398,14 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(const char *judge=reference_policy::environment("CODEBRIX_CYCLES_STAGE_JUDGE")){
       require(exchange_only&&reference_policy::reference_only(),"The stage judge needs the device's scene (CODEBRIX_CYCLES_SCENE_LOAD)");
       judge_stages(judge,scene.dscene,asset!=nullptr,layout,unsigned(data.max_shaders),m);
-      std::cout<<std::setprecision(17)<<"{\"passed\":true,\"stageJudge\":true,\"stages\":"<<m.stages<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"equivalentSharedEdgeComparisons\":"<<m.equivalent_edge_hits<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<m.maximum<<",\"maximumStageErrorField\":\""<<m.maximum_field<<"\",\"maximumStageErrorActual\":"<<m.maximum_actual<<",\"maximumStageErrorExpected\":"<<m.maximum_expected<<",\"maximumStagePracticalToleranceRatio\":"<<m.maximum_bound_ratio<<"}\n";
+      std::cout<<std::setprecision(17)<<"{\"passed\":true,\"stageJudge\":true,\"stages\":"<<m.stages<<",\"paths\":"<<m.paths<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"equivalentSharedEdgeComparisons\":"<<m.equivalent_edge_hits<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<m.maximum<<",\"maximumStageErrorField\":\""<<m.maximum_field<<"\",\"maximumStageErrorActual\":"<<m.maximum_actual<<",\"maximumStageErrorExpected\":"<<m.maximum_expected<<",\"maximumStagePracticalToleranceRatio\":"<<m.maximum_bound_ratio
+#if defined(CBC_BSDF_FIXTURE)
+        <<",\"velvetSubnormalRule\":{\"stages\":"<<velvet_rule.stages<<",\"normalCpuMismatches\":"<<velvet_rule.mismatches<<",\"paths\":"<<velvet_rule.paths<<",\"ftzDazOracleChecks\":"<<velvet_rule.ftz_checks<<",\"ftzDazOracleMismatches\":0}"
+#endif
+        <<"}\n";
+#if defined(CBC_BSDF_FIXTURE)
+      {std::ofstream lines(prefix+".velvet-rule.txt");for(auto &line:velvet_rule.lines)lines<<line<<'\n';}
+#endif
       return 0;
     }
     BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=data.film.pass_stride;auto buffers=scheduler.get_render_buffers();buffers->reset(bp);
