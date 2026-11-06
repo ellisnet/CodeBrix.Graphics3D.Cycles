@@ -63,6 +63,9 @@ fn trace_shadow_all(path:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:
                     let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
                     if(prim_object==self_object&&prim==self_prim){continue;}
                     if(prim_object==light_object&&prim==light_prim){continue;}
+//#if SHADOW_LINKING
+                    if(shadow_link_skip(light_object,prim_object)){continue;}
+//#endif
                     if((load_word(table_at(G_prim_visibility,index,SIZE_prim_visibility))&visibility)==0u){continue;}
 //#if !SHADOW_TRANSPARENT_MOTION
                     let obj=table_at(G_objects,prim_object,SIZE_objects);let offset=load_word(obj+O_position_offset);

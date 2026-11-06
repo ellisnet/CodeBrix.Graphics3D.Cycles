@@ -63,8 +63,8 @@ void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
   if(p[2])validate(p[2],size_t(n)*4);
   require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU closest currently requires triangle primitives");
   validate_geometry_motion();
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
-          "WebGPU closest optional integration features not implemented");
+  require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU closest optional integration features not implemented");
+  validate_shadow_linking();
   validate_shadow_catcher();
   if(data.integrator.use_caustics)validate_mnee();
   validate_volume();

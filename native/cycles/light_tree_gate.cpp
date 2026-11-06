@@ -321,14 +321,16 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   reference_policy::use_reference_oracle_arithmetic();
   require(argc>=2,"Usage: light_tree_gate OUTPUT_DIRECTORY [CASE...]");const std::filesystem::path out=argv[1];std::filesystem::create_directories(out);
   std::vector<int> cases;for(int i=2;i<argc;i++)cases.push_back(std::stoi(argv[i]));if(cases.empty())for(int c=0;c<light_tree_cases;c++)cases.push_back(c);
-  auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;
-  auto owner=Device::create(infos[0],stats,profiler,true);auto &device=require_webgpu_device(owner.get(),"light_tree_gate device creation");Metrics total;
+  // CODEBRIX_CYCLES_EXCHANGE_CPU_DEVICE (reference_policy.h): the exchange passes with no WebGPU adapter.
+  const bool cpu_exchange=reference_policy::cpu_device_exchange();
+  auto infos=Device::available_devices(cpu_exchange?DEVICE_MASK_CPU:DEVICE_MASK_WEBGPU);require(cpu_exchange?!infos.empty():infos.size()==1,cpu_exchange?"Missing CPU device":"Missing WebGPU adapter");Stats stats;Profiler profiler;
+  auto owner=Device::create(infos[0],stats,profiler,true);WebGPUDevice *gpu=cpu_exchange?nullptr:&require_webgpu_device(owner.get(),"light_tree_gate device creation");Metrics total;
   const bool exchange_mode=reference_policy::prepare_only()||reference_policy::reference_only();
   for(int c:cases){
     require(c>=0&&c<light_tree_cases,"Unknown light tree case");std::cerr<<"light tree case="<<c<<'\n';
     auto folder=out/("case-"+std::to_string(c));std::filesystem::create_directories(folder);const auto prefix=(folder/"run").string();Metrics metrics;const std::string key="case-"+std::to_string(c);
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&device);const Fixture f=fixture(scene,c);Progress progress;scene.device_update(&device,progress);healthy(device);require(!progress.get_error(),"Light tree scene preparation failed");
+    Scene scene(params,owner.get());const Fixture f=fixture(scene,c);Progress progress;scene.device_update(owner.get(),progress);if(gpu)healthy(*gpu);require(!progress.get_error(),"Light tree scene preparation failed");
     auto &data=scene.dscene.data;
     require(bool(data.integrator.use_light_tree)==f.tree&&data.integrator.use_direct_light,"Unexpected native light tree configuration");
     require(bool(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)==f.linking&&!(data.kernel_features&KERNEL_FEATURE_SHADOW_LINKING),"Unexpected native light linking configuration");
@@ -361,6 +363,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     RenderCapture::file(prefix+".cpu.film.bin",local.data(),local.size()*4);
     const auto reference=reference_policy::resolve(key+".film",local,(out/"reference-diagnostic.jsonl").string());
     if(exchange_only)continue;
+    WebGPUDevice &device=*gpu;
     if(c==0||c==6)guards(device,metrics);
     probe(device,scene,folder,states,inputs,expected_samples,metrics);
     require(data.film.pass_stride==4,"Light tree combined-only film expected");bool cancelled=false;Scheduler scheduler(&device,scene.film,&scene.dscene,&cancelled);
@@ -398,7 +401,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     total.forward+=metrics.forward;total.rejected+=metrics.rejected;total.guards+=metrics.guards;total.film+=metrics.film;total.film_strict+=metrics.film_strict;
     total.film_maximum=std::max(total.film_maximum,metrics.film_maximum);total.repeat+=metrics.repeat;total.shadows+=metrics.shadows;total.nee+=metrics.nee;
   }
-  require(stats.mem_used==0,"Light tree gate leaked native allocations");std::ofstream(out/"library.txt")<<device.gpu.library_path;std::ofstream(out/"adapter.txt")<<device.gpu.adapter_name;
+  // The CPU device keeps its own image table until it is destroyed.
+  require(cpu_exchange||stats.mem_used==0,"Light tree gate leaked native allocations");if(gpu){std::ofstream(out/"library.txt")<<gpu->gpu.library_path;std::ofstream(out/"adapter.txt")<<gpu->gpu.adapter_name;}
   if(exchange_mode)std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cases\":"<<cases.size()<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
   else std::cout<<std::setprecision(17)<<"{\"passed\":true,\"cases\":"<<cases.size()<<",\"probeSelected\":"<<total.selected<<",\"probeValid\":"<<total.valid<<",\"forwardPdfs\":"<<total.forward
     <<",\"linkRejections\":"<<total.rejected<<",\"guardCases\":"<<total.guards<<",\"exactChecks\":"<<total.exact<<",\"numericChecks\":"<<total.numeric<<",\"strictDifferences\":"<<total.strict

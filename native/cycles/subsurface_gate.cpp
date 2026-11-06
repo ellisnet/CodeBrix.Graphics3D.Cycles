@@ -23,10 +23,11 @@
 #include <iomanip>
 using namespace ccl;
 using namespace wavefront_test;
-struct Metrics {uint64_t floats=0,integers=0,strict=0,exits=0,terminated=0,practical_failures=0;unsigned cases=0;double maximum=0,ratio=0;std::string field;};
+struct Metrics {uint64_t floats=0,integers=0,strict=0,exits=0,terminated=0,practical_failures=0,nonfinite=0;unsigned cases=0;double maximum=0,ratio=0;std::string field;};
 static void number(float a,float e,const std::string &field,Metrics &m){
   const double error=std::abs(double(a)-e);m.floats++;m.strict+=error>1e-7+1e-7*std::abs(double(e));
-  if(!(error<=5e-5+2e-4*std::abs(double(e)))&&!(std::isnan(a)&&std::isnan(e))){m.practical_failures++;if(m.practical_failures<=20)std::cerr<<"practical "<<field<<" actual "<<std::setprecision(9)<<a<<" expected "<<e<<'\n';}
+  m.nonfinite+=!(std::isfinite(a)&&std::isfinite(e));
+  if(!(std::isfinite(a)&&std::isfinite(e)&&error<=5e-5+2e-4*std::abs(double(e)))){m.practical_failures++;if(m.practical_failures<=20)std::cerr<<"practical "<<field<<" actual "<<std::setprecision(9)<<a<<" expected "<<e<<'\n';}
   if(error>m.maximum){m.maximum=error;m.field=field;}m.ratio=std::max(m.ratio,error/(5e-5+2e-4*std::abs(double(e))));
 }
 struct Case {ClosureType method;float anisotropy;float3 radius;float3 albedo;};
@@ -105,7 +106,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
   const bool passed=m.practical_failures==0;
   std::cout<<std::setprecision(17)<<"{\"passed\":"<<(passed?"true":"false")<<",\"originalCpuSubsurfaceKernel\":true,\"cases\":"<<m.cases<<",\"paths\":"<<m.cases*512<<",\"exits\":"<<m.exits<<",\"terminated\":"<<m.terminated
-           <<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFailures\":"<<m.strict<<",\"practicalFailures\":"<<m.practical_failures<<",\"maximumError\":"<<m.maximum
+           <<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFailures\":"<<m.strict<<",\"practicalFailures\":"<<m.practical_failures<<",\"nonfiniteValues\":"<<m.nonfinite<<",\"maximumError\":"<<m.maximum
            <<",\"maximumErrorField\":\""<<m.field<<"\",\"maximumPracticalToleranceRatio\":"<<m.ratio<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
   if(!passed)status=1;
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

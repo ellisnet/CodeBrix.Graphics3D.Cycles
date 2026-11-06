@@ -31,7 +31,7 @@ HOST_TARGETS=['codebrix_cycles_host',*['codebrix_host_'+n for n in ['cpu_test','
  'abi_test','example_test','scene_edit_test','session_reference','session64_reference']]]
 GATE_TARGETS=['codebrix_cycles_'+n+'_gate' for n in ['device','camera','closest','background','svm_world','shader_data','svm_surface',
  'attribute','normal','image','surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film',
- 'ao_render','ao_state','light_tree','mnee','mnee_render','shadow_catcher']]
+ 'ao_render','ao_state','light_tree','shadow_linking','mnee','mnee_render','shadow_catcher']]
 SKIPPED_TARGETS={'codebrix_host_image_reference':'writes and reads EXR/PNG through OIIO, whose format plugins are disabled',
  'codebrix_cycles_image_file_gate':'loads texture files through OIIO, whose format plugins are disabled'}
 # Overlay files that must be byte-identical to the Linux build's: every embedded

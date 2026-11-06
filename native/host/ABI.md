@@ -207,8 +207,8 @@ emission, background, AO), light groups, the data passes (depth, position, norma
 material index, mist, sample count, the motion pass and motion weight without motion blur; render time stays zero,
 as on Cycles' Metal device), AOVs, cryptomatte and the denoising feature passes (albedo, normal, specular albedo,
 roughness, depth, backward and specular motion; with deforming geometry too) and the volume majorant passes that volume
-scattering guidance reads, and refuses by name every other pass (for example the path guiding passes and, with volumes,
-the volume light passes); path guiding must be switched
+scattering guidance reads, the volume light passes, and refuses by name every other pass (for example the path guiding
+passes); path guiding must be switched
 off for WebGPU renders (adaptive sampling renders); the light tree and light linking render. Denoising
 (the integrator's `use_denoise`, off by default, and its other denoise sockets, set like any integrator
 property) works on every backend: Cycles denoises a WebGPU render with Open Image Denoise on the CPU (the

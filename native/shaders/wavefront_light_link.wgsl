@@ -19,6 +19,13 @@ fn light_link_match(receiver:u32,emitter:u32)->bool{
     let word=load_word(membership+select(0u,4u,light_set>=32u));
     return ((word>>(light_set&31u))&1u)!=0u;
 }
+//#if SHADOW_LINKING
+// shadow_set_membership == LIGHT_LINK_MASK_ALL: the emitter is not shadow-linked.
+fn shadow_link_membership_all(object:u32)->bool{
+    let membership=table_at(G_objects,object,SIZE_objects)+DL_O_shadow_set_membership;
+    return load_word(membership)==0xffffffffu&&load_word(membership+4u)==0xffffffffu;
+}
+//#endif
 // light_link_receiver_forward: the object the current path last scattered from.
 fn light_link_receiver_forward(index:u32)->u32{
     if(!light_link_enabled()){return NONE;}

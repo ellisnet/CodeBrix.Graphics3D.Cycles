@@ -553,9 +553,8 @@ What a consumer can observe:
 WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
 render runs (the render fails with NativeStatus.Failed, not at edit time):
   - the passes the WebGPU device does not write fail the render with
-    "WebGPU film pass <name> not implemented" (the path guiding passes; the
-    volume light passes fail with "WebGPU volume light passes not
-    implemented"), as does the motion pass with a camera that is not
+    "WebGPU film pass <name> not implemented" (the path guiding passes), as
+    does the motion pass with a camera that is not
     perspective (the motion pass and the denoising motion features with
     deforming geometry render);
   - stereo cameras (an InterocularDistance with a StereoEye other than None):
@@ -566,7 +565,10 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
     (the light tree, UseLightTree, adaptive sampling, UseAdaptiveSampling, and
     denoising, UseDenoise, render);
   - shadow linking (an object's BlockerShadowSet or ShadowSetMembership other
-    than the defaults): "optional integration features not implemented";
+    than the defaults) together with the shadow catcher, with ambient occlusion
+    (fast GI and the AO pass), or with volumes on the light tree, with spot,
+    area or emissive triangle lights in a volume, or with the volume light
+    passes: "WebGPU shadow linking with ... not implemented";
   - subsurface scattering with the Christensen-Burley method, or a thin-walled
     PrincipledBsdfNode with subsurface: "Unsupported feature: subsurface
     scattering with the Christensen-Burley method" / "Unsupported feature:
@@ -650,9 +652,8 @@ setting; with an opaque background, Film.UseApproximateShadowCatcher = true
 writes the matte with the shadow approximated into it (a background pass is
 added for it). Lights contribute to the ShadowCatcher pass only when their own
 object is also marked IsShadowCatcher, as in Cycles. Both backends render all
-of this; on the WebGPU device a shadow catcher together with a volume (world
-or object) fails with "WebGPU shadow catcher with volumes not implemented", and
-caustics (MNEE) with a shadow catcher are refused as well. A shadow catcher
+of this, also together with a volume (world or object); on the WebGPU device
+caustics (MNEE) with a shadow catcher are refused. A shadow catcher
 together with ambient occlusion (the AO node, the AO pass or the integrator's
 fast-GI ambient occlusion) is not yet validated on the WebGPU device and is not
 refused: its shadow stage writes the ambient-occlusion term without the catcher
@@ -1025,8 +1026,8 @@ WHAT THIS PACKAGE DOES NOT DO
   (macOS on Apple Silicon). Until a feature reaches the WebGPU device, a scene
   that needs it fails there with an error naming the feature; it is never
   approximated.
-- It does not yet render stereo cameras or shadow linking on the WebGPU
-  device (the CPU reference backend and the Metal backend do). Orthographic
+- It does not yet render stereo cameras on the WebGPU device (the CPU
+  reference backend and the Metal backend do). Orthographic
   and panoramic cameras (equirectangular, equiangular cubemap face, mirror
   ball, the three fisheye models, central cylindrical) with depth of field
   (disk or polygonal apertures, rotation, anamorphic ratio), every sampling
@@ -1035,11 +1036,12 @@ WHAT THIS PACKAGE DOES NOT DO
   Christensen-Burley subsurface scattering or the hair BSDFs on the WebGPU
   device. Volumes of constant density and volumes whose density varies through
   space (with or without biased ray marching) render there with direct light
-  from point, sun and world lights and shadows through them, the Henyey-Greenstein, Fournier-Forand,
+  from point, spot, area, mesh, sun and world lights (also through the light tree) and shadows through them, the Henyey-Greenstein, Fournier-Forand,
   Rayleigh, Draine and Mie phase functions, the Volume Coefficients and
-  Principled Volume nodes and volume emission; spot, area and mesh lights, the
-  light tree and light passes together with volumes fail with an error naming
-  the feature. True displacement of the base mesh
+  Principled Volume nodes, volume emission, the volume light passes and
+  shadow catchers. A varying volume whose shader uses a Light Path node, and
+  volumes with sampling patterns other than tabulated Sobol, fail with an
+  error naming the feature. True displacement of the base mesh
   (DisplacementMethod True and Both) renders there. The Metallic (physical
   conductor and F82 tint, with or without a thin film), Beckmann glossy, refraction and glass,
   Ashikhmin-Shirley, velvet and toon BSDFs render there.
@@ -1071,10 +1073,10 @@ WHAT THIS PACKAGE DOES NOT DO
   render on the WebGPU device through glass and refraction BSDFs from point and
   sun lights. It does not render shadow caustics through anisotropic glass,
   from spot, area or background lights, with a moving (object motion blur)
-  caustic caster, or together with light trees, light or shadow linking or
-  volumes, on the WebGPU device: the render fails with an error naming the
-  feature. Fast GI, the AO pass and motion blur of the receivers and of
-  deforming casters do render with shadow caustics there. On Adreno 650
+  caustic caster, or together with volumes, on the WebGPU device: the render
+  fails with an error naming the feature. Light trees, light and shadow linking,
+  fast GI, the AO pass and motion blur of the receivers and of deforming
+  casters do render with shadow caustics there. On Adreno 650
   GPUs (for example the Samsung Galaxy S20) scenes with shadow caustics are
   refused with an error message before rendering starts.
 - It does not render texture, colour and utility shader nodes (noise, Voronoi,

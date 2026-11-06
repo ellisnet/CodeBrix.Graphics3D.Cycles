@@ -16,8 +16,14 @@
 // inner nodes and leaves, every emitter kind) therefore evaluates importance
 // through ONE call site (light_tree_walk's item loop).
 //
-// Not ported: in_volume_segment (volumes with direct light stay refused on the
-// host) and the dedicated shadow-linking trees.
+//#if VOLUME_LIGHT_TREE else // Not ported: in_volume_segment (volumes with direct light stay refused on the
+//#endif
+//#if VOLUME_LIGHT_TREE else // host) and the dedicated shadow-linking trees.
+//#endif
+//#if VOLUME_LIGHT_TREE
+// in_volume_segment (light_tree_sample<true>, light_tree_pdf<true>) is the
+// VOLUME_LIGHT_TREE regions. Not ported: the dedicated shadow-linking trees.
+//#endif
 
 // util/math_fast.h fast_sincosf (x = sin, y = cos) and fast_cosf: SLEEF argument
 // reduction and polynomials, each madd an unfused product and sum.
@@ -89,6 +95,10 @@ fn lt_to_local(object:u32,P:ptr<function,vec3<f32>>,N:ptr<function,vec3<f32>>){
     let at=table_at(G_objects,object,SIZE_objects);var itfm=motion_transform_load(at+LT_O_itfm);
     if((flags&LT_SD_OBJECT_MOTION)!=0u){itfm=motion_inverse(light_tree_object_motion(object));}
     *P=lt_transform_point(itfm,*P);
+//#if VOLUME_LIGHT_TREE
+    // light_tree_to_local_space<true>: the direction normalized (normalize_len: the reciprocal), the length scaled.
+    if(lt_segment){let d=vec3<f32>(rounded_dot((*N),itfm.x.xyz),rounded_dot((*N),itfm.y.xyz),rounded_dot((*N),itfm.z.xyz));let scale=lt_len(d);*N=d*rounded_divide(1.0,scale);lt_t=lt_t*scale;return;}
+//#endif
     if(any(*N!=vec3<f32>(0))){*N=lt_native_normalize(motion_transpose(motion_transform_load(at+LT_O_tfm),*N));}
 }
 // Tree root of the receiver's light set (light_tree_root_node_index).
@@ -97,16 +107,56 @@ fn lt_root(receiver:u32)->u32{
     return data_word(LT_D_link_sets+light_link_receiver_set(receiver)*LT_LINK_SET_STRIDE);
 }
 struct LtCone {axis:vec3<f32>,theta_o:f32,theta_e:f32}
+//#if VOLUME_LIGHT_TREE
+// in_volume_segment: the walk's N is the ray direction, lt_t the segment length, lt_theta the angle the segment
+// subtends (theta_b - theta_a of Eq. 4); light_tree_sample<true> and light_tree_pdf<true> set them around the walk.
+var<private> lt_segment:bool=false;var<private> lt_t:f32=0.0;var<private> lt_theta:f32=1.0;
+// util/math_fast.h fast_atan2f.
+fn lt_fast_atan2(y:f32,x:f32)->f32{
+    let a=abs(x);let b=abs(y);var k=0.0;
+    if(b!=0.0){k=select(select(rounded_divide(b,a),rounded_divide(a,b),b>a),1.0,a==b);}
+    let s=rounded_add(1.0,-rounded_add(1.0,-k));let t=s*s;
+    var r=rounded_divide(s*rounded_add(0.43157974*t,1.0),rounded_add(rounded_add(0.05831938*t,0.76443945)*t,1.0));
+    if(b>a){r=rounded_add(1.5707963267948966,-r);}if((bitcast<u32>(x)&0x80000000u)!=0u){r=rounded_add(3.141592653589793,-r);}
+    return bitcast<f32>((bitcast<u32>(r)&0x7fffffffu)|(bitcast<u32>(y)&0x80000000u));
+}
+// theta_d of light_tree_node_importance and light_tree_emitter_importance.
+fn lt_segment_theta(closest_t:f32,d:f32,t:f32)->f32{
+    if(t==bitcast<f32>(0x7f7fffffu)){return rounded_add(lt_fast_atan2(closest_t,d),1.5707963267948966);}
+    return trig_atan2(t,rounded_add(d,-(closest_t*select(0.0,rounded_divide(t-closest_t,d),d!=0.0))));
+}
+// compute_v: the vector of Fig. 8 that forms the smallest angle with the emitter axis.
+fn lt_compute_v(centroid:vec3<f32>,P:vec3<f32>,D:vec3<f32>,axis:vec3<f32>,t:f32)->vec3<f32>{
+    let u0=P-centroid;let v0=lt_native_normalize(u0);let v1=lt_native_normalize(rounded_add3(u0,D*min(t,1e12)));
+    let o2=lt_native_normalize(rounded_cross(v0,v1));let o1=rounded_cross(o2,v0);
+    let d0=rounded_dot(v0,axis);let d1=rounded_dot(o1,axis);let inv_len=rounded_divide(1.0,rounded_sqrt(rounded_add(d0*d0,d1*d1)));let cos_phi0=d0*inv_len;
+    if(d1<0.0||rounded_dot(v0,v1)>cos_phi0){return select(v1,v0,d0>rounded_dot(v1,axis));}
+    return rounded_add3(cos_phi0*v0,(d1*inv_len)*o1);
+}
+//#endif
 // light_tree_importance<false>: (maximum, minimum) importance.
 // o = fast_sincosf(theta_o); cos_spread = fast_cosf(theta_e - theta_o); cos_sum = cosf(theta_o + theta_e)
 // (only read when that sum is at most pi): computed once by the caller.
 fn lt_importance(N:vec3<f32>,transmission:bool,to_centroid:vec3<f32>,cos_u:f32,cone:LtCone,max_distance:f32,min_distance:f32,energy:f32,o:vec2<f32>,cos_spread:f32,cos_sum:f32)->vec2<f32>{
     let sin_u=lt_sin_from_cos(cos_u);
+//#if !VOLUME_LIGHT_TREE
     var cos_i=rounded_dot(to_centroid,N);if(transmission){cos_i=abs(cos_i);}
     let sin_i=lt_sin_from_cos(cos_i);
     let min_incidence=select(rounded_add(cos_i*cos_u,sin_i*sin_u),1.0,cos_i>=cos_u);
     if(!transmission&&min_incidence<0.0){return vec2<f32>(0);}
     let max_incidence=max(rounded_add(cos_i*cos_u,-(sin_i*sin_u)),0.0);
+//#endif
+//#if VOLUME_LIGHT_TREE
+    // cos(theta_i') is omitted for a volume segment.
+    var min_incidence=1.0;var max_incidence=1.0;
+    if(!lt_segment){
+        var cos_i=rounded_dot(to_centroid,N);if(transmission){cos_i=abs(cos_i);}
+        let sin_i=lt_sin_from_cos(cos_i);
+        min_incidence=select(rounded_add(cos_i*cos_u,sin_i*sin_u),1.0,cos_i>=cos_u);
+        if(!transmission&&min_incidence<0.0){return vec2<f32>(0);}
+        max_incidence=max(rounded_add(cos_i*cos_u,-(sin_i*sin_u)),0.0);
+    }
+//#endif
     var cos_t=1.0;var sin_t=0.0;
     if(any(cone.axis!=-to_centroid)){cos_t=rounded_dot(cone.axis,-to_centroid);sin_t=lt_sin_from_cos(cos_t);}
     let cos_minus=rounded_add(cos_t*cos_u,sin_t*sin_u);
@@ -116,6 +166,10 @@ fn lt_importance(N:vec3<f32>,transmission:bool,to_centroid:vec3<f32>,cos_u:f32,c
         if(sum>bitcast<f32>(0x40490fdbu)||cos_minus>cos_sum){min_outgoing=rounded_add(cos_minus*o.y,lt_sin_from_cos(cos_minus)*o.x);}
         else{return vec2<f32>(0);}
     }
+//#if VOLUME_LIGHT_TREE
+    // (theta_b - theta_a) / d, no minimum importance (Eq. 4).
+    if(lt_segment){return vec2<f32>(abs(((min_incidence*energy)*min_outgoing)*rounded_divide(lt_theta,min_distance)),0.0);}
+//#endif
     let maximum=abs(((min_incidence*energy)*min_outgoing)*rounded_divide(1.0,min_distance*min_distance));
     var minimum=0.0;let cos_plus=rounded_add(cos_t*cos_u,-(sin_t*sin_u));let spread=rounded_add(cone.theta_e,-cone.theta_o);
     if(!(spread<0.0||cos_t<0.0||cos_u<0.0||cos_plus<cos_spread)){
@@ -137,7 +191,20 @@ fn lt_item_importance(P:vec3<f32>,N:vec3<f32>,transmission:bool,item:u32,item_is
     var kind=0u;var light=0u;var centroid=vec3<f32>(0);var corners=0u;var spot_acos=vec2<f32>(0);var v:array<vec3<f32>,3>;var eu=vec3<f32>(0);var ev=vec3<f32>(0);
     if(is_node){
         let at=lt_node(node);cone=LtCone(heap_vec3(at+LTN_axis),heap_float(at+LTN_theta_o),heap_float(at+LTN_theta_e));energy=heap_float(at+LTN_energy);
-        if(lt_type(at)==LT_LIGHT_TREE_DISTANT){kind=1u;to_centroid=-cone.axis;max_distance=1.0;}
+//#if VOLUME_LIGHT_TREE else         if(lt_type(at)==LT_LIGHT_TREE_DISTANT){kind=1u;to_centroid=-cone.axis;max_distance=1.0;}
+        if(lt_type(at)==LT_LIGHT_TREE_DISTANT){kind=1u;to_centroid=-cone.axis;max_distance=1.0;lt_theta=select(lt_t,1.0,lt_t==bitcast<f32>(0x7f7fffffu));}
+//#endif
+//#if VOLUME_LIGHT_TREE
+        else if(lt_segment){
+            let low=heap_vec3(at+LTN_bbox_min);let high=heap_vec3(at+LTN_bbox_max);centroid=0.5*rounded_add3(low,high);
+            let closest_t=rounded_dot(centroid-P,N);let closest=rounded_add3(P,N*clamp(closest_t,0.0,lt_t));
+            let d=lt_len(rounded_add3(centroid-P,-(N*closest_t)));lt_theta=lt_segment_theta(closest_t,d,lt_t);
+            to_centroid=-lt_compute_v(centroid,P,N,cone.axis,lt_t);
+            let outside=closest-centroid;let radius=high-centroid;let d2=rounded_dot(outside,outside);let r2=rounded_dot(radius,radius);
+            cos_u=select(rounded_sqrt(max(rounded_add(1.0,-rounded_divide(r2,d2)),0.0)),-1.0,d2<=r2);
+            max_distance=max(0.5*lt_len(centroid-high),d);
+        }
+//#endif
         else{
             let low=heap_vec3(at+LTN_bbox_min);let high=heap_vec3(at+LTN_bbox_max);centroid=0.5*rounded_add3(low,high);
             visible=transmission||rounded_add(rounded_dot(N,centroid-P),rounded_dot(abs(N),abs(high-centroid)))>0.0;
@@ -171,16 +238,29 @@ fn lt_item_importance(P:vec3<f32>,N:vec3<f32>,transmission:bool,item:u32,item_is
                 if((flags&LT_SD_OBJECT_TRANSFORM_APPLIED)!=0u&&(flags&LT_SD_OBJECT_NEGATIVE_SCALE)!=0u){dir=-dir;}cone.axis=dir;
             }else{cone.axis=lt_safe_normalize(v[0]-v[1]);}
         }
+//#if VOLUME_LIGHT_TREE
+        // The closest point of the ray to the centroid replaces the shading point; theta_d (distant lights: the ray length).
+        var Pc=P;
+        if(lt_segment){
+            let closest_t=rounded_dot(centroid-P,N);Pc=rounded_add3(P,N*clamp(closest_t,0.0,lt_t));
+            let d=lt_len(rounded_add3(centroid-P,-(N*closest_t)));lt_theta=lt_segment_theta(closest_t,d,lt_t);
+            if(kind==LT_LIGHT_BACKGROUND+2u||kind==LT_LIGHT_SUN+2u){lt_theta=select(lt_t,1.0,lt_t==bitcast<f32>(0x7f7fffffu));}
+        }
+//#endif
         // *_light_tree_parameters for point, spot, area and triangle emitters.
         if(kind==LT_LIGHT_POINT+2u||kind==LT_LIGHT_SPOT+2u||kind==LT_LIGHT_AREA+2u||kind==16u){
-            let unit=lt_safe_normalize_len(centroid-P);to_centroid=unit.xyz;max_distance=unit.w;min_distance=unit.w;
+//#if VOLUME_LIGHT_TREE else             let unit=lt_safe_normalize_len(centroid-P);to_centroid=unit.xyz;max_distance=unit.w;min_distance=unit.w;
+            let unit=lt_safe_normalize_len(centroid-Pc);to_centroid=unit.xyz;max_distance=unit.w;min_distance=unit.w;
+//#endif
         }
         if(corners!=0u){
             cos_u=bitcast<f32>(0x7f7fffffu);var above=false;
             for(var i=0u;i<corners;i++){
                 var corner=v[min(i,2u)];
                 if(kind!=16u){corner=rounded_add3(rounded_add3((f32(i&1u)-0.5)*eu,(0.5*f32(i32(i&2u)-1))*ev),centroid);}
-                let to_corner=lt_safe_normalize_len(corner-P);cos_u=min(cos_u,rounded_dot(to_centroid,to_corner.xyz));max_distance=max(max_distance,to_corner.w);
+//#if VOLUME_LIGHT_TREE else                 let to_corner=lt_safe_normalize_len(corner-P);cos_u=min(cos_u,rounded_dot(to_centroid,to_corner.xyz));max_distance=max(max_distance,to_corner.w);
+                let to_corner=lt_safe_normalize_len(corner-Pc);cos_u=min(cos_u,rounded_dot(to_centroid,to_corner.xyz));max_distance=max(max_distance,to_corner.w);
+//#endif
                 above=above||rounded_dot(to_corner.xyz,N)>0.0;
             }
             if(kind==16u){visible=(cone.theta_o!=0.0||rounded_dot(cone.axis,to_centroid)<0.0)&&above;}
@@ -197,6 +277,11 @@ fn lt_item_importance(P:vec3<f32>,N:vec3<f32>,transmission:bool,item:u32,item_is
                 // fast_acosf(axis . -to_centroid) and fast_acosf(cos_u) of the spot blend scaling.
                 for(var k=0u;k<2u;k++){spot_acos[k]=lt_fast_acos(select(cos_u,rounded_dot(cone.axis,-to_centroid),k==0u));}
             }else{cone.theta_o=0.0;}
+//#if VOLUME_LIGHT_TREE
+            // point_light_tree_parameters<true> and spot_light_tree_parameters<true> return early: both distances the
+            // centroid's, the point light's cos(theta_u) any value.
+            if(lt_segment){min_distance=m;if(kind==LT_LIGHT_POINT+2u){cos_u=1.0;}}
+//#endif
         }
         visible=visible||transmission;
     }
@@ -208,7 +293,9 @@ fn lt_item_importance(P:vec3<f32>,N:vec3<f32>,transmission:bool,item:u32,item_is
         if(k==0u){angle=max(0.0,rounded_add(spot_acos.x,-spot_acos.y));}else if(k==1u){angle=cone.theta_e;}
         c[k]=lt_cosf(angle);
     }
-    if(kind==LT_LIGHT_SPOT+2u){energy*=lt_smoothstep(rounded_add(c.x,-c.y)*heap_float(light+L_spot_smooth));}
+//#if VOLUME_LIGHT_TREE else     if(kind==LT_LIGHT_SPOT+2u){energy*=lt_smoothstep(rounded_add(c.x,-c.y)*heap_float(light+L_spot_smooth));}
+    if(kind==LT_LIGHT_SPOT+2u&&!lt_segment){energy*=lt_smoothstep(rounded_add(c.x,-c.y)*heap_float(light+L_spot_smooth));}
+//#endif
     // fast_sincosf(theta_o), fast_cosf(theta_e - theta_o), and the distant node's
     // fast_cosf(theta_o + theta_e) or the sun's fast_cosf(theta_e) for cos(theta_u).
     var f:array<vec2<f32>,3>;
@@ -219,6 +306,10 @@ fn lt_item_importance(P:vec3<f32>,N:vec3<f32>,transmission:bool,item:u32,item_is
     }
     if(kind==1u||kind==LT_LIGHT_SUN+2u){cos_u=f[2].y;if(kind!=1u){max_distance=rounded_divide(1.0,cos_u);}}
     if(!visible||load_word(p(17u))!=0u){return vec2<f32>(0);}
+//#if VOLUME_LIGHT_TREE
+    // point_to_centroid = -compute_v of the emitter (the sun keeps -axis).
+    if(lt_segment&&kind>=2u&&kind!=LT_LIGHT_SUN+2u){to_centroid=-lt_compute_v(centroid,P,N,cone.axis,lt_t);}
+//#endif
     return lt_importance(N,transmission,to_centroid,cos_u,cone,max_distance,min_distance,energy,f[0],f[1].y,c.z);
 }
 // sample_reservoir.
@@ -337,9 +428,19 @@ fn light_tree_walk(sample:bool,P_in:vec3<f32>,N_in:vec3<f32>,transmission:bool,r
 // selection pdf from the ray origin and the scattering normal
 // (light_sample_mis_weight_forward_lamp / _distant / _background).
 fn light_tree_forward_pdf(index:u32,emitter:u32)->f32{
-    if((state_byte(S_path_visibility,index)&LT_PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return 0.0;}
+//#if VOLUME_LIGHT_TREE else     if((state_byte(S_path_visibility,index)&LT_PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return 0.0;}
+//#endif
     let flag=state_word(S_path_flag,index);
+//#if !VOLUME_LIGHT_TREE
     return light_tree_walk(false,heap_vec3(state_address(S_ray_P,index,12u)),heap_vec3(state_address(S_path_mis_origin_n,index,12u)),
         (flag&LT_PATH_RAY_MIS_HAD_TRANSMISSION)!=0u,light_link_receiver_forward(index),0.0,0u,emitter).pdf;
+//#endif
+//#if VOLUME_LIGHT_TREE
+    // light_tree_pdf: from a volume, the pdf of the previous segment (mis_origin_n holds its direction times length).
+    var P=heap_vec3(state_address(S_ray_P,index,12u));var N=heap_vec3(state_address(S_path_mis_origin_n,index,12u));
+    if((state_byte(S_path_visibility,index)&LT_PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){P=P-N;N=lt_native_normalize(N);lt_segment=true;lt_t=heap_float(state_address(S_ray_previous_dt,index,4u));}
+    let pdf=light_tree_walk(false,P,N,(flag&LT_PATH_RAY_MIS_HAD_TRANSMISSION)!=0u,light_link_receiver_forward(index),0.0,0u,emitter).pdf;
+    lt_segment=false;return pdf;
+//#endif
 }
 fn light_tree_lamp_pdf(index:u32,object:u32)->f32{return light_tree_forward_pdf(index,load_word(table_at(G_light_to_tree,object,4u)));}

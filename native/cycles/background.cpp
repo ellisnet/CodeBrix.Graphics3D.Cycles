@@ -22,6 +22,7 @@ std::string background_layout(){
   DATA(film,pass_diffuse_direct);DATA(film,pass_glossy_direct);DATA(film,pass_transmission_direct);
   DATA(film,pass_diffuse_indirect);DATA(film,pass_glossy_indirect);DATA(film,pass_transmission_indirect);
   DATA(film,pass_lightgroup);DATA(film,pass_depth);DATA(film,pass_position);DATA(film,pass_object_id);DATA(film,pass_material_id);
+  source<<"//#if VOLUME_LIGHT_PASSES\n";DATA(film,pass_volume_direct);DATA(film,pass_volume_indirect);source<<"//#endif\n";
   // Background light importance map and MIS (wavefront_background_light.wgsl).
   DATA(background,use_mis);DATA(background,map_res_x);DATA(background,map_res_y);DATA(background,map_weight);
   DATA(background,portal_weight);DATA(background,sun_weight);DATA(background,map_dD);
@@ -58,8 +59,8 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
   if(p[2])validate(p[2],size_t(n)*4);
   validate_volume();
   validate_lighting(false);
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
-          "WebGPU background optional integration features not implemented");
+  require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU background optional integration features not implemented");
+  validate_shadow_linking();
   if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
   validate_shadow_catcher();
   if(data.integrator.use_caustics)validate_mnee();
@@ -70,6 +71,7 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
   pass(data.film.pass_combined,4);pass(data.film.pass_background,3);pass(data.film.pass_adaptive_aux_buffer,4);
   pass(data.film.pass_diffuse_direct,3);pass(data.film.pass_glossy_direct,3);pass(data.film.pass_transmission_direct,3);
   pass(data.film.pass_diffuse_indirect,3);pass(data.film.pass_glossy_indirect,3);pass(data.film.pass_transmission_indirect,3);
+  pass(data.film.pass_volume_direct,3);pass(data.film.pass_volume_indirect,3);
   pass(data.film.pass_depth,1);pass(data.film.pass_position,3);pass(data.film.pass_object_id,1);pass(data.film.pass_material_id,1);
   if(data.background.lightgroup!=LIGHTGROUP_NONE){require(data.background.lightgroup>=0&&data.background.lightgroup<data.film.pass_stride/3,"Invalid background lightgroup");
     pass(data.film.pass_lightgroup,3*(data.background.lightgroup+1));}

@@ -36,7 +36,7 @@ BACKEND_TYPES={0:'Undefined',1:'Null',2:'WebGPU',3:'D3D11',4:'D3D12',5:'Metal',6
 EXPECTED_BACKEND={'d3d12':4,'vulkan':6}
 DEVICE_GATES=['device','camera','closest','background','svm_world','shader_data','svm_surface','attribute','normal','image',
  'surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film',
- 'ao_render','ao_state','light_tree','mnee','mnee_render','shadow_catcher']
+ 'ao_render','ao_state','light_tree','shadow_linking','mnee','mnee_render','shadow_catcher']
 HOST_MACHINE={'AMD64':'win-x64','ARM64':'win-arm64'}
 # One oracle scene per failure class found on a Windows GPU driver (the Qualcomm
 # Adreno 680 Direct3D 12 driver; docs/TESTING-WINDOWS-ARM64.md).

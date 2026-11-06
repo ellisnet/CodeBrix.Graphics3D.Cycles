@@ -22,6 +22,7 @@ static void flag_constants(std::ostringstream &out){
   constant("SC_PATH_HIT",PATH_RAY_SHADOW_CATCHER_HIT);constant("SC_PATH_PASS",PATH_RAY_SHADOW_CATCHER_PASS);
   constant("SC_PATH_BACKGROUND",PATH_RAY_SHADOW_CATCHER_BACKGROUND);constant("SC_TRANSPARENT_BACKGROUND",PATH_RAY_TRANSPARENT_BACKGROUND);
   constant("SC_K_BACKGROUND",DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);constant("SC_K_SURFACE",DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE);
+  out<<"//#if VOLUME_SHADOW_CATCHER\n";constant("SC_K_VOLUME_STACK",DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK);constant("SC_SD_HAS_RAYTRACE",SD_HAS_RAYTRACE);out<<"//#endif\n";
 }
 // Constants of the SHADOW_CATCHER region; the markers make modules of scenes
 // without a shadow catcher identical to modules without this layout.
@@ -52,7 +53,6 @@ void WebGPUDevice::validate_shadow_catcher() const{
   require(data.kernel_features&KERNEL_FEATURE_SHADOW_CATCHER,"Missing native shadow catcher kernel feature");
   require(data.film.pass_shadow_catcher!=PASS_UNUSED&&data.film.pass_shadow_catcher_sample_count!=PASS_UNUSED&&
           data.film.pass_shadow_catcher_matte!=PASS_UNUSED,"Missing shadow catcher film passes");
-  require(!(data.kernel_features&KERNEL_FEATURE_VOLUME),"WebGPU shadow catcher with volumes not implemented");
   require(!data.integrator.use_caustics&&!(data.kernel_features&KERNEL_FEATURE_MNEE),"WebGPU shadow catcher with caustics not implemented");
   require(state.next_main_path_index!=nullptr,"Missing shadow catcher path index");
   validate(uintptr_t(state.next_main_path_index),4);
@@ -73,7 +73,7 @@ std::string shadow_catcher_split_wgsl(){
   return controls.substr(0,entry)+out.str()+shadow_catcher_split_fragment;
 }
 void WebGPUDevice::shadow_catcher_pipelines(){
-  if(sc_assign.value&&sc_split.value&&sc_count.value)return;
+  if(pipeline_current(sc_assign,"shadow_catcher_assign")&&pipeline_current(sc_split,"shadow_catcher_split")&&pipeline_current(sc_count,"shadow_catcher_count"))return;
   auto built=build_pipelines("shadow_catcher",shadow_catcher_split_wgsl(),{"shadow_catcher_assign","shadow_catcher_split","shadow_catcher_count"});
   sc_assign=std::move(built[0]);sc_split=std::move(built[1]);sc_count=std::move(built[2]);
 }

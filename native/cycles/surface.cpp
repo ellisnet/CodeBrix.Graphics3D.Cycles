@@ -78,8 +78,8 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
     require(std::isfinite(object.shadow_terminator_geometry_offset),"Invalid native shadow terminator geometry offset");
     require(!std::isnan(object.shadow_terminator_shading_offset),"Invalid native shadow terminator shading offset");
   }
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
-          "WebGPU surface optional integration features not implemented");
+  require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU surface optional integration features not implemented");
+  validate_shadow_linking();
   if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
   if(data.integrator.use_caustics)validate_mnee();
   validate_film_passes();film_motion_words(p);
@@ -92,6 +92,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   pass(data.film.pass_combined,4);pass(data.film.pass_emission,3);pass(data.film.pass_adaptive_aux_buffer,4);pass(data.film.pass_lightgroup,3);
   pass(data.film.pass_diffuse_direct,3);pass(data.film.pass_glossy_direct,3);pass(data.film.pass_transmission_direct,3);
   pass(data.film.pass_diffuse_indirect,3);pass(data.film.pass_glossy_indirect,3);pass(data.film.pass_transmission_indirect,3);
+  pass(data.film.pass_volume_direct,3);pass(data.film.pass_volume_indirect,3);
   if(data.film.light_pass_flag&PASSMASK(COMBINED))require(data.film.pass_combined!=PASS_UNUSED,"Missing combined film pass");
   // Ambient occlusion shadow rays (wavefront_ao.wgsl): the AO pass the shadow stage writes.
   const bool ao=(data.kernel_features&KERNEL_FEATURE_AO)!=0;
@@ -294,7 +295,8 @@ void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args)
   device_ptr indices;std::memcpy(&indices,args.values[0],sizeof(indices));require(indices%4==0,"Unaligned light NEE indices");
   std::array<uint32_t,32> p{};p[1]=n;p[2]=uint32_t(indices);p[17]=error_word;if(p[2])validate(p[2],size_t(n)*4);
   require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU light NEE currently requires triangle primitives");
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),"WebGPU light NEE optional integration features not implemented");
+  require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU light NEE optional integration features not implemented");
+  validate_shadow_linking();
   validate_geometry_motion();
   validate_lighting(true);
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=sample_pattern_table("light NEE");p[18]=globals.at("shaders");

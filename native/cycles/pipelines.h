@@ -246,9 +246,9 @@ inline constexpr ShaderFeatures SF_FILM_DENOISING=ShaderFeatures::bit(146);
 // Motion pass (Scene::MOTION_PASS): the surface stage's object and camera motion
 // vectors and the background's camera motion vector.
 inline constexpr ShaderFeatures SF_FILM_MOTION=ShaderFeatures::bit(147);
-// Colour passes in a scene with motion blur: the host-exact motion transforms of the
-// MNEE_MOTION regions (the colour passes divide the direct and indirect light passes,
-// so last-bit differences of a near-zero colour are amplified by the pass accessor).
+// Every scene with object, deformation or camera motion: the host-exact motion transforms of the MNEE_MOTION regions.
+// Their last bits decide ray-triangle folds near a shared edge (native/DEVICE.md, "Motion arithmetic last bits"), and
+// the colour passes divide the direct and indirect light passes, so a near-zero colour amplifies them.
 inline constexpr ShaderFeatures SF_FILM_MOTION_EXACT=ShaderFeatures::bit(148);
 // Image texture projections that only some image nodes reach (compiler pressure: the
 // shared svm_image handler otherwise inlines every projection into each SVM entry).
@@ -332,13 +332,29 @@ inline constexpr ShaderFeatures SF_VOLUME_HETEROGENEOUS=ShaderFeatures::bit(175)
 // (DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING) and the ray-marched shadows (volume_shadow_ray_marching); set
 // together with VOLUME_HETEROGENEOUS, whose shader evaluation and phase records it shares.
 inline constexpr ShaderFeatures SF_VOLUME_RAY_MARCHING=ShaderFeatures::bit(176);
+// Volume direct light from spot, area and emissive-triangle lights (VOLUME_LIGHT with such a light): their samples
+// from the volume segment (light_sample<true>) and valid ray segments (volume_valid_direct_ray_segment).
+inline constexpr ShaderFeatures SF_VOLUME_LIGHT_SHAPES=ShaderFeatures::bit(177);
+// The light tree's volume segments (light_tree_sample<true>, light_tree_pdf<true>): shade_volume_tree_select and the
+// forward pdfs of volume-scattered paths.
+inline constexpr ShaderFeatures SF_VOLUME_LIGHT_TREE=ShaderFeatures::bit(178);
+// Light passes with volumes: the volume direct and indirect passes (film_write_direct_light, film_write_surface_emission,
+// film_write_background ...) and the light passes of volume emission (film_write_volume_emission).
+inline constexpr ShaderFeatures SF_VOLUME_LIGHT_PASSES=ShaderFeatures::bit(179);
+// The shadow catcher with volumes: the split after a volume segment (integrator_intersect_next_kernel_after_volume), the
+// volume stack re-init of the catcher path, the catcher film split of volume emission and guidance.
+inline constexpr ShaderFeatures SF_VOLUME_SHADOW_CATCHER=ShaderFeatures::bit(180);
 inline constexpr ShaderFeatures SF_VOLUME_PHASE_KINDS=SF_PHASE_FOURNIER_FORAND|SF_PHASE_RAYLEIGH|SF_PHASE_DRAINE|SF_PHASE_MIE;
-// Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108, 110,
-// 128-160, 162-168, 170-176; bit 62 is unassigned; 107, 161 and 169 are module variants).
+// KERNEL_FEATURE_SHADOW_LINKING is set (lane range 120-127): blocker sets in the closest and shadow traversals, the
+// indirect emitters the main path leaves to the dedicated light kernels, and the kernels themselves
+// (wavefront_shadow_link.wgsl, shadow_linking.cpp).
+inline constexpr ShaderFeatures SF_SHADOW_LINKING=ShaderFeatures::bit(120);
+// Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108, 110, 120,
+// 128-160, 162-168, 170-180; bit 62 is unassigned; 107, 161 and 169 are module variants).
 inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
   SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|
-  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM;
+  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING;
 // The families above, for regions shared by all of them (closure classification).
 inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
@@ -351,7 +367,7 @@ inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_BUMP|SF_BUMP_STATE|SF_
   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|
   SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|
-  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM;
+  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //
@@ -381,14 +397,18 @@ inline constexpr size_t superset_default_budget_bytes=1000000;
 // maintained envelope keeps every gate entry under 60,000
 // (native/tools/intel_compile_envelope.py). The guard estimates that count from
 // the WGSL alone: wgsl_inlined_bytes of every entry point a pipeline build
-// compiles. Measured on Mesa 25.0.7 (merge wave 4 envelope, surface-module
-// entries above 500 KB): 16.9 to 22.1 inlined bytes per backend instruction,
-// central value about 20. The default threshold
-// pipeline_size_warning_default_bytes = 1,110,000 bytes (lowered from 1,200,000
-// at merge wave 5) sits at 65,535 instructions at the densest measured ratio
-// (65,535 x 16.9 = 1,107,542 bytes, rounded up; about 55,500 instructions at the
-// central 20), so it may warn on entries that measure safe (at Step zero the node
-// render's shade_background was 1,126,723 bytes, 40,103 instructions): a false
+// compiles. Measured on Mesa 25.0.7 over the oracle corpus and the superset
+// groups (684 distinct entries; every entry above 100,000 bytes): 14.4 inlined
+// bytes per backend instruction at the densest (intersect_subsurface of the
+// subsurface scenes, 799,982 bytes, 55,539 instructions), 14.4 to 24.8 among the
+// entries above 40,000 instructions, central value about 20 (median 20.3 above
+// 500,000 bytes). Entries below 100,000 bytes (film filters and small helpers,
+// densest 9.0) are not extrapolated: they say nothing about an entry near the
+// limit. The default threshold pipeline_size_warning_default_bytes = 940,000
+// bytes sits at 65,535 instructions at the densest measured ratio (65,535 x
+// 14.404 = 943,987 bytes, rounded down; about 47,000 instructions at the central
+// 20), so it may warn on entries that measure safe (the corpus' prepare_surface
+// of displacement/both is 1,006,721 bytes, 42,348 instructions): a false
 // warning is acceptable, a missed one is a driver crash. At or above the
 // threshold (CODEBRIX_CYCLES_PIPELINE_SIZE_WARN_BYTES overrides, 0 disables) the build
 // warns once per entry and size: on stderr before the compile, in the device
@@ -396,9 +416,9 @@ inline constexpr size_t superset_default_budget_bytes=1000000;
 // ICapabilityReport.Warnings) and in the process report. The warning never
 // changes the compiled variant, the tier or the "degraded" flag (that flag
 // stays first-use latency only).
-inline constexpr size_t pipeline_size_warning_default_bytes=1110000;
+inline constexpr size_t pipeline_size_warning_default_bytes=940000;
 inline constexpr double pipeline_size_bytes_per_instruction_central=20.0,
-  pipeline_size_bytes_per_instruction_low=16.9,pipeline_size_bytes_per_instruction_high=22.1;
+  pipeline_size_bytes_per_instruction_low=14.4,pipeline_size_bytes_per_instruction_high=24.8;
 // Inlined size (wgsl_inlined_bytes) of each named entry point, parsing the module once.
 std::vector<size_t> wgsl_inlined_bytes(const std::string &source,const std::vector<std::string> &entries);
 // The guard threshold for this process (environment override or the default).

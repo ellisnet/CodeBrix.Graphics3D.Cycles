@@ -79,11 +79,16 @@ fn shadow_write_film(index:u32){
         if((features&AO_FEATURE_PASS)!=0u&&(state_byte(S_shadow_path_visibility,index)&VIS_CAMERA)!=0u){film_rgb(base,data_word(D_film_pass_ao),value);}
         if((features&AO_FEATURE_ADDITIVE)!=0u){let ao=value*heap_vec3(state_address(S_shadow_path_unshadowed_throughput,index,12u));
 //#if VOLUME_SHADOW
+//#if !VOLUME_SHADOW_CATCHER
             vl_shadow_guidance(base,flag,state_byte(S_shadow_path_visibility,index),ao);
+//#endif
 //#endif
 //#if SHADOW_CATCHER else             if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
             // film_write_combined_pass: the shadow catcher split first (matte, catcher pass).
             let ao_handled=sc_combined(flag,base,ao);if(!ao_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
+//#endif
+//#if VOLUME_SHADOW_CATCHER
+            if(!ao_handled){vl_shadow_guidance(base,flag,state_byte(S_shadow_path_visibility,index),ao);}
 //#endif
 //#if SHADOW_CATCHER else             if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
             if(!ao_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
@@ -96,8 +101,10 @@ fn shadow_write_film(index:u32){
     let sc_handled=sc_combined(flag,base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
 //#endif
 //#if VOLUME_SHADOW
-    // film_write_combined_pass: the volume scattering probability guiding pass (no shadow catcher with volumes).
-    vl_shadow_guidance(base,flag,state_byte(S_shadow_path_visibility,index),value);
+    // film_write_combined_pass: the volume scattering probability guiding pass.
+//#if VOLUME_SHADOW_CATCHER else     vl_shadow_guidance(base,flag,state_byte(S_shadow_path_visibility,index),value);
+    if(!sc_handled){vl_shadow_guidance(base,flag,state_byte(S_shadow_path_visibility,index),value);}
+//#endif
 //#endif
 //#if SHADOW_CATCHER else     if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
     if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_shadow_path_sample,index)&0xaaaaaaaau)&1u)!=0u){
@@ -114,6 +121,10 @@ fn shadow_write_film(index:u32){
             film_rgb(base,select(data_word(D_film_pass_transmission_indirect),data_word(D_film_pass_transmission_direct),bounce==0u),(vec3<f32>(1)-diffuse-glossy)*value);
             film_rgb(base,select(data_word(D_film_pass_diffuse_indirect),data_word(D_film_pass_diffuse_direct),bounce==0u),diffuse*value);
         }
+//#if VOLUME_LIGHT_PASSES
+        // film_write_direct_light: indirectly visible through a volume.
+        else if(p(20u)!=0u&&(flag&PATH_RAY_VOLUME_PASS)!=0u){film_rgb(base,select(data_word(D_film_pass_volume_indirect),data_word(D_film_pass_volume_direct),bounce==0u),value);}
+//#endif
     }
     shadow_transition(index,K_SHADOW_SHADE,0u);
 }
@@ -165,7 +176,7 @@ fn shadow_write_film(index:u32){
     var slot=0u;var stage=0u;var seg:VlShadow;var evaluated=false;var r:SvmResult;
     for(var guard=0u;guard<0x7fffffffu;guard++){
         if(stage==0u){
-            stage=2u;if(slot<recorded||count<SHADOW_HIT_CAPACITY){if(vl_shadow_begin(index,slot,recorded,&seg)){stage=1u;evaluated=false;}}
+            stage=2u;if(volume_enabled()&&(slot<recorded||count<SHADOW_HIT_CAPACITY)){if(vl_shadow_begin(index,slot,recorded,&seg)){stage=1u;evaluated=false;}}
         }
         // Loop-local declarations take explicit assignments (naga does not re-run declaration initializers).
         var geometry:SurfaceData;var volume:bool;volume=false;var need:bool;need=false;

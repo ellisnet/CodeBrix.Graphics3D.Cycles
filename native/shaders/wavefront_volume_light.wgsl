@@ -15,6 +15,8 @@
 fn vl_shadow_stack_address(shadow:u32,slot:u32,member:u32)->u32{return load_word(p(7u)+VL_S_shadow_volume_stack+slot*VL_SVS_stride+member)+shadow*4u;}
 // integrator_state_copy_volume_stack_to_shadow: every entry up to and including the terminator.
 fn vl_copy_volume_stack(index:u32,shadow:u32){
+    // Regions stay after a volume scene on the same device; a scene without volumes has no stack allocated.
+    if(!volume_enabled()){return;}
     let limit=data_word(D_volume_stack_size);
     for(var slot=0u;slot<limit;slot++){
         let shader=load_word(volume_stack_address(index,slot,VS_shader));
@@ -37,6 +39,31 @@ fn vl_sample_method(index:u32,entries:u32)->u32{
     }
     return method;
 }
+//#if VOLUME_LIGHT_TREE
+// DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME with the light tree, before shade_volume_segment (compile envelope): the
+// emitter of light_tree_sample<true> for the segment, in the record's light selection words.
+@compute @workgroup_size(1) fn shade_volume_tree_select(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    let vl=p(24u)+id.x*VL_RECORD_BYTES;store_word(vl+VL_TREE_SELECTION,0u);
+//#if VOLUME_RAY_MARCHING else     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=VL_K_SHADE_VOLUME){return;}
+    if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=vr_volume_kernel()){return;}
+//#endif
+    if(data_word(D_integrator_use_direct_light)==0u||(state_word(S_path_flag,index)&PATH_RAY_TERMINATE)!=0u){return;}
+    let prim=state_word(S_isect_prim,index);let count=volume_stack_count(index);if(count==NONE){return;}
+    let entries=select(count,select(0u,1u,data_word(D_background_volume_shader)!=NONE),prim==NONE);if(entries==0u){return;}
+    let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=heap_vec3(state_address(S_ray_D,index,12u));
+    let tmin=heap_float(state_address(S_ray_tmin,index,4u));var tmax=bitcast<f32>(0x7f7fffffu);if(prim!=NONE){tmax=heap_float(state_address(S_isect_t,index,4u));}
+//#if SAMPLING_SOBOL_BURLEY else     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
+    let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT,3u).xyz;
+//#endif
+    lt_segment=true;lt_t=tmax-tmin;
+    let walk=light_tree_walk(true,rounded_add3(origin,direction*tmin),direction,true,NONE,random.z,NONE,0u);
+    lt_segment=false;if(load_word(p(17u))!=0u||walk.emitter<0){return;}
+    let e=lt_emitter(u32(walk.emitter));let emitter_prim=bitcast<i32>(load_word(e+LTE_id));
+    light_selection_write(vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD,LightSelection(random,u32(walk.emitter),emitter_prim,select(load_word(e+LTE_object),walk.object,emitter_prim>=0),load_word(e+LTE_visibility),walk.pdf,true,true),0.0);
+}
+//#endif
 // DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME, part 1: light_sample_from_volume_segment for the direct light and
 // the method of volume_direct_sample_method, from the segment's start sd->P = ray->P + ray->D * ray->tmin.
 @compute @workgroup_size(1) fn shade_volume_segment(@builtin(global_invocation_id) id:vec3<u32>){
@@ -54,20 +81,87 @@ fn vl_sample_method(index:u32,entries:u32)->u32{
     let entries=select(count,select(0u,1u,data_word(D_background_volume_shader)!=NONE),prim==NONE);if(entries==0u){return;}
     let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=heap_vec3(state_address(S_ray_D,index,12u));
     let tmin=heap_float(state_address(S_ray_tmin,index,4u));var tmax=bitcast<f32>(0x7f7fffffu);if(prim!=NONE){tmax=heap_float(state_address(S_isect_t,index,4u));}
-    let selection=light_select(index);if(selection.prim>=0){atomicOr(&heap[p(17u)/4u],2u);return;}
+//#if VOLUME_LIGHT_TREE
+    // The selection of shade_volume_tree_select (light_tree_sample<true>): none means no direct light.
+    light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;
+//#endif
+//#if VOLUME_LIGHT_SHAPES else     let selection=light_select(index);if(selection.prim>=0){atomicOr(&heap[p(17u)/4u],2u);return;}
+    let selection=light_select(index);
+//#if VOLUME_LIGHT_TREE
+    if(!selection.valid){return;}
+//#endif
+//#if VOLUME_SHADOW_CATCHER
+    // light_sample: a catcher path skips mesh lights of other objects and lamps that exclude it.
+    if(selection.prim>=0&&sc_triangle_excluded(index,selection)){return;}
+    if(selection.prim<0&&(state_word(S_path_flag,index)&SC_PATH_PASS)!=0u&&(load_word(table_at(G_lights,~bitcast<u32>(selection.prim),SIZE_lights)+L_shader_id)&SC_EXCLUDE)!=0u){return;}
+//#endif
+    if(selection.prim>=0){
+//#if LIGHT_TRIANGLE else         atomicOr(&heap[p(17u)/4u],2u);return;
+        // triangle_light_sample<true>: a uniform point of the triangle (area sampling), the triangle's shader with the
+        // object's visibility, then triangle_light_valid_ray_segment (the emitting side's half-space).
+//#if LIGHT_SELECT else         let object=load_word(selection.distribution+LD_object);let tri=u32(selection.prim);
+        let object=selection.object;let tri=u32(selection.prim);
+//#endif
+        let v=triangle_light_vertices_compute(object,tri,heap_float(state_address(S_ray_time,index,4u)));if(v.error!=0u){return;}
+        var n=rounded_cross(v.b-v.a,v.c-v.a);if((load_word(table_at(G_object_flag,object,SIZE_object_flag))&SD_OBJECT_NEGATIVE_SCALE)!=0u){n=-n;}
+//#if LIGHT_SELECT else         let tri_shader=load_word(table_at(G_tri_shader,tri,SIZE_tri_shader));let shader=tri_shader|SHADER_USE_MIS|load_word(selection.distribution+LD_visibility);
+        let tri_shader=load_word(table_at(G_tri_shader,tri,SIZE_tri_shader));let shader=tri_shader|SHADER_USE_MIS|selection.visibility;
+//#endif
+        let normal=light_normalize_len(n);let area=0.5*normal.w;if(area==0.0){return;}
+        var u=selection.random.x;var w=selection.random.y;if(w>u){u*=0.5;w-=u;}else{w*=0.5;u-=w;}
+        let t=rounded_add(rounded_add(1.0,-u),-w);let tpoint=rounded_add3(rounded_add3(t*v.a,u*v.b),w*v.c);
+        let start=rounded_add3(origin,direction*tmin);let delta=light_normalize_len(tpoint-start);
+        if(rounded_dot(normal.xyz,-delta.xyz)==0.0){return;}
+        if((shader&VL_SHADER_EXCLUDE_SCATTER)!=0u){return;}
+        let flags=load_word(table_at(G_shaders,tri_shader&SHADER_MASK,SIZE_shaders)+SH_flags);var range=vec2<f32>(tmin,tmax);
+        if((flags&(SD_MIS_FRONT|SD_MIS_BACK))!=(SD_MIS_FRONT|SD_MIS_BACK)){range=vl_plane_segment(select(normal.xyz,-normal.xyz,(flags&SD_MIS_BACK)!=0u),rounded_add3(origin,-tpoint),direction,range);}
+        if(!(range.x<range.y)){return;}
+        store_word(vl+4u,bitcast<u32>(tpoint.x));store_word(vl+8u,bitcast<u32>(tpoint.y));store_word(vl+12u,bitcast<u32>(tpoint.z));
+        store_word(vl+16u,bitcast<u32>(range.x));store_word(vl+20u,bitcast<u32>(range.y));store_word(vl,vl_sample_method(index,entries));return;
+//#endif
+    }
+//#endif
     let light=table_at(G_lights,~bitcast<u32>(selection.prim),SIZE_lights);
     if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return;}
     let kind=load_word(light+L_type);var point=vec3<f32>(0);var distant=true;
-    if(kind==LIGHT_POINT){
-        // light_sample<true>: the point light sampled from the segment start with N = ray->D and transmission.
-        var sd:SurfaceData;sd.P=rounded_add3(origin,direction*tmin);sd.N=direction;var r:SvmResult;r.runtime_flag=VL_SR_BSDF_HAS_TRANSMISSION;
-        let ls=light_sample_lamp(index,sd,r,selection);point=ls.P;distant=false;
+//#if VOLUME_LIGHT_SHAPES else     if(kind==LIGHT_POINT){
+//#endif
+//#if VOLUME_LIGHT_SHAPES else         // light_sample<true>: the point light sampled from the segment start with N = ray->D and transmission.
+//#endif
+//#if VOLUME_LIGHT_SHAPES else         var sd:SurfaceData;sd.P=rounded_add3(origin,direction*tmin);sd.N=direction;var r:SvmResult;r.runtime_flag=VL_SR_BSDF_HAS_TRANSMISSION;
+//#endif
+//#if VOLUME_LIGHT_SHAPES else         let ls=light_sample_lamp(index,sd,r,selection);point=ls.P;distant=false;
+//#endif
+//#if VOLUME_LIGHT_SHAPES else     }else if(kind!=LIGHT_SUN&&kind!=LIGHT_BACKGROUND){atomicOr(&heap[p(17u)/4u],2u);return;}
+//#endif
+//#if VOLUME_LIGHT_SHAPES
+    if(kind==LIGHT_POINT||kind==LIGHT_SPOT){
+        // light_sample<true> of a point or spot light from the segment start (point.h, spot.h).
+        point=vl_lamp_point(light,rounded_add3(origin,direction*tmin),selection.random.xy);distant=false;
+    }else if(kind==LIGHT_AREA){
+        // area_light_sample<true>: a uniform point of the rectangle or the ellipse.
+        point=vl_area_point(light,selection.random.xy);distant=false;
     }else if(kind!=LIGHT_SUN&&kind!=LIGHT_BACKGROUND){atomicOr(&heap[p(17u)/4u],2u);return;}
+//#endif
     if((load_word(light+L_shader_id)&VL_SHADER_EXCLUDE_SCATTER)!=0u){return;}
-    // volume_valid_direct_ray_segment for point and distant lights: the whole ray range.
-    if(!(tmin<tmax)){return;}
+//#if VOLUME_LIGHT_SHAPES else     // volume_valid_direct_ray_segment for point and distant lights: the whole ray range.
+//#endif
+//#if VOLUME_LIGHT_SHAPES else     if(!(tmin<tmax)){return;}
+//#endif
+//#if VOLUME_LIGHT_SHAPES else     store_word(vl+4u,bitcast<u32>(point.x));store_word(vl+8u,bitcast<u32>(point.y));store_word(vl+12u,bitcast<u32>(point.z));
+//#endif
+//#if VOLUME_LIGHT_SHAPES else     store_word(vl+16u,bitcast<u32>(tmin));store_word(vl+20u,bitcast<u32>(tmax));
+//#endif
+//#if VOLUME_LIGHT_SHAPES
+    // volume_valid_direct_ray_segment: the spot light's cone, the area light's slab or cylinder (or spread cone) and
+    // its positive side; point and distant lights keep the whole ray range.
+    var range=vec2<f32>(tmin,tmax);
+    if(kind==LIGHT_SPOT){range=vl_spot_segment(light,origin,direction,range);}
+    else if(kind==LIGHT_AREA){range=vl_area_segment(light,rounded_add3(origin,-heap_vec3(light+L_co)),direction,range);}
+    if(!(range.x<range.y)){return;}
     store_word(vl+4u,bitcast<u32>(point.x));store_word(vl+8u,bitcast<u32>(point.y));store_word(vl+12u,bitcast<u32>(point.z));
-    store_word(vl+16u,bitcast<u32>(tmin));store_word(vl+20u,bitcast<u32>(tmax));
+    store_word(vl+16u,bitcast<u32>(range.x));store_word(vl+20u,bitcast<u32>(range.y));
+//#endif
     store_word(vl,select(vl_sample_method(index,entries),1u,distant));
 }
 //#endif
@@ -101,8 +195,47 @@ fn vl_phase_eval(r:SvmResult,D:vec3<f32>,wo:vec3<f32>)->VlPhase{
 fn vl_direct_light(index:u32,slot:u32,r:SvmResult,P:vec3<f32>,throughput:vec3<f32>,D:vec3<f32>){
     var sd:SurfaceData;sd.P=P;sd.N=vec3<f32>(0);sd.time=heap_float(state_address(S_ray_time,index,4u));
     var rr:SvmResult;rr.runtime_flag=VL_SR_BSDF_HAS_TRANSMISSION;
+//#if VOLUME_LIGHT_SHAPES else     let selection=light_select(index);if(selection.prim>=0){atomicOr(&heap[p(17u)/4u],2u);return;}
+//#endif
+//#if VOLUME_LIGHT_SHAPES else     let ls=light_sample_lamp(index,sd,rr,selection);
+//#endif
+//#if VOLUME_LIGHT_SHAPES
+    // light_sample<false> from the scatter position, a lamp (an emissive triangle: shade_volume_light_triangle).
     let selection=light_select(index);if(selection.prim>=0){atomicOr(&heap[p(17u)/4u],2u);return;}
     let ls=light_sample_lamp(index,sd,rr,selection);
+//#endif
+    vl_direct_finish(index,slot,r,P,throughput,D,sd,ls);
+}
+//#if VOLUME_LIGHT_SHAPES
+//#if LIGHT_TRIANGLE
+// DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME with emissive triangles, before shade_volume_light (compile envelope): the
+// direct light of the paths whose light is a triangle, light_sample<false> from the scatter position with the vertices
+// prefetched. It takes the record's direct flag, so shade_volume_light sees only lamps.
+@compute @workgroup_size(1) fn shade_volume_light_triangle(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    let vl=p(24u)+id.x*VL_RECORD_BYTES;if(load_word(vl+32u)==0u){return;}
+//#if VOLUME_LIGHT_TREE
+    light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;
+//#endif
+    if(index>=p(10u)||load_word(p(17u))!=0u){return;}
+    let selection=light_select(index);if(selection.prim<0){return;}
+    store_word(vl+32u,0u);
+//#if VOLUME_SHADOW_CATCHER
+    if(sc_triangle_excluded(index,selection)){return;}
+//#endif
+    var r:SvmResult;r.closure_base=p(23u)+id.x*SVM_CLOSURE_CAPACITY*SVM_CLOSURE_BYTES;r.count=load_word(vl+60u);
+//#if VOLUME_HETEROGENEOUS
+    if(load_word(vl+76u)!=0u){r.closure_base=load_word(vl+76u);}
+//#endif
+    let P=heap_vec3(vl+36u);var sd:SurfaceData;sd.P=P;sd.N=vec3<f32>(0);sd.time=heap_float(state_address(S_ray_time,index,4u));
+    triangle_light_prefill(index,sd,false,true);let ls=light_sample_triangle(sd,selection);
+    vl_direct_finish(index,id.x,r,P,heap_vec3(vl+48u),heap_vec3(state_address(S_ray_D,index,12u)),sd,ls);
+}
+//#endif
+//#endif
+// The rest of integrate_volume_direct_light from the light sample.
+fn vl_direct_finish(index:u32,slot:u32,r:SvmResult,P:vec3<f32>,throughput:vec3<f32>,D:vec3<f32>,sd:SurfaceData,ls:NativeLightSample){
     if(!(ls.pdf>0.0)||load_word(p(17u))!=0u){return;}
     if((ls.shader&VL_SHADER_EXCLUDE_SCATTER)!=0u){return;}
     let shader=table_at(G_shaders,ls.shader&SHADER_MASK,SIZE_shaders);
@@ -115,8 +248,10 @@ fn vl_direct_light(index:u32,slot:u32,r:SvmResult,P:vec3<f32>,throughput:vec3<f3
     let mis=(ls.pdf*ls.pdf)/(ls.pdf*ls.pdf+phase.pdf*phase.pdf);
     var eval=phase.eval*(emission*ls.eval_fac/ls.pdf*mis);
     if(all(eval==vec3<f32>(0))){return;}
-    // Path termination for constant light shaders (non-constant: shade_light_nee); the light tree is refused with volumes.
-    if(constant){
+    // Path termination for constant light shaders (non-constant: shade_light_nee), never with the light tree.
+//#if LIGHT_TREE else     if(constant){
+    if(constant&&(data_word(D_kernel_features)&LT_FEATURE_LIGHT_TREE)==0u){
+//#endif
         let rr_threshold=data_float(D_integrator_light_inv_rr_threshold);
         let probability=select(1.0,max(abs(eval.x),max(abs(eval.y),abs(eval.z)))*rr_threshold,rr_threshold>0.0);
         if(probability<1.0){let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
@@ -132,6 +267,11 @@ fn vl_direct_light(index:u32,slot:u32,r:SvmResult,P:vec3<f32>,throughput:vec3<f3
     state_u32(S_shadow_self_object,shadow,NONE);state_u32(S_shadow_self_prim,shadow,NONE);
     state_u32(S_shadow_ray_self_light_object,shadow,ls.object_id);state_u32(S_shadow_ray_self_light_prim,shadow,ls.prim);
     let bounce=state_half(S_path_bounce,index);var visibility=state_byte(S_path_visibility,index);var flag=state_word(S_path_flag,index);
+//#if VOLUME_SHADOW_CATCHER
+    // integrate_volume_direct_light runs before integrator_split_shadow_catcher: a split of this dispatch (its mark is
+    // pending, the path already carries PATH_RAY_SHADOW_CATCHER_HIT) must not reach the shadow path.
+    if(p(29u)!=0u&&load_word(p(29u)+index*8u)!=0u){flag&=~SC_PATH_HIT;}
+//#endif
 //#if LIGHT_TREE else     state_f32(S_shadow_path_bsdf_eval_average,shadow,(eval.x+eval.y+eval.z)*(1.0/3.0));
     if((data_word(D_kernel_features)&LT_FEATURE_LIGHT_TREE)==0u){state_f32(S_shadow_path_bsdf_eval_average,shadow,(eval.x+eval.y+eval.z)*(1.0/3.0));}
 //#endif
@@ -209,11 +349,19 @@ fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
     else{phase=vl_phase_sample_lobe(direction,closure,random);g=select(select(closure.roughness,0.0,closure.kind==VP_CLOSURE_VOLUME_RAYLEIGH_ID),1.0,closure.kind==VP_CLOSURE_VOLUME_FOURNIER_FORAND_ID);}
     if(phase.w==0.0){vl_finish(index,0u);return;}
 //#endif
-    let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,rounded_normalize(phase.xyz));
+//#if VOLUME_LIGHT else     let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,rounded_normalize(phase.xyz));
+    let position=rounded_add3(origin,sampled_t*direction);state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,rounded_normalize(phase.xyz));
+//#endif
+//#if VOLUME_LIGHT_TREE
+    // ray->tmax - ray->tmin of the segment.
+    if(data_word(LT_D_use_light_tree)!=0u){state_f32(S_ray_previous_dt,index,select(bitcast<f32>(0x7f7fffffu),heap_float(state_address(S_isect_t,index,4u)),state_word(S_isect_prim,index)!=NONE)-tmin);}
+//#endif
     state_f32(S_ray_tmin,index,0.0);state_u32(S_ray_tmax,index,0x7f7fffffu);state_f32(S_ray_dP,index,0.0);state_f32(S_ray_dD,index,max(heap_float(state_address(S_ray_dD,index,4u)),1.0-abs(g)));
     state_u32(S_isect_prim,index,NONE);state_u32(S_isect_object,index,object);
     if(p(20u)!=0u&&bounce==0u){state_vec3(S_path_pass_diffuse_weight,index,vec3<f32>(1));state_vec3(S_path_pass_glossy_weight,index,vec3<f32>(0));}
-    state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-(origin+direction*tmin));
+//#if VOLUME_LIGHT else     state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-(origin+direction*tmin));
+    state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-rounded_add3(origin,direction*tmin));
+//#endif
     state_f32(S_path_min_ray_pdf,index,min(phase.w,heap_float(state_address(S_path_min_ray_pdf,index,4u))));
     let next_bounce=bounce+1u;let volume_bounce=state_half(S_path_volume_bounce,index)+1u;
     if(next_bounce>=data_word(VL_D_max_bounce)||volume_bounce>=data_word(VL_D_max_volume_bounce)){flag|=PATH_RAY_TERMINATE_AFTER_TRANSPARENT;}
@@ -221,7 +369,10 @@ fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
     flag|=VL_PATH_RAY_MIS_HAD_TRANSMISSION;flag&=~VL_PATH_RAY_TRANSPARENT_BACKGROUND;if((flag&VL_PATH_RAY_ANY_PASS)==0u){flag|=VL_PATH_RAY_VOLUME_PASS;}
     if(next_bounce==1u){flag&=~VL_PATH_RAY_VOLUME_PRIMARY_TRANSMIT;}
     state_u32(S_path_flag,index,flag);state_u8(S_path_visibility,index,VL_PATH_RAY_VISIBILITY_VOLUME_SCATTER);state_u16(S_path_bounce,index,next_bounce);state_u16(S_path_volume_bounce,index,volume_bounce);
-    state_u16(S_path_rng_offset,index,state_half(S_path_rng_offset,index)+RNG_BOUNCE);vl_finish(index,VL_K_INTERSECT_CLOSEST);
+//#if SHADOW_LINKING else     state_u16(S_path_rng_offset,index,state_half(S_path_rng_offset,index)+RNG_BOUNCE);vl_finish(index,VL_K_INTERSECT_CLOSEST);
+    // integrator_shade_volume: a phase scatter looks for its dedicated lights first.
+    state_u16(S_path_rng_offset,index,state_half(S_path_rng_offset,index)+RNG_BOUNCE);vl_finish(index,DL_K_INTERSECT);
+//#endif
 }
 // DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME, part 3: the direct light at the scatter position shade_volume chose,
 // then a deferred indirect scatter.
@@ -229,6 +380,9 @@ fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
     svm_invocation(id.x);
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let vl=p(24u)+id.x*VL_RECORD_BYTES;let direct=load_word(vl+32u);let indirect=load_word(vl+64u);
+//#if VOLUME_LIGHT_TREE
+    light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;
+//#endif
 //#if PHASE_STAGE else     if(direct==0u&&indirect==0u){return;}store_word(vl+32u,0u);store_word(vl+64u,0u);
     // The indirect phase scatter is shade_volume_phase's (it reads and clears word 64).
     if(direct==0u){return;}store_word(vl+32u,0u);
@@ -243,5 +397,116 @@ fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
 //#if !PHASE_STAGE
     if(indirect!=0u){vl_phase_scatter(index,r,heap_float(vl+68u),load_word(vl+72u));}
 //#endif
+}
+//#endif
+//#if VOLUME_LIGHT_SHAPES
+// Volume direct light from spot and area lights (pinned light/spot.h spot_light_valid_ray_segment, light/area.h
+// area_light_eval<true> and area_light_valid_ray_segment, util/math_intersect.h ray_plane_intersect,
+// ray_aabb_intersect, ray_infinite_cylinder_intersect and ray_cone_intersect, util/math_base.h solve_quadratic):
+// products rounded before their sums, correctly rounded quotients and square roots. An empty range is x >= y.
+// point_light_sample and spot_light_sample<true>: only the position (the equiangular point) is used; the spot light
+// samples the visible part of its sphere always, and a zero spot attenuation does not end the sample.
+fn vl_lamp_point(light:u32,P:vec3<f32>,random:vec2<f32>)->vec3<f32>{
+    let position=heap_vec3(light+L_co);let radius=heap_float(light+L_radius);let r2=radius*radius;let delta=P-position;
+    let d2=rounded_dot(delta,delta);let distance=rounded_sqrt(d2);let normal=delta*rounded_divide(1.0,distance);
+    if(load_word(light+L_is_sphere)==0u){
+        // disk_light_sample: ellipse_sample of the normal's orthonormals, scaled by the radius.
+        if(!(r2>0.0)){return position;}
+        let b=light_basis(normal);let uv=ggx_disk_sample(random);return rounded_add3(position,rounded_add3(uv.x*b.X,uv.y*b.Y)*radius);
+    }
+    var D:vec3<f32>;var cosine=1.0;
+    if(d2>r2){
+        // sample_uniform_cone(-lightN, sin_sqr_to_one_minus_cos(r_sq / d_sq)).
+        let ratio=rounded_divide(r2,d2);let angle=select(0.5*ratio,rounded_add(1.0,-rounded_sqrt(max(rounded_add(1.0,-ratio),0.0))),ratio>0.0004);
+        D=-normal;
+        if(angle>0.0){
+            var xy=ggx_disk_sample(random);let disk2=rounded_add(xy.x*xy.x,xy.y*xy.y);cosine=rounded_add(1.0,-(disk2*angle));
+            xy*=rounded_sqrt(max(angle*rounded_add(2.0,-(angle*disk2)),0.0));let b=light_basis(D);
+            D=rounded_add3(rounded_add3(xy.x*b.X,xy.y*b.Y),cosine*D);
+        }
+    }else{
+        // sample_uniform_sphere (the segment has transmission).
+        let z=rounded_add(1.0,-2.0*random.x);let sine=rounded_sqrt(max(rounded_add(1.0,-(z*z)),0.0));let sc=native_phase_sincos(6.283185307179586*random.y);
+        D=vec3<f32>(sine*sc.y,sine*sc.x,z);cosine=-rounded_dot(D,normal);
+    }
+    // Law of cosines; the point remapped onto the sphere.
+    let root=rounded_sqrt(max(rounded_add(rounded_add(r2,-d2),d2*(cosine*cosine)),0.0));
+    let t=rounded_add(distance*cosine,-select(-root,root,d2-r2>=0.0));
+    let ng=surface_native_normalize(rounded_add3(P,D*t)-position);return rounded_add3(ng*radius,position);
+}
+fn vl_area_point(light:u32,random:vec2<f32>)->vec3<f32>{
+    let ru=heap_vec3(light+L_area_axis_u)*(heap_float(light+L_area_len_u)*0.5);let rv=heap_vec3(light+L_area_axis_v)*(heap_float(light+L_area_len_v)*0.5);
+    var offset:vec3<f32>;
+    if(heap_float(light+L_area_invarea)>0.0){offset=rounded_add3(ru*rounded_add(2.0*random.x,-1.0),rv*rounded_add(2.0*random.y,-1.0));}
+    else{let uv=emitter_disk(random);offset=rounded_add3(ru*uv.x,rv*uv.y);}
+    return rounded_add3(heap_vec3(light+L_co),offset);
+}
+fn vl_solve_quadratic(a:f32,b:f32,c:f32)->vec3<f32>{
+    // (x1, x2, valid).
+    let valid_linear=(a==0.0)&&(b!=0.0);var x=vec2<f32>(rounded_divide(-c,b));
+    let discriminant=rounded_add(b*b,-((4.0*a)*c));let valid_quadratic=(a!=0.0)&&(discriminant>-1e-5);
+    if(valid_quadratic){
+        let root=select(0.0,rounded_sqrt(discriminant),discriminant>0.0);let temp=-0.5*rounded_add(b,select(-root,root,(bitcast<u32>(b)&0x80000000u)==0u));
+        let r1=rounded_divide(temp,a);let r2=rounded_divide(c,temp);x=vec2<f32>(min(r1,r2),max(r1,r2));
+    }
+    return vec3<f32>(x,select(0.0,1.0,valid_linear||valid_quadratic));
+}
+fn vl_plane_segment(N:vec3<f32>,P:vec3<f32>,D:vec3<f32>,range:vec2<f32>)->vec2<f32>{
+    let DN=rounded_dot(D,N);let t=rounded_divide(-rounded_dot(P,N),DN);var out=range;
+    if(DN>0.0){out.x=max(out.x,t);}else{out.y=min(out.y,t);}return out;
+}
+fn vl_cone_segment(axis:vec3<f32>,P:vec3<f32>,D_in:vec3<f32>,cos_angle_sq:f32,range:vec2<f32>)->vec2<f32>{
+    if(cos_angle_sq<1e-4){return vl_plane_segment(axis,P,D_in,range);}
+    let len_sq=rounded_dot(D_in,D_in);let inv_len=select(0.0,rounded_divide(1.0,rounded_sqrt(len_sq)),len_sq>0.0);let D=D_in*inv_len;
+    let AD=rounded_dot(axis,D);let AP=rounded_dot(axis,P);
+    let a=rounded_add(AD*AD,-cos_angle_sq);let b=2.0*rounded_add(AD*AP,-(cos_angle_sq*rounded_dot(D,P)));let c=rounded_add(AP*AP,-(cos_angle_sq*rounded_dot(P,P)));
+    // solve_quadratic always writes both roots (-c/b when it finds none).
+    let q=vl_solve_quadratic(a,b,c);var tmin=q.x;var tmax=q.y;
+    let tmin_valid=rounded_add(AP,tmin*AD)>0.0;let tmax_valid=rounded_add(AP,tmax*AD)>0.0;
+    let valid=q.z!=0.0&&(tmin_valid||tmax_valid);
+    if(!tmax_valid){tmax=tmin;tmin=0.0;}else if(!tmin_valid){tmin=tmax;tmax=bitcast<f32>(0x7f7fffffu);}
+    let out=vec2<f32>(max(range.x,tmin*inv_len),min(range.y,tmax*inv_len));
+    if(!valid){return vec2<f32>(1.0,0.0);}return out;
+}
+fn vl_spot_segment(light:u32,P:vec3<f32>,D:vec3<f32>,range:vec2<f32>)->vec2<f32>{
+    // lamp_get_inverse_transform: the light object's inverse transform (rows).
+    let a=table_at(G_objects,load_word(light+L_object_id),SIZE_objects)+O_itfm;let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
+    let shifted=rounded_add3(P,heap_vec3(light+L_spot_dir)*heap_float(light+L_spot_ray_segment_dp));
+    let local_P=vec3<f32>(rounded_add(rounded_dot(x.xyz,shifted),x.w),rounded_add(rounded_dot(y.xyz,shifted),y.w),rounded_add(rounded_dot(z.xyz,shifted),z.w));
+    let local_D=vec3<f32>(rounded_dot(x.xyz,D),rounded_dot(y.xyz,D),rounded_dot(z.xyz,D));
+    let c=heap_float(light+L_spot_cos);return vl_cone_segment(vec3<f32>(0.0,0.0,-1.0),local_P,local_D,c*c,range);
+}
+fn vl_area_segment(light:u32,P_in:vec3<f32>,D_in:vec3<f32>,range:vec2<f32>)->vec2<f32>{
+    let tan_half_spread=heap_float(light+L_area_tan_half_spread);var axis=heap_vec3(light+L_area_dir);var out=range;var valid=true;
+    let u=heap_vec3(light+L_area_axis_u);let v=heap_vec3(light+L_area_axis_v);let len_u=heap_float(light+L_area_len_u);let len_v=heap_float(light+L_area_len_v);
+    var P=P_in;var D=D_in;
+    if(tan_half_spread<1e-5){
+        // make_transform(axis_u, axis_v, axis): rows u, v, axis.
+        P=vec3<f32>(rounded_dot(u,P_in),rounded_dot(v,P_in),rounded_dot(axis,P_in));D=vec3<f32>(rounded_dot(u,D_in),rounded_dot(v,D_in),rounded_dot(axis,D_in));
+        axis=vec3<f32>(0.0,0.0,1.0);let half_u=0.5*len_u;let half_v=0.5*len_v;
+        if(heap_float(light+L_area_invarea)<0.0){
+            // ray_infinite_cylinder_intersect.
+            let inv_len=vec2<f32>(rounded_divide(1.0,half_u),rounded_divide(1.0,half_v));var Pp=P.xy*inv_len;let Dp=D.xy*inv_len;
+            let a=rounded_add(Dp.x*Dp.x,Dp.y*Dp.y);var b=rounded_add(Pp.x*Dp.x,Pp.y*Dp.y);let t_mid=rounded_divide(-b,a);
+            Pp=vec2<f32>(rounded_add(Pp.x,Dp.x*t_mid),rounded_add(Pp.y,Dp.y*t_mid));b=rounded_add(Pp.x*Dp.x,Pp.y*Dp.y);
+            let c=rounded_add(rounded_add(Pp.x*Pp.x,Pp.y*Pp.y),-1.0);let q=vl_solve_quadratic(a,2.0*b,c);
+            out=vec2<f32>(max(out.x,rounded_add(q.x,t_mid)),min(out.y,rounded_add(q.y,t_mid)));valid=q.z!=0.0&&out.x<out.y;
+        }else{
+            // ray_aabb_intersect.
+            let inv=vec3<f32>(rounded_divide(1.0,D.x),rounded_divide(1.0,D.y),rounded_divide(1.0,D.z));
+            let lower=vec3<f32>(rounded_add(-half_u,-P.x),rounded_add(-half_v,-P.y),rounded_add(0.0,-P.z))*inv;
+            let upper=vec3<f32>(rounded_add(half_u,-P.x),rounded_add(half_v,-P.y),rounded_add(bitcast<f32>(0x7f7fffffu),-P.z))*inv;
+            let mins=min(lower,upper);let maxs=max(lower,upper);
+            out=vec2<f32>(max(max(max(mins.x,mins.y),mins.z),out.x),min(min(min(maxs.x,maxs.y),maxs.z),out.y));valid=out.x<out.y;
+        }
+    }else{
+        // The smallest cone covering the spread (area_light_max_extent: the half diagonal or the larger half axis).
+        var extent=0.5*max(len_u,len_v);if(heap_float(light+L_area_invarea)>0.0){extent=0.5*rounded_sqrt(rounded_add(len_u*len_u,len_v*len_v));}
+        let apex_to_point=rounded_add3(P,axis*rounded_divide(extent,tan_half_spread));
+        let cos_angle_sq=rounded_divide(1.0,rounded_add(1.0,tan_half_spread*tan_half_spread));
+        out=vl_cone_segment(axis,apex_to_point,D,cos_angle_sq,out);valid=out.x<out.y;
+    }
+    if(!valid){return vec2<f32>(1.0,0.0);}
+    return vl_plane_segment(axis,P,D,out);
 }
 //#endif

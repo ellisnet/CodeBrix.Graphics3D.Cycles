@@ -11,13 +11,14 @@ Runs one render gate (default glass_render) twice from the same binary:
    the size warnings appear in the report's "warnings" and on stderr, the
    "degraded" flag and the tier are those of run 1, and every film is
    bit-identical to run 1 (the guard never changes a result).
+Films are looked for in the run's folder and below it, since some gates keep them per case. A run that writes no film fails.
 Usage: pipeline_size_guard_check.py --output DIR [--gate glass_render] [--low-bytes 200000]
 """
 import argparse, hashlib, json, os, subprocess
 from pathlib import Path
 from build import WORK
 
-DEFAULT_BYTES = 1110000
+DEFAULT_BYTES = 940000
 
 def run(binary, folder, extra, timeout):
     folder.mkdir(parents=True)
@@ -28,7 +29,9 @@ def run(binary, folder, extra, timeout):
         subprocess.run([str(binary), str(folder/'run')], stdout=out, stderr=err, env=env, check=True, timeout=timeout)
     report = json.loads((folder/'stdout.txt').read_text())
     assert report['passed'] and report['cyclesAllocationBytesAfterCleanup'] == 0
-    films = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(folder.iterdir()) if p.name.endswith(('.ppm', '.film.bin'))}
+    cache = folder/'shader-cache'
+    films = {str(p.relative_to(folder)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(folder.rglob('*'))
+             if p.is_file() and p.name.endswith(('.ppm', '.film.bin')) and cache not in p.parents}
     return report['pipelineReport'], films, (folder/'stderr.txt').read_text()
 
 def main():

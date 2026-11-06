@@ -26,8 +26,8 @@ next build:
        native/work/windows/<rid>/host/cycles-source
        native/work/macos/osx-arm64/host/cycles-source
        native/work/macos/osx-x64/host/cycles-source
-     The build scripts copy that folder only when it is missing, and then
-     refuse it because a reviewed build file in it has changed.
+     The osx-arm64 recipe replaces a copy that predates the pinned import, and
+     the others no longer read one; deleting them only frees the disk.
   3. Do a FULL dependency rebuild for that host (the dependency prefixes from
      earlier builds are stale), then build Cycles as usual.
 ********************************************************************************
@@ -375,8 +375,8 @@ Android is not officially supported upstream: the android-arm64 and android-x64
 hosts build with it on the pinned NDK, and so does the linux-arm64 cross build;
 the macOS and Windows recipes are wired and not yet compiled. A source copy made
 before a change to the pinned Cycles import (native/work/linux/linux-arm64/host/
-cycles-source, native/work/android/<rid>/host/cycles-source) is refused by its
-recipe: remove it and the recipe makes a new one.
+cycles-source, native/work/android/<rid>/host/cycles-source) is removed by its
+recipe, which says so and makes a new one.
 
 ISPC 1.30.0 (Intel's Implicit SPMD Program Compiler, BSD-3-Clause) is a
 build-time prerequisite on every build host: it compiles OIDN's CPU kernels and
@@ -568,12 +568,12 @@ its shader compiler has miscompiled repeated inlined integer-arithmetic bodies
 in shared code (native/DEVICE.md, "Adreno 650 lane 2").
 The product carries the same limit as a warning: every pipeline build measures
 the inlined WGSL size of each entry point it compiles (pipelines.h, size guard)
-and warns at 1,110,000 bytes: 65,535 backend instructions (the Mesa limit) at
-the densest measured ratio of 16.9 bytes per instruction, rounded up from
-1,107,542, and about 55,500 at the central density of 20 (16.9 to 22.1
-measured on Mesa 25.0.7). Entries that measure safe can warn (at Step zero the
-node-render gate scene's shade_background was 1,126,723 bytes and 40,103
-instructions; after merge wave 5 it is 1,095,718 bytes, just below); a false
+and warns at 940,000 bytes: 65,535 backend instructions (the Mesa limit) at
+the densest measured ratio of 14.4 bytes per instruction, rounded down from
+943,987, and about 47,000 at the central density of 20 (14.4 to 24.8 among the
+entries above 40,000 instructions, measured on Mesa 25.0.7 over the oracle
+corpus and the superset groups). Entries that measure safe can warn (the corpus'
+displacement/both prepare_surface is 1,006,721 bytes and 42,348 instructions); a false
 warning is accepted, a missed one would be a driver crash. The warning goes to stderr before the compile, into the device
 report's "warnings" (so ICapabilityReport.Warnings) with a "sizeGuard" object
 (threshold, largest entry, estimate), and into the process report of the gates.

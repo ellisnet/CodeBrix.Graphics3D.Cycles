@@ -58,7 +58,9 @@ fn forward_emission(index:u32,base:u32,light:u32,eval:vec3<f32>,weight:f32){
 //#endif
 //#if VOLUME_SHADOW
     // film_write_combined_pass: the volume scattering probability guiding pass of a lamp hit.
-    volume_guidance_pass(index,base,value);
+//#if VOLUME_SHADOW_CATCHER else     volume_guidance_pass(index,base,value);
+    if(!sc_handled){volume_guidance_pass(index,base,value);}
+//#endif
 //#endif
 //#if SHADOW_CATCHER else     if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
     if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
@@ -77,6 +79,12 @@ fn forward_emission(index:u32,base:u32,light:u32,eval:vec3<f32>,weight:f32){
         film_rgb(base,select(data_word(D_film_pass_glossy_indirect),data_word(D_film_pass_glossy_direct),bounce==1u),glossy*value);
         film_rgb(base,select(data_word(D_film_pass_transmission_indirect),data_word(D_film_pass_transmission_direct),bounce==1u),(vec3<f32>(1)-diffuse-glossy)*value);
         film_rgb(base,select(data_word(D_film_pass_diffuse_indirect),data_word(D_film_pass_diffuse_direct),bounce==1u),diffuse*value);}
+//#if VOLUME_LIGHT_PASSES
+    // film_write_emission_or_background_pass: indirectly visible through a volume.
+//#if SHADOW_CATCHER else     else if(p(20u)!=0u&&(flag&PATH_RAY_VOLUME_PASS)!=0u){film_rgb(base,select(data_word(D_film_pass_volume_indirect),data_word(D_film_pass_volume_direct),bounce==1u),value);}
+    else if(sc_light_passes(flag)&&p(20u)!=0u&&(flag&PATH_RAY_VOLUME_PASS)!=0u){film_rgb(base,select(data_word(D_film_pass_volume_indirect),data_word(D_film_pass_volume_direct),bounce==1u),value);}
+//#endif
+//#endif
 }
 fn forward_constant_emission(light:u32)->vec3<f32>{
     let shader=table_at(G_shaders,load_word(light+L_shader_id)&SHADER_MASK,SIZE_shaders);
@@ -115,6 +123,10 @@ fn integrate_suns(index:u32,base:u32){
         if(!sun_forward_visible(light,direction)||!background_visible(shader,visibility,flag)){continue;}
 //#if LIGHT_LINKING
         if(!light_link_forward_visible(index,load_word(light+L_object_id))){continue;}
+//#endif
+//#if SHADOW_LINKING
+        // integrate_sun_lights: shadow-linked suns are the dedicated light kernels' (every ray, camera rays too).
+        if(!shadow_link_membership_all(load_word(light+L_object_id))){continue;}
 //#endif
 //#if LIGHT_LAMP_SHADER else         let eval=forward_constant_emission(light)*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
         let eval=forward_lamp_emission(lamp,light,vec3<f32>(0),direction,3.4028234663852886e38,heap_float(state_address(S_ray_time,index,4u)))*heap_float(light+L_sun_eval);if(all(eval==vec3<f32>(0))){continue;}
@@ -176,7 +188,11 @@ fn integrate_suns(index:u32,base:u32){
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)){fail();return;}
     if(data_word(LT_D_use_light_tree)==0u||(state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)!=0u){return;}
-    let forward=state_half(S_path_queued_kernel,index)==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD;
+//#if SHADOW_LINKING else     let forward=state_half(S_path_queued_kernel,index)==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD;
+    // shade_dedicated_light_lamp's lamp or sun has the same forward pdf; its triangles are the surface module's.
+    let dedicated=state_half(S_path_queued_kernel,index)==DL_K_SHADE;if(dedicated&&state_word(S_isect_type,index)!=PRIMITIVE_LAMP){return;}
+    let forward=dedicated||state_half(S_path_queued_kernel,index)==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD;
+//#endif
     var lamp=0u;
     for(var slot=0u;slot<p(29u);slot++){
         var object=NONE;

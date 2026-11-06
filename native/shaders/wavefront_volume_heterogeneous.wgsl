@@ -36,12 +36,12 @@ fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32)->VhCoefficients{
         if(sd.object_id!=NONE){sd.object_flag=load_word(table_at(G_object_flag,sd.object_id,SIZE_object_flag));}
         sd.runtime_flag=r.runtime_flag;r=svm_evaluate_seeded(index,sd,r.remaining,r.closure_base,true,r);if(r.error!=0u){out.error=r.error;return out;}
         if(slot>0u){
-            for(var a=0u;a<r.count;a++){var left=svm_closure_read(r,a);var b=a+1u;
-                while(b<r.count){let right=svm_closure_read(r,b);
-//#if VOLUME_PHASES else                     if(left.kind==right.kind&&left.roughness==right.roughness){left.weight+=right.weight;left.sample_weight+=right.sample_weight;svm_closure_write(r.closure_base+a*SVM_CLOSURE_BYTES,left);
-                    if(vp_equal(left,right)){left.weight+=right.weight;left.sample_weight+=right.sample_weight;svm_closure_write(r.closure_base+a*SVM_CLOSURE_BYTES,left);
+            for(var a=0u;a<r.count;a++){let left=r.closure_base+a*SVM_CLOSURE_BYTES;var b=a+1u;
+                while(b<r.count){let right=r.closure_base+b*SVM_CLOSURE_BYTES;
+//#if VOLUME_PHASES else                     if(load_word(left+28u)==load_word(right+28u)&&heap_float(left+32u)==heap_float(right+32u)){volume_closure_add(left,right);
+                    if(vp_equal(left,right)){volume_closure_add(left,right);
 //#endif
-                        for(var j=b;j+1u<r.count;j++){svm_closure_write(r.closure_base+j*SVM_CLOSURE_BYTES,svm_closure_read(r,j+1u));}r.count--;
+                        for(var j=b;j+1u<r.count;j++){volume_closure_copy(r.closure_base+j*SVM_CLOSURE_BYTES,r.closure_base+(j+1u)*SVM_CLOSURE_BYTES);}r.count--;
                     }else{b++;}
                 }
             }
@@ -56,15 +56,23 @@ fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32)->VhCoefficients{
 fn vh_copy_closures(src_base:u32,dst_base:u32,count:u32){
     for(var i=0u;i<count*SVM_CLOSURE_BYTES/4u;i++){store_word(dst_base+i*4u,load_word(src_base+i*4u));}
 }
-// film_write_volume_emission (combined, adaptive and guidance passes; the emission pass is refused with volume
-// emission).
+// film_write_volume_emission.
 fn vh_write_emission(index:u32,base:u32,emission:vec3<f32>){
     var value=select(emission,vec3<f32>(0),(bitcast<vec3<u32>>(emission)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
     let bounce=state_half(S_path_bounce,index);let limit=select(data_float(VE_D_sample_clamp_direct),data_float(VE_D_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
+//#if VOLUME_SHADOW_CATCHER
+    if(!sc_combined(state_word(S_path_flag,index),base,value)){
+//#endif
     if((data_word(VE_D_light_pass_flag)&VE_MASK_COMBINED)!=0u){vl_film_add3(base+data_word(VE_D_pass_combined)*4u,value);}
     if(data_word(VE_D_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){vl_film_add3(base+data_word(VE_D_pass_adaptive_aux_buffer)*4u,value*2.0);}
     volume_guidance_pass(index,base,value);
+//#if VOLUME_SHADOW_CATCHER
+    }
+//#endif
+//#if VOLUME_LIGHT_PASSES
+    ve_emission_passes(index,base,value);
+//#endif
 }
 fn vh_max(v:vec3<f32>)->f32{return max(v.x,max(v.y,v.z));}
 fn vh_safe_divide(a:vec3<f32>,b:vec3<f32>,fallback:f32)->vec3<f32>{return select(vec3<f32>(fallback),vh_divide(a,b),b!=vec3<f32>(0));}
@@ -405,6 +413,57 @@ fn vh_fast_exp(x_in:f32)->f32{
     store_word(rec+80u,st.indirect_base);store_word(rec+84u,st.indirect_count);store_word(rec+64u,1u);
 }
 //#if VOLUME_RAY_MARCHING
+// The arithmetic of the scalar ARM64 oracle kernels on this path, selected by the generated
+// NATIVE_FLOAT3_RECIPROCAL_NORMALIZE (arm64-scalar; on SSE hosts these helpers are the earlier code). volume_sample_channel
+// rescales rchannel by 1/pdf at every step, so a last-bit difference in the throughput or in sigma grows about threefold per
+// step until the channel pick flips (volumes/ray-marching-heterogeneous-point, native/DEVICE.md). So this path computes the
+// oracle's values exactly: expf and logf are the C library's (correctly rounded here, not the driver's exp and log), and
+// float3 / float multiplies by the reciprocal, as the scalar float3 operator does. The double-float forms are
+// wavefront_svm_closures.wgsl's vp_exp_parts and vp_log_parts, copied for the modules without VP_MATH.
+fn vr_exp_parts(x:f32)->vec2<f32>{
+    if(!(x==x)){return vec2<f32>(x,0.0);}if(x>88.72284){return vec2<f32>(bitcast<f32>(0x7f800000u),0.0);}if(x< -103.97208){return vec2<f32>(0.0,0.0);}
+    let k=round(x*1.4426950408889634);let p=trig_product(k,0.6931471824645996);let head=trig_two_sum(x,-p.x);
+    let r=vec2<f32>(head.x,rounded_add(rounded_add(head.y,-p.y),k*1.904654323148236e-09));
+    var coefficients=array<vec2<f32>,10>(vec2<f32>(2.7557318844628753e-06,3.793571224297229e-14),vec2<f32>(2.4801587642286904e-05,-3.40699609366682e-13),
+        vec2<f32>(0.00019841270113829523,-2.725596874933456e-12),vec2<f32>(0.0013888889225199819,-3.3631094437103215e-11),vec2<f32>(0.008333333767950535,-4.34617203337595e-10),
+        vec2<f32>(0.0416666679084301,-1.2417634698280722e-09),vec2<f32>(0.1666666716337204,-4.967053879312289e-09),vec2<f32>(0.5,0.0),vec2<f32>(1.0,0.0),vec2<f32>(1.0,0.0));
+    var polynomial=vec2<f32>(2.755731998149713e-07,-7.575112209051195e-15);
+    for(var i=0u;i<10u;i++){polynomial=trig_coeff(coefficients[i],trig_mul(polynomial,r));}
+    return vec2<f32>(rounded_add(polynomial.x,polynomial.y),k);
+}
+fn vr_exp3(v:vec3<f32>)->vec3<f32>{
+    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE==0u){return exp(v);}
+    var out=vec3<f32>(0);let count=rounded_steps(3u);
+    for(var k=0u;k<count;k++){let e=vr_exp_parts(v[k]);out[k]=ldexp(e.x,i32(e.y));}
+    return out;
+}
+fn vr_log_parts(x:f32)->vec2<f32>{
+    var bits=bitcast<u32>(x);var e=f32(i32(bits>>23u)-127);var m=bitcast<f32>((bits&0x007fffffu)|0x3f800000u);
+    if(m>1.4142135){m*=0.5;e+=1.0;}
+    let num=m-1.0;let den=trig_two_sum(m,1.0);let q=rounded_divide(num,den.x);let qd=trig_product(q,den.x);
+    let sl=rounded_divide(rounded_add(rounded_add(rounded_add(num,-qd.x),-qd.y),-(q*den.y)),den.x);let sv=vec2<f32>(q,sl);
+    let z=trig_mul(sv,sv);
+    var coefficients=array<vec2<f32>,10>(vec2<f32>(0.05263157933950424,-3.9213582381236733e-10),vec2<f32>(0.05882352963089943,-2.1913472425527658e-10),
+        vec2<f32>(0.06666667014360428,-3.47693762670076e-09),vec2<f32>(0.07692307978868484,-2.8656079731348427e-09),vec2<f32>(0.09090909361839294,-2.709302115988521e-09),
+        vec2<f32>(0.1111111119389534,-8.278422947149977e-10),vec2<f32>(0.1428571492433548,-6.38621200366174e-09),vec2<f32>(0.20000000298023224,-2.9802322831784522e-09),
+        vec2<f32>(0.3333333432674408,-9.934107758624577e-09),vec2<f32>(1.0,0.0));
+    var polynomial=vec2<f32>(0.0476190485060215,-8.869738832295582e-10);
+    for(var i=0u;i<10u;i++){polynomial=trig_coeff(coefficients[i],trig_mul(polynomial,z));}
+    let lm=trig_mul(vec2<f32>(2.0*sv.x,2.0*sv.y),polynomial);
+    let le=trig_product(e,0.6931471824645996);let tail=rounded_add(le.y,e*-1.9046542121259336e-09);
+    let sum=trig_two_sum(le.x,lm.x);return vec2<f32>(sum.x,rounded_add(rounded_add(sum.y,lm.y),tail));
+}
+fn vr_logf(x:f32)->f32{if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE==0u){return log(x);}let l=vr_log_parts(x);return rounded_add(l.x,l.y);}
+fn vr_div3(v:vec3<f32>,f:f32)->vec3<f32>{if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,f);}return vh_divide(v,vec3<f32>(f));}
+fn vr_channel_pdf(albedo:vec3<f32>,throughput:vec3<f32>)->vec3<f32>{
+    let weights=abs(throughput*albedo);let sum=rounded_add(rounded_add(weights.x,weights.y),weights.z);
+    if(rounded_add(1.0,-sum)<1.0){return vr_div3(weights,sum);}return vec3<f32>(1.0/3.0);
+}
+fn vr_sample_channel(pdf:vec3<f32>,rand:f32)->vec2<f32>{
+    var sum=0.0;
+    for(var c=0u;c<3u;c++){if(rand<rounded_add(sum,pdf[c])){return vec2<f32>(f32(c),rounded_divide(rounded_add(rand,-sum),pdf[c]));}sum=rounded_add(sum,pdf[c]);}
+    return vec2<f32>(2.0,rand);
+}
 // Biased ray marching (pinned integrator/shade_volume.h volume_integrate_ray_marching with VolumeStep,
 // volume_step_init<false>, volume_ray_marching_advance, volume_ray_marching_state_init,
 // volume_ray_marching_step_scattering and volume_sample_indirect_scatter_ray_marching; volume_stack.h
@@ -464,7 +523,7 @@ fn vh_fast_exp(x_in:f32)->f32{
         if((c.flag&(SR_EXTINCTION|SR_SCATTER|SR_EMISSION))==0u){continue;}
         let dt=rounded_add(t.y,-t.x);
         // Loop-local declarations take explicit assignments (naga does not re-run constant initializers).
-        var transmittance:vec3<f32>;transmittance=vec3<f32>(1);if((c.flag&SR_EXTINCTION)!=0u){transmittance=exp(-c.sigma_t*dt);}
+        var transmittance:vec3<f32>;transmittance=vec3<f32>(1);if((c.flag&SR_EXTINCTION)!=0u){transmittance=vr_exp3(-c.sigma_t*dt);}
 //#if VOLUME_EMISSION
         // volume_emission_integrate before the indirect scatter position.
         if((c.flag&SR_EMISSION)!=0u&&!indirect_scatter){
@@ -476,12 +535,11 @@ fn vh_fast_exp(x_in:f32)->f32{
 //#endif
         if((c.flag&SR_SCATTER)!=0u){
             // volume_ray_marching_step_scattering.
-            let albedo=vh_safe_divide(c.sigma_s,c.sigma_t,1.0);let pick=vh_sample_channel(albedo,indirect,rchannel);rchannel=pick.y;let channel=u32(pick.x);
-            let channel_pdf=vh_channel_pdf(albedo,indirect);
+            let albedo=vh_safe_divide(c.sigma_s,c.sigma_t,1.0);let channel_pdf=vr_channel_pdf(albedo,indirect);let pick=vr_sample_channel(channel_pdf,rchannel);rchannel=pick.y;let channel=u32(pick.x);
             if(method==2u&&!direct_scatter){
                 if(direct_t>=t.x&&direct_t<=t.y&&equiangular_pdf>1e-8){
-                    let new_dt=rounded_add(direct_t,-t.x);let new_transmittance=exp(-c.sigma_t*new_dt);
-                    direct_scatter=true;direct*=select(vec3<f32>(0),vh_divide(c.sigma_s*new_transmittance,vec3<f32>(equiangular_pdf)),vec3<f32>(equiangular_pdf)!=vec3<f32>(0));
+                    let new_dt=rounded_add(direct_t,-t.x);let new_transmittance=vr_exp3(-c.sigma_t*new_dt);
+                    direct_scatter=true;direct*=select(vec3<f32>(0),vr_div3(c.sigma_s*new_transmittance,equiangular_pdf),vec3<f32>(equiangular_pdf)!=vec3<f32>(0));
                     vh_copy_closures(scratch,direct_base,c.count);direct_count=c.count;
                     if(use_mis){let d=distance_pdf*rounded_dot(channel_pdf,c.sigma_t*new_transmittance);direct*=2.0*vl_power(equiangular_pdf,d);}
                 }else{direct*=transmittance;distance_pdf*=rounded_dot(channel_pdf,transmittance);}
@@ -491,14 +549,14 @@ fn vh_fast_exp(x_in:f32)->f32{
             if(!indirect_scatter){
                 let sample_transmittance=transmittance[channel];
                 if(rounded_add(1.0,-rscatter)>=sample_transmittance){
-                    let new_dt=rounded_divide(-log(rounded_add(1.0,-rscatter)),c.sigma_t[channel]);let new_t=rounded_add(t.x,new_dt);
-                    let new_transmittance=exp(-c.sigma_t*new_dt);let pdf=rounded_dot(channel_pdf,c.sigma_t*new_transmittance);
+                    let new_dt=rounded_divide(-vr_logf(rounded_add(1.0,-rscatter)),c.sigma_t[channel]);let new_t=rounded_add(t.x,new_dt);
+                    let new_transmittance=vr_exp3(-c.sigma_t*new_dt);let pdf=rounded_dot(channel_pdf,c.sigma_t*new_transmittance);
                     if(distance_pdf*pdf>1e-8){
-                        indirect_scatter=true;indirect_t=new_t;indirect*=vh_divide(c.sigma_s*new_transmittance,vec3<f32>(pdf));if(method==1u){distance_pdf*=pdf;}
+                        indirect_scatter=true;indirect_t=new_t;indirect*=vr_div3(c.sigma_s*new_transmittance,pdf);if(method==1u){distance_pdf*=pdf;}
                         vh_copy_closures(scratch,indirect_base,c.count);indirect_count=c.count;found=true;
                     }
                 }else{
-                    let pdf=rounded_dot(channel_pdf,transmittance);indirect*=vh_divide(transmittance,vec3<f32>(pdf));if(method==1u){distance_pdf*=pdf;}
+                    let pdf=rounded_dot(channel_pdf,transmittance);indirect*=vr_div3(transmittance,pdf);if(method==1u){distance_pdf*=pdf;}
                     rscatter=rounded_add(1.0,-rounded_divide(rounded_add(1.0,-rscatter),sample_transmittance));
                 }
             }

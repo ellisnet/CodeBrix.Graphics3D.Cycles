@@ -22,7 +22,9 @@ static constexpr size_t mnee_closure_offset=2720;
 static constexpr size_t mnee_stack_offset=mnee_closure_offset+MAX_CLOSURE*sizeof(SurfaceClosureRecord);
 static constexpr size_t mnee_stack_entries=192;
 static_assert(mnee_stack_entries==BVH_STACK_SIZE,"MNEE traversal stack (wavefront_closest.wgsl uses 192)");
-static constexpr size_t mnee_record_bytes=mnee_stack_offset+mnee_stack_entries*4;
+// The light selection (light tree or light linking: mnee_select), 8 words after the stack.
+static constexpr size_t mnee_select_offset=mnee_stack_offset+mnee_stack_entries*4;
+static constexpr size_t mnee_record_bytes=mnee_select_offset+32;
 size_t mnee_record_stride(){return mnee_record_bytes;}
 static_assert(surface_data_cache_bytes==240&&mnee_record_bytes%16==0,"wavefront_mnee.wgsl record layout");
 // Constants of every MNEE region (closest, surface and background modules). The
@@ -37,7 +39,7 @@ std::string mnee_layout(){
   constant("SD_OBJECT_CAUSTICS_CASTER",SD_OBJECT_CAUSTICS_CASTER);constant("SD_OBJECT_CAUSTICS_RECEIVER",SD_OBJECT_CAUSTICS_RECEIVER);
   constant("MNEE_CLOSURE_REFRACTION_FIRST",CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID);constant("MNEE_CLOSURE_REFRACTION_LAST",CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
   constant("MNEE_CLOSURE_GLASS_FIRST",CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);constant("MNEE_CLOSURE_GLASS_LAST",CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
-  constant("MNEE_CAUSTICS_MAX_CLOSURE",CAUSTICS_MAX_CLOSURE);constant("MR_CLOSURES",mnee_closure_offset);constant("MR_STACK",mnee_stack_offset);constant("MNEE_RECORD_BYTES",mnee_record_bytes);
+  constant("MNEE_CAUSTICS_MAX_CLOSURE",CAUSTICS_MAX_CLOSURE);constant("MR_CLOSURES",mnee_closure_offset);constant("MR_STACK",mnee_stack_offset);constant("MR_SELECT",mnee_select_offset);constant("MNEE_RECORD_BYTES",mnee_record_bytes);
 #define ISECT(index,member) constant("MNEE_S_I" #index "_" #member,offsetof(IntegratorStateGPU,shadow_isect[index].member))
   ISECT(0,t);ISECT(0,u);ISECT(0,v);ISECT(0,object);ISECT(0,prim);ISECT(0,type);
   ISECT(1,t);ISECT(1,u);ISECT(1,v);ISECT(1,object);ISECT(1,prim);ISECT(1,type);ISECT(2,prim);
@@ -49,12 +51,9 @@ std::string mnee_layout(){
 // before any MNEE dispatch, never rendered without caustics.
 void WebGPUDevice::validate_mnee() const{
   require(data.kernel_features&KERNEL_FEATURE_MNEE,"Invalid native MNEE feature flags");
-  require(!data.integrator.use_light_tree,"WebGPU MNEE with the light tree not implemented");
   require(!(data.kernel_features&KERNEL_FEATURE_VOLUME),"WebGPU MNEE with volumes not implemented");
   // Motion blur (MNEE_MOTION: moving and deforming receivers, deforming casters) and ambient occlusion (fast GI and the AO pass;
   // the AO shadow takes the surface stage's reserved slot n + id.x, the MNEE shadow its own) are supported.
-  require(!(data.kernel_features&(KERNEL_FEATURE_LIGHT_TREE|KERNEL_FEATURE_LIGHT_LINKING|KERNEL_FEATURE_SHADOW_LINKING)),
-          "WebGPU MNEE with light linking or shadow linking not implemented");
   // A moving caustic caster (object motion): the device's walks differ from the CPU's in outcome and iteration count
   // (last-bit differences that the walk amplifies); moving and deforming receivers and deforming casters render.
   for(const uint flags:object_flag_records)
@@ -126,7 +125,12 @@ void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   p[28]=mnee_records+uint32_t(size_t(work)*mnee_record_bytes);(void)reserve_bytes;
   {std::array<uint32_t,32> reserve{};reserve[0]=5;reserve[1]=n;reserve[2]=uint32_t(uintptr_t(state.next_shadow_path_index));
    reserve[3]=uint32_t(uintptr_t(state.shadow_path.queued_kernel));reserve[4]=p[28];reserve[17]=error_word;reserve[18]=p[25];dispatch(reserve,1);}
-  // Dispatch ordering makes each stage's GPU-private record visible to the next.
-  for(unsigned i=0;i<mnee_entries;i++)dispatch(p,uint32_t(work),mnee_pipelines[i],workgroup(entries[i]));
+  // Dispatch ordering makes each stage's GPU-private record visible to the next. With the light tree or light linking,
+  // mnee_select takes the selection between the receiver and the seed: the traversal stays out of mnee_seed (compiler pressure).
+  const bool select_stage=(shader_features()&SF_LIGHT_SELECT).any();
+  if(select_stage&&(!pipeline_current(mnee_select,"mnee_select",unused)||!mnee_select.value))
+    mnee_select=std::move(build_pipelines("surface",surface_source(),{"mnee_select"},SF_MNEE_ENTRIES,unused)[0]);
+  for(unsigned i=0;i<mnee_entries;i++){dispatch(p,uint32_t(work),mnee_pipelines[i],workgroup(entries[i]));
+    if(i==0&&select_stage)dispatch(p,uint32_t(work),mnee_select,workgroup("mnee_select"));}
 }
 }

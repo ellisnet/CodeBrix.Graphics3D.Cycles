@@ -689,7 +689,7 @@ public class GpuRenderTests(ITestOutputHelper output)
         long largest = guard.GetProperty("largestEntryBytes").GetInt64();
         output.WriteLine($"size guard: threshold {threshold} bytes, largest entry {guard.GetProperty("largestEntry").GetString()} {largest} bytes, warnings {guard.GetProperty("warnings").GetInt32()}");
         // A small scene compiles entries well below the guard, so no size warning reaches the report.
-        threshold.Should().Be(1110000);
+        threshold.Should().Be(940000);
         largest.Should().BeGreaterThan(0);
         largest.Should().BeLessThan(threshold);
         guard.GetProperty("warnings").GetInt32().Should().Be(0);

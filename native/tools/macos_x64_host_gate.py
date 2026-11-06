@@ -41,7 +41,7 @@ BACKEND_TYPES={0:'Undefined',1:'Null',2:'WebGPU',3:'D3D11',4:'D3D12',5:'Metal',6
 # Device gate executables that take only an output prefix (as the Linux drivers call them).
 DEVICE_GATES=['device','camera','closest','background','svm_world','shader_data','svm_surface','attribute','normal','image',
  'surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film',
- 'ao_render','ao_state','light_tree','mnee','mnee_render','shadow_catcher']
+ 'ao_render','ao_state','light_tree','shadow_linking','mnee','mnee_render','shadow_catcher']
 # One oracle scene per failure class found on a GPU driver (windows_host_gate.py;
 # docs/TESTING-WINDOWS-ARM64.md, F1, F3 and F4; docs/TESTING-WINDOWS-X64.md, W1).
 DRIVER_COVERAGE={'smooth-shading':'native/oracle/scenes/linux-gates/glass-render.json',

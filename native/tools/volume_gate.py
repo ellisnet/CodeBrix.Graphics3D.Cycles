@@ -93,7 +93,7 @@ def main():
             assert report['passed'] and report['cyclesAllocationBytesAfterCleanup'] == 0
             assert Path((folder/'run.library.txt').read_text().strip()).resolve() == runtime.resolve()
             if name == 'state':
-                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 24 and report['invalidCasesRejected'] == 18
+                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 75 and report['invalidCasesRejected'] == 18
                 assert min(report[k] for k in ('scatterEvents', 'transmitEvents', 'terminatedEvents')) > 0
             else:
                 assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
@@ -108,7 +108,7 @@ def main():
             assert max(errors) > .01 and sum(e > .001 for e in errors) > 100, 'Volume controls had no measurable image effect'
             differences[a+'-'+b] = {'maximumAbsoluteDifference':max(errors), 'meanAbsoluteDifference':sum(errors)/len(errors), 'componentsAboveOneMilliunit':sum(e > .001 for e in errors)}
         save(out/'image-controls.json', differences)
-        status.update(complete=True, passed=True, phase='complete', scope='Homogeneous world absorption and native Henyey-Greenstein scattering. Object boundaries are validated separately by volume_boundary_gate.py. Volume emission, NEE/MIS, shadow attenuation, heterogeneous volumes and volume light passes remain unsupported.')
+        status.update(complete=True, passed=True, phase='complete', scope='Homogeneous world absorption and native Henyey-Greenstein scattering. Object boundaries are validated separately by volume_boundary_gate.py.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

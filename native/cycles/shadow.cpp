@@ -77,8 +77,8 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   // the majorant octree, ray-marched media; the other volume limits are refused in validate_volume); linking, AO
   // and shadow catchers remain guarded below.
   if(data.integrator.transparent_shadows)require(data.integrator.transparent_max_bounce>=0&&data.integrator.transparent_max_bounce<=4095,"WebGPU transparent shadow hit limit exceeds packed state");
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_SHADOW_LINKING)),
-          "WebGPU shadow optional integration features not implemented");
+  require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU shadow optional integration features not implemented");
+  validate_shadow_linking();
   if(data.kernel_features&KERNEL_FEATURE_VOLUME)validate_volume();
   validate_shadow_catcher();
   p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[14]=scene_tables();
@@ -110,6 +110,7 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
     pass(data.film.pass_combined,4);pass(data.film.pass_adaptive_aux_buffer,4);pass(data.film.pass_lightgroup,3);
     pass(data.film.pass_diffuse_direct,3);pass(data.film.pass_glossy_direct,3);pass(data.film.pass_transmission_direct,3);
     pass(data.film.pass_diffuse_indirect,3);pass(data.film.pass_glossy_indirect,3);pass(data.film.pass_transmission_indirect,3);
+    pass(data.film.pass_volume_direct,3);pass(data.film.pass_volume_indirect,3);
     if(data.film.light_pass_flag&PASSMASK(COMBINED))require(data.film.pass_combined!=PASS_UNUSED,"Missing shadow combined film pass");
     require(std::isfinite(data.integrator.sample_clamp_direct)&&data.integrator.sample_clamp_direct>=0&&
             std::isfinite(data.integrator.sample_clamp_indirect)&&data.integrator.sample_clamp_indirect>=0,"Invalid shadow clamp");

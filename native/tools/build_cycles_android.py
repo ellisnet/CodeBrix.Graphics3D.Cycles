@@ -12,6 +12,7 @@ from pathlib import Path
 
 from build import REPO, ROOT, WORK, SOURCE, PACKAGE, verify_cycles, audit
 from build_cycles import overlay
+from cycles_source import remove_stale_copy
 from device_gate import sha, save
 from render_gate import inputs
 from android_toolchain import AndroidToolchain, TARGETS, environment
@@ -28,7 +29,7 @@ GATE_TARGETS = ['codebrix_cycles_'+name+'_gate' for name in
     ['device', 'camera', 'closest', 'background', 'svm_world', 'shader_data', 'svm_surface',
      'attribute', 'normal', 'image', 'image_file', 'surface', 'microfacet_svm',
      'microfacet_bounce', 'microfacet_render', 'render', 'atomic_film', 'principled_svm',
-     'transparent_shadow', 'environment', 'light_tree', 'shadow_catcher', 'ao_state', 'ao_render', 'mnee',
+     'transparent_shadow', 'environment', 'light_tree', 'shadow_linking', 'shadow_catcher', 'ao_state', 'ao_render', 'mnee',
      'mnee_render', 'bsdf_svm', 'bsdf_bounce', 'bsdf_render', 'bsdf2_svm', 'bsdf2_bounce', 'bsdf2_render', 'bsdf3_svm', 'bsdf3_bounce', 'bsdf3_render',
      'raytrace_nodes_state', 'raytrace_nodes_render']]
 
@@ -37,9 +38,10 @@ def prepare_source(work):
     """Keep cross-target adaptations out of the pinned snapshot."""
     verify_cycles()
     source = work/'cycles-source'
+    names = ['src/CMakeLists.txt', 'src/cmake/macros.cmake', 'src/util/half.h']
+    remove_stale_copy(source, names)
     if not source.exists():
         shutil.copytree(SOURCE, source)
-    names = ['src/CMakeLists.txt', 'src/cmake/macros.cmake', 'src/util/half.h']
     before = {name:(SOURCE/name).read_text() for name in names}
     after = dict(before)
 

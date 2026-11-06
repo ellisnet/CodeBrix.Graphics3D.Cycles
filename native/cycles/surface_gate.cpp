@@ -144,8 +144,8 @@ static RejectionMetrics rejections(const DeviceInfo &info){
     if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.volume_stack_size=1;reason="volume stack size";}
     // The data passes are implemented (FILM_DATA_PASSES); a path guiding pass (outside the scope) is refused by name.
     if(test==4){data.film.pass_flag=PASSMASK(GUIDING_COLOR);reason="film pass guiding_color";}
-    // Glossy filtering and the denoising features are implemented; shadow linking stays refused.
-    if(test==5){data.kernel_features|=KERNEL_FEATURE_SHADOW_LINKING;reason="optional integration";}
+    // Glossy filtering, the denoising features and shadow linking are implemented; its combinations with AO stay refused.
+    if(test==5){data.kernel_features|=KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO_ADDITIVE;reason="shadow linking with ambient occlusion";}
     if(test==6){data.max_closures=MAX_CLOSURE+1;reason="closure capacity";}
     if(test==7){data.film.pass_combined=data.film.pass_stride-3;reason="pass offset";}
     if(test==8)state.path.render_pixel_index=1;

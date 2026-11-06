@@ -89,7 +89,7 @@ def main():
             elif name == 'compaction-guard':
                 assert report['malformedCasesRejected'] == 1 and report['cases'] == 0
             elif name == 'world-regression':
-                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 24 and report['invalidCasesRejected'] == 18
+                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 75 and report['invalidCasesRejected'] == 18
             else:
                 assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
                 assert report['volumeTransmitEvents'] > 0 and report['volumeScatterEvents'] > 0
@@ -104,7 +104,7 @@ def main():
             assert max(errors) > .01 and sum(e > .001 for e in errors) > 100, 'Volume controls had no measurable image effect'
             differences[a+'-'+b] = {'maximumAbsoluteDifference':max(errors), 'meanAbsoluteDifference':sum(errors)/len(errors), 'componentsAboveOneMilliunit':sum(e > .001 for e in errors)}
         save(out/'image-controls.json', differences)
-        status.update(complete=True, passed=True, phase='complete', scope='Static closed homogeneous triangle volumes: native density preparation, entry/exit, stack initialization and aggregation, camera inside/outside, nested and overlapping media. Volume emission, NEE/MIS, shadow attenuation, moving boundaries, heterogeneous volumes, mixed-anisotropy duplicate compaction and volume light passes remain unsupported.')
+        status.update(complete=True, passed=True, phase='complete', scope='Static closed homogeneous triangle volumes: native density preparation, entry/exit, stack initialization and aggregation, camera inside/outside, nested and overlapping media. Moving boundaries and mixed-anisotropy duplicate compaction remain unsupported.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

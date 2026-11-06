@@ -349,6 +349,19 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
 }
 //#endif
 //#if MNEE_ENTRIES
+//#if LIGHT_SELECT
+// The light selection of light_sample_from_position (light tree or light linking; surface.cpp's shade_surface_light_select
+// for the receiver: no shader is evaluated here, so its runtime flags hold no transmission). Own entry: the walk inlines to
+// more than half a megabyte (compiler pressure), so it stays out of mnee_seed.
+@compute @workgroup_size(1) fn mnee_select(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_DONE){return;}
+    if(data_word(D_integrator_use_direct_light)==0u){return;}
+    let index=mn_index(id.x);let sd=surface_data_read(at+MR_SD);var r:SvmResult;r.runtime_flag=sd.runtime_flag;
+    let result=light_selection_compute(index,sd,r,true,false);if(load_word(p(17u))!=0u){return;}
+    light_selection_write(at+MR_SELECT-LIGHT_SELECT_RECORD,result.selection,0.0);
+}
+//#endif
 @compute @workgroup_size(64) fn mnee_seed(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_DONE){return;}
     let index=mn_index(id.x);let sd=surface_data_read(at+MR_SD);
@@ -357,7 +370,13 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     if(data_word(D_integrator_use_direct_light)==0u){return;}
     // light_sample_from_position through the shared selection; a selected
     // emissive triangle ends the walk (pinned: ls.type == LIGHT_TRIANGLE).
-    let selection=light_select(index);if(selection.prim>=0){return;}
+//#if LIGHT_SELECT
+    light_select_record=at+MR_SELECT-LIGHT_SELECT_RECORD;
+//#endif
+//#if LIGHT_SELECT else     let selection=light_select(index);if(selection.prim>=0){return;}
+    // A failed or unlinked selection is no sample.
+    let selection=light_select(index);if(!selection.valid||selection.prim>=0){return;}
+//#endif
     // A lamp without use_caustics ends the walk before any state change whatever
     // its sample is; the device accepts caustics only from point and sun lamps.
     let lamp=table_at(G_lights,~bitcast<u32>(selection.prim),SIZE_lights);if(load_word(lamp+MNEE_L_use_caustics)==0u){return;}
@@ -368,7 +387,9 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     if(!(sample.pdf>0.0)){return;}
     let light=table_at(G_lights,sample.prim,SIZE_lights);
     var ls:MnLight;ls.P=sample.P;ls.D=sample.D;ls.t=sample.t;ls.pdf=sample.pdf;ls.eval_fac=sample.eval_fac;
-    ls.pdf_selection=data_float(D_integrator_distribution_pdf_lights);ls.shader=sample.shader;ls.object=sample.object_id;ls.prim=sample.prim;
+//#if LIGHT_SELECT else     ls.pdf_selection=data_float(D_integrator_distribution_pdf_lights);ls.shader=sample.shader;ls.object=sample.object_id;ls.prim=sample.prim;
+    ls.pdf_selection=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);ls.shader=sample.shader;ls.object=sample.object_id;ls.prim=sample.prim;
+//#endif
     ls.kind=load_word(light+L_type);ls.group=load_word(table_at(G_objects,ls.object,SIZE_objects)+O_lightgroup);
     if(rounded_dot(ls.D,sd.N)<0.0){return;}
     if(load_word(light+MNEE_L_use_caustics)==0u){return;}
@@ -733,7 +754,10 @@ fn mnee_direct_light(index:u32,sd:SurfaceData,r:SvmResult){
     state_f32(S_shadow_ray_time,shadow,heap_float(state_address(S_ray_time,index,4u)));state_f32(S_shadow_ray_dP,shadow,dP);state_f32(S_shadow_ray_dD,shadow,dD);
     state_u32(S_shadow_self_object,shadow,self_object);state_u32(S_shadow_self_prim,shadow,self_prim);
     state_u32(S_shadow_ray_self_light_object,shadow,ls_object);state_u32(S_shadow_ray_self_light_prim,shadow,ls_prim);
-    state_f32(S_shadow_path_bsdf_eval_average,shadow,(bsdf.eval.x+bsdf.eval.y+bsdf.eval.z)*(1.0/3.0));
+//#if LIGHT_TREE else     state_f32(S_shadow_path_bsdf_eval_average,shadow,(bsdf.eval.x+bsdf.eval.y+bsdf.eval.z)*(1.0/3.0));
+    // Not allocated with KERNEL_FEATURE_LIGHT_TREE (shadow_state_template.h).
+    if((data_word(D_kernel_features)&LT_FEATURE_LIGHT_TREE)==0u){state_f32(S_shadow_path_bsdf_eval_average,shadow,(bsdf.eval.x+bsdf.eval.y+bsdf.eval.z)*(1.0/3.0));}
+//#endif
     state_u32(S_shadow_path_render_pixel_index,shadow,state_word(S_path_render_pixel_index,index));
     state_u32(S_shadow_path_sample,shadow,state_word(S_path_sample,index));state_u32(S_shadow_path_rng_pixel,shadow,state_word(S_path_rng_pixel,index));
     state_u16(S_shadow_path_rng_offset,shadow,state_half(S_path_rng_offset,index));
@@ -781,7 +805,9 @@ fn mn_sun_sample(index:u32,selection:LightSelection)->NativeLightSample{
     ls.shader=load_word(light+L_shader_id);ls.object_id=load_word(light+L_object_id);
     let cone=mn_cone(heap_vec3(light+L_co),heap_float(light+L_sun_angle),selection.random.xy);
     ls.P=cone.D;ls.D=-cone.D;ls.pdf=cone.pdf;ls.t=MNEE_FLT_MAX;ls.eval_fac=heap_float(light+L_sun_eval);
-    ls.pdf*=data_float(D_integrator_distribution_pdf_lights);return ls;
+//#if LIGHT_SELECT else     ls.pdf*=data_float(D_integrator_distribution_pdf_lights);return ls;
+    ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);return ls;
+//#endif
 }
 // point_light_sample (light/point.h) with the oracle's float3 operation order:
 // lightN /= d multiplies by 1/d, the cone and the law of cosines use rounded
@@ -815,6 +841,8 @@ fn mn_point_sample(index:u32,sd:SurfaceData,selection:LightSelection)->NativeLig
         let cosine=rounded_dot(lightN,-ls.D);var pdf=0.0;if(cosine>0.0){pdf=rounded_divide(ls.t*ls.t,cosine);}
         ls.pdf=invarea*pdf;
     }
-    ls.pdf*=data_float(D_integrator_distribution_pdf_lights);return ls;
+//#if LIGHT_SELECT else     ls.pdf*=data_float(D_integrator_distribution_pdf_lights);return ls;
+    ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);return ls;
+//#endif
 }
 //#endif

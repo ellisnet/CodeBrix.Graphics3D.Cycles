@@ -45,13 +45,15 @@ def inputs(capture):
         # (connect_surface_ao in surface.wgsl), 39-41 (the adaptive sampling kernels in film_adaptive.wgsl) and 42
         # (shade_surface_light_background in surface.wgsl), 43-44 (the volume guiding filters in film_volume_guiding.wgsl),
         # 45-46 (shade_volume_segment and shade_volume_light in surface.wgsl), 47 (intersect_subsurface in surface.wgsl), 48
-        # (shade_volume_phase in volume.wgsl), 49 (shade_volume_heterogeneous in volume.wgsl).
+        # (shade_volume_phase in volume.wgsl), 49 (shade_volume_heterogeneous in volume.wgsl), 50 (shade_volume_ray_marching in
+        # volume.wgsl), 51 (shade_volume_tree_select in surface.wgsl), 52 (shade_volume_light_triangle in surface.wgsl),
+        # 53 (intersect_dedicated_light in closest.wgsl), 54 (shade_dedicated_light_lamp in background.wgsl), 55-56 (dedicated_light_tree_pdf, shade_dedicated_light in surface.wgsl), 57 (mnee_select in surface_mnee.wgsl).
         # Entries 27-33 come from the MNEE module (surface_mnee.wgsl); captures without it carry them in surface.wgsl.
         mnee = 'surface_mnee' if (capture/'surface_mnee.wgsl').exists() else 'surface'
         names = ['controls', 'camera', 'closest', 'background', 'surface', 'surface',
                  'shadow', 'shadow', 'background', 'surface', 'volume_stack', 'volume', 'shadow', 'surface', 'volume', 'surface', 'shadow',
                  'surface', 'surface', 'background', 'surface', 'surface', 'background', 'shadow_catcher', 'shadow_catcher', 'shadow_catcher',
-                 'surface_raytrace']+[mnee]*7+['surface']*3+['film_post', 'surface']+['film_adaptive']*3+['surface']+['film_volume_guiding']*2+['surface']*3+['volume']*2
+                 'surface_raytrace']+[mnee]*7+['surface']*3+['film_post', 'surface']+['film_adaptive']*3+['surface']+['film_volume_guiding']*2+['surface']*3+['volume']*3+['surface']*2+['closest', 'background', 'surface', 'surface', mnee]
         counts = meta['pipelineDispatches']
         assert len(counts) <= len(names) and all(isinstance(n, int) and n >= 0 for n in counts), 'Unknown pipeline metadata'
         assert all(names[i] is not None for i, count in enumerate(counts) if count), 'Reserved pipeline metadata'

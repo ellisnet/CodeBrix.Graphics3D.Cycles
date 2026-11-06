@@ -108,9 +108,9 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
            "\"passes\":[\"combined\",\"emission\",\"background\",\"ao\",\"diffuse\",\"diffuse_direct\",\"diffuse_indirect\",\"diffuse_color\",\"glossy\",\"glossy_direct\",\"glossy_indirect\",\"glossy_color\","
            "\"transmission\",\"transmission_direct\",\"transmission_indirect\",\"transmission_color\",\"depth\",\"position\",\"normal\",\"roughness\",\"uv\",\"object_id\",\"material_id\",\"motion\",\"motion_weight\","
            "\"cryptomatte\",\"aov_color\",\"aov_value\",\"mist\",\"render_time\",\"sample_count\",\"shadow_catcher\",\"shadow_catcher_sample_count\",\"shadow_catcher_matte\",\"denoising_albedo\",\"denoising_normal\","
-           "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\",\"volume_majorant\",\"volume_majorant_sample_count\"],\"lightGroups\":true,"
+           "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\",\"volume_majorant\",\"volume_majorant_sample_count\",\"volume_direct\",\"volume_indirect\"],\"lightGroups\":true,"
            "\"renderTimeRejections\":[\"stereo cameras\",\"shadow linking\","
-           "\"volume light passes\",\"background light portals\",\"Christensen-Burley and thin-walled subsurface scattering\","
+           "\"background light portals\",\"Christensen-Burley and thin-walled subsurface scattering\","
            "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL

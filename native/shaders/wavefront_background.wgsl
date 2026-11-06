@@ -111,6 +111,12 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
             film_rgb(base,select(data_word(D_film_pass_transmission_indirect),data_word(D_film_pass_transmission_direct),bounce==1u),(vec3<f32>(1)-diffuse-glossy)*contribution);
             film_rgb(base,select(data_word(D_film_pass_diffuse_indirect),data_word(D_film_pass_diffuse_direct),bounce==1u),diffuse*contribution);
         }
+//#if VOLUME_LIGHT_PASSES
+        // film_write_emission_or_background_pass: indirectly visible through a volume.
+//#if SHADOW_CATCHER else         else if(p(20u)!=0u&&(flag&PATH_RAY_VOLUME_PASS)!=0u){film_rgb(base,select(data_word(D_film_pass_volume_indirect),data_word(D_film_pass_volume_direct),bounce==1u),contribution);}
+        else if(sc_light_passes(flag)&&p(20u)!=0u&&(flag&PATH_RAY_VOLUME_PASS)!=0u){film_rgb(base,select(data_word(D_film_pass_volume_indirect),data_word(D_film_pass_volume_direct),bounce==1u),contribution);}
+//#endif
+//#endif
     }
 //#if SHADOW_CATCHER else     if((flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u&&sample_id==0u){
     if((flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u&&(flag&SC_PATH_PASS)==0u&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u&&sample_id==0u){
@@ -148,6 +154,13 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
 // surface (integrator_intersect_next_kernel_after_shadow_catcher_volume, sorted).
 fn sc_background_continue(index:u32,flag:u32){
     state_u32(S_path_flag,index,flag&~SC_PATH_BACKGROUND);
+//#if VOLUME_SHADOW_CATCHER
+    // integrator_intersect_next_kernel_after_shadow_catcher_background: a stack that is not empty is re-initialized first.
+    if(volume_active(index)){
+        let queue=load_word(p(7u)+S_queue_counter);atomicSub(&heap[(queue+DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND*4u)/4u],1u);
+        atomicAdd(&heap[(queue+DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK*4u)/4u],1u);state_u16(S_path_queued_kernel,index,DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK);return;
+    }
+//#endif
     let prim=state_word(S_isect_prim,index);if(prim==NONE){fail();return;}
     let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
     if((load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags)&SD_HAS_RAYTRACE)!=0u){fail();return;}

@@ -70,31 +70,55 @@ static void fixture(Scene &scene){
   for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
 #endif
 }
+// The fixed probe path states of this gate.
+static constexpr unsigned probe_state_count=4096;
+static std::vector<IntegratorStateCPU> probe_states(){
+  const unsigned count=probe_state_count;std::vector<IntegratorStateCPU> states(count);
+  for(unsigned i=0;i<count;i++){auto &s=states[i];s.path.sample=i%64;s.path.rng_pixel=i*2654435761u;s.path.rng_offset=32*(i%4);s.path.bounce=i%3;
+    s.path.flag=(i%2)?PATH_RAY_MIS_HAD_TRANSMISSION:0;s.ray.time=float(i%17)/16.f;
+    s.ray.P=make_float3(float(i%23)-5.f,float((i/23)%17)*.5f-4.f,4.f-(.1f+float(i%31)*.2f));
+    s.ray.D=normalize(make_float3(.3f*(int(i%5)-2),.2f*(int(i%7)-3),i%11?1.f:-1.f));}
+  return states;
+}
+// Scene exchange and the CPU reference; AFTER_EXCHANGE uploads the states when the gate goes on to GPU work.
+template<typename AfterExchange> static std::vector<float> probe_reference(Scene &scene,std::vector<IntegratorStateCPU> &states,const char *prefix,bool &exchange_only,std::vector<float> &local,AfterExchange &&after_exchange){
+  const unsigned count=unsigned(states.size());
+  // Scene exchange (reference_policy.h): dump or load the prepared tables and the path-state
+  // fields set above (the directions carry this host's float3 normalization).
+  struct PathInput {uint32_t sample,rng_pixel,rng_offset,bounce,flag;float time,P[3],D[3];};
+  std::vector<PathInput> inputs(count);
+  for(unsigned i=0;i<count;i++){const auto &s=states[i];inputs[i]={s.path.sample,s.path.rng_pixel,s.path.rng_offset,uint32_t(s.path.bounce),s.path.flag,s.ray.time,{s.ray.P.x,s.ray.P.y,s.ray.P.z},{s.ray.D.x,s.ray.D.y,s.ray.D.z}};}
+  exchange_only=reference_policy::exchange_scene(scene.dscene,"samples",{{"paths",inputs.data(),inputs.size()*sizeof(PathInput)}});
+  if(reference_policy::reference_only())for(unsigned i=0;i<count;i++){auto &s=states[i];const auto &in=inputs[i];
+    s.path.sample=in.sample;s.path.rng_pixel=in.rng_pixel;s.path.rng_offset=in.rng_offset;s.path.bounce=in.bounce;s.path.flag=in.flag;s.ray.time=in.time;
+    s.ray.P=make_float3(in.P[0],in.P[1],in.P[2]);s.ray.D=make_float3(in.D[0],in.D[1],in.D[2]);}
+  if(!exchange_only)after_exchange();
+  local=original_light_samples(scene.dscene,states);reference_policy::record_local("samples",local);
+  // Pass/fail reference: local, or the imported correctly rounded one (reference_policy.h).
+  return reference_policy::resolve("samples",local,std::string(prefix)+".reference-diagnostic.jsonl");
+}
+// CODEBRIX_CYCLES_EXCHANGE_CPU_DEVICE (reference_policy.h): the exchange pass with no WebGPU adapter.
+static void cpu_device_exchange_pass(const char *prefix){
+  auto infos=Device::available_devices(DEVICE_MASK_CPU);require(!infos.empty(),"Missing CPU device");
+  Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);bool exchange_only=false;
+  {
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,owner.get());fixture(scene);Progress progress;scene.device_update(owner.get(),progress);require(!progress.get_error(),"Emitter scene preparation failed");
+    auto states=probe_states();std::vector<float> local;probe_reference(scene,states,prefix,exchange_only,local,[]{});require(exchange_only,"The CPU device supports only the exchange passes");
+  }
+  require(stats.mem_used==0,"Emitter test leaked allocations");
+  std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cpuDevice\":true,\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+}
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   reference_policy::use_reference_oracle_arithmetic();
-  require(argc==2,"Usage: emitter_sample_gate OUTPUT_PREFIX");auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
+  require(argc==2,"Usage: emitter_sample_gate OUTPUT_PREFIX");
+  if(reference_policy::cpu_device_exchange()){cpu_device_exchange_pass(argv[1]);TaskScheduler::exit();return 0;}
+  auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"emitter_sample_gate device creation");Metrics metrics;bool exchange_only=false;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.use_texture_cache=false;Scene scene(params,&d);fixture(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Emitter scene preparation failed");
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
-    const unsigned count=4096;std::vector<IntegratorStateCPU> states(count);
-    for(unsigned i=0;i<count;i++){auto &s=states[i];s.path.sample=i%64;s.path.rng_pixel=i*2654435761u;s.path.rng_offset=32*(i%4);s.path.bounce=i%3;
-      s.path.flag=(i%2)?PATH_RAY_MIS_HAD_TRANSMISSION:0;s.ray.time=float(i%17)/16.f;
-      s.ray.P=make_float3(float(i%23)-5.f,float((i/23)%17)*.5f-4.f,4.f-(.1f+float(i%31)*.2f));
-      s.ray.D=normalize(make_float3(.3f*(int(i%5)-2),.2f*(int(i%7)-3),i%11?1.f:-1.f));}
-    // Scene exchange (reference_policy.h): dump or load the prepared tables and the path-state
-    // fields set above (the directions carry this host's float3 normalization).
-    struct PathInput {uint32_t sample,rng_pixel,rng_offset,bounce,flag;float time,P[3],D[3];};
-    std::vector<PathInput> inputs(count);
-    for(unsigned i=0;i<count;i++){const auto &s=states[i];inputs[i]={s.path.sample,s.path.rng_pixel,s.path.rng_offset,uint32_t(s.path.bounce),s.path.flag,s.ray.time,{s.ray.P.x,s.ray.P.y,s.ray.P.z},{s.ray.D.x,s.ray.D.y,s.ray.D.z}};}
-    exchange_only=reference_policy::exchange_scene(scene.dscene,"samples",{{"paths",inputs.data(),inputs.size()*sizeof(PathInput)}});
-    if(reference_policy::reference_only())for(unsigned i=0;i<count;i++){auto &s=states[i];const auto &in=inputs[i];
-      s.path.sample=in.sample;s.path.rng_pixel=in.rng_pixel;s.path.rng_offset=in.rng_offset;s.path.bounce=in.bounce;s.path.flag=in.flag;s.ray.time=in.time;
-      s.ray.P=make_float3(in.P[0],in.P[1],in.P[2]);s.ray.D=make_float3(in.D[0],in.D[1],in.D[2]);}
-    if(!exchange_only)upload(d,layout,states);
-    const auto local=original_light_samples(scene.dscene,states);reference_policy::record_local("samples",local);
-    // Pass/fail reference: local, or the imported correctly rounded one (reference_policy.h).
-    const auto expected=reference_policy::resolve("samples",local,std::string(argv[1])+".reference-diagnostic.jsonl");
+    auto states=probe_states();const unsigned count=probe_state_count;
+    std::vector<float> local;const auto expected=probe_reference(scene,states,argv[1],exchange_only,local,[&]{upload(d,layout,states);});
     if(!exchange_only){
     device_vector<float> output(&d,"emitter_samples",MEM_READ_WRITE);output.alloc(expected.size()+16);std::fill_n(output.data(),output.size(),-1234.f);output.copy_to_device();
 #ifdef CODEBRIX_TRIANGLE_LIGHT_GATE

@@ -200,6 +200,9 @@ middle sphere of the sampling family's room, lit by a point light (MIS, distance
 equiangular scatter sampling), a sun or the world through a background light, with an
 absorbing-only medium, a world volume, the Volume Coefficients and Principled Volume nodes, an
 emissive medium and the Rayleigh, Draine, Fournier-Forand and Mie (two droplet sizes) phase functions.
+The same box with noise density and biased ray marching (`heterogeneous-*`, `ray-marching-*`), spot, area and
+mesh lights (`scatter-spot`, `scatter-area*`, `scatter-mesh-light`, `heterogeneous-spot`), the light tree
+(`tree-*`), the volume light passes (`passes-*`) and shadow catchers inside or behind the media (`catcher-*`).
 
 ## Denoising scenes (`scenes/denoise/`)
 

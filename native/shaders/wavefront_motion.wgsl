@@ -7,10 +7,10 @@ fn motion_transform_load(address:u32)->NativeTransform{
     return NativeTransform(heap_vec4(address),heap_vec4(address+16u),heap_vec4(address+32u));
 }
 //#if MNEE_MOTION
-// MNEE with motion blur: its walk (iteration counts and outcomes) follows the last bit of every
-// motion transform, so the motion transforms there are the host's: transform_point and
-// transform_direction as the host CPU kernel evaluates them (the native triangle arithmetic of the
-// closest stage), and transform_compose with every product rounded and DPPS-ordered dot products.
+// Every scene with motion (SF_FILM_MOTION_EXACT): ray-triangle folds near a shared edge and the MNEE
+// walk follow the last bit of every motion transform, so the motion transforms are the host's:
+// transform_point and transform_direction as the host CPU kernel evaluates them (the native triangle
+// arithmetic of the closest stage), and transform_compose with every product rounded and DPPS-ordered dot products.
 // Each helper runs its sums through one rounded_add body in a loop (rounded_steps), so the walk
 // entries stay inside the pipeline size guard.
 // surface_transform_row (wavefront_shader_data.wgsl, which not every module includes).
@@ -56,9 +56,8 @@ fn motion_add4(a:vec4<f32>,b:vec4<f32>)->vec4<f32>{
 }
 fn motion_normalize4(a:vec4<f32>)->vec4<f32>{
     let norm=rounded_sqrt(motion_dot4(a,a));
-    // float4 / float multiplies by the reciprocal (math_float4.h); scalar float3 hosts (ARM64) take that form.
-    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return a*rounded_divide(1.0,norm);}
-    return vec4<f32>(rounded_divide(a.x,norm),rounded_divide(a.y,norm),rounded_divide(a.z,norm),rounded_divide(a.w,norm));
+    // float4 / float multiplies by the reciprocal on every host (math_float4.h, no SIMD form).
+    return a*rounded_divide(1.0,norm);
 }
 // The Horner steps run as loops over the coefficient pairs (lane L, 2026-10-22):
 // the same operations in the same order as the unrolled form, so results are
@@ -128,14 +127,32 @@ fn motion_rotation(a:vec4<f32>,b:vec4<f32>,t:f32)->vec4<f32>{
 //#endif
 }
 //#if MNEE_MOTION
-// quat_interpolate's acosf (trig_acos, as glibc's), sinf and cosf correctly rounded (glibc's sinf and cosf are not for a small share of arguments): the
-// double-float series of the two-part reduced angle, each rounded once (family_sincos,
-// wavefront_microfacet.wgsl; motion_sincos can be one ULP off).
+// quat_interpolate's acosf (trig_acos, as the C library's), and its sinf and cosf (angle = theta*t >= 0): the C
+// library evaluates one fixed polynomial pair in binary64 and rounds once, which misrounds about 1% of sinf and 0.02%
+// of cosf arguments, and a last bit of the quaternion decides ray-triangle folds near a shared edge (native/DEVICE.md,
+// "Motion arithmetic last bits"). So the same polynomials, on the same reduction (x - n*pi/2, n rounded from x*2/pi,
+// no polynomial below 2^-12), in double-float, each result rounded once. The coefficients are the double-float splits
+// of the binary64 values the oracle's C library (glibc 2.41, x64 and ARM64) uses.
+// Origin of the seven polynomial coefficients: Arm Optimized Routines, third_party/arm-optimized-routines/math/sincosf_data.c, Copyright (c) 2018-2019, Arm Limited, MIT OR Apache-2.0 WITH LLVM-exception.
+fn motion_exact_series(x:vec2<f32>)->vec4<f32>{
+    let z=trig_mul(x,x);
+    var s=vec2<f32>(-0.0001951729936990887,3.885231546207901e-12);
+    var s_terms=array<vec2<f32>,3>(vec2<f32>(0.008332177996635437,1.4950340965214082e-10),vec2<f32>(-0.16666655242443085,2.9874200890844804e-09),vec2<f32>(1.0,0.0));
+    for(var step=0u;step<3u;step++){s=trig_coeff(s_terms[step],trig_mul(s,z));}
+    var c=vec2<f32>(2.4390450562350452e-05,1.4121409391224665e-13);
+    var c_terms=array<vec2<f32>,4>(vec2<f32>(-0.0013886763481423259,-3.129527886835959e-11),vec2<f32>(0.04166662320494652,1.1939799149374153e-10),vec2<f32>(-0.5,2.7489177600870107e-09),vec2<f32>(1.0,0.0));
+    for(var step=0u;step<4u;step++){c=trig_coeff(c_terms[step],trig_mul(c,z));}
+    return vec4<f32>(trig_mul(s,x),c);
+}
 fn motion_exact_sincos(angle:f32)->vec2<f32>{
-    let n=i32(floor(angle*0.6366197723675814+0.5));let product=trig_product(f32(n),1.5707963705062866);
-    let head=trig_two_sum(angle,-product.x);let r=trig_two_sum(head.x,rounded_add(head.y,rounded_add(-product.y,f32(n)*4.3711390001862426e-8)));
-    let sc=select(trig_sincos_series(r),vec4<f32>(r,1.0,0.0),abs(r.x)<1e-6);let q=((n%4)+4)%4;var sn=sc.xy;var cs=sc.zw;
-    if(q==1){sn=sc.zw;cs=-sc.xy;}else if(q==2){sn=-sc.xy;cs=-sc.zw;}else if(q==3){sn=-sc.zw;cs=sc.xy;}
+    if(angle<0.000244140625){return vec2<f32>(angle,1.0);}
+    let scaled=trig_mul(vec2<f32>(angle,0.0),vec2<f32>(0.6366197466850281,2.5682552973194106e-08));let half=trig_two_sum(scaled.x,0.5);
+    var whole=floor(half.x);if(whole==half.x&&rounded_add(half.y,scaled.y)<0.0){whole=whole-1.0;}
+    let n=u32(whole);let product=whole*1.5707963705062866;let head=trig_two_sum(angle,-product);
+    let tail=trig_two_sum(head.x,whole*4.371138828673793e-08);
+    let r=trig_two_sum(tail.x,rounded_add(tail.y,rounded_add(head.y,whole*1.7763568394002505e-15)));
+    let sc=motion_exact_series(r);let q=n&3u;var sn=sc.xy;var cs=sc.zw;
+    if(q==1u){sn=sc.zw;cs=-sc.xy;}else if(q==2u){sn=-sc.xy;cs=-sc.zw;}else if(q==3u){sn=-sc.zw;cs=sc.xy;}
     return vec2<f32>(rounded_add(sn.x,sn.y),rounded_add(cs.x,cs.y));
 }
 //#endif

@@ -39,6 +39,8 @@ fn native_triangle_vertices(object:u32,prim:u32,kind:u32,time:f32)->TriangleVert
     // The motion pass without motion blur: a deforming mesh's plain triangles (SD_OBJECT_HAS_VERTEX_MOTION) are the
     // centre positions (frame 0).
     if(moving&&(flags&SD_OBJECT_HAS_VERTEX_MOTION)==0u){fail();result.error=1u;return result;}
+    // Its steps as validate_geometry_motion requires them: the motion pass reads them beside the centre positions.
+    if((flags&SD_OBJECT_HAS_VERTEX_MOTION)!=0u&&load_half(table_at(G_objects,object,SIZE_objects)+O_num_geom_steps)<2u){fail();result.error=1u;return result;}
 //#endif
     let at=table_at(G_tri_vindex,prim,SIZE_tri_vindex);let vi=vec3<u32>(load_word(at),load_word(at+4u),load_word(at+8u));
     var a=0u;var b=0u;var t=0.0;

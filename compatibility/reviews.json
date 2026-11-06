@@ -2824,7 +2824,7 @@
       "evidence": [
         "light-tree"
       ],
-      "notes": "Receiver light sets and emitter set membership on the flat distribution and on the per-receiver light trees, NEE and forward hits; shadow linking (blocker sets, dedicated-light kernels) refused.",
+      "notes": "Receiver light sets and emitter set membership on the flat distribution and on the per-receiver light trees, NEE and forward hits; shadow linking has its own row.",
       "implementation": [
         "native/cycles/lighting.cpp",
         "native/shaders/wavefront_light_tree.wgsl",
@@ -3062,9 +3062,10 @@
       "evidence": [
         "mnee"
       ],
-      "notes": "MNEE (shadow caustics) through GGX glass/refraction casters from point and sun lamps, distribution light sampling, opaque shadows; spot/area/background caustic lamps, the light tree, linking, AO, volumes and motion blur with caustics refused; anisotropic casters report error 2.",
+      "notes": "MNEE (shadow caustics) through GGX glass/refraction casters from point and sun lamps, the flat distribution and the light tree, opaque shadows, with light and shadow linking, AO and motion blur of receivers and deforming casters; spot/area/background caustic lamps, moving casters and volumes refused; anisotropic casters report error 2.",
       "implementation": [
         "native/cycles/mnee.cpp",
+        "native/shaders/wavefront_lighting.wgsl",
         "native/shaders/wavefront_mnee.wgsl"
       ],
       "tests": [
@@ -3092,6 +3093,74 @@
         "native/cycles/mnee_gate.cpp",
         "native/cycles/gate.cpp"
       ]
+    },
+    "KernelFeature:KERNEL_FEATURE_SHADOW_LINKING": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "evidence": [],
+      "implementation": [
+        "native/cycles/shadow_linking.cpp",
+        "native/shaders/wavefront_shadow_link_intersect.wgsl",
+        "native/shaders/wavefront_shadow_link_lamp.wgsl",
+        "native/shaders/wavefront_shadow_link_shade.wgsl",
+        "native/shaders/wavefront_closest.wgsl",
+        "native/shaders/wavefront_shadow_traversal.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_linking_gate.cpp",
+        "native/cycles/shadow_linking_reference.cpp",
+        "native/tools/shadow_linking_gate.py"
+      ],
+      "notes": "Blocker sets in both traversals and the dedicated light kernels on the flat distribution and the tree, the MIS pdf from both samplers; with the shadow catcher, AO, or volumes on the tree refused by name. Stays unassessed until the ledger step records its evidence checkpoint (native/tools/shadow_linking_gate.py)."
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "evidence": [],
+      "implementation": [
+        "native/cycles/shadow_linking.cpp",
+        "native/shaders/wavefront_shadow_link_intersect.wgsl",
+        "native/shaders/wavefront_shadow_link_lamp.wgsl",
+        "native/shaders/wavefront_shadow_link_shade.wgsl",
+        "native/shaders/wavefront_closest.wgsl",
+        "native/shaders/wavefront_shadow_traversal.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_linking_gate.cpp",
+        "native/cycles/shadow_linking_reference.cpp",
+        "native/tools/shadow_linking_gate.py"
+      ],
+      "classification": "shader-behavior",
+      "notes": "Blocker sets in both traversals and the dedicated light kernels on the flat distribution and the tree, the MIS pdf from both samplers; with the shadow catcher, AO, or volumes on the tree refused by name. Stays unassessed until the ledger step records its evidence checkpoint (native/tools/shadow_linking_gate.py)."
+    },
+    "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT": {
+      "workItems": [
+        "P07-01"
+      ],
+      "status": "unassessed",
+      "coverage": "unassessed",
+      "evidence": [],
+      "implementation": [
+        "native/cycles/shadow_linking.cpp",
+        "native/shaders/wavefront_shadow_link_intersect.wgsl",
+        "native/shaders/wavefront_shadow_link_lamp.wgsl",
+        "native/shaders/wavefront_shadow_link_shade.wgsl",
+        "native/shaders/wavefront_closest.wgsl",
+        "native/shaders/wavefront_shadow_traversal.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_linking_gate.cpp",
+        "native/cycles/shadow_linking_reference.cpp",
+        "native/tools/shadow_linking_gate.py"
+      ],
+      "classification": "shader-behavior",
+      "notes": "Blocker sets in both traversals and the dedicated light kernels on the flat distribution and the tree, the MIS pdf from both samplers; with the shadow catcher, AO, or volumes on the tree refused by name. Stays unassessed until the ledger step records its evidence checkpoint (native/tools/shadow_linking_gate.py)."
     }
   }
 }

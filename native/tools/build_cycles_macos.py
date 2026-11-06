@@ -10,7 +10,7 @@ include closure of kernel.metal is staged beside the host library.
 import argparse,difflib,importlib.util,json,re,shutil,subprocess,sys
 from pathlib import Path
 REPO=Path(__file__).resolve().parents[2];sys.path.insert(0,str(REPO/'native/tools'));sys.path.insert(0,str(REPO/'tools'))
-from cycles_source import SOURCE,verify as verify_cycles
+from cycles_source import SOURCE,verify as verify_cycles,remove_stale_copy
 from cycles_overlay import registration_overlay
 spec=importlib.util.spec_from_file_location('macos_dependencies',REPO/'tools/dependencies/build_macos.py')
 deps=importlib.util.module_from_spec(spec);spec.loader.exec_module(deps)
@@ -79,10 +79,11 @@ def closure(library,prefix):
 def platform_source():
  """Verified Cycles copy with the Apple ARM64 adaptation; the snapshot stays unchanged."""
  source=WORK/'cycles-source'
- if not source.exists():shutil.copytree(SOURCE,source)
  # Upstream's NEON half conversion relies on sse2neon to include arm_neon.h;
  # this profile has no sse2neon (same adaptation as the Linux ARM64 recipe).
- changed=['src/util/half.h'];before={name:(SOURCE/name).read_text() for name in changed};after=dict(before)
+ changed=['src/util/half.h'];remove_stale_copy(source,changed)
+ if not source.exists():shutil.copytree(SOURCE,source)
+ before={name:(SOURCE/name).read_text() for name in changed};after=dict(before)
  old='#pragma once\n'
  if after[changed[0]].count(old)!=1:raise RuntimeError('half.h adaptation anchor changed')
  after[changed[0]]=after[changed[0]].replace(old,old+'\n#if defined(__ARM_NEON) && !defined(__KERNEL_GPU__)\n#  include <arm_neon.h>\n#endif\n')

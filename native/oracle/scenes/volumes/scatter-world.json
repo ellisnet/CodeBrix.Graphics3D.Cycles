@@ -5308,8 +5308,57 @@
    "handle": "medium",
    "create": "shader",
    "graph": {
-    "nodes": "nodes",
-    "connect": "connect"
+    "nodes": [
+     {
+      "handle": "a",
+      "type": "absorption_volume",
+      "set": {
+       "density": 0.12,
+       "color": [
+        0.8,
+        0.65,
+        0.4
+       ]
+      }
+     },
+     {
+      "handle": "s",
+      "type": "scatter_volume",
+      "set": {
+       "density": 0.35,
+       "color": [
+        0.75,
+        0.8,
+        0.9
+       ],
+       "anisotropy": 0.3
+      }
+     },
+     {
+      "handle": "add",
+      "type": "add_closure"
+     }
+    ],
+    "connect": [
+     [
+      "a",
+      "Volume",
+      "add",
+      "Closure1"
+     ],
+     [
+      "s",
+      "Volume",
+      "add",
+      "Closure2"
+     ],
+     [
+      "add",
+      "Closure",
+      "output",
+      "Volume"
+     ]
+    ]
    },
    "set": {
     "emission_sampling_method": "none",

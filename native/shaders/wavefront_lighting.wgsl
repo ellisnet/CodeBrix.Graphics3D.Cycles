@@ -25,9 +25,19 @@ fn light_normalize_len(v:vec3<f32>)->vec4<f32>{
 fn light_basis(n:vec3<f32>)->MicrofacetBasis{var c:SvmClosure;c.N=n;return ggx_basis(c);}
 fn light_cone(n:vec3<f32>,angle:f32,random:vec2<f32>)->vec4<f32>{
     if(angle==0.0){return vec4<f32>(n,1.0);}
-    var xy=ggx_disk_sample(random);let r2=dot(xy,xy);let cosine=1.0-r2*angle;
-    xy*=sqrt(max(angle*(2.0-angle*r2),0.0));let b=light_basis(n);
-    return vec4<f32>(xy.x*b.X+xy.y*b.Y+cosine*n,(0.5*INV_PI)/angle);
+//#if VOLUME_LIGHT else     var xy=ggx_disk_sample(random);let r2=dot(xy,xy);let cosine=1.0-r2*angle;
+//#endif
+//#if VOLUME_LIGHT else     xy*=sqrt(max(angle*(2.0-angle*r2),0.0));let b=light_basis(n);
+//#endif
+//#if VOLUME_LIGHT else     return vec4<f32>(xy.x*b.X+xy.y*b.Y+cosine*n,(0.5*INV_PI)/angle);
+//#endif
+//#if VOLUME_LIGHT
+    // sample_uniform_cone with every product rounded before its sum and a correctly rounded square root: a volume's
+    // scatter position far from a sphere light magnifies a last-bit difference of the direction (native/DEVICE.md).
+    var xy=ggx_disk_sample(random);let r2=rounded_add(xy.x*xy.x,xy.y*xy.y);let cosine=rounded_add(1.0,-(r2*angle));
+    xy*=rounded_sqrt(max(angle*rounded_add(2.0,-(angle*r2)),0.0));let b=light_basis(n);
+    return vec4<f32>(rounded_add3(rounded_add3(xy.x*b.X,xy.y*b.Y),cosine*n),rounded_divide(0.15915494309189535,angle));
+//#endif
 }
 // Light CDF selection (shared with triangle_light_prefill).
 // Stage record of the invocation's light selection (NONE: select from the CDF here).
@@ -149,17 +159,23 @@ fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelecti
     }else{
         let spot=load_word(light+L_type)==LIGHT_SPOT;
         let radius=heap_float(light+L_radius);let r2=radius*radius;let delta=sd.P-position;
-        let d2=rounded_dot(delta,delta);let distance=rounded_sqrt(d2);let normal=delta/distance;
+//#if VOLUME_LIGHT else         let d2=rounded_dot(delta,delta);let distance=rounded_sqrt(d2);let normal=delta/distance;
+        let d2=rounded_dot(delta,delta);let distance=rounded_sqrt(d2);let normal=delta*rounded_divide(1.0,distance);
+//#endif
         ls.eval_fac=heap_float(light+L_point_eval);
         if(load_word(light+L_is_sphere)!=0u){
             var cosine:f32;var sampled_t= -1.0;
-            if(d2>r2){let ratio=r2/d2;let angle=select(0.5*ratio,1.0-sqrt(max(1.0-ratio,0.0)),ratio>0.0004);
+//#if VOLUME_LIGHT else             if(d2>r2){let ratio=r2/d2;let angle=select(0.5*ratio,1.0-sqrt(max(1.0-ratio,0.0)),ratio>0.0004);
+            if(d2>r2){let ratio=rounded_divide(r2,d2);let angle=select(0.5*ratio,rounded_add(1.0,-rounded_sqrt(max(rounded_add(1.0,-ratio),0.0))),ratio>0.0004);
+//#endif
                 let spot_angle=1.0-heap_float(light+L_spot_spread_cos);
                 if(spot&&angle>=spot_angle){let cone=light_cone(-heap_vec3(light+L_spot_dir),spot_angle,random.xy);ls.D=cone.xyz;ls.pdf=cone.w;
                     sampled_t=emitter_sphere_hit(sd.P,ls.D,position,radius);if(sampled_t<0.0){ls.pdf=0.0;return ls;}
                 }else{let cone=light_cone(-normal,angle,random.xy);ls.D=cone.xyz;ls.pdf=cone.w;
                     // The sampler's cosine is derived before transforming its direction.
-                    let disk=ggx_disk_sample(random.xy);cosine=1.0-dot(disk,disk)*angle;}
+//#if VOLUME_LIGHT else                     let disk=ggx_disk_sample(random.xy);cosine=1.0-dot(disk,disk)*angle;}
+                    let disk=ggx_disk_sample(random.xy);cosine=rounded_add(1.0,-(rounded_add(disk.x*disk.x,disk.y*disk.y)*angle));}
+//#endif
 
             }else{
                 if((r.runtime_flag&SR_BSDF_HAS_TRANSMISSION)!=0u){let z=1.0-2.0*random.x;let radial=sqrt(max(1.0-z*z,0.0));let phi=2.0*PI*random.y;
@@ -168,8 +184,14 @@ fn light_sample_lamp(index:u32,sd:SurfaceData,r:SvmResult,selection:LightSelecti
                 cosine=-dot(ls.D,normal);
             }
             if(spot&&d2>r2){ls.eval_fac*=spot_attenuation(light,-ls.D);if(ls.eval_fac==0.0){ls.pdf=0.0;return ls;}}
-            let root=sqrt(max(r2-d2+d2*cosine*cosine,0.0));ls.t=select(distance*cosine-select(-root,root,d2-r2>=0.0),sampled_t,sampled_t>=0.0);
-            ls.P=sd.P+ls.D*ls.t;let ng=surface_normalize(ls.P-position);ls.P=ng*radius+position;
+//#if VOLUME_LIGHT else             let root=sqrt(max(r2-d2+d2*cosine*cosine,0.0));ls.t=select(distance*cosine-select(-root,root,d2-r2>=0.0),sampled_t,sampled_t>=0.0);
+//#endif
+//#if VOLUME_LIGHT else             ls.P=sd.P+ls.D*ls.t;let ng=surface_normalize(ls.P-position);ls.P=ng*radius+position;
+//#endif
+//#if VOLUME_LIGHT
+            let root=rounded_sqrt(max(rounded_add(rounded_add(r2,-d2),d2*(cosine*cosine)),0.0));ls.t=select(rounded_add(distance*cosine,-select(-root,root,d2-r2>=0.0)),sampled_t,sampled_t>=0.0);
+            ls.P=rounded_add3(sd.P,ls.D*ls.t);let ng=surface_native_normalize(ls.P-position);ls.P=rounded_add3(ng*radius,position);
+//#endif
         }else{
             ls.P=position;if(radius>0.0){let b=light_basis(normal);let disk=ggx_disk_sample(random.xy);ls.P+=(b.X*disk.x+b.Y*disk.y)*radius;}
             let direction=light_normalize_len(ls.P-sd.P);ls.D=direction.xyz;ls.t=direction.w;

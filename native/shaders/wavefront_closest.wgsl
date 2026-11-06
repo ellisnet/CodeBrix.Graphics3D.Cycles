@@ -49,6 +49,17 @@ fn bounds_hit(origin:vec3<f32>,inv:vec3<f32>,tmin:f32,tmax:f32,node:u32,visibili
     return vec3<f32>(f32(mask),near0,near1);
 }
 struct NativeHit {t:f32,u:f32,v:f32,object:u32,prim:u32,kind:u32}
+//#if SHADOW_LINKING
+// intersection_skip_shadow_link (kernel/bvh/util.h): a shadow ray towards a shadow-linked emitter passes through
+// objects whose blocker set is not in the emitter's shadow set membership.
+fn shadow_link_skip(light_object:u32,object:u32)->bool{
+    if(light_object==NONE){return false;}
+    let membership=table_at(G_objects,light_object,SIZE_objects)+DL_O_shadow_set_membership;
+    let low=load_word(membership);let high=load_word(membership+4u);if(low==0xffffffffu&&high==0xffffffffu){return false;}
+    let blocker=load_word(table_at(G_objects,object,SIZE_objects)+DL_O_blocker_shadow_set);
+    return ((select(low,high,blocker>=32u)>>(blocker&31u))&1u)==0u;
+}
+//#endif
 fn trace_native_filtered(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,time:f32,visibility:u32,self_object:u32,self_prim:u32,light_object:u32,light_prim:u32)->NativeHit{
     var result=NativeHit(tmax,0.0,0.0,NONE,NONE,PRIM_TYPE_NONE);
     if(table_count(G_prim_index)==0u){return result;}
@@ -80,6 +91,9 @@ fn trace_native_filtered(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,
                     let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
                     if(prim_object==self_object&&prim==self_prim){continue;}
                     if(prim_object==light_object&&prim==light_prim){continue;}
+//#if SHADOW_LINKING
+                    if(shadow_link_skip(light_object,prim_object)){continue;}
+//#endif
                     if((load_word(table_at(G_prim_visibility,index,SIZE_prim_visibility))&visibility)==0u){continue;}
                     let vertices=native_triangle_vertices(prim_object,prim,kind&PRIMITIVE_ALL,time);if(vertices.error!=0u){return result;}
                     let va=vertices.a;let vb=vertices.b;let vc=vertices.c;
@@ -141,6 +155,10 @@ fn intersect_point_lights(index:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
         else if((state_byte(S_path_mnee,index)&MNEE_PATH_CULL_LIGHT_CONNECTION)!=0u&&load_word(light+MNEE_L_use_caustics)!=0u){continue;}
 //#endif
         if((flag&PATH_RAY_SHADOW_CATCHER_PASS)!=0u&&(shader&LIGHT_EXCLUDE_SHADOW_CATCHER)!=0u){continue;}
+//#if SHADOW_LINKING
+        // lights_intersect_impl<true>: indirect rays leave shadow-linked lamps to the dedicated light kernels.
+        if((visibility&VIS_CAMERA)==0u&&!shadow_link_membership_all(object)){continue;}
+//#endif
         if(state_word(S_isect_prim,index)==lamp&&state_word(S_isect_object,index)==object&&state_word(S_isect_type,index)==PRIMITIVE_LAMP){continue;}
 //#if LIGHT_LINKING
         // lights_intersect_impl: indirect rays skip lamps not linked to the receiver.

@@ -110,10 +110,8 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#if SVM_BSDF_FAMILIES
     surf_sampled_closure=0u;
 //#endif
-//#if SVM_BSDF_FAMILIES
-    // sample_uniform_disk of rand.xy, shared by the diffuse, velvet and Toon samplers (one inlined copy).
-    let family_disk=ggx_disk_sample(random.xy);
-//#endif
+    // sample_uniform_disk of rand.xy, shared by every closure's sampler (one inlined copy; only rand.z changes below).
+    let disk=ggx_disk_sample(random.xy);
 //#if !SUBSURFACE
     if(r.count>1u){var sum=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)){sum+=c.sample_weight;}}
         let pick=random.z*sum;var partial=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)){
@@ -139,7 +137,7 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
     if(c.kind==CLOSURE_BSDF_TRANSPARENT_ID){out.wo=-sd.wi;out.pdf=1e6;value=vec3<f32>(1e6);out.label=LABEL_TRANSMIT|LABEL_TRANSPARENT;
         if(data_float(D_background_transparent_roughness_squared_threshold)>=0.0){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
 //#if SVM_BSDF_FAMILIES
-    else if(surf_family(c.kind)){out=surf_family_sample(sd,c,rand,family_disk);value=out.eval;
+    else if(surf_family(c.kind)){out=surf_family_sample(sd,c,rand,disk);value=out.eval;
         if((out.label&LABEL_TRANSMIT)!=0u){let threshold=data_float(D_background_transparent_roughness_squared_threshold);
             if(threshold>=0.0&&(out.label&LABEL_DIFFUSE)==0u&&surf_roughness(c)<=threshold){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
         else if(out.label!=0u){shade_terminator=true;}}
@@ -147,13 +145,13 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
     else if(surf_microfacet(c.kind)){
 //#if !SVM_BSDF_BECKMANN
 //#if SVM_BSDF_MICROFACET else atomicOr(&heap[p(17u)/4u],2u);return out;
-//#if SVM_BSDF_THIN_WALL else         out=ggx_sample(sd,c,rand);value=out.eval;
+//#if SVM_BSDF_THIN_WALL else         out=ggx_sample(sd,c,rand,disk);value=out.eval;
         // bsdf_thin_glass_transmission_sample: singular pass-through, or GGX on the
         // mirrored direction against the flipped geometric normal.
         let thin=c.kind==CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID;var g=c;var gs=sd;
         if(thin){g.kind=CLOSURE_BSDF_MICROFACET_GGX_ID;gs.Ng=-sd.Ng;gs.wi=rounded_add3(sd.wi,-((2.0*c.N)*rounded_dot(sd.wi,c.N)));}
         if(thin&&c.alpha_x*c.alpha_y<=2e-10){out.wo=-sd.wi;out.pdf=1e6;out.eval=vec3<f32>(1e6);out.label=LABEL_TRANSMIT|LABEL_SINGULAR;}
-        else{out=ggx_sample(gs,g,rand);if(thin&&out.label!=0u){out.label=LABEL_TRANSMIT|LABEL_GLOSSY;}}
+        else{out=ggx_sample(gs,g,rand,disk);if(thin&&out.label!=0u){out.label=LABEL_TRANSMIT|LABEL_GLOSSY;}}
         value=out.eval;
 //#endif
         if((out.label&LABEL_TRANSMIT)!=0u){let threshold=data_float(D_background_transparent_roughness_squared_threshold);
@@ -163,12 +161,10 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#endif
     }
 //#if SVM_BSDF_PRINCIPLED
-    else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(sd,c,rand.xy);value=out.eval;shade_terminator=true;}
+    else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(sd,c,disk);value=out.eval;shade_terminator=true;}
 //#endif
     else{
-//#if SVM_BSDF_FAMILIES else         let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=surface_cos_hemisphere(select(c.N,-c.N,transmission),random.xy);
-        let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=surface_cos_hemisphere_disk(select(c.N,-c.N,transmission),family_disk);
-//#endif
+        let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=surface_cos_hemisphere_disk(select(c.N,-c.N,transmission),disk);
         out.wo=sampled.xyz;out.pdf=sampled.w;out.label=LABEL_DIFFUSE|select(LABEL_REFLECT,LABEL_TRANSMIT,transmission);
         let valid=select(dot(sd.Ng,out.wo)>0.0,dot(sd.Ng,out.wo)<0.0,transmission);
         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
@@ -346,9 +342,14 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
     value=select(value,vec3<f32>(0),(bitcast<vec3<u32>>(value)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
     let bounce=state_half(S_path_bounce,index);let limit=select(data_float(D_integrator_sample_clamp_direct),data_float(D_integrator_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
+//#if !VOLUME_SHADOW_CATCHER
     volume_guidance_pass(index,base,value);
+//#endif
 //#if SHADOW_CATCHER else     let flags=data_word(D_film_light_pass_flag);if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
     let flags=data_word(D_film_light_pass_flag);let sc_handled=sc_combined(state_word(S_path_flag,index),base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+//#endif
+//#if VOLUME_SHADOW_CATCHER
+    if(!sc_handled){volume_guidance_pass(index,base,value);}
 //#endif
 //#if SHADOW_CATCHER else     if(data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
     if(!sc_handled&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){film_rgb(base,data_word(D_film_pass_adaptive_aux_buffer),value*2.0);}
@@ -367,6 +368,12 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
         film_rgb(base,select(data_word(D_film_pass_glossy_indirect),data_word(D_film_pass_glossy_direct),bounce==1u),glossy*value);
         film_rgb(base,select(data_word(D_film_pass_transmission_indirect),data_word(D_film_pass_transmission_direct),bounce==1u),(vec3<f32>(1)-diffuse-glossy)*value);
         film_rgb(base,select(data_word(D_film_pass_diffuse_indirect),data_word(D_film_pass_diffuse_direct),bounce==1u),diffuse*value);}
+//#if VOLUME_LIGHT_PASSES
+    // film_write_emission_or_background_pass: indirectly visible through a volume.
+//#if SHADOW_CATCHER else     else if(p(20u)!=0u&&(flag&PATH_RAY_VOLUME_PASS)!=0u){film_rgb(base,select(data_word(D_film_pass_volume_indirect),data_word(D_film_pass_volume_direct),bounce==1u),value);}
+    else if(sc_light_passes(flag)&&p(20u)!=0u&&(flag&PATH_RAY_VOLUME_PASS)!=0u){film_rgb(base,select(data_word(D_film_pass_volume_indirect),data_word(D_film_pass_volume_direct),bounce==1u),value);}
+//#endif
+//#endif
 }
 //#if SHADOW_CATCHER
 // film_write_data_passes with only the shadow catcher passes in the data pass
@@ -480,8 +487,13 @@ fn light_selection_compute(index:u32,sd:SurfaceData,r:SvmResult,sample:bool,forw
         if((k==0u&&!(sample&&tree))||(k==1u&&!(forward&&tree))){continue;}
         var P=sd.P;var N=sd.N;var transmission=(r.runtime_flag&LT_SR_BSDF_HAS_TRANSMISSION)!=0u;var receiver=select(NONE,sd.object_id,light_link_enabled());var goal=0u;
         if(k==1u){
-            if((state_byte(S_path_visibility,index)&LT_PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return out;}
+//#if VOLUME_LIGHT_TREE else             if((state_byte(S_path_visibility,index)&LT_PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){fail();return out;}
+//#endif
             P=heap_vec3(state_address(S_ray_P,index,12u));N=heap_vec3(state_address(S_path_mis_origin_n,index,12u));
+//#if VOLUME_LIGHT_TREE
+            // light_tree_pdf from a volume: the previous segment (mis_origin_n holds its direction times length).
+            if((state_byte(S_path_visibility,index)&LT_PATH_RAY_VISIBILITY_VOLUME_SCATTER)!=0u){P=P-N;N=lt_native_normalize(N);lt_segment=true;lt_t=heap_float(state_address(S_ray_previous_dt,index,4u));}
+//#endif
             transmission=(flag&LT_PATH_RAY_MIS_HAD_TRANSMISSION)!=0u;receiver=light_link_receiver_forward(index);
             let offset=load_word(table_at(G_object_lookup_offset,sd.object_id,4u));let first=load_word(table_at(G_object_prim_offset,sd.object_id,4u));
             goal=load_word(table_at(G_triangle_to_tree,sd.prim-first+offset,4u));
@@ -490,6 +502,9 @@ fn light_selection_compute(index:u32,sd:SurfaceData,r:SvmResult,sample:bool,forw
         let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT,3u).xyz;
 //#endif
         let walk=light_tree_walk(k==0u,P,N,transmission,receiver,random.z,sd.object_id,goal);
+//#if VOLUME_LIGHT_TREE
+        lt_segment=false;
+//#endif
         if(k==1u){out.forward_pdf=walk.pdf;continue;}
         out.selection.random=random;
         if(walk.emitter>=0){let e=lt_emitter(u32(walk.emitter));out.selection.prim=bitcast<i32>(load_word(e+LTE_id));out.selection.visibility=load_word(e+LTE_visibility);
@@ -597,9 +612,17 @@ fn surface_light_combined(li:SurfaceLightInputs){
         volume_transparent_pass(index,base,(contribution.x+contribution.y+contribution.z)*(1.0/3.0));
         if(all(weight==vec3<f32>(1))){surf_finish(index,false);return;}
     }
+//#if SHADOW_LINKING
+    // integrate_surface_emission: indirect emission of shadow-linked surfaces goes through the dedicated light kernels.
+    let dedicated_emitter=(state_byte(S_path_visibility,index)&VIS_CAMERA)==0u&&!shadow_link_membership_all(sd.object_id);
+    let dedicated_flag=r.runtime_flag;if(dedicated_emitter){r.runtime_flag&=~SR_EMISSION;}
+//#endif
 //#if LIGHT_LINKING else if((r.runtime_flag&SR_EMISSION)!=0u){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0),heap_float(at+304u));}
     // integrate_surface_emission: an indirect ray sees only emitters linked to its receiver.
     if((r.runtime_flag&SR_EMISSION)!=0u&&light_link_forward_visible(index,sd.object_id)){surf_emission(index,base,sd,select(vec3<f32>(0),r.emission,abs(dot(sd.Ng,sd.wi))>0.0),heap_float(at+304u));}
+//#endif
+//#if SHADOW_LINKING
+    r.runtime_flag=dedicated_flag;
 //#endif
 //#if SUBSURFACE else     let probability=select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)!=0u);
     let probability=select(select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)!=0u),1.0,ss_exit_point);
@@ -686,7 +709,12 @@ fn surf_safe_divide3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
     }
     surf_next(index,sampled.label,r.runtime_flag);
     if((sampled.label&LABEL_TRANSMIT)!=0u){volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);}
-    surf_finish(index,true);
+//#if SHADOW_LINKING else     surf_finish(index,true);
+    // integrator_shade_surface: a non-transparent bounce looks for its dedicated lights first.
+    if((sampled.label&LABEL_TRANSPARENT)==0u){
+        let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[counter/4u+surf_queue()],1u);atomicAdd(&heap[counter/4u+DL_K_INTERSECT],1u);state_u16(S_path_queued_kernel,index,DL_K_INTERSECT);
+    }else{surf_finish(index,true);}
+//#endif
 }
 //#if DEBUG_OUTPUT
 // Diagnostic debug output (CODEBRIX_CYCLES_DEBUG_OUTPUT; pipelines.h

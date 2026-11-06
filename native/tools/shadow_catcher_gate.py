@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
 """Shadow catcher: state lockstep and images against the original CPU kernels, the
-volume refusal, ambient occlusion images, feature-combination images, and command replays of the recorded renders
+a volume without refusal, ambient occlusion images, feature-combination images, and command replays of the recorded renders
 (shadow_catcher_gate.cpp)."""
 import argparse
 import contextlib
@@ -48,14 +48,14 @@ def main():
         with (out/'stdout.txt').open('w') as stdout, (out/'stderr.txt').open('w') as stderr:
             subprocess.run([str(binary), str(out/'run')], stdout=stdout, stderr=stderr, check=True, timeout=1800)
         report = json.loads((out/'stdout.txt').read_text())
-        assert report['passed'] and report['cyclesAllocationBytesAfterCleanup'] == 0 and report['volumeRefused']
+        assert report['passed'] and report['cyclesAllocationBytesAfterCleanup'] == 0
         assert Path((out/'run/library.txt').read_text().strip()).resolve() == runtime.resolve()
         cases = {c['case']: c for c in report['cases']}
         assert sorted(cases) == list(range(STATE_CASES+IMAGE_CASES+1+AO_CASES+COMBINATION_CASES))
         for case in range(STATE_CASES):
             assert cases[case]['lockstep'] == 'local' and cases[case]['stateStages'] > 0 and cases[case]['repeatBitwiseDifferences'] == 0
         assert cases[1]['backgroundSplits'] > 0 and cases[8]['backgroundSplits'] > 0
-        assert 'shadow catcher with volumes' in cases[10]['message']
+        assert cases[10]['refused'] is False
         for case in range(STATE_CASES+IMAGE_CASES+1, STATE_CASES+IMAGE_CASES+1+AO_CASES):
             assert cases[case]['aoShadowPaths'] > 100 and cases[case]['aoUnoccluded'] > 10
         # Combination cases: shadow catcher with motion, the light tree, light linking, a spot lamp,

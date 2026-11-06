@@ -177,7 +177,7 @@ errors: textured plane through the Blender glTF mapping 5.1e-5 (D3D12) and
 5.4e-5 (Vulkan), glass 2.1e-5 and 2.5e-5, the others below 1e-6. Both report
 tier `full` and no warnings; the WGSL size guard prints its notice for
 `shade_background` and `prepare_surface` (1,429,639 and 1,375,228 bytes against
-1,110,000), which never changes the result.
+1,110,000, the threshold of that run), which never changes the result.
 
 ### 6. Oracle corpus **VALIDATED** (win-x64), one open finding
 
@@ -260,7 +260,7 @@ driver diagnostics (native/host/WINDOWS_X64.md, "Diagnostics for driver
 problems"; all off by default). Steps 3 to 6 were rerun on win-x64.
 
 - **Host build:** both RIDs, 0 warnings. The device gates now also include
-  `ao_render`, `ao_state`, `light_tree`, `mnee`, `mnee_render` and
+  `ao_render`, `ao_state`, `light_tree`, `shadow_linking`, `mnee`, `mnee_render` and
   `shadow_catcher` (built always, run with `--device-gates`).
   `mnee_reference.cpp` needed `ccl::fmaxf` (an unqualified `fmaxf` is ambiguous
   against the UCRT's).

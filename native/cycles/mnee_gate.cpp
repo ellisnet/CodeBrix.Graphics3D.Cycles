@@ -169,7 +169,7 @@ static std::vector<SlotField> shadow_fields(WebGPUDevice &d){
   F(shadow_path,queued_kernel,uint16_t,false) F(shadow_path,throughput,packed_float3,true) F(shadow_path,render_pixel_index,uint32_t,false)
   F(shadow_path,transmission_bounce,uint16_t,false) F(shadow_path,diffuse_bounce,uint16_t,false) F(shadow_path,bounce,uint16_t,false)
   F(shadow_path,glossy_bounce,uint16_t,false) F(shadow_path,transparent_bounce,uint16_t,false) F(shadow_path,lightgroup,uint8_t,false) F(shadow_path,flag,uint32_t,false)
-  F(shadow_path,bsdf_eval_average,float,true)
+  if(s.shadow_path.bsdf_eval_average){F(shadow_path,bsdf_eval_average,float,true)} // Not allocated with the light tree.
   F(shadow_ray,P,packed_float3,true) F(shadow_ray,D,packed_float3,true) F(shadow_ray,tmin,float,true) F(shadow_ray,tmax,float,true) F(shadow_ray,time,float,true)
   F(shadow_ray,dP,float,true) F(shadow_ray,dD,float,true) F(shadow_ray,self_light_object,int,false) F(shadow_ray,self_light_prim,int,false)
   // Ray self: the last shadow_isect slot (GPU size on the device, CPU size in the oracle state).
@@ -420,7 +420,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(m.maximum>total.maximum){total.maximum=m.maximum;total.maximum_field=m.maximum_field;}
   }
   exchange::finish();
-  // Refusal: a moving caustic caster (mnee_fixture.h variant 9) stops the first MNEE dispatch with its reason.
+  // Refusal: a moving caustic caster (mnee_fixture.h variant mnee_refused_moving_caster) stops the first MNEE dispatch with its reason.
   bool refused=false;
   if(exchange::gpu()&&!reference_policy::prepare_only()){
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;

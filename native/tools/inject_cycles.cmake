@@ -68,6 +68,7 @@ function(codebrix_add_cycles_device)
     "${CODEBRIX_NATIVE_ROOT}/cycles/mnee.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/volume.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/subsurface.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_linking.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/svm_layout.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/pipelines.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/device_tier.cpp"
@@ -243,6 +244,19 @@ function(codebrix_add_cycles_device)
   target_include_directories(codebrix_cycles_light_tree_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_light_tree_gate PRIVATE ${codebrix_device_libs})
+  # Shadow linking state and image gate (shadow_linking_gate.cpp).
+  add_executable(codebrix_cycles_shadow_linking_gate "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_linking_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_linking_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/volume_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/mnee_reference.cpp")
+  target_compile_features(codebrix_cycles_shadow_linking_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_shadow_linking_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_shadow_linking_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_shadow_linking_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_shadow_linking_gate PRIVATE ${codebrix_device_libs})
   # Shadow catcher: state lockstep, images and the volume refusal (shadow_catcher_gate.cpp).
   add_executable(codebrix_cycles_shadow_catcher_gate "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_catcher_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"

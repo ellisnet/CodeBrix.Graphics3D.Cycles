@@ -49,7 +49,10 @@
     else if(kernel==SC_K_SURFACE){
         let key=shader+p(11u)*(slot/p(12u));if(key>=p(10u)){fail();return;}
         store_word(p(8u)+slot*4u,key);atomicAdd(&heap[(p(9u)/4u)+key],1u);
-    }else{fail();return;}
+//#if VOLUME_SHADOW_CATCHER else     }else{fail();return;}
+    // INTERSECT_VOLUME_STACK re-inits the stack without non-catcher objects (integrator_path_init).
+    }else if(kernel!=SC_K_VOLUME_STACK){fail();return;}
+//#endif
     store_word(p(3u)+slot*4u,flag);
     atomicAdd(&heap[(p(13u)/4u)+kernel],1u);masked(p(2u)+slot*2u,kernel,16u);
 }

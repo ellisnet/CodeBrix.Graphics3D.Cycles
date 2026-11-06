@@ -8,6 +8,7 @@ from pathlib import Path
 REPO=Path(__file__).resolve().parents[2];sys.path.insert(0,str(REPO/'native/tools'))
 from build import ROOT,SOURCE,PACKAGE,verify_cycles,audit
 from build_cycles import overlay
+from cycles_source import remove_stale_copy
 from build_cycles_android import HOST_TARGETS,GATE_TARGETS
 from android_toolchain import environment
 from device_gate import sha,save
@@ -33,9 +34,10 @@ def main():
   assert all(sha(prefix/name)==digest for name,digest in dependency['libraries'].items())
   assert sha(deps.WORK/'toolchain.cmake')==dependency['toolchainSha256']
   verify_cycles();source=work/'cycles-source'
+  changed=['src/CMakeLists.txt','src/util/half.h'];remove_stale_copy(source,changed)
   if not source.exists():shutil.copytree(SOURCE,source)
   sources=inputs()
-  changed=['src/CMakeLists.txt','src/util/half.h'];before={name:(SOURCE/name).read_text() for name in changed};after=dict(before)
+  before={name:(SOURCE/name).read_text() for name in changed};after=dict(before)
   def replace(name,old,new):
    assert after[name].count(old)==1,('Cross source adaptation anchor changed',name)
    after[name]=after[name].replace(old,new)

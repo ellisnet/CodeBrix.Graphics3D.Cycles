@@ -53,17 +53,20 @@ fn ggx_disk_sample(r:vec2<f32>)->vec2<f32>{
 // Cycles sample_cos_hemisphere/make_orthonormals through the same rounding
 // adapters as the GGX disk: near the disk edge 1-len_squared cancels, so
 // driver-approximate trig/sqrt or contracted products change the direction.
-fn surface_cos_hemisphere(n:vec3<f32>,r:vec2<f32>)->vec4<f32>{
-    let d=ggx_disk_sample(r);let c=ggx_unit_sqrt(rounded_add(d.x*d.x,d.y*d.y));
+fn surface_cos_hemisphere(n:vec3<f32>,r:vec2<f32>)->vec4<f32>{return surface_cos_hemisphere_disk(n,ggx_disk_sample(r));}
+// surface_cos_hemisphere from a precomputed sample_uniform_disk point.
+fn surface_cos_hemisphere_disk(n:vec3<f32>,d:vec2<f32>)->vec4<f32>{
+    let c=ggx_unit_sqrt(rounded_add(d.x*d.x,d.y*d.y));
     var t=vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x);if(n.x==n.y&&n.x==n.z){t=vec3<f32>(n.z-n.y,n.x+n.z,-n.y-n.x);}
     t=surface_native_normalize(t);let b=rounded_cross(n,t);
     return vec4<f32>(rounded_add3(rounded_add3(d.x*t,d.y*b),c*n),c*INV_PI);
 }
-fn ggx_vndf(wi:vec3<f32>,ax:f32,ay:f32,random:vec2<f32>)->vec3<f32>{
+fn ggx_vndf(wi:vec3<f32>,ax:f32,ay:f32,random:vec2<f32>)->vec3<f32>{return ggx_vndf_disk(wi,ax,ay,ggx_disk_sample(random));}
+fn ggx_vndf_disk(wi:vec3<f32>,ax:f32,ay:f32,disk:vec2<f32>)->vec3<f32>{
     let v=ggx_normalize(vec3<f32>(ax*wi.x,ay*wi.y,wi.z));let lensq=ggx_positive_add(v.x*v.x,v.y*v.y);
     var x=vec3<f32>(1,0,0);var y=vec3<f32>(0,1,0);
     if(lensq>1e-7){x=vec3<f32>(-v.y,v.x,0)*rounded_divide(1.0,rounded_sqrt(lensq));y=rounded_cross(v,x);}
-    var t=ggx_disk_sample(random);let blend=0.5*rounded_add(1.0,v.z);let edge=ggx_unit_sqrt(t.x*t.x);t.y=rounded_add(edge,blend*rounded_add(t.y,-edge));
+    var t=disk;let blend=0.5*rounded_add(1.0,v.z);let edge=ggx_unit_sqrt(t.x*t.x);t.y=rounded_add(edge,blend*rounded_add(t.y,-edge));
     let h=rounded_add3(rounded_add3(t.x*x,t.y*y),ggx_unit_sqrt(ggx_positive_add(t.x*t.x,t.y*t.y))*v);
     return ggx_normalize(vec3<f32>(ax*h.x,ay*h.y,max(0.0,h.z)));
 }
@@ -98,11 +101,11 @@ fn ggx_evaluate(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec4<f32>{
     let reflection_pdf=ggx_reflection_pdf(f);let lobe_pdf=select(reflection_pdf,1.0-reflection_pdf,transmit);
     return vec4<f32>(select(f.reflection,f.transmission,transmit)*(factor/(1.0+lo+li)*c.energy_scale),factor*lobe_pdf/(1.0+li));
 }
-fn ggx_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>)->SurfaceSample{
+fn ggx_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>,disk:vec2<f32>)->SurfaceSample{
     var out:SurfaceSample;let ci=rounded_dot(c.N,sd.wi);if(ci<=0.0){return out;}
     let alpha2=c.alpha_x*c.alpha_y;var singular=alpha2<=2e-10;
     var h=c.N;var hi:vec3<f32>;var ii:vec3<f32>;
-    if(!singular){let b=ggx_basis(c);ii=vec3<f32>(rounded_dot(b.X,sd.wi),rounded_dot(b.Y,sd.wi),ci);hi=ggx_vndf(ii,c.alpha_x,c.alpha_y,random.xy);h=rounded_add3(rounded_add3(hi.x*b.X,hi.y*b.Y),hi.z*c.N);}
+    if(!singular){let b=ggx_basis(c);ii=vec3<f32>(rounded_dot(b.X,sd.wi),rounded_dot(b.Y,sd.wi),ci);hi=ggx_vndf_disk(ii,c.alpha_x,c.alpha_y,disk);h=rounded_add3(rounded_add3(hi.x*b.X,hi.y*b.Y),hi.z*c.N);}
     let ch=rounded_dot(h,sd.wi);let f=ggx_fresnel(c,ch);if(all(f.reflection==vec3<f32>(0))&&all(f.transmission==vec3<f32>(0))){return out;}
     let reflection_pdf=ggx_reflection_pdf(f);let transmit=random.z>=reflection_pdf;let inv_eta=rounded_divide(1.0,c.ior);
     out.wo=rounded_add3(2.0*ch*h,-sd.wi);if(transmit){out.wo=rounded_add3(rounded_add(inv_eta*ch,f.cos_transmit)*h,-inv_eta*sd.wi);}
@@ -124,8 +127,8 @@ fn sheen_value(c:SvmClosure,o:vec3<f32>,cosine:f32)->f32{
     let x=c.a*o.x+c.b*o.z;let y=c.a*o.y;let length2=x*x+y*y+o.z*o.z;let r=c.a/length2;return INV_PI*cosine*(r*r);
 }
 fn sheen_evaluate(c:SvmClosure,wo:vec3<f32>)->f32{let o=vec3<f32>(rounded_dot(wo,c.T),rounded_dot(wo,c.multiscatter),rounded_dot(wo,c.N));return sheen_value(c,o,max(o.z,0.0));}
-fn sheen_sample(sd:SurfaceData,c:SvmClosure,random:vec2<f32>)->SurfaceSample{
-    var out:SurfaceSample;let disk=ggx_disk_sample(random);let z=ggx_unit_sqrt(rounded_add(disk.x*disk.x,disk.y*disk.y));
+fn sheen_sample(sd:SurfaceData,c:SvmClosure,disk:vec2<f32>)->SurfaceSample{
+    var out:SurfaceSample;let z=ggx_unit_sqrt(rounded_add(disk.x*disk.x,disk.y*disk.y));
     let o=surface_native_normalize(vec3<f32>(rounded_add(disk.x,-z*c.b),disk.y,z*c.a));
     out.wo=rounded_add3(rounded_add3(o.x*c.T,o.y*c.multiscatter),o.z*c.N);out.label=LABEL_REFLECT|LABEL_DIFFUSE;
     if(rounded_dot(sd.Ng,out.wo)<=0.0){return out;}
@@ -138,13 +141,6 @@ fn sheen_sample(sd:SurfaceData,c:SvmClosure,random:vec2<f32>)->SurfaceSample{
 // one rounding of the double-float result before the exact 2^k scaling.
 // family_exp_parts: (m, k) with expf(x) = m 2^k, so a caller can scale a product
 // back once at the end: the CPU keeps subnormal intermediates that the GPU flushes.
-// surface_cos_hemisphere from a precomputed sample_uniform_disk point.
-fn surface_cos_hemisphere_disk(n:vec3<f32>,d:vec2<f32>)->vec4<f32>{
-    let c=ggx_unit_sqrt(rounded_add(d.x*d.x,d.y*d.y));
-    var t=vec3<f32>(n.z-n.y,n.x-n.z,n.y-n.x);if(n.x==n.y&&n.x==n.z){t=vec3<f32>(n.z-n.y,n.x+n.z,-n.y-n.x);}
-    t=surface_native_normalize(t);let b=rounded_cross(n,t);
-    return vec4<f32>(rounded_add3(rounded_add3(d.x*t,d.y*b),c*n),c*INV_PI);
-}
 fn family_exp(x:f32)->f32{let e=family_exp_parts(vec2<f32>(x,0.0));return ldexp(e.x,i32(e.y));}
 // The argument is a double-float pair (high, low).
 fn family_exp_parts(x2:vec2<f32>)->vec2<f32>{

@@ -87,11 +87,17 @@ fn volume_boundary_backfacing(hit:NativeHit,direction:vec3<f32>)->bool{
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK){fail();return;}
     let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=vec3<f32>(0,0,1);let size=data_word(D_volume_stack_size);
-    var result:VolumeHits;volume_all_hits(origin,direction,VIS_CAMERA,2u*size,&result);if(load_word(p(17u))!=0u){return;}
+//#if VOLUME_SHADOW_CATCHER else     var result:VolumeHits;volume_all_hits(origin,direction,VIS_CAMERA,2u*size,&result);if(load_word(p(17u))!=0u){return;}
+    // SHADOW_CATCHER_PATH_VISIBILITY: the catcher path's stack excludes non-catcher objects.
+    let catcher_path=(state_word(S_path_flag,index)&SC_PATH_PASS)!=0u;
+    var result:VolumeHits;volume_all_hits(origin,direction,select(VIS_CAMERA,VIS_CAMERA<<16u,catcher_path),2u*size,&result);if(load_word(p(17u))!=0u){return;}
+//#endif
     // Native qsort orders hits by distance; retain traversal order for equal t.
     for(var i=1u;i<result.count;i++){let ht=result.t[i];let ho=result.object[i];let hp=result.prim[i];var j=i;while(j>0u&&result.t[j-1u]>ht){result.t[j]=result.t[j-1u];result.object[j]=result.object[j-1u];result.prim[j]=result.prim[j-1u];j--;}result.t[j]=ht;result.object[j]=ho;result.prim[j]=hp;}
     var objects:array<u32,VS_MAX>;var shaders:array<u32,VS_MAX>;var enclosed:array<u32,VS_MAX_HITS>;var enclosed_count=0u;var count=0u;
-    if(data_word(D_background_volume_shader)!=NONE){objects[0]=data_word(D_background_object_index);shaders[0]=data_word(D_background_volume_shader);count=1u;}
+//#if VOLUME_SHADOW_CATCHER else     if(data_word(D_background_volume_shader)!=NONE){objects[0]=data_word(D_background_object_index);shaders[0]=data_word(D_background_volume_shader);count=1u;}
+    if(data_word(D_background_volume_shader)!=NONE&&!catcher_path){objects[0]=data_word(D_background_object_index);shaders[0]=data_word(D_background_volume_shader);count=1u;}
+//#endif
     for(var i=0u;i<result.count;i++){let hit=NativeHit(result.t[i],0.0,0.0,result.object[i],result.prim[i],PRIMITIVE_TRIANGLE);
         if(volume_boundary_backfacing(hit,direction)){
             var add=true;for(var j=0u;j<enclosed_count;j++){if(enclosed[j]==hit.object){add=false;break;}}
@@ -102,5 +108,17 @@ fn volume_boundary_backfacing(hit:NativeHit,direction:vec3<f32>)->bool{
     if(load_word(p(17u))!=0u){return;}
     for(var i=0u;i<count;i++){store_word(volume_stack_address(index,i,VS_object),objects[i]);store_word(volume_stack_address(index,i,VS_shader),shaders[i]);}
     store_word(volume_stack_address(index,count,VS_object),NONE);store_word(volume_stack_address(index,count,VS_shader),NONE);
+//#if VOLUME_SHADOW_CATCHER
+    // integrator_intersect_next_kernel_after_shadow_catcher_volume: on to the catcher surface, sorted.
+    if(catcher_path){
+        let prim=state_word(S_isect_prim,index);if(prim==NONE){fail();return;}
+        let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
+        if((load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags)&SC_SD_HAS_RAYTRACE)!=0u||p(15u)==0u){fail();return;}
+        let key=shader+data_word(D_max_shaders)*(index/load_word(p(7u)+S_sort_partition_divisor));if(key>=p(15u)){fail();return;}
+        let sort=load_word(p(7u)+S_sort_key_counter+DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE*POINTER_SIZE);atomicAdd(&heap[(sort+key*4u)/4u],1u);state_u32(S_path_shader_sort_key,index,key);
+        let queue=load_word(p(7u)+S_queue_counter);atomicSub(&heap[queue/4u+DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK],1u);atomicAdd(&heap[queue/4u+DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE],1u);
+        state_u16(S_path_queued_kernel,index,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE);return;
+    }
+//#endif
     let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[counter/4u+DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK],1u);atomicAdd(&heap[counter/4u+K_CLOSEST],1u);state_u16(S_path_queued_kernel,index,K_CLOSEST);
 }

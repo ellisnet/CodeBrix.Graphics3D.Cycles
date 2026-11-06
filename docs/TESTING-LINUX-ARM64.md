@@ -368,8 +368,9 @@ explicit `--target` arguments.
 
 The oracle runner is not part of the cross-build (`native/host/targets.cmake`
 adds it only when not cross-compiling). Build it standalone against the ARM64
-host with the cross toolchain file the dependency build wrote (not yet run for
-this RID):
+host with the cross toolchain file the dependency build wrote; under `qemu-aarch64`
+it reproduces the films of the native ARM64 oracle bit for bit (native/DEVICE.md,
+"Which arithmetic each flow of these three gates covers"):
 
 ```sh
 cmake -S native/oracle -B native/work/linux/linux-arm64/oracle-build -DCMAKE_BUILD_TYPE=Release \

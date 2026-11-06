@@ -161,7 +161,8 @@ static unsigned rejections(const DeviceInfo &info){unsigned rejected=0;
     if(test==1){data.bvh.have_motion=1;reason="motion flag/table mismatch";}
     // Shadow paths through volumes are supported (VOLUME_SHADOW); path guiding stays refused.
     if(test==2){data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional integration";}
-    if(test==3){data.kernel_features|=KERNEL_FEATURE_SHADOW_LINKING;reason="optional integration";}
+    // Shadow linking is implemented; its combination with AO stays refused.
+    if(test==3){data.kernel_features|=KERNEL_FEATURE_SHADOW_LINKING|KERNEL_FEATURE_AO_ADDITIVE;reason="shadow linking with ambient occlusion";}
     if(test==4||test==10)states[0].shadow_path.flag|=PATH_RAY_SHADOW_FOR_AO;
     if(test==5){data.bvh.root=INT_MAX;}
     if(test==6||test==11)states[0].shadow_path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND;

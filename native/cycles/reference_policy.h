@@ -44,6 +44,19 @@
 //                                     reference belongs to these inputs. (Raw table bytes are
 //                                     not compared: some Cycles records carry uninitialized
 //                                     padding.)
+//
+// The two exchange passes do no GPU work, but most gates still open a WebGPU device for them. A
+// machine without an adapter (a Linux ARM64 gate binary under user-mode emulation) can still run
+// the reference pass:
+//
+//   CODEBRIX_CYCLES_EXCHANGE_CPU_DEVICE=1
+//                                     (with ..._SCENE_DUMP or ..._SCENE_LOAD, gates that support
+//                                     it: emitter_sample, triangle_sample, light_tree) prepare the
+//                                     scene on the Cycles CPU device instead. The loaded tables
+//                                     replace everything the preparation made, so the reference
+//                                     is the same bit for bit; a dump pass then records the scene
+//                                     as the CPU device prepares it (a diagnostic only). Unset,
+//                                     nothing changes.
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -131,6 +144,7 @@ inline void record_local(const std::string &key,const std::vector<float> &local)
   if(!file)throw std::runtime_error("Could not write local reference "+key);
 }
 inline bool reference_only(){return environment("CODEBRIX_CYCLES_SCENE_LOAD")!=nullptr;}
+inline bool cpu_device_exchange(){return environment("CODEBRIX_CYCLES_EXCHANGE_CPU_DEVICE")&&(prepare_only()||reference_only());}
 // Fixed gate inputs that travel with the scene (for example the emitter probe's path states,
 // whose directions are normalized with the host's float3 arithmetic).
 struct Input {std::string name;void *data;size_t bytes;};

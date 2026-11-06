@@ -20,6 +20,7 @@ std::string lighting_layout(){
   constant("L_is_sphere",offsetof(KernelLight,spot.is_sphere));constant("L_sun_angle",offsetof(KernelLight,sun.one_minus_cosangle));
   constant("L_spot_dir",offsetof(KernelLight,spot.dir));constant("L_spot_cos",offsetof(KernelLight,spot.cos_half_spot_angle));
   constant("L_spot_smooth",offsetof(KernelLight,spot.spot_smooth));constant("L_spot_spread_cos",offsetof(KernelLight,spot.cos_half_larger_spread));
+  out<<"//#if VOLUME_LIGHT_SHAPES\n";constant("L_spot_ray_segment_dp",offsetof(KernelLight,spot.ray_segment_dp));out<<"//#endif\n";
 #define AREA(member) constant("L_area_" #member,offsetof(KernelLight,area.member))
   AREA(axis_u);AREA(axis_v);AREA(len_u);AREA(len_v);AREA(dir);AREA(invarea);AREA(tan_half_spread);AREA(normalize_spread);
 #undef AREA

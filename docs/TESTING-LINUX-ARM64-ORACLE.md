@@ -125,13 +125,10 @@ echo "$RUNNER"; ls -l "$HOSTLIB"
   Embree too (static, NEON on ARM64; it needs no extra package and no tool beyond
   section 2). The CPU oracle does not use Embree: `cpu-arm64-linux` keeps Cycles'
   BVH2 (native/DEVICE.md, open item 46).
-- On a checkout that already has an earlier Linux ARM64 build, first remove the
-  generated Cycles copy, or `build_cycles_linux_arm64.py` stops with an
-  `AssertionError` in `verify_copy` whenever the pinned Cycles import changed:
-
-  ```sh
-  rm -rf native/work/linux/linux-arm64/host/cycles-source
-  ```
+- On a checkout that already has an earlier Linux ARM64 build,
+  `build_cycles_linux_arm64.py` replaces a generated Cycles copy that predates the
+  pinned import (`native/work/linux/linux-arm64/host/cycles-source`) and prints a
+  line saying so.
 
 - `build_cycles_linux_arm64.py` checks that the CPU kernels are at the fixed oracle
   baseline and fails otherwise. `--device-set` builds the default set (including

@@ -97,7 +97,7 @@ public class CapabilityReportTests
             "transmission_indirect", "transmission_color", "depth", "position", "normal", "roughness", "uv", "object_id", "material_id", "motion",
             "motion_weight", "cryptomatte", "aov_color", "aov_value", "mist", "render_time", "sample_count", "shadow_catcher", "shadow_catcher_sample_count",
             "shadow_catcher_matte", "denoising_albedo", "denoising_normal", "denoising_specular_albedo", "denoising_roughness", "denoising_depth",
-            "denoising_backward_motion", "denoising_specular_motion", "volume_majorant", "volume_majorant_sample_count");
+            "denoising_backward_motion", "denoising_specular_motion", "volume_majorant", "volume_majorant_sample_count", "volume_direct", "volume_indirect");
         report.BackendScopes["webgpu"].RenderTimeRejections.Should().NotBeEmpty();
     }
 

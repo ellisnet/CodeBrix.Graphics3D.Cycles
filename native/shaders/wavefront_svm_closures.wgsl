@@ -610,13 +610,14 @@ fn vp_sample_cos(c:SvmClosure,rand:f32)->f32{
     return 1.0;
 //#endif
 }
-// volume_phase_equal for the closure merge of overlapping volumes.
-fn vp_equal(a:SvmClosure,b:SvmClosure)->bool{
-    if(a.kind!=b.kind){return false;}
-    if(a.kind==VP_CLOSURE_VOLUME_RAYLEIGH_ID){return true;}
-    if(a.kind==VP_CLOSURE_VOLUME_DRAINE_ID){return a.roughness==b.roughness&&a.a==b.a;}
-    if(a.kind==VP_CLOSURE_VOLUME_FOURNIER_FORAND_ID){return a.a==b.a&&a.b==b.b&&a.ior==b.ior;}
-    return a.roughness==b.roughness;
+// volume_phase_equal for the closure merge of overlapping volumes, on the closures' storage addresses
+// (svm_closure_read's offsets; volume_closure_add in wavefront_volume.wgsl says why).
+fn vp_equal(a:u32,b:u32)->bool{
+    let kind=load_word(a+28u);if(kind!=load_word(b+28u)){return false;}
+    if(kind==VP_CLOSURE_VOLUME_RAYLEIGH_ID){return true;}
+    if(kind==VP_CLOSURE_VOLUME_DRAINE_ID){return heap_float(a+32u)==heap_float(b+32u)&&heap_float(a+36u)==heap_float(b+36u);}
+    if(kind==VP_CLOSURE_VOLUME_FOURNIER_FORAND_ID){return heap_float(a+36u)==heap_float(b+36u)&&heap_float(a+40u)==heap_float(b+40u)&&heap_float(a+C_ior)==heap_float(b+C_ior);}
+    return heap_float(a+32u)==heap_float(b+32u);
 }
 //#endif
 //#if VOLUME_PHASES

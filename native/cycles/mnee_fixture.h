@@ -12,8 +12,9 @@
 // deformation motion blur on the floor and wall receivers; 8 case 1 with the slab caster and the
 // floor deforming (the pinned walk takes a deforming caster's centre-frame corners against its
 // deformed intersection, so these walks mostly fail on the CPU too: the state gate compares
-// their outcomes and iteration counts). Variant 9 (not a gated case): case 0 with the caster
-// sphere moving, which the device refuses (mnee.cpp).
+// their outcomes and iteration counts). 9, 10, 11 and 12: cases 0, 1, 2 and 4 on the integrator's light tree; 13 and 14:
+// case 4 with light linking (the floor and the wall each linked to their own caustic or ordinary lamps), on the flat CDF
+// and on the tree; 15, 16 and 17: cases 5, 6 and 7 on the tree. Variant 18 (not a gated case): case 0 with the caster sphere moving, which the device refuses (mnee.cpp).
 #include "object_motion_fixture.h"
 #include "deforming_motion_fixture.h"
 #include "scene/scene.h"
@@ -26,10 +27,12 @@
 #include "scene/shader_graph.h"
 #include "scene/shader_nodes.h"
 #include <cmath>
-constexpr int mnee_cases=9;
-// The geometry and lamps of cases 5-8 are those of case 0 or 1.
-inline int mnee_base(int mode){return mode==8?1:mode>=5?0:mode;}
-constexpr int mnee_refused_moving_caster=9;
+constexpr int mnee_cases=18;
+// The geometry and lamps of cases 5-17 are those of cases 0, 1, 2 or 4.
+inline int mnee_base(int mode){return mode<5?mode:mode<=7||mode==9||mode>=15?0:mode==8||mode==10?1:mode==11?2:4;}
+constexpr int mnee_refused_moving_caster=18;
+inline bool mnee_uses_tree(int mode){return (mode>=9&&mode<=12)||mode==14||(mode>=15&&mode<=17);}
+inline bool mnee_uses_linking(int mode){return mode==13||mode==14;}
 // Cases whose CPU walks sample MNEE paths (at least five).
 inline bool mnee_samples(int mode){const int base=mnee_base(mode);return (base==0||base==1)&&mode!=8;}
 inline ccl::Shader *mnee_shader(ccl::Scene &scene,int kind){
@@ -71,10 +74,11 @@ inline void mnee_fixture(ccl::Scene &scene,int variant,ccl::Shader *emitter){
   else casters.push_back(mnee_sphere(scene,mnee_shader(scene,1),make_float3(-.1f,-.95f,.6f),1.f));
   if(mode==2)casters.push_back(mnee_box(scene,mnee_shader(scene,3),make_float3(1.3f,-2.f,-.2f),make_float3(2.1f,-1.f,.6f)));
   for(auto c:casters)c->set_is_caustics_caster(true);
-  if(variant==5){scene.integrator->set_ao_bounces(1);scene.integrator->set_ao_factor(.5f);scene.integrator->set_ao_distance(1.2f);scene.integrator->set_ao_additive_factor(.7f);}
-  if(variant==6)object_motion_fixture(scene,*floor,2);
-  if(variant==9)object_motion_fixture(scene,*casters[0],1);
-  if(variant==7){deforming_motion_fixture(scene,*floor,1);deforming_motion_fixture(scene,*wall,0);}
+  if(variant==5||variant==15){scene.integrator->set_ao_bounces(1);scene.integrator->set_ao_factor(.5f);scene.integrator->set_ao_distance(1.2f);scene.integrator->set_ao_additive_factor(.7f);}
+  if(variant==6||variant==16)object_motion_fixture(scene,*floor,2);
+  if(variant==mnee_refused_moving_caster)object_motion_fixture(scene,*casters[0],1);
+  if(mnee_uses_tree(variant))scene.integrator->set_use_light_tree(true);
+  if(variant==7||variant==17){deforming_motion_fixture(scene,*floor,1);deforming_motion_fixture(scene,*wall,0);}
   if(variant==8){deforming_motion_fixture(scene,*casters[0],0);deforming_motion_fixture(scene,*floor,1);}
   for(int lamp=0;lamp<(mode==4?2:1);lamp++){
     Light *light;
@@ -82,6 +86,7 @@ inline void mnee_fixture(ccl::Scene &scene,int variant,ccl::Shader *emitter){
     else{auto point=scene.create_node<PointLight>();point->set_radius(mode==1?.3f:0.f);point->set_is_sphere(mode==1);light=point;light->set_strength(make_float3(160,150,140));}
     light->set_use_mis(true);light->set_use_caustics(lamp==0);
     array<Node*> slots;slots.push_back_slow(emitter);light->set_used_shaders(slots);auto object=scene.create_node<Object>();object->set_geometry(light);
+    if(mnee_uses_linking(variant)){floor->set_receiver_light_set(1);wall->set_receiver_light_set(2);object->set_light_set_membership(lamp==0?(1ull<<0)|(1ull<<1):(1ull<<0)|(1ull<<2));}
     object->set_tfm(mode==2?transform_rotate(-1.35f,make_float3(1,0,0))*transform_rotate(.2f,make_float3(0,0,1)):
                     transform_translate(lamp?make_float3(-2.5f,2.2f,-1.5f):make_float3(.15f,2.2f,.5f)));
   }

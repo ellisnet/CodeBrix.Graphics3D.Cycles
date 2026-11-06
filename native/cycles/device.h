@@ -157,7 +157,7 @@ class WebGPUDevice final:public Device {
   uint32_t volume_closures=0;size_t volume_closure_bytes=0;
   // Volume direct light (volume.cpp, VOLUME_LIGHT): the light segment and light entries of the surface module
   // and their per-input records.
-  cbc::Pipeline volume_segment,volume_light;
+  cbc::Pipeline volume_segment,volume_light,volume_tree_select,volume_light_triangle;
   // The indirect phase scatter with phase functions beyond Henyey-Greenstein (volume module, VOLUME_PHASES).
   cbc::Pipeline volume_phase;
   // Paths through heterogeneous volumes (volume module, VOLUME_HETEROGENEOUS).
@@ -221,7 +221,7 @@ class WebGPUDevice final:public Device {
   // Manifold next-event estimation: the seven INTERSECT_MNEE entries, the surface
   // stage's cleanup entry and their GPU-private per-path records.
   static constexpr unsigned mnee_entries=7;
-  std::array<cbc::Pipeline,mnee_entries> mnee_pipelines;cbc::Pipeline mnee_cleanup;
+  std::array<cbc::Pipeline,mnee_entries> mnee_pipelines;cbc::Pipeline mnee_cleanup,mnee_select;
   uint32_t mnee_records=0;size_t mnee_record_bytes_allocated=0;
   std::map<uint32_t,device_image*> images;
   bool image_info_dirty=false;
@@ -267,6 +267,11 @@ class WebGPUDevice final:public Device {
   void enqueue_mnee(int,const DeviceKernelArguments&);
   void enqueue_subsurface(int,const DeviceKernelArguments&);void validate_subsurface();
   void validate_mnee() const;
+  void validate_shadow_linking() const;
+  // Shadow linking (shadow_linking.cpp): DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT and SHADE_DEDICATED_LIGHT.
+  cbc::Pipeline dedicated_intersect,dedicated_lamp,dedicated_tree,dedicated_shade;
+  uint32_t dedicated_records=0;size_t dedicated_record_bytes=0;
+  void enqueue_dedicated_light(DeviceKernel,int,const DeviceKernelArguments&);
   void update_state(const IntegratorStateGPU&);
   uint32_t scene_tables();
   // Host recovery (Phase E3, native/host ABI.md "Device errors"): clears a

@@ -150,6 +150,13 @@ std::string wavefront_layout(){
 #undef KERNEL_STRUCT_ARRAY_MEMBER
 #undef KERNEL_STRUCT_END
 #undef KERNEL_STRUCT_END_ARRAY
+  // Shadow linking (wavefront_shadow_link_*.wgsl, the traversal's blocker filter): one region, so other modules are unchanged.
+  source<<"//#if SHADOW_LINKING\n";
+  constant("DL_K_INTERSECT",DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT);constant("DL_K_SHADE",DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT);
+  constant("DL_O_shadow_set_membership",offsetof(KernelObject,shadow_set_membership));constant("DL_O_blocker_shadow_set",offsetof(KernelObject,blocker_shadow_set));
+  constant("DL_SD_HAS_ONLY_VOLUME",SD_HAS_ONLY_VOLUME);constant("DL_VOLUME_BOUNDS_MAX",VOLUME_BOUNDS_MAX);constant("DL_MAX_INTERSECTIONS",1024);
+  constant("DL_PATH_RAY_SHADOW_FOR_LIGHT_LINKING",PATH_RAY_SHADOW_FOR_LIGHT_LINKING);constant("DL_RECORD_BYTES",32);constant("DL_D_transparent_max_bounce",offsetof(KernelData,integrator.transparent_max_bounce));
+  source<<"//#endif\n";
   constant("VS_HAS_VOLUME",SD_HAS_VOLUME);constant("VS_OBJECT_HAS_VOLUME",SD_OBJECT_HAS_VOLUME);
   constant("VS_MAX",MAX_VOLUME_STACK_SIZE);constant("VS_MAX_HITS",2*MAX_VOLUME_STACK_SIZE);constant("VS_BOUNDS_MAX",VOLUME_BOUNDS_MAX);
   constant("S_volume_stack",offsetof(IntegratorStateGPU,volume_stack));

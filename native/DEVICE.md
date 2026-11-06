@@ -619,8 +619,9 @@ and 63 are the last free bits of the 64-bit mask.
   full differential), strength, distance, invert and object space. Background
   evaluation stores zero, as the host background node mask has no bump feature.
 - `NODE_ENTER/LEAVE_BUMP_EVAL` (`bump.h`) save and restore P and dP. The
-  undisplaced-position branch needs true displacement and reports
-  unsupported (16).
+  undisplaced-position branch is ported with true displacement (the
+  `SVM_BUMP_UNDISPLACED` region, bit 142); a module built without that region
+  reports unsupported (16) if it finds the attribute.
 - Derivative variants keep (value, d/dx, d/dy) in adjacent stack slots and
   apply the first-order bump offsets. Geometry: P/N/Ng/I/uv (tangent reports
   16). Texture coordinates: object, normal (smooth `triangle_smooth_normal`
@@ -1008,7 +1009,7 @@ Originating and light primitives are excluded by their native object/primitive
 identities. The stages preserve native shadow-state and queue-counter semantics
 and write combined, adaptive auxiliary, light-group and surface direct/indirect
 film passes. Transparent shadows, volumes, AO, shadow linking and shadow catchers
-remain explicit errors. This initial shadow-stage checkpoint preceded the
+remained explicit errors at this checkpoint. This initial shadow-stage checkpoint preceded the
 point/sun light-sampling and shadow-state integration recorded below; stage tests
 alone do not prove a complete direct-light render.
 
@@ -1788,10 +1789,61 @@ change (practical must pass, strict reported, NaN/Inf fail). Host scene preparat
 imitate another ISA. Android x64 keeps the x64 references.
 
 **Tablet sampler and light-tree gates (the maintainer's ruling).** The exception to the device-CPU judgement above: on
-the Samsung SM-X700, `triangle_sample`, `emitter_sample` and `light_tree` are judged on the glibc device-scene flow,
-and the numbers against the tablet's own CPU are reported beside them, not gated. The reason is the one below: these
+the Samsung SM-X700, `triangle_sample`, `emitter_sample` and `light_tree` are gated on the **product flow**: the GPU in
+`arm64-scalar` against an ARM64 glibc reference, on the scene the tablet prepared (tables below). The x64 flow is reported
+beside it, and so are the numbers against the tablet's own CPU; neither is gated. The reason is the one below: these
 probes run `acosf` and `atan2f` paths where the tablet's bionic libm is not correctly rounded, while the WGSL and the
-ARM64 gold standard (glibc 2.41) are. The criterion is unchanged.
+ARM64 gold standard (glibc 2.41) are. The criterion is unchanged. In the x64 flow the GPU generates the reference oracle's
+arithmetic (`CODEBRIX_CYCLES_REFERENCE_IMPORT`), as every other device-scene gate does. Results of the x64 flow on the tablet:
+
+| Gate | Components | GPU vs glibc: practical / strict / maximum | Tablet CPU vs glibc: practical / maximum |
+| --- | --- | --- | --- |
+| `triangle_sample` | 45,056 | 0 / 865 / 4.88e-4 | 67 / 0.743 |
+| `emitter_sample` | 13,442 | 0 / 132 / 9.06e-6 | 1 / 0.202 |
+| `light_tree` (8 cases, films and samples) | 548,864 | 0 / 17,774 / 1.45e-2 | 15 / 0.0555 |
+
+The same gates in the product-default arithmetic against the tablet's CPU stop at their first difference and are
+reported: `triangle_sample` `Emitter sample=43 field=2 got=0.181877 expected=0.181771`, `emitter_sample` `Emitter
+sample=4093 field=8 got=920.510071 expected=920.712097`, `light_tree` `Sample field=4 probe index=513 got=2.203171
+expected=2.200990`.
+
+**Which arithmetic each flow of these three gates covers.** Both flows run on the tablet, on the scene the tablet
+prepared, and judge the GPU against a glibc CPU computed from that scene. They differ in the arithmetic on both sides,
+so only the second one gates what a consumer renders on this device:
+
+| Flow | GPU arithmetic | CPU reference | Gates the product arithmetic? |
+| --- | --- | --- | --- |
+| x64 flow (the table above) | `x64-sse4.2` (reference import selects it) | Linux x64 glibc gate binary | No |
+| Product flow | `arm64-scalar`, the Android ARM64 product default (`CODEBRIX_CYCLES_WGSL_ARITHMETIC=arm64-scalar`, which takes precedence over the reference import) | Linux ARM64 glibc gate binary, cross-built at the oracle baseline, under `qemu-aarch64` | Yes |
+
+Results of the product flow on the tablet, with the x64 flow of the same build beside it:
+
+| Gate | Components | Product flow: practical / strict / maximum | x64 flow: practical / strict / maximum | Tablet CPU vs ARM64 glibc: practical / maximum | Tablet CPU vs x64 glibc: practical / maximum |
+| --- | --- | --- | --- | --- | --- |
+| `triangle_sample` | 45,056 | 0 / 866 / 4.88e-4 | 0 / 865 / 4.88e-4 | 24 / 1.53e-3 | 67 / 0.743 |
+| `emitter_sample` | 13,442 | 0 / 128 / 9.06e-6 | 0 / 132 / 9.06e-6 | 1 / 0.202 | 1 / 0.202 |
+| `light_tree` (8 cases, films and samples) | 548,864 | 0 / 17,886 / 1.45e-2 | 0 / 17,774 / 1.45e-2 | 0 / 2.86e-5 | 15 / 0.0555 |
+
+The eight `light_tree` replays in the product arithmetic pass against the same reference (largest error 1.22e-4). Mixing
+the arithmetics fails, in both directions: the GPU in `arm64-scalar` against x64 glibc gives 44, 0 and 9 practical
+failures, and the GPU in `x64-sse4.2` against ARM64 glibc gives 44, 0 and 9 (`triangle_sample` stops at sample 319,
+`light_tree` at case 1). `emitter_sample` cannot tell the two arithmetics apart. A reference with one value multiplied by
+1.001 fails each of the three gates, including one numeric sample field and one film value of `light_tree`.
+
+The reference pass is run on the x64 machine:
+
+- Build the gates and the oracle runner for Linux ARM64 (`native/tools/build_cycles_linux_arm64.py --target
+  codebrix_cycles_host --target codebrix_cycles_triangle_sample_gate --target codebrix_cycles_emitter_sample_gate
+  --target codebrix_cycles_light_tree_gate`; the runner as in docs/TESTING-LINUX-ARM64.md).
+- Prove QEMU first, at the commit under test: render committed scenes with `cpu-arm64-linux` through the runner under
+  `qemu-aarch64 -L /usr/aarch64-linux-gnu` and compare every film bitwise with
+  `native/evidence/linux-arm64-cpu-oracle-<date>/`. One film that is not identical means QEMU is not usable for this, and
+  the reference must come from a native ARM64 machine.
+- `native/tools/android_reference.py scene-reference --bin DIR` then takes a DIR of wrappers named like the gates, each
+  running the ARM64 gate under QEMU with `CODEBRIX_CYCLES_EXCHANGE_CPU_DEVICE=1`. There is no GPU adapter under QEMU, and
+  this variable makes the exchange passes prepare the scene on the Cycles CPU device (native/cycles/reference_policy.h).
+  The loaded tables replace what the preparation made: on Linux x64 the references from the CPU device and from the
+  WebGPU device are byte-identical for the three gates (18 of 18 files).
 
 **Why bionic is a diagnostic.** Cycles calls the C library's binary32 functions (`safe_acosf` and
 `safe_asinf` in light and emitter sampling, `atan2f`/`sinf`/`cosf`/`tanf`/`expf`/`logf`/`powf` in
@@ -1848,7 +1900,7 @@ Reference data flow per Android gate:
 
 | Gate (Android) | Before | After |
 | --- | --- | --- |
-| `triangle_sample`, `emitter_sample` (sampler arrays) | on-device bionic CPU | device-scene glibc reference; bionic diagnostic |
+| `triangle_sample`, `emitter_sample` (sampler arrays), `light_tree` (sampler arrays and films) | on-device bionic CPU | device-scene glibc reference; bionic diagnostic. On the Samsung SM-X700: gated on the product flow against ARM64 glibc, the x64 flow reported beside it ("Which arithmetic each flow of these three gates covers") |
 | Image gates from `lighting_gate.cpp` (`lighting`, `lighting_mis`, `broad_lighting`, `transparent_lighting`, `triangle_lighting`, `feature_combination`, `object_motion_render`, `deforming_motion_render`) | on-device bionic CPU film | device-scene glibc film; bionic film diagnostic |
 | `render_gate.cpp` independent image (`glass_render`, `microfacet_render`, `render`, volume renders) | on-device bionic CPU film | Linux-prepared glibc film (`android_reference.py export`); no scene exchange yet |
 | `render_gate.cpp` lockstep stage checks (in the device-scene flow) | on-device bionic CPU, with the device's own arithmetic adapters on the GPU | **stage-state exchange** (2026-10-23): the device run records every stage's GPU input and output; the Linux x64 glibc gate judges them from the device's dumped scene (`android_reference.py stage-judge`); the GPU uses the reference oracle's adapters; `CODEBRIX_RENDER_LOCAL_LOCKSTEP=1` keeps the earlier local check as a diagnostic |
@@ -1902,7 +1954,7 @@ M2) counts as passing, a refused or masked feature does not.
 | Device | RID | GPU route | Correctly rounded reference |
 | --- | --- | --- | --- |
 | Linux x64 desktop (Intel UHD ADL-S, Mesa 25.0.7) | linux-x64 | WGSL on Vulkan | itself (glibc 2.41) |
-| Samsung SM-X700 (Adreno 730) | android-arm64 | WGSL on Vulkan | Linux x64, device-scene flow |
+| Samsung SM-X700 (Adreno 730) | android-arm64 | WGSL on Vulkan | Linux x64, device-scene flow; `triangle_sample`, `emitter_sample` and `light_tree` gated against Linux ARM64 glibc (product flow) |
 | HP 87FE (Intel Xe, Mesa 24.0.8) | android-x64 | WGSL on Vulkan | Linux x64, device-scene flow |
 | **Mac mini 2018 (Intel UHD 630)** | osx-x64 | WGSL on Metal (runtime 1.0.300.210, precise math) | Linux x64 (docs/TESTING-MACOS-X64.md) |
 
@@ -2835,8 +2887,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    Linux-prepared glibc films). Follow-up: move the remaining state gates onto the glibc flow; the on-device CPU
    then judges nothing. Android builds use the oracle's no-contraction, no-reciprocal-math rule (not its ISA
    baseline): the same code prepares the scene the device's GPU renders.
-6. **Not yet ported** [14]: tangent and motion-triangle smooth-normal derivatives
-   (rejected, error 16); particle/hair/point info nodes (the IES texture, light falloff
+6. **Not yet ported** [14]: the Geometry node's tangent output (the derivative form always, the plain form on an
+   object) and motion-triangle smooth-normal derivatives (rejected, error 16; the Tangent node and its derivative
+   form are ported, `NODE_TANGENT_DERIVATIVE`, `normal_gate`); particle/hair/point info nodes (the IES texture, light falloff
    and sky texture nodes are ported, see "Entry splits, cameras, sampling patterns, adaptive sampling and lamps";
    true displacement, with the bump-state branch that needs the undisplaced position, is ported, feature bits 140-142;
    the Volume Coefficients and Principled Volume nodes are ported, see "Shader-defined volumes"). The AOV output nodes are ported (see "Film passes, light groups, AOVs, cryptomatte and denoising
@@ -2864,7 +2917,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
 14. **Texture-sampling last-bit parity.** Image texture lookups still differ from the CPU in the last bit (1,356
    components at 1 spp on the bench, max 3.6e-7). The bench's closest component is at 0.59 of the practical
    tolerance on Linux, and the HP against Linux WGSL at 0.91. Recommended next small kernel follow-up.
-15. **Motion arithmetic last bits.** `motion_acos` rounds pi - acos(|x|) in two steps and is one ULP off for about
+15. (resolved, see "Resolved" below) Was: **Motion arithmetic last bits.** `motion_acos` rounds pi - acos(|x|) in two steps and is one ULP off for about
    9% of negative inputs; the shared decomposed-motion interpolation (`wavefront_motion.wgsl`) leaves strict
    differences with camera motion (1,616). Both are within the practical bound; fixing them changes motion films.
 16. **macOS recipes at the fixed baseline.** The macOS arm64 and x64 recipes apply the fixed-baseline flags but are
@@ -2892,10 +2945,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    (see "Remaining SVM BSDFs and the bevel, raycast and radial tiling nodes").
 19. (resolved, see "Resolved" below) Was: **MNEE on the Adreno 730 (Samsung SM-X700).** The `INTERSECT_MNEE`
    dispatches stopped with the invalid-data error (mask 1) in `mnee` and `mnee_render`; the Adreno 650 failed the same way.
-20. **MNEE with the light tree (refused).** Caustic scenes with the integrator's light tree, light or shadow
-   linking, AO, volumes or motion blur are refused before rendering ("Manifold next-event estimation (caustics)");
-   MNEE would call the light tree's selection in its own entry. Shadow linking is the next lighting work (Milestone 2,
-   wave B); the light-tree combination is open with it.
+20. (resolved, see "Manifold next-event estimation (caustics)" and "Shadow linking") Was: **MNEE with the light tree (refused).** MNEE with the light tree and with light or shadow linking renders.
 21. (resolved in merge wave 8 part 1c, see "Resolved" below) Was: **Volume gate rejection text (merge wave 8).** The shadow catcher with volumes now has its own refusal ("WebGPU
    shadow catcher with volumes not implemented"); `codebrix_cycles_volume_gate` rejection case 9 still expects
    "optional volume integration", so the volume gate and the all-lanes `volume_boundary_gate` (its world regression)
@@ -2943,7 +2993,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    flush-to-zero explicitly (`velvet_ftz`), because the driver's own flushing point depends on how it compiles the
    chain. The bounce and image gates of fixture set 3 therefore differ from the CPU oracle in path state at these paths
    (velvet only, about 100 path evaluations in the bounce gate and 12 paths in the image gate's stages). With the CPU
-   oracle run with the x86 FTZ and DAZ bits set, every difference disappears (0 mismatches), and the films equal the
+   oracle run with flush-to-zero set (x86 FTZ and DAZ, AArch64 FPCR.FZ), every difference disappears (0 mismatches), and the films equal the
    normal CPU films within the practical criterion (0 failures, the CPU films with and without FTZ are bit-identical).
    Such a difference is judged on the film (practical criterion), with the difference and the flush-to-zero evidence
    reported; the rule applies to the velvet closure only. The BSDF family gates implement it (`surface_gate.cpp`,
@@ -2951,8 +3001,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    `surface_reference.cpp`): an evaluation or lockstep stage that differs from the normal CPU oracle passes only when
    every differing path's evaluated closures contain a velvet closure, the queue counters differ only together with
    such a path's next kernel, the stage's film matches the normal CPU oracle, and the whole stage (state, film and
-   counters) matches the same CPU oracle run with the FTZ and DAZ bits set on the gate's thread for that call (x86-64;
-   other hosts have no such oracle and report the difference as a failure). The independent image of `bsdf3_render`
+   counters) matches the same CPU oracle run with flush-to-zero set on the gate's thread for that call (x86-64 MXCSR
+   FTZ and DAZ; AArch64 FPCR.FZ, the one bit that does both; other hosts have no such oracle and report the difference
+   as a failure). The independent image of `bsdf3_render`
    is judged against the normal CPU render as before. Every accepted difference is listed (`VELVET-RULE` lines on
    stderr and `<prefix>.velvet-rule.txt`) and counted in the report (`velvetSubnormalRule`); any other difference
    fails the gate. On the Android devices the stages are recorded and judged on Linux x64 (stage-state exchange): the
@@ -2960,7 +3011,11 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    input, and its report carries the same counts. Pinned Cycles-with-Metal flushes the same way: on the Apple
    M2 Pro every binary32 arithmetic operation reads a subnormal operand as zero and writes a result below FLT_MIN as
    zero, with fast math on and off, and its velvet films are within the practical criterion of every CPU film
-   (`native/evidence/cycles-oracles-macos-metal-comparison-20261031/`).
+   (`native/evidence/cycles-oracles-macos-metal-comparison-20261031/`). On the Samsung SM-X700, whose gates judge
+   against its own CPU, the AArch64 oracle accepts the same set as Linux and the HP: `bsdf3_bounce` 2,804 differences at
+   104 velvet paths in 24 evaluations, `bsdf3_render` 255 at 12 paths in 10 stages, 0 FTZ mismatches in both. The negative
+   controls (the velvet value or the Oren-Nayar value times 1.001, as a WGSL override) fail both gates with no
+   difference accepted.
 30. **Radial tiling with two sides (refused).** Sides at most 2 with a
    roundness strictly between 0 and 1: the CPU
    outputs are binary32 rounding residue (tangent and secant of the binary32 pi/2, cancellation of terms near 1e14,
@@ -2982,9 +3037,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
 
 33. **MNEE with a moving caustic caster (refused).** With object motion on a caustic caster, about 34 of 5,800 walks
    of the state gate's fixture end with another outcome or iteration count than the CPU's, although the `MNEE_MOTION`
-   motion transforms are host-exact (iteration-0 constraint norms one ULP apart). Not isolated; candidates are glibc's
-   sinf/cosf, which are not correctly rounded for about 0.65% / 0.015% of arguments in [1e-4, 0.5] (the device's are),
-   and the moving instance's traversal. Moving and deforming receivers and deforming casters render.
+   motion transforms are host-exact (iteration-0 constraint norms one ULP apart). Not isolated when it was refused; the
+   candidates were glibc's sinf/cosf, which the motion transforms now reproduce (item 15), and the moving instance's
+   traversal. The refusal has not been retried since. Moving and deforming receivers and deforming casters render.
 34. **AO / bevel / raycast `only_local` from a transform-applied object in a scene with instances (refused, error 16).**
    The pinned BVH2 local traversal starts at the scene root there (the object has no own BVH) and runs its triangle
    loop over the instance leaves' negative primitive addresses: the CPU result is undefined, so there is nothing to
@@ -3043,12 +3098,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
 41. (resolved, see "Resolved" below) Was: **Samsung SM-X700: MNEE with a moving receiver.** `mnee_render` and the
    `mnee` state gate's case 6 (object motion on the caustic receiver) missed the moving floor in both arithmetics.
 42. (resolved, see "Resolved" below) Was: **The bench HDRI scene's `prepare_surface` above the size guard.**
-43. **A Principled superset group's `shade_surface` above the compile envelope.** In the Principled render gate's
-   superset check (`principled_gate.py`, `specialization_check.py` groups), one group's surface module compiles
-   `shade_surface` to 61,059 Intel backend instructions (997,567 inlined bytes), above the 60,000 envelope (the
-   bump-correction term `surf_bump` is now the pinned `bsdf_G<GGX>` form, about 7,800 inlined bytes per copy, two
-   copies in `shade_surface`). Scene-specialized Principled modules and every committed oracle scene stay inside the
-   envelope (worst 58,730, `shade_surface` of `subsurface/principled-marble`). Not yet fixed: the group needs splitting or the entry needs room.
+43. (resolved, see "Resolved" below) Was: **A Principled superset group's `shade_surface` above the compile envelope.**
 44. **Cryptomatte material slot order on the WebGPU device.** In the oracle scene `passes/cryptomatte` the
    `CryptoMaterial00`/`CryptoMaterial01` passes of the WebGPU film once had one pixel whose two material ids were
    stored in the other slot order than the CPU film (`slotOrderDiff` 1, judged as one practical failure per pass).
@@ -3089,12 +3139,66 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    arithmetic, the noise density and the octree extrema not being bit-identical to the CPU's). Correctly rounded
    divisions in that step did not remove it and moved a flip into a committed scene, so the validated arithmetic stays.
    Every committed heterogeneous and ray-marching scene is perfect; the exact fix is due only if this appears in a
-   committed scene.
+   committed scene. It did once, on scalar ARM64: `volumes/ray-marching-heterogeneous-point` is fixed (see "Ray marching's
+   channel pick on scalar ARM64" under Resolved). That fix is on the ray-marching path, so the probes stay open: in x64 WGSL
+   against the x64 CPU three of the four probe variants still fail (3, 3 and 4 practical; one variant is perfect). Inference,
+   not tested: the same class, since `vh_step` still uses the driver's `exp` and `log`, so "inherent last-bit arithmetic"
+   above may be too pessimistic.
+48. (resolved, see "Resolved" below) Was: **Moving and deforming emissive quad: one bright film component off the CPU, without shadow linking.** Found with the shadow linking gate's former case 7 (the same scene with memberships at the defaults and set 0 gives the same numbers: component 2016 actual 1.277440, expected 0.552540; object motion alone or deformation alone pass). A next-event ray at a sample near the panel's diagonal grazes the panel's other triangle at the ray's end (blocker the light's own object, t equal to tmax in six digits): the CPU's ray is blocked, the device's is not. INFERENCE: the last bits of item 15 decide a decision in this fold. The gate then carried a moving emitter and a deforming emitter separately.
+49. (resolved, see "Resolved" below) Was: **A volume scene and then a scene without volumes on one device.** The second render stopped with invalid data (mask 1), no image.
+50. (resolved, see "Resolved" below) Was: **`volumes/scatter-world` and `volumes/world-volume-point` have no box medium.**
+51. (replaced by item 53) Was: **Volumes with a finite spherical lamp inside the medium.** The cause is now known; item 53 carries it.
+52. **Heterogeneous medium: an intermittent wrong path on Intel (Linux; cause not found).**
+   `codebrix_cycles_volume_gate` cases 35 and 55 (equiangular sampling without MIS) sometimes fail in a whole gate run with
+   `shadow_path.throughput` NaN or a `path.bounce` integer mismatch, while the same binary passes on other runs. The same
+   paths recur between runs, so it depends on the data as well as on chance. The failing record holds a direct closure count
+   of 0 although a direct scatter was recorded, so the phase evaluation divides by a zero weight sum. It is not tied to host
+   load: whole-gate repeats of one binary failed 1 of 8 runs with no other work of ours and 3 of 11 with six CPU burners or
+   a compile running, always at case 55. Case 55 alone, with the same paths failing, fails between none of 15 runs and half of
+   them from batch to batch, so nothing here measured a rate well. Waiting for the device after every dispatch does not stop it
+   (3 of 12 failed against 1 of 12 without, same binary), nor does `INTEL_DEBUG=sync` (2 of 12), which rules out overlapping
+   submissions and visibility between dispatches. llvmpipe passed the 2 runs it was given. The source shape moves it too: stores added to trace the entry hid the failure (0 of 12 runs), and a
+   `volume_enabled` test one call deeper in `shade_shadow_transparent` left one path of a dispatch unprocessed in the
+   captures examined, until the next dispatch took it (the film stayed right). A captured replay of the same scene also gave
+   one wrong film value, 1.96002 against 1.96533. Register spills are the same in the passing and failing shapes, and these
+   entries compile SIMD8 anyway. Inference, not proved: an invocation of the longest entries takes a wrong branch inside one
+   dispatch, in the driver, the hardware or a race within the dispatch; nothing here separates those. Eight repeats of three heterogeneous
+   scenes were all perfect against the CPU. The gate is not relaxed: such a run is a failure, so a volume gate run can fail
+   on a good tree.
+53. **A finite sphere lamp inside a medium: a last-bit branch on the lamp's surface (accepted by the maintainer as a documented deviation, like item 47; the two reproducer scenes are not in the corpus).** A path that hits
+   the lamp from the medium continues through it, and its next segment starts on the sphere, one float past the hit.
+   `point_light_sample` branches there on `d_sq > r_sq`, within rounding: the two sides give different points for
+   equiangular sampling, so one path's direct light differs by a large factor (one traced case: device `direct_t` 0.359
+   against 0.2265, from a ray origin 1, 1 and 16 ulps off), and the volume guiding filter then spreads that pixel. A scattering
+   box with a radius 0.4 sphere inside it fails 358 of 6144 film components (max 0.0601), one with a radius 0.5 sphere across
+   its top face 6 of 6144 (max 4.22e-3). A point lamp of radius 0 has no such surface, and the committed volume scenes keep
+   their lamps outside the box. Inference for the last bit: the device's `expf` and `logf` in the distance chain are
+   correctly rounded and glibc's are not (measured on 300,000 inputs: `logf` differs on 0.74%, `expf` on 0.07%), so
+   bit-identity with one oracle would take that oracle's C library algorithms and would not hold for the others.
 Resolved, or closed under the device reference policy:
+- [49 of this list] **A volume scene and then a scene without volumes on one device: RESOLVED.** The device's specialization only grows (`enabled_features`), so the volume regions stayed in the next scene's modules, and `vl_copy_volume_stack` wrote `0 + shadow*4` with no stack allocated, into the error word, the stack header and the SVM stack region at the bottom of the heap. `volume_enabled()` now guards `vl_copy_volume_stack`, the shadow stage's medium test and `sc_background_continue`. Reproduced by `shadow_catcher_gate` cases 11 and 12 after case 10 (mask 1, then mask 0x80000000; alone they passed); the gate now runs case 10 before cases 7-9, so transparent shadows run on those modules too, and all 23 cases pass. Non-volume modules are unchanged. Superset mode was not run for this. Separately, the split module was never re-specialized on a device (`shadow_catcher_pipelines` tested only that it existed); also fixed.
+- [50 of this list] **`volumes/scatter-world` and `volumes/world-volume-point` had no box medium: RESOLVED.** `author_volumes.py scene()` reused the name `graph` for the world's graph, so the medium shader was written with `"nodes": "nodes", "connect": "connect"` and `scatter-world` built no volume kernel. The world's graph is now `world_graph`. Both scene documents changed, and their CPU films with them.
+- [43 of this list] **A Principled superset group's `shade_surface` above the compile envelope: RESOLVED.** Superset
+  group 0 of the Principled render gate compiled `shade_surface` to 61,059 Intel instructions (997,567 inlined bytes,
+  16.3 bytes per instruction, denser than the 16.9 the size guard's comment stated at that time). The two `surf_bump` copies are
+  38,914 of those bytes; `surf_sample` held three copies of the disk sample `ggx_disk_sample` (150,336 bytes), in the
+  GGX, sheen and diffuse branches, although one sampled closure uses one, on the same `rand.xy`. `surf_sample` now
+  computes the disk once and hands it to every sampler (the form the BSDF families already had). The arithmetic is
+  unchanged, so no feature bit or module variant is needed. Group 0 `shade_surface`: 54,325 instructions, 897,335
+  bytes. Every entry of every group of the glass, Principled and node render superset checks, each group dumped on its
+  own, is within the envelope (worst 55,850, `shade_surface_light`, unchanged), every group's films bit-identical to
+  the specialized run. The worst committed scene entry, `shade_surface` of `subsurface/principled-marble`, goes from
+  58,730 to 51,996 instructions (1,031,634 to 931,610 bytes). In shared WGSL: every device compiles it.
+- [15 and 48 of this list] **Motion arithmetic last bits and the moving and deforming emissive quad: RESOLVED.** A next-event ray ends on its sampled triangle, so near a quad's diagonal it also meets the other triangle at its very end, with one edge function of `ray_triangle_intersect` at zero. Which side wins follows the last bit of the object-space ray, so of the motion transform. The ray of item 48 gave U = 0 on the CPU (a hit, blocked) and 1.19e-6 on the device (outside the fold): tmax and t agree, the ray's object-space P is 2 ULP off. Three things were different from the pinned kernel, and all three are now what it computes:
+  - `motion_normalize4` divided each lane on SSE hosts. `float4 / float` has no SIMD form in `math_float4.h`: it multiplies by the reciprocal on every host. (`float3 / float` does differ per host, which is where the old rule came from.)
+  - The host-exact transforms (the `MNEE_MOTION` regions) ran only with caustics or colour passes. They now run in every scene with object, deformation or camera motion (`FILM_MOTION_EXACT`), for every WGSL RID.
+  - `quat_interpolate`'s `sinf` and `cosf` were correctly rounded. glibc 2.41's are not: it evaluates one polynomial pair in binary64 and rounds once, which misrounds about 1% of sinf and 0.02% of cosf arguments. `motion_exact_sincos` now evaluates the same polynomials on the same reduction in double-float and rounds once.
+  With those, the moving objects' transforms and inverses of the gate scene are bit-equal to the CPU kernels' (case 12 of `shadow_linking_gate`, 4,096 times per object, 196,608 words, 0 different; the Linux driver requires 0). Over 16 million arguments the new sine and cosine differ from glibc's on 3 (sin 2, cos 1), each within a few 1e-9 ULP of a rounding tie of the binary64 value, where double-float cannot decide. With camera motion the rays are now exact (strict differences 1,616 -> 0). `motion_acos` remains for one node (`wavefront_svm_nodes.wgsl`); the default lines of the regions now compile only into modules of scenes without motion, which never reach them. Motion films change in their last bits: the 41 existing motion scenes stay perfect, and against the previous films of the 39 that have one the largest change of a component is 3.9e-6. Gate: `shadow_linking_gate` case 12 (one emitter both moving and deforming). Oracle: `light-motion/moving-deforming-emitter`, whose only light is that emitter (18 practical failures, largest 8.55e-3, with the previous arithmetic; perfect now, strict 45, largest 1.43e-6).
+- **Plain triangles on a deforming mesh without valid motion steps: the check was missing with `FILM_MOTION_DEFORM`.** The motion pass without motion blur keeps a deforming mesh as plain triangles, so that region relaxed the type-against-flag check in `native_triangle_vertices`, and with it `shader_data_gate`'s invalid case 4 (the vertex-motion flag with one geometry step on a plain triangle) went unreported on every Linux run; this also stopped `transparent_shadow_gate.py` at that step. The region now requires at least two steps on a flagged object, as the host's `validate_geometry_motion` does (12 of 12 rejections in all four modes of the gate). Valid scenes do not reach the new check.
 - [42 of this list] **The bench HDRI scene's `prepare_surface` above the size guard: RESOLVED.** With a world
   Environment Texture, `prepare_surface` carried the environment projections (the equirectangular arctangent and
   arccosine adapters) although it evaluates only the hit triangles' shaders: 1,113,668 inlined bytes on the device's
-  own build of `bench_01-hdri`, above the 1,110,000-byte size guard (53,555 Intel instructions). `prepare_surface` now
+  own build of `bench_01-hdri`, above the size guard's threshold of that time, 1,110,000 bytes (53,555 Intel instructions). `prepare_surface` now
   leaves out the SVM node regions no triangle shader reaches (`surface_unused_svm_features`, scene specialization only,
   as `prepare_surface_raytrace` does for the raytrace queue) and is built on its own pipeline when there are any;
   scenes without such regions keep it in the shared surface build. `bench_01-hdri`'s `prepare_surface` is now
@@ -3126,6 +3230,40 @@ Resolved, or closed under the device reference policy:
   raytrace-node `prepare_surface_raytrace` is 1,100,976 inlined bytes (1,113,806 before, over the size guard). The
   node-world gate's `shade_background` entries were above the size guard before and still are (1,335,455 to 1,465,410
   bytes, at most 45,436 instructions).
+- **Volume closure merge on the Adreno 730.** Creating `shade_volume`, `shade_volume_heterogeneous` and
+  `shade_volume_ray_marching` for a volume shader with the noise texture failed in the driver (`AdrenoVK-0: Failed to
+  link shaders`, then `Parent device is lost`, at about 195-250 MB process peak, with no GPU fault): every
+  `volumes/heterogeneous-*` and `volumes/ray-marching-{heterogeneous-*,max-steps}` scene. Compile-only probes on the
+  tablet: `shade_volume` links without the noise handler, without the `NODE_CLOSURE_BSDF` handler or without the closure
+  merge of overlapping volumes, and still fails without Perlin, the fractal loop, the equiangular sampling, or with
+  workgroup size 1 or the x64 arithmetic; removing the merge is what links the other two entries. The merge held whole `SvmClosure` records (112 bytes) as function-scope
+  values. It now works on the closures' storage (`volume_closure_add`, `volume_closure_copy`, `vp_equal` on addresses;
+  the same comparisons and additions in the same order), and all three entries link (cold about 29, 64 and 65 s; the
+  tablet's 60 s budget warns, nothing else). The cause inside the driver is inferred, the class of "Samsung reference
+  fixes" item 8 (per-invocation memory), not observed. The margin is not known for larger volume shaders. Pinned
+  `svm_node_closure_bsdf` skips the node for non-surface shader types, while the WGSL volume evaluation keeps the
+  surface handler; without that handler in the volume module the same entries compile in about 5, 19 and 7 s.
+- **Ray marching's channel pick on scalar ARM64 (`volumes/ray-marching-heterogeneous-point`).** In the product default
+  (`wgslArithmetic` `arm64-scalar`) one pixel of this scene, (13,16), was 17.4x the practical tolerance from the Linux
+  ARM64 CPU oracle, on the tablet and on Linux with the `arm64-scalar` test hook, while every WGSL film agreed with the
+  x64 CPU there. Agreeing with x64 was a coincidence of which side of one threshold the pick fell on, not x64 arithmetic: a
+  trace of the pixel's sample 13 (ARM64 CPU under qemu, film bit-identical to the oracle; x64 CPU; WGSL through an
+  override) shows `volume_sample_channel` rescaling `rchannel` by 1/pdf at every step, so the difference grows about
+  threefold per step (1 ulp at bounce 0 step 3, 38,490 ulps at bounce 1 step 9) until the pick at bounce 1 step 10 flips
+  to another channel. The first differing value against the ARM64 CPU was the driver's `exp` in the step's transmittance
+  (1 ulp, sigma bit-identical). On this path the WGSL now computes the oracle's values when
+  `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE` is set: `vr_exp3` and `vr_logf` are correctly rounded (the kernels call the C
+  library's `expf` and `logf`, the driver's are not), `vr_div3` multiplies by the reciprocal (scalar `float3 / float`) in
+  the channel pdf and in the throughput updates, and `shade_volume_phase` writes `ray->P + indirect_t * ray->D`
+  uncontracted (`rounded_add3`). Every step of sample 13's bounces 0 and 1 and their indirect throughput are then
+  bit-identical to the ARM64 CPU (the direct throughput ends bounce 1 one ulp off). Leave-one-out on Linux:
+  without `vr_exp3` or `vr_div3` the failure returns; without `vr_logf` or the position line alone it does not, and they
+  stay because they are also oracle values on this path. On SSE hosts every helper runs the earlier code, so x64
+  arithmetic is unchanged. The C library is not exactly correctly rounded (a sample of 20,000,000 inputs on x64 and on
+  ARM64 under qemu: `expf` differs from the correctly rounded value on 0.065%, `logf` on 0.73%), so a path can
+  still differ by a last bit here, far less often than with the driver's functions. The shadow marching's `exp` and the
+  emission integral's stay the driver's: they scale film values and pick nothing. The null-scattering entry
+  (`shade_volume_heterogeneous`) is unchanged, see open item 47.
 - **MNEE entries on the Adreno 730: per-invocation private memory and accumulated SVM handlers.** With motion blur
   on a caustic receiver (`mnee_render`/`mnee` case 6) creating `mnee_solve` failed in the driver
   (`AdrenoVK-0: Failed to link shaders`, then `Parent device is lost`), and the AO combination of `ao_render`
@@ -3153,8 +3291,7 @@ Resolved, or closed under the device reference policy:
   closest stage's differing fields (and keeps going; the gate still fails).
 - **Unspecialized shader-data probe.** `codebrix_cycles_shader_data_gate` compiled the raw shader-data module, which
   holds both alternatives of the MNEE-with-motion regions (`rx`, `ry`, `rz` declared twice in `motion_compose`); it
-  now compiles the module specialized to every feature except `MNEE_MOTION` (the default lines). Its result is
-  unchanged from the run before those regions existed.
+  now compiles the module specialized to every feature, so it runs the host-exact lines a scene with motion compiles.
 - **Android ARM64 product arithmetic: light sampling's float3 division and normalize.** In the product default
   (`wgslArithmetic` `arm64-scalar`) six oracle scenes were beyond the practical criterion of the Linux ARM64 CPU oracle
   (`combinations/enclosure-emissive-panel`, `-mix` and `-oren-nayar` 18 components each,
@@ -3343,23 +3480,45 @@ and material films are identical). Merge wave 5 (2026-10-23): the HP Android hos
 `gpu-exit/run.3` had 0 strict differences in both runs (`native/evidence/merge-20261023/merge5/device/hp-hostgate-run1-vs-run2.txt`).
 
 Pipeline-build size guard (lane L decision 4). Each pipeline build measures the inlined WGSL size of every entry it
-compiles (`wgsl_inlined_bytes`, the measure the superset grouping uses) and warns at 1,110,000 bytes (lowered from
-lane z0's 1,200,000 at merge wave 5): 65,535 backend instructions at the densest measured density of 16.9 bytes per
-instruction (65,535 x 16.9 = 1,107,542, rounded up), about 55,500 at the central density of 20 (merge wave 4
-envelope, surface entries above 500 KB: 16.9 to 22.1 bytes per instruction on Mesa 25.0.7). Largest current gate
-entries at Step zero: node render `shade_background` 1,126,723 bytes (40,103 measured instructions),
-`prepare_surface` 1,072,302 (48,439), Principled `shade_surface` 960,137 (52,509). At that size the node-render gate
-scene would warn although its measured count is safe (a false warning is accepted; a missed one would be a driver
-crash; the message says the results are unchanged). On the merged wave-5 tree the largest gate entries are node render
-`shade_background` 1,095,718 bytes, Principled `shade_surface` 950,819 and glass `shade_surface` 658,413, so no gate
-scene warns at 1,110,000. The warning goes to stderr before the compile, into the device
+compiles (`wgsl_inlined_bytes`, the measure the superset grouping uses) and warns at 940,000 bytes: 65,535 backend
+instructions at the densest measured density of 14.404 bytes per instruction (65,535 x 14.404 = 943,987, rounded
+down), about 47,000 at the central density of 20. The measurement joins the inlined size with the Intel instruction
+count of every entry of the oracle corpus and the superset groups (684 distinct entries, Mesa 25.0.7): densest
+`intersect_subsurface` of the subsurface scenes, 799,982 bytes and 55,539 instructions; 14.4 to 24.8 (median 19.0)
+among the entries above 40,000 instructions; median 20.3 at or above 500,000 bytes. Entries below 100,000 bytes (film
+filters and small helpers, densest 9.0) are not extrapolated. Repeat the measurement when entries are added. A false
+warning is accepted, a missed one would be a driver crash, and the message says the results are unchanged.
+
+Accepted false warnings at this threshold (by the maintainer, like the node-world gate's `shade_background` entries): 8
+entries in 19 corpus rows, all under 60,000 Intel instructions. Sizes as measured on the current tree:
+
+| Bytes | Instructions | Entry | Corpus rows |
+| --- | --- | --- | --- |
+| 1,081,057 | 43,545 | `shade_light_nee` | bundle `bench_01-hdri` |
+| 1,026,252 | 47,687 | `prepare_surface` | bundle `bench_01-hdri` |
+| 1,013,680 | 47,309 | `prepare_surface` | bundle `bench_01` |
+| 1,012,483 | 51,482 | `shade_volume_heterogeneous` | `volumes/heterogeneous-point`, `-point-distance`, `-point-equiangular`, `-sun` |
+| 1,006,721 | 42,348 | `prepare_surface` | `displacement/both`, `passes/with-displacement-both` |
+| 1,003,332 | 47,942 | `shade_volume_ray_marching` | `volumes/ray-marching-heterogeneous-distance`, `-equiangular`, `-point`, `-sun`, `volumes/ray-marching-max-steps` |
+| 964,054 | 55,186 | `mnee_solve` | `mnee/glass-sphere-object-motion`, `passes/with-mnee-glass-sphere-object-motion` |
+| 953,844 | 56,016 | `shade_surface_light` | `light-motion/linking-hdri`, `passes/with-light-motion-linking-hdri`, `sampling/blue-noise-pure-light-motion-linking-hdri` |
+
+`shade_volume_ray_marching` measured 942,614 bytes when accepted and 988,599 bytes with the correctly rounded helpers of "Ray
+marching's channel pick on scalar ARM64"; with the volume light shapes on top it is the size above.
+
+The same corpus also warns on these entries, which have no ruling yet; all measure under 60,000 instructions: `shade_volume`
+(`volumes/phase-mie`, `-phase-mie-small`, `-principled-volume`, `-catcher-heterogeneous` and the eight scenes with a heterogeneous medium at 944,967 bytes),
+`shade_volume_light` (`volumes/catcher-tree`, `-passes-tree`, `-tree-lamps`, `-tree-lamps-equiangular`, `-tree-mesh`, `-scatter-area`, `-scatter-area-ellipse`, `shadow-linking/volume`),
+`shade_volume_heterogeneous` (`volumes/catcher-heterogeneous`, `-heterogeneous-spot`, `-passes-emission-heterogeneous`, `-passes-heterogeneous`, `-tree-heterogeneous`),
+`shade_volume_ray_marching` (`volumes/ray-marching-tree-catcher`) and `shade_surface_light` (`shadow-linking/hdri-world`). None reaches 1,110,000 bytes. The densest ratio at or above 100,000 bytes is still 14.404.
+
+The superset grouping's `superset_default_budget_bytes` stays 1,000,000, above this threshold, so superset diagnostic groups can warn
+(`prepare_surface` up to 999,992 bytes, `shade_surface_light` 950,736 measured); Android refuses superset.
+The warning goes to stderr before the compile, into the device
 report's `warnings` and `sizeGuard` (host ABI, managed `ICapabilityReport.Warnings`) and the process report; it
 never changes the variant, the tier or `degraded`. `CODEBRIX_CYCLES_PIPELINE_SIZE_WARN_BYTES` overrides (0
 disables). Gate check `native/tools/pipeline_size_guard_check.py`: glass_render at the default and at 200,000 bytes
-(8 warnings), films bit-identical. On the HP the three material renders report the same largest entries and no
-warning. The 1,200,000-byte threshold lane z0 shipped left a gap (an entry between about 1.11 MB and 1.2 MB could pass
-65,535 instructions at the densest measured ratio without a warning); the merge wave 5 threshold closes it to the
-rounding of the 16.9 ratio.
+(8 warnings), films bit-identical.
 
 ## Pixel 4 XL triage under the device reference policy (lane P, 2026-10-22)
 
@@ -5113,15 +5272,14 @@ Data and stages
   measures `shade_surface_light_select` at 40,987 backend instructions and `light_tree_forward` at 23,149. The
   worst gate entry of the light-tree gate is the existing `shade_surface_light` (lamp sampling with the
   background light and an area light) in case 2 (lamps and emissive triangles under an HDRI world): 58,001
-  backend instructions, 1,999 below the 60,000 envelope (1,101,856 bytes inlined, under the 1,110,000-byte size
-  guard); the next additions to that entry need a split. A probe
+  backend instructions, 1,999 below the 60,000 envelope (1,101,856 bytes inlined, under the size guard's threshold of that time,
+  1,110,000 bytes); the next additions to that entry need a split. A probe
   entry that inlined the traversal and both emitter samplers (1.5 MB) was miscompiled by Intel Mesa 25.0.7 (wrong
   selections that moved with unrelated code edits): the gate's probes keep the device's split.
 - Bit 95 `LIGHT_LINKING`: link checks on lamp intersection (closest), emissive surfaces (connect), sun lights
   (background) and NEE. With the tree, the threshold roulette and `shadow_path.bsdf_eval_average` are skipped as in
   the pinned kernel. Capture entries 21 and 22 (recorder format v10).
-- Refused (unchanged): shadow linking (blocker sets and the dedicated-light kernels), volumes with direct light (so
-  the tree's volume-segment variant is not used).
+- Refused (unchanged): volumes with direct light (so the tree's volume-segment variant is not used).
 
 Gate `codebrix_cycles_light_tree_gate` (`native/cycles/light_tree_gate.cpp`, `native/tools/light_tree_gate.py`), 7 cases:
 0 lamps (point, spot, area, sun), 1 a 12-triangle mesh light with a second mesh light and a point, 2 lamps with
@@ -5165,6 +5323,36 @@ Combination oracle scenes (lane cov-a, 2026-10-30): `native/oracle/scenes/combin
 textured emitter, camera motion, terminator offsets or transparent shadows added, CPU against WGSL on Linux: all
 perfect.
 
+## Shadow linking
+
+Objects carry a `blocker_shadow_set` and emitters a `shadow_set_membership` (`KERNEL_FEATURE_SHADOW_LINKING`): a shadow ray towards a
+shadow-linked emitter passes through objects whose set is not in the emitter's membership, and a bounce also looks for the linked emitters that
+the main path's ray cannot reach past its blocker. The WebGPU device renders this as the pinned kernel does, on the flat light distribution and on the tree:
+
+- **Blocker sets** (`intersection_skip_shadow_link`): `shadow_link_skip` in both traversals (`wavefront_closest.wgsl`, `wavefront_shadow_traversal.wgsl`), so next-event
+  and dedicated shadow rays, MNEE's probe rays included, follow the light object's membership. A ray without a light object is unaffected.
+- **Main path** (`lights_intersect_impl<true>`, `integrate_surface_emission`, `integrate_sun_lights`): indirect rays leave shadow-linked lamps and emissive surfaces to
+  the dedicated kernels; suns with a shadow set are skipped by every ray. A surface bounce other than a transparent one, and a phase scatter, go to
+  `INTERSECT_DEDICATED_LIGHT` instead of `INTERSECT_CLOSEST`.
+- **`INTERSECT_DEDICATED_LIGHT`** (`intersect_dedicated_light`, closest module; `shadow_linking_pick_light_intersection`): up to 1024 closest hits along the bounce's ray,
+  through blockers with a set, transparent surfaces and volume boundaries within the bounce limits; emissive hits and lamps (suns only for a ray that
+  reaches infinity) of a linked membership are candidates, one picked with the path's LCG (`lcg_step_float` correctly rounded in integers), the count becoming the
+  weight. The path's self primitives are stored and its intersection state names the emitter.
+- **`SHADE_DEDICATED_LIGHT`**: `shade_dedicated_light_lamp` (background module, after `light_tree_forward`) evaluates a lamp or sun with the forward lamp arithmetic;
+  `dedicated_light_tree_pdf` and `shade_dedicated_light` (surface module) take an emissive triangle's forward weight (`triangle_light_forward_weight`), build the shadow path in
+  a reserved slot (control op 5, so slot numbers do not depend on atomic order; bounce one less, `PATH_RAY_SHADOW_FOR_LIGHT_LINKING`), and restore the path. The MIS pdf
+  comes from either sampler: the distribution's selection pdf or the tree's forward pdf. A non-constant emitter's shadow path goes through `SHADE_LIGHT_NEE`.
+- **Specialization**: bit 120 `SHADOW_LINKING`; every edit of shared WGSL is inside a `SHADOW_LINKING` region, so other scenes compile byte-identical modules. Capture entries 51-54 (recorder format v10).
+- **Refused by name**: shadow linking with the shadow catcher, with ambient occlusion (fast GI and the AO pass), and with volumes on the light tree; subsurface scattering with shadow linking
+  stays refused (`subsurface.cpp`). Volumes with shadow linking render on the flat distribution with point, sun and background lights. Spot, area and
+  triangle lights in volume direct light and the volume light passes render without shadow linking; with it they have no gate case and are refused by name (`shadow_linking.cpp`).
+
+Gate `codebrix_cycles_shadow_linking_gate` (`native/cycles/shadow_linking_gate.cpp`, `native/tools/shadow_linking_gate.py`), 13 cases, one device per case, against the unmodified pinned kernels on
+the same tables: real path states from the CPU render through both kernels (successor, picked emitter, hit count, stored and restored self primitives, every integer of the shadow path and the
+shadow traversal's decision exact; MIS weight, throughput and rays practical); next-event rays towards linked emitters through `intersect_shadow` (decision and hit count exact); the image twice, with the
+repeat captured for its replay. Cases: lamps and panels on the flat distribution and on the tree; an HDRI world on each; transparent blockers with a transparent and non-constant emitters; light linking on each;
+motion (a moving blocker, a moving emitter, a deforming emitter); a glass receiver; a scattering box with an HDRI world; shadow caustics on each; one emitter both moving and deforming. Oracle scenes: `shadow-linking/*`.
+
 ## Shadow catcher and its film passes (lane m2-shadowcatcher, 2026-10-23/24)
 
 The registered device renders the shadow catcher as the pinned Cycles does and writes the first film passes beyond
@@ -5193,8 +5381,8 @@ pass of the approximate shadow catcher). The host reads them with the pinned pas
 - **Visibility and lights.** Shadow catcher paths and their shadow rays trace with the visibility shifted by 16 bits
   (opaque mask likewise); lamps with `SHADER_EXCLUDE_SHADOW_CATCHER` and mesh lights of non-catcher objects are not
   sampled by them.
-- **Refused.** A shadow catcher with a volume ("WebGPU shadow catcher with volumes not implemented") or with caustics
-  (MNEE). On the Adreno 650 (S20, not a reference device) a shadow catcher with transparent shadows and direct light is
+- **Refused.** A shadow catcher with caustics
+  (MNEE); with volumes it renders (see "Shader-defined volumes"). On the Adreno 650 (S20, not a reference device) a shadow catcher with transparent shadows and direct light is
   refused before any pipeline compiles: the transparent shadow stage of such a scene stopped with SVM error 8
   ("invalid/uninitialized SVM stack"); every other case, a transparent pane without direct light included, passes
   there. The cause on that compiler is not determined.
@@ -5209,7 +5397,7 @@ sort keys), every film float, the queue counters, `next_main_path_index` and the
 light; a light marked as catcher plus a sun; HDRI world with background-light MIS and an area light; a
 transparent-shadow caster; the approximate catcher with a point light; a mesh light over a glossy catcher) compare the
 raw film (Combined and the three passes) with an independent CPU render (two CPU states per pixel, as the CPU
-megakernel). Case 10 checks the volume refusal. Cases 11-13 (ambient occlusion with a point light: the AO pass, fast
+megakernel). Case 10 renders a world volume without an error on the same device, before cases 7-9, so the later cases run on modules that keep the volume regions. Cases 11-13 (ambient occlusion with a point light: the AO pass, fast
 GI with one AO bounce and additive AO, both) compare the raw film (Combined, the AO pass and the three catcher
 passes) with the independent CPU render, AO shadow paths included; replays of cases 0, 1, 2, 4, 7, 8 and 11-13. Device-scene flow: images through the scene exchange; the state stages
 are recorded per case (`run/case-N/run.stages.bin`) and judged on Linux (`CODEBRIX_CYCLES_STAGE_JUDGE` = the device's
@@ -5388,9 +5576,11 @@ it would change untouched films). With these, the solver's outcome and iteration
 the pinned walk path by path on Linux.
 
 Refused before any dispatch (explicit errors, never an image without caustics): spot, area and
-background lamps with shadow caustics, MNEE with the light tree, light or shadow linking, AO,
-volumes or motion blur. An anisotropic refractive caster reports the unsupported-handler error
-(error 2).
+background lamps with shadow caustics and volumes. An anisotropic refractive caster reports the unsupported-handler error
+(error 2). MNEE takes the light tree's or light linking's selection in its own entry (`mnee_select`, between `mnee_receiver` and `mnee_seed`: the walk stays out of the seed for
+compiler pressure; 8 record words, capture entry 55), with the pinned `pdf_selection` re-applied by the light update; a selection that fails or is not linked is no sample. The `mnee` and
+`mnee_render` gates carry nine more cases: cases 0, 1, 2, 4, fast GI and receiver motion on the tree, case 4 with light linking on each sampler. With shadow linking the probe and shadow rays follow the
+light's membership (`shadow_linking_gate` cases 10 and 11). A moving caster stays refused.
 
 On the Adreno 650 (Samsung Galaxy S20, not a reference device) every scene with
 `integrator.use_caustics` is refused before any pipeline compiles: "WebGPU: caustics (manifold
@@ -5635,7 +5825,7 @@ CPU kernels with the practical criterion `5e-5 + 2e-4 |ref|`:
   MNEE walk follows the last bit of every motion transform (iteration counts and outcomes are compared exactly), so in
   `MNEE_MOTION` scenes the motion transforms are the host's: `transform_point`/`transform_direction` in the host order with
   every product rounded, `transform_compose` with rounded sums and DPPS-ordered dot products, the step fraction
-  `time*maxstep - step` with the product rounded, and `quat_interpolate`'s acosf, sinf and cosf correctly rounded; static
+  `time*maxstep - step` with the product rounded, `quat_interpolate`'s acosf correctly rounded and its sinf and cosf as the C library's polynomials (item 15, resolved); static
   and moving objects share one transform body per call there (pipeline size guard). A deforming caster keeps its
   centre-frame corners, as the pinned `mnee_setup_manifold_vertex` does (its `type & PRIMITIVE_TRIANGLE` test is true
   for motion triangles), so walks through deforming casters mostly fail on the CPU as on the device. Moving caustic
@@ -5710,7 +5900,7 @@ specialization feature, superset scene-only, so a scene that does not reach it c
 | 145 | `FILM_CRYPTOMATTE` | the cryptomatte slot writes (`film.cryptomatte_passes`) |
 | 146 | `FILM_DENOISING` | the denoising features (`KERNEL_FEATURE_DENOISING`) |
 | 147 | `FILM_MOTION` | the motion vectors (motion pass or a denoising motion feature) |
-| 148 | `FILM_MOTION_EXACT` | colour passes with motion blur: the host-exact motion transforms of the `MNEE_MOTION` regions (the marker name covers both) |
+| 148 | `FILM_MOTION_EXACT` | every scene with object, deformation or camera motion: the host-exact motion transforms of the `MNEE_MOTION` regions (the marker name covers both) |
 
 Group name: `FILM_PASSES_ANY` (143 or 146: the `shade_surface_passes` entry and its shared helpers).
 
@@ -5731,13 +5921,13 @@ Group name: `FILM_PASSES_ANY` (143 or 146: the `shade_surface_passes` entry and 
 - **Colour passes with motion blur** (`FILM_MOTION_EXACT`): the pass accessor divides the direct and indirect light
   passes by the colour passes, which amplifies last-bit differences where a colour is close to zero (for example a
   texture-coordinate colour of 1e-9 on a moving object: 18 practical failures in the diffuse direct pass of the
-  object-motion gate scene). With the host-exact motion transforms (as for MNEE with motion blur) those passes are
-  within the strict bound there.
+  object-motion gate scene). With the host-exact motion transforms, which every scene with motion now compiles, those
+  passes are within the strict bound there.
 - **Motion**: the object motion pass transforms come in push words 5 and 8 (the `object_motion_pass` table), the
   camera's pre/post projections from KernelData; with deforming geometry the pre and post positions come from the
   motion steps of the position table (`FILM_MOTION_DEFORM`, open item 36, resolved).
-- **Refused**: the path guiding passes (path guiding is outside the target) and, in scenes with volumes, the volume
-  light passes, each by name. The volume majorant passes are written (see "Volume scattering probability guidance"). The adaptive sampling buffer is written (see
+- **Refused**: the path guiding passes (path guiding is outside the target), by name; the volume light passes render
+  (see "Shader-defined volumes"). The volume majorant passes are written (see "Volume scattering probability guidance"). The adaptive sampling buffer is written (see
   "Entry splits, cameras, sampling patterns, adaptive sampling and lamps").
 
 ### Gates (Linux x64, Intel UHD, Mesa 25.0.7, against the unmodified CPU kernels)
@@ -5816,8 +6006,8 @@ Metal device can denoise on the GPU), under the build conditions of `docs/RELEAS
 
 ## Entry splits, cameras, sampling patterns, adaptive sampling and lamps
 
-**Compiler pressure (entry splits).** The largest consumer and gate entries sat near or above the 1,110,000-byte size
-guard (the glTF Blender-mapping `prepare_surface` 1,212,771 bytes, the shadow catcher's 1,117,147, MNEE
+**Compiler pressure (entry splits).** The largest consumer and gate entries sat near or above the size guard's threshold of that time,
+1,110,000 bytes (the glTF Blender-mapping `prepare_surface` 1,212,771 bytes, the shadow catcher's 1,117,147, MNEE
 `connect_surface_light` 1,078,476). Four changes make room; each keeps every operation, operand and order, so results
 are unchanged:
 - **Image texture projections** (bits 149 `SVM_TEX_ENVIRONMENT`, 150 `SVM_TEX_IMAGE_BOX`, census-driven): the shared
@@ -5910,6 +6100,10 @@ when every pixel converges and with the Sobol-Burley and blue-noise patterns.
 | 174 | `PHASE_MIE` | The Mie phase function's fit (a Henyey-Greenstein and a Draine lobe) |
 | 175 | `VOLUME_HETEROGENEOUS` | Heterogeneous media: the density prepass, the majorant octree, null scattering (`shade_volume_heterogeneous`) and the heterogeneous shadows |
 | 176 | `VOLUME_RAY_MARCHING` | Biased ray marching (`shade_volume_ray_marching`, ray-marched shadows; set with `VOLUME_HETEROGENEOUS`) |
+| 177 | `VOLUME_LIGHT_SHAPES` | Volume direct light from spot, area and emissive-triangle lights (`light_sample<true>`, `volume_valid_direct_ray_segment`) |
+| 178 | `VOLUME_LIGHT_TREE` | The light tree's volume segments (`shade_volume_tree_select`, `light_tree_sample<true>`, `light_tree_pdf<true>`) |
+| 179 | `VOLUME_LIGHT_PASSES` | Light passes with volumes (volume direct and indirect passes, the light passes of volume emission) |
+| 180 | `VOLUME_SHADOW_CATCHER` | The shadow catcher with volumes (the split after a volume segment, the stack re-init of the catcher path) |
 
 **Lamps.** The Light Falloff node (`svm_node_light_falloff`: the ray length's linear or squared scale and the smooth
 term with a correctly rounded quotient; distant lights pass the strength through) and the IES Texture node
@@ -6019,7 +6213,7 @@ Denoise. Evidence: `native/evidence/linux-x64-reference-20261101/` and `native/e
   `displacement/both` and `passes/with-displacement-both` (module dumps measure the entry in other surface modules,
   where it is larger).
 - Compile envelope: every entry of every gate dump and of the corpus dump (2,449 distinct corpus entries) is below
-  60,000 Intel instructions except open item 43. Size guard: the node-world gate's `shade_background` entries stay the
+  60,000 Intel instructions except item 43 (since resolved). Size guard: the node-world gate's `shade_background` entries stay the
   known warnings.
 - Gate drivers: `device_gate.py` and `svm_surface_gate.py` expected stale coverage values (4 compaction cases with the
   MNEE ownership repair; 4,416 guard bytes with the shader-data cache guard), and `arena_replay.py` now treats the
@@ -6052,7 +6246,7 @@ direct light reads the path state before the bounce. Every shadow path of a volu
 boundaries as transparent hits, and `shade_shadow_transparent` attenuates by the homogeneous media between the hits and
 after the last one (`integrate_transparent_volume_shadow`, `volume_shadow_null_scattering`) and enters or exits the
 volumes. Paths scattered in a volume reach lamps (forward MIS with the phase pdf). Refused with volume direct light:
-spot, area and emissive-triangle lights, the light tree (its volume segments), light linking.
+light linking.
 
 **Phase functions and volume nodes** (bits 164-167, 171-174): the Fournier-Forand, Rayleigh, Draine and Mie phase
 functions (`closure/volume_*.h`: evaluation, sampling with `fast_inv_cbrtf`, the Draine sampler, the Fournier-Forand
@@ -6103,15 +6297,63 @@ in place of `shade_volume`, then the same light and phase stages; the volume ker
 `codebrix_cycles_volume_gate` cases 32-37 (a noise-density box: without direct light, MIS, distance, equiangular, sun,
 camera rays entering from outside), 38-41 (ray marching), the density prepass against the pinned kernel and the
 octree against the one the CPU device builds (structure identical, node extrema within the practical criterion).
-**Oracle scenes** `volumes/heterogeneous-{point,point-distance,point-equiangular,sun}` and `volumes/ray-marching-*`.
+**Oracle scenes** `volumes/heterogeneous-{point,point-distance,point-equiangular,sun,spot}` and `volumes/ray-marching-*`.
 The density prepass's noise evaluations agree with the CPU's within the practical criterion but not bit for bit
 (the octree extrema too); with the guidance's majorant scaled up, a primary ray can step through hundreds of null
 collisions, and last-bit differences can then pick another reservoir candidate.
 
-**Not implemented (refused by name):** volume light passes, the shadow catcher with volumes, volumes with sampling
-patterns other than tabulated Sobol, MNEE with volumes. Anisotropy near -1 or 1 (|g| = 0.999) on long equiangular
-segments amplifies last-bit differences of the light direction: in the gate fixture 3 to 9 of 512 shadow paths
-differed beyond the practical bound with g = -0.999 and segments up to 260 units (the gate cases use moderate lobes).
+**Spot, area and mesh lights in volumes** (bit 177 `VOLUME_LIGHT_SHAPES`): `shade_volume_segment` samples the light from
+the segment start as `light_sample<true>`: `vl_lamp_point` for point and spot lights (the visible part of the sphere,
+never the spread cone; a zero spot attenuation does not end the sample), `vl_area_point` for area lights (a uniform point),
+and a uniform point of an emissive triangle (Heitz's mapping). The valid ray segment follows
+`volume_valid_direct_ray_segment`: the spot light's enclosing cone, the area light's slab or cylinder (no spread) or
+its spread cone, then the positive side of its plane, and the emitting side of a one-sided triangle.
+`shade_volume_light` samples again from the scatter position with the ordinary lamp sampler; a path whose light is a
+triangle takes `shade_volume_light_triangle` first (surface module, recorder entry 52, compile envelope), which clears the
+record's direct flag.
+
+**Exact arithmetic in the volume direct light.** A last-bit difference of the scatter distance moves the light sample,
+and two things magnify that past the practical bound: a rectangle sampled from near its plane (the solid angle sampler
+at grazing angles) and a near-delta lobe (|g| = 0.999, where one unit in the last place of the cosine can change the phase by
+several percent). So with `VOLUME_LIGHT`: `shade_volume`'s scatter distances use correctly rounded `expf` and `logf`
+(`vl_expf`, `vl_logf`; the hardware's `log` near 1 was off by up to 90 units in the last place of the distance), its
+quotients and products in the scatter probability are correctly rounded, and the lamp sampler's sphere branch and cone
+(`light_cone`) round every product before its sum. The sphere branch reproduces `lightN /= d`, which is a multiplication by the
+reciprocal on every host (`operator/=` with a float), unlike `float3 / float`. Modules without `VOLUME_LIGHT`
+keep their earlier text. Gate cases 50-65 hold these with g = +-0.999 (MIS, distance, equiangular, heterogeneous, ray marching,
+spot, area, emissive triangle, sun, disk) inside the practical bound (largest ratio to the bound 0.24).
+
+**The light tree with volumes** (bit 178 `VOLUME_LIGHT_TREE`): `shade_volume_tree_select` (surface module, recorder entry
+51, dispatched before `shade_volume_segment`) runs `light_tree_sample<true>` for the segment (start point, ray direction,
+length) and stores the selection in the per-input record (words 96-124); `shade_volume_segment` and `shade_volume_light` read
+it (`light_select_record`) and an invalid selection means no direct light. `light_tree_walk` takes the in-segment form
+through `lt_segment`: importance `(theta_b - theta_a) / d` without a minimum, `theta_d` by `atan2f` or `fast_atan2f`,
+`compute_v`, and the emitters' parameters at the ray's closest point; the walk keeps one call site. Forward pdfs of paths
+scattered in a volume use `light_tree_pdf<true>` from the previous segment (`mis_origin_n` holds its direction times length,
+`ray.previous_dt` its length, written at the phase scatter). The termination of constant lights does not run with the tree,
+as `integrate_volume_direct_light`. **Gates:** volume gate cases 66-73; **scenes** `volumes/tree-*`.
+
+**Light passes with volumes** (bit 179 `VOLUME_LIGHT_PASSES`, on with any light pass, the emission pass or light groups): the
+volume direct and indirect passes in the shadow write, the lamp and surface emission writes and the background write
+(`PATH_RAY_VOLUME_PASS`; direct is bounce 0 for shadows, bounce 1 for hits), and every light pass of volume emission
+(`ve_emission_passes`, `film_write_volume_emission`; its light group comes from the last stack entry's object). **Scenes**
+`volumes/passes-*`.
+
+**The shadow catcher with volumes** (bit 180 `VOLUME_SHADOW_CATCHER`): a path whose volume segment ends on a catcher splits
+there (`integrator_intersect_next_kernel_after_volume`): `vl_split_mark` records it in the catcher marks (push word 29), and
+`split_shadow_catcher` runs after the volume dispatches. The copy shades the background first when the background pass is
+wanted, then, when its volume stack is not empty, runs `intersect_volume_stack` with the catcher path's visibility and
+without the world volume, then shades the surface. The direct light of the split's own segment precedes the split in the
+pinned order, so `shade_volume_light` clears `PATH_RAY_SHADOW_CATCHER_HIT` for a pending mark. Volume emission goes through
+`film_write_shadow_catcher`, the guidance pass is skipped for a handled contribution, and catcher paths skip the lamps and
+mesh lights the pinned `light_sample` skips. The volume regions stay in a device's modules after a volume scene while a later scene without volumes has no stack
+allocated, so the shadow path's stack copy, its first medium and the catcher continuation test `volume_enabled` at run
+time. `shadow_catcher_gate` case 10 now renders the volume scene (it was the
+refusal); **scenes** `volumes/catcher-*`.
+
+**Not implemented (refused by name):** a heterogeneous volume shader with a Light Path node (`volume_estimate_extrema`),
+volumes with sampling patterns other than tabulated Sobol, MNEE with volumes, subsurface scattering with volumes, light and
+shadow linking with volumes, path guiding, denoising features with volumes.
 
 ## Subsurface scattering
 

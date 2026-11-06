@@ -10,7 +10,7 @@
 //  - image cases (direct light, MIS, HDRI world, transparent shadows, the
 //    approximate shadow catcher, a mesh light): the raw film (Combined and the
 //    shadow catcher passes) against an independent CPU render of the same scene;
-//  - a refusal case: a shadow catcher with a volume fails with the explicit error;
+//  - a volume case: a shadow catcher with a volume renders without an error (volumes/catcher-* judge the films);
 //  - ambient occlusion image cases (the AO pass, fast GI's additive AO, both): the
 //    AO shadow rays' film writes through the shadow catcher split
 //    (film_write_direct_light, film_write_combined_pass) and no AO ray for
@@ -57,7 +57,7 @@ using namespace wavefront_test;
 #include "glass_fixture.h"
 #include "principled_fixture.h"
 constexpr unsigned width=32,height=24,samples=8,pixels=width*height;
-// 0-3 state cases, 4-9 image cases, 10 volume refusal, 11-13 ambient occlusion image cases,
+// 0-3 state cases, 4-9 image cases, 10 volume without refusal, 11-13 ambient occlusion image cases,
 // 14-22 combination image cases (object, deformation, camera motion; light tree; light
 // linking; spot lamp; glass and principled transmission; shadow terminator; non-constant emitter).
 constexpr int state_cases=4,image_cases=6,ao_cases=3,combination_cases=9,cases=state_cases+image_cases+1+ao_cases+combination_cases;
@@ -314,8 +314,9 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   reference_policy::use_reference_oracle_arithmetic();
   auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU adapter");Stats stats;Profiler profiler;
   auto owner=Device::create(infos[0],stats,profiler,true);auto &device=require_webgpu_device(owner.get(),"shadow_catcher_gate device creation");
-  Metrics total;std::ostringstream reports;bool refused=false;std::string refusal;
-  for(int mode=0;mode<cases;mode++){
+  Metrics total;std::ostringstream reports;
+  // Case 10 (a world volume) runs before cases 7-9, so transparent shadows run on modules that keep the volume regions, with no volume stack allocated.
+  for(int step=0;step<cases;step++){const int mode=step<7?step:step==7?10:step<=10?step-1:step;
     std::cerr<<"shadow catcher case="<<mode<<'\n';auto folder=out/("case-"+std::to_string(mode));std::filesystem::create_directories(folder);const auto prefix=(folder/"run").string();Metrics m;
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
     Scene scene(params,&device);fixture(scene,mode);Progress progress;scene.device_update(&device,progress);healthy(device);require(!progress.get_error(),"Shadow catcher scene preparation failed");
@@ -335,12 +336,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       bool cancelled=false;SplitScheduler scheduler(&device,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(device);
       auto buffers=scheduler.get_render_buffers();BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=data.film.pass_stride;buffers->reset(bp);buffers->zero();
       scheduler.enqueue_reset();scheduler.update_queue_counter_and_cache();KernelWorkTile tile{};tile.w=width;tile.h=height;tile.stride=width;tile.num_samples=1;
-      scheduler.enqueue_work_tiles(DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA,&tile,1,0,pixels);bool ok=scheduler.update_queue_counter_and_cache();
+      scheduler.enqueue_work_tiles(DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA,&tile,1,0,pixels);const uint32_t start=pixels;device.upload(uint32_t(uintptr_t(device.state.next_main_path_index)),&start,4);bool ok=scheduler.update_queue_counter_and_cache();
       for(unsigned step=0;ok&&step<20;step++){const auto kernel=scheduler.get_most_queued_kernel();if(kernel==DEVICE_KERNEL_NUM)break;scheduler.enqueue_path_iteration(kernel);ok=scheduler.update_queue_counter_and_cache();}
-      refusal=device.error_message();refused=!ok&&refusal.find("WebGPU shadow catcher with volumes not implemented")!=std::string::npos;
-      require(refused,"Shadow catcher with a volume was not refused explicitly: "+refusal);
-      std::string reason;require(device.recover(reason),"Device did not recover after the refusal: "+reason);
-      reports<<",{\"case\":10,\"refused\":true,\"message\":\""<<reference_policy::escape(refusal)<<"\"}";continue;
+      // The shadow catcher with a volume renders (the oracle's volumes/catcher-* scenes judge its films): no refusal.
+      require(ok&&device.error_message().empty(),"Shadow catcher with a volume failed: "+device.error_message());
+      reports<<",{\"case\":10,\"refused\":false}";continue;
     }
     const std::string key="case-"+std::to_string(mode);
     // Scene exchange: a dump pass stops after the local CPU image; a reference pass
@@ -430,6 +430,6 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   const bool exchange_only=reference_policy::prepare_only()||reference_policy::reference_only();
   std::cout<<std::setprecision(17)<<"{\"passed\":true,\"stageJudge\":"<<(judge?"true":"false")<<",\"nativeSceneAndScheduler\":true,\"independentOriginalCpuImage\":true,\"exchangeOnly\":"<<(exchange_only?"true":"false")<<(exchange_only?(reference_policy::prepare_only()?",\"sceneExchangeOnly\":\"dump\"":",\"sceneExchangeOnly\":\"reference\""):"")
            <<",\"stateStages\":"<<total.stages<<",\"integerChecks\":"<<total.integers<<",\"floatChecks\":"<<total.floats<<",\"strictDifferences\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum
-           <<",\"repeatBitwiseDifferences\":"<<total.repeat_differences<<",\"volumeRefused\":"<<(refused?"true":"false")<<",\"cases\":"<<cases_json
+           <<",\"repeatBitwiseDifferences\":"<<total.repeat_differences<<",\"cases\":"<<cases_json
            <<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<",\"pipelineReport\":"<<ccl::pipeline_process_report_json()<<"}\n";
 }catch(const std::exception &error){std::cerr<<error.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

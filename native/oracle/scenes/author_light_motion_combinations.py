@@ -14,12 +14,13 @@ CPU kernels judge the WGSL device on the combination end to end (compare.py):
   motion blur with glass and principled transmission, spot and area lamps, an importance
   sampled environment and a non-constant (procedural) mesh emitter;
   sample clamps, the caustics filters and the light exclude flags (lamp object
-  visibility) at non-default values.
+  visibility) at non-default values;
+  one emitter both moving and deforming.
 light-motion/sky.float4 is the 64x32 float RGBA environment (equirectangular, bottom row
 first): IEEE additions and multiplications only, rounded to float32, so every platform
 writes the same bytes.
 """
-import array,copy,json
+import array,copy,json,math
 from pathlib import Path
 import author_starters as s
 import author_light_tree as lt
@@ -200,6 +201,27 @@ def motion_environment():
  return data
 
 
+# ---- one emitter both moving and deforming ----
+def moving_deforming_emitter():
+ """Only the panel lights the stage, so every next-event ray ends on it: rays near its diagonal end on the plane of the
+ other triangle, and the transforms' last bits decide those folds (native/DEVICE.md, "Motion arithmetic last bits")."""
+ data=stage('moving-deforming-emitter','An emissive quad both moving (three transform steps with a turn) and deforming (five vertex steps), the only light of the stage, on the flat light distribution; its next-event rays end on its own surface')
+ nodes=data['nodes'];motion_on(nodes);nodes.insert(nodes.index(node(nodes,'floor')),dict(lt.emitter('panel-material',9.0,'front_back')))
+ corners=[[-0.9,-0.6,0],[0.9,-0.6,0],[0.9,0.6,0],[-0.9,0.6,0]];steps=5;positions=[]
+ for step in range(steps):
+  u=2*step/(steps-1)-1
+  for x,y,z in corners:positions+=[round(v,7) for v in (x+0.08*u*y,y+0.04*u*x,z+0.13*u*x*y+0.035*u*u*x)]
+ nodes+=s.mesh('panel',[v for corner in corners for v in corner],[0,1,2, 0,2,3],'panel-material')
+ node(nodes,'panel')['mesh']['motion']=dict(steps=steps,positions=positions)
+ # Rows of the turned panel over the stage: the transform steps turn it by 0.23 radians about z and move it.
+ frames=[]
+ for u in (-1,0,1):
+  c,n=math.cos(0.23*u),math.sin(0.23*u)
+  frames.append([round(v,7) for v in (c,-n,0,0.4+0.34*u, 0.17*n,0.17*c,0.985,2.2+0.11*u, -0.985*n,-0.985*c,0.17,1.1+0.07*u)])
+ node(nodes,'panel-object')['set'].update(tfm=frames[1],motion=frames)
+ return data
+
+
 # ---- camera motion with object or deformation motion (the motion gate scenes) ----
 def with_camera_motion(source,identifier,description):
  data=json.loads((HERE/'linux-gates'/source).read_text());data=copy.deepcopy(data)
@@ -217,7 +239,7 @@ def scenes():
   cast_shadow(False),cast_shadow(True),max_bounces(False),max_bounces(True),
   with_camera_motion('object-motion-1.json','camera-object-motion','Camera motion (three steps) together with object motion: the object-motion gate scene, mode 1, with a moving camera'),
   with_camera_motion('deforming-motion-3.json','camera-deforming-motion','Camera motion (three steps) together with deformation and object motion: the deforming-motion gate scene, mode 3, with a moving camera'),
-  motion_materials(),motion_environment(),clamps_and_filters()]
+  motion_materials(),motion_environment(),clamps_and_filters(),moving_deforming_emitter()]
 
 
 def main():

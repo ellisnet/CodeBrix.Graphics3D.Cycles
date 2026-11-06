@@ -206,7 +206,7 @@ rebuild (`--skip-dependencies`) about 1.5 minutes. Host: 48 exports, x86_64
 alone, `minos 15.0`, no `Metal.framework` on the host, 263 compiler dependency
 files scanned, one compiler warning (an unused variable in a gate source). The
 host build now also builds the six device gates win-x64 added (`ao_render`,
-`ao_state`, `light_tree`, `mnee`, `mnee_render`, `shadow_catcher`).
+`ao_state`, `light_tree`, `shadow_linking`, `mnee`, `mnee_render`, `shadow_catcher`).
 
 The build would not complete without these changes, all made in the osx-x64
 recipes only (the osx-arm64 recipe's hash is part of its prefix identity):

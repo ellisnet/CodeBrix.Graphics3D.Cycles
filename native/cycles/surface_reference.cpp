@@ -94,6 +94,14 @@ bool original_surface_flush_to_zero(ccl::DeviceScene &scene,const std::vector<in
   const unsigned saved=_mm_getcsr();_mm_setcsr(saved|0x8040u);
   try{original_surface(scene,indices,states,film);}catch(...){_mm_setcsr(saved);throw;}
   _mm_setcsr(saved);return true;
+#elif defined(__aarch64__)
+  // FPCR.FZ (bit 24): subnormal inputs read as zero and results below FLT_MIN are written as zero, the one AArch64
+  // bit that does what x86's FTZ and DAZ do together (FPCR.AH stays 0). A host that does not keep the bit has no oracle.
+  uint64_t saved,flushing;__asm__ volatile("mrs %0, fpcr":"=r"(saved));
+  __asm__ volatile("msr fpcr, %0"::"r"(saved|(uint64_t(1)<<24)):"memory");__asm__ volatile("mrs %0, fpcr":"=r"(flushing));
+  if(!(flushing&(uint64_t(1)<<24)))return false;
+  try{original_surface(scene,indices,states,film);}catch(...){__asm__ volatile("msr fpcr, %0"::"r"(saved):"memory");throw;}
+  __asm__ volatile("msr fpcr, %0"::"r"(saved):"memory");return true;
 #else
   (void)scene;(void)indices;(void)states;(void)film;return false;
 #endif

@@ -286,8 +286,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native broad-light configuration");
 #elif defined(CODEBRIX_MNEE_GATE)
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows&&bool(data.integrator.use_caustics)==(mode!=3)&&
-            bool(data.kernel_features&KERNEL_FEATURE_MNEE)==bool(data.integrator.use_caustics)&&bool(data.kernel_features&KERNEL_FEATURE_AO_ADDITIVE)==(mode==5)&&
-            bool(data.bvh.have_motion)==(mode>=6),"Unexpected native MNEE configuration");
+            bool(data.kernel_features&KERNEL_FEATURE_MNEE)==bool(data.integrator.use_caustics)&&bool(data.kernel_features&KERNEL_FEATURE_AO_ADDITIVE)==(mode==5||mode==15)&&
+            bool(data.bvh.have_motion)==((mode>=6&&mode<=8)||mode==16||mode==17)&&bool(data.integrator.use_light_tree)==mnee_uses_tree(mode)&&bool(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)==mnee_uses_linking(mode),"Unexpected native MNEE configuration");
 #elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
     require(data.integrator.use_direct_light&&!data.integrator.transparent_shadows,"Unexpected native shadow-terminator configuration");
     {bool smooth=false;for(size_t i=0;i<scene.dscene.tri_shader.size();i++)smooth|=(scene.dscene.tri_shader[i]&SHADER_SMOOTH_NORMAL)!=0;require(smooth,"Shadow-terminator fixture lacks smooth triangles");
@@ -362,8 +362,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(metrics.shadows>100&&metrics.visible>100,"Missing MNEE direct lighting coverage");
     std::cerr<<"mnee paths="<<metrics.mnee_paths<<" sampled="<<metrics.mnee_sampled<<"\n";
     if(mode==3)require(metrics.mnee_paths==0,"MNEE ran without a caustic receiver");
-    else require(metrics.mnee_paths>100&&(mode==2||mode==8||metrics.mnee_sampled>=5),"Missing MNEE coverage");
-    require((mode==5)==(metrics.ao_paths>100)&&(mode<7||metrics.deforming_paths>100),"Missing MNEE fast GI or deformation coverage");
+    else require(metrics.mnee_paths>100&&(mode==2||mode==8||mode==11||metrics.mnee_sampled>=5),"Missing MNEE coverage");
+    require((mode==5||mode==15)==(metrics.ao_paths>100)&&((mode!=7&&mode!=8&&mode!=17)||metrics.deforming_paths>100),"Missing MNEE fast GI or deformation coverage");
 #elif defined(CODEBRIX_SHADOW_TERMINATOR_GATE)
     require(metrics.shadows>100&&metrics.visible>100&&metrics.blocked>10,"Missing shadow-terminator direct lighting coverage");
 #else

@@ -244,7 +244,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int result=0;try{
       require(queue->synchronize(),"MNEE compaction sync failed");f.compare();compaction_cases++;
     }
     auto restore=saved;d.const_copy_to("data",&restore,sizeof(restore));}
-    require(!queue->enqueue(DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT,1,DeviceKernelArguments()),"Unimplemented kernel was accepted");
+    require(!queue->enqueue(DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL,1,DeviceKernelArguments()),"Unimplemented kernel was accepted");
     require(d.error_message().find("kernel not implemented")!=std::string::npos,"Unsupported kernel did not report the reason");
   }
   require(stats.mem_used==0,"Control tests leaked Cycles allocations");
