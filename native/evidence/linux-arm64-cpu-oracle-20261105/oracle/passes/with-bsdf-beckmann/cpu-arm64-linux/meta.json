@@ -1,0 +1,389 @@
+{
+  "sceneId": "passes/with-bsdf-beckmann",
+  "sceneSha256": "df71342be0c7e16fb9c36689a627b2a214dd3d6199e3e849cae790684f850088",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-arm64",
+  "threads": 4,
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.00420892,
+    0.00173083
+  ],
+  "filmSha256": [
+    "47c12d20b1605d2970f22c011c1ef329112a89da6ca541c4ad528e04e4475e36",
+    "47c12d20b1605d2970f22c011c1ef329112a89da6ca541c4ad528e04e4475e36"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "DiffDir",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "c9b188ef2ff6ef7ccb9c51dcc14325512f1e01dc4b8c40e2b1498087a9090826",
+        "c9b188ef2ff6ef7ccb9c51dcc14325512f1e01dc4b8c40e2b1498087a9090826"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "DiffInd",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "54f14028be0540916ec4bf7a2a607907866473446fa320ada81343476355342f",
+        "54f14028be0540916ec4bf7a2a607907866473446fa320ada81343476355342f"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "DiffCol",
+      "type": "diffuse_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "e67730facd056cfee833a82641553b20d6e6ba35d51ad8ea0164e11ddb43d997",
+        "e67730facd056cfee833a82641553b20d6e6ba35d51ad8ea0164e11ddb43d997"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "GlossDir",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "85891299aa358887b30a5d5024ceb2de2236e88b3014757a3379b4de41132cb5",
+        "85891299aa358887b30a5d5024ceb2de2236e88b3014757a3379b4de41132cb5"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "GlossInd",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "0921b4d2c7a7fac86f52b8101eeeb8e07f3f3e02646d55c8ab58b477768d5d1f",
+        "0921b4d2c7a7fac86f52b8101eeeb8e07f3f3e02646d55c8ab58b477768d5d1f"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "GlossCol",
+      "type": "glossy_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "44d1bb60d8ca1ab834957a6ea15759f3c6851f2fd62ad9453b73b8c3d7f51281",
+        "44d1bb60d8ca1ab834957a6ea15759f3c6851f2fd62ad9453b73b8c3d7f51281"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "TransDir",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "TransInd",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "20c93aa52f96136f8059a6baffafbec1e8c5ae999f318fac0ad53069b3d19769",
+        "20c93aa52f96136f8059a6baffafbec1e8c5ae999f318fac0ad53069b3d19769"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "TransCol",
+      "type": "transmission_color",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "a892b883d043620e5a7b9b18274e13d4592b5b5256898310d15f45b4b2ba388c",
+        "a892b883d043620e5a7b9b18274e13d4592b5b5256898310d15f45b4b2ba388c"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "Emit",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "9dd62bc5ac67343e280a0f25c26f0eb1af9c1c64ef5b9d795a0ecd14202f0e7c",
+        "9dd62bc5ac67343e280a0f25c26f0eb1af9c1c64ef5b9d795a0ecd14202f0e7c"
+      ]
+    },
+    {
+      "index": 10,
+      "name": "Env",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1473b80f9db7b2f8141b4ef0eaba7bca134a4818284f2009c15ab444f4fc5328",
+        "1473b80f9db7b2f8141b4ef0eaba7bca134a4818284f2009c15ab444f4fc5328"
+      ]
+    },
+    {
+      "index": 11,
+      "name": "Diffuse",
+      "type": "diffuse",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "09d5eee121fd8ad8258e49f7d899ce85fb10f1b909e42528fcc5897edcd63ff1",
+        "09d5eee121fd8ad8258e49f7d899ce85fb10f1b909e42528fcc5897edcd63ff1"
+      ]
+    },
+    {
+      "index": 12,
+      "name": "Glossy",
+      "type": "glossy",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "81e0d4990a56c7c2ad166f64b990b3aaccc0d2e931abaf3d301c8b14463d7404",
+        "81e0d4990a56c7c2ad166f64b990b3aaccc0d2e931abaf3d301c8b14463d7404"
+      ]
+    },
+    {
+      "index": 13,
+      "name": "Transmission",
+      "type": "transmission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "20c93aa52f96136f8059a6baffafbec1e8c5ae999f318fac0ad53069b3d19769",
+        "20c93aa52f96136f8059a6baffafbec1e8c5ae999f318fac0ad53069b3d19769"
+      ]
+    },
+    {
+      "index": 14,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "3f4c88714095b06651931051b6aaf7014ae6c53037afc929e02f427fbf23edcc",
+        "3f4c88714095b06651931051b6aaf7014ae6c53037afc929e02f427fbf23edcc"
+      ]
+    },
+    {
+      "index": 15,
+      "name": "Position",
+      "type": "position",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "787883f7c38eace664e0544f0f22f1284963838343556bd96f13937d3fa38687",
+        "787883f7c38eace664e0544f0f22f1284963838343556bd96f13937d3fa38687"
+      ]
+    },
+    {
+      "index": 16,
+      "name": "Normal",
+      "type": "normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "7ac1a22b171c5b78d33cfab201879d041a96e54b609472b9af85e27d063fcd8e",
+        "7ac1a22b171c5b78d33cfab201879d041a96e54b609472b9af85e27d063fcd8e"
+      ]
+    },
+    {
+      "index": 17,
+      "name": "Roughness",
+      "type": "roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "1acdde569ff5b6332deeac4c20bf96267981451689110ce0d12e727d7071b1f9",
+        "1acdde569ff5b6332deeac4c20bf96267981451689110ce0d12e727d7071b1f9"
+      ]
+    },
+    {
+      "index": 18,
+      "name": "UV",
+      "type": "uv",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 19,
+      "name": "IndexOB",
+      "type": "object_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293",
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293"
+      ]
+    },
+    {
+      "index": 20,
+      "name": "IndexMA",
+      "type": "material_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293",
+        "e80232b4d18d0bb7e794be263ba937626f383f9917d4b8a737ba893a8f752293"
+      ]
+    },
+    {
+      "index": 21,
+      "name": "Mist",
+      "type": "mist",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "7fa4f344638ea8c8e9c72f36fd02ca1eae6460ffd58ddc44bc39eb040f72a6ec",
+        "7fa4f344638ea8c8e9c72f36fd02ca1eae6460ffd58ddc44bc39eb040f72a6ec"
+      ]
+    },
+    {
+      "index": 22,
+      "name": "AO",
+      "type": "ao",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2a14a8ce25954844286dfb6686c9505e3a539ef439c3cde3e4aa0b25ab8bc54b",
+        "2a14a8ce25954844286dfb6686c9505e3a539ef439c3cde3e4aa0b25ab8bc54b"
+      ]
+    },
+    {
+      "index": 23,
+      "name": "Denoising Albedo",
+      "type": "denoising_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "016f246a224a2fa54cc4066336a434a5afa319172b55ad8c77c2a84670d01e22",
+        "016f246a224a2fa54cc4066336a434a5afa319172b55ad8c77c2a84670d01e22"
+      ]
+    },
+    {
+      "index": 24,
+      "name": "Denoising Normal",
+      "type": "denoising_normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "141608f8dd9ff155df716cafac4fdeb3a3ef914196e8612f4e118b1d5b44ffba",
+        "141608f8dd9ff155df716cafac4fdeb3a3ef914196e8612f4e118b1d5b44ffba"
+      ]
+    },
+    {
+      "index": 25,
+      "name": "Denoising Specular Albedo",
+      "type": "denoising_specular_albedo",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "afc8bc9ce6e9160e70d25441693f3dffcb02b99d8534edeaea42198e208dab90",
+        "afc8bc9ce6e9160e70d25441693f3dffcb02b99d8534edeaea42198e208dab90"
+      ]
+    },
+    {
+      "index": 26,
+      "name": "Denoising Roughness",
+      "type": "denoising_roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "61c91e220620e8d6ea6cb35843ded96d1acb1e235fd267e53eb58790caace644",
+        "61c91e220620e8d6ea6cb35843ded96d1acb1e235fd267e53eb58790caace644"
+      ]
+    },
+    {
+      "index": 27,
+      "name": "Denoising Depth",
+      "type": "denoising_depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "781ea05de795c93f9d7e26db94b6d3ab91af633f664d4cf20fae2d575c5b3b85",
+        "781ea05de795c93f9d7e26db94b6d3ab91af633f664d4cf20fae2d575c5b3b85"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux d6648b1c2da3 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 16 11:55:50 UTC 2026 aarch64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "ea3218b80d3016b81d38a3df7bf9a91e26023407",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "deviceModel": "unavailable: no /proc/device-tree/model (no device tree, for example in a container)",
+    "vulkan": "unavailable: [Errno 2] No such file or directory: 'vulkaninfo'"
+  },
+  "hostLibrarySha256": "c34a4cd7fdd7b8a1e13e2b530a74f88c3613e1085cf0f2af9e17352436d5a06d",
+  "runnerSha256": "181f2ffc5c666d4550d06b0be0cc01d3601cbc46342e503ae55d8203147c5c5e",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/linux/linux-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/with-bsdf-beckmann.json",
+  "backendDescription": "Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.058,
+  "runnerCommand": [
+    "native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/work/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/passes/with-bsdf-beckmann.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-linux",
+    "--output",
+    "/work/CodeBrix.Graphics3D.Cycles/native/work/oracles/linux-arm64-20261105/oracle/passes/with-bsdf-beckmann/cpu-arm64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": " (the C API does not expose Cycles' DeviceInfo)"
+}

@@ -56,7 +56,11 @@ def check_binary(path,deployment_target):
    raise RuntimeError(f'{path.name} links outside the reviewed prefix and the OS: {name}')
  build=tool('otool','-l',str(path))
  minos=re.findall(r'minos (\S+)',build)
- if minos and any(v!=deployment_target for v in minos):raise RuntimeError(f'{path.name} has minimum OS {minos}')
+ # OIDN's own cmake/oidn_platform.cmake sets CMAKE_OSX_DEPLOYMENT_TARGET 11.0 for arm64 as a plain
+ # variable, overriding the recipe's; the reviewed snapshot is not edited, and an 11.0 minimum loads on
+ # every system the deployment target admits, so OIDN's libraries may carry exactly that value.
+ accepted={deployment_target}|({'11.0'} if path.name.startswith('libOpenImageDenoise') else set())
+ if minos and any(v not in accepted for v in minos):raise RuntimeError(f'{path.name} has minimum OS {minos}')
  if 'arm64' not in tool('lipo','-archs',str(path)).split():raise RuntimeError(path.name+' is not arm64')
 
 

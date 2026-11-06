@@ -1,0 +1,147 @@
+{
+  "sceneId": "denoise/catcher-point-light-on-noisy",
+  "sceneSha256": "d54ab960a4343e29bd0aaddcb3778533d5ce6f1516c2105873cdc499376e3873",
+  "backend": "cpu-arm64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-arm64",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0892273,
+    0.0389827
+  ],
+  "filmSha256": [
+    "9b7fb04a3be18efce7748ba5b4b667232bfa96d2fff2edf998de183bb189c7be",
+    "9b7fb04a3be18efce7748ba5b4b667232bfa96d2fff2edf998de183bb189c7be"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Shadow Catcher",
+      "type": "shadow_catcher",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "b50df8783546f58898a2fd3fcb02afb8a7fdd460193a67c59e40deae740f21fa",
+        "b50df8783546f58898a2fd3fcb02afb8a7fdd460193a67c59e40deae740f21fa"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Shadow Catcher Matte",
+      "type": "shadow_catcher_matte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "9b7fb04a3be18efce7748ba5b4b667232bfa96d2fff2edf998de183bb189c7be",
+        "9b7fb04a3be18efce7748ba5b4b667232bfa96d2fff2edf998de183bb189c7be"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Shadow Catcher Sample Count",
+      "type": "shadow_catcher_sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990",
+        "a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Noisy Image",
+      "type": "combined",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "a615ea67656754a8882da3215a6e0271b11953307a7e067168f836b1ddf009f0",
+        "a615ea67656754a8882da3215a6e0271b11953307a7e067168f836b1ddf009f0"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "Shadow Catcher Noisy",
+      "type": "shadow_catcher",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "7ca8c655e959be2ef7f7b4b0995ae16d451da1820c9c1a7e92f8fb80772e95ec",
+        "7ca8c655e959be2ef7f7b4b0995ae16d451da1820c9c1a7e92f8fb80772e95ec"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "Shadow Catcher Matte Noisy",
+      "type": "shadow_catcher_matte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "a615ea67656754a8882da3215a6e0271b11953307a7e067168f836b1ddf009f0",
+        "a615ea67656754a8882da3215a6e0271b11953307a7e067168f836b1ddf009f0"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux d6648b1c2da3 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 16 11:55:50 UTC 2026 aarch64 GNU/Linux",
+    "cpu": "",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "ea3218b80d3016b81d38a3df7bf9a91e26023407",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "deviceModel": "unavailable: no /proc/device-tree/model (no device tree, for example in a container)",
+    "vulkan": "unavailable: [Errno 2] No such file or directory: 'vulkaninfo'"
+  },
+  "hostLibrarySha256": "c34a4cd7fdd7b8a1e13e2b530a74f88c3613e1085cf0f2af9e17352436d5a06d",
+  "runnerSha256": "181f2ffc5c666d4550d06b0be0cc01d3601cbc46342e503ae55d8203147c5c5e",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/linux/linux-arm64/host/build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/denoise/catcher-point-light-on-noisy.json",
+  "backendDescription": "Cycles CPU device, GCC 14 aarch64 (glibc), fixed-baseline oracle: ARMv8-A base level, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.167,
+  "runnerCommand": [
+    "native/work/linux/linux-arm64/host/build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "/work/CodeBrix.Graphics3D.Cycles/native/oracle/scenes/denoise/catcher-point-light-on-noisy.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-arm64-linux",
+    "--output",
+    "/work/CodeBrix.Graphics3D.Cycles/native/work/oracles/linux-arm64-20261105/oracle/denoise/catcher-point-light-on-noisy/cpu-arm64-linux",
+    "--threads",
+    "4"
+  ],
+  "deviceName": " (the C API does not expose Cycles' DeviceInfo)"
+}
