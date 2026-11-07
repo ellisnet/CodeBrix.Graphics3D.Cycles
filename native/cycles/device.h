@@ -7,7 +7,9 @@
 #include "webgpu_device.h"
 #include "pipelines.h"
 #include "device_tier.h"
+#include "pipeline_cache.h"
 #include <array>
+#include <cstring>
 #include <map>
 #include <mutex>
 #include <stdexcept>
@@ -15,6 +17,7 @@
 #include <vector>
 
 namespace ccl {
+struct WebGPUFingerprint;
 std::string controls_wgsl();
 // Optional test recorder: observes commands without replacing renderer work.
 struct WebGPUCommandObserver {
@@ -29,8 +32,18 @@ struct WebGPUCommandObserver {
 class WebGPUDevice final:public Device {
  public:
   struct Allocation {size_t bytes,extent;};
-  cbc::Device gpu;
+  cbc::Device gpu{pipeline_cache_wanted()};
   WebGPUCommandObserver *observer=nullptr;
+  // Fingerprint mode (fingerprint.h); null unless CODEBRIX_CYCLES_FINGERPRINT is set.
+  WebGPUFingerprint *fingerprint=nullptr;
+  cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> fingerprint_stub;
+  void fingerprint_kernel_begin(DeviceKernel);
+  void fingerprint_kernel_end(DeviceKernel);
+  bool fingerprint_readback(uint32_t,void*,size_t);
+  // Tables the pinned scene code leaves partly unset (union members of another light type, padding) hold whatever the
+  // allocator returned. The kernels cannot read those bytes; fingerprint mode zeroes the block so that they cannot change the hash.
+  void *host_alloc(const MemoryType type,const size_t size) override{void *p=Device::host_alloc(type,size);if(p&&fingerprint)std::memset(p,0,size);return p;}
+  bool fingerprint_module(const char*,const char*,ShaderFeatures,const std::string&,std::vector<cbc::Pipeline>&);
   cbc::Buffer arena;
   cbc::Handle<WGPUCommandEncoder,wgpuCommandEncoderRelease> encoder;
   std::recursive_mutex mutex;
@@ -49,6 +62,8 @@ class WebGPUDevice final:public Device {
   std::vector<KernelShader> shader_records;
   std::vector<KernelObject> object_records;
   std::vector<uint> object_flag_records;
+  // Curve records (shader ids and shapes for the census; closest.cpp validate_curves).
+  std::vector<KernelCurve> curve_records;
   // Any uploaded triangle with SHADER_SMOOTH_NORMAL (shadow terminator geometry offset).
   bool smooth_triangles=false;
   // Scene-driven WGSL specialization (pipelines.h). svm_node_words is the exact
@@ -87,6 +102,7 @@ class WebGPUDevice final:public Device {
   // Tier selection before any compile (device_tier.h): explicit request,
   // persisted device record, known-adapter table, then full; optional canary.
   DeviceTierPolicy tier_policy;
+  PipelineDiskCache pipeline_disk_cache;
   void select_tier();
   void run_canary();
   std::vector<std::string> pipeline_warnings;
@@ -117,6 +133,7 @@ class WebGPUDevice final:public Device {
   std::string pipeline_report_json() const;
   std::string adapter_report_json() const;
   void validate_geometry_motion() const;
+  void validate_curves();
   void validate_lighting(bool sampling) const;
   void validate_light_tree() const;
   void validate_volume() const;

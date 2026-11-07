@@ -37,6 +37,10 @@ fn surf_bsdf(kind:u32)->bool{return kind!=FAMILY_NONE&&kind<=CLOSURE_BSDF_TRANSP
 fn surf_roughness(c:SvmClosure)->f32{if(surf_microfacet(c.kind)){return c.alpha_x*c.alpha_y;}return select(1.0,0.0,c.kind==CLOSURE_BSDF_TRANSPARENT_ID);}
 fn surf_bump(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>,is_eval:bool)->f32{
     if(all(c.N==sd.N)){return 1.0;}
+//#if CURVES
+    // Smoothing doesn't apply to curve geometry.
+    if((sd.primitive_type&PRIMITIVE_CURVE)!=0u){return 1.0;}
+//#endif
     let ns_i=rounded_dot(sd.N,wo);let ns_n=rounded_dot(sd.N,c.N);let n_i=rounded_dot(c.N,wo);let diffuse=surf_diffuse(c.kind);
     if(ns_i*ns_n*n_i<0.0&&(is_eval||diffuse)){return 0.0;}
     if(!diffuse||(sd.shader_flag&SD_USE_BUMP_MAP_CORRECTION)==0u){return 1.0;}
@@ -91,6 +95,10 @@ fn surf_evaluate_closure(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
     return vec4<f32>(vec3<f32>(pdf*bump),pdf);
 }
 struct SurfaceSample {wo:vec3<f32>,pdf:f32,eval:vec3<f32>,label:u32,diffuse:vec3<f32>,glossy:vec3<f32>,roughness:f32}
+//#if CURVES
+// bsdf_sample: for curves the smooth normal stands in for the geometric normal.
+fn surf_sample_data(sd:SurfaceData,c:SvmClosure)->SurfaceData{var out=sd;if((sd.primitive_type&PRIMITIVE_CURVE)!=0u){out.Ng=c.N;}return out;}
+//#endif
 fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#if !SUBSURFACE
 //#if SVM_BSDF_METALLIC else     var out:SurfaceSample;if((r.runtime_flag&SR_BSDF)==0u||r.count==0u){return out;}
@@ -137,7 +145,9 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
     if(c.kind==CLOSURE_BSDF_TRANSPARENT_ID){out.wo=-sd.wi;out.pdf=1e6;value=vec3<f32>(1e6);out.label=LABEL_TRANSMIT|LABEL_TRANSPARENT;
         if(data_float(D_background_transparent_roughness_squared_threshold)>=0.0){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
 //#if SVM_BSDF_FAMILIES
-    else if(surf_family(c.kind)){out=surf_family_sample(sd,c,rand,disk);value=out.eval;
+//#if CURVES else     else if(surf_family(c.kind)){out=surf_family_sample(sd,c,rand,disk);value=out.eval;
+    else if(surf_family(c.kind)){out=surf_family_sample(surf_sample_data(sd,c),c,rand,disk);value=out.eval;
+//#endif
         if((out.label&LABEL_TRANSMIT)!=0u){let threshold=data_float(D_background_transparent_roughness_squared_threshold);
             if(threshold>=0.0&&(out.label&LABEL_DIFFUSE)==0u&&surf_roughness(c)<=threshold){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
         else if(out.label!=0u){shade_terminator=true;}}
@@ -145,6 +155,7 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
     else if(surf_microfacet(c.kind)){
 //#if !SVM_BSDF_BECKMANN
 //#if SVM_BSDF_MICROFACET else atomicOr(&heap[p(17u)/4u],2u);return out;
+//#if !CURVES
 //#if SVM_BSDF_THIN_WALL else         out=ggx_sample(sd,c,rand,disk);value=out.eval;
         // bsdf_thin_glass_transmission_sample: singular pass-through, or GGX on the
         // mirrored direction against the flipped geometric normal.
@@ -154,6 +165,18 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
         else{out=ggx_sample(gs,g,rand,disk);if(thin&&out.label!=0u){out.label=LABEL_TRANSMIT|LABEL_GLOSSY;}}
         value=out.eval;
 //#endif
+//#endif
+//#if CURVES
+//#if SVM_BSDF_THIN_WALL else         out=ggx_sample(surf_sample_data(sd,c),c,rand,disk);value=out.eval;
+        // bsdf_thin_glass_transmission_sample: singular pass-through, or GGX on the
+        // mirrored direction against the flipped geometric normal.
+        let thin=c.kind==CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID;var g=c;var gs=surf_sample_data(sd,c);
+        if(thin){g.kind=CLOSURE_BSDF_MICROFACET_GGX_ID;gs.Ng=-gs.Ng;gs.wi=rounded_add3(sd.wi,-((2.0*c.N)*rounded_dot(sd.wi,c.N)));}
+        if(thin&&c.alpha_x*c.alpha_y<=2e-10){out.wo=-sd.wi;out.pdf=1e6;out.eval=vec3<f32>(1e6);out.label=LABEL_TRANSMIT|LABEL_SINGULAR;}
+        else{out=ggx_sample(gs,g,rand,disk);if(thin&&out.label!=0u){out.label=LABEL_TRANSMIT|LABEL_GLOSSY;}}
+        value=out.eval;
+//#endif
+//#endif
         if((out.label&LABEL_TRANSMIT)!=0u){let threshold=data_float(D_background_transparent_roughness_squared_threshold);
             if(threshold>=0.0&&c.alpha_x*c.alpha_y<=threshold){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
         else{shade_terminator=true;}
@@ -161,12 +184,16 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#endif
     }
 //#if SVM_BSDF_PRINCIPLED
-    else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(sd,c,disk);value=out.eval;shade_terminator=true;}
+//#if CURVES else     else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(sd,c,disk);value=out.eval;shade_terminator=true;}
+    else if(c.kind==CLOSURE_BSDF_SHEEN_ID){out=sheen_sample(surf_sample_data(sd,c),c,disk);value=out.eval;shade_terminator=true;}
+//#endif
 //#endif
     else{
         let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=surface_cos_hemisphere_disk(select(c.N,-c.N,transmission),disk);
         out.wo=sampled.xyz;out.pdf=sampled.w;out.label=LABEL_DIFFUSE|select(LABEL_REFLECT,LABEL_TRANSMIT,transmission);
-        let valid=select(dot(sd.Ng,out.wo)>0.0,dot(sd.Ng,out.wo)<0.0,transmission);
+//#if CURVES else         let valid=select(dot(sd.Ng,out.wo)>0.0,dot(sd.Ng,out.wo)<0.0,transmission);
+        let sample_Ng=surf_sample_data(sd,c).Ng;let valid=select(dot(sample_Ng,out.wo)>0.0,dot(sample_Ng,out.wo)<0.0,transmission);
+//#endif
         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
             shade_terminator=!transmission;}
         else{out.pdf=0.0;}
@@ -299,6 +326,10 @@ fn surf_ray_offset(sd:SurfaceData,direction:vec3<f32>)->vec3<f32>{return surf_ra
 // integrate_surface_ray_offset for a ray starting at P (the hit point, or the
 // shadow-terminator-offset origin).
 fn surf_ray_offset_at(sd:SurfaceData,P:vec3<f32>,direction:vec3<f32>)->vec3<f32>{
+//#if CURVES
+    // No ray offset for other primitive types.
+    if((sd.primitive_type&PRIMITIVE_TRIANGLE)==0u){return P;}
+//#endif
     var pos=P;var dir=direction;if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){pos=surface_object_point(sd,pos,true);dir=surface_object_direction(sd,dir,true);}
     let vertices=native_triangle_vertices(sd.object_id,sd.prim,sd.primitive_type,sd.time);
     let a=vertices.a-pos;let b=vertices.b-pos;let c=vertices.c-pos;
@@ -524,7 +555,9 @@ fn light_selection_compute(index:u32,sd:SurfaceData,r:SvmResult,sample:bool,forw
     let sample=data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
        (sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u&&(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)==0u&&
        heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0;
-    let forward=(r.runtime_flag&SR_EMISSION)!=0u&&(flag&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u;
+//#if CURVES else     let forward=(r.runtime_flag&SR_EMISSION)!=0u&&(flag&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u;
+    let forward=(r.runtime_flag&SR_EMISSION)!=0u&&(flag&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u&&(sd.primitive_type&PRIMITIVE_TRIANGLE)!=0u;
+//#endif
     let result=light_selection_compute(index,sd,r,sample,forward);
     if(load_word(p(17u))!=0u){return;}
     light_selection_write(at,result.selection,result.forward_pdf);

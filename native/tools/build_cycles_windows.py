@@ -32,7 +32,7 @@ RUNTIME_SHA256={'win-x64':'88be16eb071943d97bc679a87811f738c5bc0d447f05ee30af2aa
                 'win-arm64':'40eb07e06c3ef61d97f9142a23a9094b8104d1ea9913cad790678533b1f43206'}
 # The Linux host-gate list (host_gate.py), plus the WGSL device gates.
 HOST_TARGETS=['codebrix_cycles_host',*['codebrix_host_'+n for n in ['cpu_test','gpu_test','reload_test','concurrency_test','tier_test',
- 'abi_test','example_test','scene_edit_test','session_reference','session64_reference']],'codebrix_cycles_oracle']
+ 'abi_test','example_test','scene_edit_test','pipeline_cache_test','session_reference','session64_reference']],'codebrix_cycles_oracle']
 GATE_TARGETS=['codebrix_cycles_'+n+'_gate' for n in ['device','camera','closest','background','svm_world','shader_data','svm_surface',
  'attribute','normal','image','surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film',
  'ao_render','ao_state','light_tree','shadow_linking','mnee','mnee_render','shadow_catcher']]

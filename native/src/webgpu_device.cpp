@@ -83,7 +83,7 @@ void Device::pop_scope(){
   };
   wgpuDevicePopErrorScope(device,cb);wait(p,false);
 }
-Device::Device(){
+Device::Device(bool request_pipeline_cache){
   if(wgpuCodebrixGetApiVersion()!=WGPU_CODEBRIX_API_VERSION)throw Error(CBC_BACKEND_GPU_ERROR,"WebGPU ABI mismatch");
 #ifdef _WIN32
   // The address of an imported function is its import thunk in this module, so
@@ -217,6 +217,14 @@ Device::Device(){
     throw Error(CBC_BACKEND_GPU_ERROR,"No "+backend_name+" adapter matches CODEBRIX_CYCLES_WEBGPU_ADAPTER="+choice+" (adapters: "+(seen.empty()?"none":seen)+")");
   }
   WGPUDeviceDescriptor dd{};
+  // Persistent pipeline cache: asked for only when one will be used, so a device
+  // without a cache is created exactly as it always was.
+  const WGPUFeatureName pipeline_cache_feature=static_cast<WGPUFeatureName>(WGPUNativeFeature_PipelineCache);
+  if(request_pipeline_cache&&wgpuAdapterHasFeature(adapter,pipeline_cache_feature)){
+    WGPUStringView key{};
+    if(wgpuCodebrixAdapterGetPipelineCacheKey(adapter,&key)==WGPUStatus_Success&&key.data&&key.length){
+      pipeline_cache_offered=true;pipeline_cache_key=text(key);dd.requiredFeatureCount=1;dd.requiredFeatures=&pipeline_cache_feature;}
+  }
   // The Cycles device keeps all its memory in one storage binding addressed by 32-bit
   // offsets. WebGPU's default limits cap a storage binding at 128 MiB, which a scene with a
   // few 2K textures exceeds, so the two buffer-size limits are raised to what the adapter
@@ -273,6 +281,8 @@ Buffer Device::buffer(size_t bytes,WGPUBufferUsage usage,const void *data){
 namespace {
 char crash_note[256];size_t crash_note_bytes=0;
 volatile sig_atomic_t crash_record_fd=-1;
+// The pipeline cache file of the device creating a pipeline (empty: none).
+char crash_cache_file[4096]="";
 #ifdef _WIN32
 // Windows: a driver fault is an unhandled structured exception (the process-wide
 // filter below) and abort() raises SIGABRT; the CRT has no sigaction. The record
@@ -280,6 +290,7 @@ volatile sig_atomic_t crash_record_fd=-1;
 LPTOP_LEVEL_EXCEPTION_FILTER previous_filter=nullptr;void (*previous_abort)(int)=SIG_DFL;
 void crash_record(int signal){
   if(crash_note_bytes){DWORD ignored;WriteFile(GetStdHandle(STD_ERROR_HANDLE),crash_note,DWORD(crash_note_bytes),&ignored,nullptr);}
+  if(crash_cache_file[0])(void)_unlink(crash_cache_file);
   if(crash_record_fd>=0){
     char line[24]="signal=";size_t n=7;char digits[12];size_t d=0;unsigned v=unsigned(signal);
     do{digits[d++]=char('0'+v%10);v/=10;}while(v&&d<sizeof(digits));
@@ -309,6 +320,7 @@ constexpr int crash_signals[]={SIGSEGV,SIGABRT,SIGBUS,SIGILL,SIGFPE};
 struct sigaction previous_actions[5];
 void crash_breadcrumb(int signal){
   if(crash_note_bytes){ssize_t ignored=write(2,crash_note,crash_note_bytes);(void)ignored;}
+  if(crash_cache_file[0])(void)unlink(crash_cache_file);
   if(crash_record_fd>=0){
     char line[24]="signal=";size_t n=7;char digits[12];size_t d=0;unsigned v=unsigned(signal);
     do{digits[d++]=char('0'+v%10);v/=10;}while(v&&d<sizeof(digits));
@@ -332,21 +344,31 @@ struct CrashBreadcrumb {
 #endif
 std::mutex crash_mutex;
 }
-Pipeline Device::pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry,const char *label,int record_fd){
+Pipeline Device::pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry,const char *label,int record_fd,WGPUCodebrixPipelineCache cache,const char *cache_file){
+  if(pipeline_creation_hook)pipeline_creation_hook(entry);
   WGPUComputePipelineDescriptor d{};d.layout=layout;d.compute.module=shader;d.compute.entryPoint={entry,std::strlen(entry)};
+  WGPUCodebrixPipelineDescriptorExtras extras{};extras.chain.sType=static_cast<WGPUSType>(WGPUSType_CodebrixPipelineDescriptorExtras);
   // Driver out-of-memory and internal compiler errors are reported with the
   // stage name instead of only reaching the uncaptured-error callback.
   std::lock_guard crash_lock(crash_mutex);CrashBreadcrumb breadcrumb(label?label:entry,record_fd);
+  const size_t cache_file_bytes=cache&&cache_file&&std::strlen(cache_file)<sizeof(crash_cache_file)?std::strlen(cache_file):0;
+  if(cache_file_bytes)std::memcpy(crash_cache_file,cache_file,cache_file_bytes);
+  crash_cache_file[cache_file_bytes]=0;
   // Test hook for the device-tier gates: terminate exactly as a driver crash
   // would, inside the breadcrumb scope, when creating the named stage.
   if(const char *crash=std::getenv("CODEBRIX_CYCLES_TEST_CRASH_PIPELINE"))if(std::strcmp(crash,label?label:entry)==0)raise(SIGABRT);
-  wgpuDevicePushErrorScope(device,WGPUErrorFilter_Internal);wgpuDevicePushErrorScope(device,WGPUErrorFilter_OutOfMemory);
-  push_scope();Pipeline result(wgpuDeviceCreateComputePipeline(device,&d));
-  std::string failure;
-  for(int i=0;i<3;i++){try{pop_scope();}catch(const Error &e){if(failure.empty())failure=e.what();}}
-  if(!failure.empty())throw Error(CBC_BACKEND_GPU_ERROR,std::string("Pipeline '")+entry+"' creation failed: "+failure);
-  if(!result.value)throw Error(CBC_BACKEND_GPU_ERROR,std::string("Pipeline '")+entry+"' creation failed");
-  ++pipeline_creations;return result;
+  for(;;){
+    const bool cached=cache!=nullptr;
+    extras.pipelineCache=cache;d.nextInChain=cached?&extras.chain:nullptr;
+    wgpuDevicePushErrorScope(device,WGPUErrorFilter_Internal);wgpuDevicePushErrorScope(device,WGPUErrorFilter_OutOfMemory);
+    push_scope();Pipeline result(wgpuDeviceCreateComputePipeline(device,&d));
+    std::string failure;
+    for(int i=0;i<3;i++){try{pop_scope();}catch(const Error &e){if(failure.empty())failure=e.what();}}
+    if(cached&&(!failure.empty()||!result.value)){cache=nullptr;crash_cache_file[0]=0;++pipeline_cache_faults;continue;}
+    if(!failure.empty())throw Error(CBC_BACKEND_GPU_ERROR,std::string("Pipeline '")+entry+"' creation failed: "+failure);
+    if(!result.value)throw Error(CBC_BACKEND_GPU_ERROR,std::string("Pipeline '")+entry+"' creation failed");
+    ++pipeline_creations;crash_cache_file[0]=0;return result;
+  }
 }
 void Device::read(Buffer &buffer,void *out,size_t bytes){
   auto p=std::make_shared<Completion>();WGPUBufferMapCallbackInfo cb{};cb.mode=WGPUCallbackMode_AllowProcessEvents;cb.userdata1=new Pending(p);

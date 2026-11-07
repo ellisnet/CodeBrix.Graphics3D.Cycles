@@ -189,6 +189,10 @@ std::string svm_layout(bool surface){
   FIELD(TexVoronoi,coord);FIELD(TexVoronoi,distance_offset);FIELD(TexVoronoi,color_offset);FIELD(TexVoronoi,position_offset);FIELD(TexVoronoi,w_out_offset);FIELD(TexVoronoi,radius_offset);
   SIZE(TexGabor);FIELD(TexGabor,gabor_type);FIELD(TexGabor,orientation_3d);FIELD(TexGabor,scale);FIELD(TexGabor,frequency);FIELD(TexGabor,anisotropy);
   FIELD(TexGabor,orientation_2d);FIELD(TexGabor,coordinates);FIELD(TexGabor,value_offset);FIELD(TexGabor,phase_offset);FIELD(TexGabor,intensity_offset);
+  source<<"//#endif\n//#if SVM_NODE_HAIR_INFO\n";
+  SIZE(HairInfo);FIELD(HairInfo,info_type);FIELD(HairInfo,out_offset);
+  constant("CV_NODE_HAIR_INFO",NODE_HAIR_INFO);constant("CV_INFO_CURVE_IS_STRAND",NODE_INFO_CURVE_IS_STRAND);constant("CV_INFO_CURVE_THICKNESS",NODE_INFO_CURVE_THICKNESS);constant("CV_INFO_CURVE_TANGENT_NORMAL",NODE_INFO_CURVE_TANGENT_NORMAL);constant("HI_PRIMITIVE_CURVE",PRIMITIVE_CURVE);
+  source<<"//#endif\n//#if CURVES\n";constant("CV_ATTR_ELEMENT_CURVE_KEY",ATTR_ELEMENT_CURVE_KEY);constant("CV_ATTR_ELEMENT_CURVE",ATTR_ELEMENT_CURVE);source<<"//#endif\n//#if SVM_NODES_ANY\n";
   SIZE(Wavelength);FIELD(Wavelength,wavelength);FIELD(Wavelength,color_offset);
   SIZE(Wireframe);FIELD(Wireframe,in_size);FIELD(Wireframe,bump_filter_width);FIELD(Wireframe,use_pixel_size);FIELD(Wireframe,bump_offset);FIELD(Wireframe,out_fac_offset);
   source<<"//#endif\n";

@@ -363,6 +363,9 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_TEX_GABOR
             case NODE_TEX_GABOR:{size=SZ_TexGabor;}
 //#endif
+//#if SVM_NODE_HAIR_INFO
+            case CV_NODE_HAIR_INFO:{size=SZ_HairInfo;}
+//#endif
 //#if SVM_NODE_WAVELENGTH
             case NODE_WAVELENGTH:{size=SZ_Wavelength;}
 //#endif
@@ -447,7 +450,10 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                     case NODE_GEOM_Ng:{v=s.geometry.Ng;}
                     case NODE_GEOM_I:{v=s.geometry.wi;}
                     case NODE_GEOM_uv:{v=vec3<f32>(1.0-s.geometry.u-s.geometry.v,s.geometry.u,0);}
-                    case NODE_GEOM_T:{if(s.geometry.object_id!=NONE){svm_error(&s,16u);}else{v=normalize(s.geometry.dPdu);}}
+//#if CURVES else                     case NODE_GEOM_T:{if(s.geometry.object_id!=NONE){svm_error(&s,16u);}else{v=normalize(s.geometry.dPdu);}}
+                    // primitive_tangent: normalize(dPdu) for a curve.
+                    case NODE_GEOM_T:{if((s.geometry.primitive_type&PRIMITIVE_CURVE)!=0u){v=cv_normalize(s.geometry.dPdu,cv_order());}else if(s.geometry.object_id!=NONE){svm_error(&s,16u);}else{v=normalize(s.geometry.dPdu);}}
+//#endif
                     default:{svm_error(&s,16u);}
                 }
                 svm_store3(&s,svm_byte(node+N_Geometry_out_offset),v);
@@ -716,6 +722,11 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_TEX_GABOR
             case NODE_TEX_GABOR:{
                 svm_gabor_texture(&s,node);
+            }
+//#endif
+//#if SVM_NODE_HAIR_INFO
+            case CV_NODE_HAIR_INFO:{
+                svm_hair_info(&s,node);
             }
 //#endif
 //#if SVM_NODE_WAVELENGTH

@@ -58,6 +58,9 @@ AttributeStandard standard_attribute(Geometry &geometry,const char *name,Attribu
   if(key=="radius" && (points||hair))return ATTR_STD_RADIUS;
   if(key=="uv" && (mesh||points||hair))return ATTR_STD_UV;
   if(key=="generated" && (mesh||points||hair))return ATTR_STD_GENERATED;
+  if(key=="curve_intercept" && hair)return ATTR_STD_CURVE_INTERCEPT;
+  if(key=="curve_length" && hair)return ATTR_STD_CURVE_LENGTH;
+  if(key=="curve_random" && hair)return ATTR_STD_CURVE_RANDOM;
   if(key=="tangent" && mesh)return ATTR_STD_UV_TANGENT;
   if(key=="tangent_sign" && mesh)return ATTR_STD_UV_TANGENT_SIGN;
   throw Failure(CBC_UNSUPPORTED,"Standard attribute is not exposed for this geometry");

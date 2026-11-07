@@ -61,6 +61,8 @@ def main():
  state=dict(complete=False,phase='binary-review',rid='linux-arm64',native=NATIVE,stepTimeoutSeconds=a.step_timeout,emulatedCpu=not NATIVE,actualArm64GpuProven=False);save(out/'status.json',state)
  results={};comparisons=[];commands=[]
  env=dict(os.environ);env.pop('LD_LIBRARY_PATH',None)
+ # A known pipeline cache state: the example and the managed consumers do not turn it off themselves.
+ env['CODEBRIX_CYCLES_PIPELINE_CACHE']='off'
  for name in PINNED_VARIABLES:env.pop(name,None)
  runtime=PACKAGE/'runtimes/linux-arm64/native/libcodebrix_wgpu.so'
  if NATIVE:
@@ -138,7 +140,7 @@ def main():
   library=build/'lib/libcodebrix_cycles_host.so'
   exported=subprocess.check_output([nm,'-D','--defined-only',str(library)],text=True)
   actual={line.split()[-1].split('@')[0] for line in exported.splitlines()}-{'CBC_HOST_EXPERIMENT_1'}
-  expected=set(re.findall(r'\b(cbc_host_\w+)\(', (REPO/'native/host/cycles_host.h').read_text()));assert actual==expected and len(actual)==48
+  expected=set(re.findall(r'\b(cbc_host_\w+)\(', (REPO/'native/host/cycles_host.h').read_text()));assert actual==expected and len(actual)==54
   for kind in ['session','session64','image']:
    link=(build/('codebrix_host_'+kind+'_reference.map')).read_text()
    assert 'CMakeFiles/codebrix_host_reference_color.dir/src/util/colorspace.cpp.o' in link

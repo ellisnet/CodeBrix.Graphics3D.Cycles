@@ -68,7 +68,8 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
     require(address%4==0,"Unaligned surface pointer");return uint32_t(address);};
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[4]=pointer(1,false);p[17]=error_word;
   if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU surface currently requires triangle primitives");
+  require(!data.bvh.have_points,"WebGPU surface currently requires triangle or static curve primitives");
+  validate_curves();
   validate_geometry_motion();
   validate_volume();
   validate_lighting(data.integrator.use_direct_light);
@@ -294,7 +295,8 @@ void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args)
   require(args.types[0]==DeviceKernelArguments::POINTER&&args.sizes[0]==sizeof(device_ptr),"Invalid light NEE pointer argument");
   device_ptr indices;std::memcpy(&indices,args.values[0],sizeof(indices));require(indices%4==0,"Unaligned light NEE indices");
   std::array<uint32_t,32> p{};p[1]=n;p[2]=uint32_t(indices);p[17]=error_word;if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU light NEE currently requires triangle primitives");
+  require(!data.bvh.have_points,"WebGPU light NEE currently requires triangle or static curve primitives");
+  validate_curves();
   require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU light NEE optional integration features not implemented");
   validate_shadow_linking();
   validate_geometry_motion();

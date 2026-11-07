@@ -14,10 +14,12 @@ group count; every group runs and must be bit-identical. Regions that do not fit
 next to the scene are listed as "unfit" in the record (other gate scenes cover them).
 "unspecialized" (=0) compiles every handler in one module and is a diagnostic only
 (native/DEVICE.md, "Linux reference fixes on the updated Mesa")."""
+import argparse
 import hashlib
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 def films(folder):
@@ -69,3 +71,17 @@ def check(binary,on_folder,off_folder,mode='superset',timeout=1800,extra_args=()
     (off/'specialization-identical.json').write_text(json.dumps(record,indent=2)+'\n')
     assert record['identical'],f'{Path(binary).name}: films differ with specialization on/{mode}'
     return record
+
+def main():
+    parser=argparse.ArgumentParser(description='Run a render gate binary with specialization off and compare its films with a finished run of the same binary. Exit 0: identical; 1: they differ.')
+    parser.add_argument('binary',type=Path);parser.add_argument('on_folder',type=Path,help='Folder of the run with specialization on (its films are read)')
+    parser.add_argument('off_folder',type=Path,help='New folder for the off runs');parser.add_argument('--mode',choices=['superset','unspecialized'],default='superset')
+    parser.add_argument('--timeout',type=int,default=1800);parser.add_argument('extra_args',nargs='*')
+    args=parser.parse_args()
+    if not films(args.on_folder):sys.exit(f'{args.on_folder}: no films; a comparison with nothing proves nothing')
+    try:record=check(args.binary,args.on_folder,args.off_folder,args.mode,args.timeout,args.extra_args)
+    except AssertionError as error:print(error);sys.exit(1)
+    print(json.dumps({k:record.get(k) for k in ('mode','identical','covered','unfit')}))
+
+if __name__=='__main__':
+    main()

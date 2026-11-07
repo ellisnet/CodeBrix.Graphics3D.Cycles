@@ -28,7 +28,7 @@ RUNTIME_NAME='libcodebrix_wgpu.dylib'
 RUNTIME_SHA256='840a106d54fe479c255ecb98d51cee192a9044c3d0411fc1535f9ff0b8abbb82'
 # The Linux host-gate list (host_gate.py), plus the WGSL device gates.
 HOST_TARGETS=['codebrix_cycles_host',*['codebrix_host_'+n for n in ['cpu_test','gpu_test','reload_test','concurrency_test','tier_test',
- 'abi_test','example_test','scene_edit_test','session_reference','session64_reference']]]
+ 'abi_test','example_test','scene_edit_test','pipeline_cache_test','session_reference','session64_reference']]]
 GATE_TARGETS=['codebrix_cycles_'+n+'_gate' for n in ['device','camera','closest','background','svm_world','shader_data','svm_surface',
  'attribute','normal','image','surface','microfacet_svm','microfacet_bounce','microfacet_render','render','atomic_film',
  'ao_render','ao_state','light_tree','shadow_linking','mnee','mnee_render','shadow_catcher']]

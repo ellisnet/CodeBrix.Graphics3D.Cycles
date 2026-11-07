@@ -4,6 +4,7 @@
 #include "device/device.h"
 #include "scene/scene.h"
 #include "scene/background.h"
+#include "scene/bake.h"
 #include "scene/camera.h"
 #include "scene/film.h"
 #include "scene/integrator.h"
@@ -110,6 +111,12 @@ struct PassResult {
   std::vector<float> pixels;
   bool written = false;
 };
+// The per-pixel input of a texture bake (host_bake.inc): the kernel reads it from
+// the render buffer's BakePrimitive and BakeDifferential passes.
+struct TextureBakeMap {
+  std::vector<float> primitive, differential;
+  std::vector<int32_t> triangles;
+};
 struct Result {
   std::vector<float> pixels;
   int width = 0, height = 0;
@@ -118,6 +125,9 @@ struct Result {
   // Named caller passes, read from the same complete tile as Combined.
   std::vector<PassResult> passes;
   bool complete = false;
+  // A texture bake's map, handed to Cycles when it asks (read_render_tile).
+  const TextureBakeMap *bake_map = nullptr;
+  bool bake_map_read = false;
 };
 class HostOutput final : public OutputDriver {
   Result &result;
@@ -131,6 +141,13 @@ class HostOutput final : public OutputDriver {
     if (!result.valid) return;
     for (auto &pass : result.passes)
       pass.written = tile.get_pass_pixels(pass.source.empty() ? pass.name : pass.source, int(pass.components), pass.pixels.data());
+  }
+  bool read_render_tile(const Tile &tile) override {
+    if (!result.bake_map) return false;
+    result.bake_map_read = tile.offset.x == 0 && tile.offset.y == 0 && tile.size.x == result.width && tile.size.y == result.height &&
+      tile.set_pass_pixels("BakePrimitive", 3, result.bake_map->primitive.data()) &&
+      tile.set_pass_pixels("BakeDifferential", 4, result.bake_map->differential.data());
+    return result.bake_map_read;
   }
 };
 std::mutex configuration_mutex;
@@ -252,6 +269,13 @@ struct Host {
 std::mutex hosts_mutex;
 std::map<CBCHost, std::shared_ptr<Host>> hosts;
 std::once_flag exit_hook;
+// Registers every Cycles node type, once, before a host or a capability report can reach a node type or
+// Pass::get_type_enum directly: that enum is a function-local static the pinned code fills on first use
+// without a lock, and two threads filling it corrupt the heap. NodeType's own initialization is locked.
+void register_node_types_once() {
+  static std::once_flag once;
+  std::call_once(once, [] { (void)NodeType::type_names(); });
+}
 void shutdown_hosts() noexcept {
   std::map<CBCHost, std::shared_ptr<Host>> remaining;
   { std::lock_guard lock(hosts_mutex); remaining.swap(hosts);
@@ -354,6 +378,9 @@ namespace {
 namespace ccl {
 // Defined with the WebGPU device (native/cycles/device_tier.h, device.cpp).
 void host_tier_config(uint32_t tier, bool record_off, bool read_only, bool canary, const char *directory);
+void host_pipeline_cache_config(bool off, const char *directory);
+void host_pipeline_cache_allow_default();
+std::string webgpu_pipeline_cache_report_json(Device *device);
 std::string webgpu_device_report_json(Device *device);
 std::string webgpu_adapter_report_json(Device *device);
 // The oracle arithmetic the generated WGSL adapters reproduce (native/cycles/camera.cpp).
@@ -382,6 +409,18 @@ extern "C" int cbc_host_tier_config(const CBCTierConfig *config, const char *dir
 #endif
   });
 }
+extern "C" int cbc_host_pipeline_cache_config(const CBCPipelineCacheConfig *config, const char *directory) {
+  return boundary([&] {
+    require(config && config->struct_size == sizeof(*config) && config->abi_version == CBC_HOST_ABI, "Invalid pipeline cache configuration");
+    require(config->flags == 0 && std::all_of(std::begin(config->reserved), std::end(config->reserved), [](auto v) { return v == 0; }), "Unknown configuration flags");
+    require(config->mode <= CBC_PIPELINE_CACHE_OFF, "Invalid pipeline cache mode");
+#ifdef WITH_WEBGPU
+    ccl::host_pipeline_cache_config(config->mode == CBC_PIPELINE_CACHE_OFF, directory ? directory : "");
+#else
+    (void)directory;
+#endif
+  });
+}
 namespace {
 std::string device_report(Host &host) {
     std::ostringstream out; out.imbue(std::locale::classic());
@@ -399,9 +438,10 @@ std::string device_report(Host &host) {
       // Which CPU oracle's rounding the WGSL reproduces: oracle films record it and compare.py gates
       // the film against the CPU gold standard of that ISA family.
       out << ",\"wgslArithmetic\":\"" << wgsl_arithmetic() << '"';
+      out << ",\"pipelineCache\":" << webgpu_pipeline_cache_report_json(device);
     } else
 #endif
-    out << (device->info.type == DEVICE_METAL ? "\"metal\"" : host.backend == CBC_HOST_CPU ? "\"cpu-embree\"" : "\"cpu\"") << ",\"pipelines\":null";
+    out << (device->info.type == DEVICE_METAL ? "\"metal\"" : host.backend == CBC_HOST_CPU ? "\"cpu-embree\"" : "\"cpu\"") << ",\"pipelines\":null,\"pipelineCache\":{\"active\":false,\"reason\":\"backend\",\"directory\":null}";
     out << '}';
     return out.str();
 }
@@ -490,6 +530,10 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
 #ifndef WITH_EMBREE
     require(backend != CBC_HOST_CPU, "The Embree CPU backend exists only in builds with Embree", CBC_UNSUPPORTED);
 #endif
+#ifdef WITH_WEBGPU
+    ccl::host_pipeline_cache_allow_default();
+#endif
+    register_node_types_once();
     std::lock_guard configuration_lock(configuration_mutex);
     auto host = std::make_shared<Host>();
     auto type = backend == CBC_HOST_WEBGPU ? DEVICE_WEBGPU : backend == CBC_HOST_METAL ? DEVICE_METAL : DEVICE_CPU;
@@ -517,7 +561,9 @@ extern "C" int cbc_host_create(const CBCHostConfig *config, CBCHost *out) {
     // Every backend builds Cycles' BVH2 (the CPU reference and the exact WGSL traversal agree on it), except the
     // Embree CPU backend, which leaves the layout to the CPU device (Embree).
     SceneParams scene; scene.bvh_layout = backend == CBC_HOST_CPU ? BVH_LAYOUT_AUTO : BVH_LAYOUT_BVH2; scene.bvh_type = BVH_TYPE_STATIC;
-    scene.use_bvh_unaligned_nodes = false; scene.use_texture_cache = false;
+    // Unaligned BVH2 nodes for curves, as the pinned default: the BVH2 traversal of the CPU reference, of the Metal
+    // kernels and of the WGSL device all read them; only scenes with curves can have them (scene/geometry_bvh.cpp).
+    scene.use_bvh_unaligned_nodes = true; scene.use_texture_cache = false;
     host->session = std::make_unique<Session>(params, scene);
     require(!host->session->progress.get_error(), host->session->progress.get_error_message().c_str(), CBC_FAILED);
     require(host->session->device->info.type == type, "Device selection changed unexpectedly", CBC_FAILED);
@@ -732,6 +778,47 @@ extern "C" int cbc_host_mesh(CBCHost handle, CBCNode id, const float *xyz, uint6
     mesh->tag_triangles_modified(); host.changed(entry);
   });
 }
+// Curve geometry, the shape of cbc_host_mesh: validated, copied, every curve starts on material 0.
+extern "C" int cbc_host_curves(CBCHost handle, CBCNode id, const float *xyz, const float *radius, uint64_t key_count, const uint32_t *first_key, uint64_t curve_count) {
+  return edit(handle, [&](Host &host) {
+    require(key_count <= INT_MAX / 3 && curve_count <= INT_MAX && (key_count == 0 || (xyz && radius)) && (curve_count == 0 || first_key), "Invalid curve dimensions");
+    require((curve_count == 0) == (key_count == 0), "Curve keys and curves must both be empty or both be present");
+    auto &entry = host.entry(id); auto hair = dynamic_cast<Hair *>(entry.node); require(hair, "Handle is not a hair geometry");
+    for (uint64_t i = 0; i < key_count * 3; ++i) require(std::isfinite(xyz[i]), "Curve key position is nonfinite");
+    for (uint64_t i = 0; i < key_count; ++i) require(std::isfinite(radius[i]) && radius[i] >= 0.0f, "Curve key radius is nonfinite or negative");
+    if (curve_count) require(first_key[0] == 0, "First curve must start at key zero");
+    for (uint64_t i = 0; i < curve_count; ++i) {
+      const uint64_t end = i + 1 < curve_count ? first_key[i + 1] : key_count;
+      require(first_key[i] < end && end <= key_count, "Invalid curve key range");
+    }
+    before_edit(host, entry, nullptr);
+    hair->resize_curves(int(curve_count), int(key_count));
+    auto positions = hair->attributes.find(ATTR_STD_POSITION)->data_for_write<packed_float3>();
+    auto radii = hair->attributes.find(ATTR_STD_RADIUS)->data_for_write<float>();
+    for (size_t i = 0; i < key_count; ++i) { positions[i] = make_float3(xyz[3*i],xyz[3*i+1],xyz[3*i+2]); radii[i] = radius[i]; }
+    for (size_t i = 0; i < curve_count; ++i) { hair->get_curve_first_key()[i] = int(first_key[i]); hair->get_curve_shader()[i] = 0; }
+    hair->tag_curve_first_key_modified(); hair->tag_curve_shader_modified(); host.changed(entry);
+  });
+}
+extern "C" int cbc_host_curve_shape(CBCHost handle, CBCNode id, uint32_t shape) {
+  return edit(handle, [&](Host &host) {
+    static_assert(int(CBC_CURVE_RIBBON) == int(CURVE_RIBBON) && int(CBC_CURVE_THICK) == int(CURVE_THICK) && int(CBC_CURVE_THICK_LINEAR) == int(CURVE_THICK_LINEAR));
+    require(shape == CBC_CURVE_RIBBON || shape == CBC_CURVE_THICK || shape == CBC_CURVE_THICK_LINEAR, "Unknown curve shape");
+    auto &entry = host.entry(id); auto hair = dynamic_cast<Hair *>(entry.node); require(hair, "Handle is not a hair geometry");
+    if (hair->curve_shape == CurveShapeType(shape)) return;
+    before_edit(host, entry, nullptr); hair->curve_shape = CurveShapeType(shape); hair->tag_curve_first_key_modified(); host.changed(entry);
+  });
+}
+extern "C" int cbc_host_curve_subdivisions(CBCHost handle, uint32_t subdivisions) {
+  return edit(handle, [&](Host &host) {
+    require(subdivisions <= 4, "Curve subdivisions must be 0 to 4 (1 to 16 ribbon sections per segment)");
+    auto &scene = *host.session->scene;
+    if (scene.params.hair_subdivisions == int(subdivisions)) return;
+    scene.params.hair_subdivisions = int(subdivisions);
+    // KernelBVH holds the section count: the next render updates it through the geometry update of the curves.
+    for (Geometry *geometry : scene.geometry) if (geometry->is_hair()) { geometry->tag_modified(); geometry->tag_update(&scene, false); }
+  });
+}
 // Denoised passes are the default, the noisy version an explicit request.
 // Cycles' Film::finalize_passes switches every pass to noisy mode whenever a
 // render does not denoise, and nothing switches it back (Blender re-syncs its
@@ -862,3 +949,4 @@ extern "C" int cbc_host_render(CBCHost handle, const CBCRenderConfig *config, fl
 }
 
 #include "host_api.inc"
+#include "host_bake.inc"

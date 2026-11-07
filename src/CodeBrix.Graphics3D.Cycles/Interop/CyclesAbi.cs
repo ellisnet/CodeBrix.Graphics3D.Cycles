@@ -63,6 +63,16 @@ public static unsafe class CyclesAbi
         return (NativeStatus)Native.ConfigureTiers(ref config, recordDirectory);
     }
 
+    /// <summary><c>cbc_host_pipeline_cache_config</c>: configures the persistent pipeline cache for hosts created afterwards.</summary>
+    /// <param name="mode">Whether to cache.</param>
+    /// <param name="directory">The app-writable cache directory, or <see langword="null"/> for the default.</param>
+    /// <returns>The native status.</returns>
+    public static NativeStatus ConfigurePipelineCache(PipelineCacheMode mode, string directory)
+    {
+        Native.PipelineCacheConfig config = new() { Size = StructSize, Abi = ExpectedAbiVersion, Mode = (uint)mode };
+        return (NativeStatus)Native.ConfigurePipelineCache(ref config, directory);
+    }
+
     /// <summary><c>cbc_host_create</c>: creates a scene host.</summary>
     /// <param name="backend">The backend.</param>
     /// <param name="threads">The native worker thread count.</param>
@@ -422,6 +432,21 @@ public static unsafe class CyclesAbi
             return (NativeStatus)Native.Mesh(host, mesh, xyz, (ulong)(positions.Length / 3), triangles, (ulong)(indices.Length / 3));
     }
 
+    /// <summary><c>cbc_host_curves</c>: replaces a hair geometry's curves.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="hair">The hair node handle.</param>
+    /// <param name="positions">Key positions as x, y, z triples (the key count is the length divided by three).</param>
+    /// <param name="radii">One radius per key.</param>
+    /// <param name="firstKeys">The first key of each curve (the curve count is the length).</param>
+    /// <returns>The native status.</returns>
+    public static NativeStatus Curves(ulong host, ulong hair, ReadOnlySpan<float> positions, ReadOnlySpan<float> radii, ReadOnlySpan<uint> firstKeys)
+    {
+        fixed (float* xyz = positions)
+        fixed (float* radius = radii)
+        fixed (uint* first = firstKeys)
+            return (NativeStatus)Native.Curves(host, hair, xyz, radius, (ulong)radii.Length, first, (ulong)firstKeys.Length);
+    }
+
     /// <summary><c>cbc_host_render</c>: renders synchronously into scene-linear RGBA, lower-left origin.</summary>
     /// <param name="host">The host handle.</param>
     /// <param name="width">The width in pixels.</param>
@@ -554,4 +579,65 @@ public static unsafe class CyclesAbi
     {
         fixed (byte* data = utf8) return (NativeStatus)Native.RenderPasses(host, data, (ulong)utf8.Length, out required);
     }
+
+    /// <summary><c>cbc_host_bake</c>: bakes one mesh's UV layout into raw float32, row 0 at v = 0.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="node">The object to bake.</param>
+    /// <param name="settings">The size, samples, type and options.</param>
+    /// <param name="values">The destination; empty for a size query that does not bake.</param>
+    /// <param name="required">Receives the float count needed.</param>
+    /// <param name="components">Receives the floats per pixel.</param>
+    /// <returns>The native status (<see cref="NativeStatus.Unsupported"/> on the WebGPU device, which does not bake yet).</returns>
+    public static NativeStatus Bake(ulong host, ulong node, in Rendering.BakeSettings settings, Span<float> values, out ulong required, out uint components)
+    {
+        byte[] uv = settings.UvAttribute == null ? null : System.Text.Encoding.UTF8.GetBytes(settings.UvAttribute + "\0");
+        byte[] aov = settings.AovName == null ? null : System.Text.Encoding.UTF8.GetBytes(settings.AovName + "\0");
+        fixed (byte* uvName = uv)
+        fixed (byte* aovName = aov)
+        fixed (float* data = values)
+        {
+            Native.BakeConfig config = BakeConfig(node, settings, uvName, aovName);
+            return (NativeStatus)Native.Bake(host, ref config, data, (ulong)values.Length, out required, out components);
+        }
+    }
+
+    /// <summary><c>cbc_host_bake_map</c>: the map a bake uses, without rendering, on any backend.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="node">The object to bake.</param>
+    /// <param name="settings">The size, type and options.</param>
+    /// <param name="triangles">Receives one triangle index per pixel; empty for a size query.</param>
+    /// <param name="coordinates">Receives six floats per pixel; empty when they are not wanted.</param>
+    /// <param name="required">Receives the pixel count needed.</param>
+    /// <returns>The native status.</returns>
+    public static NativeStatus BakeMap(ulong host, ulong node, in Rendering.BakeSettings settings, Span<int> triangles, Span<float> coordinates, out ulong required)
+    {
+        byte[] uv = settings.UvAttribute == null ? null : System.Text.Encoding.UTF8.GetBytes(settings.UvAttribute + "\0");
+        byte[] aov = settings.AovName == null ? null : System.Text.Encoding.UTF8.GetBytes(settings.AovName + "\0");
+        if (!triangles.IsEmpty && !coordinates.IsEmpty && (ulong)coordinates.Length < (ulong)triangles.Length * 6)
+        {
+            required = (ulong)triangles.Length;
+            return NativeStatus.Invalid;
+        }
+        fixed (byte* uvName = uv)
+        fixed (byte* aovName = aov)
+        fixed (int* triangleData = triangles)
+        fixed (float* coordinateData = coordinates)
+        {
+            Native.BakeConfig config = BakeConfig(node, settings, uvName, aovName);
+            return (NativeStatus)Native.BakeMap(host, ref config, triangleData, coordinateData, (ulong)triangles.Length, out required);
+        }
+    }
+
+    private static Native.BakeConfig BakeConfig(ulong node, in Rendering.BakeSettings settings, byte* uvName, byte* aovName) => new()
+    {
+        Size = (uint)sizeof(Native.BakeConfig),
+        Width = settings.Width,
+        Height = settings.Height,
+        Samples = settings.Samples,
+        Type = (uint)settings.Type,
+        Flags = (uint)((settings.UseCamera ? Rendering.BakeFlags.UseCamera : 0) | (settings.IncludeAlbedo ? Rendering.BakeFlags.IncludeAlbedo : 0)),
+        Object = node,
+        UvAttribute = uvName,
+        AovName = aovName
+    };
 }

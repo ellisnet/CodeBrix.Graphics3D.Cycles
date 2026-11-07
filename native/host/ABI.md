@@ -116,8 +116,9 @@ same host meets the practical criterion against a fresh CPU render.
   waits for cleanup.
 - Failed and cancelled renders never write the caller's output buffer.
 - A requested GPU render never falls back to the CPU.
-- `cbc_host_color_config_path` and `cbc_host_tier_config` are process-wide;
-  call them before creating hosts.
+- `cbc_host_color_config_path`, `cbc_host_tier_config` and
+  `cbc_host_pipeline_cache_config` are process-wide; call them before creating
+  hosts.
 - Process exit with live hosts is supported (an exit hook closes them).
 
 ## Events (progress, status, errors)
@@ -182,11 +183,11 @@ compiled backend: `cpu` for the CPU and WebGPU backends, whose renders Cycles
 denoises on the host, `metal` for Metal), `imageInput` (the
 eight formats, origin, whether texture filenames are read), `output`,
 `passTypes` (every registered Cycles pass type and value), `events`, `limits`,
-`determinism` (a pointer to the section below) and, with a host, `host`
+`determinism` (a pointer to the section below), `baking` (see Baking) and, with a host, `host`
 (`backend`, `deviceDescription`, `deviceId`, `deviceReport`: the
 `cbc_host_device_report_json` object with the WebGPU tier decision, adapter
-identity, record/canary status, compile budget, warnings and compiled
-pipelines). The device report's `warnings` also carries the pipeline-build size
+identity, record/canary status, compile budget, warnings, compiled pipelines and
+the pipeline cache's state). The device report's `warnings` also carries the pipeline-build size
 guard's warnings, and its `sizeGuard` object states the guard's threshold
 (`thresholdBytes`, 0 when disabled), the largest inlined entry compiled so far
 (`largestEntryBytes`, `largestEntry`), its instruction estimate
@@ -216,6 +217,49 @@ render buffers are copied to the host) and a CPU render the same way; the Combin
 denoised image, also when denoising is switched on between two renders of one scene (see Passes for
 the noisy version and the shadow catcher passes).
 
+## Pipeline cache
+
+A WebGPU device on a Vulkan adapter keeps the driver's compiled pipelines on disk,
+so a later process (or a later host in this one) does not compile them again.
+The cache changes compile time only, never a film. It needs no call:
+
+| `cbc_host_pipeline_cache_config(config, utf8_directory)` | Cache |
+| --- | --- |
+| `CBC_PIPELINE_CACHE_OFF` | none |
+| `CBC_PIPELINE_CACHE_DEFAULT`, directory given | in that directory (created if missing) |
+| `CBC_PIPELINE_CACHE_DEFAULT`, `NULL` or empty, or no call | in the record directory of `cbc_host_tier_config` if one is set; else on Linux in the user's cache directory, `$XDG_CACHE_HOME/cycles/webgpu-pipelines`, where an unset, empty or relative `XDG_CACHE_HOME` means `~/.cache`; else none |
+
+The call is process-wide and applies to hosts created afterwards. An Android
+process has no user cache directory, so an app passes one (its cache or files
+directory); without one it renders normally and compiles every time.
+
+Which platforms benefit: Linux and Android, which use Vulkan. The WebGPU runtime
+offers no cache on macOS on Intel (Metal) or on Windows (Direct3D 12); the same
+call succeeds there and the report says `not-offered`. Cycles' Metal device on
+Apple Silicon keeps its own kernel cache in the user's cache directory; its
+report says `backend`, as do the CPU devices.
+
+The device report (`cbc_host_device_report_json`, and `deviceReport` in the
+capability report) has a `pipelineCache` object on every backend: `active`,
+`reason` (`active`, `off`, `no-directory`, `not-offered`,
+`directory-unavailable`, `create-failed`, `faulted`, `backend`, `not-requested`,
+`fingerprint-mode`)
+and `directory`, and on a WebGPU device also `directorySource` (`consumer`,
+`record-directory`, `user-cache`, `environment`), `folder` (the adapter's folder
+in the directory), `key` (the adapter's cache key), `hits` and `misses` (pipelines
+created so far with and without data from disk), `ignored` (files not used:
+`damaged`, `otherAdapter`, `otherRuntime`, `rejected`, `outdated`), `loadedBytes`,
+`loadMs`, `saves`, `savedBytes`, `saveMs`, `saveFailures`, `maxBytes` and `failure`.
+
+A cache problem is never an error to the consumer. A file that is missing, cut
+short, damaged, or from another adapter, driver or runtime is ignored and replaced.
+A directory that cannot be used, a save that fails and a pipeline that fails
+through the cache all leave the device compiling without one, and the report says
+so. Processes may share a directory: each pipeline has its own file, replaced
+whole. The directory may be deleted at any time. Each adapter's folder is kept to
+`maxBytes` (1 GiB), the least recently used pipelines going first. Maintainer
+details: `native/DEVICE.md` "Pipeline cache".
+
 ## Scene authoring
 
 Scenes are Cycles nodes addressed through the native registry
@@ -235,6 +279,7 @@ socket layer cannot express (lifetime, buffers, callbacks, queries).
 | Integrator, film | sockets of the singletons, for example `max_bounce`, `sampling_pattern`, `seed`, `motion_blur`, `exposure`, `filter_type` |
 | Shader graphs | `cbc_host_shader_output`, `cbc_host_shader_node`, `cbc_host_connect` |
 | Geometry | `cbc_host_mesh` (triangles; every face starts on material 0), the `shader`/`smooth` face sockets, attributes (`cbc_host_attribute_*`) |
+| Curves | `cbc_host_curves` (keys, one radius per key, each curve's first key; every curve starts on material 0), `cbc_host_curve_shape` per hair geometry, `cbc_host_curve_subdivisions` for the scene, the `curve_shader` socket, attributes on `CBC_ATTR_CURVE` and `CBC_ATTR_CURVE_KEY` after the curves (standard names `uv`, `generated`, `curve_intercept` per key, `curve_length` and `curve_random` per curve, which the Hair Info node reads) |
 | Images | `cbc_host_image_create` (8 formats), `cbc_host_image_bind`, `cbc_host_image_update`, `cbc_host_image_release` |
 | Passes | `cbc_host_create_node("pass")` with `type` and a unique `name`; read with `cbc_host_pass_floats` |
 
@@ -326,7 +371,97 @@ name, not a socket; `cbc_host_property_info`, `cbc_host_set_string` and
 `cbc_host_get_string` accept it), and objects an `asset_name` socket. The motion
 pass is written when `integrator.motion_blur` is off (Cycles' motion pass mode).
 
-## Exports (ABI 1, 48 functions)
+## Baking
+
+`cbc_host_bake` bakes one mesh's UV layout into a raw float buffer through Cycles'
+own bake kernel; `cbc_host_bake_map` returns the map that bake uses. The CPU
+backends bake (`CBC_HOST_CPU_REFERENCE`, `CBC_HOST_CPU`). `CBC_HOST_METAL` runs the
+same host code on Cycles' own Metal bake kernel; it is not yet built or validated.
+The WebGPU device does not bake yet: `cbc_host_bake` returns `CBC_UNSUPPORTED` with
+a message that says so and never falls back to the CPU. The capability report's
+`baking` object states this: `backends` gives `validated`, `refused` or `unvalidated`
+per compiled backend, `types` the bake types.
+
+```c
+CBCBakeConfig config = {0};
+config.struct_size = sizeof(config);
+config.width = 1024; config.height = 1024; config.samples = 64;
+config.type = CBC_BAKE_COMBINED;
+config.object = object;                /* its geometry is a mesh with a "uv" corner attribute */
+uint64_t required = 0; uint32_t components = 0;
+cbc_host_bake(host, &config, NULL, 0, &required, &components); /* CBC_SMALL_BUFFER; does not bake */
+float *pixels = malloc(required * sizeof(float));
+cbc_host_bake(host, &config, pixels, required, &required, &components);
+```
+
+| `CBCBakeConfig` field | Meaning |
+| --- | --- |
+| `width`, `height` | output size, 1..32768 |
+| `samples` | samples per pixel; `CBC_BAKE_POSITION` always takes one |
+| `type` | one `CBC_BAKE_*` value, below |
+| `flags` | `CBC_BAKE_USE_CAMERA`: the view direction points at the scene camera instead of along the normal. `CBC_BAKE_INCLUDE_ALBEDO`: light passes keep the surface colour |
+| `object` | an object whose geometry is a triangle mesh (not a subdivision surface) |
+| `uv_attribute` | `NULL` or empty: the standard `uv` attribute. Otherwise a float2 corner or vertex attribute by name |
+| `aov_name` | AOV types only: the name of an existing AOV pass node of that type; `NULL` otherwise |
+
+**Output.** `values[(y * width + x) * components]`, raw float32, row 0 at v = 0, the
+same order as image input, so a baked image can be bound as a texture unchanged.
+Pixel (x, y) is sampled at UV ((x + 0.5) / width, (y + 0.5) / height), jittered over
+the texel from the second sample on (a pixel centre exactly on a triangle's edge is
+jittered from the first). UVs outside [0, 1) reach no pixel: there is no tile or wrap.
+A pixel no triangle covers reads zero, except `CBC_BAKE_DEPTH` (1e10) and
+`CBC_BAKE_MIST` (1). `CBC_BAKE_COMBINED` alpha is 1 on covered pixels and 0 elsewhere.
+
+| Type | Components | What it writes |
+| --- | --- | --- |
+| `CBC_BAKE_COMBINED` | 4 | the full light of the surface, RGBA |
+| `CBC_BAKE_EMISSION` | 3 | light the surface emits |
+| `CBC_BAKE_BACKGROUND` | 3 | the world, in the direction of the surface point seen from the origin (not the surface's shading) |
+| `CBC_BAKE_AO` | 3 | ambient occlusion, up to the integrator's AO distance |
+| `CBC_BAKE_DIFFUSE`, `_DIRECT`, `_INDIRECT` | 3 | diffuse light, divided by the diffuse colour unless `CBC_BAKE_INCLUDE_ALBEDO` |
+| `CBC_BAKE_DIFFUSE_COLOR` | 3 | the diffuse colour |
+| `CBC_BAKE_GLOSSY`, `_DIRECT`, `_INDIRECT`, `_COLOR` | 3 | the same for glossy |
+| `CBC_BAKE_TRANSMISSION`, `_DIRECT`, `_INDIRECT`, `_COLOR` | 3 | the same for transmission |
+| `CBC_BAKE_POSITION` | 3 | world-space position at the texel centre |
+| `CBC_BAKE_NORMAL` | 3 | world-space shading normal |
+| `CBC_BAKE_UV` | 3 | the standard `uv` attribute, third component 1 |
+| `CBC_BAKE_ROUGHNESS` | 1 | the surface's roughness |
+| `CBC_BAKE_OBJECT_ID`, `CBC_BAKE_MATERIAL_ID` | 1 | the object's and the shader's `pass_id` |
+| `CBC_BAKE_DEPTH`, `CBC_BAKE_MIST` | 1 | as the render passes of those names, from the scene camera |
+| `CBC_BAKE_AOV_COLOR`, `CBC_BAKE_AOV_VALUE` | 4, 1 | the AOV pass named `aov_name`, fed by its `aov_output` shader node |
+
+Other pass types (volume, shadow catcher, cryptomatte, motion, denoising feature
+passes) are not bake types. Film exposure applies as in a render. A bake runs one type at a
+time because the kernel chooses its path by which passes exist.
+
+**Map.** `cbc_host_bake_map` takes the same configuration and renders nothing, on any
+backend. Per pixel: `triangles[i]`, the covering triangle's index in the mesh or -1,
+and optionally six floats `u, v, du/dx, du/dy, dv/dx, dv/dy`, where the point is
+`u * V0 + v * V1 + (1 - u - v) * V2` of the triangle's corners and x, y are pixels. A pixel
+belongs to a triangle when its centre is inside or on the triangle's UV image; where
+triangles overlap in UV space the lowest index wins; a triangle with no UV area
+covers nothing. Triangles sharing an edge leave no crack.
+
+**What the package does not do.** It fills no margin: pixels no triangle covers stay
+empty, and an application that wants a margin dilates its baked image from
+`cbc_host_bake_map`. It does not project from other meshes (selected-to-active):
+each bake shades the object's own surface. Normals are world-space; tangent and object
+space are the application's to convert.
+
+**Scene state.** A bake leaves the scene as it found it: the caller's pass nodes,
+`is_bake_target` sockets and the film's `display_pass` are back afterwards, and a later render,
+with or without edits between, is bit for bit that of a new host on the CPU reference
+(native/tools/bake_gate.py). Caller passes other than AOVs do not take part in a bake.
+A bake clears the last render's results (`cbc_host_pass_floats` and
+`cbc_host_render_passes_json` return `CBC_NOT_READY` until a render succeeds) and writes no
+results of its own to them. Failed and cancelled bakes never write the output buffer.
+Events, `cbc_host_cancel` and threading are those of `cbc_host_render`. The integrator's
+settings apply: adaptive sampling works; with denoising the Combined output is denoised as an image of the
+UV layout, so values bleed across island edges and into empty pixels. A scene with an
+approximate shadow catcher and an opaque background is refused (`CBC_UNSUPPORTED`):
+its film gains a background pass, which the kernel reads as a request to bake the world.
+
+## Exports (ABI 1, 54 functions)
 
 | Function | Purpose |
 | --- | --- |
@@ -335,6 +470,7 @@ pass is written when `integrator.motion_blur` is off (Cycles' motion pass mode).
 | `cbc_host_error` | copy the calling thread's last error message |
 | `cbc_host_color_config_path` | select the process-wide OCIO configuration |
 | `cbc_host_tier_config` | process-wide WebGPU pipeline-tier policy (`CBCTierConfig`) |
+| `cbc_host_pipeline_cache_config` | process-wide switch and directory of the persistent WebGPU pipeline cache (`CBCPipelineCacheConfig`) |
 | `cbc_host_resolve_backend` | map a requested backend (including `CBC_HOST_GPU`) to this binary's concrete backend |
 | `cbc_host_create` | create a host (`CBCHostConfig`) |
 | `cbc_host_destroy` | remove a host, cancelling and waiting for active work |
@@ -358,6 +494,9 @@ pass is written when `integrator.motion_blur` is off (Cycles' motion pass mode).
 | `cbc_host_set_nodes` / `cbc_host_get_nodes` | node references and arrays |
 | `cbc_host_mesh` | replace a mesh's triangles |
 | `cbc_host_motion_positions` | deformation motion steps of a mesh |
+| `cbc_host_curves` | replace a hair geometry's curves |
+| `cbc_host_curve_shape` | ribbon, thick or thick linear curves of a hair geometry |
+| `cbc_host_curve_subdivisions` | ribbon sections per curve segment for the scene, 2^n, n 0 to 4 |
 | `cbc_host_attribute_floats` / `cbc_host_attribute_bytes` | set a geometry attribute (`CBCAttributeConfig`) |
 | `cbc_host_attribute_get_floats` / `cbc_host_attribute_get_bytes` | read a geometry attribute |
 | `cbc_host_attribute_remove` | remove a geometry attribute |
@@ -371,6 +510,8 @@ pass is written when `integrator.motion_blur` is off (Cycles' motion pass mode).
 | `cbc_host_is_rendering` | whether a render is active |
 | `cbc_host_pass_floats` | copy one captured pass |
 | `cbc_host_render_passes_json` | list the passes captured by the last render |
+| `cbc_host_bake` | bake one mesh's UV layout to raw floats (`CBCBakeConfig`) |
+| `cbc_host_bake_map` | the map of a bake: triangle and coordinates per pixel, no rendering |
 
 ## Structs and enums
 
@@ -382,15 +523,19 @@ pass is written when `integrator.motion_blur` is off (Cycles' motion pass mode).
 | `CBCAttributeConfig` | 32 | `struct_size`, `value_type`, `domain`, `flags`, 4 reserved |
 | `CBCImageConfig` | 32 | `struct_size`, `width`, `height`, `format`, 4 reserved |
 | `CBCTierConfig` | 32 | `struct_size`, `abi_version`, `tier`, `flags`, 4 reserved |
+| `CBCPipelineCacheConfig` | 32 | `struct_size`, `abi_version`, `mode`, `flags` (0), 4 reserved |
 | `CBCVersionInfo` | 96 | `struct_size`, `abi_version`, 2 reserved, `library_version[32]`, `cycles_revision[48]` |
 | `CBCEvent` | 40 | `struct_size`, `kind`, `samples_done`, `samples_total`, `elapsed_seconds`, `message` |
+| `CBCBakeConfig` | 64 | `struct_size`, `width`, `height`, `samples`, `type`, `flags`, 2 reserved, `object`, `uv_attribute`, `aov_name`, reserved |
 
 Enums (values are fixed): backends (above); error codes (above); value kinds
 `CBC_VALUE_*` 0..17; property flags `CBC_PROPERTY_*` (1, 2, 4, 8, 16);
 attribute domains `CBC_ATTR_MESH`..`CBC_ATTR_CURVE_KEY_NORMAL` (1..10) and flags
-`CBC_ATTR_STANDARD` (1), `CBC_ATTR_SUBDIVISION` (2); image formats
+`CBC_ATTR_STANDARD` (1), `CBC_ATTR_SUBDIVISION` (2); curve shapes
+`CBC_CURVE_RIBBON/THICK/THICK_LINEAR` (0..2); image formats
 `CBC_IMAGE_FLOAT`..`CBC_IMAGE_USHORT4` (1..8); tiers `CBC_TIER_AUTO/FULL/CONSERVATIVE`
-(0..2) and tier flags (1, 2, 4); events `CBC_EVENT_STATUS/PROGRESS/ERROR` (1..3).
+(0..2) and tier flags (1, 2, 4); pipeline cache `CBC_PIPELINE_CACHE_DEFAULT/OFF` (0, 1); events `CBC_EVENT_STATUS/PROGRESS/ERROR` (1..3);
+bake types `CBC_BAKE_COMBINED`..`CBC_BAKE_AOV_VALUE` (1..26) and bake flags (1, 2).
 
 ## Determinism
 

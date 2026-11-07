@@ -47,6 +47,15 @@ public interface ICapabilityReport
     /// <summary>Gets the WebGPU pipeline tier in use (<c>full</c> or <c>conservative</c>), or <see langword="null"/> for other backends and the binary-level report.</summary>
     string PipelineTier { get; }
 
+    /// <summary>Gets a value indicating whether this device keeps a persistent pipeline cache; <see langword="false"/> for other backends and the binary-level report.</summary>
+    bool PipelineCacheActive { get; }
+
+    /// <summary>Gets the directory of the pipeline cache in use, or <see langword="null"/> when none is active.</summary>
+    string PipelineCacheDirectory { get; }
+
+    /// <summary>Gets why no pipeline cache is active (for example <c>off</c>, <c>no-directory</c>, <c>not-offered</c> or <c>backend</c>), <c>active</c> when one is, or <see langword="null"/> for the binary-level report.</summary>
+    string PipelineCacheReason { get; }
+
     /// <summary>Gets the device warnings the native host reported (empty when there are none).</summary>
     IReadOnlyList<string> Warnings { get; }
 
@@ -81,6 +90,16 @@ public interface ICapabilityReport
     /// is <see langword="false"/>.
     /// </summary>
     IReadOnlyDictionary<string, string> DenoiseDevices { get; }
+
+    /// <summary>
+    /// Gets, per compiled backend name, the state of texture baking there: <c>validated</c>, <c>refused</c> (the backend's
+    /// device does not bake yet and <see cref="CyclesScene.Bake(Generated.Scene.ObjectNode, Rendering.BakeSettings)"/> throws) or
+    /// <c>unvalidated</c> (the backend's device runs Cycles' own bake kernel but the bake gate has not run on it yet).
+    /// </summary>
+    IReadOnlyDictionary<string, string> BakingBackends { get; }
+
+    /// <summary>Gets the native names of the bake types the binary offers (one per <see cref="Rendering.BakeType"/>).</summary>
+    IReadOnlyList<string> BakeTypes { get; }
 
     /// <summary>Gets the accepted raw image input formats (<c>float</c>, <c>float4</c>, <c>half</c>, ...).</summary>
     IReadOnlyList<string> ImageFormats { get; }

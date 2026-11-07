@@ -158,8 +158,8 @@ static unsigned rejections(const DeviceInfo &info){
     s.ray.P=make_float3(0,0,-8);s.ray.D=make_float3(0,0,1);s.ray.tmax=100;s.ray.time=.5;s.isect.prim=PRIM_NONE;s.isect.object=OBJECT_NONE;
     std::string reason="reported invalid data";
     if(test==0){data.bvh.have_motion=1;reason="motion flag/table mismatch";}
-    if(test==1){data.bvh.have_curves=1;reason="triangle primitives";}
-    if(test==2){data.bvh.have_points=1;reason="triangle primitives";}
+    if(test==1){data.bvh.have_curves=1;reason="native curve tables";}
+    if(test==2){data.bvh.have_points=1;reason="static curve primitives";}
     // Biased ray marching is implemented; a volume stack size below two stays a volume rejection.
     if(test==3){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.volume_stack_size=1;reason="volume stack size";}
     if(test==4){data.integrator.use_caustics=1;reason="Invalid native MNEE feature flags";}

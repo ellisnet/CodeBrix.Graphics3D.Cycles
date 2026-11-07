@@ -31,6 +31,9 @@ internal static class NativeHostLibrary
             {
                 NativeLibrary.SetDllImportResolver(typeof(CyclesHost).Assembly, Resolve);
                 registered = true;
+                // The tests keep a known cache state: compile failures and times stay visible, and
+                // no test reads the user's cache. A test that wants a cache configures its own.
+                CyclesHost.ConfigurePipelineCache(PipelineCacheMode.Off);
             }
         }
         return true;

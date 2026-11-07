@@ -75,12 +75,14 @@ extern "C" int cbc_host_resolve_backend(uint32_t requested, uint32_t *resolved) 
 extern "C" int cbc_host_backend(CBCHost handle, uint32_t *backend) {
   return boundary([&] { require(backend, "Missing output pointer"); *backend = lookup(handle)->backend; });
 }
+namespace { void bake_capabilities(std::ostringstream &out); }
 // The CPU kernels' arithmetic, from a translation unit compiled with their flags
 // (native/cycles/cpu_arithmetic.cpp).
 extern "C" const char codebrix_cpu_arithmetic_json[];
 extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t capacity, uint64_t *required) {
   auto write = [&](Host *host) {
     require(required && (!capacity || json), "Invalid result buffer or size pointer");
+    register_node_types_once();
     std::ostringstream out; out.imbue(std::locale::classic());
     out << "{\"schemaVersion\":1,\"abiVersion\":" << CBC_HOST_ABI << ",\"libraryVersion\":\"" << CBC_HOST_LIBRARY_VERSION
         << "\",\"cyclesRevision\":\"" << CBC_HOST_CYCLES_REVISION << "\",\"backends\":{\"compiled\":[";
@@ -111,7 +113,7 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
            "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\",\"volume_majorant\",\"volume_majorant_sample_count\",\"volume_direct\",\"volume_indirect\"],\"lightGroups\":true,"
            "\"renderTimeRejections\":[\"stereo cameras\",\"shadow linking\","
            "\"background light portals\",\"Christensen-Burley and thin-walled subsurface scattering\","
-           "\"curves and points\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
+           "\"point clouds\",\"curves with motion blur, transparent shadows, caustics, subsurface scattering, volumes, displacement, the motion pass or the Ambient Occlusion, Bevel and Raycast nodes\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL
     // Cycles' own Metal device: the full upstream feature set, compiled at run
@@ -182,6 +184,7 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
     out << "],\"events\":[\"status\",\"progress\",\"error\"],\"limits\":{\"maxRenderWidth\":32768,\"maxRenderHeight\":32768,"
            "\"maxSamples\":" << INT_MAX << ",\"maxImageDimension\":" << INT_MAX << ",\"maxMotionSteps\":" << Geometry::MAX_MOTION_STEPS
         << ",\"maxThreads\":1024,\"errorMessageBytes\":" << sizeof(last_error) << "},\"determinism\":\"native/host/ABI.md#determinism\"";
+    bake_capabilities(out);
     if (host) {
       Device *device = host->session ? host->session->device.get() : nullptr;
       require(device != nullptr, "Host has no device", CBC_FAILED);

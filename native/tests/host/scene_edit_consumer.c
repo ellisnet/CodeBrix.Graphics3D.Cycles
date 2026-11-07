@@ -233,6 +233,9 @@ int main(int argc, char **argv) {
   REQUIRE(argc == 3 && (strcmp(argv[2], "cpu") == 0 || strcmp(argv[2], "gpu") == 0));
   const int gpu = strcmp(argv[2], "gpu") == 0; const char *prefix = argv[1];
   const uint32_t backend = gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE;
+  /* Tests keep a known cache state (native/DEVICE.md "Pipeline cache"). */
+  CBCPipelineCacheConfig cache = {sizeof(cache), CBC_HOST_ABI, CBC_PIPELINE_CACHE_OFF, 0, {0}};
+  CHECK(cbc_host_pipeline_cache_config(&cache, NULL));
   static float before[FLOATS], after[FLOATS], replay_before[FLOATS], replay_after[FLOATS], fresh[FLOATS], base[FLOATS];
   unsigned changed = 0;
   for (int scenario = 0; scenario < SCENARIOS; ++scenario) {

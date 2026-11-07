@@ -120,6 +120,18 @@ int cbc_host_image_release(CBCHost host, CBCImage image);
 /* Triangle geometry is validated and copied. Every face initially uses material 0. */
 int cbc_host_mesh(CBCHost host, CBCNode mesh, const float *xyz, uint64_t vertex_count,
                   const uint32_t *indices, uint64_t triangle_count);
+/* Curve geometry, like cbc_host_mesh: xyz has 3 floats and radius 1 float per key; first_key has one index per curve,
+ * the first 0 and strictly increasing, each curve running to the next one's first key (key_count for the last). Values
+ * are validated and copied; every curve initially uses material 0 (the curve_shader socket). Replaces the geometry;
+ * further curve attributes follow it, since their size derives from it. */
+int cbc_host_curves(CBCHost host, CBCNode hair, const float *xyz, const float *radius, uint64_t key_count,
+                    const uint32_t *first_key, uint64_t curve_count);
+/* How a hair geometry's curves are rendered: flat ribbons facing the ray (the default), Catmull-Rom thick curves, or
+ * linear thick segments. Values match Cycles' CurveShapeType. */
+enum { CBC_CURVE_RIBBON = 0, CBC_CURVE_THICK = 1, CBC_CURVE_THICK_LINEAR = 2 };
+int cbc_host_curve_shape(CBCHost host, CBCNode hair, uint32_t shape);
+/* Scene-wide ribbon tessellation: 2^subdivisions sections per curve segment, 0 to 4 (default 3). Cycles' hair_subdivisions. */
+int cbc_host_curve_subdivisions(CBCHost host, uint32_t subdivisions);
 /* WebGPU pipeline tier selection (graceful degradation; native/DEVICE.md).
  * Process-wide; applies to WebGPU hosts created after the call. tier is
  * CBC_TIER_AUTO (explicit request > persisted device record > known-adapter
@@ -140,7 +152,8 @@ int cbc_host_tier_config(const CBCTierConfig *config, const char *utf8_record_di
 /* Capability report for the host's device as JSON (required includes NUL):
  * backend, adapter, chosen tier and why (override, opt-in, record, table,
  * default, canary, failure), record path/status, canary result, compile
- * budget, warnings and compiled pipelines. Serializes with rendering. */
+ * budget, warnings, compiled pipelines and the pipeline cache's state.
+ * Serializes with rendering. */
 int cbc_host_device_report_json(CBCHost host, char *json, uint64_t capacity, uint64_t *required);
 /* Synchronous scene-linear RGBA, lower-left origin. Output changes only on success.
  * All edits serialize with rendering. Cancel and destruction may run concurrently.
@@ -232,6 +245,66 @@ int cbc_host_set_event_callback(CBCHost host, CBCEventCallback callback, void *u
 int cbc_host_pass_floats(CBCHost host, const char *name, float *values, uint64_t capacity, uint64_t *required, uint32_t *components);
 /* JSON list of the passes captured by the most recent successful render. */
 int cbc_host_render_passes_json(CBCHost host, char *json, uint64_t capacity, uint64_t *required);
+
+/* Persistent WebGPU pipeline cache (ABI.md "Pipeline cache"). Process-wide;
+ * applies to WebGPU hosts created after the call. With CBC_PIPELINE_CACHE_DEFAULT
+ * compiled pipelines are kept in utf8_directory (created if missing); NULL or
+ * empty means the record directory of cbc_host_tier_config if one is set, else
+ * the user's cache directory on Linux, else no cache (Android has no such
+ * directory, so an Android app passes one). CBC_PIPELINE_CACHE_OFF turns caching
+ * off. Only Vulkan adapters have a cache; elsewhere the call succeeds and the
+ * device report says it is not active. Damaged, outdated or foreign cache data
+ * is ignored and rebuilt, never an error. The result is in the report's
+ * "pipelineCache" object. Environment variables documented in native/DEVICE.md
+ * override these settings for gates. */
+enum { CBC_PIPELINE_CACHE_DEFAULT = 0, CBC_PIPELINE_CACHE_OFF = 1 };
+typedef struct CBCPipelineCacheConfig {
+  uint32_t struct_size, abi_version, mode, flags;
+  uint32_t reserved[4];
+} CBCPipelineCacheConfig;
+int cbc_host_pipeline_cache_config(const CBCPipelineCacheConfig *config, const char *utf8_directory);
+
+/* ---- Baking (additions to ABI 1). See ABI.md "Baking". ---- */
+
+/* What a bake writes, one per bake. COMBINED has 4 components (RGBA, alpha 0 on
+ * pixels no triangle covers); ROUGHNESS, OBJECT_ID, MATERIAL_ID, DEPTH, MIST and
+ * AOV_VALUE have 1; AOV_COLOR 4; the others 3. BACKGROUND evaluates the world in
+ * the direction of each surface point seen from the origin. */
+enum { CBC_BAKE_COMBINED = 1, CBC_BAKE_EMISSION = 2, CBC_BAKE_BACKGROUND = 3, CBC_BAKE_AO = 4,
+       CBC_BAKE_DIFFUSE = 5, CBC_BAKE_DIFFUSE_DIRECT = 6, CBC_BAKE_DIFFUSE_INDIRECT = 7, CBC_BAKE_DIFFUSE_COLOR = 8,
+       CBC_BAKE_GLOSSY = 9, CBC_BAKE_GLOSSY_DIRECT = 10, CBC_BAKE_GLOSSY_INDIRECT = 11, CBC_BAKE_GLOSSY_COLOR = 12,
+       CBC_BAKE_TRANSMISSION = 13, CBC_BAKE_TRANSMISSION_DIRECT = 14, CBC_BAKE_TRANSMISSION_INDIRECT = 15, CBC_BAKE_TRANSMISSION_COLOR = 16,
+       CBC_BAKE_POSITION = 17, CBC_BAKE_NORMAL = 18, CBC_BAKE_UV = 19, CBC_BAKE_ROUGHNESS = 20,
+       CBC_BAKE_OBJECT_ID = 21, CBC_BAKE_MATERIAL_ID = 22, CBC_BAKE_DEPTH = 23, CBC_BAKE_MIST = 24,
+       CBC_BAKE_AOV_COLOR = 25, CBC_BAKE_AOV_VALUE = 26 };
+/* USE_CAMERA: the view direction points at the scene camera instead of along the
+ * normal. INCLUDE_ALBEDO: light passes keep the surface colour. */
+enum { CBC_BAKE_USE_CAMERA = 1, CBC_BAKE_INCLUDE_ALBEDO = 2 };
+typedef struct CBCBakeConfig {
+  uint32_t struct_size, width, height, samples;
+  uint32_t type, flags;
+  uint32_t reserved[2];
+  CBCNode object;           /* An object whose geometry is a triangle mesh. */
+  const char *uv_attribute; /* NULL or empty: the standard "uv" attribute. A float2 corner or vertex attribute. */
+  const char *aov_name;     /* AOV types only: the name of an existing AOV pass node of that type. */
+  uint64_t reserved2;
+} CBCBakeConfig;
+/* Bakes one mesh's UV layout into raw float32, values[(y * width + x) * components],
+ * row 0 at v = 0: pixel (x, y) is sampled at UV ((x + 0.5) / width, (y + 0.5) / height).
+ * Pixels no triangle covers read zero. required (floats) and components are always
+ * set; NULL with capacity 0 is a size query that returns CBC_SMALL_BUFFER and does
+ * not bake. Synchronous; events, cancel and threading are those of cbc_host_render.
+ * A bake clears the results of the last render (cbc_host_pass_floats then returns
+ * CBC_NOT_READY until a render succeeds). The WebGPU device does not bake yet: it
+ * returns CBC_UNSUPPORTED and never falls back to the CPU. */
+int cbc_host_bake(CBCHost host, const CBCBakeConfig *config, float *values, uint64_t capacity, uint64_t *required, uint32_t *components);
+/* The map a bake with this config uses, without rendering, on any backend. Per pixel:
+ * triangles[i] is the covering triangle's index in the mesh, or -1; coordinates (may be
+ * NULL) holds six floats, u, v, du/dx, du/dy, dv/dx, dv/dy, where the point is
+ * u * V0 + v * V1 + (1 - u - v) * V2 and x, y are in pixels (all zero where uncovered).
+ * Where UV triangles overlap, the lowest triangle index wins. capacity and required
+ * count pixels; NULL triangles with capacity 0 is a size query (CBC_SMALL_BUFFER). */
+int cbc_host_bake_map(CBCHost host, const CBCBakeConfig *config, int32_t *triangles, float *coordinates, uint64_t capacity, uint64_t *required);
 #ifdef __cplusplus
 }
 #endif

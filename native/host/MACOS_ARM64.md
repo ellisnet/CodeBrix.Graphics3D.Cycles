@@ -215,6 +215,14 @@ uncommitted changes.
   the first oracle run. Later runs are faster because macOS keeps its own
   shader cache, which the recipes do not clear.
 
+## Baking
+
+`cbc_host_bake` (`host_bake.inc`, `exports.macos`) has no Metal-specific code: Cycles' Metal
+device runs its own `integrator_init_from_bake` kernel, staged with the other kernel
+sources, and the map reaches it through the render buffers. Not built or run on a Mac
+yet, so the capability report states `unvalidated` for Metal. To validate it, run
+`native/tools/bake_gate.py` against the Metal backend and change that report.
+
 ## Results and findings (2026-10-23)
 
 Same build machine and toolchain as 2026-10-19 (macOS 27.0.1). Parity work:

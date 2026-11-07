@@ -99,6 +99,9 @@ int main(int argc, char **argv) {
     if (strchr(argv[4], 'r')) tier.flags |= CBC_TIER_RECORD_READ_ONLY;
     CHECK(cbc_host_tier_config(&tier, strcmp(argv[3], "-") == 0 ? NULL : argv[3]));
   }
+  /* Tests keep a known cache state (native/DEVICE.md "Pipeline cache"). */
+  CBCPipelineCacheConfig cache = {sizeof(cache), CBC_HOST_ABI, CBC_PIPELINE_CACHE_OFF, 0, {0}};
+  CHECK(cbc_host_pipeline_cache_config(&cache, NULL));
   CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, CBC_HOST_WEBGPU, 1, {0}};
   CBCHost host = 0; CHECK(cbc_host_create(&config, &host));
   REQUIRE(cbc_host_device_report_json(host + 1000, NULL, 0, NULL) == CBC_INVALID);

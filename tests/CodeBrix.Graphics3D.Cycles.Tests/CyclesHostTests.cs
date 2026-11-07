@@ -99,6 +99,19 @@ public class CyclesHostTests
     }
 
     [Fact]
+    public void ConfigurePipelineCache_rejects_an_unknown_mode()
+    {
+        //Arrange
+        RequireNativeHost();
+
+        //Act
+        Action configure = () => CyclesHost.ConfigurePipelineCache((PipelineCacheMode)7);
+
+        //Assert
+        configure.Should().Throw<CyclesException>();
+    }
+
+    [Fact]
     public void DeviceReportJson_reports_the_cpu_backend()
     {
         //Arrange

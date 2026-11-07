@@ -18,7 +18,7 @@ spec=importlib.util.spec_from_file_location('arm64_dependencies',REPO/'tools/dep
 # --device-set: every device gate of docs/TESTING-LINUX-ARM64.md (the default set plus the gates
 # not shared with Android) and the extra host tests; natively also the oracle runner, which
 # native/host/targets.cmake adds only when not cross-compiling.
-DEVICE_TARGETS=['codebrix_host_'+name+'_test' for name in ['abi','tier','example','scene_edit']]+['codebrix_cycles_'+name+'_gate' for name in
+DEVICE_TARGETS=['codebrix_host_'+name+'_test' for name in ['abi','tier','example','scene_edit','pipeline_cache']]+['codebrix_cycles_'+name+'_gate' for name in
  ['triangle_sample','triangle_lighting','emitter_sample','lighting','light_state','lighting_mis','broad_light_state','broad_lighting',
   'feature_combination','transparent_lighting','shadow_terminator','shadow','object_motion_render','deforming_motion_render','glass_svm',
   'glass_bounce','glass_render','volume','volume_render','volume_boundary','closed_volume_render','principled_bounce','principled_render',

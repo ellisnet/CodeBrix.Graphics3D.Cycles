@@ -127,6 +127,8 @@ CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
                                ArgumentException for any other type
     ShaderNode CreateShader()  a new, empty shader graph
     T CreateLight<T>() where T : LightNode
+    HairNode CreateHair(ReadOnlySpan<float> xyz, ReadOnlySpan<float> radii, ReadOnlySpan<uint> firstKeys,
+                        CurveShape shape = Ribbon, ShaderNode shader = null)
     MeshNode CreateMesh(ReadOnlySpan<float> xyz, ReadOnlySpan<uint> indices,
                         ShaderNode shader = null)
     ObjectNode CreateObject(GeometryBaseNode geometry, Transform3x4? transform = null)
@@ -139,6 +141,12 @@ CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
     CyclesNode Wrap(Node) / T Wrap<T>(Node)
                                typed view of a node created through Host;
                                the same object is returned for the same node
+    FilmBuffer Bake(ObjectNode target, BakeSettings settings)
+    Task<FilmBuffer> BakeAsync(ObjectNode target, BakeSettings settings,
+                               IProgress<RenderProgress> progress = null,
+                               CancellationToken cancellationToken = default)
+    BakeMap ReadBakeMap(ObjectNode target, BakeSettings settings)
+                               see BAKING TEXTURES
     void Remove(CyclesNode node)
                                deletes objects, geometry, lights, passes,
                                shader graphs (and their nodes) and shader
@@ -239,6 +247,19 @@ RenderEventKind  Status, Progress, Error   (= CBC_EVENT_*)
   reports Fraction = 1. Reports arrive on a native render thread unless your
   IProgress<T> marshals them.
 
+BakeSettings(uint Width, uint Height, uint Samples, BakeType Type)  (record struct)
+    string UvAttribute, string AovName, bool UseCamera, bool IncludeAlbedo   (init)
+    int Components
+BakeType        Combined, Emission, Background, AmbientOcclusion, Diffuse,
+                DiffuseDirect, DiffuseIndirect, DiffuseColor, Glossy, GlossyDirect,
+                GlossyIndirect, GlossyColor, Transmission, TransmissionDirect,
+                TransmissionIndirect, TransmissionColor, Position, Normal, Uv,
+                Roughness, ObjectId, MaterialId, Depth, Mist, AovColor, AovValue
+                (= CBC_BAKE_*)
+BakeMap         (from scene.ReadBakeMap)
+    int Width, int Height, ReadOnlySpan<int> Triangles, ReadOnlySpan<float> Coordinates
+    int GetTriangle(int x, int y)   -1 where no triangle covers the pixel centre
+
 CyclesImage : IDisposable                               (sealed)
     Image Handle, uint Width, uint Height, ImageFormat Format, bool IsReleased
     void Update<T>(ReadOnlySpan<T> pixels)             same size and format
@@ -267,6 +288,8 @@ native report states, nothing inferred)
     Backend Backend (Backend.Gpu without a device), bool IsGpu,
     string DeviceDescription, DeviceId, PipelineTier ("full", "conservative",
     or null off WebGPU), IReadOnlyList<string> Warnings
+    bool PipelineCacheActive, string PipelineCacheDirectory (null when not
+    active), string PipelineCacheReason (null without a device)
     IReadOnlyList<string> CompiledBackends, string GpuBackendName,
     bool GpuFallsBackToCpu (always false)
     IReadOnlyDictionary<string, BackendScope> BackendScopes, BackendScope Scope
@@ -323,6 +346,10 @@ Hand-maintained conveniences on a few generated classes:
   ShaderNode.Connect(ShaderOutput from, ShaderInput to)
   GeometryBaseNode.SetAttribute / SetAttributeBytes / GetAttribute /
   RemoveAttribute
+  HairNode.SetCurves(ReadOnlySpan<float> xyz, ReadOnlySpan<float> radii,
+    ReadOnlySpan<uint> firstKeys) (one radius per key, first key of each curve;
+    set curve attributes after it), HairNode.SetShape(CurveShape),
+    scene.SetCurveSubdivisions(0..4) (2^n ribbon sections per segment)
   MeshNode.SetTriangles(ReadOnlySpan<float> or ReadOnlySpan<Vector3>, indices)
   MeshNode.SetMotionPositions(uint steps, ReadOnlySpan<float> or
   ReadOnlySpan<Vector3>) / ClearMotionPositions()   deformation motion
@@ -366,8 +393,11 @@ CyclesHost : IDisposable  (root namespace; by name, throws NativeFailure)
     Mesh, SetAttribute, SetAttributeBytes, GetAttribute, GetAttributeBytes,
     RemoveAttribute, CreateImage, BindImage, ReleaseImage
     void Render(uint w, uint h, uint samples, Span<float> rgba)
+    bool Bake(Node, in BakeSettings, Span<float>, out required, out components)
+    bool BakeMap(Node, in BakeSettings, Span<int>, Span<float>, out required)
     static ConfigureColor(string path)       process-wide OCIO config
     static ConfigureTiers(PipelineTier, string recordDirectory, PipelineTierFlags)
+    static ConfigurePipelineCache(PipelineCacheMode, string directory = null)
     static string RegistryJson() / string DeviceReportJson()
     static Backend ResolveBackend(Backend) / Backend GetBackend()
     static string CapabilitiesJson() / string HostCapabilitiesJson()
@@ -392,11 +422,12 @@ Interop.CyclesAbi (static) - one method per cbc_host_* C function
     NativeStatus SetAttributeFloats / SetAttributeBytes / GetAttributeFloats /
                  GetAttributeBytes / RemoveAttribute
     NativeStatus CreateImage / BindImage / ReleaseImage / Mesh / Render /
-                 Cancel / IsRendering / ConfigureColor / ConfigureTiers
+                 Cancel / IsRendering / ConfigureColor / ConfigureTiers /
+                 ConfigurePipelineCache
     NativeStatus Version(out uint abi, out string library, out string revision)
     NativeStatus ResolveBackend / GetBackend / CapabilitiesJson / DeleteNode /
                  UpdateImage / MotionPositions / SetEventCallback /
-                 PassFloats / RenderPassesJson
+                 PassFloats / RenderPassesJson / Bake / BakeMap
     uint AbiVersion(); string LastError()   (thread-local; read right after
                                              the failing call)
     const uint ExpectedAbiVersion
@@ -423,15 +454,17 @@ Shared value types and enums (root namespace)
                     Node, Closure, Float4, Byte4
     PropertyFlags   None, Array, Linkable, Internal, Readable, Writable
     AttributeValue, AttributeDomain, AttributeFlags (geometry attributes)
+    CurveShape      Ribbon, Thick, ThickLinear
     ImageFormat     Float, Float4, Half, Half4, Byte, Byte4, UShort, UShort4
     PipelineTier, PipelineTierFlags (WebGPU pipeline-tier selection)
+    PipelineCacheMode (the persistent GPU pipeline cache's switch)
   Every enum value equals the C constant of the same meaning.
 
 SCENE BUNDLES (LOAD AN ORACLE SCENE BUNDLE)
 --------------------------------------------
 A scene bundle is a self-contained scene description: one JSON document in the
 cbcOracleScene version 1 format (scene singletons, created nodes, shader graphs,
-meshes, attributes and images, addressed by their registered Cycles node,
+meshes, curves, attributes and images, addressed by their registered Cycles node,
 socket and enum names) plus the raw files it names, all in one directory. The
 same bundle can be rendered on any machine and backend, so it is a convenient
 way to move a scene between processes, devices and tools.
@@ -577,7 +610,7 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
     light or shadow linking, data/denoising/AOV/cryptomatte passes, motion blur
     or holdout objects ("WebGPU subsurface scattering with ... not implemented");
   - shader nodes the WebGPU device does not implement (for example the point
-    info, particle info and hair info nodes; the sky texture, IES texture and
+    info and particle info nodes; the sky texture, IES texture and
     light falloff nodes, the AOV output nodes, the bump node, the Gabor texture (GaborTextureNode,
     2D and 3D), the displacement and vector displacement nodes and the bevel,
     raycast and radial tiling nodes are implemented, but tangent and
@@ -659,6 +692,59 @@ fast-GI ambient occlusion) is not yet validated on the WebGPU device and is not
 refused: its shadow stage writes the ambient-occlusion term without the catcher
 handling the CPU applies, so the passes of such a scene may differ from the CPU
 device; keep the two features apart until this note is gone.
+
+BAKING TEXTURES
+---------------
+scene.Bake bakes one mesh's UV layout into a raw float film through Cycles' bake
+kernel, one BakeType at a time. The CPU backends bake. On the WebGPU device it
+throws NativeFailure (status 2, "The WebGPU device does not bake yet") and never
+falls back to the CPU; on Apple Silicon it runs Cycles' Metal bake kernel, which is
+not validated yet. GetCapabilities().BakingBackends states which (validated,
+refused, unvalidated), BakeTypes the types.
+
+    // The mesh needs a UV layout: a "uv" corner attribute (standard), or any
+    // float2 corner or vertex attribute named by BakeSettings.UvAttribute.
+    mesh.SetAttribute("uv", AttributeValue.Point2, AttributeDomain.Corner, AttributeFlags.Standard, uvs);
+    ObjectNode target = scene.CreateObject(mesh);
+
+    FilmBuffer color = await scene.BakeAsync(target, new BakeSettings(1024, 1024, 64, BakeType.Combined));
+    FilmBuffer albedo = scene.Bake(target, new BakeSettings(1024, 1024, 16, BakeType.DiffuseColor));
+    FilmBuffer light = scene.Bake(target, new BakeSettings(1024, 1024, 256, BakeType.Diffuse) { IncludeAlbedo = true });
+    FilmBuffer normal = scene.Bake(target, new BakeSettings(1024, 1024, 1, BakeType.Normal));
+
+Output: film.Components floats per pixel (BakeSettings.Components gives it up
+front), row 0 at v = 0, the same order as CreateImage takes, so a baked image binds
+as a texture unchanged. Pixel (x, y) samples UV ((x + .5) / w, (y + .5) / h), jittered
+over the texel from the second sample on.
+
+Types: Combined (RGBA; alpha 1 where covered, 0 elsewhere), Emission, Background (the
+world, in the direction of the surface point seen from the world origin, not the
+surface's shading: a closed mesh around the origin bakes the environment),
+AmbientOcclusion, Diffuse/Glossy/Transmission with Direct, Indirect and Color variants
+(the light variants divided by the colour unless IncludeAlbedo), Position
+(world space, always one sample), Normal (world space), Uv, Roughness, ObjectId, MaterialId,
+Depth, Mist, AovColor and AovValue (set BakeSettings.AovName to an AOV pass the scene
+already has). BakeSettings.UseCamera points the view direction at the scene camera
+instead of along the normal, which matters for view-dependent shading.
+
+Empty pixels: a pixel no triangle covers reads zero (Depth 1e10, Mist 1). There is no
+margin fill. Texture filtering across a UV seam will read those pixels, so an
+application that needs a margin dilates its image from scene.ReadBakeMap(target,
+settings), which renders nothing and works on any backend: map.GetTriangle(x, y) is
+-1 where uncovered, and map.Coordinates holds u, v and their per-pixel steps, where the
+point is u * V0 + v * V1 + (1 - u - v) * V2. Where UV triangles overlap the lowest
+triangle index wins, so give each surface its own UV area for lighting bakes.
+
+A bake is a render for the scene's purposes: it runs one at a time with renders,
+raises RenderEventReceived, honours cancellation, and uses the integrator's settings. It
+leaves the scene as it was (ObjectNode.IsBakeTarget included; the bake sets it itself) and
+clears the last render's passes (ReadPass throws InvalidOperationException until a
+render succeeds), and a later render is unaffected. Pass nodes other than AOVs take no
+part in a bake. With UseDenoise the Combined bake is denoised as an image of the UV
+layout, so values bleed across island edges and into empty pixels: for bakes
+you will sample, denoise with care. A scene with an approximate shadow catcher and an opaque
+background cannot be baked (status 2). Baked normals are world space; tangent or object
+space is yours to convert.
 
 CALLBACKS AND THREADING
 -----------------------
@@ -847,6 +933,28 @@ PERFORMANCE TIPS
   through properties.
 - Keep RenderEventReceived handlers and IProgress<T> reports short: they run
   inside the native render loop.
+- GPU pipelines are compiled the first time a scene needs them (seconds to a
+  minute per material on the GPUs tested). On Linux and Android (Vulkan) they are
+  kept on disk, so a later process or host does not compile them again. Within
+  one process, repeated renders of a scene reuse its compiled pipelines unless
+  an edit makes the scene use shader features it did not use before.
+  - The cache changes compile time only, never a film, and a cache problem is
+    never an error: a missing, damaged or out-of-date file is ignored and rebuilt.
+  - Where: CyclesHost.ConfigurePipelineCache(PipelineCacheMode.Default, directory)
+    chooses the directory, before the host is created and for the whole process.
+    Without a directory it is the record directory of CyclesHost.ConfigureTiers
+    if you set one, else on Linux the user's cache directory
+    (~/.cache/cycles/webgpu-pipelines, moved as the XDG base-directory rule says).
+  - Android has no user cache directory: pass your app's cache or files
+    directory, or the app compiles every time (it still renders normally).
+  - CyclesHost.ConfigurePipelineCache(PipelineCacheMode.Off) turns it off; use
+    that when you measure compile times.
+  - GetCapabilities() says what happened: PipelineCacheActive,
+    PipelineCacheDirectory, PipelineCacheReason ("active", "off", "no-directory",
+    "not-offered" on macOS on Intel and Windows, "backend" on Metal and the CPU).
+  - It grows as new shader variants are compiled, up to 1 GiB per GPU; past that
+    the least recently used pipelines go first. Delete it whenever you like;
+    several processes may share the directory.
 
 
 COMMON PITFALLS TO AVOID
@@ -1055,6 +1163,9 @@ WHAT THIS PACKAGE DOES NOT DO
   (macOS on Apple Silicon). Until a feature reaches the WebGPU device, a scene
   that needs it fails there with an error naming the feature; it is never
   approximated.
+- It does not fill a margin around baked UV islands, project a bake from other
+  meshes (selected to active), or convert baked normals to tangent or object
+  space. See BAKING TEXTURES.
 - It does not detect or work around a driver fault on Intel integrated graphics
   that can compute a path wrongly in a WebGPU render of a heterogeneous volume;
   see KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS.
@@ -1064,9 +1175,17 @@ WHAT THIS PACKAGE DOES NOT DO
   ball, the three fisheye models, central cylindrical) with depth of field
   (disk or polygonal apertures, rotation, anamorphic ratio), every sampling
   pattern (tabulated Sobol, Sobol-Burley, the blue-noise patterns, scrambling
-  distance) and adaptive sampling render there. It does not yet render curves (hair), point clouds,
+  distance) and adaptive sampling render there. It does not yet render point clouds,
   Christensen-Burley subsurface scattering or the hair BSDFs on the WebGPU
-  device. Volumes of constant density and volumes whose density varies through
+  device. Static curves render there: ribbons, thick curves and thick linear
+  curves (HairNode.SetCurves, SetShape, CyclesScene.CreateHair and
+  SetCurveSubdivisions) with the other closures, curve attributes and the Hair
+  Info node (set the standard attributes curve_intercept, curve_length and
+  curve_random for its Intercept, Length and Random outputs). Curves are
+  refused by name on the WebGPU device with motion blur (any moving object in the
+  scene), transparent shadows, caustics, subsurface scattering, volumes, true
+  displacement, the motion pass, the Ambient Occlusion, Bevel and Raycast nodes
+  and dedicated light (shadow linked) kernels. Volumes of constant density and volumes whose density varies through
   space (with or without biased ray marching) render there with direct light
   from point, spot, area, mesh, sun and world lights (also through the light tree) and shadows through them, the Henyey-Greenstein, Fournier-Forand,
   Rayleigh, Draine and Mie phase functions, the Volume Coefficients and
@@ -1077,7 +1196,7 @@ WHAT THIS PACKAGE DOES NOT DO
   (DisplacementMethod True and Both) renders there. The Metallic (physical
   conductor and F82 tint, with or without a thin film), Beckmann glossy, refraction and glass,
   Ashikhmin-Shirley, velvet and toon BSDFs render there.
-  It does not bake textures on any backend yet. It denoises on every backend
+  It does not bake textures on the WebGPU device yet (see BAKING TEXTURES). It denoises on every backend
   with Cycles' Open Image Denoise denoiser, off by default: set
   scene.Integrator.UseDenoise = true (and, if wanted, DenoiserType
   Openimagedenoise, DenoiserPrefilter, DenoiserQuality, DenoiseStartSample;
@@ -1120,16 +1239,12 @@ WHAT THIS PACKAGE DOES NOT DO
   scenes are refused with an error message before rendering starts (fast GI's
   replace mode renders there).
 - It does not yet ship the native host library inside the package.
-- It does not keep a persistent cache of compiled GPU pipelines; the WebGPU
-  runtime it uses offers none. The first GPU render in each process compiles
-  the pipelines its scene needs (seconds to a minute per material on the GPUs
-  tested). Whether a later process starts warm depends only on the GPU driver:
-  on Linux with the Mesa driver, Mesa's own shader cache (default
-  ~/.cache/mesa_shader_cache_db; MESA_SHADER_CACHE_DIR moves it) makes later
-  runs of an unchanged scene compile almost instantly; on the Android devices
-  tested, every process compiles again. Within one process, repeated renders
-  of a scene reuse its compiled pipelines unless an edit makes the scene use
-  shader features it did not use before.
+- It does not cache compiled GPU pipelines on macOS on Intel or on Windows: the
+  WebGPU runtime offers no cache on Metal or Direct3D 12 (see PERFORMANCE TIPS).
+  Each process there compiles what its scene needs; whether that is faster the
+  second time depends only on the platform's driver.
+- It does not cache compiled GPU pipelines on Android unless the app gives it a
+  directory (CyclesHost.ConfigurePipelineCache or CyclesHost.ConfigureTiers).
 
 
 WORKING EXAMPLES ON GITHUB
@@ -1174,6 +1289,7 @@ Capabilities:  ICapabilityReport caps = scene.GetCapabilities();
 Version:       CyclesVersion.NativeLibraryVersion, CyclesRevision, IsAbiCompatible
 Progress:      scene.RenderEventReceived += (s, e) => Log(e.Kind, e.SamplesDone);  // no scene calls inside
 Passes:        scene.AddPass(PassType.Depth, "Depth"); scene.Render(s); scene.ReadPass("Depth");
+Bake:          FilmBuffer film = scene.Bake(target, new BakeSettings(w, h, spp, BakeType.Combined));  // CPU backends
 Remove:        scene.Remove(obj); scene.Remove(mesh);   // referrers first
 Bundle:        OracleSceneBundle b = OracleSceneBundle.Load("scene.json"); b.Apply(scene); scene.Render(b.Render);
 Re-upload:     img.Update<byte>(rgba8);

@@ -37,7 +37,8 @@ def inputs():
     for top in ['native','research','prototype','parity','third_party','tools','src','tests']:
         paths += [p for p in (REPO/top).rglob('*') if p.is_file() and not any(
             n in ('work','evidence','__pycache__','bin','obj') for n in p.relative_to(REPO).parts)]
-    return {str(p.relative_to(REPO)):sha(p) for p in sorted(set(paths))}
+    # Documents cannot change a binary or a verdict; a document edited during a run must not stop it.
+    return {str(p.relative_to(REPO)):sha(p) for p in sorted(set(paths)) if p.suffix != '.md' and p.name not in ('LICENSE','NOTICE','THIRD-PARTY-NOTICES.txt')}
 
 
 def execute(name, executable, args=()):

@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using CodeBrix.Graphics3D.Cycles.Bundles;
+using CodeBrix.Graphics3D.Cycles.Generated.Geometry;
 using CodeBrix.Graphics3D.Cycles.GltfRender;
 using CodeBrix.Graphics3D.Cycles.Rendering;
 using SilverAssertions;
@@ -111,6 +112,34 @@ public class OracleSceneBundleTests
 
         //Act / Assert
         FilmComparison.Compare(Render(files).Span, Render(inline).Span).BitwiseEqual.Should().BeTrue();
+    }
+
+    [Fact]
+    public void hair_entries_render_bit_for_bit_like_the_typed_facade()
+    {
+        //Arrange
+        const string nodes = @"
+            {""handle"":""integrator"",""scene"":""integrator"",""set"":{""use_light_tree"":false}},
+            {""handle"":""hair"",""create"":""hair"",""hair"":{""keys"":[-0.5,-0.5,0,-0.1,-0.1,0,0.1,0.1,0,0.5,0.5,0],""radius"":[0.2,0.15,0.15,0.1],""firstKey"":[0],""shape"":""thick"",
+              ""attributes"":[{""name"":""curve_random"",""value"":""float"",""domain"":""curve"",""flags"":[""standard""],""data"":[0.25]}]}},
+            {""handle"":""object"",""create"":""object"",""set"":{""geometry"":""hair""}}";
+        string json = @"{""cbcOracleScene"":1,""id"":""t"",""render"":{""width"":32,""height"":24,""samples"":4,""curveSubdivisions"":2},""colorConfig"":null,""images"":[],""nodes"":[" + nodes + "]}";
+        using CyclesScene loaded = TestScenes.CreateCpuScene();
+        using CyclesScene typed = TestScenes.CreateCpuScene();
+        loaded.Integrator.UseLightTree = false;
+        OracleSceneBundle.FromJson(json, new Dictionary<string, byte[]>()).Apply(loaded);
+        typed.Integrator.UseLightTree = false;
+        typed.SetCurveSubdivisions(2);
+        HairNode hair = typed.CreateHair([-.5f, -.5f, 0f, -.1f, -.1f, 0f, .1f, .1f, 0f, .5f, .5f, 0f], [.2f, .15f, .15f, .1f], [0u], CurveShape.Thick);
+        hair.SetAttribute("curve_random", AttributeValue.Float, AttributeDomain.Curve, AttributeFlags.Standard, [.25f]);
+        typed.CreateObject(hair);
+
+        //Act
+        FilmBuffer a = loaded.Render(new RenderSettings(32, 24, 4));
+        FilmBuffer b = typed.Render(new RenderSettings(32, 24, 4));
+
+        //Assert
+        a.Span.SequenceEqual(b.Span).Should().BeTrue();
     }
 
     [Fact]

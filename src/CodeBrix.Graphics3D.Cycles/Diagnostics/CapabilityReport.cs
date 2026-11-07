@@ -62,6 +62,15 @@ public sealed class CapabilityReport : ICapabilityReport
     public string PipelineTier { get; private set; }
 
     /// <inheritdoc/>
+    public bool PipelineCacheActive { get; private set; }
+
+    /// <inheritdoc/>
+    public string PipelineCacheDirectory { get; private set; }
+
+    /// <inheritdoc/>
+    public string PipelineCacheReason { get; private set; }
+
+    /// <inheritdoc/>
     public IReadOnlyList<string> Warnings { get; private set; } = NoStrings;
 
     /// <inheritdoc/>
@@ -87,6 +96,12 @@ public sealed class CapabilityReport : ICapabilityReport
 
     /// <inheritdoc/>
     public IReadOnlyDictionary<string, string> DenoiseDevices { get; private set; } = new Dictionary<string, string>();
+
+    /// <inheritdoc/>
+    public IReadOnlyDictionary<string, string> BakingBackends { get; private set; } = new Dictionary<string, string>();
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> BakeTypes { get; private set; } = [];
 
     /// <inheritdoc/>
     public IReadOnlyList<string> ImageFormats { get; private set; } = NoStrings;
@@ -183,6 +198,15 @@ public sealed class CapabilityReport : ICapabilityReport
                     if (entry.Value.ValueKind == JsonValueKind.String) denoiseDevices[entry.Name] = entry.Value.GetString();
         }
         DenoiseDevices = denoiseDevices;
+        Dictionary<string, string> bakingBackends = [];
+        if (root.TryGetProperty("baking", out JsonElement baking) && baking.ValueKind == JsonValueKind.Object)
+        {
+            if (baking.TryGetProperty("backends", out JsonElement bakingStates) && bakingStates.ValueKind == JsonValueKind.Object)
+                foreach (JsonProperty entry in bakingStates.EnumerateObject())
+                    if (entry.Value.ValueKind == JsonValueKind.String) bakingBackends[entry.Name] = entry.Value.GetString();
+            BakeTypes = Strings(baking, "types");
+        }
+        BakingBackends = bakingBackends;
         if (root.TryGetProperty("imageInput", out JsonElement images) && images.ValueKind == JsonValueKind.Object) ImageFormats = Strings(images, "formats");
         Dictionary<string, int> passTypes = [];
         if (root.TryGetProperty("passTypes", out JsonElement types) && types.ValueKind == JsonValueKind.Array)
@@ -216,6 +240,12 @@ public sealed class CapabilityReport : ICapabilityReport
                 foreach (JsonElement warning in list.EnumerateArray()) warnings.Add(warning.ValueKind == JsonValueKind.String ? warning.GetString() : warning.GetRawText());
         }
         Warnings = warnings;
+        if (device.TryGetProperty("pipelineCache", out JsonElement cache) && cache.ValueKind == JsonValueKind.Object)
+        {
+            PipelineCacheActive = cache.TryGetProperty("active", out JsonElement active) && active.ValueKind == JsonValueKind.True;
+            PipelineCacheReason = Text(cache, "reason");
+            PipelineCacheDirectory = PipelineCacheActive ? Text(cache, "directory") : null;
+        }
     }
 
     private static string Text(JsonElement element, string name)

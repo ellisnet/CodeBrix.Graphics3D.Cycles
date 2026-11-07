@@ -111,6 +111,9 @@ int main(int argc, char **argv) {
   save(prefix, "capabilities-binary.json", binary_report, strlen(binary_report)); free(binary_report);
   REQUIRE(cbc_host_capabilities_json(987654, NULL, 0, &(uint64_t){0}) == CBC_INVALID);
 
+  /* Tests keep a known cache state (native/DEVICE.md "Pipeline cache"). */
+  CBCPipelineCacheConfig cache = {sizeof(cache), CBC_HOST_ABI, CBC_PIPELINE_CACHE_OFF, 0, {0}};
+  CHECK(cbc_host_pipeline_cache_config(&cache, NULL));
   CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE, 1, {0}};
   config.backend = CBC_HOST_CPU + 1; REQUIRE(cbc_host_create(&config, &host) == CBC_INVALID && host == 0);
   config.backend = gpu ? CBC_HOST_GPU : CBC_HOST_CPU_REFERENCE;
@@ -207,6 +210,31 @@ int main(int argc, char **argv) {
   CHECK(cbc_host_connect(host, value, "Color", diffuse, "Color"));
   render(film_c); const int graph_rebuild_restores = same(film_c, base);
   if (!gpu) REQUIRE(graph_rebuild_restores);
+
+  /* Curves: the topology export, its validation and the curve attributes that depend on it. */
+  {
+    CBCNode hair = create("hair"), not_hair = create("mesh");
+    const float keys[12] = {0,0,0, 0,0,1, 0,1,1, 1,1,1}, radii[4] = {.1f,.1f,.05f,.02f}, bad_radii[4] = {.1f,-.1f,.05f,.02f};
+    const uint32_t first[2] = {0, 2}, not_first[2] = {1, 2}, empty_curve[2] = {0, 0};
+    CHECK(cbc_host_curves(host, hair, keys, radii, 4, first, 2));
+    REQUIRE(cbc_host_curves(host, not_hair, keys, radii, 4, first, 2) == CBC_INVALID);
+    REQUIRE(cbc_host_curves(host, hair, keys, bad_radii, 4, first, 2) == CBC_INVALID);
+    REQUIRE(cbc_host_curves(host, hair, keys, radii, 4, not_first, 2) == CBC_INVALID);
+    REQUIRE(cbc_host_curves(host, hair, keys, radii, 4, empty_curve, 2) == CBC_INVALID);
+    CHECK(cbc_host_curve_shape(host, hair, CBC_CURVE_THICK));
+    REQUIRE(cbc_host_curve_shape(host, hair, 3) == CBC_INVALID);
+    REQUIRE(cbc_host_curve_shape(host, not_hair, CBC_CURVE_THICK) == CBC_INVALID);
+    REQUIRE(cbc_host_curve_subdivisions(host, 5) == CBC_INVALID);
+    CHECK(cbc_host_curve_subdivisions(host, 2)); CHECK(cbc_host_curve_subdivisions(host, 3));
+    const float intercept[4] = {0, 1, 0, 1}, length[2] = {1, 2}, random_value[2] = {.25f, .75f};
+    CBCAttributeConfig key_config = {sizeof(key_config), CBC_VALUE_FLOAT, CBC_ATTR_CURVE_KEY, CBC_ATTR_STANDARD, {0}};
+    CBCAttributeConfig curve_config = {sizeof(curve_config), CBC_VALUE_FLOAT, CBC_ATTR_CURVE, CBC_ATTR_STANDARD, {0}};
+    CHECK(cbc_host_attribute_floats(host, hair, "curve_intercept", &key_config, intercept, 4));
+    CHECK(cbc_host_attribute_floats(host, hair, "curve_length", &curve_config, length, 2));
+    CHECK(cbc_host_attribute_floats(host, hair, "curve_random", &curve_config, random_value, 2));
+    REQUIRE(cbc_host_attribute_floats(host, hair, "curve_length", &key_config, intercept, 4) == CBC_INVALID);
+    CHECK(cbc_host_delete_node(host, hair)); CHECK(cbc_host_delete_node(host, not_hair));
+  }
 
   /* Motion. Edits after a render are applied (ABI.md "Edits after a render"):
    * deformation motion added to an already rendered mesh is accepted; the
@@ -381,6 +409,18 @@ int main(int argc, char **argv) {
     REQUIRE(after_failure == CBC_OK && failure.error == 1);
     for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(isfinite(film_b[i]));
     error_events = failure.error;
+  }
+  /* Baking: the layout through this header, and a refusal per backend (native/tools/bake_gate.py bakes). */
+  _Static_assert(sizeof(CBCBakeConfig) == 64, "CBCBakeConfig layout");
+  {
+    CBCBakeConfig bake_config; memset(&bake_config, 0, sizeof(bake_config));
+    bake_config.struct_size = sizeof(bake_config); bake_config.width = 4; bake_config.height = 4; bake_config.samples = 1;
+    bake_config.type = CBC_BAKE_COMBINED; bake_config.object = world;
+    float baked[64]; uint64_t bake_required = 0; uint32_t bake_components = 0;
+    REQUIRE(cbc_host_bake(host, &bake_config, baked, 64, &bake_required, &bake_components) == (backend == CBC_HOST_WEBGPU ? CBC_UNSUPPORTED : CBC_INVALID));
+    REQUIRE(cbc_host_bake(host, &bake_config, NULL, 64, &bake_required, &bake_components) == CBC_INVALID);
+    int32_t bake_triangles[16];
+    REQUIRE(cbc_host_bake_map(host, &bake_config, bake_triangles, NULL, 16, &bake_required) == CBC_INVALID);
   }
   CHECK(cbc_host_destroy(host));
   REQUIRE(cbc_host_delete_node(host, world) == CBC_INVALID && cbc_host_backend(host, &backend) == CBC_INVALID);

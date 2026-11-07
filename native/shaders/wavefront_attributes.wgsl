@@ -79,6 +79,9 @@ fn attribute_read(s:ptr<function,SvmState>,desc:AttributeDesc)->AttributeValue{
     // site. Fetch order and values are unchanged (a, b, c in vertex order).
     var indices=vec3<u32>(0u);var count=1u;
     if(domain!=ATTR_ELEMENT_OBJECT&&domain!=ATTR_ELEMENT_MESH){
+//#if CURVES
+        if((sd.primitive_type&PRIMITIVE_CURVE)!=0u){return curve_attribute_read(s,desc,domain);}
+//#endif
         if(!native_triangle_kind(sd.primitive_type)){svm_error(s,16u);return result;}
         if(domain==ATTR_ELEMENT_FACE){indices=vec3<u32>(sd.prim);}
         else if(domain==ATTR_ELEMENT_VERTEX){
@@ -105,6 +108,59 @@ fn attribute_read(s:ptr<function,SvmState>,desc:AttributeDesc)->AttributeValue{
     result.dy=(attribute_order(sd.du.y*b,order)+attribute_order(sd.dv.y*c,order))-attribute_order((sd.du.y+sd.dv.y)*a,order);
     return result;
 }
+//#if CURVES
+// curve_attribute (geom/curve.h): per key mix(f0,f1,u) with df = du*(f1-f0), per curve the value, otherwise zero.
+fn curve_attribute_read(s:ptr<function,SvmState>,desc:AttributeDesc,domain:u32)->AttributeValue{
+    var result:AttributeValue;let sd=(*s).geometry;let o=cv_order();
+    if(domain==CV_ATTR_ELEMENT_CURVE_KEY){
+        if(sd.prim>=table_count(G_curves)){svm_error(s,64u);return result;}
+        let k0=load_word(table_at(G_curves,sd.prim,16u)+4u)+(sd.primitive_type>>PRIMITIVE_NUM_BITS);
+        var f0=vec4<f32>(0);var f1=vec4<f32>(0);let count=rounded_steps(2u);
+        for(var k=0u;k<count;k++){let value=attribute_fetch(s,desc,k0+select(1u,0u,k==0u));if(k==0u){f0=value;}else if(k==1u){f1=value;}}
+        let delta=cvb4(f1-f0,o);
+        result.value=cvb4(f0+cvb4(sd.u*delta,o),o);result.dx=cvb4(sd.du.x*delta,o);result.dy=cvb4(sd.du.y*delta,o);
+    }else if(domain==CV_ATTR_ELEMENT_CURVE){result.value=attribute_fetch(s,desc,sd.prim);}
+    return result;
+}
+//#endif
+//#if SVM_NODE_HAIR_INFO
+// svm_node_hair_info (svm/geometry.h, geom/curve.h curve_thickness, curve_tangent_normal). Intercept, length and random
+// are attribute nodes; their cases here store nothing, as pinned.
+fn svm_hair_info(s:ptr<function,SvmState>,node:u32){
+    let kind=load_word(node+N_HairInfo_info_type);let out=svm_byte(node+N_HairInfo_out_offset);let sd=(*s).geometry;
+    let curve=(sd.primitive_type&HI_PRIMITIVE_CURVE)!=0u;
+    if(kind==CV_INFO_CURVE_IS_STRAND){svm_store(s,out,select(0.0,1.0,curve));}
+    else if(kind==CV_INFO_CURVE_THICKNESS){
+        var data=0.0;
+//#if CURVES
+        if(curve){data=curve_thickness(s);}
+//#endif
+        svm_store(s,out,data);
+    }
+    else if(kind==CV_INFO_CURVE_TANGENT_NORMAL){
+        var data=vec3<f32>(0);
+//#if CURVES
+        if(curve){let o=cv_order();
+            let projection=rounded_divide(cv_dot(sd.dPdu,-sd.wi,o),cv_dot(sd.dPdu,sd.dPdu,o));
+            data=cv_normalize(-cvb3(-sd.wi-cvb3(sd.dPdu*projection,o),o),o);}
+//#endif
+        svm_store3(s,out,data);
+    }
+}
+//#if CURVES
+fn curve_thickness(s:ptr<function,SvmState>)->f32{
+    let sd=(*s).geometry;let o=cv_order();
+    if(sd.prim>=table_count(G_curves)){svm_error(s,64u);return 0.0;}
+    let k0=load_word(table_at(G_curves,sd.prim,16u)+4u)+(sd.primitive_type>>PRIMITIVE_NUM_BITS);
+    let position_offset=bitcast<i32>(load_word(table_at(G_objects,sd.object_id,SIZE_objects)+O_position_offset));
+    let w0=curve_key(position_offset,k0).w;let w1=curve_key(position_offset,k0+1u).w;
+    let r=cvb(2.0*cvb(cvb(cvb(w1-w0,o)*sd.u,o)+w0,o),o);
+    if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u){return r;}
+    let normalized=cvb(r*0.5773502588272095,o);
+    return cv_len(surface_object_direction(sd,vec3<f32>(normalized),false),o);
+}
+//#endif
+//#endif
 fn attribute_order(x:vec4<f32>,order:u32)->vec4<f32>{return bitcast<vec4<f32>>(bitcast<vec4<u32>>(x)^vec4<u32>(order));}
 fn attribute_convert(value:vec4<f32>,kind:u32,output:u32,derivative:bool)->vec3<f32>{
     if(kind==NODE_ATTR_FLOAT){

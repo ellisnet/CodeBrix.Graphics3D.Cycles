@@ -121,6 +121,44 @@ public class CapabilityReportTests
     }
 
     [Fact]
+    public void Parse_reads_the_pipeline_cache_state()
+    {
+        //Arrange
+        const string active = "{\"abiVersion\":1,\"backend\":\"webgpu\",\"pipelineCache\":{\"active\":true,\"reason\":\"active\",\"directory\":\"/cache\"}}";
+        const string off = "{\"abiVersion\":1,\"backend\":\"cpu\",\"pipelineCache\":{\"active\":false,\"reason\":\"backend\",\"directory\":null}}";
+
+        //Act
+        CapabilityReport on = CapabilityReport.Parse(active);
+        CapabilityReport none = CapabilityReport.Parse(off);
+
+        //Assert
+        on.PipelineCacheActive.Should().BeTrue();
+        on.PipelineCacheDirectory.Should().Be("/cache");
+        on.PipelineCacheReason.Should().Be("active");
+        none.PipelineCacheActive.Should().BeFalse();
+        none.PipelineCacheDirectory.Should().BeNull();
+        none.PipelineCacheReason.Should().Be("backend");
+    }
+
+    [Fact]
+    public void a_cpu_device_reports_no_pipeline_cache_and_the_binary_report_says_nothing_of_one()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+
+        //Act
+        ICapabilityReport device = scene.GetCapabilities();
+        ICapabilityReport binary = CyclesScene.GetBinaryCapabilities();
+
+        //Assert
+        device.PipelineCacheActive.Should().BeFalse();
+        device.PipelineCacheDirectory.Should().BeNull();
+        device.PipelineCacheReason.Should().Be("backend");
+        binary.PipelineCacheActive.Should().BeFalse();
+        binary.PipelineCacheReason.Should().BeNull();
+    }
+
+    [Fact]
     public void parse_carries_the_pipeline_size_guard_warning_in_warnings()
     {
         //Arrange: the device report shape of a WebGPU build whose entry crossed the size guard

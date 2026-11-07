@@ -203,6 +203,9 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
 
 fn surface_from_ray(index:u32)->SurfaceData{
     if(index>=p(10u)){var sd:SurfaceData;surface_failure(&sd);return sd;}
+//#if CURVES
+    if((state_word(S_isect_type,index)&PRIMITIVE_CURVE)!=0u&&(state_word(S_isect_type,index)&PRIMITIVE_LAMP)==0u){return curve_setup_from_ray(index);}
+//#endif
     return surface_setup_hit(state_word(S_isect_type,index),state_word(S_isect_object,index),state_word(S_isect_prim,index),
       heap_float(state_address(S_isect_u,index,4u)),heap_float(state_address(S_isect_v,index,4u)),heap_float(state_address(S_isect_t,index,4u)),
       heap_float(state_address(S_ray_time,index,4u)),heap_vec3(state_address(S_ray_D,index,12u)),

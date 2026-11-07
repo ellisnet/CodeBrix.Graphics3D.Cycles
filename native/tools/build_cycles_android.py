@@ -24,14 +24,14 @@ spec.loader.exec_module(dependencies)
 
 HOST_TARGETS = ['codebrix_cycles_host', *['codebrix_host_'+name for name in
     ['cpu_test', 'gpu_test', 'reload_test', 'concurrency_test', 'session_reference',
-     'session64_reference', 'image_reference']]]
+     'session64_reference', 'image_reference', 'pipeline_cache_test']]]
 GATE_TARGETS = ['codebrix_cycles_'+name+'_gate' for name in
     ['device', 'camera', 'closest', 'background', 'svm_world', 'shader_data', 'svm_surface',
      'attribute', 'normal', 'image', 'image_file', 'surface', 'microfacet_svm',
      'microfacet_bounce', 'microfacet_render', 'render', 'atomic_film', 'principled_svm',
      'transparent_shadow', 'environment', 'light_tree', 'shadow_linking', 'shadow_catcher', 'ao_state', 'ao_render', 'mnee',
      'mnee_render', 'bsdf_svm', 'bsdf_bounce', 'bsdf_render', 'bsdf2_svm', 'bsdf2_bounce', 'bsdf2_render', 'bsdf3_svm', 'bsdf3_bounce', 'bsdf3_render',
-     'raytrace_nodes_state', 'raytrace_nodes_render']]
+     'raytrace_nodes_state', 'raytrace_nodes_render', 'volume', 'volume_render', 'volume_boundary', 'closed_volume_render', 'subsurface', 'glass_render', 'curve', 'curve_render']]
 
 
 def prepare_source(work):

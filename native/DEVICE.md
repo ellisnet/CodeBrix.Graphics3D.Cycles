@@ -2914,6 +2914,8 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    renders bench 97 s and 189 s, HDRI bench 206 s and 270 s (were 177 s and 233 s, 344 s and 327 s). The Samsung
    `nodes_world` gate 98.3 s (merge wave 7). The HP's `principled_bounce` and `principled_render` (57-59 s) are
    within 5 percent of the budget.
+   These are cold figures. A later run on the same adapter takes them from the pipeline cache (section "Pipeline cache"): the
+   tablet's marching entry `shade_volume_ray_marching`, 77-83 s and over the budget cold, takes 0.02 s warm.
 14. **Texture-sampling last-bit parity.** Image texture lookups still differ from the CPU in the last bit (1,356
    components at 1 spp on the bench, max 3.6e-7). The bench's closest component is at 0.59 of the practical
    tolerance on Linux, and the HP against Linux WGSL at 0.91. Recommended next small kernel follow-up.
@@ -3203,6 +3205,29 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    correctly rounded and glibc's are not (measured on 300,000 inputs: `logf` differs on 0.74%, `expf` on 0.07%), so
    bit-identity with one oracle would take that oracle's C library algorithms and would not hold for the others.
 54. (resolved, see "Resolved" below) Was: **Volume phase sampling's normalize on scalar ARM64 (`volumes/scatter-mesh-light`).**
+55. **Uninitialized bytes in uploaded scene tables (harmless so far; found by fingerprint mode).** FACT: two runs of one scene on one
+    device upload different bytes in these places, all from pinned scene code: `lights` and `shaders` (table memory from `device_memory::host_alloc`
+    is not cleared, and union members of another light type and padding stay as the allocator left them) and `svm_nodes` (the padding byte of
+    `SVMNodeRaycast`, a stack copy). INFERENCE: the kernels never read these bytes, because the CPU kernels would then differ from run to run. Fingerprint
+    mode clears the table memory in `WebGPUDevice::host_alloc`, in that mode only. `image_textures` is a fourth place: `KernelImageTexture` is a stack copy, and the
+    8 bytes of padding before `transform_3d` hold whatever was on the stack (on the tablet, a host pointer); the fingerprint masks them in its hash. The raycast byte has no such
+    simple mask, so `surface-nodes/raycast` and `passes/with-surface-nodes-raycast` have no stable data hash; they are listed as always run. A scene with several images can also swap two images' ids and addresses
+    between runs (`assets/bench_01`: `svm_nodes` and the image uploads, with one or four workers), so such a scene is listed too, and `linux-gates/closed-volumes` on the two Android devices changes the order of its BVH, object and octree tables between runs. A normal render uploads all of these as it always did.
+56. **The render scheduler's clock.** FACT: `RenderScheduler::calculate_num_samples_per_update` uses measured time, so outside volume scenes (one sample per
+    update, `path_trace.cpp` overlay) the command sequence of a real render is not a fixed function of its inputs. The film does not depend on that grouping
+    (per-sample random numbers; `repeatBitwiseIdentical`), apart from the known run-to-run atomic family. So no hash of a real render's whole command sequence
+    can be compared between runs, and fingerprint mode fixes one sample per update for its walk.
+65. **Curves on the reference devices: not run yet.** Static curves pass on Linux in x64 arithmetic against the x64 CPU oracle. `arm64-scalar` on Linux compiles and runs, judged against nothing here (cross-ISA, reported): the tablet and the HP have not run `curve_gate`, `curve_render_gate` or `scenes/curves/`, and the ARM64 oracle has no films for that family.
+66. **Superset groups above 0 do not compile in the shadow module.** `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:1` fails in scenes with shadow paths, with or without curves: `no definition in scope for identifier: vh_stack_shader`. A group can add `VOLUME_HETEROGENEOUS` (not a scene-only region) without `VOLUME_SHADOW` (scene-only). Group 0 compiles. Seen with `curve_render_gate`, and reproduced with the unchanged binaries of the commit before curves, with `ao_render_gate`; diagnostic mode only, product renders use scene specialization.
+70. **The WebGPU device does not bake.** `cbc_host_bake` refuses it by name (`native/host/host_bake.inc`); no kernel, pass or entry exists for it
+    here: `INTEGRATOR_INIT_FROM_BAKE` and the three bake passes are not ported. The host side needs nothing device-specific: `BakeManager` selects the object and the
+    host hands the map to Cycles through `OutputDriver::read_render_tile`, which the Session calls with the render buffers zeroed; `PathTrace::tile_buffer_read`
+    then copies them to the device. What the WGSL port takes from the map: `BakePrimitive` (3 floats per pixel: u, v, and the triangle index in the mesh as an
+    int's BITS, -1 for an empty pixel) and `BakeDifferential` (4 floats), bit for bit through `copy_render_buffers_to_device`. The third primitive
+    component must be read as bits (`__float_as_uint`): -1 is a NaN pattern a float copy or conversion may not keep. The seed pass is not used (`set_use_seed(false)`, `pass_bake_seed` stays 0).
+    The kernel's first sample at an exact triangle edge jitters too, and its position fast path adds per sample to a pass that is not divided, so the host bakes position at one sample.
+    The CPU reference film per type (`native/tools/bake_gate.py` for known results) is the oracle.
+
 Resolved, or closed under the device reference policy:
 - [54 of this list] **Volume phase sampling's normalize on scalar ARM64 (`volumes/scatter-mesh-light`): RESOLVED.** In the
   product default (`wgslArithmetic` `arm64-scalar`), one pixel of this scene, (13,6), was 17.2x the practical tolerance from
@@ -3958,13 +3983,120 @@ Record only; nothing was fixed. Evidence: `native/work/merge4/runs/s20/`.
 principled_svm now passes on the S20 (it failed in lane Q's sweep on 3392df3d; the merged tree adds lane S's arena
 stack). The SVM-stack (mask 8) failures of motion and node worlds remain on the merged tree.
 
-## Pipeline cache (lane ZC, 2026-10-22)
+## Pipeline cache
 
-The shipped CodeBrix.WebGpu.Native 1.0.290.1433 runtime exposes no pipeline-cache API on any backend
-(`WGPUNativeFeature_PipelineCache` is advertised and can be enabled, but no export creates, attaches or serializes
-a cache; audit and the export list a future runtime would need: MAINTAINER-README.txt "PIPELINE CACHE"). The host
-therefore has no cache of its own; what remains is each driver's cache, measured here with the seeded merge-4
-binaries (no code change). Evidence: `native/work/zc-pipeline-cache/` (`runs/linux-seeded/results.json`,
+The device keeps the driver's compiled pipelines on disk through the runtime's cache exports, on adapters the runtime
+offers them on (Vulkan: Linux and Android; macOS on Intel and Windows on Direct3D 12 report `not-offered`). Consumer
+contract: `native/host/ABI.md` "Pipeline cache". Code: `native/cycles/pipeline_cache.{h,cpp}`. Gate:
+`native/tools/pipeline_cache_gate.py`.
+
+Fingerprint mode (`CODEBRIX_CYCLES_FINGERPRINT`) uses no cache, whatever is configured: its stub pipelines are nothing to keep and a fingerprint must not depend on a cache's contents. It reports `fingerprint-mode`, in the device report and in the fingerprint file's `pipelineCache`.
+
+**One file per pipeline.** `<directory>/<adapter key>/<first 32 hex digits of the SHA-256 of WGSL + NUL + entry>.bin`. The
+adapter key is `wgpuCodebrixAdapterGetPipelineCacheKey`'s, so adapters never share a folder. The runtime's cache object
+is created from the file just before that pipeline, chained into its creation and released after it. A single file for an
+adapter was built first and dropped: at 0.8-1.3 MB per pipeline on Intel, a whole corpus over 1 GB, every process would
+read and hash all of it, every miss would rewrite all of it and processes sharing a directory would lose each other's work.
+
+**File.** `CBCPLC01`, key bytes, runtime bytes, data bytes (native order), SHA-256 of the data in hex, the key, the
+runtime (`webgpu_runtime_version`), the runtime's data. wgpu-core's own header checks adapter, driver and sizes but not
+the driver's bytes, which go to `vkCreatePipelineCache`, so the hash is what protects the driver from a damaged file.
+
+| File state | Result (never an error to the consumer) | `ignored` counter |
+| --- | --- | --- |
+| absent | compile, save | none |
+| short, extended, bad magic, bad hash | ignored, compile, replace | `damaged` |
+| another key or runtime in our header | ignored, compile, replace | `otherAdapter`, `otherRuntime` |
+| another adapter in wgpu-core's header (a validation error even with `fallback`) | the error is caught in a scope, compile, replace | `rejected` |
+| another driver, wgpu-core truncated or corrupt | `fallback` gives an empty cache, compile, replace | `outdated` |
+
+A directory that cannot be used leaves the device uncached (`directory-unavailable`). A pipeline creation that fails
+through a cache is repeated without one and the device stops caching (`faulted`). A process that dies while creating a
+pipeline removes that pipeline's file, in the crash handler, so a driver that fails on its own cached data cannot fail again
+on every run. The gate proves each case on each device with one process per scenario; the test hooks are
+`CODEBRIX_CYCLES_TEST_PIPELINE_CACHE=invalid` and the existing `CODEBRIX_CYCLES_TEST_CRASH_PIPELINE`.
+
+**When data is saved, and what it costs.** At once after a pipeline the driver added data for: the temporary file
+`<file>.<pid>.<n>.tmp`, then a rename, so another process sees the old file or the whole new one. No `fsync`: after power
+loss a short file fails the hash and is rebuilt. A hit writes nothing but the file's time (for the size limit). A
+temporary left by a dead process is removed by the next device once it is an hour old. Two processes compiling the same
+pipeline both write it and the last rename wins; they hold the same pipeline, so nothing is lost.
+
+**Size.** `maxBytes`, 1 GiB per adapter folder: when a save takes the folder over it, the least recently used pipelines
+go first. One pipeline over the limit is not kept. `CODEBRIX_CYCLES_PIPELINE_CACHE_MAX_BYTES` overrides it (the gate;
+validation runners, whose corpus is larger on Intel).
+
+**Environment (gates and runners; the host sets neither).** `CODEBRIX_CYCLES_PIPELINE_CACHE=off`;
+`CODEBRIX_CYCLES_PIPELINE_CACHE_DIR=<dir>`, which beats the API switch. The pipeline log adds `cacheHit`.
+
+**Known state in tests.** See MAINTAINER-README "PIPELINE CACHE": gate programs have no cache unless a run asks, and the
+oracle runner, the GPU C consumers and the managed tests turn it off.
+
+**Linux measurements** (Intel UHD ADL-S, Mesa 25.0.7, a shared machine, so walls are indicative; a fresh Mesa cache for
+every run, so only this cache can make a warm run warm). Cold = an empty cache, warm = the cache the cold run filled:
+
+| Scene | Pipelines | Wall cold / warm s | Compile cold / warm s | Cache files / MB |
+| --- | --- | --- | --- | --- |
+| starter/diffuse-triangle | 8 | 17.2 / 0.5 | 16.68 / 0.06 | 9 / 8.2 |
+| linux-gates/broad-lighting-0 | 10 | 25.7 / 2.8 | 23.75 / 0.08 | 11 / 10.6 |
+| sampling/adaptive-auto | 14 | 33.9 / 2.2 | 30.61 / 0.09 | 15 / 11.9 |
+| shadow-catcher/catcher-point-light | 15 | 31.0 / 2.2 | 28.64 / 0.10 | 16 / 12.7 |
+| combinations/camera-motion-ao-node | 12 | 33.4 / 1.0 | 32.35 / 0.09 | 13 / 13.0 |
+| volumes/absorption-point | 18 | 70.2 / 4.8 | 61.35 / 0.16 | 19 / 23.7 |
+
+A full save of volumes/absorption-point cost 75 ms over its 51 s of compiling (19 files, 23.7 MB), a full load 101 ms.
+
+**A hit gives what a cold compile gives.** `shader_data` gate: cold and warm stdout identical (integers, float errors).
+`glass_render` gate: the GPU film repeats and warm has the same bits as cold. Oracle films are not bit-repeatable, even
+between the repeats of one process, so they are judged against a control of the same binary, with the compiled text
+identical byte for byte. Same film of two cold runs, as strict differences and largest difference, film-0 then film-1
+(no practical failure anywhere):
+
+| Scene | Warm against cold | Cold against cold | First against second film of cold runs |
+| --- | --- | --- | --- |
+| starter/diffuse-triangle | 0, 3.0e-8; 0, 3.0e-8 | 0, 3.0e-8; 0, 3.0e-8 | 0, up to 3.0e-8 |
+| linux-gates/broad-lighting-0 | 0, 7.5e-9; 0, 1.5e-8 | 0, 1.5e-8; 0, 7.5e-9 | 0, up to 1.5e-8 |
+| sampling/adaptive-auto | 73, 1.1e-5; 4, 1.8e-7 | 0, 1.0e-7; 2, 1.8e-7 | 101-106, 4.6e-5 |
+| shadow-catcher/catcher-point-light | 9, 7.2e-7; 1, 4.8e-7 | 1, 2.4e-7; 0, 2.4e-7 | 6-9, 7.2e-7 |
+| combinations/camera-motion-ao-node | 0, 3.0e-8; 0, 6.0e-8 | 0, 6.0e-8; 0, 6.0e-8 | 0, 6.0e-8 |
+| volumes/absorption-point | 0, 1.5e-8; 0, 1.5e-8 | 0, 1.5e-8; 0, 1.5e-8 | 0, up to 1.5e-8 |
+
+The first film of a warm process in sampling/adaptive-auto and shadow-catcher/catcher-point-light differs from a cold
+first film by more than two cold first films differ from each other. The cache is not the cause: with no pipeline cache at
+all, the same scenes rendered with a warm Mesa cache differ from a cold Mesa cache by as much (adaptive-auto 112 strict,
+1.9e-5; catcher 6 strict, 4.8e-7) and from a warm run with this cache by the ordinary amount (catcher 0 and 1 strict;
+adaptive-auto 1 strict against one warm-Mesa run, 96 against another, whose first films also differ from each other by 91).
+So it comes with a first render that compiles nothing. INFERENCE: the render scheduler sizes its work from measured
+times (`integrator/render_scheduler.cpp`), so compile time changes the work chunks of the first render, and the second
+render of any process, which compiles nothing either, is the same kind of render (the last column). The gate's pool for
+"no larger than the control" therefore holds both columns; the same-film verdict is recorded beside it in `status.json`.
+A film whose differences all meet the strict criterion counts as within the control: below it the largest difference is
+rounding noise (`linux-gates/broad-lighting-0` read 1.49e-8 against a pool of 1.12e-8 once, and the pool itself reaches
+1.49e-8 in other runs of the same binary). The comparison applies from the strict criterion up; the practical check is unchanged.
+
+**Device measurements.** Tablet (Adreno 730) and HP (Intel Xe, Mesa 24.0.8). Each cell: wall cold / warm s; compile cold / warm s;
+cache MB. Both devices keep this cache, including the HP, whose driver has no disk cache of its own. Warm compiled nothing:
+every pipeline of every scene was a hit. All safety scenarios pass on both, and without a directory both render uncached
+(`no-directory`). `shader_data` stdout is identical cold and warm; `glass_render`'s film repeats and warm has the same bits.
+The oracle films meet the same rule as on Linux: 0 practical, within the control.
+
+| Scene | Tablet | HP |
+| --- | --- | --- |
+| starter/diffuse-triangle | 11.2 / 0.7; 10.46 / 0.07; 1.0 | 25.7 / 0.6; 24.98 / 0.07; 7.3 |
+| linux-gates/broad-lighting-0 | 20.0 / 1.3; 18.79 / 0.08; 1.3 | 42.7 / 1.1; 41.48 / 0.09; 9.5 |
+| sampling/adaptive-auto | 29.6 / 6.6; 22.67 / 0.1; 1.5 | 63.1 / 4.3; 58.6 / 0.1; 10.6 |
+| shadow-catcher/catcher-point-light | 27.9 / 4.8; 22.82 / 0.11; 1.6 | 51.6 / 3.3; 48.08 / 0.11; 11.3 |
+| combinations/camera-motion-ao-node | 28.4 / 2.0; 26.28 / 0.12; 1.7 | 60.1 / 1.6; 58.44 / 0.11; 11.6 |
+| volumes/absorption-point | 71.3 / 17.9; 54.0 / 0.16; 2.9 | 119.4 / 10.7; 107.1 / 0.19; 21.2 |
+| volumes/ray-marching-heterogeneous-equiangular | 211.4 / 20.1; 189.3 / 0.18; 3.4 | not run |
+
+The tablet's marching entry `shade_volume_ray_marching` (`volumes/ray-marching-heterogeneous-equiangular`): 101.8 s cold in
+this run (77-83 s in earlier runs), 0.02 s warm. Costs on volumes/absorption-point: saving 19 files 23 ms
+on the tablet (2.9 MB, 54 s compile), 110 ms on the HP (21.2 MB, 107 s compile); loading them 37 ms and 133 ms.
+
+### Driver caches below it (measured before the cache existed)
+
+Each driver's own cache, measured with the runtime and binaries of that time, when the host had no cache. Evidence: `native/work/zc-pipeline-cache/` (`runs/linux-seeded/results.json`,
 `audit/probe-*.txt`, `audit/driver-cache-strings.txt`).
 
 Linux, Intel UHD ADL-S, Mesa 25.0.7: Mesa's on-disk cache serves every pipeline. Cold = fresh
@@ -6455,6 +6587,44 @@ refusal); **scenes** `volumes/catcher-*`.
 **Not implemented (refused by name):** a heterogeneous volume shader with a Light Path node (`volume_estimate_extrema`),
 volumes with sampling patterns other than tabulated Sobol, MNEE with volumes, subsurface scattering with volumes, light and
 shadow linking with volumes, path guiding, denoising features with volumes.
+
+## Static curves (ribbons, thick curves, thick linear curves)
+
+Scenes with curves (`data.bvh.have_curves`) render on the WebGPU device through the closest and the opaque shadow traversal,
+with the closures the device has, curve attributes and the Hair Info node. Regions: `CURVES` (bits 186-188, one per shape in
+the uploaded `KernelCurve` records) and `SVM_NODE_HAIR_INFO` (189). A scene without curves compiles the same text as before:
+the tables are appended to the descriptor list only with curves (`CBC_CURVE_TABLES`, `scene_tables`), so its upload is
+unchanged too.
+
+**BVH2 nodes.** `scene/geometry_bvh.cpp` builds unaligned nodes when `have_curves` and `SceneParams::use_bvh_unaligned_nodes`,
+whose pinned default is true. The host follows that default on every backend: the CPU reference and the Metal device without
+hardware ray tracing build BVH2, and their stock kernels read both formats (`kernel/bvh/nodes.h bvh_node_intersect`); the
+MetalRT and Embree layouts ignore the flag. An unaligned node is 7 `int4`: word 0 carries `visibility | PATH_RAY_VISIBILITY_NODE_UNALIGNED`
+for each child and the child indices, then three rows of each child's space, which map its box to the unit cube.
+Aligned nodes (4 `int4`) mix freely with them in `bvh_nodes`; the flag selects (`curve_node_hit`, in the curve regions).
+
+**Arithmetic.** The pinned curve intersection is iterative, so every sum, difference and product of it passes the order word
+(`cvb`, `wavefront_curve_math.wgsl`: XOR with header word 3, always 0, which no compiler sees through): nothing can fuse or
+reassociate. Quotients and roots are correctly rounded (`rounded_divide`, `rounded_sqrt`), `float3 / float` follows the oracle
+(`NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`), and `min`, `max` keep their NaN behaviour through `select`. There are no arrays: the
+Adreno 730 miscompiles reassigned private arrays and dynamically indexed function-scope aggregates, so the four keys are
+separate values and the subdivision stack is three vectors read through `select` chains. On Linux, in x64 arithmetic, every
+curve hit's t, u and v and its ShaderData equal the CPU kernels bit for bit (`native/tools/curve_gate.py`). Differentials use the
+same arithmetic for curve hits (`curve_differentials`), since a fused determinant moved a ribbon's du and dv far past the last
+bit; in scenes with curves, so do the bump position offset and `svm_set_bump` (a bump height is a difference of noise values one
+differential apart, which amplified a last-bit offset to 8 times the practical tolerance on ribbons).
+
+**Pinned behaviour kept:** `box_max` is `max(min(c0,c1),max(c2,c3))`; a ray nearly parallel to a segment leaves the
+pinned `u_outer0` and `u_outer1` uninitialized (`cylinder_intersect` returns true without setting them; WGSL holds zero).
+
+**Refused by name:** "WebGPU curves with motion blur not implemented", "WebGPU curves with transparent shadows not
+implemented", "WebGPU curves with caustics not implemented", "WebGPU motion pass with curves not implemented", "WebGPU curves
+with Ambient Occlusion, Bevel or Raycast shader nodes not implemented"; volumes, subsurface scattering, MNEE, displacement and
+dedicated light kernels keep their own strings; point clouds: "WebGPU closest (shadow, surface, light NEE) currently requires
+triangle or static curve primitives". The hair BSDF closures stay unimplemented.
+
+**Authoring.** `cbc_host_curves`, `cbc_host_curve_shape`, `cbc_host_curve_subdivisions` and the standard attributes `curve_intercept`,
+`curve_length` and `curve_random` (`native/host/ABI.md`), the typed `HairNode` and `CyclesScene` methods, the `hair` scene entry.
 
 ## Subsurface scattering
 

@@ -5,6 +5,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 using CodeBrix.Graphics3D.Cycles.Interop;
+using CodeBrix.Graphics3D.Cycles.Rendering;
 using Microsoft.Win32.SafeHandles;
 
 namespace CodeBrix.Graphics3D.Cycles;
@@ -288,12 +289,27 @@ public sealed unsafe class CyclesHost : IDisposable
         Check(Native.ConfigureTiers(ref config, recordDirectory));
     }
 
+    /// <summary>
+    /// Configures the persistent GPU pipeline cache for the whole process. It applies to WebGPU hosts
+    /// created after the call. The cache only saves compile time: a cache that is missing, damaged,
+    /// outdated or from another adapter is ignored and rebuilt, and films do not change. Where the
+    /// GPU runtime offers no cache (see the device report), the call succeeds and nothing is cached.
+    /// </summary>
+    /// <param name="mode">Whether to cache.</param>
+    /// <param name="directory">An app-writable directory for the cache (created if missing); <see langword="null"/> or empty means the record directory of <see cref="ConfigureTiers"/>, else the user's cache directory on Linux, else no cache.</param>
+    public static void ConfigurePipelineCache(PipelineCacheMode mode, string directory = null)
+    {
+        EnsureSupportedOperatingSystem();
+        Native.PipelineCacheConfig config = new() { Size = 32, Abi = 1, Mode = (uint)mode };
+        Check(Native.ConfigurePipelineCache(ref config, directory));
+    }
+
     // Capability report JSON: backend, adapter, chosen tier and reason, record,
     // canary, compile budget, warnings and compiled pipelines.
     /// <summary>
     /// Returns the host's device capability report as JSON: backend, adapter, chosen tier and the
-    /// reason for it, record path and status, canary result, compile budget, warnings and compiled
-    /// pipelines.
+    /// reason for it, record path and status, canary result, compile budget, warnings, compiled
+    /// pipelines and the pipeline cache's state.
     /// </summary>
     /// <returns>The JSON report.</returns>
     public string DeviceReportJson()
@@ -409,6 +425,37 @@ public sealed unsafe class CyclesHost : IDisposable
         fixed (uint* triangles = indices)
             Finish(Native.Mesh(Handle, node.Value, xyz, (ulong)(positions.Length / 3), triangles, (ulong)(indices.Length / 3)));
     }
+
+    /// <summary>
+    /// Replaces a hair geometry's curves. Every curve starts on material 0. Further curve attributes
+    /// follow this call, because their element counts derive from the curves.
+    /// </summary>
+    /// <param name="node">A node created with type <c>hair</c>.</param>
+    /// <param name="positions">Key positions as x, y, z triples.</param>
+    /// <param name="radii">One radius per key.</param>
+    /// <param name="firstKeys">The first key of each curve: the first is 0 and they strictly increase.</param>
+    /// <exception cref="ArgumentException">The positions are not triples or the radius count differs from the key count.</exception>
+    public void Curves(Node node, ReadOnlySpan<float> positions, ReadOnlySpan<float> radii, ReadOnlySpan<uint> firstKeys)
+    {
+        if (positions.Length % 3 != 0 || positions.Length / 3 != radii.Length) throw new ArgumentException("Complete keys with one radius each are required.");
+        fixed (float* xyz = positions)
+        fixed (float* radius = radii)
+        fixed (uint* first = firstKeys)
+            Finish(Native.Curves(Handle, node.Value, xyz, radius, (ulong)radii.Length, first, (ulong)firstKeys.Length));
+    }
+
+    /// <summary>
+    /// Sets how a hair geometry's curves are rendered.
+    /// </summary>
+    /// <param name="node">A node created with type <c>hair</c>.</param>
+    /// <param name="shape">The curve shape.</param>
+    public void SetCurveShape(Node node, CurveShape shape) => Finish(Native.CurveShape(Handle, node.Value, (uint)shape));
+
+    /// <summary>
+    /// Sets the scene-wide ribbon tessellation: 2^<paramref name="subdivisions"/> sections per curve segment.
+    /// </summary>
+    /// <param name="subdivisions">0 to 4; the default is 3.</param>
+    public void SetCurveSubdivisions(uint subdivisions) => Finish(Native.CurveSubdivisions(Handle, subdivisions));
 
     /// <summary>
     /// Creates or replaces a float-based geometry attribute. The element count derives from the
@@ -687,6 +734,46 @@ public sealed unsafe class CyclesHost : IDisposable
         GC.KeepAlive(lifetime);
         if (status == 6) return false;
         Check(status);
+        return true;
+    }
+
+    /// <summary>
+    /// Bakes one mesh's UV layout into raw float32, row 0 at v = 0. An empty destination is a size query
+    /// that does not bake.
+    /// </summary>
+    /// <param name="node">The object to bake.</param>
+    /// <param name="settings">The size, samples, type and options.</param>
+    /// <param name="values">The destination, changed only on success.</param>
+    /// <param name="required">Receives the float count the bake writes.</param>
+    /// <param name="components">Receives the floats per pixel.</param>
+    /// <returns><see langword="true"/> when the bake ran; <see langword="false"/> when the destination is too small.</returns>
+    /// <exception cref="NativeFailure">The bake was rejected (status 1), the device does not bake (status 2), failed (status 3) or was cancelled (status 4).</exception>
+    public bool Bake(Node node, in BakeSettings settings, Span<float> values, out ulong required, out uint components)
+    {
+        NativeStatus status = CyclesAbi.Bake(Handle, node.Value, settings, values, out required, out components);
+        GC.KeepAlive(lifetime);
+        if (status == NativeStatus.SmallBuffer) return false;
+        Check((int)status);
+        return true;
+    }
+
+    /// <summary>
+    /// Reads the map a bake with these settings uses, without rendering, on any backend. An empty
+    /// <paramref name="triangles"/> is a size query.
+    /// </summary>
+    /// <param name="node">The object to bake.</param>
+    /// <param name="settings">The size, type and options.</param>
+    /// <param name="triangles">Receives one triangle index per pixel (-1 where uncovered).</param>
+    /// <param name="coordinates">Receives six floats per pixel (u, v, du/dx, du/dy, dv/dx, dv/dy), or empty.</param>
+    /// <param name="required">Receives the pixel count.</param>
+    /// <returns><see langword="true"/> when the map was copied; <see langword="false"/> when the destination is too small.</returns>
+    /// <exception cref="NativeFailure">The settings or the object were rejected (status 1).</exception>
+    public bool BakeMap(Node node, in BakeSettings settings, Span<int> triangles, Span<float> coordinates, out ulong required)
+    {
+        NativeStatus status = CyclesAbi.BakeMap(Handle, node.Value, settings, triangles, coordinates, out required);
+        GC.KeepAlive(lifetime);
+        if (status == NativeStatus.SmallBuffer) return false;
+        Check((int)status);
         return true;
     }
 }

@@ -38,6 +38,27 @@ void WebGPUDevice::validate_geometry_motion() const{
   }
   require(bool(data.bvh.have_motion)==moving,"Native object motion flag/table mismatch");
 }
+// Static curves through the closest and opaque shadow traversals. What this device does not do with curves yet is
+// refused by name, before any dispatch. Volumes, subsurface scattering, MNEE, displacement and dedicated light kernels
+// keep their own refusals (volume.cpp, subsurface.cpp, mnee.cpp, surface.cpp, shadow_linking.cpp).
+void WebGPUDevice::validate_curves(){
+  if(!data.bvh.have_curves)return;
+  require(!data.bvh.have_motion,"WebGPU curves with motion blur not implemented");
+  require(!data.integrator.transparent_shadows,"WebGPU curves with transparent shadows not implemented");
+  require(!data.integrator.use_caustics,"WebGPU curves with caustics not implemented");
+  require(!film_motion_vectors(),"WebGPU motion pass with curves not implemented");
+  require(!curve_records.empty()&&globals.count("curve_keys")&&globals.count("prim_type"),"Missing native curve tables");
+  require(remaining(globals.at("curve_keys"))%sizeof(float4)==0&&remaining(globals.at("prim_type"))%sizeof(int)==0,"Invalid native curve table size");
+  require(data.bvh.curve_subdivisions>=1&&data.bvh.curve_subdivisions<=16,"Invalid native curve subdivisions");
+  const ShaderFeatures features=shader_features();
+  require(!(features&(SF_NODE_AO|SF_NODE_BEVEL|SF_NODE_RAYCAST)).any(),"WebGPU curves with Ambient Occlusion, Bevel or Raycast shader nodes not implemented");
+  for(const KernelCurve &curve:curve_records){
+    const int shape=curve.type&PRIMITIVE_CURVE;
+    require(shape==PRIMITIVE_CURVE_RIBBON||shape==PRIMITIVE_CURVE_THICK||shape==PRIMITIVE_CURVE_THICK_LINEAR,"Invalid native curve type");
+    require(curve.first_key>=0&&curve.num_keys>=1,"Invalid native curve key range");
+    require(size_t(uint32_t(curve.shader_id)&SHADER_MASK)<shader_records.size(),"Invalid native curve shader");
+  }
+}
 uint32_t WebGPUDevice::scene_tables(){
   load_image_info();
   std::vector<uint32_t> descriptors;
@@ -46,7 +67,10 @@ uint32_t WebGPUDevice::scene_tables(){
   CBC_SCENE_CORE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE) CBC_LIGHT_TREE_TABLES(TABLE)
   TABLE(ies,float)
   TABLE(volume_tree_nodes,KernelOctreeNode) TABLE(volume_tree_roots,KernelOctreeRoot) TABLE(volume_tree_root_ids,int) TABLE(volume_step_size,float)
+  if(data.bvh.have_curves){CBC_CURVE_TABLES(TABLE)}
 #undef TABLE
+  // The descriptor list grows with curves (a scene edit can add or remove them).
+  if(intersection_tables&&descriptors.size()!=intersection_table_cache.size()){flush();release(intersection_tables);intersection_tables=0;intersection_table_cache.clear();}
   if(!intersection_tables)intersection_tables=allocate(descriptors.size()*4);
   if(descriptors!=intersection_table_cache){upload(intersection_tables,descriptors.data(),descriptors.size()*4);intersection_table_cache=descriptors;}
   return intersection_tables;
@@ -61,7 +85,8 @@ void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
     require(address%4==0,"Unaligned closest pointer");return uint32_t(address);};
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[4]=pointer(1,false);p[17]=error_word;
   if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU closest currently requires triangle primitives");
+  require(!data.bvh.have_points,"WebGPU closest currently requires triangle or static curve primitives");
+  validate_curves();
   validate_geometry_motion();
   require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU closest optional integration features not implemented");
   validate_shadow_linking();

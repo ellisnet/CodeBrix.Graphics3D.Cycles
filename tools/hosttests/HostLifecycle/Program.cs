@@ -86,6 +86,8 @@ File.WriteAllText(Path.Combine(args[1], "registry.json"), registry);
 CyclesHost.ConfigureTiers(PipelineTier.Auto, null);
 Rejected(() => CyclesHost.ConfigureTiers((PipelineTier)7, null), 1);
 Rejected(() => CyclesHost.ConfigureTiers(PipelineTier.Auto, null, (PipelineTierFlags)8), 1);
+Rejected(() => CyclesHost.ConfigurePipelineCache((PipelineCacheMode)7), 1);
+CyclesHost.ConfigurePipelineCache(PipelineCacheMode.Off);
 using CyclesHost host = new(Backend.CpuReference);
 using (JsonDocument report = JsonDocument.Parse(host.DeviceReportJson()))
     Require(report.RootElement.GetProperty("backend").GetString() == "cpu" && report.RootElement.GetProperty("pipelines").ValueKind == JsonValueKind.Null, "CPU device report");

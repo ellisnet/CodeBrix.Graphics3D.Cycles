@@ -46,7 +46,27 @@ def registration_overlay(out):
             '    /* CodeBrix WebGPU: one sample per update with volumes (the CPU device\'s sample order). */\n'
             '    if (device_->info.type == DEVICE_WEBGPU) {\n'
             '      render_scheduler_.set_limit_samples_per_update(1);\n'
-            '    }\n  }\n')
+            '    }\n  }\n'
+            '  /* CodeBrix maintainer modes (native/cycles/fingerprint.h, scene_capture.h): one sample per update keeps the\n'
+            '   * hashed command sequence independent of the clock (RenderScheduler::calculate_num_samples_per_update), and a\n'
+            '   * capture\'s path records at their first size. The film does not depend on this grouping. */\n'
+            '  if (device_->info.type == DEVICE_WEBGPU && (getenv("CODEBRIX_CYCLES_FINGERPRINT") || getenv("CODEBRIX_CYCLES_RENDER_CAPTURE"))) {\n'
+            '    render_scheduler_.set_limit_samples_per_update(1);\n'
+            '  }\n')
+    replace('integrator/path_trace.cpp','#include "integrator/path_trace.h"\n','#include "integrator/path_trace.h"\n\n#include <cstdio>\n#include <cstdlib>\n')
+    # Replay of an oracle scene (native/tools/oracle_replay.py): the CPU reference's raw render buffer after each update.
+    replace('integrator/path_trace.cpp','  denoise_volume_guiding_buffers(render_work, has_volume);\n  if (render_cancel_.is_requested) {\n    return;\n  }\n',
+            '  denoise_volume_guiding_buffers(render_work, has_volume);\n  if (render_cancel_.is_requested) {\n    return;\n  }\n'
+            '  /* CodeBrix maintainer tool: raw render buffer of the CPU device, DIR/s<samples>.bin. */\n'
+            '  if (const char *dump = getenv("CODEBRIX_CYCLES_RENDER_BUFFER_DUMP")) {\n'
+            '    path_trace_works_[0]->copy_render_buffers_from_device();\n'
+            '    RenderBuffers *buffers = path_trace_works_[0]->get_render_buffers();\n'
+            '    const string name = string(dump) + "/s" + to_string(render_work.path_trace.start_sample + render_work.path_trace.num_samples) + ".bin";\n'
+            '    if (FILE *file = fopen(name.c_str(), "wb")) {\n'
+            '      fwrite(buffers->buffer.data(), sizeof(float), buffers->buffer.size(), file);\n'
+            '      fclose(file);\n'
+            '    }\n'
+            '  }\n')
     # Configuration transforms may change while scene-linear names stay equal.
     replace('util/colorspace.cpp', '#include "util/colorspace.h"',
             '// Modifications: Copyright (c) 2026 Jeremy Ellis and contributors\n#include "util/colorspace.h"')

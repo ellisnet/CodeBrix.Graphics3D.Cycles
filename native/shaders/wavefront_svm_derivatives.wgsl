@@ -36,14 +36,27 @@ fn svm_set_bump(s:ptr<function,SvmState>,node:u32){
     loop{
         if(transform){n=surface_object_normal(sd,n,inverse);}
         if(!inverse){break;}
+//#if !CURVES
         let normal_in=n;let Rx=cross(dPdy,normal_in);let Ry=cross(normal_in,dPdx);
         let det=dot(dPdx,Rx);let surfgrad=(h_x-h_c)*Rx+(h_y-h_c)*Ry;let absdet=abs(det);
+//#endif
+//#if CURVES
+        let o=cv_order();let normal_in=n;let Rx=cv_cross(dPdy,normal_in,o);let Ry=cv_cross(normal_in,dPdx,o);
+        let det=cv_dot(dPdx,Rx,o);let surfgrad=cvb3(cvb3(cvb(h_x-h_c,o)*Rx,o)+cvb3(cvb(h_y-h_c,o)*Ry,o),o);let absdet=abs(det);
+//#endif
         if(invert!=0u){scale*=-1.0;}
         strength=max(strength,0.0);
         let sign=select(1.0,-1.0,det<0.0);
+//#if !CURVES
         n=surface_normalize(heap_float(node+N_SetBump_bump_filter_width)*absdet*normal_in-scale*sign*surfgrad);
         if(all(n==vec3<f32>(0))){n=normal_in;}
         else{n=surface_native_normalize(strength*n+(1.0-strength)*normal_in);}
+//#endif
+//#if CURVES
+        n=surface_normalize(cvb3(cvb3(cvb(heap_float(node+N_SetBump_bump_filter_width)*absdet,o)*normal_in,o)-cvb3(cvb(scale*sign,o)*surfgrad,o),o));
+        if(all(n==vec3<f32>(0))){n=normal_in;}
+        else{n=surface_native_normalize(cvb3(cvb3(strength*n,o)+cvb3(cvb(1.0-strength,o)*normal_in,o),o));}
+//#endif
         inverse=false;
     }
     svm_store3(s,out,n);
@@ -154,13 +167,20 @@ fn svmd_input1(s:ptr<function,SvmState>,address:u32)->vec3<f32>{
     return vec3<f32>(bitcast<f32>(bits),0,0);
 }
 // util/svm/util.h dPdx/dPdy and shading_position/shading_incoming.
-fn svmd_position(sd:SurfaceData)->NormalDual{return NormalDual(sd.P,sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x,sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y);}
+//#if CURVES else fn svmd_position(sd:SurfaceData)->NormalDual{return NormalDual(sd.P,sd.dPdu*sd.du.x+sd.dPdv*sd.dv.x,sd.dPdu*sd.du.y+sd.dPdv*sd.dv.y);}
+// With curves in the scene every product and sum through the order word: a bump height is a difference of noise values
+// a differential apart, which amplifies a last-bit difference of the offset position.
+fn svmd_position(sd:SurfaceData)->NormalDual{let o=cv_order();
+    return NormalDual(sd.P,cvb3(cvb3(sd.dPdu*sd.du.x,o)+cvb3(sd.dPdv*sd.dv.x,o),o),cvb3(cvb3(sd.dPdu*sd.du.y,o)+cvb3(sd.dPdv*sd.dv.y,o),o));}
+//#endif
 fn svmd_incoming(sd:SurfaceData)->NormalDual{let a=surface_orthogonal(sd.wi);return NormalDual(sd.wi,sd.dI*a,sd.dI*rounded_cross(sd.wi,a));}
 fn svmd_const(v:vec3<f32>)->NormalDual{return NormalDual(v,vec3<f32>(0),vec3<f32>(0));}
 // First-order bump offset, then the full dual or only its value.
 fn svmd_output(s:ptr<function,SvmState>,data_in:NormalDual,bump:u32,width:f32,store:u32,out:u32,normalize:bool){
     var data=data_in;
-    if(bump==NODE_BUMP_OFFSET_DX){data.value+=data.dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){data.value+=data.dy*width;}
+//#if CURVES else     if(bump==NODE_BUMP_OFFSET_DX){data.value+=data.dx*width;}else if(bump==NODE_BUMP_OFFSET_DY){data.value+=data.dy*width;}
+    {let o=cv_order();if(bump==NODE_BUMP_OFFSET_DX){data.value=cvb3(data.value+cvb3(data.dx*width,o),o);}else if(bump==NODE_BUMP_OFFSET_DY){data.value=cvb3(data.value+cvb3(data.dy*width,o),o);}}
+//#endif
     if(normalize){data=svmd_safe_normalize(data);}
     if(store!=0u){svmd_store3(s,out,data);}else{svm_store3(s,out,data.value);}
 }
@@ -198,6 +218,9 @@ fn svm_geometry_derivative(s:ptr<function,SvmState>,node:u32){
         case NODE_GEOM_Ng:{data=svmd_const(sd.Ng);}
         case NODE_GEOM_I:{data=svmd_incoming(sd);}
         case NODE_GEOM_uv:{data=NormalDual(vec3<f32>(1.0-sd.u-sd.v,sd.u,0),vec3<f32>(-sd.du.x-sd.dv.x,sd.du.x,0),vec3<f32>(-sd.du.y-sd.dv.y,sd.du.y,0));}
+//#if CURVES
+        case NODE_GEOM_T:{if((sd.primitive_type&PRIMITIVE_CURVE)==0u){svm_error(s,16u);return;}data=svmd_const(cv_normalize(sd.dPdu,cv_order()));}
+//#endif
         default:{svm_error(s,16u);return;}
     }
     let bump=svm_byte(node+N_Geometry_bump_offset);let store=svm_byte(node+N_Geometry_store_derivatives);

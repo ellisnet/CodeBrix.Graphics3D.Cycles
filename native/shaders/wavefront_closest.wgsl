@@ -71,7 +71,9 @@ fn trace_native_filtered(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,
         visits++;if(visits>1048576u){fail();return result;}
         while(node>=0&&node!=0x76543210i){
             visits++;if(visits>1048576u){fail();return result;}
-            let bounds=bounds_hit(pos,inv,tmin,result.t,u32(node),visibility);
+//#if CURVES else             let bounds=bounds_hit(pos,inv,tmin,result.t,u32(node),visibility);
+            let bounds=curve_node_hit(pos,dir,inv,tmin,result.t,u32(node),visibility);
+//#endif
             let a=table_at(G_bvh_nodes,u32(node),SIZE_bvh_nodes);
             node=bitcast<i32>(load_word(a+8u));var other=bitcast<i32>(load_word(a+12u));let mask=u32(bounds.x);
             if(mask==3u){if(bounds.z<bounds.y){let tmp=node;node=other;other=tmp;}
@@ -85,7 +87,10 @@ fn trace_native_filtered(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,
             if(first>=0){
                 if(end>table_count(G_prim_index)||u32(first)>end){fail();return result;}
                 if(sp<0){fail();return result;}node=stack[u32(sp)];sp--;
-                if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&u32(first)!=end){fail();return result;}
+//#if CURVES else                 if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&u32(first)!=end){fail();return result;}
+                let curve_leaf=(kind&PRIMITIVE_CURVE)!=0u&&(kind&PRIMITIVE_LAMP)==0u;
+                if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&!curve_leaf&&u32(first)!=end){fail();return result;}
+//#endif
                 for(var index=u32(first);index<end;index++){
                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
                     let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
@@ -93,6 +98,18 @@ fn trace_native_filtered(origin:vec3<f32>,direction:vec3<f32>,tmin:f32,tmax:f32,
                     if(prim_object==light_object&&prim==light_prim){continue;}
 //#if SHADOW_LINKING
                     if(shadow_link_skip(light_object,prim_object)){continue;}
+//#endif
+//#if CURVES
+                    // traversal.h: a curve segment has no per-primitive visibility test.
+                    if(curve_leaf){
+                        let curve_type=load_word(table_at(G_prim_type,index,4u));
+                        let curve_hit=curve_intersect(pos,dir,tmin,result.t,prim_object,prim,curve_type);
+                        if(curve_hit.hit){
+                            result=NativeHit(curve_hit.t,curve_hit.u,curve_hit.v,prim_object,prim,curve_type);
+                            if((visibility&PATH_RAY_VISIBILITY_SHADOW_OPAQUE)!=0u){return result;}
+                        }
+                        continue;
+                    }
 //#endif
                     if((load_word(table_at(G_prim_visibility,index,SIZE_prim_visibility))&visibility)==0u){continue;}
                     let vertices=native_triangle_vertices(prim_object,prim,kind&PRIMITIVE_ALL,time);if(vertices.error!=0u){return result;}
@@ -194,6 +211,13 @@ fn intersect_point_lights(index:u32,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
         if(t>=hit.t){continue;}hit=NativeHit(t,0.0,0.0,object,lamp,PRIMITIVE_LAMP);
     }return hit;
 }
+//#if CURVES
+// intersection_get_shader: a curve hit takes its curve's shader.
+fn closest_hit_shader(hit:NativeHit)->u32{
+    if((hit.kind&PRIMITIVE_CURVE)!=0u){if(hit.prim>=table_count(G_curves)){fail();return 0u;}return load_word(table_at(G_curves,hit.prim,16u));}
+    return load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader));
+}
+//#endif
 fn terminate_surface(index:u32,shader_flags:u32)->bool{
     var flag=state_word(S_path_flag,index);
     if(path_ao(index)){
@@ -279,14 +303,18 @@ fn sc_split_mark(index:u32,object:u32,shader:u32,next:u32){
     state_u32(S_isect_object,index,hit.object);state_u32(S_isect_prim,index,hit.prim);state_u32(S_isect_type,index,hit.kind);
     var next=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND;var shader=0u;var sorted=false;
     if(volume_active(index)){
-        var flags=0u;if(hit.prim!=NONE&&(hit.kind&PRIMITIVE_LAMP)==0u){let id=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader))&SHADER_MASK;flags=load_word(table_at(G_shaders,id,SIZE_shaders)+SH_flags);}
+//#if CURVES else         var flags=0u;if(hit.prim!=NONE&&(hit.kind&PRIMITIVE_LAMP)==0u){let id=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader))&SHADER_MASK;flags=load_word(table_at(G_shaders,id,SIZE_shaders)+SH_flags);}
+        var flags=0u;if(hit.prim!=NONE&&(hit.kind&PRIMITIVE_LAMP)==0u){let id=closest_hit_shader(hit)&SHADER_MASK;flags=load_word(table_at(G_shaders,id,SIZE_shaders)+SH_flags);}
+//#endif
 //#if VOLUME_RAY_MARCHING else         next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME,0u,terminate_surface(index,flags));
         next=select(vr_volume_kernel(),0u,terminate_surface(index,flags));
 //#endif
     }
     else if(hit.prim!=NONE&&(hit.kind&PRIMITIVE_LAMP)!=0u){next=DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD;}
     else if(hit.prim!=NONE){
-        shader=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader))&SHADER_MASK;
+//#if CURVES else         shader=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader))&SHADER_MASK;
+        shader=closest_hit_shader(hit)&SHADER_MASK;
+//#endif
         let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);
         if(terminate_surface(index,flags)){next=0u;}
         else{next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,(flags&SD_HAS_RAYTRACE)!=0u);sorted=true;}

@@ -80,7 +80,8 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SURFACE_FILTER_GLOSSY",SF_FILTER_GLOSSY},{"SHADOW_TERMINATOR_WIDE",SF_TERMINATOR_WIDE},{"SHADOW_TRANSPARENT_MOTION",SF_SHADOW_MOTION},{"MNEE_MOTION",SF_MNEE_MOTION|SF_FILM_MOTION_EXACT},{"SVM_NODE_DISPLACEMENT",SF_NODE_DISPLACEMENT},{"SHADER_EVAL_DISPLACE",SF_EVAL_DISPLACE},{"SVM_BUMP_UNDISPLACED",SF_BUMP_UNDISPLACED},{"SVM_NODE_RADIAL_TILING",SF_NODE_RADIAL_TILING},
     {"FILM_DATA_PASSES",SF_FILM_DATA_PASSES},{"SVM_NODE_AOV",SF_NODE_AOV},{"FILM_CRYPTOMATTE",SF_FILM_CRYPTOMATTE},{"FILM_DENOISING",SF_FILM_DENOISING},{"FILM_MOTION",SF_FILM_MOTION},
     // The shade_surface_passes entry and its shared helpers (data passes or denoising features).
-    {"FILM_PASSES_ANY",SF_FILM_DATA_PASSES|SF_FILM_DENOISING}};
+    {"FILM_PASSES_ANY",SF_FILM_DATA_PASSES|SF_FILM_DENOISING},
+    {"CURVE_RIBBON",SF_CURVE_RIBBON},{"CURVE_THICK",SF_CURVE_THICK},{"CURVE_THICK_LINEAR",SF_CURVE_THICK_LINEAR},{"CURVES",SF_CURVES},{"SVM_NODE_HAIR_INFO",SF_NODE_HAIR_INFO}};
   return names;
 }
 std::string shader_feature_list(ShaderFeatures features){
@@ -92,7 +93,8 @@ std::string shader_feature_list(ShaderFeatures features){
 // Mask layout invariants (pipelines.h): assigned bits keep their numbers.
 static_assert(SF_GEOMETRY.test(0)&&SF_MAPPING_DERIVATIVE.test(61)&&SF_TEX_GABOR.test(63)&&!SF_ALL.test(62));
 static_assert(SF_SHADOW_LINKING.test(120));
-static_assert(SF_ALL.count()==124&&!(SF_ALL&~(ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+static_assert(SF_CURVE_RIBBON.test(186)&&SF_CURVE_THICK.test(187)&&SF_CURVE_THICK_LINEAR.test(188)&&SF_NODE_HAIR_INFO.test(189)&&(SF_SUPERSET_SCENE_ONLY&(SF_CURVES|SF_NODE_HAIR_INFO))==(SF_CURVES|SF_NODE_HAIR_INFO));
+static_assert(SF_ALL.count()==128&&!(SF_ALL&~(SF_CURVES|SF_NODE_HAIR_INFO|ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(SF_MNEE_ENTRIES.test(111)&&!(SF_ALL&SF_MNEE_ENTRIES).any());
@@ -145,7 +147,7 @@ OpInfo op_info(uint32_t op){
     OP(NODE_BLACKBODY,Blackbody,SF_BLACKBODY) OP(NODE_NORMAL,Normal,SF_NORMAL)
     OP(NODE_OBJECT_INFO,ObjectInfo,SF_SHADING_INFO) OP(NODE_CAMERA,Camera,SF_SHADING_INFO) OP(NODE_SCENE_TIME,SceneTime,SF_SHADING_INFO)
     OP(NODE_VECTOR_TRANSFORM,VectorTransform,SF_SHADING_INFO) OP(NODE_LIGHT_PATH,LightPath,SF_LIGHT_PATH) OP(NODE_LIGHT_FALLOFF,LightFalloff,SF_LIGHT_FALLOFF) OP(NODE_IES,IES,SF_NODE_IES) OP(NODE_TEX_SKY,TexSky,ShaderFeatures{})
-    OP(NODE_WAVELENGTH,Wavelength,SF_WAVELENGTH) OP(NODE_WIREFRAME,Wireframe,SF_WIREFRAME) OP(NODE_TEX_GABOR,TexGabor,SF_TEX_GABOR)
+    OP(NODE_WAVELENGTH,Wavelength,SF_WAVELENGTH) OP(NODE_WIREFRAME,Wireframe,SF_WIREFRAME) OP(NODE_HAIR_INFO,HairInfo,SF_NODE_HAIR_INFO) OP(NODE_TEX_GABOR,TexGabor,SF_TEX_GABOR)
     OP(NODE_AMBIENT_OCCLUSION,AmbientOcclusion,SF_NODE_AO) OP(NODE_BEVEL,Bevel,SF_NODE_BEVEL) OP(NODE_RAYCAST,Raycast,SF_NODE_RAYCAST|SF_ATTR)
     OP(NODE_RADIAL_TILING,RadialTiling,SF_NODE_RADIAL_TILING) OP(NODE_AOV_COLOR,AOVColor,SF_NODE_AOV) OP(NODE_AOV_VALUE,AOVValue,SF_NODE_AOV)
     OP(NODE_SET_DISPLACEMENT,SetDisplacement,SF_NODE_DISPLACEMENT) OP(NODE_DISPLACEMENT,Displacement,SF_NODE_DISPLACEMENT)
@@ -456,6 +458,7 @@ uint32_t declared_workgroup_size(const std::string &source,const char *entry){
 #include "device.h"
 #include "wavefront.h"
 #include "../oracle/sha256.h"
+#include "fingerprint.h"
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
@@ -474,6 +477,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
   // and would otherwise compile Principled into every scene.
   if(unsupported_generation!=svm_generation){
     std::vector<uint32_t> roots;for(uint32_t s:tri_shader_words)roots.push_back(s&SHADER_MASK);
+    for(const KernelCurve &curve:curve_records)roots.push_back(uint32_t(curve.shader_id)&SHADER_MASK);
     for(const KernelLight &light:light_records)roots.push_back(uint32_t(light.shader_id)&SHADER_MASK);
     roots.push_back(uint32_t(data.background.surface_shader)&SHADER_MASK);roots.push_back(uint32_t(data.background.volume_shader)&SHADER_MASK);
     std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
@@ -557,6 +561,9 @@ ShaderFeatures WebGPUDevice::shader_features(){
     if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)enabled_features|=SF_LIGHT_LINKING|SF_LIGHT_SELECT;
     if(data.kernel_features&KERNEL_FEATURE_SHADOW_LINKING)enabled_features|=SF_SHADOW_LINKING;
     if(data.cam.num_motion_steps!=0)enabled_features|=SF_MOTION_CAMERA;
+    // Curves: the shapes of the uploaded curve records.
+    for(const KernelCurve &curve:curve_records){const int shape=curve.type&PRIMITIVE_CURVE;
+      enabled_features|=shape==PRIMITIVE_CURVE_RIBBON?SF_CURVE_RIBBON:shape==PRIMITIVE_CURVE_THICK?SF_CURVE_THICK:SF_CURVE_THICK_LINEAR;}
     if(data.integrator.has_shadow_catcher)enabled_features|=SF_SHADOW_CATCHER;
     if(data.kernel_features&KERNEL_FEATURE_AO)enabled_features|=SF_AO_SHADOW;
     if(data.integrator.use_caustics)enabled_features|=SF_MNEE;
@@ -687,6 +694,7 @@ ShaderFeatures WebGPUDevice::surface_unused_svm_features(){
   if(surface_census_key==svm_generation)return scene&surface_unused;
   surface_census_key=svm_generation;surface_unused=SF_NONE;
   std::vector<uint32_t> roots;for(uint32_t s:tri_shader_words)roots.push_back(s&SHADER_MASK);
+  for(const KernelCurve &curve:curve_records)roots.push_back(uint32_t(curve.shader_id)&SHADER_MASK);
   std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
   if(roots.empty())return SF_NONE;
   const SvmCensus used=svm_census(svm_node_words,shader_records.size(),&roots);
@@ -740,6 +748,23 @@ void pipeline_process_warning(const std::string &message){
 uint32_t WebGPUDevice::workgroup(const char *entry) const{
   auto it=pipeline_workgroups.find(entry);if(it==pipeline_workgroups.end())throw std::runtime_error(std::string("No compiled workgroup size for ")+entry);
   return it->second;
+}
+// Fingerprint mode (fingerprint.h): the text this entry would compile is hashed. Outside a scene-preparation kernel the entry
+// gets an empty stand-in pipeline, a real object so that pipeline state stays as a compile leaves it. False: not compiled.
+bool WebGPUDevice::fingerprint_module(const char *module,const char *entry,ShaderFeatures features,const std::string &code,std::vector<cbc::Pipeline> &out){
+  const uint32_t size=declared_workgroup_size(code,entry);if(!size)throw std::runtime_error(std::string("No workgroup size declared for ")+entry);
+  fingerprint->module(module,entry,size,code,shader_feature_list(features));
+  if(fingerprint->kind==WebGPUFingerprint::Prefix){fingerprint->finish(entry);std::_Exit(0);}
+  if(fingerprint->preparing)return true;
+  if(!fingerprint_stub.value){
+    static const char stub[]="@compute @workgroup_size(1) fn fingerprint_stub(){}\n";
+    WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={stub,sizeof(stub)-1};
+    WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;fingerprint_stub=cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease>(wgpuDeviceCreateShaderModule(gpu.get(),&sd));
+  }
+  out.push_back(gpu.pipeline(fingerprint_stub,pipeline_layout,"fingerprint_stub"));
+  fingerprint->names[out.back().value]=entry;
+  pipeline_records.push_back({module,entry,features,code.size(),0,0,0});pipeline_features[entry]=features;pipeline_workgroups[entry]=size;
+  return false;
 }
 std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,const std::string &source,std::initializer_list<const char*> entries,ShaderFeatures extra,ShaderFeatures removed){
   const ShaderFeatures features=(shader_features()&~removed)|extra|debug_output_features()|(intel_d3d12_cache_salt(gpu)?SF_DRIVER_CACHE_SALT:SF_NONE);
@@ -798,6 +823,7 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
       if((features&SF_DRIVER_CACHE_SALT).any())salt_driver_cache(code);
       if(override_code.empty()&&(std::strcmp(entry,"prepare_surface")==0||std::strcmp(entry,"prepare_surface_raytrace")==0)&&intel_metal_surface_workgroup(gpu))
         single_invocation_entry(code,entry);
+      if(fingerprint&&!fingerprint_module(module,entry,features,code,out))break;
       const auto t0=clock::now();
       WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};
       WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;
@@ -806,7 +832,8 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
       cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));
       try{gpu.pop_scope();}catch(const std::exception &e){tier_policy.abandon_pipeline();throw std::runtime_error(std::string("WebGPU shader module '")+module+"' rejected: "+e.what());}
       const double module_ms=ms(t0,clock::now());const auto t1=clock::now();
-      try{out.push_back(gpu.pipeline(shader,pipeline_layout,entry,nullptr,tier_policy.pending_descriptor()));}
+      PipelineDiskCache::Use cached(pipeline_disk_cache,code,entry);
+      try{out.push_back(gpu.pipeline(shader,pipeline_layout,entry,nullptr,tier_policy.pending_descriptor(),cached.cache(),cached.file()));}
       catch(const std::exception &e){
         // A lost device cannot compile a retry; other driver failures (for
         // example out-of-memory reported through an error scope) retry once in
@@ -822,8 +849,9 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
         pipeline_process_decision(tier_policy.report_json());
         continue;
       }
-      const double pipeline_ms=ms(t1,clock::now());tier_policy.end_pipeline(true,pipeline_ms,"");
+      const double pipeline_ms=ms(t1,clock::now());tier_policy.end_pipeline(true,pipeline_ms,"");cached.compiled();
       pipeline_records.push_back({module,entry,features,code.size(),entry_inlined,module_ms,pipeline_ms});pipeline_features[entry]=features;
+      if(fingerprint){fingerprint->names[out.back().value]=entry;fingerprint->compiled++;}
       const uint32_t size=declared_workgroup_size(code,entry);if(!size)throw std::runtime_error(std::string("No workgroup size declared for ")+entry);
       pipeline_workgroups[entry]=size;
       {auto &process=process_pipelines();std::lock_guard lock(process.mutex);process.count++;process.total_ms+=pipeline_ms;
@@ -835,7 +863,7 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
            <<",\"specializationMode\":\""<<specialization_mode_name(specialization_mode)<<"\""<<superset_json()
            <<",\"tier\":\""<<(conservative?"conservative":"full")<<"\",\"tierReason\":\""<<json_text(tier_policy.reason)<<"\",\"workgroupSize\":"<<size
            <<",\"features\":\""<<shader_feature_list(r.features)<<"\",\"wgslBytes\":"<<r.wgsl_bytes<<",\"inlinedBytes\":"<<r.inlined_bytes<<",\"moduleMs\":"<<r.module_ms
-           <<",\"pipelineMs\":"<<r.pipeline_ms<<",\"adapter\":\""<<json_text(gpu.adapter_name)<<"\"}\n";
+           <<",\"pipelineMs\":"<<r.pipeline_ms<<",\"cacheHit\":"<<(cached.hit?"true":"false")<<",\"adapter\":\""<<json_text(gpu.adapter_name)<<"\"}\n";
       }
       if(pipeline_budget_ms>0&&pipeline_ms>pipeline_budget_ms){
         char text[256];std::snprintf(text,sizeof(text),"pipeline '%s' took %.0f ms, over the %.0f ms compile budget",entry,pipeline_ms,pipeline_budget_ms);

@@ -36,7 +36,9 @@ fn svm_glossy(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibili
     if(!(sample_weight>=1e-5)){return;}
     let i=svm_allocate(s,CLOSURE_BSDF_MICROFACET_GGX_ID,weight);if(i==NONE){return;}
     var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;c.N=n;c.ior=1.0;c.energy_scale=1.0;
-    if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#if CURVES else     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+    if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)&&((*s).geometry.primitive_type&PRIMITIVE_CURVE)==0u){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#endif
     let r=clamp(svm_input(s,data+N_GlossyBsdfData_roughness),0.0,1.0);let rough=r*r;
     let anisotropy=clamp(svm_input(s,data+N_GlossyBsdfData_anisotropy),-0.99,0.99);
     let ti=svm_byte(data+N_GlossyBsdfData_tangent_offset);
@@ -112,7 +114,9 @@ fn svm_glass(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibilit
             var empty:SvmClosure;svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,empty);return;}
         (*s).output.remaining-=GLASS_EXTRA_CLOSURES;}
     var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;c.N=n;c.energy_scale=1.0;
-    if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#if CURVES else     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+    if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)&&((*s).geometry.primitive_type&PRIMITIVE_CURVE)==0u){c.N=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#endif
     let ior=max(svm_input(s,data+select(N_RefractionBsdfData_ior,N_GlassBsdfData_ior,glass)),1e-5);
     c.ior=select(ior,rounded_divide(1.0,ior),((*s).geometry.runtime_flag&SR_BACKFACING)!=0u);
     var rough=svm_input(s,data+select(N_RefractionBsdfData_roughness,N_GlassBsdfData_roughness,glass));
@@ -196,7 +200,9 @@ fn principled_normal(s:ptr<function,SvmState>,index:u32,fallback:vec3<f32>)->vec
 //#endif
 //#if SVM_BSDF_FRESNEL_MODELS
 fn principled_valid(s:ptr<function,SvmState>,n:vec3<f32>)->vec3<f32>{
-    if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){return svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#if CURVES else     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){return svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+    if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)&&((*s).geometry.primitive_type&PRIMITIVE_CURVE)==0u){return svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#endif
     return n;
 }
 //#endif

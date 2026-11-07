@@ -627,6 +627,86 @@ public class CyclesSceneTests
         unknown.Should().Throw<ArgumentException>();
     }
 
+    [Theory]
+    [InlineData(CurveShape.Ribbon)]
+    [InlineData(CurveShape.Thick)]
+    [InlineData(CurveShape.ThickLinear)]
+    public void CreateHair_renders_each_shape_and_an_edited_shape_matches_a_scene_built_with_it(CurveShape shape)
+    {
+        //Arrange
+        using CyclesScene edited = TestScenes.CreateCpuScene();
+        using CyclesScene fresh = TestScenes.CreateCpuScene();
+        using CyclesScene empty = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(empty);
+        TestScenes.BuildTyped(edited);
+        TestScenes.BuildTyped(fresh);
+        HairNode late = edited.CreateHair(Strand, StrandRadii, StrandFirstKeys);
+        edited.CreateObject(late);
+        fresh.CreateObject(fresh.CreateHair(Strand, StrandRadii, StrandFirstKeys, shape));
+        edited.Render(Small);
+
+        //Act
+        late.SetShape(shape);
+        FilmBuffer a = edited.Render(Small);
+        FilmBuffer b = fresh.Render(Small);
+        FilmBuffer none = empty.Render(Small);
+
+        //Assert
+        a.Span.SequenceEqual(b.Span).Should().BeTrue();
+        a.Span.SequenceEqual(none.Span).Should().BeFalse();
+    }
+
+    [Fact]
+    public void SetCurveSubdivisions_edited_after_a_render_matches_a_scene_built_with_them()
+    {
+        //Arrange
+        using CyclesScene edited = TestScenes.CreateCpuScene();
+        using CyclesScene fresh = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(edited);
+        TestScenes.BuildTyped(fresh);
+        edited.CreateObject(edited.CreateHair(Strand, StrandRadii, StrandFirstKeys));
+        fresh.CreateObject(fresh.CreateHair(Strand, StrandRadii, StrandFirstKeys));
+        fresh.SetCurveSubdivisions(0);
+        FilmBuffer before = edited.Render(Small);
+
+        //Act
+        edited.SetCurveSubdivisions(0);
+        FilmBuffer a = edited.Render(Small);
+        FilmBuffer b = fresh.Render(Small);
+
+        //Assert
+        a.Span.SequenceEqual(b.Span).Should().BeTrue();
+        a.Span.SequenceEqual(before.Span).Should().BeFalse();
+    }
+
+    [Fact]
+    public void CreateHair_validates_its_arrays_and_carries_curve_attributes()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(scene);
+        HairNode hair = scene.CreateHair(Strand, StrandRadii, StrandFirstKeys, CurveShape.Thick);
+
+        //Act
+        Action partialKey = () => hair.SetCurves(Strand.AsSpan(0, 5), StrandRadii, StrandFirstKeys);
+        Action badStart = () => hair.SetCurves(Strand, StrandRadii, [1u]);
+        Action negative = () => hair.SetCurves(Strand, [.1f, -.1f, .1f, .1f], StrandFirstKeys);
+        Action badSubdivisions = () => scene.SetCurveSubdivisions(5);
+
+        //Assert
+        partialKey.Should().Throw<ArgumentException>();
+        badStart.Should().Throw<NativeFailure>();
+        negative.Should().Throw<NativeFailure>();
+        badSubdivisions.Should().Throw<NativeFailure>();
+        scene.SetCurveSubdivisions(2);
+        hair.CurveFirstKey.Should().Equal(0);
+        hair.SetAttribute("curve_intercept", AttributeValue.Float, AttributeDomain.CurveKey, AttributeFlags.Standard, [0f, .3f, .6f, 1f]);
+        hair.SetAttribute("curve_length", AttributeValue.Float, AttributeDomain.Curve, AttributeFlags.Standard, [1.5f]);
+        hair.SetAttribute("curve_random", AttributeValue.Float, AttributeDomain.Curve, AttributeFlags.Standard, [.25f]);
+        Action wrongDomain = () => hair.SetAttribute("curve_random", AttributeValue.Float, AttributeDomain.CurveKey, AttributeFlags.Standard, [0f, 0f, 0f, 0f]);
+        wrongDomain.Should().Throw<NativeFailure>();
+    }
+
     [Fact]
     public void SetMotionPositions_after_the_first_render_matches_a_scene_built_with_motion()
     {
@@ -668,6 +748,10 @@ public class CyclesSceneTests
     private static readonly Transform3x4 Moved = new(.8f, 0, .3f, .4f, 0, 1.2f, 0, -.2f, -.3f, 0, .8f, .1f);
 
     // A scene with motion blur and a second, single-user mesh object that the static BVH bakes.
+    private static readonly float[] Strand = [-.5f, -.5f, 0f, -.1f, -.1f, 0f, .1f, .1f, 0f, .5f, .5f, 0f];
+    private static readonly float[] StrandRadii = [.2f, .15f, .15f, .1f];
+    private static readonly uint[] StrandFirstKeys = [0u];
+
     private static (CyclesScene Scene, MeshNode Mesh, ObjectNode Object) MotionBlurScene(CyclesScene scene)
     {
         TestScenes.BuildTyped(scene);

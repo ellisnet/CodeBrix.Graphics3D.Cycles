@@ -542,11 +542,17 @@ The native validation is separate from `dotnet test`. The maintained Linux host
 gate rebuilds the native targets, generates 786 independent CPU reference films,
 and runs the C and managed lifecycle, color-reload, concurrency and GPU
 lifecycle checks, plus the ABI test (abi_consumer.c, CPU and WebGPU) and the
-ABI.md example (example.c), and checks the 48 exports:
+ABI.md example (example.c), and checks the 54 exports:
 
     python3 native/tools/host_gate.py --output native/work/<new-folder>
 
-Use a new output folder for each run (allow about 20 minutes). The other gates
+Use a new output folder for each run (allow about 20 minutes). Texture baking has
+its own gate, CPU bakes of small scenes against values derived by hand or computed
+independently of the library, seconds to run:
+
+    python3 native/tools/bake_gate.py --output native/work/<new-folder>
+
+The other gates
 in native/tools/ are documented in the native documents listed above. The SVM
 probe gates compile scene-specialized modules, like the renderer. The
 specialization on/off film check uses the superset mode
@@ -557,6 +563,26 @@ nodes_render) run every group by default and require bit-identical films
 that exceeds the Intel Mesa 25.0.7 16-bit instruction/register range;
 --off-mode none skips the check). native/tools/unspecialized_compile_smoke.py
 records the unspecialized module size and cold compile time as warnings only.
+Fingerprints of validation jobs (native/tools/fingerprint.py; what is hashed and
+why: the first comment of native/cycles/fingerprint.h). CODEBRIX_CYCLES_FINGERPRINT=FILE
+makes the oracle runner prepare the scene as a render does, on that device with its
+own arithmetic, and write a hash of (1) the text every pipeline the scene can use
+would compile, (2) everything uploaded up to the first integrator dispatch, and (3)
+the commands the real scheduler and enqueue code emit in a walk that executes
+nothing, driven by a fixed synthetic readback script. Only the scene-preparation
+kernels (background map, displacement, volume density) really compile and run: their
+output is scene data and decides later specialization, so it cannot be known otherwise.
+Gate binaries take CODEBRIX_CYCLES_FINGERPRINT_KIND=prefix (their steps depend on what
+they read back): they stop at the first pipeline after the control module, and the job's
+hash adds the production WGSL sources and the gate's own source closure, so any WGSL
+source change reruns every gate. A replay's fingerprint is the hash of its capture's files.
+A fingerprint says nothing about host code at work sizes the walk does not visit
+(fingerprint.py host-code lists those files), and a run with the variable set renders
+nothing (zero films, reported as diagnostic) and neither reads nor writes a pipeline cache.
+Two gates have no fingerprint and always run: bake_gate.py (CPU backends, no WebGPU device
+to fingerprint) and pipeline_cache_gate.py (a sequence of processes over a cache directory,
+which fingerprint mode does not use). Replay of an oracle scene:
+native/tools/oracle_replay.py (capture on Linux, replay on any platform).
 After a WGSL change, dump the modules a gate compiles
 (CODEBRIX_CYCLES_WGSL_DUMP=DIR) and run native/tools/intel_compile_envelope.py
 on them: every entry point must stay below 60,000 backend instructions and
@@ -918,98 +944,63 @@ THIRD-PARTY-NOTICES.txt and NOTICE are generated from them by
 tools/licensing/notices.py. Never hand-edit the generated files.
 
 
-PIPELINE CACHE (AUDIT OF THE SHIPPED RUNTIME)
-=============================================
-Driver shader compilation dominates first-render time and gate wall time. A
-persistent pipeline cache was audited on 2026-10-22 against the shipped
-CodeBrix.WebGpu.Native.MitLicenseForever 1.0.290.1433 runtime, which this
-repository consumes unchanged (wgpu-native 29.0.1.1, wgpuGetVersion
-0x1d000101; codebrix ABI 2). Result: the runtime exposes NO usable pipeline
-cache on any backend, so the host and the managed API offer none. Nothing in
-this repository pretends to cache.
-
-The runtime now pinned, 1.0.300.210 (same wgpu-native and wgpu-core; codebrix
-ABI 4, 257 exports), ADDS pipeline-cache exports for Vulkan adapters
+PIPELINE CACHE
+==============
+Driver shader compilation dominates first-render time and gate wall time. The
+WGSL device keeps a persistent pipeline cache through the runtime's exports
 (wgpuCodebrixDeviceCreatePipelineCache, wgpuCodebrixAdapterGetPipelineCacheKey,
-wgpuCodebrixPipelineCacheGetData/AddRef/Release, chained into pipeline
-descriptors with WGPUCodebrixPipelineDescriptorExtras). The host does not use
-them yet: it creates no cache, and the audit below describes 1.0.290.1433.
+wgpuCodebrixPipelineCacheGetData/Release, chained into pipeline descriptors with
+WGPUCodebrixPipelineDescriptorExtras; contract v4 of CodeBrix.WebGpu.Native).
+Code: native/cycles/pipeline_cache.{h,cpp}, cbc::Device in native/src. Consumer
+contract: native/host/ABI.md "Pipeline cache". Format, save policy, limits and
+measurements: native/DEVICE.md "Pipeline cache". Gate:
+native/tools/pipeline_cache_gate.py.
 
-What the runtime has:
-- wgpu.h declares WGPUNativeFeature_PipelineCache (0x0003002B; header note:
-  Vulkan supported, D3D12 and Metal unimplemented) and WGPUHubReport counts
-  pipelineCaches. On the Linux Intel adapter (Mesa 25.0.7) and the HP Intel
-  adapter (Mesa 24.0.8) the adapter advertises the feature and a device can
-  be created with it enabled.
-- Nothing can USE it. No RID's library (linux-x64/arm64/riscv64,
-  android-x64/arm64, osx-x64/arm64, win-x64/arm64) exports a pipeline-cache
-  function: no wgpuDeviceCreatePipelineCache, wgpuPipelineCacheGetData or
-  release/add-ref. The 251 exports match WGPU_CODEBRIX_PROC_TABLE_FUNCTION_COUNT
-  (251) in codebrix_wgpu_procs.h, which has no cache entry. wgpu.h has no
-  sType for chaining a cache into WGPUComputePipelineDescriptor (the native
-  sTypes stop at WGPUSType_SamplerDescriptorExtras, 0x0003000B), and
-  WGPUComputePipelineDescriptor (webgpu.h) has no cache member.
-  wgpuGetProcAddress ends the process (unimplemented). The Vulkan HAL inside
-  the library loads vkCreatePipelineCache/vkGetPipelineCacheData internally;
-  that path is not reachable from C.
+Which platforms benefit: only Vulkan adapters are offered a cache by the runtime,
+so Linux (x64 and ARM64) and Android. macOS on Intel (Metal) and Windows
+(Direct3D 12) have the same API, reported "not-offered". Cycles' Metal device on
+Apple Silicon has its own kernel cache; the ABI call does nothing there and the
+report says "backend". Wired on every platform; the Windows and macOS builds
+compile pending on the maintainer's machines.
 
-Driver caches (below the runtime; measured, not configured by this repository):
-- Linux, Intel Mesa 25.0.7: Mesa's on-disk cache works and fully covers our
-  pipelines. Default location $XDG_CACHE_HOME/mesa_shader_cache_db (else
-  ~/.cache/mesa_shader_cache_db), overridable with MESA_SHADER_CACHE_DIR,
-  MESA_SHADER_CACHE_MAX_SIZE (Mesa default 1 GB), MESA_SHADER_CACHE_DISABLE.
-  The host's WGSL is deterministic, so a second run hits: see native/DEVICE.md
-  "Pipeline cache" for cold/warm walls (films bit-identical). Consumers on
-  Linux therefore get warm compiles from the second run on, without anything
-  from us. The gate runners deliberately use a fresh scratch
-  MESA_SHADER_CACHE_DIR per run, so every wall in the merge reports is COLD.
-- HP (Android 13 x64, Bliss OS, Intel Mesa 24.0.8): NO driver cache. Neither
-  MESA_SHADER_CACHE_DIR nor XDG_CACHE_HOME makes the driver write anything,
-  and repeated compiles cost the same; the driver binary does not contain the
-  MESA_SHADER_CACHE_DISABLE check (the runners' MESA_SHADER_CACHE_DISABLE=true
-  is a no-op there). INFERENCE: Mesa's disk cache returns "disabled" on Android
-  builds. Every run on the HP compiles cold.
-- Samsung tablet (Adreno 730): no effective implicit cache observed (the S20
-  and Pixel runs have no repeated pipeline to compare). In merge wave 4, principled_bounce compiles the same 5
-  pipelines on 8 fresh devices in one process; each repeat costs as much as
-  the first (Samsung 252 of its 290 compile seconds, HP 800 of 917, are
-  repeats), and the same transparent_lighting pipeline cost 8.5 s and 8.2 s in
-  two separate processes.
-- macOS (Metal) and Windows (D3D12): not measured here. The runtime has no
-  cache API on either (the header calls both unimplemented); the system/driver
-  shader caches of those platforms are outside our control.
+Where it goes: a consumer's directory, else the record directory of
+cbc_host_tier_config, else on Linux the user's cache directory. That default was
+ruled by the maintainer: Linux caches as the Metal build does. The location is the
+one pinned Cycles uses for the Metal kernels (util/path.cpp, path_cache_get:
+$XDG_CACHE_HOME, else $HOME/.cache, then cycles/), with webgpu-pipelines under it;
+this code also follows the XDG rule that an empty or relative XDG_CACHE_HOME means
+~/.cache, which path_cache_get does not. Android has no such directory, so an app
+passes one and is uncached without it. The host sets no environment variable.
 
-DECISION (maintainer, 2026-10-22): pipeline caching IS to be enabled. The
-next time CodeBrix.WebGpu / CodeBrix.WebGpu.Native is updated for any reason,
-that release must add the pipeline-cache exports listed below (Vulkan honours
-them, which covers Linux and Android; the other backends return Unsupported),
-and this repository then implements the host design described after the list
-and removes the "no persistent cache" bullet from AGENT-README.txt. Nothing in
-CodeBrix.WebGpu is changed before that update, and no workaround is built here
-in the meantime. Put the runtime version that first ships the exports in
-native/host/ABI.md when it exists, and raise the pin in this repository to it.
+Tests and gates keep a known cache state; no test reads a user's real cache:
+- Gate programs (native/cycles/*_gate.cpp) link the device without the host, and
+  only cbc_host_create allows the default, so they compile cold unless a run sets
+  CODEBRIX_CYCLES_PIPELINE_CACHE_DIR.
+- The oracle runner (native/oracle/runner.cpp) and the GPU C consumers
+  (native/tests/host: gpu, tier, abi, scene_edit) call the ABI with
+  CBC_PIPELINE_CACHE_OFF, which CODEBRIX_CYCLES_PIPELINE_CACHE_DIR overrides.
+- host_gate.py and linux_arm64_host_gate.py set CODEBRIX_CYCLES_PIPELINE_CACHE=off
+  for the example consumer and the managed fixtures.
+- The managed tests turn it off where they load the native host
+  (NativeHostLibrary.EnsureLoaded); the one test that wants a cache sets a
+  temporary directory and turns it off again.
+A run that wants the cache sets CODEBRIX_CYCLES_PIPELINE_CACHE_DIR for the process,
+one directory per device per checkpoint: each distinct module then compiles once.
 
-What a future runtime release would need to export (in CodeBrix.WebGpu.Native;
-mirrors wgpu's Device::create_pipeline_cache,
-PipelineCache::get_data, ComputePipelineDescriptor::cache and
-wgpu::util::pipeline_cache_key):
-- WGPUPipelineCache handle; WGPUPipelineCacheDescriptor { nextInChain,
-  label, data pointer + size (initial blob, may be empty), fallback (WGPUBool:
-  an invalid/foreign blob yields an empty cache instead of an error) };
-  wgpuDeviceCreatePipelineCache(device, descriptor) (requires
-  WGPUNativeFeature_PipelineCache);
-- wgpuPipelineCacheGetData(cache, data, size) as a two-call size/fill query
-  (or WGPUStatus + out size), wgpuPipelineCacheAddRef/Release;
-- a chained WGPUComputePipelineDescriptorExtras { chain, cache } with a new
-  native sType (and the render-pipeline equivalent);
-- an adapter cache-key query (the pipeline_cache_key string: vendor, device,
-  driver identity) so a host can name files per adapter/driver;
-- proc-table entries and wgpuCodebrixGetProcStatus rows for all of them,
-  statuses Implemented on Vulkan and Unsupported (never abort) elsewhere.
-With that, the host design is: one cache file per (runtime version, adapter
-key, module hash, specialization-record hash) under a configurable directory,
-loaded with fallback=true (corrupt or foreign entries are ignored and
-rewritten), saved after compilation, and reported in the capability report.
+Driver caches below this one (measured, not configured by this repository):
+- Linux, Intel Mesa 25.0.7: Mesa's on-disk cache also covers our pipelines; default
+  $XDG_CACHE_HOME/mesa_shader_cache_db (else ~/.cache/mesa_shader_cache_db),
+  overridable with MESA_SHADER_CACHE_DIR, MESA_SHADER_CACHE_MAX_SIZE (Mesa default
+  1 GB), MESA_SHADER_CACHE_DISABLE. The gate runners use a fresh scratch
+  MESA_SHADER_CACHE_DIR per run, so walls in merge reports are cold.
+- HP (Android 13 x64, Bliss OS, Intel Mesa 24.0.8): no driver cache (this
+  repository's cache does work there; native/DEVICE.md "Pipeline cache"). Neither
+  MESA_SHADER_CACHE_DIR nor XDG_CACHE_HOME makes the driver write anything, and the
+  driver binary does not contain the MESA_SHADER_CACHE_DISABLE check. INFERENCE:
+  Mesa's disk cache returns "disabled" on Android builds.
+- Samsung tablet (Adreno 730): no effective implicit cache observed.
+- macOS (Metal) and Windows (D3D12): not measured here; the system and driver shader
+  caches of those platforms are outside our control.
 
 
 NOTES
@@ -1017,7 +1008,9 @@ NOTES
 - The CPU reference backend is the oracle for the WebGPU backend; GPU feature
   coverage is still partial (see native/DEVICE.md and docs/PARITY.md).
 - Color configuration and pipeline-tier configuration are process-wide in the
-  native layer; keep tests that touch them out of the parallel xUnit suite.
+  native layer; keep tests that touch them out of the parallel xUnit suite. The
+  pipeline cache's configuration is process-wide too, but it cannot change a film:
+  a host another test creates meanwhile only compiles through a temporary cache.
 - Keep the public signatures of CyclesHost and the root value types stable:
   the host-gate fixtures and the Android validation app compile against them.
 - Every facade behaviour maps onto an existing native export; nothing is

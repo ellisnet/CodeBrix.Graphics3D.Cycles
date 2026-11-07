@@ -191,6 +191,14 @@ std::string wavefront_layout(){
   source<<"fn vr_volume_kernel()->u32{return select("<<uint32_t(DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)<<"u,"<<uint32_t(DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING)
         <<"u,load_word(p(6u)+VR_D_volume_ray_marching)!=0u);}\n";
   source<<"//#endif\n";
+  // Curves: their tables follow the step sizes (closest.cpp scene_tables), present only in scenes with curves.
+  source<<"//#if CURVES\n";
+  constant("G_curves",table_index+5);constant("G_curve_keys",table_index+6);constant("G_prim_type",table_index+7);
+  constant("D_bvh_curve_subdivisions",offsetof(KernelData,bvh.curve_subdivisions));
+  constant("PRIMITIVE_CURVE",PRIMITIVE_CURVE);constant("PRIMITIVE_CURVE_RIBBON",PRIMITIVE_CURVE_RIBBON);constant("PRIMITIVE_CURVE_THICK",PRIMITIVE_CURVE_THICK);
+  constant("PRIMITIVE_CURVE_THICK_LINEAR",PRIMITIVE_CURVE_THICK_LINEAR);constant("PRIMITIVE_MOTION",PRIMITIVE_MOTION);constant("PRIMITIVE_NUM_BITS",PRIMITIVE_NUM_BITS);
+  constant("PATH_RAY_VISIBILITY_NODE_UNALIGNED",PATH_RAY_VISIBILITY_NODE_UNALIGNED);
+  source<<"//#endif\n";
   constant("O_tfm",offsetof(KernelObject,tfm));constant("O_motion_offset",offsetof(KernelObject,motion_offset));
   constant("O_num_tfm_steps",offsetof(KernelObject,num_tfm_steps));
   constant("O_num_geom_steps",offsetof(KernelObject,num_geom_steps));constant("O_numverts",offsetof(KernelObject,numverts));constant("O_numprims",offsetof(KernelObject,numprims));constant("MOTION_SIZE",sizeof(DecomposedTransform));

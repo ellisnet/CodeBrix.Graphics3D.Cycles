@@ -69,6 +69,10 @@ Each node entry has a unique `handle` and either `scene` (a singleton:
   arrays whose center equals `positions`; `cbc_host_motion_positions`). Face
   material indices and smoothing are the mesh sockets `shader` and `smooth` in
   `set`; object and camera motion are their `motion` transform arrays.
+- `hair`: `keys` (x, y, z triples) and `radius` (one per key), or `keysFile` and `radiusFile` (raw little-endian
+  float32), `firstKey` or `firstKeyFile` (uint32, one per curve), optional `shape` (`ribbon`, `thick`, `thick_linear`;
+  `cbc_host_curve_shape`) and `attributes` as for a mesh, with the domains `curve`, `curve_key` and `curve_key_normal`.
+  `render.curveSubdivisions` (optional, 0 to 4) sets the ribbon sections per segment for the scene.
 - `set`: socket names and values exactly as Cycles registers them (see
   `cbc_host_registry_json`). The loader picks the setter from
   `cbc_host_property_info`: numbers, booleans, strings or enum labels, flat or
@@ -215,6 +219,13 @@ passes (`-on-noisy`, `-off-noisy`). Every backend denoises with CPU Open Image
 Denoise, so the WGSL film is judged against the CPU film denoised the same way,
 with `compare.py` like every scene. Light groups with denoising are refused by
 the product, so that combination has no scene.
+
+## Curve scenes (`scenes/curves/`)
+
+`author_curves.py` (`--check`) writes `scenes/curves/`: tufts of ribbons, thick curves and thick linear curves in the
+sampling family's room: each shape alone, instanced with rotated, non-uniform and mirrored transforms, under the closures
+the WebGPU device has, per curve and per key attributes, UVs, the Hair Info node, the Geometry and Texture Coordinate
+nodes with a bump, emission, area and sun lights, the light tree and data passes, through the public C API.
 
 ## Subsurface scenes (`scenes/subsurface/`)
 

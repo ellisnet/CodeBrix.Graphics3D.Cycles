@@ -198,7 +198,9 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     var roughness=0.0;var color=vec3<f32>(0);
     if(kind==CLOSURE_BSDF_DIFFUSE_ID){roughness=svm_input(s,data+N_DiffuseBsdfData_roughness);
         if(!(roughness<1e-5)){color=clamp(svm_input3(s,data+N_DiffuseBsdfData_color),vec3<f32>(0),vec3<f32>(1));}}
-    else if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){
+//#if CURVES else     else if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){
+    else if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)&&((*s).geometry.primitive_type&PRIMITIVE_CURVE)==0u){
+//#endif
         n=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);
     }
     let weight=max(raw_weight,vec3<f32>(0));let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));
@@ -273,7 +275,9 @@ fn svm_bssrdf(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,flag:u32
     var c=svm_closure_read((*s).output,i);
     c.multiscatter=max(svm_input3(s,data+N_BssrdfData_radius)*svm_input(s,data+N_BssrdfData_scale),vec3<f32>(0));c.T=(*s).weight;
     // maybe_ensure_valid_specular_reflection
-    if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){n=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#if CURVES else     if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)){n=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+    if(((*s).geometry.shader_flag&SD_USE_BUMP_MAP_CORRECTION)!=0u&&any((*s).geometry.Ng!=n)&&((*s).geometry.primitive_type&PRIMITIVE_CURVE)==0u){n=svm_valid_normal((*s).geometry.Ng,(*s).geometry.wi,n);}
+//#endif
     c.N=n;c.ior=svm_input(s,data+N_BssrdfData_ior);c.roughness=clamp(svm_input(s,data+N_BssrdfData_roughness),0.0,1.0);
     c.a=svm_input(s,data+N_BssrdfData_anisotropy);
     ss_setup(s,i,c,kind,flag);

@@ -116,6 +116,9 @@ static void wait_active(CBCHost host) {
 }
 int main(int argc, char **argv) {
   REQUIRE(argc == 2 || (argc == 3 && strcmp(argv[2], "--exit-live") == 0));
+  /* Tests keep a known cache state (native/DEVICE.md "Pipeline cache"). */
+  CBCPipelineCacheConfig cache = {sizeof(cache), CBC_HOST_ABI, CBC_PIPELINE_CACHE_OFF, 0, {0}};
+  CHECK(cbc_host_pipeline_cache_config(&cache, NULL));
   CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, CBC_TEST_GPU_BACKEND, 1, {0}};
   CBCHost host = 99, other = 0;
   config.abi_version++;

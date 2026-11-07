@@ -154,6 +154,28 @@ public static unsafe class Native
         public uint R3;
     }
 
+    /// <summary>The ABI structure <c>CBCPipelineCacheConfig</c>, passed to <see cref="ConfigurePipelineCache"/>.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PipelineCacheConfig
+    {
+        /// <summary>The structure size in bytes (32).</summary>
+        public uint Size;
+        /// <summary>The ABI version the caller targets (<c>CBC_HOST_ABI</c>).</summary>
+        public uint Abi;
+        /// <summary>The switch, a <see cref="PipelineCacheMode"/> value.</summary>
+        public uint Mode;
+        /// <summary>Reserved; must be zero.</summary>
+        public uint Flags;
+        /// <summary>Reserved; must be zero.</summary>
+        public uint R0;
+        /// <summary>Reserved; must be zero.</summary>
+        public uint R1;
+        /// <summary>Reserved; must be zero.</summary>
+        public uint R2;
+        /// <summary>Reserved; must be zero.</summary>
+        public uint R3;
+    }
+
     /// <summary><c>cbc_host_abi_version</c>: the ABI version the loaded native library implements.</summary>
     /// <returns>The native <c>CBC_HOST_ABI</c> value.</returns>
     [DllImport(Library, EntryPoint="cbc_host_abi_version", CallingConvention=CallingConvention.Cdecl)] public static extern uint AbiVersion();
@@ -168,6 +190,12 @@ public static unsafe class Native
     /// <param name="directory">The app-writable record directory, or null to disable the record.</param>
     /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_tier_config", CallingConvention=CallingConvention.Cdecl)] public static extern int ConfigureTiers(ref TierConfig config, [MarshalAs(UnmanagedType.LPUTF8Str)] string directory);
+
+    /// <summary><c>cbc_host_pipeline_cache_config</c>: configures the persistent pipeline cache for hosts created afterwards.</summary>
+    /// <param name="config">The cache configuration.</param>
+    /// <param name="directory">The app-writable cache directory, or null for the default.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_pipeline_cache_config", CallingConvention=CallingConvention.Cdecl)] public static extern int ConfigurePipelineCache(ref PipelineCacheConfig config, [MarshalAs(UnmanagedType.LPUTF8Str)] string directory);
 
     /// <summary><c>cbc_host_device_report_json</c>: copies the host's device capability report as UTF-8 JSON.</summary>
     /// <param name="host">The host handle.</param>
@@ -540,6 +568,30 @@ public static unsafe class Native
     /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_image_update", CallingConvention=CallingConvention.Cdecl)] public static extern int UpdateImage(ulong host, ulong image, ref ImageConfig config, byte* pixels, ulong count);
 
+    /// <summary><c>cbc_host_curves</c>: replaces a hair geometry's curves.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="hair">The hair node handle.</param>
+    /// <param name="xyz">The key positions as x, y, z triples.</param>
+    /// <param name="radius">One radius per key.</param>
+    /// <param name="keys">The key count.</param>
+    /// <param name="firstKeys">The first key of each curve.</param>
+    /// <param name="curves">The curve count.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_curves", CallingConvention=CallingConvention.Cdecl)] public static extern int Curves(ulong host, ulong hair, float* xyz, float* radius, ulong keys, uint* firstKeys, ulong curves);
+
+    /// <summary><c>cbc_host_curve_shape</c>: sets how a hair geometry's curves are rendered.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="hair">The hair node handle.</param>
+    /// <param name="shape">The <c>CBC_CURVE_*</c> shape.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_curve_shape", CallingConvention=CallingConvention.Cdecl)] public static extern int CurveShape(ulong host, ulong hair, uint shape);
+
+    /// <summary><c>cbc_host_curve_subdivisions</c>: sets the scene-wide ribbon tessellation, 2^subdivisions sections per segment.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="subdivisions">0 to 4.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_curve_subdivisions", CallingConvention=CallingConvention.Cdecl)] public static extern int CurveSubdivisions(ulong host, uint subdivisions);
+
     /// <summary><c>cbc_host_motion_positions</c>: sets (odd steps 3 to 129) or removes (steps 1, count 0) a mesh's deformation motion, before or after the mesh's first render.</summary>
     /// <param name="host">The host handle.</param>
     /// <param name="mesh">The mesh node handle.</param>
@@ -573,4 +625,54 @@ public static unsafe class Native
     /// <param name="required">Receives the size needed, including the trailing NUL.</param>
     /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_render_passes_json", CallingConvention=CallingConvention.Cdecl)] public static extern int RenderPasses(ulong host, byte* json, ulong capacity, out ulong required);
+
+    /// <summary>The ABI structure <c>CBCBakeConfig</c> (64 bytes), passed to <see cref="Bake"/> and <see cref="BakeMap"/>.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct BakeConfig
+    {
+        /// <summary>The structure size in bytes (64).</summary>
+        public uint Size;
+        /// <summary>The output width in pixels.</summary>
+        public uint Width;
+        /// <summary>The output height in pixels.</summary>
+        public uint Height;
+        /// <summary>The samples per pixel.</summary>
+        public uint Samples;
+        /// <summary>The bake type, a <see cref="Rendering.BakeType"/> value.</summary>
+        public uint Type;
+        /// <summary>The options, <see cref="Rendering.BakeFlags"/> values.</summary>
+        public uint Flags;
+        /// <summary>Reserved; must be zero.</summary>
+        public uint R0;
+        /// <summary>Reserved; must be zero.</summary>
+        public uint R1;
+        /// <summary>The handle of the object to bake.</summary>
+        public ulong Object;
+        /// <summary>The NUL-terminated UTF-8 name of the UV attribute, or null for the standard one.</summary>
+        public byte* UvAttribute;
+        /// <summary>The NUL-terminated UTF-8 AOV pass name of an AOV bake, otherwise null.</summary>
+        public byte* AovName;
+        /// <summary>Reserved; must be zero.</summary>
+        public ulong R2;
+    }
+
+    /// <summary><c>cbc_host_bake</c>: bakes one mesh's UV layout into raw float32, row 0 at v = 0.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="config">The bake.</param>
+    /// <param name="values">The destination, or null with capacity zero for a size query that does not bake.</param>
+    /// <param name="capacity">The destination capacity in floats.</param>
+    /// <param name="required">Receives the float count needed.</param>
+    /// <param name="components">Receives the floats per pixel.</param>
+    /// <returns>The native status code (2 on the WebGPU device, which does not bake yet).</returns>
+    [DllImport(Library, EntryPoint="cbc_host_bake", CallingConvention=CallingConvention.Cdecl)] public static extern int Bake(ulong host, ref BakeConfig config, float* values, ulong capacity, out ulong required, out uint components);
+
+    /// <summary><c>cbc_host_bake_map</c>: the map a bake with this configuration uses, without rendering, on any backend.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="config">The bake.</param>
+    /// <param name="triangles">Receives one triangle index per pixel (-1 where uncovered), or null with capacity zero for a size query.</param>
+    /// <param name="coordinates">Receives six floats per pixel (u, v, du/dx, du/dy, dv/dx, dv/dy), or null.</param>
+    /// <param name="capacity">The capacity in pixels.</param>
+    /// <param name="required">Receives the pixel count needed.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_bake_map", CallingConvention=CallingConvention.Cdecl)] public static extern int BakeMap(ulong host, ref BakeConfig config, int* triangles, float* coordinates, ulong capacity, out ulong required);
 }

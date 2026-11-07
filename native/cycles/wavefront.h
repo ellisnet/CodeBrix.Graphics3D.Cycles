@@ -42,6 +42,9 @@ std::string shader_data_layout();std::string shader_data_source();std::string sv
 // scene exchange see them as scene tables.
 #define CBC_LIGHT_TREE_TABLES(X) X(light_tree_nodes,KernelLightTreeNode) X(light_tree_emitters,KernelLightTreeEmitter) \
   X(light_to_tree,uint) X(object_lookup_offset,uint) X(triangle_to_tree,uint) X(object_prim_offset,uint)
-#define CBC_SCENE_TABLES(X) CBC_SCENE_CORE_TABLES(X) CBC_LIGHT_TREE_TABLES(X)
+// Curves: appended to the GPU descriptors only in scenes with curves (closest.cpp scene_tables), so every other
+// scene uploads the same descriptors as before; CPU references and the scene exchange see them as scene tables.
+#define CBC_CURVE_TABLES(X) X(curves,KernelCurve) X(curve_keys,float4) X(prim_type,int)
+#define CBC_SCENE_TABLES(X) CBC_SCENE_CORE_TABLES(X) CBC_LIGHT_TREE_TABLES(X) CBC_CURVE_TABLES(X)
 
 #define CBC_DEVICE_TABLES(X) X(image_info,KernelImageInfo) X(image_bounds,uint2)

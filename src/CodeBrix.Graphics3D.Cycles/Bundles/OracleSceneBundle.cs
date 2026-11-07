@@ -151,6 +151,8 @@ public sealed class OracleSceneBundle
         Builder builder = new(scene.Host, readFile);
         try
         {
+            if (Required(document.RootElement, "render").TryGetProperty("curveSubdivisions", out JsonElement subdivisions))
+                scene.Host.SetCurveSubdivisions(subdivisions.GetUInt32());
             if (document.RootElement.TryGetProperty("images", out JsonElement images))
                 foreach (JsonElement image in images.EnumerateArray()) builder.Image(image);
             foreach (JsonElement entry in Required(document.RootElement, "nodes").EnumerateArray()) builder.Entry(entry);
@@ -217,6 +219,7 @@ public sealed class OracleSceneBundle
             ["mesh"] = AttributeDomain.Mesh, ["face"] = AttributeDomain.Face, ["vertex"] = AttributeDomain.Vertex,
             ["corner"] = AttributeDomain.Corner, ["vertex_normal"] = AttributeDomain.VertexNormal,
             ["corner_normal"] = AttributeDomain.CornerNormal, ["corner_byte"] = AttributeDomain.CornerByte,
+            ["curve"] = AttributeDomain.Curve, ["curve_key"] = AttributeDomain.CurveKey, ["curve_key_normal"] = AttributeDomain.CurveKeyNormal,
         };
 
         private readonly CyclesHost host;
@@ -274,6 +277,7 @@ public sealed class OracleSceneBundle
             if (!Nodes.TryAdd(handle, target)) throw new FormatException("Duplicate node handle: " + handle);
             if (entry.TryGetProperty("graph", out JsonElement graph)) Graph(target, graph);
             if (entry.TryGetProperty("mesh", out JsonElement mesh)) Mesh(target, mesh);
+            if (entry.TryGetProperty("hair", out JsonElement hair)) Hair(target, hair);
             if (entry.TryGetProperty("set", out JsonElement values)) Apply(target, values, null);
         }
 
@@ -317,6 +321,31 @@ public sealed class OracleSceneBundle
                 foreach (JsonElement attribute in attributes.EnumerateArray()) Attribute(target, attribute);
             if (mesh.TryGetProperty("motion", out JsonElement motion))
                 host.MotionPositions(target, Required(motion, "steps").GetUInt32(), Required(motion, "positions").EnumerateArray().Select(v => v.GetSingle()).ToArray());
+        }
+
+        private void Hair(Node target, JsonElement hair)
+        {
+            float[] keys = hair.TryGetProperty("keysFile", out JsonElement keysFile)
+                ? Floats(readFile(keysFile.GetString()))
+                : Required(hair, "keys").EnumerateArray().Select(v => v.GetSingle()).ToArray();
+            float[] radius = hair.TryGetProperty("radiusFile", out JsonElement radiusFile)
+                ? Floats(readFile(radiusFile.GetString()))
+                : Required(hair, "radius").EnumerateArray().Select(v => v.GetSingle()).ToArray();
+            uint[] first = hair.TryGetProperty("firstKeyFile", out JsonElement firstFile)
+                ? UInts(readFile(firstFile.GetString()))
+                : Required(hair, "firstKey").EnumerateArray().Select(v => v.GetUInt32()).ToArray();
+            if (keys.Length % 3 != 0 || keys.Length / 3 != radius.Length) throw new FormatException("Curve keys must be complete triples with one radius each.");
+            host.Curves(target, keys, radius, first);
+            if (hair.TryGetProperty("shape", out JsonElement shape))
+                host.SetCurveShape(target, shape.GetString() switch
+                {
+                    "ribbon" => CurveShape.Ribbon,
+                    "thick" => CurveShape.Thick,
+                    "thick_linear" => CurveShape.ThickLinear,
+                    _ => throw new FormatException("Unknown curve shape: " + shape.GetString()),
+                });
+            if (hair.TryGetProperty("attributes", out JsonElement attributes))
+                foreach (JsonElement attribute in attributes.EnumerateArray()) Attribute(target, attribute);
         }
 
         private void Attribute(Node target, JsonElement attribute)

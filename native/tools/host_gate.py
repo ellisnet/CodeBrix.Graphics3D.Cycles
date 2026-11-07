@@ -40,6 +40,8 @@ def main():
     environment = dict(os.environ)
     environment.pop('OCIO', None)
     environment['LD_LIBRARY_PATH'] = str(library.parent)
+    # A known pipeline cache state: the example and the managed consumers do not turn it off themselves.
+    environment['CODEBRIX_CYCLES_PIPELINE_CACHE'] = 'off'
     pins = {}
 
     def call(command, name, timeout=300):
@@ -90,7 +92,7 @@ def main():
         expected = set(re.findall(r'\b(cbc_host_\w+)\(', (ROOT/'host/cycles_host.h').read_text()))
         exports = call(['nm', '-D', '--defined-only', library], 'exports')
         actual = {line.split()[-1].split('@')[0] for line in exports.splitlines()} - {'CBC_HOST_EXPERIMENT_1'}
-        assert actual == expected and len(actual) == 48
+        assert actual == expected and len(actual) == 54
         for kind in ['session', 'session64', 'image']:
             link_map = (build/f'codebrix_host_{kind}_reference.map').read_text()
             assert 'CMakeFiles/codebrix_host_reference_color.dir/src/util/colorspace.cpp.o' in link_map
@@ -217,7 +219,7 @@ def main():
                                         referenceSha256=reference_hashes, commands=commands))
         if args.cpu_only:
             state.update(cpuOnly=True, skipped='managed (.NET) consumers and every GPU step (--cpu-only)')
-        state.update(complete=True, passed=True, phase='complete', exportCount=48,
+        state.update(complete=True, passed=True, phase='complete', exportCount=54,
                      independentReferenceFilms=786, comparisons=len(comparisons), results=results,
                      maximumAbsoluteError=max(row['maximumAbsoluteError'] for row in comparisons),
                      practicalFailures=sum(row['practicalFailures'] for row in comparisons),

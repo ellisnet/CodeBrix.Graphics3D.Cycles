@@ -9,6 +9,7 @@
 #include <bit>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -164,21 +165,15 @@ struct Loader {
     return values;
   }
 
-  void mesh(CBCNode target, const Json &mesh) {
-    std::vector<float> xyz; std::vector<uint32_t> indices;
-    if (auto file = mesh.find("positionsFile")) xyz = raw_array<float>(*file);
-    else for (auto &v : mesh.at("positions").items) xyz.push_back(v.as_float());
-    if (auto file = mesh.find("indicesFile")) indices = raw_array<uint32_t>(*file);
-    else for (auto &v : mesh.at("indices").items) indices.push_back(uint32_t(v.as_int()));
-    if (xyz.size() % 3 || indices.size() % 3) fail("Mesh positions and indices must be complete triples");
-    check(cbc_host_mesh(host, target, xyz.data(), xyz.size() / 3, indices.data(), indices.size() / 3), "cbc_host_mesh");
-    if (auto attributes = mesh.find("attributes")) for (auto &attribute : attributes->items) {
+  void attributes(CBCNode target, const Json &geometry) {
+    if (auto attributes = geometry.find("attributes")) for (auto &attribute : attributes->items) {
       static const std::map<std::string, uint32_t> values = {{"float", CBC_VALUE_FLOAT}, {"color", CBC_VALUE_COLOR},
         {"vector", CBC_VALUE_VECTOR}, {"point", CBC_VALUE_POINT}, {"normal", CBC_VALUE_NORMAL}, {"point2", CBC_VALUE_POINT2},
         {"transform", CBC_VALUE_TRANSFORM}, {"float4", CBC_VALUE_FLOAT4}, {"byte4", CBC_VALUE_BYTE4}};
       static const std::map<std::string, uint32_t> domains = {{"mesh", CBC_ATTR_MESH}, {"face", CBC_ATTR_FACE},
         {"vertex", CBC_ATTR_VERTEX}, {"corner", CBC_ATTR_CORNER}, {"vertex_normal", CBC_ATTR_VERTEX_NORMAL},
-        {"corner_normal", CBC_ATTR_CORNER_NORMAL}, {"corner_byte", CBC_ATTR_CORNER_BYTE}};
+        {"corner_normal", CBC_ATTR_CORNER_NORMAL}, {"corner_byte", CBC_ATTR_CORNER_BYTE}, {"curve", CBC_ATTR_CURVE},
+        {"curve_key", CBC_ATTR_CURVE_KEY}, {"curve_key_normal", CBC_ATTR_CURVE_KEY_NORMAL}};
       const auto &name = attribute.at("name").string();
       auto value = values.find(attribute.at("value").string()); auto domain = domains.find(attribute.at("domain").string());
       if (value == values.end() || domain == domains.end()) fail("Unknown attribute value or domain for " + name);
@@ -202,6 +197,34 @@ struct Loader {
         check(cbc_host_attribute_bytes(host, target, name.c_str(), &config, bytes.data(), bytes.size()), "cbc_host_attribute_bytes(" + name + ")");
       }
     }
+  }
+
+  // Curve geometry: keys (x, y, z triples), radius and firstKey, inline or as keysFile, radiusFile and firstKeyFile;
+  // optional shape ("ribbon", "thick", "thick_linear") and attributes. curve_shader is a socket in "set".
+  void hair(CBCNode target, const Json &hair) {
+    std::vector<float> xyz, radius; std::vector<uint32_t> first;
+    if (auto file = hair.find("keysFile")) xyz = raw_array<float>(*file); else for (auto &v : hair.at("keys").items) xyz.push_back(v.as_float());
+    if (auto file = hair.find("radiusFile")) radius = raw_array<float>(*file); else for (auto &v : hair.at("radius").items) radius.push_back(v.as_float());
+    if (auto file = hair.find("firstKeyFile")) first = raw_array<uint32_t>(*file); else for (auto &v : hair.at("firstKey").items) first.push_back(uint32_t(v.as_int()));
+    if (xyz.size() % 3 || xyz.size() / 3 != radius.size()) fail("Curve keys must be complete triples with one radius each");
+    check(cbc_host_curves(host, target, xyz.data(), radius.data(), radius.size(), first.data(), first.size()), "cbc_host_curves");
+    if (auto shape = hair.find("shape")) {
+      static const std::map<std::string, uint32_t> shapes = {{"ribbon", CBC_CURVE_RIBBON}, {"thick", CBC_CURVE_THICK}, {"thick_linear", CBC_CURVE_THICK_LINEAR}};
+      auto found = shapes.find(shape->string()); if (found == shapes.end()) fail("Unknown curve shape: " + shape->string());
+      check(cbc_host_curve_shape(host, target, found->second), "cbc_host_curve_shape");
+    }
+    attributes(target, hair);
+  }
+
+  void mesh(CBCNode target, const Json &mesh) {
+    std::vector<float> xyz; std::vector<uint32_t> indices;
+    if (auto file = mesh.find("positionsFile")) xyz = raw_array<float>(*file);
+    else for (auto &v : mesh.at("positions").items) xyz.push_back(v.as_float());
+    if (auto file = mesh.find("indicesFile")) indices = raw_array<uint32_t>(*file);
+    else for (auto &v : mesh.at("indices").items) indices.push_back(uint32_t(v.as_int()));
+    if (xyz.size() % 3 || indices.size() % 3) fail("Mesh positions and indices must be complete triples");
+    check(cbc_host_mesh(host, target, xyz.data(), xyz.size() / 3, indices.data(), indices.size() / 3), "cbc_host_mesh");
+    attributes(target, mesh);
     // Optional deformation motion: steps time-ordered position arrays, the
     // center step equal to "positions" (cbc_host_motion_positions).
     if (auto motion = mesh.find("motion")) {
@@ -220,6 +243,7 @@ struct Loader {
     if (!nodes.emplace(handle, target).second) fail("Duplicate node handle: " + handle);
     if (auto g = entry.find("graph")) graph(target, *g);
     if (auto m = entry.find("mesh")) mesh(target, *m);
+    if (auto h = entry.find("hair")) hair(target, *h);
     apply(target, entry.find("set"), nullptr);
   }
 };
@@ -279,6 +303,17 @@ constexpr const char *runner_rid() {
 #endif
 }
 
+// A run that asked for a pipeline cache states on stderr what it did (never in meta.json: films and their
+// records do not depend on it).
+void report_pipeline_cache(CBCHost host) {
+  uint64_t required = 0;
+  if (cbc_host_device_report_json(host, nullptr, 0, &required) != CBC_SMALL_BUFFER || !required) return;
+  std::string text(size_t(required), '\0');
+  if (cbc_host_device_report_json(host, text.data(), required, &required) != CBC_OK) return;
+  const auto at = text.find("\"pipelineCache\":{\"active\":true");
+  if (at != std::string::npos) std::fprintf(stderr, "codebrix_cycles_oracle %s\n", text.substr(at, text.find('}', text.find("\"failure\"", at)) - at + 1).c_str());
+}
+
 // The WebGPU device report's wgslArithmetic (empty for the CPU and Metal backends): which CPU oracle's
 // rounding the WGSL reproduced, so compare.py judges the film against that ISA family's CPU film.
 std::string wgsl_arithmetic(CBCHost host) {
@@ -334,9 +369,15 @@ int run(int argc, char **argv) {
   if (auto color = scene.find("colorConfig"); color && !color->is(Json::Null))
     check(cbc_host_color_config_path((directory / color->string()).string().c_str()), "cbc_host_color_config_path");
 
+  // Oracle runs keep a known cache state: compile failures and times stay visible
+  // and no run reads a user cache. A run that wants a cache sets
+  // CODEBRIX_CYCLES_PIPELINE_CACHE_DIR (native/DEVICE.md "Pipeline cache").
+  CBCPipelineCacheConfig cache = {sizeof(cache), CBC_HOST_ABI, CBC_PIPELINE_CACHE_OFF, 0, {0}};
+  check(cbc_host_pipeline_cache_config(&cache, nullptr), "cbc_host_pipeline_cache_config");
   CBCHostConfig config = {sizeof(config), CBC_HOST_ABI, backend->second, options.threads, {0}};
   CBCHost host = 0; check(cbc_host_create(&config, &host), "cbc_host_create(" + options.backend + ")");
   Loader loader{host, directory, {}, {}};
+  if (auto subdivisions = render.find("curveSubdivisions")) check(cbc_host_curve_subdivisions(host, uint32_t(subdivisions->as_int())), "cbc_host_curve_subdivisions");
   std::vector<std::vector<float>> films;
   std::vector<double> seconds;
   // Named passes the scene created ("pass" nodes), read after every repeat with
@@ -358,6 +399,7 @@ int run(int argc, char **argv) {
     }
     if (options.backend == "webgpu") arithmetic = wgsl_arithmetic(host);
   } catch (...) { cbc_host_destroy(host); throw; }
+  report_pipeline_cache(host);
   check(cbc_host_destroy(host), "cbc_host_destroy");
 
   std::vector<std::string> hashes;

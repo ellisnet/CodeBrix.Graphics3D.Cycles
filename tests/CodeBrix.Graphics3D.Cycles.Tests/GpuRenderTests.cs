@@ -665,6 +665,63 @@ public class GpuRenderTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void the_tests_run_without_a_pipeline_cache_unless_one_asks()
+    {
+        //Arrange
+        using CyclesScene gpu = CreateGpuScene();
+
+        //Act
+        ICapabilityReport report = gpu.GetCapabilities();
+
+        //Assert
+        report.PipelineCacheActive.Should().BeFalse();
+        report.PipelineCacheDirectory.Should().BeNull();
+        report.PipelineCacheReason.Should().BeOneOf("off", "backend");
+    }
+
+    [Fact]
+    public void a_configured_pipeline_cache_directory_is_reported_filled_and_reloaded()
+    {
+        //Arrange
+        using (CreateGpuScene()) { }
+        string directory = Path.Combine(Path.GetTempPath(), "codebrix-cycles-cache-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            CyclesHost.ConfigurePipelineCache(PipelineCacheMode.Default, directory);
+
+            //Act
+            string first;
+            using (CyclesScene gpu = new(CyclesBackend.Gpu)) first = gpu.Host.DeviceReportJson();
+            string second;
+            using (CyclesScene gpu = new(CyclesBackend.Gpu)) second = gpu.Host.DeviceReportJson();
+            ICapabilityReport report = CapabilityReport.Parse(second);
+            using JsonDocument cold = JsonDocument.Parse(first);
+            using JsonDocument warm = JsonDocument.Parse(second);
+
+            //Assert: only the runtime's Vulkan adapters have a cache; elsewhere the same API says so.
+            if (!report.PipelineCacheActive)
+            {
+                report.PipelineCacheReason.Should().BeOneOf("not-offered", "backend");
+                return;
+            }
+            report.PipelineCacheDirectory.Should().Be(directory);
+            JsonElement filled = cold.RootElement.GetProperty("pipelineCache");
+            JsonElement reloaded = warm.RootElement.GetProperty("pipelineCache");
+            filled.GetProperty("misses").GetInt64().Should().BeGreaterThan(0);
+            filled.GetProperty("saves").GetInt64().Should().BeGreaterThan(0);
+            reloaded.GetProperty("hits").GetInt64().Should().BeGreaterThan(0);
+            reloaded.GetProperty("misses").GetInt64().Should().Be(0);
+            reloaded.GetProperty("loadedBytes").GetInt64().Should().BeGreaterThan(0);
+            reloaded.GetProperty("saveFailures").GetInt64().Should().Be(0);
+        }
+        finally
+        {
+            CyclesHost.ConfigurePipelineCache(PipelineCacheMode.Off);
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
     public void gpu_device_report_states_the_backend_pipeline_facts()
     {
         //Arrange
@@ -694,6 +751,59 @@ public class GpuRenderTests(ITestOutputHelper output)
         largest.Should().BeLessThan(threshold);
         guard.GetProperty("warnings").GetInt32().Should().Be(0);
         report.Warnings.Should().NotContain(w => w.Contains("size guard"));
+    }
+
+    [Fact]
+    public async Task curves_added_after_a_gpu_render_match_a_scene_built_with_them()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        float[] keys = [-.8f, -.6f, 0f, -.3f, -.2f, 0f, .2f, .2f, 0f, .8f, .6f, 0f];
+        float[] radii = [.2f, .15f, .15f, .1f];
+        using CyclesScene edited = CreateGpuScene();
+        TestScenes.BuildTyped(edited);
+        await edited.RenderAsync(settings, null, Token);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(cpu);
+        cpu.CreateObject(cpu.CreateHair(keys, radii, [0u], CurveShape.Thick));
+
+        //Act
+        edited.CreateObject(edited.CreateHair(keys, radii, [0u], CurveShape.Thick));
+        FilmBuffer film = await edited.RenderAsync(settings, null, Token);
+        FilmBuffer reference = cpu.Render(settings);
+
+        //Assert
+        WebGpuValidationScenes.Compare(film.Span, reference.Span).Practical.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task curves_of_every_shape_render_on_the_gpu_within_the_practical_criterion()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        static void Build(CyclesScene scene)
+        {
+            TestScenes.BuildTyped(scene);
+            float[] keys = [-.8f, -.6f, 0f, -.3f, -.2f, 0f, .2f, .2f, 0f, .8f, .6f, 0f];
+            float[] radii = [.2f, .15f, .15f, .1f];
+            HairNode ribbons = scene.CreateHair(keys, radii, [0u], CurveShape.Ribbon);
+            scene.CreateObject(ribbons, Transform3x4.CreateTranslation(-.6f, .4f, 0f));
+            HairNode thick = scene.CreateHair(keys, radii, [0u], CurveShape.Thick);
+            scene.CreateObject(thick, Transform3x4.CreateTranslation(0f, 0f, .1f));
+            HairNode linear = scene.CreateHair(keys, radii, [0u], CurveShape.ThickLinear);
+            scene.CreateObject(linear, Transform3x4.CreateTranslation(.6f, -.4f, .2f));
+        }
+        using CyclesScene gpu = CreateGpuScene();
+        Build(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        Build(cpu);
+
+        //Act
+        FilmBuffer reference = cpu.Render(settings);
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
+
+        //Assert
+        WebGpuValidationScenes.Compare(film.Span, reference.Span).Practical.Should().Be(0);
     }
 
     [Fact]

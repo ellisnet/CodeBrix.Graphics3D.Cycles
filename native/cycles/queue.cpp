@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Jeremy Ellis and contributors
 // SPDX-License-Identifier: Apache-2.0
 #include "device.h"
+#include "fingerprint.h"
+#include "scene_capture.h"
 #include <cstring>
 #include <stdexcept>
 namespace ccl {
@@ -40,7 +42,8 @@ void WebGPUDevice::update_state(const IntegratorStateGPU &value){
 class WebGPUQueue final:public DeviceQueue {
   WebGPUDevice &d;
  public:
-  explicit WebGPUQueue(WebGPUDevice *device):DeviceQueue(device),d(*device){}
+  std::unique_ptr<SceneCapture> scene_capture;
+  explicit WebGPUQueue(WebGPUDevice *device):DeviceQueue(device),d(*device){if(std::getenv("CODEBRIX_CYCLES_RENDER_CAPTURE"))scene_capture=std::make_unique<SceneCapture>(d);}
   int num_concurrent_states(size_t state_size)const override {
     return int(std::min<size_t>(4096,std::max<size_t>(64,(16*1024*1024)/std::max<size_t>(1,state_size))));}
   int num_concurrent_busy_states(size_t s)const override{return num_concurrent_states(s)/2;}
@@ -49,11 +52,15 @@ class WebGPUQueue final:public DeviceQueue {
   bool synchronize()override{d.guard([&]{d.sync();debug_synchronize();});return !d.have_error();}
   void zero_to_device(device_memory &mem)override{d.mem_zero(mem);}
   void copy_to_device(device_memory &mem)override{d.mem_copy_to(mem);}
-  void copy_from_device(device_memory &mem)override{d.mem_copy_from(mem,0,mem.memory_size(),1,1);}
+  void copy_from_device(device_memory &mem)override{if(scene_capture)d.guard([&]{scene_capture->before_read(mem);});d.mem_copy_from(mem,0,mem.memory_size(),1,1);}
   void *copy_from_device_synchronized(device_memory &mem,vector<uint8_t> &storage)override{
     storage.resize(mem.memory_size());d.guard([&]{d.download(mem.device_pointer,storage.data(),storage.size());d.sync();});return d.have_error()?nullptr:storage.data();}
   bool enqueue(DeviceKernel kernel,int work,const DeviceKernelArguments &args)override{
     if(d.have_error())return false;
+    struct FingerprintScope {WebGPUDevice &d;DeviceKernel kernel;
+      FingerprintScope(WebGPUDevice &device,DeviceKernel k):d(device),kernel(k){if(d.fingerprint)d.fingerprint_kernel_begin(kernel);}
+      ~FingerprintScope(){if(d.fingerprint)d.fingerprint_kernel_end(kernel);}} fingerprint_scope(d,kernel);
+    if(scene_capture)d.guard([&]{scene_capture->enqueue(kernel,work,args);});
     d.guard([&]{
       require(work>=0&&work<=int(d.gpu.limits.maxComputeWorkgroupsPerDimension*64),"Invalid WebGPU work size");
       if(kernel==DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA){

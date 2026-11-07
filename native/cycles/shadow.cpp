@@ -70,7 +70,8 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   };
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[17]=error_word;
   if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU shadow currently requires triangle primitives");
+  require(!data.bvh.have_points,"WebGPU shadow currently requires triangle or static curve primitives");
+  validate_curves();
   validate_geometry_motion();
   // Transparent shadows with motion blur trace at the shadow ray's time (SHADOW_TRANSPARENT_MOTION). Shadow
   // paths through volumes carry the volume stack (VOLUME_SHADOW: homogeneous media, heterogeneous media through

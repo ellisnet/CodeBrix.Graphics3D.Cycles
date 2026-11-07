@@ -213,6 +213,31 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
+    /// Creates a hair geometry with its curves and, optionally, its shape and the shader every curve uses.
+    /// </summary>
+    /// <param name="positions">Key positions as x, y, z triples.</param>
+    /// <param name="radii">One radius per key.</param>
+    /// <param name="firstKeys">The first key of each curve: the first is 0 and they strictly increase.</param>
+    /// <param name="shape">How the curves are rendered.</param>
+    /// <param name="shader">The shader graph every curve uses, or <see langword="null"/> for the scene default.</param>
+    /// <returns>The new hair geometry.</returns>
+    /// <exception cref="ArgumentException">The positions are not triples or the radius count differs from the key count.</exception>
+    public HairNode CreateHair(ReadOnlySpan<float> positions, ReadOnlySpan<float> radii, ReadOnlySpan<uint> firstKeys, CurveShape shape = CurveShape.Ribbon, ShaderNode shader = null)
+    {
+        HairNode hair = Create<HairNode>();
+        if (shader != null) hair.UsedShaders = [shader];
+        hair.SetCurves(positions, radii, firstKeys);
+        hair.SetShape(shape);
+        return hair;
+    }
+
+    /// <summary>
+    /// Sets the scene-wide ribbon tessellation: 2^<paramref name="subdivisions"/> sections per curve segment.
+    /// </summary>
+    /// <param name="subdivisions">0 to 4; the default is 3.</param>
+    public void SetCurveSubdivisions(uint subdivisions) => Host.SetCurveSubdivisions(subdivisions);
+
+    /// <summary>
     /// Creates an object that places a geometry (a mesh, other geometry or a light) in the scene.
     /// </summary>
     /// <param name="geometry">The geometry or light the object instances.</param>
@@ -583,6 +608,141 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
             throw;
         }
         progress?.Report(new RenderProgress(RenderStage.Completed, timer.Elapsed, settings.Samples, settings.Samples, 1));
+    }
+
+    /// <summary>
+    /// Bakes one mesh's UV layout into a new film of raw float32: row 0 at v = 0, <see cref="BakeSettings.Components"/>
+    /// floats per pixel. Pixels no triangle covers read zero (see <see cref="BakeType"/> for the exceptions): there is no margin
+    /// fill. A bake clears the last render's passes, and later renders are unchanged by it. It runs one
+    /// at a time with renders and raises the same events.
+    /// </summary>
+    /// <param name="target">The object to bake; its geometry must be a triangle mesh with the UV attribute.</param>
+    /// <param name="settings">The size, samples, type and options.</param>
+    /// <returns>The film.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="target"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="target"/> belongs to another scene.</exception>
+    /// <exception cref="NativeFailure">The bake was rejected (status 1: no such UV attribute, a geometry that is not a mesh, a bad size), was refused because the WebGPU device does not bake yet (status 2), failed (status 3) or was cancelled (status 4).</exception>
+    public FilmBuffer Bake(ObjectNode target, BakeSettings settings) => BakeCore(target, settings, new RenderListener(this, null, CancellationToken.None, settings.Samples, Stopwatch.StartNew()));
+
+    /// <summary>
+    /// Bakes on a thread-pool thread into a new film, reporting progress and honouring cancellation, as
+    /// <see cref="RenderAsync(RenderSettings, IProgress{RenderProgress}, CancellationToken)"/> does for a render.
+    /// </summary>
+    /// <param name="target">The object to bake; its geometry must be a triangle mesh with the UV attribute.</param>
+    /// <param name="settings">The size, samples, type and options.</param>
+    /// <param name="progress">Receives progress reports, or <see langword="null"/>.</param>
+    /// <param name="cancellationToken">Cancels the bake; the task then throws <see cref="OperationCanceledException"/>.</param>
+    /// <returns>The film.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="target"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="target"/> belongs to another scene.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> cancelled the bake.</exception>
+    /// <exception cref="NativeFailure">The bake was rejected, refused or failed.</exception>
+    public async Task<FilmBuffer> BakeAsync(ObjectNode target, BakeSettings settings, IProgress<RenderProgress> progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        cancellationToken.ThrowIfCancellationRequested();
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        Stopwatch timer = Stopwatch.StartNew();
+        progress?.Report(new RenderProgress(RenderStage.Starting, TimeSpan.Zero, settings.Samples, null, null));
+        RenderListener listener = new(this, progress, cancellationToken, settings.Samples, timer);
+        Task<FilmBuffer> bake = Task.Run(() => BakeCore(target, settings, listener), CancellationToken.None);
+        lock (sync) activeRender = bake;
+        FilmBuffer film;
+        try
+        {
+            using (cancellationToken.Register(static state => ((CyclesScene)state).TryCancel(), this))
+            {
+                while (!bake.IsCompleted)
+                {
+                    if (cancellationToken.IsCancellationRequested) TryCancel();
+                    await Task.WhenAny(bake, Task.Delay(ProgressInterval, CancellationToken.None)).ConfigureAwait(false);
+                }
+            }
+            film = await bake.ConfigureAwait(false);
+        }
+        catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.Cancelled)
+        {
+            progress?.Report(new RenderProgress(RenderStage.Cancelled, timer.Elapsed, settings.Samples, listener.CompletedSamples, listener.Fraction));
+            if (cancellationToken.IsCancellationRequested) throw new OperationCanceledException("The bake was cancelled.", failure, cancellationToken);
+            throw;
+        }
+        catch (Exception)
+        {
+            progress?.Report(new RenderProgress(RenderStage.Failed, timer.Elapsed, settings.Samples, listener.CompletedSamples, listener.Fraction));
+            throw;
+        }
+        progress?.Report(new RenderProgress(RenderStage.Completed, timer.Elapsed, settings.Samples, settings.Samples, 1));
+        return film;
+    }
+
+    /// <summary>
+    /// Reads the map a bake with these settings uses, without rendering, on any backend: which triangle and
+    /// which point of it each pixel shades. An application that wants a margin dilates its baked image from it.
+    /// </summary>
+    /// <param name="target">The object to bake.</param>
+    /// <param name="settings">The size and options; <see cref="BakeSettings.Samples"/> must be positive and is otherwise unused.</param>
+    /// <returns>The map.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="target"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="target"/> belongs to another scene.</exception>
+    /// <exception cref="NativeFailure">The settings or the object were rejected (status 1).</exception>
+    public BakeMap ReadBakeMap(ObjectNode target, BakeSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        if (!ReferenceEquals(target.Scene, this)) throw new ArgumentException("The object belongs to another scene.", nameof(target));
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        Host.BakeMap(HandleOf(target), settings, Span<int>.Empty, Span<float>.Empty, out ulong required);
+        for (;;)
+        {
+            int[] triangles = new int[checked((int)required)];
+            float[] coordinates = new float[checked((int)required * 6)];
+            if (Host.BakeMap(HandleOf(target), settings, triangles, coordinates, out required))
+                return new BakeMap(checked((int)settings.Width), checked((int)settings.Height), triangles, coordinates);
+        }
+    }
+
+    private unsafe FilmBuffer BakeCore(ObjectNode target, BakeSettings settings, RenderListener listener)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        if (!ReferenceEquals(target.Scene, this)) throw new ArgumentException("The object belongs to another scene.", nameof(target));
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this);
+        Host.Bake(HandleOf(target), settings, Span<float>.Empty, out ulong required, out _);
+        float[] values = new float[checked((int)required)];
+        uint components = 0;
+        lock (renderGate)
+        {
+            GCHandle handle = GCHandle.Alloc(listener);
+            try
+            {
+                Host.SetEventCallback(&OnNativeEvent, GCHandle.ToIntPtr(handle));
+                try
+                {
+                    Host.Bake(HandleOf(target), settings, values, out _, out components);
+                    faulted = false;
+                }
+                catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.Failed)
+                {
+                    faulted = true;
+                    throw;
+                }
+                catch (NativeFailure) when (listener.HandlerFailure != null)
+                {
+                    // A handler threw and cancelled the bake; its exception is rethrown below.
+                }
+                finally
+                {
+                    ClearEventCallback();
+                }
+            }
+            finally
+            {
+                // cbc_host_bake has returned and the callback is cleared (or the host destroyed), so
+                // the native host no longer invokes it.
+                handle.Free();
+            }
+            if (listener.HandlerFailure != null) ExceptionDispatchInfo.Throw(listener.HandlerFailure);
+        }
+        return new FilmBuffer(settings.Width, settings.Height, values, settings.Type == BakeType.Combined ? RenderPass.Combined : RenderPass.Named,
+            settings.Type == BakeType.Combined ? "Combined" : settings.AovName ?? settings.Type.ToString(), checked((int)components));
     }
 
     /// <summary>

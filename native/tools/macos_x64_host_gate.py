@@ -100,7 +100,7 @@ def main():
 
   # Binary review: exports, architecture, minimum OS, load closure, signatures.
   exported={line.split()[-1].lstrip('_') for line in tool('nm','-gU',str(library)).splitlines() if ' T ' in line}
-  expected=set(re.findall(r'\b(cbc_host_\w+)\(',(REPO/'native/host/cycles_host.h').read_text()));assert exported==expected and len(exported)==48,sorted(exported^expected)
+  expected=set(re.findall(r'\b(cbc_host_\w+)\(',(REPO/'native/host/cycles_host.h').read_text()));assert exported==expected and len(exported)==54,sorted(exported^expected)
   review=[]
   reviewed=[library,runtime,*[binary/n for n in ['codebrix_host_cpu_test','codebrix_host_gpu_test','codebrix_host_abi_test','codebrix_host_session_reference']]]
   for path in reviewed:

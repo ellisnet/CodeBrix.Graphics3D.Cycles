@@ -25,6 +25,34 @@ public class NativeHeaderConstantMatching
         { "CBC_HOST_METAL", (long)Backend.Metal },
         { "CBC_HOST_GPU", (long)Backend.Gpu },
         { "CBC_HOST_CPU", (long)Backend.Cpu },
+        { "CBC_BAKE_COMBINED", (long)BakeType.Combined },
+        { "CBC_BAKE_EMISSION", (long)BakeType.Emission },
+        { "CBC_BAKE_BACKGROUND", (long)BakeType.Background },
+        { "CBC_BAKE_AO", (long)BakeType.AmbientOcclusion },
+        { "CBC_BAKE_DIFFUSE", (long)BakeType.Diffuse },
+        { "CBC_BAKE_DIFFUSE_DIRECT", (long)BakeType.DiffuseDirect },
+        { "CBC_BAKE_DIFFUSE_INDIRECT", (long)BakeType.DiffuseIndirect },
+        { "CBC_BAKE_DIFFUSE_COLOR", (long)BakeType.DiffuseColor },
+        { "CBC_BAKE_GLOSSY", (long)BakeType.Glossy },
+        { "CBC_BAKE_GLOSSY_DIRECT", (long)BakeType.GlossyDirect },
+        { "CBC_BAKE_GLOSSY_INDIRECT", (long)BakeType.GlossyIndirect },
+        { "CBC_BAKE_GLOSSY_COLOR", (long)BakeType.GlossyColor },
+        { "CBC_BAKE_TRANSMISSION", (long)BakeType.Transmission },
+        { "CBC_BAKE_TRANSMISSION_DIRECT", (long)BakeType.TransmissionDirect },
+        { "CBC_BAKE_TRANSMISSION_INDIRECT", (long)BakeType.TransmissionIndirect },
+        { "CBC_BAKE_TRANSMISSION_COLOR", (long)BakeType.TransmissionColor },
+        { "CBC_BAKE_POSITION", (long)BakeType.Position },
+        { "CBC_BAKE_NORMAL", (long)BakeType.Normal },
+        { "CBC_BAKE_UV", (long)BakeType.Uv },
+        { "CBC_BAKE_ROUGHNESS", (long)BakeType.Roughness },
+        { "CBC_BAKE_OBJECT_ID", (long)BakeType.ObjectId },
+        { "CBC_BAKE_MATERIAL_ID", (long)BakeType.MaterialId },
+        { "CBC_BAKE_DEPTH", (long)BakeType.Depth },
+        { "CBC_BAKE_MIST", (long)BakeType.Mist },
+        { "CBC_BAKE_AOV_COLOR", (long)BakeType.AovColor },
+        { "CBC_BAKE_AOV_VALUE", (long)BakeType.AovValue },
+        { "CBC_BAKE_USE_CAMERA", (long)BakeFlags.UseCamera },
+        { "CBC_BAKE_INCLUDE_ALBEDO", (long)BakeFlags.IncludeAlbedo },
         { "CBC_EVENT_STATUS", (long)RenderEventKind.Status },
         { "CBC_EVENT_PROGRESS", (long)RenderEventKind.Progress },
         { "CBC_EVENT_ERROR", (long)RenderEventKind.Error },
@@ -47,6 +75,9 @@ public class NativeHeaderConstantMatching
         { "CBC_ATTR_CORNER_NORMAL", (long)AttributeDomain.CornerNormal },
         { "CBC_ATTR_CORNER_BYTE", (long)AttributeDomain.CornerByte },
         { "CBC_ATTR_CURVE_KEY_NORMAL", (long)AttributeDomain.CurveKeyNormal },
+        { "CBC_CURVE_RIBBON", (long)CurveShape.Ribbon },
+        { "CBC_CURVE_THICK", (long)CurveShape.Thick },
+        { "CBC_CURVE_THICK_LINEAR", (long)CurveShape.ThickLinear },
         { "CBC_ATTR_STANDARD", (long)AttributeFlags.Standard },
         { "CBC_ATTR_SUBDIVISION", (long)AttributeFlags.Subdivision },
         { "CBC_IMAGE_FLOAT", (long)ImageFormat.Float },
@@ -63,6 +94,8 @@ public class NativeHeaderConstantMatching
         { "CBC_TIER_RECORD_OFF", (long)PipelineTierFlags.RecordOff },
         { "CBC_TIER_RECORD_READ_ONLY", (long)PipelineTierFlags.RecordReadOnly },
         { "CBC_TIER_CANARY", (long)PipelineTierFlags.Canary },
+        { "CBC_PIPELINE_CACHE_DEFAULT", (long)PipelineCacheMode.Default },
+        { "CBC_PIPELINE_CACHE_OFF", (long)PipelineCacheMode.Off },
         { "CBC_OK", (long)NativeStatus.Ok },
         { "CBC_INVALID", (long)NativeStatus.Invalid },
         { "CBC_UNSUPPORTED", (long)NativeStatus.Unsupported },
@@ -113,9 +146,9 @@ public class NativeHeaderConstantMatching
     {
         //Arrange
         Type[] enums = [typeof(Backend), typeof(AttributeValue), typeof(AttributeDomain), typeof(AttributeFlags),
-                        typeof(ImageFormat), typeof(PipelineTier), typeof(PipelineTierFlags), typeof(NativeStatus),
-                        typeof(ValueKind), typeof(PropertyFlags), typeof(RenderEventKind)];
-        int flagNoneMembers = 3; // AttributeFlags.None, PipelineTierFlags.None and PropertyFlags.None have no header constant.
+                        typeof(ImageFormat), typeof(PipelineTier), typeof(PipelineTierFlags), typeof(PipelineCacheMode), typeof(NativeStatus),
+                        typeof(ValueKind), typeof(PropertyFlags), typeof(RenderEventKind), typeof(CurveShape), typeof(BakeType), typeof(BakeFlags)];
+        int flagNoneMembers = 4; // AttributeFlags.None, PipelineTierFlags.None, PropertyFlags.None and BakeFlags.None have no header constant.
         int nonEnumConstants = 1; // CBC_HOST_ABI is checked against CyclesVersion.ExpectedAbi.
 
         //Act

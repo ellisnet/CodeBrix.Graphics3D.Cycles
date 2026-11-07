@@ -3,7 +3,7 @@
 Copyright (c) 2026 Jeremy Ellis and contributors
 
 This maintained implementation exposes native Cycles scene authoring and Session
-control through 48 C functions in [cycles_host.h](cycles_host.h); the consumer
+control through 54 C functions in [cycles_host.h](cycles_host.h); the consumer
 reference (every export, struct, enum, error code, threading and ownership rule,
 the additive-only rule and the determinism statement) is [ABI.md](ABI.md). The .NET 10
 wrapper is in [src/CodeBrix.Graphics3D.Cycles](../../src/CodeBrix.Graphics3D.Cycles).

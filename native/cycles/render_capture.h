@@ -19,7 +19,7 @@ struct RenderCapture final:ccl::WebGPUCommandObserver {
     std::filesystem::path out=std::filesystem::path(prefix).parent_path();
     // Record the modules this device compiles for the uploaded scene (specialized
     // to the reachable SVM handlers unless specialization is disabled).
-    std::ofstream(out/"controls.wgsl")<<ccl::controls_wgsl();std::ofstream(out/"camera.wgsl")<<d.module_wgsl(ccl::camera_wgsl());std::ofstream(out/"closest.wgsl")<<d.module_wgsl(ccl::closest_wgsl());std::ofstream(out/"background.wgsl")<<d.module_wgsl(ccl::background_wgsl());std::ofstream(out/"surface.wgsl")<<d.module_wgsl(ccl::surface_source());std::ofstream(out/"shadow.wgsl")<<d.module_wgsl(ccl::shadow_source());
+    std::ofstream(out/"controls.wgsl")<<ccl::controls_wgsl();std::ofstream(out/"camera.wgsl")<<d.module_wgsl(ccl::camera_wgsl());std::ofstream(out/"closest.wgsl")<<d.module_wgsl(ccl::closest_wgsl());std::ofstream(out/"background.wgsl")<<d.module_wgsl(ccl::background_wgsl());std::ofstream(out/"surface.wgsl")<<((d.data.kernel_features&KERNEL_FEATURE_SUBSURFACE)?ccl::specialize_wgsl(ccl::surface_source(),d.shader_features()|ccl::SF_SUBSURFACE_ENTRY):d.module_wgsl(ccl::surface_source()));std::ofstream(out/"shadow.wgsl")<<d.module_wgsl(ccl::shadow_source());
     if(d.data.integrator.has_shadow_catcher)std::ofstream(out/"shadow_catcher.wgsl")<<d.module_wgsl(ccl::shadow_catcher_split_wgsl());
     if(d.film_cryptomatte())std::ofstream(out/"film_post.wgsl")<<ccl::film_post_wgsl();
     if(d.data.film.pass_adaptive_aux_buffer!=PASS_UNUSED)std::ofstream(out/"film_adaptive.wgsl")<<ccl::film_adaptive_wgsl();

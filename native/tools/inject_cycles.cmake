@@ -72,6 +72,7 @@ function(codebrix_add_cycles_device)
     "${CODEBRIX_NATIVE_ROOT}/cycles/svm_layout.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/pipelines.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/device_tier.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/pipeline_cache.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/shader_data.cpp"
     "${CODEBRIX_NATIVE_ROOT}/src/webgpu_device.cpp")
   target_include_directories(cycles_device PRIVATE "${CODEBRIX_NATIVE_ROOT}/src"
@@ -127,6 +128,25 @@ function(codebrix_add_cycles_device)
      "${CODEBRIX_NATIVE_ROOT}/src"
     "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_closest_gate PRIVATE ${codebrix_device_libs})
+  add_executable(codebrix_cycles_curve_gate "${CODEBRIX_NATIVE_ROOT}/cycles/curve_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/shader_data_reference.cpp")
+  target_compile_features(codebrix_cycles_curve_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_curve_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_curve_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_curve_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_curve_gate PRIVATE ${codebrix_device_libs})
+  add_executable(codebrix_cycles_curve_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/curve_render_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp")
+  target_compile_features(codebrix_cycles_curve_render_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_curve_render_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_curve_render_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_curve_render_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_curve_render_gate PRIVATE ${codebrix_device_libs})
   add_executable(codebrix_cycles_shadow_gate "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp")
   target_compile_features(codebrix_cycles_shadow_gate PRIVATE cxx_std_20)

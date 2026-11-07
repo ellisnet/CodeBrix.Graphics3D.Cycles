@@ -37,6 +37,8 @@ template<class T,auto Release> struct Handle {
 };
 using Buffer=Handle<WGPUBuffer,wgpuBufferRelease>;
 using Pipeline=Handle<WGPUComputePipeline,wgpuComputePipelineRelease>;
+// Test seam (fingerprint mode, cycles/fingerprint.h): called before a compute pipeline is created; null otherwise.
+inline void (*pipeline_creation_hook)(const char *entry)=nullptr;
 using BindGroup=Handle<WGPUBindGroup,wgpuBindGroupRelease>;
 using BindLayout=Handle<WGPUBindGroupLayout,wgpuBindGroupLayoutRelease>;
 using PipelineLayout=Handle<WGPUPipelineLayout,wgpuPipelineLayoutRelease>;
@@ -70,7 +72,13 @@ class Device {
   std::string adapter_vendor,adapter_architecture,adapter_device,adapter_description;
   uint32_t adapter_vendor_id=0,adapter_device_id=0,adapter_type=0,adapter_backend=0;
   uint64_t buffer_creations=0,pipeline_creations=0;
-  Device();
+  // Persistent pipeline cache (native/cycles/pipeline_cache.h). A device requested
+  // with request_pipeline_cache enables the runtime's pipeline-cache feature when
+  // the adapter offers it (Vulkan only); key is then the adapter's cache key.
+  bool pipeline_cache_offered=false;std::string pipeline_cache_key;
+  // Pipelines whose creation failed through a cache and were created without it.
+  uint64_t pipeline_cache_faults=0;
+  explicit Device(bool request_pipeline_cache=false);
   WGPUDevice get()const{return device.value;}
   WGPUQueue get_queue()const{return queue.value;}
   void check();
@@ -80,8 +88,12 @@ class Device {
   Buffer buffer(size_t bytes,WGPUBufferUsage usage,const void *data=nullptr);
   // label (default: entry) names the stage in the crash breadcrumb. While the
   // pipeline is created, a crash signal is also appended as "signal=<n>" to
-  // record_fd (the device-tier pending breadcrumb; -1: none).
-  Pipeline pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry,const char *label=nullptr,int record_fd=-1);
+  // record_fd (the device-tier pending breadcrumb; -1: none). cache (optional) is
+  // chained into the creation. A creation that fails through it is repeated without
+  // it. A process that dies while creating the pipeline removes cache_file, so a
+  // driver that fails on its own cached data cannot fail again on every run.
+  Pipeline pipeline(WGPUShaderModule shader,WGPUPipelineLayout layout,const char *entry,const char *label=nullptr,int record_fd=-1,
+                    WGPUCodebrixPipelineCache cache=nullptr,const char *cache_file=nullptr);
   void read(Buffer &buffer,void *out,size_t bytes);
 };
 }

@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "device.h"
 #include "device/dummy/device.h"
+#include "fingerprint.h"
 #include "wavefront.h"
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstdio>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
@@ -27,6 +29,8 @@ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Devi
   if(specialization_mode_from_environment()!=SpecializationMode::Scene)
     throw std::runtime_error("CODEBRIX_CYCLES_SHADER_SPECIALIZATION=0 or =superset is a desktop-only diagnostic and is refused on Android: the unspecialized and superset shader modules crash or exhaust the Android Vulkan shader compilers. Unset it to use scene-specialized modules.");
 #endif
+  // Before anything compiles (pipeline_cache.h).
+  pipeline_disk_cache.open(gpu);
   // The tier is decided before any pipeline is compiled (device_tier.h).
   select_tier();
   std::array<WGPUBindGroupLayoutEntry,2> entries{};
@@ -39,7 +43,14 @@ WebGPUDevice::WebGPUDevice(const DeviceInfo &i,Stats &s,Profiler &p,bool h):Devi
   WGPUShaderSourceWGSL source{};source.chain.sType=WGPUSType_ShaderSourceWGSL;source.code={control_source,sizeof(control_source)-1};
   WGPUShaderModuleDescriptor sd{};sd.nextInChain=&source.chain;gpu.push_scope();
   cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
-  controls=gpu.pipeline(shader,pipeline_layout,"control");error_word=allocate(16);zero(error_word,16);
+  {PipelineDiskCache::Use cached(pipeline_disk_cache,control_source,"control");
+   controls=gpu.pipeline(shader,pipeline_layout,"control",nullptr,-1,cached.cache(),cached.file());cached.compiled();}
+  if((fingerprint=WebGPUFingerprint::instance())){
+    fingerprint->adapter=adapter_report_json();fingerprint->driver=gpu.adapter_description;fingerprint->pipeline_cache=pipeline_disk_cache.report_json();{const std::string film=film_post_wgsl()+film_adaptive_wgsl()+film_volume_guiding_wgsl()+shadow_catcher_split_wgsl();fingerprint->shader_sources=production_shader_hash()+" "+oracle::sha256(film.data(),film.size());}
+    cbc::note_diagnostic("fingerprint mode: nothing is rendered");
+    if(fingerprint->kind==WebGPUFingerprint::Prefix)cbc::pipeline_creation_hook=[](const char *entry){auto *f=WebGPUFingerprint::instance();f->finish(entry);std::_Exit(0);};
+  }
+  error_word=allocate(16);zero(error_word,16);
   svm_stack_region=allocate(size_t(svm_stack_slots)*svm_stack_words*4);
   {const uint32_t header[]={svm_stack_region,svm_stack_slots};upload(error_word+4,header,sizeof(header));}
   // Diagnostic overrides (pipelines.h SpecializationMode):
@@ -89,7 +100,8 @@ void WebGPUDevice::run_canary(){
     WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};
     WGPUShaderModuleDescriptor sd{};sd.nextInChain=&wgsl.chain;gpu.push_scope();
     cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> shader(wgpuDeviceCreateShaderModule(gpu.get(),&sd));gpu.pop_scope();
-    cbc::Pipeline canary=gpu.pipeline(shader,pipeline_layout,"prepare_surface","canary:prepare_surface",tier_policy.pending_descriptor());
+    PipelineDiskCache::Use cached(pipeline_disk_cache,code,"prepare_surface");
+    cbc::Pipeline canary=gpu.pipeline(shader,pipeline_layout,"prepare_surface","canary:prepare_surface",tier_policy.pending_descriptor(),cached.cache(),cached.file());cached.compiled();
     const double ms=elapsed();tier_policy.end_pipeline(true,ms,"");
     if(budget>0&&ms>budget){
       char text[256];std::snprintf(text,sizeof(text),"init canary took %.0f ms, over the %.0f ms canary budget; the tier is unchanged (full); first-use latency is degraded on this driver",ms,budget);
@@ -104,7 +116,47 @@ void WebGPUDevice::run_canary(){
     pipeline_process_warning(pipeline_warnings.back());std::fprintf(stderr,"CodeBrix Cycles WebGPU warning: %s\n",pipeline_warnings.back().c_str());
   }
 }
-WebGPUDevice::~WebGPUDevice(){try{flush();}catch(const std::exception&){} }
+WebGPUDevice::~WebGPUDevice(){try{flush();}catch(const std::exception&){}
+  if(fingerprint)fingerprint->finish();}
+// The fixed visit of fingerprint mode: every kernel the native scheduler can enqueue for this scene's features, once with
+// one queued path and once with all of them, so that the real scheduler and the real enqueue code emit their commands.
+void WebGPUDevice::fingerprint_kernel_begin(DeviceKernel kernel){
+  auto &f=*fingerprint;
+  if(kernel>=DEVICE_KERNEL_SHADER_EVAL_DISPLACE&&kernel<=DEVICE_KERNEL_SHADER_EVAL_VOLUME_DENSITY){f.preparing=true;f.evaluation_begin=std::chrono::steady_clock::now();}
+  if(kernel==DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA&&!f.visit_ready&&f.kind==WebGPUFingerprint::Render){
+    f.visit_ready=true;const uint features=data.kernel_features;const int capacity=int(remaining(uintptr_t(state.path.queued_kernel))/sizeof(uint16_t));
+    std::vector<DeviceKernel> kernels={DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST,DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE};
+    if(features&KERNEL_FEATURE_NODE_RAYTRACE)kernels.push_back(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE);
+    if(data.integrator.use_light_mis||data.integrator.num_lights)kernels.push_back(DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD);
+    if((shader_features()&SF_LIGHT_NEE).any())kernels.push_back(DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE);
+    kernels.insert(kernels.end(),{DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW});
+    if(features&KERNEL_FEATURE_MNEE)kernels.push_back(DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE);
+    if(features&KERNEL_FEATURE_SUBSURFACE)kernels.push_back(DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE);
+    if(features&KERNEL_FEATURE_VOLUME)kernels.insert(kernels.end(),{DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK,DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME,DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING});
+    if(features&KERNEL_FEATURE_SHADOW_LINKING)kernels.insert(kernels.end(),{DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT,DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT});
+    for(DeviceKernel k:kernels)for(int work:{1,capacity})f.visit.emplace_back(int(k),work);
+  }
+}
+void WebGPUDevice::fingerprint_kernel_end(DeviceKernel kernel){
+  auto &f=*fingerprint;
+  if(f.preparing){f.preparing=false;f.evaluations.push_back(std::string(device_kernel_as_string(kernel))+" "+std::to_string(std::chrono::duration<double>(std::chrono::steady_clock::now()-f.evaluation_begin).count())+" s");}
+  // A kernel of the visit that this scene refuses: the message is part of the hash; the walk goes on.
+  else if(f.visit_ready&&f.visit_step<=f.visit.size()&&have_error()&&kernel!=DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA){f.refusals.push_back(std::string(device_kernel_as_string(kernel))+": "+error_message());error_msg.clear();}
+}
+// The walk's readbacks. The queue counter and the shadow path index follow the script; everything else the scheduler reads after the
+// first dropped dispatch is zero, as nothing has written it: no round trip to the GPU, which other work may be holding for seconds.
+bool WebGPUDevice::fingerprint_readback(uint32_t address,void *target,size_t bytes){
+  auto &f=*fingerprint;
+  if(f.kind!=WebGPUFingerprint::Render||!f.dry_phase)return false;
+  std::memset(target,0,bytes);
+  if(!f.visit_ready||f.visit_step>f.visit.size())return true;
+  if(address==uint32_t(uintptr_t(state.queue_counter))&&bytes==sizeof(IntegratorQueueCounter)){
+    IntegratorQueueCounter counter{};
+    if(f.visit_step<f.visit.size())counter.num_queued[f.visit[f.visit_step].first]=f.visit[f.visit_step].second;
+    f.visit_step++;std::memcpy(target,&counter,bytes);
+  }else if(address==uint32_t(uintptr_t(state.next_shadow_path_index))&&bytes==sizeof(int)){const int used=128;std::memcpy(target,&used,bytes);}
+  return true;
+}
 WGPUCommandEncoder WebGPUDevice::commands(){if(!encoder.value)encoder=decltype(encoder)(wgpuDeviceCreateCommandEncoder(gpu.get(),nullptr));return encoder;}
 void WebGPUDevice::flush(){if(!encoder.value)return;
   gpu.push_scope();cbc::Handle<WGPUCommandBuffer,wgpuCommandBufferRelease> command(wgpuCommandEncoderFinish(encoder,nullptr));gpu.pop_scope();
@@ -153,18 +205,20 @@ void WebGPUDevice::upload(uint32_t address,const void *source,size_t bytes){
   validate(address,bytes);require(address%4==0&&source,"Unaligned/null WebGPU upload");flush();
   std::vector<uint32_t> padded((bytes+3)/4);std::memcpy(padded.data(),source,bytes);
   wgpuQueueWriteBuffer(gpu.get_queue(),arena,address,padded.data(),padded.size()*4);uploads++;gpu.check();
+  if(fingerprint)fingerprint->upload(address,padded.data(),padded.size()*4);
   if(observer)observer->upload(address,padded.data(),padded.size()*4);
 }
 void WebGPUDevice::download(uint32_t address,void *target,size_t bytes){
   if(!bytes)return;
   validate(address,bytes);require(target,"Null WebGPU download");
+  if(fingerprint&&fingerprint_readback(address,target,bytes))return;
   const uint32_t begin=address&~3u;size_t length=(address-begin+bytes+3)&~size_t(3);
   auto staging=gpu.buffer(length,WGPUBufferUsage_CopyDst|WGPUBufferUsage_MapRead);
   wgpuCommandEncoderCopyBufferToBuffer(commands(),arena,begin,staging,0,length);flush();
   std::vector<uint8_t> result(length);gpu.read(staging,result.data(),length);std::memcpy(target,result.data()+address-begin,bytes);downloads++;
   if(observer)observer->readback(address,target,bytes);
 }
-void WebGPUDevice::zero(uint32_t address,size_t bytes){if(!bytes)return;validate(address,bytes);require(address%4==0,"Unaligned WebGPU clear");wgpuCommandEncoderClearBuffer(commands(),arena,address,(bytes+3)&~size_t(3));if(observer)observer->clear(address,(bytes+3)&~size_t(3));}
+void WebGPUDevice::zero(uint32_t address,size_t bytes){if(!bytes)return;validate(address,bytes);require(address%4==0,"Unaligned WebGPU clear");wgpuCommandEncoderClearBuffer(commands(),arena,address,(bytes+3)&~size_t(3));if(observer)observer->clear(address,(bytes+3)&~size_t(3));if(fingerprint)fingerprint->clear(address,(bytes+3)&~size_t(3));}
 void WebGPUDevice::sync(){
   uint32_t error=0;download(error_word,&error,4);
   if(error){
@@ -188,6 +242,9 @@ void WebGPUDevice::mem_alloc(device_memory &mem){guard([&]{if(mem.type==MEM_IMAG
   }
   if(!mem.device_pointer&&mem.memory_size()){mem.device_pointer=allocate(mem.memory_size());mem.device_size=mem.memory_size();stats.mem_alloc(mem.device_size);}});}
 void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);require(!have_error(),"WebGPU allocation failed");
+  if(fingerprint){fingerprint->label=mem.log_name();
+    // KernelImageTexture is built on the stack and copied whole: the 8 bytes before transform_3d are whatever was on the stack (a pointer on Android).
+    if(mem.type==MEM_GLOBAL&&std::strcmp(mem.global_name(),"image_textures")==0){fingerprint->mask_stride=sizeof(KernelImageTexture);fingerprint->mask_begin=offsetof(KernelImageTexture,use_transform_3d)+sizeof(uint);fingerprint->mask_end=offsetof(KernelImageTexture,transform_3d);}}
   if(mem.memory_size())upload(uint32_t(mem.device_pointer),mem.host_pointer,mem.memory_size());
   if(mem.type==MEM_GLOBAL){globals[mem.global_name()]=uint32_t(mem.device_pointer);
     auto copy=[&](auto &records){using T=typename std::remove_reference_t<decltype(records)>::value_type;
@@ -200,6 +257,7 @@ void WebGPUDevice::mem_copy_to(device_memory &mem){guard([&]{mem_alloc(mem);requ
     if(std::strcmp(mem.global_name(),"shaders")==0)copy(shader_records);
     if(std::strcmp(mem.global_name(),"objects")==0)copy(object_records);
     if(std::strcmp(mem.global_name(),"object_flag")==0)copy(object_flag_records);
+    if(std::strcmp(mem.global_name(),"curves")==0){copy(curve_records);svm_generation++;}
     if(std::strcmp(mem.global_name(),"tri_shader")==0){smooth_triangles=false;
       for(size_t i=0;i<mem.memory_size()/sizeof(uint);i++)smooth_triangles|=(static_cast<const uint*>(mem.host_pointer)[i]&SHADER_SMOOTH_NORMAL)!=0;}
     // Exact SVM program copy: selects the WGSL handlers this scene can reach.
@@ -227,6 +285,7 @@ void WebGPUDevice::mem_free(device_memory &mem){std::lock_guard lock(mutex);try{
       if(std::strcmp(mem.global_name(),"shaders")==0)shader_records.clear();
       if(std::strcmp(mem.global_name(),"objects")==0)object_records.clear();
       if(std::strcmp(mem.global_name(),"object_flag")==0)object_flag_records.clear();
+      if(std::strcmp(mem.global_name(),"curves")==0){curve_records.clear();svm_generation++;}
       if(std::strcmp(mem.global_name(),"tri_shader")==0)smooth_triangles=false;
       if(std::strcmp(mem.global_name(),"svm_nodes")==0)svm_node_words.clear();
       if(std::strcmp(mem.global_name(),"tri_shader")==0){tri_shader_words.clear();svm_generation++;}
@@ -259,6 +318,7 @@ void WebGPUDevice::dispatch(const std::array<uint32_t,32> &params,uint32_t work,
           workgroup_size<=gpu.limits.maxComputeInvocationsPerWorkgroup,"Invalid workgroup size");
   const uint64_t groups=(uint64_t(work)+workgroup_size-1)/workgroup_size;
   require(work>0&&groups<=gpu.limits.maxComputeWorkgroupsPerDimension,"Dispatch exceeds device limits");
+  if(fingerprint&&!fingerprint->dispatch(pipeline?pipeline:controls.value,params,work,workgroup_size,!pipeline||pipeline==controls.value))return;
   if(observer){
     const WGPUComputePipeline actual=pipeline?pipeline:controls.value;
     unsigned entry=actual==controls.value?0:actual==camera.value?1:actual==closest.value?2:actual==background.value?3:actual==surface.value?4:actual==surface_prepare.value?5:actual==shadow_intersect.value?6:actual==shadow_shade.value?7:actual==light_forward.value?8:actual==surface_geometry.value?9:actual==volume_stack.value?10:actual==volume.value?11:actual==shadow_transparent.value?12:actual==surface_light.value?13:actual==volume_density.value?14:actual==surface_connect.value?15:actual==shadow_shader_data.value?16:actual==surface_light_triangle.value?17:actual==light_nee.value?18:actual==background_eval.value?19:actual==light_nee_prepare.value?20:actual==surface_light_select.value?21:actual==light_tree_forward.value?22:actual==sc_assign.value?23:actual==sc_split.value?24:actual==sc_count.value?25:actual==surface_prepare_raytrace.value?26:actual==mnee_cleanup.value?34:actual==surface_sample.value?35:actual==surface_passes.value?36:actual==film_post.value?37:actual==surface_ao.value?38:actual==film_adaptive_check.value?39:actual==film_adaptive_x.value?40:actual==film_adaptive_y.value?41:actual==surface_light_background.value?42:actual==film_volume_x.value?43:actual==film_volume_y.value?44:actual==volume_segment.value?45:actual==volume_light.value?46:actual==subsurface_walk.value?47:actual==volume_phase.value?48:actual==volume_heterogeneous.value?49:actual==volume_ray_marching.value?50:actual==volume_tree_select.value?51:actual==volume_light_triangle.value?52:actual==dedicated_intersect.value?53:actual==dedicated_lamp.value?54:actual==dedicated_tree.value?55:actual==dedicated_shade.value?56:actual==mnee_select.value?57:mnee_entry_of(*this,actual);
@@ -287,6 +347,10 @@ bool webgpu_recover(Device *device,std::string &reason){
   auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu){reason="not a WebGPU device";return false;}
   return webgpu->recover(reason);
 }
+void host_pipeline_cache_config(bool off,const char *directory){
+  PipelineCacheConfig config;config.off=off;config.directory=directory?directory:"";set_pipeline_cache_config(config);
+}
+void host_pipeline_cache_allow_default(){allow_default_pipeline_cache();}
 void host_tier_config(uint32_t tier,bool record_off,bool read_only,bool canary,const char *directory){
   DeviceTierConfig config;config.request=tier;config.record_off=record_off;config.record_read_only=read_only;config.canary=canary;
   config.record_directory=directory?directory:"";set_device_tier_config(config);
@@ -294,6 +358,10 @@ void host_tier_config(uint32_t tier,bool record_off,bool read_only,bool canary,c
 std::string webgpu_device_report_json(Device *device){
   auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu)return {};
   std::lock_guard lock(webgpu->mutex);return webgpu->pipeline_report_json();
+}
+std::string webgpu_pipeline_cache_report_json(Device *device){
+  auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu)return {};
+  std::lock_guard lock(webgpu->mutex);return webgpu->pipeline_disk_cache.report_json();
 }
 std::string webgpu_adapter_report_json(Device *device){
   auto *webgpu=dynamic_cast<WebGPUDevice*>(device);if(!webgpu)return {};

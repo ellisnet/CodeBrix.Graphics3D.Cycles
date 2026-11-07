@@ -34,11 +34,11 @@ def overlay(out=None):
     # camera accessors below read original KernelData and scene arrays directly.
     sampling=(REPO/'parity/shaders/sampling.wgsl').read_text()
     sampling=sampling[sampling.index('fn wang_hash'):sampling.index('fn sobol_index')]
-    common=shader+sampling+(ROOT/'shaders/wavefront_common.wgsl').read_text()+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_trig.wgsl').read_text()+(ROOT/'shaders/wavefront_motion.wgsl').read_text()+(ROOT/'shaders/wavefront_motion_triangle.wgsl').read_text()
+    common=shader+sampling+(ROOT/'shaders/wavefront_common.wgsl').read_text()+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_trig.wgsl').read_text()+(ROOT/'shaders/wavefront_motion.wgsl').read_text()+(ROOT/'shaders/wavefront_motion_triangle.wgsl').read_text()+(ROOT/'shaders/wavefront_curve_math.wgsl').read_text()
     # Orthographic and panoramic cameras and depth of field (CAMERA_PROJECTIONS) use the disk-angle sine and cosine.
     camera=common+'//#if CAMERA_PROJECTIONS\n'+(ROOT/'shaders/wavefront_native_trig.wgsl').read_text()+'//#endif\n'+(ROOT/'shaders/wavefront_camera.wgsl').read_text()
     _write(out/'camera_shader.inc','R"CBWGSL('+camera+')CBWGSL"\n')
-    shader_data=common+(ROOT/'shaders/wavefront_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_shader_data_cache.wgsl').read_text()
+    shader_data=common+(ROOT/'shaders/wavefront_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_curve_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_shader_data_cache.wgsl').read_text()
     _write(out/'shader_data_shader.inc','R"CBWGSL('+shader_data+')CBWGSL"\n')
     # Generate from the pinned upstream AST, retaining translation evidence.
     translation_inputs=[REPO/'research/translate.py',REPO/'research/native/reference.cpp']
@@ -109,7 +109,9 @@ def overlay(out=None):
     sampling=sampling[:sampling.index('struct Closure')]+sampling[sampling.index('// Original numerical adapter:'):sampling.index('fn oren_g')]
     # MNEE (wavefront_mnee.wgsl) needs the closest traversal inside the surface
     # module; both sit in MNEE regions, so other scenes' surface WGSL is unchanged.
-    mnee_traversal=(ROOT/'shaders/wavefront_closest.wgsl').read_text().split('// Point emitters use')[0]
+    # The curve intersection (CURVES regions) goes with every copy of the traversal text.
+    closest_text=(ROOT/'shaders/wavefront_curve_intersect.wgsl').read_text()+(ROOT/'shaders/wavefront_closest.wgsl').read_text()
+    mnee_traversal=closest_text.split('// Point emitters use')[0]
     # Its traversal stack lives in the MNEE record (MR_STACK, mn_stack_at), not in a private
     # array: the same pushes and pops in the same order, in storage memory (the Adreno 730 fails
     # to link the MNEE entries with motion blur when the 192-entry stack is private).
@@ -124,14 +126,14 @@ def overlay(out=None):
     _write(out/'surface_shader.inc','R"CBWGSL('+surface+')CBWGSL"\n')
     volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_shadow_catcher.wgsl','wavefront_volume.wgsl','wavefront_volume_octree.wgsl','wavefront_volume_heterogeneous.wgsl'))
     _write(out/'volume_shader.inc','R"CBWGSL('+volume+')CBWGSL"\n')
-    closest=common+translated+(ROOT/'shaders/wavefront_shadow_catcher.wgsl').read_text()+(ROOT/'shaders/wavefront_closest.wgsl').read_text()+(ROOT/'shaders/wavefront_light_link.wgsl').read_text()+(ROOT/'shaders/wavefront_shadow_link_intersect.wgsl').read_text()
+    closest=common+translated+(ROOT/'shaders/wavefront_shadow_catcher.wgsl').read_text()+closest_text+(ROOT/'shaders/wavefront_light_link.wgsl').read_text()+(ROOT/'shaders/wavefront_shadow_link_intersect.wgsl').read_text()
     _write(out/'film_post_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_film_post.wgsl').read_text()+')CBWGSL"\n')
     # Adaptive sampling (film_passes.cpp): the contraction-proof binary32 helpers and the three kernels.
     _write(out/'film_adaptive_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_film_adaptive.wgsl').read_text()+')CBWGSL"\n')
     _write(out/'film_volume_guiding_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_film_volume_guiding.wgsl').read_text()+')CBWGSL"\n')
     _write(out/'shadow_catcher_shader.inc','R"CBWGSL('+(ROOT/'shaders/wavefront_shadow_catcher_split.wgsl').read_text()+')CBWGSL"\n')
     _write(out/'closest_shader.inc','R"CBWGSL('+closest+')CBWGSL"\n')
-    traversal=(ROOT/'shaders/wavefront_closest.wgsl').read_text().split('// Point emitters use')[0]
+    traversal=closest_text.split('// Point emitters use')[0]
     volume_stack=shader_data+translated+traversal+(ROOT/'shaders/wavefront_volume_stack.wgsl').read_text()
     _write(out/'volume_stack_shader.inc','R"CBWGSL('+volume_stack+')CBWGSL"\n')
     shadow=traversal+film+(ROOT/'shaders/wavefront_shadow_traversal.wgsl').read_text()+(ROOT/'shaders/wavefront_volume_octree.wgsl').read_text()+(ROOT/'shaders/wavefront_shadow.wgsl').read_text()
@@ -194,12 +196,12 @@ def main():
     options.update({'WITH_CYCLES_'+name:'OFF' for name in ['ALEMBIC','OPENSUBDIV','OPENVDB','NANOVDB',
                    'OSL','USD','HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
     commands=[['cmake','-S',str(UPSTREAM),'-B',str(build),*['-D'+k+'='+str(v) for k,v in options.items()]],
-              ['cmake','--build',str(build),'--target','codebrix_cycles_device_gate','codebrix_cycles_camera_gate','codebrix_cycles_closest_gate','codebrix_cycles_background_gate','codebrix_cycles_svm_world_gate','codebrix_cycles_shader_data_gate','codebrix_cycles_svm_surface_gate','codebrix_cycles_attribute_gate','codebrix_cycles_normal_gate','codebrix_cycles_image_gate','codebrix_cycles_image_file_gate','codebrix_cycles_surface_gate','codebrix_cycles_microfacet_svm_gate','codebrix_cycles_microfacet_bounce_gate','codebrix_cycles_microfacet_render_gate','codebrix_cycles_render_gate','codebrix_cycles_atomic_film_gate','--parallel',args.jobs]]
+              ['cmake','--build',str(build),'--target','codebrix_cycles_device_gate','codebrix_cycles_camera_gate','codebrix_cycles_closest_gate','codebrix_cycles_curve_gate','codebrix_cycles_curve_render_gate','codebrix_cycles_background_gate','codebrix_cycles_svm_world_gate','codebrix_cycles_shader_data_gate','codebrix_cycles_svm_surface_gate','codebrix_cycles_attribute_gate','codebrix_cycles_normal_gate','codebrix_cycles_image_gate','codebrix_cycles_image_file_gate','codebrix_cycles_surface_gate','codebrix_cycles_microfacet_svm_gate','codebrix_cycles_microfacet_bounce_gate','codebrix_cycles_microfacet_render_gate','codebrix_cycles_render_gate','codebrix_cycles_atomic_film_gate','--parallel',args.jobs]]
     if args.target:
         commands[1]=['cmake','--build',str(build),'--target',*args.target,'--parallel',args.jobs]
     else:
         commands[1][4:4]=['codebrix_cycles_host','codebrix_host_cpu_test','codebrix_host_gpu_test',
-                         'codebrix_host_reload_test','codebrix_host_concurrency_test','codebrix_host_tier_test',
+                         'codebrix_host_reload_test','codebrix_host_concurrency_test','codebrix_host_tier_test','codebrix_host_pipeline_cache_test',
                          'codebrix_host_session_reference','codebrix_host_session64_reference',
                          'codebrix_host_image_reference']
     for command in commands:subprocess.run(command,check=True)
