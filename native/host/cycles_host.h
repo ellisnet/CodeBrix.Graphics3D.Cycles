@@ -126,12 +126,31 @@ int cbc_host_mesh(CBCHost host, CBCNode mesh, const float *xyz, uint64_t vertex_
  * further curve attributes follow it, since their size derives from it. */
 int cbc_host_curves(CBCHost host, CBCNode hair, const float *xyz, const float *radius, uint64_t key_count,
                     const uint32_t *first_key, uint64_t curve_count);
+/* Deformation motion for a hair geometry, as cbc_host_motion_positions for a mesh: steps (odd, 3..129) time-ordered key
+ * arrays, count = steps * key_count keys (xyz 3 floats per key), the center step equal to the current keys bit for bit.
+ * radius holds one float per key per step (its center step equal to the current radii), or is null to keep the center
+ * radii at every step. steps == 1 with count 0 removes it. Sets the geometry's motion_steps and use_motion_blur sockets.
+ * Call it again after cbc_host_curves changes the key count. */
+int cbc_host_curve_motion(CBCHost host, CBCNode hair, uint32_t steps, const float *xyz, const float *radius, uint64_t count);
 /* How a hair geometry's curves are rendered: flat ribbons facing the ray (the default), Catmull-Rom thick curves, or
  * linear thick segments. Values match Cycles' CurveShapeType. */
 enum { CBC_CURVE_RIBBON = 0, CBC_CURVE_THICK = 1, CBC_CURVE_THICK_LINEAR = 2 };
 int cbc_host_curve_shape(CBCHost host, CBCNode hair, uint32_t shape);
 /* Scene-wide ribbon tessellation: 2^subdivisions sections per curve segment, 0 to 4 (default 3). Cycles' hair_subdivisions. */
 int cbc_host_curve_subdivisions(CBCHost host, uint32_t subdivisions);
+/* Point cloud geometry, like cbc_host_curves: xyz has 3 floats and radius 1 float per point. Values are validated and
+ * copied; every point initially uses material 0 (the shader socket). Replaces the geometry and removes its motion;
+ * further point attributes follow it, since their size derives from it. */
+int cbc_host_points(CBCHost host, CBCNode pointcloud, const float *xyz, const float *radius, uint64_t count);
+/* Deformation motion for a point cloud: steps (odd, 3..129) time-ordered arrays, count = steps * point_count entries,
+ * 3 floats per position and 1 float per radius; the center step must equal the points bit for bit. steps == 1 with
+ * count 0 removes the motion. Sets the motion_steps and use_motion_blur sockets. */
+int cbc_host_point_motion(CBCHost host, CBCNode pointcloud, uint32_t steps, const float *xyz, const float *radius, uint64_t count);
+/* The particles of a particle system, read by the Particle Info node of objects whose particle_system and
+ * particle_index sockets name this system and a particle in it. index has 1 value per particle; values has
+ * CBC_PARTICLE_FLOATS floats per particle: age, lifetime, location xyz, rotation xyzw, size, velocity xyz, angular velocity xyz. */
+enum { CBC_PARTICLE_FLOATS = 16 };
+int cbc_host_particles(CBCHost host, CBCNode particle_system, const uint32_t *index, const float *values, uint64_t count);
 /* WebGPU pipeline tier selection (graceful degradation; native/DEVICE.md).
  * Process-wide; applies to WebGPU hosts created after the call. tier is
  * CBC_TIER_AUTO (explicit request > persisted device record > known-adapter

@@ -23,7 +23,14 @@ fn surf_microfacet(kind:u32)->bool{return surf_glossy(kind)||surf_glass(kind)||s
 // CLOSURE_IS_BSDF_MICROFACET and CLOSURE_IS_BSDF ranges (every closure kind of the
 // remaining SVM BSDF families; kinds no SVM node makes never appear).
 fn surf_diffuse(kind:u32)->bool{return kind>=CLOSURE_BSDF_DIFFUSE_ID&&kind<=CLOSURE_BSDF_TRANSLUCENT_ID;}
-fn surf_glossy(kind:u32)->bool{return kind>=CLOSURE_BSDF_MICROFACET_GGX_ID&&kind<=FAMILY_GLOSSY_LAST;}
+//#if !SVM_BSDF_HAIR_PRINCIPLED
+//#if SVM_BSDF_HAIR_HUANG else fn surf_glossy(kind:u32)->bool{return kind>=CLOSURE_BSDF_MICROFACET_GGX_ID&&kind<=FAMILY_GLOSSY_LAST;}
+fn surf_glossy(kind:u32)->bool{return (kind>=CLOSURE_BSDF_MICROFACET_GGX_ID&&kind<=FAMILY_GLOSSY_LAST)||kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID;}
+//#endif
+//#endif
+//#if SVM_BSDF_HAIR_PRINCIPLED
+fn surf_glossy(kind:u32)->bool{return (kind>=CLOSURE_BSDF_MICROFACET_GGX_ID&&kind<=FAMILY_GLOSSY_LAST)||kind==FAMILY_HAIR_CHIANG||kind==FAMILY_HAIR_HUANG;}
+//#endif
 fn surf_glass(kind:u32)->bool{return kind>=CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID&&kind<=FAMILY_GLASS_LAST;}
 fn surf_refraction(kind:u32)->bool{return kind>=CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID&&kind<=FAMILY_TRANSMISSION_LAST;}
 fn surf_microfacet(kind:u32)->bool{
@@ -123,12 +130,18 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#if !SUBSURFACE
     if(r.count>1u){var sum=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)){sum+=c.sample_weight;}}
         let pick=random.z*sum;var partial=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)){
-            let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=rounded_divide(pick-partial,c.sample_weight);break;}partial=next;}}}
+//#if SVM_BSDF_HAIR_CHIANG else             let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=rounded_divide(pick-partial,c.sample_weight);break;}partial=next;}}}
+            // Chiang reads the rescaled rand.z through a logarithm: the difference rounded once, no contraction with the product.
+            let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=rounded_divide(rounded_add(pick,-partial),c.sample_weight);break;}partial=next;}}}
+//#endif
 //#endif
 //#if SUBSURFACE
     if(r.count>1u){var sum=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)||ss_bssrdf_kind(c.kind)){sum+=c.sample_weight;}}
         let pick=random.z*sum;var partial=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_bsdf(c.kind)||ss_bssrdf_kind(c.kind)){
-            let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=rounded_divide(pick-partial,c.sample_weight);break;}partial=next;}}}
+//#if SVM_BSDF_HAIR_CHIANG else             let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=rounded_divide(pick-partial,c.sample_weight);break;}partial=next;}}}
+            // Chiang reads the rescaled rand.z through a logarithm: the difference rounded once, no contraction with the product.
+            let next=partial+c.sample_weight;if(pick<next){selected=i;rand.z=rounded_divide(rounded_add(pick,-partial),c.sample_weight);break;}partial=next;}}}
+//#endif
     // A picked BSSRDF closure: subsurface_bounce in shade_surface (ss_bounce).
     {let b=svm_closure_read(r,selected);if(ss_bssrdf_kind(b.kind)){out.label=SS_LABEL_SUBSURFACE_SCATTER;out.pdf=1.0;out.eval=vec3<f32>(1);ss_selected=selected;
 //#if SVM_BSDF_FAMILIES
@@ -264,6 +277,9 @@ fn surf_sample_mis(sd:SurfaceData,r:SvmResult,sampled:SurfaceSample)->SurfaceSam
 //#if SAMPLING_SOBOL_BURLEY else     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xyz;
     let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF,3u).xyz;
 //#endif
+//#if SVM_BSDF_HAIR_HUANG
+    huang_base=stage.r.closure_base;
+//#endif
     let sampled=surf_sample(stage.sd,stage.r,random);surf_sample_store(p(0u)+id.x*SURF_SAMPLE_BYTES,sampled,surf_sampled_closure);
 }
 //#endif
@@ -308,7 +324,15 @@ fn surf_filter_glossy(index:u32,r:ptr<function,SvmResult>){
     if(!(blur_pdf<1.0)){return;}
     let roughness=rounded_sqrt(rounded_add(1.0,-blur_pdf))*0.5;
     for(var i=0u;i<(*r).count;i++){var c=svm_closure_read(*r,i);
-        if(surf_blurred(c.kind)){c.alpha_x=max(roughness,c.alpha_x);c.alpha_y=max(roughness,c.alpha_y);svm_closure_write((*r).closure_base+i*SVM_CLOSURE_BYTES,c);}}
+//#if SVM_BSDF_HAIR_CHIANG
+        // bsdf_hair_chiang_blur.
+        if(c.kind==CLOSURE_BSDF_HAIR_CHIANG_ID){c.roughness=max(roughness,c.roughness);c.a=max(roughness,c.a);c.alpha_x=max(roughness,c.alpha_x);svm_closure_write((*r).closure_base+i*SVM_CLOSURE_BYTES,c);}
+//#endif
+//#if SVM_BSDF_HAIR_HUANG else         if(surf_blurred(c.kind)){c.alpha_x=max(roughness,c.alpha_x);c.alpha_y=max(roughness,c.alpha_y);svm_closure_write((*r).closure_base+i*SVM_CLOSURE_BYTES,c);}}
+        if(surf_blurred(c.kind)){c.alpha_x=max(roughness,c.alpha_x);c.alpha_y=max(roughness,c.alpha_y);svm_closure_write((*r).closure_base+i*SVM_CLOSURE_BYTES,c);}
+        // bsdf_hair_huang_blur.
+        if(c.kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID){c.roughness=max(roughness,c.roughness);svm_closure_write((*r).closure_base+i*SVM_CLOSURE_BYTES,c);}}
+//#endif
     if(!(roughness*roughness<=2e-10)){(*r).runtime_flag|=SR_BSDF_HAS_EVAL;}
 }
 //#endif
@@ -326,7 +350,7 @@ fn surf_ray_offset(sd:SurfaceData,direction:vec3<f32>)->vec3<f32>{return surf_ra
 // integrate_surface_ray_offset for a ray starting at P (the hit point, or the
 // shadow-terminator-offset origin).
 fn surf_ray_offset_at(sd:SurfaceData,P:vec3<f32>,direction:vec3<f32>)->vec3<f32>{
-//#if CURVES
+//#if CURVES_OR_POINTS
     // No ray offset for other primitive types.
     if((sd.primitive_type&PRIMITIVE_TRIANGLE)==0u){return P;}
 //#endif
@@ -555,7 +579,7 @@ fn light_selection_compute(index:u32,sd:SurfaceData,r:SvmResult,sample:bool,forw
     let sample=data_word(D_integrator_use_direct_light)!=0u&&(r.runtime_flag&SR_BSDF_HAS_EVAL)!=0u&&
        (sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u&&(flag&PATH_RAY_TERMINATE_ON_NEXT_SURFACE)==0u&&
        heap_float(state_address(S_path_continuation_probability,index,4u))!=0.0;
-//#if CURVES else     let forward=(r.runtime_flag&SR_EMISSION)!=0u&&(flag&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u;
+//#if CURVES_OR_POINTS else     let forward=(r.runtime_flag&SR_EMISSION)!=0u&&(flag&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u;
     let forward=(r.runtime_flag&SR_EMISSION)!=0u&&(flag&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u&&(sd.primitive_type&PRIMITIVE_TRIANGLE)!=0u;
 //#endif
     let result=light_selection_compute(index,sd,r,sample,forward);
@@ -630,6 +654,9 @@ fn surface_light_combined(li:SurfaceLightInputs){
     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=3u){return;}store_word(at,0u);
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);var sd=stage.sd;var r=stage.r;
+//#if SVM_BSDF_HAIR_HUANG
+    huang_lcg=r.lcg_state;huang_base=r.closure_base;
+//#endif
     let flag=state_word(S_path_flag,index);let stride=data_word(D_film_pass_stride);
     let pixel=state_word(S_path_render_pixel_index,index);let base=p(4u)+pixel*stride*4u;
 //#if SUBSURFACE
@@ -675,6 +702,9 @@ fn surface_light_combined(li:SurfaceLightInputs){
 //#endif
 //#endif
     surface_direct_light(index,id.x,sd,r,light_sample_read(at+308u));if(load_word(p(17u))!=0u){return;}
+//#if SVM_BSDF_HAIR_HUANG
+    r.lcg_state=huang_lcg;
+//#endif
     // Holdout may change closure metadata; retain it with the same GPU record.
 //#if AO_SHADOW else     surface_stage_write(at,sd,r);store_word(at,2u);
     // The AO shadow ray follows in its own entry, connect_surface_ao (state 6 -> 2).
@@ -721,6 +751,9 @@ fn surf_safe_divide3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
     let throughput=heap_vec3(state_address(S_path_throughput,index,12u));
 //#if SAMPLING_SOBOL_BURLEY else     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xyz;
     let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF,3u).xyz;
+//#endif
+//#if SVM_BSDF_HAIR_HUANG
+    huang_base=r.closure_base;
 //#endif
 //#if SVM_BSDF_FAMILIES else     let sampled=surf_sample(sd,r,random);if(sampled.pdf==0.0||all(sampled.eval==vec3<f32>(0))){surf_finish(index,false);return;}
     let sampled=surf_sample_mis(sd,r,surf_sample_load(p(0u)+id.x*SURF_SAMPLE_BYTES));if(sampled.pdf==0.0||all(sampled.eval==vec3<f32>(0))){surf_finish(index,false);return;}
@@ -781,11 +814,20 @@ fn debug_output_first_hit(index:u32,base:u32,sd:SurfaceData,r:SvmResult)->bool{
 struct FamilyEvaluate {handled:bool,value:vec4<f32>}
 fn surf_family(kind:u32)->bool{
     var family=false;
+//#if SVM_BSDF_HAIR_HUANG
+    family=family||kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID;
+//#endif
 //#if SVM_BSDF_BECKMANN
     family=family||surf_microfacet(kind);
 //#endif
 //#if SVM_BSDF_ASHIKHMIN_SHIRLEY
     family=family||kind==CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID;
+//#endif
+//#if SVM_BSDF_HAIR
+    family=family||kind==CLOSURE_BSDF_HAIR_REFLECTION_ID||kind==CLOSURE_BSDF_HAIR_TRANSMISSION_ID;
+//#endif
+//#if SVM_BSDF_HAIR_CHIANG
+    family=family||kind==CLOSURE_BSDF_HAIR_CHIANG_ID;
 //#endif
 //#if SVM_BSDF_VELVET
     family=family||kind==CLOSURE_BSDF_ASHIKHMIN_VELVET_ID;
@@ -797,11 +839,20 @@ fn surf_family(kind:u32)->bool{
 }
 fn surf_family_evaluate(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->FamilyEvaluate{
     var r:FamilyEvaluate;r.handled=true;
+//#if SVM_BSDF_HAIR_HUANG
+    if(c.kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID){r.value=huang_read_eval(c);return r;}
+//#endif
 //#if SVM_BSDF_ASHIKHMIN_SHIRLEY
     if(c.kind==CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID){r.value=as_evaluate(c,sd.wi,wo);return r;}
 //#endif
 //#if SVM_BSDF_BECKMANN
     if(surf_microfacet(c.kind)){r.value=microfacet_evaluate_any(sd,c,wo);return r;}
+//#endif
+//#if SVM_BSDF_HAIR
+    if(c.kind==CLOSURE_BSDF_HAIR_REFLECTION_ID||c.kind==CLOSURE_BSDF_HAIR_TRANSMISSION_ID){r.value=hair_evaluate(c,sd.wi,wo);return r;}
+//#endif
+//#if SVM_BSDF_HAIR_CHIANG
+    if(c.kind==CLOSURE_BSDF_HAIR_CHIANG_ID){r.value=hair_chiang_evaluate(sd,c,wo);return r;}
 //#endif
 //#if SVM_BSDF_VELVET
     if(c.kind==CLOSURE_BSDF_ASHIKHMIN_VELVET_ID){r.value=velvet_evaluate(c,sd.wi,wo);return r;}
@@ -813,11 +864,20 @@ fn surf_family_evaluate(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->FamilyEvaluat
 }
 fn surf_family_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>,disk:vec2<f32>)->SurfaceSample{
     var out:SurfaceSample;
+//#if SVM_BSDF_HAIR_HUANG
+    if(c.kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID){return huang_read_sample(c);}
+//#endif
 //#if SVM_BSDF_ASHIKHMIN_SHIRLEY
     if(c.kind==CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID){return as_sample(sd,c,random.xy);}
 //#endif
 //#if SVM_BSDF_BECKMANN
     if(surf_microfacet(c.kind)){return microfacet_sample_any(sd,c,random,disk);}
+//#endif
+//#if SVM_BSDF_HAIR
+    if(c.kind==CLOSURE_BSDF_HAIR_REFLECTION_ID||c.kind==CLOSURE_BSDF_HAIR_TRANSMISSION_ID){return hair_sample(c,sd.wi,random.xy);}
+//#endif
+//#if SVM_BSDF_HAIR_CHIANG
+    if(c.kind==CLOSURE_BSDF_HAIR_CHIANG_ID){return hair_chiang_sample(sd,c,random);}
 //#endif
 //#if SVM_BSDF_VELVET
     if(c.kind==CLOSURE_BSDF_ASHIKHMIN_VELVET_ID){return velvet_sample(sd,c,disk);}

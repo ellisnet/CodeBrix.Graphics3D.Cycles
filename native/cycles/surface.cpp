@@ -68,7 +68,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
     require(address%4==0,"Unaligned surface pointer");return uint32_t(address);};
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[4]=pointer(1,false);p[17]=error_word;
   if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_points,"WebGPU surface currently requires triangle or static curve primitives");
+  validate_points();
   validate_curves();
   validate_geometry_motion();
   validate_volume();
@@ -196,6 +196,11 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   const ShaderFeatures light_variant=background_stage?SF_BACKGROUND_SAMPLE_ENTRY:SF_NONE;
   if(sample_stage&&(!pipeline_current(surface_sample,"shade_surface_sample")||!surface_sample.value))
     surface_sample=std::move(build_pipelines("surface",surface_source(),{"shade_surface_sample"})[0]);
+  const bool huang_stage=(shader_features()&SF_BSDF_HAIR_HUANG).any();
+  if(huang_stage&&(!pipeline_current(surface_huang_eval,"shade_surface_huang_eval")||!surface_huang_eval.value))
+    surface_huang_eval=std::move(build_pipelines("surface",surface_source(),{"shade_surface_huang_eval"})[0]);
+  if(huang_stage&&(!pipeline_current(surface_huang_sample,"shade_surface_huang_sample")||!surface_huang_sample.value))
+    surface_huang_sample=std::move(build_pipelines("surface",surface_source(),{"shade_surface_huang_sample"})[0]);
   if(select_stage&&(!pipeline_current(surface_light_select,"shade_surface_light_select")||!surface_light_select.value))
     surface_light_select=std::move(build_pipelines("surface",surface_source(),{"shade_surface_light_select"})[0]);
   // prepare_surface evaluates only the hit triangles' shaders: the SVM node regions no triangle shader reaches (the
@@ -261,6 +266,7 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   // The light entries built with the background-sample variant leave such records to this entry.
   if(surface_light_background.value)dispatch(p,uint32_t(work),surface_light_background,workgroup("shade_surface_light_background"));
   if(triangle_stage)dispatch(p,uint32_t(work),surface_light_triangle,workgroup("shade_surface_light_triangle"));
+  if(huang_stage)dispatch(p,uint32_t(work),surface_huang_eval,workgroup("shade_surface_huang_eval"));
   dispatch(p,uint32_t(work),surface_connect,workgroup("connect_surface_light"));
   // integrate_surface_ao (AO_SHADOW: fast GI's additive mode or the AO pass): its own entry after the
   // direct light, for compiler pressure (wavefront_surface.wgsl connect_surface_ao).
@@ -277,7 +283,9 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
       surface_passes=std::move(build_pipelines("surface",surface_source(),{"shade_surface_passes"})[0]);
     dispatch(p,uint32_t(work),surface_passes,workgroup("shade_surface_passes"));
   }
+  if(huang_stage)dispatch(p,uint32_t(work),surface_huang_sample,workgroup("shade_surface_huang_sample"));
   if(sample_stage)dispatch(p,uint32_t(work),surface_sample,workgroup("shade_surface_sample"));
+  if(huang_stage)dispatch(p,uint32_t(work),surface_huang_eval,workgroup("shade_surface_huang_eval"));
   dispatch(p,uint32_t(work),surface,workgroup("shade_surface"));
   // integrator_shade_surface's MNEE cleanup (wavefront_mnee.wgsl), caustic scenes only.
   if(data.integrator.use_caustics){
@@ -295,7 +303,7 @@ void WebGPUDevice::enqueue_light_nee(int work,const DeviceKernelArguments &args)
   require(args.types[0]==DeviceKernelArguments::POINTER&&args.sizes[0]==sizeof(device_ptr),"Invalid light NEE pointer argument");
   device_ptr indices;std::memcpy(&indices,args.values[0],sizeof(indices));require(indices%4==0,"Unaligned light NEE indices");
   std::array<uint32_t,32> p{};p[1]=n;p[2]=uint32_t(indices);p[17]=error_word;if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_points,"WebGPU light NEE currently requires triangle or static curve primitives");
+  validate_points();
   validate_curves();
   require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU light NEE optional integration features not implemented");
   validate_shadow_linking();
@@ -348,7 +356,6 @@ void WebGPUDevice::enqueue_displace(int work,const DeviceKernelArguments &args){
   std::array<uint32_t,32> p{};p[1]=count;p[3]=offset;p[17]=error_word;
   p[2]=pointer(0,(size_t(offset)+count)*sizeof(KernelShaderEvalInput));p[4]=pointer(1,(size_t(offset)+count)*3*sizeof(float));
   {uint32_t miss=pointer(2,4);uint32_t zero=0;upload(miss,&zero,4);}
-  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU displacement currently requires triangle primitives");
   // Runs during scene preparation, before any integrator state exists (p[7] stays 0).
   p[6]=constants.at("data");p[18]=globals.at("shaders");
   require(remaining(p[18])%sizeof(KernelShader)==0,"Invalid displacement shader table");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));

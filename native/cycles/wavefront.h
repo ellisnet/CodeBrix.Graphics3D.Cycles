@@ -45,6 +45,9 @@ std::string shader_data_layout();std::string shader_data_source();std::string sv
 // Curves: appended to the GPU descriptors only in scenes with curves (closest.cpp scene_tables), so every other
 // scene uploads the same descriptors as before; CPU references and the scene exchange see them as scene tables.
 #define CBC_CURVE_TABLES(X) X(curves,KernelCurve) X(curve_keys,float4) X(prim_type,int)
-#define CBC_SCENE_TABLES(X) CBC_SCENE_CORE_TABLES(X) CBC_LIGHT_TREE_TABLES(X) CBC_CURVE_TABLES(X)
+// Points and particles: appended after the curve descriptors only in scenes with points or a Particle Info node.
+#define CBC_POINT_TABLES(X) X(points,float4) X(points_shader,uint)
+#define CBC_PARTICLE_TABLES(X) X(particles,KernelParticle)
+#define CBC_SCENE_TABLES(X) CBC_SCENE_CORE_TABLES(X) CBC_LIGHT_TREE_TABLES(X) CBC_CURVE_TABLES(X) CBC_POINT_TABLES(X) CBC_PARTICLE_TABLES(X)
 
 #define CBC_DEVICE_TABLES(X) X(image_info,KernelImageInfo) X(image_bounds,uint2)

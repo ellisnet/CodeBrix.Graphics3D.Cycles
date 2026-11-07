@@ -129,6 +129,9 @@ CyclesScene : IDisposable, IAsyncDisposable                     (sealed)
     T CreateLight<T>() where T : LightNode
     HairNode CreateHair(ReadOnlySpan<float> xyz, ReadOnlySpan<float> radii, ReadOnlySpan<uint> firstKeys,
                         CurveShape shape = Ribbon, ShaderNode shader = null)
+    PointCloudNode CreatePointCloud(ReadOnlySpan<float> xyz, ReadOnlySpan<float> radii,
+                        ShaderNode shader = null)
+    ParticleSystemNode CreateParticleSystem(ReadOnlySpan<Particle> particles)
     MeshNode CreateMesh(ReadOnlySpan<float> xyz, ReadOnlySpan<uint> indices,
                         ShaderNode shader = null)
     ObjectNode CreateObject(GeometryBaseNode geometry, Transform3x4? transform = null)
@@ -349,7 +352,15 @@ Hand-maintained conveniences on a few generated classes:
   HairNode.SetCurves(ReadOnlySpan<float> xyz, ReadOnlySpan<float> radii,
     ReadOnlySpan<uint> firstKeys) (one radius per key, first key of each curve;
     set curve attributes after it), HairNode.SetShape(CurveShape),
-    scene.SetCurveSubdivisions(0..4) (2^n ribbon sections per segment)
+    scene.SetCurveSubdivisions(0..4) (2^n ribbon sections per segment),
+    HairNode.SetMotionKeys(uint steps, ReadOnlySpan<float> xyz,
+    ReadOnlySpan<float> radii = default) / ClearMotionKeys()   deformation motion
+  PointCloudNode.SetPoints(ReadOnlySpan<float> xyz, ReadOnlySpan<float> radii)
+    (one radius per point; set point attributes after it; the Shader socket picks
+    a material per point), PointCloudNode.SetMotion(uint steps, xyz, radii)
+    (time-ordered, the center step equal to the points) / RemoveMotion()
+  ParticleSystemNode.SetParticles(ReadOnlySpan<Particle>): what the Particle Info
+    node reads through ObjectNode.ParticleSystem and ObjectNode.ParticleIndex
   MeshNode.SetTriangles(ReadOnlySpan<float> or ReadOnlySpan<Vector3>, indices)
   MeshNode.SetMotionPositions(uint steps, ReadOnlySpan<float> or
   ReadOnlySpan<Vector3>) / ClearMotionPositions()   deformation motion
@@ -609,8 +620,8 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
     render, but not together with volumes, MNEE caustics, the shadow catcher,
     light or shadow linking, data/denoising/AOV/cryptomatte passes, motion blur
     or holdout objects ("WebGPU subsurface scattering with ... not implemented");
-  - shader nodes the WebGPU device does not implement (for example the point
-    info and particle info nodes; the sky texture, IES texture and
+  - shader nodes the WebGPU device does not implement (the point info and
+    particle info nodes, the sky texture, IES texture and
     light falloff nodes, the AOV output nodes, the bump node, the Gabor texture (GaborTextureNode,
     2D and 3D), the displacement and vector displacement nodes and the bevel,
     raycast and radial tiling nodes are implemented, but tangent and
@@ -1175,17 +1186,26 @@ WHAT THIS PACKAGE DOES NOT DO
   ball, the three fisheye models, central cylindrical) with depth of field
   (disk or polygonal apertures, rotation, anamorphic ratio), every sampling
   pattern (tabulated Sobol, Sobol-Burley, the blue-noise patterns, scrambling
-  distance) and adaptive sampling render there. It does not yet render point clouds,
-  Christensen-Burley subsurface scattering or the hair BSDFs on the WebGPU
-  device. Static curves render there: ribbons, thick curves and thick linear
+  distance) and adaptive sampling render there. It does not yet render
+  Christensen-Burley subsurface scattering on the WebGPU device. The Hair BSDF
+  and the Principled Hair BSDF's Chiang and Huang models (all three colour
+  parametrizations, and the Huang model's elliptical cross-sections) render
+  there, on curves and on triangles; the Huang model is refused together with
+  caustics. Point clouds render there, with motion blur and everything else the
+  device has (PointCloudNode.SetPoints, SetMotion, CyclesScene.CreatePointCloud),
+  point attributes, the Point Info node (set the standard attribute point_random
+  for its Random output) and the Particle Info node (on any geometry; see
+  ParticleSystemNode.SetParticles). A shader with displacement method Both on a
+  point cloud or on curves fails with an error naming it, since Cycles' own kernels read
+  uninitialized values there; the Tangent output of the Geometry node fails on
+  points as it does on triangles. Curves render there: ribbons, thick curves and thick linear
   curves (HairNode.SetCurves, SetShape, CyclesScene.CreateHair and
   SetCurveSubdivisions) with the other closures, curve attributes and the Hair
   Info node (set the standard attributes curve_intercept, curve_length and
-  curve_random for its Intercept, Length and Random outputs). Curves are
-  refused by name on the WebGPU device with motion blur (any moving object in the
-  scene), transparent shadows, caustics, subsurface scattering, volumes, true
-  displacement, the motion pass, the Ambient Occlusion, Bevel and Raycast nodes
-  and dedicated light (shadow linked) kernels. Volumes of constant density and volumes whose density varies through
+  curve_random for its Intercept, Length and Random outputs), object and
+  deformation motion blur (HairNode.SetMotionKeys), the motion pass and
+  transparent shadows, in scenes with caustics, subsurface scattering, volumes, true
+  displacement, the Ambient Occlusion, Bevel and Raycast nodes and shadow linking. Volumes of constant density and volumes whose density varies through
   space (with or without biased ray marching) render there with direct light
   from point, spot, area, mesh, sun and world lights (also through the light tree) and shadows through them, the Henyey-Greenstein, Fournier-Forand,
   Rayleigh, Draine and Mie phase functions, the Volume Coefficients and

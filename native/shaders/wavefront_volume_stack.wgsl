@@ -21,7 +21,9 @@ fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32
         visits++;if(visits>1048576u){fail();return;}
         while(node>=0&&node!=0x76543210i){
             visits++;if(visits>1048576u){fail();return;}
-            let bounds=bounds_hit(pos,inv,tmin,tmax,u32(node),visibility);
+//#if CURVES else             let bounds=bounds_hit(pos,inv,tmin,tmax,u32(node),visibility);
+            let bounds=curve_node_hit(pos,dir,inv,tmin,tmax,u32(node),visibility);
+//#endif
             let a=table_at(G_bvh_nodes,u32(node),SIZE_bvh_nodes);
             node=bitcast<i32>(load_word(a+8u));var other=bitcast<i32>(load_word(a+12u));let mask=u32(bounds.x);
             if(mask==3u){if(bounds.z<bounds.y){let tmp=node;node=other;other=tmp;}
@@ -35,6 +37,14 @@ fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32
             if(first>=0){
                 if(end>table_count(G_prim_index)||u32(first)>end){fail();return;}
                 if(sp<0){fail();return;}node=stack[u32(sp)];sp--;
+//#if CURVES
+                // bvh/volume_all.h records triangles only: curve leaves are passed over.
+                if((kind&PRIMITIVE_CURVE)!=0u&&(kind&PRIMITIVE_LAMP)==0u){continue;}
+//#endif
+//#if POINTS
+                // volume.h, volume_all.h: the volume traversals ignore points.
+                if((kind&PRIMITIVE_POINT)!=0u){continue;}
+//#endif
                 if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return;}
                 for(var index=u32(first);index<end;index++){
                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
@@ -112,7 +122,18 @@ fn volume_boundary_backfacing(hit:NativeHit,direction:vec3<f32>)->bool{
     // integrator_intersect_next_kernel_after_shadow_catcher_volume: on to the catcher surface, sorted.
     if(catcher_path){
         let prim=state_word(S_isect_prim,index);if(prim==NONE){fail();return;}
-        let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
+//#if !CURVE_SHADOW_CATCHER
+//#if POINTS else         let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
+        let shader=point_or_triangle_shader(prim,state_word(S_isect_type,index))&SHADER_MASK;
+//#endif
+//#endif
+//#if CURVE_SHADOW_CATCHER
+        var shader=0u;
+        if((state_word(S_isect_type,index)&PRIMITIVE_CURVE)!=0u){shader=load_word(table_at(G_curves,prim,16u))&SHADER_MASK;}
+//#if POINTS else         else{shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;}
+        else{shader=point_or_triangle_shader(prim,state_word(S_isect_type,index))&SHADER_MASK;}
+//#endif
+//#endif
         if((load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags)&SC_SD_HAS_RAYTRACE)!=0u||p(15u)==0u){fail();return;}
         let key=shader+data_word(D_max_shaders)*(index/load_word(p(7u)+S_sort_partition_divisor));if(key>=p(15u)){fail();return;}
         let sort=load_word(p(7u)+S_sort_key_counter+DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE*POINTER_SIZE);atomicAdd(&heap[(sort+key*4u)/4u],1u);state_u32(S_path_shader_sort_key,index,key);

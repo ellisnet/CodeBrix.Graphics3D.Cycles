@@ -18,6 +18,8 @@ namespace ccl {
 // An active Principled thin film (thickness > 0.1) is a = thickness, b = film
 // IOR; zero otherwise. The thin-walled transmission lobe is a GGX record.
 // Sheen: roughness, a/b = LTC transformA/B, T = T and multiscatter = B.
+// Hair: T = T, alpha_x = roughness1, alpha_y = roughness2, a = offset. Chiang hair: multiscatter = sigma,
+// roughness = v, a = s, b = alpha, ior = eta, alpha_x = m0_roughness, alpha_y = h.
 struct SurfaceClosureRecord {
   packed_float3 weight;float sample_weight;packed_float3 N;uint kind;
   float roughness,a,b;packed_float3 multiscatter;

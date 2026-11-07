@@ -445,6 +445,77 @@ public sealed unsafe class CyclesHost : IDisposable
     }
 
     /// <summary>
+    /// Sets (or, with one step and no keys, removes) a hair geometry's deformation motion: time-ordered keys whose center
+    /// step equals the current keys bit for bit.
+    /// </summary>
+    /// <param name="node">A node created with type <c>hair</c>.</param>
+    /// <param name="steps">The odd number of time steps (3 to 129), or 1 to remove.</param>
+    /// <param name="positions">The flattened key positions, <c>steps * keys * 3</c> floats.</param>
+    /// <param name="radii">The flattened radii, <c>steps * keys</c> floats, or empty to keep the center radii at every step.</param>
+    /// <exception cref="ArgumentException">The positions are not triples or the radius count differs from the key count.</exception>
+    /// <exception cref="NativeFailure">The input is malformed (status 1) or the host refused the edit (status 5).</exception>
+    public void CurveMotion(Node node, uint steps, ReadOnlySpan<float> positions, ReadOnlySpan<float> radii)
+    {
+        if (positions.Length % 3 != 0 || (!radii.IsEmpty && positions.Length / 3 != radii.Length)) throw new ArgumentException("Complete keys with one radius each, or no radii, are required.");
+        fixed (float* xyz = positions)
+        fixed (float* radius = radii)
+            Finish(Native.CurveMotion(Handle, node.Value, steps, xyz, radii.IsEmpty ? null : radius, (ulong)(positions.Length / 3)));
+    }
+
+    /// <summary>
+    /// Replaces a point cloud's points and removes its motion. Every point starts on material 0. Further point
+    /// attributes follow this call, because their element counts derive from the points.
+    /// </summary>
+    /// <param name="node">A node created with type <c>pointcloud</c>.</param>
+    /// <param name="positions">Positions as x, y, z triples.</param>
+    /// <param name="radii">One radius per point.</param>
+    /// <exception cref="ArgumentException">The positions are not triples or the radius count differs from the point count.</exception>
+    public void Points(Node node, ReadOnlySpan<float> positions, ReadOnlySpan<float> radii)
+    {
+        if (positions.Length % 3 != 0 || positions.Length / 3 != radii.Length) throw new ArgumentException("Complete positions with one radius each are required.");
+        fixed (float* xyz = positions)
+        fixed (float* radius = radii)
+            Finish(Native.Points(Handle, node.Value, xyz, radius, (ulong)radii.Length));
+    }
+
+    /// <summary>
+    /// Sets a point cloud's deformation motion: <paramref name="steps"/> time-ordered sets of positions and radii,
+    /// the center set equal to the points bit for bit. One step with empty arrays removes the motion.
+    /// </summary>
+    /// <param name="node">A node created with type <c>pointcloud</c>.</param>
+    /// <param name="steps">The motion step count: 1 removes motion, otherwise odd from 3 to 129.</param>
+    /// <param name="positions">Time-ordered positions as x, y, z triples.</param>
+    /// <param name="radii">One time-ordered radius per position.</param>
+    /// <exception cref="ArgumentException">The positions are not triples or the radius count differs from the position count.</exception>
+    public void PointMotion(Node node, uint steps, ReadOnlySpan<float> positions, ReadOnlySpan<float> radii)
+    {
+        if (positions.Length % 3 != 0 || positions.Length / 3 != radii.Length) throw new ArgumentException("Complete positions with one radius each are required.");
+        fixed (float* xyz = positions)
+        fixed (float* radius = radii)
+            Finish(Native.PointMotion(Handle, node.Value, steps, xyz, radius, (ulong)radii.Length));
+    }
+
+    /// <summary>
+    /// Replaces a particle system's particles, which the Particle Info shader node reads through an object's
+    /// <c>particle_system</c> and <c>particle_index</c> sockets.
+    /// </summary>
+    /// <param name="node">A node created with type <c>particle_system</c>.</param>
+    /// <param name="particles">The particles.</param>
+    public void Particles(Node node, ReadOnlySpan<Particle> particles)
+    {
+        uint[] indices = new uint[particles.Length];
+        float[] values = new float[particles.Length * Particle.FloatCount];
+        for (int i = 0; i < particles.Length; i++)
+        {
+            indices[i] = particles[i].Index;
+            particles[i].CopyValuesTo(values.AsSpan(i * Particle.FloatCount, Particle.FloatCount));
+        }
+        fixed (uint* index = indices)
+        fixed (float* value = values)
+            Finish(Native.Particles(Handle, node.Value, index, value, (ulong)indices.Length));
+    }
+
+    /// <summary>
     /// Sets how a hair geometry's curves are rendered.
     /// </summary>
     /// <param name="node">A node created with type <c>hair</c>.</param>

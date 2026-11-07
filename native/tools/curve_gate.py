@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Static curves on the WebGPU device against the unmodified CPU kernels (Linux): the state gate (closest and opaque
-shadow traversal, curve shader data, BVH2's unaligned nodes on and off), the image gate and its command replays.
+"""Curves on the WebGPU device against the unmodified CPU kernels (Linux): the state gates (closest and opaque shadow
+traversal, curve shader data, motion, BVH2's unaligned nodes on and off; the baked transparency and shadow_all), the image
+gate and its command replays.
 Usage: python3 native/tools/curve_gate.py --output DIR [--skip-replay]."""
 import argparse
 import contextlib
@@ -26,8 +27,14 @@ def main():
     (out/'state.json').write_text(state.stdout)
     assert state.returncode == 0, state.stderr[-2000:]
     report['state'] = json.loads(state.stdout)
-    assert report['state']['passed'] and report['state']['refused'] == 5
+    assert report['state']['passed'] and report['state']['refused'] == 3
     assert all(r['curveHits'] > 1000 and r['decisionMismatches'] == 0 and r['shadowDecisionMismatches'] == 0 and r['shadowBlocked'] > 500 and r['shadowClear'] > 500 for r in report['state']['rows'])
+    shadow = subprocess.run([str(WORK/'cycles-build/bin/codebrix_cycles_curve_shadow_gate'), str(out/'shadow')], capture_output=True, text=True, timeout=1500)
+    (out/'shadow.stderr.txt').write_text(shadow.stderr)
+    (out/'shadow.json').write_text(shadow.stdout)
+    assert shadow.returncode == 0, shadow.stderr[-2000:]
+    report['shadow'] = json.loads(shadow.stdout)
+    assert report['shadow']['passed'] and all(r['paths'] > 1000 for r in report['shadow']['rows'])
     render = subprocess.run([str(WORK/'cycles-build/bin/codebrix_cycles_curve_render_gate'), str(out/'render')], capture_output=True, text=True, timeout=1500)
     (out/'render.stderr.txt').write_text(render.stderr)
     (out/'render.json').write_text(render.stdout)

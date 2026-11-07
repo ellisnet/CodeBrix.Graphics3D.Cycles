@@ -708,6 +708,67 @@ public class CyclesSceneTests
     }
 
     [Fact]
+    public void CreatePointCloud_validates_its_arrays_and_carries_point_attributes()
+    {
+        //Arrange
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(scene);
+        float[] positions = [0f, 0f, 0f, 1f, 0f, 0f];
+        float[] radii = [.1f, .2f];
+        PointCloudNode points = scene.CreatePointCloud(positions, radii);
+
+        //Act
+        Action partial = () => points.SetPoints(positions.AsSpan(0, 5), radii);
+        Action negative = () => points.SetPoints(positions, [.1f, -.2f]);
+        Action wrongMotion = () => points.SetMotion(3, [0f, 0f, 1f, 1f, 0f, 1f, 0f, 0f, 2f, 1f, 0f, 2f, 0f, 0f, 3f, 1f, 0f, 3f], [.1f, .2f, .1f, .2f, .1f, .2f]);
+        Action evenSteps = () => points.SetMotion(2, positions, radii);
+
+        //Assert
+        partial.Should().Throw<ArgumentException>();
+        negative.Should().Throw<NativeFailure>();
+        wrongMotion.Should().Throw<NativeFailure>();
+        evenSteps.Should().Throw<NativeFailure>();
+        points.Shader.Should().Equal(0, 0);
+        points.SetMotion(3, [0f, 0f, 1f, 1f, 0f, 1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, -1f, 1f, 0f, -1f], [.1f, .2f, .1f, .2f, .2f, .2f]);
+        points.RemoveMotion();
+        points.SetAttribute("point_random", AttributeValue.Float, AttributeDomain.Vertex, AttributeFlags.Standard, [.25f, .75f]);
+        Action wrongCount = () => points.SetAttribute("point_random", AttributeValue.Float, AttributeDomain.Vertex, AttributeFlags.Standard, [.25f]);
+        wrongCount.Should().Throw<NativeFailure>();
+    }
+
+    [Fact]
+    public void particle_info_reads_the_particle_an_object_names()
+    {
+        //Arrange
+        static FilmBuffer Render(float age, bool linked)
+        {
+            using CyclesScene scene = TestScenes.CreateCpuScene();
+            TestScenes.BuildTyped(scene);
+            ParticleSystemNode system = scene.CreateParticleSystem([new Particle(3, age, 1f, Vector3.One, Vector4.UnitW, .25f, Vector3.UnitX, Vector3.UnitY)]);
+            ShaderNode material = scene.CreateShader();
+            ParticleInfoNode info = material.Add<ParticleInfoNode>();
+            EmissionNode emission = material.Add<EmissionNode>();
+            material.Connect(info.AgeOutput, emission.StrengthInput);
+            material.Connect(emission.EmissionOutput, material.Output.SurfaceInput);
+            ObjectNode placed = scene.CreateObject(scene.CreatePointCloud([0f, 0f, 0f], [.5f], material));
+            if (linked) placed.ParticleSystem = system;
+            return scene.Render(new RenderSettings(16, 16, 1));
+        }
+
+        //Act
+        FilmBuffer young = Render(.5f, true);
+        FilmBuffer old = Render(2f, true);
+        FilmBuffer repeated = Render(.5f, true);
+        FilmBuffer unlinkedYoung = Render(.5f, false);
+        FilmBuffer unlinkedOld = Render(2f, false);
+
+        //Assert
+        young.Span.SequenceEqual(repeated.Span).Should().BeTrue();
+        young.Span.SequenceEqual(old.Span).Should().BeFalse();
+        unlinkedYoung.Span.SequenceEqual(unlinkedOld.Span).Should().BeTrue();
+    }
+
+    [Fact]
     public void SetMotionPositions_after_the_first_render_matches_a_scene_built_with_motion()
     {
         //Arrange
@@ -729,6 +790,44 @@ public class CyclesSceneTests
         late.ClearMotionPositions();
         Action malformed = () => edited.CreateMesh(SmallTriangle, TestScenes.TriangleIndices).SetMotionPositions(2, steps);
         malformed.Should().Throw<NativeFailure>();
+    }
+
+    [Fact]
+    public void SetMotionKeys_after_the_first_render_matches_a_scene_built_with_motion()
+    {
+        //Arrange
+        float[] keys = [.. Strand.Select(v => v - .1f), .. Strand, .. Strand.Select(v => v + .1f)];
+        float[] radii = [.. StrandRadii.Select(r => r * .5f), .. StrandRadii, .. StrandRadii.Select(r => r * 1.5f)];
+        using CyclesScene edited = TestScenes.CreateCpuScene();
+        using CyclesScene fresh = TestScenes.CreateCpuScene();
+        (CyclesScene scene, MeshNode _, ObjectNode _) = MotionBlurScene(edited);
+        HairNode late = scene.CreateHair(Strand, StrandRadii, StrandFirstKeys);
+        edited.CreateObject(late);
+        (CyclesScene other, MeshNode _, ObjectNode _) = MotionBlurScene(fresh);
+        HairNode built = other.CreateHair(Strand, StrandRadii, StrandFirstKeys);
+        fresh.CreateObject(built);
+        built.SetMotionKeys(3, keys, radii);
+        edited.Render(Small);
+
+        //Act
+        late.SetMotionKeys(3, keys, radii);
+        FilmBuffer a = edited.Render(Small);
+        FilmBuffer b = fresh.Render(Small);
+        late.ClearMotionKeys();
+        FilmBuffer cleared = edited.Render(Small);
+
+        //Assert
+        late.MotionSteps.Should().Be(3u);
+        a.Span.SequenceEqual(b.Span).Should().BeTrue();
+        a.Span.SequenceEqual(cleared.Span).Should().BeFalse();
+        Action wrongSteps = () => late.SetMotionKeys(2, keys);
+        wrongSteps.Should().Throw<NativeFailure>();
+        Action wrongCenter = () => late.SetMotionKeys(3, [.. keys.Reverse()]);
+        wrongCenter.Should().Throw<NativeFailure>();
+        Action partial = () => late.SetMotionKeys(3, keys[..^1]);
+        partial.Should().Throw<ArgumentException>();
+        Action wrongRadii = () => late.SetMotionKeys(3, keys, radii[..^1]);
+        wrongRadii.Should().Throw<ArgumentException>();
     }
 
     [Fact]

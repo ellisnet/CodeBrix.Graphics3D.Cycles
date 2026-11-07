@@ -5,9 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using CodeBrix.Graphics3D.Cycles.Bundles;
 using CodeBrix.Graphics3D.Cycles.Generated.Geometry;
+using CodeBrix.Graphics3D.Cycles.Generated.Scene;
 using CodeBrix.Graphics3D.Cycles.GltfRender;
 using CodeBrix.Graphics3D.Cycles.Rendering;
 using SilverAssertions;
@@ -115,6 +117,39 @@ public class OracleSceneBundleTests
     }
 
     [Fact]
+    public void point_and_particle_entries_render_bit_for_bit_like_the_typed_facade()
+    {
+        //Arrange
+        const string nodes = @"
+            {""handle"":""integrator"",""scene"":""integrator"",""set"":{""use_light_tree"":false}},
+            {""handle"":""system"",""create"":""particle_system"",""particles"":[{""index"":3,""age"":0.5,""lifetime"":1,""location"":[1,1,1],""rotation"":[0,0,0,1],""size"":0.25,""velocity"":[1,0,0],""angularVelocity"":[0,1,0]}]},
+            {""handle"":""points"",""create"":""pointcloud"",""points"":{""positions"":[-0.5,0,0,0.5,0,0],""radius"":[0.3,0.2],
+              ""attributes"":[{""name"":""point_random"",""value"":""float"",""domain"":""vertex"",""flags"":[""standard""],""data"":[0.25,0.75]}],
+              ""motion"":{""steps"":3,""positions"":[-0.5,0,0.1,0.5,0,0.1,-0.5,0,0,0.5,0,0,-0.5,0,-0.1,0.5,0,-0.1],""radius"":[0.3,0.2,0.3,0.2,0.4,0.2]}}},
+            {""handle"":""object"",""create"":""object"",""set"":{""geometry"":""points"",""particle_system"":""system"",""particle_index"":0}}";
+        string json = @"{""cbcOracleScene"":1,""id"":""t"",""render"":{""width"":32,""height"":24,""samples"":4},""colorConfig"":null,""images"":[],""nodes"":[" + nodes + "]}";
+        using CyclesScene loaded = TestScenes.CreateCpuScene();
+        using CyclesScene typed = TestScenes.CreateCpuScene();
+        loaded.Integrator.UseLightTree = false;
+        OracleSceneBundle.FromJson(json, new Dictionary<string, byte[]>()).Apply(loaded);
+        typed.Integrator.UseLightTree = false;
+        ParticleSystemNode system = typed.CreateParticleSystem([new Particle(3, .5f, 1f, Vector3.One, Vector4.UnitW, .25f, Vector3.UnitX, Vector3.UnitY)]);
+        PointCloudNode points = typed.CreatePointCloud([-.5f, 0f, 0f, .5f, 0f, 0f], [.3f, .2f]);
+        points.SetAttribute("point_random", AttributeValue.Float, AttributeDomain.Vertex, AttributeFlags.Standard, [.25f, .75f]);
+        points.SetMotion(3, [-.5f, 0f, .1f, .5f, 0f, .1f, -.5f, 0f, 0f, .5f, 0f, 0f, -.5f, 0f, -.1f, .5f, 0f, -.1f], [.3f, .2f, .3f, .2f, .4f, .2f]);
+        ObjectNode placed = typed.CreateObject(points);
+        placed.ParticleSystem = system;
+        placed.ParticleIndex = 0;
+
+        //Act
+        FilmBuffer a = loaded.Render(new RenderSettings(32, 24, 4));
+        FilmBuffer b = typed.Render(new RenderSettings(32, 24, 4));
+
+        //Assert
+        a.Span.SequenceEqual(b.Span).Should().BeTrue();
+    }
+
+    [Fact]
     public void hair_entries_render_bit_for_bit_like_the_typed_facade()
     {
         //Arrange
@@ -132,6 +167,36 @@ public class OracleSceneBundleTests
         typed.SetCurveSubdivisions(2);
         HairNode hair = typed.CreateHair([-.5f, -.5f, 0f, -.1f, -.1f, 0f, .1f, .1f, 0f, .5f, .5f, 0f], [.2f, .15f, .15f, .1f], [0u], CurveShape.Thick);
         hair.SetAttribute("curve_random", AttributeValue.Float, AttributeDomain.Curve, AttributeFlags.Standard, [.25f]);
+        typed.CreateObject(hair);
+
+        //Act
+        FilmBuffer a = loaded.Render(new RenderSettings(32, 24, 4));
+        FilmBuffer b = typed.Render(new RenderSettings(32, 24, 4));
+
+        //Assert
+        a.Span.SequenceEqual(b.Span).Should().BeTrue();
+    }
+
+    [Fact]
+    public void bundle_hair_motion_renders_like_the_typed_api()
+    {
+        //Arrange
+        string keys = "[-0.5,-0.5,0,-0.1,-0.1,0,0.1,0.1,0,0.5,0.5,0]";
+        float[] steps = [-.6f, -.5f, 0f, -.2f, -.1f, 0f, 0f, .1f, 0f, .4f, .5f, 0f, -.5f, -.5f, 0f, -.1f, -.1f, 0f, .1f, .1f, 0f, .5f, .5f, 0f, -.4f, -.5f, 0f, 0f, -.1f, 0f, .2f, .1f, 0f, .6f, .5f, 0f];
+        float[] radii = [.1f, .1f, .1f, .1f, .2f, .15f, .15f, .1f, .3f, .2f, .2f, .1f];
+        string list(float[] values) => "[" + string.Join(",", values.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]";
+        string nodes = @"{""handle"":""integrator"",""scene"":""integrator"",""set"":{""motion_blur"":true,""use_light_tree"":false}},{""handle"":""camera"",""scene"":""camera"",""set"":{""shuttertime"":0.6}},
+            {""handle"":""hair"",""create"":""hair"",""hair"":{""keys"":" + keys + @",""radius"":[0.2,0.15,0.15,0.1],""firstKey"":[0],""shape"":""thick"",""motion"":{""steps"":3,""keys"":" + list(steps) + @",""radius"":" + list(radii) + @"}}},
+            {""handle"":""object"",""create"":""object"",""set"":{""geometry"":""hair""}}";
+        string json = @"{""cbcOracleScene"":1,""id"":""t"",""render"":{""width"":32,""height"":24,""samples"":4},""colorConfig"":null,""images"":[],""nodes"":[" + nodes + "]}";
+        using CyclesScene loaded = TestScenes.CreateCpuScene();
+        using CyclesScene typed = TestScenes.CreateCpuScene();
+        OracleSceneBundle.FromJson(json, new Dictionary<string, byte[]>()).Apply(loaded);
+        typed.Integrator.UseLightTree = false;
+        typed.Integrator.MotionBlur = true;
+        typed.Camera.Shuttertime = .6f;
+        HairNode hair = typed.CreateHair([-.5f, -.5f, 0f, -.1f, -.1f, 0f, .1f, .1f, 0f, .5f, .5f, 0f], [.2f, .15f, .15f, .1f], [0u], CurveShape.Thick);
+        hair.SetMotionKeys(3, steps, radii);
         typed.CreateObject(hair);
 
         //Act

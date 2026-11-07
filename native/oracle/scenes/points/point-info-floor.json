@@ -1,0 +1,504 @@
+{
+ "cbcOracleScene": 1,
+ "id": "points/point-info-floor",
+ "description": "The Point Info node reached only on triangles, without points in the scene: zero output",
+ "sourceFixture": "native/oracle/scenes/author_points.py (point clouds in the sampling family room)",
+ "render": {
+  "width": 64,
+  "height": 48,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "info",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "pi",
+      "type": "point_info"
+     },
+     {
+      "handle": "sep",
+      "type": "separate_xyz"
+     },
+     {
+      "handle": "wrap",
+      "type": "math",
+      "set": {
+       "math_type": "absolute"
+      }
+     },
+     {
+      "handle": "size",
+      "type": "math",
+      "set": {
+       "math_type": "multiply",
+       "value2": 3.0
+      }
+     },
+     {
+      "handle": "rgb",
+      "type": "combine_color",
+      "set": {
+       "color_type": "rgb"
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "pi",
+      "Position",
+      "sep",
+      "Vector"
+     ],
+     [
+      "sep",
+      "X",
+      "wrap",
+      "Value1"
+     ],
+     [
+      "wrap",
+      "Value",
+      "rgb",
+      "Red"
+     ],
+     [
+      "pi",
+      "Radius",
+      "size",
+      "Value1"
+     ],
+     [
+      "size",
+      "Value",
+      "rgb",
+      "Green"
+     ],
+     [
+      "pi",
+      "Random",
+      "rgb",
+      "Blue"
+     ],
+     [
+      "rgb",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "filter_glossy": 0.0,
+    "caustics_reflective": true,
+    "caustics_refractive": true,
+    "sampling_pattern": "tabulated_sobol",
+    "scrambling_distance": 1.0
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.62,
+        0.65
+       ],
+       "roughness": 0.25
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "floor-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.5,
+        0.45,
+        0.35
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "glossy",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.25,
+       "color": [
+        0.85,
+        0.7,
+        0.4
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "glass",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.1,
+       "IOR": 1.45,
+       "color": [
+        0.9,
+        0.95,
+        0.95
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "matte",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.4,
+        0.55,
+        0.7
+       ],
+       "roughness": 0.4
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -3,
+     3,
+     4,
+     -3,
+     3,
+     4,
+     3,
+     3,
+     -4,
+     3,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -2,
+     -2,
+     4,
+     -2,
+     -2,
+     4,
+     -2,
+     3,
+     -4,
+     -2,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "info"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.3,
+        0.35,
+        0.42
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "use_mis": true,
+    "strength": [
+     110,
+     90,
+     70
+    ],
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     2.2,
+     0.0,
+     1.0,
+     0.0,
+     2.0,
+     0.0,
+     0.0,
+     1.0,
+     -2.0
+    ]
+   }
+  }
+ ],
+ "images": []
+}

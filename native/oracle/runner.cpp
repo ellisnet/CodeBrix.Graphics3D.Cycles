@@ -213,7 +213,48 @@ struct Loader {
       auto found = shapes.find(shape->string()); if (found == shapes.end()) fail("Unknown curve shape: " + shape->string());
       check(cbc_host_curve_shape(host, target, found->second), "cbc_host_curve_shape");
     }
+    // Optional deformation motion: steps time-ordered key arrays, the center step equal to "keys" (cbc_host_curve_motion).
+    if (auto motion = hair.find("motion")) {
+      std::vector<float> steps_xyz, steps_radius;
+      if (auto file = motion->find("keysFile")) steps_xyz = raw_array<float>(*file); else for (auto &v : motion->at("keys").items) steps_xyz.push_back(v.as_float());
+      if (auto file = motion->find("radiusFile")) steps_radius = raw_array<float>(*file); else if (auto values = motion->find("radius")) for (auto &v : values->items) steps_radius.push_back(v.as_float());
+      if (steps_xyz.size() % 3 || (!steps_radius.empty() && steps_radius.size() != steps_xyz.size() / 3)) fail("Curve motion keys must be complete triples with one radius each, or no radii");
+      check(cbc_host_curve_motion(host, target, uint32_t(motion->at("steps").as_int()), steps_xyz.data(), steps_radius.empty() ? nullptr : steps_radius.data(), steps_xyz.size() / 3), "cbc_host_curve_motion");
+    }
     attributes(target, hair);
+  }
+
+  // Point cloud geometry: positions (x, y, z triples) and radius, inline or as positionsFile and radiusFile; optional
+  // attributes and deformation motion ("motion": steps, positions and radius, time-ordered). shader is a socket in "set".
+  void points(CBCNode target, const Json &points) {
+    std::vector<float> xyz, radius;
+    if (auto file = points.find("positionsFile")) xyz = raw_array<float>(*file); else for (auto &v : points.at("positions").items) xyz.push_back(v.as_float());
+    if (auto file = points.find("radiusFile")) radius = raw_array<float>(*file); else for (auto &v : points.at("radius").items) radius.push_back(v.as_float());
+    if (xyz.size() % 3 || xyz.size() / 3 != radius.size()) fail("Point positions must be complete triples with one radius each");
+    check(cbc_host_points(host, target, xyz.data(), radius.data(), radius.size()), "cbc_host_points");
+    attributes(target, points);
+    if (auto motion = points.find("motion")) {
+      std::vector<float> positions, radii;
+      for (auto &v : motion->at("positions").items) positions.push_back(v.as_float());
+      for (auto &v : motion->at("radius").items) radii.push_back(v.as_float());
+      if (positions.size() % 3 || positions.size() / 3 != radii.size()) fail("Point motion must be complete triples with one radius each");
+      check(cbc_host_point_motion(host, target, uint32_t(motion->at("steps").as_int()), positions.data(), radii.data(), radii.size()), "cbc_host_point_motion");
+    }
+  }
+
+  // The particles of a particle system ("particles": index, age, lifetime, location, rotation, size, velocity, angularVelocity).
+  void particles(CBCNode target, const Json &particles) {
+    std::vector<uint32_t> index; std::vector<float> values;
+    for (auto &particle : particles.items) {
+      auto vector = [&](const char *name, size_t size) {
+        const auto &items = particle.at(name).items; if (items.size() != size) fail(std::string("Wrong particle vector size: ") + name);
+        for (auto &v : items) values.push_back(v.as_float());
+      };
+      index.push_back(uint32_t(particle.at("index").as_int()));
+      values.push_back(particle.at("age").as_float()); values.push_back(particle.at("lifetime").as_float());
+      vector("location", 3); vector("rotation", 4); values.push_back(particle.at("size").as_float()); vector("velocity", 3); vector("angularVelocity", 3);
+    }
+    check(cbc_host_particles(host, target, index.data(), values.data(), index.size()), "cbc_host_particles");
   }
 
   void mesh(CBCNode target, const Json &mesh) {
@@ -244,6 +285,8 @@ struct Loader {
     if (auto g = entry.find("graph")) graph(target, *g);
     if (auto m = entry.find("mesh")) mesh(target, *m);
     if (auto h = entry.find("hair")) hair(target, *h);
+    if (auto p = entry.find("points")) points(target, *p);
+    if (auto p = entry.find("particles")) particles(target, *p);
     apply(target, entry.find("set"), nullptr);
   }
 };

@@ -366,6 +366,12 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_HAIR_INFO
             case CV_NODE_HAIR_INFO:{size=SZ_HairInfo;}
 //#endif
+//#if SVM_NODE_POINT_INFO
+            case PT_NODE_POINT_INFO:{size=SZ_PointInfo;}
+//#endif
+//#if SVM_NODE_PARTICLE_INFO
+            case PI_NODE_PARTICLE_INFO:{size=SZ_ParticleInfo;}
+//#endif
 //#if SVM_NODE_WAVELENGTH
             case NODE_WAVELENGTH:{size=SZ_Wavelength;}
 //#endif
@@ -727,6 +733,16 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
 //#if SVM_NODE_HAIR_INFO
             case CV_NODE_HAIR_INFO:{
                 svm_hair_info(&s,node);
+            }
+//#endif
+//#if SVM_NODE_POINT_INFO
+            case PT_NODE_POINT_INFO:{
+                svm_point_info(&s,node);
+            }
+//#endif
+//#if SVM_NODE_PARTICLE_INFO
+            case PI_NODE_PARTICLE_INFO:{
+                svm_particle_info(&s,node);
             }
 //#endif
 //#if SVM_NODE_WAVELENGTH

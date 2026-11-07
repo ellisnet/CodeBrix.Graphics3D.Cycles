@@ -113,7 +113,7 @@ extern "C" int cbc_host_capabilities_json(CBCHost handle, char *json, uint64_t c
            "\"denoising_specular_albedo\",\"denoising_roughness\",\"denoising_depth\",\"denoising_backward_motion\",\"denoising_specular_motion\",\"volume_majorant\",\"volume_majorant_sample_count\",\"volume_direct\",\"volume_indirect\"],\"lightGroups\":true,"
            "\"renderTimeRejections\":[\"stereo cameras\",\"shadow linking\","
            "\"background light portals\",\"Christensen-Burley and thin-walled subsurface scattering\","
-           "\"point clouds\",\"curves with motion blur, transparent shadows, caustics, subsurface scattering, volumes, displacement, the motion pass or the Ambient Occlusion, Bevel and Raycast nodes\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
+           "\"point clouds with a Both displacement shader\",\"sparse or tiled images\",\"texture, colour and utility shader nodes on Adreno 650 GPUs\",\"ambient occlusion shader nodes and ambient occlusion shadow rays on Adreno 650 GPUs\"],\"reference\":\"native/DEVICE.md\"}";
 #endif
 #ifdef WITH_METAL
     // Cycles' own Metal device: the full upstream feature set, compiled at run

@@ -1,0 +1,923 @@
+{
+ "cbcOracleScene": 1,
+ "id": "points/ao-node-on-points",
+ "description": "The Ambient Occlusion node shading points",
+ "sourceFixture": "native/oracle/scenes/author_points.py (points added to ao/ao-node)",
+ "render": {
+  "width": 32,
+  "height": 24,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "filter_glossy": 0.0,
+    "ao_bounces": 0,
+    "ao_factor": 0.0,
+    "ao_distance": 1.0,
+    "ao_additive_factor": 0.0
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.62,
+        0.65
+       ],
+       "roughness": 0.25
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "floor-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.55,
+        0.32,
+        0.18
+       ],
+       "roughness": 0.31
+      }
+     },
+     {
+      "handle": "g",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.2,
+        0.5,
+        0.8
+       ],
+       "roughness": 0.35
+      }
+     },
+     {
+      "handle": "m",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.4
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "m",
+      "Closure1"
+     ],
+     [
+      "g",
+      "BSDF",
+      "m",
+      "Closure2"
+     ],
+     [
+      "m",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "ao-global",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "ao",
+      "type": "ambient_occlusion",
+      "set": {
+       "color": [
+        0.9,
+        0.7,
+        0.4
+       ],
+       "distance": 1.4,
+       "samples": 4,
+       "only_local": false,
+       "inside": false
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.2
+      }
+     },
+     {
+      "handle": "g",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.3,
+        0.4,
+        0.8
+       ],
+       "roughness": 0.3
+      }
+     },
+     {
+      "handle": "m",
+      "type": "mix_closure"
+     }
+    ],
+    "connect": [
+     [
+      "ao",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "ao",
+      "AO",
+      "m",
+      "Fac"
+     ],
+     [
+      "g",
+      "BSDF",
+      "m",
+      "Closure1"
+     ],
+     [
+      "d",
+      "BSDF",
+      "m",
+      "Closure2"
+     ],
+     [
+      "m",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "ao-local",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "ao",
+      "type": "ambient_occlusion",
+      "set": {
+       "color": [
+        0.9,
+        0.7,
+        0.4
+       ],
+       "distance": 0.9,
+       "samples": 6,
+       "only_local": true,
+       "inside": true
+      }
+     },
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "roughness": 0.2
+      }
+     },
+     {
+      "handle": "g",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.3,
+        0.4,
+        0.8
+       ],
+       "roughness": 0.3
+      }
+     },
+     {
+      "handle": "m",
+      "type": "mix_closure"
+     }
+    ],
+    "connect": [
+     [
+      "ao",
+      "Color",
+      "d",
+      "Color"
+     ],
+     [
+      "ao",
+      "AO",
+      "m",
+      "Fac"
+     ],
+     [
+      "g",
+      "BSDF",
+      "m",
+      "Closure1"
+     ],
+     [
+      "d",
+      "BSDF",
+      "m",
+      "Closure2"
+     ],
+     [
+      "m",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -3,
+     3,
+     4,
+     -3,
+     3,
+     4,
+     3,
+     3,
+     -4,
+     3,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -2,
+     -2,
+     4,
+     -2,
+     -2,
+     4,
+     -2,
+     3,
+     -4,
+     -2,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "floor-material"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor"
+   }
+  },
+  {
+   "handle": "center",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.8,
+     -2,
+     0,
+     0.8,
+     -2,
+     0,
+     0.8,
+     1.1,
+     0,
+     -0.8,
+     1.1,
+     0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "ao-global"
+    ]
+   }
+  },
+  {
+   "handle": "center-object",
+   "create": "object",
+   "set": {
+    "geometry": "center"
+   }
+  },
+  {
+   "handle": "box",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.5,
+     -0.5,
+     -0.5,
+     0.5,
+     -0.5,
+     -0.5,
+     -0.5,
+     0.5,
+     -0.5,
+     0.5,
+     0.5,
+     -0.5,
+     -0.5,
+     -0.5,
+     0.5,
+     0.5,
+     -0.5,
+     0.5,
+     -0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "indices": [
+     0,
+     2,
+     1,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     5,
+     7,
+     6,
+     0,
+     1,
+     4,
+     1,
+     5,
+     4,
+     2,
+     6,
+     3,
+     3,
+     6,
+     7,
+     0,
+     4,
+     2,
+     2,
+     4,
+     6,
+     1,
+     3,
+     5,
+     3,
+     7,
+     5
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "ao-local"
+    ]
+   }
+  },
+  {
+   "handle": "box-0",
+   "create": "object",
+   "set": {
+    "geometry": "box",
+    "tfm": [
+     1.0131671,
+     0.0,
+     -0.3504765,
+     -1.9,
+     0.0,
+     1.4,
+     0.0,
+     -1.3,
+     0.4283602,
+     0.0,
+     0.8289549,
+     -0.6
+    ]
+   }
+  },
+  {
+   "handle": "box-1",
+   "create": "object",
+   "set": {
+    "geometry": "box",
+    "tfm": [
+     0.9078692,
+     0.0,
+     0.5081782,
+     1.9,
+     0.0,
+     1.4,
+     0.0,
+     -1.3,
+     -0.6211067,
+     0.0,
+     0.742802,
+     -0.6
+    ]
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.3,
+        0.35,
+        0.42
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "use_mis": true,
+    "strength": [
+     110,
+     90,
+     70
+    ],
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     2.2,
+     0.0,
+     1.0,
+     0.0,
+     2.0,
+     0.0,
+     0.0,
+     1.0,
+     -2.0
+    ]
+   }
+  },
+  {
+   "handle": "points",
+   "create": "pointcloud",
+   "points": {
+    "positions": [
+     0.2859736,
+     -0.605125,
+     -0.5734053,
+     -0.0040711,
+     -0.4504823,
+     -0.5035207,
+     0.3432802,
+     -0.3147469,
+     -0.9510232,
+     0.293513,
+     -0.6062939,
+     -0.347039,
+     -0.1744412,
+     -0.4836232,
+     -0.7925997,
+     0.7683264,
+     -0.3798597,
+     -0.7551835,
+     -0.0162314,
+     -0.6291286,
+     -0.2570982,
+     0.097346,
+     -0.5384299,
+     -1.1672878,
+     0.4817192,
+     -0.7512634,
+     -0.38577,
+     -0.3268825,
+     -0.6736293,
+     -0.5516651,
+     0.6798379,
+     -0.6149024,
+     -1.1279596,
+     0.2018024,
+     -0.7854579,
+     -0.1430575,
+     -0.2363715,
+     -0.7397957,
+     -1.072589,
+     1.0321037,
+     -0.7130408,
+     -0.5302799,
+     -0.2389361,
+     -0.8413183,
+     -0.2607179,
+     0.3271177,
+     -0.8276281,
+     -1.3355504,
+     0.4446816,
+     -0.9194701,
+     -0.2186826,
+     -0.422722,
+     -0.9188445,
+     -0.7647686,
+     0.9403416,
+     -0.9371262,
+     -0.9882225,
+     0.019401,
+     -0.9866902,
+     -0.0993542,
+     -0.0778219,
+     -1.0180366,
+     -1.2655817,
+     0.5759959,
+     -1.0311652,
+     -0.4258552,
+     -0.3716591,
+     -1.0755762,
+     -0.4182115,
+     0.5891457,
+     -1.1388946,
+     -1.2776479,
+     0.3038768,
+     -1.1097451,
+     -0.1362419,
+     -0.333814,
+     -1.186128,
+     -0.9721516,
+     1.0116841,
+     -1.2814183,
+     -0.7084423,
+     -0.1329699,
+     -1.2099909,
+     -0.2017443,
+     0.1693104,
+     -1.3183457,
+     -1.2773391,
+     0.4761458,
+     -1.210483,
+     -0.3246866,
+     -0.3375823,
+     -1.3319024,
+     -0.6227312,
+     0.7141877,
+     -1.4722292,
+     -1.0325415,
+     0.1479311,
+     -1.3220884,
+     -0.2010956,
+     -0.0985168,
+     -1.4754798,
+     -1.0254487,
+     0.8009123,
+     -1.6477786,
+     -0.4673061,
+     -0.1214392,
+     -1.4553597,
+     -0.4141178,
+     0.3317447,
+     -1.6407231,
+     -1.0186619,
+     0.2963946,
+     -1.4118689,
+     -0.3935116,
+     -0.0316399,
+     -1.610297,
+     -0.6958691,
+     0.3772341,
+     -1.8276323,
+     -0.6645394
+    ],
+    "radius": [
+     0.099,
+     0.1737821,
+     0.1275642,
+     0.2023463,
+     0.1561285,
+     0.1099106,
+     0.1846927,
+     0.1384748,
+     0.2132569,
+     0.167039,
+     0.1208211,
+     0.1956033,
+     0.1493854,
+     0.1031675,
+     0.1779496,
+     0.1317317,
+     0.2065138,
+     0.1602959,
+     0.1140781,
+     0.1888602,
+     0.1426423,
+     0.2174244,
+     0.1712065,
+     0.1249886,
+     0.1997707,
+     0.1535528,
+     0.107335,
+     0.1821171,
+     0.1358992,
+     0.2106813,
+     0.1644634,
+     0.1182455,
+     0.1930276,
+     0.1468098,
+     0.1005919,
+     0.175374,
+     0.1291561,
+     0.2039382,
+     0.1577203,
+     0.1115024
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "ao-global",
+     "ao-local"
+    ],
+    "shader": [
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "handle": "points-a",
+   "create": "object",
+   "set": {
+    "geometry": "points",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     -0.4,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ]
+   }
+  },
+  {
+   "handle": "points-b",
+   "create": "object",
+   "set": {
+    "geometry": "points",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     0.5,
+     0.0,
+     1.0,
+     0.0,
+     0.4,
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ]
+   }
+  }
+ ],
+ "images": []
+}

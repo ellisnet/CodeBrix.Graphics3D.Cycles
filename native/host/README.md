@@ -3,7 +3,7 @@
 Copyright (c) 2026 Jeremy Ellis and contributors
 
 This maintained implementation exposes native Cycles scene authoring and Session
-control through 54 C functions in [cycles_host.h](cycles_host.h); the consumer
+control through 58 C functions in [cycles_host.h](cycles_host.h); the consumer
 reference (every export, struct, enum, error code, threading and ownership rule,
 the additive-only rule and the determinism statement) is [ABI.md](ABI.md). The .NET 10
 wrapper is in [src/CodeBrix.Graphics3D.Cycles](../../src/CodeBrix.Graphics3D.Cycles).
@@ -84,6 +84,7 @@ buffers, callbacks and queries.
 | Cameras, integrator, film | generic layer on the singletons (projection types, panorama type, `motion`, `shuttertime`, exposure, filters, bounces) |
 | Object/camera motion | generic `motion` transform-array sockets |
 | Deformation motion | `cbc_host_motion_positions` (position attribute motion steps; Cycles regenerates motion normals); refuses meshes already baked by the static BVH (`transform_applied`) |
+| Curve deformation motion | `cbc_host_curve_motion` (position and optional radius attribute motion steps) |
 | Deletion | `cbc_host_delete_node` with a reference scan over every scene node's node sockets; shader deletion drops its graph handles (Cycles keeps the shader allocated, as `Scene::delete_node(Shader)` does) |
 | Image updates | `cbc_host_image_update` swaps the `MemoryImageData` behind a handle and clears every bound slot's `ImageHandle`, so the next render re-adds the image |
 | Callbacks | `cbc_host_set_event_callback`; `Progress::set_update_callback` drives status/progress events under a per-host event mutex; a thread-local flag makes `boundary()` refuse reentry; nonzero return sets the cancellation flag polled by the existing cancel callback |

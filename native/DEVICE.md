@@ -3212,7 +3212,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     mode clears the table memory in `WebGPUDevice::host_alloc`, in that mode only. `image_textures` is a fourth place: `KernelImageTexture` is a stack copy, and the
     8 bytes of padding before `transform_3d` hold whatever was on the stack (on the tablet, a host pointer); the fingerprint masks them in its hash. The raycast byte has no such
     simple mask, so `surface-nodes/raycast` and `passes/with-surface-nodes-raycast` have no stable data hash; they are listed as always run. A scene with several images can also swap two images' ids and addresses
-    between runs (`assets/bench_01`: `svm_nodes` and the image uploads, with one or four workers), so such a scene is listed too, and `linux-gates/closed-volumes` on the two Android devices changes the order of its BVH, object and octree tables between runs. A normal render uploads all of these as it always did.
+    between runs (`assets/bench_01`: `svm_nodes` and the image uploads, with one or four workers), so such a scene is listed too, and `linux-gates/closed-volumes` on the two Android devices changes the order of its BVH, object and octree tables between runs. `volumes/tree-world` has no stable data hash on the HP either (the cause is not looked into), so it is listed too. A normal render uploads all of these as it always did.
 56. **The render scheduler's clock.** FACT: `RenderScheduler::calculate_num_samples_per_update` uses measured time, so outside volume scenes (one sample per
     update, `path_trace.cpp` overlay) the command sequence of a real render is not a fixed function of its inputs. The film does not depend on that grouping
     (per-sample random numbers; `repeatBitwiseIdentical`), apart from the known run-to-run atomic family. So no hash of a real render's whole command sequence
@@ -3227,6 +3227,35 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     component must be read as bits (`__float_as_uint`): -1 is a NaN pattern a float copy or conversion may not keep. The seed pass is not used (`set_use_seed(false)`, `pass_bake_seed` stays 0).
     The kernel's first sample at an exact triangle edge jitters too, and its position fast path adds per sample to a pass that is not divided, so the host bakes position at one sample.
     The CPU reference film per type (`native/tools/bake_gate.py` for known results) is the oracle.
+71. **Curve transparency is baked before the object flags reach a GPU.** FACT: `ObjectManager::apply_static_transforms` sets
+    `SD_OBJECT_TRANSFORM_APPLIED` in the host's `object_flag` array and `Hair::update_shadow_transparency` evaluates right after, before that
+    table is copied to a device. The CPU kernels read the host array (shared memory) and see the flag; a GPU device sees the previous upload,
+    transforms an already baked curve a second time, and bakes another colour wherever the shader depends on position (the curve shadow gate's
+    checker: 21 of 88 words on the baked curves until fixed). The WebGPU device now uploads the flag table again before the evaluation
+    (`enqueue_curve_shadow_eval`). INFERENCE, not run: the pinned GPU backends (Metal included) bake the stale way.
+76. **Hair closures on the reference devices: not run yet.** The Hair BSDF and the Chiang model pass on Linux in x64 arithmetic against the x64 CPU oracle (`native/tools/hair_gate.py`, `scenes/hair/`). `arm64-scalar` on Linux compiles and runs them; no ARM64 oracle exists for this family yet, so that says nothing about correctness there. The Adreno 730 has not compiled them: the code has no arrays of its own and its loops run through one body, but it inlines `family_exp` and `family_log_parts`, which do hold constant arrays.
+77. **Chiang hair at Coat 1: the independent image differs past the practical tolerance (reported, not refused).** Coat 1 puts the primary reflection's variance at its clamp (0.001, about 5e-7 after the fit), and Mp's exponent then scales a direction's last bit by about 2e6. With identical inputs the device matches the CPU kernels (the state gates and the stage-locked `hair_render` include Coat 1), but an independent CPU render reaches the hair a last bit away from the GPU's path and one film component differs by 2.6e-3 relative (`codebrix_cycles_hair_curve_render_gate OUT 15`, pixel 1499: 1.980320 against 1.985554). Coat 0.9 passes with a largest error of 2.1e-6. INFERENCE: the same holds, more weakly, for any Chiang lobe whose variance approaches the clamp; Roughness 0.002 passed. A decision for the maintainer: accept by the image rule as is, or refuse by name.
+78. **Hair BSDF transmission with a sharp azimuthal lobe: the same in an independent image (reported, not refused).** The pinned `bsdf_hair_transmission_eval` takes `fast_acosf` of a cosine near -1 at the lobe's peak, where its square root turns a last-bit difference of the direction into about 2.4e-4 rad, against a lobe as narrow as RoughnessV (clamped at 0.001). The state gates (identical inputs) pass at the clamp; `scenes/hair/transmission-rough` with RoughnessV 0.0001 or 0.01 differs past the practical tolerance in one or two film components (largest relative error 8.4e-4), with 0.1 and 0.3 it matches to 1.9e-6, so the committed scene keeps 0.1. A decision for the maintainer, with item 77.
+81. **Elliptical Huang hair on curves with transparent shadows.** `PrincipledHairBsdfNode::has_surface_transparent` is true for the
+    Huang model when the aspect ratio is not 1 or is linked, so with the shader's transparent shadow on (the default) the scene
+    evaluates the curve shadow transparency (`SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY`) and traces transparent shadows through
+    curves (section "Curves B: transparent shadows"). `scenes/hair/huang-default-shadows-thick` renders so on Linux within the
+    practical tolerance (no practical failure, 1,332 strict differences); the other Huang curve scenes set
+    `use_transparent_shadow` false. Not yet run on the reference devices (item 83).
+82. **Argument evaluation order in the pinned Huang closure.** `make_float2(lcg_step_float(&lcg), lcg_step_float(&lcg))` (the
+    microfacet samples of `bsdf_hair_huang_eval_residual` and `bsdf_hair_huang_sample`) leaves the order of the two draws to the
+    compiler. GCC, which builds both Linux CPU oracles, evaluates the second argument first, and the device follows it (it matches
+    the x64 oracle bit for bit in the random number position). A CPU kernel built with clang (macOS) or the Metal backend draws them
+    the other way round, so Huang films there differ from the Linux CPU films beyond the tolerance: a gold-standard disagreement,
+    reported, never tuned.
+83. **Huang hair on the reference devices: not run yet.** Linux x64 only. The arithmetic every branch and random number depends
+    on goes through the rounding adapters (section "Principled Hair, Huang model"), so `arm64-scalar` needs no ISA-specific code
+    in the closure; the tablet and the HP have not compiled the two entries.
+84. **The sampling family room with its glass sphere differs in one pixel.** `room.scene` of `author_sampling.py` with an empty
+    integrator block (8 samples, 64 x 48) gives 3 practical failures at x=34, y=20 (1.88 times the tolerance) on the base tree
+    as well, with or without hair; `scenes/hair/huang-triangles` leaves that sphere out.
+86. **Point clouds on the reference devices: not run yet.** Points pass on Linux in x64 arithmetic against the x64 CPU oracle (`native/tools/point_gate.py`, `scenes/points/`). `arm64-scalar` on Linux compiles and runs, judged against nothing here. No ARM64 oracle exists for this family, so that says nothing about correctness there. Checkpoint 1 and the ARM64 oracle films owe them.
+87. **The pinned kernel reads an uninitialized stack for a Both displacement shader on a point or a curve.** `svm_node_set_bump` loads `bump_state_offset + 4` and `+ 7`, which `svm_node_enter_bump_eval` only stores when `ATTR_STD_POSITION_UNDISPLACED` is found, and only meshes have it (`scene/mesh.cpp`). The WGSL stack check reports it (mask 8), so scenes with that combination are refused by name on the device; the CPU's result depends on what the stack held. Keep the refusal unless the kernel changes.
 
 Resolved, or closed under the device reference policy:
 - [54 of this list] **Volume phase sampling's normalize on scalar ARM64 (`volumes/scatter-mesh-light`): RESOLVED.** In the
@@ -4072,7 +4101,9 @@ render of any process, which compiles nothing either, is the same kind of render
 "no larger than the control" therefore holds both columns; the same-film verdict is recorded beside it in `status.json`.
 A film whose differences all meet the strict criterion counts as within the control: below it the largest difference is
 rounding noise (`linux-gates/broad-lighting-0` read 1.49e-8 against a pool of 1.12e-8 once, and the pool itself reaches
-1.49e-8 in other runs of the same binary). The comparison applies from the strict criterion up; the practical check is unchanged.
+1.49e-8 in other runs of the same binary). The comparison applies from the strict criterion up, to the largest difference only:
+the number of values past strict moves between runs of one binary (5 to 8 on `shadow-catcher/catcher-point-light`) and is not
+compared. The practical check is unchanged.
 
 **Device measurements.** Tablet (Adreno 730) and HP (Intel Xe, Mesa 24.0.8). Each cell: wall cold / warm s; compile cold / warm s;
 cache MB. Both devices keep this cache, including the HP, whose driver has no disk cache of its own. Warm compiled nothing:
@@ -6617,14 +6648,178 @@ differential apart, which amplified a last-bit offset to 8 times the practical t
 **Pinned behaviour kept:** `box_max` is `max(min(c0,c1),max(c2,c3))`; a ray nearly parallel to a segment leaves the
 pinned `u_outer0` and `u_outer1` uninitialized (`cylinder_intersect` returns true without setting them; WGSL holds zero).
 
-**Refused by name:** "WebGPU curves with motion blur not implemented", "WebGPU curves with transparent shadows not
-implemented", "WebGPU curves with caustics not implemented", "WebGPU motion pass with curves not implemented", "WebGPU curves
-with Ambient Occlusion, Bevel or Raycast shader nodes not implemented"; volumes, subsurface scattering, MNEE, displacement and
-dedicated light kernels keep their own strings; point clouds: "WebGPU closest (shadow, surface, light NEE) currently requires
-triangle or static curve primitives". The hair BSDF closures stay unimplemented.
+**Refused by name:** nothing for curves (the curve sections below); point clouds and the hair closures: their own sections
+below.
 
 **Authoring.** `cbc_host_curves`, `cbc_host_curve_shape`, `cbc_host_curve_subdivisions` and the standard attributes `curve_intercept`,
 `curve_length` and `curve_random` (`native/host/ABI.md`), the typed `HairNode` and `CyclesScene` methods, the `hair` scene entry.
+
+## Curves B: motion
+
+Object and deformation motion blur on every curve shape, the motion pass, and curve authoring for them. Region `CURVE_MOTION` (bit
+194): uploaded curve records with `PRIMITIVE_MOTION`. A scene without it compiles the static text.
+
+**Arithmetic.** `motion_curve_keys` (`curve_motion_key`, `wavefront_curve_math.wgsl`) uses the frames of `triangle_motion_time`, the same
+step and centre-first order as `motion_curve_keys_for_step`, and each product and sum of `(1-t)*a+t*b` passes the order word. Hair Info's
+thickness takes the same keys (`motion_curve_keys_linear`). With object motion, `curve_setup_from_ray` sets the shader data's motion
+transforms first (`shader_setup_object_transforms`, region `MOTION_OBJECT`, off in every static scene).
+
+**State gate** (`native/tools/curve_gate.py`, x64 arithmetic): deformation with 3 and 5 steps, radii per step, static curves beside
+moving ones, object motion, both together, BVH2 unaligned nodes on and off; ray times 0, 1, 0.5, 0.25, 0.75 and at random. Curve hit
+t, u, v and packed type and all curve ShaderData are bit-exact (ShaderData differences remain only on triangle hits, du[1] and dv[1]).
+
+**BVH.** `bvh/unaligned.cpp` fits no unaligned box around deforming curves: a scene of deforming curves only has no unaligned nodes;
+static curves in the same scene still do. Motion leaves bound the curve over all steps.
+
+**`SceneParams::num_bvh_time_steps`.** FACT: its default is 0, which is what the WebGPU device supports, and no host path sets it. It only
+splits BVH leaves by time (`prim_time`, `use_bvh_steps`): a build choice that trades memory for traversal speed. Refused by name, "WebGPU
+curves with BVH time steps not implemented", for a caller that reaches `KernelData` without the host.
+
+**Motion pass.** `curve_motion_data` (`primitive_motion_data_without_camera`): the linear centre position between the segment's keys, the
+steps' `mix` of the segment's keys, the object inverse for a two-step attribute. Only `FILM_MOTION` modules with curves carry it.
+
+**Authoring.** `cbc_host_curve_motion` (time-ordered keys, centre equal to the current keys, radii per step or null for the centre
+radii), `HairNode.SetMotionKeys` and `ClearMotionKeys`, `CyclesHost.CurveMotion`, the `hair` entry's `motion` block in scenes and bundles.
+
+## Curves B: transparent shadows
+
+Transparent shadows through curves, as the pinned kernels do them: nothing recorded, the baked transparency multiplied in during the
+traversal. Region `CURVE_SHADOW` (bit 195): curves and `integrator.transparent_shadows`. `trace_shadow_all`'s text without the bit is unchanged.
+
+**Baking.** `DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY` (`shader_eval_curve_shadow_transparency`, shadow module; `enqueue_curve_shadow_eval`,
+`shadow.cpp`) runs for `Hair::update_shadow_transparency` before the BVH build. `shader_setup_from_curve`: the thick basis whatever the shape, the centre keys,
+time 0.5. The kernel's feature mask leaves out the Light Path node's depths (zero; ray depth 1 for the shadow visibility) and the raytrace nodes.
+`rgb_to_rgbe` runs exactly (`curve_rgbe`): half-away `roundf` for the overflow test, half-to-even for the channels (`_mm_round_ps` and `vrndnq_f32`). A word can read as
+a NaN float: it is moved and read as bits. The curve tables are bound by `curve_records`, since `have_curves` is not yet reliable that early. The object flag table is
+uploaded again first (open item 71).
+
+**Traversal.** `bvh_shadow_all_anyhit_filter`: an opaque shader or the hit limit ends the ray; a curve hit multiplies `curve_shadow_transparency` (`intersection_find_attribute`,
+`rgbe_to_rgb`, `(1-u)*f0+u*f1`) into the path's throughput and is not recorded; below 0.001 the ray is opaque. No attribute: opaque. In these modules the hit limit counts
+`SD_HAS_ONLY_VOLUME` hits as the kernel does (not counted, as distinct from the recorded count).
+
+**Entries.** With curves, transparent shadows intersect in their own entry, `intersect_shadow_all` (replay index 58): `intersect_shadow`
+holding both traversals, each with a curve intersection, reached 1,099,682 inlined bytes against the 940,000 B size guard. Split, the
+largest is 574,764 B (Intel: 30,133 instructions).
+
+**State gate** (`codebrix_cycles_curve_shadow_gate`, in `native/tools/curve_gate.py`): baked words and shadow-all results bit-exact on every shape, with transparent triangles beside the curves, the limit, the
+cutoff, the Light Path node and motion.
+
+## Curves B: curves with the other features
+
+Scenes that mix curves with caustics, subsurface scattering, volumes, the Ambient Occlusion, Bevel and Raycast nodes, true
+displacement and shadow linking render as the pinned kernels do. Where a pinned traversal ignores curves, so does this device:
+
+| Traversal (pinned) | Curves | Here |
+| --- | --- | --- |
+| `bvh/local.h` (subsurface walk, Bevel, AO and Raycast "only local") | unaligned nodes read, curve leaves passed over | `raytrace_traverse`, `ao_trace` (local) |
+| `bvh/volume_all.h` (volume stack) | unaligned nodes read, curve leaves passed over | `volume_all_hits` |
+| `scene_intersect_shadow` (AO node), `scene_intersect` (Raycast node) | curve hits, no per-primitive visibility | `ao_trace`, `raytrace_traverse` (global); Raycast hit data from `curve_setup_hit` |
+| MNEE probe rays (`scene_intersect`) | curve hits; a curve caster rejects the path (`SHADER_EVAL_EMPTY`) | the MNEE copy of the closest traversal (it already had the curve regions) |
+| shadow linking (`shadow_linking_pick_mesh_intersection`) | emissive curves are picked; no forward MIS on a curve | `intersect_dedicated_light`, `shade_dedicated_light`, `dedicated_light_tree_pdf` |
+
+The hit's shader is read from the curve record where a continuation reads it (`volume_after`; after a shadow catcher's background or
+volume when the catcher is a hair object, region `CURVE_SHADOW_CATCHER`, bit 197). Regions: `CURVE_RAYTRACE` (bit 196, curves with the AO,
+Bevel or Raycast node or subsurface scattering: unaligned nodes, curve leaves passed over, the AO node's curve hits), `CURVE_RAYCAST` (bit
+198, curves with the Raycast node: its curve hits and `curve_setup_hit`; kept apart so the subsurface walk, which only passes curves over, stays
+inside the Intel envelope: with the curve intersection inlined `intersect_subsurface` reached 62,571 instructions) and `TRAVERSAL_HELPERS` (the
+surface module's node tests and curve intersection, shared with MNEE: MNEE scenes keep their text). Displacement evaluates meshes only (hair has no true displacement), so it needed no change.
+
+**Displacement.** A true displacement shader on curves renders (`scenes/curves-b/displacement-on-curves`). Method Both on a curve is refused by
+name, "WebGPU curves with a Both displacement shader not implemented": `svm_node_enter_bump_eval` finds no undisplaced position (only meshes have
+one), saves no differential, and `svm_node_set_bump` reads those stack entries uninitialized, so the pinned CPU result is undefined (open item
+87 found the same for points; checked here with a Both shader on a tuft: the CPU renders, the WGSL stack check reports it).
+
+**Gates.** `native/tools/curve_mixed_gate.py` runs the AO, raytrace node, subsurface, volume boundary, MNEE and shadow linking state gates
+with `CODEBRIX_CYCLES_GATE_CURVES=1`: tufts of every shape in their fixtures (`curve_gate_tuft.h`). Scenes: `scenes/curves-b/` (caustics,
+subsurface, volumes, AO, Bevel, Raycast, displacement and shadow linking with curves).
+
+## Point clouds
+
+Scenes with points render on the WebGPU device through every traversal. Regions: `POINTS` (bit 206, any uploaded `points_shader` word),
+`POINTS_MOTION` (207, an object of type `PRIMITIVE_MOTION_POINT`), `SVM_NODE_POINT_INFO` (208), `SVM_NODE_PARTICLE_INFO` (209), each reached
+only by a scene that has them; `CURVES_OR_POINTS` covers what the kernel tests for a triangle or for "not a triangle" (`intersection_get_shader`
+and the forward MIS and ray offset guards). A scene without them compiles the same text as before and uploads the same descriptors:
+`CBC_POINT_TABLES` and `CBC_PARTICLE_TABLES` follow `CBC_CURVE_TABLES` in `scene_tables`, whose slots come along empty.
+
+**What BVH2 builds.** One reference per point (`BVHBuild::add_reference_points`), `PRIMITIVE_POINT` or, with motion, `PRIMITIVE_MOTION_POINT`,
+bounded by every motion step. `bvh2.cpp` packs a leaf as `lo, hi, visibility, prim_type[lo]`, in the 1-`int4` leaf format of triangles; leaves never
+mix primitive types (`BVHBuild::create_leaf_node` splits by `PRIMITIVE_INDEX`), so a leaf's fourth word gives the type of all its points and the WGSL
+reads no `prim_type` table. `prim_index` holds the global point index (`prim_offset` added) and `object.position_offset` is shifted by `-prim_offset`,
+so `points[position_offset + prim]` is the point (`geometry_attributes.cpp`), and `desc.offset + prim` its attribute; both offsets can be negative.
+`points_shader` is indexed by the global index. No per-point visibility test, as `traversal.h`. Only aligned BVH2 nodes unless curves are in the scene;
+the unaligned curve nodes mix freely. `use_bvh_steps` (the `prim_time` table) is refused: `SceneParams::num_bvh_time_steps` is 0 on every host path.
+
+**Traversals.** `traversal.h` and `shadow_all.h` treat points; `local.h`, `volume.h` and `volume_all.h` ignore them (`default: break`), so subsurface
+scattering, Bevel and AO with only local skip point leaves, and volume stack entry skips them. A subsurface closure on a point walks, finds nothing in
+its own object and ends the path. The Raycast node's scene traversal returns point hits. MNEE rejects a point caster (`mnee.h`), as a walk that ends.
+True displacement evaluates mesh vertices only, so a point cloud keeps its positions under it.
+
+**Arithmetic.** As the curves: every sum, difference and product in `wavefront_point.wgsl` and `wavefront_point_shader_data.wgsl` passes the order word,
+quotients and roots are correctly rounded, `float3 / float` follows `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`. The SSE `dot` is `_mm_dp_ps(a, b, 0x7f)`, whose
+`z + 0` decides the sign of a zero sum: a ray starting exactly at a point's centre gets `t = +0` on the oracle only with that sum; the scalar dot leaves it out. On
+Linux, in x64 arithmetic, every point hit's t, u, v and its ShaderData equal the CPU kernels bit for bit, static and moving (`native/tools/point_gate.py`). A
+point's `dPdu` and `dPdv` are zero, so `du` and `dv` are signed zeros: `point_differentials` keeps them.
+
+**Refused by name:** "WebGPU points with a Both displacement shader not implemented": `svm_node_enter_bump_eval` finds no `ATTR_STD_POSITION_UNDISPLACED` on a point,
+saves no differential, and `svm_node_set_bump` then reads stack entries that nothing wrote (item 87). "WebGPU BVH time steps not implemented". The Geometry node's Tangent output
+on a point reports error 16, as on a triangle (`primitive_tangent` is `normalize(0)` on a point, NaN on the oracle).
+
+**Authoring.** `cbc_host_points`, `cbc_host_point_motion`, `cbc_host_particles` and the standard attribute `point_random` (`native/host/ABI.md`), the typed
+`PointCloudNode`, `ParticleSystemNode` and `CyclesScene` methods, the `points` and `particles` scene entries.
+
+## Principled Hair, Huang model
+
+The Principled Hair BSDF's Huang model (`CLOSURE_BSDF_HAIR_HUANG_ID`, pinned `closure/bsdf_principled_hair_huang.h`) renders
+on the WebGPU device on curves and on triangles (the pinned kernel accepts it there, with `dPdu` as the strand direction and
+the frame aligned with the ray, whatever the aspect ratio), with all three colour parametrizations, elliptical cross-sections,
+the near field (camera rays whose strand covers more than a pixel) and the far field, and in mixes with other closures.
+Regions: `SVM_BSDF_HAIR_HUANG` (bit 204, also counted in `SF_BSDF_FAMILIES`, so the BSDF sample is its own entry as for the
+other families); it carries its own copy of what the node's models share (the colour parametrizations, `bessel_I0` and
+`longitudinal_scattering`).
+A scene without the closure compiles the same text as before.
+
+**Record.** `HuangHairBSDF` and `HuangHairExtra` share one closure record (`wavefront_hair_huang.wgsl` lists the fields); the
+extra slot the CPU takes from the end of the closure array (`closure_alloc_extra`) is allocated the same way and holds the
+closure's latest evaluation and sample. `extra->wi` is recomputed from the unchanged `sd.wi`, `extra->e2`
+from the aspect ratio, and the interval the evaluation writes into `extra->h` is passed to the two integrals it feeds.
+
+**Entries.** One evaluation is two Simpson integrals over the strand's width with up to 2,856 intervals at the closure's
+roughness floor of 0.001, each interval sampling microfacets through two interfaces. Inlined into `connect_surface_light`
+and `shade_surface` it compiled to 121,727 Intel backend instructions (and its sample into `shade_surface_sample` to 90,519),
+twice the 60,000 envelope. The closure therefore has two entries of its own: `shade_surface_huang_eval` runs before
+`connect_surface_light` for the sampled light's direction and again after `shade_surface_sample` for the other closures of
+the MIS sum; `shade_surface_huang_sample` runs before `shade_surface_sample` for a picked Huang closure. They store their
+results in the extra slot and the surface entries read them in the same places, so nothing else in those entries changes.
+The evaluation before `connect_surface_light` is speculative: its results and the random number position it reached
+(`sd->lcg_state`, kept in the stage record) are taken only where `connect_surface_light` reaches the closure. Inside the
+entries, the two interfaces of the residual integral and the three of the sample share one body each (one microfacet
+sampler, one arctangent pair, one absorption), and every helper runs its sums through one `rounded_add` body in a loop with
+an opaque bound.
+
+**Arithmetic.** Everything a branch or the random number position depends on is exact on every driver: directions,
+visibility tests, the interval and the Simpson points. Products pass `rounded_add` before they are summed (no fused
+multiply-add), quotients and roots are `rounded_divide` and `rounded_sqrt`, the arcs `trig_arc` and `trig_atan2_guarded`,
+`fast_sincosf` is the pinned polynomial through the same adapters, `tanf`, `expf`, `logf` and the TRRT direction's `cosf`
+are the double-float series rounded once, `lcg_step_float` is an integer conversion rounded to nearest even, and the energy
+table walks its eight corners with scalars. Where the pinned code calls libm's `sinf` or `cosf` only for a value (the
+absorption chords and `arc_length`), the device uses the `fast_sincosf` polynomial (within two units in the last place).
+There are no arrays and no data-dependent loop bounds above the constant 2,856. On Linux, in x64 arithmetic, the closure's
+setup, every evaluation and sample, its random number position, labels and the whole surface stage match the CPU kernels
+(`native/tools/hair_huang_gate.py`).
+
+**Pinned behaviour kept.** On total internal reflection `fresnel_dielectric` leaves the caller's `cos_theta_t` unset; every
+use of it is behind `T > 0`, and the device holds 0. `make_float2(lcg_step_float(..), lcg_step_float(..))` takes its two
+random numbers in the compiler's argument order: GCC, which builds the Linux CPU oracles (x64 and ARM64), evaluates the second
+argument first, and the device follows it. A CPU kernel built by another compiler draws them the other way round (open item 82).
+
+**Refused by name:** "WebGPU MNEE with the Huang model of the Principled Hair BSDF not implemented". An elliptical
+cross-section counts as transparent (`PrincipledHairBsdfNode::has_surface_transparent`): on curves with the shader's
+transparent shadow on, the scene evaluates the curve shadow transparency and traces transparent shadows through curves
+(open item 81).
+
+**With the Chiang model in one module.** The two models' shared record names (`SZ_PrincipledHairBsdfData` and the common
+`N_PrincipledHairBsdfData_*` fields) are emitted once: the Huang region leaves out, line by line, those that
+`SVM_BSDF_HAIR_PRINCIPLED` already holds (`svm_layout.cpp`), so a module with the Huang model only keeps its text.
 
 ## Subsurface scattering
 
@@ -6665,3 +6860,41 @@ radius channel) spheres, and the Subsurface Scattering node with the random walk
 Principled subsurface (`bsdf_thin_subsurface_setup`), and subsurface scattering with volumes (the volume stack update of
 `subsurface_scatter`), MNEE caustics, the shadow catcher, light or shadow linking, path guiding or denoising features,
 data, denoising, AOV or cryptomatte passes, motion blur, holdout objects, curves or points.
+
+## Hair closures (Hair BSDF, Principled Hair Chiang)
+
+The Hair BSDF node's reflection and transmission closures and the Principled Hair BSDF node's Chiang model, with its three
+colour parametrizations, render on the WebGPU device, on curves and on triangles. Regions: `SVM_BSDF_HAIR` (bit 200),
+`SVM_BSDF_HAIR_CHIANG` (201) and `SVM_BSDF_HAIR_PRINCIPLED` (what the Principled Hair node's models share in `svm/closure.h`:
+the record, the colour parametrizations). Both bits are in `SF_BSDF_FAMILIES`, so the sample has its own entry
+(`shade_surface_sample`). Code: `wavefront_svm_hair.wgsl`, `wavefront_hair.wgsl`. A scene with no hair closure compiles the same text.
+
+**Records** (`surface_closure.h`, no widening): Hair: `T`, `alpha_x` = roughness1, `alpha_y` = roughness2, `a` = offset. Chiang:
+`multiscatter` = sigma, `roughness` = v, `a` = s, `b` = alpha, `ior` = eta, `alpha_x` = m0_roughness, `alpha_y` = h.
+
+**On triangles** the pinned kernel accepts both. The Hair BSDF takes `T` from `dPdv` and drops the offset; Chiang works from `dPdu`
+and takes h from `Ng` as for a thick curve. The device does the same; `reflection-triangle`, `transmission-triangle` and
+`chiang-*-triangle` hold it.
+
+**Arithmetic.** The pinned arrays (`Ap`, `Ap_energy`, `angles`) are named fields, and its loops run through one body whose bound the
+compiler cannot see (`rounded_steps`), so the Chiang model inlines one Bessel series, one `logf` and one `expf` per Mp, and the
+colour parametrizations one `logf`. Sums pass the order word (`hair_add`, `chiang_add`: push word 31, always 0, as
+`wavefront_curve_math.wgsl` does), so no product fuses into them; with `rounded_add` instead the light entries passed the size guard.
+`expf`, `logf`, `atan2f` and `asinf` use the double-float adapters; `sinf` and `cosf` keep the reduced angle as a double-float pair
+(`hair_sincos`): `trig_sincos_wide` rounds it first and is one ulp from glibc for about a tenth of the arguments in [-7.5, 7.5]. The state
+gate counts each adapter against glibc 2.41 on 262,144 arguments (`libmCensus`): none is more than one ulp away. `tanf` is a double-float quotient rounded once: at a
+grazing `theta_i` the density divides by a cosine near zero, so one ulp of the angle shows in the pdf. `sinhf` is a series below 1
+and `0.5 (e - 1/e)` above; within two ulp of glibc's, it only scales Mp. With Chiang in the module the closure pick rounds
+`pick - partial` once (`surf_sample`): Chiang reads the rescaled `rand.z` through a logarithm, and a contracted difference moved the
+sampled direction by more than the tolerance; other scenes keep the old line.
+
+**A zero colour channel** gives an infinite sigma, on the CPU too; the channel's transmittance is then zero (`chiang-black-lane`).
+The state gates judge finite values only, so the fixture keeps its channels above zero.
+
+**Not tested together:** a Transparent BSDF on a curve shader asks for the curve shadow transparency kernel, which this section does
+not add, so hair closures with Transparent run on triangles only (`reflection-transparent-triangle`).
+
+**Gates.** `native/tools/hair_gate.py`: `hair_state` (bsdf_eval of every closure in 24 directions per path, half of them on the
+sampled lobes, and the pick, bsdf_sample and MIS for 24 random triples per path, on triangles and all three curve shapes, integers
+exact), `hair_svm` (closure records, typed sweeps), `hair_bounce` (the surface kernel's path state, film, queue counters),
+`hair_render` (stage-locked image), `hair_curve_render` (the curve image gate with these materials, with replays).

@@ -67,6 +67,9 @@ std::vector<ccl::SurfaceSvmRecord> original_surface_svm(ccl::DeviceScene &scene,
       if(c.type==CLOSURE_BSDF_DIFFUSE_TOON_ID||c.type==CLOSURE_BSDF_GLOSSY_TOON_ID){auto &p=*reinterpret_cast<const ToonBsdf*>(&c);r.a=p.size;r.b=p.smooth;}
       // Bssrdf (wavefront_svm_closures.wgsl): radius in multiscatter, albedo in T, anisotropy in a, ior, alpha in roughness.
       if(CLOSURE_IS_BSSRDF(c.type)){auto &p=*reinterpret_cast<const Bssrdf*>(&c);r.multiscatter=p.radius;r.T=p.albedo;r.a=p.anisotropy;r.ior=p.ior;r.roughness=p.alpha;}
+      // Hair: T, roughness1 and 2 in alpha_x and alpha_y, offset in a. Chiang: sigma in multiscatter, v in roughness, s in a, alpha in b, eta in ior, m0_roughness in alpha_x, h in alpha_y.
+      if(c.type==CLOSURE_BSDF_HAIR_REFLECTION_ID||c.type==CLOSURE_BSDF_HAIR_TRANSMISSION_ID){auto &p=*reinterpret_cast<const HairBsdf*>(&c);r.T=p.T;r.alpha_x=p.roughness1;r.alpha_y=p.roughness2;r.a=p.offset;}
+      if(c.type==CLOSURE_BSDF_HAIR_CHIANG_ID){auto &p=*reinterpret_cast<const ChiangHairBSDF*>(&c);r.multiscatter=p.sigma;r.roughness=p.v;r.a=p.s;r.b=p.alpha;r.ior=p.eta;r.alpha_x=p.m0_roughness;r.alpha_y=p.h;}
       if(c.type==CLOSURE_BSDF_SHEEN_ID){auto &p=*reinterpret_cast<const SheenBsdf*>(&c);
         r.roughness=p.roughness;r.a=p.transformA;r.b=p.transformB;r.T=p.T;r.multiscatter=p.B;}
     }

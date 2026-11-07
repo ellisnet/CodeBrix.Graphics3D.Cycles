@@ -192,7 +192,16 @@ std::string svm_layout(bool surface){
   source<<"//#endif\n//#if SVM_NODE_HAIR_INFO\n";
   SIZE(HairInfo);FIELD(HairInfo,info_type);FIELD(HairInfo,out_offset);
   constant("CV_NODE_HAIR_INFO",NODE_HAIR_INFO);constant("CV_INFO_CURVE_IS_STRAND",NODE_INFO_CURVE_IS_STRAND);constant("CV_INFO_CURVE_THICKNESS",NODE_INFO_CURVE_THICKNESS);constant("CV_INFO_CURVE_TANGENT_NORMAL",NODE_INFO_CURVE_TANGENT_NORMAL);constant("HI_PRIMITIVE_CURVE",PRIMITIVE_CURVE);
-  source<<"//#endif\n//#if CURVES\n";constant("CV_ATTR_ELEMENT_CURVE_KEY",ATTR_ELEMENT_CURVE_KEY);constant("CV_ATTR_ELEMENT_CURVE",ATTR_ELEMENT_CURVE);source<<"//#endif\n//#if SVM_NODES_ANY\n";
+  source<<"//#endif\n//#if CURVES\n";constant("CV_ATTR_ELEMENT_CURVE_KEY",ATTR_ELEMENT_CURVE_KEY);constant("CV_ATTR_ELEMENT_CURVE",ATTR_ELEMENT_CURVE);source<<"//#endif\n//#if SVM_NODE_POINT_INFO\n";
+  SIZE(PointInfo);FIELD(PointInfo,info_type);FIELD(PointInfo,out_offset);
+  constant("PT_NODE_POINT_INFO",NODE_POINT_INFO);constant("PT_INFO_POINT_POSITION",NODE_INFO_POINT_POSITION);constant("PT_INFO_POINT_RADIUS",NODE_INFO_POINT_RADIUS);
+  source<<"//#endif\n//#if SVM_NODE_PARTICLE_INFO\n";
+  SIZE(ParticleInfo);FIELD(ParticleInfo,info_type);FIELD(ParticleInfo,out_offset);
+  constant("PI_NODE_PARTICLE_INFO",NODE_PARTICLE_INFO);constant("PI_INFO_PAR_INDEX",NODE_INFO_PAR_INDEX);constant("PI_INFO_PAR_RANDOM",NODE_INFO_PAR_RANDOM);constant("PI_INFO_PAR_AGE",NODE_INFO_PAR_AGE);constant("PI_INFO_PAR_LIFETIME",NODE_INFO_PAR_LIFETIME);
+  constant("PI_INFO_PAR_LOCATION",NODE_INFO_PAR_LOCATION);constant("PI_INFO_PAR_SIZE",NODE_INFO_PAR_SIZE);constant("PI_INFO_PAR_VELOCITY",NODE_INFO_PAR_VELOCITY);constant("PI_INFO_PAR_ANGULAR_VELOCITY",NODE_INFO_PAR_ANGULAR_VELOCITY);
+  constant("PI_O_particle_index",offsetof(KernelObject,particle_index));constant("PI_P_index",offsetof(KernelParticle,index));constant("PI_P_age",offsetof(KernelParticle,age));constant("PI_P_lifetime",offsetof(KernelParticle,lifetime));
+  constant("PI_P_size",offsetof(KernelParticle,size));constant("PI_P_location",offsetof(KernelParticle,location));constant("PI_P_velocity",offsetof(KernelParticle,velocity));constant("PI_P_angular_velocity",offsetof(KernelParticle,angular_velocity));
+  source<<"//#endif\n//#if SVM_NODES_ANY\n";
   SIZE(Wavelength);FIELD(Wavelength,wavelength);FIELD(Wavelength,color_offset);
   SIZE(Wireframe);FIELD(Wireframe,in_size);FIELD(Wireframe,bump_filter_width);FIELD(Wireframe,use_pixel_size);FIELD(Wireframe,bump_offset);FIELD(Wireframe,out_fac_offset);
   source<<"//#endif\n";
@@ -339,6 +348,44 @@ std::string svm_layout(bool surface){
   constant("D_thin_film_table",offsetof(KernelData,tables.thin_film_table));constant("THIN_FILM_TABLE_SIZE",THIN_FILM_TABLE_SIZE);
   source<<"//#endif\n//#if SVM_BSDF_THIN_WALL\n";
   constant("CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID",uint32_t(CLOSURE_BSDF_THIN_GLASS_TRANSMISSION_ID));
+  source<<"//#endif\n//#if SVM_BSDF_HAIR\n";
+  // Hair BSDF node (svm/node_types.h SVMNodeHairBsdfData), closure kinds.
+#define FIELD(member) constant("N_HairBsdfData_" #member,offsetof(SVMNodeHairBsdfData,member))
+  constant("SZ_HairBsdfData",sizeof(SVMNodeHairBsdfData));FIELD(roughness1);FIELD(roughness2);FIELD(offset);FIELD(tangent_offset);
+#undef FIELD
+  constant("CLOSURE_BSDF_HAIR_REFLECTION_ID",uint32_t(CLOSURE_BSDF_HAIR_REFLECTION_ID));constant("CLOSURE_BSDF_HAIR_TRANSMISSION_ID",uint32_t(CLOSURE_BSDF_HAIR_TRANSMISSION_ID));
+  constant("HAIR_PRIMITIVE_CURVE",PRIMITIVE_CURVE);
+  source<<"//#endif\n//#if SVM_BSDF_HAIR_CHIANG\n";
+  constant("CLOSURE_BSDF_HAIR_CHIANG_ID",uint32_t(CLOSURE_BSDF_HAIR_CHIANG_ID));
+  constant("CHIANG_PRIMITIVE_CURVE",PRIMITIVE_CURVE);constant("CHIANG_PRIMITIVE_CURVE_RIBBON",PRIMITIVE_CURVE_RIBBON);
+  source<<"//#endif\n//#if SVM_BSDF_HAIR_PRINCIPLED\n";
+  // Principled Hair BSDF node, what its models share (svm/node_types.h SVMNodePrincipledHairBsdfData).
+#define FIELD(member) constant("N_PrincipledHairBsdfData_" #member,offsetof(SVMNodePrincipledHairBsdfData,member))
+  constant("SZ_PrincipledHairBsdfData",sizeof(SVMNodePrincipledHairBsdfData));
+  FIELD(parametrization);FIELD(color);FIELD(tint);FIELD(absorption_coefficient);FIELD(roughness);FIELD(random_roughness);FIELD(offset);FIELD(ior);FIELD(random);
+  FIELD(melanin);FIELD(melanin_redness);FIELD(coat);FIELD(radial_roughness);FIELD(random_color);FIELD(attr_random);
+#undef FIELD
+  constant("HAIR_PARAM_REFLECTANCE",uint32_t(NODE_PRINCIPLED_HAIR_REFLECTANCE));constant("HAIR_PARAM_PIGMENT_CONCENTRATION",uint32_t(NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION));
+  constant("HAIR_PARAM_DIRECT_ABSORPTION",uint32_t(NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION));
+  constant("FAMILY_HAIR_CHIANG",uint32_t(CLOSURE_BSDF_HAIR_CHIANG_ID));constant("FAMILY_HAIR_HUANG",uint32_t(CLOSURE_BSDF_HAIR_HUANG_ID));
+  source<<"//#endif\n";
+  // Principled Hair (svm/node_types.h SVMNodePrincipledHairBsdfData).
+  source<<"//#if SVM_BSDF_HAIR_HUANG\n";
+  // A module with the Chiang model too has the shared names from SVM_BSDF_HAIR_PRINCIPLED above (same values): SHARED leaves them out
+  // there, line by line, so a module with the Huang model only keeps this order.
+#define SHARED(...) source<<"//#if !SVM_BSDF_HAIR_PRINCIPLED\n";__VA_ARGS__;source<<"//#endif\n"
+#define FIELD(member) constant("N_PrincipledHairBsdfData_" #member,offsetof(SVMNodePrincipledHairBsdfData,member))
+  SHARED(constant("SZ_PrincipledHairBsdfData",sizeof(SVMNodePrincipledHairBsdfData)));
+  SHARED(FIELD(parametrization));SHARED(FIELD(color));SHARED(FIELD(tint));SHARED(FIELD(absorption_coefficient));SHARED(FIELD(roughness));SHARED(FIELD(random_roughness));
+  SHARED(FIELD(offset));SHARED(FIELD(ior));SHARED(FIELD(random));SHARED(FIELD(melanin));SHARED(FIELD(melanin_redness));SHARED(FIELD(coat));FIELD(aspect_ratio);
+  SHARED(FIELD(radial_roughness));SHARED(FIELD(random_color));FIELD(R);FIELD(TT);FIELD(TRT);SHARED(FIELD(attr_random));FIELD(attr_normal);
+#undef FIELD
+#undef SHARED
+  constant("HH_PARAM_DIRECT_ABSORPTION",NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION);constant("HH_PARAM_PIGMENT_CONCENTRATION",NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION);constant("HH_PARAM_REFLECTANCE",NODE_PRINCIPLED_HAIR_REFLECTANCE);
+  source<<"//#endif\n//#if SVM_BSDF_HAIR_HUANG\n";
+  constant("HH_CLOSURE_BSDF_HAIR_HUANG_ID",uint32_t(CLOSURE_BSDF_HAIR_HUANG_ID));constant("HH_PRIMITIVE_CURVE",PRIMITIVE_CURVE);constant("HH_PRIMITIVE_CURVE_RIBBON",PRIMITIVE_CURVE_RIBBON);
+  constant("HH_PATH_RAY_VISIBILITY_CAMERA",PATH_RAY_VISIBILITY_CAMERA);
+  constant("HH_D_ggx_glass_E",offsetof(KernelData,tables.ggx_glass_E));constant("HH_D_ggx_glass_inv_E",offsetof(KernelData,tables.ggx_glass_inv_E));
   source<<"//#endif\n";
   return source.str();
 }

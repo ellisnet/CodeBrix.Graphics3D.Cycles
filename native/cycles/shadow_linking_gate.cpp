@@ -49,6 +49,7 @@
 #include <map>
 #include <sstream>
 using namespace ccl;
+#include "curve_gate_tuft.h"
 using namespace wavefront_test;
 constexpr unsigned width=32,height=24,samples=16;
 constexpr size_t row_limit=3072,miss_limit=512,shadow_row_limit=4096;
@@ -335,8 +336,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     auto owner=Device::create(infos[0],stats,profiler,true);auto &device=require_webgpu_device(owner.get(),"shadow_linking_gate device creation");
     std::ofstream(out/"library.txt")<<device.gpu.library_path;std::ofstream(out/"adapter.txt")<<device.gpu.adapter_name;
     auto folder=out/("case-"+std::to_string(c));std::filesystem::create_directories(folder);const auto prefix=(folder/"run").string();Metrics metrics;const std::string key="case-"+std::to_string(c);
-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&device);const Fixture f=fixture(scene,c);Progress progress;scene.device_update(&device,progress);healthy(device);require(!progress.get_error(),"Shadow linking scene preparation failed");
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;gate_curve_params(params);
+    Scene scene(params,&device);const Fixture f=fixture(scene,c);gate_curve_tufts(scene);Progress progress;scene.device_update(&device,progress);healthy(device);require(!progress.get_error(),"Shadow linking scene preparation failed");
     auto &data=scene.dscene.data;
     require(bool(data.integrator.use_light_tree)==f.tree&&data.integrator.use_direct_light&&(data.kernel_features&KERNEL_FEATURE_SHADOW_LINKING),"Unexpected native shadow linking configuration");
     require(bool(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)==f.linking,"Unexpected native light linking configuration");

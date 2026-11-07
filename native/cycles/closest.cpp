@@ -11,8 +11,8 @@ static constexpr char closest_source[]=
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
 // Typed host copies are capability checks only; GPU kernels evaluate every
 // ray-time transform. Native arrays stay authoritative for rendering.
-// Motion support is limited to triangle deformation and triangle instances.
-// Animated emitters, curves, points and subdivision are outside this adapter;
+// Motion support covers triangle and curve deformation and triangle and curve instances.
+// Animated emitters, points and subdivision are outside this adapter;
 // transparent-shadow and volume combinations retain their separate guards.
 void WebGPUDevice::validate_geometry_motion() const{
   require(object_records.size()==object_flag_records.size(),"Invalid native object flag table");
@@ -21,16 +21,24 @@ void WebGPUDevice::validate_geometry_motion() const{
   if(motion!=globals.end())require(remaining(motion->second)%sizeof(DecomposedTransform)==0,"Invalid object motion table size");
   for(size_t i=0;i<object_records.size();i++){
     const auto flags=object_flag_records[i];const auto &object=object_records[i];
-    if(flags&SD_OBJECT_HAS_VERTEX_MOTION){
+    const bool curve=object.primitive_type&PRIMITIVE_CURVE;
+    if(curve){
+      // Curves deform through ATTR_STD_POSITION's steps (centre first, Hair::primitive_type); the motion pass without
+      // motion blur reads the steps beside static records.
+      const bool deforming=object.primitive_type&PRIMITIVE_MOTION;
+      if(deforming){moving=true;require(flags&SD_OBJECT_HAS_VERTEX_MOTION,"Invalid deforming curve flags/type");}
+      if(flags&SD_OBJECT_HAS_VERTEX_MOTION)require(object.num_geom_steps>=2&&object.numverts>0,"Invalid deforming curve steps/size");
+    }
+    else if(flags&SD_OBJECT_HAS_VERTEX_MOTION){
       // The motion pass without motion blur keeps a deforming mesh as plain triangles with its motion steps in the
       // position table (FILM_MOTION_DEFORM); with motion blur it is a motion-triangle mesh. The flags and type first
       // (the base order of these rejections), then the steps.
-      if(object.primitive_type==PRIMITIVE_TRIANGLE)require(film_motion_vectors(),"Invalid deforming triangle flags/type");
-      else{moving=true;require(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE,"Invalid deforming triangle flags/type");}
-      require(object.num_geom_steps>=2&&object.numverts>0&&object.numprims>0,"Invalid deforming triangle steps/size");
-    }else require(object.primitive_type!=PRIMITIVE_MOTION_TRIANGLE,"Invalid deforming triangle flags/type");
+      if(object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_POINT)require(film_motion_vectors(),"Invalid deforming triangle flags/type");
+      else{moving=true;require(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_POINT,"Invalid deforming triangle flags/type");}
+      require(object.num_geom_steps>=2&&object.numverts>0&&(object.numprims>0||(object.primitive_type&PRIMITIVE_POINT)),"Invalid deforming triangle steps/size");
+    }else require(object.primitive_type!=PRIMITIVE_MOTION_TRIANGLE&&object.primitive_type!=PRIMITIVE_MOTION_POINT,"Invalid deforming triangle flags/type");
     if(flags&SD_OBJECT_MOTION){
-      moving=true;require(object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_TRIANGLE,"WebGPU object motion requires triangle instances; animated emitters not implemented");
+      moving=true;require(curve||object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_TRIANGLE||object.primitive_type==PRIMITIVE_POINT||object.primitive_type==PRIMITIVE_MOTION_POINT,"WebGPU animated emitters (object motion on lights) not implemented");
       require(!(flags&SD_OBJECT_TRANSFORM_APPLIED),"Invalid applied object motion transform");
       require(object.num_tfm_steps>=2&&object.motion_offset<=count&&object.num_tfm_steps<=count-object.motion_offset,
               "Invalid native object motion range");
@@ -38,25 +46,41 @@ void WebGPUDevice::validate_geometry_motion() const{
   }
   require(bool(data.bvh.have_motion)==moving,"Native object motion flag/table mismatch");
 }
-// Static curves through the closest and opaque shadow traversals. What this device does not do with curves yet is
-// refused by name, before any dispatch. Volumes, subsurface scattering, MNEE, displacement and dedicated light kernels
-// keep their own refusals (volume.cpp, subsurface.cpp, mnee.cpp, surface.cpp, shadow_linking.cpp).
+// Curves through the closest and opaque shadow traversals, with object and deformation motion. What this device does not do with curves yet is
+// refused by name, before any dispatch.
 void WebGPUDevice::validate_curves(){
   if(!data.bvh.have_curves)return;
-  require(!data.bvh.have_motion,"WebGPU curves with motion blur not implemented");
-  require(!data.integrator.transparent_shadows,"WebGPU curves with transparent shadows not implemented");
-  require(!data.integrator.use_caustics,"WebGPU curves with caustics not implemented");
-  require(!film_motion_vectors(),"WebGPU motion pass with curves not implemented");
+  // SceneParams::num_bvh_time_steps: BVH leaves per time range (prim_time). No host path sets it (the default is off).
+  require(!data.bvh.use_bvh_steps,"WebGPU curves with BVH time steps not implemented");
   require(!curve_records.empty()&&globals.count("curve_keys")&&globals.count("prim_type"),"Missing native curve tables");
   require(remaining(globals.at("curve_keys"))%sizeof(float4)==0&&remaining(globals.at("prim_type"))%sizeof(int)==0,"Invalid native curve table size");
   require(data.bvh.curve_subdivisions>=1&&data.bvh.curve_subdivisions<=16,"Invalid native curve subdivisions");
-  const ShaderFeatures features=shader_features();
-  require(!(features&(SF_NODE_AO|SF_NODE_BEVEL|SF_NODE_RAYCAST)).any(),"WebGPU curves with Ambient Occlusion, Bevel or Raycast shader nodes not implemented");
   for(const KernelCurve &curve:curve_records){
     const int shape=curve.type&PRIMITIVE_CURVE;
     require(shape==PRIMITIVE_CURVE_RIBBON||shape==PRIMITIVE_CURVE_THICK||shape==PRIMITIVE_CURVE_THICK_LINEAR,"Invalid native curve type");
     require(curve.first_key>=0&&curve.num_keys>=1,"Invalid native curve key range");
-    require(size_t(uint32_t(curve.shader_id)&SHADER_MASK)<shader_records.size(),"Invalid native curve shader");
+    const size_t shader=uint32_t(curve.shader_id)&SHADER_MASK;
+    require(shader<shader_records.size(),"Invalid native curve shader");
+    // Displacement method Both on a curve: svm_node_enter_bump_eval finds no undisplaced position (only meshes have one), so it saves
+    // no differential, and svm_node_set_bump reads those stack entries uninitialized (the pinned kernel's result is undefined).
+    if(shader_records[shader].flags&SD_HAS_BUMP_FROM_DISPLACEMENT){std::vector<uint32_t> root{uint32_t(shader)};
+      require(!(svm_census(svm_node_words,shader_records.size(),&root).features&SF_BUMP_STATE).any(),"WebGPU curves with a Both displacement shader not implemented");}
+  }
+}
+// Point clouds through every traversal. The pinned local and volume traversals ignore points; everything else treats them.
+void WebGPUDevice::validate_points(){
+  if(!data.bvh.have_points)return;
+  // The trace-optimized motion BVH (prim_time), which no host path enables (SceneParams::num_bvh_time_steps).
+  require(!data.bvh.use_bvh_steps,"WebGPU BVH time steps not implemented");
+  if(point_shader_words.empty())return;
+  require(globals.count("points"),"Missing native point tables");
+  require(remaining(globals.at("points"))%sizeof(float4)==0,"Invalid native point table size");
+  for(const uint word:point_shader_words){
+    const size_t shader=word&SHADER_MASK;require(shader<shader_records.size(),"Invalid native point shader");
+    // Displacement method Both on a point: svm_node_enter_bump_eval finds no undisplaced position, so it saves no
+    // differential, and svm_node_set_bump reads those stack entries uninitialized (the pinned kernel's result is undefined).
+    if(shader_records[shader].flags&SD_HAS_BUMP_FROM_DISPLACEMENT){std::vector<uint32_t> root{uint32_t(shader)};
+      require(!(svm_census(svm_node_words,shader_records.size(),&root).features&SF_BUMP_STATE).any(),"WebGPU points with a Both displacement shader not implemented");}
   }
 }
 uint32_t WebGPUDevice::scene_tables(){
@@ -67,9 +91,14 @@ uint32_t WebGPUDevice::scene_tables(){
   CBC_SCENE_CORE_TABLES(TABLE) CBC_DEVICE_TABLES(TABLE) CBC_LIGHT_TREE_TABLES(TABLE)
   TABLE(ies,float)
   TABLE(volume_tree_nodes,KernelOctreeNode) TABLE(volume_tree_roots,KernelOctreeRoot) TABLE(volume_tree_root_ids,int) TABLE(volume_step_size,float)
-  if(data.bvh.have_curves){CBC_CURVE_TABLES(TABLE)}
+  // Curve records come before the BVH: the curve transparency evaluation runs before have_curves can be relied on.
+  // Curves, then points, then particles: each index is fixed, so the earlier groups come along (empty where absent).
+  const bool particles=(shader_features()&SF_NODE_PARTICLE_INFO).any(),points=data.bvh.have_points||particles;
+  if(data.bvh.have_curves||!curve_records.empty()||points){CBC_CURVE_TABLES(TABLE)}
+  if(points){CBC_POINT_TABLES(TABLE)}
+  if(particles){CBC_PARTICLE_TABLES(TABLE)}
 #undef TABLE
-  // The descriptor list grows with curves (a scene edit can add or remove them).
+  // The descriptor list grows with curves and points (a scene edit can add or remove them).
   if(intersection_tables&&descriptors.size()!=intersection_table_cache.size()){flush();release(intersection_tables);intersection_tables=0;intersection_table_cache.clear();}
   if(!intersection_tables)intersection_tables=allocate(descriptors.size()*4);
   if(descriptors!=intersection_table_cache){upload(intersection_tables,descriptors.data(),descriptors.size()*4);intersection_table_cache=descriptors;}
@@ -85,7 +114,7 @@ void WebGPUDevice::enqueue_closest(int work,const DeviceKernelArguments &args){
     require(address%4==0,"Unaligned closest pointer");return uint32_t(address);};
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[4]=pointer(1,false);p[17]=error_word;
   if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_points,"WebGPU closest currently requires triangle or static curve primitives");
+  validate_points();
   validate_curves();
   validate_geometry_motion();
   require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU closest optional integration features not implemented");

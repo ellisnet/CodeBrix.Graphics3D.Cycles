@@ -37,7 +37,27 @@ fn fp_mix3(a:vec3<f32>,b:vec3<f32>,t:f32)->vec3<f32>{return rounded_add3(a,t*rou
 // albedo): albedo = weight * (reflection * eval_reflection + transmission * eval_transmission).
 struct AlbedoParts {r:vec3<f32>,t:vec3<f32>,microfacet:bool}
 fn fp_albedo_parts(sd:SurfaceData,c:SvmClosure)->AlbedoParts{
-    var parts:AlbedoParts;parts.microfacet=fp_microfacet(c.kind);if(!parts.microfacet){return parts;}
+//#if SVM_BSDF_HAIR_CHIANG
+    var parts:AlbedoParts;parts.microfacet=fp_microfacet(c.kind);
+    if(c.kind==FP_CLOSURE_BSDF_HAIR_CHIANG_ID){parts.r=hair_chiang_albedo(sd,c);return parts;}
+//#endif
+//#if !SVM_BSDF_HAIR_CHIANG
+//#if SVM_BSDF_HAIR_HUANG else     var parts:AlbedoParts;parts.microfacet=fp_microfacet(c.kind);if(!parts.microfacet){return parts;}
+    var parts:AlbedoParts;parts.microfacet=fp_microfacet(c.kind);
+//#endif
+//#endif
+//#if SVM_BSDF_HAIR_HUANG
+    // bsdf_albedo: reflection and transmission alike (its one colour pass is the glossy one).
+    if(c.kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID){parts.microfacet=true;parts.r=huang_albedo(sd,c);parts.t=parts.r;return parts;}
+//#endif
+//#if SVM_BSDF_HAIR_CHIANG
+    if(!parts.microfacet){return parts;}
+//#endif
+//#if !SVM_BSDF_HAIR_CHIANG
+//#if SVM_BSDF_HAIR_HUANG
+    if(!parts.microfacet){return parts;}
+//#endif
+//#endif
     let cos_ni=rounded_dot(sd.wi,c.N);let model=u32(c.roughness);let glass=fp_glass(c.kind);
     var st:SvmState;let rough=rounded_sqrt(rounded_sqrt(c.alpha_x*c.alpha_y));
     let schlick=(model==4u&&!(c.a>0.1))||(model==0u&&glass);
@@ -72,7 +92,14 @@ fn fp_albedo_parts(sd:SurfaceData,c:SvmClosure)->AlbedoParts{
 }
 // bsdf_albedo with the lobe selection (eval_reflection, eval_transmission).
 fn fp_albedo(c:SvmClosure,parts:AlbedoParts,reflection:bool,transmission:bool)->vec3<f32>{
+//#if SVM_BSDF_HAIR_CHIANG
+    // weight * bsdf_hair_chiang_albedo, whatever the lobe selection.
+    if(c.kind==FP_CLOSURE_BSDF_HAIR_CHIANG_ID){return c.weight*parts.r;}
+//#endif
     if(!parts.microfacet){return c.weight;}
+//#if SVM_BSDF_HAIR_HUANG
+    if(c.kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID){return c.weight*parts.r;}
+//#endif
     return c.weight*(parts.r*select(0.0,1.0,reflection)+parts.t*select(0.0,1.0,transmission));
 }
 // bsdf_get_roughness_pass_squared (negative: no roughness).
@@ -121,6 +148,28 @@ struct MotionData {center:vec3<f32>,pre:vec3<f32>,post:vec3<f32>,error:bool}
 fn fp_motion_data(sd:SurfaceData)->MotionData{
     var m:MotionData;if(sd.object_id>=p(8u)/FPM_TRANSFORMS_PER_OBJECT){fail();m.error=true;return m;}
     let tfm=p(5u)+sd.object_id*FPM_TRANSFORMS_PER_OBJECT*FPM_TRANSFORM_BYTES;
+//#if CURVES
+    if((sd.primitive_type&PRIMITIVE_CURVE)!=0u){return curve_motion_data(sd,tfm);}
+//#endif
+//#if POINTS
+    // primitive_motion_data_without_camera for a point: the point's center (point_motion_center_location), and the
+    // pre and post positions of its motion steps, which the object motion pass transforms take.
+    if((sd.primitive_type&PRIMITIVE_POINT)!=0u){
+        let object=table_at(G_objects,sd.object_id,SIZE_objects);let offset=bitcast<i32>(load_word(object+O_position_offset));
+        var center=point_at(offset,sd.prim).xyz;
+        if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){center=surface_object_point(sd,center,false);}
+        var pre=center;var post=center;
+        if((sd.object_flag&SD_OBJECT_HAS_VERTEX_MOTION)!=0u){
+            let numverts=bitcast<i32>(load_word(object+O_numverts));
+            pre=point_at(offset+numverts,sd.prim).xyz;
+            if(load_half(object+O_num_geom_steps)>2u){post=point_at(offset+2*numverts,sd.prim).xyz;}
+            else{post=surface_transform_point(object+O_itfm,center);}
+        }
+        if(load_word(p(17u))!=0u){m.error=true;return m;}
+        m.center=center;m.pre=surface_transform_point(tfm+FPM_PRE*FPM_TRANSFORM_BYTES,pre);m.post=surface_transform_point(tfm+FPM_POST*FPM_TRANSFORM_BYTES,post);
+        return m;
+    }
+//#endif
 //#if FILM_MOTION_DEFORM else     m.center=sd.P;m.pre=surface_transform_point(tfm+FPM_PRE*FPM_TRANSFORM_BYTES,sd.P);m.post=surface_transform_point(tfm+FPM_POST*FPM_TRANSFORM_BYTES,sd.P);
     var pre=sd.P;var post=sd.P;
     if((sd.object_flag&SD_OBJECT_HAS_VERTEX_MOTION)!=0u){
@@ -138,6 +187,29 @@ fn fp_motion_data(sd:SurfaceData)->MotionData{
 //#endif
     return m;
 }
+//#if CURVES
+// primitive_motion_data_without_camera for curves: curve_motion_center_location (the linear position between the segment's
+// centre keys, in world space unless baked), primitive_motion_position (mix of the segment's keys in a motion step).
+fn curve_motion_data(sd:SurfaceData,tfm:u32)->MotionData{
+    var m:MotionData;let o=cv_order();
+    if(sd.prim>=table_count(G_curves)){fail();m.error=true;return m;}
+    let k0=load_word(table_at(G_curves,sd.prim,16u)+4u)+(sd.primitive_type>>PRIMITIVE_NUM_BITS);
+    let object=table_at(G_objects,sd.object_id,SIZE_objects);let position_offset=bitcast<i32>(load_word(object+O_position_offset));
+    let a=curve_key(position_offset,k0).xyz;let b=curve_key(position_offset,k0+1u).xyz;
+    var center=cvb3(cvb3(b*sd.u,o)+cvb3(a*cvb(1.0-sd.u,o),o),o);
+    if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){center=surface_object_point(sd,center,false);}
+    var pre=center;var post=center;
+    if((sd.object_flag&SD_OBJECT_HAS_VERTEX_MOTION)!=0u){
+        let numverts=i32(load_word(object+O_numverts));
+        pre=cv_mix4(curve_key(position_offset+numverts,k0),curve_key(position_offset+numverts,k0+1u),sd.u,o).xyz;
+        if(load_half(object+O_num_geom_steps)>2u){post=cv_mix4(curve_key(position_offset+2*numverts,k0),curve_key(position_offset+2*numverts,k0+1u),sd.u,o).xyz;}
+        else{post=surface_object_point(sd,post,true);}
+    }
+    if(load_word(p(17u))!=0u){m.error=true;return m;}
+    m.center=center;m.pre=surface_transform_point(tfm+FPM_PRE*FPM_TRANSFORM_BYTES,pre);m.post=surface_transform_point(tfm+FPM_POST*FPM_TRANSFORM_BYTES,post);
+    return m;
+}
+//#endif
 // project_reflection (Ray Tracing Gems chapter 32.4.3): the point seen in a planar reflector.
 fn fp_project_reflection(rP:vec3<f32>,rN:vec3<f32>,P:vec3<f32>)->vec3<f32>{
     let o=rounded_add3(P,-rP);let N=select(rN,-rN,rounded_dot(rN,o)<0.0);
@@ -292,7 +364,10 @@ fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
         // Transparency always passes through.
         if(c.kind==FP_CLOSURE_BSDF_TRANSPARENT_ID){transparent_albedo=rounded_add3(transparent_albedo,c.weight);continue;}
         let albedo=fp_albedo(c,fp_albedo_parts(sd,c),true,true);let weight=fp_average(albedo);
-        normal=rounded_add3(normal,c.N*weight);
+//#if SVM_BSDF_HAIR_HUANG else         normal=rounded_add3(normal,c.N*weight);
+        // safe_normalize(sd->dPdu) for the Huang model: its T holds that.
+        normal=rounded_add3(normal,select(c.N,c.T,c.kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID)*weight);
+//#endif
         // sqrtf(bsdf_get_specular_roughness_squared): 0 singular, alpha_x * alpha_y microfacet, else 1.
         var squared=1.0;if(c.kind==FP_CLOSURE_BSDF_RAY_PORTAL_ID){squared=0.0;}else if(fp_microfacet(c.kind)){squared=c.alpha_x*c.alpha_y;}
         let roughness=rounded_sqrt(squared);

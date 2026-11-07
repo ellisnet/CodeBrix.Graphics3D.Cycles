@@ -37,6 +37,10 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
   constexpr unsigned rejection_count=11;
 #endif
   const auto original=ds.data;
+  // The scene-table descriptors do not depend on the program under test. They are bound once, while the last
+  // supported program is installed: scene_tables reads the native census, which refuses the deferred Principled
+  // records by name (the host cases below), and each case here must still reach the WGSL handler.
+  const uint32_t tables=d.scene_tables();
   for(unsigned test=0;test<rejection_count;test++){
     ds.data=original;
     Program program(ds);program.weight(.2,.4,.6);
@@ -49,7 +53,7 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
     if(test==6)program.add(NODE_TEX_COORD,SVMNodeTexCoord{.texco_type=NODE_TEXCO_VOLUME_GENERATED,.out_offset=0});
     if(test==7)program.add(NODE_CLOSURE_HOLDOUT,SVMNodeClosureHoldout{.mix_weight_offset=7});
 #ifdef CBC_MICROFACET_FIXTURE
-    if(test==11)program.glossy(CLOSURE_BSDF_HAIR_REFLECTION_ID,.3f); // unsupported microfacet-record kind (Beckmann is implemented)
+    if(test==11)program.glossy(CLOSURE_BSDF_PHONG_RAMP_ID,.3f); // unsupported microfacet-record kind (Beckmann and hair are implemented)
     if(test==12)program.glossy(CLOSURE_BSDF_MICROFACET_GGX_ID,.3f);
     if(test==13)program.glossy(CLOSURE_BSDF_MICROFACET_GGX_ID,.3f,.5f,0,7);
     if(test==14||test==15){program.glossy(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID,.3f);
@@ -73,12 +77,12 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
     if(test==13)program.glass(.3f,1.5f,0,7);
     if(test==14){program.glass(.3f,1.5f);ds.data.tables.ggx_gen_schlick_ior_s=ds.lookup_table.size()-4095;}
     if(test==15)program.glass(.3f,1.5f,0,SVM_STACK_INVALID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
-    if(test==16)program.refraction(.3f,1.5f,SVM_STACK_INVALID,CLOSURE_BSDF_HAIR_TRANSMISSION_ID); // unsupported refraction-record kind (Beckmann is implemented)
+    if(test==16)program.refraction(.3f,1.5f,SVM_STACK_INVALID,CLOSURE_BSDF_PHONG_RAMP_ID); // unsupported refraction-record kind (Beckmann and hair are implemented)
 #endif
     program.install(ds);ds.data.max_closures=test==3?MAX_CLOSURE+1:MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
     device_vector<uint> out(&d,"invalid_surface_svm",MEM_READ_WRITE);out.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(out.data(),out.size(),0xa5a5a5a5u);out.copy_to_device();
     device_vector<uint> scratch(&d,"invalid_surface_closures",MEM_READ_WRITE);scratch.alloc(MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);scratch.zero_to_device();
-    std::array<uint32_t,32> p{};p[1]=1;p[4]=out.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=1;p[14]=d.scene_tables();p[17]=d.error_word;p[21]=ds.svm_nodes.device_pointer;p[22]=ds.svm_nodes.size()-(test==4||test==12?2:0);p[23]=scratch.device_pointer;
+    std::array<uint32_t,32> p{};p[1]=1;p[4]=out.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=1;p[14]=tables;p[17]=d.error_word;p[21]=ds.svm_nodes.device_pointer;p[22]=ds.svm_nodes.size()-(test==4||test==12?2:0);p[23]=scratch.device_pointer;
     if(test==8)p[23]=0;
     if(test==9)p[23]++;
     if(test==10)p[23]=d.arena_bytes-4;
@@ -110,7 +114,7 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
     Program program(ds);program.weight(.2,.4,.6);program.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_P,.out_offset=0});
     // Raycast, Bevel, Radial Tiling, the AOV nodes, Sky Texture, Light Falloff and IES are implemented:
     // still-unsupported opcodes and opcodes past the last one stand in.
-    const uint deferred[]={NODE_PARTICLE_INFO,NODE_NUM+2u,NODE_NUM,NODE_POINT_INFO};
+    const uint deferred[]={NODE_NUM+4u,NODE_NUM+2u,NODE_NUM,NODE_NUM+5u};
     if(test<4)program.words.push_back(deferred[test]);
     if(test==4||test==5)program.add(NODE_TEX_NOISE,SVMNodeTexNoise{.dimensions=test==4?5u:3u,.noise_type=NodeNoiseType(test==4?1:7),.normalize=1,.w=value(0),.scale=value(1),.detail=value(2),
       .roughness=value(.5f),.lacunarity=value(2),.offset=value(0),.gain=value(1),.distortion=value(0),.vector=0,.value_offset=3,.color_offset=SVM_STACK_INVALID});
@@ -122,7 +126,7 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
     if(test==11)program.add(NODE_TEX_WHITE_NOISE,SVMNodeTexWhiteNoise{.dimensions=0,.vector=stack_in3(0),.w=value(0),.value_offset=3,.color_offset=SVM_STACK_INVALID});
     if(test==12)program.add(NODE_MAP_RANGE,SVMNodeMapRange{.range_type=NodeMapRangeType(9),.value=stack_in(0),.from_min=value(0),.from_max=value(1),.to_min=value(0),.to_max=value(1),.steps=value(4),.result_offset=3});
     // The displacement and vector displacement nodes are implemented (SVM_NODE_DISPLACEMENT): two volume-only opcodes stand in.
-    const uint more[]={NODE_PRINCIPLED_VOLUME,NODE_VOLUME_COEFFICIENTS,NODE_PARTICLE_INFO,NODE_NUM+3u,NODE_NUM+1u,0xffffu,NODE_POINT_INFO};
+    const uint more[]={NODE_PRINCIPLED_VOLUME,NODE_VOLUME_COEFFICIENTS,NODE_NUM+6u,NODE_NUM+3u,NODE_NUM+1u,0xffffu,NODE_NUM+7u};
     if(test>=13&&test<20)program.words.push_back(more[test-13]);
     // Gabor is implemented: an invalid Gabor type reports 16.
     if(test==20)program.add(NODE_TEX_GABOR,SVMNodeTexGabor{.gabor_type=NodeGaborType(2),.orientation_3d=color(1,0,0),.scale=value(1),.frequency=value(2),.anisotropy=value(1),
@@ -569,6 +573,29 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         evaluate(d,scene,shader,layout,initial,small,"Typed Ashikhmin-Shirley "+std::to_string(typed++),m);
       }
 #endif
+#if CBC_BSDF_FIXTURE==4
+    unsigned typed=0;
+    // Hair BSDF records over the clamps, with and without a linked tangent; Chiang records over the three parametrizations,
+    // the setup's clamps and fits, the coat and the random factors, with a constant and a linked random input.
+    for(auto kind:{CLOSURE_BSDF_HAIR_REFLECTION_ID,CLOSURE_BSDF_HAIR_TRANSMISSION_ID})for(float u:{-1.f,0.f,.0005f,.2f,1.f,2.f})for(float v:{0.f,.3f,1.5f})for(float offset:{0.f,.2f,-.4f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=3,.value=make_float3(.2,.3,1)});
+      p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=kind,.mix_weight_offset=SVM_STACK_INVALID});
+      auto n=SVMNodeHairBsdfData{.roughness1=value(u),.roughness2=value(v),.offset=value(offset),.tangent_offset=SVMStackOffset(typed%2?3:SVM_STACK_INVALID)};
+      auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed hair "+std::to_string(typed++),m);
+    }
+    for(auto parametrization:{NODE_PRINCIPLED_HAIR_REFLECTANCE,NODE_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION,NODE_PRINCIPLED_HAIR_DIRECT_ABSORPTION})
+      for(float rough:{-1.f,0.f,.0005f,.1f,.5f,1.f,3.f})for(float radial:{.0005f,.3f,1.f})for(float coat:{-1.f,0.f,.4f,2.f})for(float random:{-1.f,.2f}){
+      Program p(ds);p.weight(.2,.5,.9);p.add(NODE_VALUE_F,SVMNodeValueF{.value=.37f,.out_offset=7});
+      p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=CLOSURE_BSDF_HAIR_CHIANG_ID,.mix_weight_offset=SVM_STACK_INVALID});
+      auto n=SVMNodePrincipledHairBsdfData{.parametrization=parametrization,.color=color(.8f,.4f,.01f),.tint=color(.3f,.9f,.5f),.absorption_coefficient=color(.5f,1.5f,3),
+        .roughness=value(rough),.random_roughness=value(typed%3?.4f:0),.offset=value(.05f),.ior=value(1.55f),.random=random<0?SVMInputFloat{(SVM_INPUT_STACK_OFFSET_MASK&~0xffu)|7u}:value(random),
+        .melanin=value(typed%4?.6f:1.5f),.melanin_redness=value(.3f),.coat=value(coat),.aspect_ratio=value(1),.radial_roughness=value(radial),.random_color=value(typed%5?.5f:2),
+        .R=value(1),.TT=value(1),.TRT=value(1),.attr_random=int(SVM_STACK_INVALID),.attr_normal=0};
+      auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());p.install(ds);
+      evaluate(d,scene,shader,layout,initial,small,"Typed Chiang "+std::to_string(typed++),m);
+    }
+#endif
 #if CBC_BSDF_FIXTURE==3
     unsigned typed=0;
     // Velvet records: sigma = saturate(param1), max 0.01 in the inverse.
@@ -668,6 +695,10 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #elif CBC_BSDF_FIXTURE==3
   for(uint kind:{uint(CLOSURE_BSDF_DIFFUSE_ID),uint(CLOSURE_BSDF_OREN_NAYAR_ID),uint(CLOSURE_BSDF_MICROFACET_GGX_ID),uint(CLOSURE_BSDF_TRANSPARENT_ID),uint(CLOSURE_BSDF_TRANSLUCENT_ID),
                  uint(CLOSURE_BSDF_ASHIKHMIN_VELVET_ID),uint(CLOSURE_BSDF_DIFFUSE_TOON_ID),uint(CLOSURE_BSDF_GLOSSY_TOON_ID)})
+    require(m.closures.count(kind),"Missing BSDF fixture closure family "+std::to_string(kind));
+#elif CBC_BSDF_FIXTURE==4
+  for(uint kind:{uint(CLOSURE_BSDF_DIFFUSE_ID),uint(CLOSURE_BSDF_OREN_NAYAR_ID),uint(CLOSURE_BSDF_MICROFACET_GGX_ID),
+                 uint(CLOSURE_BSDF_HAIR_REFLECTION_ID),uint(CLOSURE_BSDF_HAIR_TRANSMISSION_ID),uint(CLOSURE_BSDF_HAIR_CHIANG_ID)})
     require(m.closures.count(kind),"Missing BSDF fixture closure family "+std::to_string(kind));
 #else
   require(m.closures.size()==5,"Missing closure families");

@@ -144,16 +144,28 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
 //#if SVM_BSDF_TOON
         case CLOSURE_BSDF_DIFFUSE_TOON_ID,CLOSURE_BSDF_GLOSSY_TOON_ID:{bytes=SZ_ToonBsdfData;}
 //#endif
+//#if SVM_BSDF_HAIR
+        case CLOSURE_BSDF_HAIR_REFLECTION_ID,CLOSURE_BSDF_HAIR_TRANSMISSION_ID:{bytes=SZ_HairBsdfData;}
+//#endif
+//#if SVM_BSDF_HAIR_CHIANG
+        case CLOSURE_BSDF_HAIR_CHIANG_ID:{bytes=SZ_PrincipledHairBsdfData;}
+//#endif
 //#if SVM_BSDF_BECKMANN
         case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:{bytes=SZ_GlossyBsdfData;}
         case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:{bytes=SZ_RefractionBsdfData;}
         case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID:{bytes=SZ_GlassBsdfData;}
+//#endif
+//#if SVM_BSDF_HAIR_HUANG
+        case HH_CLOSURE_BSDF_HAIR_HUANG_ID:{bytes=SZ_PrincipledHairBsdfData;}
 //#endif
 //#if SUBSURFACE
         case SS_CLOSURE_BURLEY,SS_CLOSURE_RANDOM_WALK,SS_CLOSURE_RANDOM_WALK_LEGACY,SS_CLOSURE_RANDOM_WALK_SKIN:{bytes=SZ_BssrdfData;}
 //#endif
         default:{svm_error(s,16u);return;}}
     let data=svm_take(s,bytes);if((*s).error!=0u||mix_weight==0.0){return;}
+//#if SVM_BSDF_HAIR_HUANG
+    if(kind==HH_CLOSURE_BSDF_HAIR_HUANG_ID){svm_hair_huang(s,data,mix_weight,flag,visibility);return;}
+//#endif
 //#if SVM_BSDF_PRINCIPLED
     if(kind==CLOSURE_BSDF_PRINCIPLED_ID){svm_principled(s,data,mix_weight,flag,visibility);return;}
 //#endif
@@ -165,6 +177,12 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
 //#endif
 //#if SVM_BSDF_ASHIKHMIN_SHIRLEY
     if(kind==CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID){svm_ashikhmin_shirley(s,data,mix_weight,visibility);return;}
+//#endif
+//#if SVM_BSDF_HAIR
+    if(kind==CLOSURE_BSDF_HAIR_REFLECTION_ID||kind==CLOSURE_BSDF_HAIR_TRANSMISSION_ID){svm_hair(s,data,kind,mix_weight);return;}
+//#endif
+//#if SVM_BSDF_HAIR_CHIANG
+    if(kind==CLOSURE_BSDF_HAIR_CHIANG_ID){svm_hair_chiang(s,data,mix_weight);return;}
 //#endif
 //#if SVM_BSDF_VELVET
     if(kind==CLOSURE_BSDF_ASHIKHMIN_VELVET_ID){svm_velvet(s,data,mix_weight);return;}

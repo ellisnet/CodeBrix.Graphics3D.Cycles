@@ -22,6 +22,7 @@
 #include <iostream>
 #include <iomanip>
 using namespace ccl;
+#include "curve_gate_tuft.h"
 using namespace wavefront_test;
 #include "surface_fixture.h"
 struct Metrics {uint64_t floats=0,integers=0,strict=0,scatter=0,transmit=0,terminated=0,shadows=0;unsigned cases=0,rejected=0;float maximum_actual=0,maximum_expected=0;double maximum=0,ratio=0;std::string field;};
@@ -172,8 +173,8 @@ static unsigned rejections(WebGPUDevice &d,const std::vector<Field>&layout,const
     std::string reason;int work=1;
     switch(test){
       case 0:d.data.kernel_features&=~KERNEL_FEATURE_VOLUME;reason="without native volume feature";break;
-      case 1:d.data.bvh.have_curves=1;reason="static triangle boundaries";break;
-      case 2:d.data.bvh.have_motion=1;reason="static triangle boundaries";break;
+      case 1:d.data.bvh.have_curves=1;d.data.bvh.have_motion=1;reason="volumes with motion blur";break;
+      case 2:d.data.bvh.have_motion=1;reason="volumes with motion blur";break;
       case 3:d.data.kernel_features|=KERNEL_FEATURE_LIGHT_LINKING;reason="optional volume integration";break;
       case 4:d.data.film.pass_volume_majorant=PASS_UNUSED;reason="volume film pass";break;
       case 5:d.data.integrator.sampling_pattern=SAMPLING_PATTERN_SOBOL_BURLEY;reason="requires tabulated Sobol";break;
@@ -233,7 +234,7 @@ TaskScheduler::init(1);int status=0;try{
     // box (71), g = -0.999 (72) and rays that miss with the world volume (73).
     const bool tree=test>=66&&test<74;const bool tree_lamps=test>=67&&test<74;
     const unsigned dcase=test==74?24:tree?(test==68?25:test==69?26:24):near_delta?(test==51?25:test==52||test==55?26:test==64?28:test==65?27:24):shape||mesh_lights?24:!het&&!rm?test:test==33||test==39||test==41?24:test==34?25:test==35||test==40?26:test==36?28:0;
-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;gate_curve_params(params);Scene scene(params,&d);prepare(scene);gate_curve_tufts(scene);
     auto graph=make_unique<ShaderGraph>();auto absorption=graph->create_node<AbsorptionVolumeNode>();absorption->set_density(test==20?0:.04f);absorption->set_color(test==21?make_float3(1,1,1):make_float3(.8,.65,.4));
     auto scatter=graph->create_node<ScatterVolumeNode>();scatter->set_density(test==20?0:test==22?.00001f:test==74?.6f:.035f);scatter->set_color(test==21?make_float3(.8,0,.6):make_float3(.8,.7,.6));scatter->set_anisotropy(test==72?-.999f:near_delta?(test==53?.999f:-.999f):dcase>=24?direct_gs[dcase-24]:gs[test%10]);
     auto add=graph->create_node<AddClosureNode>();graph->connect(absorption->output("Volume"),add->input("Closure1"));graph->connect(scatter->output("Volume"),add->input("Closure2"));ShaderOutput *volume=add->output("Closure");

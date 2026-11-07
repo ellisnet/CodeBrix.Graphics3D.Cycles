@@ -1,0 +1,610 @@
+{
+ "cbcOracleScene": 1,
+ "id": "hair/huang-near-field",
+ "description": "Wide strands close to the camera: the near field model on camera rays",
+ "sourceFixture": "native/oracle/scenes/author_curves.py (curves in the sampling family room)",
+ "render": {
+  "width": 64,
+  "height": 48,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "filter_glossy": 0.0,
+    "caustics_reflective": true,
+    "caustics_refractive": true,
+    "sampling_pattern": "tabulated_sobol",
+    "scrambling_distance": 1.0
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "fov": 0.9,
+    "matrix": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     -7.0
+    ]
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.62,
+        0.65
+       ],
+       "roughness": 0.25
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "floor-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.5,
+        0.45,
+        0.35
+       ],
+       "roughness": 0.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "glossy",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.25,
+       "color": [
+        0.85,
+        0.7,
+        0.4
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "glass",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "roughness": 0.1,
+       "IOR": 1.45,
+       "color": [
+        0.9,
+        0.95,
+        0.95
+       ]
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "matte",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "n",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.4,
+        0.55,
+        0.7
+       ],
+       "roughness": 0.4
+      }
+     }
+    ],
+    "connect": [
+     [
+      "n",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -3,
+     3,
+     4,
+     -3,
+     3,
+     4,
+     3,
+     3,
+     -4,
+     3,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -2,
+     -2,
+     4,
+     -2,
+     -2,
+     4,
+     -2,
+     3,
+     -4,
+     -2,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "floor-material"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.3,
+        0.35,
+        0.42
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "emitter",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "use_mis": true,
+    "strength": [
+     110,
+     90,
+     70
+    ],
+    "used_shaders": [
+     "emitter"
+    ]
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     2.2,
+     0.0,
+     1.0,
+     0.0,
+     2.0,
+     0.0,
+     0.0,
+     1.0,
+     -2.0
+    ]
+   }
+  },
+  {
+   "handle": "huang",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "hair",
+      "type": "principled_hair_bsdf",
+      "set": {
+       "model": "Huang",
+       "parametrization": "Melanin concentration",
+       "melanin": 0.6,
+       "melanin_redness": 0.7,
+       "roughness": 0.3,
+       "aspect_ratio": 0.85
+      }
+     }
+    ],
+    "connect": [
+     [
+      "hair",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none",
+    "use_transparent_shadow": false
+   }
+  },
+  {
+   "handle": "tuft",
+   "create": "hair",
+   "hair": {
+    "keys": [
+     0.3829866,
+     -2.0,
+     0.5184717,
+     0.4129872,
+     -1.3127167,
+     0.5352527,
+     0.502989,
+     -0.6254335,
+     0.585596,
+     0.652992,
+     0.0618497,
+     0.6695015,
+     0.8629961,
+     0.7491329,
+     0.7869691,
+     -0.6277452,
+     -2.0,
+     0.6967809,
+     -0.6319439,
+     -1.2916138,
+     0.6626633,
+     -0.6445403,
+     -0.5832278,
+     0.5603105,
+     -0.6655341,
+     0.1251584,
+     0.3897224,
+     -0.6949255,
+     0.8335446,
+     0.1508992,
+     0.3387659,
+     -2.0,
+     -0.4299452,
+     0.3137293,
+     -1.5081348,
+     -0.4063908,
+     0.2386195,
+     -1.0162697,
+     -0.3357277,
+     0.1134365,
+     -0.5244045,
+     -0.2179557,
+     -0.0618197,
+     -0.0325393,
+     -0.053075,
+     0.3677727,
+     -2.0,
+     1.3948584,
+     0.4015709,
+     -1.2099261,
+     1.4011289,
+     0.5029657,
+     -0.4198523,
+     1.4199402,
+     0.671957,
+     0.3702215,
+     1.4512926,
+     0.9085447,
+     1.1602954,
+     1.4951859,
+     -1.06949,
+     -2.0,
+     -0.150109,
+     -1.0844113,
+     -1.4331847,
+     -0.1810766,
+     -1.1291752,
+     -0.8663694,
+     -0.2739795,
+     -1.2037818,
+     -0.299554,
+     -0.4288177,
+     -1.3082311,
+     0.2672613,
+     -0.6455912,
+     1.2826513,
+     -2.0,
+     0.0497676,
+     1.2664938,
+     -1.4021456,
+     0.0801086,
+     1.2180212,
+     -0.8042913,
+     0.1711315,
+     1.1372335,
+     -0.2064369,
+     0.3228364,
+     1.0241307,
+     0.3914174,
+     0.5352232,
+     -0.7709908,
+     -2.0,
+     1.6226443,
+     -0.7369672,
+     -1.2246616,
+     1.6177413,
+     -0.6348966,
+     -0.4493231,
+     1.6030326,
+     -0.4647788,
+     0.3260153,
+     1.5785179,
+     -0.226614,
+     1.1013538,
+     1.5441974
+    ],
+    "radius": [
+     0.35,
+     0.284375,
+     0.21875,
+     0.153125,
+     0.0875,
+     0.35,
+     0.284375,
+     0.21875,
+     0.153125,
+     0.0875,
+     0.35,
+     0.284375,
+     0.21875,
+     0.153125,
+     0.0875,
+     0.35,
+     0.284375,
+     0.21875,
+     0.153125,
+     0.0875,
+     0.35,
+     0.284375,
+     0.21875,
+     0.153125,
+     0.0875,
+     0.35,
+     0.284375,
+     0.21875,
+     0.153125,
+     0.0875,
+     0.35,
+     0.284375,
+     0.21875,
+     0.153125,
+     0.0875
+    ],
+    "firstKey": [
+     0,
+     5,
+     10,
+     15,
+     20,
+     25,
+     30
+    ],
+    "shape": "thick"
+   },
+   "set": {
+    "used_shaders": [
+     "huang"
+    ]
+   }
+  },
+  {
+   "handle": "tuft-object",
+   "create": "object",
+   "set": {
+    "geometry": "tuft"
+   }
+  }
+ ],
+ "images": []
+}

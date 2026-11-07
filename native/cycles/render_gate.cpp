@@ -237,7 +237,7 @@ static void judge_stages(const std::string &path,DeviceScene &scene,bool clay,co
     std::vector<IntegratorStateCPU> stage_input;std::vector<float> stage_film;if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){stage_input=expected;stage_film=wanted;}
 #endif
     oracle(kernel,scene,ids,expected,wanted);
-    if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids)if(expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)expected[i].path.shader_sort_key=(scene.tri_shader[expected[i].isect.prim]&SHADER_MASK)+max_shaders*(i/divisor);
+    if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids)if(expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)expected[i].path.shader_sort_key=(((expected[i].isect.type&PRIMITIVE_CURVE)?uint(scene.curves[expected[i].isect.prim].shader_id):scene.tri_shader[expected[i].isect.prim])&SHADER_MASK)+max_shaders*(i/divisor);
     m.paths+=ids.size();m.kernels[kernel]+=ids.size();
     delta();snap.unpack(order,actual);IntegratorQueueCounter counter{};take(&counter,sizeof(counter));
 #if defined(CBC_BSDF_FIXTURE)
@@ -442,7 +442,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
             if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){stage_input=expected;stage_film=wanted;velvet_input={&stage_input,&stage_film,&ids};}
 #endif
             oracle(kernel,scene.dscene,ids,expected,wanted);
-            if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids)if(expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)expected[i].path.shader_sort_key=(scene.dscene.tri_shader[expected[i].isect.prim]&SHADER_MASK)+data.max_shaders*(i/d.state.sort_partition_divisor);}
+            if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST||kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)for(int i:ids)if(expected[i].path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE)expected[i].path.shader_sort_key=(((expected[i].isect.type&PRIMITIVE_CURVE)?uint(scene.dscene.curves[expected[i].isect.prim].shader_id):scene.dscene.tri_shader[expected[i].isect.prim])&SHADER_MASK)+data.max_shaders*(i/d.state.sort_partition_divisor);}
             if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME&&!recorder)for(int i:ids){auto next=expected[i].path.queued_kernel;
               if(next==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST)m.volume_scatter++;
               else if(next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE||next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE||next==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND||next==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD)m.volume_transmit++;
@@ -492,7 +492,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     require(m.max_volume_bounds>=2,"Missing closed-volume boundary coverage");
     require((m.kernels[DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK]>0)==(std::getenv("CODEBRIX_VOLUME_CAMERA_INSIDE")!=nullptr),"Incorrect native camera-inside volume initialization coverage");
 #endif
-    require(m.max_bounce>=3,"Missing multiple bounce coverage");if(!asset){require(m.max_transparent>=1,"Missing transparent bounce coverage");require(m.shaders.size()>=10,"Insufficient compiled shader coverage");}
+    require(m.max_bounce>=3,"Missing multiple bounce coverage");if(!asset){
+#if CBC_BSDF_FIXTURE!=4
+      // The hair fixture has curves and no Transparent BSDF (hair_fixture.h).
+      require(m.max_transparent>=1,"Missing transparent bounce coverage");
+#endif
+      require(m.shaders.size()>=10,"Insufficient compiled shader coverage");}
     }}
   }
   require(gate_mismatches==0,std::to_string(gate_mismatches)+" mismatches (CODEBRIX_GATE_ALL_MISMATCHES)");

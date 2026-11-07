@@ -110,7 +110,9 @@ fn ao_trace(origin:vec3<f32>,direction:vec3<f32>,tmax:f32,time:f32,self_object:u
         }
         while(node>=0&&node!=0x76543210i){
             visits++;if(visits>1048576u){fail();return false;}
-            let bounds=ao_bounds_hit(pos,inv,tmax,u32(node),visibility);
+//#if CURVE_RAYTRACE else             let bounds=ao_bounds_hit(pos,inv,tmax,u32(node),visibility);
+            let bounds=curve_node_hit(pos,dir,inv,0.0,tmax,u32(node),visibility);
+//#endif
             let a=table_at(G_bvh_nodes,u32(node),SIZE_bvh_nodes);
             node=bitcast<i32>(load_word(a+8u));var other=bitcast<i32>(load_word(a+12u));let mask=u32(bounds.x);
             if(mask==3u){if(bounds.z<bounds.y){let tmp=node;node=other;other=tmp;}
@@ -124,11 +126,42 @@ fn ao_trace(origin:vec3<f32>,direction:vec3<f32>,tmax:f32,time:f32,self_object:u
             if(first>=0){
                 if(end>table_count(G_prim_index)||u32(first)>end){fail();return false;}
                 if(sp<0){fail();return false;}node=bitcast<i32>(load_word(stack_at+u32(sp)*4u));sp--;
+//#if POINTS
+                // scene_intersect_shadow treats points; scene_intersect_local (local.h) ignores them.
+                if((kind&PRIMITIVE_POINT)!=0u){
+                    if(local==NONE){
+                        for(var index=u32(first);index<end;index++){
+                            var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
+                            let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
+                            if(prim_object==self_object&&prim==self_prim){continue;}
+                            if(point_intersect(pos,dir,0.0,tmax,prim_object,prim,kind&PRIMITIVE_ALL,time).hit){return true;}
+                        }
+                    }
+                    continue;
+                }
+//#endif
+//#if !CURVE_RAYTRACE
                 if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&u32(first)!=end){fail();return false;}
+//#endif
+//#if CURVE_RAYTRACE
+                let curve_leaf=(kind&PRIMITIVE_CURVE)!=0u&&(kind&PRIMITIVE_LAMP)==0u;
+                if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&!curve_leaf&&u32(first)!=end){fail();return false;}
+//#endif
                 for(var index=u32(first);index<end;index++){
                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
                     if(local!=NONE&&prim_object!=local){continue;}
                     let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
+//#if CURVE_RAYTRACE
+                    // bvh/local.h has no curve case; the scene traversal (scene_intersect_shadow) has no per-primitive visibility test.
+                    if(curve_leaf){
+                        if(local!=NONE||(prim_object==self_object&&prim==self_prim)){continue;}
+//#if CURVE_MOTION else                         let curve_hit=curve_intersect(pos,dir,0.0,tmax,prim_object,prim,load_word(table_at(G_prim_type,index,4u)));
+                        let curve_hit=curve_intersect(pos,dir,0.0,tmax,prim_object,prim,load_word(table_at(G_prim_type,index,4u)),time);
+//#endif
+                        if(curve_hit.hit){return true;}
+                        continue;
+                    }
+//#endif
                     if(local!=NONE){if(prim==self_prim){continue;}}
                     else{if(prim_object==self_object&&prim==self_prim){continue;}
                         if((load_word(table_at(G_prim_visibility,index,SIZE_prim_visibility))&visibility)==0u){continue;}}
@@ -286,7 +319,9 @@ fn raytrace_traverse(sd:SurfaceData,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
         visits++;if(visits>1048576u){fail();return hits;}
         while(node>=0&&node!=0x76543210i){
             visits++;if(visits>1048576u){fail();return hits;}
-            let bounds=raytrace_bounds(pos,inv,tmin,select(tmax,best,global),u32(node),visibility);
+//#if CURVE_RAYTRACE else             let bounds=raytrace_bounds(pos,inv,tmin,select(tmax,best,global),u32(node),visibility);
+            let bounds=curve_node_hit(pos,dir,inv,tmin,select(tmax,best,global),u32(node),visibility);
+//#endif
             let a=table_at(G_bvh_nodes,u32(node),SIZE_bvh_nodes);
             node=bitcast<i32>(load_word(a+8u));var other=bitcast<i32>(load_word(a+12u));let mask=u32(bounds.x);
             if(mask==3u){if(bounds.z<bounds.y){let tmp=node;node=other;other=tmp;}
@@ -300,9 +335,53 @@ fn raytrace_traverse(sd:SurfaceData,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
             if(first>=0){
                 if(end>table_count(G_prim_index)||u32(first)>end){fail();return hits;}
                 if(sp<0){fail();return hits;}node=bitcast<i32>(load_word(stack_at+u32(sp)*4u));sp--;
+//#if POINTS
+                // scene_intersect (Raycast node) treats points; scene_intersect_local (local.h) ignores them.
+                if((kind&PRIMITIVE_POINT)!=0u){
+                    if(global){
+                        for(var index=u32(first);index<end;index++){
+                            var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
+                            let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
+                            if(prim==self_prim&&prim_object==self_object){continue;}
+                            let point_hit=point_intersect(pos,dir,tmin,best,prim_object,prim,kind&PRIMITIVE_ALL,sd.time);
+                            if(!point_hit.hit){continue;}
+                            best=point_hit.t;hits.count=1u;hits.object=prim_object;hits.motion_tfm=motion;hits.motion_itfm=motion_inverse_tfm;
+                            hits.kind=kind&PRIMITIVE_ALL;hits.prim[0]=prim;hits.u[0]=0.0;hits.v[0]=0.0;hits.t[0]=point_hit.t;
+                        }
+                    }
+                    continue;
+                }
+//#endif
+//#if !CURVE_RAYTRACE
                 if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&u32(first)!=end){fail();return hits;}
+//#endif
+//#if CURVE_RAYTRACE
+                let curve_leaf=(kind&PRIMITIVE_CURVE)!=0u&&(kind&PRIMITIVE_LAMP)==0u;
+                if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&!curve_leaf&&u32(first)!=end){fail();return hits;}
+                // bvh/local.h has no curve case: a local traversal passes curve leaves over.
+//#if CURVE_RAYCAST else                 if(curve_leaf){continue;}
+                if(curve_leaf&&!global){continue;}
+//#endif
+//#endif
                 for(var index=u32(first);index<end;index++){
                     var prim_object=object;
+//#if CURVE_RAYCAST
+                    // scene_intersect (the Raycast node): no per-primitive visibility test on a curve segment.
+                    if(curve_leaf){
+                        if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
+                        let curve_prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
+                        if(prim_object==self_object&&curve_prim==self_prim){continue;}
+                        let curve_type=load_word(table_at(G_prim_type,index,4u));
+//#if CURVE_MOTION else                         let curve_hit=curve_intersect(pos,dir,tmin,best,prim_object,curve_prim,curve_type);
+                        let curve_hit=curve_intersect(pos,dir,tmin,best,prim_object,curve_prim,curve_type,sd.time);
+//#endif
+                        if(curve_hit.hit){
+                            best=curve_hit.t;hits.count=1u;hits.object=prim_object;hits.motion_tfm=motion;hits.motion_itfm=motion_inverse_tfm;
+                            hits.kind=curve_type;hits.prim[0]=curve_prim;hits.u[0]=curve_hit.u;hits.v[0]=curve_hit.v;hits.t[0]=curve_hit.t;
+                        }
+                        continue;
+                    }
+//#endif
                     if(global){
                         if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
                         if((load_word(table_at(G_prim_visibility,index,SIZE_prim_visibility))&visibility)==0u){continue;}
@@ -490,7 +569,15 @@ fn raytrace_node_trace(index:u32,sd:SurfaceData,bevel:bool,radius:f32,samples:u3
             select(AO_VISIBILITY_ALL,RAYTRACE_VISIBILITY_RAYCAST,global),lcg,bevel);lcg=hits.lcg;
         if(load_word(p(17u))!=0u){result.error=1u;return result;}
         for(var hit=0u;hit<min(hits.count,RAYTRACE_LOCAL_MAX_HITS);hit++){
-            let geometry=raytrace_hit_geometry(hits,hit,sd,dir,!bevel);
+//#if POINTS
+            // shader_setup_from_ray of a point hit: only the Raycast node's scene traversal returns one.
+            if((hits.kind&PRIMITIVE_POINT)!=0u){result.hit=point_setup_hit(hits.kind,hits.object,hits.prim[hit],0.0,0.0,hits.t[hit],sd.time,origin,dir,0.0,0.0);if(result.hit.error!=0u){result.error=1u;return result;}break;}
+//#endif
+//#if CURVE_RAYCAST else             let geometry=raytrace_hit_geometry(hits,hit,sd,dir,!bevel);
+            var geometry:SurfaceData;
+            if((hits.kind&PRIMITIVE_CURVE)!=0u&&(hits.kind&PRIMITIVE_LAMP)==0u){geometry=curve_setup_hit(hits.kind,hits.object,hits.prim[hit],hits.u[hit],hits.v[hit],hits.t[hit],sd.time,origin,dir,0.0,0.0);}
+            else{geometry=raytrace_hit_geometry(hits,hit,sd,dir,!bevel);}
+//#endif
             if(geometry.error!=0u){result.error=1u;return result;}
             if(!bevel){result.hit=geometry;break;}
 //#if SVM_NODE_BEVEL

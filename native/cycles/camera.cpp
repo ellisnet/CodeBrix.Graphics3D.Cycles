@@ -199,6 +199,20 @@ std::string wavefront_layout(){
   constant("PRIMITIVE_CURVE_THICK_LINEAR",PRIMITIVE_CURVE_THICK_LINEAR);constant("PRIMITIVE_MOTION",PRIMITIVE_MOTION);constant("PRIMITIVE_NUM_BITS",PRIMITIVE_NUM_BITS);
   constant("PATH_RAY_VISIBILITY_NODE_UNALIGNED",PATH_RAY_VISIBILITY_NODE_UNALIGNED);
   source<<"//#endif\n";
+  source<<"//#if CURVE_SHADOW\n";
+  constant("CV_ATTR_STD_SHADOW_TRANSPARENCY",ATTR_STD_SHADOW_TRANSPARENCY);
+  constant("CV_EVAL_INPUT_BYTES",sizeof(KernelShaderEvalInput));constant("CV_EVAL_INPUT_object",offsetof(KernelShaderEvalInput,object));constant("CV_EVAL_INPUT_prim",offsetof(KernelShaderEvalInput,prim));
+  constant("CV_EVAL_INPUT_u",offsetof(KernelShaderEvalInput,u));constant("CV_EVAL_INPUT_v",offsetof(KernelShaderEvalInput,v));
+  source<<"//#endif\n";
+  // Points: their tables follow the curve tables, particles theirs (closest.cpp scene_tables).
+#define TABLE(name,type) +1
+  const unsigned point_table_index=table_index+5 CBC_CURVE_TABLES(TABLE);
+#undef TABLE
+  source<<"//#if POINTS\n";
+  constant("G_points",point_table_index);constant("G_points_shader",point_table_index+1);constant("PRIMITIVE_POINT",PRIMITIVE_POINT);constant("PT_PRIMITIVE_MOTION",PRIMITIVE_MOTION);
+  source<<"//#endif\n//#if SVM_NODE_PARTICLE_INFO\n";
+  constant("G_particles",point_table_index+2);constant("SIZE_particles",sizeof(KernelParticle));
+  source<<"//#endif\n";
   constant("O_tfm",offsetof(KernelObject,tfm));constant("O_motion_offset",offsetof(KernelObject,motion_offset));
   constant("O_num_tfm_steps",offsetof(KernelObject,num_tfm_steps));
   constant("O_num_geom_steps",offsetof(KernelObject,num_geom_steps));constant("O_numverts",offsetof(KernelObject,numverts));constant("O_numprims",offsetof(KernelObject,numprims));constant("MOTION_SIZE",sizeof(DecomposedTransform));

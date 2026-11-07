@@ -35,6 +35,54 @@ fn shadow_transition(index:u32,current:u32,next:u32){
     let origin=heap_vec3(state_address(S_shadow_ray_P,index,12u));let direction=heap_vec3(state_address(S_shadow_ray_D,index,12u));
     let tmin=heap_float(state_address(S_shadow_ray_tmin,index,4u));let tmax=heap_float(state_address(S_shadow_ray_tmax,index,4u));
     var hit=false;let transparent=data_word(D_integrator_transparent_shadows)!=0u;var count=0u;
+//#if CURVE_SHADOW
+    var curve_throughput=vec3<f32>(1);
+//#endif
+    if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
+        let self_object=state_word(S_shadow_self_object,index);let self_prim=state_word(S_shadow_self_prim,index);
+        let light_object=state_word(S_shadow_ray_self_light_object,index);let light_prim=state_word(S_shadow_ray_self_light_prim,index);
+        if(transparent){let maximum=data_word(D_integrator_transparent_max_bounce);let used=state_half(S_shadow_path_transparent_bounce,index);
+//#if !CURVE_SHADOW
+//#if SHADOW_CATCHER else             let all=trace_shadow_all(index,origin,direction,tmin,tmax,PATH_RAY_VISIBILITY_SHADOW,self_object,self_prim,light_object,light_prim,maximum-min(maximum,used));
+            let all=trace_shadow_all(index,origin,direction,tmin,tmax,sc_shadow_visibility(index,PATH_RAY_VISIBILITY_SHADOW),self_object,self_prim,light_object,light_prim,maximum-min(maximum,used));
+//#endif
+//#endif
+//#if CURVE_SHADOW
+            // With curves the transparent traversal has its own entry (intersect_shadow_all): one curve intersection per entry.
+            var all=ShadowTrace(false,0u,vec3<f32>(1));fail();return;
+//#endif
+            hit=all.opaque;count=all.count;
+//#if CURVE_SHADOW
+            curve_throughput=all.throughput;
+//#endif
+//#if SHADOW_CATCHER else         }else{let result=trace_native_filtered(origin,direction,tmin,tmax,heap_float(state_address(S_shadow_ray_time,index,4u)),PATH_RAY_VISIBILITY_SHADOW_OPAQUE,self_object,self_prim,light_object,light_prim);hit=result.prim!=NONE;}
+        }else{let result=trace_native_filtered(origin,direction,tmin,tmax,heap_float(state_address(S_shadow_ray_time,index,4u)),sc_shadow_visibility(index,PATH_RAY_VISIBILITY_SHADOW_OPAQUE),self_object,self_prim,light_object,light_prim);hit=result.prim!=NONE;}
+//#endif
+    }
+    if(load_word(p(17u))!=0u){return;}
+    if(transparent){if(hit){state_vec3(S_shadow_path_throughput,index,heap_vec3(state_address(S_shadow_path_throughput,index,12u))*vec3<f32>(0));count=0u;}
+        else if(count>0u){shadow_hit_sort(index,min(count,SHADOW_HIT_CAPACITY));}state_u16(S_shadow_path_packed_num_hits,index,count);
+//#if CURVE_SHADOW
+        if(!hit&&any(curve_throughput!=vec3<f32>(1))){state_vec3(S_shadow_path_throughput,index,heap_vec3(state_address(S_shadow_path_throughput,index,12u))*curve_throughput);}
+//#endif
+    }else if(!hit){state_u16(S_shadow_path_packed_num_hits,index,0u);}
+    shadow_transition(index,K_SHADOW_INTERSECT,select(K_SHADOW_SHADE,0u,hit));
+}
+//#if CURVE_SHADOW
+// intersect_shadow for scenes with transparent shadows and curves: the shadow-all traversal alone (shadow.cpp picks the entry).
+@compute @workgroup_size(64) fn intersect_shadow_all(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    if(index>=p(10u)){fail();return;}
+//#if SHADOW_CATCHER else     if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||!shadow_flag_supported(state_word(S_shadow_path_flag,index))){fail();return;}
+    if(state_half(S_shadow_path_queued_kernel,index)!=K_SHADOW_INTERSECT||!shadow_flag_supported(state_word(S_shadow_path_flag,index)&~SC_FLAGS)){fail();return;}
+//#endif
+    let origin=heap_vec3(state_address(S_shadow_ray_P,index,12u));let direction=heap_vec3(state_address(S_shadow_ray_D,index,12u));
+    let tmin=heap_float(state_address(S_shadow_ray_tmin,index,4u));let tmax=heap_float(state_address(S_shadow_ray_tmax,index,4u));
+    var hit=false;let transparent=data_word(D_integrator_transparent_shadows)!=0u;var count=0u;
+//#if CURVE_SHADOW
+    var curve_throughput=vec3<f32>(1);
+//#endif
     if((bitcast<u32>(origin.x)&0x7f800000u)!=0x7f800000u&&(bitcast<u32>(direction.x)&0x7f800000u)!=0x7f800000u&&dot(direction,direction)!=0.0&&tmin<bitcast<f32>(0x7f7fffffu)){
         let self_object=state_word(S_shadow_self_object,index);let self_prim=state_word(S_shadow_self_prim,index);
         let light_object=state_word(S_shadow_ray_self_light_object,index);let light_prim=state_word(S_shadow_ray_self_light_prim,index);
@@ -43,16 +91,21 @@ fn shadow_transition(index:u32,current:u32,next:u32){
             let all=trace_shadow_all(index,origin,direction,tmin,tmax,sc_shadow_visibility(index,PATH_RAY_VISIBILITY_SHADOW),self_object,self_prim,light_object,light_prim,maximum-min(maximum,used));
 //#endif
             hit=all.opaque;count=all.count;
-//#if SHADOW_CATCHER else         }else{let result=trace_native_filtered(origin,direction,tmin,tmax,heap_float(state_address(S_shadow_ray_time,index,4u)),PATH_RAY_VISIBILITY_SHADOW_OPAQUE,self_object,self_prim,light_object,light_prim);hit=result.prim!=NONE;}
-        }else{let result=trace_native_filtered(origin,direction,tmin,tmax,heap_float(state_address(S_shadow_ray_time,index,4u)),sc_shadow_visibility(index,PATH_RAY_VISIBILITY_SHADOW_OPAQUE),self_object,self_prim,light_object,light_prim);hit=result.prim!=NONE;}
+//#if CURVE_SHADOW
+            curve_throughput=all.throughput;
 //#endif
+        }else{fail();return;}
     }
     if(load_word(p(17u))!=0u){return;}
     if(transparent){if(hit){state_vec3(S_shadow_path_throughput,index,heap_vec3(state_address(S_shadow_path_throughput,index,12u))*vec3<f32>(0));count=0u;}
         else if(count>0u){shadow_hit_sort(index,min(count,SHADOW_HIT_CAPACITY));}state_u16(S_shadow_path_packed_num_hits,index,count);
+//#if CURVE_SHADOW
+        if(!hit&&any(curve_throughput!=vec3<f32>(1))){state_vec3(S_shadow_path_throughput,index,heap_vec3(state_address(S_shadow_path_throughput,index,12u))*curve_throughput);}
+//#endif
     }else if(!hit){state_u16(S_shadow_path_packed_num_hits,index,0u);}
     shadow_transition(index,K_SHADOW_INTERSECT,select(K_SHADOW_SHADE,0u,hit));
 }
+//#endif
 //#if SHADOW_CATCHER
 // SHADOW_CATCHER_PATH_VISIBILITY: shadow catcher paths see only shadow catcher
 // objects (their visibility bits shifted by 16; the opaque mask likewise).
@@ -151,6 +204,15 @@ fn shadow_write_film(index:u32){
     let recorded=min(count,SHADOW_HIT_CAPACITY);
     for(var slot=0u;slot<recorded;slot++){
         let hit=shadow_hit_load(index,slot);
+//#if POINTS
+        if((hit.kind&PRIMITIVE_POINT)!=0u){
+            let point=point_setup_hit(hit.kind,hit.object,hit.prim,hit.u,hit.v,hit.t,heap_float(state_address(S_shadow_ray_time,index,4u)),heap_vec3(state_address(S_shadow_ray_P,index,12u)),
+              heap_vec3(state_address(S_shadow_ray_D,index,12u)),heap_float(state_address(S_shadow_ray_dP,index,4u)),heap_float(state_address(S_shadow_ray_dD,index,4u)));
+            let at=surface_cache_address(id.x*SHADOW_HIT_CAPACITY+slot);if(at==0u){return;}surface_data_write(at,point);
+            if(point.error!=0u){return;}
+            continue;
+        }
+//#endif
         let sd=surface_setup_hit(hit.kind,hit.object,hit.prim,hit.u,hit.v,hit.t,heap_float(state_address(S_shadow_ray_time,index,4u)),
           heap_vec3(state_address(S_shadow_ray_D,index,12u)),heap_float(state_address(S_shadow_ray_dP,index,4u)),heap_float(state_address(S_shadow_ray_dD,index,4u)));
         let at=surface_cache_address(id.x*SHADOW_HIT_CAPACITY+slot);if(at==0u){return;}surface_data_write(at,sd);
@@ -234,6 +296,59 @@ fn shadow_write_film(index:u32){
         shadow_transition(index,K_SHADOW_SHADE,K_SHADOW_INTERSECT);return;}
     shadow_write_film(index);
 }
+//#if CURVE_SHADOW
+// rgb_to_rgbe (util/types_rgbe.h) of a saturated colour: bit-exact, the word the attribute stores. roundf is half away from
+// zero; the float3 round of the oracles (SSE, NEON) is half to even.
+fn curve_rgbe(rgb:vec3<f32>)->u32{
+    let a=abs(rgb);let max_v=cv_min(cv_max(cv_max(a.x,a.y),a.z),65280.0);
+    if(max_v<5.9604644775390625e-8){return 0u;}
+    var e=max(-16i,i32(bitcast<u32>(max_v)>>23u)-127i)+1i;var v=bitcast<f32>(u32(8i-e+127i)<<23u);
+    let scaled=max_v*v;let low=floor(scaled);
+    if(select(low,low+1.0,rounded_add(scaled,-low)>=0.5)==256.0){e+=1i;v=v*0.5;}
+    let signs=((bitcast<u32>(rgb.x)>>31u)<<7u)|((bitcast<u32>(rgb.y)>>31u)<<6u)|((bitcast<u32>(rgb.z)>>31u)<<5u);
+    var word=((u32(e+15i)&0x1fu)|signs)<<24u;let count=rounded_steps(3u);
+    for(var k=0u;k<count;k++){
+        if(k>=3u){continue;}
+        let x=select(select(a.z,a.y,k==1u),a.x,k==0u)*v;let down=floor(x);let d=rounded_add(x,-down);
+        let even=(u32(down)&1u)==0u;let r=select(down,down+1.0,d>0.5||(d==0.5&&!even));
+        word|=u32(cv_min(r,255.0))<<(8u*k);
+    }
+    return word;
+}
+// DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY (bake/bake.h kernel_curve_shadow_transparency_evaluate, for
+// Hair::update_shadow_transparency before the BVH build): p(1) items, p(2) KernelShaderEvalInput array, p(3) the native
+// chunk offset, p(4) the float output, p(30) this dispatch's first item. shader_setup_from_curve: thick basis whatever the
+// shape, at the centre keys, time 0.5, the arbitrary view direction, no differentials. The Light Path node's depths and the
+// raytrace nodes do not run (the kernel's feature mask: svm_light_path below, the shadow module has no raytrace handlers).
+@compute @workgroup_size(1) fn shader_eval_curve_shadow_transparency(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    let item=id.x+p(30u);if(item>=p(1u)){return;}let offset=p(3u)+item;
+    let input=p(2u)+offset*CV_EVAL_INPUT_BYTES;let o=cv_order();
+    let object=load_word(input+CV_EVAL_INPUT_object);let prim=load_word(input+CV_EVAL_INPUT_prim);let u=heap_float(input+CV_EVAL_INPUT_u);let segment=load_word(input+CV_EVAL_INPUT_v);
+    if(object>=table_count(G_objects)||object>=table_count(G_object_flag)||prim>=table_count(G_curves)){fail();return;}
+    var sd:SurfaceData;sd.object_id=object;sd.prim=prim;sd.primitive_type=(segment<<PRIMITIVE_NUM_BITS)|PRIMITIVE_CURVE_THICK;sd.u=u;sd.v=0.0;sd.time=0.5;sd.ray_length=0.0;sd.runtime_flag=0u;
+    let curve=table_at(G_curves,prim,16u);let first=load_word(curve+4u);let keys=load_word(curve+8u);
+    sd.shader=load_word(curve);let shader_id=sd.shader&SHADER_MASK;if(shader_id>=table_count(G_shaders)){fail();return;}
+    sd.shader_flag=load_word(table_at(G_shaders,shader_id,SIZE_shaders)+SH_flags);
+    sd.object_flag=load_word(table_at(G_object_flag,object,4u));
+//#if MOTION_OBJECT
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){sd.motion_tfm=motion_object(object,0.5);sd.motion_itfm=motion_inverse(sd.motion_tfm);}
+//#endif
+    let k0=first+segment;let k1=k0+1u;let ka=select(k0-1u,first,k0==first);let kb=min(k1+1u,first+keys-1u);
+    let position_offset=bitcast<i32>(load_word(table_at(G_objects,object,SIZE_objects)+O_position_offset));
+    let c0=curve_key(position_offset,ka);let c1=curve_key(position_offset,k0);let c2=curve_key(position_offset,k1);let c3=curve_key(position_offset,kb);
+    if(load_word(p(17u))!=0u){return;}
+    sd.P=cv_eval(c0,c1,c2,c3,u,o).xyz;sd.dPdu=cv_derivative(c0,c1,c2,c3,u,o).xyz;
+    if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){sd.P=surface_object_point(sd,sd.P,false);sd.dPdu=surface_object_direction(sd,sd.dPdu,false);}
+    sd.wi=cv_normalize(cv_cross(vec3<f32>(0.0,1.0,0.0),sd.dPdu,o),o);sd.N=sd.wi;sd.Ng=sd.wi;sd.dPdv=cv_cross(sd.dPdu,sd.Ng,o);
+    svm_curve_shadow_eval=true;
+    let r=svm_evaluate_context(NONE,sd,0u,0u,0u,PATH_RAY_VISIBILITY_SHADOW,0u,false);if(r.error!=0u){return;}
+    // surface_shader_transparency, saturate.
+    var transparency=r.transparency;if((sd.shader_flag&SHADOW_ONLY_VOLUME)!=0u){transparency=vec3<f32>(1);}
+    let saturated=vec3<f32>(cv_min(cv_max(transparency.x,0.0),1.0),cv_min(cv_max(transparency.y,0.0),1.0),cv_min(cv_max(transparency.z,0.0),1.0));
+    store_word(p(4u)+offset*4u,curve_rgbe(saturated));
+}
+//#endif
 //#if VOLUME_SHADOW
 // film_write_volume_scattering_guiding_pass for a shadow path's contribution.
 fn vl_shadow_guidance(base:u32,flag:u32,visibility:u32,value:vec3<f32>){

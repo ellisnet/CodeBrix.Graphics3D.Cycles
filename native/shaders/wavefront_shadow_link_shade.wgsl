@@ -14,6 +14,14 @@
     if(id.x>=p(1u)||load_word(p(17u))!=0u){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DL_K_SHADE){fail();return;}
     if(state_word(S_isect_type,index)==PRIMITIVE_LAMP||(state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)!=0u){return;}
+//#if CURVES
+    // light_sample_mis_weight_forward_surface: has_mis &= (type & PRIMITIVE_TRIANGLE).
+    if((state_word(S_isect_type,index)&PRIMITIVE_CURVE)!=0u){return;}
+//#endif
+//#if POINTS
+    // light_sample_mis_weight_forward_surface: has_mis &= triangle (no tree pdf for a point).
+    if((state_word(S_isect_type,index)&PRIMITIVE_POINT)!=0u){return;}
+//#endif
     let prim=state_word(S_isect_prim,index);let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
     if((load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags)&(SD_MIS_FRONT|SD_MIS_BACK))==0u){return;}
     var sd:SurfaceData;sd.object_id=state_word(S_isect_object,index);sd.prim=prim;var r:SvmResult;
@@ -37,8 +45,18 @@
 //#endif
         let sd=surface_from_ray(index);if(sd.error!=0u||load_word(p(17u))!=0u){return;}
         if((sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u){
+//#if !CURVES
             triangle_light_prefill(index,sd,true,false);
             let mis=triangle_light_forward_weight(index,sd);if(load_word(p(17u))!=0u){return;}
+//#endif
+//#if CURVES
+            // light_sample_mis_weight_forward_surface: a curve hit takes no forward MIS.
+            var mis=1.0;
+            if((sd.primitive_type&PRIMITIVE_CURVE)==0u){
+                triangle_light_prefill(index,sd,true,false);
+                mis=triangle_light_forward_weight(index,sd);if(load_word(p(17u))!=0u){return;}
+            }
+//#endif
             store_word(at+4u,bitcast<u32>(mis));
             let shader=table_at(G_shaders,sd.shader&SHADER_MASK,SIZE_shaders);constant=(load_word(shader+SH_flags)&SD_HAS_CONSTANT_EMISSION)!=0u;
             value=select(vec3<f32>(1),heap_vec3(shader+SH_constant_emission),constant)*(mis*heap_float(state_address(S_shadow_link_dedicated_light_weight,index,4u)));

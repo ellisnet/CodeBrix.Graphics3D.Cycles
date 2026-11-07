@@ -61,6 +61,7 @@ AttributeStandard standard_attribute(Geometry &geometry,const char *name,Attribu
   if(key=="curve_intercept" && hair)return ATTR_STD_CURVE_INTERCEPT;
   if(key=="curve_length" && hair)return ATTR_STD_CURVE_LENGTH;
   if(key=="curve_random" && hair)return ATTR_STD_CURVE_RANDOM;
+  if(key=="point_random" && points)return ATTR_STD_POINT_RANDOM;
   if(key=="tangent" && mesh)return ATTR_STD_UV_TANGENT;
   if(key=="tangent_sign" && mesh)return ATTR_STD_UV_TANGENT_SIGN;
   throw Failure(CBC_UNSUPPORTED,"Standard attribute is not exposed for this geometry");
@@ -103,6 +104,8 @@ void validate_geometry(Host &host) {
       const auto &first=hair->get_curve_first_key();require(hair->get_curve_shader().size()>=first.size(),"Curve shader array is too short");
       if(!first.empty())require(first[0]==0,"First curve must start at key zero");
       for(size_t i=0;i<first.size();++i){const size_t end=i+1<first.size()?size_t(first[i+1]):hair->num_keys();require(first[i]>=0&&size_t(first[i])<end&&end<=hair->num_keys(),"Invalid curve key range");}
+    } else if(auto points=dynamic_cast<PointCloud *>(geom)) {
+      require(points->get_shader().size()>=points->num_points(),"Point shader array is too short");
     }
     for(const auto &attr:geom->attributes.attributes) {
       require(size_t(attr.size)==Attribute::element_size(geom,attr.element,geom->attributes.prim),"Attribute no longer matches geometry topology");

@@ -1,3 +1,7 @@
+//#if CURVE_SHADOW
+// Set by the curve shadow transparency kernel (wavefront_shadow.wgsl).
+var<private> svm_curve_shadow_eval:bool;
+//#endif
 //#if SVM_NODES_ANY
 // SPDX-FileCopyrightText: 2011-2022 Blender Foundation
 // Copyright (c) 2026 Jeremy Ellis and contributors
@@ -920,6 +924,10 @@ fn svm_light_falloff(s:ptr<function,SvmState>,node:u32){
 // and volume evaluations are unsupported (error 2).
 fn svm_light_path(s:ptr<function,SvmState>,node:u32,index:u32,flag:u32,visibility:u32){
     let kind=load_word(node+N_LightPath_path_type);let sd=(*s).geometry;var info=0.0;
+//#if CURVE_SHADOW
+    // The curve shadow transparency kernel's mask has no LIGHT_PATH: depths read as zero; ray depth counts the shadow bounce.
+    if(svm_curve_shadow_eval&&kind>=NODE_LP_ray_depth){svm_store(s,svm_byte(node+N_LightPath_out_offset),select(0.0,1.0,kind==NODE_LP_ray_depth));return;}
+//#endif
     if((*s).volume||(kind>=NODE_LP_ray_depth&&(index==NONE||(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u))){svm_error(s,2u);return;}
     switch(kind){
         case NODE_LP_camera:{info=select(0.0,1.0,(visibility&SVMN_PATH_RAY_VISIBILITY_CAMERA)!=0u);}

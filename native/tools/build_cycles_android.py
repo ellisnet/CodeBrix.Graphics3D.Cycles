@@ -31,7 +31,7 @@ GATE_TARGETS = ['codebrix_cycles_'+name+'_gate' for name in
      'microfacet_bounce', 'microfacet_render', 'render', 'atomic_film', 'principled_svm',
      'transparent_shadow', 'environment', 'light_tree', 'shadow_linking', 'shadow_catcher', 'ao_state', 'ao_render', 'mnee',
      'mnee_render', 'bsdf_svm', 'bsdf_bounce', 'bsdf_render', 'bsdf2_svm', 'bsdf2_bounce', 'bsdf2_render', 'bsdf3_svm', 'bsdf3_bounce', 'bsdf3_render',
-     'raytrace_nodes_state', 'raytrace_nodes_render', 'volume', 'volume_render', 'volume_boundary', 'closed_volume_render', 'subsurface', 'glass_render', 'curve', 'curve_render']]
+     'raytrace_nodes_state', 'raytrace_nodes_render', 'volume', 'volume_render', 'volume_boundary', 'closed_volume_render', 'subsurface', 'glass_render', 'curve', 'curve_shadow', 'curve_render', 'point', 'point_render', 'hair_svm', 'hair_bounce', 'hair_render', 'hair_state', 'hair_curve_render', 'hair_huang', 'hair_huang_render']]
 
 
 def prepare_source(work):

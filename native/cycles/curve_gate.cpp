@@ -72,7 +72,7 @@ static std::string probe_source(WebGPUDevice &d){
   code<<"}\n";return code.str();
 }
 static std::ofstream mismatch_log;
-static void run_case(const DeviceInfo &info,const std::string &name,const std::vector<CurveShapeType> &shapes,bool unaligned,std::vector<Row> &rows){
+static void run_case(const DeviceInfo &info,const std::string &name,const std::vector<CurveShapeType> &shapes,const CurveMotion &motion,bool unaligned,std::vector<Row> &rows){
   Row row;row.name=name;row.unaligned=unaligned;
   Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto *backend=dynamic_cast<WebGPUDevice*>(owner.get());require(backend,"Curve gate device creation failed");auto &d=*backend;
   {
@@ -81,16 +81,18 @@ static void run_case(const DeviceInfo &info,const std::string &name,const std::v
     scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
     scene.integrator->set_aa_samples(64);scene.integrator->set_seed(17);scene.film->set_use_sample_count(false);
     scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();
-    const auto fixture=curve_fixture(scene,scene.default_surface,shapes);
+    auto fixture=curve_fixture(scene,scene.default_surface,shapes);
+    if(motion.steps||motion.object){curve_fixture_motion(fixture,scene,motion);scene.integrator->set_motion_blur(true);scene.camera->set_shuttertime(1.f);}
     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Curve scene update failed");
     auto &data=scene.dscene.data;data.integrator.use_light_mis=0;data.integrator.use_caustics=0;data.integrator.transparent_shadows=0;d.const_copy_to("data",&data,sizeof(KernelData));
-    require(data.bvh.have_curves,"Fixture has no curves");
+    require(data.bvh.have_curves,"Fixture has no curves");require(bool(data.bvh.have_motion)==(motion.steps||motion.object),"Fixture motion flag differs");
     for(size_t i=0;i<scene.dscene.bvh_leaf_nodes.size();i++)row.instances+=scene.dscene.bvh_leaf_nodes[i].x<0;
     // Walk the node table's flags from the root for the unaligned count.
     {std::vector<int> stack;std::vector<int> pending{scene.dscene.data.bvh.root};for(size_t o=0;o<scene.dscene.object_node.size();o++)pending.push_back(scene.dscene.object_node[o]);
      std::map<int,bool> seen;while(!pending.empty()){int node=pending.back();pending.pop_back();if(node<0||seen[node])continue;seen[node]=true;
        const int4 w=scene.dscene.bvh_nodes[node];if(uint(w.x)&PATH_RAY_VISIBILITY_NODE_UNALIGNED)row.unaligned_nodes++;pending.push_back(w.z);pending.push_back(w.w);}}
-    require(unaligned==(row.unaligned_nodes>0),"Unaligned node presence differs from the scene parameter");
+    // bvh/unaligned.cpp fits no unaligned box around deforming curves: they have none, static curves in the same scene may.
+    require(unaligned?(row.unaligned_nodes>0||motion.steps!=0):row.unaligned_nodes==0,"Unaligned node presence differs from the scene parameter");
     bool cancelled=false;ShadowScheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);
     const auto layout=fields(d);const auto shadow_layout=shadow_fields(d);BufferParams bp;bp.width=64;bp.height=48;bp.pass_stride=data.film.pass_stride;
     auto buffers=scheduler.get_render_buffers();buffers->reset(bp);buffers->zero();
@@ -101,12 +103,12 @@ static void run_case(const DeviceInfo &info,const std::string &name,const std::v
     cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&desc));d.gpu.pop_scope();
     auto probe=d.gpu.pipeline(module,d.pipeline_layout,"shader_data_probe");
     for(unsigned round=0;round<3;round++){
-      const auto rays=curve_rays(fixture,n,20261106u+round*7919u+(unaligned?1u:0u));
+      const auto rays=curve_rays(fixture,n,20261106u+round*7919u+(unaligned?1u:0u),motion);
       scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Curve reset failed");
       std::vector<IntegratorStateCPU> expected(scheduler.capacity());std::vector<int> indices;
       for(unsigned i=0;i<n;i++){auto &s=expected[i];s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;
         s.path.throughput=one_float3();s.path.continuation_probability=1;s.path.sample=i%64;s.path.render_pixel_index=i%3072;
-        s.ray.P=rays[i].P;s.ray.D=rays[i].D;s.ray.tmin=rays[i].tmin;s.ray.tmax=rays[i].tmax;s.ray.time=.5f;s.ray.dP=1e-4f;s.ray.dD=1e-3f;s.isect.prim=PRIM_NONE;s.isect.object=OBJECT_NONE;
+        s.ray.P=rays[i].P;s.ray.D=rays[i].D;s.ray.tmin=rays[i].tmin;s.ray.tmax=rays[i].tmax;s.ray.time=rays[i].time;s.ray.dP=1e-4f;s.ray.dD=1e-3f;s.isect.prim=PRIM_NONE;s.isect.object=OBJECT_NONE;
         indices.push_back(int(i));}
       upload(d,layout,expected);IntegratorQueueCounter counters{};counters.num_queued[DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST]=n;d.upload(uintptr_t(d.state.queue_counter),&counters,sizeof(counters));
       scheduler.set_active(int(n));require(scheduler.update_queue_counter_and_cache(),"Curve counters failed");
@@ -140,7 +142,8 @@ static void run_case(const DeviceInfo &info,const std::string &name,const std::v
             for(size_t k=0;k<size;k+=4){uint a,e;std::memcpy(&a,reinterpret_cast<const char*>(&got)+offset+k,4);std::memcpy(&e,reinterpret_cast<const char*>(&want)+offset+k,4);
               if(!floating){if(a!=e){row.sd_int++;if(mismatch_log)mismatch_log<<"sd-int "<<name<<" "<<field<<" i="<<selected[i]<<" gpu="<<a<<" cpu="<<e<<" type="<<want.type<<"\n";}continue;}
               const float av=std::bit_cast<float>(a),ev=std::bit_cast<float>(e);const double error=std::abs(double(av)-ev);row.sd_float++;row.sd_bits+=a!=e;
-              if(std::isfinite(ev)&&std::isfinite(av))row.sd_maximum=std::max(row.sd_maximum,error);row.sd_strict+=error>1e-7+1e-7*std::abs(double(ev));
+              if(std::isfinite(ev)&&std::isfinite(av))row.sd_maximum=std::max(row.sd_maximum,error);
+              row.sd_strict+=error>1e-7+1e-7*std::abs(double(ev));
               const bool ok=a==e||(std::isfinite(av)&&std::isfinite(ev)&&error<=5e-5+2e-4*std::abs(double(ev)));row.sd_practical+=!ok;
               if((!ok||a!=e)&&mismatch_log)mismatch_log<<(ok?"sd-bits ":"sd-float ")<<name<<" "<<field<<"["<<k/4<<"] i="<<selected[i]<<" type="<<want.type<<" gpu="<<std::setprecision(9)<<av<<" cpu="<<ev<<"\n";}
           };
@@ -157,7 +160,7 @@ static void run_case(const DeviceInfo &info,const std::string &name,const std::v
         scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Curve shadow reset failed");
         std::vector<IntegratorShadowStateCPU> shadow(n);std::vector<int> selected;
         for(unsigned i=0;i<n;i++){auto &s=shadow[i];s.shadow_path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW;s.shadow_path.flag=0;s.shadow_path.render_pixel_index=i;s.shadow_path.throughput=one_float3();
-          s.shadow_ray.P=rays[i].P;s.shadow_ray.D=rays[i].D;s.shadow_ray.tmin=rays[i].tmin;s.shadow_ray.tmax=rays[i].tmax;s.shadow_ray.time=.5f;
+          s.shadow_ray.P=rays[i].P;s.shadow_ray.D=rays[i].D;s.shadow_ray.tmin=rays[i].tmin;s.shadow_ray.tmax=rays[i].tmax;s.shadow_ray.time=rays[i].time;
           s.shadow_ray.self_light_object=OBJECT_NONE;s.shadow_ray.self_light_prim=PRIM_NONE;
           auto &self=s.shadow_isect[INTEGRATOR_SHADOW_ISECT_SIZE_GPU-1];self.object=OBJECT_NONE;self.prim=PRIM_NONE;
           if(i%3==1&&expected[i].isect.prim!=PRIM_NONE){self.object=expected[i].isect.object;self.prim=expected[i].isect.prim;}
@@ -180,7 +183,7 @@ static void run_case(const DeviceInfo &info,const std::string &name,const std::v
 // Refusals by name: what lane-owned combinations still need, on a scene that otherwise renders.
 static unsigned refusals(const DeviceInfo &info){
   unsigned refused=0;
-  for(int test=0;test<5;test++){
+  for(int test=0;test<3;test++){
     Stats stats;Profiler profiler;auto owner=Device::create(info,stats,profiler,true);auto *backend=dynamic_cast<WebGPUDevice*>(owner.get());require(backend,"Curve refusal device failed");auto &d=*backend;
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=true;params.use_texture_cache=false;Scene scene(params,&d);
     scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
@@ -188,11 +191,9 @@ static unsigned refusals(const DeviceInfo &info){
     curve_fixture(scene,scene.default_surface,{CURVE_THICK});Progress progress;scene.device_update(&d,progress);healthy(d);
     auto &data=scene.dscene.data;data.integrator.use_light_mis=0;data.integrator.use_caustics=0;data.integrator.transparent_shadows=0;
     std::string reason;
-    if(test==0){data.bvh.have_motion=1;reason="curves with motion blur";}
-    if(test==1){data.integrator.transparent_shadows=1;reason="curves with transparent shadows";}
-    if(test==2){data.integrator.use_caustics=1;reason="curves with caustics";}
-    if(test==3){data.bvh.have_points=1;reason="triangle or static curve primitives";}
-    if(test==4){data.bvh.curve_subdivisions=0;reason="curve subdivisions";}
+    if(test==0){data.bvh.use_bvh_steps=1;reason="curves with BVH time steps";}
+    if(test==1){data.bvh.curve_subdivisions=17;reason="curve subdivisions";}
+    if(test==2){data.bvh.curve_subdivisions=0;reason="curve subdivisions";}
     d.const_copy_to("data",&data,sizeof(data));healthy(d);
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Curve refusal setup failed");
     device_vector<float> film(&d,"refused_film",MEM_READ_WRITE);film.alloc(16);film.zero_to_device();
@@ -208,9 +209,15 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   mismatch_log.open(output+".mismatches.txt");
   auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(!infos.empty(),"No WebGPU device");
   std::vector<Row> rows;
-  const std::vector<std::pair<std::string,std::vector<CurveShapeType>>> cases={{"ribbon",{CURVE_RIBBON}},{"ribbon-subdivided",{CURVE_RIBBON}},{"thick",{CURVE_THICK}},{"linear",{CURVE_THICK_LINEAR}},{"mixed",{CURVE_RIBBON,CURVE_THICK,CURVE_THICK_LINEAR}}};
-  for(const auto &[name,shapes]:cases){if(!only.empty()&&std::find(only.begin(),only.end(),name)==only.end())continue;
-    for(bool unaligned:{true,false}){std::cerr<<"[curve] "<<name<<" unaligned="<<unaligned<<"\n";run_case(infos[0],name,shapes,unaligned,rows);
+  struct Case {std::string name;std::vector<CurveShapeType> shapes;CurveMotion motion;};
+  const std::vector<CurveShapeType> all{CURVE_RIBBON,CURVE_THICK,CURVE_THICK_LINEAR};
+  const std::vector<Case> cases={{"ribbon",{CURVE_RIBBON},{}},{"ribbon-subdivided",{CURVE_RIBBON},{}},{"thick",{CURVE_THICK},{}},{"linear",{CURVE_THICK_LINEAR},{}},{"mixed",all,{}},
+    // Deformation with 3 and 5 steps, with radii per step and static curves beside the moving ones; object motion alone and with deformation.
+    {"deform-ribbon",{CURVE_RIBBON},{3,false,false}},{"deform-ribbon-5",{CURVE_RIBBON},{5,true,false}},{"deform-thick",{CURVE_THICK},{3,false,false}},{"deform-thick-5",{CURVE_THICK},{5,true,false}},
+    {"deform-linear",{CURVE_THICK_LINEAR},{3,false,false}},{"deform-linear-5",{CURVE_THICK_LINEAR},{5,true,false}},{"deform-mixed-static",all,{3,true,false,0b010101u}},
+    {"object-ribbon",{CURVE_RIBBON},{0,false,true}},{"object-thick",{CURVE_THICK},{0,false,true}},{"object-linear",{CURVE_THICK_LINEAR},{0,false,true}},{"object-deform-mixed",all,{5,true,true,0b100110u}}};
+  for(const auto &[name,shapes,motion]:cases){if(!only.empty()&&std::find(only.begin(),only.end(),name)==only.end())continue;
+    for(bool unaligned:{true,false}){std::cerr<<"[curve] "<<name<<" unaligned="<<unaligned<<"\n";run_case(infos[0],name,shapes,motion,unaligned,rows);
       const auto &r=rows.back();std::cerr<<"  paths="<<r.paths<<" curveHits="<<r.curve_hits<<" triHits="<<r.tri_hits<<" misses="<<r.misses<<" decision="<<r.decision<<" bits="<<r.bits<<" strict="<<r.strict<<" practical="<<r.practical<<" max="<<r.maximum
         <<" shadow="<<r.shadow_paths<<" blocked="<<r.shadow_blocked<<" decision="<<r.shadow_decision<<" sdFloats="<<r.sd_float<<" sdBits="<<r.sd_bits<<" sdStrict="<<r.sd_strict<<" sdPractical="<<r.sd_practical<<" sdInt="<<r.sd_int<<" sdMax="<<r.sd_maximum<<" unalignedNodes="<<r.unaligned_nodes<<" instances="<<r.instances<<"\n";}}
   const unsigned refused=only.empty()?refusals(infos[0]):0;

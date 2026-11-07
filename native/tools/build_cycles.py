@@ -34,11 +34,11 @@ def overlay(out=None):
     # camera accessors below read original KernelData and scene arrays directly.
     sampling=(REPO/'parity/shaders/sampling.wgsl').read_text()
     sampling=sampling[sampling.index('fn wang_hash'):sampling.index('fn sobol_index')]
-    common=shader+sampling+(ROOT/'shaders/wavefront_common.wgsl').read_text()+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_trig.wgsl').read_text()+(ROOT/'shaders/wavefront_motion.wgsl').read_text()+(ROOT/'shaders/wavefront_motion_triangle.wgsl').read_text()+(ROOT/'shaders/wavefront_curve_math.wgsl').read_text()
+    common=shader+sampling+(ROOT/'shaders/wavefront_common.wgsl').read_text()+(ROOT/'shaders/wavefront_float.wgsl').read_text()+(ROOT/'shaders/wavefront_trig.wgsl').read_text()+(ROOT/'shaders/wavefront_motion.wgsl').read_text()+(ROOT/'shaders/wavefront_motion_triangle.wgsl').read_text()+(ROOT/'shaders/wavefront_curve_math.wgsl').read_text()+(ROOT/'shaders/wavefront_point.wgsl').read_text()
     # Orthographic and panoramic cameras and depth of field (CAMERA_PROJECTIONS) use the disk-angle sine and cosine.
     camera=common+'//#if CAMERA_PROJECTIONS\n'+(ROOT/'shaders/wavefront_native_trig.wgsl').read_text()+'//#endif\n'+(ROOT/'shaders/wavefront_camera.wgsl').read_text()
     _write(out/'camera_shader.inc','R"CBWGSL('+camera+')CBWGSL"\n')
-    shader_data=common+(ROOT/'shaders/wavefront_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_curve_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_shader_data_cache.wgsl').read_text()
+    shader_data=common+(ROOT/'shaders/wavefront_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_curve_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_point_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_shader_data_cache.wgsl').read_text()
     _write(out/'shader_data_shader.inc','R"CBWGSL('+shader_data+')CBWGSL"\n')
     # Generate from the pinned upstream AST, retaining translation evidence.
     translation_inputs=[REPO/'research/translate.py',REPO/'research/native/reference.cpp']
@@ -80,7 +80,7 @@ def overlay(out=None):
     translated=translated.replace(math_cases,'case 7u, 8u: {\n//#if SVM_MATH_ARC else atomicOr(&heap[p(17u)/4u],2u);return 0.0;\n'
                                   'return trig_arc(clamp(v_a, (-1.0f), 1.0f), v_type == 8u);\n//#endif\n}')
     svm=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm.wgsl','wavefront_attributes.wgsl','wavefront_images.wgsl','wavefront_normals.wgsl','wavefront_svm_nodes.wgsl','wavefront_svm_derivatives.wgsl'))
-    closures=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm_closures.wgsl','wavefront_svm_microfacet.wgsl'))
+    closures=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_svm_closures.wgsl','wavefront_svm_microfacet.wgsl','wavefront_svm_hair.wgsl','wavefront_svm_hair_huang.wgsl'))
     enum_pattern=r'\b(?:NODE_[A-Za-z0-9_]+|ATTR_[A-Za-z0-9_]+|IMAGE_[A-Za-z0-9_]+|INTERPOLATION_[A-Za-z0-9_]+|EXTENSION_[A-Za-z0-9_]+|KERNEL_(?:IMAGE_NONE|TILE_LOAD_NONE)|SVM_(?:STACK_SIZE|STACK_INVALID|INPUT_STACK_OFFSET_MASK)|CAMERA_(?:PERSPECTIVE|ORTHOGRAPHIC))\b'
     # Enum constants used only by the texture/colour/utility node regions are
     # emitted inside their SVM_NODES_ANY layout region (svm_nodes_enums.inc).
@@ -122,7 +122,10 @@ def overlay(out=None):
         assert mnee_traversal.count(old)==count,old
         mnee_traversal=mnee_traversal.replace(old,new)
     assert 'stack[' not in mnee_traversal
-    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_film_passes.wgsl','wavefront_microfacet.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_background_light.wgsl','wavefront_lighting.wgsl','wavefront_light_nee.wgsl','wavefront_ao.wgsl','wavefront_volume_light.wgsl','wavefront_subsurface.wgsl','wavefront_shadow_link_shade.wgsl'))+light_tree+'//#if MNEE\n'+mnee_traversal+'//#endif\n'+(ROOT/'shaders/wavefront_mnee.wgsl').read_text()
+    # The helpers before NativeHit (node tests, transforms, curve intersection) also serve the raytrace traversals' curve
+    # hits (CURVE_RAYTRACE), with or without MNEE; the same text in the same order in MNEE scenes.
+    traversal_helpers,traversal_rest=mnee_traversal.split('struct NativeHit {',1);traversal_rest='struct NativeHit {'+traversal_rest
+    surface=film+sampling+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_surface_stage.wgsl','wavefront_terminator.wgsl','wavefront_surface.wgsl','wavefront_film_passes.wgsl','wavefront_microfacet.wgsl','wavefront_hair.wgsl','wavefront_hair_huang.wgsl','wavefront_emitters.wgsl','wavefront_triangle_light.wgsl','wavefront_background_light.wgsl','wavefront_lighting.wgsl','wavefront_light_nee.wgsl','wavefront_ao.wgsl','wavefront_volume_light.wgsl','wavefront_subsurface.wgsl','wavefront_shadow_link_shade.wgsl'))+light_tree+'//#if TRAVERSAL_HELPERS\n'+traversal_helpers+'//#endif\n//#if MNEE\n'+traversal_rest+'//#endif\n'+(ROOT/'shaders/wavefront_mnee.wgsl').read_text()
     _write(out/'surface_shader.inc','R"CBWGSL('+surface+')CBWGSL"\n')
     volume=''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_native_trig.wgsl','wavefront_shadow_catcher.wgsl','wavefront_volume.wgsl','wavefront_volume_octree.wgsl','wavefront_volume_heterogeneous.wgsl'))
     _write(out/'volume_shader.inc','R"CBWGSL('+volume+')CBWGSL"\n')
@@ -196,7 +199,7 @@ def main():
     options.update({'WITH_CYCLES_'+name:'OFF' for name in ['ALEMBIC','OPENSUBDIV','OPENVDB','NANOVDB',
                    'OSL','USD','HYDRA_RENDER_DELEGATE','DEVICE_CUDA','DEVICE_OPTIX','DEVICE_HIP','DEVICE_HIPRT','DEVICE_ONEAPI']})
     commands=[['cmake','-S',str(UPSTREAM),'-B',str(build),*['-D'+k+'='+str(v) for k,v in options.items()]],
-              ['cmake','--build',str(build),'--target','codebrix_cycles_device_gate','codebrix_cycles_camera_gate','codebrix_cycles_closest_gate','codebrix_cycles_curve_gate','codebrix_cycles_curve_render_gate','codebrix_cycles_background_gate','codebrix_cycles_svm_world_gate','codebrix_cycles_shader_data_gate','codebrix_cycles_svm_surface_gate','codebrix_cycles_attribute_gate','codebrix_cycles_normal_gate','codebrix_cycles_image_gate','codebrix_cycles_image_file_gate','codebrix_cycles_surface_gate','codebrix_cycles_microfacet_svm_gate','codebrix_cycles_microfacet_bounce_gate','codebrix_cycles_microfacet_render_gate','codebrix_cycles_render_gate','codebrix_cycles_atomic_film_gate','--parallel',args.jobs]]
+              ['cmake','--build',str(build),'--target','codebrix_cycles_device_gate','codebrix_cycles_camera_gate','codebrix_cycles_closest_gate','codebrix_cycles_curve_gate','codebrix_cycles_curve_shadow_gate','codebrix_cycles_curve_render_gate','codebrix_cycles_point_gate','codebrix_cycles_point_render_gate','codebrix_cycles_hair_huang_gate','codebrix_cycles_hair_huang_render_gate','codebrix_cycles_background_gate','codebrix_cycles_svm_world_gate','codebrix_cycles_shader_data_gate','codebrix_cycles_svm_surface_gate','codebrix_cycles_attribute_gate','codebrix_cycles_normal_gate','codebrix_cycles_image_gate','codebrix_cycles_image_file_gate','codebrix_cycles_surface_gate','codebrix_cycles_microfacet_svm_gate','codebrix_cycles_microfacet_bounce_gate','codebrix_cycles_microfacet_render_gate','codebrix_cycles_render_gate','codebrix_cycles_atomic_film_gate','--parallel',args.jobs]]
     if args.target:
         commands[1]=['cmake','--build',str(build),'--target',*args.target,'--parallel',args.jobs]
     else:

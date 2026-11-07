@@ -185,7 +185,7 @@ fn triangle_light_prefill(index:u32,sd:SurfaceData,emission:bool,sample:bool){
     triangle_light_cache_count=0u;
 //#if LIGHT_TRIANGLE
     var keys:array<vec3<u32>,4>;var count=0u;
-//#if CURVES else     if(emission&&(state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u){
+//#if CURVES_OR_POINTS else     if(emission&&(state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u){
     if(emission&&(sd.primitive_type&PRIMITIVE_TRIANGLE)!=0u&&(state_word(S_path_flag,index)&PATH_RAY_MIS_SKIP)==0u&&(sd.shader_flag&select(SD_MIS_FRONT,SD_MIS_BACK,(sd.runtime_flag&SR_BACKFACING)!=0u))!=0u){
 //#endif
         keys[count]=vec3<u32>(sd.object_id,sd.prim,bitcast<u32>(sd.time));count++;
@@ -265,7 +265,7 @@ fn triangle_light_forward_pdf(sd:SurfaceData)->f32{
 //#endif
 }
 fn triangle_light_forward_weight(index:u32,sd:SurfaceData)->f32{
-//#if CURVES
+//#if CURVES_OR_POINTS
     // light_sample_mis_weight_forward_surface: has_mis &= triangle.
     if((sd.primitive_type&PRIMITIVE_TRIANGLE)==0u){return 1.0;}
 //#endif

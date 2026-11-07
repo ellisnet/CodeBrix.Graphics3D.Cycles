@@ -57,4 +57,14 @@ fn curve_key(position_offset:i32,key:u32)->vec4<f32>{
     if(at<0||u32(at)>=table_count(G_curve_keys)){fail();return vec4<f32>(0);}
     return heap_vec4(table_at(G_curve_keys,u32(at),16u));
 }
+//#if CURVE_MOTION
+// motion_curve_keys and motion_curve_keys_linear (geom/motion_curve.h): (1-t)*a+t*b of the two steps around the ray time,
+// each product and sum through the order word; the centre step comes first in the table (triangle_motion_time's frames).
+fn curve_motion_key(object:u32,frames:TriangleTime,key:u32,o:u32)->vec4<f32>{
+    let at=table_at(G_objects,object,SIZE_objects);
+    let position_offset=bitcast<i32>(load_word(at+O_position_offset));let numverts=load_word(at+O_numverts);
+    let a=curve_key(position_offset+i32(frames.a*numverts),key);let b=curve_key(position_offset+i32(frames.b*numverts),key);
+    return cvb4(cvb4(cvb(1.0-frames.t,o)*a,o)+cvb4(frames.t*b,o),o);
+}
+//#endif
 //#endif

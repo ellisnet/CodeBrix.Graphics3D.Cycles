@@ -72,7 +72,14 @@ Each node entry has a unique `handle` and either `scene` (a singleton:
 - `hair`: `keys` (x, y, z triples) and `radius` (one per key), or `keysFile` and `radiusFile` (raw little-endian
   float32), `firstKey` or `firstKeyFile` (uint32, one per curve), optional `shape` (`ribbon`, `thick`, `thick_linear`;
   `cbc_host_curve_shape`) and `attributes` as for a mesh, with the domains `curve`, `curve_key` and `curve_key_normal`.
-  `render.curveSubdivisions` (optional, 0 to 4) sets the ribbon sections per segment for the scene.
+  `render.curveSubdivisions` (optional, 0 to 4) sets the ribbon sections per segment for the scene. Optional `motion`:
+  `steps` (odd, 3 to 129), `keys` or `keysFile` (time-ordered key positions, the centre step equal to `keys`) and optional
+  `radius` or `radiusFile` (`cbc_host_curve_motion`).
+- `points`: `positions` (x, y, z triples) and `radius` (one per point), or `positionsFile` and `radiusFile` (raw little-endian
+  float32), optional `attributes` as for a mesh, with the domain `vertex`, and optional `motion` (`steps`, odd, `positions` and
+  `radius`: `steps` time-ordered arrays whose center equals the points; `cbc_host_point_motion`). Point material indices are the socket `shader` in `set`.
+- `particles` (on a `particle_system`): an array of `index`, `age`, `lifetime`, `location`, `rotation`, `size`, `velocity` and `angularVelocity`
+  (`cbc_host_particles`), which objects name through their sockets `particle_system` and `particle_index` in `set`.
 - `set`: socket names and values exactly as Cycles registers them (see
   `cbc_host_registry_json`). The loader picks the setter from
   `cbc_host_property_info`: numbers, booleans, strings or enum labels, flat or
@@ -226,6 +233,32 @@ the product, so that combination has no scene.
 sampling family's room: each shape alone, instanced with rotated, non-uniform and mirrored transforms, under the closures
 the WebGPU device has, per curve and per key attributes, UVs, the Hair Info node, the Geometry and Texture Coordinate
 nodes with a bump, emission, area and sun lights, the light tree and data passes, through the public C API.
+
+## Curve scenes B (`scenes/curves-b/`)
+
+`author_curves_b.py` (`--check`) writes `scenes/curves-b/` in the same room: deformation motion on every shape (three steps;
+five steps with radii per step), object motion, moving and static instances together, camera motion with both, the Hair
+Info node on deforming curves, and the motion pass without motion blur (static, deforming, moving); transparent shadows
+through baked curve transparency (the opacity cutoff, the hit limit, the Light Path node, motion, shadow catchers, fast GI).
+
+## Point scenes (`scenes/points/`)
+
+`author_points.py` (`--check`) writes `scenes/points/`: balls of points in the sampling family's room, single-user and instanced, under the closures
+the WebGPU device has, point attributes, UVs, the Point Info and Particle Info nodes, the Geometry and Texture Coordinate nodes with a bump, emission,
+transparency, area and sun lights, the light tree, data passes, camera, object and deformation motion and the motion pass, through the public C API.
+The `beside-*` and `*-on-points` scenes add points to a committed scene of another family: AO, Bevel and Raycast nodes, subsurface scattering, caustics, volumes,
+displacement, shadow and light linking. `with-curves*` mix them with curves.
+
+## Hair closure scenes (`scenes/hair/`)
+
+`author_hair.py` (`--check`) writes `scenes/hair/`: the Hair BSDF node (`reflection-*`, `transmission-*`) and the Principled
+Hair BSDF node's Chiang model (`chiang-*`) in its three colour parametrizations, on the three curve shapes in the curve family's
+room and on a triangle sphere: roughness clamps, a linked tangent and random input, the curve random attribute, coat and tilt,
+a zero colour channel, Filter Glossy, closure mixtures, data, colour and denoising passes and the light tree.
+`author_hair_huang.py` (`--check`) adds the Principled Hair BSDF node's Huang model (`huang-*`) in the sampling family's room:
+its three colour parametrizations, circular and elliptical cross-sections, lobe weights, roughness and tilt, the Random and
+`curve_random` inputs, near and far field, a mix with other closures, data and denoising passes, the shader's transparent shadow
+on (`huang-default-shadows-thick`) and the model on triangles.
 
 ## Subsurface scenes (`scenes/subsurface/`)
 

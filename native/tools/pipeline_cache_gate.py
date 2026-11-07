@@ -10,7 +10,7 @@ while compiling, processes racing on one directory, the choice of directory and 
 Identity part: a state gate and a film gate whose outputs repeat must give the same bits cold (empty cache)
 and warm (the cache it filled). Scenes rendered by the oracle runner the same way: their films carry the
 run-to-run atomic accumulation (they differ even between repeats in one process), so warm against cold is
-judged beside cold against cold of the same binary: 0 practical, differences no larger than the control's
+judged beside cold against cold of the same binary: 0 practical, the largest difference no larger than the control's
 unless every value already meets the strict criterion, and the compiled text identical. Linux runs each with a fresh Mesa cache so that only this cache can make
 the warm run warm.
 
@@ -320,13 +320,14 @@ def main():
 
     def identity(baseline):
         # Control (films are not bit-repeatable, even within one process): warm against cold beside cold against
-        # cold of the same binary. Warm differences must be 0 practical and no larger than the control's, whose pool
+        # cold of the same binary. Warm differences must be 0 practical and the largest no larger than the control's, whose pool
         # is the same film of two cold runs and the first film of each cold run against the second of each. The second belongs:
         # a first render that compiled nothing lands on other work chunks than one that did, with no pipeline cache
         # involved (shown with Mesa's cache alone, native/DEVICE.md "Pipeline cache"), and a warm first render is such
         # a render. The same-film numbers are recorded apart. A warm number above the pool gets one more cold run.
         # A film with no strict difference is within the control whatever its largest difference: that comparison
-        # applies from the strict criterion up. The practical check is separate and unchanged.
+        # applies from the strict criterion up. The number of values past strict is not compared: it is rounding noise
+        # (5 to 8 on shadow-catcher/catcher-point-light across runs of one binary). The practical check is separate and unchanged.
         # The compiled text must be identical byte for byte.
         for scene in a.scene or SCENES:
             stem = scene.replace('/', '__'); rows, entry = {}, dict()
@@ -368,7 +369,7 @@ def main():
                             ((cold_films, cold_films), (cold_films, control_films), (control_films, cold_films), (control_films, control_films))]
             def within(pool):
                 # A film whose differences all meet the strict criterion is within the control: below it the largest difference is rounding noise, one float step apart between runs.
-                return all(warm_pair[n]['strict'] == 0 or (warm_pair[n]['strict'] <= max(p[n]['strict'] for p in pool) and warm_pair[n]['maxAbs'] <= max(p[n]['maxAbs'] for p in pool)) for n in cold_films)
+                return all(warm_pair[n]['strict'] == 0 or warm_pair[n]['maxAbs'] <= max(p[n]['maxAbs'] for p in pool) for n in cold_films)
             entry['withinSameFilmControl'] = within(pairs)
             if not within(pairs+render_pairs):
                 third = films(render('cold-control-2', target.path('cache', stem+'-control-2')))

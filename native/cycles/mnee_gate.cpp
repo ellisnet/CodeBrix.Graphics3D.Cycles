@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <sstream>
 using namespace ccl;
+#include "curve_gate_tuft.h"
 using namespace wavefront_test;
 constexpr unsigned width=32,height=24,samples=8;
 static uint64_t diagnosed=0;
@@ -358,8 +359,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   std::ostringstream cases;
   for(int mode=0;mode<mnee_cases;mode++){
     if(mode==3)continue; // caustics off: no INTERSECT_MNEE (covered by the image gate)
-    Metrics m;SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&d);fixture(scene,mode);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"MNEE scene preparation failed");
+    Metrics m;SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;gate_curve_params(params);
+    Scene scene(params,&d);fixture(scene,mode);gate_curve_tufts(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"MNEE scene preparation failed");
     require(scene.dscene.data.integrator.use_caustics&&(scene.dscene.data.kernel_features&KERNEL_FEATURE_MNEE),"MNEE fixture without caustics");
     // Scene exchange (reference_policy.h): a dump pass stops here, the judge continues on the device's loaded tables,
     // and the device record pass writes the tables its GPU uses beside the record.

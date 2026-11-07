@@ -70,7 +70,7 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   };
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[17]=error_word;
   if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_points,"WebGPU shadow currently requires triangle or static curve primitives");
+  validate_points();
   validate_curves();
   validate_geometry_motion();
   // Transparent shadows with motion blur trace at the shadow ray's time (SHADOW_TRANSPARENT_MOTION). Shadow
@@ -127,7 +127,7 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   }
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
   if(!n||!work)return;
-  auto &pipeline=shading?(data.integrator.transparent_shadows?shadow_transparent:shadow_shade):shadow_intersect;
+  auto &pipeline=shading?(data.integrator.transparent_shadows?shadow_transparent:shadow_shade):(data.integrator.transparent_shadows&&(shader_features()&SF_CURVE_SHADOW).any())?shadow_intersect_all:shadow_intersect;
   const bool transparent_shading=shading&&data.integrator.transparent_shadows;
   if(transparent_shading){
     // GPU-private ShaderData for every recorded hit of each dispatched path.
@@ -138,7 +138,9 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
     }
     p[26]=shadow_shader_cache;p[27]=surface_data_cache_bytes;
   }
-  const char *entry=shading?(data.integrator.transparent_shadows?"shade_shadow_transparent":"shade_shadow"):"intersect_shadow";
+  // With curves, transparent shadows intersect in their own entry (wavefront_shadow.wgsl, the pipeline size guard).
+  const bool shadow_all_entry=!shading&&data.integrator.transparent_shadows&&(shader_features()&SF_CURVE_SHADOW).any();
+  const char *entry=shading?(data.integrator.transparent_shadows?"shade_shadow_transparent":"shade_shadow"):shadow_all_entry?"intersect_shadow_all":"intersect_shadow";
   if(transparent_shading){
     // Both transparent entries come from the same specialized shadow module.
     if(!pipeline_current(pipeline,entry,SF_VOLUME_PHASE_KINDS)||!pipeline_current(shadow_shader_data,"prepare_shadow_shader_data",SF_VOLUME_PHASE_KINDS)){
@@ -151,6 +153,37 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
   if(transparent_shading)dispatch(p,uint32_t(work),shadow_shader_data,workgroup("prepare_shadow_shader_data"));
   // Match the smaller transparent SVM workgroup; opaque traversal stays at 64.
   dispatch(p,uint32_t(work),pipeline,workgroup(entry));
+}
+// DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY (integrator/shader_eval.cpp eval_gpu, for
+// Hair::update_shadow_transparency before the BVH build): the KernelShaderEvalInput array, the float output, the
+// cache-miss word (always false: no tiled images), the chunk offset and the chunk size, at most svm_stack_slots items per
+// dispatch (one SVM stack slot per invocation). Runs in the shadow module, whose SVM has the kernel's feature mask.
+void WebGPUDevice::enqueue_curve_shadow_eval(int work,const DeviceKernelArguments &args){
+  require(args.count==5,"Curve transparency evaluation argument count");
+  auto scalar=[&](unsigned i){require(args.types[i]==DeviceKernelArguments::INT32&&args.sizes[i]==4,"Invalid curve transparency evaluation integer");
+    int value;std::memcpy(&value,args.values[i],4);require(value>=0,"Negative curve transparency evaluation range");return uint32_t(value);};
+  const uint32_t offset=scalar(3),count=scalar(4);require(uint32_t(work)>=count,"Incomplete curve transparency evaluation dispatch");
+  auto pointer=[&](unsigned i,size_t bytes){require(args.types[i]==DeviceKernelArguments::POINTER&&args.sizes[i]==sizeof(device_ptr),"Invalid curve transparency evaluation pointer");
+    device_ptr address;std::memcpy(&address,args.values[i],sizeof(address));validate(address,bytes);require(address%4==0,"Unaligned curve transparency evaluation pointer");return uint32_t(address);};
+  std::array<uint32_t,32> p{};p[1]=count;p[3]=offset;p[17]=error_word;
+  p[2]=pointer(0,(size_t(offset)+count)*sizeof(KernelShaderEvalInput));p[4]=pointer(1,(size_t(offset)+count)*sizeof(float));
+  {uint32_t miss=pointer(2,4);uint32_t zero=0;upload(miss,&zero,4);}
+  require(!curve_records.empty()&&globals.count("curve_keys"),"Missing native curve tables");
+  // The CPU kernels read the object flags with SD_OBJECT_TRANSFORM_APPLIED set, in memory they share with the scene; here that
+  // table's upload is still to come.
+  if(object_flag_memory&&object_flag_memory->device_pointer&&object_flag_memory->memory_size())upload(uint32_t(object_flag_memory->device_pointer),object_flag_memory->host_pointer,object_flag_memory->memory_size());
+  // Runs during scene preparation, before any integrator state exists (p[7] stays 0).
+  p[6]=constants.at("data");p[18]=globals.at("shaders");
+  require(remaining(p[18])%sizeof(KernelShader)==0,"Invalid curve transparency shader table");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));
+  if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid SVM word table");p[22]=uint32_t(remaining(p[21])/4);}
+  p[14]=scene_tables();
+  if(!count||!work)return;
+  require((shader_features()&SF_CURVE_SHADOW).any(),"Invalid native curve transparency evaluation without transparent shadows");
+  if(!pipeline_current(shadow_curve_eval,"shader_eval_curve_shadow_transparency",SF_VOLUME_PHASE_KINDS))
+    shadow_curve_eval=std::move(build_pipelines("shadow",shadow_source(),{"shader_eval_curve_shadow_transparency"},SF_NONE,SF_VOLUME_PHASE_KINDS)[0]);
+  for(uint32_t first=0;first<count;first+=svm_stack_slots){
+    p[30]=first;dispatch(p,std::min<uint32_t>(svm_stack_slots,count-first),shadow_curve_eval,workgroup("shader_eval_curve_shadow_transparency"));
+  }
 }
 // Ambient occlusion shadow paths (PATH_RAY_SHADOW_FOR_AO): the fields and the
 // pass the shadow film write reads (film_write_direct_light's AO branch).

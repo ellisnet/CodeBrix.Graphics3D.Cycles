@@ -82,6 +82,10 @@ fn attribute_read(s:ptr<function,SvmState>,desc:AttributeDesc)->AttributeValue{
 //#if CURVES
         if((sd.primitive_type&PRIMITIVE_CURVE)!=0u){return curve_attribute_read(s,desc,domain);}
 //#endif
+//#if POINTS
+        // point_attribute (geom/point.h): a value per point, otherwise zero.
+        if((sd.primitive_type&PRIMITIVE_POINT)!=0u){if(domain==ATTR_ELEMENT_VERTEX){result.value=attribute_fetch(s,desc,sd.prim);}return result;}
+//#endif
         if(!native_triangle_kind(sd.primitive_type)){svm_error(s,16u);return result;}
         if(domain==ATTR_ELEMENT_FACE){indices=vec3<u32>(sd.prim);}
         else if(domain==ATTR_ELEMENT_VERTEX){
@@ -123,6 +127,74 @@ fn curve_attribute_read(s:ptr<function,SvmState>,desc:AttributeDesc,domain:u32)-
     return result;
 }
 //#endif
+//#if SVM_NODE_POINT_INFO
+// svm_node_point_info (svm/geometry.h, geom/point.h point_position, point_radius). Random is an attribute node; its case
+// stores nothing, as pinned.
+fn svm_point_info(s:ptr<function,SvmState>,node:u32){
+    let kind=load_word(node+N_PointInfo_info_type);let out=svm_byte(node+N_PointInfo_out_offset);
+    if(kind==PT_INFO_POINT_POSITION){
+        var data=vec3<f32>(0);
+//#if POINTS
+        let sd=(*s).geometry;
+        if((sd.primitive_type&PRIMITIVE_POINT)!=0u){
+            data=point_record(sd.object_id,sd.prim,sd.primitive_type,sd.time).xyz;
+            if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){data=surface_object_point(sd,data,false);}
+        }
+//#endif
+        svm_store3(s,out,data);
+    }else if(kind==PT_INFO_POINT_RADIUS){
+        var data=0.0;
+//#if POINTS
+        let sd=(*s).geometry;
+        if((sd.primitive_type&PRIMITIVE_POINT)!=0u&&sd.object_id<table_count(G_objects)){
+            data=point_at(bitcast<i32>(load_word(table_at(G_objects,sd.object_id,SIZE_objects)+O_position_offset)),sd.prim).w;
+            if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)==0u){let o=pt_order();
+                // 1.0f / M_SQRT3_F, the constant the compiler folds.
+                let normalized=ptb(data*bitcast<f32>(0x3f13cd3au),o);
+                data=pt_len(surface_object_direction(sd,vec3<f32>(normalized),false),o);
+            }
+        }
+//#endif
+        svm_store(s,out,data);
+    }
+}
+//#endif
+//#if SVM_NODE_PARTICLE_INFO
+// lookup3 final (util/hash.h hash_uint2): kx is the particle index, ky is 0.
+fn pi_rot(x:u32,k:u32)->u32{return (x<<k)|(x>>(32u-k));}
+fn pi_hash(kx:u32)->u32{
+    var a=0xdeadbeefu+(2u<<2u)+13u;var b=a;var c=a;a+=kx;
+    c^=b;c-=pi_rot(b,14u);a^=c;a-=pi_rot(c,11u);b^=a;b-=pi_rot(a,25u);c^=b;c-=pi_rot(b,16u);a^=c;a-=pi_rot(c,4u);b^=a;b-=pi_rot(a,14u);c^=b;c-=pi_rot(b,24u);
+    return c;
+}
+// (float)n rounded to nearest, ties to even (the C conversion).
+fn pi_u32_float(n:u32)->f32{
+    if(n<0x1000000u){return f32(n);}
+    let drop=8u-countLeadingZeros(n);var m=n>>drop;let rest=n&((1u<<drop)-1u);let half=1u<<(drop-1u);
+    if(rest>half||(rest==half&&(m&1u)!=0u)){m+=1u;}
+    return ldexp(f32(m),i32(drop));
+}
+// svm_node_particle_info (svm/geometry.h, geom/object.h): object_particle_id is 0, the dummy particle, without an object.
+fn svm_particle_info(s:ptr<function,SvmState>,node:u32){
+    let kind=load_word(node+N_ParticleInfo_info_type);let out=svm_byte(node+N_ParticleInfo_out_offset);let object=(*s).geometry.object_id;
+    var particle=0u;
+    if(object!=NONE){if(object>=table_count(G_objects)){svm_error(s,64u);return;}particle=load_word(table_at(G_objects,object,SIZE_objects)+PI_O_particle_index);}
+    if(particle>=table_count(G_particles)){svm_error(s,64u);return;}
+    let at=table_at(G_particles,particle,SIZE_particles);
+    switch(kind){
+        case PI_INFO_PAR_INDEX:{svm_store(s,out,pi_u32_float(load_word(at+PI_P_index)));}
+        // uint_to_float_incl: n * (1.0f / (float)0xFFFFFFFFu), which is 2^-32.
+        case PI_INFO_PAR_RANDOM:{svm_store(s,out,pi_u32_float(pi_hash(load_word(at+PI_P_index)))*2.3283064365386963e-10);}
+        case PI_INFO_PAR_AGE:{svm_store(s,out,heap_float(at+PI_P_age));}
+        case PI_INFO_PAR_LIFETIME:{svm_store(s,out,heap_float(at+PI_P_lifetime));}
+        case PI_INFO_PAR_LOCATION:{svm_store3(s,out,heap_vec3(at+PI_P_location));}
+        case PI_INFO_PAR_SIZE:{svm_store(s,out,heap_float(at+PI_P_size));}
+        case PI_INFO_PAR_VELOCITY:{svm_store3(s,out,heap_vec3(at+PI_P_velocity));}
+        case PI_INFO_PAR_ANGULAR_VELOCITY:{svm_store3(s,out,heap_vec3(at+PI_P_angular_velocity));}
+        default:{}
+    }
+}
+//#endif
 //#if SVM_NODE_HAIR_INFO
 // svm_node_hair_info (svm/geometry.h, geom/curve.h curve_thickness, curve_tangent_normal). Intercept, length and random
 // are attribute nodes; their cases here store nothing, as pinned.
@@ -152,8 +224,20 @@ fn curve_thickness(s:ptr<function,SvmState>)->f32{
     let sd=(*s).geometry;let o=cv_order();
     if(sd.prim>=table_count(G_curves)){svm_error(s,64u);return 0.0;}
     let k0=load_word(table_at(G_curves,sd.prim,16u)+4u)+(sd.primitive_type>>PRIMITIVE_NUM_BITS);
+//#if !CURVE_MOTION
     let position_offset=bitcast<i32>(load_word(table_at(G_objects,sd.object_id,SIZE_objects)+O_position_offset));
     let w0=curve_key(position_offset,k0).w;let w1=curve_key(position_offset,k0+1u).w;
+//#endif
+//#if CURVE_MOTION
+    var w0=0.0;var w1=0.0;
+    if((sd.primitive_type&PRIMITIVE_MOTION)!=0u){
+        let frames=triangle_motion_time(sd.object_id,sd.time);if(frames.error!=0u){svm_error(s,64u);return 0.0;}
+        w0=curve_motion_key(sd.object_id,frames,k0,o).w;w1=curve_motion_key(sd.object_id,frames,k0+1u,o).w;
+    }else{
+        let position_offset=bitcast<i32>(load_word(table_at(G_objects,sd.object_id,SIZE_objects)+O_position_offset));
+        w0=curve_key(position_offset,k0).w;w1=curve_key(position_offset,k0+1u).w;
+    }
+//#endif
     let r=cvb(2.0*cvb(cvb(cvb(w1-w0,o)*sd.u,o)+w0,o),o);
     if((sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u){return r;}
     let normalized=cvb(r*0.5773502588272095,o);

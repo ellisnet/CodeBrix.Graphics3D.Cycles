@@ -579,6 +579,44 @@ public static unsafe class Native
     /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_curves", CallingConvention=CallingConvention.Cdecl)] public static extern int Curves(ulong host, ulong hair, float* xyz, float* radius, ulong keys, uint* firstKeys, ulong curves);
 
+    /// <summary><c>cbc_host_curve_motion</c>: sets (or, with one step, removes) a hair geometry's deformation motion.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="hair">The hair node handle.</param>
+    /// <param name="steps">The number of time steps.</param>
+    /// <param name="xyz">The time-ordered key positions, steps * keys * 3 floats.</param>
+    /// <param name="radius">The time-ordered radii, steps * keys floats, or null to keep the center radii.</param>
+    /// <param name="count">The key count over all steps.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_curve_motion", CallingConvention=CallingConvention.Cdecl)] public static extern int CurveMotion(ulong host, ulong hair, uint steps, float* xyz, float* radius, ulong count);
+
+    /// <summary><c>cbc_host_points</c>: replaces a point cloud's points.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="points">The point cloud node handle.</param>
+    /// <param name="xyz">The positions as x, y, z triples.</param>
+    /// <param name="radius">One radius per point.</param>
+    /// <param name="count">The point count.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_points", CallingConvention=CallingConvention.Cdecl)] public static extern int Points(ulong host, ulong points, float* xyz, float* radius, ulong count);
+
+    /// <summary><c>cbc_host_point_motion</c>: sets a point cloud's deformation motion steps.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="points">The point cloud node handle.</param>
+    /// <param name="steps">The motion step count: 1 removes motion, otherwise odd from 3 to 129.</param>
+    /// <param name="xyz">The time-ordered positions as x, y, z triples.</param>
+    /// <param name="radius">One time-ordered radius per position.</param>
+    /// <param name="count">The position count: steps times the point count.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_point_motion", CallingConvention=CallingConvention.Cdecl)] public static extern int PointMotion(ulong host, ulong points, uint steps, float* xyz, float* radius, ulong count);
+
+    /// <summary><c>cbc_host_particles</c>: replaces a particle system's particles.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="system">The particle system node handle.</param>
+    /// <param name="index">The index of each particle.</param>
+    /// <param name="values">Sixteen floats per particle: age, lifetime, location, rotation, size, velocity, angular velocity.</param>
+    /// <param name="count">The particle count.</param>
+    /// <returns>The native status code.</returns>
+    [DllImport(Library, EntryPoint="cbc_host_particles", CallingConvention=CallingConvention.Cdecl)] public static extern int Particles(ulong host, ulong system, uint* index, float* values, ulong count);
+
     /// <summary><c>cbc_host_curve_shape</c>: sets how a hair geometry's curves are rendered.</summary>
     /// <param name="host">The host handle.</param>
     /// <param name="hair">The hair node handle.</param>

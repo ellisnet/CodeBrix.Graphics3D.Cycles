@@ -8,7 +8,7 @@
 // Beckmann glossy/anisotropic/refraction/glass. CBC_BSDF_FIXTURE 2:
 // Ashikhmin-Shirley. CBC_BSDF_FIXTURE 3: Ashikhmin velvet and the diffuse and
 // glossy Toon BSDFs. Three fixtures keep each gate's surface entries inside the
-// Intel compile envelope.
+// Intel compile envelope. CBC_BSDF_FIXTURE 4: the hair closures (hair_fixture.h).
 [[maybe_unused]] static ShaderOutput *bsdf_tangent(ShaderGraph &g,ShaderNode *node){
   auto tangent=g.create_node<ColorNode>();tangent->set_value(make_float3(.8,.3,.2));g.connect(tangent->output("Color"),node->input("Tangent"));return nullptr;
 }
@@ -49,6 +49,9 @@
   auto n=g.create_node<GlassBsdfNode>();n->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);n->set_roughness(roughness);n->set_IOR(ior);
   n->set_color(make_float3(.8f,.9f,.95f));return n->output("BSDF");
 }
+#if CBC_BSDF_FIXTURE==4
+#include "hair_fixture.h"
+#endif
 [[maybe_unused]] static ShaderOutput *bsdf_material(ShaderGraph &g,unsigned test){
   [[maybe_unused]] const ClosureType F82=CLOSURE_BSDF_F82_CONDUCTOR,PHYS=CLOSURE_BSDF_PHYSICAL_CONDUCTOR;
   [[maybe_unused]] const ClosureType GGX=CLOSURE_BSDF_MICROFACET_GGX_ID,MULTI=CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID,BECK=CLOSURE_BSDF_MICROFACET_BECKMANN_ID;
@@ -100,6 +103,8 @@
     case 18:return bsdf_mix(g,glossy(AS,.7f),bsdf_diffuse(g),.7f);
     default:return bsdf_add(g,glossy(AS,.5f,.4f,.3f),bsdf_transparent(g));
   }
+#elif CBC_BSDF_FIXTURE==4
+  return hair_bsdf_material(g,test);
 #else
   const ClosureType DTOON=CLOSURE_BSDF_DIFFUSE_TOON_ID,GTOON=CLOSURE_BSDF_GLOSSY_TOON_ID;
   switch(test){

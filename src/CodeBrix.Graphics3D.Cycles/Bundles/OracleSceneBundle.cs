@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using CodeBrix.Graphics3D.Cycles.Rendering;
@@ -278,6 +279,8 @@ public sealed class OracleSceneBundle
             if (entry.TryGetProperty("graph", out JsonElement graph)) Graph(target, graph);
             if (entry.TryGetProperty("mesh", out JsonElement mesh)) Mesh(target, mesh);
             if (entry.TryGetProperty("hair", out JsonElement hair)) Hair(target, hair);
+            if (entry.TryGetProperty("points", out JsonElement points)) Points(target, points);
+            if (entry.TryGetProperty("particles", out JsonElement particles)) Particles(target, particles);
             if (entry.TryGetProperty("set", out JsonElement values)) Apply(target, values, null);
         }
 
@@ -344,8 +347,54 @@ public sealed class OracleSceneBundle
                     "thick_linear" => CurveShape.ThickLinear,
                     _ => throw new FormatException("Unknown curve shape: " + shape.GetString()),
                 });
+            if (hair.TryGetProperty("motion", out JsonElement motion))
+            {
+                float[] stepKeys = motion.TryGetProperty("keysFile", out JsonElement stepKeysFile)
+                    ? Floats(readFile(stepKeysFile.GetString()))
+                    : Required(motion, "keys").EnumerateArray().Select(v => v.GetSingle()).ToArray();
+                float[] stepRadius = motion.TryGetProperty("radiusFile", out JsonElement stepRadiusFile)
+                    ? Floats(readFile(stepRadiusFile.GetString()))
+                    : motion.TryGetProperty("radius", out JsonElement stepRadiusValues) ? stepRadiusValues.EnumerateArray().Select(v => v.GetSingle()).ToArray() : [];
+                host.CurveMotion(target, Required(motion, "steps").GetUInt32(), stepKeys, stepRadius);
+            }
             if (hair.TryGetProperty("attributes", out JsonElement attributes))
                 foreach (JsonElement attribute in attributes.EnumerateArray()) Attribute(target, attribute);
+        }
+
+        private void Points(Node target, JsonElement points)
+        {
+            float[] positions = points.TryGetProperty("positionsFile", out JsonElement positionsFile)
+                ? Floats(readFile(positionsFile.GetString()))
+                : Required(points, "positions").EnumerateArray().Select(v => v.GetSingle()).ToArray();
+            float[] radius = points.TryGetProperty("radiusFile", out JsonElement radiusFile)
+                ? Floats(readFile(radiusFile.GetString()))
+                : Required(points, "radius").EnumerateArray().Select(v => v.GetSingle()).ToArray();
+            if (positions.Length % 3 != 0 || positions.Length / 3 != radius.Length) throw new FormatException("Point positions must be complete triples with one radius each.");
+            host.Points(target, positions, radius);
+            if (points.TryGetProperty("attributes", out JsonElement attributes))
+                foreach (JsonElement attribute in attributes.EnumerateArray()) Attribute(target, attribute);
+            if (points.TryGetProperty("motion", out JsonElement motion))
+                host.PointMotion(target, Required(motion, "steps").GetUInt32(),
+                    Required(motion, "positions").EnumerateArray().Select(v => v.GetSingle()).ToArray(),
+                    Required(motion, "radius").EnumerateArray().Select(v => v.GetSingle()).ToArray());
+        }
+
+        private void Particles(Node target, JsonElement particles)
+        {
+            List<Particle> values = new();
+            foreach (JsonElement particle in particles.EnumerateArray())
+            {
+                static float[] Vector(JsonElement parent, string name, int length)
+                {
+                    float[] value = Required(parent, name).EnumerateArray().Select(v => v.GetSingle()).ToArray();
+                    return value.Length == length ? value : throw new FormatException("Particle " + name + " must have " + length + " values.");
+                }
+                float[] location = Vector(particle, "location", 3), rotation = Vector(particle, "rotation", 4), velocity = Vector(particle, "velocity", 3), angular = Vector(particle, "angularVelocity", 3);
+                values.Add(new Particle(Required(particle, "index").GetUInt32(), Required(particle, "age").GetSingle(), Required(particle, "lifetime").GetSingle(),
+                    new Vector3(location[0], location[1], location[2]), new Vector4(rotation[0], rotation[1], rotation[2], rotation[3]), Required(particle, "size").GetSingle(),
+                    new Vector3(velocity[0], velocity[1], velocity[2]), new Vector3(angular[0], angular[1], angular[2])));
+            }
+            host.Particles(target, values.ToArray());
         }
 
         private void Attribute(Node target, JsonElement attribute)

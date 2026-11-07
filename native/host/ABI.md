@@ -279,7 +279,9 @@ socket layer cannot express (lifetime, buffers, callbacks, queries).
 | Integrator, film | sockets of the singletons, for example `max_bounce`, `sampling_pattern`, `seed`, `motion_blur`, `exposure`, `filter_type` |
 | Shader graphs | `cbc_host_shader_output`, `cbc_host_shader_node`, `cbc_host_connect` |
 | Geometry | `cbc_host_mesh` (triangles; every face starts on material 0), the `shader`/`smooth` face sockets, attributes (`cbc_host_attribute_*`) |
-| Curves | `cbc_host_curves` (keys, one radius per key, each curve's first key; every curve starts on material 0), `cbc_host_curve_shape` per hair geometry, `cbc_host_curve_subdivisions` for the scene, the `curve_shader` socket, attributes on `CBC_ATTR_CURVE` and `CBC_ATTR_CURVE_KEY` after the curves (standard names `uv`, `generated`, `curve_intercept` per key, `curve_length` and `curve_random` per curve, which the Hair Info node reads) |
+| Curves | `cbc_host_curves` (keys, one radius per key, each curve's first key; every curve starts on material 0), `cbc_host_curve_shape` per hair geometry, `cbc_host_curve_subdivisions` for the scene, `cbc_host_curve_motion` (deformation motion, below), the `curve_shader` socket, attributes on `CBC_ATTR_CURVE` and `CBC_ATTR_CURVE_KEY` after the curves (standard names `uv`, `generated`, `curve_intercept` per key, `curve_length` and `curve_random` per curve, which the Hair Info node reads) |
+| Point clouds | `cbc_host_points` (positions, one radius per point; every point starts on material 0), `cbc_host_point_motion` (deformation motion with one radius per position), the `shader` socket, attributes on `CBC_ATTR_VERTEX`, standard attribute `point_random` |
+| Particles | `cbc_host_particles` on a `particle_system`, read by the Particle Info node of objects with `particle_system` and `particle_index` sockets; `CBC_PARTICLE_FLOATS` floats per particle |
 | Images | `cbc_host_image_create` (8 formats), `cbc_host_image_bind`, `cbc_host_image_update`, `cbc_host_image_release` |
 | Passes | `cbc_host_create_node("pass")` with `type` and a unique `name`; read with `cbc_host_pass_floats` |
 
@@ -288,7 +290,10 @@ socket layer cannot express (lifetime, buffers, callbacks, queries).
 Object motion is the object's `motion` socket (an odd or even number of 3x4
 transforms around `tfm`), camera motion the camera's `motion` socket, and
 deformation `cbc_host_motion_positions` (odd step count 3..129, time-ordered
-vertex arrays whose center equals the mesh's authored positions). All need
+vertex arrays whose center equals the mesh's authored positions); for a hair
+geometry `cbc_host_curve_motion` (the same steps, time-ordered key arrays whose
+center equals the current keys, with radii per step or the center radii when
+`radius` is null). All need
 `integrator.motion_blur` and a camera `shuttertime`. Motion may be set before
 or after a render (next section).
 
@@ -461,7 +466,7 @@ UV layout, so values bleed across island edges and into empty pixels. A scene wi
 approximate shadow catcher and an opaque background is refused (`CBC_UNSUPPORTED`):
 its film gains a background pass, which the kernel reads as a request to bake the world.
 
-## Exports (ABI 1, 54 functions)
+## Exports (ABI 1, 58 functions)
 
 | Function | Purpose |
 | --- | --- |
@@ -497,6 +502,10 @@ its film gains a background pass, which the kernel reads as a request to bake th
 | `cbc_host_curves` | replace a hair geometry's curves |
 | `cbc_host_curve_shape` | ribbon, thick or thick linear curves of a hair geometry |
 | `cbc_host_curve_subdivisions` | ribbon sections per curve segment for the scene, 2^n, n 0 to 4 |
+| `cbc_host_curve_motion` | deformation motion steps of a hair geometry (keys, optional radii) |
+| `cbc_host_points` | replace a point cloud's points |
+| `cbc_host_point_motion` | deformation motion steps of a point cloud, one radius per position |
+| `cbc_host_particles` | replace a particle system's particles |
 | `cbc_host_attribute_floats` / `cbc_host_attribute_bytes` | set a geometry attribute (`CBCAttributeConfig`) |
 | `cbc_host_attribute_get_floats` / `cbc_host_attribute_get_bytes` | read a geometry attribute |
 | `cbc_host_attribute_remove` | remove a geometry attribute |

@@ -62,8 +62,13 @@ class WebGPUDevice final:public Device {
   std::vector<KernelShader> shader_records;
   std::vector<KernelObject> object_records;
   std::vector<uint> object_flag_records;
+  // The object flag table's Cycles memory: ObjectManager::apply_static_transforms sets SD_OBJECT_TRANSFORM_APPLIED in it
+  // without an upload, ahead of the curve transparency evaluation (shadow.cpp).
+  device_memory *object_flag_memory=nullptr;
   // Curve records (shader ids and shapes for the census; closest.cpp validate_curves).
   std::vector<KernelCurve> curve_records;
+  // Point shaders (points_shader words, for the census).
+  std::vector<uint32_t> point_shader_words;
   // Any uploaded triangle with SHADER_SMOOTH_NORMAL (shadow terminator geometry offset).
   bool smooth_triangles=false;
   // Scene-driven WGSL specialization (pipelines.h). svm_node_words is the exact
@@ -134,6 +139,7 @@ class WebGPUDevice final:public Device {
   std::string adapter_report_json() const;
   void validate_geometry_motion() const;
   void validate_curves();
+  void validate_points();
   void validate_lighting(bool sampling) const;
   void validate_light_tree() const;
   void validate_volume() const;
@@ -155,9 +161,12 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline camera;
   cbc::Pipeline closest;
   cbc::Pipeline shadow_intersect;
+  // intersect_shadow_all: transparent shadows with curves (wavefront_shadow.wgsl); replay index 58.
+  cbc::Pipeline shadow_intersect_all;
   cbc::Pipeline shadow_transparent;
   cbc::Pipeline shadow_shade;
   cbc::Pipeline shadow_shader_data;
+  cbc::Pipeline shadow_curve_eval;
   uint32_t shadow_shader_cache=0;size_t shadow_shader_cache_bytes=0;
   cbc::Pipeline background;
   cbc::Pipeline light_forward;
@@ -197,6 +206,8 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline surface_light_select;
   // BSDF sample stage of scenes with the remaining SVM BSDF families (surface.cpp).
   cbc::Pipeline surface_sample;
+  // The Huang hair closure's evaluation and sample (wavefront_hair_huang.wgsl), before the entries that read them.
+  cbc::Pipeline surface_huang_eval,surface_huang_sample;
   // Light tree forward pdfs (background module) and their per-path scratch.
   cbc::Pipeline light_tree_forward;uint32_t light_tree_forward_scratch=0;size_t light_tree_forward_bytes=0;
   cbc::Pipeline surface_connect;
@@ -274,6 +285,7 @@ class WebGPUDevice final:public Device {
   void enqueue_shadow(DeviceKernel,int,const DeviceKernelArguments&);
   void enqueue_background(int,const DeviceKernelArguments&,DeviceKernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);
   void enqueue_background_eval(int,const DeviceKernelArguments&);
+  void enqueue_curve_shadow_eval(int work,const DeviceKernelArguments &args);
   void enqueue_displace(int,const DeviceKernelArguments&);
   void enqueue_light_nee(int,const DeviceKernelArguments&);
   void enqueue_volume_density(int,const DeviceKernelArguments&);

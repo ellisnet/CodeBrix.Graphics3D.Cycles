@@ -39,7 +39,6 @@ void WebGPUDevice::enqueue_dedicated_light(DeviceKernel kernel,int work,const De
   device_ptr indices;std::memcpy(&indices,args.values[0],sizeof(indices));require(indices%4==0,"Unaligned dedicated light indices");
   std::array<uint32_t,32> p{};p[1]=n;p[2]=uint32_t(indices);p[17]=error_word;if(p[2])validate(p[2],size_t(n)*4);
   require(data.kernel_features&KERNEL_FEATURE_SHADOW_LINKING,"Invalid native dedicated light dispatch without shadow linking");
-  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU dedicated light currently requires triangle primitives");
   require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU dedicated light optional integration features not implemented");
   validate_shadow_linking();validate_geometry_motion();validate_volume();validate_lighting(false);
   if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");

@@ -542,7 +542,7 @@ The native validation is separate from `dotnet test`. The maintained Linux host
 gate rebuilds the native targets, generates 786 independent CPU reference films,
 and runs the C and managed lifecycle, color-reload, concurrency and GPU
 lifecycle checks, plus the ABI test (abi_consumer.c, CPU and WebGPU) and the
-ABI.md example (example.c), and checks the 54 exports:
+ABI.md example (example.c), and checks the 58 exports:
 
     python3 native/tools/host_gate.py --output native/work/<new-folder>
 

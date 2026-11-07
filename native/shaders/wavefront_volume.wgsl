@@ -205,7 +205,18 @@ fn volume_after(index:u32){
     if(prim!=NONE){
         if((state_word(S_isect_type,index)&PRIMITIVE_LAMP)!=0u){next=DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD;}
         else{
-            let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
+//#if !CURVES
+//#if POINTS else             let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
+            let shader=point_or_triangle_shader(prim,state_word(S_isect_type,index))&SHADER_MASK;
+//#endif
+//#endif
+//#if CURVES
+            var shader=0u;
+            if((state_word(S_isect_type,index)&PRIMITIVE_CURVE)!=0u){shader=load_word(table_at(G_curves,prim,16u))&SHADER_MASK;}
+//#if POINTS else             else{shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;}
+            else{shader=point_or_triangle_shader(prim,state_word(S_isect_type,index))&SHADER_MASK;}
+//#endif
+//#endif
             let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);
             next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,(flags&SD_HAS_RAYTRACE)!=0u);
             let divisor=load_word(p(7u)+S_sort_partition_divisor);let key=shader+data_word(D_max_shaders)*(index/divisor);

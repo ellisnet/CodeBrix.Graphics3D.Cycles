@@ -211,6 +211,37 @@ int main(int argc, char **argv) {
   render(film_c); const int graph_rebuild_restores = same(film_c, base);
   if (!gpu) REQUIRE(graph_rebuild_restores);
 
+  /* Point clouds: the topology and motion exports and their validation, point attributes, and the particle export. */
+  {
+    CBCNode points = create("pointcloud"), not_points = create("mesh"), system = create("particle_system");
+    const float xyz[6] = {0,0,0, 1,0,0}, radii[2] = {.1f,.2f}, bad_radii[2] = {.1f,-.2f}, bad_xyz[6] = {0,0,0, 1,0,INFINITY};
+    CHECK(cbc_host_points(host, points, xyz, radii, 2));
+    REQUIRE(cbc_host_points(host, not_points, xyz, radii, 2) == CBC_INVALID);
+    REQUIRE(cbc_host_points(host, points, xyz, bad_radii, 2) == CBC_INVALID);
+    REQUIRE(cbc_host_points(host, points, bad_xyz, radii, 2) == CBC_INVALID);
+    REQUIRE(cbc_host_points(host, points, NULL, radii, 2) == CBC_INVALID);
+    const float motion[18] = {0,0,1, 1,0,1, 0,0,0, 1,0,0, 0,0,-1, 1,0,-1}, motion_radii[6] = {.1f,.2f, .1f,.2f, .3f,.2f}, wrong_center[6] = {.1f,.2f, .2f,.2f, .3f,.2f};
+    CHECK(cbc_host_point_motion(host, points, 3, motion, motion_radii, 6));
+    REQUIRE(cbc_host_point_motion(host, points, 2, motion, motion_radii, 6) == CBC_INVALID);
+    REQUIRE(cbc_host_point_motion(host, points, 3, motion, wrong_center, 6) == CBC_INVALID);
+    REQUIRE(cbc_host_point_motion(host, points, 3, motion, motion_radii, 4) == CBC_INVALID);
+    REQUIRE(cbc_host_point_motion(host, not_points, 3, motion, motion_radii, 6) == CBC_INVALID);
+    REQUIRE(cbc_host_point_motion(host, points, 1, motion, motion_radii, 6) == CBC_INVALID);
+    CHECK(cbc_host_point_motion(host, points, 1, NULL, NULL, 0));
+    const float point_random[2] = {.25f, .75f};
+    CBCAttributeConfig point_config = {sizeof(point_config), CBC_VALUE_FLOAT, CBC_ATTR_VERTEX, CBC_ATTR_STANDARD, {0}};
+    CHECK(cbc_host_attribute_floats(host, points, "point_random", &point_config, point_random, 2));
+    REQUIRE(cbc_host_attribute_floats(host, points, "point_random", &point_config, point_random, 1) == CBC_INVALID);
+    CHECK(cbc_host_delete_node(host, points));
+    const uint32_t particle_index[2] = {7, 9};
+    float particle_values[2 * CBC_PARTICLE_FLOATS] = {0}; particle_values[0] = 1.5f; particle_values[CBC_PARTICLE_FLOATS] = 2.5f;
+    CHECK(cbc_host_particles(host, system, particle_index, particle_values, 2));
+    REQUIRE(cbc_host_particles(host, not_points, particle_index, particle_values, 2) == CBC_INVALID);
+    REQUIRE(cbc_host_particles(host, system, NULL, particle_values, 2) == CBC_INVALID);
+    particle_values[3] = INFINITY; REQUIRE(cbc_host_particles(host, system, particle_index, particle_values, 2) == CBC_INVALID);
+    CHECK(cbc_host_particles(host, system, NULL, NULL, 0)); CHECK(cbc_host_delete_node(host, system)); CHECK(cbc_host_delete_node(host, not_points));
+  }
+
   /* Curves: the topology export, its validation and the curve attributes that depend on it. */
   {
     CBCNode hair = create("hair"), not_hair = create("mesh");
@@ -221,6 +252,17 @@ int main(int argc, char **argv) {
     REQUIRE(cbc_host_curves(host, hair, keys, bad_radii, 4, first, 2) == CBC_INVALID);
     REQUIRE(cbc_host_curves(host, hair, keys, radii, 4, not_first, 2) == CBC_INVALID);
     REQUIRE(cbc_host_curves(host, hair, keys, radii, 4, empty_curve, 2) == CBC_INVALID);
+    /* Deformation motion: three steps of the four keys, the center the current keys. */
+    const float motion_keys[36] = {0,0,-1, 0,0,0, 0,1,0, 1,1,0, 0,0,0, 0,0,1, 0,1,1, 1,1,1, 0,0,1, 0,0,2, 0,1,2, 1,1,2};
+    const float motion_radii[12] = {.1f,.1f,.05f,.02f, .1f,.1f,.05f,.02f, .2f,.2f,.05f,.02f}, bad_center_radii[12] = {.1f,.1f,.05f,.02f, .3f,.1f,.05f,.02f, .2f,.2f,.05f,.02f};
+    CHECK(cbc_host_curve_motion(host, hair, 3, motion_keys, motion_radii, 12));
+    CHECK(cbc_host_curve_motion(host, hair, 3, motion_keys, NULL, 12));
+    REQUIRE(cbc_host_curve_motion(host, hair, 2, motion_keys, NULL, 8) == CBC_INVALID);
+    REQUIRE(cbc_host_curve_motion(host, hair, 3, motion_keys, NULL, 11) == CBC_INVALID);
+    REQUIRE(cbc_host_curve_motion(host, hair, 3, motion_keys + 3, NULL, 11) == CBC_INVALID);
+    REQUIRE(cbc_host_curve_motion(host, hair, 3, motion_keys, bad_center_radii, 12) == CBC_INVALID);
+    REQUIRE(cbc_host_curve_motion(host, not_hair, 3, motion_keys, NULL, 12) == CBC_INVALID);
+    CHECK(cbc_host_curve_motion(host, hair, 1, NULL, NULL, 0));
     CHECK(cbc_host_curve_shape(host, hair, CBC_CURVE_THICK));
     REQUIRE(cbc_host_curve_shape(host, hair, 3) == CBC_INVALID);
     REQUIRE(cbc_host_curve_shape(host, not_hair, CBC_CURVE_THICK) == CBC_INVALID);

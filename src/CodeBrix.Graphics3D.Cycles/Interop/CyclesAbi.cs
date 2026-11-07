@@ -447,6 +447,60 @@ public static unsafe class CyclesAbi
             return (NativeStatus)Native.Curves(host, hair, xyz, radius, (ulong)radii.Length, first, (ulong)firstKeys.Length);
     }
 
+    /// <summary><c>cbc_host_curve_motion</c>: sets (or, with one step, removes) a hair geometry's deformation motion.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="hair">The hair node handle.</param>
+    /// <param name="steps">The odd number of time steps (3 to 129), or 1 to remove.</param>
+    /// <param name="positions">The time-ordered key positions as x, y, z triples (the key count over all steps is the length divided by three).</param>
+    /// <param name="radii">The time-ordered radii, one per key per step, or empty to keep the center radii at every step.</param>
+    /// <returns>The native status.</returns>
+    public static NativeStatus CurveMotion(ulong host, ulong hair, uint steps, ReadOnlySpan<float> positions, ReadOnlySpan<float> radii)
+    {
+        fixed (float* xyz = positions)
+        fixed (float* radius = radii)
+            return (NativeStatus)Native.CurveMotion(host, hair, steps, xyz, radii.IsEmpty ? null : radius, (ulong)(positions.Length / 3));
+    }
+
+    /// <summary><c>cbc_host_points</c>: replaces a point cloud's points.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="points">The point cloud node handle.</param>
+    /// <param name="positions">Positions as x, y, z triples.</param>
+    /// <param name="radii">One radius per point (the point count is the length).</param>
+    /// <returns>The native status.</returns>
+    public static NativeStatus Points(ulong host, ulong points, ReadOnlySpan<float> positions, ReadOnlySpan<float> radii)
+    {
+        fixed (float* xyz = positions)
+        fixed (float* radius = radii)
+            return (NativeStatus)Native.Points(host, points, xyz, radius, (ulong)radii.Length);
+    }
+
+    /// <summary><c>cbc_host_point_motion</c>: sets a point cloud's deformation motion steps.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="points">The point cloud node handle.</param>
+    /// <param name="steps">The motion step count: 1 removes motion, otherwise odd from 3 to 129.</param>
+    /// <param name="positions">Time-ordered positions as x, y, z triples.</param>
+    /// <param name="radii">One time-ordered radius per position (the count is the length).</param>
+    /// <returns>The native status.</returns>
+    public static NativeStatus PointMotion(ulong host, ulong points, uint steps, ReadOnlySpan<float> positions, ReadOnlySpan<float> radii)
+    {
+        fixed (float* xyz = positions)
+        fixed (float* radius = radii)
+            return (NativeStatus)Native.PointMotion(host, points, steps, xyz, radius, (ulong)radii.Length);
+    }
+
+    /// <summary><c>cbc_host_particles</c>: replaces a particle system's particles.</summary>
+    /// <param name="host">The host handle.</param>
+    /// <param name="system">The particle system node handle.</param>
+    /// <param name="indices">The index of each particle (the particle count is the length).</param>
+    /// <param name="values">Sixteen floats per particle: age, lifetime, location, rotation, size, velocity, angular velocity.</param>
+    /// <returns>The native status.</returns>
+    public static NativeStatus Particles(ulong host, ulong system, ReadOnlySpan<uint> indices, ReadOnlySpan<float> values)
+    {
+        fixed (uint* index = indices)
+        fixed (float* value = values)
+            return (NativeStatus)Native.Particles(host, system, index, value, (ulong)indices.Length);
+    }
+
     /// <summary><c>cbc_host_render</c>: renders synchronously into scene-linear RGBA, lower-left origin.</summary>
     /// <param name="host">The host handle.</param>
     /// <param name="width">The width in pixels.</param>

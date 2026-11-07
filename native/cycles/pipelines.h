@@ -353,30 +353,58 @@ inline constexpr ShaderFeatures SF_CURVE_THICK_LINEAR=ShaderFeatures::bit(188);
 inline constexpr ShaderFeatures SF_CURVES=SF_CURVE_RIBBON|SF_CURVE_THICK|SF_CURVE_THICK_LINEAR;
 // The Hair Info node (svm/geometry.h svm_node_hair_info), reachable on any geometry.
 inline constexpr ShaderFeatures SF_NODE_HAIR_INFO=ShaderFeatures::bit(189);
+// Curves B (range 194-199). Deformation motion: curve records with PRIMITIVE_MOTION, keys at ray time (geom/motion_curve.h).
+inline constexpr ShaderFeatures SF_CURVE_MOTION=ShaderFeatures::bit(194);
+// Curves with transparent shadows: the shadow-all traversal's curve hits (baked transparency, bvh_shadow_all_anyhit_filter)
+// and the kernel that bakes it (SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY).
+inline constexpr ShaderFeatures SF_CURVE_SHADOW=ShaderFeatures::bit(195);
+// Curves with the shader raytrace nodes or subsurface scattering: the AO, Bevel, Raycast and random walk traversals'
+// unaligned nodes and curve leaves, and curve shader data from a state-free ray for the Raycast node's hits.
+inline constexpr ShaderFeatures SF_CURVE_RAYTRACE=ShaderFeatures::bit(196);
+// A hair object that is a shadow catcher: the continuation after the catcher's background or volume reads a curve's shader.
+inline constexpr ShaderFeatures SF_CURVE_SHADOW_CATCHER=ShaderFeatures::bit(197);
+// Curves with the Raycast node: curve hits of its scene traversal and their shader data (curve_setup_hit). The local traversals
+// (subsurface, Bevel, only-local Raycast) pass curves over and need only CURVE_RAYTRACE.
+inline constexpr ShaderFeatures SF_CURVE_RAYCAST=ShaderFeatures::bit(198);
+// Point clouds (range 206-211): points in the scene (kernel/geom/point_intersect.h, kernel/geom/point.h; wavefront_point.wgsl,
+// wavefront_point_shader_data.wgsl), their motion (kernel/geom/motion_point.h), the Point Info and Particle Info nodes,
+// each reachable on any geometry (svm/geometry.h).
+inline constexpr ShaderFeatures SF_POINTS=ShaderFeatures::bit(206);
+inline constexpr ShaderFeatures SF_POINTS_MOTION=ShaderFeatures::bit(207);
+inline constexpr ShaderFeatures SF_NODE_POINT_INFO=ShaderFeatures::bit(208);
+inline constexpr ShaderFeatures SF_NODE_PARTICLE_INFO=ShaderFeatures::bit(209);
+inline constexpr ShaderFeatures SF_POINTS_ALL=SF_POINTS|SF_POINTS_MOTION|SF_NODE_POINT_INFO|SF_NODE_PARTICLE_INFO;
+// Hair closures (range 200-203). HAIR: the Hair BSDF node's reflection and transmission closures (closure/bsdf_hair.h).
+// HAIR_CHIANG: the Principled Hair BSDF node's Chiang model, all three colour parametrizations
+// (closure/bsdf_principled_hair_chiang.h). Bits 202 and 203 are free.
+inline constexpr ShaderFeatures SF_BSDF_HAIR=ShaderFeatures::bit(200);
+inline constexpr ShaderFeatures SF_BSDF_HAIR_CHIANG=ShaderFeatures::bit(201);
+// The Principled Hair BSDF node's Huang model (closure/bsdf_principled_hair_huang.h, range 204-205).
+inline constexpr ShaderFeatures SF_BSDF_HAIR_HUANG=ShaderFeatures::bit(204);
 inline constexpr ShaderFeatures SF_VOLUME_PHASE_KINDS=SF_PHASE_FOURNIER_FORAND|SF_PHASE_RAYLEIGH|SF_PHASE_DRAINE|SF_PHASE_MIE;
 // KERNEL_FEATURE_SHADOW_LINKING is set (lane range 120-127): blocker sets in the closest and shadow traversals, the
 // indirect emitters the main path leaves to the dedicated light kernels, and the kernels themselves
 // (wavefront_shadow_link.wgsl, shadow_linking.cpp).
 inline constexpr ShaderFeatures SF_SHADOW_LINKING=ShaderFeatures::bit(120);
 // Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108, 110, 120,
-// 128-160, 162-168, 170-180, 186-189; bit 62 is unassigned; 107, 161 and 169 are module variants).
-inline constexpr ShaderFeatures SF_ALL=ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
+// 128-160, 162-168, 170-180, 186-189, 194-198, 200, 201, 204, 206-209; bit 62 is unassigned; 107, 161 and 169 are module variants).
+inline constexpr ShaderFeatures SF_ALL=SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
   SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|
-  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO;
+  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG;
 // The families above, for regions shared by all of them (closure classification).
-inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON;
+inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_BSDF_HAIR_HUANG;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
 // Superset specialization mode (CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset,
 // desktop diagnostic): every handler is compiled in except these regions, which
 // are kept only when the uploaded scene reaches them. They are the regions that
 // pushed the unspecialized entry points past what Intel Mesa 25.0.7 compiles
 // correctly (native/DEVICE.md, "Linux reference fixes on the updated Mesa").
-inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
+inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_POINTS_ALL|SF_BUMP|SF_BUMP_STATE|SF_GEOMETRY_DERIVATIVE|SF_TEX_COORD_DERIVATIVE|
   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|
   SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|
-  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO;
+  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //

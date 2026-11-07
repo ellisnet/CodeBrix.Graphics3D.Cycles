@@ -159,7 +159,7 @@ static unsigned rejected(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader,cons
     auto states=initial;states[0]=initial[0];auto &s=states[0];auto object=scene.dscene.objects[s.isect.object];auto flags=scene.dscene.object_flag[s.isect.object];auto tri=scene.dscene.tri_vindex[s.isect.prim];auto sh=scene.dscene.tri_shader[s.isect.prim];
     if(test==0)s.isect.object=OBJECT_NONE;
     if(test==1)s.isect.prim=PRIM_NONE;
-    if(test==2)s.isect.type=PRIMITIVE_POINT;
+    if(test==2)s.isect.type=PRIMITIVE_VOLUME;
     if(test==3){scene.dscene.object_flag[initial[0].isect.object]|=SD_OBJECT_MOTION;scene.dscene.objects[initial[0].isect.object].num_tfm_steps=1;}
     if(test==4){scene.dscene.object_flag[initial[0].isect.object]|=SD_OBJECT_HAS_VERTEX_MOTION;scene.dscene.objects[initial[0].isect.object].num_geom_steps=1;}
     if(test==5)scene.dscene.objects[initial[0].isect.object].position_offset=INT_MAX;

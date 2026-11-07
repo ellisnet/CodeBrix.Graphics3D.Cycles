@@ -90,7 +90,14 @@ fn dedicated_lamp_distance(light:u32,kind:u32,origin:vec3<f32>,direction:vec3<f3
         let hit=trace_native(origin,direction,tmin,far,time,visibility,self_object,self_prim);
         if(load_word(p(17u))!=0u){return;}
         if(hit.prim==NONE){break;}
-        let shader=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader))&SHADER_MASK;
+//#if !CURVES
+//#if POINTS else         let shader=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader))&SHADER_MASK;
+        let shader=point_or_triangle_shader(hit.prim,hit.kind)&SHADER_MASK;
+//#endif
+//#endif
+//#if CURVES
+        let shader=closest_hit_shader(hit)&SHADER_MASK;
+//#endif
         let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);
         if((flags&SD_HAS_EMISSION)!=0u&&light_link_match(receiver,hit.object)&&!shadow_link_membership_all(hit.object)){
             hits++;

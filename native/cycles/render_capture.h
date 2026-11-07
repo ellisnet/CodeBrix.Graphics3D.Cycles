@@ -11,7 +11,7 @@
 // subsequent native scheduling; it may not inject those CPU decisions as data.
 struct RenderCapture final:ccl::WebGPUCommandObserver {
   ccl::WebGPUDevice &device;std::ofstream commands;size_t arena_size;uint64_t count=0;bool sized_dispatch=false;
-  std::array<uint64_t,58> pipeline_dispatches{};
+  std::array<uint64_t,61> pipeline_dispatches{};
   static void file(const std::string &name,const void *data,size_t bytes){std::ofstream out(name,std::ios::binary);out.write(static_cast<const char*>(data),bytes);if(!out)throw std::runtime_error("Capture write failed: "+name);}
   void header(uint32_t kind,uint32_t address,uint32_t bytes){uint32_t h[]={kind,address,bytes};commands.write(reinterpret_cast<const char*>(h),sizeof(h));count++;}
   RenderCapture(ccl::WebGPUDevice &d,const std::string &prefix):device(d),commands(prefix+".commands.bin",std::ios::binary),arena_size(d.arena_bytes){

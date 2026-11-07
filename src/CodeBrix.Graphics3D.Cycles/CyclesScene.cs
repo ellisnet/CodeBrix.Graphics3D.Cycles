@@ -232,6 +232,34 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
+    /// Creates a point cloud geometry with its points and, optionally, the shader every point uses.
+    /// </summary>
+    /// <param name="positions">Positions as x, y, z triples.</param>
+    /// <param name="radii">One radius per point.</param>
+    /// <param name="shader">The shader graph every point uses, or <see langword="null"/> for the scene default.</param>
+    /// <returns>The new point cloud geometry.</returns>
+    /// <exception cref="ArgumentException">The positions are not triples or the radius count differs from the point count.</exception>
+    public PointCloudNode CreatePointCloud(ReadOnlySpan<float> positions, ReadOnlySpan<float> radii, ShaderNode shader = null)
+    {
+        PointCloudNode points = Create<PointCloudNode>();
+        if (shader != null) points.UsedShaders = [shader];
+        points.SetPoints(positions, radii);
+        return points;
+    }
+
+    /// <summary>
+    /// Creates a particle system with its particles.
+    /// </summary>
+    /// <param name="particles">The particles.</param>
+    /// <returns>The new particle system.</returns>
+    public ParticleSystemNode CreateParticleSystem(ReadOnlySpan<Particle> particles)
+    {
+        ParticleSystemNode system = Create<ParticleSystemNode>();
+        system.SetParticles(particles);
+        return system;
+    }
+
+    /// <summary>
     /// Sets the scene-wide ribbon tessellation: 2^<paramref name="subdivisions"/> sections per curve segment.
     /// </summary>
     /// <param name="subdivisions">0 to 4; the default is 3.</param>
@@ -871,6 +899,18 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
             }
             scene.RenderEventReceived?.Invoke(scene, new RenderEvent(kind, done, total, TimeSpan.FromSeconds(nativeEvent->ElapsedSeconds), message));
             return cancellationToken.IsCancellationRequested;
+        }
+    }
+
+    internal void SetHairMotion(HairNode hair, uint steps, ReadOnlySpan<float> positions, ReadOnlySpan<float> radii)
+    {
+        try
+        {
+            Host.CurveMotion(HandleOf(hair), steps, positions, radii);
+        }
+        catch (NativeFailure failure) when (failure.NativeStatus == NativeStatus.NotReady)
+        {
+            throw new InvalidOperationException($"The native host refused the motion of {hair}: {failure.Message}", failure);
         }
     }
 

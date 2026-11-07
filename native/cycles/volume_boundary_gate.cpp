@@ -23,6 +23,7 @@
 #include <iostream>
 #include <iomanip>
 using namespace ccl;
+#include "curve_gate_tuft.h"
 using namespace wavefront_test;
 #include "volume_boundary_fixture.h"
 struct Metrics {uint64_t floats=0,integers=0,strict=0,scatter=0,transmit=0,terminated=0;uint64_t entered=0,exited=0,inside=0,outside=0,overlap=0,only=0,reflected=0,transmitted=0;unsigned cases=0,rejected=0,density=0;float maximum_actual=0,maximum_expected=0;double maximum=0,ratio=0;std::string field;};
@@ -109,9 +110,9 @@ static unsigned malformed(WebGPUDevice &d,const std::vector<Field> &layout,const
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2,"Usage: volume_boundary_gate OUTPUT_PREFIX");const std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"volume_boundary_gate device creation");Metrics m;
-  {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);
+  {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;gate_curve_params(params);Scene scene(params,&d);
     scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.integrator->set_aa_samples(16);scene.film->set_use_sample_count(false);
-    scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();auto fixture=add_volume_boundaries(scene);
+    scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();auto fixture=add_volume_boundaries(scene);gate_curve_tufts(scene);
     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Closed volume scene preparation failed");auto &data=scene.dscene.data;
     data.background.use_mis=0;data.integrator.use_direct_light=0;data.integrator.use_light_mis=0;data.integrator.num_lights=0;data.integrator.use_caustics=0;data.integrator.filter_glossy=FLT_MAX;data.film.pass_flag=0;
     d.const_copy_to("data",&data,sizeof(data));bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);const auto original=data;density_check(d,scene,fixture,m);

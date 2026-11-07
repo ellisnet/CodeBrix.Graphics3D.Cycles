@@ -800,6 +800,45 @@ extern "C" int cbc_host_curves(CBCHost handle, CBCNode id, const float *xyz, con
     hair->tag_curve_first_key_modified(); hair->tag_curve_shader_modified(); host.changed(entry);
   });
 }
+// Curve deformation motion, the shape of cbc_host_motion_positions: time-ordered keys, the center step the current keys
+// bit for bit; radii per step, or the center radii at every step (radius null).
+extern "C" int cbc_host_curve_motion(CBCHost handle, CBCNode id, uint32_t steps, const float *xyz, const float *radius, uint64_t count) {
+  return edit(handle, [&](Host &host) {
+    auto &entry = host.entry(id); auto hair = dynamic_cast<Hair *>(entry.node); require(hair, "Handle is not a hair geometry");
+    // A hair geometry baked by an earlier render gets its authored keys back first (host_edits.inc).
+    before_edit(host, entry, nullptr);
+    require(steps == 1 || (steps >= 3 && steps % 2 == 1 && steps <= Geometry::MAX_MOTION_STEPS), "Motion steps must be 1 or odd from 3 to 129");
+    auto position = hair->attributes.find(ATTR_STD_POSITION); auto radii = hair->attributes.find(ATTR_STD_RADIUS);
+    require(position && radii, "Hair geometry has no curve keys");
+    if (steps == 1) {
+      require(count == 0, "Removing motion takes no keys");
+      position->remove_motion(); radii->remove_motion();
+      hair->set_use_motion_blur(false);
+    } else {
+      const uint64_t keys = hair->num_keys();
+      require(keys && count == uint64_t(steps) * keys && xyz, "Expected steps * key_count keys");
+      for (uint64_t i = 0; i < count * 3; ++i) require(std::isfinite(xyz[i]), "Motion key position is nonfinite");
+      if (radius) for (uint64_t i = 0; i < count; ++i) require(std::isfinite(radius[i]) && radius[i] >= 0.0f, "Motion key radius is nonfinite or negative");
+      const uint32_t center = (steps - 1) / 2; const packed_float3 *current = position->data<packed_float3>(); const float *current_radius = radii->data<float>();
+      for (uint64_t k = 0; k < keys; ++k) {
+        const float *p = xyz + (uint64_t(center) * keys + k) * 3;
+        require(std::memcmp(&current[k].x, p, sizeof(float)) == 0 && std::memcmp(&current[k].y, p + 1, sizeof(float)) == 0 &&
+                std::memcmp(&current[k].z, p + 2, sizeof(float)) == 0, "Center motion step must equal the curve keys");
+        if (radius) require(std::memcmp(&current_radius[k], radius + uint64_t(center) * keys + k, sizeof(float)) == 0, "Center motion step must equal the curve radii");
+      }
+      hair->set_motion_steps(steps); hair->set_use_motion_blur(true);
+      position->remove_motion(); position->add_motion(hair);
+      radii->remove_motion(); if (radius) radii->add_motion(hair);
+      for (uint32_t step = 0; step < steps; ++step) {
+        if (step == center) continue;
+        auto out = position->data_for_write<packed_float3>(position->time_step_to_attr_step(int(step), int(steps)));
+        for (uint64_t k = 0; k < keys; ++k) { const float *p = xyz + (uint64_t(step) * keys + k) * 3; out[k] = make_float3(p[0], p[1], p[2]); }
+        if (radius) std::memcpy(radii->data_for_write<float>(radii->time_step_to_attr_step(int(step), int(steps))), radius + uint64_t(step) * keys, size_t(keys) * sizeof(float));
+      }
+    }
+    hair->tag_curve_first_key_modified(); host.changed(entry);
+  });
+}
 extern "C" int cbc_host_curve_shape(CBCHost handle, CBCNode id, uint32_t shape) {
   return edit(handle, [&](Host &host) {
     static_assert(int(CBC_CURVE_RIBBON) == int(CURVE_RIBBON) && int(CBC_CURVE_THICK) == int(CURVE_THICK) && int(CBC_CURVE_THICK_LINEAR) == int(CURVE_THICK_LINEAR));
@@ -817,6 +856,74 @@ extern "C" int cbc_host_curve_subdivisions(CBCHost handle, uint32_t subdivisions
     scene.params.hair_subdivisions = int(subdivisions);
     // KernelBVH holds the section count: the next render updates it through the geometry update of the curves.
     for (Geometry *geometry : scene.geometry) if (geometry->is_hair()) { geometry->tag_modified(); geometry->tag_update(&scene, false); }
+  });
+}
+// Point cloud geometry, the shape of cbc_host_curves: validated, copied, every point starts on material 0.
+extern "C" int cbc_host_points(CBCHost handle, CBCNode id, const float *xyz, const float *radius, uint64_t count) {
+  return edit(handle, [&](Host &host) {
+    require(count <= INT_MAX / 3 && (count == 0 || (xyz && radius)), "Invalid point dimensions");
+    auto &entry = host.entry(id); auto points = dynamic_cast<PointCloud *>(entry.node); require(points, "Handle is not a point cloud");
+    for (uint64_t i = 0; i < count * 3; ++i) require(std::isfinite(xyz[i]), "Point position is nonfinite");
+    for (uint64_t i = 0; i < count; ++i) require(std::isfinite(radius[i]) && radius[i] >= 0.0f, "Point radius is nonfinite or negative");
+    before_edit(host, entry, nullptr);
+    points->attributes.find(ATTR_STD_POSITION)->remove_motion(); points->attributes.find(ATTR_STD_RADIUS)->remove_motion();
+    points->set_use_motion_blur(false);
+    points->resize(int(count));
+    auto positions = points->attributes.find(ATTR_STD_POSITION)->data_for_write<packed_float3>();
+    auto radii = points->attributes.find(ATTR_STD_RADIUS)->data_for_write<float>();
+    for (size_t i = 0; i < count; ++i) { positions[i] = make_float3(xyz[3*i],xyz[3*i+1],xyz[3*i+2]); radii[i] = radius[i]; points->get_shader()[i] = 0; }
+    host.changed(entry);
+  });
+}
+// Deformation motion of a point cloud, the shape of cbc_host_motion_positions with one radius per position.
+extern "C" int cbc_host_point_motion(CBCHost handle, CBCNode id, uint32_t steps, const float *xyz, const float *radius, uint64_t count) {
+  return edit(handle, [&](Host &host) {
+    auto &entry = host.entry(id); auto points = dynamic_cast<PointCloud *>(entry.node); require(points, "Handle is not a point cloud");
+    before_edit(host, entry, nullptr);
+    require(steps == 1 || (steps >= 3 && steps % 2 == 1 && steps <= Geometry::MAX_MOTION_STEPS), "Motion steps must be 1 or odd from 3 to 129");
+    auto position = points->attributes.find(ATTR_STD_POSITION); auto radii = points->attributes.find(ATTR_STD_RADIUS);
+    if (steps == 1) {
+      require(count == 0, "Removing motion takes no positions");
+      position->remove_motion(); radii->remove_motion(); points->set_use_motion_blur(false);
+    } else {
+      const uint64_t total = points->num_points();
+      require(total && count == uint64_t(steps) * total && xyz && radius, "Expected steps * point_count positions and radii");
+      for (uint64_t i = 0; i < count * 3; ++i) require(std::isfinite(xyz[i]), "Motion position is nonfinite");
+      for (uint64_t i = 0; i < count; ++i) require(std::isfinite(radius[i]) && radius[i] >= 0.0f, "Motion radius is nonfinite or negative");
+      const uint32_t center = (steps - 1) / 2; const packed_float3 *current = position->data<packed_float3>(); const float *current_radius = radii->data<float>();
+      for (uint64_t v = 0; v < total; ++v) {
+        const uint64_t at = uint64_t(center) * total + v; const float *p = xyz + at * 3;
+        require(std::memcmp(&current[v].x, p, sizeof(float)) == 0 && std::memcmp(&current[v].y, p + 1, sizeof(float)) == 0 && std::memcmp(&current[v].z, p + 2, sizeof(float)) == 0 &&
+                std::memcmp(&current_radius[v], radius + at, sizeof(float)) == 0, "Center motion step must equal the points");
+      }
+      points->set_motion_steps(steps); points->set_use_motion_blur(true);
+      position->remove_motion(); radii->remove_motion(); position->add_motion(points); radii->add_motion(points);
+      for (uint32_t step = 0; step < steps; ++step) {
+        if (step == center) continue;
+        const int attr_step = position->time_step_to_attr_step(int(step), int(steps));
+        auto out = position->data_for_write<packed_float3>(attr_step); auto out_radius = radii->data_for_write<float>(attr_step);
+        for (uint64_t v = 0; v < total; ++v) { const uint64_t at = uint64_t(step) * total + v; const float *p = xyz + at * 3; out[v] = make_float3(p[0], p[1], p[2]); out_radius[v] = radius[at]; }
+      }
+    }
+    points->tag_position_modified(); points->tag_radius_modified(); host.changed(entry);
+  });
+}
+// The particles of a particle system: what the Particle Info node reads through the object's particle_system and
+// particle_index sockets. values holds CBC_PARTICLE_FLOATS floats per particle (cycles_host.h).
+extern "C" int cbc_host_particles(CBCHost handle, CBCNode id, const uint32_t *index, const float *values, uint64_t count) {
+  return edit(handle, [&](Host &host) {
+    require(count <= INT_MAX / CBC_PARTICLE_FLOATS && (count == 0 || (index && values)), "Invalid particle dimensions");
+    auto &entry = host.entry(id); auto system = dynamic_cast<ParticleSystem *>(entry.node); require(system, "Handle is not a particle system");
+    for (uint64_t i = 0; i < count * CBC_PARTICLE_FLOATS; ++i) require(std::isfinite(values[i]), "Particle value is nonfinite");
+    system->particles.resize(size_t(count));
+    for (size_t i = 0; i < count; ++i) {
+      const float *v = values + i * CBC_PARTICLE_FLOATS; Particle &particle = system->particles[i];
+      particle.index = int(index[i]); particle.age = v[0]; particle.lifetime = v[1];
+      particle.location = make_float3(v[2], v[3], v[4]); particle.rotation = make_float4(v[5], v[6], v[7], v[8]);
+      particle.size = v[9]; particle.velocity = make_float3(v[10], v[11], v[12]); particle.angular_velocity = make_float3(v[13], v[14], v[15]);
+    }
+    Scene &scene = *host.session->scene;
+    system->tag_update(&scene); scene.object_manager->tag_update(&scene, ObjectManager::PARTICLE_MODIFIED); host.changed(entry);
   });
 }
 // Denoised passes are the default, the noisy version an explicit request.

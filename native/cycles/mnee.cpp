@@ -70,7 +70,8 @@ void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   require(args.types[0]==DeviceKernelArguments::POINTER&&args.sizes[0]==sizeof(device_ptr),"Invalid MNEE pointer argument");
   device_ptr indices;std::memcpy(&indices,args.values[0],sizeof(indices));require(indices%4==0,"Unaligned MNEE indices");
   std::array<uint32_t,32> p{};p[1]=n;p[2]=uint32_t(indices);p[17]=error_word;if(p[2])validate(p[2],size_t(n)*4);
-  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU MNEE currently requires triangle primitives");
+  // The closure's evaluation runs in its own entry, for the sampled light's direction (wavefront_hair_huang.wgsl), not MNEE's.
+  require(!(shader_features()&SF_BSDF_HAIR_HUANG).any(),"WebGPU MNEE with the Huang model of the Principled Hair BSDF not implemented");
   require(data.integrator.use_caustics,"Invalid native MNEE dispatch without caustics");
   validate_mnee();validate_geometry_motion();validate_lighting(data.integrator.use_direct_light);
   require(data.max_shaders>0&&state.sort_partition_divisor>0,"Invalid MNEE sort configuration");

@@ -5,6 +5,7 @@
 // several anisotropies and radii), every path state field and the queue counters compared.
 #include "wavefront_test.h"
 #include "subsurface_reference.h"
+#include "curve_gate_tuft.h"
 #include "scene/scene.h"
 #include "scene/background.h"
 #include "scene/mesh.h"
@@ -45,7 +46,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
                       {CLOSURE_BSSRDF_RANDOM_WALK_ID,0,make_float3(4,2.5f,1.5f),make_float3(.95f,.9f,.2f)}};
   for(unsigned test=0;test<sizeof(cases)/sizeof(cases[0]);test++){
     const Case &c=cases[test];
-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;gate_curve_params(params);Scene scene(params,&d);
     scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.integrator->set_aa_samples(16);
     scene.film->set_use_sample_count(false);scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();
     auto g=make_unique<ShaderGraph>();auto sss=g->create_node<SubsurfaceScatteringNode>();sss->set_method(c.method);
@@ -61,6 +62,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     for(size_t i=0;i<tris.size();i++)mesh->get_triangles()[i]=tris[i];
     for(size_t t=0;t<tris.size()/3;t++){mesh->get_shader()[t]=0;mesh->get_smooth()[t]=true;}
     mesh->tag_triangles_modified();auto object=scene.create_node<Object>();object->set_geometry(mesh);
+    gate_curve_tufts(scene);
     for(auto s:scene.shaders)s->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Subsurface scene preparation failed");auto &data=scene.dscene.data;
     require(data.kernel_features&KERNEL_FEATURE_SUBSURFACE,"Subsurface fixture without KERNEL_FEATURE_SUBSURFACE");

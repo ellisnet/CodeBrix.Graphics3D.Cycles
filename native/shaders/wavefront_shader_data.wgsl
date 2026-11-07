@@ -203,6 +203,9 @@ fn surface_setup_hit(primitive_type:u32,object_id:u32,prim:u32,u:f32,v:f32,t:f32
 
 fn surface_from_ray(index:u32)->SurfaceData{
     if(index>=p(10u)){var sd:SurfaceData;surface_failure(&sd);return sd;}
+//#if POINTS
+    if((state_word(S_isect_type,index)&PRIMITIVE_POINT)!=0u){return point_setup_from_ray(index);}
+//#endif
 //#if CURVES
     if((state_word(S_isect_type,index)&PRIMITIVE_CURVE)!=0u&&(state_word(S_isect_type,index)&PRIMITIVE_LAMP)==0u){return curve_setup_from_ray(index);}
 //#endif

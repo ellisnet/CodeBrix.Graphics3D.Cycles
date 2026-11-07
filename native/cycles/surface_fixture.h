@@ -66,6 +66,9 @@ static void prepare(Scene &scene){
     m->tag_triangles_modified();auto n=m->attributes.add(ATTR_STD_VERTEX_NORMAL)->data_for_write<packed_normal>();for(unsigned i=0;i<GRAPH_COUNT*3;i++)n[i]=packed_normal(normalize(make_float3(-.25f+.03f*(i%7),.3f+.02f*(i%5),1)));
     return m;};auto shared=mesh();
   for(unsigned i=0;i<3;i++){auto ob=scene.create_node<Object>();ob->set_geometry(i<2?shared:mesh());ob->set_tfm(transform_translate(make_float3(-4,-4,float(i)*2))*transform_rotate(.17f*i,make_float3(0,1,0))*transform_scale(make_float3(i==1?-1.2f:1.1f,.8f,1.4f)));}
+#if CBC_BSDF_FIXTURE==4
+  hair_fixture_objects(scene,shaders);
+#endif
 }
 [[maybe_unused]] static std::vector<int> states_for(Scene &scene,std::vector<IntegratorStateCPU> &states){
   // The node fixture has more graphs; fewer rays per triangle keep it within capacity.
@@ -77,9 +80,23 @@ static void prepare(Scene &scene){
 #else
   constexpr unsigned rays=17,first_graphs=GRAPH_COUNT,late_rays=0;
 #endif
+#if CBC_BSDF_FIXTURE==4
+  // The hair objects follow the three triangle objects (hair_fixture_objects); of each triangle object's 17 rays per
+  // graph, the first 5 stay on its triangle and the others take a curve of the object's three hair objects, in turn.
+  (void)first_graphs;(void)late_rays;std::vector<int> ids;for(unsigned o=0;o<3;o++){auto ob=scene.objects[o];for(unsigned t=0;t<GRAPH_COUNT;t++)for(unsigned j=0;j<rays;j++){
+    unsigned i=ids.size()*3;require(i<states.size(),"SVM fixture capacity");ids.push_back(i);auto &s=states[i];s.isect.t=.1f*j;s.ray.P=make_float3(.1,.2,-2);
+    s.ray.D=normalize(make_float3(.13f*j-.8f,.4f-.07f*j,j%2?1.f:-1.f));s.ray.time=float(j)/16;s.ray.dP=.0001f*j;s.ray.dD=.0003f*j;
+    s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.path.rng_pixel=0x12345678u+i*0x9e3779b9u;s.path.rng_offset=uint16_t(65500u+i*79u);s.path.sample=j*137u;
+    if(j<5){s.isect.object=ob->get_device_index();s.isect.prim=ob->get_geometry()->prim_offset+t;s.isect.type=PRIMITIVE_TRIANGLE;s.isect.u=.05f*(j%9);s.isect.v=.04f*(j%11);continue;}
+    const unsigned shape=j%3;auto hair_object=scene.objects[3+shape*3+o];const int segment=j%(hair_fixture_keys-1);const PrimitiveType type=shape==0?PRIMITIVE_CURVE_RIBBON:shape==1?PRIMITIVE_CURVE_THICK:PRIMITIVE_CURVE_THICK_LINEAR;
+    s.isect.object=hair_object->get_device_index();s.isect.prim=hair_object->get_geometry()->prim_offset+t;s.isect.type=PRIMITIVE_PACK_SEGMENT(type,segment);
+    s.isect.u=.07f*float(j%14)+.01f;s.isect.v=shape==0?-.9f+.15f*float(j%13):.08f*float(j%12);
+  }}return ids;
+#else
   std::vector<int> ids;for(unsigned pass=0;pass<2;pass++)for(auto ob:scene.objects)for(unsigned t=pass?first_graphs:0;t<(pass?GRAPH_COUNT:first_graphs);t++)for(unsigned j=0;j<(pass?late_rays:rays);j++){
     unsigned i=ids.size()*3;require(i<states.size(),"SVM fixture capacity");ids.push_back(i);auto &s=states[i];s.isect.object=ob->get_device_index();s.isect.prim=ob->get_geometry()->prim_offset+t;s.isect.type=PRIMITIVE_TRIANGLE;s.isect.t=.1f*j;
     s.isect.u=.05f*(j%9);s.isect.v=.04f*(j%11);s.ray.P=make_float3(.1,.2,-2);s.ray.D=normalize(make_float3(.13f*j-.8f,.4f-.07f*j,j%2?1.f:-1.f));s.ray.time=float(j)/16;s.ray.dP=.0001f*j;s.ray.dD=.0003f*j;
     s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.path.rng_pixel=0x12345678u+i*0x9e3779b9u;s.path.rng_offset=uint16_t(65500u+i*79u);s.path.sample=j*137u;
   }return ids;
+#endif
 }

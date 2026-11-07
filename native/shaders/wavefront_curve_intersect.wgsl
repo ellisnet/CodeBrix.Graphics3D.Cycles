@@ -266,15 +266,31 @@ fn cv_ribbon(ray_org:vec3<f32>,ray_D:vec3<f32>,ray_tmin:f32,ray_tmax:f32,N:u32,k
 }
 //#endif
 struct CurveHit {hit:bool,t:f32,u:f32,v:f32}
-// curve_intersect for static curves: the ray is in the space of the curve's object.
-fn curve_intersect(ray_P:vec3<f32>,ray_D:vec3<f32>,tmin:f32,tmax:f32,object:u32,prim:u32,kind:u32)->CurveHit{
+// curve_intersect: the ray is in the space of the curve's object.
+//#if CURVE_MOTION else fn curve_intersect(ray_P:vec3<f32>,ray_D:vec3<f32>,tmin:f32,tmax:f32,object:u32,prim:u32,kind:u32)->CurveHit{
+fn curve_intersect(ray_P:vec3<f32>,ray_D:vec3<f32>,tmin:f32,tmax:f32,object:u32,prim:u32,kind:u32,time:f32)->CurveHit{
+//#endif
     var out:CurveHit;
-    if(prim>=table_count(G_curves)||(kind&PRIMITIVE_MOTION)!=0u){fail();return out;}
+//#if CURVE_MOTION else     if(prim>=table_count(G_curves)||(kind&PRIMITIVE_MOTION)!=0u){fail();return out;}
+    if(prim>=table_count(G_curves)){fail();return out;}
+//#endif
     let curve=table_at(G_curves,prim,16u);let first=load_word(curve+4u);let keys=load_word(curve+8u);
     let k0=first+(kind>>PRIMITIVE_NUM_BITS);let k1=k0+1u;let ka=select(k0-1u,first,k0==first);let kb=min(k1+1u,first+keys-1u);
+//#if !CURVE_MOTION
     let position_offset=bitcast<i32>(load_word(table_at(G_objects,object,SIZE_objects)+O_position_offset));
     let c0=curve_key(position_offset,ka);let c1=curve_key(position_offset,k0);let c2=curve_key(position_offset,k1);let c3=curve_key(position_offset,kb);
     let o=cv_order();let shape=kind&PRIMITIVE_CURVE;
+//#endif
+//#if CURVE_MOTION
+    let o=cv_order();let shape=kind&PRIMITIVE_CURVE;var c0:vec4<f32>;var c1:vec4<f32>;var c2:vec4<f32>;var c3:vec4<f32>;
+    if((kind&PRIMITIVE_MOTION)!=0u){
+        let frames=triangle_motion_time(object,time);if(frames.error!=0u){return out;}
+        c0=curve_motion_key(object,frames,ka,o);c1=curve_motion_key(object,frames,k0,o);c2=curve_motion_key(object,frames,k1,o);c3=curve_motion_key(object,frames,kb,o);
+    }else{
+        let position_offset=bitcast<i32>(load_word(table_at(G_objects,object,SIZE_objects)+O_position_offset));
+        c0=curve_key(position_offset,ka);c1=curve_key(position_offset,k0);c2=curve_key(position_offset,k1);c3=curve_key(position_offset,kb);
+    }
+//#endif
 //#if CURVE_RIBBON
     if(shape==PRIMITIVE_CURVE_RIBBON){out=cv_ribbon(ray_P,ray_D,tmin,tmax,data_word(D_bvh_curve_subdivisions),c0,c1,c2,c3,o);}
 //#endif

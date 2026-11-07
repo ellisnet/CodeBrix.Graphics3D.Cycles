@@ -34,6 +34,7 @@
 using namespace ccl;
 using namespace wavefront_test;
 #include "surface_fixture.h"
+#include "curve_gate_tuft.h"
 #include "object_motion_fixture.h"
 #include "deforming_motion_fixture.h"
 // Scene modes of the AO shadow-ray and AO node cases.
@@ -146,7 +147,7 @@ static Mesh *ao_mesh(Scene &scene,Shader *shader,const std::vector<float3> &v,co
   std::ranges::fill(mesh->get_smooth(),false);std::ranges::fill(mesh->get_shader(),0);mesh->tag_triangles_modified();return mesh;
 }
 static void ao_node_cases(WebGPUDevice &d,Metrics &m,Mode mode){
-  SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);
+  SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;gate_curve_params(params);Scene scene(params,&d);
   scene.integrator->set_ao_distance(2.f);scene.integrator->set_use_light_tree(false);scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->compute_auto_viewplane();
   const std::vector<int> q={0,1,2,0,2,3};std::vector<Object*> targets;
   auto quad=[&](unsigned variant,std::vector<float3> v){auto o=scene.create_node<Object>();o->set_geometry(ao_mesh(scene,ao_shader(scene,variant),v,q));targets.push_back(o);};
@@ -160,6 +161,11 @@ static void ao_node_cases(WebGPUDevice &d,Metrics &m,Mode mode){
   // Motion: the linked-normal quad and the first instanced box (only_local) move, or both deform.
   if(mode==Mode::ObjectMotion){object_motion_fixture(scene,*targets[2],1);object_motion_fixture(scene,*targets[4],2);}
   if(mode==Mode::DeformingMotion){deforming_motion_fixture(scene,*targets[2],1);deforming_motion_fixture(scene,*targets[4],0);}
+#ifdef CBC_RAYTRACE_NODES_FIXTURE
+  gate_curve_tufts(scene,nullptr,false);
+#else
+  gate_curve_tufts(scene);
+#endif
   for(auto shader:scene.shaders)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
   Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"AO node scene preparation failed");
   auto &ds=scene.dscene;auto &data=ds.data;require(data.kernel_features&KERNEL_FEATURE_NODE_RAYTRACE,"Missing native raytrace node feature");

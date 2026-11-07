@@ -37,7 +37,6 @@ void WebGPUDevice::validate_subsurface(){
           "WebGPU subsurface scattering with light linking, path guiding or denoising features not implemented");
   require(!(shader_features()&(SF_FILM_DATA_PASSES|SF_FILM_DENOISING|SF_NODE_AOV|SF_FILM_CRYPTOMATTE)).any(),
           "WebGPU subsurface scattering with data, denoising, AOV or cryptomatte passes not implemented");
-  require(!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU subsurface scattering currently requires triangle primitives");
   for(const uint flags:object_flag_records){
     require(!(flags&(SD_OBJECT_MOTION|SD_OBJECT_HAS_VERTEX_MOTION)),"WebGPU subsurface scattering with motion blur not implemented");
     require(!(flags&SD_OBJECT_HOLDOUT_MASK),"WebGPU subsurface scattering with holdout objects not implemented");

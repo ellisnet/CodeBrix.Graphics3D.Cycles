@@ -162,7 +162,18 @@ fn sc_background_continue(index:u32,flag:u32){
     }
 //#endif
     let prim=state_word(S_isect_prim,index);if(prim==NONE){fail();return;}
-    let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
+//#if !CURVE_SHADOW_CATCHER
+//#if POINTS else     let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
+    let shader=point_or_triangle_shader(prim,state_word(S_isect_type,index))&SHADER_MASK;
+//#endif
+//#endif
+//#if CURVE_SHADOW_CATCHER
+    var shader=0u;
+    if((state_word(S_isect_type,index)&PRIMITIVE_CURVE)!=0u){shader=load_word(table_at(G_curves,prim,16u))&SHADER_MASK;}
+//#if POINTS else     else{shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;}
+    else{shader=point_or_triangle_shader(prim,state_word(S_isect_type,index))&SHADER_MASK;}
+//#endif
+//#endif
     if((load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags)&SD_HAS_RAYTRACE)!=0u){fail();return;}
     let divisor=load_word(p(7u)+S_sort_partition_divisor);let key=shader+data_word(D_max_shaders)*(index/divisor);
     if(key>=p(15u)){fail();return;}

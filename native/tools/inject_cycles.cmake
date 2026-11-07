@@ -136,6 +136,24 @@ function(codebrix_add_cycles_device)
   target_include_directories(codebrix_cycles_curve_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_curve_gate PRIVATE ${codebrix_device_libs})
+  # Transparent shadows through curves: the baked transparency and shadow_all, with the GPU's recorded hit capacity.
+  add_executable(codebrix_cycles_curve_shadow_gate "${CODEBRIX_NATIVE_ROOT}/cycles/curve_shadow_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp")
+  target_compile_features(codebrix_cycles_curve_shadow_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_curve_shadow_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_curve_shadow_gate PRIVATE ${definitions} CODEBRIX_TRANSPARENT_SHADOW_STATE_GATE)
+  target_include_directories(codebrix_cycles_curve_shadow_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_curve_shadow_gate PRIVATE ${codebrix_device_libs})
+  # Hair closures: evaluate, sample and pdf state against the original CPU kernels (hair_fixture.h).
+  add_executable(codebrix_cycles_hair_state_gate "${CODEBRIX_NATIVE_ROOT}/cycles/hair_state_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/hair_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp")
+  target_compile_features(codebrix_cycles_hair_state_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_hair_state_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_hair_state_gate PRIVATE ${definitions} CBC_BSDF_FIXTURE=4)
+  target_include_directories(codebrix_cycles_hair_state_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_hair_state_gate PRIVATE ${codebrix_device_libs})
   add_executable(codebrix_cycles_curve_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/curve_render_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
@@ -147,6 +165,54 @@ function(codebrix_add_cycles_device)
   target_include_directories(codebrix_cycles_curve_render_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
     "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
   target_link_libraries(codebrix_cycles_curve_render_gate PRIVATE ${codebrix_device_libs})
+  add_executable(codebrix_cycles_point_gate "${CODEBRIX_NATIVE_ROOT}/cycles/point_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/shader_data_reference.cpp")
+  target_compile_features(codebrix_cycles_point_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_point_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_point_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_point_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_point_gate PRIVATE ${codebrix_device_libs})
+  add_executable(codebrix_cycles_point_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/point_render_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp")
+  target_compile_features(codebrix_cycles_point_render_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_point_render_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_point_render_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_point_render_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_point_render_gate PRIVATE ${codebrix_device_libs})
+  # The hair closures on curves: the curve image gate with the materials of hair_fixture.h.
+  add_executable(codebrix_cycles_hair_curve_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/curve_render_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp")
+  target_compile_features(codebrix_cycles_hair_curve_render_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_hair_curve_render_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_hair_curve_render_gate PRIVATE ${definitions} CBC_BSDF_FIXTURE=4 CBC_HAIR_RENDER=1)
+  target_include_directories(codebrix_cycles_hair_curve_render_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_hair_curve_render_gate PRIVATE ${codebrix_device_libs})
+  # Principled Hair, Huang model: closure, evaluation, sampling and surface stage state against the CPU kernels; images.
+  add_executable(codebrix_cycles_hair_huang_gate "${CODEBRIX_NATIVE_ROOT}/cycles/hair_huang_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/hair_huang_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp")
+  add_executable(codebrix_cycles_hair_huang_render_gate "${CODEBRIX_NATIVE_ROOT}/cycles/hair_huang_render_gate.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/camera_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/closest_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/surface_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/background_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/light_reference.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/environment_reference.cpp")
+  foreach(hair_target codebrix_cycles_hair_huang_gate codebrix_cycles_hair_huang_render_gate)
+    target_compile_features(${hair_target} PRIVATE cxx_std_20)
+    target_compile_options(${hair_target} PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+    target_compile_definitions(${hair_target} PRIVATE ${definitions})
+    target_include_directories(${hair_target} PRIVATE "${PROJECT_SOURCE_DIR}/src"
+      "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+    target_link_libraries(${hair_target} PRIVATE ${codebrix_device_libs})
+  endforeach()
   add_executable(codebrix_cycles_shadow_gate "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_gate.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/shadow_reference.cpp")
   target_compile_features(codebrix_cycles_shadow_gate PRIVATE cxx_std_20)
@@ -608,14 +674,17 @@ function(codebrix_add_cycles_device)
   # Remaining SVM BSDF families: original-CPU closure setup, surface integration and
   # render; bsdf = Metallic and Beckmann, bsdf2 = Ashikhmin-Shirley, bsdf3 = velvet
   # and Toon (native/cycles/bsdf_fixture.h).
-  foreach(target_kind IN ITEMS svm bounce render svm2 bounce2 render2 svm3 bounce3 render3)
-    string(REGEX REPLACE "[23]$" "" kind "${target_kind}")
+  foreach(target_kind IN ITEMS svm bounce render svm2 bounce2 render2 svm3 bounce3 render3 svm4 bounce4 render4)
+    string(REGEX REPLACE "[234]$" "" kind "${target_kind}")
     if(target_kind MATCHES "2$")
       set(gate_family bsdf2)
       set(gate_fixture 2)
     elseif(target_kind MATCHES "3$")
       set(gate_family bsdf3)
       set(gate_fixture 3)
+    elseif(target_kind MATCHES "4$")
+      set(gate_family hair)
+      set(gate_fixture 4)
     else()
       set(gate_family bsdf)
       set(gate_fixture 1)

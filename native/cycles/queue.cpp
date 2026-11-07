@@ -81,6 +81,9 @@ class WebGPUQueue final:public DeviceQueue {
       if(kernel==DEVICE_KERNEL_SHADER_EVAL_DISPLACE){
         debug_enqueue_begin(kernel,work);d.enqueue_displace(work,args);debug_enqueue_end();return;
       }
+      if(kernel==DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY){
+        debug_enqueue_begin(kernel,work);d.enqueue_curve_shadow_eval(work,args);debug_enqueue_end();return;
+      }
       if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE){
         debug_enqueue_begin(kernel,work);d.enqueue_light_nee(work,args);debug_enqueue_end();return;
       }

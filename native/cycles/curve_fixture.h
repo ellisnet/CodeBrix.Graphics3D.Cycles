@@ -15,13 +15,45 @@
 #include "util/transform.h"
 #include <cmath>
 #include <cstring>
+#include <cmath>
 #include <random>
 #include <vector>
 namespace ccl {
 struct CurveFixtureGeometry {Hair *hair;std::vector<float3> keys;std::vector<float> radius;std::vector<int> first;};
 struct CurveFixtureObject {unsigned geometry;Transform tfm;};
 struct CurveFixture {std::vector<CurveFixtureGeometry> geometry;std::vector<CurveFixtureObject> objects;Shader *shader;};
-struct CurveRay {float3 P,D;float tmin,tmax;unsigned kind;};
+struct CurveRay {float3 P,D;float tmin,tmax,time;unsigned kind;};
+// Motion for the fixture: deformation steps (0 for none) on every geometry whose index passes the mask, with or without
+// radii per step (the keys swing along per-geometry directions), and object motion on every third object.
+struct CurveMotion {unsigned steps=0;bool radius=false;bool object=false;unsigned geometry_mask=~0u;};
+inline float3 curve_fixture_swing(size_t geometry,float time){
+  const float3 axis=normalize(make_float3(.4f+.3f*float(geometry%3),.7f-.2f*float(geometry%2),.25f));
+  return axis*(.45f*(2.f*time-1.f));
+}
+inline void curve_fixture_motion(CurveFixture &f,Scene &scene,const CurveMotion &m){
+  if(m.steps)for(size_t g=0;g<f.geometry.size();g++){
+    if(!((m.geometry_mask>>g)&1u))continue;
+    auto &geometry=f.geometry[g];Hair *hair=geometry.hair;
+    hair->set_motion_steps(m.steps);hair->set_use_motion_blur(true);
+    auto P=hair->attributes.find(ATTR_STD_POSITION);auto R=hair->attributes.find(ATTR_STD_RADIUS);P->add_motion(hair);if(m.radius)R->add_motion(hair);
+    for(unsigned step=0;step<m.steps;step++){
+      if(step==(m.steps-1)/2)continue;
+      const float time=float(step)/float(m.steps-1);
+      auto out=P->data_for_write<packed_float3>(P->time_step_to_attr_step(int(step),int(m.steps)));
+      for(size_t k=0;k<geometry.keys.size();k++){
+        const float bend=float(k%3)*.05f*std::sin(6.f*time);out[k]=geometry.keys[k]+curve_fixture_swing(g,time)+make_float3(bend,-bend,bend*.5f);}
+      if(m.radius){auto r=R->data_for_write<float>(R->time_step_to_attr_step(int(step),int(m.steps)));
+        for(size_t k=0;k<geometry.keys.size();k++)r[k]=geometry.radius[k]*(1.f+.5f*(time-.5f));}
+    }
+  }
+  if(m.object)for(size_t o=0;o<scene.objects.size();o++){
+    Object *object=scene.objects[o];
+    if(!object->get_geometry()->is_hair()||o%3!=0)continue;
+    array<Transform> motion(3);const Transform tfm=object->get_tfm();const float3 shift=make_float3(.3f,-.25f,.15f);
+    motion[0]=transform_translate(-shift)*tfm*transform_rotate(-.05f,normalize(make_float3(.2f,.9f,.4f)));motion[1]=tfm;motion[2]=transform_translate(shift)*tfm*transform_rotate(.05f,normalize(make_float3(.2f,.9f,.4f)));
+    object->set_motion(motion);
+  }
+}
 inline Hair *curve_fixture_hair(Scene &scene,CurveFixtureGeometry &g,CurveShapeType shape,Shader *shader,unsigned seed){
   std::mt19937 rng(seed);std::uniform_real_distribution<float> unit(-1.f,1.f);
   const int counts[]={2,3,4,7,5,2,1,4,6,3,2,5};
@@ -68,17 +100,20 @@ inline float3 curve_fixture_eval(const std::vector<float3> &c,float u){
   return .5f*(c[0]*n0+c[1]*n1+c[2]*n2+c[3]*n3);
 }
 inline float curve_fixture_bits(float x,int ulps){uint32_t b;std::memcpy(&b,&x,4);b=uint32_t(int64_t(b)+ulps);std::memcpy(&x,&b,4);return x;}
-inline std::vector<CurveRay> curve_rays(const CurveFixture &f,unsigned count,unsigned seed){
+inline std::vector<CurveRay> curve_rays(const CurveFixture &f,unsigned count,unsigned seed,const CurveMotion &motion={}){
   std::mt19937 rng(seed);std::uniform_real_distribution<float> unit(-1.f,1.f);std::vector<CurveRay> rays;rays.reserve(count);
   for(unsigned i=0;i<count;i++){
     const auto &o=f.objects[rng()%f.objects.size()];const auto &g=f.geometry[o.geometry];
     const size_t c=rng()%g.first.size();const int first=g.first[c];const int keys=(c+1<g.first.size()?g.first[c+1]:int(g.keys.size()))-first;
     const int seg=keys>1?int(rng()%unsigned(keys-1)):0;const int k0=first+seg,k1=keys>1?k0+1:k0,ka=std::max(k0-1,first),kb=std::min(k1+1,first+keys-1);
-    const float u=.5f+.5f*unit(rng);const float3 local=curve_fixture_eval({g.keys[ka],g.keys[k0],g.keys[k1],g.keys[kb]},u);
+    const float u=.5f+.5f*unit(rng);float3 local=curve_fixture_eval({g.keys[ka],g.keys[k0],g.keys[k1],g.keys[kb]},u);
+    // The ray's time: the shutter's ends and centre, the steps' midpoints and at random. Aim at the swung position.
+    const float times[]={0.f,1.f,.5f,.25f,.75f,.5f+.5f*unit(rng),.5f+.5f*unit(rng),.5f+.5f*unit(rng)};const float time=motion.steps||motion.object?times[rng()%8]:.5f;
+    if(motion.steps&&((motion.geometry_mask>>o.geometry)&1u))local=local+curve_fixture_swing(o.geometry,time);
     const float radius=g.radius[k0]+(g.radius[k1]-g.radius[k0])*u;
     const float3 tangent=keys>1?g.keys[k1]-g.keys[k0]:make_float3(0,0,1);
     const float3 target=transform_point(&o.tfm,local);const float3 axis=transform_direction(&o.tfm,tangent);
-    const unsigned kind=i%8;CurveRay ray;ray.tmin=0;ray.tmax=1e6f;ray.kind=kind;
+    const unsigned kind=i%8;CurveRay ray;ray.tmin=0;ray.tmax=1e6f;ray.time=time;ray.kind=kind;
     float3 dir=normalize(make_float3(unit(rng),unit(rng),unit(rng)));
     if(len_squared(axis)>0&&(kind==3||kind==4)){
       // Down the tangent: near-parallel to the bounding cylinders.

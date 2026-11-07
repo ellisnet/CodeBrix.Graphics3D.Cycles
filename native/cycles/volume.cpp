@@ -76,7 +76,7 @@ std::string volume_source(){
 // Mixed-anisotropy duplicate closure compaction is rejected in WGSL before state/film mutation.
 void WebGPUDevice::validate_volume() const{
   if(!(data.kernel_features&KERNEL_FEATURE_VOLUME))return;
-  require(!data.bvh.have_motion&&!data.bvh.have_curves&&!data.bvh.have_points,"WebGPU volumes currently require static triangle boundaries");
+  require(!data.bvh.have_motion,"WebGPU volumes with motion blur not implemented");
   // Malformed stack and closure sizes first (data validity, before the capability refusals below).
   require(data.volume_stack_size>=2&&data.volume_stack_size<=MAX_VOLUME_STACK_SIZE,"Invalid homogeneous volume stack size");
   require(data.max_closures>=1&&data.max_closures<=MAX_CLOSURE,"Invalid homogeneous volume closure capacity");

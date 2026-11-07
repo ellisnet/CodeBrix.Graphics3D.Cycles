@@ -807,6 +807,92 @@ public class GpuRenderTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task curves_with_deformation_and_object_motion_render_on_the_gpu_within_the_practical_criterion()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        static void Build(CyclesScene scene)
+        {
+            TestScenes.BuildTyped(scene);
+            scene.Integrator.MotionBlur = true;
+            scene.Camera.Shuttertime = .6f;
+            float[] keys = [-.8f, -.6f, 0f, -.3f, -.2f, 0f, .2f, .2f, 0f, .8f, .6f, 0f];
+            float[] radii = [.2f, .15f, .15f, .1f];
+            float[] steps = [.. keys.Select(v => v - .1f), .. keys, .. keys.Select(v => v + .1f)];
+            float[] stepRadii = [.. radii.Select(r => r * .5f), .. radii, .. radii.Select(r => r * 1.5f)];
+            HairNode thick = scene.CreateHair(keys, radii, [0u], CurveShape.Thick);
+            thick.SetMotionKeys(3, steps, stepRadii);
+            scene.CreateObject(thick, Transform3x4.CreateTranslation(0f, 0f, .1f));
+            HairNode ribbons = scene.CreateHair(keys, radii, [0u], CurveShape.Ribbon);
+            ObjectNode moving = scene.CreateObject(ribbons, Transform3x4.CreateTranslation(-.6f, .4f, 0f));
+            moving.Motion = [Transform3x4.CreateTranslation(-.8f, .4f, 0f), Transform3x4.CreateTranslation(-.6f, .4f, 0f), Transform3x4.CreateTranslation(-.4f, .5f, 0f)];
+        }
+        using CyclesScene gpu = CreateGpuScene();
+        Build(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        Build(cpu);
+
+        //Act
+        FilmBuffer reference = cpu.Render(settings);
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
+
+        //Assert
+        WebGpuValidationScenes.Compare(film.Span, reference.Span).Practical.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task curves_with_transparent_shadows_render_on_the_gpu_within_the_practical_criterion()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        static void Build(CyclesScene scene)
+        {
+            TestScenes.BuildTyped(scene);
+            ShaderNode shader = scene.CreateShader();
+            TransparentBsdfNode transparent = shader.Add<TransparentBsdfNode>();
+            transparent.Color = new System.Numerics.Vector3(.6f, .4f, .8f);
+            shader.Connect(transparent.BsdfOutput, shader.Output.SurfaceInput);
+            float[] keys = [-.8f, -.6f, 0f, -.3f, -.2f, 0f, .2f, .2f, 0f, .8f, .6f, 0f];
+            float[] radii = [.2f, .15f, .15f, .1f];
+            scene.CreateObject(scene.CreateHair(keys, radii, [0u], CurveShape.Thick, shader), Transform3x4.CreateTranslation(0f, 0f, .1f));
+        }
+        using CyclesScene gpu = CreateGpuScene();
+        Build(gpu);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        Build(cpu);
+
+        //Act
+        FilmBuffer reference = cpu.Render(settings);
+        FilmBuffer film = await gpu.RenderAsync(settings, null, Token);
+
+        //Assert
+        WebGpuValidationScenes.Compare(film.Span, reference.Span).Practical.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task points_added_after_a_gpu_render_match_a_scene_built_with_them()
+    {
+        //Arrange
+        RenderSettings settings = new(48, 32, 8);
+        float[] positions = [-.5f, 0f, 0f, 0f, .2f, .1f, .5f, -.2f, 0f];
+        float[] radii = [.25f, .2f, .15f];
+        using CyclesScene edited = CreateGpuScene();
+        TestScenes.BuildTyped(edited);
+        await edited.RenderAsync(settings, null, Token);
+        using CyclesScene cpu = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(cpu);
+        cpu.CreateObject(cpu.CreatePointCloud(positions, radii));
+
+        //Act
+        edited.CreateObject(edited.CreatePointCloud(positions, radii));
+        FilmBuffer film = await edited.RenderAsync(settings, null, Token);
+        FilmBuffer reference = cpu.Render(settings);
+
+        //Assert
+        WebGpuValidationScenes.Compare(film.Span, reference.Span).Practical.Should().Be(0);
+    }
+
+    [Fact]
     public async Task gltf_sample_renders_on_the_gpu_within_the_practical_criterion()
     {
         //Arrange
