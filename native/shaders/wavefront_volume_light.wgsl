@@ -309,7 +309,7 @@ fn vl_phase_sample(direction:vec3<f32>,g:f32,random:vec2<f32>)->vec4<f32>{
     let sc=native_phase_sincos(phi);let local=vec3<f32>(sine*sc.y,sine*sc.x,cosine);
     var tangent=vec3<f32>(direction.z-direction.y,direction.x-direction.z,direction.y-direction.x);
     if(direction.x==direction.y&&direction.x==direction.z){tangent=vec3<f32>(direction.z-direction.y,direction.x+direction.z,-direction.y-direction.x);}
-    tangent=rounded_normalize(tangent);let bitangent=rounded_cross(direction,tangent);
+    tangent=surface_native_normalize(tangent);let bitangent=rounded_cross(direction,tangent);
     let wo=rounded_add3(rounded_add3(local.x*tangent,local.y*bitangent),local.z*direction);
     return vec4<f32>(wo,pdf);
 }
@@ -323,7 +323,7 @@ fn vl_phase_sample_lobe(direction:vec3<f32>,c:SvmClosure,random:vec2<f32>)->vec4
     let sc=native_phase_sincos(phi);let local=vec3<f32>(sine*sc.y,sine*sc.x,cosine);
     var tangent=vec3<f32>(direction.z-direction.y,direction.x-direction.z,direction.y-direction.x);
     if(direction.x==direction.y&&direction.x==direction.z){tangent=vec3<f32>(direction.z-direction.y,direction.x+direction.z,-direction.y-direction.x);}
-    tangent=rounded_normalize(tangent);let bitangent=rounded_cross(direction,tangent);
+    tangent=surface_native_normalize(tangent);let bitangent=rounded_cross(direction,tangent);
     return vec4<f32>(rounded_add3(rounded_add3(local.x*tangent,local.y*bitangent),local.z*direction),pdf);
 }
 //#endif
@@ -349,8 +349,8 @@ fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
     else{phase=vl_phase_sample_lobe(direction,closure,random);g=select(select(closure.roughness,0.0,closure.kind==VP_CLOSURE_VOLUME_RAYLEIGH_ID),1.0,closure.kind==VP_CLOSURE_VOLUME_FOURNIER_FORAND_ID);}
     if(phase.w==0.0){vl_finish(index,0u);return;}
 //#endif
-//#if VOLUME_LIGHT else     let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,rounded_normalize(phase.xyz));
-    let position=rounded_add3(origin,sampled_t*direction);state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,rounded_normalize(phase.xyz));
+//#if VOLUME_LIGHT else     let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
+    let position=rounded_add3(origin,sampled_t*direction);state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
 //#endif
 //#if VOLUME_LIGHT_TREE
     // ray->tmax - ray->tmin of the segment.

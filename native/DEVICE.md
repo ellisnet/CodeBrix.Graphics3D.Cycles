@@ -3148,23 +3148,50 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
 49. (resolved, see "Resolved" below) Was: **A volume scene and then a scene without volumes on one device.** The second render stopped with invalid data (mask 1), no image.
 50. (resolved, see "Resolved" below) Was: **`volumes/scatter-world` and `volumes/world-volume-point` have no box medium.**
 51. (replaced by item 53) Was: **Volumes with a finite spherical lamp inside the medium.** The cause is now known; item 53 carries it.
-52. **Heterogeneous medium: an intermittent wrong path on Intel (Linux; cause not found).**
-   `codebrix_cycles_volume_gate` cases 35 and 55 (equiangular sampling without MIS) sometimes fail in a whole gate run with
-   `shadow_path.throughput` NaN or a `path.bounce` integer mismatch, while the same binary passes on other runs. The same
-   paths recur between runs, so it depends on the data as well as on chance. The failing record holds a direct closure count
-   of 0 although a direct scatter was recorded, so the phase evaluation divides by a zero weight sum. It is not tied to host
-   load: whole-gate repeats of one binary failed 1 of 8 runs with no other work of ours and 3 of 11 with six CPU burners or
-   a compile running, always at case 55. Case 55 alone, with the same paths failing, fails between none of 15 runs and half of
-   them from batch to batch, so nothing here measured a rate well. Waiting for the device after every dispatch does not stop it
-   (3 of 12 failed against 1 of 12 without, same binary), nor does `INTEL_DEBUG=sync` (2 of 12), which rules out overlapping
-   submissions and visibility between dispatches. llvmpipe passed the 2 runs it was given. The source shape moves it too: stores added to trace the entry hid the failure (0 of 12 runs), and a
-   `volume_enabled` test one call deeper in `shade_shadow_transparent` left one path of a dispatch unprocessed in the
-   captures examined, until the next dispatch took it (the film stayed right). A captured replay of the same scene also gave
-   one wrong film value, 1.96002 against 1.96533. Register spills are the same in the passing and failing shapes, and these
-   entries compile SIMD8 anyway. Inference, not proved: an invocation of the longest entries takes a wrong branch inside one
-   dispatch, in the driver, the hardware or a race within the dispatch; nothing here separates those. Eight repeats of three heterogeneous
-   scenes were all perfect against the CPU. The gate is not relaxed: such a run is a failure, so a volume gate run can fail
-   on a good tree.
+52. **Heterogeneous medium: an intermittent wrong path on Intel (Linux). Not our WGSL or host code: the Intel driver or
+   hardware, determined 2026-11-06; the gates are not relaxed (documented driver limitation, accepted by the maintainer; not worked around).**
+   `codebrix_cycles_volume_gate` cases 35 and 55 (equiangular sampling without MIS) sometimes fail with
+   `shadow_path.throughput` NaN or a `path.bounce` integer mismatch, so a `volume_gate.py` or `volume_boundary_gate.py` run
+   can fail on a good tree. Rate on the UHD Graphics 770 (ADL-S GT1, Mesa 25.0.7, i915, kernel 6.12): case 55 evaluated 20
+   times in each of 6 processes, 7 of the 120 evaluations failed (paths 303, 618, 693 twice, 1302 twice, 1491) and 4 of the 6
+   processes failed at least once. Failures fall on single evaluations inside one process, so neither pipeline compilation nor
+   scene preparation decides it. Earlier findings that still hold: no host-load dependence; neither a wait after every
+   dispatch nor `INTEL_DEBUG=sync` stops it; the source shape moves it; the same paths recur.
+   - **One dispatch.** A capture of one evaluation's commands (the render recorder), replayed without Cycles, differs in 9 of
+     59 repeats. `shade_volume_heterogeneous` alone, restored to the same arena before every repeat, gives a different arena
+     in 5 of 99 and 10 of 100. A failing path leaves the null-scattering state machine early. Path 150's record holds a direct
+     scatter whose weight is the untouched input (throughput / continuation, 0.8, 1.0667, 0.5333) with a closure count of 0,
+     hence the NaN in `shade_volume_light`; its SVM stack slot and scratch closure show a last evaluation at another position.
+   - **Not ours (FACT).** (1) The entry's SPIR-V as naga emits it (only the Shader capability) runs in a plain Vulkan program
+     with no WebGPU: one storage buffer, one uniform, one dispatch of 9 workgroups. It differs in 19 of 200 and 35 of 300
+     repeats on Intel and in 0 of 99 on llvmpipe; the gate itself passed 300 of 300 evaluations on llvmpipe. (2) Every
+     invocation's write set, measured alone, is disjoint from every other's except the queue counters (atomics). It stays in
+     its own record, closure slots, SVM stack slot, film pixel and path state and never touches the shared tables; 16-bit
+     state stores are atomic. So no invocation can change another's inputs. (3) All 428 function variables of the SPIR-V
+     have initializers. (4) The same work never fails without concurrency: one invocation alone 0 of 299, its SIMD8 thread
+     0 of 299, one workgroup 0 of 299, the 9 workgroups one after another 0 of 300 in both programs, with outputs
+     bit-identical to the concurrent majority. Concurrent workgroups: 2 gave 0 of 299, 4 gave 14 of 299, 9 about 1 in 10.
+   - **Intel compiler knobs** (plain Vulkan program unless noted): `INTEL_DEBUG=swsb-stall` 0 of 300 (WebGPU replay 1 of
+     100; verified in the assembly, 61,639 instructions become 137,885), `spill_fs` 0 of 100 (WebGPU replay), `nodualobj` 28
+     of 200, `nocompact` 13 of 200. The entry compiles SIMD8: 61,639 instructions, 1,248 spills and 2,165 fills. Inference, not
+     proved: a hazard in the Intel compiler or hardware (a register dependency not honoured, or the scratch the spills use)
+     that shows when many threads compete for memory; nothing here separates compiler from hardware. No other Intel
+     generation was tried. Inference: the earlier second face (one path left in SHADE_SHADOW after
+     `shade_shadow_transparent`) is the same class in another long entry.
+   - **Item 47 is another class.** Its probe `probe-het-nodirect` fails the same 3 film components (one pixel, maximum
+     1.415e-4) in all 4 films of 2 processes, deterministically.
+   - **Reproducer** (kept by the maintainer outside the repository): the plain Vulkan program, the entry's
+     SPIR-V, the arena before the dispatch, the reference arena and the 128-byte uniform. The arenas are 19.6 MB each,
+     compressed.
+   - **The maintainer's rulings (2026-11-06).** It is not reported upstream at this time. It is documented as a driver
+     limitation (AGENT-README, "KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS"). A failing run of the
+     volume gates is reported, rerun once, and both results recorded. The gates are never run under a driver debug flag
+     for a verdict.
+   - **The HP (Intel Xe, Mesa 24.0.8, Android x64): also exposed.** Case 55 alone, 20 evaluations in each of 6 processes, on
+     the tree with item 54's normalize: 4 of 120 evaluations failed the practical comparison, 4 of 6 processes at least once,
+     at repeats 1, 19, 0 and 11 of their processes, so the failure lands on single evaluations as on Linux (7 of 120 there).
+     Inference: the same fault. The failing values were not captured on the HP, and the plain Vulkan program was not run
+     there. In the same tree's 60 scene renders on the HP, heterogeneous volumes included, nothing fell outside practical.
 53. **A finite sphere lamp inside a medium: a last-bit branch on the lamp's surface (accepted by the maintainer as a documented deviation, like item 47; the two reproducer scenes are not in the corpus).** A path that hits
    the lamp from the medium continues through it, and its next segment starts on the sphere, one float past the hit.
    `point_light_sample` branches there on `d_sq > r_sq`, within rounding: the two sides give different points for
@@ -3175,7 +3202,40 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    their lamps outside the box. Inference for the last bit: the device's `expf` and `logf` in the distance chain are
    correctly rounded and glibc's are not (measured on 300,000 inputs: `logf` differs on 0.74%, `expf` on 0.07%), so
    bit-identity with one oracle would take that oracle's C library algorithms and would not hold for the others.
+54. (resolved, see "Resolved" below) Was: **Volume phase sampling's normalize on scalar ARM64 (`volumes/scatter-mesh-light`).**
 Resolved, or closed under the device reference policy:
+- [54 of this list] **Volume phase sampling's normalize on scalar ARM64 (`volumes/scatter-mesh-light`): RESOLVED.** In the
+  product default (`wgslArithmetic` `arm64-scalar`), one pixel of this scene, (13,6), was 17.2x the practical tolerance from
+  the Linux ARM64 CPU oracle (3 practical failures; the reference was an ARM64 film rendered under `qemu-aarch64`, because the
+  committed ARM64 oracle has no film for this scene). It failed on the Samsung SM-X700. Linux with the `arm64-scalar` test
+  hook gave the same value at that pixel. In x64 arithmetic the scene was perfect against the x64 CPU.
+  The phase sampling normalizes twice: in `phase_sample_direction`'s `make_orthonormals`, and the scattered ray's
+  `normalize(phase_wo)`. Both used the SSE form on every host: each component divided by the length. The pinned scalar
+  `normalize(float3)` is `a / len(a)`, and the scalar `float3 / float` multiplies by the reciprocal.
+  Both normalizes now go through `surface_native_normalize`, the adapter selected by `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE`.
+  This covers `vp_phase_sample`, `volume_phase`, `vl_phase_sample`, `vl_phase_sample_lobe` and both phase scatters. SSE hosts
+  compute the same quotients as before.
+  The random walk of subsurface scattering samples `vl_phase_sample`, so the six subsurface scenes use the change too. The
+  Linux x64 dumps of the corpus show these lines in the compiled modules of exactly 60 scenes: 54 with volumes and the 6
+  subsurface scenes.
+  In shared WGSL: every device compiles it.
+  - **Done.**
+    - On the tablet, the scene on the changed tree is perfect: strict differences 76 before the change, 11 after.
+    - On Linux in `arm64-scalar`, 59 of the 60 scenes are perfect against the ARM64 films. The exception is
+      `linux-gates/world-volume`: 87 practical, as before the change. That is the test hook's known difference, and the
+      tablet renders that scene perfectly.
+    - On Linux in x64, 60 of 60 are perfect against the x64 CPU. Their compiled modules differ from the unchanged tree's
+      only in the renamed call. Where their films differ from the unchanged tree's, a repeat run differs just as much.
+    - Either normalize alone clears the failing pixel.
+    - On Linux, `volume_boundary_gate`, `shadow_linking_gate` (with replays) and `subsurface_gate` pass, and so does the size
+      guard. `volume_gate` failed once with item 52's signature (case 35, a NaN in `shadow_path.throughput`) and passed on
+      its rerun.
+    - The Android ARM64 and x64 builds compile.
+    - On the tablet, the other 59 of the 60 scenes are perfect (0 practical, worst 0.267x, `volumes/phase-fournier-forand`),
+      against the ARM64 films; the scenes the Mac has not rendered, and the 2 with stale films, against ARM64 films
+      rendered under `qemu-aarch64`, which are not committed.
+    - On the HP, the 60 scenes are perfect against the Linux x64 CPU films (0 practical, worst 0.293x,
+      `volumes/ray-marching-heterogeneous-point`).
 - [49 of this list] **A volume scene and then a scene without volumes on one device: RESOLVED.** The device's specialization only grows (`enabled_features`), so the volume regions stayed in the next scene's modules, and `vl_copy_volume_stack` wrote `0 + shadow*4` with no stack allocated, into the error word, the stack header and the SVM stack region at the bottom of the heap. `volume_enabled()` now guards `vl_copy_volume_stack`, the shadow stage's medium test and `sc_background_continue`. Reproduced by `shadow_catcher_gate` cases 11 and 12 after case 10 (mask 1, then mask 0x80000000; alone they passed); the gate now runs case 10 before cases 7-9, so transparent shadows run on those modules too, and all 23 cases pass. Non-volume modules are unchanged. Superset mode was not run for this. Separately, the split module was never re-specialized on a device (`shadow_catcher_pipelines` tested only that it existed); also fixed.
 - [50 of this list] **`volumes/scatter-world` and `volumes/world-volume-point` had no box medium: RESOLVED.** `author_volumes.py scene()` reused the name `graph` for the world's graph, so the medium shader was written with `"nodes": "nodes", "connect": "connect"` and `scatter-world` built no volume kernel. The world's graph is now `world_graph`. Both scene documents changed, and their CPU films with them.
 - [43 of this list] **A Principled superset group's `shade_surface` above the compile envelope: RESOLVED.** Superset
@@ -3506,11 +3566,40 @@ entries in 19 corpus rows, all under 60,000 Intel instructions. Sizes as measure
 `shade_volume_ray_marching` measured 942,614 bytes when accepted and 988,599 bytes with the correctly rounded helpers of "Ray
 marching's channel pick on scalar ARM64"; with the volume light shapes on top it is the size above.
 
-The same corpus also warns on these entries, which have no ruling yet; all measure under 60,000 instructions: `shade_volume`
-(`volumes/phase-mie`, `-phase-mie-small`, `-principled-volume`, `-catcher-heterogeneous` and the eight scenes with a heterogeneous medium at 944,967 bytes),
-`shade_volume_light` (`volumes/catcher-tree`, `-passes-tree`, `-tree-lamps`, `-tree-lamps-equiangular`, `-tree-mesh`, `-scatter-area`, `-scatter-area-ellipse`, `shadow-linking/volume`),
-`shade_volume_heterogeneous` (`volumes/catcher-heterogeneous`, `-heterogeneous-spot`, `-passes-emission-heterogeneous`, `-passes-heterogeneous`, `-tree-heterogeneous`),
-`shade_volume_ray_marching` (`volumes/ray-marching-tree-catcher`) and `shade_surface_light` (`shadow-linking/hdri-world`). None reaches 1,110,000 bytes. The densest ratio at or above 100,000 bytes is still 14.404.
+Also accepted as false warnings (by the maintainer, 2026-11-06): 12 entries in 27 corpus rows, all under 60,000 Intel
+instructions. None reaches 1,110,000 bytes. The densest ratio at or above 100,000 bytes is still 14.404. Sizes as measured on the current tree:
+
+| Bytes | Instructions | Entry | Corpus rows |
+| --- | --- | --- | --- |
+| 1,031,471 | 52,056 | `shade_volume_heterogeneous` | `volumes/catcher-heterogeneous` |
+| 1,022,320 | 48,510 | `shade_volume_ray_marching` | `volumes/ray-marching-tree-catcher` |
+| 1,021,470 | 51,382 | `shade_volume_light` | `volumes/catcher-tree` |
+| 1,020,657 | 51,337 | `shade_volume_light` | `volumes/passes-tree`, `-tree-lamps`, `-tree-lamps-equiangular`, `-tree-mesh` |
+| 1,017,270 | 51,257 | `shade_volume_light` | `volumes/scatter-area`, `-scatter-area-ellipse` |
+| 1,012,483 | 51,482 | `shade_volume_heterogeneous` | `volumes/heterogeneous-spot`, `-passes-emission-heterogeneous`, `-passes-heterogeneous`, `-tree-heterogeneous` |
+| 989,429 | 49,137 | `shade_volume_light` | `shadow-linking/volume` |
+| 986,388 | 55,481 | `shade_volume` | `volumes/phase-mie`, `-phase-mie-small` |
+| 976,170 | 52,501 | `shade_volume` | `volumes/principled-volume` |
+| 963,960 | 50,178 | `shade_volume` | `volumes/catcher-heterogeneous` |
+| 952,582 | 56,189 | `shade_surface_light` | `shadow-linking/hdri-world` |
+| 944,967 | 49,604 | `shade_volume` | `volumes/heterogeneous-point`, `-heterogeneous-point-distance`, `-heterogeneous-point-equiangular`, `-heterogeneous-spot`, `-heterogeneous-sun`, `-passes-emission-heterogeneous`, `-passes-heterogeneous`, `-tree-heterogeneous` |
+
+Nine of these rows grew 10,242 bytes with the normalize of item 54: the eight `shade_volume_light` rows and
+`volumes/principled-volume`. On the HP (Mesa 24.0.8, before that normalize), 20 of the 27 rows compiled and rendered perfect,
+each with one size-guard warning for its entry and no compile-budget warning. The other 7, all `shade_volume`
+(`volumes/phase-mie`, `-phase-mie-small`, `-principled-volume`, `-heterogeneous-point`, `-heterogeneous-point-distance`,
+`-heterogeneous-point-equiangular`, `-heterogeneous-sun`), rendered perfect there with that normalize, as did the rest of the 60
+scenes it reaches. Instruction counts were not measured on the HP.
+
+The same ruling accepts the `shadow_linking` gate's own `shade_volume` entry (case 9): 993,770 bytes when accepted and
+1,004,012 bytes with the normalize of item 54. It compiles and passes on Linux and, before that normalize, on the HP.
+No Intel instruction count was measured for it.
+
+That normalize also takes these 7 corpus rows over the threshold, accepted by the maintainer under the same ruling, as is the
+gate entry at its larger size. They render perfect on the HP; both entries measure under 60,000
+instructions: `shade_volume` at 943,393 bytes, 50,410 instructions (`volumes/catcher-tree`), and at 941,788 bytes, 50,384
+instructions (`volumes/catcher-background`, `-catcher-emission`, `-catcher-floor`, `-catcher-passes`, `-catcher-sphere`,
+`-catcher-world`). Before it they measured 933,151 and 931,546 bytes.
 
 The superset grouping's `superset_default_budget_bytes` stays 1,000,000, above this threshold, so superset diagnostic groups can warn
 (`prepare_surface` up to 999,992 bytes, `shade_surface_light` 950,736 measured); Android refuses superset.
@@ -6187,6 +6276,18 @@ bundles). Every job passes the practical criterion; no HP exception is used.
   shadow-catcher surface entries take 60 to 104 s (compile-budget warnings, open item 13). The HDRI bench bundle's
   `prepare_surface` reaches 1,113,668 bytes on the HP (a consumer scene; the Linux build reports the same entry over
   the guard; open item 42 has since taken it below the guard); its film passes.
+- Shakedown of the later merged features on the HP (product default arithmetic, `x64-sse4.2`, judged against the
+  Linux x64 CPU films): 103 new and changed oracle scenes are within the practical criterion with no non-finite value:
+  shadow linking, MNEE on the light tree and with light linking, the volume spot, area and mesh lights, light tree,
+  light passes and shadow catcher, the ray-marching scenes, the motion scenes with the exact motion regions, and the
+  denoising (Open Image Denoise on the device's CPU), passes and sky-guiding scenes. The `shadow_linking` gate passes
+  in the device-scene flow (13 cases against the glibc reference computed from the HP's own scene, every integer
+  exact, film maximum 7.6e-6) with its 13 replays; its shadow-ray rows are resolved before a scene-exchange pass
+  stops, so the Linux reference pass exports them. No HP exception is used. The volume entries over the size guard
+  that were rendered compile and render on the HP. All of this ran before the normalize of item 54; the 60 scenes that
+  normalize reaches were then rendered again with it, all perfect (item 54). Not yet run on the HP: the MNEE, glass,
+  microfacet, Principled, area-light and volume gates (item 52 records one measurement of volume case 55), and two
+  light-tree scenes.
 
 ## Linux x64 validation of the merged tree (surf_bump, arc adapters, ARM64 adapters, CPU denoising)
 

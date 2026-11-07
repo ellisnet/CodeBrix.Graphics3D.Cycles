@@ -349,12 +349,14 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     std::vector<float> flat_rows(local_rows.size()*sizeof(DedicatedRow)/4);if(!flat_rows.empty())std::memcpy(flat_rows.data(),local_rows.data(),flat_rows.size()*4);
     reference_policy::record_local(key+".rows",flat_rows);reference_policy::record_local(key+".film",local);RenderCapture::file(prefix+".cpu.film.bin",local.data(),local.size()*4);
     const auto diagnostic=(out/"reference-diagnostic.jsonl").string();const auto resolved_rows=reference_policy::resolve(key+".rows",flat_rows,diagnostic);const auto reference=reference_policy::resolve(key+".film",local,diagnostic);
+    // Resolved before an exchange pass stops, so the Linux reference pass exports the shadow rows the device run imports.
+    const auto resolved_shadow=reference_policy::resolve(key+".shadow",flat_shadow,diagnostic);
     if(exchange_only)continue;
     std::vector<DedicatedRow> rows(resolved_rows.size()*4/sizeof(DedicatedRow));if(!rows.empty())std::memcpy(rows.data(),resolved_rows.data(),rows.size()*sizeof(DedicatedRow));
     if(c==0)guards(device,metrics);
     if(c==12)motion_transform_sweep(device,scene,metrics);
     state_gate(device,scene,rows,metrics);
-    {const auto resolved=reference_policy::resolve(key+".shadow",flat_shadow,diagnostic);std::vector<ShadowRow> shadow_rows(resolved.size()*4/sizeof(ShadowRow));if(!shadow_rows.empty())std::memcpy(shadow_rows.data(),resolved.data(),shadow_rows.size()*sizeof(ShadowRow));
+    {const auto &resolved=resolved_shadow;std::vector<ShadowRow> shadow_rows(resolved.size()*4/sizeof(ShadowRow));if(!shadow_rows.empty())std::memcpy(shadow_rows.data(),resolved.data(),shadow_rows.size()*sizeof(ShadowRow));
      shadow_ray_gate(device,scene,shadow_rows,metrics);}
     require(f.volume||stride==4,"Shadow linking combined-only film expected");bool cancelled=false;Scheduler scheduler(&device,scene.film,&scene.dscene,&cancelled);
     scheduler.alloc_work_memory();scheduler.init_execution();healthy(device);auto buffers=scheduler.get_render_buffers();BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=int(stride);buffers->reset(bp);std::vector<float> first;

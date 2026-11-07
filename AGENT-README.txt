@@ -685,7 +685,8 @@ built the native library; the capability report states it
 (backendScope.cpu.arithmetic in the JSON). GPU accumulation is not guaranteed to
 be bitwise repeatable. The native determinism statement (native/host/ABI.md,
 section Determinism; GetCapabilities().DeterminismReference) is
-authoritative.
+authoritative. Exception on Intel integrated graphics: see KNOWN DRIVER
+LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS.
 
 
 COMPLETE EXAMPLES
@@ -917,6 +918,9 @@ COMMON PITFALLS TO AVOID
 - USING SOCKET NAMES FOR LINKS. On the low-level tiers, Connect takes socket
   UI names ("Color", "BSDF"); the setters take native socket names ("color",
   "value"). The typed tier handles both for you.
+- TRUSTING ONE RENDER OF A HETEROGENEOUS VOLUME ON AN INTEL GPU. A driver fault
+  can compute a path wrongly and put a NaN in the film; see KNOWN DRIVER
+  LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS.
 
 
 BRINGING GLTF SCENES
@@ -949,6 +953,31 @@ Textures need decoded pixels: the example decodes the glTF's images with
 CodeBrix.Imaging (Image.Load<Rgba32>, rows flipped to bottom-first) and passes
 the RGBA8 bytes to CreateImage. The WebGPU backend renders PrincipledBsdfNode
 (every lobe; subsurface with the random walk methods, see WEBGPU RENDER-TIME LIMITS).
+
+
+KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS
+================================================================
+*** READ THIS IF YOU RENDER VOLUMES WHOSE DENSITY, COLOUR OR EMISSION VARIES ***
+*** IN SPACE ON AN INTEL GPU.                                                ***
+
+On Intel integrated graphics with the Mesa Vulkan driver (found on
+12th-generation Intel UHD Graphics under Linux; Intel Xe Graphics under Android
+x64 shows the same behaviour at a similar rate), a WebGPU render of a scene with
+a heterogeneous volume can, rarely and unpredictably, compute one light path
+wrongly. Two renders of the same scene can then differ in a pixel, and the wrong
+path can put a non-finite value (NaN) into the film.
+- It is a fault of the GPU driver or the hardware, not of the scene and not of
+  this package: the same compute shader with the same inputs, run outside this
+  package, shows the fault on the Linux machine's GPU and never on a software
+  Vulkan implementation.
+- It is NOT fixed and NOT worked around, and the package does not detect it.
+- It has been observed only in scenes with heterogeneous volumes. Homogeneous
+  volumes and scenes without volumes have not shown it.
+- It is rare: in testing, a few evaluations in a hundred of the affected kernel,
+  and none of the package's own reference renders of such scenes.
+- What an application can do on such a machine: check the returned film for
+  non-finite values and render again when it finds one; render a frame that
+  matters twice and compare; or render heterogeneous volumes on the CPU backend.
 
 
 NOT SUPPORTED ON ADRENO 640 (PIXEL 4 XL CLASS DEVICES)
@@ -1026,6 +1055,9 @@ WHAT THIS PACKAGE DOES NOT DO
   (macOS on Apple Silicon). Until a feature reaches the WebGPU device, a scene
   that needs it fails there with an error naming the feature; it is never
   approximated.
+- It does not detect or work around a driver fault on Intel integrated graphics
+  that can compute a path wrongly in a WebGPU render of a heterogeneous volume;
+  see KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS.
 - It does not yet render stereo cameras on the WebGPU device (the CPU
   reference backend and the Metal backend do). Orthographic
   and panoramic cameras (equirectangular, equiangular cubemap face, mirror

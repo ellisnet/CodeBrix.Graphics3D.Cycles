@@ -34,7 +34,7 @@ fn vp_phase_sample(direction:vec3<f32>,c:SvmClosure,random:vec2<f32>)->vec4<f32>
     let sc=native_phase_sincos(phi);let local=vec3<f32>(sine*sc.y,sine*sc.x,cosine);
     var tangent=vec3<f32>(direction.z-direction.y,direction.x-direction.z,direction.y-direction.x);
     if(direction.x==direction.y&&direction.x==direction.z){tangent=vec3<f32>(direction.z-direction.y,direction.x+direction.z,-direction.y-direction.x);}
-    tangent=rounded_normalize(tangent);let bitangent=rounded_cross(direction,tangent);
+    tangent=surface_native_normalize(tangent);let bitangent=rounded_cross(direction,tangent);
     return vec4<f32>(rounded_add3(rounded_add3(local.x*tangent,local.y*bitangent),local.z*direction),pdf);
 }
 //#endif
@@ -164,7 +164,7 @@ fn volume_phase(direction:vec3<f32>,g:f32,random:vec2<f32>)->vec4<f32>{
     let sc=native_phase_sincos(phi);let local=vec3<f32>(sine*sc.y,sine*sc.x,cosine);
     var tangent=vec3<f32>(direction.z-direction.y,direction.x-direction.z,direction.y-direction.x);
     if(direction.x==direction.y&&direction.x==direction.z){tangent=vec3<f32>(direction.z-direction.y,direction.x+direction.z,-direction.y-direction.x);}
-    tangent=rounded_normalize(tangent);let bitangent=rounded_cross(direction,tangent);
+    tangent=surface_native_normalize(tangent);let bitangent=rounded_cross(direction,tangent);
     let wo=rounded_add3(rounded_add3(local.x*tangent,local.y*bitangent),local.z*direction);
     return vec4<f32>(wo,pdf);
 }
@@ -408,8 +408,8 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     if(closure.kind==CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID){phase=volume_phase(direction,closure.roughness,random);}else{phase=vp_phase_sample(direction,closure,random);}
     if(phase.w==0.0){volume_finish(index,0u);return;}
 //#endif
-//#if VOLUME_LIGHT else     let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,rounded_normalize(phase.xyz));
-    let position=rounded_add3(origin,sampled_t*direction);state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,rounded_normalize(phase.xyz));
+//#if VOLUME_LIGHT else     let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
+    let position=rounded_add3(origin,sampled_t*direction);state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
 //#endif
 //#if VOLUME_LIGHT_TREE
     // ray->tmax - ray->tmin of the segment.
@@ -458,8 +458,8 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     if(closure.kind==CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID){phase=volume_phase(direction,closure.roughness,random);}else{phase=vp_phase_sample(direction,closure,random);}
 //#endif
     if(phase.w==0.0){volume_finish(index,0u);return;}
-//#if VOLUME_LIGHT else     let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,rounded_normalize(phase.xyz));
-    let position=rounded_add3(origin,sampled_t*direction);state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,rounded_normalize(phase.xyz));
+//#if VOLUME_LIGHT else     let position=origin+sampled_t*direction;state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
+    let position=rounded_add3(origin,sampled_t*direction);state_vec3(S_ray_P,index,position);state_vec3(S_ray_D,index,surface_native_normalize(phase.xyz));
 //#endif
 //#if VOLUME_LIGHT_TREE
     // ray->tmax - ray->tmin of the segment.
