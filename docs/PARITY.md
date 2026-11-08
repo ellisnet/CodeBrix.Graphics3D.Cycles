@@ -80,15 +80,16 @@ a compiled Linux x64 probe. Evidence pins the implementation sources it was
 recorded on and must be re-recorded after they change: the Linux native-host
 reports were re-recorded at device checkpoint 1 (2026-11-07, commit `c3783adfa`
 plus fix 001, `native/evidence/linux-x64-ledger-20261107/`, with shadow linking's
-own checkpoint), and the Android command replays come from the 2026-10-29 run
+own checkpoint; source pins re-taken at `624ee1f0d` after fixes 007 and 009 and the
+Intel-on-Metal workarounds of `1c666d599`), and the Android command replays come from the 2026-10-29 run
 (HP, Samsung). No full requirement is marked verified. Native node registration, properties, additional
 conditional features and most behaviour classification remain P00 work. Compiler
 metadata alone does not establish renderer feature coverage.
 
 ## Device checkpoint 1 (2026-11-07)
 
-The first full baseline pass on each reference device, at commit `c3783adfa` plus fix 001
-(native/DEVICE.md, "Device checkpoint 1"). Status (2026-11-08): incomplete. Linux finished; session 3 was ended early
+The first full baseline pass on each reference device, from commit `c3783adfa` plus fix 001,
+then fixes 007 and 009, committed as `624ee1f0d` (native/DEVICE.md, "Device checkpoint 1"). Status (2026-11-08): incomplete. Linux finished; session 3 was ended early
 before the tablet and HP passes finished their gates, and no device baseline was frozen. Practical criterion must pass, strict differences reported; verdicts
 from the status files and the judge. Linux and the HP are judged against the Linux x64 CPU films of this commit,
 the tablet against ARM64 CPU films of this commit rendered on the Linux machine under emulation (accepted for

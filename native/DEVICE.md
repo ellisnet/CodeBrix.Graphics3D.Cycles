@@ -1984,7 +1984,9 @@ container of `native/tools/linux_reference/`.
 and validation are done on the dedicated Linux x64 machine only, and every Linux
 x64 reference other platforms compare against comes from that machine and is
 committed: the newest `native/evidence/linux-x64-reference-<date>/` (now
-`linux-x64-reference-20261101`, which supersedes `linux-x64-reference-20261030`,
+`linux-x64-reference-20261107` for the oracle and bench films and the host gate, with
+`linux-x64-reference-20261101` still supplying the overlay hashes, libm record, managed reference films and
+host-gate reload rounds, which 20261107 did not re-make; 20261101 supersedes `linux-x64-reference-20261030`,
 `linux-x64-reference-20261029` and the Docker set; its CPU films are bitwise identical to
 theirs for every scene they share, apart from the wall-clock render-time pass), with the Android counterpart
 `native/evidence/android-reference-20261029/` (made at commit `686f79282`; the
@@ -6933,10 +6935,11 @@ sampled lobes, and the pick, bsdf_sample and MIS for 24 random triples per path,
 exact), `hair_svm` (closure records, typed sweeps), `hair_bounce` (the surface kernel's path state, film, queue counters),
 `hair_render` (stage-locked image), `hair_curve_render` (the curve image gate with these materials, with replays).
 
-## Device checkpoint 1: baseline full passes at c3783adfa plus fix 001 (2026-11-07)
+## Device checkpoint 1: baseline passes from c3783adfa, committed as 624ee1f0d (2026-11-07/08, incomplete)
 
 The first full baseline pass of each reference device, on commit `c3783adfa91e0f8310f3cc766e0a55f492e21ee0` with one fix
-applied during the pass (fix 001, `native/shaders/wavefront_hair_huang.wgsl`, open item 82). Every job's fingerprint (the WGSL
+applied during the pass (fix 001, `native/shaders/wavefront_hair_huang.wgsl`, open item 82), then fixes 007 and 009 (gate code,
+see the status below); the result was committed as `624ee1f0d` on top of `1c666d599`. Every job's fingerprint (the WGSL
 compiled, the scene data uploaded and the command sequence, computed on the device) is recorded in the same run as its verdict,
 with the pipeline cache on. After fix 001 the fingerprints were collected again on all three devices: jobs whose fingerprint
 changed, the failed jobs and the always-run set ran again on the fixed tree, and every other job keeps its verdict (it rendered

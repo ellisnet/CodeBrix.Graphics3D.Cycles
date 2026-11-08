@@ -412,8 +412,9 @@ LINUX X64 REFERENCE (2026-10-29): Linux x64 and Android testing and validation
 are done on the dedicated Linux x64 machine ONLY, and every Linux x64 reference
 other platforms compare against comes from that machine and is committed:
 the newest native/evidence/linux-x64-reference-<date>/ (now
-linux-x64-reference-20261101: overlay hashes, libm record, the full host gate,
-oracle and bench films, managed reference films). Device-gate exchanges of the
+linux-x64-reference-20261107: the full host gate without its reload rounds,
+oracle and bench films; linux-x64-reference-20261101 still supplies the overlay
+hashes, libm record, managed reference films and host-gate reload rounds). Device-gate exchanges of the
 devices without a Linux x64 side (Windows, the Intel Mac, the Raspberry Pi) run
 as the two-visit hand-off of native/tools/reference_exchange_handoff.py
 (docs/TESTING-WINDOWS-ARM64.md, "Device-gate exchange with the Linux x64
