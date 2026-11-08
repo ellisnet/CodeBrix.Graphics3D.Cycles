@@ -1,0 +1,28 @@
+{
+  "sceneId": "denoise/catcher-point-light-off-noisy",
+  "sceneSha256": "24f0932069dcce83de1bb5c213a24548ae2f8215383802cc32391d219913e97e",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 7.152557373046875e-07,
+  "renderSeconds": [11.6595,0.831643],
+  "filmSha256": ["81ea5f26c414f219cdaece6eebd6c1fd2f1160b33057de269a48cd30c80556ab","243551dd0480c5cd4754593ccb2d6f3e04d977280de9339e372249b94ab44a24"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Shadow Catcher", "type": "shadow_catcher", "components": 3, "written": true, "filmSha256": ["ecfec574988c23c0dd2e89d0c978df1236e28287f1174cc206d634940b9002fd","9ec73a61d106ad2808e308a3a97099ae4ec22945fa8d84b30b8558c958126d0a"]},
+    {"index": 1, "name": "Shadow Catcher Matte", "type": "shadow_catcher_matte", "components": 4, "written": true, "filmSha256": ["81ea5f26c414f219cdaece6eebd6c1fd2f1160b33057de269a48cd30c80556ab","243551dd0480c5cd4754593ccb2d6f3e04d977280de9339e372249b94ab44a24"]},
+    {"index": 2, "name": "Shadow Catcher Sample Count", "type": "shadow_catcher_sample_count", "components": 1, "written": true, "filmSha256": ["a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990","a1773582ecc59bc36701f89f4cced0bd620f6e7abb9dd2cbb1d3fef27b678990"]},
+    {"index": 3, "name": "Noisy Image", "type": "combined", "components": 4, "written": true, "filmSha256": ["81ea5f26c414f219cdaece6eebd6c1fd2f1160b33057de269a48cd30c80556ab","243551dd0480c5cd4754593ccb2d6f3e04d977280de9339e372249b94ab44a24"]},
+    {"index": 4, "name": "Shadow Catcher Noisy", "type": "shadow_catcher", "components": 3, "written": true, "filmSha256": ["ecfec574988c23c0dd2e89d0c978df1236e28287f1174cc206d634940b9002fd","9ec73a61d106ad2808e308a3a97099ae4ec22945fa8d84b30b8558c958126d0a"]},
+    {"index": 5, "name": "Shadow Catcher Matte Noisy", "type": "shadow_catcher_matte", "components": 4, "written": true, "filmSha256": ["81ea5f26c414f219cdaece6eebd6c1fd2f1160b33057de269a48cd30c80556ab","243551dd0480c5cd4754593ccb2d6f3e04d977280de9339e372249b94ab44a24"]}
+  ],
+  "warnings": []
+}

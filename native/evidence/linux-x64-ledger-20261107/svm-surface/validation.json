@@ -1,0 +1,93 @@
+{
+ "passed": true,
+ "fullCyclesParity": false,
+ "rid": "linux-x64",
+ "tree": "c3783adfa+fix-001",
+ "producedBy": "Linux x64 baseline pass of device checkpoint 1, 2026-11-07, Linux x64 Intel UHD (ADL-S GT1) Mesa 25.0.7-2+deb13u1, WebGPU runtime CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 (libcodebrix_wgpu.so SHA-256 5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b), gate binaries built by build_cycles.py from c3783adfa91e0f8310f3cc766e0a55f492e21ee0 plus fix 001 (native/shaders/wavefront_hair_huang.wgsl, patch SHA-256 1bd47be317fc29b6722bf1d5b83df44610423fe297ce341027b5f441e60d9ced)",
+ "capturedUtc": "2026-11-08T03:32:23+00:00",
+ "reports": {
+  "svm_surface": {
+   "file": "native/evidence/linux-x64-ledger-20261107/svm-surface/svm_surface.stdout.json",
+   "sha256": "cdea5ef94682e76496e4575f1ab5e0d8136d395ea8ccff61bea897d94cb6f631",
+   "gate": "bin/codebrix_cycles_svm_surface_gate",
+   "arguments": [],
+   "run": "Linux queue, job svm_surface_gate (native/tools/svm_surface_gate.py run; the last report of its log)",
+   "tree": "c3783adfa+fix-001",
+   "result": {
+    "passed": true,
+    "originalCpuSurfaceSvm": true,
+    "compiledGraphs": 20,
+    "cases": 23,
+    "paths": 8874,
+    "closureFamilies": 5,
+    "integerChecks": 603432,
+    "floatChecks": 15414138,
+    "stateChecks": 3297280,
+    "untouchedGuardBytes": 4416,
+    "strictFloatFailures": 144,
+    "maximumAbsoluteError": 7.62939e-06,
+    "invalidCasesRejected": 11,
+    "nativeUnsupportedFeatureRejections": 0,
+    "cyclesAllocationBytesAfterCleanup": 0,
+    "pipelineReport": {
+     "tier": "full",
+     "degraded": false,
+     "pipelines": 0,
+     "totalPipelineMs": 0,
+     "maxPipelineMs": 0,
+     "maxPipelineEntry": "",
+     "warnings": [],
+     "sizeGuard": {
+      "thresholdBytes": 940000,
+      "largestEntryBytes": 0,
+      "largestEntry": "",
+      "estimatedInstructions": 0,
+      "warnings": 0
+     },
+     "decision": {
+      "tier": "full",
+      "reason": "table",
+      "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+      "adapter": {
+       "vendor": "Intel open-source Mesa driver",
+       "architecture": "",
+       "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+       "description": "Mesa 25.0.7-2+deb13u1",
+       "vendorId": 32902,
+       "deviceId": 18056,
+       "simulated": false,
+       "mobile": false
+      },
+      "runtime": "codebrix-api=4;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool,0010-wgpu-hal-metal-precise-math,0011-wgpu-native-pipeline-cache-chain,0012-wgpu-hal-metal-queue-accessor,0013-wgpu-native-metal-command-queue",
+      "shaderHash": "fnv1a64:f5985e73737abf1e",
+      "knownAdapter": {
+       "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+       "tier": "full",
+       "budgetMs": 0,
+       "evidence": "Phase C1 2026-10-19 Linux validation"
+      },
+      "budgetSource": "default",
+      "record": {
+       "mode": "none",
+       "path": "",
+       "status": "none",
+       "fullTierCompiles": 0,
+       "conservativeTierCompiles": 0,
+       "failures": 0,
+       "breadcrumbs": []
+      },
+      "canary": {
+       "enabled": false,
+       "result": "not-run",
+       "ms": 0,
+       "detail": ""
+      },
+      "overrides": [],
+      "warnings": []
+     }
+    }
+   },
+   "gateSha256": "9bc88f01081dc3c2adfdd4c7dc7bb394b7466bfe02beccc7d4bab050a7332c06"
+  }
+ }
+}

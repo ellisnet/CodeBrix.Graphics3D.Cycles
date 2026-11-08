@@ -142,13 +142,29 @@
       "workItems": [
         "P07-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "independent-cpu-state-and-native-scheduler",
-      "evidence": [],
+      "evidence": [
+        "shadow-linking"
+      ],
       "nativeValue": 6,
-      "classificationReviewed": false
+      "implementation": [
+        "native/cycles/shadow_linking.cpp",
+        "native/shaders/wavefront_shadow_link_intersect.wgsl",
+        "native/shaders/wavefront_shadow_link_lamp.wgsl",
+        "native/shaders/wavefront_shadow_link_shade.wgsl",
+        "native/shaders/wavefront_closest.wgsl",
+        "native/shaders/wavefront_shadow_traversal.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_linking_gate.cpp",
+        "native/cycles/shadow_linking_reference.cpp",
+        "native/tools/shadow_linking_gate.py"
+      ],
+      "notes": "Blocker sets in both traversals and the dedicated light kernels on the flat distribution and the tree, the MIS pdf from both samplers; with the shadow catcher, AO, or volumes on the tree refused by name. Linux x64 evidence: checkpoint shadow-linking (native/tools/shadow_linking_gate.py, 13 cases and their command replays, against the original CPU kernels).",
+      "classificationReviewed": true
     },
     {
       "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE",
@@ -167,9 +183,10 @@
         "mnee"
       ],
       "nativeValue": 7,
-      "notes": "MNEE (shadow caustics) through GGX glass/refraction casters from point and sun lamps, distribution light sampling, opaque shadows; spot/area/background caustic lamps, the light tree, linking, AO, volumes and motion blur with caustics refused; anisotropic casters report error 2.",
+      "notes": "MNEE (shadow caustics) through GGX glass/refraction casters from point and sun lamps, the flat distribution and the light tree, opaque shadows, with light and shadow linking, AO and motion blur of receivers and deforming casters; spot/area/background caustic lamps, moving casters and volumes refused; anisotropic casters report error 2.",
       "implementation": [
         "native/cycles/mnee.cpp",
+        "native/shaders/wavefront_lighting.wgsl",
         "native/shaders/wavefront_mnee.wgsl"
       ],
       "tests": [
@@ -378,13 +395,29 @@
       "workItems": [
         "P07-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "independent-cpu-state-and-native-scheduler",
-      "evidence": [],
+      "evidence": [
+        "shadow-linking"
+      ],
       "nativeValue": 16,
-      "classificationReviewed": false
+      "implementation": [
+        "native/cycles/shadow_linking.cpp",
+        "native/shaders/wavefront_shadow_link_intersect.wgsl",
+        "native/shaders/wavefront_shadow_link_lamp.wgsl",
+        "native/shaders/wavefront_shadow_link_shade.wgsl",
+        "native/shaders/wavefront_closest.wgsl",
+        "native/shaders/wavefront_shadow_traversal.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_linking_gate.cpp",
+        "native/cycles/shadow_linking_reference.cpp",
+        "native/tools/shadow_linking_gate.py"
+      ],
+      "notes": "Blocker sets in both traversals and the dedicated light kernels on the flat distribution and the tree, the MIS pdf from both samplers; with the shadow catcher, AO, or volumes on the tree refused by name. Linux x64 evidence: checkpoint shadow-linking (native/tools/shadow_linking_gate.py, 13 cases and their command replays, against the original CPU kernels).",
+      "classificationReviewed": true
     },
     {
       "id": "DeviceKernel:DEVICE_KERNEL_INTEGRATOR_SHADOW_PATH_MNEE_PENDING",

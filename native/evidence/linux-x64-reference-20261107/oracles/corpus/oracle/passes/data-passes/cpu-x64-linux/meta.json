@@ -1,0 +1,184 @@
+{
+  "sceneId": "passes/data-passes",
+  "sceneSha256": "6ac8d20295bf4152449fda807a19d3915613baceb2809133e4e87448b23b8716",
+  "backend": "cpu-x64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "threads": 2,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0119522,
+    0.00690438
+  ],
+  "filmSha256": [
+    "fda3b4ab0cc865d96604d3dd4974e7b53d488f4257d67041d26f03579e840da6",
+    "fda3b4ab0cc865d96604d3dd4974e7b53d488f4257d67041d26f03579e840da6"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Depth",
+      "type": "depth",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "d78f35e11ea841ed4e68fec5752efc6a89f1ee0aaa229804b3bf0beec4535e27",
+        "d78f35e11ea841ed4e68fec5752efc6a89f1ee0aaa229804b3bf0beec4535e27"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Position",
+      "type": "position",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "4179381b26d6e969379dcf438c67302fa35a2ac511725ed1e1b6e3949031160b",
+        "4179381b26d6e969379dcf438c67302fa35a2ac511725ed1e1b6e3949031160b"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Normal",
+      "type": "normal",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "b43bfe8237d817e7e908be06698dfb91b18c3696c446ecdf7c9210af62051a3c",
+        "b43bfe8237d817e7e908be06698dfb91b18c3696c446ecdf7c9210af62051a3c"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Roughness",
+      "type": "roughness",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "ec9e7aef8fb3ea37b04f35187003508adebd4c24e5f8ec5f00bd28071e2195db",
+        "ec9e7aef8fb3ea37b04f35187003508adebd4c24e5f8ec5f00bd28071e2195db"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "UV",
+      "type": "uv",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "eac34247491e72e70e8ee1b51be317b34bf016f412c702c894b340fdd669b1d0",
+        "eac34247491e72e70e8ee1b51be317b34bf016f412c702c894b340fdd669b1d0"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "IndexOB",
+      "type": "object_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "fc18e88de3a6efaacc3104b5f0d20cbc41cf95411aecf2435ca9a131a52376ad",
+        "fc18e88de3a6efaacc3104b5f0d20cbc41cf95411aecf2435ca9a131a52376ad"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "IndexMA",
+      "type": "material_id",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "22b0131540fc295afcd9c7bbf4570fb6417e910dd78f5cdcea39bb545de82f84",
+        "22b0131540fc295afcd9c7bbf4570fb6417e910dd78f5cdcea39bb545de82f84"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "Mist",
+      "type": "mist",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "510443d0174084ed215e5a4f53a80bad6e4c7e1546a534330c488b0371ef5245",
+        "510443d0174084ed215e5a4f53a80bad6e4c7e1546a534330c488b0371ef5245"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "RenderTime",
+      "type": "render_time",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "e987feee5dd0235a2509bbe12578e42cdd565e56a75b8d6b2bb5a30f5e80f6d6",
+        "b7bf1684e06bfcad6c323271bec899fa228e3075cc5e6847f744fe1060207456"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.115+deb13.1-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.115-2 (2026-11-01) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "c3783adfa91e0f8310f3cc766e0a55f492e21ee0",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "acc1c9754a6cd54e578426c4fbc95009e382e6ccbeb9e7ffb9ab36b907497bea",
+  "runnerSha256": "0207395ea533ac4d212e845b9d153ac349ae429f74caac4773afd3aa76f71a14",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/passes/data-passes.json",
+  "backendDescription": "Cycles CPU device, GCC x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.036,
+  "runnerCommand": [
+    "<repo>/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "<setup-tree>/native/oracle/scenes/passes/data-passes.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-x64-linux",
+    "--output",
+    "<session>/films/x64/shards/s1/oracle/passes/data-passes/cpu-x64-linux",
+    "--threads",
+    "2"
+  ],
+  "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)"
+}

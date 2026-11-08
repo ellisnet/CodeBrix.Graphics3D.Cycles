@@ -248,6 +248,16 @@ static void trig_probe(WebGPUDevice &d,Scene &scene,const char *file){
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   reference_policy::use_reference_oracle_arithmetic();
+  // Scene preparation evaluates the background importance map on the GPU, so the light-sample and
+  // film references depend on the generated arithmetic: the scene-dump pass prepares the scene with
+  // the arithmetic its import pass generates (..._SCENE_VERIFY compares the two bit for bit).
+  if(reference_policy::prepare_only()&&!reference_policy::environment("CODEBRIX_CYCLES_REFERENCE_ORACLE")){
+#ifdef _WIN32
+    _putenv_s("CODEBRIX_CYCLES_REFERENCE_ORACLE","linux-x64-sse4.2");
+#else
+    setenv("CODEBRIX_CYCLES_REFERENCE_ORACLE","linux-x64-sse4.2",1);
+#endif
+  }
   require(argc>=2,"Usage: environment_gate OUTPUT_DIRECTORY [CASE...]");
   const std::filesystem::path out=argv[1];std::filesystem::create_directories(out);
   std::vector<unsigned> selected;for(int a=2;a<argc;a++)selected.push_back(unsigned(std::stoul(argv[a])));

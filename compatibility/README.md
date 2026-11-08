@@ -56,8 +56,9 @@ by a successful inventory check.
   `classificationReviewed: true` have an explicit classification review.
 - `evidence.json` links immutable reports in frozen checkpoints: the Linux x64
   gate reports and command replays of the newest full Linux x64 validation
-  (`native/evidence/linux-x64-ledger-20261101`), with command replays of Android
-  captures from the 2026-10-29 run. Every source pin refers to the current
+  (device checkpoint 1, `native/evidence/linux-x64-ledger-20261107`; shadow
+  linking has its own checkpoint), with command replays of Android captures
+  from the 2026-10-29 run. Every source pin refers to the current
   tested implementation. Earlier checkpoints remain unchanged. Report hashes,
   explicit assertions and current source hashes are checked; regeneration cannot
   silently refresh stale evidence.

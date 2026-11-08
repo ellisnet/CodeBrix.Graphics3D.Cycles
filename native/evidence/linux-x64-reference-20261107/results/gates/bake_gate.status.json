@@ -1,0 +1,687 @@
+{
+ "complete": true,
+ "passed": true,
+ "cases": 33,
+ "failed": [],
+ "rows": [
+  {
+   "case": "map_exact",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": {
+    "covered": 58,
+    "of": 192,
+    "worstCoordinate": 2.9157232739329686e-08
+   },
+   "proves": "The rasterized map equals an exact rational rasterization: coverage, barycentrics, differentials."
+  },
+  {
+   "case": "map_edges_and_overlap",
+   "passed": true,
+   "seconds": 0.38,
+   "detail": {
+    "covered": 5233
+   },
+   "proves": "Shared edges leave no crack; overlap goes to the lowest index; zero-area and off-image triangles cover nothing."
+  },
+  {
+   "case": "position_transformed",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "1 samples",
+     "values": 576,
+     "worst": 6.22873374211963e-07,
+     "strict": 16
+    },
+    {
+     "label": "8 samples",
+     "values": 576,
+     "worst": 6.22873374211963e-07,
+     "strict": 16
+    }
+   ],
+   "proves": "World position at the texel centre, object transform applied by Cycles' static BVH path; the sample count does not change it."
+  },
+  {
+   "case": "position_instanced_and_target_order",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "first instance",
+     "values": 576,
+     "worst": 6.686057503202392e-07,
+     "strict": 12
+    },
+    {
+     "label": "second instance",
+     "values": 576,
+     "worst": 3.665608963032696e-07,
+     "strict": 2
+    }
+   ],
+   "proves": "A mesh with two users is not transform-applied; the kernel's own transform path gives each instance's position. A later object and a later mesh bake right."
+  },
+  {
+   "case": "normal_flat_and_smooth",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "flat rotated",
+     "values": 576,
+     "worst": 7.079701475065647e-08,
+     "strict": 0
+    },
+    {
+     "label": "smooth",
+     "values": 576,
+     "worst": 2.98809169138603e-05,
+     "strict": 173
+    }
+   ],
+   "proves": "Geometric normal under a rotation; interpolated vertex normals with smooth faces (at one sample, the texel centre)."
+  },
+  {
+   "case": "uv_is_the_pixel_centre",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "one sample",
+     "values": 576,
+     "worst": 5.960464477539063e-08,
+     "strict": 0
+    }
+   ],
+   "proves": "The UV pass at the texel centre is ((x + .5) / W, (y + .5) / H): orientation and row order of the output."
+  },
+  {
+   "case": "custom_uv_attribute_and_vertex_domain",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": {
+    "label": "named vertex-domain UV",
+    "values": 576,
+    "worst": 2.2468356331017958e-07,
+    "strict": 3
+   },
+   "proves": "A named UV attribute, on the vertex domain, is rasterized like the standard one."
+  },
+  {
+   "case": "constant_emission_and_empty_pixels",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "emission",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "combined",
+     "values": 768,
+     "worst": 0.0,
+     "strict": 0
+    }
+   ],
+   "proves": "Emission and Combined read the shader's colour where covered; empty pixels are zero and Combined alpha is 0 there, 1 where covered."
+  },
+  {
+   "case": "texture_round_trip",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": [
+    {
+     "label": "1 samples",
+     "values": 144,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "16 samples",
+     "values": 144,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "64 samples",
+     "values": 144,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "combined",
+     "values": 192,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "twice the size",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    }
+   ],
+   "proves": "An image on a full [0,1] quad, closest filter, baked at its own size returns itself at any sample count: row order, the UV convention and the per-pixel differentials together. Any error in the differentials would let a jittered sample read a neighbouring texel."
+  },
+  {
+   "case": "diffuse_under_constant_world",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "combined",
+     "values": 768,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "colour",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "direct",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "direct with albedo",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "indirect",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "diffuse",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "diffuse with albedo",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    }
+   ],
+   "proves": "An open plane under a constant world, world not sampled as a light: every cosine-sampled ray returns L, so each pass is exact and noise-free."
+  },
+  {
+   "case": "glossy_and_transmission_under_constant_world",
+   "passed": true,
+   "seconds": 0.02,
+   "detail": [
+    {
+     "label": "mirror combined",
+     "values": 768,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "mirror colour",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "mirror direct",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "mirror glossy",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "mirror indirect",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "refraction combined",
+     "values": 768,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "refraction colour",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "refraction direct",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "refraction transmission",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "refraction indirect",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    }
+   ],
+   "proves": "A sharp mirror reflects L times its colour; a sharp refraction through one surface transmits L times its colour; the colour passes read the closure weight."
+  },
+  {
+   "case": "roughness_pass",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": {
+    "label": "roughness",
+    "values": 192,
+    "worst": 0.0,
+    "strict": 0
+   },
+   "proves": "surface_shader_average_roughness returns the closure's roughness at one closure."
+  },
+  {
+   "case": "sun_direct_light_and_shadow",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "lit",
+     "values": 576,
+     "worst": 2.63748202722347e-08,
+     "strict": 0
+    },
+    {
+     "label": "lit combined",
+     "values": 768,
+     "worst": 2.63748202722347e-08,
+     "strict": 0
+    },
+    {
+     "label": "half shadowed",
+     "values": 576,
+     "worst": 2.63748202722347e-08,
+     "strict": 0
+    }
+   ],
+   "proves": "A delta sun: radiance = albedo * strength * cos(angle) / pi, no noise. A blocker above part of the plane shadows exactly the pixels whose ray towards the sun it stops."
+  },
+  {
+   "case": "closed_box_series",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": [
+    {
+     "label": "combined",
+     "values": 144,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "emission",
+     "values": 108,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "colour",
+     "values": 108,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "direct",
+     "values": 108,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "indirect",
+     "values": 108,
+     "worst": 0.0,
+     "strict": 0
+    }
+   ],
+   "proves": "Inside a closed box every path bounces until the limit: Combined = E (1 + a + ... + a^(n+1)), Emission = E, direct = E, indirect = E (a + ... + a^n), both divided by the colour once as the passes define."
+  },
+  {
+   "case": "ambient_occlusion_open_and_closed",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "open",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "closed",
+     "values": 108,
+     "worst": 0.0,
+     "strict": 0
+    }
+   ],
+   "proves": "AO is 1 on an open plane and 0 inside a closed box; the AO distance decides."
+  },
+  {
+   "case": "view_direction_with_and_without_camera",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "along the normal",
+     "values": 576,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "towards the camera",
+     "values": 576,
+     "worst": 6.939554519913571e-08,
+     "strict": 0
+    }
+   ],
+   "proves": "Without the flag the view direction is the normal (P + N towards P); with it, towards the camera. The Incoming vector shows it."
+  },
+  {
+   "case": "background_bakes_the_world",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": {
+    "label": "direction world",
+    "values": 576,
+    "worst": 1.1464578714148743e-07,
+    "strict": 0
+   },
+   "proves": "The background type evaluates the world along the direction from the origin to each surface point: a world whose colour is its direction reads normalize(P)."
+  },
+  {
+   "case": "id_depth_mist_and_aov",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "object id",
+     "values": 192,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "material id",
+     "values": 192,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "depth (empty pixels read 1e10)",
+     "values": 192,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "mist (empty pixels read 1)",
+     "values": 192,
+     "worst": 3.840548690181578e-08,
+     "strict": 0
+    },
+    {
+     "label": "aov colour",
+     "values": 768,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "aov value",
+     "values": 192,
+     "worst": 0.0,
+     "strict": 0
+    }
+   ],
+   "proves": "Object and material index from their sockets; depth from the camera axis; mist from the film's sockets; AOVs from the shader."
+  },
+  {
+   "case": "adaptive_sampling_and_denoising",
+   "passed": true,
+   "seconds": 0.08,
+   "detail": [
+    {
+     "label": "adaptive",
+     "values": 768,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "denoised interior",
+     "worstRelative": 0.0013061761856079102
+    }
+   ],
+   "proves": "Adaptive sampling converges to the exact constant; a denoised bake runs and keeps a constant interior within one percent."
+  },
+  {
+   "case": "embree_backend_agrees",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "combined",
+     "values": 768,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "position",
+     "values": 576,
+     "worst": 6.22873374211963e-07,
+     "strict": 16
+    }
+   ],
+   "proves": "The Embree CPU backend gives the same known results."
+  },
+  {
+   "case": "render_after_bake_is_untouched",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    "bake, render",
+    "render, bake, render"
+   ],
+   "proves": "A bake leaves no trace: bake then render, and render, bake, render, are bit-identical to a new host's render."
+  },
+  {
+   "case": "edit_after_bake",
+   "passed": true,
+   "seconds": 0.04,
+   "detail": [
+    "transform",
+    "material",
+    "mesh",
+    "instance",
+    "render_pass",
+    "world",
+    "deleted",
+    {
+     "label": "position",
+     "values": 576,
+     "worst": 6.22873374211963e-07,
+     "strict": 16
+    },
+    {
+     "label": "position after a transform edit",
+     "values": 576,
+     "worst": 2.008906965222934e-07,
+     "strict": 6
+    },
+    {
+     "label": "position after a mesh edit",
+     "values": 576,
+     "worst": 1.7970347321316638e-07,
+     "strict": 10
+    },
+    {
+     "label": "colour before a material edit",
+     "values": 576,
+     "worst": 1.1920928910669204e-08,
+     "strict": 0
+    },
+    {
+     "label": "colour after a material edit",
+     "values": 576,
+     "worst": 2.384185793236071e-08,
+     "strict": 0
+    }
+   ],
+   "proves": "Bake, edit, render is bit-identical to a new host built with the edit; bake, edit, bake reads the edit."
+  },
+  {
+   "case": "caller_passes_do_not_change_a_bake",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": [
+    {
+     "label": "colour beside a caller colour pass",
+     "values": 576,
+     "worst": 1.1920928910669204e-08,
+     "strict": 0
+    },
+    {
+     "label": "position beside a caller position pass",
+     "values": 576,
+     "worst": 6.22873374211963e-07,
+     "strict": 16
+    }
+   ],
+   "proves": "The kernel picks its path by which passes exist. A caller's position, normal and background passes must not turn a Combined bake into something else, must not duplicate the bake's own pass, and must work in the next render."
+  },
+  {
+   "case": "bump_takes_the_shading_path",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": {
+    "label": "bump normal",
+    "values": 576,
+    "worst": 0.0,
+    "strict": 0
+   },
+   "proves": "A bump node sends the normal bake through shading (no fast path): a constant height leaves the geometric normal."
+  },
+  {
+   "case": "true_displacement_moves_the_position",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": {
+    "label": "displaced",
+    "values": 576,
+    "worst": 7.85289397287059e-06,
+    "strict": 116
+   },
+   "proves": "True displacement happens before the bake: the position reads the displaced surface."
+  },
+  {
+   "case": "object_motion_bakes_at_the_static_transform",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": {
+    "label": "position under motion",
+    "values": 576,
+    "worst": 6.686057503202392e-07,
+    "strict": 12
+   },
+   "proves": "With object motion and motion blur on, the kernel places the surface by the object's transform socket."
+  },
+  {
+   "case": "closed_box_equals_camera_render",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": [
+    {
+     "label": "camera",
+     "values": 64,
+     "worst": 0.0,
+     "strict": 0
+    },
+    {
+     "label": "bake",
+     "values": 64,
+     "worst": 0.0,
+     "strict": 0
+    }
+   ],
+   "proves": "The same closed box seen by a camera render has the same exact value: bake and camera share the integrator after the first hit."
+  },
+  {
+   "case": "noisy_light_matches_camera_render",
+   "passed": true,
+   "seconds": 0.06,
+   "detail": {
+    "meanBake": 0.2670277885181349,
+    "meanCamera": 0.26703308678088433,
+    "worstPixelRelative": 0.011948750406104883
+   },
+   "proves": "A plane lit by two soft lamps, viewed head on by an orthographic camera whose pixels are the bake's texels: bake and camera are independent estimates of one image."
+  },
+  {
+   "case": "repeatable_across_threads",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": "bit-identical",
+   "proves": "A noisy bake repeats bit for bit and does not depend on the thread count, as a CPU render does. This is repeatability only: the known-result cases above are the proof of correctness."
+  },
+  {
+   "case": "approximate_shadow_catcher_refused",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": {
+    "label": "accurate shadow catcher bakes",
+    "values": 576,
+    "worst": 0.0,
+    "strict": 0
+   },
+   "proves": "With an approximate shadow catcher and an opaque background the film gains a background pass, which the kernel reads as a request to bake the world: refused by name."
+  },
+  {
+   "case": "refusals_and_size_queries",
+   "passed": true,
+   "seconds": 0.0,
+   "detail": "all refused by name",
+   "proves": "Wrong input and missing UVs are refused by name; the size query does not bake; the Combined bake of a mesh with no UV attribute fails with CBC_INVALID."
+  },
+  {
+   "case": "webgpu_refuses_by_name",
+   "passed": true,
+   "seconds": 0.07,
+   "detail": "The WebGPU device does not bake yet; bake with a CPU backend",
+   "proves": "On the WebGPU device a bake is refused with a message that says so, and never falls back. The map itself needs no device."
+  },
+  {
+   "case": "cancel_from_callback",
+   "passed": true,
+   "seconds": 0.01,
+   "detail": {
+    "label": "bake after a cancel",
+    "values": 576,
+    "worst": 0.0,
+    "strict": 0
+   },
+   "proves": "A callback that returns nonzero cancels a bake (CBC_CANCELLED), the output stays unchanged, and the host bakes again."
+  }
+ ]
+}

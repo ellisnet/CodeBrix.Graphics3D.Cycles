@@ -1,0 +1,27 @@
+{
+  "sceneId": "passes/denoising-features",
+  "sceneSha256": "96782c3deafd4c46d801689a520f853dff5629e4e1774f73f4a91beda8c16acf",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 2.384185791015625e-07,
+  "renderSeconds": [22.945,0.818643],
+  "filmSha256": ["34fcc14710653ef137de40d6186014955bf2a75bb29b4bb75db1263f401a2f4e","2e812dcc2fd4bb842168e039ae78f35702494f483a427f9dd58f0755d15121e4"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Albedo", "type": "denoising_albedo", "components": 3, "written": true, "filmSha256": ["614d579ec0821f4f25b6a7dbbc851acfa773ddc71e6fcceecf02fadb0adbedda","edf2d5c5501fff01eaa38fe999a8271922d14ffaa1ddf28436a3009f92f442ab"]},
+    {"index": 1, "name": "Denoising Normal", "type": "denoising_normal", "components": 3, "written": true, "filmSha256": ["b4c2494ffa6f4defbc929752d50ea2734588d2cf64abd0f1d194229fd9d20e4a","3c2f9d032d08e5da7a947beb531bfaafaf0e8300e833b5754ce3cfbe607355df"]},
+    {"index": 2, "name": "Denoising Specular Albedo", "type": "denoising_specular_albedo", "components": 3, "written": true, "filmSha256": ["0a82f200a0596c6e19dba36caf34347c6402c35ad3d8b0bd51c98e8cf811ef13","43d7f372a33f311e3b3d27c7be15e47ef589a4c1834faebbffb41b80d0ceac9e"]},
+    {"index": 3, "name": "Denoising Roughness", "type": "denoising_roughness", "components": 1, "written": true, "filmSha256": ["d1257e9dfbd58b0e1cdd46eea4bf606fee1e6ec160109f49fdc591eda248e155","f0699196e4dcef97cd113368f385b6059629bf8f589b8634014f2e78d1a3473d"]},
+    {"index": 4, "name": "Denoising Depth", "type": "denoising_depth", "components": 1, "written": true, "filmSha256": ["9612503304b9474e8ee7258bcf7014b47e93f11f5b662716f94bbd55b1bed017","b8569bd485d703eea86871266cd0a4d67f4c76083b469203ac8f2a98b0f7ec9b"]}
+  ],
+  "warnings": []
+}

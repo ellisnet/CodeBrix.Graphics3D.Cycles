@@ -1,0 +1,214 @@
+[
+  {
+    "command": [
+      "/usr/bin/python3",
+      "<repo>/native/tools/build_cycles.py",
+      "--jobs",
+      "6",
+      "--target",
+      "codebrix_cycles_host",
+      "--target",
+      "codebrix_host_cpu_test",
+      "--target",
+      "codebrix_host_gpu_test",
+      "--target",
+      "codebrix_host_reload_test",
+      "--target",
+      "codebrix_host_concurrency_test",
+      "--target",
+      "codebrix_host_session_reference",
+      "--target",
+      "codebrix_host_session64_reference",
+      "--target",
+      "codebrix_host_image_reference",
+      "--target",
+      "codebrix_host_abi_test",
+      "--target",
+      "codebrix_host_example_test",
+      "--target",
+      "codebrix_cycles_oracle"
+    ],
+    "timeoutSeconds": 1800
+  },
+  {
+    "command": [
+      "nm",
+      "-D",
+      "--defined-only",
+      "<repo>/native/work/cycles-build/lib/libcodebrix_cycles_host.so"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_session_reference",
+      "CPU",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/cpu/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_session64_reference",
+      "CPU",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/cpu64/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "<repo>/native/tests/host/configs/a.ocio",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/references/a/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "<repo>/native/tests/host/configs/b.ocio",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/references/b/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_image_reference",
+      "<repo>/native/tests/host/configs/c.ocio",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/references/c/output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_cpu_test",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/cpu-consumer/run"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_cpu_test",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/cpu-exit-consumer/run",
+      "--exit-live"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_reload_test",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/references",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/reload",
+      "6"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_concurrency_test",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/stress-input",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/stress-output"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "<repo>/tools/hosttests/HostLifecycle/HostLifecycle.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "<repo>/tools/hosttests/NuGet.Config"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "<repo>/tools/hosttests/ImageModes/ImageModes.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "<repo>/tools/hosttests/NuGet.Config"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "<repo>/tools/hosttests/ColorReload/ColorReload.csproj",
+      "-c",
+      "Release",
+      "--configfile",
+      "<repo>/tools/hosttests/NuGet.Config"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "<repo>/tools/hosttests/HostLifecycle/bin/Release/net10.0/HostLifecycle.dll",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/cpu",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/managed-lifecycle"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "dotnet",
+      "<repo>/tools/hosttests/ColorReload/bin/Release/net10.0/ColorReload.dll",
+      "<repo>/tools/hosttests/ImageModes/bin/Release/net10.0/ImageModes.dll",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/references",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/managed-reload"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_gpu_test",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/gpu/run"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_gpu_test",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/gpu-exit/run",
+      "--exit-live"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_abi_test",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/abi-cpu/run",
+      "cpu"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_abi_test",
+      "<run>/linux/linux/g07/20261107-164056/host_gate/abi-gpu/run",
+      "gpu"
+    ],
+    "timeoutSeconds": 900
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_example_test",
+      "cpu"
+    ],
+    "timeoutSeconds": 300
+  },
+  {
+    "command": [
+      "<repo>/native/work/cycles-build/bin/codebrix_host_example_test",
+      "gpu"
+    ],
+    "timeoutSeconds": 300
+  }
+]

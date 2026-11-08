@@ -1,0 +1,118 @@
+{
+  "sceneId": "volumes/catcher-tree",
+  "sceneSha256": "57e97085bf282d6afef9fdb079011d4e36deef74dbf24d3a64dffdfe2f0f053a",
+  "backend": "cpu-x64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "threads": 2,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0449745,
+    0.0362098
+  ],
+  "filmSha256": [
+    "7df3336d09a3b5a0e927f86e6e48188c1f7d5c2214647b02068cac84a394a55b",
+    "7df3336d09a3b5a0e927f86e6e48188c1f7d5c2214647b02068cac84a394a55b"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "Shadow Catcher",
+      "type": "shadow_catcher",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "4222a788d38205b651547fb755a9ef810befa8a16960d2c54500325281a2fa95",
+        "4222a788d38205b651547fb755a9ef810befa8a16960d2c54500325281a2fa95"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Shadow Catcher Matte",
+      "type": "shadow_catcher_matte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "7df3336d09a3b5a0e927f86e6e48188c1f7d5c2214647b02068cac84a394a55b",
+        "7df3336d09a3b5a0e927f86e6e48188c1f7d5c2214647b02068cac84a394a55b"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Shadow Catcher Sample Count",
+      "type": "shadow_catcher_sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "ccd93e870fc0c11c61094518472fdacd9a17616a1bcff988b95f6caf7ff78e12",
+        "ccd93e870fc0c11c61094518472fdacd9a17616a1bcff988b95f6caf7ff78e12"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.115+deb13.1-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.115-2 (2026-11-01) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "c3783adfa91e0f8310f3cc766e0a55f492e21ee0",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "acc1c9754a6cd54e578426c4fbc95009e382e6ccbeb9e7ffb9ab36b907497bea",
+  "runnerSha256": "0207395ea533ac4d212e845b9d153ac349ae429f74caac4773afd3aa76f71a14",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/volumes/catcher-tree.json",
+  "backendDescription": "Cycles CPU device, GCC x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.1,
+  "runnerCommand": [
+    "<repo>/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "<setup-tree>/native/oracle/scenes/volumes/catcher-tree.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-x64-linux",
+    "--output",
+    "<session>/films/x64/shards/s2/oracle/volumes/catcher-tree/cpu-x64-linux",
+    "--threads",
+    "2"
+  ],
+  "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)"
+}

@@ -574,7 +574,7 @@
         "light-tree"
       ],
       "nativeValue": 268435456,
-      "notes": "Receiver light sets and emitter set membership on the flat distribution and on the per-receiver light trees, NEE and forward hits; shadow linking (blocker sets, dedicated-light kernels) refused.",
+      "notes": "Receiver light sets and emitter set membership on the flat distribution and on the per-receiver light trees, NEE and forward hits; shadow linking has its own row.",
       "implementation": [
         "native/cycles/lighting.cpp",
         "native/shaders/wavefront_light_tree.wgsl",
@@ -596,14 +596,30 @@
       "source": "third_party/cycles/src/kernel/features.h",
       "classification": "shader-behavior",
       "workItems": [
-        "P00-02"
+        "P07-01"
       ],
-      "status": "unassessed",
-      "coverage": "unassessed",
+      "status": "integrated-tested",
+      "coverage": "partial",
       "fullRequirementVerified": false,
       "testStrategy": "parameter-edge-cases-and-feature-combinations",
-      "evidence": [],
+      "evidence": [
+        "shadow-linking"
+      ],
       "nativeValue": 536870912,
+      "implementation": [
+        "native/cycles/shadow_linking.cpp",
+        "native/shaders/wavefront_shadow_link_intersect.wgsl",
+        "native/shaders/wavefront_shadow_link_lamp.wgsl",
+        "native/shaders/wavefront_shadow_link_shade.wgsl",
+        "native/shaders/wavefront_closest.wgsl",
+        "native/shaders/wavefront_shadow_traversal.wgsl"
+      ],
+      "tests": [
+        "native/cycles/shadow_linking_gate.cpp",
+        "native/cycles/shadow_linking_reference.cpp",
+        "native/tools/shadow_linking_gate.py"
+      ],
+      "notes": "Blocker sets in both traversals and the dedicated light kernels on the flat distribution and the tree, the MIS pdf from both samplers; with the shadow catcher, AO, or volumes on the tree refused by name. Linux x64 evidence: checkpoint shadow-linking (native/tools/shadow_linking_gate.py, 13 cases and their command replays, against the original CPU kernels).",
       "classificationReviewed": false
     },
     {

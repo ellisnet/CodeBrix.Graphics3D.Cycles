@@ -1,0 +1,51 @@
+{
+  "complete": true,
+  "phase": "complete",
+  "passed": true,
+  "inputsUnchanged": true,
+  "velvetSubnormalRule": {
+    "bsdf_bounce": {
+      "evaluations": 0,
+      "normalCpuMismatches": 0,
+      "paths": 0,
+      "ftzDazOracleChecks": 0,
+      "ftzDazOracleMismatches": 0
+    },
+    "bsdf_render": {
+      "stages": 0,
+      "normalCpuMismatches": 0,
+      "paths": 0,
+      "ftzDazOracleChecks": 0,
+      "ftzDazOracleMismatches": 0
+    },
+    "bsdf2_bounce": {
+      "evaluations": 0,
+      "normalCpuMismatches": 0,
+      "paths": 0,
+      "ftzDazOracleChecks": 0,
+      "ftzDazOracleMismatches": 0
+    },
+    "bsdf2_render": {
+      "stages": 0,
+      "normalCpuMismatches": 0,
+      "paths": 0,
+      "ftzDazOracleChecks": 0,
+      "ftzDazOracleMismatches": 0
+    },
+    "bsdf3_bounce": {
+      "evaluations": 24,
+      "normalCpuMismatches": 2804,
+      "paths": 104,
+      "ftzDazOracleChecks": 5039232,
+      "ftzDazOracleMismatches": 0
+    },
+    "bsdf3_render": {
+      "stages": 10,
+      "normalCpuMismatches": 255,
+      "paths": 12,
+      "ftzDazOracleChecks": 1884160,
+      "ftzDazOracleMismatches": 0
+    }
+  },
+  "scope": "Metallic (physical conductor and F82 tint; GGX, multiscatter GGX, Beckmann), Beckmann glossy/refraction/glass, Ashikhmin-Shirley, Ashikhmin velvet, diffuse/glossy Toon and the Radial Tiling node (two sides with 0 < roundness < 1 refused): closure setup against the original CPU SVM, surface integration against the original CPU integrator, independent original-Cycles images; velvet path-state differences that the flush-to-zero CPU oracle removes are judged by the velvet rule (native/DEVICE.md open item 29)."
+}

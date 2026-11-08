@@ -1,0 +1,156 @@
+{
+ "passed": true,
+ "fullCyclesParity": false,
+ "rid": "linux-x64",
+ "tree": "c3783adfa+fix-001",
+ "producedBy": "Linux x64 baseline pass of device checkpoint 1, 2026-11-07, Linux x64 Intel UHD (ADL-S GT1) Mesa 25.0.7-2+deb13u1, WebGPU runtime CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 (libcodebrix_wgpu.so SHA-256 5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b), gate binaries built by build_cycles.py from c3783adfa91e0f8310f3cc766e0a55f492e21ee0 plus fix 001 (native/shaders/wavefront_hair_huang.wgsl, patch SHA-256 1bd47be317fc29b6722bf1d5b83df44610423fe297ce341027b5f441e60d9ced)",
+ "capturedUtc": "2026-11-08T03:32:23+00:00",
+ "reports": {
+  "shadow_linking": {
+   "file": "native/evidence/linux-x64-ledger-20261107/shadow-linking/results.json",
+   "sha256": "7d5b395647a685d9d67167a09d5108c3da04ace5940e30b688cfd4fbd51754a6",
+   "gate": "shadow_linking_gate.py",
+   "run": "Linux queue, job shadow_linking_gate",
+   "tree": "c3783adfa+fix-001",
+   "result": {
+    "passed": true,
+    "cases": 13,
+    "rows": 15089,
+    "pickedLamps": 6305,
+    "pickedTriangles": 2128,
+    "severalHits": 306,
+    "misWeights": 7213,
+    "shadowPaths": 7213,
+    "blocked": 345,
+    "clear": 6693,
+    "neeRays": 53248,
+    "neeBlocked": 8638,
+    "linkedThrough": 14041,
+    "guardCases": 4,
+    "motionTransformWords": 196608,
+    "motionTransformDifferences": 0,
+    "exactChecks": 354193,
+    "numericChecks": 326404,
+    "strictDifferences": 514,
+    "maximumAbsoluteError": 1.633167266845703e-05,
+    "filmChecks": 96768,
+    "filmStrictDifferences": 7234,
+    "filmMaximumAbsoluteError": 7.62939453125e-06,
+    "repeatBitwiseDifferences": 63,
+    "cyclesAllocationBytesAfterCleanup": 0,
+    "pipelineReport": {
+     "tier": "full",
+     "degraded": false,
+     "pipelines": 251,
+     "totalPipelineMs": 424463,
+     "maxPipelineMs": 18887.3,
+     "maxPipelineEntry": "shade_volume",
+     "warnings": [
+      "pipeline 'shade_surface_light' (surface module) inlines to 952582 bytes of WGSL, at or above the 940000-byte size guard: about 47629 backend instructions estimated (38411 to 66152); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+      "pipeline 'shade_surface_light' (surface module) inlines to 953844 bytes of WGSL, at or above the 940000-byte size guard: about 47692 backend instructions estimated (38461 to 66239); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+      "pipeline 'shade_volume' (volume module) inlines to 1004012 bytes of WGSL, at or above the 940000-byte size guard: about 50201 backend instructions estimated (40484 to 69723); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged",
+      "pipeline 'shade_volume_light' (surface module) inlines to 989429 bytes of WGSL, at or above the 940000-byte size guard: about 49471 backend instructions estimated (39896 to 68710); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged"
+     ],
+     "sizeGuard": {
+      "thresholdBytes": 940000,
+      "largestEntryBytes": 1004012,
+      "largestEntry": "shade_volume",
+      "estimatedInstructions": 50201,
+      "warnings": 4
+     },
+     "decision": {
+      "tier": "full",
+      "reason": "table",
+      "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+      "adapter": {
+       "vendor": "Intel open-source Mesa driver",
+       "architecture": "",
+       "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+       "description": "Mesa 25.0.7-2+deb13u1",
+       "vendorId": 32902,
+       "deviceId": 18056,
+       "simulated": false,
+       "mobile": false
+      },
+      "runtime": "codebrix-api=4;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool,0010-wgpu-hal-metal-precise-math,0011-wgpu-native-pipeline-cache-chain,0012-wgpu-hal-metal-queue-accessor,0013-wgpu-native-metal-command-queue",
+      "shaderHash": "fnv1a64:f5985e73737abf1e",
+      "knownAdapter": {
+       "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+       "tier": "full",
+       "budgetMs": 0,
+       "evidence": "Phase C1 2026-10-19 Linux validation"
+      },
+      "budgetSource": "default",
+      "record": {
+       "mode": "none",
+       "path": "",
+       "status": "none",
+       "fullTierCompiles": 0,
+       "conservativeTierCompiles": 0,
+       "failures": 0,
+       "breadcrumbs": []
+      },
+      "canary": {
+       "enabled": false,
+       "result": "not-run",
+       "ms": 0,
+       "detail": ""
+      },
+      "overrides": [],
+      "warnings": []
+     }
+    }
+   }
+  }
+ },
+ "status": {
+  "file": "native/evidence/linux-x64-ledger-20261107/shadow-linking/status.json",
+  "sha256": "b7e86ae5487011c226d5b51973dd026b49cc86db8a60ac629b500d5fab59cadc",
+  "complete": true,
+  "phase": "complete",
+  "passed": true,
+  "inputsUnchanged": true,
+  "scope": "Blocker sets, INTERSECT_DEDICATED_LIGHT and SHADE_DEDICATED_LIGHT: lamps, a sun and emissive panels on the flat CDF and on the tree, with an HDRI world, transparent blockers, non-constant emitters, light linking on both samplers, motion (one emitter both moving and deforming too) and a glass receiver, against the original CPU kernels."
+ },
+ "replays": {
+  "shadow_linking-replay-0": {
+   "passed": true
+  },
+  "shadow_linking-replay-1": {
+   "passed": true
+  },
+  "shadow_linking-replay-2": {
+   "passed": true
+  },
+  "shadow_linking-replay-3": {
+   "passed": true
+  },
+  "shadow_linking-replay-4": {
+   "passed": true
+  },
+  "shadow_linking-replay-5": {
+   "passed": true
+  },
+  "shadow_linking-replay-6": {
+   "passed": true
+  },
+  "shadow_linking-replay-7": {
+   "passed": true
+  },
+  "shadow_linking-replay-8": {
+   "passed": true
+  },
+  "shadow_linking-replay-9": {
+   "passed": true
+  },
+  "shadow_linking-replay-10": {
+   "passed": true
+  },
+  "shadow_linking-replay-11": {
+   "passed": true
+  },
+  "shadow_linking-replay-12": {
+   "passed": true
+  }
+ }
+}

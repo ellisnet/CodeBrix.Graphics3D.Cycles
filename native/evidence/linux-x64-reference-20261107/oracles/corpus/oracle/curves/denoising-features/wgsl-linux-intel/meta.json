@@ -1,0 +1,25 @@
+{
+  "sceneId": "curves/denoising-features",
+  "sceneSha256": "05fe112689ef7cbd75d1bbdce4c3562f47711cfbd7bc2af3b3de263d74f7221e",
+  "backend": "wgsl-linux-intel",
+  "hostBackend": "webgpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "wgslArithmetic": "x64-sse4.2",
+  "threads": 4,
+  "width": 64,
+  "height": 48,
+  "samples": 8,
+  "repeats": 2,
+  "repeatBitwiseIdentical": false,
+  "repeatMaxAbsDifference": 1.9073486328125e-06,
+  "renderSeconds": [27.0546,0.420875],
+  "filmSha256": ["ba3e7ba5f676a1f173abf3c21c768e16c52750a63fbb1967fbc4096adbbaae6c","6efb19b5a06e059f80daaf820b2d31efff024b85f802e11465807e81d8485987"],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {"index": 0, "name": "Denoising Normal", "type": "denoising_normal", "components": 3, "written": true, "filmSha256": ["7081c93447bcbb97e7146a5509af5508a777f93a8963900a484ea979f32b50d6","3f5d7b4faee784bd11460d9f6cbec8f241355e0c04593a5dd79efe47c3d8315c"]},
+    {"index": 1, "name": "Denoising Albedo", "type": "denoising_albedo", "components": 3, "written": true, "filmSha256": ["ed8ae575827880d8707352d74195e2e6dc77576da1b83f6e448da2bff59bcf47","0e851b799ead112410ad6d1ba55203e163d0cafd0766eeb2518ff0e14b8e74de"]},
+    {"index": 2, "name": "Denoising Depth", "type": "denoising_depth", "components": 1, "written": true, "filmSha256": ["0d8ef8395e134a862d0e3c94362d5f297440578908bae9bcf04b336518205539","d56183560238541dfb6d526f66a01d07d51258250f0366430e210de80636f059"]}
+  ],
+  "warnings": []
+}

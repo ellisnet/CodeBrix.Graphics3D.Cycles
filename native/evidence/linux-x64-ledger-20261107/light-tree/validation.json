@@ -1,0 +1,129 @@
+{
+ "passed": true,
+ "fullCyclesParity": false,
+ "rid": "linux-x64",
+ "tree": "c3783adfa+fix-001",
+ "producedBy": "Linux x64 baseline pass of device checkpoint 1, 2026-11-07, Linux x64 Intel UHD (ADL-S GT1) Mesa 25.0.7-2+deb13u1, WebGPU runtime CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 (libcodebrix_wgpu.so SHA-256 5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b), gate binaries built by build_cycles.py from c3783adfa91e0f8310f3cc766e0a55f492e21ee0 plus fix 001 (native/shaders/wavefront_hair_huang.wgsl, patch SHA-256 1bd47be317fc29b6722bf1d5b83df44610423fe297ce341027b5f441e60d9ced)",
+ "capturedUtc": "2026-11-08T03:32:23+00:00",
+ "reports": {
+  "light_tree": {
+   "file": "native/evidence/linux-x64-ledger-20261107/light-tree/results.json",
+   "sha256": "e17529faa0bde8eae5a14be2dfe2d8e43ea9d544b2fd1098ed4aa59f5d0088cc",
+   "gate": "light_tree_gate.py",
+   "run": "Linux queue, job light_tree_gate",
+   "tree": "c3783adfa+fix-001",
+   "result": {
+    "passed": true,
+    "cases": 8,
+    "probeSelected": 30023,
+    "probeValid": 27527,
+    "forwardPdfs": 14602,
+    "linkRejections": 2496,
+    "guardCases": 10,
+    "exactChecks": 147868,
+    "numericChecks": 300705,
+    "strictDifferences": 32408,
+    "maximumAbsoluteError": 0.0227203369140625,
+    "filmChecks": 49152,
+    "filmStrictDifferences": 5308,
+    "filmMaximumAbsoluteError": 0.0001220703125,
+    "repeatBitwiseDifferences": 0,
+    "cyclesAllocationBytesAfterCleanup": 0,
+    "pipelineReport": {
+     "tier": "full",
+     "degraded": false,
+     "pipelines": 86,
+     "totalPipelineMs": 143380,
+     "maxPipelineMs": 9167.37,
+     "maxPipelineEntry": "shade_surface_light",
+     "warnings": [
+      "pipeline 'shade_surface_light' (surface module) inlines to 953844 bytes of WGSL, at or above the 940000-byte size guard: about 47692 backend instructions estimated (38461 to 66239); Intel Mesa drivers without upstream fix b7e1ac830984 can miscompile or crash above 65,535; the compiled variant and results are unchanged"
+     ],
+     "sizeGuard": {
+      "thresholdBytes": 940000,
+      "largestEntryBytes": 953844,
+      "largestEntry": "shade_surface_light",
+      "estimatedInstructions": 47692,
+      "warnings": 1
+     },
+     "decision": {
+      "tier": "full",
+      "reason": "table",
+      "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+      "adapter": {
+       "vendor": "Intel open-source Mesa driver",
+       "architecture": "",
+       "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+       "description": "Mesa 25.0.7-2+deb13u1",
+       "vendorId": 32902,
+       "deviceId": 18056,
+       "simulated": false,
+       "mobile": false
+      },
+      "runtime": "codebrix-api=4;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool,0010-wgpu-hal-metal-precise-math,0011-wgpu-native-pipeline-cache-chain,0012-wgpu-hal-metal-queue-accessor,0013-wgpu-native-metal-command-queue",
+      "shaderHash": "fnv1a64:f5985e73737abf1e",
+      "knownAdapter": {
+       "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+       "tier": "full",
+       "budgetMs": 0,
+       "evidence": "Phase C1 2026-10-19 Linux validation"
+      },
+      "budgetSource": "default",
+      "record": {
+       "mode": "none",
+       "path": "",
+       "status": "none",
+       "fullTierCompiles": 0,
+       "conservativeTierCompiles": 0,
+       "failures": 0,
+       "breadcrumbs": []
+      },
+      "canary": {
+       "enabled": false,
+       "result": "not-run",
+       "ms": 0,
+       "detail": ""
+      },
+      "overrides": [],
+      "warnings": []
+     }
+    }
+   }
+  }
+ },
+ "status": {
+  "file": "native/evidence/linux-x64-ledger-20261107/light-tree/status.json",
+  "sha256": "e8db93cb968db8bb29b32141074e8d02050f588df430a2f414370c5e0e6a345a",
+  "complete": true,
+  "phase": "complete",
+  "passed": true,
+  "inputsUnchanged": true,
+  "scope": "Light tree selection, sampling and forward pdfs (lamps, many-triangle, mixed with HDRI world, instanced, moving/deforming emitters, a glass receiver) and light linking on the flat CDF and on the tree, against the original CPU kernels."
+ },
+ "replays": {
+  "light_tree-replay-0": {
+   "passed": true
+  },
+  "light_tree-replay-1": {
+   "passed": true
+  },
+  "light_tree-replay-2": {
+   "passed": true
+  },
+  "light_tree-replay-3": {
+   "passed": true
+  },
+  "light_tree-replay-4": {
+   "passed": true
+  },
+  "light_tree-replay-5": {
+   "passed": true
+  },
+  "light_tree-replay-6": {
+   "passed": true
+  },
+  "light_tree-replay-7": {
+   "passed": true
+  }
+ }
+}

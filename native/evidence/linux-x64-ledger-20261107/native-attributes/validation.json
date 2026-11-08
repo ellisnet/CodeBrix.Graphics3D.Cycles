@@ -1,0 +1,143 @@
+{
+ "passed": true,
+ "fullCyclesParity": false,
+ "rid": "linux-x64",
+ "tree": "c3783adfa+fix-001",
+ "producedBy": "Linux x64 baseline pass of device checkpoint 1, 2026-11-07, Linux x64 Intel UHD (ADL-S GT1) Mesa 25.0.7-2+deb13u1, WebGPU runtime CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 (libcodebrix_wgpu.so SHA-256 5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b), gate binaries built by build_cycles.py from c3783adfa91e0f8310f3cc766e0a55f492e21ee0 plus fix 001 (native/shaders/wavefront_hair_huang.wgsl, patch SHA-256 1bd47be317fc29b6722bf1d5b83df44610423fe297ce341027b5f441e60d9ced)",
+ "capturedUtc": "2026-11-08T03:32:23+00:00",
+ "reports": {
+  "attributes": {
+   "file": "native/evidence/linux-x64-ledger-20261107/native-attributes/attributes.stdout.json",
+   "sha256": "99eb7b58e31ea26b16066984041825fdcc5777b5ae8ed16966da0a354edcebf4",
+   "gate": "bin/codebrix_cycles_attribute_gate",
+   "arguments": [],
+   "run": "native/tools/attribute_gate.py, Linux half (attributes/validation.json, field nativeAttributes)",
+   "tree": "the same pass, run at c3783adfa before fix 001 was applied (fix 001 changes only native/shaders/wavefront_hair_huang.wgsl, not a source of this checkpoint)",
+   "result": {
+    "passed": true,
+    "originalCpuSurfaceSvm": true,
+    "nativeGraphs": 48,
+    "typedPrograms": 328,
+    "cases": 329,
+    "paths": 5088,
+    "negativeAttributeOffsets": 1,
+    "attributeMapChains": 6,
+    "integerChecks": 345984,
+    "floatChecks": 8837856,
+    "stateChecks": 47165440,
+    "strictFloatFailures": 5,
+    "maximumAbsoluteError": 1.78814e-07,
+    "invalidCasesRejected": 7,
+    "cyclesAllocationBytesAfterCleanup": 0
+   },
+   "gateSha256": "ea02cce067709428280a20610f89c3ebef02822437e5dab57e2217aeb20575e6"
+  },
+  "render": {
+   "file": "native/evidence/linux-x64-ledger-20261107/native-attributes/render.stdout.json",
+   "sha256": "30325d21bffbdcf8e08e42cd1c251646b45e5624d8443575098ab22518becaeb",
+   "gate": "bin/codebrix_cycles_render_gate",
+   "arguments": [
+    "--attributes"
+   ],
+   "run": "native/tools/attribute_gate.py, Linux half (attributes/validation.json, field nativeRender)",
+   "tree": "the same pass, run at c3783adfa before fix 001 was applied (fix 001 changes only native/shaders/wavefront_hair_huang.wgsl, not a source of this checkpoint)",
+   "result": {
+    "passed": true,
+    "nativeSceneAndScheduler": true,
+    "independentCpuImage": true,
+    "repeatBitwiseIdentical": true,
+    "nativeImageTextures": false,
+    "nativeNormalMaps": false,
+    "width": 64,
+    "height": 48,
+    "samples": 8,
+    "stages": 156,
+    "paths": 135912,
+    "volumeScatterEvents": 0,
+    "volumeTransmitEvents": 0,
+    "volumeTerminatedEvents": 0,
+    "volumeStackInitializations": 0,
+    "maxVolumeBoundaryBounce": 0,
+    "maxBounce": 5,
+    "maxTransparentBounce": 3,
+    "surfaceShaders": 21,
+    "lockstepStageChecks": "local",
+    "stageExchangeRecords": 0,
+    "integerChecks": 12140544,
+    "floatChecks": 17252352,
+    "equivalentSharedEdgeComparisons": 0,
+    "strictStageFailures": 38,
+    "maximumStageError": 7.62939453125e-06,
+    "maximumStageErrorField": "Stage 64 film 7596 pixel=1899 offset=0",
+    "maximumStageErrorActual": 73.44378662109375,
+    "maximumStageErrorExpected": 73.44379425048828,
+    "maximumStagePracticalToleranceRatio": 0.0030832508563729253,
+    "strictImageFailures": 24,
+    "maximumImageError": 3.814697265625e-06,
+    "cyclesAllocationBytesAfterCleanup": 0,
+    "pipelineReport": {
+     "tier": "full",
+     "degraded": false,
+     "pipelines": 8,
+     "totalPipelineMs": 4467.54,
+     "maxPipelineMs": 3682.29,
+     "maxPipelineEntry": "prepare_surface",
+     "warnings": [],
+     "sizeGuard": {
+      "thresholdBytes": 940000,
+      "largestEntryBytes": 501865,
+      "largestEntry": "shade_surface_light",
+      "estimatedInstructions": 25093,
+      "warnings": 0
+     },
+     "decision": {
+      "tier": "full",
+      "reason": "table",
+      "detail": "Linux Intel UHD ADL-S (Mesa 25.0.7): Phase C1 2026-10-19 Linux validation",
+      "adapter": {
+       "vendor": "Intel open-source Mesa driver",
+       "architecture": "",
+       "device": "Intel(R) UHD Graphics (ADL-S GT1)",
+       "description": "Mesa 25.0.7-2+deb13u1",
+       "vendorId": 32902,
+       "deviceId": 18056,
+       "simulated": false,
+       "mobile": false
+      },
+      "runtime": "codebrix-api=4;wgpu-native=29.0.1.1;wgpu-core=29.0.3;target=x86_64-unknown-linux-gnu;patches=0001-wgpu-native-crate-type-rlib,0002-wgpu-native-codebrix-bridge-module,0003-wgpu-native-error-filter-internal,0004-wgpu-native-pipeline-layout-absent-slots,0005-wgpu-native-zero-init-workgroup-memory,0006-wgpu-native-map-async-whole-map-size,0007-wgpu-native-nonfatal-poll,0008-wgpu-native-surface-usage-flags,0009-wgpu-native-debugger-capture-wgpubool,0010-wgpu-hal-metal-precise-math,0011-wgpu-native-pipeline-cache-chain,0012-wgpu-hal-metal-queue-accessor,0013-wgpu-native-metal-command-queue",
+      "shaderHash": "fnv1a64:9258a9703a4ecb45",
+      "knownAdapter": {
+       "name": "Linux Intel UHD ADL-S (Mesa 25.0.7)",
+       "tier": "full",
+       "budgetMs": 0,
+       "evidence": "Phase C1 2026-10-19 Linux validation"
+      },
+      "budgetSource": "default",
+      "record": {
+       "mode": "none",
+       "path": "",
+       "status": "none",
+       "fullTierCompiles": 0,
+       "conservativeTierCompiles": 0,
+       "failures": 0,
+       "breadcrumbs": []
+      },
+      "canary": {
+       "enabled": false,
+       "result": "not-run",
+       "ms": 0,
+       "detail": ""
+      },
+      "overrides": [],
+      "warnings": []
+     }
+    }
+   },
+   "gateSha256": "1d9072f84dec112c19d7754a83c5c0f6790ab3b66f3a942fd05736505c3f45c7"
+  }
+ },
+ "gateValidation": {
+  "file": "native/evidence/linux-x64-ledger-20261107/native-attributes/attributes.validation.json",
+  "sha256": "a7f9aece91a2c4f6ea985a8502245d502b9a4e8d804bb31e734ffcdd41ad05ef"
+ }
+}

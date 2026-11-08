@@ -143,6 +143,9 @@ static unsigned node_rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shad
 }
 #endif
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
+  // Every probe check compares against svm_reference_records, so on reference import (the device-scene flow)
+  // the probe generates the reference oracle's arithmetic, as the other device-scene gates do (reference_policy.h).
+  reference_policy::use_reference_oracle_arithmetic();
   require(argc==2,"Usage: svm_surface_gate OUTPUT_PREFIX");std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"svm_surface_gate device creation");Metrics m;unsigned invalid=0,host_rejections=0;
   {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;Scene scene(params,&d);prepare(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Surface SVM scene update failed");
     auto &ds=scene.dscene;ds.data.integrator.use_light_mis=0;ds.data.integrator.use_caustics=0;

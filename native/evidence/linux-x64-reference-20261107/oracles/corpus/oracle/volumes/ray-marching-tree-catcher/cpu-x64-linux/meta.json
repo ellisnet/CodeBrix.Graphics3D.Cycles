@@ -1,0 +1,228 @@
+{
+  "sceneId": "volumes/ray-marching-tree-catcher",
+  "sceneSha256": "de74aa09704d147d72eec6bf57a4cf529724c95bb3693835d8333235b8571a52",
+  "backend": "cpu-x64-linux",
+  "hostBackend": "cpu",
+  "hostAbi": 1,
+  "rid": "linux-x64",
+  "threads": 2,
+  "width": 32,
+  "height": 24,
+  "samples": 16,
+  "repeats": 2,
+  "repeatBitwiseIdentical": true,
+  "repeatMaxAbsDifference": 0,
+  "renderSeconds": [
+    0.0342799,
+    0.0213919
+  ],
+  "filmSha256": [
+    "2f1e326febb127380f864b5a34f7ecfbc1a6f03c086fadaad79bc1c8c01f3261",
+    "2f1e326febb127380f864b5a34f7ecfbc1a6f03c086fadaad79bc1c8c01f3261"
+  ],
+  "filmLayout": "float32 little-endian RGBA, width*height*4 values, lower-left origin",
+  "passes": [
+    {
+      "index": 0,
+      "name": "volume_direct",
+      "type": "volume_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "ceb3685ff3158470d60aa1ddb676de4b6567224b5900d2109515d440ec880b16",
+        "ceb3685ff3158470d60aa1ddb676de4b6567224b5900d2109515d440ec880b16"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "volume_indirect",
+      "type": "volume_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "4f3192ccc6c929d99fdb4385e2262f051d94578d082c239c909f14306567b29a",
+        "4f3192ccc6c929d99fdb4385e2262f051d94578d082c239c909f14306567b29a"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "diffuse_direct",
+      "type": "diffuse_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "e9ebc3fee251d3f5f32ae604ca30cb7283a5cb4aa9b03bd4b889115595b331bc",
+        "e9ebc3fee251d3f5f32ae604ca30cb7283a5cb4aa9b03bd4b889115595b331bc"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "diffuse_indirect",
+      "type": "diffuse_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "1fbe1d76bee803da4b5f953e622868835509bf6077da7c3c67335988634e4617",
+        "1fbe1d76bee803da4b5f953e622868835509bf6077da7c3c67335988634e4617"
+      ]
+    },
+    {
+      "index": 4,
+      "name": "glossy_direct",
+      "type": "glossy_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "fa8ec852bdd1d3a42047f15dbefc767a6e8008b45b85a033a092395982832006",
+        "fa8ec852bdd1d3a42047f15dbefc767a6e8008b45b85a033a092395982832006"
+      ]
+    },
+    {
+      "index": 5,
+      "name": "glossy_indirect",
+      "type": "glossy_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "5f7ea59ff4457d4576c8010ee12865126244705144a26ea59fc19a8695fbafe6",
+        "5f7ea59ff4457d4576c8010ee12865126244705144a26ea59fc19a8695fbafe6"
+      ]
+    },
+    {
+      "index": 6,
+      "name": "transmission_direct",
+      "type": "transmission_direct",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 7,
+      "name": "transmission_indirect",
+      "type": "transmission_indirect",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae",
+        "2d07a41ae992770085117e9815300bfd0730745883e60b24aaad5e69dfc087ae"
+      ]
+    },
+    {
+      "index": 8,
+      "name": "emission",
+      "type": "emission",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "178d73f5cb49e95d8c06f55b156e2c8895444b67e667a6d94d84461ea4ae076e",
+        "178d73f5cb49e95d8c06f55b156e2c8895444b67e667a6d94d84461ea4ae076e"
+      ]
+    },
+    {
+      "index": 9,
+      "name": "background",
+      "type": "background",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "79553810587678742dbc8f56d92df562716fd9fabb8897298120dc9039bc09ea",
+        "79553810587678742dbc8f56d92df562716fd9fabb8897298120dc9039bc09ea"
+      ]
+    },
+    {
+      "index": 10,
+      "name": "Shadow Catcher",
+      "type": "shadow_catcher",
+      "components": 3,
+      "written": true,
+      "filmSha256": [
+        "9a581e314497a3d21d15a45d1c94bb037c09b7e50acd0886d3c707ea139563ef",
+        "9a581e314497a3d21d15a45d1c94bb037c09b7e50acd0886d3c707ea139563ef"
+      ]
+    },
+    {
+      "index": 11,
+      "name": "Shadow Catcher Matte",
+      "type": "shadow_catcher_matte",
+      "components": 4,
+      "written": true,
+      "filmSha256": [
+        "2f1e326febb127380f864b5a34f7ecfbc1a6f03c086fadaad79bc1c8c01f3261",
+        "2f1e326febb127380f864b5a34f7ecfbc1a6f03c086fadaad79bc1c8c01f3261"
+      ]
+    },
+    {
+      "index": 12,
+      "name": "Shadow Catcher Sample Count",
+      "type": "shadow_catcher_sample_count",
+      "components": 1,
+      "written": true,
+      "filmSha256": [
+        "8ee23387e40374ccef4b1378e52ae6e0f949c09f7f4a3e595ad39908e41c06d8",
+        "8ee23387e40374ccef4b1378e52ae6e0f949c09f7f4a3e595ad39908e41c06d8"
+      ]
+    }
+  ],
+  "warnings": [],
+  "machine": {
+    "os": "Linux dellprecision7770 6.12.115+deb13.1-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.115-2 (2026-11-01) x86_64 GNU/Linux",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12850HX",
+    "gpu": {
+      "model": null,
+      "cores": null
+    },
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "xcode": "unavailable: [Errno 2] No such file or directory: 'xcodebuild'",
+    "cmake": "cmake version 3.31.6",
+    "python": "3.13.5",
+    "repoCommit": "c3783adfa91e0f8310f3cc766e0a55f492e21ee0",
+    "repoWorkingTreeClean": true,
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604"
+  },
+  "hostLibrarySha256": "acc1c9754a6cd54e578426c4fbc95009e382e6ccbeb9e7ffb9ab36b907497bea",
+  "runnerSha256": "0207395ea533ac4d212e845b9d153ac349ae429f74caac4773afd3aa76f71a14",
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "database": "native/work/cycles-build/compile_commands.json",
+    "flags": [
+      "-std=c++17",
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-O3",
+      "-std=c++20",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "ffpContractExplicit": true,
+    "fpContract": "off",
+    "reciprocalMath": false,
+    "note": "the last -ffp-contract / reciprocal-math option on the command line decides; Apple Clang arm64 and GCC default to contraction on without -ffp-contract"
+  },
+  "sceneFile": "native/oracle/scenes/volumes/ray-marching-tree-catcher.json",
+  "backendDescription": "Cycles CPU device, GCC x86-64, fixed-baseline oracle: SSE4.2 kernels only, no FMA contraction, no reciprocal math",
+  "environment": {},
+  "processSeconds": 0.071,
+  "runnerCommand": [
+    "<repo>/native/work/cycles-build/bin/codebrix_cycles_oracle",
+    "--scene",
+    "<setup-tree>/native/oracle/scenes/volumes/ray-marching-tree-catcher.json",
+    "--backend",
+    "cpu",
+    "--label",
+    "cpu-x64-linux",
+    "--output",
+    "<session>/films/x64/shards/s0/oracle/volumes/ray-marching-tree-catcher/cpu-x64-linux",
+    "--threads",
+    "2"
+  ],
+  "deviceName": "12th Gen Intel(R) Core(TM) i7-12850HX (the C API does not expose Cycles' DeviceInfo)"
+}

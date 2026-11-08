@@ -3244,10 +3244,17 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     `use_transparent_shadow` false. Not yet run on the reference devices (item 83).
 82. **Argument evaluation order in the pinned Huang closure.** `make_float2(lcg_step_float(&lcg), lcg_step_float(&lcg))` (the
     microfacet samples of `bsdf_hair_huang_eval_residual` and `bsdf_hair_huang_sample`) leaves the order of the two draws to the
-    compiler. GCC, which builds both Linux CPU oracles, evaluates the second argument first, and the device follows it (it matches
-    the x64 oracle bit for bit in the random number position). A CPU kernel built with clang (macOS) or the Metal backend draws them
-    the other way round, so Huang films there differ from the Linux CPU films beyond the tolerance: a gold-standard disagreement,
-    reported, never tuned.
+    compiler. Probed at -O0, -O2 and -O3: Debian GCC 14.2 for x86-64, which builds the Linux x64 CPU oracle, evaluates the second
+    argument first; GCC 14.2 for AArch64, which builds the scalar ARM64 oracle, and clang (macOS, the Android NDK) evaluate the
+    first argument first. The device follows the oracle of its arithmetic: both Huang sites draw in sequence and select x and y on
+    `NATIVE_FLOAT3_RECIPROCAL_NORMALIZE` (`arm64-scalar` draws x first, `x64-sse4.2` y first), so it matches each oracle bit for bit
+    in the random number position. Corrected at device checkpoint 1 (2026-11-07): this item said that GCC builds both Linux CPU
+    oracles with the second argument first, which had been checked on x86-64 only; the tablet's Huang scenes then failed against
+    the ARM64 oracle films until the select was added (`native/shaders/wavefront_hair_huang.wgsl`). A CPU kernel built with clang
+    or the Metal backend draws x first, so Huang films there differ from the x64 Linux CPU films beyond the tolerance: a
+    gold-standard disagreement, reported, never tuned. Found at checkpoint 1, not fixed: on the HP the Huang gate's in-process CPU
+    reference is built with the NDK's clang (x first) while the device runs the x64 arithmetic (y first), the same disagreement
+    inside that gate.
 83. **Huang hair on the reference devices: not run yet.** Linux x64 only. The arithmetic every branch and random number depends
     on goes through the rounding adapters (section "Principled Hair, Huang model"), so `arm64-scalar` needs no ISA-specific code
     in the closure; the tablet and the HP have not compiled the two entries.
@@ -3256,6 +3263,33 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     as well, with or without hair; `scenes/hair/huang-triangles` leaves that sphere out.
 86. **Point clouds on the reference devices: not run yet.** Points pass on Linux in x64 arithmetic against the x64 CPU oracle (`native/tools/point_gate.py`, `scenes/points/`). `arm64-scalar` on Linux compiles and runs, judged against nothing here. No ARM64 oracle exists for this family, so that says nothing about correctness there. Checkpoint 1 and the ARM64 oracle films owe them.
 87. **The pinned kernel reads an uninitialized stack for a Both displacement shader on a point or a curve.** `svm_node_set_bump` loads `bump_state_offset + 4` and `+ 7`, which `svm_node_enter_bump_eval` only stores when `ATTR_STD_POSITION_UNDISPLACED` is found, and only meshes have it (`scene/mesh.cpp`). The WGSL stack check reports it (mask 8), so scenes with that combination are refused by name on the device; the CPU's result depends on what the stack held. Keep the refusal unless the kernel changes.
+98. **Device replays of Linux x64 captures: three scenes cannot pass bit for bit on another GPU (a known cross-GPU limitation;
+    recorded, not fixed).** The device job `oracle-replays` replays 20 Linux x64 captures of oracle scenes on the device with every
+    readback checked bit for bit. Three cannot pass on a GPU other than the one that captured them, and no product code is wrong:
+    - `volumes/heterogeneous-point`: the capture's arena (142,966,848 B) is larger than the Adreno 730's storage binding limit
+      (134,217,728 B), so the replay stops at the upload ("Buffer exceeds WebGPU limits"). The product caps arena growth at the
+      device's own limit, and the scene passes as a corpus render on the tablet.
+    - `denoise/beckmann-on`: command 1453 is the film readback for CPU denoising; 704 of its 10,752 words differ, by at most
+      2.5e-5. Continued past it, the replayed film passes against the CPU film by the film criterion (largest difference 5.3e-4).
+    - `sampling/adaptive-auto`: command 6441 reads one path count of 114 against the capture's 113, one path's discrete decision
+      flipped by a last-bit float difference between the two GPUs (the cause is an inference).
+    The three pass as corpus renders on the device. Tablet: 17 of 20 replay, these three fail. HP: the job passed. Nothing is
+    refused and no criterion changes; the job's failures on exactly these scenes are recorded with this number. Earlier device
+    replays (the mixed scene, the bench, the native image render) do no film readback, stay under 128 MiB and had no flip.
+    Planned before device checkpoint 2: captures cap their arena growth at the smallest reference device's binding limit, and a
+    film readback is judged by the film criterion instead of bit for bit; decision-flip readbacks get a design note (a fixture or
+    the scheduler), and the check is never loosened.
+99. **Adreno 730: the Principled SVM probe module with the Texture Coordinate handler fails to link (recorded, not fixed).** The
+    device gate `principled_svm` (materials corpus) passes all 251 of its cases on the Samsung SM-X700, then the driver fails to link
+    the next rejection-probe module (`AdrenoVK-0: Failed to link shaders` in logcat; wgpu then reports `Parent device is lost`),
+    3 of 3 runs, with and without reference import. The module that fails is the one before it (Principled with subsurface, thin
+    film, thin wall, glass, transparent, diffuse, holdout, set normal and translucent, which links) plus the Texture Coordinate
+    handler: the two differ in one switch case, which calls `svm_texco` instead of `svm_error`. This is the per-invocation register
+    or private-memory class of the Adreno 730 Principled device loss fixed earlier (SVM stack in a per-invocation arena slot); it is
+    new because the Principled subsurface region joined the probe. INFERENCE, untested: a product Principled scene with subsurface,
+    thin film, thin wall and a Texture Coordinate node may fail the same way in `prepare_surface` on the Adreno 730. Linux and the
+    HP pass. Planned before device checkpoint 2: reduce the module's register or private-memory pressure, bisected on the device
+    with `native/tools/compile_probe.cpp` on the failing probe module; no criterion changes and nothing is refused.
 
 Resolved, or closed under the device reference policy:
 - [54 of this list] **Volume phase sampling's normalize on scalar ARM64 (`volumes/scatter-mesh-light`): RESOLVED.** In the
@@ -3649,8 +3683,8 @@ The same ruling accepts the `shadow_linking` gate's own `shade_volume` entry (ca
 1,004,012 bytes with the normalize of item 54. It compiles and passes on Linux and, before that normalize, on the HP.
 No Intel instruction count was measured for it.
 
-That normalize also takes these 7 corpus rows over the threshold, accepted by the maintainer under the same ruling, as is the
-gate entry at its larger size. They render perfect on the HP; both entries measure under 60,000
+That normalize also takes these 7 corpus rows over the threshold. The gate entry at its larger size is accepted under the same
+ruling; the 7 rows were accepted as warnings by the maintainer at device checkpoint 1. They render perfect on Linux, the tablet and the HP; both entries measure under 60,000
 instructions: `shade_volume` at 943,393 bytes, 50,410 instructions (`volumes/catcher-tree`), and at 941,788 bytes, 50,384
 instructions (`volumes/catcher-background`, `-catcher-emission`, `-catcher-floor`, `-catcher-passes`, `-catcher-sphere`,
 `-catcher-world`). Before it they measured 933,151 and 931,546 bytes.
@@ -6898,3 +6932,119 @@ not add, so hair closures with Transparent run on triangles only (`reflection-tr
 sampled lobes, and the pick, bsdf_sample and MIS for 24 random triples per path, on triangles and all three curve shapes, integers
 exact), `hair_svm` (closure records, typed sweeps), `hair_bounce` (the surface kernel's path state, film, queue counters),
 `hair_render` (stage-locked image), `hair_curve_render` (the curve image gate with these materials, with replays).
+
+## Device checkpoint 1: baseline full passes at c3783adfa plus fix 001 (2026-11-07)
+
+The first full baseline pass of each reference device, on commit `c3783adfa91e0f8310f3cc766e0a55f492e21ee0` with one fix
+applied during the pass (fix 001, `native/shaders/wavefront_hair_huang.wgsl`, open item 82). Every job's fingerprint (the WGSL
+compiled, the scene data uploaded and the command sequence, computed on the device) is recorded in the same run as its verdict,
+with the pipeline cache on. After fix 001 the fingerprints were collected again on all three devices: jobs whose fingerprint
+changed, the failed jobs and the always-run set ran again on the fixed tree, and every other job keeps its verdict (it rendered
+the same three inputs). Judging: practical `abs(a-e) <= 5e-5 + 2e-4*abs(e)` must pass, strict `1e-7 + 1e-7*abs(e)` is reported,
+integers exact, NaN or Inf fail; verdicts come from each job's status file and the judge, never from an exit code. Linux and the
+HP are judged against the Linux x64 CPU films of this commit; the tablet against ARM64 CPU films of this commit rendered on the
+Linux machine under emulation (accepted for development, never committed as evidence; 51 of 51 trust scenes, 246 of 246 films,
+bitwise equal to `linux-arm64-cpu-oracle-20261105`), with the x64 comparison reported beside it. Job names below are the
+validation queue's. The Galaxy S20 FE: not run, device not attached. Evidence: `native/evidence/linux-x64-reference-20261107/`,
+`native/evidence/linux-x64-ledger-20261107/`. Status (2026-11-08): **incomplete.** Session 3 was ended early by the
+maintainer; the tablet and HP passes stopped before their last gates (below), so no device baseline was frozen. Fixes 007
+(`native/cycles/svm_surface_gate.cpp`) and 009 (`native/cycles/environment_gate.cpp`), both gate code for the Android arm64 dump
+pass, were applied during the pass; the tree is now `1c666d599` (Intel-on-Metal workarounds in `native/cycles/pipelines.cpp`, which
+do not run on these devices) plus fixes 001, 007 and 009.
+
+### linux-x64 (Intel UHD Graphics, ADL-S GT1; Mesa 25.0.7-2+deb13u1)
+
+Identity: kernel `6.12.115+deb13.1-amd64`; Vulkan driver `Intel open-source Mesa driver`, Mesa 25.0.7-2+deb13u1; runtime
+CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210, `linux-x64` `libcodebrix_wgpu.so` SHA-256
+`5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b`; host library SHA-256
+`3bb001585009ab3984c2482f7adf8e95ee2d4fd452df2c999cc95da17f1e6e3f`; judge SHA-256
+`7e24f209d80fe75f707063752c8deb22ef734fdd09c265b454aa297dcecd019d`; arithmetic `x64-sse4.2`. Queue end: 547 of 547 jobs perfect;
+fingerprints of 583 jobs, 1 without (`atomic_film_gate`, which uses no WebGPU device; it is always run).
+
+- Oracle corpus: **504 of 504 scene jobs perfect** (502 committed scene documents and the 2 bench bundle scenes) against the Linux
+  x64 CPU films of this commit; 0 practical failures, 296,113 strict differences, largest difference 9.17e-05 (largest tolerance
+  ratio 0.588, `assets/bench_01`); 401 scenes ran before fix 001 and kept their verdict by an identical fingerprint, 103 ran on the
+  fixed tree. `passes/cryptomatte` perfect (open item 44 did not recur); no heterogeneous volume scene failed (open item 52: no
+  rerun was needed).
+- Gate jobs: **43 of 43 perfect** (table below), with the Linux halves of the attribute, image, file-image, normal, float, trig,
+  native trig, packed state and microfacet gate drivers (9 of 9 pass, run with no device attached, before fix 001, which changes
+  none of their sources), and the ambient-occlusion state and render gates and the environment gate run on the same build after the
+  queue (their binaries have no driver in the queue).
+- `dotnet build` and `dotnet test`, Release and Debug: 0 warnings, 274 of 274 tests each.
+- Compile envelope (Intel, 60,000 backend instructions): every one of 5,747 distinct entries of the corpus dump is inside it
+  (largest 57,339, `intersect_subsurface`), and the three Principled, glass and node superset groups too (largest 55,850). Size
+  guard (940,000 B): 57 rows at or above it, 2 at or above 1,110,000 B; the densest entry at or above 100,000 B is
+  `intersect_subsurface` at 14.48 instructions per 1,000 B (830,419 B, 57,339 instructions), so the ratio rule holds and the guard
+  stands.
+- Queue-tool faults, no product change: a gate that writes no status file was judged failed (rejudged by its summary), the
+  queue's pipeline cache directory reached `dotnet test` (requeued without it), and the size guard's films-bit-identical check on
+  the object-motion render was rejudged by the run-to-run rule for WGSL films on Linux (within practical; 0 practical, 0 strict).
+
+| Job | Batch | Wall s | Result | Judged by |
+| --- | --- | --- | --- | --- |
+| `nodes_gate` | g01 | 1,845 | perfect | `status.json` |
+| `curve_mixed_gate` | g02 | 1,158 | perfect (rejudged by its summary: it writes no `status.json`) | summary line + every `results.json` sub-verdict (no `status.json`) |
+| `principled_gate` | g02 | 760 | perfect | `status.json` |
+| `mnee_gate` | g02 | 488 | perfect | `status.json` |
+| `hair_gate` | g03 | 496 | perfect | summary line + every `results.json` sub-verdict (no `status.json`) |
+| `bsdf_gate` | g03 | 470 | perfect | `status.json` |
+| `curve_gate` | g03 | 361 | perfect | summary line + every `results.json` sub-verdict (no `status.json`) |
+| `volume_gate` | g03 | 390 | perfect (DEVICE.md 52 rerun-once armed; not needed) | `status.json` |
+| `glass_gate` | g03 | 307 | perfect | `status.json` |
+| `point_gate` | g03 | 329 | perfect | summary line + every `results.json` sub-verdict (no `status.json`) |
+| `hair_huang_gate` | g04 | 164 | perfect | summary line + every `results.json` sub-verdict (no `status.json`) |
+| `transparent_shadow_gate` | g04 | 185 | perfect | `status.json` |
+| `scene_edit_gate` | g04 | 103 | perfect | `status.json` |
+| `shadow_gate` | g04 | 49 | perfect | `status.json` |
+| `tier_gate` | g04 | 13 | perfect | `status.json` |
+| `bake_gate` | g04 | 1 | perfect | `status.json` |
+| `light_tree_gate` | g04 | 343 | perfect | `status.json` |
+| `shadow_catcher_gate` | g04 | 522 | perfect | `status.json` |
+| `shadow_linking_gate` | g04 | 612 | perfect | `status.json` |
+| `broad_lighting_gate` | g05 | 128 | perfect | `status.json` |
+| `lighting_gate` | g05 | 192 | perfect | `status.json` |
+| `lighting_mis_gate` | g05 | 161 | perfect | `status.json` |
+| `feature_combination_gate` | g05 | 48 | perfect | `status.json` |
+| `shadow_terminator_gate` | g06 | 151 | perfect | `status.json` |
+| `triangle_lighting_gate` | g06 | 59 | perfect | `status.json` |
+| `object_motion_gate` | g06 | 220 | perfect | `status.json` |
+| `deforming_motion_gate` | g06 | 276 | perfect | `status.json` |
+| `camera_motion_gate` | g07 | 221 | perfect | `status.json` |
+| `volume_boundary_gate` | g07 | 332 | perfect (DEVICE.md 52 rerun-once armed; not needed) | `status.json` |
+| `host_gate` | g07 | 176 | perfect | `status.json` |
+| `pipeline_cache_gate` | g07 | 515 | perfect | `status.json` |
+| `closest_queue_gate` | g07 | 26 | perfect | exit code + the gate report in its log (`run` action, no output folder) |
+| `svm_surface_gate` | g07 | 84 | perfect | exit code + the gate report in its log (`run` action, no output folder) |
+| `shader_data_gate` | g07 | 49 | perfect | exit code + the gate report in its log (`run` action, no output folder) |
+| `camera_queue_gate` | g07 | 21 | perfect | exit code + the gate report in its log (`run` action, no output folder) |
+| `background_queue_gate` | g07 | 29 | perfect | exit code + the gate report in its log (`run` action, no output folder) |
+| `svm_world_gate` | g07 | 45 | perfect | exit code + the gate report in its log (`run` action, no output folder) |
+| `device_gate` | g07 | 19 | perfect | exit code + the gate report in its log (`run` action, no output folder) |
+| `render_gate_linux` | g07 | 32 | perfect | `status.json` |
+| `oracle_replays_linux` | g08 | 183 | perfect | `status.json` |
+| `dotnet_release` | g08 | 506 | perfect (requeued after the queue passed its pipeline cache into `dotnet test`) | `status.json` |
+| `dotnet_debug` | g08 | 19 | perfect (requeued after the queue passed its pipeline cache into `dotnet test`) | `status.json` |
+| `size_envelope` | m01 | 6,270 | perfect (rejudged: the size guard on `object_motion_render` was false only on "films bit-identical"; 23 of 24 films bit-identical, one value 5.96e-8 apart, 0 practical, 0 strict; WGSL films on Linux are judged within practical) | `status.json` |
+
+### tablet (Samsung Galaxy Tab S8, SM-X700, Adreno 730)
+
+Incomplete. Oracle corpus: 504 of 504 scene jobs perfect against the emulated ARM64 CPU films. Gate, replay, host and app jobs
+(40): 18 perfect (prep-libm, prep-reference-export, prep-host-gate-references, prep-replay-captures, host-gate, gate-mnee,
+gate-ao, gate-motion, gate-triangle, gate-emitter, gate-regression, gate-lighting, gate-transparent, gate-terminator,
+gate-spec-refusal, gate-superset-refusal; gate-lighttree and gate-shadowcatcher before fix 002 only). Failed: `oracle-replays`
+(the three scenes of item 98), `gate-materials` (`principled_svm` only, item 99; `nodes_svm` passes with fix 007). Interrupted:
+`gate-environment` (the battery ran out at 07:10 on 2026-11-08; its `environment` render passed with fix 009 and replays 0-4
+passed before the device was lost). Not run: gate-probes, gate-arm, gate-ggx, gate-volume, gate-bsdf, gate-raytrace,
+gate-shadowlinking, gate-curves, gate-points, gate-hair, gate-hairhuang, gate-subsurface, gate-libm-check-product and the app
+batch (prep-apk, prep-managed-export, app-cpu, app-webgpu, app-bundle-bench_01, app-bundle-bench_01-hdri). No soundness
+sample was run.
+
+### hp (HP 87FE, Android x64, Intel Xe)
+
+Incomplete. Oracle corpus: 504 of 504 scene jobs perfect against the Linux x64 CPU films. Gate, replay, host and app jobs (39):
+15 perfect (prep-libm, prep-reference-export, prep-host-gate-references, prep-replay-captures, host-gate, oracle-replays,
+gate-mnee, gate-ao, gate-motion, gate-materials, gate-triangle, gate-emitter, gate-regression, gate-lighting,
+gate-transparent), none failed. Stopped by the maintainer during `gate-terminator`. Not run: gate-terminator,
+gate-spec-refusal, gate-superset-refusal, gate-environment, gate-lighttree, gate-shadowcatcher, gate-probes, gate-arm, gate-ggx,
+gate-volume, gate-bsdf, gate-raytrace, gate-shadowlinking, gate-curves, gate-points, gate-hair, gate-hairhuang, gate-subsurface
+and the app batch. No soundness sample was run.

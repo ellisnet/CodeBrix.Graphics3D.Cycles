@@ -312,8 +312,10 @@ fn huang_eval_residual(c:SvmClosure,f:HuangFrame,wi:vec3<f32>,wo:vec3<f32>,h_min
         var wt=vec3<f32>(0);var phi_t=vec2<f32>(0);var A_t=vec3<f32>(0);var weight=0.0;var T1=0.0;var scale1=0.0;var scale2=0.0;var cos_mi1=0.0;var cos_mo1=0.0;var G1o=0.0;
         for(var layer=0u;layer<passes;layer++){
             let first=layer==0u;if(!first&&!(TRT>0.0)){break;}
-            // make_float2(lcg_step_float, lcg_step_float): GCC, which builds the CPU oracles, evaluates the second argument first.
-            let r1=huang_random();let r0=huang_random();
+            // make_float2(lcg_step_float, lcg_step_float): the order of the two draws is the oracle compiler's. GCC for x86-64
+            // evaluates the second argument first, GCC for AArch64 (the scalar ARM64 oracle, NATIVE_FLOAT3_RECIPROCAL_NORMALIZE) the first.
+            let d0=huang_random();let d1=huang_random();let first_x=NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u;
+            let r0=select(d1,d0,first_x);let r1=select(d0,d1,first_x);
             let wh=huang_sample_wh(f.roughness,v,m,vec2<f32>(r0,r1));let cos_h=rounded_dot(v,wh);if(!(cos_h>0.0)){break;}
             let cos_m=rounded_dot(v,m);var next=vec3<f32>(0);var R2=0.0;
             if(first){let fresnel=huang_fresnel(cos_h,eta);T1=rounded_add(1.0,-fresnel.x);scale1=huang_energy(f.sqrt_roughness,cos_m,f.z,f.table);next=huang_refract(wi,wh,cos_h,fresnel.y,inv_eta);}
@@ -460,8 +462,11 @@ fn huang_albedo(sd:SurfaceData,c:SvmClosure)->vec3<f32>{
 // of TRRT's shadowing term); what the pinned function computes and does not use on a path has no side effect.
 fn huang_sample(sd:SurfaceData,c:SvmClosure,random:vec3<f32>)->SurfaceSample{
     var out:SurfaceSample;let Y=c.T;let Z=c.reflection_tint;
-    // make_float2(lcg_step_float, lcg_step_float): GCC, which builds the CPU oracles, evaluates the second argument first.
-    let h1=huang_random();let h2y=huang_random();let h2x=huang_random();let h3y=huang_random();let h3x=huang_random();
+    // make_float2(lcg_step_float, lcg_step_float): the order of the two draws is the oracle compiler's. GCC for x86-64 evaluates
+    // the second argument first, GCC for AArch64 (the scalar ARM64 oracle, NATIVE_FLOAT3_RECIPROCAL_NORMALIZE) the first.
+    let h1=huang_random();let d2a=huang_random();let d2b=huang_random();let d3a=huang_random();let d3b=huang_random();
+    let first_x=NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u;
+    let h2x=select(d2b,d2a,first_x);let h2y=select(d2a,d2b,first_x);let h3x=select(d3b,d3a,first_x);let h3y=select(d3a,d3b,first_x);
     let wi=vec3<f32>(rounded_dot(sd.wi,c.N),rounded_dot(sd.wi,Y),rounded_dot(sd.wi,Z));let b=c.b;let cos_i=huang_cos_theta(wi);
     var base=0.0;if(b!=1.0){base=trig_atan2_guarded(wi.z,-(b*wi.x));}let f=huang_frame(c,wi,cos_i,base);
     let h_div_r=select(rounded_add(random.y*2.0,-1.0),rounded_divide(c.alpha_x,c.energy_scale),c.energy_scale>c.alpha_y);
