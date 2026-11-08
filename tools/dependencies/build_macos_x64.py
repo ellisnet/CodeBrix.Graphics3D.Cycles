@@ -88,7 +88,14 @@ def profile(source):
   if name=='jpeg':settings=dict(settings,WITH_SIMD='OFF')
   # OIDN: CPU device only (the Metal device is osx-arm64's alone).
   if name=='oidn':settings=dict(settings,OIDN_DEVICE_METAL='OFF')
-  if name=='embree':settings=dict(settings,EMBREE_MAX_ISA='AVX2')
+  # Embree: a shared library on osx-x64. Upstream refuses a static library with
+  # more than one ISA on Apple (CMakeLists.txt, "APPLE AND EMBREE_STATIC_LIB"),
+  # and the pinned Cycles FindEmbree.cmake requires the separate SSE4.2, AVX and
+  # AVX2 kernel libraries of a static x86_64 build, so a single-ISA static
+  # library cannot be linked either. The shared library carries the same
+  # SSE2..AVX2 kernels with runtime dispatch as Linux and Windows; it lives in
+  # the dependency prefix and is staged with the host's load closure.
+  if name=='embree':settings=dict(settings,EMBREE_MAX_ISA='AVX2',EMBREE_STATIC_LIB='OFF')
   rows.append((name,path,settings))
  return rows
 

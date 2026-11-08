@@ -3,7 +3,7 @@
 #pragma once
 #include "kernel/integrator/state.h"
 #include <vector>
-namespace ccl {struct DeviceScene;}
+namespace ccl {class DeviceScene;}
 void original_volume(ccl::DeviceScene &,const std::vector<int>&,std::vector<ccl::IntegratorStateCPU>&,std::vector<float>&);
 
 void original_volume_stack(ccl::DeviceScene &,const std::vector<int>&,std::vector<ccl::IntegratorStateCPU>&);

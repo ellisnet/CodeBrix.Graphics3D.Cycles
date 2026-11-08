@@ -658,6 +658,19 @@ static bool intel_d3d12_cache_salt(const cbc::Device &gpu){
 static bool intel_metal_surface_workgroup(const cbc::Device &gpu){
   return gpu.adapter_backend==WGPUBackendType_Metal&&gpu.adapter_device.find("Intel")!=std::string::npos&&!driver_workarounds_off();
 }
+// On Intel GPUs through Metal (osx-x64), the traversal entries that intersect
+// thick (cylinder) curves compute wrong results whenever a workgroup holds more
+// than one invocation: intersect_closest trips the kernels' validity check
+// ("invalid state/data") and intersect_shadow reports every shadow ray as
+// blocked, on every curves/thick and hair/*-thick oracle scene; ribbon, linear
+// and triangle curves are unaffected. One invocation per workgroup in those two
+// entries alone makes curves/thick-diffuse agree with the CPU within 1.9e-6
+// (docs/TESTING-MACOS-X64.md, M3). The other intersect_* entries walk the same
+// curve leaves, so the workaround covers every intersect_* entry of a variant
+// with thick curves; variants without them compile unchanged.
+static bool intel_metal_curve_workgroup(const cbc::Device &gpu,const ShaderFeatures &features){
+  return intel_metal_surface_workgroup(gpu)&&(features&SF_CURVE_THICK).any();
+}
 static void single_invocation_entry(std::string &code,const char *entry){
   const std::string from=std::string("@workgroup_size(64) fn ")+entry+"(";const size_t at=code.find(from);
   if(at!=std::string::npos)code.replace(at,from.size(),std::string("@workgroup_size(1) fn ")+entry+"(");
@@ -846,6 +859,14 @@ std::vector<cbc::Pipeline> WebGPUDevice::build_pipelines(const char *module,cons
       if((features&SF_DRIVER_CACHE_SALT).any())salt_driver_cache(code);
       if(override_code.empty()&&(std::strcmp(entry,"prepare_surface")==0||std::strcmp(entry,"prepare_surface_raytrace")==0)&&intel_metal_surface_workgroup(gpu))
         single_invocation_entry(code,entry);
+      if(override_code.empty()&&std::strncmp(entry,"intersect_",10)==0&&intel_metal_curve_workgroup(gpu,features))
+        single_invocation_entry(code,entry);
+      // Heterogeneous volumes on Intel GPUs through Metal: shade_volume_heterogeneous
+      // trips the kernels' validity check ("invalid state/data") with more than one
+      // invocation per workgroup; one invocation is exact (volumes/heterogeneous-point
+      // within 1.3e-7 of the CPU; docs/TESTING-MACOS-X64.md, M4).
+      if(override_code.empty()&&std::strcmp(entry,"shade_volume_heterogeneous")==0&&intel_metal_surface_workgroup(gpu))
+        single_invocation_entry(code,entry);
       if(fingerprint&&!fingerprint_module(module,entry,features,code,out))break;
       const auto t0=clock::now();
       WGPUShaderSourceWGSL wgsl{};wgsl.chain.sType=WGPUSType_ShaderSourceWGSL;wgsl.code={code.data(),code.size()};
@@ -945,7 +966,8 @@ std::string WebGPUDevice::adapter_report_json() const{
    <<",\"layeredOn\":"<<(gpu.layered_on.empty()?std::string("null"):"\""+json_text(gpu.layered_on)+"\"")
    <<",\"metalPreciseMath\":"<<(gpu.metal_precise_math?"true":"false")
    <<",\"driverWorkarounds\":["<<(intel_d3d12_cache_salt(gpu)?"\"intel-d3d12-shader-cache\"":"")
-   <<(intel_metal_surface_workgroup(gpu)?"\"intel-metal-surface-workgroup\"":"")<<"],\"adapters\":[";
+   // intel-metal-curve-workgroup applies only to variants with thick curves.
+   <<(intel_metal_surface_workgroup(gpu)?"\"intel-metal-surface-workgroup\",\"intel-metal-curve-workgroup\",\"intel-metal-volume-workgroup\"":"")<<"],\"adapters\":[";
   for(size_t i=0;i<gpu.adapters_seen.size();i++)o<<(i?",":"")<<gpu.adapters_seen[i];
   // Opt-in diagnostics active in this process (webgpu_device.h): a run with any
   // listed is diagnostic, never validation.

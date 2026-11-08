@@ -3,5 +3,5 @@
 #pragma once
 #include "kernel/integrator/state.h"
 #include <vector>
-namespace ccl {struct DeviceScene;}
+namespace ccl {class DeviceScene;}
 void original_subsurface(ccl::DeviceScene &,const std::vector<int>&,std::vector<ccl::IntegratorStateCPU>&);

@@ -67,6 +67,118 @@ switch - with the Windows W2 fix (f2a841ce4) and the host calling
 (`-3` to `-6`, on 1.0.290.1433 with Metal's fast math) are kept under
 `native/work/` for comparison; where their results differ, both are given.
 
+## Revalidation 2026-11-07/08 (commit c3783adfa, uncommitted fixes) **PARTIAL**
+
+Full run of the procedure on HEAD `c3783adfa` (the Nov 5-7 work: WGSL volumes,
+hair/Huang, curves B, points, subsurface, denoising) plus the fixes below,
+uncommitted. .NET SDK 10.0.403, runtime 1.0.300.210 from the NuGet cache (both
+pins verified), ISPC 1.30.0 (official macOS x86_64 archive, SHA-256 verified;
+`CODEBRIX_ISPC`). The newest Linux x64 reference was
+`linux-x64-reference-20261101` (commit f1ed54307), which predates the Nov 5-7
+code: its overlay hashes no longer match (`--reference-overlay` fails; the Mac
+hashes are in `native/work/macos-x64-identity-20261107/macos-overlay-hashes.json`)
+and the 271 scenes added since have no Linux film yet. Records:
+`native/work/pipeline-20261107.steps` and `-*.log`, `native/work/thermal-20261107.log`.
+
+**Machine event.** The first attempt ran three corpus shards in parallel with
+the host gate; after about 1 h 45 min of raised thermal pressure the Mac mini
+powered off at 17:27 (`Shutdown cause was a THRMTRIP# event`; 14 Intel GPU
+hang/reset reports from 16:59). Everything below was rerun strictly one process
+at a time with a 30 s thermal log; no throttling, the kernel CPU thermal level
+peaked at 82 (all-core CPU rendering), two GPU resets (21:03, one curves +
+caustics scene). Do not run GPU jobs in parallel on this machine.
+
+Results (serial run):
+
+| Step | Result |
+|---|---|
+| Build (clean, deps 16 min at 12 jobs; host rebuild 3.5 min at 6) | passes after R1-R3 |
+| Host gate `native/work/macos-x64-validation-20261107-2` (`--references` 20261101, `--device-gates`) | **passed**: 36 films (8 cross-platform against Linux), 0 failed, GPU max 1.5e-5, driver coverage 4/4, `metalPreciseMath` true |
+| Device gates (now all 78; diagnostic, Apple-libm in-process reference) | 48 pass, 30 fail in the gate (below); `principled_bounce` (timeout) passes when rerun alone, so 49/29 |
+| Corpus `native/work/oracles/macos-x64-20261107-full` (502 scenes + 2 bench) | Mac CPU vs Linux CPU: **233/233**; WGSL vs Linux CPU: **227/233**; new scenes, WGSL vs Mac CPU (diagnostic): 201/260; 11 not rendered, 10 of them fixed by M4 (`native/work/oracles/macos-x64-20261108-rerender`, all perfect) |
+| glTF client | practical PASS (max 4.8e-7) |
+| Managed tests | 253/253 non-GPU, `GpuRenderTests` 30/30 |
+| Exchange D1 (`reference_exchange_handoff.py device-dump`) | done: `native/work/exchange-20261107/out-1` for the Linux machine |
+| Staging | **refused** (R5); committed payload left unchanged |
+
+Recipe and build findings:
+
+- **R1. Stale dependency source copy.** `tools/dependencies/build_macos_x64.py`
+  copies `sources/` only when it does not exist; a copy made before OIDN fails
+  `verify_copy` with a bare FileNotFoundError. Workaround: remove
+  `native/work/macos/osx-x64/dependencies`. Not fixed.
+- **R2. Embree static multi-ISA is impossible on Apple.** Embree 4.4.1 refuses a
+  static library with more than one ISA on Apple (`CMakeLists.txt`, `APPLE AND
+  EMBREE_STATIC_LIB`), and pinned Cycles' `FindEmbree.cmake` requires the separate
+  SSE4.2/AVX/AVX2 libraries of a static x86_64 build. Fixed for osx-x64 only:
+  `EMBREE_STATIC_LIB=OFF` (shared `libembree4.4.dylib` in the prefix, staged with
+  the load closure; same SSE2..AVX2 kernels with runtime dispatch). **Needs the
+  maintainer's approval** (it changes the "Embree linked into the host" rule for
+  this RID; RELEASE-LICENSE-PLAN.md wording).
+- **R3. The Mac recipe built and ran 23 of the 79 gate targets.** Extended
+  `GATE_TARGETS` (`native/tools/build_cycles_macos_x64.py`) and `DEVICE_GATES`
+  (`native/tools/macos_x64_host_gate.py`) to every target but `image_file`.
+- **R4. `struct DeviceScene` forward declarations** in
+  `native/cycles/volume_reference.h` and `subsurface_reference.h` against Cycles'
+  `class DeviceScene` (`-Wmismatched-tags`); under the Microsoft ABI (clang-cl,
+  win-x64/arm64) that is a link error. Fixed (`class`).
+- **R5. OIDN overrides the deployment target.** `third_party/deps/oidn/cmake/oidn_platform.cmake`
+  sets `CMAKE_OSX_DEPLOYMENT_TARGET` to 10.11 (x86_64) or 11.0 (arm64)
+  unconditionally, so `libOpenImageDenoise*.dylib` carry `LC_VERSION_MIN_MACOSX
+  10.11`; the stager's Mach-O review refuses them (the dependency recipe's own
+  check passes because it only tests `minos` when present). Affects osx-arm64 too.
+  Open: needs a recipe-level override (the snapshot is not edited) or a ruling.
+- **R6. Metal compile time.** Cold Metal compiles of the current kernels take
+  minutes per gate (`ao_render` 15 min; October: seconds, warm); `principled_bounce`
+  hit the gate's 30-minute limit with `MTLCompilerService` busy throughout, then
+  passed on its own afterwards in 9.5 s (`native/work/diag-20261107/principled_bounce`):
+  a very slow cold compile or a one-time hang, not settled.
+
+GPU findings:
+
+- **M3. Intel Metal compiler: thick-curve intersection with more than one
+  invocation per workgroup (worked around).** Every thick-curve and thick-hair
+  scene failed ("kernel reported invalid data (mask 1)"); ribbon, linear and
+  triangle curves did not. Bisection with `CODEBRIX_CYCLES_WGSL_LOAD` on
+  `curves/thick-diffuse`: the conservative tier is perfect; `intersect_closest`
+  and `intersect_shadow` at `@workgroup_size(1)` alone are perfect (1.9e-6);
+  `intersect_closest` alone removes the error but every shadow ray reads as
+  blocked. Workaround `intel-metal-curve-workgroup` (`native/cycles/pipelines.cpp`):
+  every `intersect_*` entry of a variant with `SF_CURVE_THICK`, on Intel/Metal.
+  Render failures in the curve families fell from 90 to 2. Still failing:
+  `curves-b/caustics-receiver` (curves + MNEE caustics; also
+  `caustics-caster-rejected`, wrong film and the two GPU resets).
+- **M4. Intel Metal compiler: `shade_volume_heterogeneous` (worked around).** Every
+  heterogeneous-volume scene failed ("invalid state/data"); conservative tier
+  perfect; `shade_volume_heterogeneous` alone at size 1 perfect (1.3e-7).
+  Workaround `intel-metal-volume-workgroup`.
+- **G1. Regression since 2026-10-27: compiled SVM graphs.** `svm_surface`,
+  `microfacet_svm`, `bsdf_svm`, `bsdf2_svm`, `bsdf3_svm`, `glass_svm`, `hair_svm`,
+  `nodes_svm` ("Native compiled graphs": a closure missing on the GPU, e.g.
+  `svm_surface` graph 3, a lone Transparent BSDF, count 0 against 1; `nodes_svm`
+  a wrong weight 29.4 against 1.03) and `nodes_world` ("invalid/uninitialized SVM
+  stack"). Deterministic, identical on the conservative tier; the 2026-10-27
+  gate binaries pass on the same machine today, so it is a code change, most
+  likely in the Nov 5-7 commits. `principled_svm` passes. Check on Linux at HEAD.
+- **G2. Hair.** `hair_state` (closures evaluating to 0), `hair_huang_render` (10%
+  film error), `hair_huang`, `hair_render`, `hair_curve_render`; every
+  `hair/huang-*` scene 750-4,100 practical failures against the Mac CPU; Chiang
+  scenes 1-3.
+- **G3. Volumes.** `volume` ("invalid state/data"), `volume_render` (diverges at
+  stage 1), `closed_volume_render` (stage 9 `isect.object`); world volumes wrong in
+  the corpus (`linux-gates/world-volume` 9,252 practical failures against Linux,
+  `catcher-world`, `tree-world`, `world-volume-point`, `catcher-tree` 2,300-2,700).
+- **G4. Points.** `point` (shader-data practical failures, 6-12 per case),
+  `point_render` (2.3% film error).
+- **G5. Subsurface.** `subsurface` gate: about 2,600 practical failures in cases 5-7.
+- **G6. Smaller corpus failures against Linux:** `displacement/true-vector` and its
+  passes variant (9), `lamps/lamp-spot-parametric` (2), `passes/cryptomatte`
+  (1, as on Linux, open item 44), `passes/with-linux-gates-object-motion-0` (DiffDir, 9).
+- Near-misses that need the glibc judgement (Apple-libm in-process reference):
+  `emitter_sample`, `environment`, `glass_render`, `triangle_sample`,
+  `shadow_linking`; as on 2026-10-27 `microfacet_render`, `light_tree` and `mnee`
+  (exchange D1 done); `atomic_film` scoring as before.
+
 ## Purpose
 
 The osx-x64 product is Cycles with the CodeBrix WGSL/WebGPU device, the same
