@@ -25,7 +25,13 @@ payload (the WGSL/WebGPU device through the runtime's Metal route; see
 an x64 machine: `win-arm64` is cross-compiled and carries the gate's test
 executables (`tests/`) so an ARM64 device validates it without building. Windows
 binaries have no symbol tables, so there is no `unstripped/` copy; their line
-tables are in `symbols/*.pdb`. No NuGet release has been made.
+tables are in `symbols/*.pdb`. `linux-x64` holds the Linux x64 payload (the
+WGSL/WebGPU device; `native/tools/stage_linux_binaries.py`); the Linux build has no
+DWARF, so there is no `symbols/` folder. Its `unstripped/` folder is git-ignored
+while the library is a work in progress, and is committed with the final payload
+(remove the line from `.gitignore` and stage again, which also approves it for the
+audit); until then `provenance.json` records its hashes under `binaries` only, and
+staging recreates it. No NuGet release has been made.
 
 Each delivery must carry source/dependency manifest hashes, toolchain and build
 options, binary hashes, a passing dependency/license audit and the applicable
@@ -37,6 +43,6 @@ every payload file, and `snapshotCopies` names payload sources that must equal
 the pinned snapshot. `tools/licensing/audit.py` rejects anything else.
 
 This location is deliberately unignored. Build work stays in ignored `work/`,
-`bin/` and `obj/` directories. NuGet payloads should include the selected runtime
-artifacts; retaining unstripped/symbol artifacts in Git does not require bundling
-them in every runtime package. Jeremy handles commits and pushes.
+`bin/` and `obj/` directories. A platform package carries its RID's `runtime/`
+folder only (`build/nuget/`, see MAINTAINER-README.txt, "PACKAGING AND PUBLISHING");
+unstripped and symbol files stay in Git. Jeremy handles commits and pushes.

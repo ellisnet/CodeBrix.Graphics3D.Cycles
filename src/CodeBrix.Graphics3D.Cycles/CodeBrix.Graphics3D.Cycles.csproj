@@ -51,9 +51,9 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>CodeBrix.Graphics3D.Cycles.ApacheLicenseForever</PackageId>
+    <PackageId>CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever</PackageId>
     <Product>CodeBrix.Graphics3D.Cycles</Product>
-    <Title>CodeBrix.Graphics3D.Cycles</Title>
+    <Title>CodeBrix.Graphics3D.Cycles.Core</Title>
     <Authors>Jeremy Ellis</Authors>
     <Description>A .NET library for building and rendering 3D scenes with the Cycles path-tracing renderer through a native scene host, with GPU and explicit CPU reference backends. A typed scene API and an object model generated from the native node registry, asynchronous cancellable rendering with progress, raw-pixel image textures and raw scene-linear float RGBA film readback, plus a public low-level interop tier that mirrors the native C ABI.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -71,18 +71,40 @@
 
   <!--
     The WebGPU runtime (codebrix_wgpu) always comes from this package, never from this
-    repository or this package's own payload. Exact pin ([x]): the native host is built
-    and validated against this version, and the build scripts check its hashes.
+    repository or a payload here. Exact pin ([x]): the native host is built and validated
+    against this version, and the build scripts check its hashes.
+
+    This is a build-time reference only. .Core ships no native binaries, so the package has
+    no dependency on it: each platform nuspec (build/nuget/) declares it instead, except where
+    the platform's GPU backend does not use it. The reference stays here for the test project,
+    the host tools and the Android validation app, which reach this project directly.
+    Packing suppresses EVERY dependency of this project; a real one would need to change that.
+    NU5128 then only says that the nuspec has no dependency group for lib/net10.0, which is the point.
   -->
+  <PropertyGroup>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="CodeBrix.WebGpu.Native.MitLicenseForever" Version="[1.0.300.210]" />
   </ItemGroup>
+
+  <!--
+    The pack driver builds this project with bin/ and obj/ moved elsewhere (so it cannot collide
+    with a solution build), and the SDK then stops excluding the usual folders by itself.
+  -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**</DefaultItemExcludes>
+  </PropertyGroup>
 
   <ItemGroup>
     <None Include="..\..\icon-codebrix-128.png" Pack="true" PackagePath="" />
     <None Include="..\..\README.md" Pack="true" PackagePath="" />
     <None Include="..\..\AGENT-README.txt" Pack="true" PackagePath="" />
     <None Include="..\..\THIRD-PARTY-NOTICES.txt" Pack="true" PackagePath="" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
+    <None Include="..\..\NOTICE" Pack="true" PackagePath="" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,8 @@
 ================================================================================
 AGENT-README: CodeBrix.Graphics3D.Cycles
 A Guide for AI Coding Agents - CONSUMING the
-CodeBrix.Graphics3D.Cycles.ApacheLicenseForever NuGet package
+CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever NuGet package and the
+CodeBrix.Graphics3D.Cycles.<Platform>.ApacheLicenseForever native packages
 ================================================================================
 
 OVERVIEW
@@ -46,13 +47,37 @@ does not yet carry native runtime assets (see INSTALLATION).
 
 INSTALLATION
 ============
-PackageId:  CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
+Reference the package for your platform. It brings in the managed library and
+everything else it needs:
 
-    dotnet add package CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
+    dotnet add package CodeBrix.Graphics3D.Cycles.LinuxX64.ApacheLicenseForever
 
-Dependencies: CodeBrix.WebGpu.Native.MitLicenseForever, exactly version
-              1.0.300.210 (the WebGPU runtime the GPU backend uses; NuGet
-              places codebrix_wgpu beside the application). No other package.
+PackageIds:
+    CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever
+        The managed assembly, with no native binaries.
+    CodeBrix.Graphics3D.Cycles.<Platform>.ApacheLicenseForever
+        The native scene host and its native dependencies for one platform:
+
+        <Platform>       .NET RID
+        LinuxX64         linux-x64
+        LinuxArm64       linux-arm64
+        LinuxRiscv64     linux-riscv64
+        WindowsX64       win-x64
+        WindowsArm64     win-arm64
+        MacOSX64         osx-x64
+        MacOSArm64       osx-arm64
+        Android          android-x64 and android-arm64
+
+A platform package is published once that platform has been validated. An
+application that targets several platforms references several platform packages;
+they share one Core package. All packages of one release have the same version.
+
+Dependencies: every platform package depends on the Core package at exactly its
+              own version. Every platform package except MacOSArm64, whose GPU
+              backend is Cycles' own Metal device, also depends on the exact
+              version of CodeBrix.WebGpu.Native.MitLicenseForever its native host
+              was built and validated against; NuGet places codebrix_wgpu beside
+              the native host. The Core package has no dependencies.
 License:      Apache-2.0.
 Requirements:
   - A 64-bit process (constructors throw PlatformNotSupportedException
@@ -60,10 +85,17 @@ Requirements:
   - The native scene host library, named codebrix_cycles_host
     (libcodebrix_cycles_host.so on Linux, libcodebrix_cycles_host.dylib on
     macOS, codebrix_cycles_host.dll on Windows), resolvable by the .NET native
-    library loader. The package does not ship it yet: the process must find it
-    on its library search path, or the application must register a
-    NativeLibrary.SetDllImportResolver for this assembly that loads it.
-  - On Windows (x64 and ARM64), these files beside codebrix_cycles_host.dll:
+    library loader. The platform package provides it. Without one, the wrapper
+    throws DllNotFoundException naming the package to add. Instead of a platform
+    package, the process can find a host it built itself on its library search
+    path, or the application can register a NativeLibrary.SetDllImportResolver
+    for this assembly that loads it. The raw Interop.Native tier reports a missing
+    library with the runtime's own message.
+  - On Linux, system C and C++ runtime libraries (glibc, libstdc++) at least as new
+    as those of the machine that built the package. On an older system the
+    DllNotFoundException message quotes the loader's complaint about the version.
+  - On Windows (x64 and ARM64), when not using a platform package, these files
+    beside codebrix_cycles_host.dll:
     the DLLs of its native dependencies, codebrix_wgpu.dll (the
     CodeBrix.WebGpu.Native runtime) and dxcompiler.dll (Microsoft's DirectX
     Shader Compiler, which the Direct3D 12 backend loads from the host's own
@@ -921,13 +953,13 @@ MINIMUM VIABLE PROJECT TEMPLATE
         <TargetFramework>net10.0</TargetFramework>
       </PropertyGroup>
       <ItemGroup>
-        <PackageReference Include="CodeBrix.Graphics3D.Cycles.ApacheLicenseForever" Version="*" />
+        <PackageReference Include="CodeBrix.Graphics3D.Cycles.LinuxX64.ApacheLicenseForever" Version="*" />
       </ItemGroup>
     </Project>
 
 Program.cs: the "Render a lit triangle with the typed facade" example above.
-Run it with the native host on the library search path (for example
-LD_LIBRARY_PATH on Linux).
+Run it with `dotnet run`; the platform package puts the native host beside the
+application. Change the platform in the package name to match the target.
 
 
 PERFORMANCE TIPS
@@ -1258,7 +1290,8 @@ WHAT THIS PACKAGE DOES NOT DO
   (IntegratorNode.AoAdditiveFactor) or the AO pass on Adreno 650 GPUs; such
   scenes are refused with an error message before rendering starts (fast GI's
   replace mode renders there).
-- It does not yet ship the native host library inside the package.
+- The Core package does not contain the native host library; that is the
+  platform package's job (see INSTALLATION).
 - It does not cache compiled GPU pipelines on macOS on Intel or on Windows: the
   WebGPU runtime offers no cache on Metal or Direct3D 12 (see PERFORMANCE TIPS).
   Each process there compiles what its scene needs; whether that is faster the

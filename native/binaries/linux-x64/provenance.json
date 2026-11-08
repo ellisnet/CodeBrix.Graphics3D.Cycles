@@ -1,0 +1,669 @@
+{
+  "rid": "linux-x64",
+  "created": "2026-11-08T10:55:51-0800",
+  "sourceCommit": "a05e41e5fa4d88f992121d579bc2cf6a8ae4ed28",
+  "scope": "Reviewed linux-x64 product binaries: Cycles with its CPU device and the CodeBrix WGSL/WebGPU device behind the CodeBrix C API.",
+  "sources": {
+    "cyclesRevision": "a456b761034dda42c32eef9f4aae0fa5a5c9f604",
+    "dependencyManifestSha256": "a3cf91914bee0a421826b4bd154317cd47f345ca3c7203f257ddd8b11c6ba561",
+    "dependencyImportsSha256": "178a768b0fccfad71c403eca762266b5ea8eb32f5ed408cfc0c19ed45d4a902b",
+    "registrationPatchSha256": "9398c968b8dac6b3fd608b71eaaba01fa15c7d7e0b85406bfe100c645c284a03"
+  },
+  "toolchain": {
+    "compiler": "gcc (Debian 14.2.0-19) 14.2.0",
+    "libc": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41"
+  },
+  "buildCommands": [
+    [
+      "cmake",
+      "-S",
+      "third_party/cycles",
+      "-B",
+      "native/work/cycles-build",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+      "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+      "-DCMAKE_PREFIX_PATH=native/work/dependencies/install",
+      "-DWITH_LIBS_PRECOMPILED=OFF",
+      "-DWITH_LEGACY_LIBRARIES=ON",
+      "-DWITH_CYCLES_NATIVE_ONLY=OFF",
+      "-DCXX_HAS_AVX2:BOOL=OFF",
+      "-DCXX_HAS_F16C:BOOL=OFF",
+      "-DOpenImageIO_DIR=native/work/dependencies/install/lib/cmake/OpenImageIO",
+      "-DOpenColorIO_DIR=native/work/dependencies/install/lib/cmake/OpenColorIO",
+      "-DCMAKE_PROJECT_Cycles_INCLUDE=native/tools/inject_cycles.cmake",
+      "-DCODEBRIX_CYCLES_OVERLAY=native/work/cycles-overlay",
+      "-DCODEBRIX_CYCLES_OVERLAY_COMMAND=/usr/bin/python3;native/tools/build_cycles.py;--overlay-only",
+      "-DCODEBRIX_WEBGPU_PACKAGE=/home/jeremy/.nuget/packages/codebrix.webgpu.native.mitlicenseforever/1.0.300.210",
+      "-DWITH_CYCLES_OPENIMAGEDENOISE=ON",
+      "-DOPENIMAGEDENOISE_ROOT_DIR=native/work/dependencies/install",
+      "-DWITH_CYCLES_PATH_GUIDING=OFF",
+      "-DWITH_CYCLES_EMBREE=ON",
+      "-DEMBREE_ROOT_DIR=native/work/dependencies/install",
+      "-DWITH_CYCLES_ALEMBIC=OFF",
+      "-DWITH_CYCLES_OPENSUBDIV=OFF",
+      "-DWITH_CYCLES_OPENVDB=OFF",
+      "-DWITH_CYCLES_NANOVDB=OFF",
+      "-DWITH_CYCLES_OSL=OFF",
+      "-DWITH_CYCLES_USD=OFF",
+      "-DWITH_CYCLES_HYDRA_RENDER_DELEGATE=OFF",
+      "-DWITH_CYCLES_DEVICE_CUDA=OFF",
+      "-DWITH_CYCLES_DEVICE_OPTIX=OFF",
+      "-DWITH_CYCLES_DEVICE_HIP=OFF",
+      "-DWITH_CYCLES_DEVICE_HIPRT=OFF",
+      "-DWITH_CYCLES_DEVICE_ONEAPI=OFF"
+    ],
+    [
+      "cmake",
+      "--build",
+      "native/work/cycles-build",
+      "--target",
+      "codebrix_cycles_host",
+      "codebrix_cycles_oracle",
+      "--parallel",
+      "6"
+    ]
+  ],
+  "cpuKernelCompile": {
+    "file": "src/kernel/device/cpu/kernel.cpp",
+    "flags": [
+      "-msse",
+      "-msse2",
+      "-msse3",
+      "-mssse3",
+      "-msse4.1",
+      "-msse4.2",
+      "-ffp-contract=on",
+      "-freciprocal-math",
+      "-mfpmath=sse",
+      "-O3",
+      "-ffp-contract=off",
+      "-fno-reciprocal-math"
+    ],
+    "isa": "x86-64 SSE4.2",
+    "fpContract": "off",
+    "reciprocalMath": "off"
+  },
+  "minimumSystemVersions": {
+    "CXXABI": "1.3.15",
+    "GCC": "4.0.0",
+    "GLIBC": "2.38",
+    "GLIBCXX": "3.4.32"
+  },
+  "webGpuRuntime": {
+    "id": "CodeBrix.WebGpu.Native.MitLicenseForever",
+    "version": "1.0.300.210",
+    "path": "runtimes/linux-x64/native/libcodebrix_wgpu.so",
+    "sha256": "5a61096ef092ae3fb6638189f1ea9fe7a99350f21376f5ea1ce9b22afce35b2b"
+  },
+  "binaries": {
+    "libIex-3_1.so.30": {
+      "runtime": "runtime/libIex-3_1.so.30",
+      "unstripped": "unstripped/libIex-3_1.so.30",
+      "buildSource": "native/work/dependencies/install/lib/libIex-3_1.so.30.13.1",
+      "needed": [
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "openexr",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "third_party/deps/openexr/LICENSE.md",
+        "third_party/licenses/source-notices-openexr.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "293fb18225c4100e2d5a29c9735e426f6c34eab26e9125748f682c0f5d00ff07",
+      "unstrippedSha256": "d47a455d84670f621802adf6d1e8f57b0b073344c8c43d9544053266b31c9fc7"
+    },
+    "libIlmThread-3_1.so.30": {
+      "runtime": "runtime/libIlmThread-3_1.so.30",
+      "unstripped": "unstripped/libIlmThread-3_1.so.30",
+      "buildSource": "native/work/dependencies/install/lib/libIlmThread-3_1.so.30.13.1",
+      "needed": [
+        "libIex-3_1.so.30",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "openexr",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "third_party/deps/openexr/LICENSE.md",
+        "third_party/licenses/source-notices-openexr.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "763f86ddf67967668912c89b70ce25cffff634e288f45ea79217f6aa2491a197",
+      "unstrippedSha256": "110d1cf36d1e451daf2b30b9422814f2020a64a915e1c654adb6b3357536c672"
+    },
+    "libImath-3_1.so.29": {
+      "runtime": "runtime/libImath-3_1.so.29",
+      "unstripped": "unstripped/libImath-3_1.so.29",
+      "buildSource": "native/work/dependencies/install/lib/libImath-3_1.so.29.11.0",
+      "needed": [
+        "libstdc++.so.6",
+        "libm.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "imath",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "third_party/deps/imath/LICENSE.md",
+        "third_party/licenses/source-notices-imath.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "f16f3ffd22e2a9f90f1a4e85b358fed87462e444c54fb163ec579b36a93fef5c",
+      "unstrippedSha256": "2500282b9740158a58e03a0ff483ad45241995dc3078ddc05e26be8c5e195112"
+    },
+    "libOpenColorIO.so.2.4": {
+      "runtime": "runtime/libOpenColorIO.so.2.4",
+      "unstripped": "unstripped/libOpenColorIO.so.2.4",
+      "buildSource": "native/work/dependencies/install/lib/libOpenColorIO.so.2.4.2",
+      "needed": [
+        "libexpat.so.1",
+        "libImath-3_1.so.29",
+        "libz.so.1",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "ocio",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "third_party/deps/ocio/LICENSE",
+        "third_party/licenses/source-notices-ocio.txt",
+        "third_party/licenses/CC-BY-4.0.txt"
+      ],
+      "staticallyIncluded": [
+        "yaml-cpp",
+        "pystring",
+        "minizip",
+        "ocio-embedded"
+      ],
+      "runtimeSha256": "1bb0305d087f5d26035b65f517ba572f9aad48ded1a71d77337431acab5fa387",
+      "unstrippedSha256": "728340ef1f7fd3827f2103d700c2ef995d327cba30455548c26f438bcede0c5c"
+    },
+    "libOpenEXR-3_1.so.30": {
+      "runtime": "runtime/libOpenEXR-3_1.so.30",
+      "unstripped": "unstripped/libOpenEXR-3_1.so.30",
+      "buildSource": "native/work/dependencies/install/lib/libOpenEXR-3_1.so.30.13.1",
+      "needed": [
+        "libImath-3_1.so.29",
+        "libIlmThread-3_1.so.30",
+        "libz.so.1",
+        "libIex-3_1.so.30",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "openexr",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "third_party/deps/openexr/LICENSE.md",
+        "third_party/licenses/source-notices-openexr.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "f8e1dc507b1b8cfaaceb8d6c3706da09c52c16ee9709483caee2f5d32f429588",
+      "unstrippedSha256": "20380be6d683a8d6dca9e9150fe17a1e3b670457973675ff7aef1057bcf4466c"
+    },
+    "libOpenEXRCore-3_1.so.30": {
+      "runtime": "runtime/libOpenEXRCore-3_1.so.30",
+      "unstripped": "unstripped/libOpenEXRCore-3_1.so.30",
+      "buildSource": "native/work/dependencies/install/lib/libOpenEXRCore-3_1.so.30.13.1",
+      "needed": [
+        "libz.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "openexr",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "third_party/deps/openexr/LICENSE.md",
+        "third_party/licenses/source-notices-openexr.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "fb140c8c842ff1a9a10908d42d9f18a512f721c3319de16faa2465e58dc307e8",
+      "unstrippedSha256": "6951bbcc5a0204cf911d7d7fc5843719af1b33d4e1600b9121c87ecb538da806"
+    },
+    "libOpenImageDenoise.so.2": {
+      "runtime": "runtime/libOpenImageDenoise.so.2",
+      "unstripped": "unstripped/libOpenImageDenoise.so.2",
+      "buildSource": "native/work/dependencies/install/lib/libOpenImageDenoise.so.2.5.1",
+      "needed": [
+        "libOpenImageDenoise_core.so.2.5.1",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "oidn",
+      "license": "Apache-2.0",
+      "notices": [
+        "third_party/deps/oidn/LICENSE.txt",
+        "third_party/deps/oidn/weights/LICENSE.txt",
+        "third_party/licenses/source-notices-oidn.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "97d524906340bfba3e5a27d683f2ec524d1ddef4dbe8a91ff489138477d4ce06",
+      "unstrippedSha256": "ac998292859926ea1deb4dcc84d0f9c3fc439e36ca1bd5e853e22bd8d44c8d6f"
+    },
+    "libOpenImageDenoise_core.so.2.5.1": {
+      "runtime": "runtime/libOpenImageDenoise_core.so.2.5.1",
+      "unstripped": "unstripped/libOpenImageDenoise_core.so.2.5.1",
+      "buildSource": "native/work/dependencies/install/lib/libOpenImageDenoise_core.so.2.5.1",
+      "needed": [
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "oidn",
+      "license": "Apache-2.0",
+      "notices": [
+        "third_party/deps/oidn/LICENSE.txt",
+        "third_party/deps/oidn/weights/LICENSE.txt",
+        "third_party/licenses/source-notices-oidn.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "a03713a3b1302dcc7472e3d25e8dc80a4cc7746382c6b70263d03b130ea0fd88",
+      "unstrippedSha256": "2d3f2db5c4e8d42def8fd98d1c483391cfaaf0785ac70432185ccb54149cd3e9"
+    },
+    "libOpenImageDenoise_device_cpu.so.2.5.1": {
+      "runtime": "runtime/libOpenImageDenoise_device_cpu.so.2.5.1",
+      "unstripped": "unstripped/libOpenImageDenoise_device_cpu.so.2.5.1",
+      "buildSource": "native/work/dependencies/install/lib/libOpenImageDenoise_device_cpu.so.2.5.1",
+      "needed": [
+        "libOpenImageDenoise_core.so.2.5.1",
+        "libtbb.so.12",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "oidn",
+      "license": "Apache-2.0",
+      "notices": [
+        "third_party/deps/oidn/LICENSE.txt",
+        "third_party/deps/oidn/weights/LICENSE.txt",
+        "third_party/licenses/source-notices-oidn.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "bd6d6a7e85590d306ea1a570f0064206000abab9a94737ade44363296174f172",
+      "unstrippedSha256": "240ef9b711cb123a38fa5d89b921e9bcc7dfcd159108c5b13185e6bfb776a5b1"
+    },
+    "libOpenImageIO.so.2.5": {
+      "runtime": "runtime/libOpenImageIO.so.2.5",
+      "unstripped": "unstripped/libOpenImageIO.so.2.5",
+      "buildSource": "native/work/dependencies/install/lib/libOpenImageIO.so.2.5.18",
+      "needed": [
+        "libOpenImageIO_Util.so.2.5",
+        "libpng16.so.16",
+        "libz.so.1",
+        "libjpeg.so.62",
+        "libOpenEXR-3_1.so.30",
+        "libOpenEXRCore-3_1.so.30",
+        "libboost_thread.so.1.83.0",
+        "libImath-3_1.so.29",
+        "libIex-3_1.so.30",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "oiio",
+      "license": "Apache-2.0 AND BSD-3-Clause AND MIT",
+      "notices": [
+        "third_party/deps/oiio/LICENSE.md",
+        "third_party/deps/oiio/THIRD-PARTY.md",
+        "third_party/licenses/source-notices-oiio.txt",
+        "third_party/licenses/CC-BY-4.0.txt"
+      ],
+      "staticallyIncluded": [
+        "fmt",
+        "robin-map",
+        "oiio-embedded"
+      ],
+      "runtimeSha256": "ae17d2b0069c3eab260ec491a96aadf11b58f68ab62a45786c7fcab304d55543",
+      "unstrippedSha256": "58b88437c5dcd2ab011c253c6d77d3cd406aed86e7363791d9bc8c53d9a78d53"
+    },
+    "libOpenImageIO_Util.so.2.5": {
+      "runtime": "runtime/libOpenImageIO_Util.so.2.5",
+      "unstripped": "unstripped/libOpenImageIO_Util.so.2.5",
+      "buildSource": "native/work/dependencies/install/lib/libOpenImageIO_Util.so.2.5.18",
+      "needed": [
+        "libImath-3_1.so.29",
+        "libboost_filesystem.so.1.83.0",
+        "libboost_thread.so.1.83.0",
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "oiio",
+      "license": "Apache-2.0 AND BSD-3-Clause AND MIT",
+      "notices": [
+        "third_party/deps/oiio/LICENSE.md",
+        "third_party/deps/oiio/THIRD-PARTY.md",
+        "third_party/licenses/source-notices-oiio.txt",
+        "third_party/licenses/CC-BY-4.0.txt"
+      ],
+      "staticallyIncluded": [
+        "fmt",
+        "robin-map",
+        "oiio-embedded"
+      ],
+      "runtimeSha256": "90142ad6410028d1ee9ad1b5d0832e7fa18636d556c9781fa69b687661302f66",
+      "unstrippedSha256": "55fc3516d41bc3f5c6e8204ea34496a41d0d2c9012e49476aafdc39b421552ba"
+    },
+    "libboost_filesystem.so.1.83.0": {
+      "runtime": "runtime/libboost_filesystem.so.1.83.0",
+      "unstripped": "unstripped/libboost_filesystem.so.1.83.0",
+      "buildSource": "native/work/dependencies/install/lib/libboost_filesystem.so.1.83.0",
+      "needed": [
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "boost",
+      "license": "BSL-1.0 AND Apache-2.0 AND MIT AND BSD-3-Clause AND Zlib AND LicenseRef-Boost-Original-Permissive AND LicenseRef-Openwall-MD5-Permissive AND LicenseRef-Public-Domain",
+      "notices": [
+        "third_party/deps/boost/LICENSE_1_0.txt",
+        "third_party/licenses/source-notices-boost.txt",
+        "third_party/licenses/Cycles-Apache-2.0.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "df790b8d988cba901dc5ed3e2a84fce0e6d87609454ec1a7c29f4163130a0c52",
+      "unstrippedSha256": "e339d1005c84c0778dbd12ad77a6d7761431a0d07b716550f62fe9069daf78a3"
+    },
+    "libboost_thread.so.1.83.0": {
+      "runtime": "runtime/libboost_thread.so.1.83.0",
+      "unstripped": "unstripped/libboost_thread.so.1.83.0",
+      "buildSource": "native/work/dependencies/install/lib/libboost_thread.so.1.83.0",
+      "needed": [
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "boost",
+      "license": "BSL-1.0 AND Apache-2.0 AND MIT AND BSD-3-Clause AND Zlib AND LicenseRef-Boost-Original-Permissive AND LicenseRef-Openwall-MD5-Permissive AND LicenseRef-Public-Domain",
+      "notices": [
+        "third_party/deps/boost/LICENSE_1_0.txt",
+        "third_party/licenses/source-notices-boost.txt",
+        "third_party/licenses/Cycles-Apache-2.0.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "f1c0f2ca21e9394a4327baa0b236f8dbca30026cc197db9f7f20bd1bd9f31cd3",
+      "unstrippedSha256": "25bd66575a92b5948b6af12120610de4e5aeb25cbf20bf1f3bbcb8d42a43e9a2"
+    },
+    "libcodebrix_cycles_host.so": {
+      "runtime": "runtime/libcodebrix_cycles_host.so",
+      "unstripped": "unstripped/libcodebrix_cycles_host.so",
+      "buildSource": "native/work/cycles-build/lib/libcodebrix_cycles_host.so",
+      "needed": [
+        "libpugixml.so.1",
+        "libcodebrix_wgpu.so",
+        "libOpenImageDenoise.so.2",
+        "libOpenImageIO.so.2.5",
+        "libOpenImageIO_Util.so.2.5",
+        "libOpenColorIO.so.2.4",
+        "libm.so.6",
+        "libtbb.so.12",
+        "libzstd.so.1",
+        "libstdc++.so.6",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2",
+        "libgcc_s.so.1"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "cycles",
+      "license": "Apache-2.0 AND BSD-3-Clause AND MIT AND Zlib AND LicenseRef-Public-Domain",
+      "notices": [
+        "third_party/licenses/Cycles-Apache-2.0.txt",
+        "third_party/licenses/Cycles-BSD-3-Clause.txt",
+        "third_party/licenses/Cycles-MIT.txt",
+        "third_party/licenses/Cycles-Zlib.txt",
+        "native/THIRD-PARTY-NOTICES.txt",
+        "parity/THIRD-PARTY-NOTICES.txt",
+        "research/THIRD-PARTY-NOTICES.txt",
+        "third_party/Cycles-file-notices.txt",
+        "third_party/licenses/source-notices-cycles.txt",
+        "third_party/cycles/AUTHORS"
+      ],
+      "staticallyIncluded": [
+        "Cycles (with mikktspace and sky)",
+        "CodeBrix host",
+        "CodeBrix WGSL/WebGPU device",
+        "embree"
+      ],
+      "runtimeSha256": "1daadaadb09a9e578ecc6f0123fad5f6e62ffb295c35b824a4d828c5ec51060d",
+      "unstrippedSha256": "c5174f17f23f5fe47030d89420bff2a0485416ff44f076a8bbe34015007c2dd7"
+    },
+    "libexpat.so.1": {
+      "runtime": "runtime/libexpat.so.1",
+      "unstripped": "unstripped/libexpat.so.1",
+      "buildSource": "native/work/dependencies/install/lib/libexpat.so.1.13.0",
+      "needed": [
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "expat",
+      "license": "MIT",
+      "notices": [
+        "third_party/deps/expat/expat/COPYING",
+        "third_party/licenses/source-notices-expat.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "d4f44e4b18c9f221234a2cd0eee750d3b7df655c6219918f3973c8069439ae75",
+      "unstrippedSha256": "b8810b5cb119972b1315bae63797fde2b19a8a81f1c9c65cc00eab1603244049"
+    },
+    "libjpeg.so.62": {
+      "runtime": "runtime/libjpeg.so.62",
+      "unstripped": "unstripped/libjpeg.so.62",
+      "buildSource": "native/work/dependencies/install/lib/libjpeg.so.62.3.0",
+      "needed": [
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "jpeg",
+      "license": "IJG AND BSD-3-Clause AND Zlib",
+      "notices": [
+        "third_party/deps/jpeg/LICENSE.md",
+        "third_party/deps/jpeg/README.ijg",
+        "third_party/licenses/source-notices-jpeg.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "28f745cce2601aa7224cae795d5ce44c4740f47c1f347105d722bed284e9d5db",
+      "unstrippedSha256": "6349316b5171e699854c3958694db56a05f0744070ee93b533eb57af50033067"
+    },
+    "libpng16.so.16": {
+      "runtime": "runtime/libpng16.so.16",
+      "unstripped": "unstripped/libpng16.so.16",
+      "buildSource": "native/work/dependencies/install/lib/libpng16.so.16.48.0",
+      "needed": [
+        "libz.so.1",
+        "libm.so.6",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "png",
+      "license": "libpng-2.0",
+      "notices": [
+        "third_party/deps/png/LICENSE",
+        "third_party/licenses/source-notices-png.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "c934b86af52fe58ff55c3669107dc6534776dc84979afb158d0bdd3309956198",
+      "unstrippedSha256": "c02a716d73fa3ff2154915f70ed6c01eb185d720e269ea586211e5dfe6bb0d98"
+    },
+    "libpugixml.so.1": {
+      "runtime": "runtime/libpugixml.so.1",
+      "unstripped": "unstripped/libpugixml.so.1",
+      "buildSource": "native/work/dependencies/install/lib/libpugixml.so.1.14",
+      "needed": [
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "pugixml",
+      "license": "MIT",
+      "notices": [
+        "third_party/deps/pugixml/LICENSE.md",
+        "third_party/licenses/source-notices-pugixml.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "290d337a9e170539cdda32ffbd1776bdede628cae043724744bb9b815da5a977",
+      "unstrippedSha256": "44e498ae850fe2a9c9e0ee78e944bd259a401ecccfd54a51de6a25f907c8fa0b"
+    },
+    "libtbb.so.12": {
+      "runtime": "runtime/libtbb.so.12",
+      "unstripped": "unstripped/libtbb.so.12",
+      "buildSource": "native/work/dependencies/install/lib/libtbb.so.12.15",
+      "needed": [
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6",
+        "ld-linux-x86-64.so.2"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "tbb",
+      "license": "Apache-2.0",
+      "notices": [
+        "third_party/deps/tbb/LICENSE.txt",
+        "third_party/deps/tbb/third-party-programs.txt",
+        "third_party/licenses/source-notices-tbb.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "f21494070e7e4e3a43f1fa792779a2bd0c214042d1f7a1f6d3700f05402d2d64",
+      "unstrippedSha256": "1839fb26f024c5fb7326d009bf86772b93cb5267596c72d4e3de1909f00b02e3"
+    },
+    "libz.so.1": {
+      "runtime": "runtime/libz.so.1",
+      "unstripped": "unstripped/libz.so.1",
+      "buildSource": "native/work/dependencies/install/lib/libz.so.1.3.1",
+      "needed": [
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "zlib",
+      "license": "Zlib",
+      "notices": [
+        "third_party/deps/zlib/LICENSE",
+        "third_party/licenses/source-notices-zlib.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "8618383d304c4a24dd5e34cbf446a4666e488a3ef1290c398b74db32ff1e92f0",
+      "unstrippedSha256": "3da4d837f675989c5b58892fbb0af15c4b9bcfec0d05fcf9764aa76c18f00bb2"
+    },
+    "libzstd.so.1": {
+      "runtime": "runtime/libzstd.so.1",
+      "unstripped": "unstripped/libzstd.so.1",
+      "buildSource": "native/work/dependencies/install/lib/libzstd.so.1.5.7",
+      "needed": [
+        "libc.so.6"
+      ],
+      "runpath": [
+        "$ORIGIN"
+      ],
+      "component": "zstd",
+      "license": "BSD-3-Clause",
+      "notices": [
+        "third_party/deps/zstd/LICENSE",
+        "third_party/licenses/source-notices-zstd.txt"
+      ],
+      "staticallyIncluded": [],
+      "runtimeSha256": "f8d1076c0ebe44bf3d6d2cc2a2db334e8903ca89a468ad97ee4e1b23fdb52263",
+      "unstrippedSha256": "fe4e21bd9cdae2a9797d8e5d8456de3a6a8c8296d45a1d8e5d8545db8842eaf8"
+    }
+  },
+  "standaloneRender": {
+    "scene": "starter/diffuse-triangle",
+    "filmSha256": {
+      "cpu": "a9a2d6e73a36185a3d2aa8dbb0c54b0dd0703c76dcb28a1e6f8e5fe4189a3a95",
+      "webgpu": "f88110e5e23cbca6d489bd6071de9f89b45dd1b4dc9c2df1567bab0d197f3767"
+    },
+    "cpuFilmEqualsReference": "native/evidence/linux-x64-reference-20261107"
+  },
+  "notices": {
+    "repositoryNotices": "THIRD-PARTY-NOTICES.txt"
+  },
+  "approvedPayload": {
+    "runtime/libIex-3_1.so.30": "293fb18225c4100e2d5a29c9735e426f6c34eab26e9125748f682c0f5d00ff07",
+    "runtime/libIlmThread-3_1.so.30": "763f86ddf67967668912c89b70ce25cffff634e288f45ea79217f6aa2491a197",
+    "runtime/libImath-3_1.so.29": "f16f3ffd22e2a9f90f1a4e85b358fed87462e444c54fb163ec579b36a93fef5c",
+    "runtime/libOpenColorIO.so.2.4": "1bb0305d087f5d26035b65f517ba572f9aad48ded1a71d77337431acab5fa387",
+    "runtime/libOpenEXR-3_1.so.30": "f8e1dc507b1b8cfaaceb8d6c3706da09c52c16ee9709483caee2f5d32f429588",
+    "runtime/libOpenEXRCore-3_1.so.30": "fb140c8c842ff1a9a10908d42d9f18a512f721c3319de16faa2465e58dc307e8",
+    "runtime/libOpenImageDenoise.so.2": "97d524906340bfba3e5a27d683f2ec524d1ddef4dbe8a91ff489138477d4ce06",
+    "runtime/libOpenImageDenoise_core.so.2.5.1": "a03713a3b1302dcc7472e3d25e8dc80a4cc7746382c6b70263d03b130ea0fd88",
+    "runtime/libOpenImageDenoise_device_cpu.so.2.5.1": "bd6d6a7e85590d306ea1a570f0064206000abab9a94737ade44363296174f172",
+    "runtime/libOpenImageIO.so.2.5": "ae17d2b0069c3eab260ec491a96aadf11b58f68ab62a45786c7fcab304d55543",
+    "runtime/libOpenImageIO_Util.so.2.5": "90142ad6410028d1ee9ad1b5d0832e7fa18636d556c9781fa69b687661302f66",
+    "runtime/libboost_filesystem.so.1.83.0": "df790b8d988cba901dc5ed3e2a84fce0e6d87609454ec1a7c29f4163130a0c52",
+    "runtime/libboost_thread.so.1.83.0": "f1c0f2ca21e9394a4327baa0b236f8dbca30026cc197db9f7f20bd1bd9f31cd3",
+    "runtime/libcodebrix_cycles_host.so": "1daadaadb09a9e578ecc6f0123fad5f6e62ffb295c35b824a4d828c5ec51060d",
+    "runtime/libexpat.so.1": "d4f44e4b18c9f221234a2cd0eee750d3b7df655c6219918f3973c8069439ae75",
+    "runtime/libjpeg.so.62": "28f745cce2601aa7224cae795d5ce44c4740f47c1f347105d722bed284e9d5db",
+    "runtime/libpng16.so.16": "c934b86af52fe58ff55c3669107dc6534776dc84979afb158d0bdd3309956198",
+    "runtime/libpugixml.so.1": "290d337a9e170539cdda32ffbd1776bdede628cae043724744bb9b815da5a977",
+    "runtime/libtbb.so.12": "f21494070e7e4e3a43f1fa792779a2bd0c214042d1f7a1f6d3700f05402d2d64",
+    "runtime/libz.so.1": "8618383d304c4a24dd5e34cbf446a4666e488a3ef1290c398b74db32ff1e92f0",
+    "runtime/libzstd.so.1": "f8d1076c0ebe44bf3d6d2cc2a2db334e8903ca89a468ad97ee4e1b23fdb52263"
+  },
+  "snapshotCopies": {}
+}

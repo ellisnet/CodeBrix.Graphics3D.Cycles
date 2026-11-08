@@ -5,10 +5,10 @@ package
 ================================================================================
 
 This repository ships no sample applications. It has one example client (the
-glTF render tool below). Exactly one .NET project is packable - src/CodeBrix.Graphics3D.Cycles - and it is a thin wrapper over a
+glTF render tool below). The managed package comes from one .NET project - src/CodeBrix.Graphics3D.Cycles - which is a thin wrapper over a
 native renderer whose source, build tooling, validation gates and evidence also
 live here. None of the content listed below is included in the
-CodeBrix.Graphics3D.Cycles.ApacheLicenseForever package.
+CodeBrix.Graphics3D.Cycles packages.
 
 For runnable, compilable usage of the library, read the test project: the
 "WORKING EXAMPLES ON GITHUB" section of AGENT-README.txt maps each feature area

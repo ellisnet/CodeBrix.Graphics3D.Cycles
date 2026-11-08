@@ -1,6 +1,6 @@
 # CodeBrix.Graphics3D.Cycles
 
-A .NET library for building and rendering 3D scenes with the Cycles path-tracing renderer, through a native scene host with a GPU rendering backend and an explicit CPU reference backend. CodeBrix.Graphics3D.Cycles is provided as a .NET 10 library and associated `CodeBrix.Graphics3D.Cycles.ApacheLicenseForever` NuGet package.
+A .NET library for building and rendering 3D scenes with the Cycles path-tracing renderer, through a native scene host with a GPU rendering backend and an explicit CPU reference backend. CodeBrix.Graphics3D.Cycles is provided as a .NET 10 library in the `CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever` NuGet package, with one package per platform carrying the native binaries.
 
 The GPU backend depends on the platform:
 
@@ -13,18 +13,22 @@ Please update your C#/.NET code and projects to the latest LTS version of Micros
 
 ## Installation
 
+Add the package for your platform. It brings in the managed library and everything else it needs:
+
 ```
-dotnet add package CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
+dotnet add package CodeBrix.Graphics3D.Cycles.LinuxX64.ApacheLicenseForever
 ```
 
 Note that the NuGet package ID and the namespace are different - there is no package named plain `CodeBrix.Graphics3D.Cycles`:
 
-* NuGet package ID: `CodeBrix.Graphics3D.Cycles.ApacheLicenseForever`
+* NuGet package IDs: `CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever` (the managed library, no native binaries) and `CodeBrix.Graphics3D.Cycles.<Platform>.ApacheLicenseForever` (the native binaries for one platform)
 * Assembly and primary namespace: `CodeBrix.Graphics3D.Cycles` - i.e. `using CodeBrix.Graphics3D.Cycles;`
 
 XML documentation (IntelliSense) ships alongside the assembly.
 
-CodeBrix.Graphics3D.Cycles has no NuGet dependencies other than .NET.
+Platform names are `LinuxX64`, `LinuxArm64`, `LinuxRiscv64`, `WindowsX64`, `WindowsArm64`, `MacOSX64`, `MacOSArm64` and `Android`. A platform package is published once that platform has been validated, and an application that targets several platforms references several platform packages.
+
+Every platform package depends on the Core package at exactly its own version and, where its GPU backend uses WebGPU, on `CodeBrix.WebGpu.Native.MitLicenseForever`. The Core package has no NuGet dependencies.
 
 ## CodeBrix.Graphics3D.Cycles supports:
 
@@ -44,7 +48,7 @@ The library works on raw pixel buffers only. Image file encoding and decoding be
 
 ## Requirements
 
-This library is experimental and is not yet published to nuget.org. The managed assembly loads a native scene host library (`codebrix_cycles_host`) that is built from this repository; the package does not yet carry native runtime assets, so the native host must be available on the library search path of the consuming process. A 64-bit process is required.
+This library is experimental and is not yet published to nuget.org. The managed assembly loads a native scene host library (`codebrix_cycles_host`) from the platform package; without one it throws a `DllNotFoundException` that names the package to add. A 64-bit process is required. On Linux, the system's C and C++ runtime libraries must be at least as new as those of the machine that built the package.
 
 ## Sample Code
 

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+	<metadata minClientVersion="5.0">
+		<id>CodeBrix.Graphics3D.Cycles.LinuxX64.ApacheLicenseForever</id>
+		<version>$codebrixversion$</version>
+		<title>CodeBrix.Graphics3D.Cycles.LinuxX64</title>
+		<authors>Jeremy Ellis and contributors</authors>
+		<requireLicenseAcceptance>true</requireLicenseAcceptance>
+		<projectUrl>https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles</projectUrl>
+		<license type="expression">Apache-2.0</license>
+		<icon>icon-codebrix-128.png</icon>
+		<readme>README.md</readme>
+		<description>The native Cycles scene host and its native dependencies for CodeBrix.Graphics3D.Cycles on Linux x64. Referencing this package brings in CodeBrix.Graphics3D.Cycles.Core and the WebGPU runtime.</description>
+		<copyright>Copyright (c) 2026 Jeremy Ellis and contributors</copyright>
+		<tags>3d;rendering;path-tracing;cycles;webgpu;graphics;native;runtime;linux;x64;CodeBrix</tags>
+		<repository type="git" url="https://github.com/ellisnet/CodeBrix.Graphics3D.Cycles.git" branch="$branch$" commit="$commitid$" />
+		<dependencies>
+			<group targetFramework="net10.0">
+				<dependency id="CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever" version="[$codebrixversion$]" />
+				<dependency id="CodeBrix.WebGpu.Native.MitLicenseForever" version="[1.0.300.210]" />
+			</group>
+		</dependencies>
+	</metadata>
+	<files>
+		<file src="..\..\icon-codebrix-128.png" target="/" />
+		<file src="..\..\README.md" target="/" />
+		<file src="..\..\AGENT-README.txt" target="/" />
+		<file src="..\..\THIRD-PARTY-NOTICES.txt" target="/" />
+		<file src="..\..\LICENSE" target="LICENSE" />
+		<file src="..\..\NOTICE" target="NOTICE" />
+		<file src="..\..\native\binaries\linux-x64\runtime\*" target="runtimes\linux-x64\native" />
+	</files>
+</package>

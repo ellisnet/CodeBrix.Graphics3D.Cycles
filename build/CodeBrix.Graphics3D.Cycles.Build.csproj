@@ -1,0 +1,109 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!--
+	========================================================================
+	CodeBrix.Graphics3D.Cycles NuGet packaging driver
+	========================================================================
+	This project intentionally compiles nothing of value: its job is to pack the
+	.Core package and the native platform packages listed below, all with ONE
+	shared date-stamped $(BuildVersion), then check every package against the
+	reviewed payloads with tools/licensing/package_check.py. A failed check
+	fails the run.
+
+	Usage (Linux or macOS):
+
+	    dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release
+
+	Packages land in:  {repo}/nugets/$(Configuration)/$(BuildVersion)/
+
+	ADDING A PLATFORM: stage and review its payload in native/binaries/<rid>/,
+	add its nuspec to build/nuget/ and add one line to the _Nuspec list below.
+	The next run packs it with the rest of the family at one version.
+	========================================================================
+	-->
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<!-- This driver is never itself a package. -->
+		<IsPackable>false</IsPackable>
+		<IsPublishable>false</IsPublishable>
+		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<Nullable>disable</Nullable>
+		<!-- This project has no source files; silence the empty-compile warning. -->
+		<NoWarn>$(NoWarn);CS2008</NoWarn>
+	</PropertyGroup>
+
+	<!--
+	Canonical CodeBrix date-stamped version (computed once per pack run).
+	Format: 1.<years-since-2026>.<dayOfYear>.<minuteOfDay>, all from UTC now.
+	This mirrors the version block in the library csproj; here it is the single
+	source of truth for the whole pack run.
+
+	OVERRIDE: pass -p:BuildVersion=1.x.y.z to reuse an EXISTING version instead
+	of stamping a fresh one, when a package must join a set already packed.
+	-->
+	<PropertyGroup>
+		<_VersionBaseYear>2026</_VersionBaseYear>
+		<_VersionYears>$([MSBuild]::Subtract($([System.DateTime]::UtcNow.Year), $(_VersionBaseYear)))</_VersionYears>
+		<_VersionDayOfYear>$([System.DateTime]::UtcNow.DayOfYear)</_VersionDayOfYear>
+		<_VersionMinuteOfDay>$([System.Convert]::ToInt32($([System.Math]::Floor($([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes)))))</_VersionMinuteOfDay>
+		<BuildVersion Condition="'$(BuildVersion)'==''">1.$(_VersionYears).$(_VersionDayOfYear).$(_VersionMinuteOfDay)</BuildVersion>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<_RepoRoot>$(MSBuildThisFileDirectory)..\</_RepoRoot>
+		<_NuspecDir>$(MSBuildThisFileDirectory)nuget</_NuspecDir>
+		<_PackShim>$(MSBuildThisFileDirectory)nuget-pack-shim\CodeBrix.Pack.Shim.csproj</_PackShim>
+		<_CoreProject>$(_RepoRoot)src\CodeBrix.Graphics3D.Cycles\CodeBrix.Graphics3D.Cycles.csproj</_CoreProject>
+		<_PackOutputDir>$(_RepoRoot)nugets\$(Configuration)\$(BuildVersion)</_PackOutputDir>
+		<!-- The .Core pack builds here, so it cannot collide with a solution build
+		     compiling the same project in bin/ and obj/ at the same moment. -->
+		<_PackWork>$(MSBuildThisFileDirectory).pack-work\</_PackWork>
+	</PropertyGroup>
+
+	<!-- The native platform packages. Only validated platforms are listed. -->
+	<ItemGroup>
+		<_Nuspec Include="$(_NuspecDir)\CodeBrix.Graphics3D.Cycles.LinuxX64.nuspec" />
+	</ItemGroup>
+
+	<!-- Order only: the shim's restore must not overlap a solution build of it. -->
+	<ItemGroup>
+		<ProjectReference Include="nuget-pack-shim\CodeBrix.Pack.Shim.csproj" ReferenceOutputAssembly="false" Private="false" />
+	</ItemGroup>
+
+	<!--
+	Windows hosts skip packing: the Python and packaging steps here are run from
+	Linux or macOS, and the committed payloads are the same from any machine.
+	-->
+	<Target Name="PackCodeBrix"
+			AfterTargets="Build"
+			Condition="'$(Configuration)'=='Release' And '$(OS)' != 'Windows_NT'">
+
+		<!-- Capture git branch/commit for the nuspec <repository> tokens. -->
+		<Exec Command="git rev-parse --abbrev-ref HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" WorkingDirectory="$(_RepoRoot)">
+			<Output TaskParameter="ConsoleOutput" PropertyName="_GitBranch" />
+		</Exec>
+		<Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" WorkingDirectory="$(_RepoRoot)">
+			<Output TaskParameter="ConsoleOutput" PropertyName="_GitCommit" />
+		</Exec>
+		<PropertyGroup>
+			<_GitBranch Condition="'$(_GitBranch)'==''">unknown</_GitBranch>
+			<_GitCommit Condition="'$(_GitCommit)'==''">unknown</_GitCommit>
+		</PropertyGroup>
+
+		<MakeDir Directories="$(_PackOutputDir)" />
+
+		<Message Importance="high" Text="CodeBrix pack: version $(BuildVersion) -> $(_PackOutputDir)" />
+
+		<!-- -p:GeneratePackageOnBuild=false is REQUIRED on the csproj pack: with that
+		     property on, an explicit `dotnet pack` does NOT run Build first, so a
+		     package could ship a stale assembly stamped with an older version. -->
+		<Exec Command="dotnet pack &quot;$(_CoreProject)&quot; -c Release -p:BuildVersion=$(BuildVersion) -p:GeneratePackageOnBuild=false -p:BaseOutputPath=&quot;$(_PackWork)bin/&quot; -p:BaseIntermediateOutputPath=&quot;$(_PackWork)obj/&quot; --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
+		<Exec Command="dotnet pack &quot;$(_PackShim)&quot; -p:CbxNuspec=&quot;%(_Nuspec.Identity)&quot; -p:CbxNuspecBasePath=&quot;$(_NuspecDir)&quot; -p:CbxVersion=$(BuildVersion) -p:CbxBranch=$(_GitBranch) -p:CbxCommit=$(_GitCommit) --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
+
+		<Exec Command="python3 tools/licensing/package_check.py &quot;$(_PackOutputDir)&quot; --version $(BuildVersion)" WorkingDirectory="$(_RepoRoot)" />
+
+	</Target>
+
+</Project>

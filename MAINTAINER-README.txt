@@ -64,13 +64,18 @@ before anything else.
   unstripped binaries and debug symbols. Use `native/binaries/<rid>/` with
   runtime, unstripped and symbols subdirectories and reviewed provenance/hashes.
   Ordinary build intermediates remain ignored. Jeremy performs every commit/push.
+  Exception for now: native/binaries/linux-x64/unstripped/ is git-ignored while the
+  library is a work in progress, and is committed with the final payload.
 
 
 PURPOSE AND SCOPE
 =================
-This repository produces exactly one NuGet package:
+This repository produces a family of NuGet packages at one version:
 
-    PackageId:  CodeBrix.Graphics3D.Cycles.ApacheLicenseForever
+    PackageId:  CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever
+                (the managed assembly, no native binaries)
+    PackageId:  CodeBrix.Graphics3D.Cycles.<Platform>.ApacheLicenseForever
+                (one platform's native binaries; see PACKAGING AND PUBLISHING)
     Assembly:   CodeBrix.Graphics3D.Cycles
     Namespace:  CodeBrix.Graphics3D.Cycles (sub-namespaces Rendering,
                 Diagnostics, Nodes, Generated.*, Interop)
@@ -78,7 +83,7 @@ This repository produces exactly one NuGet package:
     License:    Apache-2.0
     Consumer documentation: AGENT-README.txt (repo root)
 
-The package is a .NET 10 ownership, marshalling and typing layer over the
+The Core package is a .NET 10 ownership, marshalling and typing layer over the
 native Cycles scene host built from this repository (native/host): a typed
 facade (CyclesScene), an object model generated from the native registry, and
 a public low-level interop tier (CyclesHost, Interop.CyclesAbi, Interop.Native). The native host
@@ -102,13 +107,15 @@ decoding belongs to CodeBrix.Imaging; never add image codecs here.
 
 REPOSITORY LAYOUT
 =================
-This repository holds both the .NET package and the native renderer it drives.
+This repository holds both the .NET packages and the native renderer they drive.
 Only the first two folders below are .NET family-standard; everything else is
 the native source, its build and licensing tooling, and the evidence and
 research that back it.
 
-    src/CodeBrix.Graphics3D.Cycles/       the library project (the only packable
-                                          project in the repository)
+    build/                                the pack driver, the pack shim and the
+                                          platform nuspecs (nuget/)
+    nugets/                               ignored pack output
+    src/CodeBrix.Graphics3D.Cycles/       the library project (the Core package)
       CyclesScene.cs                      the typed facade entry point
       CyclesHost.cs                       the by-name host (low-level tier)
       CyclesException.cs, NativeFailure.cs  the exception types
@@ -406,7 +413,7 @@ turns on the runtime's IEEE floating point for Metal (M1; runtime 1.0.300.210).
 The Intel Mac mini (2018) is a REFERENCE DEVICE (native/DEVICE.md, "Reference
 devices and the publish rule"): every host-gate step, device gate, oracle and
 bench scene and managed test must pass there, judged against the Linux x64 glibc
-reference, or the release is not ready to publish. The Apple Silicon Mac mini
+reference, or its platform package is not ready to publish. The Apple Silicon Mac mini
 (M2 Pro) is the Metal comparison device, not a WGSL reference device.
 LINUX X64 REFERENCE (2026-10-29): Linux x64 and Android testing and validation
 are done on the dedicated Linux x64 machine ONLY, and every Linux x64 reference
@@ -889,20 +896,56 @@ execution.
 
 PACKAGING AND PUBLISHING
 ========================
-The library csproj carries the family's canonical date-stamped version block
-(1.<years since 2026>.<UTC day of year>.<UTC minute of day>) and
-GeneratePackageOnBuild, so every build writes a fresh
-CodeBrix.Graphics3D.Cycles.ApacheLicenseForever.<version>.nupkg under
-src/CodeBrix.Graphics3D.Cycles/bin/<Configuration>/. The package contains the
-assembly, its XML documentation, icon-codebrix-128.png, README.md,
-AGENT-README.txt and THIRD-PARTY-NOTICES.txt.
+Packages:
 
-The package does NOT yet contain native runtime assets (runtimes/<rid>/native)
-and has not been published. Adding the reviewed native payloads from
-native/binaries/<rid>/, and the package audit in tools/licensing/audit.py
-(--package with a reviewed --payload-manifest, which also requires LICENSE and
-NOTICE in the payload), are release prerequisites. Jeremy publishes; nobody
-else pushes packages.
+    CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever
+        The assembly, its XML documentation, and the documents below. No native
+        binaries and no NuGet dependencies. The project keeps a build-time
+        reference to CodeBrix.WebGpu.Native for the test project, the host tools
+        and the Android validation app; SuppressDependenciesWhenPacking keeps it
+        out of the package.
+    CodeBrix.Graphics3D.Cycles.<Platform>.ApacheLicenseForever
+        native/binaries/<rid>/runtime/ as runtimes/<rid>/native/, and the documents
+        below. Depends on Core at exactly its own version and, unless the platform's
+        GPU backend does not use it, on the exact CodeBrix.WebGpu.Native version.
+
+Every package carries icon-codebrix-128.png, README.md, AGENT-README.txt,
+THIRD-PARTY-NOTICES.txt, LICENSE and NOTICE.
+
+The driver is build/CodeBrix.Graphics3D.Cycles.Build.csproj. It computes the
+family's canonical date-stamped version (1.<years since 2026>.<UTC day of
+year>.<UTC minute of day>) once per run, packs Core and every nuspec in its _Nuspec
+list through build/nuget-pack-shim/ at that version, and runs
+tools/licensing/package_check.py, which fails the run unless each package holds
+exactly the reviewed contents and dependencies and passes the
+tools/licensing/audit.py package audit. Output: nugets/Release/<version>/.
+
+    dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release
+
+The driver is part of the solution, so ANY Release build or test of the solution
+is a full pack that writes a new version folder under nugets/Release/. Build Debug
+when you only want binaries, and delete unwanted version folders (git-ignored). The
+library csproj also keeps its own GeneratePackageOnBuild, so a build of it writes a
+Core .nupkg under its bin/ folder; that one is not part of a family set and is
+never published.
+
+Publishing model: only validated platforms are in the _Nuspec list, so publishing
+one platform does not wait for another. Each publish republishes the whole family
+at one new version, with any newly validated platform added. Jeremy publishes;
+nobody else pushes packages.
+
+Adding a platform: stage and review its payload in native/binaries/<rid>/, add
+build/nuget/CodeBrix.Graphics3D.Cycles.<Platform>.nuspec, add it to the driver's
+_Nuspec list and to PLATFORMS in tools/licensing/package_check.py. Windows hosts skip
+the driver's packing, so pack from Linux or macOS once the payload is committed.
+
+Linux x64 payload: python3 native/tools/stage_linux_binaries.py. It builds the host
+at the current commit, refuses uncommitted native source changes, rewrites each
+library's run path to $ORIGIN, renders a scene from the staged files alone and
+records the system library floor in provenance.json (minimumSystemVersions). Remove
+the old payload first; a payload is only replaced on purpose. package_check.py
+warns when native sources changed after the payload's commit: restage before
+publishing, and validate on the commit you stage from.
 
 
 CODING CONVENTIONS

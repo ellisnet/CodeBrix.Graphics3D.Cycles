@@ -1944,9 +1944,11 @@ Reproduce: `python3 native/tools/libm_probe.py android-arm64 OUT.json --serial S
 ### Reference devices and the publish rule (2026-10-27)
 
 A reference device is one where everything ported so far must pass, judged under
-this policy, before a release is published: every host-gate step, every device
-gate, every oracle scene and bench scene the device renders, and the managed
-tests. "Not ready to publish" is the answer while any of them fails there.
+this policy, before the platform package for its RID is published: every host-gate
+step, every device gate, every oracle scene and bench scene the device renders, and
+the managed tests. "Not ready to publish" is that platform's answer while any of them
+fails there; it does not hold back the packages of other platforms (2026-11-08,
+MAINTAINER-README.txt, "PACKAGING AND PUBLISHING").
 Functionality not yet ported (volume rendering on the WebGPU device) is outside
 "ported so far"; a driver workaround that gives the CPU kernels' images (W1,
 M2) counts as passing, a refused or masked feature does not.

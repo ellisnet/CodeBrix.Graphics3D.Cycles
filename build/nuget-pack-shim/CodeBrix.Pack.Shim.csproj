@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<!--
+	========================================================================
+	CodeBrix.Graphics3D.Cycles pack shim
+	========================================================================
+	A throwaway SDK project that exists only so the modern .NET SDK packer
+	(which understands net10.0) can pack a standalone .nuspec.
+
+	The driver (CodeBrix.Graphics3D.Cycles.Build.csproj) invokes this shim once
+	per nuspec via `dotnet pack`, passing these as -p: properties:
+
+	  CbxNuspec           absolute path to the .nuspec to pack
+	  CbxNuspecBasePath   base dir the nuspec's <file src> paths resolve against
+	  CbxVersion          the shared date-stamped version ($codebrixversion$)
+	  CbxBranch / CbxCommit  git info for the <repository> tokens
+	  PackageOutputPath   where the .nupkg is written  (passed as -o)
+
+	NU5128 is expected for the native packages (they ship runtimes/ natives with
+	no lib/ assemblies); CS2008 because this project compiles no sources.
+	========================================================================
+	-->
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<!-- This project ships no code; it only drives a nuspec pack. -->
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<NoWarn>$(NoWarn);NU5128;CS2008</NoWarn>
+		<IsPackable>true</IsPackable>
+
+		<NuspecFile>$(CbxNuspec)</NuspecFile>
+		<NuspecBasePath>$(CbxNuspecBasePath)</NuspecBasePath>
+		<NuspecProperties>codebrixversion=$(CbxVersion);branch=$(CbxBranch);commitid=$(CbxCommit)</NuspecProperties>
+	</PropertyGroup>
+
+</Project>

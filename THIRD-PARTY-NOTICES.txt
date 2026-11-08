@@ -1413,6 +1413,35 @@ callers in wavefront_surface.wgsl (BSDF evaluation and sampling) and
 wavefront_lighting.wgsl (shadow-ray origin and self-intersection skip) are
 scene-specialized regions. The CPU oracle calls the original kernels unchanged.
 
+Native static curves
+--------------------
+native/shaders/wavefront_curve_math.wgsl, wavefront_curve_intersect.wgsl and
+wavefront_curve_shader_data.wgsl adapt reviewed Cycles revision
+a456b761034dda42c32eef9f4aae0fa5a5c9f604:
+  src/kernel/geom/curve_intersect.h (adapted there from Embree)
+  src/kernel/geom/curve.h, src/kernel/geom/shader_data.h, src/kernel/bvh/nodes.h
+  src/kernel/svm/geometry.h, src/util/math_float3.h, src/util/math_float4.h
+Required Apache-2.0 notices remain: 2009-2021 Intel Corporation, 2011-2022
+Blender Foundation. Changes: WGSL with native table descriptors, the binary32
+rounding adapters and no arrays. The CPU oracle calls the original kernels
+unchanged. No other implementation was imported.
+
+Native hair closures
+--------------------
+native/shaders/wavefront_hair.wgsl, wavefront_svm_hair.wgsl, wavefront_hair_huang.wgsl and
+wavefront_svm_hair_huang.wgsl adapt reviewed Cycles revision
+a456b761034dda42c32eef9f4aae0fa5a5c9f604:
+  src/kernel/closure/bsdf_hair.h (BSD-3-Clause, adapted there from Open Shading Language)
+  src/kernel/closure/bsdf_principled_hair_chiang.h, src/kernel/closure/bsdf_util.h
+  src/kernel/closure/bsdf_principled_hair_huang.h, src/kernel/closure/bsdf_microfacet.h,
+  src/util/lookup_table.h, src/kernel/sample/lcg.h
+  src/kernel/svm/closure.h, src/util/math_fast.h (BSD-3-Clause), src/util/projection.h
+Required notices remain: 2009-2010 Sony Pictures Imageworks Inc., et al. All Rights
+Reserved (../third_party/licenses/Cycles-BSD-3-Clause.txt); 2011-2022, 2018-2022 and 2023
+Blender Foundation (Apache-2.0). Changes: WGSL with named fields in place of the
+pinned arrays, loops through one inlined body, and the binary32 rounding adapters.
+The CPU oracle calls the original kernels unchanged. No other implementation was imported.
+
 ======================================================================
 parity/THIRD-PARTY-NOTICES.txt
 ======================================================================

@@ -10,7 +10,9 @@ are changing this repository itself.
 AGENT-README FILES (consumer documentation, one per NuGet package)
 ------------------------------------------------------------------
   AGENT-README.txt
-      CodeBrix.Graphics3D.Cycles.ApacheLicenseForever - build and render 3D
+      CodeBrix.Graphics3D.Cycles.Core.ApacheLicenseForever and the
+      CodeBrix.Graphics3D.Cycles.<Platform>.ApacheLicenseForever packages that
+      carry its native binaries - build and render 3D
       scenes with the Cycles path-tracing renderer through a native scene host,
       on a GPU backend (Cycles' Metal device on Apple Silicon Macs, WGSL on
       WebGPU everywhere else, Intel Macs included) or an explicit CPU

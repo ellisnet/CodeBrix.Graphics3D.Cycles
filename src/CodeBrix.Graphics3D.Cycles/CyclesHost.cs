@@ -4,6 +4,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using CodeBrix.Graphics3D.Cycles.Internal;
 using CodeBrix.Graphics3D.Cycles.Interop;
 using CodeBrix.Graphics3D.Cycles.Rendering;
 using Microsoft.Win32.SafeHandles;
@@ -85,6 +86,7 @@ public sealed unsafe class CyclesHost : IDisposable
     {
         if (OperatingSystem.IsMacOS() && !OperatingSystem.IsMacOSVersionAtLeast(15))
             throw new PlatformNotSupportedException("CodeBrix.Graphics3D.Cycles requires macOS 15.0 or later.");
+        NativeHostLoadDiagnostics.EnsureLoaded();
     }
 
     private static void Check(int status)
