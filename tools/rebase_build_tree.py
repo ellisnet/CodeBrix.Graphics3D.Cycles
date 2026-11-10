@@ -37,6 +37,14 @@ rebase() makes the copy behave as if it had been built in this checkout:
    that every compile_commands.json source is under the new root. Callers run
    it again after their normal CMake configure step.
 
+Trees built in the Linux x64 build container (native/manylinux) are configured
+at /src, the fixed path every checkout has there, so a copy needs no re-rooting.
+Its sources are still newer than the copied objects in a fresh checkout. Run on
+the host, rebase() of such a tree (cache root /src) only does step 3: every file
+the build files name under /src takes the time of the same file in the
+reference checkout (required: the checkout the tree was copied from) when the
+two are byte-identical; nothing is rewritten or moved.
+
 The build scripts expose this as --rebase-build-tree (tools/build.py,
 native/tools/build_cycles.py, prototype/tools/build_host.py,
 native/tools/build_cycles_android.py). Usage of this module alone:
@@ -50,6 +58,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# Where native/manylinux/build.sh mounts every checkout in the build container.
+CONTAINER_ROOT = '/src'
 _BINARY_MAGIC = (b'\x7fELF', b'!<arch>\n', b'\x89PNG', b'PK\x03\x04')
 
 
@@ -146,6 +156,8 @@ def rebase(build, root=ROOT, reference=None, log=print):
     if old == str(root):
         log(f'{build}: already configured in {root}; nothing to re-root')
         return report
+    if old == CONTAINER_ROOT:
+        return _match_container_times(build, root, reference, report, log)
     reference = Path(reference or old)
     if not reference.is_dir():
         raise RuntimeError(f'reference checkout {reference} is missing; source times cannot be matched safely')
@@ -197,6 +209,40 @@ def rebase(build, root=ROOT, reference=None, log=print):
     log(f'{build}: re-rooted from {old}: {moved} object directories moved, {rewritten} build files and {generated} generated inputs rewritten (times kept), {matched} referenced files '
         f'took the reference times, {len(differing)} differ and will rebuild ({", ".join(differing[:8])}'
         f'{" ..." if len(differing) > 8 else ""})')
+    return report
+
+
+def _match_container_times(build, root, reference, report, log):
+    """A container-built tree (configured at /src) copied into ROOT on the host: only the source times."""
+    if reference is None or not Path(reference).is_dir():
+        raise RuntimeError(f'{build} was built in the build container (configured at {CONTAINER_ROOT}): pass --reference '
+                           'with the checkout it was copied from, so source times can be matched')
+    reference = Path(reference).resolve()
+    path_pattern = re.compile(re.escape(CONTAINER_ROOT.encode())+rb'/[A-Za-z0-9_.+@/-]+')
+    referenced = set()
+    for path in _text_files(build):
+        data = path.read_bytes()
+        if _is_text(data):
+            referenced.update(m.group(0).decode().rstrip('.:/') for m in path_pattern.finditer(data))
+    matched, differing, missing = 0, [], 0
+    for name in sorted(referenced):
+        relative = Path(name).relative_to(CONTAINER_ROOT)
+        target, source = root/relative, reference/relative
+        if not target.is_file() or target.is_symlink() or str(target).startswith(str(build)+'/'):
+            continue
+        if not source.is_file():
+            missing += 1
+            continue
+        if source.read_bytes() == target.read_bytes():
+            stat = source.stat()
+            os.utime(target, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+            matched += 1
+        else:
+            differing.append(str(relative))
+    report.update(rebased=False, containerTree=True, referencedFiles=len(referenced), timesMatched=matched,
+                  differingFiles=differing, missingInReference=missing, reference=str(reference))
+    log(f'{build}: built in the container at {CONTAINER_ROOT}, no re-rooting; {matched} referenced files took the times of '
+        f'{reference}, {len(differing)} differ and will rebuild ({", ".join(differing[:8])}{" ..." if len(differing) > 8 else ""})')
     return report
 
 

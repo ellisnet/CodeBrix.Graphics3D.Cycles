@@ -1,0 +1,58 @@
+# Copyright (c) 2026 Jeremy Ellis and contributors
+# SPDX-License-Identifier: Apache-2.0
+# =============================================================================================
+# Containerfile.x86_64 - the Linux x64 build machine of the native Cycles host
+# =============================================================================================
+#
+# The digest-pinned manylinux_2_28 base image IS the build machine: AlmaLinux 8.10, GCC 14.2.1
+# (gcc-toolset-14), binutils 2.41, glibc 2.28, CMake 4.4.0, GNU Make 4.2.1, Python 3.12. The
+# native build needs nothing more, so this file installs NOTHING: it labels the base and proves
+# the toolchain, so a different image fails here, at image build time, with a plain message.
+#
+# Building this image is the only step that may use the network (to pull the base image by
+# digest when it is not already local). Every build afterwards runs with --network none.
+#
+# Not in the image, on purpose:
+#   Clang  the WGSL overlay's AST translation runs on the build host (build.sh), and the
+#          container only checks the handed-in overlay (native/tools/build_cycles.py
+#          --overlay-check), so the overlay text does not depend on this image.
+#   (The base image has yasm. The dependency recipe switches libjpeg-turbo's SIMD off explicitly,
+#   so the JPEG library is the scalar code path of the reference builds whatever assembler exists.)
+#   ISPC   a build-time prerequisite taken from native/work/tools/ispc in the mounted checkout
+#          (pins.env ISPC_*), never part of the image.
+#
+# EVERY VERSION HERE COMES FROM pins.env; build.sh always passes --build-arg.
+# =============================================================================================
+
+ARG BASE_IMAGE=quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca
+FROM ${BASE_IMAGE}
+
+ARG BASE_IMAGE
+ARG GCC_VERSION=14.2.1
+ARG CMAKE_VERSION=4.4.0
+ARG GLIBC_VERSION=2.28
+ARG PYTHON_IN_IMAGE=/usr/local/bin/python3.12
+ARG PYTHON_VERSION=3.12
+
+LABEL org.opencontainers.image.title="codebrix-cycles-build-x86_64"
+LABEL org.opencontainers.image.description="CodeBrix.Graphics3D.Cycles Linux x64 native build machine: manylinux_2_28_x86_64, nothing added"
+LABEL org.opencontainers.image.source="CodeBrix.Graphics3D.Cycles/native/manylinux/Containerfile.x86_64"
+LABEL org.opencontainers.image.base.name="${BASE_IMAGE}"
+LABEL codebrix.graphics3d.cycles.build="1"
+
+# Prove the toolchain: exact compiler, CMake, glibc and Python versions; no Clang.
+RUN set -eu; \
+    echo "=== toolchain in codebrix-cycles-build-x86_64 ==="; \
+    grep -m1 PRETTY_NAME /etc/os-release; \
+    gcc --version | sed -n 1p; g++ --version | sed -n 1p; ld --version | sed -n 1p; \
+    cmake --version | sed -n 1p; make --version | sed -n 1p; ldd --version | sed -n 1p; \
+    "${PYTHON_IN_IMAGE}" --version; \
+    [ "$(gcc -dumpfullversion)" = "${GCC_VERSION}" ] || { echo "ERROR: GCC $(gcc -dumpfullversion), expected ${GCC_VERSION}" >&2; exit 1; }; \
+    [ "$(g++ -dumpfullversion)" = "${GCC_VERSION}" ] || { echo "ERROR: G++ $(g++ -dumpfullversion), expected ${GCC_VERSION}" >&2; exit 1; }; \
+    cmake --version | sed -n 1p | grep -qx "cmake version ${CMAKE_VERSION}" || { echo "ERROR: CMake is not ${CMAKE_VERSION}" >&2; exit 1; }; \
+    ldd --version | sed -n 1p | grep -q " ${GLIBC_VERSION}\$" || { echo "ERROR: glibc is not ${GLIBC_VERSION}" >&2; exit 1; }; \
+    "${PYTHON_IN_IMAGE}" -c "import sys; assert '%d.%d' % sys.version_info[:2] == '${PYTHON_VERSION}', sys.version"; \
+    if command -v clang > /dev/null 2>&1 || command -v clang++ > /dev/null 2>&1; then echo "ERROR: Clang is present; the overlay must come from the build host" >&2; exit 1; fi; \
+    echo "toolchain: ok"
+
+WORKDIR /src

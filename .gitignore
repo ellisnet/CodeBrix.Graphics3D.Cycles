@@ -435,6 +435,8 @@ native/work/
 # Reviewed dependency snapshots contain legitimate directories named log,
 # debug, release and build. They are source inputs, not generated outputs.
 !third_party/deps/**
+# The pins of the Linux x64 container build are a source input, not a local .env file.
+!native/manylinux/pins.env
 # Intentional, audited RID deliverables (including unstripped binaries/symbols).
 # Build intermediates belong in work/, bin/ and obj/, not this directory.
 !native/binaries/**

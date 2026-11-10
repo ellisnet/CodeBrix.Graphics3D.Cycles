@@ -4,6 +4,7 @@
 """Check a packed family against the reviewed payloads, then run the package audit.
 
     python3 tools/licensing/package_check.py nugets/Release/<version> --version <version>
+        [--payload linux-x64=<scratch stage folder>]
 
 The expected contents come from the repository, never from the package: the notices
 and documents must equal the files at the repository root, and a platform package's
@@ -17,6 +18,12 @@ exact WebGPU runtime dependency on every platform package that needs it, and no
 dependencies and no natives on .Core. A payload whose native sources changed since
 it was staged is reported as stale, because a package can be packed but not published
 from it.
+
+--payload RID=FOLDER checks that platform package against a scratch stage
+(native/tools/stage_linux_binaries.py --output FOLDER) instead of the tracked
+native/binaries/<rid>/: its natives must be exactly the stage's payloadFiles. A
+scratch stage is never approved, so the check passes but reports the package as
+NOT publishable, with the uncommitted-change hash the stage recorded.
 """
 import argparse,hashlib,json,re,subprocess,sys,xml.etree.ElementTree as ET,zipfile
 from pathlib import Path
@@ -33,7 +40,7 @@ PLATFORMS={'CodeBrix.Graphics3D.Cycles.LinuxX64'+SUFFIX:'linux-x64'}
 NO_WEBGPU=set()
 DOCUMENTS=['icon-codebrix-128.png','README.md','AGENT-README.txt','THIRD-PARTY-NOTICES.txt','LICENSE','NOTICE']
 CORE_ASSEMBLY=['lib/net10.0/CodeBrix.Graphics3D.Cycles.dll','lib/net10.0/CodeBrix.Graphics3D.Cycles.xml']
-NATIVE_SOURCES=['native/host','native/cycles','native/shaders','native/oracle/runner.cpp','third_party/cycles','third_party/deps','tools/dependencies']
+NATIVE_SOURCES=['native/host','native/cycles','native/shaders','native/oracle/runner.cpp','native/manylinux','third_party/cycles','third_party/deps','tools/dependencies']
 
 
 def digest(data):return hashlib.sha256(data).hexdigest()
@@ -68,7 +75,20 @@ def stale(rid,provenance):
  return f'{rid}: payload is STALE: {count} native source files changed since it was staged at {commit}; restage it before publishing' if count else None
 
 
-def expected_files(package_id,archive,nuspec):
+def scratch_payload(rid,folder):
+ """The natives of a scratch stage, and the warning that it is not publishable."""
+ provenance=json.loads((folder/'provenance.json').read_text())
+ if provenance.get('rid')!=rid or provenance.get('scratchStage') is not True or provenance.get('approved') is not False:
+  raise RuntimeError(f'{folder} is not a scratch stage of {rid}')
+ files={name:sha for name,sha in provenance['payloadFiles'].items() if name.startswith('runtime/')}
+ for name,sha in files.items():
+  if digest((folder/name).read_bytes())!=sha:raise RuntimeError(f'{folder/name} changed after it was staged')
+ changes=provenance.get('uncommittedChanges')
+ note=f'uncommitted changes, git diff --binary sha256 {changes["gitDiffBinarySha256"]}' if changes else 'no uncommitted changes'
+ return files,f'{rid}: packed from the scratch stage {folder} (commit {provenance.get("sourceCommit")}, {note}): NOT APPROVED, NOT PUBLISHABLE'
+
+
+def expected_files(package_id,archive,nuspec,payloads={}):
  files=metadata_files(archive,nuspec)
  for name in DOCUMENTS:files[name]=digest((ROOT/name).read_bytes())
  if package_id==CORE:
@@ -78,6 +98,10 @@ def expected_files(package_id,archive,nuspec):
   return files,None
  rid=PLATFORMS.get(package_id)
  if rid is None:raise RuntimeError(f'{package_id} is not a known package of this family')
+ if rid in payloads:
+  natives,warning=scratch_payload(rid,payloads[rid])
+  for name,sha in natives.items():files[f'runtimes/{rid}/native/{name[len("runtime/"):]}']=sha
+  return files,warning
  provenance=json.loads((ROOT/'native/binaries'/rid/'provenance.json').read_text())
  for name,sha in provenance['approvedPayload'].items():
   if name.startswith('runtime/'):files[f'runtimes/{rid}/native/{name[len("runtime/"):]}']=sha
@@ -95,7 +119,14 @@ def check_dependencies(package_id,dependencies,version,webgpu_pin):
 
 def main():
  parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
- parser.add_argument('folder',type=Path);parser.add_argument('--version',required=True);args=parser.parse_args()
+ parser.add_argument('folder',type=Path);parser.add_argument('--version',required=True)
+ parser.add_argument('--payload',action='append',default=[],metavar='RID=FOLDER',help='Check that platform package against a scratch stage')
+ args=parser.parse_args()
+ payloads={}
+ for item in args.payload:
+  rid,_,folder=item.partition('=')
+  if rid not in PLATFORMS.values() or not folder:parser.error(f'--payload {item}: expected RID=FOLDER with RID one of {sorted(PLATFORMS.values())}')
+  payloads[rid]=Path(folder).resolve()
  packages=sorted(args.folder.glob('*.nupkg'))
  if not packages:raise SystemExit(f'No packages in {args.folder}')
  project=(ROOT/'src/CodeBrix.Graphics3D.Cycles/CodeBrix.Graphics3D.Cycles.csproj').read_text()
@@ -106,7 +137,7 @@ def main():
    package_id,version,dependencies,nuspec=nuspec_of(archive)
    if version!=args.version:raise RuntimeError(f'{package.name} has version {version}, expected {args.version}')
    check_dependencies(package_id,dependencies,version,webgpu_pin)
-   files,warning=expected_files(package_id,archive,nuspec)
+   files,warning=expected_files(package_id,archive,nuspec,payloads)
   if warning:warnings.append(warning)
   manifest=output/(package_id+'.payload-manifest.json')
   manifest.write_text(json.dumps(dict(approvedForPackaging=True,files=files),indent=1,sort_keys=True)+'\n')

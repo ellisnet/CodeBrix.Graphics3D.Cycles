@@ -24,6 +24,8 @@ WORK=ROOT/'native/work/dependencies'
 PREFIX=WORK/'install'
 
 ISPC_VERSION='1.30.0'
+# Linker flags of every Linux x64 dependency (run(); see the comment there).
+LINK_FLAGS='-Wl,--as-needed -Wl,--exclude-libs,libstdc++_nonshared.a'
 
 
 def ispc():
@@ -106,6 +108,9 @@ def run(source=SOURCE,work=WORK,jobs=6,only=None):
     env['LD_LIBRARY_PATH']=str(prefix/'lib')
     for name,path,options in profile(source):
         if only and name not in only:continue
+        # The JPEG library's SIMD off, as on Windows and macOS x64: the verified scalar fallback. The
+        # manylinux build image has yasm, which CMake would otherwise take for NASM.
+        if name=='jpeg':options=dict(options,WITH_SIMD='OFF')
         common=dict(CMAKE_BUILD_TYPE='Release',CMAKE_POSITION_INDEPENDENT_CODE='ON',
                     CMAKE_EXPORT_COMPILE_COMMANDS='ON',CMAKE_INSTALL_PREFIX=prefix,
                     CMAKE_PREFIX_PATH=prefix,
@@ -113,6 +118,20 @@ def run(source=SOURCE,work=WORK,jobs=6,only=None):
                     BUILD_SHARED_LIBS='ON',BUILD_TESTING='OFF',
                     FETCHCONTENT_FULLY_DISCONNECTED='ON',FETCHCONTENT_UPDATES_DISCONNECTED='ON')
         common['CMAKE_INSTALL_LIBDIR:STRING']='lib'
+        # CMake 4 (the manylinux build image has 4.4) refuses cmake_minimum_required below 3.5, which the
+        # jpeg, yaml-cpp and robin-map snapshots declare; CMake 3.x accepted them with a deprecation warning.
+        # This raises only those requests to 3.5; a project that asks for 3.5 or newer is unaffected.
+        common['CMAKE_POLICY_VERSION_MINIMUM']='3.5'
+        # Link only the libraries a binary uses, as Debian's GCC does by default and the manylinux GCC
+        # does not. gcc-toolset's libstdc++ is the system libstdc++.so.6 (GCC 8) plus a static archive,
+        # libstdc++_nonshared.a, for everything newer; --exclude-libs keeps those static copies private
+        # to each library, so no library exports C++ runtime symbols that others would bind to (and so
+        # need it: libboost_thread would need libboost_chrono for std::string::_M_replace_cold).
+        for kind in ('SHARED','MODULE'):common[f'CMAKE_{kind}_LINKER_FLAGS']=LINK_FLAGS
+        common['CMAKE_EXE_LINKER_FLAGS']=LINK_FLAGS
+        # The build-time Python (OIDN converts its weights with it) is the interpreter running this recipe,
+        # not whichever newer one CMake finds first (the build image also has 3.13 to 3.15).
+        common['Python_EXECUTABLE']=common['Python3_EXECUTABLE']=sys.executable
         common.update(options)
         build=work/name;build.mkdir(parents=True,exist_ok=True)
         steps=[['cmake','-S',path,'-B',build,*['-D'+k+'='+str(v) for k,v in common.items()]],
@@ -137,6 +156,10 @@ if __name__=='__main__':
     p.add_argument('--only',nargs='+');p.add_argument('--staging',type=Path,
         help='License-review development only: outside-repo staged sources, never a release build')
     a=p.parse_args()
+    import platform
+    if not a.staging and sys.platform=='linux' and platform.machine()=='x86_64' and not os.environ.get('CODEBRIX_CYCLES_CONTAINER'):
+        # The Linux x64 build runs in the manylinux container (native/manylinux/build.sh).
+        raise SystemExit(subprocess.run(['bash',str(ROOT/'native/manylinux/build.sh'),'dependencies',*sys.argv[1:]]).returncode)
     if a.staging:
         if ROOT in a.staging.resolve().parents:raise RuntimeError('Staging must be outside the repository')
         print(run(a.staging,a.staging.parent/'staging-build',a.jobs,a.only))

@@ -35,7 +35,7 @@ def generate(check=False):
         if c.get('embeddedLicenseForms'):
             block += 'Retained file/license forms: ' + '; '.join(c['embeddedLicenseForms']) + '\n'
         notice += block + '\n'
-        full += block + 'Notices: ' + ', '.join(c['notices']) + '\n\n'
+        full += block + ('Notices: ' + ', '.join(c['notices'])).rstrip() + '\n\n'
         files += c['notices']
     full += 'FULL LICENSE AND ATTRIBUTION TEXTS\n' + '=' * 70 + '\n'
     for name in dict.fromkeys(files):

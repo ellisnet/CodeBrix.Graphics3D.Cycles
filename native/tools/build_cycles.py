@@ -6,9 +6,13 @@ import argparse
 import difflib
 import hashlib
 import json
+import os
+import platform
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from build import ROOT,REPO,WORK,REVISION,PACKAGE,audit,generate, SOURCE, verify_cycles
 from native_dependencies import prefix as dependency_prefix
@@ -16,6 +20,7 @@ from arm_math_source import verify as verify_arm_math
 from cycles_overlay import registration_overlay
 from rebase_build_tree import rebase, verify as verify_rebase
 UPSTREAM=SOURCE
+LINK_FLAGS='-Wl,--as-needed -Wl,--exclude-libs,libstdc++_nonshared.a'
 
 def _write(path,text):
     # Generated build inputs are rewritten only when their content changes, so an
@@ -23,12 +28,24 @@ def _write(path,text):
     path=Path(path)
     if not path.exists() or path.read_text()!=text:path.write_text(text)
 
-def overlay(out=None):
+# The Linux x64 build runs in the manylinux container (native/manylinux): the checkout is mounted
+# at /src there, and build.sh sets this variable. Outside it, a build is handed over to the container.
+IN_CONTAINER=bool(os.environ.get('CODEBRIX_CYCLES_CONTAINER'))
+CONTAINER_BUILD=REPO/'native/manylinux/build.sh'
+STALE_TRANSLATION=('The WGSL translation in the overlay is missing or stale, and it needs Clang: regenerate the overlay on '
+    'the build host first (python3 native/tools/build_cycles.py --overlay-only)')
+
+def overlay(out=None,translate=True,located=None):
+    """Generate the overlay into OUT. TRANSLATE=False refuses instead of running the Clang AST
+    translation when its cached output is not current. LOCATED is the directory the overlay is
+    used from (default OUT): the device header names native/cycles relative to it, so the overlay
+    holds no checkout path and is the same in every checkout and in the build container."""
     verify_cycles()
     verify_arm_math()
     out=Path(out) if out is not None else WORK/'cycles-overlay'
     registration_overlay(out)
-    _write(out/'codebrix_webgpu_device.h','#include "'+str(ROOT/'cycles/device.h')+'"\n')
+    device=Path(os.path.relpath(ROOT/'cycles/device.h',Path(located) if located is not None else out)).as_posix()
+    _write(out/'codebrix_webgpu_device.h','#include "'+device+'"\n')
     shader=(ROOT/'shaders/controls.wgsl').read_text();_write(out/'controls_shader.inc','R"CBWGSL('+shader+')CBWGSL"\n')
     # Reuse the already checked pure integer hash/shuffle functions; native
     # camera accessors below read original KernelData and scene arrays directly.
@@ -50,6 +67,7 @@ def overlay(out=None):
     if valid and set(cached.get('outputs',{}))=={'translated.wgsl','translation.json'}:
         translated=(out/'translated.wgsl').read_text()
     else:
+        if not translate:raise RuntimeError(STALE_TRANSLATION)
         generate(UPSTREAM,out,REPO/'research/native/reference.cpp')
         translated=(out/'translated.wgsl').read_text()
         cache.write_text(json.dumps({'fingerprint':fingerprint,'outputs':{name:hashlib.sha256((out/name).read_bytes()).hexdigest()
@@ -150,6 +168,47 @@ def overlay(out=None):
     _write(out/'state_copy_reference.inc','// SPDX-FileCopyrightText: 2011-2022 Blender Foundation\n// SPDX-License-Identifier: Apache-2.0\n'+source)
     return out
 
+def overlay_check(out=None):
+    """The build container's overlay step: the handed-in overlay must be exactly what the current
+    sources generate. It is regenerated into a scratch directory from its own cached translation
+    (no Clang) and compared file by file; nothing in OUT is written. Stale: refused."""
+    out=Path(out) if out is not None else WORK/'cycles-overlay'
+    with tempfile.TemporaryDirectory() as scratch:
+        fresh=Path(scratch)/out.name;fresh.mkdir()
+        for name in ('translated.wgsl','translation.json','translation-cache.json'):
+            if (out/name).exists():shutil.copy2(out/name,fresh/name)
+        overlay(fresh,translate=False,located=out)
+        expected={p.relative_to(fresh).as_posix():p.read_bytes() for p in fresh.rglob('*') if p.is_file()}
+        patch=(Path(scratch)/'cycles-registration.patch').read_bytes()
+    stale=sorted(name for name,data in expected.items() if not (out/name).is_file() or (out/name).read_bytes()!=data)
+    if not (out.parent/'cycles-registration.patch').is_file() or (out.parent/'cycles-registration.patch').read_bytes()!=patch:
+        stale.append('../cycles-registration.patch')
+    if stale:
+        raise RuntimeError('The WGSL overlay '+str(out)+' is stale ('+', '.join(stale[:12])+(' ...' if len(stale)>12 else '')+
+            '): regenerate it on the build host (python3 native/tools/build_cycles.py --overlay-only)')
+    return dict(overlay=str(out),files=len(expected),identical=True)
+
+def build_machine():
+    """The container build's toolchain, recorded in cycles-build.json (and from there in provenance)."""
+    def first(*command):
+        try:return subprocess.run(command,capture_output=True,text=True,check=True).stdout.splitlines()[0].strip()
+        except (OSError,subprocess.CalledProcessError,IndexError):return None
+    return dict(kind='manylinux container' if IN_CONTAINER else 'host',image=os.environ.get('CODEBRIX_BUILD_IMAGE'),
+        imageId=os.environ.get('CODEBRIX_BUILD_IMAGE_ID'),baseImage=os.environ.get('CODEBRIX_BUILD_BASE_IMAGE'),
+        baseDigest=os.environ.get('CODEBRIX_BUILD_BASE_DIGEST'),checkoutRoot=str(REPO),
+        os=next((l.split('=',1)[1].strip().strip('"') for l in Path('/etc/os-release').read_text().splitlines() if l.startswith('PRETTY_NAME=')),None),
+        compiler=first('c++','--version'),linker=first('ld','--version'),libc=first('ldd','--version'),cmake=first('cmake','--version'),
+        make=first('make','--version'),python=sys.version.split()[0],
+        ispc=first(os.environ['CODEBRIX_ISPC'],'--version') if os.environ.get('CODEBRIX_ISPC') else None)
+
+def hand_over():
+    """On the Linux x64 build host: make the overlay here (Clang), then run this script with the
+    same arguments in the build container (native/manylinux/build.sh cycles ...)."""
+    overlay()
+    environment=dict(os.environ,CODEBRIX_CYCLES_OVERLAY_DONE='1')
+    result=subprocess.run(['bash',str(CONTAINER_BUILD),'cycles',*sys.argv[1:]],env=environment)
+    if result.returncode:raise SystemExit(result.returncode)
+
 def cpu_kernel_flags(build):
     """The CPU kernel compile line of the fixed-baseline oracle, checked: SSE4.2,
     no -march=native/AVX/FMA, contraction and reciprocal math switched off last."""
@@ -170,14 +229,26 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('--jobs',default='6')
     p.add_argument('--target', action='append', help='Build selected CMake targets instead of the default host and gates')
     p.add_argument('--rebase-build-tree', action='store_true', help='Re-point a build tree copied from another checkout at this checkout first (tools/rebase_build_tree.py)')
-    p.add_argument('--overlay-only', action='store_true', help='Only regenerate the overlay (the build tree runs this before compiling it)')
+    p.add_argument('--overlay-only', action='store_true', help='Only regenerate the overlay (on the build host; needs Clang)')
+    p.add_argument('--overlay-check', action='store_true', help='Only check that the overlay is current (the container build tree runs this before compiling it)')
     args=p.parse_args()
+    if args.overlay_check:
+        print(json.dumps(overlay_check()));return
     if args.overlay_only:
+        if IN_CONTAINER:raise RuntimeError('The overlay is generated on the build host, never in the build container: '
+            'run python3 native/tools/build_cycles.py --overlay-only there')
         overlay();return
+    if not IN_CONTAINER and sys.platform=='linux' and platform.machine()=='x86_64':
+        hand_over();return
     WORK.mkdir(exist_ok=True)
     rebased=rebase(WORK/'cycles-build',REPO) if args.rebase_build_tree and (WORK/'cycles-build/CMakeCache.txt').exists() else None
     (WORK/'cycles-webgpu-compatibility.json').write_text(json.dumps(audit(allow_rust_documentation_change=True),indent=2)+'\n')
-    generated=overlay();deps=dependency_prefix();build=WORK/'cycles-build'
+    if IN_CONTAINER:
+        overlay_check();generated=WORK/'cycles-overlay'
+    else:
+        generated=overlay()
+    deps=dependency_prefix();build=WORK/'cycles-build'
+    runtime=Path(PACKAGE)/'runtimes/linux-x64/native'
     options={'CMAKE_BUILD_TYPE':'Release','CMAKE_POSITION_INDEPENDENT_CODE':'ON','CMAKE_EXPORT_COMPILE_COMMANDS':'ON',
         'CMAKE_PREFIX_PATH':deps,'WITH_LIBS_PRECOMPILED':'OFF','WITH_LEGACY_LIBRARIES':'ON',
         # Fixed-baseline CPU oracle (native/DEVICE.md): Cycles' SSE4.2 kernels only,
@@ -188,8 +259,29 @@ def main():
         'CMAKE_PROJECT_Cycles_INCLUDE':ROOT/'tools/inject_cycles.cmake','CODEBRIX_CYCLES_OVERLAY':generated,
         # Every build of the tree regenerates the overlay first, so a plain
         # cmake --build never compiles shader text older than native/shaders.
-        'CODEBRIX_CYCLES_OVERLAY_COMMAND':sys.executable+';'+str(Path(__file__).resolve())+';--overlay-only',
-        'CODEBRIX_WEBGPU_PACKAGE':PACKAGE}
+        # In the build container that step only checks the overlay handed in from the build host.
+        'CODEBRIX_CYCLES_OVERLAY_COMMAND':sys.executable+';'+str(Path(__file__).resolve())+(';--overlay-check' if IN_CONTAINER else ';--overlay-only'),
+        'CODEBRIX_WEBGPU_PACKAGE':PACKAGE,
+        # Run paths: the build tree's own libraries and the dependency prefix relative to $ORIGIN (bin/ and
+        # lib/ are both two levels below native/work), so the trees run outside the container and from a
+        # copy in another checkout; the unchanged WebGPU runtime from its package path (the container
+        # mounts the package at the same path). Staging rewrites every shipped run path to $ORIGIN.
+        # glibc 2.28 (the build container) keeps pthread out of libc: FindThreads' result then depends on
+        # which find_package(Threads) runs first, and only the second configure of a fresh tree gives every
+        # target -pthread, so the first rebuild would recompile everything. Preferring the flag from the
+        # start makes the first configure equal every later one.
+        'THREADS_PREFER_PTHREAD_FLAG:BOOL':'ON',
+        'CMAKE_BUILD_WITH_INSTALL_RPATH':'ON',
+        # Only the libraries a binary uses become NEEDED (Debian's GCC default, not the manylinux GCC's), and
+        # the static libstdc++_nonshared.a parts stay private to each binary (tools/dependencies/build.py).
+        'CMAKE_SHARED_LINKER_FLAGS':LINK_FLAGS,'CMAKE_MODULE_LINKER_FLAGS':LINK_FLAGS,'CMAKE_EXE_LINKER_FLAGS':LINK_FLAGS,
+        # Inline functions are hidden (-fvisibility-inlines-hidden). The host exports only its C API, but
+        # the container's binutils 2.41 keeps a LOCAL .dynsym entry for every inline libstdc++ member the
+        # host defines that libstdc++.so.6 also defines and references (std::string::reserve and others
+        # from C++20 translation units): the version script makes them local, yet they stay in the dynamic
+        # symbol table. Hidden at compile time they never get there, as with Debian's binutils 2.44.
+        'CMAKE_VISIBILITY_INLINES_HIDDEN:BOOL':'ON',
+        'CMAKE_INSTALL_RPATH':'$ORIGIN/../lib;$ORIGIN/../../dependencies/install/lib;'+str(runtime)}
     # Open Image Denoise (CPU device) from the reviewed snapshot built into the
     # dependency prefix; path guiding stays off explicitly.
     options.update({'WITH_CYCLES_OPENIMAGEDENOISE':'ON','OPENIMAGEDENOISE_ROOT_DIR':deps,'WITH_CYCLES_PATH_GUIDING':'OFF'})
@@ -210,6 +302,7 @@ def main():
     for command in commands:subprocess.run(command,check=True)
     if rebased and rebased['rebased']:verify_rebase(build,REPO,rebased['oldRoot'])
     (WORK/'cycles-build.json').write_text(json.dumps({'commands':commands,'cyclesRevision':REVISION,
+        'buildMachine':build_machine(),
         'cpuKernelCompile':cpu_kernel_flags(build),
         'registrationPatchSha256':hashlib.sha256((WORK/'cycles-registration.patch').read_bytes()).hexdigest(),
         'shaderSha256':hashlib.sha256((ROOT/'shaders/controls.wgsl').read_bytes()).hexdigest(),

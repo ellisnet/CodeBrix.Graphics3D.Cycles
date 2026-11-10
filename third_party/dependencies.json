@@ -513,14 +513,12 @@
     {
       "id": "glibc",
       "name": "glibc",
-      "version": "2.41",
+      "version": "2.28 (build) with the system glibc, GLIBC_2.27 symbols or newer (run time)",
       "license": "LGPL-2.1-or-later",
       "source": "https://www.gnu.org/software/libc/",
-      "use": "Dynamic system runtime only; never bundled or statically linked.",
+      "use": "Linux x64: dynamic system runtime (libc.so.6, libm.so.6, libdl.so.2, libpthread.so.0 and ld-linux-x86-64.so.2 of the target system); not bundled. Built against glibc 2.28 (glibc-2.28-251.el8_10.38 of quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca); the shipped libraries need GLIBC_2.27 symbols or newer at run time. glibc's small static startup and nonshared objects (crti.o, crtn.o, libc_nonshared.a) are linked in under glibc's own linking exception, as on the Debian build.",
       "attribution": "Free Software Foundation and contributors",
-      "notices": [
-        "third_party/licenses/libc6-Debian-copyright.txt"
-      ],
+      "notices": [],
       "sonames": [
         "libc.so.6",
         "libm.so.6",
@@ -530,48 +528,71 @@
       ],
       "conditions": "Explicit Linux system-runtime exception in Jeremy's license plan, not a general LGPL allowance.",
       "systemPackage": {
-        "package": "libc6",
-        "version": "2.41-12+deb13u4"
+        "image": "quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca",
+        "packages": [
+          {
+            "package": "glibc",
+            "version": "2.28-251.el8_10.38"
+          }
+        ]
       }
     },
     {
       "id": "libstdcxx",
       "name": "GCC libstdc++",
-      "version": "14.2.0",
+      "version": "14.2.1 (gcc-toolset-14) with the system libstdc++.so.6",
       "license": "GPL-3.0-or-later WITH GCC-exception-3.1",
       "source": "https://gcc.gnu.org/",
-      "use": "External Linux compiler/runtime input allowed by the explicit GCC Runtime Library Exception policy; currently dynamically linked.",
+      "use": "Linux x64: GCC runtime library. libstdc++.so.6 of the target system is linked dynamically (symbol versions up to GLIBCXX_3.4.22 and CXXABI_1.3.11); the parts of libstdc++ newer than the system library are linked statically into each shipped library from gcc-toolset-14's libstdc++_nonshared.a (GCC 14.2.1) and kept private to it. Both are Target Code produced by an Eligible Compilation Process under the GCC Runtime Library Exception 3.1. Built in quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca (AlmaLinux 8.10; gcc-toolset-14-libstdc++-devel 14.2.1-11.el8_10, libstdc++ 8.5.0-28.el8_10.alma.1).",
       "attribution": "Free Software Foundation and contributors",
       "notices": [
-        "third_party/licenses/libstdc++6-Debian-copyright.txt"
+        "third_party/licenses/GCC-RUNTIME-LIBRARY-EXCEPTION-3.1.txt"
       ],
       "sonames": [
         "libstdc++.so.6"
       ],
-      "conditions": "Explicit GCC Runtime Library Exception in Jeremy's plan; ordinary eligible compilation. No GPL-only renderer implementation is admitted.",
+      "conditions": "GCC Runtime Library Exception 3.1 (statically linked runtime parts as well as the dynamic library), approved by the maintainer; ordinary eligible compilation with GCC. No GPL-only renderer implementation is admitted.",
       "systemPackage": {
-        "package": "libstdc++6",
-        "version": "14.2.0-19"
+        "image": "quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca",
+        "packages": [
+          {
+            "package": "gcc-toolset-14-libstdc++-devel",
+            "version": "14.2.1-11.el8_10"
+          },
+          {
+            "package": "libstdc++",
+            "version": "8.5.0-28.el8_10.alma.1"
+          }
+        ]
       }
     },
     {
       "id": "libgcc",
       "name": "GCC libgcc",
-      "version": "14.2.0",
+      "version": "14.2.1 (gcc-toolset-14) with the system libgcc_s.so.1",
       "license": "GPL-3.0-or-later WITH GCC-exception-3.1",
       "source": "https://gcc.gnu.org/",
-      "use": "External Linux compiler/runtime input allowed by the explicit GCC Runtime Library Exception policy; currently dynamically linked.",
+      "use": "Linux x64: GCC runtime library. libgcc_s.so.1 of the target system is linked dynamically (GCC_3.0 to GCC_4.0.0); GCC 14.2.1's crtbeginS.o and crtendS.o are linked statically into each shipped library. No libgcc.a or libgcc_eh.a member is included. Target Code of an Eligible Compilation Process under the GCC Runtime Library Exception 3.1. Built in quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca (AlmaLinux 8.10; gcc-toolset-14-gcc 14.2.1-11.el8_10, libgcc 8.5.0-28.el8_10.alma.1).",
       "attribution": "Free Software Foundation and contributors",
       "notices": [
-        "third_party/licenses/libgcc-s1-Debian-copyright.txt"
+        "third_party/licenses/GCC-RUNTIME-LIBRARY-EXCEPTION-3.1.txt"
       ],
       "sonames": [
         "libgcc_s.so.1"
       ],
-      "conditions": "Explicit GCC Runtime Library Exception in Jeremy's plan; ordinary eligible compilation. No GPL-only renderer implementation is admitted.",
+      "conditions": "GCC Runtime Library Exception 3.1 (statically linked startup objects as well as the dynamic library), approved by the maintainer; ordinary eligible compilation with GCC. No GPL-only renderer implementation is admitted.",
       "systemPackage": {
-        "package": "libgcc-s1",
-        "version": "14.2.0-19"
+        "image": "quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca",
+        "packages": [
+          {
+            "package": "gcc-toolset-14-gcc",
+            "version": "14.2.1-11.el8_10"
+          },
+          {
+            "package": "libgcc",
+            "version": "8.5.0-28.el8_10.alma.1"
+          }
+        ]
       }
     },
     {
@@ -963,6 +984,7 @@
     "third_party/licenses/libc6-Debian-copyright.txt": "f5788886720a2605a946e81d571e6c8162b09f58d2e2ceb8d36e5768fccd850d",
     "third_party/licenses/libstdc++6-Debian-copyright.txt": "20390f8a6f3b1e4d7cb45dd8652dabb259bbef688cbad839bcdb0b9ba7252f79",
     "third_party/licenses/libgcc-s1-Debian-copyright.txt": "20390f8a6f3b1e4d7cb45dd8652dabb259bbef688cbad839bcdb0b9ba7252f79",
+    "third_party/licenses/GCC-RUNTIME-LIBRARY-EXCEPTION-3.1.txt": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
     "third_party/licenses/CodeBrix.WebGpu.Native-LICENSE.txt": "b3ff09aeb00af04bd34219ff672e3b8435721c4f6861b54ae0195a5f187dc33e",
     "third_party/licenses/CodeBrix.WebGpu.Native-THIRD-PARTY-NOTICES.txt": "d720a3afba41db959910d9c453828b17f38a82b93f3b12d3c8e0d868edfa0d78",
     "third_party/licenses/LICENSE-WgpuNative.txt": "b14697c11fd0a05566ad88ee37f6ae3e38f43fd043820748fa75e0d26c56aa5b",

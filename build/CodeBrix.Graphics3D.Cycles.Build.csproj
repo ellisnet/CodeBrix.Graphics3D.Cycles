@@ -16,6 +16,12 @@
 
 	Packages land in:  {repo}/nugets/$(Configuration)/$(BuildVersion)/
 
+	SCRATCH PAYLOAD (Linux x64): -p:LinuxX64Payload=<folder> packs .LinuxX64 from
+	a scratch stage (what native/tools/stage_linux_binaries.py writes with its
+	output option)
+	instead of native/binaries/linux-x64/, and package_check.py checks it against
+	that stage and reports it as not publishable. The tracked payload is not read.
+
 	ADDING A PLATFORM: stage and review its payload in native/binaries/<rid>/,
 	add its nuspec to build/nuget/ and add one line to the _Nuspec list below.
 	The next run packs it with the rest of the family at one version.
@@ -60,6 +66,10 @@
 		<!-- The .Core pack builds here, so it cannot collide with a solution build
 		     compiling the same project in bin/ and obj/ at the same moment. -->
 		<_PackWork>$(MSBuildThisFileDirectory).pack-work\</_PackWork>
+		<!-- The Linux x64 payload folder (runtime/ inside it): the tracked one unless LinuxX64Payload names a scratch stage. -->
+		<_LinuxX64Payload Condition="'$(LinuxX64Payload)'==''">..\..\native\binaries\linux-x64</_LinuxX64Payload>
+		<_LinuxX64Payload Condition="'$(LinuxX64Payload)'!=''">$([System.IO.Path]::GetFullPath('$(LinuxX64Payload)'))</_LinuxX64Payload>
+		<_PayloadCheck Condition="'$(LinuxX64Payload)'!=''"> --payload &quot;linux-x64=$(_LinuxX64Payload)&quot;</_PayloadCheck>
 	</PropertyGroup>
 
 	<!-- The native platform packages. Only validated platforms are listed. -->
@@ -100,9 +110,9 @@
 		     property on, an explicit `dotnet pack` does NOT run Build first, so a
 		     package could ship a stale assembly stamped with an older version. -->
 		<Exec Command="dotnet pack &quot;$(_CoreProject)&quot; -c Release -p:BuildVersion=$(BuildVersion) -p:GeneratePackageOnBuild=false -p:BaseOutputPath=&quot;$(_PackWork)bin/&quot; -p:BaseIntermediateOutputPath=&quot;$(_PackWork)obj/&quot; --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
-		<Exec Command="dotnet pack &quot;$(_PackShim)&quot; -p:CbxNuspec=&quot;%(_Nuspec.Identity)&quot; -p:CbxNuspecBasePath=&quot;$(_NuspecDir)&quot; -p:CbxVersion=$(BuildVersion) -p:CbxBranch=$(_GitBranch) -p:CbxCommit=$(_GitCommit) --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
+		<Exec Command="dotnet pack &quot;$(_PackShim)&quot; -p:CbxNuspec=&quot;%(_Nuspec.Identity)&quot; -p:CbxNuspecBasePath=&quot;$(_NuspecDir)&quot; -p:CbxVersion=$(BuildVersion) -p:CbxBranch=$(_GitBranch) -p:CbxCommit=$(_GitCommit) -p:CbxLinuxX64Payload=&quot;$(_LinuxX64Payload)&quot; --output &quot;$(_PackOutputDir)&quot; --nologo --verbosity minimal" />
 
-		<Exec Command="python3 tools/licensing/package_check.py &quot;$(_PackOutputDir)&quot; --version $(BuildVersion)" WorkingDirectory="$(_RepoRoot)" />
+		<Exec Command="python3 tools/licensing/package_check.py &quot;$(_PackOutputDir)&quot; --version $(BuildVersion)$(_PayloadCheck)" WorkingDirectory="$(_RepoRoot)" />
 
 	</Target>
 

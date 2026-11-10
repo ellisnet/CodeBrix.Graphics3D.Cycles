@@ -4,10 +4,22 @@
 """Stage the linux-x64 deliverable in native/binaries/linux-x64.
 
     python3 native/tools/stage_linux_binaries.py
+    python3 native/tools/stage_linux_binaries.py --output DIR   (scratch stage)
 
-Builds the host and the oracle runner at the current commit first (a no-op when
-they are current), and refuses when the native sources have uncommitted changes,
-so the payload always names the one commit it was built from.
+Builds the host and the oracle runner at the current commit first, in the
+manylinux build container (native/manylinux; a no-op when they are current), and
+refuses when the native sources have uncommitted changes, so the payload always
+names the one commit it was built from.
+
+A scratch stage (--output, a folder outside the tracked tree: git-ignored under
+the checkout, such as native/work/staging/linux-x64, or outside it) leaves
+native/binaries/ untouched. It may proceed with uncommitted native changes, and
+then records the SHA-256 of `git diff --binary` and the changed paths. It is
+never approved: provenance.json says "approved": false and has an empty
+approvedPayload, and the files it staged are listed in payloadFiles. The pack
+driver packs .LinuxX64 from it with -p:LinuxX64Payload=DIR, and
+tools/licensing/package_check.py --payload linux-x64=DIR checks that package
+against it and reports it as not publishable.
 
 runtime/    stripped host and dependency libraries, named by SONAME
 unstripped/ the same libraries before stripping (symbol tables retained; the build
@@ -31,7 +43,7 @@ The runtime payload is then copied to a temporary directory together with the
 WebGPU runtime and rendered with on CPU and WebGPU in a clean environment. The CPU
 film must equal the newest committed Linux x64 reference film of that scene.
 """
-import hashlib,json,os,platform,re,shutil,struct,subprocess,sys,tempfile,time
+import argparse,hashlib,json,os,platform,re,shutil,struct,subprocess,sys,tempfile,time
 from pathlib import Path
 
 REPO=Path(__file__).resolve().parents[2]
@@ -43,7 +55,7 @@ RUNTIME_LOADED=['libOpenImageDenoise_device_cpu.so.2.5.1']
 RUNTIME_NAME='libcodebrix_wgpu.so'
 RUNTIME_PACKAGE=dict(id='CodeBrix.WebGpu.Native.MitLicenseForever',version='1.0.300.210',path=f'runtimes/{RID}/native/{RUNTIME_NAME}')
 SYSTEM={'libc.so.6','libm.so.6','libgcc_s.so.1','libstdc++.so.6','ld-linux-x86-64.so.2','libdl.so.2','libpthread.so.0','librt.so.1'}
-NATIVE_SOURCES=['native/host','native/cycles','native/shaders','native/oracle/runner.cpp','third_party/cycles','third_party/deps','tools/dependencies']
+NATIVE_SOURCES=['native/host','native/cycles','native/shaders','native/oracle/runner.cpp','native/manylinux','third_party/cycles','third_party/deps','tools/dependencies']
 REFERENCE='native/evidence/linux-x64-reference-20261107'
 CHECK_SCENE='starter/diffuse-triangle'
 # Shipped library name prefix -> third_party/dependencies.json component.
@@ -98,6 +110,15 @@ def set_runpath(path,value=b'$ORIGIN'):
  if len(value)>end-start:raise RuntimeError(f'{path}: the new run path does not fit')
  data[start:end]=value+bytes(end-start-len(value))
  Path(path).write_bytes(data)
+
+
+def symbol_versions(paths):
+ """Every GLIBC_/GLIBCXX_/CXXABI_/GCC_ version the payload's dynamic symbols reference, per family."""
+ seen={}
+ for path in paths:
+  for family,version in re.findall(r'\b(GLIBC|GLIBCXX|CXXABI|GCC)_([0-9][0-9.]*)',tool('objdump','-T',str(path))):
+   seen.setdefault(family,set()).add(version)
+ return {family:sorted(versions,key=lambda v:tuple(int(x) for x in v.split('.'))) for family,versions in sorted(seen.items())}
 
 
 def closure():
@@ -155,25 +176,47 @@ def standalone_render(runtime,wgpu):
  return dict(scene=CHECK_SCENE,filmSha256=results,cpuFilmEqualsReference=REFERENCE)
 
 
-def approvable(payload):
+def approvable(payload,target):
  """The audit requires every approved file to be a tracked candidate, so a git-ignored folder is
  recorded in `binaries` but not approved. Un-ignoring it and staging again approves it."""
- ignored=subprocess.run(['git','check-ignore','--stdin'],cwd=REPO,input='\n'.join(str(TARGET.relative_to(REPO)/name) for name in payload),capture_output=True,text=True).stdout.split()
- return {name:digest for name,digest in payload.items() if str(TARGET.relative_to(REPO)/name) not in ignored}
+ ignored=subprocess.run(['git','check-ignore','--stdin'],cwd=REPO,input='\n'.join(str(target.relative_to(REPO)/name) for name in payload),capture_output=True,text=True).stdout.split()
+ return {name:digest for name,digest in payload.items() if str(target.relative_to(REPO)/name) not in ignored}
+
+
+def scratch_target(path):
+ """A scratch stage must not touch the tracked tree: outside the checkout, or a git-ignored folder in it."""
+ path=path.resolve()
+ if path==REPO or REPO in path.parents:
+  relative=path.relative_to(REPO)
+  if relative.parts[:2]==('native','binaries') or subprocess.run(['git','check-ignore','-q',str(relative/'provenance.json')],cwd=REPO).returncode!=0:
+   raise RuntimeError(f'{path} is in the tracked tree; a scratch stage goes to a git-ignored folder (such as native/work/staging/{RID}) or outside the checkout')
+ return path
 
 
 def main():
+ parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
+ parser.add_argument('--output',type=Path,help='Stage into this scratch folder instead of native/binaries/linux-x64 (never approved)')
+ parser.add_argument('--jobs',default='6')
+ args=parser.parse_args()
  if platform.system()!='Linux' or platform.machine()!='x86_64':
   raise SystemExit(f'{RID}: staging runs only on the Linux x64 machine; this host is {platform.system()} {platform.machine()}')
- if TARGET.exists() and any(TARGET.iterdir()):raise RuntimeError(f'{TARGET} already holds a payload; review and remove it first')
- dirty=tool('git','status','--porcelain','--',*NATIVE_SOURCES,cwd=REPO).strip()
- if dirty:raise RuntimeError('Native sources have uncommitted changes; commit them first:\n'+dirty)
+ scratch=args.output is not None
+ target=scratch_target(args.output) if scratch else TARGET
+ if target.exists() and any(target.iterdir()):raise RuntimeError(f'{target} already holds a payload; review and remove it first')
+ dirty=tool("git","status","--porcelain","--",*NATIVE_SOURCES,cwd=REPO).rstrip()
+ if dirty and not scratch:raise RuntimeError('Native sources have uncommitted changes; commit them first:\n'+dirty)
  commit=tool('git','rev-parse','HEAD',cwd=REPO).strip()
- subprocess.run([sys.executable,str(REPO/'native/tools/build_cycles.py'),'--jobs','6','--target','codebrix_cycles_host','--target','codebrix_cycles_oracle'],check=True,cwd=REPO,capture_output=True)
+ diff=subprocess.run(['git','diff','--binary'],cwd=REPO,capture_output=True,check=True).stdout
+ # Built in the manylinux container: build_cycles.py hands the build over to it (native/manylinux/build.sh).
+ subprocess.run([sys.executable,str(REPO/'native/tools/build_cycles.py'),'--jobs',args.jobs,'--target','codebrix_cycles_host','--target','codebrix_cycles_oracle'],check=True,cwd=REPO,capture_output=True)
+ build_record=json.loads((REPO/'native/work/cycles-build.json').read_text())
+ machine=build_record.get('buildMachine') or {}
+ if machine.get('kind')!='manylinux container':
+  raise RuntimeError('native/work/cycles-build was not built in the manylinux container (native/manylinux/build.sh); refusing to stage it')
  package=Path(os.environ.get('NUGET_PACKAGES') or Path.home()/'.nuget/packages')/RUNTIME_PACKAGE['id'].lower()/RUNTIME_PACKAGE['version']/RUNTIME_PACKAGE['path']
  if not package.exists():raise RuntimeError(f'{package} is missing; run dotnet restore first')
  sources=closure();names=set(sources)
- runtime,unstripped=TARGET/'runtime',TARGET/'unstripped'
+ runtime,unstripped=target/'runtime',target/'unstripped'
  for folder in (runtime,unstripped):folder.mkdir(parents=True)
  manifest=json.loads((REPO/'third_party/dependencies.json').read_text());by_id={c['id']:c for c in manifest['components']}
  mapping={}
@@ -189,25 +232,32 @@ def main():
   component=next(c for prefix,c in COMPONENTS if leaf.startswith(prefix))
   mapping[leaf]=dict(runtime=f'runtime/{leaf}',unstripped=f'unstripped/{leaf}',buildSource=str(Path(source).resolve().relative_to(REPO)),needed=info['needed'],runpath=info['runpath'],
    component=component,license=by_id[component]['license'],notices=by_id[component]['notices'],staticallyIncluded=STATIC.get(component,[]))
- payload={str(f.relative_to(TARGET)):sha(f) for f in sorted(TARGET.rglob('*')) if f.is_file()}
+ payload={str(f.relative_to(target)):sha(f) for f in sorted(target.rglob('*')) if f.is_file()}
  for leaf,entry in mapping.items():
   entry['runtimeSha256']=payload[entry['runtime']];entry['unstrippedSha256']=payload[entry['unstripped']]
- build_record=json.loads((REPO/'native/work/cycles-build.json').read_text())
  record=dict(
   rid=RID,created=time.strftime('%Y-%m-%dT%H:%M:%S%z'),sourceCommit=commit,
   scope='Reviewed linux-x64 product binaries: Cycles with its CPU device and the CodeBrix WGSL/WebGPU device behind the CodeBrix C API.',
   sources=dict(cyclesRevision=build_record['cyclesRevision'],dependencyManifestSha256=sha(REPO/'third_party/dependencies.json'),
    dependencyImportsSha256=sha(REPO/'third_party/dependency-imports.json'),registrationPatchSha256=build_record['registrationPatchSha256']),
-  toolchain=dict(compiler=tool('gcc','--version').splitlines()[0],libc=tool('ldd','--version').splitlines()[0]),
+  toolchain=dict(buildMachine=machine['kind'],image=machine.get('image'),imageId=machine.get('imageId'),
+   baseImage=machine.get('baseImage'),baseDigest=machine.get('baseDigest'),os=machine.get('os'),compiler=machine.get('compiler'),
+   linker=machine.get('linker'),libc=machine.get('libc'),cmake=machine.get('cmake'),checkoutRoot=machine.get('checkoutRoot'),
+   strip=tool('strip','--version').splitlines()[0]+' (staging host)'),
   buildCommands=build_record['commands'],cpuKernelCompile=build_record['cpuKernelCompile'],
   minimumSystemVersions=floors(runtime/leaf for leaf in mapping),
+  systemSymbolVersions=symbol_versions(runtime/leaf for leaf in mapping),
   webGpuRuntime=dict(RUNTIME_PACKAGE,sha256=sha(package)),
   binaries=mapping,standaloneRender=standalone_render(runtime,package),
-  notices=dict(repositoryNotices='THIRD-PARTY-NOTICES.txt'),approvedPayload=approvable(payload),snapshotCopies={})
+  notices=dict(repositoryNotices='THIRD-PARTY-NOTICES.txt'),approvedPayload={} if scratch else approvable(payload,target),snapshotCopies={})
+ if scratch:
+  record.update(approved=False,scratchStage=True,payloadFiles=payload,
+   uncommittedChanges=dict(gitDiffBinarySha256=hashlib.sha256(diff).hexdigest(),gitDiffBytes=len(diff),
+    nativeSourceStatus=dirty.splitlines()) if diff or dirty else None)
  # Repository paths are recorded relative to the checkout root.
  text=json.dumps(record,indent=2).replace(str(REPO)+'/','').replace(str(REPO),'.')
- (TARGET/'provenance.json').write_text(text+'\n')
- print(json.dumps(dict(staged=str(TARGET.relative_to(REPO)),commit=commit,binaries=len(mapping),files=len(payload),
+ (target/'provenance.json').write_text(text+'\n')
+ print(json.dumps(dict(staged=str(target.relative_to(REPO)) if REPO in target.parents else str(target),commit=commit,approved=not scratch,binaries=len(mapping),files=len(payload),
   runtimeBytes=sum((runtime/leaf).stat().st_size for leaf in mapping),minimumSystemVersions=record['minimumSystemVersions'],standaloneRender=record['standaloneRender']),indent=2))
 
 

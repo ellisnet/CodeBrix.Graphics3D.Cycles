@@ -76,10 +76,17 @@ def machine():
    gpu=dict(model=model.group(1) if model else None,cores=None),compiler=identity.get('compilerVersion'),visualStudio=identity.get('visualStudio'),
    cmake=identity.get('cmakeVersion'),python=sys.version.split()[0],repoCommit=out('git','-C',str(REPO),'rev-parse','HEAD'),
    repoWorkingTreeClean=status=='',cyclesRevision=REVISION)
+ # Linux x64 builds in the manylinux container (native/manylinux): its toolchain, not this machine's, built the binaries.
+ built=REPO/'native/work/cycles-build.json'
+ container=json.loads(built.read_text()).get('buildMachine') if platform.system()=='Linux' and platform.machine()=='x86_64' and built.exists() else None
+ if container:
+  compiler,cmake=container.get('compiler'),container.get('cmake')
+ else:
+  compiler=out('clang','--version') if platform.system()=='Darwin' else out('c++','--version');cmake=out('cmake','--version').splitlines()[0]
  return dict(os=out('sw_vers') if platform.system()=='Darwin' else out('uname','-a'),
   cpu=out('sysctl','-n','machdep.cpu.brand_string') if platform.system()=='Darwin' else (linux_cpu.group(1) if linux_cpu else platform.processor()),
   gpu=dict(model=model.group(1) if model else None,cores=int(cores.group(1)) if cores else None),
-  compiler=out('clang','--version') if platform.system()=='Darwin' else out('c++','--version'),xcode=out('xcodebuild','-version'),cmake=out('cmake','--version').splitlines()[0],
+  compiler=compiler,xcode=out('xcodebuild','-version'),cmake=cmake,**(dict(buildMachine=container) if container else {}),
   python=sys.version.split()[0],repoCommit=out('git','-C',str(REPO),'rev-parse','HEAD'),
   repoWorkingTreeClean=status=='',cyclesRevision=REVISION,
   # ARM64 boards (a Raspberry Pi) name themselves in the device tree; lspci finds no GPU there.

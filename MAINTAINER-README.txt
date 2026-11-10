@@ -161,7 +161,8 @@ research that back it.
                                           reference-render runner; tests/ the
                                           native test drivers and host fixtures;
                                           tools/ every build and validation gate
-                                          script; binaries/<rid>/ the reviewed,
+                                          script; manylinux/ the Linux x64 build
+                                          container (BUILDING); binaries/<rid>/ the reviewed,
                                           intentionally versioned RID payloads;
                                           evidence/ immutable gate records;
                                           work/ ignored build output.
@@ -295,19 +296,62 @@ and change only through the license review that updates their pinned hashes.
 
 BUILDING
 ========
-The native host (Linux x64, from the repository root):
+The Linux x64 native build is the container build: it runs in the digest-pinned
+manylinux build container of native/manylinux/ (Containerfile.x86_64, pins.env,
+build.sh, container-build.sh), on the Linux x64 machine, from the repository
+root:
 
-    python3 tools/build.py --jobs 6
+    native/manylinux/build.sh all --jobs 12
 
-builds the pinned dependency snapshots in third_party/deps, then the native
-Cycles host, the CPU references, the WGSL translation and the WebGPU backend.
-`python3 native/tools/build_cycles.py --jobs 6` rebuilds only the Cycles host
-targets once the dependencies exist. The host library lands at
-native/work/cycles-build/lib/libcodebrix_cycles_host.so. `--target all` builds
-every gate and test program too. The build tree it configures regenerates the
-WGSL overlay (native/work/cycles-overlay, the shader text compiled into the
-host) before every build, so `cmake --build native/work/cycles-build` also
-compiles the current native/shaders sources.
+The first run makes the derived image codebrix-cycles-build-x86_64: the
+quay.io/pypa/manylinux_2_28_x86_64 base at the digest in pins.env, labelled,
+with nothing installed (AlmaLinux 8.10, GCC 14.2.1 from gcc-toolset-14, binutils
+2.41, glibc 2.28, CMake 4.4.0, GNU Make 4.2.1, Python 3.12; the image build
+checks these versions). Making the image is the only step that may use the
+network (pulling the base image when it is not local). The script then generates
+the WGSL overlay on this machine (below) and runs the build in the container
+with --network none: the checkout mounted read-write at the fixed path /src, the
+unchanged CodeBrix.WebGpu.Native package mounted read-only at its own NuGet cache
+path, ISPC taken from native/work/tools/ispc (pinned by SHA-256 in pins.env). It
+builds the pinned dependency snapshots in third_party/deps
+(tools/dependencies/build.py), then the Cycles host, the oracle runner and every
+gate and test program (native/tools/build_cycles.py --target all). The build
+trees land in native/work/ as before (dependencies/, cycles-build/,
+cycles-overlay/, cycles-registration.patch, cycles-build.json), owned by the
+calling user. The host library lands at
+native/work/cycles-build/lib/libcodebrix_cycles_host.so. glibc 2.28 is the floor
+of everything the build links (Debian 10, Ubuntu 20.04, RHEL 8 or newer; not
+validated there); the staging step measures and records it.
+
+`python3 native/tools/build_cycles.py --jobs 6 [--target T ...]` and
+`python3 tools/dependencies/build.py --jobs 6`, run on this machine, hand the
+same build to the container (build.sh cycles / build.sh dependencies), so every
+tool that builds (the gates without --skip-build, host_gate.py, the staging
+step) builds there. `--target all` builds every gate and test program. An
+up-to-date tree rebuilds nothing. The CMake build tree names /src, so
+`cmake --build native/work/cycles-build` works only in the container
+(`native/manylinux/build.sh run cmake --build native/work/cycles-build ...`);
+use build_cycles.py.
+
+The WGSL overlay (native/work/cycles-overlay, the shader text compiled into the
+host) needs Clang for its AST translation, so it is generated on this machine
+(`python3 native/tools/build_cycles.py --overlay-only`, which build.sh and a
+host-side build_cycles.py run first) and handed in. The build tree runs
+`build_cycles.py --overlay-check` in the container before every build: it
+regenerates the overlay into a scratch folder from its own cached translation,
+compares it file by file with the handed-in overlay and refuses to build when it
+is stale, so a build never compiles shader text older than native/shaders. The
+overlay holds no checkout path, so it is the same in every checkout.
+
+The build trees run on this machine directly, with no /src: their run paths are
+$ORIGIN-relative within native/work/ plus the WebGPU runtime package's own path,
+so the gates, render_oracles.py, host_gate.py, the oracle runner and the managed
+tests use native/work/... as before. Compiled-in source paths (__FILE__ in
+diagnostics) name /src/...; nothing reads them at run time. tools/build.py also
+builds the prototype parity programs (prototype/work/cycles-build) and the early
+standalone WebGPU backend (native/work/linux-x64) with this machine's own
+toolchain; they are development programs, not product binaries, and the
+validation tools do not use them.
 
 The CPU device in that library is the oracle every GPU result is judged
 against, so it is built at a FIXED arithmetic baseline, never tuned to the build
@@ -415,9 +459,11 @@ devices and the publish rule"): every host-gate step, device gate, oracle and
 bench scene and managed test must pass there, judged against the Linux x64 glibc
 reference, or its platform package is not ready to publish. The Apple Silicon Mac mini
 (M2 Pro) is the Metal comparison device, not a WGSL reference device.
-LINUX X64 REFERENCE (2026-10-29): Linux x64 and Android testing and validation
-are done on the dedicated Linux x64 machine ONLY, and every Linux x64 reference
-other platforms compare against comes from that machine and is committed:
+LINUX X64 REFERENCE: the Linux x64 binaries are built in the manylinux
+container (native/manylinux, above), and rendered and judged only on the
+dedicated Linux x64 machine; Linux x64 and Android testing and validation are
+done on that machine ONLY, and every Linux x64 reference other platforms compare
+against comes from it and is committed:
 the newest native/evidence/linux-x64-reference-<date>/ (now
 linux-x64-reference-20261107: the full host gate without its reload rounds,
 oracle and bench films; linux-x64-reference-20261101 still supplies the overlay
@@ -436,6 +482,14 @@ opt-in diagnostics described in native/host/WINDOWS_X64.md ("Diagnostics for
 driver problems"), which gates never accept as validation.
 Android, Linux ARM64 and osx-arm64 recipes are described in
 native/host/README.md, LINUX_ARM64.md and MACOS_ARM64.md.
+
+Copying container-built trees into another checkout (native/work/dependencies,
+cycles-build, cycles-overlay, cycles-registration.patch, cycles-build.json and
+tools/ispc) needs no re-rooting: every checkout is /src in its own container,
+and the run paths are relative. Copy them with their modification times
+(cp -a); a no-op build then compiles nothing, and the next build checks the
+overlay against the new checkout's sources. The re-rooting below is for trees
+configured at a different checkout root (built outside the container).
 
 Reusing a copied build tree (lane worktrees seeded with another checkout's
 native/work/cycles-build, prototype/work/cycles-build or
@@ -940,12 +994,29 @@ _Nuspec list and to PLATFORMS in tools/licensing/package_check.py. Windows hosts
 the driver's packing, so pack from Linux or macOS once the payload is committed.
 
 Linux x64 payload: python3 native/tools/stage_linux_binaries.py. It builds the host
-at the current commit, refuses uncommitted native source changes, rewrites each
-library's run path to $ORIGIN, renders a scene from the staged files alone and
-records the system library floor in provenance.json (minimumSystemVersions). Remove
-the old payload first; a payload is only replaced on purpose. package_check.py
-warns when native sources changed after the payload's commit: restage before
-publishing, and validate on the commit you stage from.
+at the current commit in the manylinux build container (BUILDING), refuses a build
+tree that was not built there and uncommitted native source changes, rewrites each
+library's run path to $ORIGIN, renders a scene from the staged files alone (its CPU
+film must equal the newest Linux x64 reference film) and records the container's
+toolchain, the system library floor (minimumSystemVersions) and every system symbol
+version the payload references (systemSymbolVersions) in provenance.json. Remove the
+old payload first; a payload is only replaced on purpose. package_check.py warns
+when native sources changed after the payload's commit: restage before publishing,
+and validate on the commit you stage from.
+
+Scratch staging (for checks before a payload is committed):
+
+    python3 native/tools/stage_linux_binaries.py --output native/work/staging/linux-x64
+    dotnet build build/CodeBrix.Graphics3D.Cycles.Build.csproj -c Release -p:LinuxX64Payload=native/work/staging/linux-x64
+
+The scratch folder must be outside the tracked tree (git-ignored, or outside the
+checkout); native/binaries/ is not touched. A scratch stage may be made with
+uncommitted native changes: it records the SHA-256 of `git diff --binary` and the
+changed paths, and it is never approved ("approved": false, an empty
+approvedPayload, the staged files in payloadFiles). The pack driver then packs
+.LinuxX64 from that folder, and package_check.py (--payload linux-x64=<folder>)
+checks the package against it and reports it as NOT PUBLISHABLE. Delete the
+nugets/Release/<version>/ folder such a run writes.
 
 
 CODING CONVENTIONS
