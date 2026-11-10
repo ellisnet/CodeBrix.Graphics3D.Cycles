@@ -40,7 +40,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"LIGHT_AREA",SF_LIGHT_AREA},{"MOTION_OBJECT",SF_MOTION_OBJECT},{"MOTION_CAMERA",SF_MOTION_CAMERA},
     {"LIGHT_TRIANGLE",SF_LIGHT_TRIANGLE},{"LIGHT_BACKGROUND",SF_LIGHT_BACKGROUND},{"LIGHT_NEE",SF_LIGHT_NEE},
     {"LIGHT_TREE",SF_LIGHT_TREE},{"LIGHT_LINKING",SF_LIGHT_LINKING},{"LIGHT_SELECT",SF_LIGHT_SELECT},
-    {"SHADOW_CATCHER",SF_SHADOW_CATCHER},{"SHADOW_LINKING",SF_SHADOW_LINKING},{"MNEE",SF_MNEE},{"MNEE_ENTRIES",SF_MNEE_ENTRIES},{"BACKGROUND_SAMPLE_ENTRY",SF_BACKGROUND_SAMPLE_ENTRY},{"VOLUME_SHADOW",SF_VOLUME_SHADOW},{"VOLUME_LIGHT",SF_VOLUME_LIGHT},{"VOLUME_PHASES",SF_VOLUME_PHASES},{"PHASE_FOURNIER_FORAND",SF_PHASE_FOURNIER_FORAND},{"PHASE_RAYLEIGH",SF_PHASE_RAYLEIGH},{"PHASE_DRAINE",SF_PHASE_DRAINE},{"PHASE_MIE",SF_PHASE_MIE},{"VL_RECORD",SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_VOLUME_HETEROGENEOUS},{"PHASE_STAGE",SF_VOLUME_PHASES|SF_VOLUME_HETEROGENEOUS},{"VL_SAMPLING",SF_VOLUME_LIGHT|SF_VOLUME_HETEROGENEOUS},{"SVM_NODE_VOLUME_COEFFICIENTS",SF_NODE_VOLUME_COEFFICIENTS},{"SVM_NODE_PRINCIPLED_VOLUME",SF_NODE_PRINCIPLED_VOLUME},{"VOLUME_EMISSION",SF_VOLUME_EMISSION},{"SUBSURFACE",SF_SUBSURFACE},{"FILM_MOTION_DEFORM",SF_FILM_MOTION_DEFORM},{"SUBSURFACE_ENTRY",SF_SUBSURFACE_ENTRY},{"PHASE_HG",SF_VOLUME_LIGHT|SF_SUBSURFACE_ENTRY},{"VP_MATH",SF_VOLUME_PHASES|SF_SUBSURFACE|SF_SUBSURFACE_ENTRY|SF_VOLUME_LIGHT|SF_BSDF_HAIR_CHIANG},{"VP_ALLOC",SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME},{"RAYTRACE_ANY",SF_NODE_RAYTRACE|SF_SUBSURFACE_ENTRY},{"RAYTRACE_LOCAL",SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_SUBSURFACE_ENTRY},{"DEBUG_OUTPUT",SF_DEBUG_OUTPUT},{"DRIVER_CACHE_SALT",SF_DRIVER_CACHE_SALT},
+    {"SHADOW_CATCHER",SF_SHADOW_CATCHER},{"SHADOW_LINKING",SF_SHADOW_LINKING},{"MNEE",SF_MNEE},{"MNEE_ENTRIES",SF_MNEE_ENTRIES},{"BACKGROUND_SAMPLE_ENTRY",SF_BACKGROUND_SAMPLE_ENTRY},{"VOLUME_SHADOW",SF_VOLUME_SHADOW},{"VOLUME_LIGHT",SF_VOLUME_LIGHT},{"VOLUME_PHASES",SF_VOLUME_PHASES},{"PHASE_FOURNIER_FORAND",SF_PHASE_FOURNIER_FORAND},{"PHASE_RAYLEIGH",SF_PHASE_RAYLEIGH},{"PHASE_DRAINE",SF_PHASE_DRAINE},{"PHASE_MIE",SF_PHASE_MIE},{"VL_RECORD",SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_VOLUME_HETEROGENEOUS},{"PHASE_STAGE",SF_VOLUME_PHASES|SF_VOLUME_HETEROGENEOUS},{"VL_SAMPLING",SF_VOLUME_LIGHT|SF_VOLUME_HETEROGENEOUS},{"SVM_NODE_VOLUME_COEFFICIENTS",SF_NODE_VOLUME_COEFFICIENTS},{"SVM_NODE_PRINCIPLED_VOLUME",SF_NODE_PRINCIPLED_VOLUME},{"VOLUME_EMISSION",SF_VOLUME_EMISSION},{"SUBSURFACE",SF_SUBSURFACE},{"FILM_MOTION_DEFORM",SF_FILM_MOTION_DEFORM},{"SUBSURFACE_ENTRY",SF_SUBSURFACE_ENTRY},{"PHASE_HG",SF_VOLUME_LIGHT|SF_SUBSURFACE_ENTRY},{"VP_MATH",SF_VOLUME_PHASES|SF_SUBSURFACE|SF_SUBSURFACE_ENTRY|SF_VOLUME_LIGHT|SF_BSDF_HAIR_CHIANG},{"VP_ALLOC",SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME},{"RAYTRACE_ANY",SF_NODE_RAYTRACE|SF_SUBSURFACE_ENTRY|SF_SUBSURFACE_DISK_ENTRY},{"RAYTRACE_LOCAL",SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_SUBSURFACE_ENTRY|SF_SUBSURFACE_DISK_ENTRY},{"DEBUG_OUTPUT",SF_DEBUG_OUTPUT},{"DRIVER_CACHE_SALT",SF_DRIVER_CACHE_SALT},
     {"SHADOW_TERMINATOR_GEOMETRY",SF_TERMINATOR_GEOMETRY},{"SHADOW_TERMINATOR_SHADING",SF_TERMINATOR_SHADING},
     {"SVM_NODE_TEX_NOISE",SF_TEX_NOISE},{"SVM_NODE_TEX_WHITE_NOISE",SF_TEX_WHITE_NOISE},{"SVM_NODE_TEX_WAVE",SF_TEX_WAVE},
     {"SVM_NODE_TEX_MAGIC",SF_TEX_MAGIC},{"SVM_NODE_TEX_BRICK",SF_TEX_BRICK},{"SVM_NODE_MAPPING",SF_MAPPING},
@@ -88,7 +88,20 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     // The Principled Hair BSDF node's Huang model, with its own copy of what the node's models share.
     {"SVM_BSDF_HAIR_HUANG",SF_BSDF_HAIR_HUANG},
     // The surface module's text of the traversal helpers: the MNEE traversal and the curve hits of the raytrace traversals.
-    {"TRAVERSAL_HELPERS",SF_MNEE|SF_CURVE_RAYTRACE}};
+    {"TRAVERSAL_HELPERS",SF_MNEE|SF_CURVE_RAYTRACE},
+    // The volume integrators' random numbers with a sampling pattern other than tabulated Sobol (pipelines.h).
+    {"VOLUME_SAMPLING_PATTERN",SF_VOLUME_SAMPLING_PATTERN},
+    // The Light Path extrema estimate of heterogeneous media (pipelines.h).
+    {"VOLUME_LIGHT_PATH",SF_VOLUME_LIGHT_PATH},
+    {"VOLUME_MOTION",SF_VOLUME_MOTION},
+    // Background light portals (wavefront_background_light.wgsl).
+    {"BACKGROUND_PORTAL",SF_BACKGROUND_PORTAL},
+    // The Ray Portal BSDF and the portal bounces (wavefront_surface.wgsl, wavefront_svm_closures.wgsl).
+    {"RAY_PORTAL",SF_RAY_PORTAL},
+    // Christensen-Burley subsurface scattering; SUBSURFACE_ENTRIES: what the random walk's and the disk's entries share.
+    {"SUBSURFACE_DISK",SF_SUBSURFACE_DISK},{"SUBSURFACE_DISK_ENTRY",SF_SUBSURFACE_DISK_ENTRY},{"SUBSURFACE_ENTRIES",SF_SUBSURFACE_ENTRY|SF_SUBSURFACE_DISK_ENTRY},
+    // A thin-walled Principled BSDF with subsurface (bsdf_thin_subsurface_setup).
+    {"SVM_BSDF_THIN_SUBSURFACE",SF_BSDF_THIN_SUBSURFACE}};
   return names;
 }
 std::string shader_feature_list(ShaderFeatures features){
@@ -100,17 +113,21 @@ std::string shader_feature_list(ShaderFeatures features){
 // Mask layout invariants (pipelines.h): assigned bits keep their numbers.
 static_assert(SF_GEOMETRY.test(0)&&SF_MAPPING_DERIVATIVE.test(61)&&SF_TEX_GABOR.test(63)&&!SF_ALL.test(62));
 static_assert(SF_SHADOW_LINKING.test(120));
+static_assert(SF_BACKGROUND_PORTAL.test(226)&&(SF_SUPERSET_SCENE_ONLY&SF_BACKGROUND_PORTAL)==SF_BACKGROUND_PORTAL);
+static_assert(SF_RAY_PORTAL.test(227)&&(SF_SUPERSET_SCENE_ONLY&SF_RAY_PORTAL)==SF_RAY_PORTAL);
 static_assert(SF_CURVE_RIBBON.test(186)&&SF_CURVE_THICK.test(187)&&SF_CURVE_THICK_LINEAR.test(188)&&SF_NODE_HAIR_INFO.test(189)&&(SF_SUPERSET_SCENE_ONLY&(SF_CURVES|SF_NODE_HAIR_INFO))==(SF_CURVES|SF_NODE_HAIR_INFO));
 static_assert(SF_CURVE_MOTION.test(194)&&SF_CURVE_SHADOW.test(195)&&SF_CURVE_RAYTRACE.test(196)&&SF_CURVE_SHADOW_CATCHER.test(197)&&SF_CURVE_RAYCAST.test(198)&&(SF_SUPERSET_SCENE_ONLY&(SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST))==(SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST));
 static_assert(SF_POINTS.test(206)&&SF_POINTS_MOTION.test(207)&&SF_NODE_POINT_INFO.test(208)&&SF_NODE_PARTICLE_INFO.test(209)&&(SF_SUPERSET_SCENE_ONLY&SF_POINTS_ALL)==SF_POINTS_ALL);
 static_assert(SF_BSDF_HAIR.test(200)&&SF_BSDF_HAIR_CHIANG.test(201)&&(SF_SUPERSET_SCENE_ONLY&(SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG))==(SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG));
-static_assert(SF_ALL.count()==140&&!(SF_ALL&~(SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+static_assert(SF_ALL.count()==147&&!(SF_ALL&~(SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(SF_MNEE_ENTRIES.test(111)&&!(SF_ALL&SF_MNEE_ENTRIES).any());
 static_assert(SF_BACKGROUND_SAMPLE_ENTRY.test(161)&&!(SF_ALL&SF_BACKGROUND_SAMPLE_ENTRY).any());
 static_assert(SF_VOLUME_SHADOW.test(162)&&SF_VOLUME_LIGHT.test(163)&&SF_VOLUME_PHASES.test(164)&&SF_NODE_VOLUME_COEFFICIENTS.test(165)&&SF_NODE_PRINCIPLED_VOLUME.test(166)&&SF_VOLUME_EMISSION.test(167));
 static_assert(SF_SUBSURFACE.test(168)&&SF_SUBSURFACE_ENTRY.test(169)&&!(SF_ALL&SF_SUBSURFACE_ENTRY).any()&&SF_FILM_MOTION_DEFORM.test(170));
+static_assert(SF_SUBSURFACE_DISK.test(216)&&SF_SUBSURFACE_DISK_ENTRY.test(217)&&!(SF_ALL&SF_SUBSURFACE_DISK_ENTRY).any()&&(SF_SUPERSET_SCENE_ONLY&SF_SUBSURFACE_DISK).any());
+static_assert(SF_BSDF_THIN_SUBSURFACE.test(218)&&(SF_SUPERSET_SCENE_ONLY&SF_BSDF_THIN_SUBSURFACE).any());
 static_assert(SF_PHASE_FOURNIER_FORAND.test(171)&&SF_PHASE_RAYLEIGH.test(172)&&SF_PHASE_DRAINE.test(173)&&SF_PHASE_MIE.test(174)&&SF_VOLUME_HETEROGENEOUS.test(175)&&SF_VOLUME_RAY_MARCHING.test(176)&&SF_VOLUME_LIGHT_SHAPES.test(177)&&SF_VOLUME_LIGHT_TREE.test(178)&&SF_VOLUME_LIGHT_PASSES.test(179)&&SF_VOLUME_SHADOW_CATCHER.test(180));
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
 static_assert(SF_DEBUG_OUTPUT.test(116)&&!(SF_ALL&SF_DEBUG_OUTPUT).any());
@@ -192,6 +209,7 @@ OpInfo bsdf_info(uint32_t kind){
     case CLOSURE_BSDF_HAIR_REFLECTION_ID:case CLOSURE_BSDF_HAIR_TRANSMISSION_ID:return {uint32_t(sizeof(SVMNodeHairBsdfData)),SF_BSDF_HAIR};
     case CLOSURE_BSDF_HAIR_CHIANG_ID:return {uint32_t(sizeof(SVMNodePrincipledHairBsdfData)),SF_BSDF_HAIR_CHIANG};
     case CLOSURE_BSDF_HAIR_HUANG_ID:return {uint32_t(sizeof(SVMNodePrincipledHairBsdfData)),SF_BSDF_HAIR_HUANG|SF_ATTR};
+    case CLOSURE_BSDF_RAY_PORTAL_ID:return {uint32_t(sizeof(SVMNodeRayPortalBsdfData)),SF_RAY_PORTAL};
     case CLOSURE_BSSRDF_BURLEY_ID:case CLOSURE_BSSRDF_RANDOM_WALK_ID:case CLOSURE_BSSRDF_RANDOM_WALK_LEGACY_ID:case CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID:
       return {uint32_t(sizeof(SVMNodeBssrdfData)),SF_SUBSURFACE};
     default:return {0,SF_NONE};
@@ -201,13 +219,10 @@ uint32_t byte_at(const std::vector<uint32_t> &w,size_t word,size_t offset){
   const size_t index=word+offset/4;return index<w.size()?(w[index]>>(8*(offset%4)))&255u:0u;
 }
 // Principled record census: optional thin-film/thin-wall handlers and the
-// subsurface lobe (a BSSRDF closure; with a thin wall the device does not implement
-// it). A linked input may enable a feature at run time, so it counts like an
-// enabling constant.
+// subsurface lobe (a BSSRDF closure, or with a thin wall the diffuse and translucent
+// closures of bsdf_thin_subsurface_setup). A linked input may enable a feature at
+// run time, so it counts like an enabling constant.
 struct PrincipledCensus {ShaderFeatures features;const char *unsupported=nullptr;};
-// The Christensen-Burley BSSRDF (integrator/subsurface_disk.h: disk sampling with up to four local hits) is not
-// ported; the random walk methods are.
-constexpr const char *burley_unsupported="Unsupported feature: subsurface scattering with the Christensen-Burley method is not implemented by the WebGPU device; the scene is rejected, not approximated";
 PrincipledCensus principled_census(const std::vector<uint32_t> &w,size_t data){
   PrincipledCensus out;auto field=[&](size_t offset){return w[data+offset/4];};
   auto linked=[](uint32_t bits){return (bits>>8)==(SVM_INPUT_STACK_OFFSET_MASK>>8);};
@@ -219,11 +234,13 @@ PrincipledCensus principled_census(const std::vector<uint32_t> &w,size_t data){
   if((w[wall]!=0||byte_at(w,wall,offsetof(SVMInputInt,offset))!=SVM_STACK_INVALID)&&above(offsetof(SVMNodePrincipledBsdfData,transmission_weight),CLOSURE_WEIGHT_CUTOFF,true))
     out.features|=SF_BSDF_THIN_WALL;
   if(above(offsetof(SVMNodePrincipledBsdfData,subsurface_weight),CLOSURE_WEIGHT_CUTOFF,true)){
-    out.features|=SF_SUBSURFACE;
-    // bsdf_thin_subsurface_setup (diffuse or Oren-Nayar with a translucent lobe) is not ported.
-    if(w[wall]!=0||byte_at(w,wall,offsetof(SVMInputInt,offset))!=SVM_STACK_INVALID)
-      out.unsupported="Unsupported feature: Principled BSDF thin-wall subsurface scattering is not implemented by the WebGPU device; the scene is rejected, not approximated";
-    else if(field(offsetof(SVMNodePrincipledBsdfData,subsurface_method))==CLOSURE_BSSRDF_BURLEY_ID)out.unsupported=burley_unsupported;
+    // A thin wall (constant or linked): bsdf_thin_subsurface_setup's diffuse and translucent closures. No thin wall
+    // (constant 0 or linked): the BSSRDF closure, with the Christensen-Burley BSSRDF's disk branch and disk entry
+    // (integrator/subsurface_disk.h).
+    const bool wall_linked=byte_at(w,wall,offsetof(SVMInputInt,offset))!=SVM_STACK_INVALID;
+    if(w[wall]!=0||wall_linked)out.features|=SF_BSDF_THIN_SUBSURFACE;
+    if(w[wall]==0||wall_linked){out.features|=SF_SUBSURFACE;
+      if(field(offsetof(SVMNodePrincipledBsdfData,subsurface_method))==CLOSURE_BSSRDF_BURLEY_ID)out.features|=SF_SUBSURFACE_DISK;}
   }
   return out;
 }
@@ -290,7 +307,7 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
         const OpInfo data=bsdf_info(kind);
         if(!data.bytes||!take(pc,data.bytes)){out.stopped_paths++;break;}
         out.features|=data.feature;
-        if(kind==CLOSURE_BSSRDF_BURLEY_ID&&out.unsupported.empty())out.unsupported=burley_unsupported;
+        if(kind==CLOSURE_BSSRDF_BURLEY_ID)out.features|=SF_SUBSURFACE_DISK;
         if(kind==CLOSURE_BSDF_PRINCIPLED_ID){const auto principled=principled_census(w,data_at);out.features|=principled.features;
           if(principled.unsupported&&out.unsupported.empty())out.unsupported=principled.unsupported;}
         if(kind==CLOSURE_BSDF_PHYSICAL_CONDUCTOR||kind==CLOSURE_BSDF_F82_CONDUCTOR){const auto metallic=metallic_census(w,data_at,kind);out.features|=metallic.features;
@@ -492,7 +509,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
     std::vector<uint32_t> roots;for(uint32_t s:tri_shader_words)roots.push_back(s&SHADER_MASK);
     for(const KernelCurve &curve:curve_records)roots.push_back(uint32_t(curve.shader_id)&SHADER_MASK);
     for(const uint32_t word:point_shader_words)roots.push_back(word&SHADER_MASK);
-    for(const KernelLight &light:light_records)roots.push_back(uint32_t(light.shader_id)&SHADER_MASK);
+    for(const KernelLight &light:lamp_records())roots.push_back(uint32_t(light.shader_id)&SHADER_MASK);
     roots.push_back(uint32_t(data.background.surface_shader)&SHADER_MASK);roots.push_back(uint32_t(data.background.volume_shader)&SHADER_MASK);
     std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
     const SvmCensus referenced=svm_census(svm_node_words,shader_records.size(),&roots);
@@ -541,26 +558,29 @@ ShaderFeatures WebGPUDevice::shader_features(){
   if(census_generation!=svm_generation){
     census=svm_census(svm_node_words,shader_records.size());census_generation=svm_generation;
     enabled_features|=(census.features&~SF_PRINCIPLED_ALL)|principled_features|displacement_features;
-    for(const KernelLight &light:light_records)if(light.type==LIGHT_AREA)enabled_features|=SF_LIGHT_AREA;
+    for(const KernelLight &light:lamp_records())if(light.type==LIGHT_AREA)enabled_features|=SF_LIGHT_AREA;
     // Shader-defined volumes: shadow paths through media, and the volume direct light (volume.cpp).
     if(data.kernel_features&KERNEL_FEATURE_VOLUME){enabled_features|=SF_VOLUME_SHADOW;if(data.integrator.use_direct_light)enabled_features|=SF_VOLUME_LIGHT;
       if(data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)enabled_features|=SF_VOLUME_LIGHT_PASSES;
       if(data.film.pass_emission!=PASS_UNUSED||data.film.pass_lightgroup!=PASS_UNUSED)enabled_features|=SF_VOLUME_LIGHT_PASSES;
       if(data.integrator.has_shadow_catcher)enabled_features|=SF_VOLUME_SHADOW_CATCHER;
-      if(data.integrator.use_direct_light){for(const KernelLight &light:light_records)if(light.type==LIGHT_SPOT||light.type==LIGHT_AREA)enabled_features|=SF_VOLUME_LIGHT_SHAPES;
+      if(data.integrator.use_direct_light){for(const KernelLight &light:lamp_records())if(light.type==LIGHT_SPOT||light.type==LIGHT_AREA)enabled_features|=SF_VOLUME_LIGHT_SHAPES;
         for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0)enabled_features|=SF_VOLUME_LIGHT_SHAPES;}
       for(auto &shader:shader_records)if((shader.flags&SD_HAS_VOLUME)&&(shader.flags&SD_HETEROGENEOUS_VOLUME)){enabled_features|=SF_VOLUME_HETEROGENEOUS;break;}
+      for(auto &shader:shader_records)if((shader.flags&SD_HAS_VOLUME)&&(shader.flags&SD_HAS_LIGHT_PATH_NODE)){enabled_features|=SF_VOLUME_LIGHT_PATH;break;}
       if(data.integrator.volume_ray_marching)enabled_features|=SF_VOLUME_RAY_MARCHING|SF_VOLUME_HETEROGENEOUS;}
     else enabled_features&=~SF_VOLUME_EMISSION;
     // The last distribution entry is the CDF end marker (prim 0), not an emitter.
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0)enabled_features|=SF_LIGHT_TRIANGLE;
     for(const KernelShader &shader:shader_records)if(shader.flags&(SD_MIS_FRONT|SD_MIS_BACK))enabled_features|=SF_LIGHT_TRIANGLE;
     // Background light and non-constant emitters that light sampling can reach.
-    for(const KernelLight &light:light_records)if(light.type==LIGHT_BACKGROUND){enabled_features|=SF_LIGHT_BACKGROUND;
+    for(const KernelLight &light:lamp_records())if(light.type==LIGHT_BACKGROUND){enabled_features|=SF_LIGHT_BACKGROUND;
       const auto id=uint(light.shader_id)&SHADER_MASK;if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}
     if(data.background.use_mis)enabled_features|=SF_LIGHT_BACKGROUND;
+    // Background light portals (the portal records follow the lamps in the light table).
+    if(data.integrator.num_portals>0)enabled_features|=SF_BACKGROUND_PORTAL;
     // Point, spot, area and sun lights whose emission shader is not constant (shade_light_nee and the hit evaluations).
-    for(const KernelLight &light:light_records)if(light.type!=LIGHT_BACKGROUND){const auto id=uint(light.shader_id)&SHADER_MASK;
+    for(const KernelLight &light:lamp_records())if(light.type!=LIGHT_BACKGROUND){const auto id=uint(light.shader_id)&SHADER_MASK;
       if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE|SF_LIGHT_LAMP_SHADER;}
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0&&size_t(light_distribution_records[i].prim)<tri_shader_words.size()){
       const auto id=tri_shader_words[light_distribution_records[i].prim]&SHADER_MASK;if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}
@@ -574,6 +594,8 @@ ShaderFeatures WebGPUDevice::shader_features(){
           if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}}}
     if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)enabled_features|=SF_LIGHT_LINKING|SF_LIGHT_SELECT;
     if(data.kernel_features&KERNEL_FEATURE_SHADOW_LINKING)enabled_features|=SF_SHADOW_LINKING;
+    // The Ray Portal BSDF: the portal bounces of the path and shadow states exist with KERNEL_FEATURE_NODE_PORTAL.
+    if(data.kernel_features&KERNEL_FEATURE_NODE_PORTAL)enabled_features|=SF_RAY_PORTAL;
     if(data.cam.num_motion_steps!=0)enabled_features|=SF_MOTION_CAMERA;
     // Curves: the shapes of the uploaded curve records.
     for(const KernelCurve &curve:curve_records){const int shape=curve.type&PRIMITIVE_CURVE;
@@ -608,6 +630,15 @@ ShaderFeatures WebGPUDevice::shader_features(){
   }
   // The sampling pattern comes from KernelData, not from the census (kernel/sample/pattern.h).
   if(data.integrator.sampling_pattern!=SAMPLING_PATTERN_TABULATED_SOBOL)enabled_features|=SF_SAMPLING_PATTERN;
+  // The volume integrators' pattern (pipelines.h SF_VOLUME_SAMPLING_PATTERN): this call's KernelData only, and only once the
+  // integrator's settings are in it (Integrator::device_update sets blue_noise_sequence_length to the sample count, at least 1,
+  // for Sobol-Burley; scene preparation's zero KernelData reads as Sobol-Burley with length 0).
+  enabled_features&=~SF_VOLUME_SAMPLING_PATTERN;
+  if((data.kernel_features&KERNEL_FEATURE_VOLUME)&&data.integrator.sampling_pattern!=SAMPLING_PATTERN_TABULATED_SOBOL&&
+     (data.integrator.sampling_pattern!=SAMPLING_PATTERN_SOBOL_BURLEY||data.integrator.blue_noise_sequence_length!=0))enabled_features|=SF_VOLUME_SAMPLING_PATTERN;
+  // Volumes with motion blur (pipelines.h SF_VOLUME_MOTION): this call's KernelData only, as the pattern above.
+  enabled_features&=~SF_VOLUME_MOTION;
+  if((data.kernel_features&KERNEL_FEATURE_VOLUME)&&data.bvh.have_motion)enabled_features|=SF_VOLUME_MOTION;
   if(data.cam.type!=CAMERA_PERSPECTIVE||data.cam.aperturesize>0)enabled_features|=SF_CAMERA_PROJECTIONS;
   if(specialization_mode==SpecializationMode::Superset){
     if(superset_scene!=enabled_features){

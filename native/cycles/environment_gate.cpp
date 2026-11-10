@@ -32,10 +32,17 @@
 using namespace ccl;
 using namespace wavefront_test;
 constexpr unsigned width=32,height=24,samples=8;
-struct Case {const char *name;EnvironmentWorld world;unsigned image;int light;int resolution;int emitter;bool point;};
-// light: -1 none, 1 background light with MIS. Cycles enables the background
-// light only for a spatially varying world with MIS (LightManager::test_enabled_lights),
-// so constant worlds and MIS-off background lights do not reach the kernels.
+// portals: background light portals (1 a rectangle above the scene facing down, 2 also an ellipse behind it
+// facing the camera, which part of the probe points lie behind). background_lights: background light objects.
+// volume_probe: the light-sample probe as the volume direct light samples (N = 0, SR_BSDF_HAS_TRANSMISSION): a background
+// lamp through the volume light entries' sampler (vl_background_light_sample), against light_sample_from_position with the same inputs.
+// The probe entry inlines one copy of the background sampler, as the built entries do: a probe that also inlined
+// light_sample_lamp's background branch measured wrong samples on Mesa 25.0.7 (Intel), varying with the module (DEVICE.md 106).
+struct Case {const char *name;EnvironmentWorld world;unsigned image;int light;int resolution;int emitter;bool point;int portals=0;int background_lights=1;bool volume_probe=false;};
+// light: -1 none, 1 background light with MIS, 0 without MIS. Cycles enables the background
+// light only for a spatially varying world with MIS or in a scene with portals
+// (LightManager::test_enabled_lights), so otherwise constant worlds and MIS-off background
+// lights do not reach the kernels.
 // Resolutions are explicit: with resolution 0 and no sky sun, the pinned
 // LightManager picks 4096 x 2048 (8.4 M evaluations), whose evaluation buffers
 // exceed one storage binding of the arena (refused with an allocation error).
@@ -52,6 +59,15 @@ static const Case cases[]={
   {"emitter-mixed",EnvironmentWorld::Constant,0,-1,0,2,false},
   {"hdri-mis-res256",EnvironmentWorld::Hdri,0,1,256,-1,false},
   {"hdri-sun-mis-res512",EnvironmentWorld::Hdri,3,1,512,-1,false},
+  // Background light portals (portal, sun-free map and uniform strategies with MIS) and two background lights.
+  {"hdri-mis-portal",EnvironmentWorld::Hdri,0,1,64,-1,false,1},
+  {"hdri-mis-portals",EnvironmentWorld::Hdri,0,1,64,-1,false,2},
+  {"hdri-portals-no-mis",EnvironmentWorld::Hdri,0,0,64,-1,false,2},
+  {"procedural-mis-portals-point",EnvironmentWorld::Procedural,0,1,32,-1,true,2},
+  {"hdri-mis-two-background-lights",EnvironmentWorld::Hdri,0,1,64,-1,false,0,2},
+  // The volume direct light's background sample with portals (the sampler of shade_volume_light_background).
+  {"hdri-mis-portals-volume-probe",EnvironmentWorld::Hdri,0,1,64,-1,false,2,1,true},
+  {"procedural-portals-no-mis-volume-probe",EnvironmentWorld::Procedural,0,0,32,-1,true,2,1,true},
 };
 constexpr unsigned case_count=sizeof(cases)/sizeof(cases[0]);
 struct Metrics {uint64_t floats=0,strict=0,repeat_differences=0,nee=0,shadows=0,visible=0,background_hits=0,stages=0,map_checks=0,map_strict=0,sample_checks=0,sample_strict=0,valid_samples=0;
@@ -91,7 +107,11 @@ static void fixture(Scene &scene,const Case &c){
     auto panel=quad(scene,emitter,{make_float3(-.9f,-.5f,0),make_float3(.9f,-.5f,0),make_float3(.9f,.5f,0),make_float3(-.9f,.5f,0)},true);
     panel->set_tfm(transform_translate(make_float3(-1.6f,1.7f,-.8f))*transform_rotate(.25f,make_float3(0,1,0))*transform_rotate(1.1f,make_float3(1,0,0)));
     emitter->set_emission_sampling_method(EMISSION_SAMPLING_FRONT_BACK);}
-  if(c.light>=0)environment_light(scene,world,c.light==1,c.resolution);
+  for(int light=0;c.light>=0&&light<c.background_lights;light++)environment_light(scene,world,c.light==1,c.resolution);
+  // Portals: area lights with is_portal (only their geometry reaches the kernels).
+  for(int portal=0;portal<c.portals;portal++){auto light=scene.create_node<AreaLight>();light->set_is_portal(true);
+    light->set_sizeu(portal?2.5f:3.f);light->set_sizev(2.f);light->set_ellipse(portal==1);auto object=scene.create_node<Object>();object->set_geometry(light);
+    object->set_tfm(portal?transform_translate(make_float3(.5f,0,2.5f)):make_transform(1,0,0,0,0,0,1,2.5f,0,-1,0,.5f));}
   if(c.point){auto emission_graph=make_unique<ShaderGraph>();auto emission=emission_graph->create_node<EmissionNode>();emission->set_color(one_float3());emission->set_strength(1);
     emission_graph->connect(emission->output("Emission"),emission_graph->output()->input("Surface"));auto emitter=scene.create_node<Shader>();emitter->set_graph(std::move(emission_graph));
     emitter->set_emission_sampling_method(EMISSION_SAMPLING_NONE);emitter->tag_update(&scene);
@@ -165,11 +185,12 @@ static void map_check(WebGPUDevice &d,Scene &scene,const std::filesystem::path &
 // travel with the exchanged scene (PathInput) like the emitter probe's.
 constexpr unsigned sample_count=2048;
 struct PathInput {uint32_t sample,rng_pixel,rng_offset,bounce,flag;float time,P[3],D[3];};
-static std::vector<PathInput> sample_inputs(){
+static std::vector<PathInput> sample_inputs(bool volume=false){
   std::vector<PathInput> inputs(sample_count);
   for(unsigned i=0;i<sample_count;i++){const float3 P=make_float3(float(i%13)*.4f-2.4f,-1.4f+float((i/13)%7)*.3f,float(i%5)-1.f);
     const float3 D=normalize(make_float3(.2f*(int(i%5)-2),i%9?1.f:-1.f,.15f*(int(i%7)-3)));
-    inputs[i]={i%64,i*2654435761u,32*(i%4),i%3,(i%2)?uint32_t(PATH_RAY_MIS_HAD_TRANSMISSION):0u,.5f,{P.x,P.y,P.z},{D.x,D.y,D.z}};}
+    inputs[i]={i%64,i*2654435761u,32*(i%4),i%3,(i%2)?uint32_t(PATH_RAY_MIS_HAD_TRANSMISSION):0u,.5f,{P.x,P.y,P.z},{D.x,D.y,D.z}};
+    if(volume){inputs[i].flag=PATH_RAY_MIS_HAD_TRANSMISSION;inputs[i].D[0]=inputs[i].D[1]=inputs[i].D[2]=0;}}
   return inputs;
 }
 static std::vector<IntegratorStateCPU> sample_states(const std::vector<PathInput> &inputs){
@@ -178,7 +199,7 @@ static std::vector<IntegratorStateCPU> sample_states(const std::vector<PathInput
     s.path.bounce=in.bounce;s.path.flag=in.flag;s.ray.time=in.time;s.ray.P=make_float3(in.P[0],in.P[1],in.P[2]);s.ray.D=make_float3(in.D[0],in.D[1],in.D[2]);}
   return states;
 }
-static void sample_check(WebGPUDevice &d,Scene &scene,const std::filesystem::path &folder,const std::vector<IntegratorStateCPU> &states,const std::vector<float> &expected,Metrics &m){
+static void sample_check(WebGPUDevice &d,Scene &scene,const std::filesystem::path &folder,const std::vector<IntegratorStateCPU> &states,const std::vector<float> &expected,Metrics &m,bool volume=false){
   if(!scene.dscene.data.integrator.use_direct_light)return;
   bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
   const unsigned count=sample_count;require(states.size()==count,"Environment probe input count");
@@ -189,11 +210,14 @@ static void sample_check(WebGPUDevice &d,Scene &scene,const std::filesystem::pat
   // compiler terminate (emissive triangle + background light + node emission).
   device_vector<float> output(&d,"environment_samples",MEM_READ_WRITE);output.alloc(size_t(count)*(16+13)+16);std::fill_n(output.data(),output.size(),-1234.f);output.copy_to_device();
   const bool nee=(d.shader_features()&SF_LIGHT_NEE).any();
-  std::string source=d.module_wgsl(surface_source())+R"WGSL(
+  // The volume probe compiles the volume direct light's regions (VOLUME_LIGHT, VOLUME_SHADOW) into the probe module, with
+  // SF_BACKGROUND_SAMPLE_ENTRY as the volume light entries are built in a portal scene: light_sample_lamp leaves a background
+  // lamp pending and the probe completes it with vl_background_light_sample, the sampler of shade_volume_light_background.
+  std::string source=(volume?specialize_wgsl(surface_source(),d.shader_features()|SF_VOLUME_LIGHT|SF_VOLUME_SHADOW|SF_BACKGROUND_SAMPLE_ENTRY):d.module_wgsl(surface_source()))+R"WGSL(
 @compute @workgroup_size(1) fn environment_sample_probe(@builtin(global_invocation_id) id:vec3<u32>){
  svm_invocation(id.x);if(id.x>=p(1u)){return;}var sd:SurfaceData;sd.time=heap_float(state_address(S_ray_time,id.x,4u));sd.P=heap_vec3(state_address(S_ray_P,id.x,12u));sd.N=heap_vec3(state_address(S_ray_D,id.x,12u));var r:SvmResult;
  if((state_word(S_path_flag,id.x)&PATH_RAY_MIS_HAD_TRANSMISSION)!=0u){r.runtime_flag=SR_BSDF_HAS_TRANSMISSION;}
- triangle_light_prefill(id.x,sd,false,true);let ls=light_sample_native(id.x,sd,r);let at=p(4u)+id.x*64u;let valid=ls.pdf>0.0;store_word(at,bitcast<u32>(select(0.0,1.0,valid)));
+ triangle_light_prefill(id.x,sd,false,true);PROBE_VOLUME let at=p(4u)+id.x*64u;let valid=ls.pdf>0.0;store_word(at,bitcast<u32>(select(0.0,1.0,valid)));
  light_sample_write(p(5u)+id.x*52u,ls);
  if(!valid){return;}
  let values=array<f32,11>(ls.P.x,ls.P.y,ls.P.z,ls.D.x,ls.D.y,ls.D.z,ls.t,ls.pdf,ls.eval_fac,f32(ls.prim),f32(ls.object_id));
@@ -210,6 +234,8 @@ static void sample_check(WebGPUDevice &d,Scene &scene,const std::filesystem::pat
 })WGSL";
   const std::string probe=nee?"let v=light_nee_eval(ls.object_id,ls.prim,P,ls.D,ls.t,time,0.0,0.0);e=v.xyz;":"atomicOr(&heap[p(17u)/4u],2u);";
   source.replace(source.find("PROBE_NEE"),9,probe);
+  const std::string volume_probe=volume?"var ls=light_sample_native(id.x,sd,r);if(light_background_pending){light_background_pending=false;ls=vl_background_light_sample(id.x,sd.P,light_select(id.x));}":"var ls=light_sample_native(id.x,sd,r);";
+  source.replace(source.find("PROBE_VOLUME"),12,volume_probe);
   std::ofstream(folder/"probe.wgsl")<<source;
   WGPUShaderSourceWGSL code{};code.chain.sType=WGPUSType_ShaderSourceWGSL;code.code={source.data(),source.size()};WGPUShaderModuleDescriptor descriptor{};descriptor.nextInChain=&code.chain;
   d.gpu.push_scope();cbc::Handle<WGPUShaderModule,wgpuShaderModuleRelease> module(wgpuDeviceCreateShaderModule(d.gpu.get(),&descriptor));d.gpu.pop_scope();
@@ -273,12 +299,13 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     const auto &data=scene.dscene.data;
     std::cerr<<"native lights="<<data.integrator.num_lights<<" direct="<<data.integrator.use_direct_light<<" mis="<<data.integrator.use_light_mis<<" background_mis="<<data.background.use_mis
              <<" map="<<data.background.map_res_x<<"x"<<data.background.map_res_y<<" triangles="<<data.integrator.distribution_pdf_triangles<<"\n";
-    require(bool(data.background.use_mis)==(c.light==1),"Unexpected native background MIS configuration");
+    require(bool(data.background.use_mis)==(c.light==1||c.portals>0),"Unexpected native background MIS configuration");
+    require(data.integrator.num_portals==c.portals&&(c.light<0||data.integrator.num_lights>=c.background_lights),"Unexpected native portal or background light count");
     require(c.light<0||(data.background.map_res_x>0&&data.background.map_res_y>0),"Missing native importance map");
     const std::string key="case-"+std::to_string(image);
     // Scene exchange (reference_policy.h): the device-prepared tables (including the
     // device-built importance map) and the probe path states.
-    auto inputs=sample_inputs();std::vector<reference_policy::Input> exchanged;
+    auto inputs=sample_inputs(c.volume_probe);std::vector<reference_policy::Input> exchanged;
     if(c.light>=0)exchanged.push_back({"paths",inputs.data(),inputs.size()*sizeof(PathInput)});
     const bool exchange_only=reference_policy::exchange_scene(scene.dscene,key,exchanged);
     const auto states=sample_states(inputs);
@@ -289,7 +316,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       reference_policy::resolve(key+".film",local,(out/"reference-diagnostic.jsonl").string());continue;}
     if(const char *probe=std::getenv("CODEBRIX_ENVIRONMENT_TRIG_PROBE")){trig_probe(device,scene,probe);return 0;}
     if(c.light>=0)map_check(device,scene,folder,map_expected,metrics);
-    if(c.light>=0)sample_check(device,scene,folder,states,sample_expected,metrics);
+    if(c.light>=0)sample_check(device,scene,folder,states,sample_expected,metrics,c.volume_probe);
     require(data.film.pass_stride==4,"Environment combined-only film expected");bool cancelled=false;Scheduler scheduler(&device,scene.film,&scene.dscene,&cancelled);
     scheduler.alloc_work_memory();scheduler.init_execution();healthy(device);auto buffers=scheduler.get_render_buffers();BufferParams bp;bp.width=width;bp.height=height;bp.pass_stride=4;buffers->reset(bp);
     std::vector<float> local(width*height*4),first;cpu_render(scene.dscene,local,metrics);reference_policy::record_local(key+".film",local);
@@ -315,6 +342,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(c.light>=0||c.emitter>=0)require(metrics.shadows>100&&metrics.visible>50,"Missing environment direct lighting coverage");
     if((c.light>=0&&c.world!=EnvironmentWorld::Constant)||c.emitter>=0)require(metrics.nee>100,"Missing SHADE_LIGHT_NEE coverage");
     auto report=[&](std::ostream &stream){stream<<std::setprecision(17)<<"{\"passed\":true,\"case\":"<<image<<",\"name\":\""<<c.name<<"\",\"backgroundMis\":"<<data.background.use_mis
+      <<",\"portals\":"<<data.integrator.num_portals<<",\"lights\":"<<data.integrator.num_lights
       <<",\"mapResolution\":["<<data.background.map_res_x<<','<<data.background.map_res_y<<"],\"mapChecks\":"<<metrics.map_checks<<",\"mapStrictDifferences\":"<<metrics.map_strict<<",\"mapMaximumAbsoluteError\":"<<metrics.map_maximum
       <<",\"validSamples\":"<<metrics.valid_samples<<",\"sampleChecks\":"<<metrics.sample_checks<<",\"sampleStrictDifferences\":"<<metrics.sample_strict<<",\"sampleMaximumAbsoluteError\":"<<metrics.sample_maximum
       <<",\"lightNeePaths\":"<<metrics.nee<<",\"shadows\":"<<metrics.shadows<<",\"visible\":"<<metrics.visible<<",\"backgroundHits\":"<<metrics.background_hits<<",\"stages\":"<<metrics.stages

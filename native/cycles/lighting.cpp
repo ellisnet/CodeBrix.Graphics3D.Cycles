@@ -86,9 +86,11 @@ void WebGPUDevice::validate_light_tree() const{
   for(const KernelLightTreeEmitter &emitter:light_tree_emitters){
     for(float value:{emitter.theta_o,emitter.theta_e,emitter.energy})require(std::isfinite(value),"Invalid native light tree emitter");
     if(emitter.light.id<0){
-      require(size_t(~emitter.light.id)<light_records.size()&&emitter.object_id>=0&&size_t(emitter.object_id)<object_records.size(),"Invalid native light tree lamp");
+      require(size_t(~emitter.light.id)<lamp_records().size()&&emitter.object_id>=0&&size_t(emitter.object_id)<object_records.size(),"Invalid native light tree lamp");
+      // A guard: a lamp's type is its Light node's light_type socket, which the host accepts only as point, sun,
+      // background, area or spot (scene/light.cpp); LIGHT_TRIANGLE is never a lamp's type.
       const auto type=light_records[~emitter.light.id].type;
-      require(type==LIGHT_POINT||type==LIGHT_SPOT||type==LIGHT_AREA||type==LIGHT_SUN||type==LIGHT_BACKGROUND,"WebGPU direct lighting emitter type not implemented");
+      require(type==LIGHT_POINT||type==LIGHT_SPOT||type==LIGHT_AREA||type==LIGHT_SUN||type==LIGHT_BACKGROUND,"Invalid native light type");
     }
     else if(emitter.object_id==OBJECT_NONE)require(emitter.mesh.object_id>=0&&size_t(emitter.mesh.object_id)<object_records.size()&&emitter.mesh.node_id>=0&&size_t(emitter.mesh.node_id)<nodes,"Invalid native light tree mesh");
     else{
@@ -101,17 +103,34 @@ void WebGPUDevice::validate_light_tree() const{
 }
 void WebGPUDevice::validate_lighting(bool sampling) const {
   if(data.integrator.use_light_tree)validate_light_tree();
-  require(data.integrator.num_lights>=0&&size_t(data.integrator.num_lights)==light_records.size(),"Invalid native light table");
+  require(data.integrator.num_lights>=0&&data.integrator.num_portals>=0&&
+    size_t(data.integrator.num_lights)+size_t(data.integrator.num_portals)==light_records.size(),"Invalid native light table");
   // Background (world) light: importance-map sampling, MIS and non-constant
-  // worlds (shade_light_nee), sky-texture sun guiding (BACKGROUND_SUN). Portals are refused.
-  require(data.integrator.num_portals==0&&data.background.portal_weight==0,"WebGPU background light portals not implemented");
-  unsigned background_lights=0;
-  for(const auto &light:light_records){
-    require(light.type==LIGHT_POINT||light.type==LIGHT_SUN||light.type==LIGHT_SPOT||light.type==LIGHT_AREA||light.type==LIGHT_BACKGROUND,"WebGPU direct lighting emitter type not implemented");
+  // worlds (shade_light_nee), sky-texture sun guiding (BACKGROUND_SUN), portals (BACKGROUND_PORTAL).
+  // Background light portals (LightManager::device_update_lights, device_update_background): the records after the
+  // lamps, portal_offset = num_lights, the portal strategy's weight 1 exactly when there is one. The kernel reads
+  // their position, area axes and lengths, the sign and size of the inverse area and the direction
+  // (light/background.h); a portal of zero or non-finite extent is the degenerate area light below.
+  require((data.integrator.num_portals==0||data.integrator.portal_offset==data.integrator.num_lights)&&
+    data.background.portal_weight==(data.integrator.num_portals>0?1.0f:0.0f),"Invalid native background light portals");
+  // With volume direct light the background light's sample runs in its own entry, shade_volume_light_background
+  // (volume.cpp; native/DEVICE.md, item 106).
+  for(size_t i=size_t(data.integrator.num_lights);i<light_records.size();i++){const KernelLight &portal=light_records[i];
+    require(std::isfinite(portal.area.len_u)&&portal.area.len_u>0&&std::isfinite(portal.area.len_v)&&portal.area.len_v>0,"WebGPU degenerate area light not implemented");
+    require(std::isfinite(portal.area.invarea)&&portal.area.invarea!=0,"Invalid native background light portals");
+    for(const float3 value:{portal.co,portal.area.axis_u,portal.area.axis_v,portal.area.dir})
+      require(std::isfinite(value.x)&&std::isfinite(value.y)&&std::isfinite(value.z),"Invalid native background light portals");
+  }
+  // Several background lights (more than one backgroundlight object, each enabled by LightManager::test_enabled_lights):
+  // each is a lamp of the light distribution or a distant emitter of the light tree, sampled as the world with its own
+  // strength; forward hits take the selection pdf of one lamp (light_distribution_pdf_lamp) or of the tree node of
+  // background.object_index, the last background light object, exactly as the pinned kernel does.
+  for(const auto &light:lamp_records()){
+    // A guard, as for the tree's lamp emitters above (portals, whose type field is not set, follow the lamps).
+    require(light.type==LIGHT_POINT||light.type==LIGHT_SUN||light.type==LIGHT_SPOT||light.type==LIGHT_AREA||light.type==LIGHT_BACKGROUND,"Invalid native light type");
     const auto id=uint(light.shader_id)&SHADER_MASK;
     require(id<shader_records.size(),"Invalid native light shader");
     if(light.type==LIGHT_BACKGROUND){
-      require(++background_lights==1,"WebGPU multiple background lights not implemented");
       require(id==(uint(data.background.surface_shader)&SHADER_MASK),"Invalid native background light shader");
       for(float strength:light.strength)require(std::isfinite(strength),"Invalid native light strength");
       require(!data.background.use_mis||(data.background.map_res_x>0&&data.background.map_res_y>0),"Invalid native background importance map");
@@ -151,7 +170,7 @@ void WebGPUDevice::validate_lighting(bool sampling) const {
   for(int i=0;i<=n;i++){const auto &entry=light_distribution_records[i];
     require(std::isfinite(entry.totarea)&&entry.totarea>=previous&&entry.totarea<=1,"Invalid native light CDF");previous=entry.totarea;
     if(i<n){
-      if(entry.prim<0)require(size_t(~entry.prim)<light_records.size()&&data.integrator.distribution_pdf_lights>0,"Invalid native light distribution lamp");
+      if(entry.prim<0)require(size_t(~entry.prim)<lamp_records().size()&&data.integrator.distribution_pdf_lights>0,"Invalid native light distribution lamp");
       else {
         require(size_t(entry.prim)<triangle_count&&entry.object_id>=0&&size_t(entry.object_id)<object_records.size()&&
           (object_records[entry.object_id].primitive_type==PRIMITIVE_TRIANGLE||object_records[entry.object_id].primitive_type==PRIMITIVE_MOTION_TRIANGLE)&&

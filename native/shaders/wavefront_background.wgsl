@@ -189,6 +189,10 @@ fn background_mis_weight(index:u32,flag:u32)->f32{
     if(data_word(D_background_use_mis)==0u||(flag&PATH_RAY_MIS_SKIP)!=0u){return 1.0;}
     let direction=heap_vec3(state_address(S_ray_D,index,12u));
     let forward=heap_float(state_address(S_path_mis_ray_pdf,index,4u));
+//#if BACKGROUND_PORTAL
+    // background_light_pdf reads the ray origin for the portals.
+    bgl_portal_origin=heap_vec3(state_address(S_ray_P,index,12u));
+//#endif
 //#if LIGHT_TREE else let pdf=bgl_pdf(direction)*data_float(D_integrator_distribution_pdf_lights);
     // light_sample_mis_weight_forward_background: the tree's selection pdf of the background light.
     var selection=data_float(D_integrator_distribution_pdf_lights);if(data_word(LT_D_use_light_tree)!=0u){selection=light_tree_forward_read(index,0u);}

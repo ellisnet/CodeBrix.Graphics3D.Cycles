@@ -9,8 +9,14 @@
 // Adreno 640 (EV031.31.04.01) compiler collapsed a dynamically indexed
 // array<NativeHit,VS_MAX_HITS> (every entry read back as the last hit), which
 // corrupted the initial volume stack; order and comparisons are unchanged.
-struct VolumeHits {t:array<f32,VS_MAX_HITS>,object:array<u32,VS_MAX_HITS>,prim:array<u32,VS_MAX_HITS>,count:u32}
-fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32,result:ptr<function,VolumeHits>){
+//#if VOLUME_MOTION else struct VolumeHits {t:array<f32,VS_MAX_HITS>,object:array<u32,VS_MAX_HITS>,prim:array<u32,VS_MAX_HITS>,count:u32}
+// kind: PRIMITIVE_TRIANGLE or PRIMITIVE_MOTION_TRIANGLE (Intersection.type), for the boundary normal at the ray's time.
+struct VolumeHits {t:array<f32,VS_MAX_HITS>,object:array<u32,VS_MAX_HITS>,prim:array<u32,VS_MAX_HITS>,kind:array<u32,VS_MAX_HITS>,count:u32}
+//#endif
+//#if VOLUME_MOTION else fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32,result:ptr<function,VolumeHits>){
+// bvh_intersect_volume_all_motion (BVH_MOTION): moving instances and motion triangles at the ray's time.
+fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32,time:f32,result:ptr<function,VolumeHits>){
+//#endif
     let tmin=0.0;let tmax=bitcast<f32>(0x7f7fffffu);
     if(table_count(G_prim_index)==0u){return;}
     var pos=origin;var dir=clamp_direction(direction);var inv=inverse_direction(dir);
@@ -45,7 +51,9 @@ fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32
                 // volume.h, volume_all.h: the volume traversals ignore points.
                 if((kind&PRIMITIVE_POINT)!=0u){continue;}
 //#endif
-                if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return;}
+//#if VOLUME_MOTION else                 if((kind&PRIMITIVE_ALL)!=PRIMITIVE_TRIANGLE&&u32(first)!=end){fail();return;}
+                if(!native_triangle_kind(kind&PRIMITIVE_ALL)&&u32(first)!=end){fail();return;}
+//#endif
                 for(var index=u32(first);index<end;index++){
                     var prim_object=object;if(object==NONE){prim_object=load_word(table_at(G_prim_object,index,SIZE_prim_object));}
                     let prim=load_word(table_at(G_prim_index,index,SIZE_prim_index));
@@ -53,14 +61,24 @@ fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32
                     let shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;
                     if((load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags)&VS_HAS_VOLUME)==0u){continue;}
                     if((load_word(table_at(G_prim_visibility,index,SIZE_prim_visibility))&visibility)==0u){continue;}
+//#if !VOLUME_MOTION
                     let obj=table_at(G_objects,prim_object,SIZE_objects);let offset=load_word(obj+O_position_offset);
                     let vi=table_at(G_tri_vindex,prim,SIZE_tri_vindex);
                     let va=heap_vec3(table_at(G_tri_verts,offset+load_word(vi),SIZE_tri_verts));
                     let vb=heap_vec3(table_at(G_tri_verts,offset+load_word(vi+4u),SIZE_tri_verts));
                     let vc=heap_vec3(table_at(G_tri_verts,offset+load_word(vi+8u),SIZE_tri_verts));
+//#endif
+//#if VOLUME_MOTION
+                    // triangle_intersect and motion_triangle_intersect (the vertices at the ray's time): the closest
+                    // traversal's vertex fetch, as the transparent shadow traversal's (native_triangle_vertices).
+                    let vertices=native_triangle_vertices(prim_object,prim,kind&PRIMITIVE_ALL,time);
+                    if(vertices.error!=0u){return;}let va=vertices.a;let vb=vertices.b;let vc=vertices.c;
+//#endif
                     var u:f32;var v:f32;var t:f32;
                     if(c_ray_triangle_intersect(pos,dir,tmin,tmax,va,vb,vc,&u,&v,&t)){
-                        let k=(*result).count;(*result).t[k]=t;(*result).object[k]=prim_object;(*result).prim[k]=prim;(*result).count=k+1u;
+//#if VOLUME_MOTION else                         let k=(*result).count;(*result).t[k]=t;(*result).object[k]=prim_object;(*result).prim[k]=prim;(*result).count=k+1u;
+                        let k=(*result).count;(*result).t[k]=t;(*result).object[k]=prim_object;(*result).prim[k]=prim;(*result).kind[k]=kind&PRIMITIVE_ALL;(*result).count=k+1u;
+//#endif
                         if((*result).count==limit){return;}
                     }
                 }
@@ -68,7 +86,17 @@ fn volume_all_hits(origin:vec3<f32>,direction:vec3<f32>,visibility:u32,limit:u32
                 if(object!=NONE){fail();return;}
                 object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));
                 let obj=table_at(G_objects,object,SIZE_objects);
-                pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));inv=inverse_direction(dir);
+//#if VOLUME_MOTION else                 pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));inv=inverse_direction(dir);
+                // The instance push of volume_all.h: an object without a volume is popped untraversed; a moving one is
+                // entered with its inverse motion transform at the ray's time (bvh_instance_motion_push).
+                let object_flags=load_word(table_at(G_object_flag,object,SIZE_object_flag));
+                if((object_flags&VS_OBJECT_HAS_VOLUME)==0u){object=NONE;if(sp<0){fail();return;}node=stack[u32(sp)];sp--;continue;}
+                if((object_flags&SD_OBJECT_MOTION)!=0u){
+                    let inverse=motion_inverse(motion_object(object,time));
+                    pos=transform_rows(inverse.x,inverse.y,inverse.z,origin,true);dir=clamp_direction(transform_rows(inverse.x,inverse.y,inverse.z,direction,false));}
+                else{pos=transform_vector(obj+O_itfm,origin,true);dir=clamp_direction(transform_vector(obj+O_itfm,direction,false));}
+                inv=inverse_direction(dir);
+//#endif
                 sp++;if(sp>=192){fail();return;}stack[u32(sp)]=0x76543210i;
                 node=bitcast<i32>(load_word(table_at(G_object_node,object,SIZE_object_node)));
             }
@@ -93,23 +121,56 @@ fn volume_boundary_backfacing(hit:NativeHit,direction:vec3<f32>)->bool{
     var normal=surface_native_normalize(cross_normal);if(!applied){normal=surface_transform_normal(object+O_itfm,normal);}
     return dot(normal,-direction)<0.0;
 }
+//#if VOLUME_MOTION
+// shader_setup_from_ray's backfacing test at the ray's time: the triangle's vertices at the time (triangle_shader_setup,
+// motion_triangle_shader_setup) and the instance normal transform with the object's motion transforms
+// (shader_setup_object_transforms, object_normal_transform), as surface_setup_hit computes Ng.
+fn volume_boundary_backfacing_motion(hit:NativeHit,direction:vec3<f32>,time:f32)->bool{
+    var sd:SurfaceData;sd.object_id=hit.object;sd.prim=hit.prim;sd.primitive_type=hit.kind;sd.time=time;
+    sd.object_flag=load_word(table_at(G_object_flag,hit.object,SIZE_object_flag));
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){sd.motion_tfm=motion_object(sd.object_id,sd.time);sd.motion_itfm=motion_inverse(sd.motion_tfm);}
+    let vertices=native_triangle_vertices(hit.object,hit.prim,hit.kind,time);
+    let a=vertices.a;let b=vertices.b;let c=vertices.c;
+    let applied=(sd.object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
+    var cross_normal=rounded_cross(b-a,c-a);if(applied&&(sd.object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0u){cross_normal=rounded_cross(c-a,b-a);}
+    var normal=surface_native_normalize(cross_normal);if(!applied){normal=surface_object_normal(sd,normal,false);}
+    return dot(normal,-direction)<0.0;
+}
+//#endif
 @compute @workgroup_size(64) fn intersect_volume_stack(@builtin(global_invocation_id) id:vec3<u32>){
     if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     if(index>=p(10u)||state_half(S_path_queued_kernel,index)!=DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK){fail();return;}
     let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=vec3<f32>(0,0,1);let size=data_word(D_volume_stack_size);
-//#if VOLUME_SHADOW_CATCHER else     var result:VolumeHits;volume_all_hits(origin,direction,VIS_CAMERA,2u*size,&result);if(load_word(p(17u))!=0u){return;}
+//#if VOLUME_MOTION
+    // integrator_state_read_ray: the ray's time, for the motion traversal and the boundary normals.
+    let time=heap_float(state_address(S_ray_time,index,4u));
+//#endif
+//#if !VOLUME_SHADOW_CATCHER
+//#if VOLUME_MOTION else     var result:VolumeHits;volume_all_hits(origin,direction,VIS_CAMERA,2u*size,&result);if(load_word(p(17u))!=0u){return;}
+    var result:VolumeHits;volume_all_hits(origin,direction,VIS_CAMERA,2u*size,time,&result);if(load_word(p(17u))!=0u){return;}
+//#endif
+//#endif
+//#if VOLUME_SHADOW_CATCHER
     // SHADOW_CATCHER_PATH_VISIBILITY: the catcher path's stack excludes non-catcher objects.
     let catcher_path=(state_word(S_path_flag,index)&SC_PATH_PASS)!=0u;
-    var result:VolumeHits;volume_all_hits(origin,direction,select(VIS_CAMERA,VIS_CAMERA<<16u,catcher_path),2u*size,&result);if(load_word(p(17u))!=0u){return;}
+//#if VOLUME_MOTION else     var result:VolumeHits;volume_all_hits(origin,direction,select(VIS_CAMERA,VIS_CAMERA<<16u,catcher_path),2u*size,&result);if(load_word(p(17u))!=0u){return;}
+    var result:VolumeHits;volume_all_hits(origin,direction,select(VIS_CAMERA,VIS_CAMERA<<16u,catcher_path),2u*size,time,&result);if(load_word(p(17u))!=0u){return;}
+//#endif
 //#endif
     // Native qsort orders hits by distance; retain traversal order for equal t.
-    for(var i=1u;i<result.count;i++){let ht=result.t[i];let ho=result.object[i];let hp=result.prim[i];var j=i;while(j>0u&&result.t[j-1u]>ht){result.t[j]=result.t[j-1u];result.object[j]=result.object[j-1u];result.prim[j]=result.prim[j-1u];j--;}result.t[j]=ht;result.object[j]=ho;result.prim[j]=hp;}
+//#if VOLUME_MOTION else     for(var i=1u;i<result.count;i++){let ht=result.t[i];let ho=result.object[i];let hp=result.prim[i];var j=i;while(j>0u&&result.t[j-1u]>ht){result.t[j]=result.t[j-1u];result.object[j]=result.object[j-1u];result.prim[j]=result.prim[j-1u];j--;}result.t[j]=ht;result.object[j]=ho;result.prim[j]=hp;}
+    for(var i=1u;i<result.count;i++){let ht=result.t[i];let ho=result.object[i];let hp=result.prim[i];let hk=result.kind[i];var j=i;while(j>0u&&result.t[j-1u]>ht){result.t[j]=result.t[j-1u];result.object[j]=result.object[j-1u];result.prim[j]=result.prim[j-1u];result.kind[j]=result.kind[j-1u];j--;}result.t[j]=ht;result.object[j]=ho;result.prim[j]=hp;result.kind[j]=hk;}
+//#endif
     var objects:array<u32,VS_MAX>;var shaders:array<u32,VS_MAX>;var enclosed:array<u32,VS_MAX_HITS>;var enclosed_count=0u;var count=0u;
 //#if VOLUME_SHADOW_CATCHER else     if(data_word(D_background_volume_shader)!=NONE){objects[0]=data_word(D_background_object_index);shaders[0]=data_word(D_background_volume_shader);count=1u;}
     if(data_word(D_background_volume_shader)!=NONE&&!catcher_path){objects[0]=data_word(D_background_object_index);shaders[0]=data_word(D_background_volume_shader);count=1u;}
 //#endif
-    for(var i=0u;i<result.count;i++){let hit=NativeHit(result.t[i],0.0,0.0,result.object[i],result.prim[i],PRIMITIVE_TRIANGLE);
-        if(volume_boundary_backfacing(hit,direction)){
+//#if VOLUME_MOTION else     for(var i=0u;i<result.count;i++){let hit=NativeHit(result.t[i],0.0,0.0,result.object[i],result.prim[i],PRIMITIVE_TRIANGLE);
+    for(var i=0u;i<result.count;i++){let hit=NativeHit(result.t[i],0.0,0.0,result.object[i],result.prim[i],result.kind[i]);
+//#endif
+//#if VOLUME_MOTION else         if(volume_boundary_backfacing(hit,direction)){
+        if(volume_boundary_backfacing_motion(hit,direction,time)){
+//#endif
             var add=true;for(var j=0u;j<enclosed_count;j++){if(enclosed[j]==hit.object){add=false;break;}}
             for(var j=0u;j<count;j++){if(objects[j]==hit.object){add=false;break;}}
             if(add&&count<size-1u){objects[count]=hit.object;shaders[count]=load_word(table_at(G_tri_shader,hit.prim,SIZE_tri_shader));count++;}

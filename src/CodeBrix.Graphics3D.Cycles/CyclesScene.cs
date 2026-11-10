@@ -649,7 +649,7 @@ public sealed class CyclesScene : IDisposable, IAsyncDisposable
     /// <returns>The film.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="target"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="target"/> belongs to another scene.</exception>
-    /// <exception cref="NativeFailure">The bake was rejected (status 1: no such UV attribute, a geometry that is not a mesh, a bad size), was refused because the WebGPU device does not bake yet (status 2), failed (status 3) or was cancelled (status 4).</exception>
+    /// <exception cref="NativeFailure">The bake was rejected (status 1: no such UV attribute, a geometry that is not a mesh, a bad size), was refused (status 2: a scene the bake does not support, such as an approximate shadow catcher with an opaque background), failed (status 3, also when the device does not implement a combination, named in the message) or was cancelled (status 4).</exception>
     public FilmBuffer Bake(ObjectNode target, BakeSettings settings) => BakeCore(target, settings, new RenderListener(this, null, CancellationToken.None, settings.Samples, Stopwatch.StartNew()));
 
     /// <summary>

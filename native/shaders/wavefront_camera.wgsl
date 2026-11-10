@@ -351,6 +351,10 @@ fn camera_projected_ray(lens_rand:vec2<f32>,raster:vec2<f32>,pc:vec3<f32>,world:
     state_u16(S_path_bounce,path,0u);state_u16(S_path_diffuse_bounce,path,0u);state_u16(S_path_glossy_bounce,path,0u);
     state_u16(S_path_transmission_bounce,path,0u);state_u16(S_path_transparent_bounce,path,0u);
     state_u16(S_path_volume_bounce,path,0u);state_u16(S_path_volume_bounds_bounce,path,0u);
+//#if RAY_PORTAL
+    // path_state_init_integrator: the portal bounce with KERNEL_FEATURE_NODE_PORTAL.
+    state_u16(S_path_portal_bounce,path,0u);
+//#endif
     state_u8(S_path_visibility,path,VIS_CAMERA);state_u8(S_path_mnee,path,0u);state_u32(S_path_flag,path,INITIAL_FLAG);
 //#if FILM_DENOISING
     // path_state_init_integrator: denoising features start at the camera with unit throughput.

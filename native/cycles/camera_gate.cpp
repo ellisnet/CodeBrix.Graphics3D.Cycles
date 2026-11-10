@@ -142,8 +142,8 @@ static unsigned rejections(const DeviceInfo &info,bool motion){
     if(test==0){data.cam.type=CAMERA_CUSTOM;reason="custom camera";}
     if(test==1){data.cam.interocular_offset=.1f;reason="stereo camera";}
     if(test==2){data.integrator.sampling_pattern=99;reason="sampling pattern";}
-    // The denoising features are implemented (FILM_DENOISING); light portals stay refused.
-    if(test==3){data.kernel_features|=KERNEL_FEATURE_NODE_PORTAL;reason="optional path features";}
+    // The denoising features and the Ray Portal BSDF (RAY_PORTAL) are implemented; path guiding is refused.
+    if(test==3){data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional path features";}
     if(test==4){data.film.pass_sample_count=12;reason="film pass offset";}
     if(test==12){data.cam.num_motion_steps=1;reason="motion step count";}
     if(test==13){data.cam.num_motion_steps=2;reason="native camera motion table";}

@@ -66,6 +66,9 @@ class WebGPUQueue final:public DeviceQueue {
       if(kernel==DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA){
         debug_enqueue_begin(kernel,work);d.enqueue_camera(work,args);debug_enqueue_end();return;
       }
+      if(kernel==DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE){
+        debug_enqueue_begin(kernel,work);d.enqueue_bake(work,args);debug_enqueue_end();return;
+      }
       if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST){
         debug_enqueue_begin(kernel,work);d.enqueue_closest(work,args);debug_enqueue_end();return;
       }

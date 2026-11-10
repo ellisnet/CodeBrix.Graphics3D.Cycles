@@ -82,6 +82,10 @@
         state_u16(S_shadow_path_diffuse_bounce,shadow,state_half(S_path_diffuse_bounce,index));state_u16(S_shadow_path_glossy_bounce,shadow,state_half(S_path_glossy_bounce,index));
         state_u16(S_shadow_path_transmission_bounce,shadow,state_half(S_path_transmission_bounce,index));state_u16(S_shadow_path_transparent_bounce,shadow,state_half(S_path_transparent_bounce,index));
         state_u16(S_shadow_path_volume_bounds_bounce,shadow,state_half(S_path_volume_bounds_bounce,index));
+//#if RAY_PORTAL
+        // integrate_direct_light_shadow_init_common: the portal bounce with KERNEL_FEATURE_NODE_PORTAL.
+        state_u16(S_shadow_path_portal_bounce,shadow,state_half(S_path_portal_bounce,index));
+//#endif
 //#if VOLUME_SHADOW
         vl_copy_volume_stack(index,shadow);
 //#endif

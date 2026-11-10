@@ -40,8 +40,8 @@ def main():
             report=json.loads((folder/'stdout.txt').read_text());assert report['passed'] and report['cyclesAllocationBytesAfterCleanup']==0
             assert Path((folder/'run.library.txt').read_text().strip()).resolve()==runtime.resolve()
             if kind=='principled_svm':
-                assert report['originalCpuSurfaceSvm'] and report['compiledGraphs']==20 and report['closureFamilies']==13
-                assert report['invalidCasesRejected']==19 and report['nativeUnsupportedFeatureRejections']==2
+                assert report['originalCpuSurfaceSvm'] and report['compiledGraphs']==20 and report['closureFamilies']==15
+                assert report['invalidCasesRejected']==16 and report['nativeUnsupportedFeatureRejections']==0
             if kind=='principled_bounce':assert report['originalCpuSurfaceIntegrator'] and report['cases']==29 and report['invalidCasesRejected']==21
             if kind=='principled_render':assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
             reports[kind]=report;save(out/'results.json',reports)
@@ -51,7 +51,7 @@ def main():
                 out/'principled_render',out/('principled_render-'+args.off_mode),args.off_mode);save(out/'results.json',reports)
         assert sources==inputs() and all(sha(Path(name))==digest for name,digest in pins.items())
         status.update(complete=True,passed=True,phase='complete',inputsUnchanged=True,
-                      scope='Native Principled BSDF: sheen, coat, emission, F82-tint metallic, generalized-Schlick transmission and specular, thin wall, thin film, diffuse/Oren-Nayar, both GGX distributions, mixtures, independent original-Cycles images. Subsurface: the random-walk methods run; thin-wall subsurface and Christensen-Burley are rejected.')
+                      scope='Native Principled BSDF: sheen, coat, emission, F82-tint metallic, generalized-Schlick transmission and specular, thin wall, thin film, diffuse/Oren-Nayar, both GGX distributions, mixtures, independent original-Cycles images. Subsurface: the random-walk and Christensen-Burley methods and thin-walled subsurface run.')
     except Exception as error:
         status.update(complete=True,passed=False,error=repr(error));raise
     finally:save(out/'status.json',status)

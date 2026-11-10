@@ -641,8 +641,8 @@ source change reruns every gate. A replay's fingerprint is the hash of its captu
 A fingerprint says nothing about host code at work sizes the walk does not visit
 (fingerprint.py host-code lists those files), and a run with the variable set renders
 nothing (zero films, reported as diagnostic) and neither reads nor writes a pipeline cache.
-Two gates have no fingerprint and always run: bake_gate.py (CPU backends, no WebGPU device
-to fingerprint) and pipeline_cache_gate.py (a sequence of processes over a cache directory,
+Two gates have no fingerprint and always run: bake_gate.py (hosts it builds through the C ABI,
+CPU and WebGPU, no fixed scene to fingerprint) and pipeline_cache_gate.py (a sequence of processes over a cache directory,
 which fingerprint mode does not use). Replay of an oracle scene:
 native/tools/oracle_replay.py (capture on Linux, replay on any platform).
 After a WGSL change, dump the modules a gate compiles

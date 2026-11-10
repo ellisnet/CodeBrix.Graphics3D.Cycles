@@ -184,18 +184,26 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       require(rejected,"Triangle light guard did not reject case="+std::to_string(bad));metrics.guards++;
     }d.light_distribution_records=saved;d.data=data;
 #else
-    const auto saved=d.light_records;
-    for(unsigned bad=0;bad<6;bad++){d.light_records=saved;std::string reason;
+    const auto saved=d.light_records;const auto saved_data=d.data;
+    for(unsigned bad=0;bad<8;bad++){d.light_records=saved;d.data=saved_data;std::string reason;
       if(bad==0){d.light_records[2].area.len_u=0;reason="degenerate area";}
       if(bad==1){d.light_records[2].area.len_v=0;reason="degenerate area";}
       if(bad==2){d.light_records[2].area.tan_half_spread=-1;reason="Invalid native area";}
       if(bad==3){d.light_records[2].area.invarea=std::numeric_limits<float>::quiet_NaN();reason="Invalid native area";}
       if(bad==4){d.light_records[0].spot.cos_half_larger_spread=2;reason="Invalid native spot";}
-      // LIGHT_BACKGROUND is a supported lamp type (environment gate); LIGHT_TRIANGLE never is one.
-      if(bad==5){d.light_records[0].type=LIGHT_TRIANGLE;reason="emitter type not implemented";}
+      // LIGHT_BACKGROUND is a supported lamp type (environment gate); LIGHT_TRIANGLE never is one (a guard).
+      if(bad==5){d.light_records[0].type=LIGHT_TRIANGLE;reason="Invalid native light type";}
+      // A background light portal (a record after the lamps, num_portals) of zero extent is a degenerate area light.
+      if(bad==6){KernelLight portal=saved[2];portal.area.len_u=0;d.light_records.push_back(portal);d.data.integrator.num_portals=1;
+        d.data.integrator.portal_offset=d.data.integrator.num_lights;d.data.background.portal_weight=1;reason="degenerate area";}
+      // A valid portal with volume direct light is accepted (native/DEVICE.md, item 106).
+      if(bad==7){d.light_records.push_back(saved[2]);d.data.integrator.num_portals=1;d.data.integrator.portal_offset=d.data.integrator.num_lights;
+        d.data.background.portal_weight=1;d.data.kernel_features|=KERNEL_FEATURE_VOLUME;d.data.integrator.use_direct_light=1;
+        bool accepted=true;try{d.validate_lighting(true);}catch(const std::exception &){accepted=false;}
+        require(accepted,"Renderer rejected a valid portal with volume direct light");metrics.guards++;continue;}
       bool rejected=false;try{d.validate_lighting(true);}catch(const std::exception &error){rejected=std::string(error.what()).find(reason)!=std::string::npos;}
       require(rejected,"Emitter guard did not reject case="+std::to_string(bad));metrics.guards++;
-    }d.light_records=saved;
+    }d.light_records=saved;d.data=saved_data;
 #endif
     }
   }

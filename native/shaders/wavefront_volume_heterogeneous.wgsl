@@ -23,6 +23,7 @@ fn vh_is_heterogeneous(index:u32)->bool{
 // x sigma_t, y sigma_s (sum of the scatter closure weights), z emission; w (x: runtime flags, y: closure count,
 // z: error).
 struct VhCoefficients {sigma_t:vec3<f32>, sigma_s:vec3<f32>, emission:vec3<f32>, flag:u32, count:u32, error:u32}
+//#if !VOLUME_LIGHT_PATH
 fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32)->VhCoefficients{
     var out:VhCoefficients;
     var sd:SurfaceData;sd.P=P;sd.N=-direction;sd.Ng=-direction;sd.wi=-direction;sd.prim=NONE;sd.primitive_type=V_PRIMITIVE_VOLUME;
@@ -34,6 +35,10 @@ fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32)->VhCoefficients{
         sd.object_id=load_word(volume_stack_address(index,slot,VS_object));
         sd.shader_flag=load_word(table_at(G_shaders,sd.shader&SHADER_MASK,SIZE_shaders)+SH_flags);sd.object_flag=0u;
         if(sd.object_id!=NONE){sd.object_flag=load_word(table_at(G_object_flag,sd.object_id,SIZE_object_flag));}
+//#if VOLUME_MOTION
+        // volume_shader_eval_entry: shader_setup_object_transforms at the ray's time for a moving stack object.
+        if((sd.object_flag&SD_OBJECT_MOTION)!=0u){sd.motion_tfm=motion_object(sd.object_id,sd.time);sd.motion_itfm=motion_inverse(sd.motion_tfm);}
+//#endif
         sd.runtime_flag=r.runtime_flag;r=svm_evaluate_seeded(index,sd,r.remaining,r.closure_base,true,r);if(r.error!=0u){out.error=r.error;return out;}
         if(slot>0u){
             for(var a=0u;a<r.count;a++){let left=r.closure_base+a*SVM_CLOSURE_BYTES;var b=a+1u;
@@ -53,11 +58,54 @@ fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32)->VhCoefficients{
     if((r.runtime_flag&SR_SCATTER)!=0u){for(var i=0u;i<r.count;i++){out.sigma_s+=svm_closure_read(r,i).weight;}}
     return out;
 }
+//#endif
+//#if VOLUME_LIGHT_PATH
+fn vh_eval(index:u32,P:vec3<f32>,direction:vec3<f32>,base:u32,only_object:u32,only_shader:u32)->VhCoefficients{
+    var out:VhCoefficients;
+    var sd:SurfaceData;sd.P=P;sd.N=-direction;sd.Ng=-direction;sd.wi=-direction;sd.prim=NONE;sd.primitive_type=V_PRIMITIVE_VOLUME;
+    sd.time=heap_float(state_address(S_ray_time,index,4u));sd.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
+    // volume_estimate_extrema evaluates one entry and allocates no closures (num_closure_left = 0).
+    var r:SvmResult;r.runtime_flag=sd.runtime_flag;r.remaining=select(data_word(D_max_closures),0u,only_shader!=NONE);r.closure_base=base;
+    let limit=data_word(D_volume_stack_size);
+    for(var slot=0u;slot<limit;slot++){
+        sd.shader=load_word(volume_stack_address(index,slot,VS_shader));if(sd.shader==NONE){break;}
+        sd.object_id=load_word(volume_stack_address(index,slot,VS_object));
+        if(only_shader!=NONE&&(sd.shader!=only_shader||sd.object_id!=only_object)){continue;}
+        sd.shader_flag=load_word(table_at(G_shaders,sd.shader&SHADER_MASK,SIZE_shaders)+SH_flags);sd.object_flag=0u;
+        if(sd.object_id!=NONE){sd.object_flag=load_word(table_at(G_object_flag,sd.object_id,SIZE_object_flag));}
+//#if VOLUME_MOTION
+        // volume_shader_eval_entry: shader_setup_object_transforms at the ray's time for a moving stack object.
+        if((sd.object_flag&SD_OBJECT_MOTION)!=0u){sd.motion_tfm=motion_object(sd.object_id,sd.time);sd.motion_itfm=motion_inverse(sd.motion_tfm);}
+//#endif
+        sd.runtime_flag=r.runtime_flag;r=svm_evaluate_seeded(index,sd,r.remaining,r.closure_base,true,r);if(r.error!=0u){out.error=r.error;return out;}
+        if(slot>0u){
+            for(var a=0u;a<r.count;a++){let left=r.closure_base+a*SVM_CLOSURE_BYTES;var b=a+1u;
+                while(b<r.count){let right=r.closure_base+b*SVM_CLOSURE_BYTES;
+//#if VOLUME_PHASES else                     if(load_word(left+28u)==load_word(right+28u)&&heap_float(left+32u)==heap_float(right+32u)){volume_closure_add(left,right);
+                    if(vp_equal(left,right)){volume_closure_add(left,right);
+//#endif
+                        for(var j=b;j+1u<r.count;j++){volume_closure_copy(r.closure_base+j*SVM_CLOSURE_BYTES,r.closure_base+(j+1u)*SVM_CLOSURE_BYTES);}r.count--;
+                    }else{b++;}
+                }
+            }
+        }
+    }
+    out.flag=r.runtime_flag;out.count=r.count;
+    if((r.runtime_flag&SR_EXTINCTION)!=0u){out.sigma_t=r.transparency;}
+    if((r.runtime_flag&SR_EMISSION)!=0u){out.emission=r.emission;}
+    if((r.runtime_flag&SR_SCATTER)!=0u){for(var i=0u;i<r.count;i++){out.sigma_s+=svm_closure_read(r,i).weight;}}
+    return out;
+}
+//#endif
 fn vh_copy_closures(src_base:u32,dst_base:u32,count:u32){
     for(var i=0u;i<count*SVM_CLOSURE_BYTES/4u;i++){store_word(dst_base+i*4u,load_word(src_base+i*4u));}
 }
-// film_write_volume_emission.
+//#if VOLUME_EMISSION
+// film_write_volume_emission (its callers are VOLUME_EMISSION regions; the VE_ layout exists only there).
 fn vh_write_emission(index:u32,base:u32,emission:vec3<f32>){
+//#if LIGHT_LINKING
+    if(!vll_emission_visible(index)){return;}
+//#endif
     var value=select(emission,vec3<f32>(0),(bitcast<vec3<u32>>(emission)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
     let bounce=state_half(S_path_bounce,index);let limit=select(data_float(VE_D_sample_clamp_direct),data_float(VE_D_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
@@ -74,6 +122,7 @@ fn vh_write_emission(index:u32,base:u32,emission:vec3<f32>){
     ve_emission_passes(index,base,value);
 //#endif
 }
+//#endif
 fn vh_max(v:vec3<f32>)->f32{return max(v.x,max(v.y,v.z));}
 fn vh_safe_divide(a:vec3<f32>,b:vec3<f32>,fallback:f32)->vec3<f32>{return select(vec3<f32>(fallback),vh_divide(a,b),b!=vec3<f32>(0));}
 // volume_sample_channel_pdf with correctly rounded divisions.
@@ -101,6 +150,16 @@ struct VhState {
     origin:vec3<f32>, direction:vec3<f32>, tmax:f32, index:u32, sample:u32, pixel:u32, scratch:u32, direct_base:u32,
     indirect_base:u32, direct_count:u32, indirect_count:u32, terminate:bool, request:f32, setup_from:u32, trans_resume:u32,
     add:bool, add_weight:f32, add_t:f32, add_throughput:vec3<f32>, add_pdf:f32, copy_direct:bool, copy_indirect:bool, copy_count:u32, add_clamp:bool, film:u32, add_guided:f32, add_unguided:f32, add_sample_distance:bool,
+//#if FILM_DENOISING
+    // Denoising features: the path writes them, vstate.albedo and the reservoir candidate's albedo.
+    denoise:bool, albedo:vec3<f32>, cand_albedo:vec3<f32>,
+//#endif
+//#if VOLUME_LIGHT_PATH
+    // Light Path extrema: the path's visibility, the resumable volume_octree_setup (done, result, entry index, skipped entry,
+    // the entry's local octree) and the estimate in progress (its entry is the one vh_eval evaluates; NONE: the stack).
+    visibility:u32, set_done:bool, set_ok:bool, set_i:u32, set_skip_object:u32, set_skip_shader:u32, set_local:VhOctree, est:VlpEstimate,
+    estimating:bool,
+//#endif
 }
 const VH_INIT=0u;const VH_ADVANCE=1u;const VH_ADVANCE_WHILE=2u;const VH_ADVANCE_AFTER=3u;const VH_STEP=4u;const VH_STEP_EVAL=5u;
 const VH_FINAL=6u;const VH_FINAL_EVAL=7u;const VH_DIRECT=8u;const VH_DIRECT_EVAL=9u;const VH_TRANS=10u;const VH_DONE=11u;
@@ -109,7 +168,9 @@ const VH_SETUP=12u;const VH_TRANS_START=13u;const VH_FINAL2=14u;
 fn vh_reservoir_add(st:ptr<function,VhState>,weight:f32,emission:vec3<f32>,t:f32,throughput:vec3<f32>,pdf:f32){
     if(!(weight>0.0)){return;}
     (*st).res_total+=weight;let thresh=weight/(*st).res_total;
-    if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_emission=emission;(*st).cand_t=t;(*st).cand_throughput=throughput;(*st).cand_pdf=pdf;(*st).res_rand/=thresh;}
+//#if FILM_DENOISING else     if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_emission=emission;(*st).cand_t=t;(*st).cand_throughput=throughput;(*st).cand_pdf=pdf;(*st).res_rand/=thresh;}
+    if(((*st).res_rand<=thresh)||((*st).res_total==weight)){(*st).cand_emission=emission;(*st).cand_t=t;(*st).cand_throughput=throughput;(*st).cand_pdf=pdf;(*st).res_rand/=thresh;(*st).cand_albedo=(*st).albedo;}
+//#endif
     else{(*st).res_rand=((*st).res_rand-thresh)/(1.0-thresh);}
     (*st).res_rand=clamp((*st).res_rand,0.0,1.0);
 }
@@ -122,7 +183,9 @@ fn vh_equiangular_transmittance(st:ptr<function,VhState>,interval:vec2<f32>,sigm
     let sigma_c=sigma.y-sigma.x;let length=t.y-t.x;
     // roundf (halves away from zero).
     let expected=sigma_c*length;let whole=floor(expected);let k=u32(clamp(i32(select(whole,whole+1.0,expected-whole>=0.5)),1,VH_MAX_STEPS));
-    let rand=native_rng((*st).sample,0u,(*st).offset+VH_PRNG_EXPANSION_ORDER).x;
+//#if VOLUME_SAMPLING_PATTERN else     let rand=native_rng((*st).sample,0u,(*st).offset+VH_PRNG_EXPANSION_ORDER).x;
+    let rand=native_rng_pattern((*st).sample,0u,(*st).offset+VH_PRNG_EXPANSION_ORDER,1u).x;
+//#endif
     var N=1u;(*st).tr_pmf=1.0;
     if(sigma_c!=0.0){
         // sample_geometric_distribution(rand, 0.9, pmf, 4).
@@ -130,7 +193,9 @@ fn vh_equiangular_transmittance(st:ptr<function,VhState>,interval:vec2<f32>,sigm
         (*st).tr_pmf=select(r*pow(q,f32(n)),pow(q,f32(n)),n==4);N=1u<<u32(max(n,0));
     }
     (*st).tr_N=N;(*st).tr_k=k;(*st).tr_n=0u;(*st).tr_i=0u;(*st).tr_t=t;
-    (*st).tr_shade=native_rng((*st).sample,(*st).pixel,(*st).offset+VH_PRNG_SHADE_OFFSET).x;(*st).tr_step=length/f32(N*k);
+//#if VOLUME_SAMPLING_PATTERN else     (*st).tr_shade=native_rng((*st).sample,(*st).pixel,(*st).offset+VH_PRNG_SHADE_OFFSET).x;(*st).tr_step=length/f32(N*k);
+    (*st).tr_shade=native_rng_pattern((*st).sample,(*st).pixel,(*st).offset+VH_PRNG_SHADE_OFFSET,1u).x;(*st).tr_step=length/f32(N*k);
+//#endif
     (*st).tau_k=vec3<f32>(0);(*st).tau_j0=vec3<f32>(0);(*st).tau_j1=vec3<f32>(0);(*st).tau_j_1=vec3<f32>(0);(*st).T_k=vec3<f32>(0);
     (*st).stage=VH_TRANS;(*st).resume=resume;return true;
 }
@@ -158,7 +223,9 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
             }
             else if(stage==1u){ // VH_ADVANCE: volume_integrate_advance.
                 if((*st).step>VH_MAX_STEPS_U){(*st).stage=VH_FINAL;continue;}(*st).step++;
-                (*st).rscatter=native_rng((*st).sample,(*st).pixel,(*st).offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;(*st).stage=VH_ADVANCE_WHILE;
+//#if VOLUME_SAMPLING_PATTERN else                 (*st).rscatter=native_rng((*st).sample,(*st).pixel,(*st).offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;(*st).stage=VH_ADVANCE_WHILE;
+                (*st).rscatter=native_rng_pattern((*st).sample,(*st).pixel,(*st).offset+V_PRNG_VOLUME_SCATTER_DISTANCE,1u).x;(*st).stage=VH_ADVANCE_WHILE;
+//#endif
             }
             else if(stage==2u){ // VH_ADVANCE_WHILE: volume_indirect_scatter_advance, then the octree advance.
                 let equiangular=((*st).method==2u)&&(*st).use_mis;
@@ -176,6 +243,10 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 }
                 if(!advance){(*st).offset+=VH_PRNG_BOUNCE_NUM;(*st).step_sigma_max=(*st).o.sigma.y*(*st).majorant_scale;(*st).stage=VH_STEP;continue;}
                 var o=(*st).o;let moved=vh_octree_advance((*st).index,(*st).origin,(*st).direction,(*st).tmax,&o);(*st).o=o;if(!moved){(*st).stage=VH_FINAL;continue;}
+//#if VOLUME_LIGHT_PATH
+                // volume_octree_advance: the advanced octree's extrema, estimated (stage 18 resumes).
+                if(vlp_estimates((*st).visibility,(*st).o.shader)){(*st).est=vlp_start((*st).o.t,(*st).o.object,(*st).o.shader,(*st).sample,(*st).pixel,(*st).offset,18u);(*st).estimating=true;(*st).stage=15u;continue;}
+//#endif
                 (*st).setup_from=1u;(*st).stage=VH_SETUP;
             }
             else if(stage==3u){ // VH_ADVANCE_AFTER: the residual optical depth carries the random number over.
@@ -212,6 +283,9 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                     if((c.flag&SR_EMISSION)!=0u){(*st).emission+=(*st).indirect*c.emission;}
                     if(c.sigma_s.x+c.sigma_s.y+c.sigma_s.z==0.0){(*st).indirect*=sigma_n;}
                     else{
+//#if FILM_DENOISING
+                        if((*st).denoise){(*st).albedo+=(*st).indirect*c.sigma_s;}
+//#endif
                         let albedo=select(vec3<f32>(1.0),c.sigma_s/c.sigma_t,c.sigma_t!=vec3<f32>(0));let channel_pdf=vl_channel_pdf(albedo,(*st).indirect);
                         let prob_s=dot(c.sigma_s/(c.sigma_s+sigma_n),channel_pdf);
                         let weight=(*st).transmittance*prob_s;let throughput=(*st).indirect*c.sigma_s/prob_s;
@@ -238,11 +312,17 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 let sample_distance=!(*st).terminate&&((*st).method==1u);
                 if(!(*st).vspg){
                     (*st).indirect=(*st).cand_throughput;(*st).emission=(*st).cand_emission;(*st).indirect_t=(*st).cand_t;
+//#if FILM_DENOISING
+                    (*st).albedo=(*st).cand_albedo;
+//#endif
                     if(sample_distance){(*st).direct_scatter=true;(*st).direct_t=(*st).indirect_t;(*st).direct=(*st).indirect;if((*st).use_mis){(*st).distance_pdf=(*st).cand_pdf;}}
                     continue;
                 }
                 if(sample_distance){(*st).direct=(*st).cand_throughput*(*st).res_total;(*st).distance_pdf=(*st).cand_pdf;}
                 (*st).emission=mix((*st).emission,(*st).cand_emission,vec3<f32>((*st).res_total));
+//#if FILM_DENOISING
+                (*st).albedo=mix((*st).albedo,(*st).cand_albedo,vec3<f32>((*st).res_total));
+//#endif
                 let unguided=(*st).res_total;var guided:f32;
                 if(all((*st).indirect==vec3<f32>(0))){guided=1.0;}
                 else{(*st).res_total=mix((*st).res_total,(*st).scatter_prob,0.75);guided=(*st).res_total;
@@ -284,7 +364,15 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                 }else{(*st).direct_scatter=false;}
             }
             else if(stage==12u){ // VH_SETUP: volume_octree_setup<false> (after the first segment or an octree advance).
-                var o=(*st).o;let ok=vh_octree_setup((*st).index,(*st).origin,(*st).direction,(*st).tmax,&o);(*st).o=o;
+//#if VOLUME_LIGHT_PATH else                 var o=(*st).o;let ok=vh_octree_setup((*st).index,(*st).origin,(*st).direction,(*st).tmax,&o);(*st).o=o;
+                // The resumable set-up (stages 16 and 17): its entries' estimates need evaluations.
+                if(!(*st).set_done){
+                    if((*st).o.no_overlap){(*st).set_ok=(*st).o.t.x<(*st).o.t.y;(*st).set_done=true;}
+                    else{(*st).set_i=0u;(*st).set_skip_object=(*st).o.object;(*st).set_skip_shader=(*st).o.shader;(*st).stage=16u;}
+                    continue;
+                }
+                (*st).set_done=false;let ok=(*st).set_ok;
+//#endif
                 if((*st).setup_from==1u){
                     if(!ok){(*st).stage=VH_FINAL;continue;}
                     (*st).optical_depth+=(*st).o.sigma.y*((*st).o.t.y-(*st).o.t.x);(*st).t=(*st).o.t.x;(*st).trans_resume=VH_ADVANCE_AFTER;(*st).stage=VH_TRANS_START;continue;
@@ -303,13 +391,42 @@ fn vh_step(st:ptr<function,VhState>,c:VhCoefficients,have:bool)->f32{
                     if((*st).majorant_scale<1.0){(*st).majorant_scale=1.0;let d=1.0-vh_fast_exp(-depth);(*st).scatter_prob=select(0.0,(*st).scatter_prob/d,d!=0.0);}
                     else{(*st).scatter_prob=1.0;}
                 }
-                (*st).res_rand=native_rng((*st).sample,(*st).pixel,(*st).offset+V_PRNG_VOLUME_RESERVOIR).x;
+//#if VOLUME_SAMPLING_PATTERN else                 (*st).res_rand=native_rng((*st).sample,(*st).pixel,(*st).offset+V_PRNG_VOLUME_RESERVOIR).x;
+                (*st).res_rand=native_rng_pattern((*st).sample,(*st).pixel,(*st).offset+V_PRNG_VOLUME_RESERVOIR,1u).x;
+//#endif
                 (*st).offset=vh_scramble((*st).offset,0xe35fad82u);
                 (*st).trans_resume=VH_ADVANCE;(*st).stage=VH_TRANS_START;
             }
             else if(stage==13u){ // VH_TRANS_START: volume_equiangular_transmittance of the current segment.
                 vh_equiangular_transmittance(st,(*st).o.t,(*st).o.sigma,(*st).trans_resume);
             }
+//#if VOLUME_LIGHT_PATH
+            else if(stage==15u){ // volume_estimate_extrema: the entry's evaluations along its octree segment.
+                if(!evaluated){return vlp_shade_t((*st).est);}evaluated=false;
+                var e=(*st).est;let done=vlp_add(&e,c.sigma_t,c.emission);(*st).est=e;
+                if(done){(*st).estimating=false;(*st).stage=(*st).est.resume;}
+            }
+            else if(stage==16u){ // volume_octree_setup<false>: the next stack entry's octree.
+                let limit=data_word(D_volume_stack_size);var shader=NONE;if((*st).set_i<limit){shader=vh_stack_shader((*st).index,(*st).set_i);}
+                if(shader==NONE){
+                    if((*st).set_i==1u){(*st).o.no_overlap=true;}
+                    (*st).set_ok=(*st).o.node!=NONE&&(*st).o.t.x<(*st).o.t.y;(*st).set_done=true;(*st).stage=VH_SETUP;continue;
+                }
+                let object=vh_stack_object((*st).index,(*st).set_i);
+                if(object==(*st).set_skip_object&&shader==(*st).set_skip_shader){(*st).set_i++;continue;}
+                (*st).set_local=vlp_local((*st).index,(*st).origin,(*st).direction,(*st).tmax,(*st).o.t.x,object,shader);
+                if(vlp_estimates((*st).visibility,shader)){(*st).est=vlp_start((*st).set_local.t,object,shader,(*st).sample,(*st).pixel,(*st).offset,17u);(*st).estimating=true;(*st).stage=15u;continue;}
+                (*st).est.ext=vh_extrema((*st).set_local);(*st).stage=17u;
+            }
+            else if(stage==17u){ // The entry's extrema join the active segment's; the entry with the smallest exit becomes active.
+                (*st).o.sigma=(*st).o.sigma+(*st).est.ext;var local=(*st).set_local;
+                if(local.t.y<=(*st).o.t.y){local.sigma=(*st).o.sigma;(*st).o=local;}
+                (*st).set_i++;(*st).stage=16u;
+            }
+            else if(stage==18u){ // volume_octree_advance's estimated extrema, then the set-up.
+                (*st).o.sigma=(*st).est.ext;(*st).setup_from=1u;(*st).stage=VH_SETUP;
+            }
+//#endif
             else{return -1.0;}
         // One call site each: the reservoir sample and the closure copies of the stage that just ran.
         if((*st).add){vh_reservoir_add(st,(*st).add_weight,(*st).emission,(*st).add_t,(*st).add_throughput,(*st).add_pdf);(*st).add=false;
@@ -369,7 +486,9 @@ fn vh_fast_exp(x_in:f32)->f32{
     let vl=p(24u)+id.x*VL_RECORD_BYTES;method=load_word(vl);eq_point=heap_vec3(vl+4u);segment=vec2<f32>(heap_float(vl+16u),heap_float(vl+20u));
 //#endif
     // volume_integrate_state_init and volume_integrate_result_init.
-    st.rscatter=native_rng(sample,pixel,offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;st.use_mis=method==3u;
+//#if VOLUME_SAMPLING_PATTERN else     st.rscatter=native_rng(sample,pixel,offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;st.use_mis=method==3u;
+    st.rscatter=native_rng_pattern(sample,pixel,offset+V_PRNG_VOLUME_SCATTER_DISTANCE,1u).x;st.use_mis=method==3u;
+//#endif
     if(st.use_mis){if(st.rscatter<0.5){method=1u;st.rscatter*=2.0;}else{st.rscatter=(st.rscatter-0.5)*2.0;method=2u;}}
     st.method=method;st.transmittance=1.0;st.t=tmin;st.vspg=bounce==0u;st.scatter_prob=1.0;st.majorant_scale=1.0;st.direct_rr_scale=1.0;
     st.direct=select(throughput,vec3<f32>(0),method==0u);st.indirect=throughput;
@@ -377,10 +496,18 @@ fn vh_fast_exp(x_in:f32)->f32{
     // volume_integrate_heterogeneous (the octree setup and the guidance run as the first stages).
     st.o.t=vec2<f32>(tmin,bitcast<f32>(0x7f7fffffu));st.o.node=NONE;st.o.object=NONE;st.o.shader=NONE;st.o.scale=VH_MANTISSA_BITS;
     st.film=base;st.offset=offset;st.setup_from=0u;st.stage=VH_SETUP;
+//#if VOLUME_LIGHT_PATH
+    st.visibility=state_byte(S_path_visibility,index);
+//#endif
+//#if FILM_DENOISING
+    st.denoise=(flag&DN_PATH_RAY_DENOISING_FEATURES)!=0u;
+//#endif
     var c:VhCoefficients;var have=false;
     loop{
         let t=vh_step(&st,c,have);if(t<0.0){break;}
-        c=vh_eval(index,origin+direction*t,direction,st.scratch);have=true;
+//#if VOLUME_LIGHT_PATH else         c=vh_eval(index,origin+direction*t,direction,st.scratch);have=true;
+        c=vh_eval(index,origin+direction*t,direction,st.scratch,select(NONE,st.est.object,st.estimating),select(NONE,st.est.shader,st.estimating));have=true;
+//#endif
         if(c.error!=0u){return;}
     }
     // volume_direct_scatter_mis.
@@ -391,6 +518,9 @@ fn vh_fast_exp(x_in:f32)->f32{
     }
 //#if VOLUME_EMISSION
     if(any(st.emission!=vec3<f32>(0))){vh_write_emission(index,base,st.emission);}
+//#endif
+//#if FILM_DENOISING
+    flag=volume_denoising_features(index,base,flag,st.albedo,st.indirect_scatter);
 //#endif
     if(bounce==0u){state_f32(S_path_optical_depth,index,heap_float(state_address(S_path_optical_depth,index,4u))+st.optical_depth);}
     // volume_integrate_event.
@@ -413,12 +543,12 @@ fn vh_fast_exp(x_in:f32)->f32{
     store_word(rec+80u,st.indirect_base);store_word(rec+84u,st.indirect_count);store_word(rec+64u,1u);
 }
 //#if VOLUME_RAY_MARCHING
-// The arithmetic of the scalar ARM64 oracle kernels on this path, selected by the generated
-// NATIVE_FLOAT3_RECIPROCAL_NORMALIZE (arm64-scalar; on SSE hosts these helpers are the earlier code). volume_sample_channel
-// rescales rchannel by 1/pdf at every step, so a last-bit difference in the throughput or in sigma grows about threefold per
-// step until the channel pick flips (volumes/ray-marching-heterogeneous-point, native/DEVICE.md). So this path computes the
-// oracle's values exactly: expf and logf are the C library's (correctly rounded here, not the driver's exp and log), and
-// float3 / float multiplies by the reciprocal, as the scalar float3 operator does. The double-float forms are
+// The oracle kernels' arithmetic on this path. volume_sample_channel rescales rchannel by 1/pdf at every step, so a last-bit
+// difference in the throughput or in sigma grows about threefold per step until the channel pick flips
+// (volumes/ray-marching-heterogeneous-point, native/DEVICE.md). So this path computes the oracle's values exactly on every
+// host: expf and logf are the C library's (correctly rounded here, not the driver's exp and log); on the scalar ARM64 oracle
+// (the generated NATIVE_FLOAT3_RECIPROCAL_NORMALIZE, arm64-scalar) float3 / float multiplies by the reciprocal, as the
+// scalar float3 operator does, and on SSE hosts it is the correctly rounded quotient. The double-float forms are
 // wavefront_svm_closures.wgsl's vp_exp_parts and vp_log_parts, copied for the modules without VP_MATH.
 fn vr_exp_parts(x:f32)->vec2<f32>{
     if(!(x==x)){return vec2<f32>(x,0.0);}if(x>88.72284){return vec2<f32>(bitcast<f32>(0x7f800000u),0.0);}if(x< -103.97208){return vec2<f32>(0.0,0.0);}
@@ -432,7 +562,6 @@ fn vr_exp_parts(x:f32)->vec2<f32>{
     return vec2<f32>(rounded_add(polynomial.x,polynomial.y),k);
 }
 fn vr_exp3(v:vec3<f32>)->vec3<f32>{
-    if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE==0u){return exp(v);}
     var out=vec3<f32>(0);let count=rounded_steps(3u);
     for(var k=0u;k<count;k++){let e=vr_exp_parts(v[k]);out[k]=ldexp(e.x,i32(e.y));}
     return out;
@@ -453,7 +582,7 @@ fn vr_log_parts(x:f32)->vec2<f32>{
     let le=trig_product(e,0.6931471824645996);let tail=rounded_add(le.y,e*-1.9046542121259336e-09);
     let sum=trig_two_sum(le.x,lm.x);return vec2<f32>(sum.x,rounded_add(rounded_add(sum.y,lm.y),tail));
 }
-fn vr_logf(x:f32)->f32{if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE==0u){return log(x);}let l=vr_log_parts(x);return rounded_add(l.x,l.y);}
+fn vr_logf(x:f32)->f32{let l=vr_log_parts(x);return rounded_add(l.x,l.y);}
 fn vr_div3(v:vec3<f32>,f:f32)->vec3<f32>{if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){return v*rounded_divide(1.0,f);}return vh_divide(v,vec3<f32>(f));}
 fn vr_channel_pdf(albedo:vec3<f32>,throughput:vec3<f32>)->vec3<f32>{
     let weights=abs(throughput*albedo);let sum=rounded_add(rounded_add(weights.x,weights.y),weights.z);
@@ -503,23 +632,34 @@ fn vr_sample_channel(pdf:vec3<f32>,rand:f32)->vec2<f32>{
     else{
         max_steps=bitcast<i32>(data_word(VR_D_volume_max_steps));let length=rounded_add(tmax,-tmin);size=min(object_step,length);
         if(length>f32(max_steps)*size){size=rounded_divide(length,f32(max_steps));}
-        shade_offset=native_rng(sample,pixel,offset+VR_PRNG_SHADE_OFFSET).x;step_offset=native_rng(sample,pixel,offset+VR_PRNG_OFFSET).x;
+//#if VOLUME_SAMPLING_PATTERN else         shade_offset=native_rng(sample,pixel,offset+VR_PRNG_SHADE_OFFSET).x;step_offset=native_rng(sample,pixel,offset+VR_PRNG_OFFSET).x;
+        shade_offset=native_rng_pattern(sample,pixel,offset+VR_PRNG_SHADE_OFFSET,1u).x;step_offset=native_rng_pattern(sample,pixel,offset+VR_PRNG_OFFSET,1u).x;
+//#endif
     }
     // volume_ray_marching_state_init.
-    var rscatter=native_rng(sample,pixel,offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;var rchannel=native_rng(sample,pixel,offset+VR_PRNG_COLOR_CHANNEL).x;
+//#if VOLUME_SAMPLING_PATTERN else     var rscatter=native_rng(sample,pixel,offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;var rchannel=native_rng(sample,pixel,offset+VR_PRNG_COLOR_CHANNEL).x;
+    var rscatter=native_rng_pattern(sample,pixel,offset+V_PRNG_VOLUME_SCATTER_DISTANCE,1u).x;var rchannel=native_rng_pattern(sample,pixel,offset+VR_PRNG_COLOR_CHANNEL,1u).x;
+//#endif
     let use_mis=method==3u;if(use_mis){if(rscatter<0.5){rscatter*=2.0;method=1u;}else{rscatter=(rscatter-0.5)*2.0;method=2u;}}
     var equiangular_pdf=0.0;var distance_pdf=1.0;
     var direct=select(throughput,vec3<f32>(0),method==0u);var indirect=throughput;
     var direct_t=0.0;var indirect_t=0.0;var direct_scatter=false;var indirect_scatter=false;var direct_count=0u;var indirect_count=0u;
     if(method==2u){let e=vl_equiangular_sample(origin,direction,eq_point,segment,rscatter);direct_t=e.x;equiangular_pdf=e.y;}
     var emission=vec3<f32>(0);
+//#if FILM_DENOISING
+    var denoising_albedo=vec3<f32>(0);let denoise=(flag&DN_PATH_RAY_DENOISING_FEATURES)!=0u;
+//#endif
     for(var step=0;step<0x7fffffff;step++){
         // volume_ray_marching_advance.
         if(t.y==tmax){break;}
         t.x=t.y;t.y=min(tmax,rounded_add(tmin,(f32(step)+step_offset)*size));
         let shade_t=rounded_add(t.x,shade_offset*rounded_add(t.y,-t.x));
         if(step>=max_steps){break;}
-        let c=vh_eval(index,rounded_add3(origin,direction*shade_t),direction,scratch);if(c.error!=0u){return;}
+//#if VOLUME_LIGHT_PATH else         let c=vh_eval(index,rounded_add3(origin,direction*shade_t),direction,scratch);if(c.error!=0u){return;}
+        // Ray marching evaluates the whole stack at every step (volume_integrate_ray_marching: volume_shader_sample, no octree
+        // and so no extrema estimate).
+        let c=vh_eval(index,rounded_add3(origin,direction*shade_t),direction,scratch,NONE,NONE);if(c.error!=0u){return;}
+//#endif
         if((c.flag&(SR_EXTINCTION|SR_SCATTER|SR_EMISSION))==0u){continue;}
         let dt=rounded_add(t.y,-t.x);
         // Loop-local declarations take explicit assignments (naga does not re-run constant initializers).
@@ -534,6 +674,9 @@ fn vr_sample_channel(pdf:vec3<f32>,rand:f32)->vec2<f32>{
         }
 //#endif
         if((c.flag&SR_SCATTER)!=0u){
+//#if FILM_DENOISING
+            if(denoise){denoising_albedo+=indirect*vh_safe_divide(c.sigma_s,c.sigma_t,0.0)*(vec3<f32>(1)-transmittance);}
+//#endif
             // volume_ray_marching_step_scattering.
             let albedo=vh_safe_divide(c.sigma_s,c.sigma_t,1.0);let channel_pdf=vr_channel_pdf(albedo,indirect);let pick=vr_sample_channel(channel_pdf,rchannel);rchannel=pick.y;let channel=u32(pick.x);
             if(method==2u&&!direct_scatter){
@@ -570,6 +713,9 @@ fn vr_sample_channel(pdf:vec3<f32>,rand:f32)->vec2<f32>{
     }
 //#if VOLUME_EMISSION
     if(any(emission!=vec3<f32>(0))){vh_write_emission(index,base,emission);}
+//#endif
+//#if FILM_DENOISING
+    flag=volume_denoising_features(index,base,flag,denoising_albedo,indirect_scatter);
 //#endif
     // volume_integrate_event.
     let continuation=select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_IN_NEXT_VOLUME)!=0u);

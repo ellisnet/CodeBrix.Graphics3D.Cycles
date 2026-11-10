@@ -11,6 +11,7 @@
 #include "scene/shader_graph.h"
 #include "scene/shader_nodes.h"
 #include "scene/light.h"
+#include "scene/pass.h"
 #include "util/progress.h"
 #include "util/task.h"
 #include "util/types_rgbe.h"
@@ -18,6 +19,7 @@
 #include <bit>
 #include <cfloat>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -25,6 +27,7 @@ using namespace ccl;
 #include "curve_gate_tuft.h"
 using namespace wavefront_test;
 #include "surface_fixture.h"
+#include "object_motion_fixture.h"
 struct Metrics {uint64_t floats=0,integers=0,strict=0,scatter=0,transmit=0,terminated=0,shadows=0;unsigned cases=0,rejected=0;float maximum_actual=0,maximum_expected=0;double maximum=0,ratio=0;std::string field;};
 static void number(float a,float e,const std::string &field,Metrics &m){
   const double error=std::abs(double(a)-e);m.floats++;m.strict+=error>1e-7+1e-7*std::abs(double(e));
@@ -64,6 +67,11 @@ static void evaluate(WebGPUDevice &d,Scene &scene,const std::vector<Field> &layo
       wanted[at+data.film.pass_volume_majorant]=.9;wanted[at+data.film.pass_volume_majorant_sample_count]=2;}
   }
   auto expected=input;auto initial=wanted;original_volume(scene.dscene,ids,expected,wanted);
+  // Denoising cases: the CPU kernel wrote albedo and scatter normals, so the comparison below covers both passes.
+  if(data.kernel_features&KERNEL_FEATURE_DENOISING){double albedo=0,normal=0;
+    for(unsigned pixel=0;pixel<512;pixel++){for(unsigned c=0;c<3;c++){albedo+=std::abs(wanted[pixel*data.film.pass_stride+data.film.pass_denoising_albedo+c]);
+      normal+=std::abs(wanted[pixel*data.film.pass_stride+data.film.pass_denoising_normal+c]);}}
+    require(albedo>0&&normal>0,"Volume denoising case without features");}
   for(auto i:ids){auto &s=expected[i];if(s.path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){
       s.path.shader_sort_key=(scene.dscene.tri_shader[s.isect.prim]&SHADER_MASK)+data.max_shaders*(i/d.state.sort_partition_divisor);m.transmit++;}
     else if(s.path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND)m.transmit++;
@@ -116,6 +124,15 @@ static void het_density(ShaderGraph &graph,ScatterVolumeNode *scatter){
   auto noise=graph.create_node<NoiseTextureNode>();noise->set_scale(1.6f);noise->set_detail(2);auto scale=graph.create_node<MathNode>();scale->set_math_type(NODE_MATH_MULTIPLY);scale->set_value2(.8f);
   graph.connect(noise->output("Fac"),scale->input("Value1"));graph.connect(scale->output("Value"),scatter->input("Density"));
 }
+// Cases 84-86: the same density times 0.4 + 0.9 * Is Camera Ray (a Light Path node: SD_HAS_LIGHT_PATH_NODE), so camera rays
+// read the baked octree extrema and the other rays estimate them (volume_estimate_extrema).
+static void het_density_light_path(ShaderGraph &graph,ScatterVolumeNode *scatter){
+  auto noise=graph.create_node<NoiseTextureNode>();noise->set_scale(1.6f);noise->set_detail(2);auto scale=graph.create_node<MathNode>();scale->set_math_type(NODE_MATH_MULTIPLY);scale->set_value2(.8f);
+  auto path=graph.create_node<LightPathNode>();auto camera=graph.create_node<MathNode>();camera->set_math_type(NODE_MATH_MULTIPLY_ADD);camera->set_value2(.9f);camera->set_value3(.4f);
+  auto density=graph.create_node<MathNode>();density->set_math_type(NODE_MATH_MULTIPLY);
+  graph.connect(noise->output("Fac"),scale->input("Value1"));graph.connect(path->output("Is Camera Ray"),camera->input("Value1"));
+  graph.connect(scale->output("Value"),density->input("Value1"));graph.connect(camera->output("Value"),density->input("Value2"));graph.connect(density->output("Value"),scatter->input("Density"));
+}
 static Object *het_box(Scene &scene,Shader *shader){
   auto box=scene.create_node<Mesh>();array<Node*> slots;slots.push_back_slow(shader);box->set_used_shaders(slots);box->resize_mesh(8,12);
   for(unsigned v=0;v<8;v++)box->get_position_for_write()[v]=make_float3(v&1?4.f:-4.f,v&2?4.f:-4.f,v&4?3.f:-5.f);
@@ -167,32 +184,33 @@ static unsigned rejections(WebGPUDevice &d,const std::vector<Field>&layout,const
   upload(d,layout,states);device_vector<float> film(&d,"volume_rejection_film",MEM_READ_WRITE);film.alloc(d.data.film.pass_stride);std::fill_n(film.data(),film.size(),.125f);film.copy_to_device();
   IntegratorQueueCounter before{};before.num_queued[DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME]=1;d.upload(uintptr_t(d.state.queue_counter),&before,sizeof(before));
   const auto original_data=d.data;const auto original_state=d.state;const auto original_shaders=d.shader_records;
-  const auto original_lights=d.light_records;const auto original_distribution=d.light_distribution_records;
+  const auto original_lights=d.light_records;const auto original_distribution=d.light_distribution_records;const auto original_object_flags=d.object_flag_records;
   device_ptr indices=0;int n=1;DeviceKernelArguments args;args.add(&indices);args.add(&film.device_pointer);args.add(&n);
   for(unsigned test=0;test<18;test++){
     std::string reason;int work=1;
     switch(test){
       case 0:d.data.kernel_features&=~KERNEL_FEATURE_VOLUME;reason="without native volume feature";break;
-      case 1:d.data.bvh.have_curves=1;d.data.bvh.have_motion=1;reason="volumes with motion blur";break;
-      case 2:d.data.bvh.have_motion=1;reason="volumes with motion blur";break;
-      case 3:d.data.kernel_features|=KERNEL_FEATURE_LIGHT_LINKING;reason="optional volume integration";break;
+      // Motion blur: velocity-advected volumes (SD_OBJECT_HAS_VOLUME_MOTION, volume_shader_motion_blur) are refused, with and without curves.
+      case 1:d.data.bvh.have_curves=1;d.data.bvh.have_motion=1;require(!d.object_flag_records.empty(),"Volume rejection without objects");d.object_flag_records[0]|=SD_OBJECT_HAS_VOLUME_MOTION;reason="volume velocity motion blur";break;
+      case 2:d.data.bvh.have_motion=1;require(!d.object_flag_records.empty(),"Volume rejection without objects");d.object_flag_records[0]|=SD_OBJECT_HAS_VOLUME|SD_OBJECT_HAS_VOLUME_MOTION;reason="volume velocity motion blur";break;
+      case 3:d.data.kernel_features|=KERNEL_FEATURE_LIGHT_LINKING;d.state.path.mis_ray_object=nullptr;reason="Missing light linking path state";break;
       case 4:d.data.film.pass_volume_majorant=PASS_UNUSED;reason="volume film pass";break;
-      case 5:d.data.integrator.sampling_pattern=SAMPLING_PATTERN_SOBOL_BURLEY;reason="requires tabulated Sobol";break;
-      case 6:d.data.kernel_features|=KERNEL_FEATURE_DENOISING;reason="optional volume integration";break;
+      case 5:d.data.integrator.sampling_pattern=SAMPLING_PATTERN_BLUE_NOISE_ROUND;reason="Invalid volume sampling pattern";break;
+      case 6:d.data.kernel_features|=KERNEL_FEATURE_DENOISING;d.data.film.pass_denoising_albedo=1<<20;reason="volume film pass";break;
       case 7:d.data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional volume integration";break;
-      case 8:d.data.kernel_features|=KERNEL_FEATURE_DENOISING;reason="optional volume integration";break;
+      case 8:d.data.kernel_features|=KERNEL_FEATURE_DENOISING;d.data.film.pass_denoising_normal=1<<20;reason="volume film pass";break;
       case 9:d.data.film.pass_volume_indirect=1<<20;reason="volume film pass";break;
       case 10:d.data.volume_stack_size=1;reason="volume stack size";break;
       case 11:d.data.max_closures=0;reason="volume closure capacity";break;
       case 12:d.data.film.pass_volume_transmit=PASS_UNUSED;reason="volume film pass";break;
       case 13:d.data.film.pass_volume_direct=1<<20;reason="volume film pass";break;
-      case 14:for(auto &shader:d.shader_records)if(shader.flags&SD_HAS_VOLUME)shader.flags|=SD_HETEROGENEOUS_VOLUME|SD_HAS_LIGHT_PATH_NODE;reason="heterogeneous volume with a Light Path node";break;
+      case 14:d.data.max_closures=MAX_CLOSURE+1;reason="volume closure capacity";break;
       case 15:d.state.ray.D=nullptr;reason="virtual pointer";break;
       case 16:d.state.volume_stack[0].shader=nullptr;reason="virtual pointer";break;
       case 17:work=0;reason="Incomplete volume dispatch";break;
     }
     std::string error;try{d.enqueue_volume(work,args);}catch(const std::exception &e){error=e.what();}
-    d.data=original_data;d.state=original_state;d.shader_records=original_shaders;d.light_records=original_lights;d.light_distribution_records=original_distribution;
+    d.data=original_data;d.state=original_state;d.shader_records=original_shaders;d.light_records=original_lights;d.light_distribution_records=original_distribution;d.object_flag_records=original_object_flags;
     require(error.find(reason)!=std::string::npos,"Volume rejection "+std::to_string(test)+": "+error);
     for(auto &field:layout){std::vector<uint8_t> bytes(states.size()*field.stride);d.download(field.address,bytes.data(),bytes.size());
       for(size_t i=0;i<states.size();i++)require(!std::memcmp(bytes.data()+i*field.stride,reinterpret_cast<const char*>(&states[i])+field.offset,field.stride),"Rejected volume changed state");}
@@ -208,13 +226,38 @@ TaskScheduler::init(1);int status=0;try{
   const float gs[]={0,.0009f,.001f,-.001f,.45f,-.7f,.999f,-.999f,1.5f,-1.5f};
   // The direct light cases' anisotropy: moderate lobes; cases 50-53 gate the near-delta lobes.
   const float direct_gs[]={.45f,-.7f,.3f,-.3f,.6f,-.45f,0,.15f};
+  // Maintainer measurement (native/DEVICE.md 52), not a verdict: CODEBRIX_CYCLES_VOLUME_GATE_REPEAT=CASE:COUNT prepares only that
+  // case and evaluates it COUNT times on one device and scene, one line per evaluation and a summary line on stdout.
+  int repeat_case=-1;unsigned repeat_count=0,repeat_failed=0;
+  if(const char *r=std::getenv("CODEBRIX_CYCLES_VOLUME_GATE_REPEAT");r&&*r){char *end=nullptr;const unsigned long c=std::strtoul(r,&end,10);
+    require(end&&*end==':'&&c<90,"CODEBRIX_CYCLES_VOLUME_GATE_REPEAT must be CASE:COUNT");const unsigned long n=std::strtoul(end+1,&end,10);
+    require(end&&!*end&&n>0&&n<=10000,"CODEBRIX_CYCLES_VOLUME_GATE_REPEAT must be CASE:COUNT");repeat_case=int(c);repeat_count=unsigned(n);}
   // Cases 24-31: volume direct light (VOLUME_LIGHT) with a sphere point light (MIS, distance, equiangular), a
   // disk point light, a sun light, scene rays ending on a triangle and missing, against the pinned kernel.
   // Cases 32-36: a heterogeneous medium (noise density) in a box object, integrated by null scattering through the
   // majorant octree (VOLUME_HETEROGENEOUS): without direct light, then with the light of cases 24 (MIS), 25
   // (distance), 26 (equiangular) and 28 (sun); case 37: camera rays from outside the box (the segment starts at the
   // box entry, a large ray tmin) without direct light.
-  for(unsigned test=0;test<75;test++){
+  // Cases 75-78: earlier cases with the sampling patterns other than tabulated Sobol (every random number of the volume
+  // integrators): the heterogeneous box with equiangular sampling (55) in Sobol-Burley, with MIS (33) in blue noise
+  // (first sample), biased ray marching with MIS (39) in blue noise (pure), the homogeneous world medium with MIS (24) in
+  // Sobol-Burley. Cases 79-81: denoising features (film_write_denoising_features_volume) with the albedo and normal passes,
+  // for the homogeneous world medium with MIS (24), the heterogeneous box with MIS (33) and biased ray marching (39).
+  // Cases 82-83: light linking (the receivers of the volume direct light, light_link_object_match): the heterogeneous box
+  // receives light set 1, which the spot and the sun do not light, with the light tree's four lamps (71) and with the flat
+  // light distribution and MIS (33 with the same lamps, no tree). Cases 84-86: a Light Path node in the heterogeneous box's
+  // density (het_density_light_path) with MIS (33) and equiangular sampling (35), and (86) also in a homogeneous medium box
+  // that overlaps it in every path's stack (the octree set-up estimates both entries for the rays that are not camera rays).
+  // Case 87: biased ray marching with MIS (39) through the Light Path box (every step evaluates the whole stack, no estimate).
+  // Cases 88-89: object motion blur of the heterogeneous box (object_motion_fixture modes 1 and 2: three and five steps), its
+  // noise density in object space at each path's time (the stack entry's motion transforms): MIS (33) and biased ray marching
+  // with MIS (39).
+  for(unsigned index=0;index<90;index++){
+    if(repeat_case>=0&&int(index)!=repeat_case)continue;
+    const unsigned test=index>=88?(index==88?33:39):index<75?index:index==75?55:index==76||index==80||index==83||index==84||index==86?33:index==85?35:index==77||index==81||index==87?39:index==82?71:24;
+    const bool light_path=index>=84&&index<88;
+    const bool denoise=index>=79&&index<82;const bool linking=index>=82&&index<84;
+    const int pattern=index==75||index==78?SAMPLING_PATTERN_SOBOL_BURLEY:index==76?SAMPLING_PATTERN_BLUE_NOISE_FIRST:SAMPLING_PATTERN_BLUE_NOISE_PURE;
     // Cases 38-41: biased ray marching (shade_volume_ray_marching): the heterogeneous box without direct light, with
     // MIS and with equiangular sampling, and the homogeneous world medium with MIS (one step per segment).
     const bool rm=(test>=38&&test<42)||test==56;const bool het=(test>=32&&test!=41&&test<42)||test==54||test==55||test==56||test==71;
@@ -232,18 +275,30 @@ TaskScheduler::init(1);int status=0;try{
     // Cases 66-73: the light tree's volume segments (light_tree_sample<true>): one sphere point light (66), a point, spot,
     // area and sun light (67 MIS, 68 distance, 69 equiangular), emissive triangles beside them (70), the heterogeneous
     // box (71), g = -0.999 (72) and rays that miss with the world volume (73).
-    const bool tree=test>=66&&test<74;const bool tree_lamps=test>=67&&test<74;
+    const bool tree=test>=66&&test<74;const bool tree_lamps=(test>=67&&test<74)||index==83;
     const unsigned dcase=test==74?24:tree?(test==68?25:test==69?26:24):near_delta?(test==51?25:test==52||test==55?26:test==64?28:test==65?27:24):shape||mesh_lights?24:!het&&!rm?test:test==33||test==39||test==41?24:test==34?25:test==35||test==40?26:test==36?28:0;
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;gate_curve_params(params);Scene scene(params,&d);prepare(scene);gate_curve_tufts(scene);
     auto graph=make_unique<ShaderGraph>();auto absorption=graph->create_node<AbsorptionVolumeNode>();absorption->set_density(test==20?0:.04f);absorption->set_color(test==21?make_float3(1,1,1):make_float3(.8,.65,.4));
     auto scatter=graph->create_node<ScatterVolumeNode>();scatter->set_density(test==20?0:test==22?.00001f:test==74?.6f:.035f);scatter->set_color(test==21?make_float3(.8,0,.6):make_float3(.8,.7,.6));scatter->set_anisotropy(test==72?-.999f:near_delta?(test==53?.999f:-.999f):dcase>=24?direct_gs[dcase-24]:gs[test%10]);
     auto add=graph->create_node<AddClosureNode>();graph->connect(absorption->output("Volume"),add->input("Closure1"));graph->connect(scatter->output("Volume"),add->input("Closure2"));ShaderOutput *volume=add->output("Closure");
     if(test>=10&&test<20){auto phase=graph->create_node<ScatterVolumeNode>();phase->set_density(.017f);phase->set_color(make_float3(.2,.9,.7));phase->set_anisotropy(gs[(test+4)%10]);auto mixture=graph->create_node<AddClosureNode>();graph->connect(volume,mixture->input("Closure1"));graph->connect(phase->output("Volume"),mixture->input("Closure2"));volume=mixture->output("Closure");}
-    if(het){het_density(*graph,scatter);absorption->set_density(.05f);}
+    if(het){if(light_path)het_density_light_path(*graph,scatter);else het_density(*graph,scatter);absorption->set_density(.05f);}
     graph->connect(volume,graph->output()->input("Volume"));auto shader=scene.create_node<Shader>();shader->set_graph(std::move(graph));shader->tag_update(&scene);
     Object *box_object=nullptr;
     if(!het)scene.background->set_shader(shader);
     else box_object=het_box(scene,shader);
+    Shader *world_medium=nullptr;Object *second_object=nullptr;
+    if(index==86){
+      // A homogeneous medium in a second box over the first, its density 0.02 + 0.03 * Is Camera Ray. (A world medium with a
+      // heterogeneous object crashes the pinned CPU kernel, so the overlap is an object's.)
+      auto world_graph=make_unique<ShaderGraph>();auto world_scatter=world_graph->create_node<ScatterVolumeNode>();world_scatter->set_color(make_float3(.7,.8,.75));world_scatter->set_anisotropy(.2f);
+      auto path=world_graph->create_node<LightPathNode>();auto density=world_graph->create_node<MathNode>();density->set_math_type(NODE_MATH_MULTIPLY_ADD);density->set_value2(.03f);density->set_value3(.02f);
+      world_graph->connect(path->output("Is Camera Ray"),density->input("Value1"));world_graph->connect(density->output("Value"),world_scatter->input("Density"));
+      world_graph->connect(world_scatter->output("Volume"),world_graph->output()->input("Volume"));
+      world_medium=scene.create_node<Shader>();world_medium->set_graph(std::move(world_graph));world_medium->tag_update(&scene);second_object=het_box(scene,world_medium);
+    }
+    if(index>=88)object_motion_fixture(scene,*box_object,index==88?1:2);
+    if(linking)box_object->set_receiver_light_set(1);
     for(auto s:scene.shaders)s->set_emission_sampling_method(!mesh_lights?EMISSION_SAMPLING_NONE:test==48||test==63?EMISSION_SAMPLING_FRONT:EMISSION_SAMPLING_FRONT_BACK);
     const bool direct=dcase>=24;
     if(direct){
@@ -258,6 +313,7 @@ TaskScheduler::init(1);int status=0;try{
       else{auto point=scene.create_node<PointLight>();point->set_radius(test==74?.9f:dcase==27?.3f:.45f);point->set_is_sphere(dcase!=27);light=point;}
       light->set_strength(light->get_light_type()==LIGHT_SUN?make_float3(.6,.7,.8):make_float3(140,100,70));light->set_use_mis(true);
       array<Node*> slots;slots.push_back_slow(emitter);light->set_used_shaders(slots);auto object=scene.create_node<Object>();object->set_geometry(light);
+      if(linking)object->set_light_set_membership((1ull<<0)|(1ull<<1));
       object->set_tfm((test==74?transform_translate(make_float3(0.f,0.f,0.f)):transform_translate(make_float3(.6f,1.4f,-1.1f)))*transform_rotate(2.6f,make_float3(0,1,0))*transform_rotate(-.5f,make_float3(1,0,0)));
       emitter->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
       if(tree){scene.integrator->set_use_light_tree(true);scene.integrator->set_light_sampling_threshold(0.f);}
@@ -267,11 +323,22 @@ TaskScheduler::init(1);int status=0;try{
         auto sun=scene.create_node<SunLight>();sun->set_angle(.12f);sun->set_normalize(false);
         Light *extra[3]={spot,area,sun};const float3 at[3]={make_float3(-2.1f,.8f,1.3f),make_float3(1.9f,-1.2f,-3.f),make_float3(0,0,0)};
         for(unsigned k=0;k<3;k++){extra[k]->set_strength(k==2?make_float3(.4,.5,.6):make_float3(90,80,120));extra[k]->set_use_mis(true);extra[k]->set_used_shaders(slots);auto o=scene.create_node<Object>();o->set_geometry(extra[k]);
+          if(linking)o->set_light_set_membership(k==1?(1ull<<0)|(1ull<<1):(1ull<<0));
           o->set_tfm(transform_translate(at[k])*transform_rotate(1.1f+k,make_float3(0,1,0))*transform_rotate(-.5f,make_float3(1,0,0)));}
       }
     }
     if(rm)scene.integrator->set_volume_ray_marching(true);
+    if(index>=75&&index<79)scene.integrator->set_sampling_pattern(SamplingPattern(pattern));
+    if(denoise)for(auto [type,name]:{std::pair{PASS_DENOISING_ALBEDO,"Denoising Albedo"},std::pair{PASS_DENOISING_NORMAL,"Denoising Normal"}}){
+      auto pass=scene.create_node<Pass>();pass->set_type(type);pass->set_name(ustring(name));}
     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Volume scene preparation failed");auto &data=scene.dscene.data;
+    if(index>=75&&index<79)require(data.integrator.sampling_pattern==pattern,"Volume sampling pattern case without its pattern");
+    if(light_path)for(Shader *medium:{shader,world_medium})require(!medium||medium->has_light_path_node,"Volume Light Path case without its shader flag");
+    if(index==86)require(!world_medium->has_volume_spatial_varying,"Volume Light Path second medium is not homogeneous");
+    if(index==86)require(data.volume_stack_size>=3,"Volume Light Path overlap without a stack slot");
+    if(index>=88)require(data.bvh.have_motion&&(scene.dscene.object_flag[box_object->get_device_index()]&SD_OBJECT_MOTION),"Volume motion case without a moving medium");
+    if(linking)require((data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)&&bool(data.integrator.use_light_tree)==(index==82),"Volume light linking case without light linking");
+    if(denoise)require((data.kernel_features&KERNEL_FEATURE_DENOISING)&&data.film.pass_denoising_albedo!=PASS_UNUSED&&data.film.pass_denoising_normal!=PASS_UNUSED,"Volume denoising case without its passes");
     if(!direct){data.background.use_mis=0;data.integrator.use_direct_light=0;data.integrator.use_light_mis=0;data.integrator.num_lights=0;}
     else require(data.integrator.use_direct_light&&data.integrator.num_lights>0,"Volume direct light fixture without a light");
     data.integrator.use_caustics=0;data.integrator.filter_glossy=FLT_MAX;data.film.pass_flag=0;
@@ -287,14 +354,25 @@ TaskScheduler::init(1);int status=0;try{
       s.volume_stack[0].object=data.background.object_index;s.volume_stack[0].shader=data.background.volume_shader;
       if(test==37){s.path.bounce=0;s.path.volume_bounce=0;s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.ray.P=make_float3(1e-6f*(j%7),-1e-6f*(j%5),-6.99999f);
         s.ray.D=normalize(make_float3(.0009f*(j%23)-.01f,.0011f*(j/23)-.012f,1.f));s.ray.tmin=(-5.f-s.ray.P.z)/s.ray.D.z;s.ray.tmax=1e5f;s.isect.t=s.ray.tmin+.9f+.005f*j;}
+      if(linking)s.path.mis_ray_object=j%3?int(box_object->get_device_index()):int(data.background.object_index);
+      if(denoise&&j%4){s.path.flag|=PATH_RAY_DENOISING_FEATURES;s.path.denoising_feature_throughput=make_float3(.9f,.7f+.01f*(j%5),.5f);}
       if(het){s.volume_stack[0].object=box_object->get_device_index();s.volume_stack[0].shader=scene.shader_manager->get_shader_id(shader);}s.volume_stack[1].object=OBJECT_NONE;s.volume_stack[1].shader=SHADER_NONE;
+      if(index==86){s.volume_stack[1].object=second_object->get_device_index();s.volume_stack[1].shader=scene.shader_manager->get_shader_id(world_medium);s.volume_stack[2].object=OBJECT_NONE;s.volume_stack[2].shader=SHADER_NONE;}
     }
-    if(test==0)m.rejected=rejections(d,layout,states);
-    if(test==32)density_check(d,scene,box_object,scene.shader_manager->get_shader_id(shader),m);
-    evaluate(d,scene,layout,states,ids,m,test);
-    if(test==36)octree_check(d,stats,profiler,m);
+    if(index==0)m.rejected=rejections(d,layout,states);
+    if(index==32)density_check(d,scene,box_object,scene.shader_manager->get_shader_id(shader),m);
+    if(repeat_case>=0){
+      for(unsigned k=0;k<repeat_count;k++){Metrics one;
+        try{evaluate(d,scene,layout,states,ids,one,index);std::cout<<"repeat "<<k<<" passed"<<std::endl;}
+        catch(const std::exception &e){repeat_failed++;std::cout<<"repeat "<<k<<" FAILED "<<e.what()<<std::endl;}}
+      continue;
+    }
+    evaluate(d,scene,layout,states,ids,m,index);
+    if(index==36)octree_check(d,stats,profiler,m);
   }
+  if(repeat_case>=0){std::cout<<"{\"repeatCase\":"<<repeat_case<<",\"evaluations\":"<<repeat_count<<",\"failed\":"<<repeat_failed<<"}"<<std::endl;}else{
   require(m.scatter>0&&m.transmit>0&&m.terminated>0&&m.shadows>0,"Missing native volume events");require(stats.mem_used==0,"Volume allocation leak");
   std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
   std::cout<<std::setprecision(17)<<"{\"passed\":true,\"originalCpuVolumeIntegrator\":true,\"cases\":"<<m.cases<<",\"invalidCasesRejected\":"<<m.rejected<<",\"paths\":"<<m.cases*512<<",\"scatterEvents\":"<<m.scatter<<",\"transmitEvents\":"<<m.transmit<<",\"terminatedEvents\":"<<m.terminated<<",\"volumeShadowPaths\":"<<m.shadows<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strictFailures\":"<<m.strict<<",\"maximumError\":"<<m.maximum<<",\"maximumErrorActual\":"<<m.maximum_actual<<",\"maximumErrorExpected\":"<<m.maximum_expected<<",\"maximumErrorField\":\""<<m.field<<"\",\"maximumPracticalToleranceRatio\":"<<m.ratio<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";
+  }
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

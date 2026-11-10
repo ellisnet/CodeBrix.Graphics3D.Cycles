@@ -39,7 +39,8 @@ std::vector<ccl::SurfaceSvmRecord> original_surface_svm(ccl::DeviceScene &scene,
     for(int j=0;j<sd.num_closure;j++){
       auto &c=sd.closure[j];auto &r=result.closures[j];r.weight=c.weight;r.kind=c.type;
       if(c.type!=CLOSURE_HOLDOUT_ID){r.N=c.N;r.sample_weight=c.sample_weight;}
-      if(c.type==CLOSURE_BSDF_OREN_NAYAR_ID){auto &p=reinterpret_cast<const OrenNayarBsdf*>(&c)->param;
+      // The rough translucent closure of a thin wall's subsurface lobe has the Oren-Nayar record too.
+      if(c.type==CLOSURE_BSDF_OREN_NAYAR_ID||c.type==CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID){auto &p=reinterpret_cast<const OrenNayarBsdf*>(&c)->param;
         r.roughness=p.roughness;r.a=p.a;r.b=p.b;r.multiscatter=p.multiscatter_term;}
       if(CLOSURE_IS_BSDF_MICROFACET(c.type)){auto &p=*reinterpret_cast<const MicrofacetBsdf*>(&c);
         r.alpha_x=p.alpha_x;r.alpha_y=p.alpha_y;r.ior=p.ior;r.energy_scale=p.energy_scale;r.T=p.T;
@@ -70,6 +71,8 @@ std::vector<ccl::SurfaceSvmRecord> original_surface_svm(ccl::DeviceScene &scene,
       // Hair: T, roughness1 and 2 in alpha_x and alpha_y, offset in a. Chiang: sigma in multiscatter, v in roughness, s in a, alpha in b, eta in ior, m0_roughness in alpha_x, h in alpha_y.
       if(c.type==CLOSURE_BSDF_HAIR_REFLECTION_ID||c.type==CLOSURE_BSDF_HAIR_TRANSMISSION_ID){auto &p=*reinterpret_cast<const HairBsdf*>(&c);r.T=p.T;r.alpha_x=p.roughness1;r.alpha_y=p.roughness2;r.a=p.offset;}
       if(c.type==CLOSURE_BSDF_HAIR_CHIANG_ID){auto &p=*reinterpret_cast<const ChiangHairBSDF*>(&c);r.multiscatter=p.sigma;r.roughness=p.v;r.a=p.s;r.b=p.alpha;r.ior=p.eta;r.alpha_x=p.m0_roughness;r.alpha_y=p.h;}
+      // Ray portal (wavefront_svm_closures.wgsl svm_ray_portal): the position in multiscatter, the direction in T.
+      if(c.type==CLOSURE_BSDF_RAY_PORTAL_ID){auto &p=*reinterpret_cast<const RayPortalClosure*>(&c);r.multiscatter=p.P;r.T=p.D;}
       if(c.type==CLOSURE_BSDF_SHEEN_ID){auto &p=*reinterpret_cast<const SheenBsdf*>(&c);
         r.roughness=p.roughness;r.a=p.transformA;r.b=p.transformB;r.T=p.T;r.multiscatter=p.B;}
     }

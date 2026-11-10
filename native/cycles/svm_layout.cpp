@@ -6,6 +6,7 @@
 #include "util/types_image.h"
 #include "kernel/svm/node_types.h"
 #include <sstream>
+#include <stdexcept>
 namespace ccl {
 std::string svm_layout(bool surface){
   std::ostringstream source;
@@ -220,6 +221,11 @@ std::string svm_layout(bool surface){
   ENUM(CLOSURE_VOLUME_ABSORPTION_ID);ENUM(CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID);
   ENUM(SR_SCATTER);ENUM(SR_EXTINCTION);ENUM(SR_IS_VOLUME_SHADER_EVAL);ENUM(PATH_RAY_EXTINCTION);
   ENUM(SR_EMISSION);ENUM(SR_BSDF);ENUM(SR_BSDF_HAS_EVAL);ENUM(SR_BSDF_HAS_TRANSMISSION);ENUM(SR_TRANSPARENT);ENUM(SR_HOLDOUT);
+  // The Ray Portal BSDF (RAY_PORTAL; bsdf_ray_portal.h, svm/closure.h SVMNodeRayPortalBsdfData).
+  source<<"//#if RAY_PORTAL\n";constant("RP_CLOSURE_BSDF_RAY_PORTAL_ID",CLOSURE_BSDF_RAY_PORTAL_ID);constant("RP_SR_RAY_PORTAL",SR_RAY_PORTAL);
+  constant("RP_LABEL_RAY_PORTAL",LABEL_RAY_PORTAL);constant("RP_PATH_RAY_MIS_SKIP",PATH_RAY_MIS_SKIP);constant("SZ_RayPortalBsdfData",sizeof(SVMNodeRayPortalBsdfData));
+  constant("N_RayPortalBsdfData_direction",offsetof(SVMNodeRayPortalBsdfData,direction));constant("N_RayPortalBsdfData_position_offset",offsetof(SVMNodeRayPortalBsdfData,position_offset));
+  source<<"//#endif\n";
   ENUM(SD_USE_BUMP_MAP_CORRECTION);ENUM(PATH_RAY_TERMINATE);ENUM(PATH_RAY_EMISSION);ENUM(PATH_RAY_VISIBILITY_SHADOW);
   // Node-specific copies (prefixed: other stage layouts define some of these names).
   source<<"//#if SVM_NODES_ANY\n";
@@ -387,10 +393,38 @@ std::string svm_layout(bool surface){
   constant("HH_PATH_RAY_VISIBILITY_CAMERA",PATH_RAY_VISIBILITY_CAMERA);
   constant("HH_D_ggx_glass_E",offsetof(KernelData,tables.ggx_glass_E));constant("HH_D_ggx_glass_inv_E",offsetof(KernelData,tables.ggx_glass_inv_E));
   source<<"//#endif\n";
+  // A thin-walled Principled BSDF with subsurface: the rough translucent closure (bsdf_thin_subsurface_setup).
+  source<<"//#if SVM_BSDF_THIN_SUBSURFACE\n";constant("TS_CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID",uint32_t(CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID));
+  constant("TS_PrincipledBsdfData_subsurface_anisotropy",offsetof(SVMNodePrincipledBsdfData,subsurface_anisotropy));source<<"//#endif\n";
   return source.str();
 }
 static constexpr char svm_surface_fragment[]=
 #include "svm_shader.inc"
 ;
 std::string svm_surface_source(){return shader_data_source()+svm_layout(true)+svm_surface_fragment;}
+// The volume module (volume.cpp volume_source): every SVM program it runs is a volume shader's (SHADER_TYPE_VOLUME), so
+// NODE_CLOSURE_BSDF takes svm_node_closure_bsdf's `shader_type != SHADER_TYPE_SURFACE` branch, svm_node_closure_bsdf_skip
+// (svm/closure.h): the data record of the closure type is stepped over and no closure is made. The surface closure
+// handler (svm_bsdf) is not called there, so the driver compiles none of its closure setup into the volume entries.
+std::string svm_volume_source(){
+  std::string layout=svm_layout(true);const std::string call="svm_bsdf(s,node,flag,visibility);";
+  const size_t at=layout.find(call);if(at==std::string::npos||layout.find(call,at+1)!=std::string::npos)throw std::runtime_error("Volume SVM layout: closure BSDF call");
+  std::ostringstream skip;skip<<"var bytes="<<sizeof(SVMNodeSimpleBsdfData)<<"u;switch(load_word(node+N_ClosureBsdf_closure_type)){";
+  auto kinds=[&](std::initializer_list<ClosureType> types,size_t bytes){const char *separator="case ";for(auto t:types){skip<<separator<<uint32_t(t)<<"u";separator=",";}skip<<":{bytes="<<bytes<<"u;}";};
+  kinds({CLOSURE_BSDF_PRINCIPLED_ID},sizeof(SVMNodePrincipledBsdfData));
+  kinds({CLOSURE_BSDF_HAIR_CHIANG_ID,CLOSURE_BSDF_HAIR_HUANG_ID},sizeof(SVMNodePrincipledHairBsdfData));
+  kinds({CLOSURE_BSDF_PHYSICAL_CONDUCTOR,CLOSURE_BSDF_F82_CONDUCTOR},sizeof(SVMNodeMetallicBsdfData));
+  kinds({CLOSURE_BSDF_DIFFUSE_ID,CLOSURE_BSDF_OREN_NAYAR_ID,CLOSURE_BSDF_BURLEY_ID},sizeof(SVMNodeDiffuseBsdfData));
+  kinds({CLOSURE_BSDF_SHEEN_ID,CLOSURE_BSDF_ASHIKHMIN_VELVET_ID,CLOSURE_BSDF_TRANSLUCENT_ID,CLOSURE_BSDF_TRANSPARENT_ID},sizeof(SVMNodeSimpleBsdfData));
+  kinds({CLOSURE_BSDF_RAY_PORTAL_ID},sizeof(SVMNodeRayPortalBsdfData));
+  kinds({CLOSURE_BSDF_MICROFACET_GGX_ID,CLOSURE_BSDF_MICROFACET_BECKMANN_ID,CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID},sizeof(SVMNodeGlossyBsdfData));
+  kinds({CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID,CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID},sizeof(SVMNodeRefractionBsdfData));
+  kinds({CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID,CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID,CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID},sizeof(SVMNodeGlassBsdfData));
+  kinds({CLOSURE_BSDF_GLOSSY_TOON_ID,CLOSURE_BSDF_DIFFUSE_TOON_ID},sizeof(SVMNodeToonBsdfData));
+  kinds({CLOSURE_BSDF_HAIR_REFLECTION_ID,CLOSURE_BSDF_HAIR_TRANSMISSION_ID},sizeof(SVMNodeHairBsdfData));
+  kinds({CLOSURE_BSSRDF_BURLEY_ID,CLOSURE_BSSRDF_RANDOM_WALK_ID,CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID},sizeof(SVMNodeBssrdfData));
+  skip<<"default:{}}_=svm_take(s,bytes);";
+  layout.replace(at,call.size(),skip.str());
+  return shader_data_source()+layout+svm_surface_fragment;
+}
 }

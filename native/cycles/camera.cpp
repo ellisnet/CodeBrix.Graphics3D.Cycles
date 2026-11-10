@@ -182,6 +182,8 @@ std::string wavefront_layout(){
   constant("G_volume_tree_root_ids",table_index+3);constant("VH_ATTR_GENERATED_TRANSFORM",ATTR_STD_GENERATED_TRANSFORM);
   constant("VH_TRANSFORM_APPLIED",SD_OBJECT_TRANSFORM_APPLIED);constant("VH_HETEROGENEOUS",SD_HETEROGENEOUS_VOLUME);
   source<<"//#endif\n";
+  // The Light Path extrema estimate (VOLUME_LIGHT_PATH, wavefront_volume_octree.wgsl).
+  source<<"//#if VOLUME_LIGHT_PATH\n";constant("VLP_LIGHT_PATH",SD_HAS_LIGHT_PATH_NODE);constant("VLP_VISIBILITY_CAMERA",PATH_RAY_VISIBILITY_CAMERA);source<<"//#endif\n";
   // Biased ray marching: the per-object step sizes follow the octree tables (closest.cpp scene_tables).
   source<<"//#if VOLUME_RAY_MARCHING\n";
   constant("G_volume_step_size",table_index+4);constant("VR_D_volume_max_steps",offsetof(KernelData,integrator.volume_max_steps));
@@ -321,7 +323,9 @@ void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
           std::isfinite(data.cam.rolling_shutter_duration)&&data.cam.rolling_shutter_duration>=0&&data.cam.rolling_shutter_duration<=1,
           "Invalid camera rolling shutter");
   validate_volume();
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_NODE_PORTAL)),"WebGPU camera optional path features not implemented");
+  require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU camera optional path features not implemented");
+  // The Ray Portal BSDF (RAY_PORTAL): path_state_init_integrator clears the portal bounce.
+  if(data.kernel_features&KERNEL_FEATURE_NODE_PORTAL)validate(uintptr_t(state.path.portal_bounce),remaining(uintptr_t(state.path.render_pixel_index))/4*sizeof(uint16_t));
   // Denoising features (path_state_init_integrator): the flag and the feature throughput.
   validate_film_passes();
   if(data.kernel_features&KERNEL_FEATURE_DENOISING)validate(uintptr_t(state.path.denoising_feature_throughput),

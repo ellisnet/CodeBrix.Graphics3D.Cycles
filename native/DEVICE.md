@@ -2224,7 +2224,7 @@ energy preservation and lookup tables:
 | Specular (IOR level, tint) | GGX reflection, generalized Schlick | model 4 |
 | Thin film | Belcour/Barla Airy summation with the native `thin_film_table` for dielectric, metallic and transmissive lobes | film thickness/IOR in `a`/`b` when active |
 | Diffuse | Lambert or Oren-Nayar with base colour | existing diffuse records |
-| Subsurface | BSSRDF random walk (random walk, skin, legacy), not thin-walled | Bssrdf record (section "Subsurface scattering") |
+| Subsurface | BSSRDF random walk (random walk, skin, legacy) and Christensen-Burley; thin-walled: diffuse and translucent, or Oren-Nayar and rough translucent | Bssrdf record (section "Subsurface scattering"); Oren-Nayar records |
 
 Both GGX distributions are supported; multiscatter GGX uses `ggx_E`/`ggx_Eavg`
 and `ggx_glass_E`/`ggx_glass_inv_E` with their averages. Every lookup-table read
@@ -2235,11 +2235,8 @@ generalized-Schlick and thin-film tables. The canonical closure record keeps its
 handler the Glass node records its generalized-Schlick model and f0 the same
 way (identical arithmetic, so films do not change).
 
-**Subsurface** is implemented with the random walk methods (section "Subsurface scattering"). A thin-walled
-Principled BSDF with subsurface (`bsdf_thin_subsurface_setup`) and the Christensen-Burley method are refused by the
-native layer before any pipeline or dispatch (`WebGPUDevice::shader_features`, messages `Unsupported feature:
-Principled BSDF thin-wall subsurface scattering ...` and `Unsupported feature: subsurface scattering with the
-Christensen-Burley method ...`); the WGSL handler independently reports error 16 for a thin-walled subsurface lobe.
+**Subsurface** is implemented with the random walk methods and the Christensen-Burley method, and thin-walled
+(section "Subsurface scattering").
 
 **Specialization.** Three appended feature bits keep the code out of scenes that
 cannot reach it: `SVM_BSDF_PRINCIPLED` (bit 32), `SVM_BSDF_THIN_FILM` (33) and
@@ -3147,9 +3144,23 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    Every committed heterogeneous and ray-marching scene is perfect; the exact fix is due only if this appears in a
    committed scene. It did once, on scalar ARM64: `volumes/ray-marching-heterogeneous-point` is fixed (see "Ray marching's
    channel pick on scalar ARM64" under Resolved). That fix is on the ray-marching path, so the probes stay open: in x64 WGSL
-   against the x64 CPU three of the four probe variants still fail (3, 3 and 4 practical; one variant is perfect). Inference,
-   not tested: the same class, since `vh_step` still uses the driver's `exp` and `log`, so "inherent last-bit arithmetic"
-   above may be too pessimistic.
+   against the x64 CPU three of the four probe variants still fail (3, 3 and 4 practical; one variant is perfect).
+   - **Correctly rounded `expf` and `logf` in `vh_step` do not fix it (tested 2026-11-09, diagnostic WGSL overrides of the
+     current tree).** On the four probes (failing pixel (19, 3) of `nodirect` and `object`: device 0.0340005, CPU 0.0341420;
+     `const` (18, 14): 0.0241337 against 0.0233084): with the driver's functions 0 / 4 / 3 / 3 practical (b0 / const /
+     nodirect / object); with correctly rounded `logf` and `expf` in the free-flight distance, the residual carry-over and the
+     majorant weight, 36 / 5 / 3 / 3; with the step's divisions correctly rounded as well, 6 / 0 / 3 / 3. Each variant moves the
+     flips between probes, as the correctly rounded divisions did before. FACT (this machine's glibc 2.41, 1,000,000 inputs
+     each): `logf(1 - r)` for uniform r differs from the correctly rounded result on 0.72%, `expf` on 0.06-0.08%, so the CPU's
+     sampling distances are not correctly rounded either, and a path with more than 100 null collisions meets such an input
+     with high probability (INFERENCE: about half of them). Matching the oracle bit for bit would take glibc's own `logf` and
+     `expf` algorithms, which cannot be copied into this repository (LGPL). The operation where the two sides first part was
+     not traced again (the earlier lockstep found 1-2 ulp differences that select another reservoir candidate).
+   - The same class appears in two variants of committed scenes that are not committed for that reason:
+     `volumes/tree-heterogeneous` with Sobol-Burley (38 practical, a 14-pixel cluster spread by the guidance's denoised passes,
+     maximum 0.0782) and with light linking (3 practical at pixel (19, 3) again, maximum 0.0365); both outcomes move with the
+     same overrides (3 practical, maximum 8.8e-4, and 7.1e-4). The ray-marching path, by contrast, is fixed by correctly
+     rounded `expf` and `logf` (see "BSDF nodes, sampling patterns, denoising features and light linking").
 48. (resolved, see "Resolved" below) Was: **Moving and deforming emissive quad: one bright film component off the CPU, without shadow linking.** Found with the shadow linking gate's former case 7 (the same scene with memberships at the defaults and set 0 gives the same numbers: component 2016 actual 1.277440, expected 0.552540; object motion alone or deformation alone pass). A next-event ray at a sample near the panel's diagonal grazes the panel's other triangle at the ray's end (blocker the light's own object, t equal to tmax in six digits): the CPU's ray is blocked, the device's is not. INFERENCE: the last bits of item 15 decide a decision in this fold. The gate then carried a moving emitter and a deforming emitter separately.
 49. (resolved, see "Resolved" below) Was: **A volume scene and then a scene without volumes on one device.** The second render stopped with invalid data (mask 1), no image.
 50. (resolved, see "Resolved" below) Was: **`volumes/scatter-world` and `volumes/world-volume-point` have no box medium.**
@@ -3184,6 +3195,26 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
      that shows when many threads compete for memory; nothing here separates compiler from hardware. No other Intel
      generation was tried. Inference: the earlier second face (one path left in SHADE_SHADOW after
      `shade_shadow_transparent`) is the same class in another long entry.
+   - **After the volume module shrink (2026-11-09; the BSDF handler out of the volume module, the heterogeneous entry
+     77,707 -> 53,400 SIMD8 instructions and 1,552 -> 1,091 spills).** Case 55 alone (`CODEBRIX_CYCLES_VOLUME_GATE_REPEAT=55:N`,
+     a measurement option of the gate, never a verdict): 0 of 120 evaluations (6 processes of 20), then 4 of 300 in rounds
+     alternated with the earlier WGSL text loaded into the same binary (diagnostic `CODEBRIX_CYCLES_WGSL_LOAD`), which failed
+     25 of 300, then 4 of 300 on the final tree (case 55's modules unchanged). The rate fell from about 8% to about 1% (8 of
+     720; 95% interval 0.48% to 2.2%), the same failure (a shadow path's throughput NaN at path 291, five times, and a path
+     throughput at path 711, three times): reduced, not removed. At the earlier rate (7 in 120) 8 or fewer failures in 720
+     has probability 7e-11. Step 2, the split, measured first (the entry compiled with one part stubbed out through a
+     diagnostic WGSL text; SIMD8 instructions and spills, and the envelope's maxEndIp, of `volumes/heterogeneous-point`'s
+     module; the gate's case-55 module in parentheses):
+     | variant of `shade_volume_heterogeneous` | instructions | spills | maxEndIp |
+     | --- | --- | --- | --- |
+     | as built | 53,400 (53,893) | 1,091 (1,089) | 36,703 (37,440) |
+     | the null-scattering loop with `vh_step`, `vh_eval` replaced by loads | 35,811 (35,811) | 360 | 27,578 |
+     | without the loop (set-up and tail only) | 1,223 (SIMD16) | 0 | 1,147 |
+     | without the tail (MIS weight, emission, optical depth, records, hand-off) | 41,232 (42,251) | 1,039 (1,044) | 27,804 (28,541) |
+     The loop is about 98% of the entry and nearly all of its spills (the SVM evaluation inside it about a third of the
+     instructions and two thirds of the spills); the tail is 21.6-22.8% of the instructions and under 5% of the spills; no part
+     outside the loop reaches a quarter. Moving the loop's evaluations to another entry would take one dispatch pair per
+     evaluation (hundreds per path). So the split was not made and the limitation stands with this rate.
    - **Item 47 is another class.** Its probe `probe-het-nodirect` fails the same 3 film components (one pixel, maximum
      1.415e-4) in all 4 films of 2 processes, deterministically.
    - **Reproducer** (kept by the maintainer outside the repository): the plain Vulkan program, the entry's
@@ -3223,14 +3254,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     can be compared between runs, and fingerprint mode fixes one sample per update for its walk.
 65. **Curves on the reference devices: not run yet.** Static curves pass on Linux in x64 arithmetic against the x64 CPU oracle. `arm64-scalar` on Linux compiles and runs, judged against nothing here (cross-ISA, reported): the tablet and the HP have not run `curve_gate`, `curve_render_gate` or `scenes/curves/`, and the ARM64 oracle has no films for that family.
 66. **Superset groups above 0 do not compile in the shadow module.** `CODEBRIX_CYCLES_SHADER_SPECIALIZATION=superset:1` fails in scenes with shadow paths, with or without curves: `no definition in scope for identifier: vh_stack_shader`. A group can add `VOLUME_HETEROGENEOUS` (not a scene-only region) without `VOLUME_SHADOW` (scene-only). Group 0 compiles. Seen with `curve_render_gate`, and reproduced with the unchanged binaries of the commit before curves, with `ao_render_gate`; diagnostic mode only, product renders use scene specialization.
-70. **The WebGPU device does not bake.** `cbc_host_bake` refuses it by name (`native/host/host_bake.inc`); no kernel, pass or entry exists for it
-    here: `INTEGRATOR_INIT_FROM_BAKE` and the three bake passes are not ported. The host side needs nothing device-specific: `BakeManager` selects the object and the
-    host hands the map to Cycles through `OutputDriver::read_render_tile`, which the Session calls with the render buffers zeroed; `PathTrace::tile_buffer_read`
-    then copies them to the device. What the WGSL port takes from the map: `BakePrimitive` (3 floats per pixel: u, v, and the triangle index in the mesh as an
-    int's BITS, -1 for an empty pixel) and `BakeDifferential` (4 floats), bit for bit through `copy_render_buffers_to_device`. The third primitive
-    component must be read as bits (`__float_as_uint`): -1 is a NaN pattern a float copy or conversion may not keep. The seed pass is not used (`set_use_seed(false)`, `pass_bake_seed` stays 0).
-    The kernel's first sample at an exact triangle edge jitters too, and its position fast path adds per sample to a pass that is not divided, so the host bakes position at one sample.
-    The CPU reference film per type (`native/tools/bake_gate.py` for known results) is the oracle.
+70. (resolved, see "Resolved" below)
 71. **Curve transparency is baked before the object flags reach a GPU.** FACT: `ObjectManager::apply_static_transforms` sets
     `SD_OBJECT_TRANSFORM_APPLIED` in the host's `object_flag` array and `Hair::update_shadow_transparency` evaluates right after, before that
     table is copied to a device. The CPU kernels read the host array (shared memory) and see the flag; a GPU device sees the previous upload,
@@ -3294,8 +3318,76 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     thin film, thin wall and a Texture Coordinate node may fail the same way in `prepare_surface` on the Adreno 730. Linux and the
     HP pass. Planned before device checkpoint 2: reduce the module's register or private-memory pressure, bisected on the device
     with `native/tools/compile_probe.cpp` on the failing probe module; no criterion changes and nothing is refused.
+105. **Degenerate area lights and portals are refused, though the CPU renders them (a ruling for the maintainer).** An area
+    light whose size is not zero (the host's `has_contribution` keeps it) but whose squared axis length underflows to zero
+    (sizes or object scales near 1e-23), and a portal of zero or underflowing extent (portals are counted whatever their
+    size), reach the kernels with a zero length and an axis of infinities and NaNs (`normalize_len` of a zero vector). FACT:
+    the pinned CPU kernel renders both with finite films (a 1e-23 area light beside the sphere lamp of `lamps/area-zero-size`,
+    and `world/portal-window` with a zero-size portal). INFERENCE: the NaNs fall out of its sample and pdf comparisons. The
+    WGSL device does not reproduce NaN arithmetic faithfully (WebGPU gives no NaN-preserving guarantee), so both are refused
+    as "WebGPU degenerate area light not implemented". Non-finite sizes cannot reach it (the host refuses non-finite socket
+    values). `lamps/area-zero-size` (a size of exactly zero) is disabled by the host before upload, so the device never sees
+    it, and renders. A light whose `light_type` socket disagrees with its class (a `pointlight` with type `area`) makes the
+    CPU's `has_contribution` cast to the wrong class (undefined behaviour) and can reach the same refusal.
+106. **Background light portals with volume direct light: RESOLVED in the same session.** With the portal strategy inlined,
+    `shade_volume_segment` measured 1,320,215 bytes and `shade_volume_light` 1,535,058 bytes (size-guard estimates 66,011 and
+    76,753 Intel instructions), above the compile envelope. In a scene with portals the volume light entries now come from the
+    module variant with `SF_BACKGROUND_SAMPLE_ENTRY` (a background lamp is left pending in `light_sample_lamp`), and a new entry,
+    `shade_volume_light_background`, dispatched before `shade_volume_light`, samples the background light at the scatter position
+    (the lamp's preamble, `background_light_sample` with the portal strategy, the selection's pdf factor) into record words 128 to
+    183, which `shade_volume_light` reads. Recorder entry 62. Scenes without portals compile the same modules.
+    The environment gate's volume-probe cases build the probe as the volume light entries are built (with
+    `SF_BACKGROUND_SAMPLE_ENTRY`, so the probe entry inlines one copy of the background sampler); a probe entry with two
+    copies gives wrong samples (item 107).
+
+107. **Two inlined copies of the portal sampler in one entry give wrong light samples on Intel: OPEN (driver).** A compute entry that inlines `bgl_portal_light_sample` (the background
+    light sample with the portal strategy) twice computes a wrong light sample on Mesa 25.0.7 (Intel), although both calls
+    are the same function of the same inputs. Reproducer: the environment gate's case 17 (`hdri-mis-portals-volume-probe`: an
+    HDRI world with MIS, two portals, every probe with N = 0 and the transmission flag) with its probe module specialized as
+    `shader_features()|SF_VOLUME_LIGHT|SF_VOLUME_SHADOW` (no `SF_BACKGROUND_SAMPLE_ENTRY`) and the probe entry
+    `var ls=light_sample_native(id.x,sd,r);{let s=light_select(id.x);ls=light_sample_lamp(id.x,sd,r,s);}`, so the
+    background lamp is sampled twice and the second sample is recorded. Intel: sample 5's pdf 0.870900 against 0.871818
+    from the CPU (direction identical). Recording both calls in the same invocation (`let first=ls;` before the second call)
+    changes the failure: the two calls differ in 12 of 2035 valid samples (sample 159: pdf 4.976496 from the first call,
+    0.008666 from the second), and the module changes what goes wrong (with the SVM nodes of earlier gate cases compiled in,
+    directions that are not unit vectors). The same probe source on llvmpipe (Mesa 25.0.7, LLVM
+    19.1.7; `CODEBRIX_CYCLES_WEBGPU_ADAPTER=software`) passes with no strict sample difference: sample 5's pdf is 0.871818,
+    the CPU's value, against 0.870900 on Intel(R) UHD Graphics (ADL-S GT1), and 638 of the 2048 recorded pdfs differ between
+    the two adapters. So it is a fault of the Intel driver (the class of item 52), not of our WGSL.
+    Our state is ruled out by the module text: the 83 functions reachable from `light_select` and `light_sample_lamp` write
+    no private variable and no heap word except the error word, and read none of the module's private variables. No built
+    entry inlines the sampler twice: counted over the dumped modules of `world/portal-volume`,
+    `world/portal-volume-heterogeneous` and `world/portal-volume-tree`, `shade_surface_light_background` and
+    `shade_volume_light_background` inline it once each in the module variant that portal scenes build their light entries
+    from, and every other entry of every dumped module once or not at all; the environment gate's probe inlines it once.
+
+115. **Bake of a mesh with deformation motion on the WebGPU device: refused by name.** "WebGPU bake of a mesh with deformation motion not
+    implemented" (`bake.cpp`). FACT: the pinned kernel places the texel on the mesh's static positions and marks the hit a plain triangle;
+    the device's shading stages read the triangles of a mesh with vertex motion only as motion triangles outside the motion-pass region
+    (`native_triangle_vertices`). Object motion bakes (`object_motion_bakes_at_the_static_transform` passes on both devices).
+116. **A bake texel on a zero-area triangle on the WebGPU device: refused by name.** FACT: a triangle with no area in 3D but area in UV
+    (a UV sphere's pole triangles) gives the CPU kernel a normal that is not a number; its path ends and Combined reads (0, 0, 0, 1)
+    there (`bake_gate.py` `zero_area_triangle`); a flat Normal bake writes that value and the host fails it ("Nonfinite bake output").
+    The device stops the bake with error bit 65536, "WebGPU bake of a texel on a zero-area triangle not implemented"
+    (`wavefront_bake.wgsl`; `CBC_FAILED`), and writes nothing, for every type but Position, Background and a Normal bake whose
+    interpolated smooth normal is not zero (those read no geometric normal, and equal the CPU). A render never reaches such a triangle. Open for a ruling:
+    keep the refusal, or have the host leave texels of zero-area triangles out of the map on every backend.
 
 Resolved, or closed under the device reference policy:
+- [70 of this list] **The WebGPU device bakes: RESOLVED.** `DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE` is ported (`native/cycles/bake.cpp`,
+  `native/shaders/wavefront_bake.wgsl`, its own `bake` module, so no other module changes): pinned `init_from_bake.h` with the vertex nudge,
+  the jitter and its retries (`hash_float2_to_float2`), the convention change, `triangle_point_normal`, smooth normals, the object
+  transforms, environment baking, the position and normal fast paths, the view direction towards the camera, the differentials, the sorted
+  surface, raytrace and MNEE queues and the shadow catcher split; the three bake passes are read where the kernel reads them
+  (`PASS_BAKE_PRIMITIVE` with the triangle as an int's bits, `PASS_BAKE_DIFFERENTIAL`, `PASS_BAKE_SEED` when present). They exist only while
+  baking (`Film::update_passes`), so a render's film layout is unchanged. State gate `codebrix_cycles_bake_state_gate` against the pinned CPU
+  kernel: every integer, seed, sort key, queue counter and film float exact, the ray and barycentrics bit-identical (13 cases; the
+  last has a Ray Portal BSDF on the baked object, whose `path.portal_bounce` the bake init clears in a `RAY_PORTAL` region as the
+  camera does; only path guiding stays refused there, "WebGPU bake optional path features not implemented"). `bake_gate.py`
+  bakes every type on both devices from one scene (`webgpu_matches_cpu_every_type`) and runs its known-result cases on the WebGPU device
+  (`--backend webgpu`); `scenes/bake/` are the oracle scenes. `cbc_host_bake` no longer refuses the device. Adaptive sampling and denoising
+  run as in a render; the pinned session gives a bake no adaptive-sampling overscan (`session/tile.cpp`, "Not adaptive sampling overscan yet
+  for baking"), on every device.
 - [54 of this list] **Volume phase sampling's normalize on scalar ARM64 (`volumes/scatter-mesh-light`): RESOLVED.** In the
   product default (`wgslArithmetic` `arm64-scalar`), one pixel of this scene, (13,6), was 17.2x the practical tolerance from
   the Linux ARM64 CPU oracle (3 practical failures; the reference was an ARM64 film rendered under `qemu-aarch64`, because the
@@ -4955,8 +5047,9 @@ shaders at the sampled point.
   buffers exceed one 128 MiB storage binding and fail with an allocation error).
 - **Light stage.** A `LIGHT_BACKGROUND` lamp samples the map (`background_map_sample`, binary32 steps in the host's
   order, precise sine/cosine/arccosine; `wavefront_background_light.wgsl`) and, with a sky-texture sun, the sun's cone
-  (`BACKGROUND_SUN`, see "Entry splits, cameras, sampling patterns, adaptive sampling and lamps"). Portals and more than
-  one background light are refused on the host.
+  (`BACKGROUND_SUN`, see "Entry splits, cameras, sampling patterns, adaptive sampling and lamps") and the portals
+  (`BACKGROUND_PORTAL`, see "Background light portals, several background lights and the Ray Portal BSDF"), as do
+  several background lights.
 - **SHADE_LIGHT_NEE.** When the sampled light's shader has no constant emission, `connect_surface_light` skips the
   light-threshold roulette and queues the shadow path to `DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_NEE`
   (`light_sample_shader_eval_nee_constant`). That kernel is two entries (`prepare_light_nee` writes the light point's
@@ -5951,8 +6044,8 @@ Android:
 
 ## Remaining SVM BSDFs and the bevel, raycast and radial tiling nodes
 
-The WebGPU device implements every BSDF the SVM compiler can emit except the Christensen-Burley and
-thin-walled subsurface closures (refused, section "Subsurface scattering") and the hair BSDFs: the Metallic BSDF (physical conductor and
+The WebGPU device implements every BSDF the SVM compiler can emit except the hair BSDFs (the
+Christensen-Burley and thin-walled subsurface closures: section "Subsurface scattering"): the Metallic BSDF (physical conductor and
 F82 tint, with GGX, multiscatter GGX or Beckmann), Beckmann glossy, refraction and glass,
 Ashikhmin-Shirley, Ashikhmin velvet and diffuse and glossy Toon. It also implements the Bevel,
 Raycast and Radial Tiling surface nodes. Each family is its own specialization feature, so a scene
@@ -6031,8 +6124,9 @@ the 60,000 envelope. Command captures record the new entry as recorder entry 35 
 the single entry and byte-identical WGSL.
 
 Not ported, by design: Burley diffuse (`bsdf_burley_setup` is reached only from OSL closures; the Diffuse BSDF node has
-no Burley mode), diffuse and Phong ramp (OSL only), and the rough translucent closure, which SVM creates only through
-`bsdf_thin_subsurface_setup` (a thin-walled Principled BSDF with subsurface), refused with thin-walled subsurface.
+no Burley mode) and diffuse and Phong ramp (OSL only). The rough translucent closure, which SVM creates only through
+`bsdf_thin_subsurface_setup` (a thin-walled Principled BSDF with subsurface), renders with it (section "Subsurface
+scattering").
 
 Gates (`native/tools/bsdf_gate.py` drives the nine BSDF gates; fixtures `cycles/bsdf_fixture.h` in three sets so each
 gate's `shade_surface` stays under the size guard: 1 Metallic and Beckmann, 2 Ashikhmin-Shirley, 3 velvet, Toon and
@@ -6348,7 +6442,7 @@ blue-noise patterns (pure, first; round becomes pure in `Integrator::device_upda
 indexing and the scrambled Morton pixel seed of `path_rng_pixel_init`), integer arithmetic throughout, the final
 conversion the correctly rounded binary32 of the integer times 1/4294967808 and made opaque to contraction. Every
 random-number site of the device swaps to it in these scenes only (light sampling and termination, the BSDF pick, AO,
-the AO and Bevel nodes, MNEE, the camera); volumes keep their tabulated-Sobol refusal. Oracle scenes
+the AO and Bevel nodes, MNEE, the camera); volumes take it in `VOLUME_SAMPLING_PATTERN` regions (bit 220). Oracle scenes
 `native/oracle/scenes/sampling/` (`author_sampling.py`): the patterns, scrambling distance 0.25 and ten pattern
 variants of committed scenes: perfect; the variants differ from the tabulated CPU films in 1,243 to 3,793 values.
 
@@ -6394,6 +6488,14 @@ when every pixel converges and with the Sobol-Burley and blue-noise patterns.
 | 178 | `VOLUME_LIGHT_TREE` | The light tree's volume segments (`shade_volume_tree_select`, `light_tree_sample<true>`, `light_tree_pdf<true>`) |
 | 179 | `VOLUME_LIGHT_PASSES` | Light passes with volumes (volume direct and indirect passes, the light passes of volume emission) |
 | 180 | `VOLUME_SHADOW_CATCHER` | The shadow catcher with volumes (the split after a volume segment, the stack re-init of the catcher path) |
+| 216 | `SUBSURFACE_DISK` | The Christensen-Burley method: `subsurface_bounce`'s disk branch, the walk entry passing disk paths over |
+| 217 | `SUBSURFACE_DISK_ENTRY` | Module variant (not a scene feature): the `intersect_subsurface_disk` entry (`subsurface_disk`) |
+| 218 | `SVM_BSDF_THIN_SUBSURFACE` | A thin-walled Principled BSDF with subsurface (`bsdf_thin_subsurface_setup`) and the rough translucent closure |
+| 220 | `VOLUME_SAMPLING_PATTERN` | The volume integrators' random numbers with a sampling pattern other than tabulated Sobol (from KernelData at each call) |
+| 221 | `VOLUME_LIGHT_PATH` | A Light Path node in a volume shader: its ray type outputs, and the extrema estimate of heterogeneous media for rays other than camera rays |
+| 223 | `VOLUME_MOTION` | Volumes in a scene with BVH motion: the stack initialization's motion traversal and the object motion transforms of the volume shader evaluations |
+| 226 | `BACKGROUND_PORTAL` | Background light portals: the portal strategy of the background light's sample and pdf |
+| 227 | `RAY_PORTAL` | The Ray Portal BSDF: its closure, the portal bounce, the shadow rays it blocks and the Light Path node's portal depth |
 
 **Lamps.** The Light Falloff node (`svm_node_light_falloff`: the ray length's linear or squared scale and the smooth
 term with a correctly rounded quotient; distant lights pass the strength through) and the IES Texture node
@@ -6590,8 +6692,8 @@ call site (a state machine, compile envelope). The direct and indirect phases go
 third thirds of the closure arena; record words 76 and 80 name them for `shade_volume_light` and `shade_volume_phase`.
 Shadow paths through heterogeneous media run `volume_shadow_null_scattering` (`volume_octree_advance_shadow`,
 `volume_transmittance<true>`): `shade_shadow_transparent` steps the media between the recorded hits and its hit
-surfaces through one SVM evaluation site. Refused: a heterogeneous volume shader with a Light Path node
-(`volume_estimate_extrema`). **Biased ray marching** (bit 176 `VOLUME_RAY_MARCHING`, `KernelIntegrator::volume_ray_marching`):
+surfaces through one SVM evaluation site. A Light Path node in a volume shader: see "BSDF nodes, sampling patterns,
+denoising features and light linking". **Biased ray marching** (bit 176 `VOLUME_RAY_MARCHING`, `KernelIntegrator::volume_ray_marching`):
 `DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME_RAY_MARCHING` runs `shade_volume_ray_marching` (recorder entry 50:
 `volume_integrate_ray_marching` with the per-object step sizes of `volume_step_size`, homogeneous media in one step)
 in place of `shade_volume`, then the same light and phase stages; the volume kernel a path queues is chosen at run time
@@ -6653,9 +6755,77 @@ allocated, so the shadow path's stack copy, its first medium and the catcher con
 time. `shadow_catcher_gate` case 10 now renders the volume scene (it was the
 refusal); **scenes** `volumes/catcher-*`.
 
-**Not implemented (refused by name):** a heterogeneous volume shader with a Light Path node (`volume_estimate_extrema`),
-volumes with sampling patterns other than tabulated Sobol, MNEE with volumes, subsurface scattering with volumes, light and
-shadow linking with volumes, path guiding, denoising features with volumes.
+**Not implemented (refused by name):** velocity-advected volumes (see "Motion blur" below; a Light Path node's Backfacing, Ray
+Length and ray depth outputs in a volume shader report error 2), MNEE with volumes, subsurface scattering with volumes, shadow linking with
+volumes (the combinations above), path guiding (permanent).
+
+**BSDF nodes, sampling patterns, denoising features and light linking (2026-11-09, Linux).**
+- The volume module's `NODE_CLOSURE_BSDF` is the pinned `svm_node_closure_bsdf_skip` (`svm_volume_source`, svm_layout.cpp):
+  every SVM program of that module is a volume shader's, so the surface closure handler is not compiled into the volume
+  entries. Intel envelope of the largest variant of each entry (maxEndIp, before and after): shade_volume 55,481 and
+  40,702; shade_volume_heterogeneous 52,072 and 37,293; shade_volume_ray_marching 48,510 and 33,736;
+  shader_eval_volume_density 12,687 and 12,049; shade_volume_phase 23,164 unchanged. The heterogeneous entry of
+  `volumes/heterogeneous-point` compiles SIMD8 to 53,400 instructions and 1,091 spills (was 77,707 and 1,552). A BSDF node in a
+  volume shader now renders as in Cycles (it was an error); scene `volumes/bsdf-in-volume`.
+- Every sampling pattern: the volume integrators' random numbers (scatter distance, reservoir, phase, shading and step offsets,
+  expansion order, light termination; the heterogeneous and ray-marched shadows) call `native_rng_pattern` with the pinned
+  dimension count in `VOLUME_SAMPLING_PATTERN` regions (bit 220), whose fallback is the tabulated line as before. That bit is
+  taken from the KernelData of each `shader_features()` call: `SF_SAMPLING_PATTERN` cannot serve, because scene
+  preparation calls it on zero KernelData, which reads as Sobol-Burley (`SAMPLING_PATTERN_SOBOL_BURLEY` is 0), and the bit
+  then stays set (it is or-ed in). `volume_gate` cases 75-78; scenes `volumes/sobol-burley-heterogeneous-point`,
+  `blue-noise-first-scatter-point-equiangular`, `blue-noise-pure-ray-marching-heterogeneous-point`, `sobol-burley-tree-lamps`
+  (Sobol-Burley in `tree-heterogeneous` is item 47's class and not committed).
+- Ray marching computes `expf` and `logf` correctly rounded on every host (it was the driver's `exp` and `log` on SSE hosts):
+  the seven ray-marching scenes are now bit-exact within strict (strict 0, `ray-marching-tree-catcher` 9), and
+  `blue-noise-pure-ray-marching-heterogeneous-point` failed 3 practical with the driver's functions.
+- Denoising features (`FILM_DENOISING`): `film_write_denoising_features_volume` with the albedo of each integrator (the
+  homogeneous segment, the null-scattering accumulation and its reservoir candidates, the ray-marching accumulation).
+  `volume_gate` cases 79-81 (the albedo and normal passes, checked non-zero); scenes `volumes/denoise-scatter-point`,
+  `denoise-heterogeneous-point`, `denoise-ray-marching-heterogeneous-point` (Open Image Denoise on both films).
+- Light linking (`LIGHT_LINKING`): the receiver of the segment's light sample is the first stack entry's object (the light
+  tree's root and `light_link_object_match`), of the scatter position's sample the last entry's; a medium's emission is
+  written only for a matching forward receiver; a volume scatter writes `mis_ray_object`. `volume_gate` cases 82-83 (light
+  tree and flat distribution); scenes `volumes/linking-tree-lamps`, `linking-lamps`, `linking-emission` (the light-linked
+  `tree-heterogeneous` is item 47's class and not committed).
+- A Light Path node in a volume shader (bit 221 `VOLUME_LIGHT_PATH`, any volume shader with `SD_HAS_LIGHT_PATH_NODE`): the
+  node's ray type outputs read the evaluation's visibility and flag as in a surface (they were error 2 in every volume
+  evaluation; Backfacing, Ray Length and the ray depths still are). In heterogeneous media the rays that are not camera rays
+  estimate the extrema of every stack entry with the node from its own evaluations (`volume_object_get_extrema`,
+  `volume_estimate_extrema`: four samples, one for a homogeneous entry, the maximum scaled by 1.5 with a floor of 0.5): the
+  octree set-up and advance of `shade_volume_heterogeneous` (stages 15-18) and of the heterogeneous shadows (`vh_shadow_next`)
+  are resumable, so each estimate evaluates its one entry through the existing evaluation site (no closures). `volume_gate`
+  cases 84-86 (MIS, equiangular, and a homogeneous Light Path medium overlapping the heterogeneous one), 87 (biased ray marching
+  through the Light Path medium: `volume_integrate_ray_marching` evaluates the whole stack at every step, `volume_shader_sample`,
+  with no octree and so no estimate; `shade_volume_ray_marching` with the bit compiles to maxEndIp 38,614; with the estimate
+  disabled by a diagnostic override case 84 fails with a `path.bounce` mismatch); scenes `volumes/light-path-heterogeneous-point`,
+  `light-path-heterogeneous-equiangular`, `light-path-overlap`. A world medium cannot stand in for the overlap: the pinned CPU
+  kernel crashes on a heterogeneous object inside a world volume (`volume_octree_setup<true>` in
+  `volume_shadow_null_scattering`), so there is no reference for it. Size: `shade_volume_heterogeneous` of
+  `light-path-heterogeneous-point` 769,175 inlined bytes, envelope maxEndIp 38,276 (SIMD8 56,334 instructions, 1,204 spills);
+  `shade_shadow_transparent` 741,004 bytes, maxEndIp 18,366. The estimate's step is the correctly rounded quotient and its
+  positions uncontracted sums (with the driver's division two of the scenes failed practical).
+- A heterogeneous medium lit only by the world (no medium emission) did not compile: `vh_write_emission` read the
+  `VOLUME_EMISSION` layout outside its region; the function is now in that region (its callers already were). Scene
+  `volumes/heterogeneous-world`.
+
+**Motion blur (2026-11-10, Linux).** `KernelData.bvh.have_motion` is set by any moving or deforming object of the scene (camera
+motion does not set it, so camera motion alone already rendered). With it the pinned stack initialization traverses
+`bvh_intersect_volume_all_motion`: the instance push with the object's inverse motion transform at the ray's time
+(`bvh_instance_motion_push`), motion triangles at that time, and `shader_setup_from_ray`'s boundary normal at that time; every
+volume shader evaluation takes its stack entry's object motion transforms (`volume_shader_eval_entry`,
+`shader_setup_object_transforms`; time 0.5 in the density prepass). These are `VOLUME_MOTION` regions (bit 223, taken from the
+KernelData of each `shader_features()` call, on only for volumes in a scene with `have_motion`): `wavefront_volume_stack.wgsl`
+(the motion traversal mirrors the transparent shadow traversal's: `native_triangle_vertices`, `motion_object`,
+`motion_inverse`, the pinned instance push that pops objects without a volume), the volume module's three evaluation sites
+and the shadow module's. Scenes without motion keep their modules byte for byte. `volume_boundary_gate` motion cases 24-32
+(`CODEBRIX_VOLUME_BOUNDARY_MOTION=3`, driver phase `motion-state`): the stack initialization, the surface entry/exit and the
+media integration at each path's time with static media beside a moving and a deforming surface box (24-26), moving media
+boxes (27-29) and deforming media boxes (30-32); `volume_gate` cases 88-89: the moving heterogeneous box (its object-space
+noise at each path's time) with MIS and with biased ray marching. Scenes (`author_volumes_motion.py`):
+`volumes/motion-static-medium`, `motion-moving-heterogeneous`, `motion-moving-medium`, `motion-deforming-medium` (the camera
+inside the medium except in the heterogeneous one). Refused by name: "WebGPU volume velocity motion blur not implemented"
+(`SD_OBJECT_HAS_VOLUME_MOTION`: a volume velocity attribute, which the host API cannot create; `volume_shader_motion_blur`);
+`volume_gate` rejections 1 and 2 (with and without curves) test it.
 
 ## Static curves (ribbons, thick curves, thick linear curves)
 
@@ -6885,19 +7055,57 @@ similarity relation after nine bounces and up to 256 bounces, each step a closes
 as the path's intersection, the sorted queue of the exit point's shader). `expf`, `logf` and `powf` are correctly
 rounded double-float evaluations, `atanf` is the correctly rounded `trig_atan2`; products are rounded before their sums.
 
+**The disk** (bit 216 `SUBSURFACE_DISK`, a scene feature set by a Burley closure of the Subsurface Scattering node or the
+Principled BSDF; bit 217 `SUBSURFACE_DISK_ENTRY`, a module variant; entry `intersect_subsurface_disk`, recorder entry 61):
+`subsurface_bounce` sets `PATH_RAY_SUBSURFACE_DISK` and keeps the geometric normal, with no entry bounce;
+`enqueue_subsurface` dispatches the walk's entry, which passes disk paths over, then the disk entry, which passes walk
+paths over (each path is one entry's; the queue and sort counters are atomic sums). The disk entry is `subsurface_disk`:
+the axis and point of the disk (`bssrdf_sample`, `bssrdf_burley_root_find` with correctly rounded `expf`, `sinf` and
+`cosf` of `trig_sincos_wide`), a probe ray through the object's own BVH (`raytrace_traverse` in its reservoir mode, the
+Bevel node's: every hit recorded, duplicates by `t` dropped, at most `BSSRDF_MAX_HITS` kept by `lcg_step_uint` on the
+path's `lcg_state_init(rng_pixel, rng_offset, sample, 0x68bc21eb)`), the hits sorted by `t`
+(`sort_intersections_and_normals`), each hit's geometric normal turned as `subsurface_disk` turns it (backfacing,
+negative scale applied, the inverse transform of an instanced object), the MIS weight over the three axes and the
+Burley profile over its pdf, and one hit resampled in proportion to its weight; then `subsurface_scatter` as for the
+walk. A Burley closure below a diffuse bounce becomes a diffuse closure (`bssrdf_setup`), as before.
+
 **Gates:** `codebrix_cycles_subsurface_gate` (new) runs the pinned `integrator_intersect_subsurface` and the WebGPU
 entry on 512 walks per case from points of a closed sphere (eight cases: the three random walk methods, anisotropies
-from -0.3 to 0.6, radii from 0.004 to 7) and compares every path state field and the queue counters;
+from -0.3 to 0.6, radii from 0.004 to 7) and compares every path state field and the queue counters; six
+Christensen-Burley cases add 512 disk paths each on the sphere, on the sphere with four concentric shells in the same
+mesh (probes crossing more than four surfaces, so the reservoir chooses: the report counts them, `diskProbesOverMaxHits`,
+from the pinned `scene_intersect_local`), on an instanced, rotated and non-uniformly scaled sphere and on a negatively
+scaled one, the exit hit (object, prim, type, u, v, t) compared exactly;
 `codebrix_cycles_principled_svm_gate` adds BSSRDF closure cases (the three methods at weights 1e-4, 0.5 and 1,
 anisotropy outside the clamps, zero, negative and below-minimum radius channels, the skin model with a large IOR, a
-linked base colour). **Oracle scenes** `native/oracle/scenes/subsurface/` (`author_subsurface.py`): Principled random
+linked base colour) and Christensen-Burley cases (weights 1e-4, 0.5 and 1, a zero radius channel, below a diffuse bounce).
+**Oracle scenes** `native/oracle/scenes/subsurface/` (`author_subsurface.py`): Principled random
 walk, skin, wax (forward anisotropy) and marble-like (half subsurface with a diffuse lobe, backward anisotropy, a zero
-radius channel) spheres, and the Subsurface Scattering node with the random walk, legacy and skin methods.
+radius channel) spheres, and the Subsurface Scattering node with the random walk, legacy and skin methods;
+(`author_subsurface_disk.py`) the Christensen-Burley method on the Principled BSDF (`principled-burley`, with a half
+weight and a zero channel beside it), on the node beside a random walk node (`node-burley`), with the Sobol-Burley
+pattern (`burley-sobol`), and with points in the scene and carrying a Burley closure (`burley-beside-points`).
 
-**Not implemented (refused by name):** the Christensen-Burley method (`integrator/subsurface_disk.h`), thin-walled
-Principled subsurface (`bsdf_thin_subsurface_setup`), and subsurface scattering with volumes (the volume stack update of
+**Thin wall** (bit 218 `SVM_BSDF_THIN_SUBSURFACE`, `wavefront_svm_microfacet.wgsl`, `wavefront_surface.wgsl`): a
+thin-walled Principled BSDF with subsurface has no BSSRDF (`has_surface_bssrdf`); `bsdf_thin_subsurface_setup` makes
+its subsurface lobe a diffuse reflection and a diffuse transmission, weighted by `saturate(0.5 (1 -+ anisotropy))`, before
+the diffuse lobe: diffuse and translucent closures, or with a diffuse roughness Oren-Nayar and the rough translucent
+closure (`CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID`: one Oren-Nayar parameter set about the flipped normal, evaluated and sampled
+on the mirrored incoming direction against the flipped geometric normal, a diffuse transmission). The census sets bit 218
+for a constant or linked thin wall and the BSSRDF bits for a constant zero or linked thin wall. Gates:
+`codebrix_cycles_principled_svm_gate` (the three former rejection cases and 36 more thin-wall cases: diffuse roughness 0
+to 1 around the 1e-5 switch, anisotropy -1 to 1.5, with transmission, a coat, sheen and a linked base colour, the closure
+capacity 1 to 3, a linked Thin Wall input with the random walk and the Christensen-Burley method); oracle scenes
+`principled-thin-wall` and `principled-thin-wall-mixed` (`author_subsurface_thin.py`; transmission and a coat, and the
+Christensen-Burley method selected on a thin wall).
+
+**Not implemented (refused by name):** subsurface scattering (any method) with volumes (the volume stack update of
 `subsurface_scatter`), MNEE caustics, the shadow catcher, light or shadow linking, path guiding or denoising features,
-data, denoising, AOV or cryptomatte passes, motion blur, holdout objects, curves or points.
+data, denoising, AOV or cryptomatte passes, motion blur and holdout objects. Curves and points are not refused: the
+local traversals pass curve and point leaves over (`bvh/local.h` has no curve or point case), so a walk or disk probe
+from a curve or point finds no hit in its own object and ends the path, and exit and probe rays elsewhere ignore them,
+as in the pinned kernels (scenes `curves-b/subsurface-beside`, `curves-b/subsurface-on-curves`,
+`points/beside-subsurface`, `points/subsurface-on-points`, `subsurface/burley-beside-points`).
 
 ## Hair closures (Hair BSDF, Principled Hair Chiang)
 
@@ -7053,3 +7261,50 @@ gate-transparent), none failed. Stopped by the maintainer during `gate-terminato
 gate-spec-refusal, gate-superset-refusal, gate-environment, gate-lighttree, gate-shadowcatcher, gate-probes, gate-arm, gate-ggx,
 gate-volume, gate-bsdf, gate-raytrace, gate-shadowlinking, gate-curves, gate-points, gate-hair, gate-hairhuang, gate-subsurface
 and the app batch. No soundness sample was run.
+
+## Background light portals, several background lights and the Ray Portal BSDF
+
+- **Portals (`BACKGROUND_PORTAL`, feature bit 226).** An area light with `is_portal` is counted in `integrator.num_portals`
+  and stored after the lamps of the light table (`portal_offset` = `num_lights`). `AreaLight::copy_to_kernel` returns before
+  the shader, type and strength fields of a portal, so those bytes are whatever the allocation held: the device reads only a
+  portal's position, area axes and lengths, the sign and size of its inverse area and its direction, and every host loop over
+  the lamps stops at `num_lights` (`WebGPUDevice::lamp_records`). The background light's sample and pdf take the portal
+  strategy from the shading point (light stage) or the ray origin (background hit): `background_portal_sample`,
+  `background_portal_pdf`, `background_num_possible_portals` and the three-strategy `background_light_sample` and
+  `background_light_pdf` of `light/background.h` (`wavefront_background_light.wgsl`): a rectangle by spherical rectangle
+  sampling (`area_rectangle`), an ellipse uniformly over its area with the pinned area-to-solid-angle pdf at the portal's
+  centre, the quad test of `ray_quad_intersect`, every sum, product before a sum, quotient and square root correctly rounded
+  in the pinned order. A scene without portals compiles the same modules as before: the region and its call sites switch
+  only with the bit, and the importance map's tables are unchanged. In a scene with portals the light stage's background
+  sample runs in its own entry, `shade_surface_light_background` (as with sun guiding): with the portal strategy inline,
+  `shade_surface_light` measured 70,635 to 78,250 Intel instructions; a render capture of such a scene records that module
+  variant as `surface.wgsl` (`render_capture.h`; before, a capture of a sun-guiding scene recorded the module without
+  `shade_surface_light_background`). Cycles enables the background light in a scene with a portal for any world. A portal of zero or underflowing extent is refused as a degenerate area light (item 105). With
+  volume direct light the background light's sample runs in its own entry too, `shade_volume_light_background`, dispatched
+  before `shade_volume_light`, whose module variant leaves a background lamp pending (item 106; record words 128 to 183).
+- **Several background lights.** More than one `backgroundlight` object is enabled when each passes
+  `LightManager::test_enabled_lights` (a portal in the scene, or `use_mis` with a direction-dependent world). Each is a lamp
+  of its own: one more entry of the light distribution (`distribution_pdf_lights` shared) or one more distant emitter of the
+  light tree, sampled as the world with its own strength; the importance map comes from the last enabled one's resolution,
+  and a background hit's forward MIS takes one lamp's selection pdf, or the tree pdf of `background.object_index` (the last
+  background light object), as the pinned kernel does. The device already treated every `LIGHT_BACKGROUND` lamp by its own
+  record, so the host refusal was the only change (environment gate case 16, `world/two-background-lights*`).
+- **The Ray Portal BSDF (`RAY_PORTAL`, feature bit 227).** The closure (`bsdf_ray_portal_setup`: the weight added to the
+  transparency, the position (default the shading point) and the direction (-wi for a zero direction, then `safe_normalize`),
+  kept in the closure record's `multiscatter` and `T`), its pick among the BSDF and BSSRDF closures and the portal bounce of
+  `integrate_surface_ray_portal` in `shade_surface` (the ray from the portal's position, or offset from the hit when the position
+  is the hit point; the object cleared when it moves; throughput times weight over the pick probability), `path_state_next`'s
+  portal bounce (counted as a transparent bounce, MIS skipped, `portal_bounce` incremented), no evaluation in light sampling or
+  MIS (zero pdf, its sample weight in the sums), the shadow rays a portal blocks (`integrate_transparent_surface_shadow`), the
+  portal bounce of the path state (cleared at the camera) and of the shadow paths of surface and dedicated light, and the Light
+  Path node's portal depth. The camera's refusal of `KERNEL_FEATURE_NODE_PORTAL` is gone (path guiding stays refused there). A
+  shadow evaluation has no closure slots (`max_closures` 0), so there the closure adds its weight to the transparency and sets
+  neither `SR_TRANSPARENT` nor `SR_RAY_PORTAL`, and `surface_shader_transparency` returns zero: the shadow stage counts the
+  transparency only with `SR_TRANSPARENT` in `RAY_PORTAL` modules. A portal in a scene with volumes needs nothing of the volume
+  modules (`world/ray-portal-volume`). INFERENCE: the pinned volume shadow paths do not copy the
+  portal bounce, so a Light Path node's portal depth in a shadow evaluation reads what the slot held; the device reads the
+  path's own count.
+- **The lamp types are guarded, not refused.** A lamp record's type is its Light node's `light_type` socket, which the host
+  accepts only as point, sun, background, area or spot; mesh emitters are triangle emitters and portals are not lamps, so
+  no scene the host can build reaches another type. The two checks (the lamps and the light tree's lamp emitters) read
+  "Invalid native light type". The degenerate area light stays refused (item 105).

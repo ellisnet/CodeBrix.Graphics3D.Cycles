@@ -11,6 +11,7 @@
 #include <array>
 #include <cstring>
 #include <map>
+#include <span>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -55,6 +56,10 @@ class WebGPUDevice final:public Device {
   KernelData data{};
   // Exact native table copies for capability validation; sampling remains on GPU.
   std::vector<KernelLight> light_records;
+  // The lamps: the first integrator.num_lights records. Background light portals follow them (portal_offset), with only
+  // their area geometry set by the pinned LightManager (AreaLight::copy_to_kernel returns before the shader fields).
+  std::span<const KernelLight> lamp_records() const{
+    return std::span<const KernelLight>(light_records.data(),std::min(light_records.size(),size_t(std::max(data.integrator.num_lights,0))));}
   std::vector<KernelLightDistribution> light_distribution_records;
   // Light tree host copies (validate_light_tree; lighting.cpp).
   std::vector<KernelLightTreeNode> light_tree_nodes;
@@ -159,6 +164,8 @@ class WebGPUDevice final:public Device {
   cbc::PipelineLayout pipeline_layout;
   cbc::Pipeline controls;
   cbc::Pipeline camera;
+  // DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE (bake.cpp, wavefront_bake.wgsl).
+  cbc::Pipeline bake;
   cbc::Pipeline closest;
   cbc::Pipeline shadow_intersect;
   // intersect_shadow_all: transparent shadows with curves (wavefront_shadow.wgsl); replay index 58.
@@ -184,6 +191,8 @@ class WebGPUDevice final:public Device {
   // Volume direct light (volume.cpp, VOLUME_LIGHT): the light segment and light entries of the surface module
   // and their per-input records.
   cbc::Pipeline volume_segment,volume_light,volume_tree_select,volume_light_triangle;
+  // Background light portals: the background light's sample of the volume direct light (volume.cpp).
+  cbc::Pipeline volume_light_background;
   // The indirect phase scatter with phase functions beyond Henyey-Greenstein (volume module, VOLUME_PHASES).
   cbc::Pipeline volume_phase;
   // Paths through heterogeneous volumes (volume module, VOLUME_HETEROGENEOUS).
@@ -191,6 +200,7 @@ class WebGPUDevice final:public Device {
   cbc::Pipeline volume_ray_marching;
   // INTERSECT_SUBSURFACE (subsurface.cpp): the walk entry and its traversal stacks.
   cbc::Pipeline subsurface_walk;uint32_t subsurface_stack=0;size_t subsurface_stack_bytes=0;
+  cbc::Pipeline subsurface_disk;
   uint32_t volume_light_records=0;size_t volume_light_record_size=0;
   cbc::Pipeline surface;
   cbc::Pipeline surface_geometry;
@@ -281,6 +291,7 @@ class WebGPUDevice final:public Device {
   void sync();
   void dispatch(const std::array<uint32_t,32>&,uint32_t,WGPUComputePipeline=nullptr,uint32_t workgroup_size=64);
   void enqueue_camera(int,const DeviceKernelArguments&);
+  void enqueue_bake(int,const DeviceKernelArguments&);
   void enqueue_closest(int,const DeviceKernelArguments&);
   void enqueue_shadow(DeviceKernel,int,const DeviceKernelArguments&);
   void enqueue_background(int,const DeviceKernelArguments&,DeviceKernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);

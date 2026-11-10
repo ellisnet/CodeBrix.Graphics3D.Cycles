@@ -701,7 +701,7 @@ public static unsafe class Native
     /// <param name="capacity">The destination capacity in floats.</param>
     /// <param name="required">Receives the float count needed.</param>
     /// <param name="components">Receives the floats per pixel.</param>
-    /// <returns>The native status code (2 on the WebGPU device, which does not bake yet).</returns>
+    /// <returns>The native status code.</returns>
     [DllImport(Library, EntryPoint="cbc_host_bake", CallingConvention=CallingConvention.Cdecl)] public static extern int Bake(ulong host, ref BakeConfig config, float* values, ulong capacity, out ulong required, out uint components);
 
     /// <summary><c>cbc_host_bake_map</c>: the map a bake with this configuration uses, without rendering, on any backend.</summary>

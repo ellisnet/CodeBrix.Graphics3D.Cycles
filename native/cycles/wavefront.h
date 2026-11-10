@@ -3,7 +3,7 @@
 #pragma once
 #include <string>
 namespace ccl {inline constexpr unsigned surface_data_cache_bytes=60*4;
-std::string volume_source();std::string volume_light_layout();std::string volume_stack_source();std::string wavefront_layout();std::string svm_layout(bool surface=false);
+std::string volume_source();std::string volume_light_layout();std::string volume_stack_source();std::string wavefront_layout();std::string svm_layout(bool surface=false);std::string svm_volume_source();
 std::string shadow_source();std::string shadow_catcher_layout();std::string shadow_catcher_split_wgsl();int shadow_catcher_pass_mask();
 int film_data_pass_mask();std::string film_passes_layout();std::string film_post_wgsl();std::string film_adaptive_wgsl();std::string film_volume_guiding_wgsl();std::string film_motion_layout();
 std::string shadow_layout();std::string lighting_layout();
@@ -22,7 +22,9 @@ bool reference_oracle_sse();
 std::string wgsl_arithmetic();
 // Bytes per MNEE walk record (mnee.cpp; gates read the records back).
 size_t mnee_record_stride();
-std::string shader_data_layout();std::string shader_data_source();std::string svm_surface_source();std::string background_layout();std::string surface_source();std::string camera_wgsl();std::string closest_wgsl();std::string mnee_layout();std::string subsurface_layout();std::string background_wgsl();}
+std::string shader_data_layout();std::string shader_data_source();std::string svm_surface_source();std::string background_layout();std::string surface_source();std::string camera_wgsl();std::string closest_wgsl();std::string mnee_layout();std::string subsurface_layout();std::string background_wgsl();
+// The bake module (bake.cpp): DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE.
+std::string bake_wgsl();}
 // A descriptor contains a native virtual address and an element count. The
 // original arrays are never repacked or converted to synthetic scene records.
 #define CBC_INTERSECTION_TABLES(X) \

@@ -19,7 +19,7 @@ void WebGPUDevice::validate_shadow_linking() const{
   // Spot, area and triangle lights in volume direct light and the volume light passes have no gate case with shadow linking.
   if(data.kernel_features&KERNEL_FEATURE_VOLUME){
     if(data.integrator.use_direct_light){
-      for(const KernelLight &light:light_records)
+      for(const KernelLight &light:lamp_records())
         require(light.type==LIGHT_POINT||light.type==LIGHT_SUN||light.type==LIGHT_BACKGROUND,"WebGPU shadow linking with volumes and spot or area lights not implemented");
       for(size_t i=0;i+1<light_distribution_records.size();i++)
         require(light_distribution_records[i].prim<0,"WebGPU shadow linking with volumes and emissive triangles not implemented");

@@ -928,7 +928,11 @@ fn svm_light_path(s:ptr<function,SvmState>,node:u32,index:u32,flag:u32,visibilit
     // The curve shadow transparency kernel's mask has no LIGHT_PATH: depths read as zero; ray depth counts the shadow bounce.
     if(svm_curve_shadow_eval&&kind>=NODE_LP_ray_depth){svm_store(s,svm_byte(node+N_LightPath_out_offset),select(0.0,1.0,kind==NODE_LP_ray_depth));return;}
 //#endif
-    if((*s).volume||(kind>=NODE_LP_ray_depth&&(index==NONE||(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u))){svm_error(s,2u);return;}
+//#if VOLUME_LIGHT_PATH else     if((*s).volume||(kind>=NODE_LP_ray_depth&&(index==NONE||(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u))){svm_error(s,2u);return;}
+    // In a volume shader (VOLUME_LIGHT_PATH) the ray type outputs read the evaluation's visibility and flag as in a surface;
+    // backfacing, ray length and the bounce depths stay unsupported there (error 2).
+    if(((*s).volume&&(kind==NODE_LP_backfacing||kind==NODE_LP_ray_length||kind>=NODE_LP_ray_depth))||(kind>=NODE_LP_ray_depth&&(index==NONE||(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u))){svm_error(s,2u);return;}
+//#endif
     switch(kind){
         case NODE_LP_camera:{info=select(0.0,1.0,(visibility&SVMN_PATH_RAY_VISIBILITY_CAMERA)!=0u);}
         case NODE_LP_shadow:{info=select(0.0,1.0,(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u);}
@@ -945,8 +949,10 @@ fn svm_light_path(s:ptr<function,SvmState>,node:u32,index:u32,flag:u32,visibilit
         case NODE_LP_ray_glossy:{info=f32(state_half(S_path_glossy_bounce,index));}
         case NODE_LP_ray_transparent:{info=f32(state_half(S_path_transparent_bounce,index));}
         case NODE_LP_ray_transmission:{info=f32(state_half(S_path_transmission_bounce,index));}
-        // Portal bounces exist only with KERNEL_FEATURE_NODE_PORTAL (refused by this device).
-        case NODE_LP_ray_portal:{if((data_word(D_kernel_features)&SVMN_KERNEL_FEATURE_NODE_PORTAL)!=0u){svm_error(s,2u);return;}info=0.0;}
+//#if RAY_PORTAL else         case NODE_LP_ray_portal:{if((data_word(D_kernel_features)&SVMN_KERNEL_FEATURE_NODE_PORTAL)!=0u){svm_error(s,2u);return;}info=0.0;}
+        // integrator_state_portal_bounce: the portal bounces with KERNEL_FEATURE_NODE_PORTAL.
+        case NODE_LP_ray_portal:{info=0.0;if((data_word(D_kernel_features)&SVMN_KERNEL_FEATURE_NODE_PORTAL)!=0u){info=f32(state_half(S_path_portal_bounce,index));}}
+//#endif
         default:{svm_error(s,16u);return;}
     }
     svm_store(s,svm_byte(node+N_LightPath_out_offset),info);

@@ -44,7 +44,10 @@ fn ss_entry_bounce(c:SvmClosure,wi:vec3<f32>,random:vec2<f32>)->vec4<f32>{
 // in the subsurface state, and the path queued for INTERSECT_SUBSURFACE (a failed entry bounce ends the path).
 fn ss_bounce(index:u32,sd:SurfaceData,r:SvmResult,selected:u32){
     let c=svm_closure_read(r,selected);
-    if(c.kind==SS_CLOSURE_BURLEY){fail();return;}
+//#if SUBSURFACE_DISK else     if(c.kind==SS_CLOSURE_BURLEY){fail();return;}
+    // Christensen-Burley: PATH_RAY_SUBSURFACE_DISK and the geometric normal for the disk, no entry bounce.
+    let burley=c.kind==SS_CLOSURE_BURLEY;
+//#endif
     state_vec3(S_ray_P,index,sd.P);state_f32(S_ray_tmin,index,0.0);state_u32(S_ray_tmax,index,0x7f7fffffu);state_f32(S_ray_dP,index,sd.dP);state_f32(S_ray_dD,index,0.0);
     let offset=state_half(S_path_rng_offset,index)+RNG_BOUNCE;state_u16(S_path_rng_offset,index,offset);
     // surface_shader_bssrdf_sample_weight
@@ -53,13 +56,19 @@ fn ss_bounce(index:u32,sd:SurfaceData,r:SvmResult,selected:u32){
         weight*=rounded_divide(sum,c.sample_weight);}
     state_vec3(S_path_throughput,index,heap_vec3(state_address(S_path_throughput,index,12u))*weight);
     let visibility=state_byte(S_path_visibility,index)&~SS_PATH_RAY_VISIBILITY_CAMERA;
-    var flag=state_word(S_path_flag,index)|SS_PATH_RAY_SUBSURFACE_RANDOM_WALK;
+//#if SUBSURFACE_DISK else     var flag=state_word(S_path_flag,index)|SS_PATH_RAY_SUBSURFACE_RANDOM_WALK;
+    var flag=state_word(S_path_flag,index)|select(SS_PATH_RAY_SUBSURFACE_RANDOM_WALK,SS_PATH_RAY_SUBSURFACE_DISK,burley);
+    if(burley){state_vec3(S_subsurface_N,index,sd.Ng);}else{
+//#endif
 //#if SAMPLING_SOBOL_BURLEY else     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),offset+SS_PRNG_BSDF).xy;
     let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),offset+SS_PRNG_BSDF,2u).xy;
 //#endif
     let wo=ss_entry_bounce(c,sd.wi,random);
     if(wo.w==0.0||rounded_dot(sd.Ng,wo.xyz)>=0.0){surf_finish(index,false);return;}
     state_vec3(S_ray_D,index,wo.xyz);state_vec3(S_subsurface_N,index,sd.N);
+//#if SUBSURFACE_DISK
+    }
+//#endif
     if((sd.runtime_flag&SR_BACKFACING)!=0u){flag|=SS_PATH_RAY_SUBSURFACE_BACKFACING;}
     state_u8(S_path_visibility,index,visibility);state_u32(S_path_flag,index,flag);
     if(p(20u)!=0u&&state_half(S_path_bounce,index)==0u){state_vec3(S_path_pass_diffuse_weight,index,vec3<f32>(1));state_vec3(S_path_pass_glossy_weight,index,vec3<f32>(0));}
@@ -118,26 +127,37 @@ fn ss_direction_from_cosine(d:vec3<f32>,cosine:f32,randv:f32)->vec3<f32>{
     let sine=rounded_sqrt(max(rounded_add(1.0,-cosine*cosine),0.0));let sc=native_phase_sincos(6.283185307179586*randv);
     let frame=ss_frame(d);return rounded_add3(rounded_add3((sine*sc.y)*frame[0],(sine*sc.x)*frame[1]),cosine*d);
 }
+//#endif
+//#if SUBSURFACE_ENTRIES
 // path_state_rng_1D / _2D with the walk's scrambled dimension offset.
 fn ss_rng(index:u32,dimension:u32,count:u32)->vec2<f32>{
 //#if SAMPLING_SOBOL_BURLEY else     return native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),dimension).xy;
     return native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),dimension,count).xy;
 //#endif
 }
+//#endif
+//#if SUBSURFACE_ENTRY
 // hash_hp_seeded_uint(i, seed) (util/hash.h).
 fn ss_hash_seeded(i:u32,seed:u32)->u32{
     var x=i^(seed^(seed<<19u));x^=x>>16u;x*=0x21f0aaadu;x^=x>>15u;x*=0xd35a2d97u;x^=x>>15u;return x^0xe6fe3bebu;
 }
+//#endif
+//#if SUBSURFACE_ENTRIES
 // integrator_path_terminate (no render buffer: no optical depth pass).
 fn ss_terminate(index:u32){
     let counter=load_word(p(7u)+S_queue_counter)/4u;atomicSub(&heap[counter+SS_K_INTERSECT],1u);state_u16(S_path_queued_kernel,index,0u);
 }
+//#endif
+//#if SUBSURFACE_ENTRY
 // DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE: subsurface_scatter with subsurface_random_walk.
 @compute @workgroup_size(64) fn intersect_subsurface(@builtin(global_invocation_id) id:vec3<u32>){
     svm_invocation(id.x);
     if(id.x>=p(1u)||load_word(p(17u))!=0u){return;}
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
-    if(index>=p(10u)){fail();return;}if(state_half(S_path_queued_kernel,index)!=SS_K_INTERSECT){fail();return;}
+//#if SUBSURFACE_DISK else     if(index>=p(10u)){fail();return;}if(state_half(S_path_queued_kernel,index)!=SS_K_INTERSECT){fail();return;}
+    // A Christensen-Burley path is the disk entry's (intersect_subsurface_disk, dispatched after this one).
+    if(index>=p(10u)){fail();return;}if((state_word(S_path_flag,index)&SS_PATH_RAY_SUBSURFACE_DISK)!=0u){return;}if(state_half(S_path_queued_kernel,index)!=SS_K_INTERSECT){fail();return;}
+//#endif
     let P=heap_vec3(state_address(S_ray_P,index,12u));let D=heap_vec3(state_address(S_ray_D,index,12u));
     let ray_dP=heap_float(state_address(S_ray_dP,index,4u));let N=heap_vec3(state_address(S_subsurface_N,index,12u));
     let object=state_word(S_isect_object,index);let prim=state_word(S_isect_prim,index);
@@ -249,6 +269,138 @@ fn ss_terminate(index:u32){
     state_u16(S_path_rng_offset,index,state_half(S_path_rng_offset,index)+RNG_BOUNCE);
     // integrator_path_next_sorted to SHADE_SURFACE or SHADE_SURFACE_RAYTRACE, keyed by the exit point's shader.
     let shader=load_word(table_at(G_tri_shader,hits.prim[0],SIZE_tri_shader))&SHADER_MASK;
+    let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);
+    let next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,(flags&SD_HAS_RAYTRACE)!=0u);
+    let divisor=load_word(p(7u)+S_sort_partition_divisor);let key=shader+data_word(D_max_shaders)*(index/divisor);
+    if(key>=select(p(15u),p(16u),next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE)){fail();return;}
+    let sort=load_word(p(7u)+S_sort_key_counter+next*POINTER_SIZE);atomicAdd(&heap[(sort+key*4u)/4u],1u);state_u32(S_path_shader_sort_key,index,key);
+    let counter=load_word(p(7u)+S_queue_counter)/4u;atomicSub(&heap[counter+SS_K_INTERSECT],1u);atomicAdd(&heap[counter+next],1u);
+    state_u16(S_path_queued_kernel,index,next);
+}
+//#endif
+//#if SUBSURFACE_DISK_ENTRY
+// DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE for Christensen-Burley paths (pinned integrator/subsurface_disk.h,
+// closure/bssrdf.h, bvh/local.h with geom/geom_intersect.h local_intersect_get_record_index, bvh/util.h
+// sort_intersections_and_normals): a point on a disk around one of three axes of the entry point's frame, a probe
+// ray through the object's own BVH keeping up to BSSRDF_MAX_HITS hits (the lcg_state reservoir of raytrace_traverse),
+// each hit weighted by the MIS over the axes and the Burley profile over its pdf, one hit resampled in proportion to
+// its weight. Every product is rounded before its sum; quotients, square roots and expf are correctly rounded and
+// float3 / float divides each lane (the oracle kernels' SSE4.2, -ffp-contract=off order).
+// BURLEY_TRUNCATE_CDF and 1.0f / BURLEY_TRUNCATE_CDF as the host compiler folds them (binary32 0x3f7f12b2, 0x3f807715).
+const SS_BURLEY_CDF:f32=0.996379018;
+const SS_BURLEY_INV_CDF:f32=1.0036341;
+// bssrdf_burley_eval and bssrdf_burley_pdf (d: the channel's scaled radius).
+fn ss_burley_pdf(d:f32,r:f32)->f32{
+    if(r==0.0||r>=16.0*d){return 0.0;}
+    let e3=ss_exp(-rounded_divide(r,3.0*d));let e=(e3*e3)*e3;
+    return rounded_divide(rounded_add(e,e3),4.0*d)*SS_BURLEY_INV_CDF;
+}
+// bssrdf_burley_root_find: the scaled radius whose CDF is xi (Newton-Raphson from the curve-fit guess).
+fn ss_burley_root(xi:f32)->f32{
+    var r=15.0;if(xi<=0.9){r=rounded_add(ss_exp((xi*xi)*2.4),-1.0);}
+    for(var i=0u;i<10u;i++){
+        let e3=ss_exp(-rounded_divide(r,3.0));let e=(e3*e3)*e3;
+        let f=rounded_add(rounded_add(rounded_add(1.0,-(0.25*e)),-(0.75*e3)),-xi);let df=rounded_add(0.25*e,0.25*e3);
+        if(abs(f)<1e-6||df==0.0){break;}
+        r=max(rounded_add(r,-rounded_divide(f,df)),0.0);
+    }
+    return r;
+}
+// bssrdf_num_channels.
+fn ss_disk_channels(radius:vec3<f32>)->f32{var n=0.0;for(var k=0u;k<3u;k++){if(radius[k]>0.0){n+=1.0;}}return n;}
+// bssrdf_sample with bssrdf_burley_sample: the disk radius r and the half height h of the probe ray (x, y).
+fn ss_disk_sample(radius:vec3<f32>,random:f32)->vec2<f32>{
+    var xi=random*ss_disk_channels(radius);var d=0.0;var sum=0.0;
+    for(var k=0u;k<3u;k++){if(radius[k]>0.0){let next=sum+1.0;if(xi<next){xi=rounded_add(xi,-sum);d=radius[k];break;}sum=next;}}
+    let rm=16.0*d;let r=ss_burley_root(xi*SS_BURLEY_CDF)*d;
+    return vec2<f32>(r,rounded_sqrt(max(rounded_add(rm*rm,-(r*r)),0.0)));
+}
+// bssrdf_eval: the Burley pdf of each channel at distance r.
+fn ss_disk_eval(radius:vec3<f32>,r:f32)->vec3<f32>{return vec3<f32>(ss_burley_pdf(radius.x,r),ss_burley_pdf(radius.y,r),ss_burley_pdf(radius.z,r));}
+// average(fabs(v)).
+fn ss_disk_average(v:vec3<f32>)->f32{return ((abs(v.x)+abs(v.y))+abs(v.z))*(1.0/3.0);}
+// lcg_state_init(rng_pixel, rng_offset, sample, 0x68bc21eb): hash_uint3 (Jenkins).
+fn ss_disk_lcg(index:u32)->u32{
+    var a=0xdeadbf08u+(state_word(S_path_rng_pixel,index)^0x68bc21ebu);
+    var b=0xdeadbf08u+state_half(S_path_rng_offset,index);var c=0xdeadbf08u+state_word(S_path_sample,index);
+    c^=b;c-=(b<<14u)|(b>>18u);a^=c;a-=(c<<11u)|(c>>21u);
+    b^=a;b-=(a<<25u)|(a>>7u);c^=b;c-=(b<<16u)|(b>>16u);
+    a^=c;a-=(c<<4u)|(c>>28u);b^=a;b-=(a<<14u)|(a>>18u);c^=b;c-=(b<<24u)|(b>>8u);return c;
+}
+@compute @workgroup_size(64) fn intersect_subsurface_disk(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)||load_word(p(17u))!=0u){return;}
+    var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    if(index>=p(10u)){fail();return;}
+    // Random walk paths are intersect_subsurface's (dispatched before this entry).
+    let flag=state_word(S_path_flag,index);if((flag&SS_PATH_RAY_SUBSURFACE_DISK)==0u){return;}
+    if(state_half(S_path_queued_kernel,index)!=SS_K_INTERSECT){fail();return;}
+    let P=heap_vec3(state_address(S_ray_P,index,12u));let ray_dP=heap_float(state_address(S_ray_dP,index,4u));
+    let time=heap_float(state_address(S_ray_time,index,4u));let Ng=heap_vec3(state_address(S_subsurface_N,index,12u));
+    let object=state_word(S_isect_object,index);let radius=heap_vec3(state_address(S_subsurface_radius,index,12u));
+    let offset=state_half(S_path_rng_offset,index);
+    // The axis of the disk (rand_disk.y) and its frame (make_orthonormals of Ng, two axes swapped).
+    var rand=ss_rng(index,offset+SS_PRNG_DISK,2u);
+    let frame=ss_frame(Ng);var disk_N=Ng;var disk_T=frame[0];var disk_B=frame[1];var pick=vec3<f32>(0.5,0.25,0.25);
+    if(rand.y<0.5){rand.y*=2.0;}
+    else if(rand.y<0.75){disk_N=frame[0];disk_T=Ng;pick=vec3<f32>(0.25,0.5,0.25);rand.y=rounded_add(rand.y,-0.5)*4.0;}
+    else{disk_N=frame[1];disk_B=Ng;pick=vec3<f32>(0.25,0.25,0.5);rand.y=rounded_add(rand.y,-0.75)*4.0;}
+    let phi=6.2831855*rand.y;let disk=ss_disk_sample(radius,rand.x);let disk_r=disk.x;let disk_height=disk.y;
+    let sc=trig_sincos_wide(phi);let disk_P=rounded_add3((disk_r*sc.y)*disk_T,(disk_r*sc.x)*disk_B);
+    let ray_P=rounded_add3(rounded_add3(P,disk_N*disk_height),disk_P);let ray_D=-disk_N;
+    // scene_intersect_local: intersection_ray_valid (the direction is a unit vector), then every hit of the object
+    // recorded, at most BSSRDF_MAX_HITS kept by the reservoir.
+    if((bitcast<u32>(ray_P.x)&0x7f800000u)==0x7f800000u){ss_terminate(index);return;}
+    var geometry:SurfaceData;geometry.object_id=NONE;geometry.time=time;
+    let hits=raytrace_traverse(geometry,ray_P,ray_D,0.0,2.0*disk_height,object,NONE,NONE,AO_VISIBILITY_ALL,ss_disk_lcg(index),true);
+    if(load_word(p(17u))!=0u){return;}
+    let count=min(hits.count,SS_MAX_HITS);if(count==0u){ss_terminate(index);return;}
+    // sort_intersections_and_normals (bubble sort by t).
+    var order=array<u32,4>(0u,1u,2u,3u);var n=count;
+    loop{
+        var swapped=false;
+        for(var j=0u;j+1u<n;j++){if(hits.t[order[j]]>hits.t[order[j+1u]]){let o=order[j];order[j]=order[j+1u];order[j+1u]=o;swapped=true;}}
+        n--;if(!swapped||n==0u){break;}
+    }
+    let object_flag=load_word(table_at(G_object_flag,object,SIZE_object_flag));let applied=(object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
+    var hit_object:SurfaceData;hit_object.object_id=object;hit_object.object_flag=object_flag;hit_object.time=time;
+    // bssrdf_pdf(radius, disk_r): the same for every hit.
+    let disk_e=ss_disk_eval(radius,disk_r);let disk_pdf=rounded_divide(rounded_add(rounded_add(disk_e.x,disk_e.y),disk_e.z),ss_disk_channels(radius));
+    var weights=array<vec3<f32>,4>(vec3<f32>(0),vec3<f32>(0),vec3<f32>(0),vec3<f32>(0));var normals=weights;var sum_weights=0.0;
+    for(var k=0u;k<count;k++){
+        let hit=order[k];
+        // The hit's geometric normal as triangle_intersect_local records it, then as subsurface_disk turns it.
+        let vertices=native_triangle_vertices(object,hits.prim[hit],hits.kind,time);if(vertices.error!=0u){return;}
+        var hit_Ng=surface_native_normalize(rounded_cross(vertices.b-vertices.a,vertices.c-vertices.a));
+        if((flag&SS_PATH_RAY_SUBSURFACE_BACKFACING)!=0u){hit_Ng=-hit_Ng;}
+        if(applied&&(object_flag&SD_OBJECT_NEGATIVE_SCALE)!=0u){hit_Ng=-hit_Ng;}
+        if(!applied){hit_Ng=surface_object_normal(hit_object,hit_Ng,false);}
+        let hit_P=rounded_add3(ray_P,ray_D*hits.t[hit]);
+        let pdf_N=pick.x*abs(rounded_dot(disk_N,hit_Ng));let pdf_T=pick.y*abs(rounded_dot(disk_T,hit_Ng));let pdf_B=pick.z*abs(rounded_dot(disk_B,hit_Ng));
+        var w=rounded_divide(pdf_N,rounded_add(rounded_add(pdf_N*pdf_N,pdf_T*pdf_T),pdf_B*pdf_B));
+        if(hits.count>SS_MAX_HITS){w*=rounded_divide(f32(hits.count),f32(SS_MAX_HITS));}
+        let difference=hit_P-P;let r=rounded_sqrt(rounded_dot(difference,difference));
+        // subsurface_disk_eval
+        var eval=vec3<f32>(0);if(disk_pdf>0.0){eval=surf_native_div3(ss_disk_eval(radius,r),disk_pdf);}
+        weights[k]=eval*w;normals[k]=hit_Ng;sum_weights=rounded_add(sum_weights,ss_disk_average(weights[k]));
+    }
+    if(sum_weights==0.0){ss_terminate(index);return;}
+    // Importance resampling of one hit in proportion to its weight.
+    let r=ss_rng(index,offset+SS_PRNG_DISK_RESAMPLE,1u).x*sum_weights;var partial=0.0;var selected=NONE;var sample_weight=0.0;
+    for(var k=0u;k<count;k++){sample_weight=ss_disk_average(weights[k]);let next=rounded_add(partial,sample_weight);if(r<next){selected=k;break;}partial=next;}
+    if(selected==NONE){ss_terminate(index);return;}
+    let throughput=heap_vec3(state_address(S_path_throughput,index,12u));
+    state_vec3(S_path_throughput,index,throughput*surf_native_div3(weights[selected]*sum_weights,sample_weight));
+    // subsurface_scatter: the ray reversed towards the exit point (tmax 1 along the hit normal), the hit as the path's
+    // intersection.
+    let hit=order[selected];let exit_P=rounded_add3(ray_P,ray_D*hits.t[hit]);let exit_D=normals[selected];
+    state_vec3(S_ray_P,index,rounded_add3(exit_P,(exit_D*1.0)*2.0));state_vec3(S_ray_D,index,-exit_D);
+    state_f32(S_ray_tmin,index,0.0);state_f32(S_ray_tmax,index,1.0);state_f32(S_ray_dP,index,ray_dP);state_f32(S_ray_dD,index,0.0);
+    state_f32(S_isect_t,index,hits.t[hit]);state_f32(S_isect_u,index,hits.u[hit]);state_f32(S_isect_v,index,hits.v[hit]);
+    state_u32(S_isect_object,index,object);state_u32(S_isect_prim,index,hits.prim[hit]);state_u32(S_isect_type,index,hits.kind);
+    state_u16(S_path_rng_offset,index,offset+RNG_BOUNCE);
+    // integrator_path_next_sorted to SHADE_SURFACE or SHADE_SURFACE_RAYTRACE, keyed by the exit point's shader.
+    let shader=load_word(table_at(G_tri_shader,hits.prim[hit],SIZE_tri_shader))&SHADER_MASK;
     let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);
     let next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,(flags&SD_HAS_RAYTRACE)!=0u);
     let divisor=load_word(p(7u)+S_sort_partition_divisor);let key=shader+data_word(D_max_shaders)*(index/divisor);

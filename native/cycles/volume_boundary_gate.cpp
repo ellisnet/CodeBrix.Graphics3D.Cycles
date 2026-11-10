@@ -19,6 +19,7 @@
 #include <bit>
 #include <cfloat>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -26,6 +27,8 @@ using namespace ccl;
 #include "curve_gate_tuft.h"
 using namespace wavefront_test;
 #include "volume_boundary_fixture.h"
+#include "object_motion_fixture.h"
+#include "deforming_motion_fixture.h"
 struct Metrics {uint64_t floats=0,integers=0,strict=0,scatter=0,transmit=0,terminated=0;uint64_t entered=0,exited=0,inside=0,outside=0,overlap=0,only=0,reflected=0,transmitted=0;unsigned cases=0,rejected=0,density=0;float maximum_actual=0,maximum_expected=0;double maximum=0,ratio=0;std::string field;};
 static void number(float a,float e,const std::string &field,Metrics &m){
   const double error=std::abs(double(a)-e);m.floats++;m.strict+=error>1e-7+1e-7*std::abs(double(e));
@@ -110,7 +113,11 @@ static unsigned malformed(WebGPUDevice &d,const std::vector<Field> &layout,const
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   require(argc==2,"Usage: volume_boundary_gate OUTPUT_PREFIX");const std::string prefix=argv[1];auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto &d=require_webgpu_device(owner.get(),"volume_boundary_gate device creation");Metrics m;
-  {SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;gate_curve_params(params);Scene scene(params,&d);
+  // CODEBRIX_VOLUME_BOUNDARY_MOTION=N (1 to 3): the first N modes of the motion blur cases 24-32 only (below), in place of cases 0-23.
+  unsigned motion_modes=0;
+  if(const char *value=std::getenv("CODEBRIX_VOLUME_BOUNDARY_MOTION")){motion_modes=unsigned(std::strtoul(value,nullptr,10));require(motion_modes>=1&&motion_modes<=3,"CODEBRIX_VOLUME_BOUNDARY_MOTION must be 1, 2 or 3");}
+  const bool motion_cases=motion_modes>0;
+  if(!motion_cases){SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;gate_curve_params(params);Scene scene(params,&d);
     scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.integrator->set_aa_samples(16);scene.film->set_use_sample_count(false);
     scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();auto fixture=add_volume_boundaries(scene);gate_curve_tufts(scene);
     Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Closed volume scene preparation failed");auto &data=scene.dscene.data;
@@ -147,6 +154,49 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         IntegratorQueueCounter after{};d.download(uintptr_t(d.state.queue_counter),&after,sizeof(after));require(!std::memcmp(&after,&before,sizeof(after)),"Compaction guard changed queues");film.copy_from_device();require(std::all_of(film.data(),film.data()+film.size(),[](float x){return x==.125f;}),"Compaction guard changed film");m.rejected++;continue;
       }
       if(test==12)m.rejected=malformed(d,layout,states);
+      evaluate(d,scene,layout,states,ids,m,test,kernel);
+    }
+  }
+  // Motion blur (VOLUME_MOTION): the fixture's media with camera rays at times 0 to 1 (the per-path ray.time). Mode 0 (cases
+  // 24-26): static media beside a moving and a deforming surface box (the volume traversal passes over both). Mode 1 (27-29):
+  // media boxes 1 and 2 move (object_motion_fixture modes 1 and 2: moving instances). Mode 2 (30-32): media boxes 0 and 2
+  // deform (deforming_motion_fixture modes 0 and 1: motion triangles). Per mode: the stack initialization, the surface
+  // entry/exit of the boxes (half the paths start inside the box they hit) and the media integration over two-entry stacks.
+  for(unsigned mode=0;mode<motion_modes;mode++){
+    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;gate_curve_params(params);Scene scene(params,&d);
+    scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);scene.integrator->set_aa_samples(16);scene.film->set_use_sample_count(false);
+    scene.camera->set_full_width(64);scene.camera->set_full_height(48);scene.camera->set_screen_size(64,48);scene.camera->compute_auto_viewplane();auto fixture=add_volume_boundaries(scene);gate_curve_tufts(scene);
+    if(mode==0){
+      auto graph=make_unique<ShaderGraph>();auto diffuse=graph->create_node<DiffuseBsdfNode>();diffuse->set_color(make_float3(.6,.5,.4));graph->connect(diffuse->output("BSDF"),graph->output()->input("Surface"));
+      auto surface=scene.create_node<Shader>();surface->set_graph(std::move(graph));surface->set_emission_sampling_method(EMISSION_SAMPLING_NONE);surface->tag_update(&scene);
+      object_motion_fixture(scene,*volume_boundary_box(scene,surface,make_float3(-1.1,-.9,.4),make_float3(.4,.6,1.6)),1);
+      deforming_motion_fixture(scene,*volume_boundary_box(scene,surface,make_float3(.9,-.6,-.8),make_float3(2.2,1.1,.9)),0);
+    }
+    else if(mode==1){object_motion_fixture(scene,*fixture.objects[1],1);object_motion_fixture(scene,*fixture.objects[2],2);}
+    else{deforming_motion_fixture(scene,*fixture.objects[0],0);deforming_motion_fixture(scene,*fixture.objects[2],1);}
+    Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"Moving volume scene preparation failed");auto &data=scene.dscene.data;
+    require(data.bvh.have_motion,"Volume motion case without motion");
+    for(unsigned k=1;k<3;k++){const unsigned flags=scene.dscene.object_flag[fixture.objects[mode==2?2*(k-1):k]->get_device_index()];
+      require(mode==0||(mode==1?(flags&SD_OBJECT_MOTION):(flags&SD_OBJECT_HAS_VERTEX_MOTION)),"Volume motion case without a moving medium");}
+    data.background.use_mis=0;data.integrator.use_direct_light=0;data.integrator.use_light_mis=0;data.integrator.num_lights=0;data.integrator.use_caustics=0;data.integrator.filter_glossy=FLT_MAX;data.film.pass_flag=0;
+    d.const_copy_to("data",&data,sizeof(data));bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);const auto layout=fields(d);
+    if(mode==1)density_check(d,scene,fixture,m);
+    for(unsigned k=0;k<3;k++){
+      const unsigned test=24+3*mode+k;
+      const auto kernel=k==0?DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK:k==1?DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE:DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME;
+      std::vector<IntegratorStateCPU> states(scheduler.capacity());std::vector<int> ids;
+      for(unsigned j=0;j<512;j++){unsigned i=3*j;ids.push_back(i);auto &s=states[i];s.path.render_pixel_index=j;s.path.sample=j*137u;s.path.rng_pixel=0x12345678u+i*0x9e3779b9u;s.path.rng_offset=uint16_t(65500u+i*79u);
+        s.path.bounce=j%3;s.path.volume_bounce=j%3;s.path.queued_kernel=kernel;s.path.visibility=s.path.bounce?PATH_RAY_VISIBILITY_VOLUME_SCATTER:PATH_RAY_VISIBILITY_CAMERA;
+        s.path.flag=PATH_RAY_MIS_SKIP|PATH_RAY_TRANSPARENT_BACKGROUND;s.path.throughput=make_float3(.6,.8,.4);s.path.continuation_probability=.8f;s.path.min_ray_pdf=FLT_MAX;s.path.optical_depth=.125f;
+        s.ray.P=make_float3(-3.1f+.0123f*j,-1.3f+.0071f*(j%371),-3.5f+.41f*(k+5)+.0117f*j);s.ray.D=normalize(make_float3(.013f*j-.8f,.4f-.007f*j,j%2?1.f:-1.f));s.ray.tmin=.003f*(j%3);s.ray.tmax=FLT_MAX;s.ray.time=float(j%17)/16;s.ray.dP=.003f;s.ray.dD=.0003f*j;
+        auto object=fixture.objects[(j/12)%4];s.isect.t=s.ray.tmin+.01f+.001f*j*j;s.isect.object=object->get_device_index();s.isect.prim=object->get_geometry()->prim_offset+j%12;
+        s.isect.type=object->get_geometry()->has_motion_blur()?PRIMITIVE_MOTION_TRIANGLE:PRIMITIVE_TRIANGLE;s.isect.u=.23f;s.isect.v=.31f;
+        unsigned count=0;
+        auto push=[&](Object *obj){s.volume_stack[count].object=obj->get_device_index();s.volume_stack[count].shader=scene.dscene.tri_shader[obj->get_geometry()->prim_offset];count++;};
+        if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME){push(fixture.objects[j%4]);push(fixture.objects[(j+1+mode)%4]);}
+        else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE&&j%2)push(object);
+        s.volume_stack[count].object=OBJECT_NONE;s.volume_stack[count].shader=SHADER_NONE;
+      }
       evaluate(d,scene,layout,states,ids,m,test,kernel);
     }
   }

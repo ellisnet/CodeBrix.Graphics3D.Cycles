@@ -62,8 +62,8 @@ static unsigned rejections(const DeviceInfo &info){
     bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Negative background setup failed");
     auto layout=fields(d);std::vector<IntegratorStateCPU> states(scheduler.capacity());auto &s=states[0];s.path.queued_kernel=DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND;s.path.throughput=one_float3();s.path.visibility=PATH_RAY_VISIBILITY_CAMERA;s.isect.prim=PRIM_NONE;
     std::string reason="reported invalid data";
-    // Background MIS is implemented (environment gate); portals stay refused.
-    if(test==0){data.background.portal_weight=1;data.background.use_mis=1;reason="portals";}
+    // Background MIS and portals are implemented (environment gate); a portal weight without portals is invalid data.
+    if(test==0){data.background.portal_weight=1;data.background.use_mis=1;reason="Invalid native background light portals";}
     if(test==1){data.integrator.num_lights=1;reason="native light table";}
     // Biased ray marching is implemented; a volume stack size below two stays a volume rejection.
     if(test==2){data.kernel_features|=KERNEL_FEATURE_VOLUME;data.volume_stack_size=1;reason="volume stack size";}

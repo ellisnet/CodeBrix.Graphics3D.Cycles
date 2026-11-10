@@ -58,6 +58,7 @@ function(codebrix_add_cycles_device)
     "${CODEBRIX_NATIVE_ROOT}/cycles/image.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/device.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/queue.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/camera.cpp"
+    "${CODEBRIX_NATIVE_ROOT}/cycles/bake.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/closest.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/shadow.cpp"
     "${CODEBRIX_NATIVE_ROOT}/cycles/lighting.cpp"
@@ -801,5 +802,13 @@ function(codebrix_add_cycles_device)
   target_compile_definitions(codebrix_cycles_atomic_film_gate PRIVATE ${definitions} CODEBRIX_TEST_CYCLES_FILM)
   target_include_directories(codebrix_cycles_atomic_film_gate PRIVATE "${PROJECT_SOURCE_DIR}/src")
   target_link_libraries(codebrix_cycles_atomic_film_gate PRIVATE ${codebrix_device_libs})
+  # Baking: INIT_FROM_BAKE against the pinned CPU kernel (bake_state_gate.cpp).
+  add_executable(codebrix_cycles_bake_state_gate "${CODEBRIX_NATIVE_ROOT}/cycles/bake_state_gate.cpp" "${CODEBRIX_NATIVE_ROOT}/cycles/bake_reference.cpp")
+  target_compile_features(codebrix_cycles_bake_state_gate PRIVATE cxx_std_20)
+  target_compile_options(codebrix_cycles_bake_state_gate PRIVATE ${CODEBRIX_REFERENCE_OPTIONS})
+  target_compile_definitions(codebrix_cycles_bake_state_gate PRIVATE ${definitions})
+  target_include_directories(codebrix_cycles_bake_state_gate PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    "${CODEBRIX_NATIVE_ROOT}/src" "${CODEBRIX_NATIVE_ROOT}/include" "${CODEBRIX_WEBGPU_PACKAGE}/include")
+  target_link_libraries(codebrix_cycles_bake_state_gate PRIVATE ${codebrix_device_libs})
 endfunction()
 cmake_language(DEFER CALL codebrix_add_cycles_device)

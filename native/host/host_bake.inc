@@ -27,12 +27,12 @@ const BakeType bake_types[] = {
   {CBC_BAKE_DEPTH, PASS_DEPTH, "depth"}, {CBC_BAKE_MIST, PASS_MIST, "mist"},
   {CBC_BAKE_AOV_COLOR, PASS_AOV_COLOR, "aov_color"}, {CBC_BAKE_AOV_VALUE, PASS_AOV_VALUE, "aov_value"}};
 void bake_capabilities(std::ostringstream &out) {
-  // Per compiled backend: validated by native/tools/bake_gate.py; refused by name; or built but not validated yet.
+  // Per compiled backend: validated by native/tools/bake_gate.py, or built but not validated yet.
   out << ",\"baking\":{\"backends\":{";
   bool first = true;
   for (uint32_t backend : {uint32_t(CBC_HOST_CPU_REFERENCE), uint32_t(CBC_HOST_CPU), uint32_t(CBC_HOST_WEBGPU), uint32_t(CBC_HOST_METAL)})
     if (compiled(backend)) {
-      out << (first ? "" : ",") << '"' << backend_name(backend) << "\":\"" << (backend == CBC_HOST_WEBGPU ? "refused" : backend == CBC_HOST_METAL ? "unvalidated" : "validated") << '"';
+      out << (first ? "" : ",") << '"' << backend_name(backend) << "\":\"" << (backend == CBC_HOST_METAL ? "unvalidated" : "validated") << '"';
       first = false;
     }
   out << "},\"types\":[";
@@ -155,8 +155,6 @@ extern "C" int cbc_host_bake_map(CBCHost handle, const CBCBakeConfig *config, in
 extern "C" int cbc_host_bake(CBCHost handle, const CBCBakeConfig *config, float *values, uint64_t capacity, uint64_t *required, uint32_t *components) {
   return edit(handle, [&](Host &host) {
     require(required && components && (!capacity || values), "Invalid result buffer or size pointer");
-    // A bake on the WGSL device is a later addition behind this same function.
-    require(host.backend != CBC_HOST_WEBGPU, "The WebGPU device does not bake yet; bake with a CPU backend", CBC_UNSUPPORTED);
     const BakeRequest request = bake_request(host, config);
     auto &session = *host.session; auto &scene = *session.scene;
     // An AOV is written only to a pass its shader was compiled against: the caller's own pass.

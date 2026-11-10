@@ -20,7 +20,8 @@ namespace CodeBrix.Graphics3D.Cycles.Tests;
 
 // Texture baking through the managed API on the CPU reference backend, against known results:
 // a position from the triangle's corners, a colour from the shader's sockets, an image baked back
-// to itself. native/tools/bake_gate.py holds the wider native set; a result compared only against
+// to itself; and the same known results on the WebGPU device, which also matches the CPU bake of the
+// same scene. native/tools/bake_gate.py holds the wider native set; a result compared only against
 // itself proves nothing, so the only bit-identical checks here are after edits, against a new host.
 public class BakingTests
 {
@@ -368,13 +369,13 @@ public class BakingTests
         //Assert
         report.BakingBackends["cpu"].Should().Be("validated");
         if (report.CompiledBackends.Contains("cpu-embree")) report.BakingBackends["cpu-embree"].Should().Be("validated");
-        if (report.CompiledBackends.Contains("webgpu")) report.BakingBackends["webgpu"].Should().Be("refused");
+        if (report.CompiledBackends.Contains("webgpu")) report.BakingBackends["webgpu"].Should().Be("validated");
         if (report.CompiledBackends.Contains("metal")) report.BakingBackends["metal"].Should().Be("unvalidated");
         report.BakeTypes.Count.Should().Be(Enum.GetValues<BakeType>().Length);
     }
 
     [Fact]
-    public void the_webgpu_device_refuses_a_bake_by_name_and_still_answers_the_map()
+    public void the_webgpu_device_bakes_the_known_results_and_matches_the_cpu_bake()
     {
         //Arrange
         TestScenes.RequireNativeHost();
@@ -390,21 +391,44 @@ public class BakingTests
             return;
         }
         using CyclesScene owned = scene;
+        scene.Integrator.UseGuiding = false;
+        scene.Integrator.UseLightTree = false;
+        scene.Integrator.UseAdaptiveSampling = false;
+        scene.Integrator.UseDenoise = false;
+        scene.Integrator.SamplingPattern = IntegratorSamplingPattern.TabulatedSobol;
+        Vector3 color = new(1.5f, .25f, .75f);
+        Transform3x4 transform = Transform3x4.CreateTranslation(3, -2, 1);
         ShaderNode material = scene.CreateShader();
-        Diffuse(scene, material, new Vector3(.5f));
+        Emission(scene, material, color);
+        material.EmissionSamplingMethod = ShaderEmissionSamplingMethod.None;
         MeshNode mesh = scene.CreateMesh(Corners, Quad, material);
         mesh.SetAttribute("uv", AttributeValue.Point2, AttributeDomain.Corner, AttributeFlags.Standard, LayoutUv);
-        ObjectNode target = scene.CreateObject(mesh);
-        BakeSettings settings = new(Size, Size, 1, BakeType.Combined);
+        ObjectNode target = scene.CreateObject(mesh, transform);
+        var (cpu, cpuTarget, _) = Build((s, m) => Emission(s, m, color), transform: transform);
+        using CyclesScene ownedCpu = cpu;
 
         //Act
-        NativeFailure failure = Assert.Throws<NativeFailure>(() => scene.Bake(target, settings));
-        BakeMap map = scene.ReadBakeMap(target, settings);
+        FilmBuffer combined = scene.Bake(target, new BakeSettings(Size, Size, 4, BakeType.Combined));
+        FilmBuffer position = scene.Bake(target, new BakeSettings(Size, Size, 1, BakeType.Position));
+        FilmBuffer cpuCombined = cpu.Bake(cpuTarget, new BakeSettings(Size, Size, 4, BakeType.Combined));
 
         //Assert
-        failure.NativeStatus.Should().Be(NativeStatus.Unsupported);
-        failure.Message.Should().Contain("WebGPU device does not bake");
-        map.Triangles.ToArray().Any(t => t >= 0).Should().BeTrue();
+        for (int y = 0; y < Size; y++)
+        {
+            for (int x = 0; x < Size; x++)
+            {
+                Vector3? point = PointAt(x, y, Size, LayoutUv, Corners, transform);
+                ReadOnlySpan<float> rgba = combined.Span.Slice((y * Size + x) * 4, 4);
+                Close(rgba[0], point.HasValue ? color.X : 0).Should().BeTrue();
+                Close(rgba[3], point.HasValue ? 1 : 0).Should().BeTrue();
+                Vector3 expected = point ?? Vector3.Zero;
+                int i = (y * Size + x) * 3;
+                Close(position.Span[i], expected.X).Should().BeTrue();
+                Close(position.Span[i + 1], expected.Y).Should().BeTrue();
+                Close(position.Span[i + 2], expected.Z).Should().BeTrue();
+            }
+        }
+        for (int i = 0; i < cpuCombined.Span.Length; i++) Close(combined.Span[i], cpuCombined.Span[i]).Should().BeTrue();
     }
 
     [Fact]

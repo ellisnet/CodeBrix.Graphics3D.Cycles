@@ -38,6 +38,25 @@ fn vp_phase_sample(direction:vec3<f32>,c:SvmClosure,random:vec2<f32>)->vec4<f32>
     return vec4<f32>(rounded_add3(rounded_add3(local.x*tangent,local.y*bitangent),local.z*direction),pdf);
 }
 //#endif
+//#if FILM_DENOISING
+// film_write_denoising_features_volume (film/denoising_passes.h) for a path with PATH_RAY_DENOISING_FEATURES: a scatter
+// stops the features (the view direction as the normal), and the albedo pass takes the feature throughput times the
+// volume albedo. Returns the path flag (written to the state as well).
+fn volume_denoising_features(index:u32,base:u32,flag_in:u32,albedo:vec3<f32>,scatter:bool)->u32{
+    var flag=flag_in;if((flag&DN_PATH_RAY_DENOISING_FEATURES)==0u){return flag;}
+    let throughput=heap_vec3(state_address(S_path_denoising_feature_throughput,index,12u));
+    let normal_pass=data_word(DN_D_pass_denoising_normal);let albedo_pass=data_word(DN_D_pass_denoising_albedo);
+    if(scatter&&normal_pass!=PASS_NONE){
+        flag&=~DN_PATH_RAY_DENOISING_FEATURES;state_u32(S_path_flag,index,flag);
+        volume_atomic_add(base+normal_pass*4u,0.0);volume_atomic_add(base+(normal_pass+1u)*4u,0.0);volume_atomic_add(base+(normal_pass+2u)*4u,-1.0);
+    }
+    if(albedo_pass!=PASS_NONE){
+        var value=throughput*albedo;value=select(value,vec3<f32>(0),(bitcast<vec3<u32>>(value)&vec3<u32>(0x7f800000u))==vec3<u32>(0x7f800000u));
+        volume_atomic_add(base+albedo_pass*4u,value.x);volume_atomic_add(base+(albedo_pass+1u)*4u,value.y);volume_atomic_add(base+(albedo_pass+2u)*4u,value.z);
+    }
+    return flag;
+}
+//#endif
 //#if VOLUME_EMISSION
 fn vl_film_add3(address:u32,value:vec3<f32>){volume_atomic_add(address,value.x);volume_atomic_add(address+4u,value.y);volume_atomic_add(address+8u,value.z);}
 //#if VOLUME_LIGHT_PASSES
@@ -62,7 +81,24 @@ fn ve_emission_passes(index:u32,base:u32,value:vec3<f32>){
     }else if(p(20u)!=0u&&(flag&VE_PATH_RAY_VOLUME_PASS)!=0u){ve_film(base,select(data_word(VE_D_pass_volume_indirect),data_word(VE_D_pass_volume_direct),bounce==1u),value);}
 }
 //#endif
+//#if LIGHT_LINKING
+// light_link_object_match(light_link_receiver_forward, sd->object) before film_write_volume_emission: sd->object is the
+// last stack entry's object (the stack's evaluation leaves it there). Every pair matches without KERNEL_FEATURE_LIGHT_LINKING.
+fn vll_emission_visible(index:u32)->bool{
+    if((data_word(D_kernel_features)&KF_LIGHT_LINKING)==0u){return true;}
+    var object=NONE;for(var slot=0u;slot<data_word(D_volume_stack_size);slot++){if(load_word(volume_stack_address(index,slot,VS_shader))==NONE){break;}object=load_word(volume_stack_address(index,slot,VS_object));}
+    let receiver=state_word(S_path_mis_ray_object,index);
+    // The pinned kernel asserts both objects exist.
+    if(receiver==NONE||object==NONE){fail();return false;}
+    let light_set=load_word(table_at(G_objects,receiver,SIZE_objects)+VLL_O_receiver_light_set);if(light_set>=VLL_LINK_SET_MAX){fail();return false;}
+    let word=load_word(table_at(G_objects,object,SIZE_objects)+VLL_O_light_set_membership+select(0u,4u,light_set>=32u));
+    return ((word>>(light_set&31u))&1u)!=0u;
+}
+//#endif
 fn vl_volume_emission(index:u32,base:u32,r:SvmResult,distance:f32){
+//#if LIGHT_LINKING
+    if(!vll_emission_visible(index)){return;}
+//#endif
     var emission=r.emission;
     if((r.runtime_flag&SR_EXTINCTION)!=0u){
         let depth=r.transparency*distance;
@@ -266,6 +302,10 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
         sd.object_id=load_word(volume_stack_address(index,slot,VS_object));sd.shader=load_word(volume_stack_address(index,slot,VS_shader));
         sd.shader_flag=load_word(table_at(G_shaders,sd.shader&SHADER_MASK,SIZE_shaders)+SH_flags);sd.object_flag=0u;
         if(sd.object_id!=NONE){sd.object_flag=load_word(table_at(G_object_flag,sd.object_id,SIZE_object_flag));}
+//#if VOLUME_MOTION
+        // volume_shader_eval_entry: shader_setup_object_transforms at the ray's time for a moving stack object.
+        if((sd.object_flag&SD_OBJECT_MOTION)!=0u){sd.motion_tfm=motion_object(sd.object_id,sd.time);sd.motion_itfm=motion_inverse(sd.motion_tfm);}
+//#endif
         sd.runtime_flag=r.runtime_flag;r=svm_evaluate_seeded(index,sd,r.remaining,r.closure_base,true,r);if(r.error!=0u){return;}
         if(slot>0u){
             for(var a=0u;a<r.count;a++){let left=r.closure_base+a*SVM_CLOSURE_BYTES;var b=a+1u;
@@ -307,12 +347,18 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     let transmittance=exp(-sigma*distance);
 //#endif
     var indirect=throughput;var sampled=false;var sampled_t=0.0;
+//#if FILM_DENOISING
+    // vstate.albedo of volume_integrate_homogeneous (zero without a scatter estimate).
+    var denoising_albedo=vec3<f32>(0);
+//#endif
 //#if VOLUME_LIGHT
     // Direct light (volume_integrate_null_scattering): the method and segment of shade_volume_segment, the
     // MIS split of the scatter random number, the equiangular sample in advance (volume_integrate_result_init).
     let vl=p(24u)+id.x*VL_RECORD_BYTES;var method=load_word(vl);let eq_point=heap_vec3(vl+4u);let segment=vec2<f32>(heap_float(vl+16u),heap_float(vl+20u));
     let rng_sample=state_word(S_path_sample,index);let rng_pixel=state_word(S_path_rng_pixel,index);let rng_offset=state_half(S_path_rng_offset,index);
-    var rscatter=native_rng(rng_sample,rng_pixel,rng_offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;let use_mis=method==3u;
+//#if VOLUME_SAMPLING_PATTERN else     var rscatter=native_rng(rng_sample,rng_pixel,rng_offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;let use_mis=method==3u;
+    var rscatter=native_rng_pattern(rng_sample,rng_pixel,rng_offset+V_PRNG_VOLUME_SCATTER_DISTANCE,1u).x;let use_mis=method==3u;
+//#endif
     if(use_mis){if(rscatter<0.5){method=1u;rscatter*=2.0;}else{rscatter=(rscatter-0.5)*2.0;method=2u;}}
     var direct=select(vec3<f32>(0),throughput,method!=0u);var direct_scatter=false;var direct_t=0.0;var equiangular_pdf=0.0;var distance_pdf=0.0;
     if(method==2u){let s=vl_equiangular_sample(origin,direction,eq_point,segment,rscatter);direct_t=s.x;equiangular_pdf=s.y;}
@@ -327,8 +373,13 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     let transmittance=vec3<f32>(exponentials[0],exponentials[1],exponentials[2]);
     if((flag&PATH_RAY_TERMINATE)!=0u||all(scatter==vec3<f32>(0))){indirect*=transmittance;}
     else{
-        var rchannel=native_rng(rng_sample,rng_pixel,rng_offset+V_PRNG_VOLUME_RESERVOIR).x;
+//#if VOLUME_SAMPLING_PATTERN else         var rchannel=native_rng(rng_sample,rng_pixel,rng_offset+V_PRNG_VOLUME_RESERVOIR).x;
+        var rchannel=native_rng_pattern(rng_sample,rng_pixel,rng_offset+V_PRNG_VOLUME_RESERVOIR,1u).x;
+//#endif
         let albedo=svm_divide(scatter,sigma)*(vec3<f32>(1)-transmittance)*throughput;
+//#if FILM_DENOISING
+        denoising_albedo=albedo;
+//#endif
         let pick=vl_sample_channel(albedo+transmittance,throughput,rchannel);rchannel=pick.y;let channel=u32(pick.x);let channel_pdf=vl_channel_pdf(albedo+transmittance,throughput);
         let probability=vl_scatter_probability(index,base,sigma,transmittance,exponentials[6]);
         // logf of the two distance samples (sample_exponential_distribution), one body (vl_logf).
@@ -372,11 +423,18 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     else{
         let sample_id=state_word(S_path_sample,index);let pixel_rng=state_word(S_path_rng_pixel,index);let offset=state_half(S_path_rng_offset,index);
         let albedo=svm_divide(scatter,sigma)*(vec3<f32>(1)-transmittance)*throughput;
+//#if FILM_DENOISING
+        denoising_albedo=albedo;
+//#endif
         let weights=abs(throughput*(albedo+transmittance));let sum=weights.x+weights.y+weights.z;var channel_pdf=vec3<f32>(1.0/3.0);
         if(rounded_add(1.0,-sum)<1.0){channel_pdf=weights/sum;}
-        let rchannel=native_rng(sample_id,pixel_rng,offset+V_PRNG_VOLUME_RESERVOIR).x;var channel=2u;var partial=0.0;
+//#if VOLUME_SAMPLING_PATTERN else         let rchannel=native_rng(sample_id,pixel_rng,offset+V_PRNG_VOLUME_RESERVOIR).x;var channel=2u;var partial=0.0;
+        let rchannel=native_rng_pattern(sample_id,pixel_rng,offset+V_PRNG_VOLUME_RESERVOIR,1u).x;var channel=2u;var partial=0.0;
+//#endif
         for(var c=0u;c<3u;c++){if(rchannel<partial+channel_pdf[c]){channel=c;break;}partial+=channel_pdf[c];}
-        let probability=volume_scatter_probability(index,base,sigma,transmittance);var random=native_rng(sample_id,pixel_rng,offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;
+//#if VOLUME_SAMPLING_PATTERN else         let probability=volume_scatter_probability(index,base,sigma,transmittance);var random=native_rng(sample_id,pixel_rng,offset+V_PRNG_VOLUME_SCATTER_DISTANCE).x;
+        let probability=volume_scatter_probability(index,base,sigma,transmittance);var random=native_rng_pattern(sample_id,pixel_rng,offset+V_PRNG_VOLUME_SCATTER_DISTANCE,1u).x;
+//#endif
         if(random<probability[channel]){
             random/=probability[channel];sampled=distance>0.0;
             let dt=clamp(-log(1.0-random*(1.0-exp(-sigma[channel]*distance)))/sigma[channel],0.0,distance);sampled_t=tmin+dt;
@@ -384,6 +442,9 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
             let pdf=dot(distance_pdf*probability,channel_pdf);indirect*=svm_divide(scatter*attenuation,vec3<f32>(pdf));
         }else{let pdf=dot(vec3<f32>(1)-probability,channel_pdf);indirect*=svm_divide(transmittance,vec3<f32>(pdf));}
     }
+//#endif
+//#if FILM_DENOISING
+    flag=volume_denoising_features(index,base,flag,denoising_albedo,sampled);
 //#endif
     let continuation=select(heap_float(state_address(S_path_continuation_probability,index,4u)),0.0,(flag&PATH_RAY_TERMINATE_IN_NEXT_VOLUME)!=0u);
     if(continuation==0.0){volume_finish(index,0u);return;}
@@ -410,7 +471,9 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
 //#if VOLUME_LIGHT
     if(direct_scatter){store_word(vl+60u,r.count);store_word(vl+68u,bitcast<u32>(sampled_t));store_word(vl+72u,sd.object_id);store_word(vl+64u,1u);return;}
 //#endif
-    var random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+V_PRNG_VOLUME_PHASE).xy;
+//#if VOLUME_SAMPLING_PATTERN else     var random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+V_PRNG_VOLUME_PHASE).xy;
+    var random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+V_PRNG_VOLUME_PHASE,2u).xy;
+//#endif
     var selected=0u;var sum=svm_closure_read(r,0u).sample_weight;
     for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=weight/sum;
         if(random.x<threshold){selected=i;random.x/=threshold;}else{random.x=(random.x-threshold)/(1.0-threshold);}}
@@ -428,6 +491,9 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
 //#endif
     state_f32(S_ray_tmin,index,0.0);state_u32(S_ray_tmax,index,0x7f7fffffu);state_f32(S_ray_dP,index,0.0);state_f32(S_ray_dD,index,max(heap_float(state_address(S_ray_dD,index,4u)),1.0-abs(g)));
     state_u32(S_isect_prim,index,NONE);state_u32(S_isect_object,index,sd.object_id);
+//#if LIGHT_LINKING
+    if((data_word(D_kernel_features)&KF_LIGHT_LINKING)!=0u){state_u32(S_path_mis_ray_object,index,sd.object_id);}
+//#endif
     if(p(20u)!=0u&&bounce==0u){state_vec3(S_path_pass_diffuse_weight,index,vec3<f32>(1));state_vec3(S_path_pass_glossy_weight,index,vec3<f32>(0));}
 //#if VOLUME_LIGHT else     state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-(origin+direction*tmin));
     state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-rounded_add3(origin,direction*tmin));
@@ -459,7 +525,9 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     let sampled_t=heap_float(vp+68u);let object=load_word(vp+72u);
     let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=heap_vec3(state_address(S_ray_D,index,12u));let tmin=heap_float(state_address(S_ray_tmin,index,4u));
     var flag=state_word(S_path_flag,index);let bounce=state_half(S_path_bounce,index);
-    var random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+V_PRNG_VOLUME_PHASE).xy;
+//#if VOLUME_SAMPLING_PATTERN else     var random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+V_PRNG_VOLUME_PHASE).xy;
+    var random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+V_PRNG_VOLUME_PHASE,2u).xy;
+//#endif
     var selected=0u;var sum=svm_closure_read(r,0u).sample_weight;
     for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=weight/sum;
         if(random.x<threshold){selected=i;random.x/=threshold;}else{random.x=(random.x-threshold)/(1.0-threshold);}}
@@ -478,6 +546,9 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
 //#endif
     state_f32(S_ray_tmin,index,0.0);state_u32(S_ray_tmax,index,0x7f7fffffu);state_f32(S_ray_dP,index,0.0);state_f32(S_ray_dD,index,max(heap_float(state_address(S_ray_dD,index,4u)),1.0-abs(g)));
     state_u32(S_isect_prim,index,NONE);state_u32(S_isect_object,index,object);
+//#if LIGHT_LINKING
+    if((data_word(D_kernel_features)&KF_LIGHT_LINKING)!=0u){state_u32(S_path_mis_ray_object,index,object);}
+//#endif
     if(p(20u)!=0u&&bounce==0u){state_vec3(S_path_pass_diffuse_weight,index,vec3<f32>(1));state_vec3(S_path_pass_glossy_weight,index,vec3<f32>(0));}
 //#if VOLUME_LIGHT else     state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-(origin+direction*tmin));
     state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-rounded_add3(origin,direction*tmin));
@@ -488,8 +559,11 @@ fn volume_closure_copy(dst:u32,src:u32){for(var word=0u;word<SVM_CLOSURE_BYTES/4
     flag&=~(V_PATH_RAY_REFLECT|V_PATH_RAY_SINGULAR|PATH_RAY_TRANSPARENT|V_PATH_RAY_IMPORTANCE_BAKE|V_PATH_RAY_MIS_SKIP|V_PATH_RAY_MIS_HAD_TRANSMISSION);
     flag|=V_PATH_RAY_MIS_HAD_TRANSMISSION;flag&=~V_PATH_RAY_TRANSPARENT_BACKGROUND;if((flag&V_PATH_RAY_ANY_PASS)==0u){flag|=PATH_RAY_VOLUME_PASS;}
 //#if VOLUME_RAY_MARCHING
+//#if !VOLUME_LIGHT
     // sd->P = ray->P + indirect_t * ray->D, never contracted (the driver fuses the sum above; the scalar ARM64 path needs the oracle's bits).
+    // With VOLUME_LIGHT the position above is already that sum (rounded_add3), so this line is only for scenes without it.
     if(NATIVE_FLOAT3_RECIPROCAL_NORMALIZE!=0u){state_vec3(S_ray_P,index,rounded_add3(origin,sampled_t*direction));}
+//#endif
 //#endif
     if(next_bounce==1u){flag&=~PATH_RAY_VOLUME_PRIMARY_TRANSMIT;}
     state_u32(S_path_flag,index,flag);state_u8(S_path_visibility,index,V_PATH_RAY_VISIBILITY_VOLUME_SCATTER);state_u16(S_path_bounce,index,next_bounce);state_u16(S_path_volume_bounce,index,volume_bounce);
@@ -516,6 +590,10 @@ fn vd_sample_3d(index:u32,dimension:u32)->vec3<f32>{
 //#endif
     var sd:SurfaceData;sd.object_id=object;sd.shader=shader;sd.prim=NONE;sd.primitive_type=V_PRIMITIVE_VOLUME;sd.time=0.5;
     sd.object_flag=load_word(table_at(G_object_flag,object,SIZE_object_flag));sd.shader_flag=flags;sd.runtime_flag=SR_IS_VOLUME_SHADER_EVAL;
+//#if VOLUME_MOTION
+    // kernel_volume_density_evaluate's volume_shader_eval_entry: the object motion transforms at time 0.5 (ray.time).
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){sd.motion_tfm=motion_object(sd.object_id,sd.time);sd.motion_itfm=motion_inverse(sd.motion_tfm);}
+//#endif
 //#if VOLUME_HETEROGENEOUS
     // kernel_volume_density_evaluate: 16 positions per voxel for heterogeneous shaders (1 otherwise), each
     // ray.P + rand_p * voxel_size (Sobol-Burley, blue-noise indexing), in world space through the object transform

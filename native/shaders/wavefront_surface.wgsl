@@ -8,7 +8,10 @@
 //#if !SVM_BSDF_FAMILIES
 //#if SVM_BSDF_PRINCIPLED else fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID;}
 // CLOSURE_IS_BSDF_DIFFUSE also covers the Principled sheen closure.
-fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID||kind==CLOSURE_BSDF_SHEEN_ID;}
+//#if SVM_BSDF_THIN_SUBSURFACE else fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID||kind==CLOSURE_BSDF_SHEEN_ID;}
+// ... and the rough translucent closure of a thin wall's subsurface lobe.
+fn surf_diffuse(kind:u32)->bool{return kind==CLOSURE_BSDF_DIFFUSE_ID||kind==CLOSURE_BSDF_OREN_NAYAR_ID||kind==CLOSURE_BSDF_TRANSLUCENT_ID||kind==CLOSURE_BSDF_SHEEN_ID||kind==TS_CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID;}
+//#endif
 //#endif
 fn surf_glossy(kind:u32)->bool{return kind==CLOSURE_BSDF_MICROFACET_GGX_ID;}
 fn surf_glass(kind:u32)->bool{return kind==CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID;}
@@ -38,8 +41,16 @@ fn surf_microfacet(kind:u32)->bool{
 }
 //#endif
 fn surf_glossy_direction(c:SvmClosure,wo:vec3<f32>)->bool{return surf_glossy(c.kind)||(surf_glass(c.kind)&&dot(c.N,wo)>0.0);}
+//#if !RAY_PORTAL
 //#if SVM_BSDF_FAMILIES else fn surf_bsdf(kind:u32)->bool{return surf_diffuse(kind)||surf_microfacet(kind)||kind==CLOSURE_BSDF_TRANSPARENT_ID;}
 fn surf_bsdf(kind:u32)->bool{return kind!=FAMILY_NONE&&kind<=CLOSURE_BSDF_TRANSPARENT_ID;}
+//#endif
+//#endif
+//#if RAY_PORTAL
+// CLOSURE_IS_BSDF: the ray portal closure (just below the transparent one) is a BSDF closure for the pick and the MIS sums.
+//#if SVM_BSDF_FAMILIES else fn surf_bsdf(kind:u32)->bool{return surf_diffuse(kind)||surf_microfacet(kind)||kind==CLOSURE_BSDF_TRANSPARENT_ID||kind==RP_CLOSURE_BSDF_RAY_PORTAL_ID;}
+fn surf_bsdf(kind:u32)->bool{return kind!=FAMILY_NONE&&kind<=CLOSURE_BSDF_TRANSPARENT_ID;}
+//#endif
 //#endif
 fn surf_roughness(c:SvmClosure)->f32{if(surf_microfacet(c.kind)){return c.alpha_x*c.alpha_y;}return select(1.0,0.0,c.kind==CLOSURE_BSDF_TRANSPARENT_ID);}
 fn surf_bump(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>,is_eval:bool)->f32{
@@ -79,7 +90,10 @@ fn surf_evaluate(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
     let e=surf_evaluate_closure(sd,c,wo);return vec4<f32>(surf_terminator(sd,c,wo,e.xyz,true),e.w);
 }
 fn surf_evaluate_closure(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
-    let bump=surf_bump(sd,c,wo,true);if(bump==0.0||c.kind==CLOSURE_BSDF_TRANSPARENT_ID){return vec4<f32>(0);}
+//#if RAY_PORTAL else     let bump=surf_bump(sd,c,wo,true);if(bump==0.0||c.kind==CLOSURE_BSDF_TRANSPARENT_ID){return vec4<f32>(0);}
+    // bsdf_ray_portal_eval: no evaluation and a zero pdf.
+    let bump=surf_bump(sd,c,wo,true);if(bump==0.0||c.kind==CLOSURE_BSDF_TRANSPARENT_ID||c.kind==RP_CLOSURE_BSDF_RAY_PORTAL_ID){return vec4<f32>(0);}
+//#endif
 //#if SVM_BSDF_FAMILIES
     let family=surf_family_evaluate(sd,c,wo);if(family.handled){return vec4<f32>(family.value.xyz*bump,family.value.w);}
 //#endif
@@ -98,6 +112,10 @@ fn surf_evaluate_closure(sd:SurfaceData,c:SvmClosure,wo:vec3<f32>)->vec4<f32>{
     if(c.kind==CLOSURE_BSDF_SHEEN_ID){let value=sheen_evaluate(c,wo);return vec4<f32>(vec3<f32>(value*bump),value);}
 //#endif
     let cosine=select(rounded_dot(c.N,wo),-rounded_dot(c.N,wo),c.kind==CLOSURE_BSDF_TRANSLUCENT_ID);let pdf=max(cosine,0.0)*INV_PI;
+//#if SVM_BSDF_THIN_SUBSURFACE
+    // bsdf_rough_translucent_eval: Oren-Nayar about the stored (flipped) normal, of the mirrored incoming direction.
+    if(c.kind==TS_CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID){if(cosine>0.0){return vec4<f32>(surf_oren(c,rounded_add3(sd.wi,-((2.0*c.N)*rounded_dot(sd.wi,c.N))),wo)*bump,pdf);}return vec4<f32>(0);}
+//#endif
     if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){if(cosine>0.0){return vec4<f32>(surf_oren(c,sd.wi,wo)*bump,pdf);}return vec4<f32>(0);}
     return vec4<f32>(vec3<f32>(pdf*bump),pdf);
 }
@@ -155,6 +173,10 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
     // shade_terminator: the sampled reflection takes the shadow terminator shading offset and the
     // bump term, applied once below (one inlined copy of each for every closure kind).
     var value=vec3<f32>(0);var shade_terminator=false;
+//#if RAY_PORTAL
+    // A picked ray portal: shade_surface continues the path through it (surf_ray_portal); no BSDF sample.
+    if(c.kind==RP_CLOSURE_BSDF_RAY_PORTAL_ID){out.label=LABEL_TRANSMIT|RP_LABEL_RAY_PORTAL;return out;}
+//#endif
     if(c.kind==CLOSURE_BSDF_TRANSPARENT_ID){out.wo=-sd.wi;out.pdf=1e6;value=vec3<f32>(1e6);out.label=LABEL_TRANSMIT|LABEL_TRANSPARENT;
         if(data_float(D_background_transparent_roughness_squared_threshold)>=0.0){out.label|=LABEL_TRANSMIT_TRANSPARENT;}}
 //#if SVM_BSDF_FAMILIES
@@ -202,12 +224,20 @@ fn surf_sample(sd:SurfaceData,r:SvmResult,random:vec3<f32>)->SurfaceSample{
 //#endif
 //#endif
     else{
-        let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=surface_cos_hemisphere_disk(select(c.N,-c.N,transmission),disk);
+//#if SVM_BSDF_THIN_SUBSURFACE else         let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID;let sampled=surface_cos_hemisphere_disk(select(c.N,-c.N,transmission),disk);
+        // bsdf_rough_translucent_sample: Oren-Nayar about the stored (flipped) normal, valid against the flipped geometric
+        // normal, a diffuse transmission.
+        let rough_translucent=c.kind==TS_CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID;
+        let transmission=c.kind==CLOSURE_BSDF_TRANSLUCENT_ID||rough_translucent;let sampled=surface_cos_hemisphere_disk(select(c.N,-c.N,c.kind==CLOSURE_BSDF_TRANSLUCENT_ID),disk);
+//#endif
         out.wo=sampled.xyz;out.pdf=sampled.w;out.label=LABEL_DIFFUSE|select(LABEL_REFLECT,LABEL_TRANSMIT,transmission);
 //#if CURVES else         let valid=select(dot(sd.Ng,out.wo)>0.0,dot(sd.Ng,out.wo)<0.0,transmission);
         let sample_Ng=surf_sample_data(sd,c).Ng;let valid=select(dot(sample_Ng,out.wo)>0.0,dot(sample_Ng,out.wo)<0.0,transmission);
 //#endif
+//#if SVM_BSDF_THIN_SUBSURFACE else         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
         if(valid){value=vec3<f32>(out.pdf);if(c.kind==CLOSURE_BSDF_OREN_NAYAR_ID){value=surf_oren(c,sd.wi,out.wo);}
+            if(rough_translucent){value=surf_oren(c,rounded_add3(sd.wi,-((2.0*c.N)*rounded_dot(sd.wi,c.N))),out.wo);}
+//#endif
             shade_terminator=!transmission;}
         else{out.pdf=0.0;}
     }
@@ -364,8 +394,14 @@ fn surf_ray_offset_at(sd:SurfaceData,P:vec3<f32>,direction:vec3<f32>)->vec3<f32>
 }
 fn surf_next(index:u32,label:u32,runtime:u32){
     var flag=state_word(S_path_flag,index);let offset=state_half(S_path_rng_offset,index)+RNG_BOUNCE;state_u16(S_path_rng_offset,index,offset);
-    if((label&LABEL_TRANSPARENT)!=0u){let n=state_half(S_path_transparent_bounce,index)+1u;flag|=PATH_RAY_TRANSPARENT;
+//#if RAY_PORTAL else     if((label&LABEL_TRANSPARENT)!=0u){let n=state_half(S_path_transparent_bounce,index)+1u;flag|=PATH_RAY_TRANSPARENT;
+    if((label&(LABEL_TRANSPARENT|RP_LABEL_RAY_PORTAL))!=0u){let n=state_half(S_path_transparent_bounce,index)+1u;flag|=PATH_RAY_TRANSPARENT;
+//#endif
         if(n>=data_word(D_integrator_transparent_max_bounce)){flag|=PATH_RAY_TERMINATE_ON_NEXT_SURFACE;}
+//#if RAY_PORTAL
+        // path_state_next: a surface with a ray portal closure skips MIS and counts a portal bounce.
+        if((runtime&RP_SR_RAY_PORTAL)!=0u){flag|=RP_PATH_RAY_MIS_SKIP;state_u16(S_path_portal_bounce,index,state_half(S_path_portal_bounce,index)+1u);}
+//#endif
         state_u16(S_path_transparent_bounce,index,n);state_u32(S_path_flag,index,flag);return;}
     let bounce=state_half(S_path_bounce,index)+1u;if(bounce>=data_word(D_integrator_max_bounce)){flag|=PATH_RAY_TERMINATE_AFTER_TRANSPARENT;}
     flag&=~(PATH_RAY_REFLECT|PATH_RAY_SINGULAR|PATH_RAY_TRANSPARENT|PATH_RAY_IMPORTANCE_BAKE|PATH_RAY_MIS_SKIP|PATH_RAY_MIS_HAD_TRANSMISSION);
@@ -625,7 +661,9 @@ fn surface_light_combined(li:SurfaceLightInputs){
     let li=surface_light_inputs(id,state);if(li.at==NONE){return;}
     let selection=light_select(li.index);
     var ls=light_sample_read(li.at+308u);
-    let sampled=bgl_sample(selection.random.xy);
+//#if BACKGROUND_PORTAL else     let sampled=bgl_sample(selection.random.xy);
+    let sampled=bgl_portal_light_sample(li.sd.P,selection.random.xy);
+//#endif
     ls.D=sampled.xyz;ls.P=-sampled.xyz;ls.pdf=sampled.w;ls.t=bitcast<f32>(0x7f7fffffu);ls.eval_fac=1.0;
 //#if LIGHT_SELECT else     ls.pdf*=data_float(D_integrator_distribution_pdf_lights);
     ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);
@@ -743,6 +781,36 @@ fn surf_safe_divide3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
 }
 // Lighting and continuation share GPU records, with no native queue transition.
 // The continuation runs only after successful lighting/roulette preparation.
+//#if RAY_PORTAL
+// surface_shader_bsdf_bssrdf_pick for the ray portal: the closure surf_sample picks for the same random numbers (the same
+// sums in the same order), NONE unless it is a ray portal closure.
+fn surf_ray_portal_pick(r:SvmResult,random:vec3<f32>)->u32{
+    var selected=0u;
+    if(r.count>1u){var sum=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_ray_portal_pickable(c.kind)){sum+=c.sample_weight;}}
+        let pick=random.z*sum;var partial=0.0;
+        for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_ray_portal_pickable(c.kind)){let next=partial+c.sample_weight;if(pick<next){selected=i;break;}partial=next;}}}
+    if(svm_closure_read(r,selected).kind!=RP_CLOSURE_BSDF_RAY_PORTAL_ID){return NONE;}
+    return selected;
+}
+fn surf_ray_portal_pickable(kind:u32)->bool{
+//#if SUBSURFACE
+    if(ss_bssrdf_kind(kind)){return true;}
+//#endif
+    return surf_bsdf(kind);
+}
+// integrate_surface_ray_portal (shade_surface.h): the path continues from the portal's position along its direction; false
+// when no BSDF or BSSRDF closure has a positive sample weight (the path ends).
+fn surf_ray_portal(index:u32,sd:SurfaceData,r:SvmResult,selected:u32,throughput:vec3<f32>)->bool{
+    var sum=0.0;for(var i=0u;i<r.count;i++){let c=svm_closure_read(r,i);if(surf_ray_portal_pickable(c.kind)){sum+=c.sample_weight;}}
+    if(sum<=0.0){return false;}
+    let c=svm_closure_read(r,selected);let P=c.multiscatter;let D=c.T;let delta=sd.P-P;
+    if(rounded_dot(delta,delta)>1e-9){state_u32(S_isect_object,index,NONE);state_vec3(S_ray_P,index,P);}
+    else{state_vec3(S_ray_P,index,surf_ray_offset_at(sd,P,D));}
+    state_vec3(S_ray_D,index,D);state_f32(S_ray_tmin,index,0.0);state_f32(S_ray_tmax,index,3.4028234663852886e38);state_f32(S_ray_dP,index,sd.dP);
+    state_vec3(S_path_throughput,index,throughput*surf_native_div3(c.weight,rounded_divide(c.sample_weight,sum)));
+    return true;
+}
+//#endif
 @compute @workgroup_size(1) fn shade_surface(@builtin(global_invocation_id) id:vec3<u32>){
     svm_invocation(id.x);
     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=2u){return;}
@@ -754,6 +822,18 @@ fn surf_safe_divide3(a:vec3<f32>,b:vec3<f32>)->vec3<f32>{
 //#endif
 //#if SVM_BSDF_HAIR_HUANG
     huang_base=r.closure_base;
+//#endif
+//#if RAY_PORTAL
+    // A picked ray portal closure: integrate_surface_ray_portal, path_state_next, the volume stack, then the next kernel as
+    // for a BSDF bounce (the label is not transparent).
+    if((r.runtime_flag&RP_SR_RAY_PORTAL)!=0u&&(r.runtime_flag&SR_BSDF)!=0u){let portal=surf_ray_portal_pick(r,random);if(portal!=NONE){
+        if(!surf_ray_portal(index,sd,r,portal,throughput)){surf_finish(index,false);return;}
+        surf_next(index,LABEL_TRANSMIT|RP_LABEL_RAY_PORTAL,r.runtime_flag);
+        volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);
+//#if SHADOW_LINKING else         surf_finish(index,true);
+        let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[counter/4u+surf_queue()],1u);atomicAdd(&heap[counter/4u+DL_K_INTERSECT],1u);state_u16(S_path_queued_kernel,index,DL_K_INTERSECT);
+//#endif
+        return;}}
 //#endif
 //#if SVM_BSDF_FAMILIES else     let sampled=surf_sample(sd,r,random);if(sampled.pdf==0.0||all(sampled.eval==vec3<f32>(0))){surf_finish(index,false);return;}
     let sampled=surf_sample_mis(sd,r,surf_sample_load(p(0u)+id.x*SURF_SAMPLE_BYTES));if(sampled.pdf==0.0||all(sampled.eval==vec3<f32>(0))){surf_finish(index,false);return;}

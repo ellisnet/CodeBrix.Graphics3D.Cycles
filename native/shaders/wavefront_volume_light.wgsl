@@ -58,7 +58,10 @@ fn vl_sample_method(index:u32,entries:u32)->u32{
     let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT,3u).xyz;
 //#endif
     lt_segment=true;lt_t=tmax-tmin;
-    let walk=light_tree_walk(true,rounded_add3(origin,direction*tmin),direction,true,NONE,random.z,NONE,0u);
+//#if LIGHT_LINKING else     let walk=light_tree_walk(true,rounded_add3(origin,direction*tmin),direction,true,NONE,random.z,NONE,0u);
+    // light_link_receiver_nee of the segment's ShaderData (shader_setup_from_volume: the first stack entry's object).
+    let walk=light_tree_walk(true,rounded_add3(origin,direction*tmin),direction,true,select(NONE,load_word(volume_stack_address(index,0u,VS_object)),light_link_enabled()),random.z,NONE,0u);
+//#endif
     lt_segment=false;if(load_word(p(17u))!=0u||walk.emitter<0){return;}
     let e=lt_emitter(u32(walk.emitter));let emitter_prim=bitcast<i32>(load_word(e+LTE_id));
     light_selection_write(vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD,LightSelection(random,u32(walk.emitter),emitter_prim,select(load_word(e+LTE_object),walk.object,emitter_prim>=0),load_word(e+LTE_visibility),walk.pdf,true,true),0.0);
@@ -102,6 +105,10 @@ fn vl_sample_method(index:u32,entries:u32)->u32{
 //#if LIGHT_SELECT else         let object=load_word(selection.distribution+LD_object);let tri=u32(selection.prim);
         let object=selection.object;let tri=u32(selection.prim);
 //#endif
+//#if LIGHT_LINKING
+        // light_sample<true>: light_link_object_match(light_link_receiver_nee, the emitter's object).
+        if(!light_link_match(load_word(volume_stack_address(index,0u,VS_object)),object)){return;}
+//#endif
         let v=triangle_light_vertices_compute(object,tri,heap_float(state_address(S_ray_time,index,4u)));if(v.error!=0u){return;}
         var n=rounded_cross(v.b-v.a,v.c-v.a);if((load_word(table_at(G_object_flag,object,SIZE_object_flag))&SD_OBJECT_NEGATIVE_SCALE)!=0u){n=-n;}
 //#if LIGHT_SELECT else         let tri_shader=load_word(table_at(G_tri_shader,tri,SIZE_tri_shader));let shader=tri_shader|SHADER_USE_MIS|load_word(selection.distribution+LD_visibility);
@@ -122,6 +129,9 @@ fn vl_sample_method(index:u32,entries:u32)->u32{
     }
 //#endif
     let light=table_at(G_lights,~bitcast<u32>(selection.prim),SIZE_lights);
+//#if LIGHT_LINKING
+    if(!light_link_match(load_word(volume_stack_address(index,0u,VS_object)),load_word(light+L_object_id))){return;}
+//#endif
     if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return;}
     let kind=load_word(light+L_type);var point=vec3<f32>(0);var distant=true;
 //#if VOLUME_LIGHT_SHAPES else     if(kind==LIGHT_POINT){
@@ -190,6 +200,13 @@ fn vl_phase_eval(r:SvmResult,D:vec3<f32>,wo:vec3<f32>)->VlPhase{
     out.pdf=select(0.0,rounded_divide(sum_pdf,sum_weight),sum_weight>0.0);
     return out;
 }
+//#if LIGHT_LINKING
+// light_link_receiver_nee at the scatter position: the ShaderData the stack's evaluation left, the last entry's object.
+fn vl_link_receiver(index:u32)->u32{
+    var object=NONE;for(var slot=0u;slot<data_word(D_volume_stack_size);slot++){if(load_word(volume_stack_address(index,slot,VS_shader))==NONE){break;}object=load_word(volume_stack_address(index,slot,VS_object));}
+    return object;
+}
+//#endif
 // integrate_volume_direct_light: the light sampled again from the scatter position (N = 0, transmission), the
 // phase function with MIS, the light termination and the shadow path with the path's volume stack.
 fn vl_direct_light(index:u32,slot:u32,r:SvmResult,P:vec3<f32>,throughput:vec3<f32>,D:vec3<f32>){
@@ -202,10 +219,65 @@ fn vl_direct_light(index:u32,slot:u32,r:SvmResult,P:vec3<f32>,throughput:vec3<f3
 //#if VOLUME_LIGHT_SHAPES
     // light_sample<false> from the scatter position, a lamp (an emissive triangle: shade_volume_light_triangle).
     let selection=light_select(index);if(selection.prim>=0){atomicOr(&heap[p(17u)/4u],2u);return;}
+//#if LIGHT_LINKING
+    if(!light_link_match(vl_link_receiver(index),load_word(table_at(G_lights,~bitcast<u32>(selection.prim),SIZE_lights)+L_object_id))){return;}
+//#endif
     let ls=light_sample_lamp(index,sd,rr,selection);
 //#endif
+//#if !BACKGROUND_PORTAL
     vl_direct_finish(index,slot,r,P,throughput,D,sd,ls);
+//#endif
+//#if BACKGROUND_PORTAL
+//#if BACKGROUND_SAMPLE_ENTRY else     vl_direct_finish(index,slot,r,P,throughput,D,sd,ls);
+    // A background lamp (light_sample_lamp left it pending): its sample from shade_volume_light_background.
+    var sample=ls;if(light_background_pending){light_background_pending=false;if(load_word(vl_background_record)!=1u){fail();return;}sample=light_sample_read(vl_background_record+4u);}
+    vl_direct_finish(index,slot,r,P,throughput,D,sd,sample);
+//#endif
+//#endif
 }
+//#if BACKGROUND_PORTAL
+// Background light portals: the background light's sample of the volume direct light in its own entry,
+// shade_volume_light_background, dispatched before shade_volume_light (compile envelope, as
+// shade_surface_light_background for the surfaces): record word 128 marks it, words 132 to 183 hold it.
+var<private> vl_background_record:u32=0xffffffffu;
+// light_sample_lamp for a background lamp at the scatter position (light_sample<false>, N = 0): its preamble,
+// background_light_sample with the portal strategy, then the selection's pdf factor, the same operations in the same order.
+fn vl_background_light_sample(index:u32,P:vec3<f32>,selection:LightSelection)->NativeLightSample{
+    var ls:NativeLightSample;
+//#if LIGHT_SELECT
+    if(!selection.valid){return ls;}
+//#endif
+    ls.is_light=true;ls.prim=~bitcast<u32>(selection.prim);
+    let light=table_at(G_lights,ls.prim,SIZE_lights);
+    if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return ls;}
+//#if SHADOW_CATCHER
+    if((state_word(S_path_flag,index)&SC_PATH_PASS)!=0u&&(load_word(light+L_shader_id)&SC_EXCLUDE)!=0u){return ls;}
+//#endif
+    ls.shader=load_word(light+L_shader_id);ls.object_id=load_word(light+L_object_id);
+    let sampled=bgl_portal_light_sample(P,selection.random.xy);
+    ls.D=sampled.xyz;ls.P=-sampled.xyz;ls.pdf=sampled.w;ls.t=bitcast<f32>(0x7f7fffffu);ls.eval_fac=1.0;
+//#if LIGHT_SELECT else     ls.pdf*=data_float(D_integrator_distribution_pdf_lights);
+    ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);
+//#endif
+    return ls;
+}
+@compute @workgroup_size(1) fn shade_volume_light_background(@builtin(global_invocation_id) id:vec3<u32>){
+    svm_invocation(id.x);
+    if(id.x>=p(1u)){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    let vl=p(24u)+id.x*VL_RECORD_BYTES;store_word(vl+128u,0u);if(load_word(vl+32u)==0u){return;}
+//#if VOLUME_LIGHT_TREE
+    light_select_record=vl+VL_TREE_SELECTION-LIGHT_SELECT_RECORD;
+//#endif
+    if(index>=p(10u)||load_word(p(17u))!=0u){return;}
+    let selection=light_select(index);
+//#if LIGHT_SELECT
+    if(!selection.valid){return;}
+//#endif
+    if(selection.prim>=0){return;}
+    if(load_word(table_at(G_lights,~bitcast<u32>(selection.prim),SIZE_lights)+L_type)!=LIGHT_BACKGROUND){return;}
+    light_sample_write(vl+132u,vl_background_light_sample(index,heap_vec3(vl+36u),selection));store_word(vl+128u,1u);
+}
+//#endif
 //#if VOLUME_LIGHT_SHAPES
 //#if LIGHT_TRIANGLE
 // DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME with emissive triangles, before shade_volume_light (compile envelope): the
@@ -221,6 +293,9 @@ fn vl_direct_light(index:u32,slot:u32,r:SvmResult,P:vec3<f32>,throughput:vec3<f3
     if(index>=p(10u)||load_word(p(17u))!=0u){return;}
     let selection=light_select(index);if(selection.prim<0){return;}
     store_word(vl+32u,0u);
+//#if LIGHT_LINKING
+    if(!light_link_match(vl_link_receiver(index),selection.object)){return;}
+//#endif
 //#if VOLUME_SHADOW_CATCHER
     if(sc_triangle_excluded(index,selection)){return;}
 //#endif
@@ -254,7 +329,9 @@ fn vl_direct_finish(index:u32,slot:u32,r:SvmResult,P:vec3<f32>,throughput:vec3<f
 //#endif
         let rr_threshold=data_float(D_integrator_light_inv_rr_threshold);
         let probability=select(1.0,max(abs(eval.x),max(abs(eval.y),abs(eval.z)))*rr_threshold,rr_threshold>0.0);
-        if(probability<1.0){let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
+//#if VOLUME_SAMPLING_PATTERN else         if(probability<1.0){let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE).x;
+        if(probability<1.0){let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT_TERMINATE,1u).x;
+//#endif
             if(random>=probability){return;}eval*=1.0/probability;}
     }
     // light_sample_to_volume_shadow_ray (shadow_ray_setup without self skip).
@@ -339,7 +416,9 @@ fn vl_finish(index:u32,next:u32){
 fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
     let origin=heap_vec3(state_address(S_ray_P,index,12u));let direction=heap_vec3(state_address(S_ray_D,index,12u));let tmin=heap_float(state_address(S_ray_tmin,index,4u));
     var flag=state_word(S_path_flag,index);let bounce=state_half(S_path_bounce,index);
-    var random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+VL_PRNG_VOLUME_PHASE).xy;
+//#if VOLUME_SAMPLING_PATTERN else     var random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+VL_PRNG_VOLUME_PHASE).xy;
+    var random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+VL_PRNG_VOLUME_PHASE,2u).xy;
+//#endif
     var selected=0u;var sum=svm_closure_read(r,0u).sample_weight;
     for(var i=1u;i<r.count;i++){let weight=svm_closure_read(r,i).sample_weight;sum+=weight;let threshold=weight/sum;
         if(random.x<threshold){selected=i;random.x/=threshold;}else{random.x=(random.x-threshold)/(1.0-threshold);}}
@@ -358,6 +437,9 @@ fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
 //#endif
     state_f32(S_ray_tmin,index,0.0);state_u32(S_ray_tmax,index,0x7f7fffffu);state_f32(S_ray_dP,index,0.0);state_f32(S_ray_dD,index,max(heap_float(state_address(S_ray_dD,index,4u)),1.0-abs(g)));
     state_u32(S_isect_prim,index,NONE);state_u32(S_isect_object,index,object);
+//#if LIGHT_LINKING
+    if(light_link_enabled()){state_u32(S_path_mis_ray_object,index,object);}
+//#endif
     if(p(20u)!=0u&&bounce==0u){state_vec3(S_path_pass_diffuse_weight,index,vec3<f32>(1));state_vec3(S_path_pass_glossy_weight,index,vec3<f32>(0));}
 //#if VOLUME_LIGHT else     state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-(origin+direction*tmin));
     state_f32(S_path_mis_ray_pdf,index,phase.w);state_vec3(S_path_mis_origin_n,index,position-rounded_add3(origin,direction*tmin));
@@ -392,6 +474,9 @@ fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
 //#if VOLUME_HETEROGENEOUS
     // A heterogeneous path's direct phases (shade_volume_heterogeneous; word 76 is zero for the others).
     if(load_word(vl+76u)!=0u){r.closure_base=load_word(vl+76u);}
+//#endif
+//#if BACKGROUND_PORTAL
+    vl_background_record=vl+128u;
 //#endif
     if(direct!=0u){vl_direct_light(index,id.x,r,heap_vec3(vl+36u),heap_vec3(vl+48u),heap_vec3(state_address(S_ray_D,index,12u)));if(load_word(p(17u))!=0u){return;}}
 //#if !PHASE_STAGE

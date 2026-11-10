@@ -380,11 +380,12 @@ pass is written when `integrator.motion_blur` is off (Cycles' motion pass mode).
 
 `cbc_host_bake` bakes one mesh's UV layout into a raw float buffer through Cycles'
 own bake kernel; `cbc_host_bake_map` returns the map that bake uses. The CPU
-backends bake (`CBC_HOST_CPU_REFERENCE`, `CBC_HOST_CPU`). `CBC_HOST_METAL` runs the
+backends (`CBC_HOST_CPU_REFERENCE`, `CBC_HOST_CPU`) and the WebGPU device
+(`CBC_HOST_WEBGPU`, its port of the same kernel) bake every type. `CBC_HOST_METAL` runs the
 same host code on Cycles' own Metal bake kernel; it is not yet built or validated.
-The WebGPU device does not bake yet: `cbc_host_bake` returns `CBC_UNSUPPORTED` with
-a message that says so and never falls back to the CPU. The capability report's
-`baking` object states this: `backends` gives `validated`, `refused` or `unvalidated`
+On the WebGPU device a bake of a mesh with deformation motion, or of a texel on a triangle with
+no area, is refused by name (`CBC_FAILED`, with the device's message) and never falls back to the CPU. The capability report's
+`baking` object states this: `backends` gives `validated` or `unvalidated`
 per compiled backend, `types` the bake types.
 
 ```c
@@ -455,8 +456,8 @@ space are the application's to convert.
 
 **Scene state.** A bake leaves the scene as it found it: the caller's pass nodes,
 `is_bake_target` sockets and the film's `display_pass` are back afterwards, and a later render,
-with or without edits between, is bit for bit that of a new host on the CPU reference
-(native/tools/bake_gate.py). Caller passes other than AOVs do not take part in a bake.
+with or without edits between, is bit for bit that of a new host on the CPU reference, and within the
+practical criterion of it on the WebGPU device, whose film adds in atomic order (native/tools/bake_gate.py). Caller passes other than AOVs do not take part in a bake.
 A bake clears the last render's results (`cbc_host_pass_floats` and
 `cbc_host_render_passes_json` return `CBC_NOT_READY` until a render succeeds) and writes no
 results of its own to them. Failed and cancelled bakes never write the output buffer.

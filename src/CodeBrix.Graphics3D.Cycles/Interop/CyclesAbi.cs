@@ -641,7 +641,7 @@ public static unsafe class CyclesAbi
     /// <param name="values">The destination; empty for a size query that does not bake.</param>
     /// <param name="required">Receives the float count needed.</param>
     /// <param name="components">Receives the floats per pixel.</param>
-    /// <returns>The native status (<see cref="NativeStatus.Unsupported"/> on the WebGPU device, which does not bake yet).</returns>
+    /// <returns>The native status.</returns>
     public static NativeStatus Bake(ulong host, ulong node, in Rendering.BakeSettings settings, Span<float> values, out ulong required, out uint components)
     {
         byte[] uv = settings.UvAttribute == null ? null : System.Text.Encoding.UTF8.GetBytes(settings.UvAttribute + "\0");

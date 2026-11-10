@@ -92,8 +92,7 @@ public interface ICapabilityReport
     IReadOnlyDictionary<string, string> DenoiseDevices { get; }
 
     /// <summary>
-    /// Gets, per compiled backend name, the state of texture baking there: <c>validated</c>, <c>refused</c> (the backend's
-    /// device does not bake yet and <see cref="CyclesScene.Bake(Generated.Scene.ObjectNode, Rendering.BakeSettings)"/> throws) or
+    /// Gets, per compiled backend name, the state of texture baking there: <c>validated</c> or
     /// <c>unvalidated</c> (the backend's device runs Cycles' own bake kernel but the bake gate has not run on it yet).
     /// </summary>
     IReadOnlyDictionary<string, string> BakingBackends { get; }

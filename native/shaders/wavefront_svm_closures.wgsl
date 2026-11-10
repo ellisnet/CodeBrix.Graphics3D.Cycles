@@ -122,6 +122,23 @@ fn svm_transparent(s:ptr<function,SvmState>,weight:vec3<f32>,flag:u32){
         else if((flag&PATH_RAY_TERMINATE)!=0u){(*s).output.remaining=0u;}
     }
 }
+//#if RAY_PORTAL
+// The Ray Portal BSDF node (svm/closure.h CLOSURE_BSDF_RAY_PORTAL_ID, closure/bsdf_ray_portal.h bsdf_ray_portal_setup): the
+// position (default: the shading point) and direction inputs, the weight added to the transparency, the closure with the
+// position in `multiscatter` and the direction (-wi for a zero direction, then safe_normalize) in `T`.
+fn svm_ray_portal(s:ptr<function,SvmState>,data:u32,weight:vec3<f32>){
+    let position_index=svm_byte(data+N_RayPortalBsdfData_position_offset);var position=(*s).geometry.P;if(position_index!=SVM_STACK_INVALID){position=svm_load3(s,position_index);}
+    var direction=svm_input3(s,data+N_RayPortalBsdfData_direction);
+    let sample_weight=abs((weight.x+weight.y+weight.z)*(1.0/3.0));if(!(sample_weight>=1e-5)){return;}
+    (*s).output.transparency+=weight;
+    let i=svm_allocate(s,RP_CLOSURE_BSDF_RAY_PORTAL_ID,weight);if(i==NONE){return;}
+    (*s).output.runtime_flag|=SR_BSDF|RP_SR_RAY_PORTAL;
+    if(all(direction==vec3<f32>(0))){direction=-(*s).geometry.wi;}
+    let length=rounded_sqrt(rounded_dot(direction,direction));if(length!=0.0){direction=direction*rounded_divide(1.0,length);}
+    var c=svm_closure_read((*s).output,i);c.sample_weight=sample_weight;c.N=(*s).geometry.N;c.multiscatter=position;c.T=direction;
+    svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);
+}
+//#endif
 fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     let kind=load_word(node+N_ClosureBsdf_closure_type);let mix_weight=svm_optional(s,svm_byte(node+N_ClosureBsdf_mix_weight_offset),1.0);
     var bytes=0u;switch(kind){case CLOSURE_BSDF_DIFFUSE_ID:{bytes=SZ_DiffuseBsdfData;}
@@ -160,6 +177,9 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
 //#endif
 //#if SUBSURFACE
         case SS_CLOSURE_BURLEY,SS_CLOSURE_RANDOM_WALK,SS_CLOSURE_RANDOM_WALK_LEGACY,SS_CLOSURE_RANDOM_WALK_SKIN:{bytes=SZ_BssrdfData;}
+//#endif
+//#if RAY_PORTAL
+        case RP_CLOSURE_BSDF_RAY_PORTAL_ID:{bytes=SZ_RayPortalBsdfData;}
 //#endif
         default:{svm_error(s,16u);return;}}
     let data=svm_take(s,bytes);if((*s).error!=0u||mix_weight==0.0){return;}
@@ -208,6 +228,9 @@ fn svm_bsdf(s:ptr<function,SvmState>,node:u32,flag:u32,visibility:u32){
     }
     let raw_weight=(*s).weight*mix_weight;
     if(kind==CLOSURE_BSDF_TRANSPARENT_ID){svm_transparent(s,raw_weight,flag);return;}
+//#if RAY_PORTAL
+    if(kind==RP_CLOSURE_BSDF_RAY_PORTAL_ID){svm_ray_portal(s,data,raw_weight);return;}
+//#endif
     let normal_index=svm_byte(data+select(N_SimpleBsdfData_normal_offset,N_DiffuseBsdfData_normal_offset,kind==CLOSURE_BSDF_DIFFUSE_ID));
     var n=(*s).geometry.N;if(normal_index!=SVM_STACK_INVALID){n=svm_load3(s,normal_index);}
     // safe_normalize_fallback(N, sd->N): len() = sqrt(dot) rounded once each, then

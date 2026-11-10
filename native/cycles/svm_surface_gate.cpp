@@ -7,7 +7,8 @@
 struct PrincipledArgs {float metallic=0,roughness=.5f,ior=1.45f,transmission=0,coat=0,coat_roughness=.1f,coat_ior=1.5f,sheen=0,sheen_roughness=.5f,
   level=.5f,anisotropic=0,rotation=0,alpha=1,emission=0,diffuse_roughness=0,subsurface=0,thin_film=0,film_ior=1.33f;int thin_wall=0;bool multi=true,tinted=false;
   ClosureType ss_method=CLOSURE_BSSRDF_RANDOM_WALK_ID;float3 ss_radius=make_float3(1,.5f,.2f);float ss_scale=.05f,ss_ior=1.4f,ss_anisotropy=0;
-  SVMStackOffset normal=SVM_STACK_INVALID,tangent=SVM_STACK_INVALID,coat_normal=SVM_STACK_INVALID,linked=SVM_STACK_INVALID;};
+  SVMStackOffset normal=SVM_STACK_INVALID,tangent=SVM_STACK_INVALID,coat_normal=SVM_STACK_INVALID,linked=SVM_STACK_INVALID;
+  SVMStackOffset wall_link=SVM_STACK_INVALID;}; // a linked Thin Wall input (the stack slot's bits as the integer)
 // One NODE_CLOSURE_BSDF Principled record; `linked` routes roughness and the
 // base colour through the SVM stack (the encoding the native compiler emits).
 static void principled(Program &p,const PrincipledArgs &a){
@@ -20,7 +21,7 @@ static void principled(Program &p,const PrincipledArgs &a){
   n.emission_color=color(1,.6f,.3f);n.emission_strength=value(a.emission);n.sheen_tint=a.tinted?color(.9f,.5f,.7f):color(1,1,1);n.sheen_roughness=value(a.sheen_roughness);
   n.coat_tint=a.tinted?color(.6f,.8f,.9f):color(1,1,1);n.coat_roughness=value(a.coat_roughness);n.coat_ior=value(a.coat_ior);
   n.subsurface_method=a.ss_method;n.subsurface_radius=color(a.ss_radius.x,a.ss_radius.y,a.ss_radius.z);n.subsurface_scale=value(a.ss_scale);n.subsurface_ior=value(a.ss_ior);n.subsurface_anisotropy=value(a.ss_anisotropy);
-  n.thin_film_thickness=value(a.thin_film);n.thin_film_ior=value(a.film_ior);n.thin_wall=SVMInputInt{.value=a.thin_wall,.offset=SVM_STACK_INVALID};
+  n.thin_film_thickness=value(a.thin_film);n.thin_film_ior=value(a.film_ior);n.thin_wall=SVMInputInt{.value=a.thin_wall,.offset=a.wall_link};
   if(a.linked!=SVM_STACK_INVALID){n.roughness={SVM_INPUT_STACK_OFFSET_MASK|a.linked};n.base_color={{SVM_INPUT_STACK_OFFSET_MASK|uint(a.linked+1)},value(0),value(0)};}
   auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());
 }
@@ -30,13 +31,18 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
 #ifdef CBC_GLASS_FIXTURE
   constexpr unsigned rejection_count=17;
 #elif defined(CBC_PRINCIPLED_FIXTURE)
-  constexpr unsigned rejection_count=19;
+  constexpr unsigned rejection_count=16;
 #elif defined(CBC_MICROFACET_FIXTURE)
   constexpr unsigned rejection_count=16;
 #else
   constexpr unsigned rejection_count=11;
 #endif
   const auto original=ds.data;
+#ifdef CBC_PRINCIPLED_FIXTURE
+  constexpr unsigned truncated=11; // the truncated Principled record
+#else
+  constexpr unsigned truncated=12;
+#endif
   // The scene-table descriptors do not depend on the program under test. They are bound once, while the last
   // supported program is installed: scene_tables reads the native census, which refuses the deferred Principled
   // records by name (the host cases below), and each case here must still reach the WGSL handler.
@@ -44,7 +50,7 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
   for(unsigned test=0;test<rejection_count;test++){
     ds.data=original;
     Program program(ds);program.weight(.2,.4,.6);
-    if(test==0)program.simple(CLOSURE_BSDF_RAY_PORTAL_ID); // unsupported closure (velvet and Principled are implemented)
+    if(test==0)program.simple(CLOSURE_BSDF_DIFFUSE_RAMP_ID); // unsupported closure: no SVM creator, a permanent refusal (velvet, Principled and the ray portal are implemented)
     if(test==1)program.words.push_back(NODE_POINT_INFO); // unsupported opcode (Light Falloff is implemented)
     if(test==2)program.diffuse(0,253);
     if(test==3)program.diffuse(0);
@@ -61,15 +67,12 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
       else ds.data.tables.ggx_Eavg=ds.lookup_table.size()-31;}
 #endif
 #ifdef CBC_PRINCIPLED_FIXTURE
-    // Deferred Principled features are refused, never approximated (thin-wall subsurface scattering).
-    if(test==11)principled(program,{.subsurface=.5f,.thin_wall=1});
-    if(test==12)principled(program,{}); // truncated record (bytecode bounds)
-    if(test==13){principled(program,{.metallic=1,.thin_film=300});ds.data.tables.thin_film_table=ds.lookup_table.size()-3000;}
-    if(test==14){principled(program,{.sheen=1});ds.data.tables.sheen_ltc=ds.lookup_table.size()-1000;}
-    if(test==15){principled(program,{.transmission=1});ds.data.tables.ggx_glass_E=ds.lookup_table.size()-4000;}
-    if(test==16){principled(program,{.metallic=1});ds.data.tables.ggx_gen_schlick_s=ds.lookup_table.size();}
-    if(test==17)principled(program,{.transmission=.5f,.subsurface=1,.thin_wall=1});
-    if(test==18)principled(program,{.subsurface=1e-4f,.thin_wall=1});
+    // Thin-walled subsurface is implemented: its three former rejection cases are typed principled runs below.
+    if(test==11)principled(program,{}); // truncated record (bytecode bounds)
+    if(test==12){principled(program,{.metallic=1,.thin_film=300});ds.data.tables.thin_film_table=ds.lookup_table.size()-3000;}
+    if(test==13){principled(program,{.sheen=1});ds.data.tables.sheen_ltc=ds.lookup_table.size()-1000;}
+    if(test==14){principled(program,{.transmission=1});ds.data.tables.ggx_glass_E=ds.lookup_table.size()-4000;}
+    if(test==15){principled(program,{.metallic=1});ds.data.tables.ggx_gen_schlick_s=ds.lookup_table.size();}
 #endif
 #ifdef CBC_GLASS_FIXTURE
     if(test==11)program.glass(.3f,1.5f,100);
@@ -82,14 +85,14 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
     program.install(ds);ds.data.max_closures=test==3?MAX_CLOSURE+1:MAX_CLOSURE;d.const_copy_to("data",&ds.data,sizeof(KernelData));
     device_vector<uint> out(&d,"invalid_surface_svm",MEM_READ_WRITE);out.alloc(sizeof(SurfaceSvmRecord)/4);std::fill_n(out.data(),out.size(),0xa5a5a5a5u);out.copy_to_device();
     device_vector<uint> scratch(&d,"invalid_surface_closures",MEM_READ_WRITE);scratch.alloc(MAX_CLOSURE*sizeof(SurfaceClosureRecord)/4);scratch.zero_to_device();
-    std::array<uint32_t,32> p{};p[1]=1;p[4]=out.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=1;p[14]=tables;p[17]=d.error_word;p[21]=ds.svm_nodes.device_pointer;p[22]=ds.svm_nodes.size()-(test==4||test==12?2:0);p[23]=scratch.device_pointer;
+    std::array<uint32_t,32> p{};p[1]=1;p[4]=out.device_pointer;p[6]=d.constants.at("data");p[7]=d.constants.at("integrator_state");p[10]=1;p[14]=tables;p[17]=d.error_word;p[21]=ds.svm_nodes.device_pointer;p[22]=ds.svm_nodes.size()-(test==4||test==truncated?2:0);p[23]=scratch.device_pointer;
     if(test==8)p[23]=0;
     if(test==9)p[23]++;
     if(test==10)p[23]=d.arena_bytes-4;
     refresh_probe(d,shader);PreparedSurfaceCache cache(d,p);
     d.dispatch(p,1,shader);uint error=0;d.download(d.error_word,&error,4);const uint expected[]={16,2,8,16,4,16,16,8,1,1,1,
 #ifdef CBC_PRINCIPLED_FIXTURE
-      16,4,512,512,512,512,16,16
+      4,512,512,512,512
 #else
       16,4,8,512,
 #ifdef CBC_GLASS_FIXTURE
@@ -157,14 +160,27 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     for(unsigned mode=0;mode<3;mode++){auto states=initial;for(int i:ids){if(mode==0)states[i].path.flag=PATH_RAY_TERMINATE;if(mode==1)states[i].path.flag=PATH_RAY_EMISSION;if(mode==2)states[i].path.visibility=PATH_RAY_VISIBILITY_SHADOW;}evaluate(d,scene,shader,layout,states,ids,"Evaluation mode "+std::to_string(mode),m);}
     auto dense=initial;std::vector<int> dense_ids;for(size_t i=0;i<ids.size();i++){dense[i]=initial[ids[i]];dense_ids.push_back(i);}evaluate(d,scene,shader,layout,dense,dense_ids,"Dense indices",m,"",true);evaluate(d,scene,shader,layout,initial,{},"Zero work",m);
     std::vector<int> small(ids.begin(),ids.begin()+51);
-    for(unsigned test=0;test<14;test++){
+    // The Ray Portal BSDF cases (14-16) run in the base probe only: the fixture variants keep their case counts.
+#if !defined(CBC_GLASS_FIXTURE)&&!defined(CBC_PRINCIPLED_FIXTURE)&&!defined(CBC_MICROFACET_FIXTURE)&&!defined(CBC_NODES_FIXTURE)&&!CBC_BSDF_FIXTURE
+    constexpr unsigned typed_programs=17;
+#else
+    constexpr unsigned typed_programs=14;
+#endif
+    for(unsigned test=0;test<typed_programs;test++){
       Program p(ds);p.weight(.2,.5,.9);
       if(test==0){for(unsigned j=0;j<70;j++)p.diffuse(0);p.add(NODE_CLOSURE_HOLDOUT,SVMNodeClosureHoldout{.mix_weight_offset=SVM_STACK_INVALID});p.simple(CLOSURE_BSDF_TRANSPARENT_ID);}
       if(test==1){p.simple(CLOSURE_BSDF_TRANSPARENT_ID);p.weight(-.5,-.6,-.7);p.simple(CLOSURE_BSDF_TRANSPARENT_ID);p.diffuse(0);}
       if(test==2){for(float f:{0.f,1e-7f,1e-5f,-1.f}){p.weight(f,f,f);p.diffuse(0);p.simple(CLOSURE_BSDF_TRANSPARENT_ID);}p.add(NODE_CLOSURE_HOLDOUT,SVMNodeClosureHoldout{.mix_weight_offset=SVM_STACK_INVALID});}
       if(test==3){p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(.3,.4,.5)});p.add(NODE_CLOSURE_SET_NORMAL,SVMNodeClosureSetNormal{.direction_offset=0,.normal_offset=3});p.diffuse(0,3);p.simple(CLOSURE_BSDF_TRANSLUCENT_ID,3);}
       if(test==4){p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(0,0,0)});p.diffuse(0,0);p.simple(CLOSURE_BSDF_TRANSLUCENT_ID,0);}
-      if(test>=5){const float rough[]={.001f,.02f,1.f,2.f,-1.f,9.999e-6f,1e-5f,1.0001e-5f,.0001f};p.diffuse(rough[test-5]);}
+      if(test>=5&&test<14){const float rough[]={.001f,.02f,1.f,2.f,-1.f,9.999e-6f,1e-5f,1.0001e-5f,.0001f};p.diffuse(rough[test-5]);}
+      // The Ray Portal BSDF (bsdf_ray_portal_setup): a constant direction at the shading point, a zero direction (-wi) from a
+      // stack position next to a diffuse closure, and a weight below the cutoff.
+      auto portal=[&](SVMInputFloat3 direction,SVMStackOffset position){p.add(NODE_CLOSURE_BSDF,SVMNodeClosureBsdf{.closure_type=CLOSURE_BSDF_RAY_PORTAL_ID,.mix_weight_offset=SVM_STACK_INVALID});
+        auto n=SVMNodeRayPortalBsdfData{.direction=direction,.position_offset=position};auto b=std::bit_cast<std::array<uint,sizeof(n)/4>>(n);p.words.insert(p.words.end(),b.begin(),b.end());};
+      if(test==14)portal(color(.3f,-.2f,.9f),SVM_STACK_INVALID);
+      if(test==15){p.add(NODE_VALUE_V,SVMNodeValueV{.out_offset=0,.value=make_float3(1.5f,-2.f,.25f)});p.diffuse(0);portal(color(0,0,0),0);}
+      if(test==16){p.weight(1e-6f,1e-6f,1e-6f);portal(color(0,1,0),SVM_STACK_INVALID);p.weight(.2,.5,.9);p.simple(CLOSURE_BSDF_TRANSPARENT_ID);}
       p.install(ds);evaluate(d,scene,shader,layout,initial,small,"Typed program "+std::to_string(test),m);
     }
 #ifdef CBC_NODES_FIXTURE
@@ -508,6 +524,22 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     for(float rough:{0.f,.002f,.2f,1.f})for(float ior:{1.f,1.5f,2.4f})run({.roughness=rough,.ior=ior,.transmission=1,.thin_film=rough>.5f?300.f:0.f,.thin_wall=1,.tinted=ior>2});
     run({.metallic=.3f,.ior=1.6f,.transmission=.4f,.coat=.6f,.sheen=.7f,.level=.7f,.anisotropic=.6f,.alpha=.8f,.emission=1,.diffuse_roughness=.4f,.tinted=true,.tangent=0,.coat_normal=6,.linked=9});
     for(int cap:{1,2,3,5}){limit(cap);run({.metallic=.3f,.transmission=.4f,.coat=.6f,.sheen=.7f,.alpha=.8f,.tinted=true});}limit(MAX_CLOSURE);
+    // The Christensen-Burley method (bssrdf_setup_radius's mean free path scale): partial and full weights, a zero radius
+    // channel, and below a diffuse bounce, where the whole lobe becomes a diffuse closure.
+    for(float ss:{1e-4f,.5f,1.f})run({.roughness=.4f,.ior=1.6f,.subsurface=ss,.ss_method=CLOSURE_BSSRDF_BURLEY_ID,.ss_scale=.3f,.ss_anisotropy=.95f});
+    run({.subsurface=1,.ss_method=CLOSURE_BSSRDF_BURLEY_ID,.ss_radius=make_float3(1,.5f,0)});
+    {Program p(ds);p.weight(.2,.5,.9);principled(p,{.subsurface=.8f,.ss_method=CLOSURE_BSSRDF_BURLEY_ID});p.install(ds);auto states=initial;
+      for(int i:small)states[i].path.flag|=PATH_RAY_DIFFUSE_ANCESTOR;evaluate(d,scene,shader,layout,states,small,"Burley below a diffuse bounce",m);}
+    // Thin-walled subsurface (bsdf_thin_subsurface_setup): diffuse and translucent closures, or with a diffuse roughness
+    // Oren-Nayar and rough translucent closures, weighted by the anisotropy (the former rejection cases first), with
+    // transmission, a zero reflection or transmission weight, and the closure capacity.
+    run({.subsurface=.5f,.thin_wall=1});run({.transmission=.5f,.subsurface=1,.thin_wall=1});run({.subsurface=1e-4f,.thin_wall=1});
+    for(float dr:{0.f,9.999e-6f,1e-5f,.5f,1.f})for(float aniso:{-1.f,-.4f,0.f,.3f,1.f,1.5f})run({.diffuse_roughness=dr,.subsurface=.8f,.thin_wall=1,.ss_anisotropy=aniso});
+    run({.roughness=.3f,.coat=.4f,.sheen=.3f,.diffuse_roughness=.6f,.subsurface=.7f,.thin_wall=1,.ss_method=CLOSURE_BSSRDF_BURLEY_ID,.ss_anisotropy=.2f,.linked=9});
+    for(int cap:{1,2,3}){limit(cap);run({.diffuse_roughness=cap==2?0.f:.5f,.subsurface=.6f,.thin_wall=1});}limit(MAX_CLOSURE);
+    // A linked Thin Wall (slot 9 holds 0.37f: non-zero bits, a thin wall at run time; the census keeps both branches).
+    run({.diffuse_roughness=.4f,.subsurface=.8f,.ss_anisotropy=-.2f,.wall_link=9});
+    run({.subsurface=.8f,.ss_method=CLOSURE_BSSRDF_BURLEY_ID,.wall_link=9});
 #endif
 #if CBC_BSDF_FIXTURE==1
     // Metallic BSDF records over parameter extremes: both Fresnel types, every
@@ -667,7 +699,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
 #ifdef CBC_PRINCIPLED_FIXTURE
     // Native-layer rejection before any pipeline or dispatch: a clear
     // unsupported-feature message, never an approximation.
-    const std::pair<PrincipledArgs,const char*> host_cases[]={{{.subsurface=.5f,.thin_wall=1},"thin-wall subsurface"},{{.subsurface=1,.ss_method=CLOSURE_BSSRDF_BURLEY_ID},"Christensen-Burley"},
+    const std::pair<PrincipledArgs,const char*> host_cases[]={{{.subsurface=.5f,.thin_wall=1},nullptr},{{.subsurface=1,.ss_method=CLOSURE_BSSRDF_BURLEY_ID},nullptr},
       {{.subsurface=1e-4f},nullptr},{{.subsurface=1,.ss_method=CLOSURE_BSSRDF_RANDOM_WALK_SKIN_ID},nullptr},
       {{.subsurface=1e-6f,.thin_film=.1f},nullptr},{{.thin_film=250},nullptr},{{.transmission=1,.thin_wall=1},nullptr},{{.thin_wall=1},nullptr}};
     for(auto &[args,reason]:host_cases){Program p(ds);principled(p,args);p.install(ds);std::string message;
@@ -703,8 +735,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   for(uint kind:{uint(CLOSURE_BSDF_DIFFUSE_ID),uint(CLOSURE_BSDF_OREN_NAYAR_ID),uint(CLOSURE_BSDF_MICROFACET_GGX_ID),
                  uint(CLOSURE_BSDF_HAIR_REFLECTION_ID),uint(CLOSURE_BSDF_HAIR_TRANSMISSION_ID),uint(CLOSURE_BSDF_HAIR_CHIANG_ID)})
     require(m.closures.count(kind),"Missing BSDF fixture closure family "+std::to_string(kind));
-#else
+#elif defined(CBC_NODES_FIXTURE)
   require(m.closures.size()==5,"Missing closure families");
+#else
+  // Diffuse, Oren-Nayar, translucent, transparent, holdout and the ray portal (typed programs 14-16).
+  require(m.closures.size()==6,"Missing closure families");
 #endif
   std::ofstream(prefix+".adapter.txt")<<d.gpu.adapter_name;std::ofstream(prefix+".library.txt")<<d.gpu.library_path;
   if(svm_exchange_mode()){std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\""<<(reference_policy::prepare_only()?"dump":"reference")<<"\",\"cases\":"<<m.cases<<",\"cyclesAllocationBytesAfterCleanup\":"<<stats.mem_used<<"}\n";}

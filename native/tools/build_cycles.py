@@ -57,6 +57,9 @@ def overlay(out=None,translate=True,located=None):
     _write(out/'camera_shader.inc','R"CBWGSL('+camera+')CBWGSL"\n')
     shader_data=common+(ROOT/'shaders/wavefront_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_curve_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_point_shader_data.wgsl').read_text()+(ROOT/'shaders/wavefront_shader_data_cache.wgsl').read_text()
     _write(out/'shader_data_shader.inc','R"CBWGSL('+shader_data+')CBWGSL"\n')
+    # Baking (bake.cpp): the shader-data helpers without the shader-data cache, the shadow catcher film semantics and the bake entry.
+    bake=common+''.join((ROOT/'shaders'/name).read_text() for name in ('wavefront_shader_data.wgsl','wavefront_curve_shader_data.wgsl','wavefront_point_shader_data.wgsl','wavefront_shadow_catcher.wgsl','wavefront_bake.wgsl'))
+    _write(out/'bake_shader.inc','R"CBWGSL('+bake+')CBWGSL"\n')
     # Generate from the pinned upstream AST, retaining translation evidence.
     translation_inputs=[REPO/'research/translate.py',REPO/'research/native/reference.cpp']
     fingerprint=hashlib.sha256(REVISION.encode()+b''.join(p.read_bytes() for p in translation_inputs)).hexdigest()

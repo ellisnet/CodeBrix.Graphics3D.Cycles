@@ -645,13 +645,12 @@ render runs (the render fails with NativeStatus.Failed, not at edit time):
     (fast GI and the AO pass), or with volumes on the light tree, with spot,
     area or emissive triangle lights in a volume, or with the volume light
     passes: "WebGPU shadow linking with ... not implemented";
-  - subsurface scattering with the Christensen-Burley method, or a thin-walled
-    PrincipledBsdfNode with subsurface: "Unsupported feature: subsurface
-    scattering with the Christensen-Burley method" / "Unsupported feature:
-    Principled BSDF thin-wall subsurface scattering"; the random walk methods
-    render, but not together with volumes, MNEE caustics, the shadow catcher,
-    light or shadow linking, data/denoising/AOV/cryptomatte passes, motion blur
-    or holdout objects ("WebGPU subsurface scattering with ... not implemented");
+  - subsurface scattering: the random walk and Christensen-Burley methods
+    render (and a thin-walled PrincipledBsdfNode with subsurface, which has
+    no BSSRDF), but not together with volumes, MNEE caustics, the shadow
+    catcher, light or shadow linking, data/denoising/AOV/cryptomatte passes,
+    motion blur or holdout objects ("WebGPU subsurface scattering with ...
+    not implemented");
   - shader nodes the WebGPU device does not implement (the point info and
     particle info nodes, the sky texture, IES texture and
     light falloff nodes, the AOV output nodes, the bump node, the Gabor texture (GaborTextureNode,
@@ -739,11 +738,13 @@ device; keep the two features apart until this note is gone.
 BAKING TEXTURES
 ---------------
 scene.Bake bakes one mesh's UV layout into a raw float film through Cycles' bake
-kernel, one BakeType at a time. The CPU backends bake. On the WebGPU device it
-throws NativeFailure (status 2, "The WebGPU device does not bake yet") and never
-falls back to the CPU; on Apple Silicon it runs Cycles' Metal bake kernel, which is
-not validated yet. GetCapabilities().BakingBackends states which (validated,
-refused, unvalidated), BakeTypes the types.
+kernel, one BakeType at a time. The CPU backends and the WebGPU device bake,
+every BakeType on each. On the WebGPU device a bake of a mesh with deformation
+motion, or of a mesh whose UV layout covers triangles with no area, throws
+NativeFailure (status 3) naming it, and never falls back to the CPU. On Apple
+Silicon it runs Cycles' Metal bake kernel, which is not validated yet.
+GetCapabilities().BakingBackends states which (validated, unvalidated),
+BakeTypes the types.
 
     // The mesh needs a UV layout: a "uv" corner attribute (standard), or any
     // float2 corner or vertex attribute named by BakeSettings.UvAttribute.
@@ -920,6 +921,14 @@ evaluation buffers must fit one GPU storage binding, so a large map (0 means
 default is 128 MiB; see the pitfall EXCEEDING THE GPU STORAGE-BINDING LIMIT).
 When the binding is too small, the render fails with the device's allocation
 error.
+
+Light portals guide the world's light samples through openings such as
+windows: an area light with IsPortal = true, placed by its object's transform
+(the portal faces the object's -Z axis, towards the interior it lights;
+SizeU and SizeV give its extent, Ellipse makes it round). A portal emits
+nothing itself and needs the background light object above; with a portal
+in the scene Cycles uses that light for any world, constant or not and with or
+without UseMis.
 
 Dropping to the by-name tier for a socket
 -----------------------------------------
@@ -1103,7 +1112,8 @@ interpolation "closest", otherwise "linear"; Cycles has no mipmaps.
 Textures need decoded pixels: the example decodes the glTF's images with
 CodeBrix.Imaging (Image.Load<Rgba32>, rows flipped to bottom-first) and passes
 the RGBA8 bytes to CreateImage. The WebGPU backend renders PrincipledBsdfNode
-(every lobe; subsurface with the random walk methods, see WEBGPU RENDER-TIME LIMITS).
+(every lobe, thin-walled too; subsurface with the random walk and
+Christensen-Burley methods, see WEBGPU RENDER-TIME LIMITS).
 
 
 KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS
@@ -1218,9 +1228,9 @@ WHAT THIS PACKAGE DOES NOT DO
   ball, the three fisheye models, central cylindrical) with depth of field
   (disk or polygonal apertures, rotation, anamorphic ratio), every sampling
   pattern (tabulated Sobol, Sobol-Burley, the blue-noise patterns, scrambling
-  distance) and adaptive sampling render there. It does not yet render
-  Christensen-Burley subsurface scattering on the WebGPU device. The Hair BSDF
-  and the Principled Hair BSDF's Chiang and Huang models (all three colour
+  distance) and adaptive sampling render there, and so does
+  Christensen-Burley subsurface scattering. The Hair BSDF and the
+  Principled Hair BSDF's Chiang and Huang models (all three colour
   parametrizations, and the Huang model's elliptical cross-sections) render
   there, on curves and on triangles; the Huang model is refused together with
   caustics. Point clouds render there, with motion blur and everything else the
@@ -1241,14 +1251,18 @@ WHAT THIS PACKAGE DOES NOT DO
   space (with or without biased ray marching) render there with direct light
   from point, spot, area, mesh, sun and world lights (also through the light tree) and shadows through them, the Henyey-Greenstein, Fournier-Forand,
   Rayleigh, Draine and Mie phase functions, the Volume Coefficients and
-  Principled Volume nodes, volume emission, the volume light passes and
-  shadow catchers. A varying volume whose shader uses a Light Path node, and
-  volumes with sampling patterns other than tabulated Sobol, fail with an
-  error naming the feature. True displacement of the base mesh
+  Principled Volume nodes, volume emission, the volume light passes, shadow
+  catchers, every sampling pattern, denoising (the volumes' albedo and normal
+  guides) and light linking. A BSDF node in a volume shader is ignored there,
+  as in Cycles. The Light Path node's ray type outputs (Is Camera Ray and the
+  others) work in volume shaders there, uniform and varying; its Backfacing,
+  Ray Length and ray depth outputs in a volume shader fail the render. Volumes
+  render with camera, object and deformation motion blur, the volume objects
+  themselves moving or deforming too. True displacement of the base mesh
   (DisplacementMethod True and Both) renders there. The Metallic (physical
   conductor and F82 tint, with or without a thin film), Beckmann glossy, refraction and glass,
   Ashikhmin-Shirley, velvet and toon BSDFs render there.
-  It does not bake textures on the WebGPU device yet (see BAKING TEXTURES). It denoises on every backend
+  It bakes textures (see BAKING TEXTURES). It denoises on every backend
   with Cycles' Open Image Denoise denoiser, off by default: set
   scene.Integrator.UseDenoise = true (and, if wanted, DenoiserType
   Openimagedenoise, DenoiserPrefilter, DenoiserQuality, DenoiseStartSample;
@@ -1264,9 +1278,9 @@ WHAT THIS PACKAGE DOES NOT DO
   light tree (UseLightTree, on by default) and light linking (an object's
   ReceiverLightSet and an emitter object's LightSetMembership) do render on the
   WebGPU device, for lamps, mesh emitters and the background light.
-- It does not render background-light portals or more than one background
-  light on the WebGPU device (the render fails with an error naming the
-  feature). Environment-texture, sky-texture (every sky type, the sun disc and
+- Background-light portals (also with volumes), scenes with more than one
+  background light and the Ray Portal BSDF render on the WebGPU device.
+  Environment-texture, sky-texture (every sky type, the sun disc and
   sun guiding) and procedural worlds with importance sampling, mesh emitters with textured or node emission, and point,
   spot, area and sun lamps with node emission shaders (light falloff, IES
   texture, textures on the lamp's coordinates) do render there; shadow caustics

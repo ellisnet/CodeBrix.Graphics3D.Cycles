@@ -87,12 +87,10 @@ void WebGPUDevice::enqueue_shadow(DeviceKernel kernel,int work,const DeviceKerne
     if(auto it=globals.find("svm_nodes");it!=globals.end()){p[21]=it->second;require(remaining(p[21])%4==0,"Invalid shadow SVM table");p[22]=uint32_t(remaining(p[21])/4);}
   }
   // Heterogeneous volumes (VOLUME_HETEROGENEOUS): the shadow transmittance estimator draws its expansion order and
-  // shading offsets from the tabulated Sobol sequence (native_rng reads push word 9).
-  if(shading&&(shader_features()&SF_VOLUME_HETEROGENEOUS).any()){
-    require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU heterogeneous volume shadows require tabulated Sobol");
-    p[9]=globals.at("sample_pattern_lut");const unsigned sequence=data.integrator.tabulated_sobol_sequence_size;
-    require(sequence>1&&(sequence&(sequence-1))==0,"Invalid shadow Sobol sequence size");validate(p[9],size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
-  }
+  // shading offsets from the sampling pattern (tabulated Sobol reads push word 9; the other patterns compute them,
+  // VOLUME_SAMPLING_PATTERN regions).
+  if(shading&&(shader_features()&SF_VOLUME_HETEROGENEOUS).any()){p[9]=sample_pattern_table("shadow");
+    require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL||(shader_features()&SF_VOLUME_SAMPLING_PATTERN).any(),"Shadow volume sampling pattern without its specialization");}
   p[10]=uint32_t(remaining(uintptr_t(state.shadow_path.render_pixel_index))/4);
   if(!p[2])require(uint32_t(n)<=p[10],"Shadow dispatch exceeds path capacity");
   auto field=[&](const void *address,size_t size){validate(uintptr_t(address),size_t(p[10])*size);};

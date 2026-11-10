@@ -314,8 +314,8 @@ typedef struct CBCBakeConfig {
  * set; NULL with capacity 0 is a size query that returns CBC_SMALL_BUFFER and does
  * not bake. Synchronous; events, cancel and threading are those of cbc_host_render.
  * A bake clears the results of the last render (cbc_host_pass_floats then returns
- * CBC_NOT_READY until a render succeeds). The WebGPU device does not bake yet: it
- * returns CBC_UNSUPPORTED and never falls back to the CPU. */
+ * CBC_NOT_READY until a render succeeds). Every backend bakes; a combination the WebGPU
+ * device does not implement fails by name (CBC_FAILED) and never falls back to the CPU. */
 int cbc_host_bake(CBCHost host, const CBCBakeConfig *config, float *values, uint64_t capacity, uint64_t *required, uint32_t *components);
 /* The map a bake with this config uses, without rendering, on any backend. Per pixel:
  * triangles[i] is the covering triangle's index in the mesh, or -1; coordinates (may be

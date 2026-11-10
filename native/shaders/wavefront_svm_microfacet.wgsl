@@ -371,8 +371,16 @@ fn svm_principled(s:ptr<function,SvmState>,data:u32,mix_weight:f32,flag:u32,visi
                     else{enabled_lobe=true;kind=PRINCIPLED_THIN_GLASS;}}}
             case 5u:{enabled_lobe=reflective&&(eta!=1.0||thickness>0.1);extra=true;}
             default:{let subsurface=clamp(svm_input(s,data+N_PrincipledBsdfData_subsurface_weight),0.0,1.0);
+//#if SVM_BSDF_THIN_SUBSURFACE
+                // A thin wall's subsurface lobe (bsdf_thin_subsurface_setup), before the diffuse lobe.
+                let thin_subsurface=thin_wall&&subsurface>1e-5;if(thin_subsurface){principled_thin_subsurface(s,data,subsurface,clamped_base,weight,n);}
+                if(!thin_subsurface){
+//#endif
 //#if SUBSURFACE else                 if(subsurface>1e-5){svm_error(s,16u);return;}
                 if(subsurface>1e-5){if(thin_wall){svm_error(s,16u);return;}principled_subsurface(s,data,subsurface,clamped_base,weight,valid,roughness,eta,flag);if((*s).error!=0u){return;}}
+//#endif
+//#if SVM_BSDF_THIN_SUBSURFACE
+                }
 //#endif
                 let diffuse_roughness=clamp(svm_input(s,data+N_PrincipledBsdfData_diffuse_roughness),0.0,1.0);
                 enabled_lobe=true;kind=select(CLOSURE_BSDF_DIFFUSE_ID,CLOSURE_BSDF_OREN_NAYAR_ID,!(diffuse_roughness<1e-5));w=base_color*(1.0-subsurface)*weight;
@@ -606,5 +614,26 @@ fn svm_beckmann(s:ptr<function,SvmState>,data:u32,kind:u32,mix_weight:f32,visibi
     if((*s).error!=0u||(*s).output.count==count){return;}
     let i=(*s).output.count-1u;var c=svm_closure_read((*s).output,i);c.kind=kind;c.energy_scale=0.0;
     svm_closure_write((*s).output.closure_base+i*SVM_CLOSURE_BYTES,c);
+}
+//#endif
+//#if SVM_BSDF_THIN_SUBSURFACE
+// bsdf_thin_subsurface_setup (closure/bsdf_oren_nayar.h): a thin wall's subsurface lobe as a diffuse reflection and a
+// diffuse transmission, weighted by the subsurface anisotropy (saturate(0.5 (1 -+ anisotropy))); with a diffuse
+// roughness, Oren-Nayar and the rough translucent closure (one Oren-Nayar parameter set, the translucent one about -N).
+// The translucent closure keeps N (its evaluation flips it), as svm_bsdf's.
+fn principled_thin_subsurface(s:ptr<function,SvmState>,data:u32,subsurface:f32,base:vec3<f32>,weight:vec3<f32>,n:vec3<f32>){
+    let anisotropy=svm_input(s,data+TS_PrincipledBsdfData_subsurface_anisotropy);let w=(base*subsurface)*weight;
+    let reflection=clamp(0.5*rounded_add(1.0,-anisotropy),0.0,1.0)*w;let transmission=clamp(0.5*rounded_add(1.0,anisotropy),0.0,1.0)*w;
+    if((all(reflection==vec3<f32>(0))&&all(transmission==vec3<f32>(0)))||(*s).output.remaining==0u){return;}
+    let roughness=clamp(svm_input(s,data+N_PrincipledBsdfData_diffuse_roughness),0.0,1.0);let rough=!(roughness<1e-5);
+    var param:SvmOrenParam;if(rough){param=svm_oren_param(roughness,base,rounded_dot(n,(*s).geometry.wi));}
+    for(var lobe=0u;lobe<2u;lobe++){
+        let smooth_kind=select(CLOSURE_BSDF_DIFFUSE_ID,CLOSURE_BSDF_TRANSLUCENT_ID,lobe==1u);let rough_kind=select(CLOSURE_BSDF_OREN_NAYAR_ID,TS_CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID,lobe==1u);
+        var c=principled_new(select(smooth_kind,rough_kind,rough),select(reflection,transmission,lobe==1u));
+        let i=principled_slot(s,c,false,false);if(i==NONE){continue;}
+        c.N=n;(*s).output.runtime_flag|=SR_BSDF|SR_BSDF_HAS_EVAL|select(0u,SR_BSDF_HAS_TRANSMISSION,lobe==1u);
+        if(rough){c.roughness=roughness;c.a=param.a;c.b=param.b;c.multiscatter=param.multiscatter;if(lobe==1u){c.N=-n;}}
+        principled_store(s,i,c);
+    }
 }
 //#endif

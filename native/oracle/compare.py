@@ -61,7 +61,8 @@ def read_film(directory,meta,repeat):
  path=Path(directory)/f'film-{repeat}.f32';data=path.read_bytes()
  hashes=meta.get('filmSha256',[])
  if repeat>=len(hashes) or hashlib.sha256(data).hexdigest()!=hashes[repeat]:raise Invalid(f'{path} does not match its recorded SHA-256')
- count=meta['width']*meta['height']*4
+ # A bake's film (runner.cpp, "bake" scenes) has the bake's filmComponents per pixel; a render's film is RGBA.
+ count=meta['width']*meta['height']*int(meta.get('filmComponents',4))
  if len(data)!=count*4:raise Invalid(f'{path} has {len(data)} bytes; expected {count*4}')
  values=array.array('f');values.frombytes(data)
  if sys.byteorder!='little':values.byteswap()
@@ -223,7 +224,7 @@ def run(directories):
   raise Invalid('no gold standard: no cpu-* backend among '+', '.join(m['backend'] for _,m,_ in films))
  for directory,meta,_ in films[1:]:
   if meta['sceneSha256']!=first['sceneSha256']:raise Invalid(f'{directory} rendered a different scene file')
-  if (meta['width'],meta['height'])!=(first['width'],first['height']):raise Invalid(f'{directory} has a different film shape')
+  if (meta['width'],meta['height'],meta.get('filmComponents',4))!=(first['width'],first['height'],first.get('filmComponents',4)):raise Invalid(f'{directory} has a different film shape')
  backends=[]
  for d,m,v in films:
   rows=repeats(d,m,v)
@@ -256,7 +257,7 @@ def run(directories):
   # The gold standard is the reference (the CPU one when both are gold); otherwise the earlier directory.
   (rd,rm,rv),(cd,cm,cv)=(y,x) if rank[role_of(y[1]['backend'])]<rank[role_of(x[1]['backend'])] else (x,y)
   role=pair_role(rm['backend'],cm['backend'],cpu_isas,isas)
-  result=compare(rv,cv,first['width']);result.update(reference=rm['backend'],candidate=cm['backend'],role=role)
+  result=compare(rv,cv,first['width'],int(first.get('filmComponents',4)));result.update(reference=rm['backend'],candidate=cm['backend'],role=role)
   result['practicalPassed']=result['practicalFailures']==0;result['samplesMatch']=rm['samples']==cm['samples']
   if role=='gating':
    if not result['samplesMatch']:problems.append(f'{cm["backend"]} used {cm["samples"]} samples; {rm["backend"]} used {rm["samples"]}')

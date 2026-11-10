@@ -452,14 +452,14 @@ int main(int argc, char **argv) {
     for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(isfinite(film_b[i]));
     error_events = failure.error;
   }
-  /* Baking: the layout through this header, and a refusal per backend (native/tools/bake_gate.py bakes). */
+  /* Baking: the layout through this header, and the same refusal on every backend: the world node is not an object (native/tools/bake_gate.py bakes). */
   _Static_assert(sizeof(CBCBakeConfig) == 64, "CBCBakeConfig layout");
   {
     CBCBakeConfig bake_config; memset(&bake_config, 0, sizeof(bake_config));
     bake_config.struct_size = sizeof(bake_config); bake_config.width = 4; bake_config.height = 4; bake_config.samples = 1;
     bake_config.type = CBC_BAKE_COMBINED; bake_config.object = world;
     float baked[64]; uint64_t bake_required = 0; uint32_t bake_components = 0;
-    REQUIRE(cbc_host_bake(host, &bake_config, baked, 64, &bake_required, &bake_components) == (backend == CBC_HOST_WEBGPU ? CBC_UNSUPPORTED : CBC_INVALID));
+    REQUIRE(cbc_host_bake(host, &bake_config, baked, 64, &bake_required, &bake_components) == CBC_INVALID);
     REQUIRE(cbc_host_bake(host, &bake_config, NULL, 64, &bake_required, &bake_components) == CBC_INVALID);
     int32_t bake_triangles[16];
     REQUIRE(cbc_host_bake_map(host, &bake_config, bake_triangles, NULL, 16, &bake_required) == CBC_INVALID);

@@ -93,6 +93,46 @@ fn vh_octree_advance(index:u32,origin:vec3<f32>,direction:vec3<f32>,ray_tmax:f32
     }
     (*o).sigma=vh_extrema(*o);return true;
 }
+//#if VOLUME_LIGHT_PATH
+// volume_object_get_extrema with a Light Path node (VOLUME_LIGHT_PATH): rays other than camera rays estimate the extrema of
+// an entry whose shader has the node from its own evaluations (volume_estimate_extrema) instead of the baked node extrema.
+fn vlp_estimates(visibility:u32,shader:u32)->bool{
+    return (visibility&VLP_VISIBILITY_CAMERA)==0u&&(load_word(table_at(G_shaders,shader&SHADER_MASK,SIZE_shaders)+SH_flags)&VLP_LIGHT_PATH)!=0u;
+}
+// The entry's octree from the segment start t0 (the local octree of volume_octree_setup).
+fn vlp_local(index:u32,origin:vec3<f32>,direction:vec3<f32>,ray_tmax:f32,t0:f32,object:u32,shader:u32)->VhOctree{
+    let root=vh_root(object,shader);
+    var local:VhOctree;local.t=vec2<f32>(t0,bitcast<f32>(0x7f7fffffu));local.scale=VH_MANTISSA_BITS;local.node=load_word(root+12u);
+    local.object=object;local.shader=shader;
+    var P=origin;var D=direction;
+    if((load_word(table_at(G_object_flag,object,SIZE_object_flag))&VH_TRANSFORM_APPLIED)==0u){
+        let itfm=table_at(G_objects,object,SIZE_objects)+O_itfm;P=surface_transform_point(itfm,origin);D=surface_transform_direction(itfm,direction);
+    }
+    if(vh_to_octree(&local,P,D,heap_vec3(root),heap_vec3(root+16u))){vh_voxel_get(&local);local.t.y=vh_voxel_intersect(&local,ray_tmax);}
+    else{local.t.y=ray_tmax;}
+    return local;
+}
+// volume_estimate_extrema's samples: count (1 homogeneous, 4 otherwise), the shading offset, the step.
+struct VlpEstimate {t:vec2<f32>, ext:vec2<f32>, k:u32, n:u32, shade:f32, step:f32, object:u32, shader:u32, homogeneous:bool, resume:u32}
+fn vlp_start(t:vec2<f32>,object:u32,shader:u32,sample:u32,pixel:u32,offset:u32,resume:u32)->VlpEstimate{
+    var e:VlpEstimate;e.t=t;e.object=object;e.shader=shader;e.resume=resume;e.k=0u;
+    e.homogeneous=(load_word(table_at(G_shaders,shader&SHADER_MASK,SIZE_shaders)+SH_flags)&VH_HETEROGENEOUS)==0u;
+    e.n=select(4u,1u,e.homogeneous);e.shade=0.5;
+    if(!e.homogeneous){e.shade=native_rng_pattern(sample,pixel,offset+VH_PRNG_SHADE_OFFSET,2u).y;}
+    e.step=rounded_divide(t.y-t.x,f32(e.n));e.ext=vec2<f32>(bitcast<f32>(0x7f7fffffu),-bitcast<f32>(0x7f7fffffu));return e;
+}
+// t.min + (shade_offset + i) * step_size, the quotient correctly rounded and the sum never contracted (the estimate's
+// positions decide the majorant, whose last bits steer the whole walk).
+fn vlp_shade_t(e:VlpEstimate)->f32{return rounded_add(e.t.x,(e.shade+f32(e.k))*e.step);}
+// One evaluation of the entry (the reduced maxima of its extinction and emission); true when the estimate is complete.
+fn vlp_add(e:ptr<function,VlpEstimate>,sigma_t:vec3<f32>,emission:vec3<f32>)->bool{
+    let v=max(max(sigma_t.x,max(sigma_t.y,sigma_t.z)),max(emission.x,max(emission.y,emission.z)));
+    (*e).ext=vec2<f32>(min((*e).ext.x,v),max((*e).ext.y,v));(*e).k++;
+    if((*e).k<(*e).n){return false;}
+    if(!(*e).homogeneous){(*e).ext.y=max(0.5,(*e).ext.y*1.5);}
+    return true;
+}
+//#endif
 // path_state_rng_scramble (hash_hp_seeded_uint, offset divisible by 4).
 fn vh_scramble(offset:u32,seed:u32)->u32{
     var i=offset^(seed^(seed<<19u));i^=i>>16u;i*=0x21f0aaadu;i^=i>>15u;i*=0xd35a2d97u;i^=i>>15u;return (i^0xe6fe3bebu)&~3u;

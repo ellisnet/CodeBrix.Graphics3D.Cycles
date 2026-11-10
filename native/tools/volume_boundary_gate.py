@@ -60,6 +60,7 @@ def main():
                  ('camera-motion', 'camera', {}),
                  ('state', 'volume_boundary', {}),
                  ('compaction-guard', 'volume_boundary', {'CODEBRIX_VOLUME_COMPACTION_CASE':'1'}),
+                 ('motion-state', 'volume_boundary', {'CODEBRIX_VOLUME_BOUNDARY_MOTION':'3'}),
                  ('world-regression', 'volume', {}),
                  ('single', 'closed_volume_render', {'CODEBRIX_VOLUME_CLOSED_COUNT':'1'}),
                  ('overlap', 'closed_volume_render', {'CODEBRIX_VOLUME_CLOSED_COUNT':'4'}),
@@ -68,7 +69,7 @@ def main():
             status['phase'] = name;save(out/'status.json', status)
             folder = out/name
             env = dict(os.environ)
-            for key in ('CODEBRIX_VOLUME_ABSORPTION_ONLY', 'CODEBRIX_VOLUME_G', 'CODEBRIX_VOLUME_TRACE', 'CODEBRIX_VOLUME_CLOSED_COUNT', 'CODEBRIX_VOLUME_CAMERA_INSIDE', 'CODEBRIX_VOLUME_STACK_TRACE', 'CODEBRIX_VOLUME_COMPACTION_CASE'):
+            for key in ('CODEBRIX_VOLUME_ABSORPTION_ONLY', 'CODEBRIX_VOLUME_G', 'CODEBRIX_VOLUME_TRACE', 'CODEBRIX_VOLUME_CLOSED_COUNT', 'CODEBRIX_VOLUME_CAMERA_INSIDE', 'CODEBRIX_VOLUME_STACK_TRACE', 'CODEBRIX_VOLUME_COMPACTION_CASE', 'CODEBRIX_CYCLES_VOLUME_GATE_REPEAT', 'CODEBRIX_VOLUME_BOUNDARY_MOTION'):
                 env.pop(key, None)
             env.update(settings)
             command = [str(binaries[binary]), str(folder/'run')]+(['--motion'] if name == 'camera-motion' else [])
@@ -86,10 +87,14 @@ def main():
                 assert report['originalCpuVolumeBoundaries'] and report['cases'] == 24
                 assert report['densityInputs'] == 800 and report['malformedCasesRejected'] == 6
                 assert all(report[k] > 0 for k in ('enteredVolumes','exitedVolumes','initializedInside','initializedOutside','initializedOverlap','volumeOnlyBoundaries','glossyReflections','glossyTransmissions'))
+            elif name == 'motion-state':
+                assert report['originalCpuVolumeBoundaries'] and report['cases'] == 9
+                assert report['densityInputs'] == 800 and report['malformedCasesRejected'] == 0
+                assert all(report[k] > 0 for k in ('enteredVolumes','exitedVolumes','initializedInside','initializedOutside','initializedOverlap','volumeOnlyBoundaries','glossyReflections','glossyTransmissions'))
             elif name == 'compaction-guard':
                 assert report['malformedCasesRejected'] == 1 and report['cases'] == 0
             elif name == 'world-regression':
-                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 75 and report['invalidCasesRejected'] == 18
+                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 90 and report['invalidCasesRejected'] == 18
             else:
                 assert report['independentCpuImage'] and report['repeatBitwiseIdentical']
                 assert report['volumeTransmitEvents'] > 0 and report['volumeScatterEvents'] > 0
@@ -104,7 +109,7 @@ def main():
             assert max(errors) > .01 and sum(e > .001 for e in errors) > 100, 'Volume controls had no measurable image effect'
             differences[a+'-'+b] = {'maximumAbsoluteDifference':max(errors), 'meanAbsoluteDifference':sum(errors)/len(errors), 'componentsAboveOneMilliunit':sum(e > .001 for e in errors)}
         save(out/'image-controls.json', differences)
-        status.update(complete=True, passed=True, phase='complete', scope='Static closed homogeneous triangle volumes: native density preparation, entry/exit, stack initialization and aggregation, camera inside/outside, nested and overlapping media. Moving boundaries and mixed-anisotropy duplicate compaction remain unsupported.')
+        status.update(complete=True, passed=True, phase='complete', scope='Closed homogeneous triangle volumes: native density preparation, entry/exit, stack initialization and aggregation, camera inside/outside, nested and overlapping media; static media beside moving and deforming surfaces, moving media (object motion) and deforming media (motion triangles) at the time of each path. Mixed-anisotropy duplicate compaction remains unsupported.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

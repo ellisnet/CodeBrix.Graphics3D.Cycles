@@ -65,32 +65,42 @@ std::string volume_source(){
   source<<"//#endif\n";
   // svm_world's background_light_clamp_dD (LIGHT_BACKGROUND, wavefront_svm.wgsl) sits in the shared SVM text.
   source<<"//#if LIGHT_BACKGROUND\n";constant("D_background_map_dD",offsetof(KernelData,background.map_dD));source<<"//#endif\n";
-  return svm_surface_source()+source.str()+volume_light_layout()+shadow_catcher_layout()+volume_fragment;
+  // Light linking (LIGHT_LINKING): a medium's emission is seen by the rays whose receiver it lights (light_link_object_match).
+  source<<"//#if LIGHT_LINKING\n";constant("VLL_O_receiver_light_set",offsetof(KernelObject,receiver_light_set));
+  constant("VLL_O_light_set_membership",offsetof(KernelObject,light_set_membership));constant("VLL_LINK_SET_MAX",LIGHT_LINK_SET_MAX);source<<"//#endif\n";
+  return svm_volume_source()+source.str()+volume_light_layout()+shadow_catcher_layout()+volume_fragment;
 }
 // Bounded static homogeneous media: density preparation, stack boundaries, HG transport, the volume
 // scattering probability guidance (with its film passes and filters), and direct light from point, sun and
 // background lights with distance, equiangular and MIS scatter sampling, shadows through the media
 // (VOLUME_LIGHT, VOLUME_SHADOW), spot, area and triangle lights in volume direct light (VOLUME_LIGHT_SHAPES),
 // the light tree's volume segments (VOLUME_LIGHT_TREE), light passes (VOLUME_LIGHT_PASSES), heterogeneous media and
-// biased ray marching. Any scene motion remains refused.
+// biased ray marching, in scenes with camera, object and deformation motion (VOLUME_MOTION).
 // Mixed-anisotropy duplicate closure compaction is rejected in WGSL before state/film mutation.
 void WebGPUDevice::validate_volume() const{
   if(!(data.kernel_features&KERNEL_FEATURE_VOLUME))return;
-  require(!data.bvh.have_motion,"WebGPU volumes with motion blur not implemented");
+  // Motion blur (VOLUME_MOTION regions, pipelines.h SF_VOLUME_MOTION): the stack initialization traverses moving instances and
+  // motion triangles at the ray's time (bvh/volume_all.h, BVH_MOTION) with the boundary normals at that time, and every volume
+  // shader evaluation takes its stack entry's object motion transforms (volume_shader_eval_entry). Not ported: velocity-advected
+  // volumes (volume_shader_motion_blur, SD_OBJECT_HAS_VOLUME_MOTION).
+  for(const uint flags:object_flag_records)require(!(flags&SD_OBJECT_HAS_VOLUME_MOTION),"WebGPU volume velocity motion blur not implemented");
   // Malformed stack and closure sizes first (data validity, before the capability refusals below).
   require(data.volume_stack_size>=2&&data.volume_stack_size<=MAX_VOLUME_STACK_SIZE,"Invalid homogeneous volume stack size");
   require(data.max_closures>=1&&data.max_closures<=MAX_CLOSURE,"Invalid homogeneous volume closure capacity");
-  require(!(data.kernel_features&(KERNEL_FEATURE_PATH_GUIDING|KERNEL_FEATURE_DENOISING|KERNEL_FEATURE_LIGHT_LINKING)),"WebGPU optional volume integration features not implemented");
-  for(auto &shader:shader_records)if(shader.flags&SD_HAS_VOLUME){
-    // Heterogeneous volumes (VOLUME_HETEROGENEOUS): the octree's node extrema are the camera-ray densities; a Light
-    // Path node makes Cycles estimate them per segment for other rays (volume_estimate_extrema), not ported.
-    require(!((shader.flags&SD_HETEROGENEOUS_VOLUME)&&(shader.flags&SD_HAS_LIGHT_PATH_NODE)),"WebGPU heterogeneous volume with a Light Path node not implemented");
-  }
+  // Denoising features (FILM_DENOISING): film_write_denoising_features_volume in the three integrators. Light linking
+  // (LIGHT_LINKING): the receivers of the volume direct light, the emission's forward receiver, mis_ray_object at a scatter.
+  // Path guiding is a permanent refusal of the device.
+  require(!(data.kernel_features&KERNEL_FEATURE_PATH_GUIDING),"WebGPU optional volume integration features not implemented");
+  if(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)require(state.path.mis_ray_object,"Missing light linking path state");
+  // Heterogeneous volumes (VOLUME_HETEROGENEOUS): the octree's node extrema are the camera-ray densities; a Light Path node
+  // makes Cycles estimate them per segment for other rays (volume_object_get_extrema, volume_estimate_extrema), for every
+  // stack entry with the node, a homogeneous one too (one sample): VOLUME_LIGHT_PATH.
   auto pass=[&](int offset,int length,bool required){require((!required&&offset==PASS_UNUSED)||(offset>=0&&offset<=data.film.pass_stride-length),"Invalid homogeneous volume film pass");};
   pass(data.film.pass_volume_majorant,1,true);pass(data.film.pass_volume_majorant_sample_count,1,true);
   pass(data.film.pass_volume_scatter_denoised,1,true);pass(data.film.pass_volume_transmit_denoised,1,true);
   pass(data.film.pass_volume_scatter,3,false);pass(data.film.pass_volume_transmit,3,true);
   pass(data.film.pass_volume_direct,3,false);pass(data.film.pass_volume_indirect,3,false);
+  if(data.kernel_features&KERNEL_FEATURE_DENOISING){pass(data.film.pass_denoising_normal,3,false);pass(data.film.pass_denoising_albedo,3,false);}
   if(state.path.render_pixel_index){const size_t count=remaining(uintptr_t(state.path.render_pixel_index))/4;
     for(unsigned slot=0;slot<data.volume_stack_size;slot++){validate(uintptr_t(state.volume_stack[slot].object),count*4);validate(uintptr_t(state.volume_stack[slot].shader),count*4);}}
 }
@@ -101,18 +111,19 @@ void WebGPUDevice::enqueue_volume(int work,const DeviceKernelArguments &args){
     device_ptr address;std::memcpy(&address,args.values[i],sizeof(address));if(address||!nullable)validate(address,4);require(address%4==0,"Unaligned volume pointer");return uint32_t(address);};
   std::array<uint32_t,32> p{};p[1]=n;p[2]=pointer(0,true);p[4]=pointer(1,false);p[17]=error_word;if(p[2])validate(p[2],size_t(n)*4);
   require(data.kernel_features&KERNEL_FEATURE_VOLUME,"Volume kernel without native volume feature");validate_volume();
-  require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL,"WebGPU volume requires tabulated Sobol");
-  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=globals.at("sample_pattern_lut");p[14]=scene_tables();
+  // The sampling pattern (camera.cpp sample_pattern_table): tabulated Sobol's table, or 0 for Sobol-Burley and the blue-noise
+  // patterns, whose samples the volume entries compute (VOLUME_SAMPLING_PATTERN regions, native_rng_pattern).
+  p[6]=constants.at("data");p[7]=constants.at("integrator_state");p[9]=sample_pattern_table("volume");p[14]=scene_tables();
+  require(data.integrator.sampling_pattern==SAMPLING_PATTERN_TABULATED_SOBOL||(shader_features()&SF_VOLUME_SAMPLING_PATTERN).any(),"Volume sampling pattern without its specialization");
   p[18]=globals.at("shaders");p[19]=uint32_t(remaining(p[18])/sizeof(KernelShader));p[20]=(data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)!=0;
   p[21]=globals.at("svm_nodes");p[22]=uint32_t(remaining(p[21])/4);
-  const unsigned sequence=data.integrator.tabulated_sobol_sequence_size;require(sequence>1&&(sequence&(sequence-1))==0,"Invalid volume Sobol sequence size");
-  validate(p[9],size_t(sequence)*NUM_TAB_SOBOL_PATTERNS*NUM_TAB_SOBOL_DIMENSIONS*4);
   p[10]=uint32_t(remaining(uintptr_t(state.path.render_pixel_index))/4);p[11]=uint32_t(remaining(p[4])/4);
   require(data.film.pass_stride>0&&p[11]>=uint32_t(data.film.pass_stride),"Volume film smaller than one pixel");
   if(!p[2])require(uint32_t(n)<=p[10],"Volume dispatch exceeds path capacity");
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
-#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES))validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
+#define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES)||\
+  ((data.kernel_features&KERNEL_FEATURE_DENOISING)&&feature==KERNEL_FEATURE_DENOISING)||((data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING)&&feature==KERNEL_FEATURE_LIGHT_LINKING))validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)
@@ -201,9 +212,18 @@ void WebGPUDevice::enqueue_volume(int work,const DeviceKernelArguments &args){
     p[24]=volume_light_records;p[28]=volume_light_records+uint32_t(size_t(n)*volume_light_record_bytes);
   }
   if(light_stage){
+    // Background light portals (BACKGROUND_PORTAL): the background light's sample with the portal strategy runs in
+    // shade_volume_light_background before shade_volume_light, whose module variant leaves it pending
+    // (SF_BACKGROUND_SAMPLE_ENTRY), as the surface light entries do (compile envelope).
+    const bool background_stage=(shader_features()&SF_BACKGROUND_PORTAL).any();
     if(!pipeline_current(volume_segment,"shade_volume_segment")||!pipeline_current(volume_light,"shade_volume_light")){
+      if(background_stage){
+        auto built=build_pipelines("surface",surface_source(),{"shade_volume_segment","shade_volume_light","shade_volume_light_background"},SF_BACKGROUND_SAMPLE_ENTRY);
+        volume_segment=std::move(built[0]);volume_light=std::move(built[1]);volume_light_background=std::move(built[2]);
+      }else{
       auto built=build_pipelines("surface",surface_source(),{"shade_volume_segment","shade_volume_light"});
-      volume_segment=std::move(built[0]);volume_light=std::move(built[1]);
+      volume_segment=std::move(built[0]);volume_light=std::move(built[1]);volume_light_background={};
+      }
     }
     if(data.integrator.use_light_tree&&!pipeline_current(volume_tree_select,"shade_volume_tree_select"))
       volume_tree_select=std::move(build_pipelines("surface",surface_source(),{"shade_volume_tree_select"})[0]);
@@ -223,6 +243,7 @@ void WebGPUDevice::enqueue_volume(int work,const DeviceKernelArguments &args){
     if(heterogeneous)dispatch(p,uint32_t(work),volume_heterogeneous,workgroup("shade_volume_heterogeneous"));
   }
   if(triangle_light_stage)dispatch(p,uint32_t(work),volume_light_triangle,workgroup("shade_volume_light_triangle"));
+  if(light_stage&&volume_light_background.value)dispatch(p,uint32_t(work),volume_light_background,workgroup("shade_volume_light_background"));
   if(light_stage)dispatch(p,uint32_t(work),volume_light,workgroup("shade_volume_light"));
   if(phase_stage)dispatch(p,uint32_t(work),volume_phase,workgroup("shade_volume_phase"));
   split_shadow_catcher(p[10]);

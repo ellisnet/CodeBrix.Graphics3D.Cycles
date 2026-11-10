@@ -73,7 +73,7 @@ def main():
             status['phase'] = name;save(out/'status.json', status)
             folder = out/name
             env = dict(os.environ)
-            for key in ('CODEBRIX_VOLUME_ABSORPTION_ONLY', 'CODEBRIX_VOLUME_G', 'CODEBRIX_VOLUME_TRACE'):
+            for key in ('CODEBRIX_VOLUME_ABSORPTION_ONLY', 'CODEBRIX_VOLUME_G', 'CODEBRIX_VOLUME_TRACE', 'CODEBRIX_CYCLES_VOLUME_GATE_REPEAT'):
                 env.pop(key, None)
             env.update(settings)
             command = [str(binaries[binary]), str(folder/'run')]
@@ -93,7 +93,7 @@ def main():
             assert report['passed'] and report['cyclesAllocationBytesAfterCleanup'] == 0
             assert Path((folder/'run.library.txt').read_text().strip()).resolve() == runtime.resolve()
             if name == 'state':
-                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 75 and report['invalidCasesRejected'] == 18
+                assert report['originalCpuVolumeIntegrator'] and report['cases'] == 90 and report['invalidCasesRejected'] == 18
                 assert min(report[k] for k in ('scatterEvents', 'transmitEvents', 'terminatedEvents')) > 0
             else:
                 assert report['independentCpuImage'] and report['repeatBitwiseIdentical']

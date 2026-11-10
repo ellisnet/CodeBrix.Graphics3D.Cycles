@@ -214,6 +214,21 @@ emissive medium and the Rayleigh, Draine, Fournier-Forand and Mie (two droplet s
 The same box with noise density and biased ray marching (`heterogeneous-*`, `ray-marching-*`), spot, area and
 mesh lights (`scatter-spot`, `scatter-area*`, `scatter-mesh-light`, `heterogeneous-spot`), the light tree
 (`tree-*`), the volume light passes (`passes-*`) and shadow catchers inside or behind the media (`catcher-*`).
+`author_volumes_b.py` (`--check`) writes more of `scenes/volumes/` from those scenes: the sampling patterns other than
+tabulated Sobol (`sobol-burley-*`, `blue-noise-*`), Open Image Denoise (`denoise-*`, judged as `scenes/denoise/`), light
+linking (`linking-*`), a Light Path node in the media (`light-path-*`), the heterogeneous box lit only by the world
+(`heterogeneous-world`) and BSDF nodes in the medium's Volume socket (`bsdf-in-volume`).
+`author_volumes_motion.py` (`--check`) writes the motion blur scenes there (`motion-*`): a static medium in a scene with
+camera motion beside a moving and a deforming surface object, a moving heterogeneous medium seen from outside, and a
+moving and a deforming scattering medium around the camera.
+
+## World scenes (`scenes/world/`)
+
+`author_world.py` (`--check`) writes `scenes/world/`: the sampling family's room with a window in the ceiling under a Sky
+Texture world sampled through a background light: background light portals (`portal-*`: over the window and at the open
+side, with and without the importance map, with the light tree, with sun guiding, and over the homogeneous and
+heterogeneous medium boxes), two background light objects (`two-background-lights*`) and the Ray Portal BSDF on a panel
+in front of the spheres (`ray-portal*`).
 
 ## Denoising scenes (`scenes/denoise/`)
 
@@ -265,7 +280,21 @@ on (`huang-default-shadows-thick`) and the model on triangles.
 `author_subsurface.py` (`--check`) writes `scenes/subsurface/`: the sampling family's room whose middle (and right)
 spheres carry subsurface materials: the Principled BSDF's random walk, skin, wax (forward anisotropy) and marble-like
 (half subsurface, backward anisotropy, a zero radius channel) settings and the Subsurface Scattering node with the
-random walk, legacy random walk and skin methods.
+random walk, legacy random walk and skin methods. `author_subsurface_disk.py` (`--check`) adds the Christensen-Burley
+method there: on the Principled BSDF, on the node beside a random walk node, with the Sobol-Burley pattern, and with
+points in the scene and carrying a Burley closure. `author_subsurface_thin.py` (`--check`) adds thin-walled Principled
+spheres there: diffuse and translucent, Oren-Nayar and rough translucent closures, with transmission and a coat, and the
+Christensen-Burley method selected on a thin wall.
+
+## Bake scenes (`scenes/bake/`)
+
+`author_bake.py` (`--check`) writes `scenes/bake/`: texture bakes in the sampling family's room, the target a textured,
+UV-mapped sphere (or the floor). A bake scene's `render` block names the bake, `"bake": {"object": HANDLE, "type": NAME,
+"flags": ["use_camera", "include_albedo"], "uv": NAME, "aov": NAME}`; the runner then calls `cbc_host_bake` at the
+render's size and samples for every repeat, and each `film-N.f32` holds the bake, `filmComponents` floats per pixel
+(meta.json), row 0 at v = 0. Every bake type the host exposes, the two flags, a named vertex-domain UV layout, an
+instanced target, the AOVs, adaptive sampling, denoising and a shadow catcher target. `compare.py` judges bake films
+like render films, per component; `--previews` handles RGBA render films only.
 
 ## Run, compare and bundle
 

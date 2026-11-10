@@ -27,6 +27,7 @@ std::string background_layout(){
   DATA(background,use_mis);DATA(background,map_res_x);DATA(background,map_res_y);DATA(background,map_weight);
   DATA(background,portal_weight);DATA(background,sun_weight);DATA(background,map_dD);
   source<<"//#if BACKGROUND_SUN\n";DATA(background,sun);source<<"//#endif\n";
+  source<<"//#if BACKGROUND_PORTAL\n";DATA(integrator,num_portals);DATA(integrator,portal_offset);source<<"//#endif\n";
 #undef DATA
   constant("O_lightgroup",offsetof(KernelObject,lightgroup));
   constant("SH_constant_emission",offsetof(KernelShader,constant_emission));
@@ -117,7 +118,7 @@ void WebGPUDevice::enqueue_background(int work,const DeviceKernelArguments &args
   // Light tree: light_tree_forward writes each path's forward tree pdfs (the
   // background light, then every MIS sun; or the lamp hit) before the entry reads them.
   if((shader_features()&SF_LIGHT_TREE).any()){
-    uint32_t slots=1;for(const KernelLight &light:light_records)slots+=light.type==LIGHT_SUN&&(light.shader_id&SHADER_USE_MIS);
+    uint32_t slots=1;for(const KernelLight &light:lamp_records())slots+=light.type==LIGHT_SUN&&(light.shader_id&SHADER_USE_MIS);
     const size_t needed=size_t(p[10])*slots*sizeof(float);
     if(needed>light_tree_forward_bytes){
       if(light_tree_forward_scratch){flush();release(light_tree_forward_scratch);light_tree_forward_scratch=0;light_tree_forward_bytes=0;}

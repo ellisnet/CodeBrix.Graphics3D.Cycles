@@ -58,9 +58,9 @@ void WebGPUDevice::validate_mnee() const{
   // (last-bit differences that the walk amplifies); moving and deforming receivers and deforming casters render.
   for(const uint flags:object_flag_records)
     require(!((flags&SD_OBJECT_CAUSTICS_CASTER)&&(flags&SD_OBJECT_MOTION)),"WebGPU MNEE with a moving caustic caster (object motion blur) not implemented");
-  for(const KernelLight &light:light_records)if(light.use_caustics)
+  for(const KernelLight &light:lamp_records())if(light.use_caustics)
     require(light.type==LIGHT_POINT||light.type==LIGHT_SUN,"WebGPU MNEE caustics from spot, area or background lights not implemented");
-  for(const KernelLight &light:light_records)if(light.use_caustics&&uint(light.shader_id&SHADER_MASK)<shader_records.size())
+  for(const KernelLight &light:lamp_records())if(light.use_caustics&&uint(light.shader_id&SHADER_MASK)<shader_records.size())
     require(shader_records[light.shader_id&SHADER_MASK].flags&SD_HAS_CONSTANT_EMISSION,"WebGPU MNEE caustics from a light with an emission shader that is not constant not implemented");
 }
 void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){

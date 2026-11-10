@@ -428,11 +428,45 @@ int run(int argc, char **argv) {
   struct PassFilm { std::string name, type; uint32_t components = 0; bool written = false; std::vector<std::vector<float>> films; };
   std::vector<PassFilm> pass_films;
   std::string arithmetic;
+  // A bake scene ("render": {"bake": {"object": HANDLE, "type": NAME, "flags": [...], "uv": NAME, "aov": NAME}}): each repeat
+  // is a cbc_host_bake of the object's UV layout at the render size and samples; its film has the bake's components per pixel.
+  const Json *bake = render.find("bake");
+  uint32_t film_components = 4;
+  std::string bake_json;
   try {
     if (auto images = scene.find("images")) for (auto &image : images->items) loader.image(image);
     for (auto &entry : scene.at("nodes").items) loader.entry(entry);
     CBCRenderConfig render_config = {sizeof(render_config), width, height, samples, {0}};
-    for (uint32_t i = 0; i < repeats; ++i) {
+    if (bake) {
+      static const char *const types[] = {"combined", "emission", "background", "ao", "diffuse", "diffuse_direct", "diffuse_indirect", "diffuse_color",
+        "glossy", "glossy_direct", "glossy_indirect", "glossy_color", "transmission", "transmission_direct", "transmission_indirect", "transmission_color",
+        "position", "normal", "uv", "roughness", "object_id", "material_id", "depth", "mist", "aov_color", "aov_value"};
+      static_assert(std::size(types) == CBC_BAKE_AOV_VALUE - CBC_BAKE_COMBINED + 1, "Bake type names");
+      const std::string type = bake->at("type").string();
+      const auto found = std::find_if(std::begin(types), std::end(types), [&](const char *name) { return type == name; });
+      if (found == std::end(types)) fail("Unknown bake type " + type);
+      uint32_t flags = 0;
+      std::string flag_json;
+      if (auto list = bake->find("flags")) for (auto &flag : list->items) {
+        flags |= flag.string() == "use_camera" ? uint32_t(CBC_BAKE_USE_CAMERA) : flag.string() == "include_albedo" ? uint32_t(CBC_BAKE_INCLUDE_ALBEDO) : (fail("Unknown bake flag " + flag.string()), 0u);
+        flag_json += (flag_json.empty() ? "" : ", ") + oracle::json_quote(flag.string());
+      }
+      const std::string uv = bake->find("uv") ? bake->at("uv").string() : std::string(), aov = bake->find("aov") ? bake->at("aov").string() : std::string();
+      CBCBakeConfig bake_config = {sizeof(bake_config), width, height, samples, uint32_t(CBC_BAKE_COMBINED + (found - std::begin(types))), flags, {0},
+                                   loader.node(bake->at("object").string()), uv.empty() ? nullptr : uv.c_str(), aov.empty() ? nullptr : aov.c_str(), 0};
+      uint64_t required = 0;
+      if (const int status = cbc_host_bake(host, &bake_config, nullptr, 0, &required, &film_components); status != CBC_SMALL_BUFFER) check(status, "cbc_host_bake (size)");
+      for (uint32_t i = 0; i < repeats; ++i) {
+        std::vector<float> film(static_cast<size_t>(required));
+        auto start = std::chrono::steady_clock::now();
+        check(cbc_host_bake(host, &bake_config, film.data(), film.size(), &required, &film_components), "cbc_host_bake");
+        seconds.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());
+        films.push_back(std::move(film));
+      }
+      bake_json = ",\n  \"bake\": {\"object\": " + oracle::json_quote(bake->at("object").string()) + ", \"type\": " + oracle::json_quote(type) +
+                  ", \"flags\": [" + flag_json + "]}";
+    }
+    for (uint32_t i = 0; i < repeats && !bake; ++i) {
       std::vector<float> film(size_t(width) * height * 4);
       auto start = std::chrono::steady_clock::now();
       check(cbc_host_render(host, &render_config, film.data(), film.size()), "cbc_host_render");
@@ -492,7 +526,9 @@ int run(int argc, char **argv) {
        << ",\n  \"repeatMaxAbsDifference\": " << maximum
        << ",\n  \"renderSeconds\": " << list(seconds, [](double s) { std::ostringstream o; o.precision(6); o << s; return o.str(); })
        << ",\n  \"filmSha256\": " << list(hashes, [](const std::string &h) { return "\"" + h + "\""; })
-       << ",\n  \"filmLayout\": \"float32 little-endian RGBA, width*height*4 values, lower-left origin\""
+       << (bake ? ",\n  \"filmComponents\": " + std::to_string(film_components) + bake_json +
+                  ",\n  \"filmLayout\": \"float32 little-endian, width*height*filmComponents values of a bake, row 0 at v = 0\""
+                : std::string(",\n  \"filmLayout\": \"float32 little-endian RGBA, width*height*4 values, lower-left origin\""))
        << (pass_films.empty() ? std::string() : ",\n  \"passes\": [" + passes_json + "\n  ]")
        << ",\n  \"warnings\": []\n}\n";
   std::ofstream(options.output / "meta.json") << meta.str();

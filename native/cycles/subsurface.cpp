@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Jeremy Ellis and contributors
 // SPDX-License-Identifier: Apache-2.0
 // Subsurface scattering on the WebGPU device (wavefront_subsurface.wgsl): the BSSRDF closures, subsurface_bounce in
-// the surface stages, DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE (the random walk, subsurface_scatter) and the
-// diffuse closure at the exit point.
+// the surface stages, DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE (the random walk and the Christensen-Burley disk,
+// subsurface_scatter) and the diffuse closure at the exit point.
 #include "device.h"
 #include "wavefront.h"
 #include "kernel/bvh/types.h"
@@ -25,6 +25,11 @@ std::string subsurface_layout(){
   constant("SS_MAX_BOUNCES",BSSRDF_MAX_BOUNCES);
   // SUBSURFACE_RANDOM_WALK_SIMILARITY_LEVEL (integrator/subsurface_random_walk.h, a local define).
   constant("SS_SIMILARITY_LEVEL",9);
+  source<<"//#endif\n";
+  // Christensen-Burley (integrator/subsurface_disk.h): the disk path flag, the disk entry's dimensions and BSSRDF_MAX_HITS.
+  source<<"//#if SUBSURFACE_DISK\n";constant("SS_PATH_RAY_SUBSURFACE_DISK",PATH_RAY_SUBSURFACE_DISK);
+  source<<"//#endif\n//#if SUBSURFACE_DISK_ENTRY\n";
+  constant("SS_PRNG_DISK",PRNG_SUBSURFACE_DISK);constant("SS_PRNG_DISK_RESAMPLE",PRNG_SUBSURFACE_DISK_RESAMPLE);constant("SS_MAX_HITS",BSSRDF_MAX_HITS);
   source<<"//#endif\n";
   return source.str();
 }
@@ -93,5 +98,12 @@ void WebGPUDevice::enqueue_subsurface(int work,const DeviceKernelArguments &args
   if(!pipeline_current(subsurface_walk,"intersect_subsurface",unused))
     subsurface_walk=std::move(build_pipelines("surface",surface_source(),{"intersect_subsurface"},SF_SUBSURFACE_ENTRY,unused)[0]);
   dispatch(p,uint32_t(n),subsurface_walk,workgroup("intersect_subsurface"));
+  // Christensen-Burley paths (PATH_RAY_SUBSURFACE_DISK): the disk entry, after the walk's entry, which passes them over
+  // (each entry reads only its own paths; both keep the path order and the queue and sort counters are atomic sums).
+  if((shader_features()&SF_SUBSURFACE_DISK).any()){
+    if(!pipeline_current(subsurface_disk,"intersect_subsurface_disk",unused))
+      subsurface_disk=std::move(build_pipelines("surface",surface_source(),{"intersect_subsurface_disk"},SF_SUBSURFACE_DISK_ENTRY,unused)[0]);
+    dispatch(p,uint32_t(n),subsurface_disk,workgroup("intersect_subsurface_disk"));
+  }
 }
 }

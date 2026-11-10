@@ -112,7 +112,8 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
 #define KERNEL_STRUCT_MEMBER(parent,type,name,feature) if(feature==KERNEL_FEATURE_PATH_TRACING||((data.kernel_features&KERNEL_FEATURE_LIGHT_PASSES)&&feature==KERNEL_FEATURE_LIGHT_PASSES)||\
-  ((data.kernel_features&KERNEL_FEATURE_DENOISING)&&feature==KERNEL_FEATURE_DENOISING))validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
+  ((data.kernel_features&KERNEL_FEATURE_DENOISING)&&feature==KERNEL_FEATURE_DENOISING)||((data.kernel_features&KERNEL_FEATURE_NODE_PORTAL)&&feature==KERNEL_FEATURE_NODE_PORTAL))\
+  validate(uintptr_t(state.parent.name),size_t(p[10])*sizeof(type));
 #define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent,type,name,feature)
 #define KERNEL_STRUCT_END(name)
@@ -191,8 +192,9 @@ void WebGPUDevice::enqueue_surface(int work,const DeviceKernelArguments &args,De
   const bool select_stage=(shader_features()&SF_LIGHT_SELECT).any();
   // With sun guiding (BACKGROUND_SUN) the background light's sample is one more entry,
   // shade_surface_light_background, after shade_surface_light (SF_BACKGROUND_SAMPLE_ENTRY,
-  // pipelines.h): the light entries come from the module variant with that bit.
-  const bool background_stage=(shader_features()&SF_BACKGROUND_SUN).any();
+  // pipelines.h): the light entries come from the module variant with that bit. So does a scene with background light
+  // portals (BACKGROUND_PORTAL), whose portal strategy kept shade_surface_light at 70,635 Intel instructions.
+  const bool background_stage=(shader_features()&(SF_BACKGROUND_SUN|SF_BACKGROUND_PORTAL)).any();
   const ShaderFeatures light_variant=background_stage?SF_BACKGROUND_SAMPLE_ENTRY:SF_NONE;
   if(sample_stage&&(!pipeline_current(surface_sample,"shade_surface_sample")||!surface_sample.value))
     surface_sample=std::move(build_pipelines("surface",surface_source(),{"shade_surface_sample"})[0]);

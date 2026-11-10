@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Texture baking on the CPU backends through the C ABI, against known results.
+"""Texture baking through the C ABI, against known results, on the CPU backends and on the WebGPU device.
 
 Every expected value here is derived by hand or computed independently of the
 library: the bake map by exact rational arithmetic from the UVs, surface values
@@ -11,7 +11,14 @@ emissive box from the geometric series of its bounces). A result compared only
 against itself proves nothing, so the bit-identical checks are limited to the
 scene-edit cases, whose reference is a new host that never baked.
 
-Usage: bake_gate.py --output DIR [--library PATH] [--case SUBSTRING]
+The WebGPU half: --backend webgpu runs every known-result case on the WebGPU device (the cases that are about
+the CPU backends themselves are left out and listed), and the case webgpu_matches_cpu_every_type bakes every
+bake type the host exposes on the WebGPU device and on the CPU reference backend from the same scene, judged
+per value by the practical criterion (strict reported). On the WebGPU device the scene-edit cases compare
+renders by the practical criterion instead of bit for bit: its film adds in atomic order (the known run-to-run
+family), so two renders of one scene need not be bit-identical there.
+
+Usage: bake_gate.py --output DIR [--library PATH] [--case SUBSTRING] [--backend cpu|webgpu]
 Exit code 0 only when every case passes; status.json holds the verdict.
 """
 import argparse
@@ -32,6 +39,10 @@ OK, INVALID, UNSUPPORTED, FAILED, CANCELLED, NOT_READY, SMALL_BUFFER = range(7)
 os.environ['CODEBRIX_CYCLES_PIPELINE_CACHE'] = 'off'
 
 CPU_REFERENCE, CPU_EMBREE, WEBGPU = 2, 5, 1
+# The backend of every Scene() that names none (--backend).
+BACKEND = CPU_REFERENCE
+# Cases about the CPU backends themselves, left out of the WebGPU half.
+CPU_ONLY = {'embree_backend_agrees', 'repeatable_across_threads'}
 BAKE = {name: i + 1 for i, name in enumerate(
     ('combined emission background ao diffuse diffuse_direct diffuse_indirect diffuse_color glossy glossy_direct glossy_indirect glossy_color '
      'transmission transmission_direct transmission_indirect transmission_color position normal uv roughness object_id material_id depth mist aov_color aov_value').split())}
@@ -84,8 +95,8 @@ def floats(values): return (C.c_float * len(values))(*values)
 class Scene:
     """One host. Worlds are black and integrators deterministic unless a case says otherwise."""
 
-    def __init__(self, backend=CPU_REFERENCE):
-        config = HostConfig(C.sizeof(HostConfig), 1, backend, 4)
+    def __init__(self, backend=None):
+        config = HostConfig(C.sizeof(HostConfig), 1, BACKEND if backend is None else backend, 4)
         self.h = C.c_uint64()
         check(L.cbc_host_create(C.byref(config), C.byref(self.h)))
         self.h = self.h.value
@@ -759,6 +770,12 @@ def fresh_render(edit=None):
 def bits(values): return struct.pack(f'{len(values)}f', *values)
 
 
+def same(actual, expected, message):
+    """Bit for bit on the CPU backends; on the WebGPU device (atomic film order) by the practical criterion."""
+    if BACKEND == WEBGPU: compare(actual, expected, message)
+    else: require(bits(actual) == bits(expected), message)
+
+
 EDITS = dict(
     transform=lambda s, n: s.set(n['obj'], 'tfm', *T2),
     material=lambda s, n: s.set(n['value'], 'value', .1, .6, .3),
@@ -777,15 +794,15 @@ def render_after_bake_is_untouched():
     with Scene() as s:
         n = edit_scene(s)
         s.bake(n['obj'], 'combined', W, H, 4)
-        require(bits(s.render(32, 24, 8)) == bits(reference), 'bake, render differs from a new host')
+        same(s.render(32, 24, 8), reference, 'bake, render differs from a new host')
         rows.append('bake, render')
     with Scene() as s:
         n = edit_scene(s)
         first = s.render(32, 24, 8)
-        require(bits(first) == bits(reference), 'first render differs')
+        same(first, reference, 'first render differs')
         s.bake(n['obj'], 'position', W, H)
         s.bake(n['obj'], 'emission', W, H, 4)
-        require(bits(s.render(32, 24, 8)) == bits(reference), 'render, bake, render differs from a new host')
+        same(s.render(32, 24, 8), reference, 'render, bake, render differs from a new host')
         rows.append('render, bake, render')
     return rows
 
@@ -800,7 +817,7 @@ def edit_after_bake():
             n = edit_scene(s)
             s.bake(n['obj'], 'combined', W, H, 4)
             edit(s, n)
-            require(bits(s.render(32, 24, 8)) == bits(reference), f'{name}: bake, edit, render differs from a new host')
+            same(s.render(32, 24, 8), reference, f'{name}: bake, edit, render differs from a new host')
         rows.append(name)
     # The baked object deleted: nothing of the bake refers to it any more.
     reference = fresh_render(lambda s, n: check(L.cbc_host_delete_node(s.h, n['obj'])))
@@ -808,7 +825,7 @@ def edit_after_bake():
         n = edit_scene(s)
         s.bake(n['obj'], 'combined', W, H, 4)
         check(L.cbc_host_delete_node(s.h, n['obj']))
-        require(bits(s.render(32, 24, 8)) == bits(reference), 'bake, delete, render differs from a new host')
+        same(s.render(32, 24, 8), reference, 'bake, delete, render differs from a new host')
     rows.append('deleted')
     with Scene() as s:
         n = edit_scene(s)
@@ -849,9 +866,9 @@ def caller_passes_do_not_change_a_bake():
         combined = s.bake(n['obj'], 'combined', W, H, 1)
         require(any(v != 0.0 for v in combined), 'the Combined bake is empty')
         require(s.pass_floats('P')[0] == NOT_READY, 'a bake must clear the last render results')
-        require(bits(s.render(32, 24, 8)) == bits(reference), 'render after bakes with caller passes differs from a new host')
-        require(bits(s.pass_floats('P')[1]) == bits(reference_position), 'the caller position pass differs after bakes')
-        require(bits(s.pass_floats('Group')[1]) == bits(reference_group), 'the caller light group pass differs after bakes')
+        same(s.render(32, 24, 8), reference, 'render after bakes with caller passes differs from a new host')
+        same(s.pass_floats('P')[1], reference_position, 'the caller position pass differs after bakes')
+        same(s.pass_floats('Group')[1], reference_group, 'the caller light group pass differs after bakes')
     return rows
 
 
@@ -1010,27 +1027,131 @@ def refusals_and_size_queries():
         return 'all refused by name'
 
 
+def type_scene(s):
+    """Every bake type has something to read: a lit, shadowed, textured mix of diffuse, glossy and refraction with AOVs, ids and a camera."""
+    s.world(.3, .35, .45)
+    shader = s.create('shader'); mix = s.node(shader, 'mix_closure'); mix2 = s.node(shader, 'mix_closure')
+    diffuse = s.node(shader, 'diffuse_bsdf'); glossy = s.node(shader, 'glossy_bsdf'); refraction = s.node(shader, 'refraction_bsdf')
+    checker = s.node(shader, 'checker_texture'); coordinate = s.node(shader, 'texture_coordinate')
+    s.set(checker, 'scale', 3.0); s.set(checker, 'color1', .8, .3, .2); s.set(checker, 'color2', .2, .5, .7)
+    s.link(coordinate, 'UV', checker, 'Vector'); s.link(checker, 'Color', diffuse, 'Color')
+    s.set(glossy, 'color', .7, .7, .6); s.set(glossy, 'roughness', .3); s.set(refraction, 'color', .5, .6, .8); s.set(refraction, 'roughness', .2); s.set(refraction, 'IOR', 1.4)
+    s.set(mix, 'fac', .35); s.set(mix2, 'fac', .25)
+    s.link(diffuse, 'BSDF', mix, 'Closure1'); s.link(glossy, 'BSDF', mix, 'Closure2')
+    s.link(mix, 'Closure', mix2, 'Closure1'); s.link(refraction, 'BSDF', mix2, 'Closure2'); s.link(mix2, 'Closure', s.output(shader), 'Surface')
+    aov = s.node(shader, 'aov_output'); s.string(aov, 'name', 'Mine'); s.link(checker, 'Color', aov, 'Color')
+    aov_value = s.node(shader, 'aov_output'); s.string(aov_value, 'name', 'Mine Value'); s.link(checker, 'Fac', aov_value, 'Value')
+    s.string(shader, 'emission_sampling_method', 'none'); s.ints(shader, 'pass_id', 9)
+    for kind, name in (('aov_color', 'Mine'), ('aov_value', 'Mine Value')):
+        p = s.create('pass'); s.string(p, 'type', kind); s.string(p, 'name', name)
+    sun = s.create('sunlight'); s.nodes(sun, 'used_shaders', s.emission((1, 1, 1))); s.set(sun, 'strength', 2.0, 2.0, 2.0); s.set(sun, 'angle', .1)
+    s.object(sun, (1., 0., 0., 0., 0., f32(math.cos(.5)), f32(-math.sin(.5)), 0., 0., f32(math.sin(.5)), f32(math.cos(.5)), 0.))
+    s.set(s.camera, 'matrix', -1., 0., 0., .5, 0., 1., 0., -.5, 0., 0., -1., 6.)
+    s.set(s.film, 'mist_start', 1.0); s.set(s.film, 'mist_depth', 8.0)
+    s.ints(s.integrator, 'max_bounce', 3)
+    m = s.mesh(shader, QUAD, QUAD_TRIANGLES, QUAD_UV); o = s.object(m); s.ints(o, 'pass_id', 7)
+    blocker = s.mesh(s.diffuse((.4, .4, .4)), (-50., -50., 2., 0., -50., 2., 0., 50., 2., -50., 50., 2.), QUAD_TRIANGLES)
+    s.object(blocker)
+    return o
+
+
 @case
-def webgpu_refuses_by_name():
-    """On the WebGPU device a bake is refused with a message that says so, and never falls back. The map itself needs no device."""
+def webgpu_matches_cpu_every_type():
+    """Every bake type the host exposes, baked on the WebGPU device and on the CPU reference backend from the same scene: per value the practical criterion (strict reported); with the camera view and with albedo; the map is the same on both hosts."""
     resolved = C.c_uint32()
     if L.cbc_host_resolve_backend(WEBGPU, C.byref(resolved)) != OK:
         return 'not compiled'
     try:
-        s = Scene(WEBGPU)
+        gpu = Scene(WEBGPU)
     except RuntimeError as error:
         return f'no WebGPU device here: {error}'
-    with s:
-        _, o = quad_scene(s, s.diffuse((.5, .5, .5)))
-        values = (C.c_float * (W * H * 4))(); required, components = C.c_uint64(), C.c_uint32()
+    rows = []
+    with gpu, Scene(CPU_REFERENCE) as cpu:
+        a, b = type_scene(cpu), type_scene(gpu)
+        require(gpu.map(b, W, H) == cpu.map(a, W, H), 'the map differs on the WebGPU host')
+        for kind in BAKE:
+            aov = {'aov_color': 'Mine', 'aov_value': 'Mine Value'}.get(kind)
+            variants = [(0, 16)] + ([(USE_CAMERA, 8)] if kind in ('combined', 'glossy', 'normal') else []) + ([(INCLUDE_ALBEDO, 8)] if kind in ('diffuse', 'glossy_direct', 'transmission') else [])
+            for flags, samples in variants:
+                expected = cpu.bake(a, kind, W, H, samples, flags, aov=aov)
+                actual = gpu.bake(b, kind, W, H, samples, flags, aov=aov)
+                row = compare(actual, expected, f'{kind} flags {flags}')
+                row.update(type=kind, flags=flags, samples=samples, bitIdentical=sum(struct.pack('f', x) == struct.pack('f', y) for x, y in zip(actual, expected)))
+                rows.append(row)
+    return rows
+
+
+@case
+def deformation_motion():
+    """A mesh with deformation motion under motion blur: the CPU kernel places the texel on the static positions; the WebGPU device refuses the bake by name and writes nothing."""
+    with Scene() as s:
+        s.ints(s.integrator, 'motion_blur', 1); s.set(s.camera, 'shuttertime', .5)
+        m, o = quad_scene(s, s.diffuse((.5, .5, .5)))
+        steps = [c + d for d in (-.2, 0.0, .2) for c in QUAD]
+        check(L.cbc_host_motion_positions(s.h, m, 3, floats(steps), len(steps)))
+        if BACKEND != WEBGPU:
+            return compare(s.bake(o, 'position', W, H), per_pixel(points_for()[0], lambda p: p, 3), 'position under deformation motion')
+        config = s.config(o, 'position', W, H)
+        values = (C.c_float * (W * H * 3))(*([-7.0] * (W * H * 3))); required, components = C.c_uint64(), C.c_uint32()
+        got = L.cbc_host_bake(s.h, C.byref(config), values, W * H * 3, C.byref(required), C.byref(components))
+        message = last_error()
+        require(got == FAILED and 'deformation motion not implemented' in message, f'status {got}: {message}')
+        require(all(v == -7.0 for v in values), 'a refused bake wrote the output')
+        return message
+
+
+@case
+def zero_area_triangle():
+    """A texel on a triangle with no area in 3D but area in UV: the CPU kernel's normal is not a number there (its path ends, Combined reads 0 with alpha 1); the WebGPU device refuses the bake by name and writes nothing, and bakes the other texels of a mesh without it."""
+    xyz = QUAD + (0.5, 0.5, 0.5)
+    tris = QUAD_TRIANGLES + (4, 4, 4)
+    uv = QUAD_UV + (0.9, 0.9, 0.97, 0.9, 0.97, 0.97)
+    with Scene() as s:
+        o = s.object(s.mesh(s.emission((1, 1, 1)), xyz, tris, uv))
+        if BACKEND != WEBGPU:
+            film = s.bake(o, 'combined', W, H, 1)
+            triangles, _ = s.map(o, W, H)
+            hit = [i for i, t in enumerate(triangles) if t == 2]
+            require(hit and all(film[i * 4:i * 4 + 4] == [0.0, 0.0, 0.0, 1.0] for i in hit), 'the CPU texels on the zero-area triangle')
+            return f'CPU: {len(hit)} texels read (0, 0, 0, 1)'
         config = s.config(o, 'combined', W, H)
+        values = (C.c_float * (W * H * 4))(*([-7.0] * (W * H * 4))); required, components = C.c_uint64(), C.c_uint32()
         got = L.cbc_host_bake(s.h, C.byref(config), values, W * H * 4, C.byref(required), C.byref(components))
         message = last_error()
-        require(got == UNSUPPORTED and 'WebGPU device does not bake' in message, f'status {got}: {message}')
-        require(not any(values), 'the output changed')
-        triangles, _ = s.map(o, W, H)
-        require(triangles == exact_map(QUAD_UV, W, H)[0], 'the map differs on the WebGPU host')
+        require(got == FAILED and 'zero-area triangle not implemented' in message, f'status {got}: {message}')
+        require(all(v == -7.0 for v in values), 'a refused bake wrote the output')
+        _, o2 = quad_scene(s, s.emission((1, 1, 1)))
+        compare(s.bake(o2, 'emission', W, H, 1), per_pixel(points_for()[0], lambda p: (1.0, 1.0, 1.0), 3), 'the host bakes after the refusal')
         return message
+
+
+@case
+def zero_area_triangle_normal():
+    """The Normal bake of a zero-area triangle: flat, the CPU kernel writes its not-a-number normal and the host fails the bake ("Nonfinite bake output"), while the WebGPU device refuses it by name before writing; smooth, the interpolated normal is defined and both devices bake it."""
+    xyz = QUAD + (0.5, 0.5, 0.5)
+    tris = QUAD_TRIANGLES + (4, 4, 4)
+    uv = QUAD_UV + (0.9, 0.9, 0.97, 0.9, 0.97, 0.97)
+    rows = []
+    for smooth in (False, True):
+        with Scene() as s:
+            m = s.mesh(s.diffuse((.5, .5, .5)), xyz, tris, uv)
+            if smooth: s.ints(m, 'smooth', 1, 1, 1)
+            o = s.object(m)
+            config = s.config(o, 'normal', W, H)
+            values = (C.c_float * (W * H * 3))(*([-7.0] * (W * H * 3))); required, components = C.c_uint64(), C.c_uint32()
+            got = L.cbc_host_bake(s.h, C.byref(config), values, W * H * 3, C.byref(required), C.byref(components))
+            message = last_error() if got != OK else ''
+            if not smooth:
+                expected = 'Nonfinite bake output' if BACKEND != WEBGPU else 'zero-area triangle not implemented'
+                require(got == FAILED and expected in message and all(v == -7.0 for v in values), f'flat: status {got}: {message}')
+                rows.append(message)
+                continue
+            require(got == OK, f'smooth: status {got}: {message}')
+            triangles, _ = s.map(o, W, H)
+            hit = [i for i, t in enumerate(triangles) if t == 2]
+            require(hit and all(math.isfinite(v) for v in values), 'smooth zero-area texels')
+            rows.append(dict(smoothTexel=list(values[hit[0] * 3:hit[0] * 3 + 3])))
+    return rows
 
 
 @case
@@ -1055,7 +1176,10 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--library', type=Path, default=WORK/'cycles-build/lib/libcodebrix_cycles_host.so')
     parser.add_argument('--case', default='')
+    parser.add_argument('--backend', choices=('cpu', 'webgpu'), default='cpu')
     args = parser.parse_args()
+    global BACKEND
+    BACKEND = WEBGPU if args.backend == 'webgpu' else CPU_REFERENCE
     L = C.CDLL(str(args.library.resolve()))
     L.cbc_host_set_event_callback.argtypes = [C.c_uint64, EVENT, C.c_void_p]
     # Handles are 64-bit: every call passes them explicitly as such.
@@ -1079,6 +1203,7 @@ def main():
                             cbc_host_get_uints=[C.c_uint64, C.c_uint64, C.c_char_p, C.c_void_p, C.c_uint64, C.c_void_p],
                             cbc_host_set_uints=[C.c_uint64, C.c_uint64, C.c_char_p, C.c_void_p, C.c_uint64],
                             cbc_host_delete_node=[C.c_uint64, C.c_uint64],
+                            cbc_host_motion_positions=[C.c_uint64, C.c_uint64, C.c_uint32, C.c_void_p, C.c_uint64],
                             cbc_host_error=[C.c_void_p, C.c_uint64, C.c_void_p],
                             cbc_host_resolve_backend=[C.c_uint32, C.c_void_p],
                             cbc_host_destroy=[C.c_uint64]).items():
@@ -1088,6 +1213,7 @@ def main():
     rows = []
     for function in CASES:
         if args.case not in function.__name__: continue
+        if BACKEND == WEBGPU and (function.__name__ in CPU_ONLY or function.__name__ == 'webgpu_matches_cpu_every_type'): continue
         started = time.time()
         try:
             detail = function(); passed = True
@@ -1097,7 +1223,8 @@ def main():
         rows.append(dict(case=function.__name__, passed=passed, seconds=round(time.time()-started, 2), detail=detail, proves=function.__doc__))
         print(('PASS ' if passed else 'FAIL ') + function.__name__ + f' ({rows[-1]["seconds"]} s)' + ('' if passed else ': ' + str(detail)), flush=True)
     passed = all(r['passed'] for r in rows) and bool(rows)
-    (out/'status.json').write_text(json.dumps(dict(complete=True, passed=passed, cases=len(rows), failed=[r['case'] for r in rows if not r['passed']], rows=rows), indent=1, default=str))
+    (out/'status.json').write_text(json.dumps(dict(complete=True, passed=passed, backend=args.backend, cases=len(rows),
+                                                   leftOut=sorted(CPU_ONLY | {'webgpu_matches_cpu_every_type'}) if BACKEND == WEBGPU else [], failed=[r['case'] for r in rows if not r['passed']], rows=rows), indent=1, default=str))
     return 0 if passed else 1
 
 
