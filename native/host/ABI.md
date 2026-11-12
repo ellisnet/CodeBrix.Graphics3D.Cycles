@@ -356,8 +356,8 @@ pass named `Noisy Image` with `mode` `noisy` beside `Combined`; use one noisy
 request per pass type. In a render without denoising a noisy request reads the
 same values as its twin (Combined, or the other pass of its type). Every other
 pass type is never denoised and its `mode` has no effect. Light group passes
-together with denoising are refused (`CBC_UNSUPPORTED`, "Light group passes
-are not supported together with denoising yet"). After a successful render, `cbc_host_render_passes_json` lists
+are never denoised: with denoising they keep their noisy values beside the
+denoised `Combined`. After a successful render, `cbc_host_render_passes_json` lists
 `name`, `type`, `components` and `written`, and `cbc_host_pass_floats` copies
 one pass (`components` floats per pixel, raw scene-linear values, lower-left
 origin). A render that starts clears earlier results; until a render succeeds

@@ -928,6 +928,11 @@ fn svm_light_path(s:ptr<function,SvmState>,node:u32,index:u32,flag:u32,visibilit
     // The curve shadow transparency kernel's mask has no LIGHT_PATH: depths read as zero; ray depth counts the shadow bounce.
     if(svm_curve_shadow_eval&&kind>=NODE_LP_ray_depth){svm_store(s,svm_byte(node+N_LightPath_out_offset),select(0.0,1.0,kind==NODE_LP_ray_depth));return;}
 //#endif
+//#if SHADER_EVAL_DISPLACE
+    // shader_eval_displace: its node mask (KERNEL_FEATURE_NODE_MASK_DISPLACEMENT) has no LIGHT_PATH and there is no path
+    // state, visibility or flag, so every bounce depth reads zero.
+    if(svm_displace_program&&kind>=NODE_LP_ray_depth){svm_store(s,svm_byte(node+N_LightPath_out_offset),0.0);return;}
+//#endif
 //#if VOLUME_LIGHT_PATH else     if((*s).volume||(kind>=NODE_LP_ray_depth&&(index==NONE||(visibility&PATH_RAY_VISIBILITY_SHADOW)!=0u))){svm_error(s,2u);return;}
     // In a volume shader (VOLUME_LIGHT_PATH) the ray type outputs read the evaluation's visibility and flag as in a surface;
     // backfacing, ray length and the bounce depths stay unsupported there (error 2).

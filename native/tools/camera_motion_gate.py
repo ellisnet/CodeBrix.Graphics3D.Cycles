@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 Jeremy Ellis and contributors
 # SPDX-License-Identifier: Apache-2.0
-"""Native perspective motion: original camera state and independent rendered images."""
+"""Native perspective motion and spherical stereo: original camera state and independent rendered images."""
 import argparse
 import array
 import json
@@ -42,6 +42,9 @@ def main():
         run('camera-static','camera',[]);run('camera-motion','camera',['--motion'])
         assert results['camera-static']['cases']==24 and results['camera-static']['invalidCasesRejected']==12
         assert results['camera-motion']['cameraMotionCases']==24 and results['camera-motion']['invalidCasesRejected']==19
+        # Spherical stereo (left and right eyes, perspective and panoramic cameras) against the CPU camera kernel.
+        run('camera-stereo','camera',['--stereo'])
+        assert results['camera-stereo']['cameraStereoCases']==24 and results['camera-stereo']['invalidCasesRejected']==12
         run('render-static','render',[])
         def film(path):
             data=array.array('f');data.frombytes(path.read_bytes());return data

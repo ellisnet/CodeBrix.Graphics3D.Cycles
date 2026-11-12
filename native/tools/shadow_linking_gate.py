@@ -13,7 +13,7 @@ from device_gate import sha, save
 from render_gate import inputs
 import render_replay
 
-CASES = 13
+CASES = 23
 
 
 def main():
@@ -77,7 +77,8 @@ def main():
         assert source == inputs() and all(sha(Path(name)) == digest for name, digest in pins.items())
         status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
                       scope='Blocker sets, INTERSECT_DEDICATED_LIGHT and SHADE_DEDICATED_LIGHT: lamps, a sun and emissive panels on the flat CDF and on the tree, with an '
-                            'HDRI world, transparent blockers, non-constant emitters, light linking on both samplers, motion (one emitter both moving and deforming too) and a glass receiver, against the original CPU kernels.')
+                            'HDRI world, transparent blockers, non-constant emitters, light linking on both samplers, motion (one emitter both moving and deforming too), a glass receiver, '
+                            'a shadow catcher, fast GI with additive AO and the AO pass, scattering volumes with spot and area lamps and with emissive triangles, on the flat CDF and on the tree, with the volume and light passes, an emissive medium with the emission and light group passes, and scenes without shadow linking after one on the same device (memberships reset, a second scene), against the original CPU kernels.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error))
         raise

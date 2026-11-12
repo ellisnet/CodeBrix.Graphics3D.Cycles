@@ -13,11 +13,12 @@
 >    evidence and must not be recorded as results. (The osx-arm64 Metal
 >    profile loads no WebGPU binary; the rule applies to any WebGPU run made
 >    on this machine.)
-> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
->    .NET libraries and tools in this repository uses the .NET 10 SDK
->    10.0.403 - **absolutely no earlier version**. Check with
->    `dotnet --version` (it must print `10.0.403`) before starting and record
->    the output with the run.
+> 2. **.NET SDK: ONLY version 11.0.100.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 11 SDK
+>    11.0.100 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `11.0.100`) before starting and record
+>    the output with the run. The projects themselves keep targeting
+>    `net10.0`; only the SDK that builds, tests and runs them is 11.0.100.
 > 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
@@ -100,8 +101,8 @@ Machine and toolchain:
   `CMAKE_POLICY_VERSION_MINIMUM=3.5` for the old snapshot minimums).
 - Python 3.
 - zstd (`render_oracles.py --bundle` runs `zstd -19`).
-- The .NET 10 SDK, **version 10.0.403 only** (no earlier version; `dotnet
-  --version` must print `10.0.403`) (the host gate builds `tools/hosttests/HostLifecycle`; the
+- The .NET 11 SDK, **version 11.0.100 only** (no earlier version; `dotnet
+  --version` must print `11.0.100`) (the host gate builds `tools/hosttests/HostLifecycle`; the
   managed tests and package).
 - Homebrew may be installed but must not leak into the build: the recipes
   ignore `/opt/homebrew` and `/usr/local` and fail if a configured cache or

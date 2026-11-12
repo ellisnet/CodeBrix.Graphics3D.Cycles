@@ -12,6 +12,7 @@
 #include "util/progress.h"
 #include "../../prototype/native/demo_camera.h"
 #include <algorithm>
+#include <cfloat>
 #include <bit>
 #include <cmath>
 #include <cstdio>
@@ -79,6 +80,24 @@ static void configure_projection(Scene &scene,const Projection &c){
   camera.set_central_cylindrical_range_v_min(-1.2f);camera.set_central_cylindrical_range_v_max(1.2f);
   camera.compute_auto_viewplane();scene.integrator->set_sampling_pattern(c.pattern);
 }
+// --stereo: spherical stereo (a left or right eye) with the perspective and panoramic cameras, with depth of field, the
+// convergence distance (FLT_MAX: parallel) and pole merge; the orthographic camera ignores the eye offset. Every case
+// produces a ray for every sample (cases 16-23 reserve samples atomically).
+struct Stereo {Projection projection;Camera::StereoEye eye;float interocular,convergence,merge_from,merge_to;};
+static const Stereo stereo_cases[]={
+  {{CAMERA_PERSPECTIVE,PANORAMA_EQUIRECTANGULAR,0,0,0,0,1,0,0,SAMPLING_PATTERN_TABULATED_SOBOL},Camera::STEREO_LEFT,.3f,6,0,0},
+  {{CAMERA_PERSPECTIVE,PANORAMA_EQUIRECTANGULAR,.2f,4,0,0,1,0,0,SAMPLING_PATTERN_SOBOL_BURLEY},Camera::STEREO_RIGHT,.4f,FLT_MAX,0,0},
+  {{CAMERA_PERSPECTIVE,PANORAMA_EQUIRECTANGULAR,.3f,2.5f,6,.4f,1.6f,0,0,SAMPLING_PATTERN_BLUE_NOISE_PURE},Camera::STEREO_LEFT,.25f,3,.3f,.9f},
+  {{CAMERA_PANORAMA,PANORAMA_EQUIRECTANGULAR,0,0,0,0,1,0,0,SAMPLING_PATTERN_TABULATED_SOBOL},Camera::STEREO_LEFT,.5f,2,.5f,1.1f},
+  {{CAMERA_PANORAMA,PANORAMA_EQUIRECTANGULAR,.08f,3,0,0,1,0,0,SAMPLING_PATTERN_SOBOL_BURLEY},Camera::STEREO_RIGHT,.4f,FLT_MAX,0,0},
+  {{CAMERA_PANORAMA,PANORAMA_EQUIANGULAR_CUBEMAP_FACE,0,0,0,0,1,0,0,SAMPLING_PATTERN_TABULATED_SOBOL},Camera::STEREO_LEFT,.3f,3,0,0},
+  {{CAMERA_PANORAMA,PANORAMA_CENTRAL_CYLINDRICAL,0,0,0,0,1,0,0,SAMPLING_PATTERN_BLUE_NOISE_FIRST},Camera::STEREO_RIGHT,.35f,1.5f,.2f,.6f},
+  {{CAMERA_ORTHOGRAPHIC,PANORAMA_EQUIRECTANGULAR,0,0,0,0,1,0,0,SAMPLING_PATTERN_TABULATED_SOBOL},Camera::STEREO_LEFT,.3f,6,0,0}};
+static void configure_stereo(Scene &scene,const Stereo &c){
+  configure_projection(scene,c.projection);Camera &camera=*scene.camera;
+  camera.set_stereo_eye(c.eye);camera.set_interocular_distance(c.interocular);camera.set_convergence_distance(c.convergence);
+  camera.set_use_pole_merge(c.merge_to>0);camera.set_pole_merge_angle_from(c.merge_from);camera.set_pole_merge_angle_to(c.merge_to);
+}
 struct Metrics {uint64_t paths=0,integer_checks=0,float_checks=0,guard_bytes=0,strict_float_failures=0;double max_ray_error=0,max_differential_error=0,max_tmax_error=0;unsigned cases=0,retries=0;
   // Per-component bit comparison of every ray field against the CPU oracle
   // (direction, origin, differentials, tmax, ...), reported per field.
@@ -137,10 +156,10 @@ static unsigned rejections(const DeviceInfo &info,bool motion){
     CameraScheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();scheduler.enqueue_reset();require(scheduler.update_queue_counter_and_cache(),"Negative camera setup reset failed");
     auto &data=scene.dscene.data;data.film.pass_stride=12;data.film.pass_sample_count=PASS_UNUSED;data.film.pass_adaptive_aux_buffer=PASS_UNUSED;
     std::string reason;
-    // Orthographic and panoramic cameras, depth of field and every sampling pattern render; custom (OSL)
-    // cameras, stereo and unknown patterns are refused.
+    // Orthographic and panoramic cameras, depth of field, stereo and every sampling pattern render; custom (OSL)
+    // cameras, non-finite stereo parameters and unknown patterns are refused.
     if(test==0){data.cam.type=CAMERA_CUSTOM;reason="custom camera";}
-    if(test==1){data.cam.interocular_offset=.1f;reason="stereo camera";}
+    if(test==1){data.cam.interocular_offset=std::nanf("");reason="stereo camera parameters";}
     if(test==2){data.integrator.sampling_pattern=99;reason="sampling pattern";}
     // The denoising features and the Ray Portal BSDF (RAY_PORTAL) are implemented; path guiding is refused.
     if(test==3){data.kernel_features|=KERNEL_FEATURE_PATH_GUIDING;reason="optional path features";}
@@ -176,8 +195,8 @@ static unsigned rejections(const DeviceInfo &info,bool motion){
   return rejected;
 }
 int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
-  require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--projections")),"Usage: camera_gate OUTPUT_PREFIX [--motion|--projections]");
-  const bool motion=argc==3&&std::string(argv[2])=="--motion",projected=argc==3&&std::string(argv[2])=="--projections";auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
+  require(argc==2||(argc==3&&(std::string(argv[2])=="--motion"||std::string(argv[2])=="--projections"||std::string(argv[2])=="--stereo")),"Usage: camera_gate OUTPUT_PREFIX [--motion|--projections|--stereo]");
+  const bool motion=argc==3&&std::string(argv[2])=="--motion",projected=argc==3&&std::string(argv[2])=="--projections",stereo=argc==3&&std::string(argv[2])=="--stereo";auto infos=Device::available_devices(DEVICE_MASK_WEBGPU);require(infos.size()==1,"Missing WebGPU device");
   Stats stats;Profiler profiler;auto owner=Device::create(infos[0],stats,profiler,true);auto *device=dynamic_cast<WebGPUDevice*>(owner.get());require(device,"WebGPU creation failed");auto &d=*device;Metrics m;
   {
     SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_texture_cache=false;
@@ -204,6 +223,8 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       const Projection &projection=projections[test<16?test%std::size(projections):(test-16)%8];
       if(projected){configure_projection(scene,projection);scene.device_update(&d,progress);healthy(d);original=scene.dscene.data;
         require(original.cam.type==projection.type,"Camera projection preparation failed");}
+      if(stereo){const Stereo &c=stereo_cases[test%std::size(stereo_cases)];configure_stereo(scene,c);scene.device_update(&d,progress);healthy(d);original=scene.dscene.data;
+        require(original.cam.type==c.projection.type&&original.cam.interocular_offset!=0,"Camera stereo preparation failed");}
       data=original;data.integrator.scrambling_distance=std::array{.125f,.75f,.9f,1.f}[test%4];
       data.integrator.seed=test==15?0xffffffffu:17u+test*43;data.cam.nearclip=test%2?.1f:1e-5f;data.cam.cliplength=1000;
       const bool adaptive=(test>=12&&test<16)||test>=20;
@@ -254,7 +275,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   std::cout<<"{\"passed\":true,\"originalSchedulerTileDispatch\":true,\"directNativeSceneTables\":true,\"originalCpuCameraOracle\":true,\"rayDifferentials\":true,\"cases\":"<<m.cases
     <<",\"initializedPaths\":"<<m.paths<<",\"retryPaths\":"<<m.retries<<",\"integerAndGuardChecks\":"<<m.integer_checks<<",\"floatChecks\":"<<m.float_checks<<",\"untouchedGuardBytes\":"<<m.guard_bytes
     <<",\"strictFloatFailures\":"<<m.strict_float_failures<<",\"maximumRayErrorExcludingTmax\":"<<m.max_ray_error<<",\"maximumDifferentialError\":"<<m.max_differential_error
-    <<",\"cameraMotionCases\":"<<(motion?m.cases:0)<<",\"cameraProjectionCases\":"<<(projected?m.cases:0)<<",\"maximumTmaxError\":"<<m.max_tmax_error
+    <<",\"cameraMotionCases\":"<<(motion?m.cases:0)<<",\"cameraProjectionCases\":"<<(projected?m.cases:0)<<",\"cameraStereoCases\":"<<(stereo?m.cases:0)<<",\"maximumTmaxError\":"<<m.max_tmax_error
     <<",\"rayBitDifferences\":{";
   {bool first=true;for(const auto &[name,count]:m.ray_bit_differences){std::cout<<(first?"":",")<<'"'<<name<<"\":"<<count;first=false;}}
   std::cout<<"},\"rayBitDifferencesByCase\":{";

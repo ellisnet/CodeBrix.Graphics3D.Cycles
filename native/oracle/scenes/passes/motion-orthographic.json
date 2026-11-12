@@ -1,0 +1,767 @@
+{
+ "cbcOracleScene": 1,
+ "id": "passes/motion-orthographic",
+ "description": "motion and motion weight passes without motion blur through a moving orthographic camera",
+ "sourceFixture": "native/oracle/scenes/passes/motion.json (author_passes.py) with another camera",
+ "render": {
+  "width": 48,
+  "height": 36,
+  "samples": 8,
+  "repeats": 2
+ },
+ "colorConfig": null,
+ "nodes": [
+  {
+   "handle": "integrator",
+   "scene": "integrator",
+   "set": {
+    "sampling_pattern": "tabulated_sobol",
+    "seed": 0,
+    "use_guiding": false,
+    "use_light_tree": false,
+    "use_adaptive_sampling": false,
+    "use_denoise": false,
+    "min_bounce": 2,
+    "max_bounce": 4,
+    "max_diffuse_bounce": 3,
+    "max_glossy_bounce": 3,
+    "max_transmission_bounce": 4,
+    "transparent_max_bounce": 4,
+    "sample_clamp_direct": 0.0,
+    "sample_clamp_indirect": 0.0,
+    "caustics_reflective": true,
+    "caustics_refractive": true,
+    "filter_glossy": 0.0,
+    "motion_blur": false
+   }
+  },
+  {
+   "handle": "film",
+   "scene": "film",
+   "set": {
+    "use_sample_count": false,
+    "exposure": 1.0,
+    "filter_type": "box",
+    "filter_width": 1.0
+   }
+  },
+  {
+   "handle": "camera",
+   "scene": "camera",
+   "set": {
+    "camera_type": "orthograph",
+    "nearclip": 0.1,
+    "farclip": 100.0,
+    "matrix": [
+     3.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     3.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     3.0,
+     -7.0
+    ],
+    "motion": [
+     [
+      3.0,
+      0.0,
+      0.0,
+      -0.15,
+      0.0,
+      3.0,
+      0.0,
+      0.05,
+      0.0,
+      0.0,
+      3.0,
+      -7.2
+     ],
+     [
+      3.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      3.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      3.0,
+      -7.0
+     ],
+     [
+      3.0,
+      0.0,
+      0.0,
+      0.15,
+      0.0,
+      3.0,
+      0.0,
+      -0.05,
+      0.0,
+      0.0,
+      3.0,
+      -6.8
+     ]
+    ],
+    "shuttertime": 0.5
+   }
+  },
+  {
+   "handle": "wall",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.6,
+        0.62,
+        0.65
+       ],
+       "roughness": 0.25
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "floor-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "d",
+      "type": "diffuse_bsdf",
+      "set": {
+       "color": [
+        0.55,
+        0.32,
+        0.18
+       ],
+       "roughness": 0.31
+      }
+     },
+     {
+      "handle": "g",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.2,
+        0.5,
+        0.8
+       ],
+       "roughness": 0.35
+      }
+     },
+     {
+      "handle": "m",
+      "type": "mix_closure",
+      "set": {
+       "fac": 0.4
+      }
+     }
+    ],
+    "connect": [
+     [
+      "d",
+      "BSDF",
+      "m",
+      "Closure1"
+     ],
+     [
+      "g",
+      "BSDF",
+      "m",
+      "Closure2"
+     ],
+     [
+      "m",
+      "Closure",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "glass-material",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "g",
+      "type": "glass_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.85,
+        0.9,
+        0.95
+       ],
+       "roughness": 0.15,
+       "IOR": 1.45
+      }
+     }
+    ],
+    "connect": [
+     [
+      "g",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "metal",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "g",
+      "type": "glossy_bsdf",
+      "set": {
+       "distribution": "ggx",
+       "color": [
+        0.8,
+        0.7,
+        0.5
+       ],
+       "roughness": 0.2
+      }
+     }
+    ],
+    "connect": [
+     [
+      "g",
+      "BSDF",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "panel-emission",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1.0,
+        0.8,
+        0.5
+       ],
+       "strength": 6.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "back",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -3,
+     3,
+     4,
+     -3,
+     3,
+     4,
+     3,
+     3,
+     -4,
+     3,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "back-object",
+   "create": "object",
+   "set": {
+    "geometry": "back"
+   }
+  },
+  {
+   "handle": "floor",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -4,
+     -2,
+     -2,
+     4,
+     -2,
+     -2,
+     4,
+     -2,
+     3,
+     -4,
+     -2,
+     3
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "floor-material"
+    ]
+   }
+  },
+  {
+   "handle": "floor-object",
+   "create": "object",
+   "set": {
+    "geometry": "floor"
+   }
+  },
+  {
+   "handle": "center",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.8,
+     -2,
+     0,
+     0.8,
+     -2,
+     0,
+     0.8,
+     1.1,
+     0,
+     -0.8,
+     1.1,
+     0
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "glass-material"
+    ]
+   }
+  },
+  {
+   "handle": "center-object",
+   "create": "object",
+   "set": {
+    "geometry": "center",
+    "motion": [
+     [
+      0.92,
+      1.98e-05,
+      -9.12e-05,
+      -0.34,
+      -1.56e-05,
+      0.945,
+      2.46e-05,
+      -0.11,
+      0.0001039,
+      -3.56e-05,
+      1.164,
+      -0.07
+     ],
+     [
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0
+     ],
+     [
+      1.08,
+      -1.79e-05,
+      9.69e-05,
+      0.34,
+      1.83e-05,
+      0.855,
+      -2.62e-05,
+      0.11,
+      -0.0001219,
+      3.22e-05,
+      1.236,
+      0.07
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "left",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -3.2,
+     -2,
+     -1,
+     -1.4,
+     -2,
+     0.5,
+     -1.4,
+     1.5,
+     0.5,
+     -3.2,
+     1.5,
+     -1
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "metal"
+    ]
+   }
+  },
+  {
+   "handle": "left-object",
+   "create": "object",
+   "set": {
+    "geometry": "left",
+    "motion": [
+     [
+      0.9950042,
+      0.0,
+      0.0998334,
+      -0.25,
+      0.0,
+      1.0,
+      0.0,
+      0.05,
+      -0.0998334,
+      0.0,
+      0.9950042,
+      0.1
+     ],
+     [
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0
+     ],
+     [
+      0.9950042,
+      0.0,
+      -0.0998334,
+      0.25,
+      0.0,
+      1.0,
+      0.0,
+      -0.05,
+      0.0998334,
+      0.0,
+      0.9950042,
+      -0.1
+     ]
+    ]
+   }
+  },
+  {
+   "handle": "right",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     1.4,
+     -2,
+     0.5,
+     3.2,
+     -2,
+     -1,
+     3.2,
+     1.5,
+     -1,
+     1.4,
+     1.5,
+     0.5
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "wall"
+    ]
+   }
+  },
+  {
+   "handle": "right-object",
+   "create": "object",
+   "set": {
+    "geometry": "right"
+   }
+  },
+  {
+   "handle": "panel",
+   "create": "mesh",
+   "mesh": {
+    "positions": [
+     -0.6,
+     1.6,
+     1.5,
+     0.6,
+     1.6,
+     1.5,
+     0.6,
+     2.4,
+     1.5,
+     -0.6,
+     2.4,
+     1.5
+    ],
+    "indices": [
+     0,
+     1,
+     2,
+     0,
+     2,
+     3
+    ]
+   },
+   "set": {
+    "used_shaders": [
+     "panel-emission"
+    ]
+   }
+  },
+  {
+   "handle": "panel-object",
+   "create": "object",
+   "set": {
+    "geometry": "panel"
+   }
+  },
+  {
+   "handle": "world",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "b",
+      "type": "background_shader",
+      "set": {
+       "color": [
+        0.3,
+        0.35,
+        0.42
+       ],
+       "strength": 1.0
+      }
+     }
+    ],
+    "connect": [
+     [
+      "b",
+      "Background",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "bg",
+   "scene": "background",
+   "set": {
+    "shader": "world"
+   }
+  },
+  {
+   "handle": "lamp-emission",
+   "create": "shader",
+   "graph": {
+    "nodes": [
+     {
+      "handle": "e",
+      "type": "emission",
+      "set": {
+       "color": [
+        1,
+        1,
+        1
+       ],
+       "strength": 1
+      }
+     }
+    ],
+    "connect": [
+     [
+      "e",
+      "Emission",
+      "output",
+      "Surface"
+     ]
+    ]
+   },
+   "set": {
+    "emission_sampling_method": "none"
+   }
+  },
+  {
+   "handle": "lamp",
+   "create": "pointlight",
+   "set": {
+    "radius": 0.45,
+    "is_sphere": true,
+    "use_mis": true,
+    "strength": [
+     110,
+     90,
+     70
+    ],
+    "used_shaders": [
+     "lamp-emission"
+    ]
+   }
+  },
+  {
+   "handle": "lamp-object",
+   "create": "object",
+   "set": {
+    "geometry": "lamp",
+    "tfm": [
+     1.0,
+     0.0,
+     0.0,
+     2.2,
+     0.0,
+     1.0,
+     0.0,
+     2.0,
+     0.0,
+     0.0,
+     1.0,
+     -2.0
+    ]
+   }
+  },
+  {
+   "handle": "pass-Vector",
+   "create": "pass",
+   "set": {
+    "type": "motion",
+    "name": "Vector"
+   }
+  },
+  {
+   "handle": "pass-Vector Weight",
+   "create": "pass",
+   "set": {
+    "type": "motion_weight",
+    "name": "Vector Weight"
+   }
+  },
+  {
+   "handle": "pass-Depth",
+   "create": "pass",
+   "set": {
+    "type": "depth",
+    "name": "Depth"
+   }
+  }
+ ],
+ "images": []
+}

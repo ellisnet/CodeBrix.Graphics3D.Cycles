@@ -51,17 +51,13 @@ std::string mnee_layout(){
 // before any MNEE dispatch, never rendered without caustics.
 void WebGPUDevice::validate_mnee() const{
   require(data.kernel_features&KERNEL_FEATURE_MNEE,"Invalid native MNEE feature flags");
-  require(!(data.kernel_features&KERNEL_FEATURE_VOLUME),"WebGPU MNEE with volumes not implemented");
-  // Motion blur (MNEE_MOTION: moving and deforming receivers, deforming casters) and ambient occlusion (fast GI and the AO pass;
+  // Volumes (MNEE_VOLUME): a caustic receiver reached after shade_volume goes to INTERSECT_MNEE, and the MNEE shadow path takes
+  // the main path's volume stack, as integrate_direct_light_shadow_init_common copies it.
+  // Motion blur (MNEE_MOTION: moving and deforming receivers, moving and deforming casters) and ambient occlusion (fast GI and the AO pass;
   // the AO shadow takes the surface stage's reserved slot n + id.x, the MNEE shadow its own) are supported.
-  // A moving caustic caster (object motion): the device's walks differ from the CPU's in outcome and iteration count
-  // (last-bit differences that the walk amplifies); moving and deforming receivers and deforming casters render.
-  for(const uint flags:object_flag_records)
-    require(!((flags&SD_OBJECT_CAUSTICS_CASTER)&&(flags&SD_OBJECT_MOTION)),"WebGPU MNEE with a moving caustic caster (object motion blur) not implemented");
-  for(const KernelLight &light:lamp_records())if(light.use_caustics)
-    require(light.type==LIGHT_POINT||light.type==LIGHT_SUN,"WebGPU MNEE caustics from spot, area or background lights not implemented");
-  for(const KernelLight &light:lamp_records())if(light.use_caustics&&uint(light.shader_id&SHADER_MASK)<shader_records.size())
-    require(shader_records[light.shader_id&SHADER_MASK].flags&SD_HAS_CONSTANT_EMISSION,"WebGPU MNEE caustics from a light with an emission shader that is not constant not implemented");
+  // Caustic lights: point, sun, spot, area and background (MNEE_SPOT, MNEE_AREA, MNEE_BACKGROUND regions; the spot and area
+  // samplers and light updates in mnee_light_sample and mnee_light_update); a light shader without constant emission is
+  // evaluated in shade_light_nee, as for every other light sample.
 }
 void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   require(args.count==2,"MNEE argument count");
@@ -70,8 +66,7 @@ void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   require(args.types[0]==DeviceKernelArguments::POINTER&&args.sizes[0]==sizeof(device_ptr),"Invalid MNEE pointer argument");
   device_ptr indices;std::memcpy(&indices,args.values[0],sizeof(indices));require(indices%4==0,"Unaligned MNEE indices");
   std::array<uint32_t,32> p{};p[1]=n;p[2]=uint32_t(indices);p[17]=error_word;if(p[2])validate(p[2],size_t(n)*4);
-  // The closure's evaluation runs in its own entry, for the sampled light's direction (wavefront_hair_huang.wgsl), not MNEE's.
-  require(!(shader_features()&SF_BSDF_HAIR_HUANG).any(),"WebGPU MNEE with the Huang model of the Principled Hair BSDF not implemented");
+  // The Huang hair closure's evaluation entry takes an MNEE-sampled path's direction from its slot (MNEE_HUANG).
   require(data.integrator.use_caustics,"Invalid native MNEE dispatch without caustics");
   validate_mnee();validate_geometry_motion();validate_lighting(data.integrator.use_direct_light);
   require(data.max_shaders>0&&state.sort_partition_divisor>0,"Invalid MNEE sort configuration");
@@ -131,7 +126,17 @@ void WebGPUDevice::enqueue_mnee(int work,const DeviceKernelArguments &args){
   const bool select_stage=(shader_features()&SF_LIGHT_SELECT).any();
   if(select_stage&&(!pipeline_current(mnee_select,"mnee_select",unused)||!mnee_select.value))
     mnee_select=std::move(build_pipelines("surface",surface_source(),{"mnee_select"},SF_MNEE_ENTRIES,unused)[0]);
-  for(unsigned i=0;i<mnee_entries;i++){dispatch(p,uint32_t(work),mnee_pipelines[i],workgroup(entries[i]));
-    if(i==0&&select_stage)dispatch(p,uint32_t(work),mnee_select,workgroup("mnee_select"));}
+  // With spot or area caustic lights, mnee_light_sample takes their sample before the seed and mnee_light_update the
+  // light sample update after the solver (compiler pressure: the samplers stay out of mnee_seed and mnee_transfer).
+  const bool light_stages=(shader_features()&(SF_MNEE_SPOT|SF_MNEE_AREA)).any();
+  if(light_stages&&(!pipeline_current(mnee_light_update,"mnee_light_update",unused)||!mnee_light_sample.value||!mnee_light_update.value)){
+    auto built=build_pipelines("surface",surface_source(),{"mnee_light_sample","mnee_light_update"},SF_MNEE_ENTRIES,unused);
+    mnee_light_sample=std::move(built[0]);mnee_light_update=std::move(built[1]);
+  }
+  for(unsigned i=0;i<mnee_entries;i++){
+    if(i==5&&light_stages)dispatch(p,uint32_t(work),mnee_light_update,workgroup("mnee_light_update"));
+    dispatch(p,uint32_t(work),mnee_pipelines[i],workgroup(entries[i]));
+    if(i==0&&select_stage)dispatch(p,uint32_t(work),mnee_select,workgroup("mnee_select"));
+    if(i==0&&light_stages)dispatch(p,uint32_t(work),mnee_light_sample,workgroup("mnee_light_sample"));}
 }
 }

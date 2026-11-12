@@ -55,7 +55,7 @@ static unsigned rejections(WebGPUDevice &d,Scene &scene,cbc::Pipeline &shader){
     if(test==2)program.diffuse(0,253);
     if(test==3)program.diffuse(0);
     if(test==4)program.diffuse(.4f);
-    if(test==5)program.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NODE_GEOM_T,.out_offset=0});
+    if(test==5)program.add(NODE_GEOMETRY,SVMNodeGeometry{.geom_type=NodeGeometry(250),.out_offset=0}); // an unknown output (the Tangent output is implemented)
     if(test==6)program.add(NODE_TEX_COORD,SVMNodeTexCoord{.texco_type=NODE_TEXCO_VOLUME_GENERATED,.out_offset=0});
     if(test==7)program.add(NODE_CLOSURE_HOLDOUT,SVMNodeClosureHoldout{.mix_weight_offset=7});
 #ifdef CBC_MICROFACET_FIXTURE
@@ -396,6 +396,14 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
       p.add(NODE_GEOMETRY_DERIVATIVE,SVMNodeGeometry{.geom_type=kind,.bump_offset=NodeBumpOffset(bump),.store_derivatives=store,.out_offset=30,.bump_filter_width=37.5f});
       if(store)dual3(p,30);else acc3(p,30,.5f);
       finish(p,"geometry derivative "+std::to_string(kind)+"/"+std::to_string(bump)+"/"+std::to_string(store));
+    }
+    // The Geometry node's Tangent output with derivatives (primitive_tangent<dual3>; SVM_GEOMETRY_TANGENT) at every bump
+    // offset, stored or not.
+    for(unsigned bump=0;bump<3;bump++)for(uint8_t store=0;store<2;store++){
+      Program p(ds);dbegin(p);
+      p.add(NODE_GEOMETRY_DERIVATIVE,SVMNodeGeometry{.geom_type=NODE_GEOM_T,.bump_offset=NodeBumpOffset(bump),.store_derivatives=store,.out_offset=30,.bump_filter_width=37.5f});
+      if(store)dual3(p,30);else acc3(p,30,.5f);
+      finish(p,"geometry tangent derivative "+std::to_string(bump)+"/"+std::to_string(store));
     }
     for(NodeTexCoord kind:{NODE_TEXCO_OBJECT,NODE_TEXCO_NORMAL,NODE_TEXCO_REFLECTION,NODE_TEXCO_CAMERA,NODE_TEXCO_WINDOW,NODE_TEXCO_OBJECT_WITH_TRANSFORM,NODE_TEXCO_DUPLI_GENERATED,NODE_TEXCO_DUPLI_UV})
       for(unsigned bump=0;bump<4;bump++){

@@ -111,9 +111,11 @@ fn vl_volume_emission(index:u32,base:u32,r:SvmResult,distance:f32){
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
 //#if VOLUME_SHADOW_CATCHER
     // film_write_combined_pass: the shadow catcher's matte, its pass (then nothing else).
-    if(!sc_combined(state_word(S_path_flag,index),base,value)){
+    if(!sc_combined(state_word(S_path_flag,index),base,value,select(PASS_NONE,data_word(VE_D_pass_combined),(data_word(VE_D_light_pass_flag)&VE_MASK_COMBINED)!=0u))){
 //#endif
+//#if !VOLUME_SHADOW_CATCHER
     if((data_word(VE_D_light_pass_flag)&VE_MASK_COMBINED)!=0u){vl_film_add3(base+data_word(VE_D_pass_combined)*4u,value);}
+//#endif
     if(data_word(VE_D_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){vl_film_add3(base+data_word(VE_D_pass_adaptive_aux_buffer)*4u,value*2.0);}
     volume_guidance_pass(index,base,value);
 //#if VOLUME_SHADOW_CATCHER
@@ -144,7 +146,8 @@ fn vl_exponential_pdf(x:f32,lambda:vec3<f32>,t:vec2<f32>)->vec3<f32>{
 fn vl_expf(x:f32)->f32{let e=vp_exp_parts(vec2<f32>(x,0.0));return ldexp(e.x,i32(e.y));}
 fn vl_logf(x:f32)->f32{let l=vp_log_parts(x);return rounded_add(l.x,l.y);}
 // volume_scatter_probability_homogeneous: expf(-optical_depth) comes from the caller's exponentials; quotients are
-// correctly rounded and mix() rounds its products before the sum.
+// correctly rounded. The defensive mix(attenuation, guided, 0.75) is util/math_base.h mix, a + t * (b - a), in that order:
+// a last bit of this probability moves the scatter distance, which grazing light samples and the guiding buffers amplify.
 fn vl_scatter_probability(index:u32,base:u32,sigma:vec3<f32>,transmittance:vec3<f32>,majorant_transmittance:f32)->vec3<f32>{
     let attenuation=vec3<f32>(1)-transmittance;if(state_half(S_path_bounce,index)!=0u){return attenuation;}
     let scattered=volume_rgbe(base+data_word(V_film_pass_volume_scatter_denoised)*4u);
@@ -154,7 +157,7 @@ fn vl_scatter_probability(index:u32,base:u32,sigma:vec3<f32>,transmittance:vec3<
         let scale=rounded_divide(max(attenuation.x,max(attenuation.y,attenuation.z)),1.0-majorant_transmittance);
         guided=clamp(svm_divide(scattered,total)*scale,vec3<f32>(0),vec3<f32>(1));
     }
-    return rounded_add3(attenuation*0.25,guided*0.75);
+    return rounded_add3(attenuation,0.75*rounded_add3(guided,-attenuation));
 }
 //#endif
 fn vl_power(a:f32,b:f32)->f32{let a2=a*a;return rounded_divide(a2,rounded_add(a2,b*b));}
@@ -207,7 +210,8 @@ fn volume_phase(direction:vec3<f32>,g:f32,random:vec2<f32>)->vec4<f32>{
 //#if SHADOW_LINKING else fn volume_finish(index:u32,next:u32){
 fn volume_finish(index:u32,requested:u32){
     // integrator_shade_volume: a phase scatter (the only finish towards intersect_closest) looks for its dedicated lights first.
-    let next=select(requested,DL_K_INTERSECT,requested==K_CLOSEST);
+    // shadow_linking_scene_need_shadow_ray: only while the scene has KERNEL_FEATURE_SHADOW_LINKING.
+    let next=select(requested,DL_K_INTERSECT,requested==K_CLOSEST&&(data_word(D_kernel_features)&DL_FEATURE_SHADOW_LINKING)!=0u);
 //#endif
     if(next==0u){volume_write_depth(index);}
 //#if VOLUME_RAY_MARCHING else     let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[counter/4u+DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME],1u);
@@ -254,6 +258,11 @@ fn volume_after(index:u32){
 //#endif
 //#endif
             let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);
+//#if MNEE_VOLUME
+            // integrator_intersect_next_kernel_after_volume: a caustic receiver goes to INTERSECT_MNEE, unsorted.
+            if(data_word(V_D_use_caustics)!=0u&&(load_word(table_at(G_object_flag,state_word(S_isect_object,index),4u))&V_SD_OBJECT_CAUSTICS_RECEIVER)!=0u){
+                volume_finish(index,V_K_INTERSECT_MNEE);return;}
+//#endif
             next=select(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,(flags&SD_HAS_RAYTRACE)!=0u);
             let divisor=load_word(p(7u)+S_sort_partition_divisor);let key=shader+data_word(D_max_shaders)*(index/divisor);
             let limit=select(p(15u),p(16u),next==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE);if(key>=limit){fail();return;}

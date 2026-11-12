@@ -221,6 +221,11 @@ fn fp_project_reflection(rP:vec3<f32>,rN:vec3<f32>,P:vec3<f32>)->vec3<f32>{
     return rounded_add3(rP,rounded_add3(rounded_add3(T*x_i,B*y_i),N*z_i));
 }
 fn fp_camera_motion_vector(center:vec3<f32>,pre:vec3<f32>,post:vec3<f32>)->vec4<f32>{
+//#if CAMERA_PANORAMA_INVERSE
+    // Panoramic cameras: the camera-space directions (world-to-camera, motion_pass_pre and motion_pass_post) through
+    // direction_to_panorama, scaled to the raster.
+    if(data_word(D_cam_type)==CPI_CAMERA_PANORAMA){return cpi_motion_vector(center,pre,post,true);}
+//#endif
     let c=fp_perspective(p(6u)+FPM_D_worldtoraster,center);
     let a=rounded_add3(fp_perspective(p(6u)+FPM_D_perspective_pre,pre),-c);let b=rounded_add3(c,-fp_perspective(p(6u)+FPM_D_perspective_post,post));
     return vec4<f32>(a.x,a.y,b.x,b.y);
@@ -353,6 +358,11 @@ fn fp_finite3(v:vec3<f32>)->vec3<f32>{return select(v,vec3<f32>(0),(bitcast<vec3
 fn fp_finite(v:f32)->f32{return select(v,0.0,(bitcast<u32>(v)&0x7f800000u)==0x7f800000u);}
 // film_write_denoising_features_surface (the motion features are refused with the motion pass).
 fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
+//#if CAMERA_PANORAMA_INVERSE
+    // A panoramic camera's backward and specular motion features (mutually exclusive) share one camera_motion_vector call
+    // site below, so direction_to_panorama is inlined once for both (pipeline size guard).
+    var dn_motion_kind=0u;var dn_motion_in=array<vec3<f32>,3>();var dn_motion_depth=0.0;
+//#endif
     var flag=state_word(S_path_flag,index);
     if((flag&DN_PATH_RAY_DENOISING_FEATURES)==0u||(flag&FP_PATH_RAY_SHADOW_CATCHER_PASS)!=0u){return;}
     let options=data_word(DN_D_denoising_pass_options_flag);let weighting=(options&DN_USE_ALBEDO_ROUGHNESS_WEIGHTING)!=0u;
@@ -418,8 +428,11 @@ fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
             // primitive_motion_vector_backward_depth_delta: the motion vector and the camera-space depth step.
             let m=fp_motion_data(sd);if(m.error){return;}
             let center_cam=surface_transform_point(p(6u)+FP_D_worldtocamera,m.center);let pre_cam=surface_transform_point(p(6u)+FPM_D_motion_pass_pre,m.pre);
-            let motion=fp_camera_motion_vector(m.center,m.pre,m.post);
-            film_rgb(base,data_word(FPM_D_pass_denoising_backward_motion),vec3<f32>(motion.x,motion.y,rounded_add(pre_cam.z,-center_cam.z)));
+//#if CAMERA_PANORAMA_INVERSE else             let motion=fp_camera_motion_vector(m.center,m.pre,m.post);
+            dn_motion_kind=1u;dn_motion_in=array<vec3<f32>,3>(m.center,m.pre,m.post);dn_motion_depth=rounded_add(pre_cam.z,-center_cam.z);
+//#endif
+//#if CAMERA_PANORAMA_INVERSE else             film_rgb(base,data_word(FPM_D_pass_denoising_backward_motion),vec3<f32>(motion.x,motion.y,rounded_add(pre_cam.z,-center_cam.z)));
+//#endif
         }
 //#endif
     }
@@ -428,9 +441,21 @@ fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
         // primitive_motion_vector_reflection from the reflector (the ray origin and the MIS origin normal).
         let m=fp_motion_data(sd);if(m.error){return;}
         let rP=heap_vec3(state_address(S_ray_P,index,12u));let rN=heap_vec3(state_address(S_path_mis_origin_n,index,12u));
-        let motion=fp_camera_motion_vector(fp_project_reflection(rP,rN,m.center),fp_project_reflection(rP,rN,m.pre),fp_project_reflection(rP,rN,m.post));
-        let at=base+data_word(FPM_D_pass_denoising_specular_motion)*4u;film_add(at,motion.x);film_add(at+4u,motion.y);
+//#if CAMERA_PANORAMA_INVERSE else         let motion=fp_camera_motion_vector(fp_project_reflection(rP,rN,m.center),fp_project_reflection(rP,rN,m.pre),fp_project_reflection(rP,rN,m.post));
+        dn_motion_kind=2u;dn_motion_in=array<vec3<f32>,3>(fp_project_reflection(rP,rN,m.center),fp_project_reflection(rP,rN,m.pre),fp_project_reflection(rP,rN,m.post));
+//#endif
+//#if CAMERA_PANORAMA_INVERSE else         let at=base+data_word(FPM_D_pass_denoising_specular_motion)*4u;film_add(at,motion.x);film_add(at+4u,motion.y);
+//#endif
     }
+//#endif
+//#if CAMERA_PANORAMA_INVERSE
+//#if FILM_MOTION
+    if(dn_motion_kind!=0u){
+        let motion=fp_camera_motion_vector(dn_motion_in[0],dn_motion_in[1],dn_motion_in[2]);
+        if(dn_motion_kind==1u){film_rgb(base,data_word(FPM_D_pass_denoising_backward_motion),vec3<f32>(motion.x,motion.y,dn_motion_depth));}
+        else{let at=base+data_word(FPM_D_pass_denoising_specular_motion)*4u;film_add(at,motion.x);film_add(at+4u,motion.y);}
+    }
+//#endif
 //#endif
     // Portion deferred to the next bounce. Specularity uses the feature weight, transparent
     // always passes through (without the specular motion pass only transparent when not
@@ -456,6 +481,10 @@ fn film_denoising_surface(index:u32,sd:SurfaceData,r:SvmResult){
     if(id.x>=p(1u)||(p(28u)!=0u&&load_word(p(17u))!=0u)){return;}let at=p(24u)+id.x*SURFACE_STAGE_BYTES;if(load_word(at)!=2u){return;}
     var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
     let stage=surface_stage_read(at);
+//#if SUBSURFACE
+    // The subsurface exit point (ss_exit): integrate_surface skips film_write_data_passes and the denoising features.
+    if((stage.sd.runtime_flag&SS_SR_EXIT_POINT)!=0u){return;}
+//#endif
 //#if FILM_DATA_PASSES
     film_data_passes(index,stage.sd,stage.r);
 //#endif

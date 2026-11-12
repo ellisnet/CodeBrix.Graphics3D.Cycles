@@ -6,7 +6,7 @@
 Runs the lockstep state gate (codebrix_cycles_mnee_gate: INTERSECT_MNEE, the
 surface stage's MNEE consumption, the MNEE shadow paths and the closest-stage
 MNEE flags against the pinned CPU kernels, with the walk's outcome and iteration
-count exact), the image gate (codebrix_cycles_mnee_render_gate: nine caustic
+count exact), the image gate (codebrix_cycles_mnee_render_gate: the caustic
 fixtures, independent CPU films, per-sample, captured and batched repeats), the
 queue control gate (MNEE compaction ownership) and the command replays of every
 captured image case."""
@@ -44,24 +44,25 @@ def main():
                 subprocess.run([str(WORK/'cycles-build/bin'/('codebrix_cycles_'+kind+'_gate')), str(prefix)], stdout=stdout, stderr=stderr, check=True, timeout=1800)
             report = json.loads((directory/'stdout.txt').read_text()); assert report['passed']
             if kind == 'mnee':
-                assert report['originalCpuIntersectMnee'] and report['movingCasterRefused'] and report['paths'] > 1000 and report['sampled'] >= 20 and len(report['cases']) == 17
+                assert report['originalCpuIntersectMnee'] and report['paths'] > 1000 and report['sampled'] >= 20 and len(report['cases']) == 28
             if kind == 'mnee_render':
-                assert report['cases'] == 18 and report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage'] and report['cyclesAllocationBytesAfterCleanup'] == 0
-                for case in range(18):
+                assert report['cases'] == 29 and report['nativeSceneAndScheduler'] and report['independentOriginalCpuImage'] and report['cyclesAllocationBytesAfterCleanup'] == 0
+                for case in range(29):
                     result = json.loads((prefix/('case-'+str(case))/'result.json').read_text())
                     assert (result['mneePaths'] == 0) == (case == 3) and (case in (2, 3, 4, 8, 11, 12, 13, 14) or result['mneeSampled'] >= 5) and (result['aoPaths'] > 100) == (case in (5, 15))
             if kind == 'device': assert report['compactionCases'] == 4 and report['cyclesAllocationBytesAfterCleanup'] == 0
             reports[kind] = report; save(out/'results.json', reports)
         status['phase'] = 'replay'; save(out/'status.json', status)
-        for case in range(18):
+        for case in range(29):
             destination = out/('replay-'+str(case)); capture = out/'mnee_render/run'/('case-'+str(case))
             with (out/('replay-'+str(case)+'.log')).open('w') as log, contextlib.redirect_stdout(log): render_replay.run('linux-x64', capture, destination)
             reports['replay-'+str(case)] = json.loads((destination/'validation.json').read_text()); save(out/'results.json', reports)
         assert source == inputs() and all(sha(Path(name)) == digest for name, digest in pins.items())
         status.update(complete=True, passed=True, phase='complete', inputsUnchanged=True,
-                      scope='MNEE through refractive (GGX glass and refraction) caustic casters from point and sun lamps, opaque shadows, '
+                      scope='MNEE through refractive (GGX glass and refraction) caustic casters from point, sun, spot, area (full, narrow and zero spread) and background lights '
+                            '(constant and non-constant emission), opaque shadows, '
                             'the flat distribution and the light tree, with light linking, with fast GI (additive AO) and with motion blur (moving and deforming receivers, '
-                            'deforming casters); moving casters, spot, area and background caustic lamps and volumes with caustics are refused.')
+                            'moving and deforming casters), with absorbing volumes and with Huang hair receivers.')
     except Exception as error:
         status.update(complete=True, passed=False, error=repr(error)); raise
     finally: save(out/'status.json', status)

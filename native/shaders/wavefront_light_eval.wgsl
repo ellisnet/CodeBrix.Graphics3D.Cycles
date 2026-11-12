@@ -54,7 +54,7 @@ fn forward_emission(index:u32,base:u32,light:u32,eval:vec3<f32>,weight:f32){
     let bounce=state_half(S_path_bounce,index);let limit=select(data_float(D_integrator_sample_clamp_direct),data_float(D_integrator_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
 //#if SHADOW_CATCHER else     let flags=data_word(D_film_light_pass_flag);if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
-    let flags=data_word(D_film_light_pass_flag);let sc_handled=sc_combined(state_word(S_path_flag,index),base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+    let flags=data_word(D_film_light_pass_flag);let sc_handled=sc_combined(state_word(S_path_flag,index),base,value,select(PASS_NONE,data_word(D_film_pass_combined),(flags&MASK_COMBINED)!=0u));
 //#endif
 //#if VOLUME_SHADOW
     // film_write_combined_pass: the volume scattering probability guiding pass of a lamp hit.

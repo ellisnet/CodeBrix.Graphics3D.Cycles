@@ -110,9 +110,11 @@ fn vh_write_emission(index:u32,base:u32,emission:vec3<f32>){
     let bounce=state_half(S_path_bounce,index);let limit=select(data_float(VE_D_sample_clamp_direct),data_float(VE_D_sample_clamp_indirect),i32(bounce)-1>0);
     let total=abs(value.x)+abs(value.y)+abs(value.z);if(total>limit){value*=limit/total;}
 //#if VOLUME_SHADOW_CATCHER
-    if(!sc_combined(state_word(S_path_flag,index),base,value)){
+    if(!sc_combined(state_word(S_path_flag,index),base,value,select(PASS_NONE,data_word(VE_D_pass_combined),(data_word(VE_D_light_pass_flag)&VE_MASK_COMBINED)!=0u))){
 //#endif
+//#if !VOLUME_SHADOW_CATCHER
     if((data_word(VE_D_light_pass_flag)&VE_MASK_COMBINED)!=0u){vl_film_add3(base+data_word(VE_D_pass_combined)*4u,value);}
+//#endif
     if(data_word(VE_D_pass_adaptive_aux_buffer)!=PASS_NONE&&(countOneBits(state_word(S_path_sample,index)&0xaaaaaaaau)&1u)!=0u){vl_film_add3(base+data_word(VE_D_pass_adaptive_aux_buffer)*4u,value*2.0);}
     volume_guidance_pass(index,base,value);
 //#if VOLUME_SHADOW_CATCHER

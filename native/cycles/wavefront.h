@@ -22,7 +22,7 @@ bool reference_oracle_sse();
 std::string wgsl_arithmetic();
 // Bytes per MNEE walk record (mnee.cpp; gates read the records back).
 size_t mnee_record_stride();
-std::string shader_data_layout();std::string shader_data_source();std::string svm_surface_source();std::string background_layout();std::string surface_source();std::string camera_wgsl();std::string closest_wgsl();std::string mnee_layout();std::string subsurface_layout();std::string background_wgsl();
+std::string shader_data_layout();std::string shader_data_source();std::string svm_surface_source();std::string background_layout();std::string surface_source();std::string camera_wgsl();std::string closest_wgsl();std::string mnee_layout();std::string subsurface_layout();std::string subsurface_volume_layout();std::string background_wgsl();
 // The bake module (bake.cpp): DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE.
 std::string bake_wgsl();}
 // A descriptor contains a native virtual address and an element count. The

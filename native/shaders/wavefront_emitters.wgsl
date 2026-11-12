@@ -217,6 +217,12 @@ fn lamp_shader_data(light_index:u32,P:vec3<f32>,D:vec3<f32>,t:f32,time:f32)->Sur
     sd.object_id=load_word(light+L_object_id);sd.prim=light_index;sd.u=nuv.uv.x;sd.v=nuv.uv.y;sd.time=time;sd.ray_length=t;
     sd.runtime_flag=0u;sd.shader_flag=load_word(table_at(G_shaders,shader&SHADER_MASK,SIZE_shaders)+SH_flags);
     sd.object_flag=0u;if(sd.object_id!=NONE){sd.object_flag=load_word(table_at(G_object_flag,sd.object_id,4u));}
+//#if LIGHT_MOTION
+    // shader_setup_object_transforms: a moving light object's motion transform at the sample's time (object-space inputs
+    // of its emission shader).
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){sd.motion_tfm=motion_object(sd.object_id,time);sd.motion_itfm=motion_inverse(sd.motion_tfm);
+        if(load_word(p(17u))!=0u){surface_failure(&sd);return sd;}}
+//#endif
     if(rounded_dot(sd.Ng,sd.wi)<0.0){sd.runtime_flag|=SR_BACKFACING;sd.Ng=-sd.Ng;sd.N=-sd.N;}
     return sd;
 }

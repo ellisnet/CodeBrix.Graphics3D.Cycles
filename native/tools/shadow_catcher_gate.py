@@ -14,8 +14,8 @@ from device_gate import sha, save
 from render_gate import inputs
 import render_replay
 
-STATE_CASES, IMAGE_CASES, AO_CASES, COMBINATION_CASES = 4, 6, 3, 9
-REPLAYS = (0, 1, 2, 4, 7, 8, 11, 12, 13)+tuple(range(14, 23))
+STATE_CASES, IMAGE_CASES, AO_CASES, COMBINATION_CASES = 4, 6, 3, 10
+REPLAYS = (0, 1, 2, 4, 7, 8, 11, 12, 13)+tuple(range(14, 24))
 
 
 def main():
@@ -62,6 +62,7 @@ def main():
         # glass/principled transmission, shadow terminator offsets and a non-constant emitter.
         for case in range(STATE_CASES+IMAGE_CASES+1+AO_CASES, STATE_CASES+IMAGE_CASES+1+AO_CASES+COMBINATION_CASES):
             assert cases[case]['splits'] > 100 and cases[case]['shadows'] > 100 and cases[case]['visible'] > 100
+        assert cases[STATE_CASES+IMAGE_CASES+1+AO_CASES+9]['mneePaths'] > 100  # the shadow catcher with caustics
         results = {'gate': report}
         for case in REPLAYS:
             name = 'replay-'+str(case)

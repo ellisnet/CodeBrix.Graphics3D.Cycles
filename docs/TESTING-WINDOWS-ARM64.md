@@ -13,11 +13,12 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 >    upstream wgpu-native release, a system library) or from any other version
 >    of this package, earlier or later. Runs with other WebGPU binaries are not
 >    evidence and must not be recorded as results.
-> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
->    .NET libraries and tools in this repository uses the .NET 10 SDK
->    10.0.403 - **absolutely no earlier version**. Check with
->    `dotnet --version` (it must print `10.0.403`) before starting and record
->    the output with the run.
+> 2. **.NET SDK: ONLY version 11.0.100.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 11 SDK
+>    11.0.100 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `11.0.100`) before starting and record
+>    the output with the run. The projects themselves keep targeting
+>    `net10.0`; only the SDK that builds, tests and runs them is 11.0.100.
 > 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
@@ -168,7 +169,7 @@ copies inside the gate directories are not.
 | GPU | Qualcomm Adreno 680, driver 27.20.2140.0 (2024-10-30), Direct3D 12; the host reports it as a mobile adapter (`budgetSource` "unknown-mobile", no device record, tier `full`) |
 | Vulkan | Loader 1.3.300; the only Vulkan driver is Mesa's Dozen (Vulkan on D3D12, "Microsoft Direct3D12 (Qualcomm(R) Adreno(TM) 680 GPU)", Mesa 26.3.0-devel, Vulkan 1.1.217) from the Microsoft "OpenCL, OpenGL & Vulkan Compatibility Pack" (`Microsoft.D3DMappingLayers` 1.2608.3.0); see step 5 |
 | Python | 3.15.1, native ARM64, run as `python -I -X utf8` |
-| .NET | SDK 10.0.403 (ARM64); **the only permitted version** |
+| .NET | SDK 11.0.100 (ARM64); **the only permitted version** |
 | Build tools | 2026-10-25: none. Since 2026-10-27: Visual Studio Professional 2026 with the C++ Clang compiler; HEAD is built on the device ("Building on the device") |
 
 ## Ordered steps
@@ -826,7 +827,7 @@ refuses another commit's tables):
 - Each step writes `manifest.json` (commit, working-tree changes, gate and
   runtime SHA-256, `dotnet --version`, host) and refuses inputs of another
   commit, a WebGPU runtime that is not the 1.0.300.210 package's file for the
-  RID, or an SDK other than 10.0.403. The gates run from
+  RID, or an SDK other than 11.0.100. The gates run from
   `native/work/windows/<rid>/host/build/bin` (`--bin` for a payload run folder
   with `codebrix_wgpu.dll` beside it); `--backend` defaults to `d3d12`.
 - The stage records (`mnee` about 155 MB, `microfacet_render` about 25 MB) are

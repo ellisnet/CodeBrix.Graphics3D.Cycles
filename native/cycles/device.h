@@ -91,6 +91,9 @@ class WebGPUDevice final:public Device {
   // BVH primitive -> triangle and object (the MNEE caster census, mnee_unused_svm_features); mnee_generation counts
   // their uploads, and the census is kept per (svm_generation, mnee_generation).
   std::vector<int> prim_index_words,prim_object_words;uint64_t mnee_generation=0,mnee_census_key[2]={~uint64_t(0),~uint64_t(0)};ShaderFeatures mnee_unused;
+  // A local traversal from a transform-applied object beside instance leaves (SF_LOCAL_INSTANCE_SKIP), kept per
+  // (svm_generation, mnee_generation).
+  uint64_t local_skip_key[2]={~uint64_t(0),~uint64_t(0)};bool local_skip=false;
   // surface_unused_svm_features cache (svm_generation counts tri_shader uploads too).
   uint64_t surface_census_key=~uint64_t(0);ShaderFeatures surface_unused;
   bool specialization_enabled=true; // false only for SpecializationMode::Off
@@ -201,6 +204,10 @@ class WebGPUDevice final:public Device {
   // INTERSECT_SUBSURFACE (subsurface.cpp): the walk entry and its traversal stacks.
   cbc::Pipeline subsurface_walk;uint32_t subsurface_stack=0;size_t subsurface_stack_bytes=0;
   cbc::Pipeline subsurface_disk;
+  // The volume stack update after subsurface_scatter (SUBSURFACE_VOLUME, the volume stack module).
+  cbc::Pipeline subsurface_volume_stack;
+  // The moving objects' transforms for both subsurface entries (MOTION_OBJECT).
+  cbc::Pipeline subsurface_motion;
   uint32_t volume_light_records=0;size_t volume_light_record_size=0;
   cbc::Pipeline surface;
   cbc::Pipeline surface_geometry;
@@ -260,6 +267,8 @@ class WebGPUDevice final:public Device {
   // stage's cleanup entry and their GPU-private per-path records.
   static constexpr unsigned mnee_entries=7;
   std::array<cbc::Pipeline,mnee_entries> mnee_pipelines;cbc::Pipeline mnee_cleanup,mnee_select;
+  // The spot and area lights' sample and light update (MNEE_LIGHT_STAGES).
+  cbc::Pipeline mnee_light_sample,mnee_light_update;
   uint32_t mnee_records=0;size_t mnee_record_bytes_allocated=0;
   std::map<uint32_t,device_image*> images;
   bool image_info_dirty=false;
@@ -289,6 +298,8 @@ class WebGPUDevice final:public Device {
   WGPUCommandEncoder commands();
   void flush();
   void sync();
+  // The 32 push words of a dispatch. Push word 31 is reserved: no dispatch sets it, since the Sobol-Burley samplers read it
+  // as an always-zero word (wavefront_common.wgsl sb_unit) that keeps their products from being contracted.
   void dispatch(const std::array<uint32_t,32>&,uint32_t,WGPUComputePipeline=nullptr,uint32_t workgroup_size=64);
   void enqueue_camera(int,const DeviceKernelArguments&);
   void enqueue_bake(int,const DeviceKernelArguments&);

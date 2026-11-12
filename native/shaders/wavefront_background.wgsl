@@ -77,7 +77,7 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     let total=abs(contribution.x)+abs(contribution.y)+abs(contribution.z);if(total>limit){contribution*=limit/total;}
 //#if SHADOW_CATCHER else     if(transparent_ray){volume_transparent_pass(index,base,transparency);}
     var sc_handled=false;if(transparent_ray){sc_transparent_only(flag,base,transparency);volume_transparent_pass(index,base,transparency);}
-    else{sc_handled=sc_combined_transparent(flag,base,contribution,transparency);if(!sc_handled){volume_guidance_pass(index,base,contribution);}}
+    else{sc_handled=sc_combined_transparent(flag,base,contribution,transparency,select(PASS_NONE,data_word(D_film_pass_combined),(light_flags&MASK_COMBINED)!=0u));if(!sc_handled){volume_guidance_pass(index,base,contribution);}}
 //#endif
 //#if SHADOW_CATCHER else     else{volume_guidance_pass(index,base,contribution);}
 //#endif
@@ -85,7 +85,9 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
 //#if SHADOW_CATCHER else     if((light_flags&MASK_COMBINED)!=0u){
     if(!sc_handled&&(light_flags&MASK_COMBINED)!=0u){
 //#endif
+//#if !SHADOW_CATCHER
         if(!transparent_ray){film_rgb(base,data_word(D_film_pass_combined),contribution);}
+//#endif
         film_add(base+(data_word(D_film_pass_combined)+3u)*4u,transparency);
     }
 //#if SHADOW_CATCHER else     if(!transparent_ray&&data_word(D_film_pass_adaptive_aux_buffer)!=PASS_NONE&&((countOneBits(sample_id&0xaaaaaaaau)&1u)!=0u)){
@@ -131,7 +133,11 @@ fn background_visible(shader:u32,visibility:u32,flag:u32)->bool{
     // film_write_data_passes_background, motion: camera_motion_vector_direction (perspective camera).
     if((flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u&&(flag&FPM_PATH_RAY_SHADOW_CATCHER_PASS)==0u&&(flag&PATH_RAY_SINGLE_PASS_DONE)==0u&&(data_word(D_film_pass_flag)&FPM_MASK_MOTION)!=0u){
         let D=heap_vec3(state_address(S_ray_D,index,12u));
-        let c=bgm_direction(p(6u)+FPM_D_worldtoraster,D);let a=rounded_add3(bgm_direction(p(6u)+FPM_D_perspective_pre,D),-c);let b=rounded_add3(c,-bgm_direction(p(6u)+FPM_D_perspective_post,D));
+//#if CAMERA_PANORAMA_INVERSE else         let c=bgm_direction(p(6u)+FPM_D_worldtoraster,D);let a=rounded_add3(bgm_direction(p(6u)+FPM_D_perspective_pre,D),-c);let b=rounded_add3(c,-bgm_direction(p(6u)+FPM_D_perspective_post,D));
+        var c=bgm_direction(p(6u)+FPM_D_worldtoraster,D);var a=rounded_add3(bgm_direction(p(6u)+FPM_D_perspective_pre,D),-c);var b=rounded_add3(c,-bgm_direction(p(6u)+FPM_D_perspective_post,D));
+        // camera_motion_vector_direction, panoramic cameras: the camera-space directions through direction_to_panorama.
+        if(data_word(D_cam_type)==CPI_CAMERA_PANORAMA){let m=cpi_motion_vector(D,D,D,false);a=vec3<f32>(m.xy,0.0);b=vec3<f32>(m.zw,0.0);}
+//#endif
         let at=base+data_word(FPM_D_pass_motion)*4u;film_add(at,a.x);film_add(at+4u,a.y);film_add(at+8u,b.x);film_add(at+12u,b.y);
         film_add(base+data_word(FPM_D_pass_motion_weight)*4u,1.0);
     }
@@ -173,6 +179,12 @@ fn sc_background_continue(index:u32,flag:u32){
 //#if POINTS else     else{shader=load_word(table_at(G_tri_shader,prim,SIZE_tri_shader))&SHADER_MASK;}
     else{shader=point_or_triangle_shader(prim,state_word(S_isect_type,index))&SHADER_MASK;}
 //#endif
+//#endif
+//#if MNEE
+    // integrator_intersect_next_kernel_after_shadow_catcher_volume: a caustic receiver goes to INTERSECT_MNEE, unsorted.
+    if(data_word(MNEE_D_use_caustics)!=0u&&(load_word(table_at(G_object_flag,state_word(S_isect_object,index),4u))&SD_OBJECT_CAUSTICS_RECEIVER)!=0u){
+        let queue=load_word(p(7u)+S_queue_counter);atomicSub(&heap[(queue+DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND*4u)/4u],1u);
+        atomicAdd(&heap[(queue+MNEE_K_INTERSECT*4u)/4u],1u);state_u16(S_path_queued_kernel,index,MNEE_K_INTERSECT);return;}
 //#endif
     if((load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags)&SD_HAS_RAYTRACE)!=0u){fail();return;}
     let divisor=load_word(p(7u)+S_sort_partition_divisor);let key=shader+data_word(D_max_shaders)*(index/divisor);

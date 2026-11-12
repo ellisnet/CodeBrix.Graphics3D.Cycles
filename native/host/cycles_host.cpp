@@ -940,9 +940,11 @@ extern "C" int cbc_host_particles(CBCHost handle, CBCNode id, const uint32_t *in
 // (type none) and read from its twin: Combined, or the other pass of that type.
 struct ParkedPasses {
   Scene &scene; std::vector<std::pair<Pass *, PassType>> parked;
+  Pass *added = nullptr;  // a pass the host adds for one render only (render_pass_modes), removed after it
   ~ParkedPasses() {
     for (auto &[pass, type] : parked) pass->set_type(type);
-    if (!parked.empty()) scene.film->tag_modified();
+    if (added) scene.delete_node(added);
+    if (!parked.empty() || added) scene.film->tag_modified();
   }
 };
 bool denoisable_pass(PassType type) { return type == PASS_COMBINED || type == PASS_SHADOW_CATCHER || type == PASS_SHADOW_CATCHER_MATTE; }
@@ -983,13 +985,39 @@ void render_pass_modes(Host &host, ParkedPasses &parking) {
   for (auto &[id, entry] : host.nodes) {
     auto pass = dynamic_cast<Pass *>(entry.node);
     if (!pass || !denoisable_pass(pass->get_type())) continue;
-    // Light group passes are combined passes Cycles never denoises; with denoising
-    // their buffers are laid out as denoised passes nothing writes (the noisy mode
-    // instead makes finalize_passes merge the main noisy combined pass into the light
-    // group). Refused until the light groups are routed separately.
-    require(!(pass->get_type() == PASS_COMBINED && !pass->get_lightgroup().empty()),
-            "Light group passes are not supported together with denoising yet", CBC_UNSUPPORTED);
-    apply(pass, noisy_request(entry, pass) ? PassMode::NOISY : PassMode::DENOISED);
+    // Light group passes are combined passes no denoiser writes (it denoises the main combined pass): they stay noisy.
+    const bool lightgroup = pass->get_type() == PASS_COMBINED && !pass->get_lightgroup().empty();
+    apply(pass, lightgroup || noisy_request(entry, pass) ? PassMode::NOISY : PassMode::DENOISED);
+  }
+  // With light group passes the main noisy combined pass must stay apart from them. Film::update_passes adds that
+  // pass unnamed after every pass of the scene, and Film::finalize_passes merges an unnamed pass into the first earlier
+  // pass of its type and mode, light group or not; a light group pass would then hold it and the kernel's main
+  // combined pass would not exist. So a noisy combined pass without a light group, with a name, goes before the first
+  // light group pass: the caller's own noisy request when there is one (moved there), otherwise one the host adds
+  // for this render only. Pass order matters only within one component count and type (compare_pass_order).
+  const auto is_lightgroup = [](const Pass *pass) { return pass->get_type() == PASS_COMBINED && !pass->get_lightgroup().empty(); };
+  size_t first_group = scene.passes.size();
+  for (size_t i = 0; i < scene.passes.size(); i++) if (is_lightgroup(scene.passes[i])) { first_group = i; break; }
+  if (first_group < scene.passes.size()) {
+    size_t noisy = scene.passes.size();
+    for (size_t i = 0; i < scene.passes.size(); i++) {
+      const Pass *pass = scene.passes[i];
+      if (pass->get_type() == PASS_COMBINED && pass->get_lightgroup().empty() && pass->get_mode() == PassMode::NOISY && !pass->get_name().empty() &&
+          pass->get_name() != "Combined") { noisy = i; break; }
+    }
+    if (noisy == scene.passes.size()) {
+      parking.added = scene.create_node<Pass>();
+      parking.added->set_type(PASS_COMBINED); parking.added->set_mode(PassMode::NOISY); parking.added->set_name(ustring("CodeBrix Noisy Combined"));
+      noisy = scene.passes.size() - 1;
+    }
+    if (noisy > first_group) {
+      // Rotate [first_group, noisy] by one so the noisy pass comes first; every other pass keeps its order.
+      std::vector<std::unique_ptr<Pass>> moved;
+      for (size_t i = first_group; i <= noisy; i++) moved.push_back(scene.passes.steal(i));
+      scene.passes.replace(first_group, std::move(moved.back()));
+      for (size_t i = 0; i + 1 < moved.size(); i++) scene.passes.replace(first_group + 1 + i, std::move(moved[i]));
+    }
+    changed = true;
   }
   if (changed) scene.film->tag_modified();
 }

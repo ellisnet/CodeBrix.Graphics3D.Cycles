@@ -134,6 +134,11 @@ std::string wavefront_layout(){
   constant("CP_PANORAMA_FISHEYE_LENS_POLYNOMIAL",PANORAMA_FISHEYE_LENS_POLYNOMIAL);constant("CP_PANORAMA_EQUIANGULAR_CUBEMAP_FACE",PANORAMA_EQUIANGULAR_CUBEMAP_FACE);
   constant("CP_PANORAMA_CENTRAL_CYLINDRICAL",PANORAMA_CENTRAL_CYLINDRICAL);
   source<<"//#endif\n";
+  // Spherical stereo (CAMERA_STEREO, wavefront_camera.wgsl cp_stereo): kernel/camera/projection.h spherical_stereo_transform.
+  source<<"//#if CAMERA_STEREO\n";
+  constant("CS_D_interocular_offset",offsetof(KernelData,cam.interocular_offset));constant("CS_D_convergence_distance",offsetof(KernelData,cam.convergence_distance));
+  constant("CS_D_pole_merge_angle_from",offsetof(KernelData,cam.pole_merge_angle_from));constant("CS_D_pole_merge_angle_to",offsetof(KernelData,cam.pole_merge_angle_to));
+  source<<"//#endif\n";
 #undef DATA
 #define KERNEL_STRUCT_BEGIN(name)
 #define KERNEL_STRUCT_BEGIN_PACKED(name,feature)
@@ -156,6 +161,7 @@ std::string wavefront_layout(){
   constant("DL_O_shadow_set_membership",offsetof(KernelObject,shadow_set_membership));constant("DL_O_blocker_shadow_set",offsetof(KernelObject,blocker_shadow_set));
   constant("DL_SD_HAS_ONLY_VOLUME",SD_HAS_ONLY_VOLUME);constant("DL_VOLUME_BOUNDS_MAX",VOLUME_BOUNDS_MAX);constant("DL_MAX_INTERSECTIONS",1024);
   constant("DL_PATH_RAY_SHADOW_FOR_LIGHT_LINKING",PATH_RAY_SHADOW_FOR_LIGHT_LINKING);constant("DL_RECORD_BYTES",32);constant("DL_D_transparent_max_bounce",offsetof(KernelData,integrator.transparent_max_bounce));
+  constant("DL_FEATURE_SHADOW_LINKING",KERNEL_FEATURE_SHADOW_LINKING);
   source<<"//#endif\n";
   constant("VS_HAS_VOLUME",SD_HAS_VOLUME);constant("VS_OBJECT_HAS_VOLUME",SD_OBJECT_HAS_VOLUME);
   constant("VS_MAX",MAX_VOLUME_STACK_SIZE);constant("VS_MAX_HITS",2*MAX_VOLUME_STACK_SIZE);constant("VS_BOUNDS_MAX",VOLUME_BOUNDS_MAX);
@@ -294,10 +300,13 @@ void WebGPUDevice::enqueue_camera(int work,const DeviceKernelArguments &args){
   if(p[2]){require(p[3]&&p[5]&&uint64_t(p[3])*p[5]<=uint32_t(work),"Incomplete camera tile dispatch");validate(p[2],size_t(p[3])*sizeof(KernelWorkTile));}
   else{require(p[13]<=uint32_t(work),"Incomplete camera retry dispatch");if(p[12])validate(p[12],size_t(p[13])*4);}
   // Perspective, orthographic and panoramic cameras with depth of field (CAMERA_PROJECTIONS for every case
-  // but the pinhole perspective camera); custom (OSL) cameras are outside the package and stereo is refused.
+  // but the pinhole perspective camera); custom (OSL) cameras are outside the package. Spherical stereo (a left or
+  // right eye: a non-zero interocular offset) with the perspective and panoramic cameras is CAMERA_STEREO; the
+  // orthographic camera ignores the offset, as camera_sample_orthographic does.
   require(data.cam.type==CAMERA_PERSPECTIVE||data.cam.type==CAMERA_ORTHOGRAPHIC||data.cam.type==CAMERA_PANORAMA,
           "WebGPU custom camera (OSL) not implemented");
-  require(data.cam.interocular_offset==0,"WebGPU stereo camera not implemented");
+  require(std::isfinite(data.cam.interocular_offset)&&std::isfinite(data.cam.convergence_distance)&&
+          std::isfinite(data.cam.pole_merge_angle_from)&&std::isfinite(data.cam.pole_merge_angle_to),"Invalid stereo camera parameters");
   require(std::isfinite(data.cam.aperturesize)&&data.cam.aperturesize>=0,"Invalid camera aperture size");
   if(data.cam.aperturesize>0){
     require(std::isfinite(data.cam.focaldistance)&&std::isfinite(data.cam.inv_aperture_ratio)&&

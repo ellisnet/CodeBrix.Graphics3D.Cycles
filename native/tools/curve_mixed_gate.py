@@ -30,7 +30,7 @@ def main():
         folder.mkdir(exist_ok=True)
         env = dict(os.environ, CODEBRIX_CYCLES_GATE_CURVES='1', MESA_SHADER_CACHE_DIR=str(out/'shader-cache'))
         start = time.time()
-        run = subprocess.run([str(WORK/'cycles-build/bin'/('codebrix_cycles_'+name+'_gate')), str(folder/'run')]+GATES[name], capture_output=True, text=True, env=env, timeout=1100)
+        run = subprocess.run([str(WORK/'cycles-build/bin'/('codebrix_cycles_'+name+'_gate')), str(folder/'run')]+GATES[name], capture_output=True, text=True, env=env, timeout=2400)
         (folder/'stdout.txt').write_text(run.stdout)
         (folder/'stderr.txt').write_text(run.stderr)
         lines = [line for line in run.stdout.splitlines() if line.strip().startswith('{')]

@@ -6,8 +6,8 @@
 // a second time in a new host ("replay"), and a fresh CPU host renders the
 // edited scene from scratch (built with the same node creation order) as the
 // oracle. argv: output prefix, "cpu" or "gpu". GPU mode also provokes the
-// known WebGPU render-time rejections (a stereo eye, a custom (OSL)
-// camera), removes the cause and renders again on the same host (recovery).
+// known WebGPU render-time rejection (a custom (OSL) camera) twice, removes the
+// cause each time and renders again on the same host (recovery).
 // Prints one JSON line; the gate compares the saved films.
 #define _POSIX_C_SOURCE 200809L
 #include "cycles_host.h"
@@ -260,14 +260,16 @@ int main(int argc, char **argv) {
     Params p; base_params(&p, 0); Scene s; build(&s, backend, &p);
     CHECK(cbc_host_set_event_callback(s.host, on_event, &events));
     render(s.host, before);
-    /* A stereo eye: the WebGPU device refuses stereo cameras by name. (This was a volume majorant pass until the
-     * device wrote the majorant passes; a release build has no other pass the device refuses in a scene without volumes.) */
-    CHECK(cbc_host_set_string(s.host, s.camera, "stereo_eye", "left"));
+    /* First rejection: a custom (OSL) camera, which the WebGPU device refuses by name (outside the package). This case was a
+     * volume majorant pass and then a stereo eye until the device rendered each; no other render-time refusal can be switched
+     * on and off in this scene through the C ABI in a release build, so both rejections use the custom camera: the second one
+     * below follows a recovery, which is what the sequence tests. */
+    CHECK(cbc_host_set_string(s.host, s.camera, "camera_type", "custom"));
     CBCRenderConfig config = {sizeof(config), W, H, SAMPLES, {0}};
     for (unsigned i = 0; i < FLOATS; ++i) after[i] = -99;
     failed_pass = cbc_host_render(s.host, &config, after, FLOATS);
     for (unsigned i = 0; i < FLOATS; ++i) REQUIRE(after[i] == -99);
-    CHECK(cbc_host_set_string(s.host, s.camera, "stereo_eye", "none"));
+    CHECK(cbc_host_set_string(s.host, s.camera, "camera_type", "perspective"));
     after_pass = cbc_host_render(s.host, &config, after, FLOATS);
     if (after_pass == CBC_OK) save(prefix, "recovery-pass", after);
     CHECK(cbc_host_set_string(s.host, s.camera, "camera_type", "custom"));

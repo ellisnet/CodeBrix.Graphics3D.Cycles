@@ -84,7 +84,8 @@ void WebGPUDevice::validate_film_passes() const{
   // blur): the object motion pass transforms, the camera's pre/post projections.
   pass(data.film.pass_motion,4,PASSMASK(MOTION));pass(data.film.pass_motion_weight,1,PASSMASK(MOTION));
   if(film_motion_vectors()){
-    require(data.cam.type==CAMERA_PERSPECTIVE,"WebGPU motion pass requires the perspective camera");
+    // Perspective and orthographic cameras project with worldtoraster and perspective_pre/post; panoramic ones through
+    // direction_to_panorama (CAMERA_PANORAMA_INVERSE); custom (OSL) cameras are refused with the camera.
     const auto table=globals.find("object_motion_pass");
     require(table!=globals.end()&&remaining(table->second)>=object_records.size()*OBJECT_MOTION_PASS_SIZE*sizeof(Transform),"Missing native object motion pass transforms");
     // Deforming geometry (SD_OBJECT_HAS_VERTEX_MOTION on plain triangles): FILM_MOTION_DEFORM (pipelines.h).
@@ -94,12 +95,14 @@ void WebGPUDevice::validate_film_passes() const{
   require(!(data.film.pass_flag&PASSMASK(MIST))||(std::isfinite(data.film.mist_start)&&std::isfinite(data.film.mist_inv_depth)&&
           std::isfinite(data.film.mist_falloff)),"Invalid film mist settings");
   require(std::isfinite(data.film.pass_alpha_threshold),"Invalid film pass alpha threshold");
-  // Denoising features (film/denoising_passes.h): albedo, normal, specular albedo,
-  // roughness and depth. The motion features need motion vectors (refused with the motion pass).
+  // Denoising features (film/denoising_passes.h): albedo, normal, specular albedo, roughness and depth, and the
+  // backward and specular motion features (with motion vectors). These are every pass type of the denoising category
+  // (PASS_DENOISING_ALBEDO to PASS_DENOISING_SPECULAR_MOTION; Film::device_update sets denoising_pass_flag from no other
+  // type), so any other bit is invalid data, not a pass to implement.
   const int denoising=PASSMASK(DENOISING_ALBEDO)|PASSMASK(DENOISING_NORMAL)|PASSMASK(DENOISING_SPECULAR_ALBEDO)|
                       PASSMASK(DENOISING_ROUGHNESS)|PASSMASK(DENOISING_DEPTH);
   require(!(data.film.denoising_pass_flag&~(denoising|PASSMASK(DENOISING_BACKWARD_MOTION)|PASSMASK(DENOISING_SPECULAR_MOTION))),
-          "WebGPU film denoising pass not implemented");
+          "Invalid film denoising pass flags");
   pass(data.film.pass_denoising_albedo,3,0);pass(data.film.pass_denoising_normal,3,0);pass(data.film.pass_denoising_specular_albedo,3,0);
   pass(data.film.pass_denoising_roughness,1,0);pass(data.film.pass_denoising_depth,1,0);
   // The denoising motion features (Scene::MOTION_PASS through these passes): the motion pass's transforms.

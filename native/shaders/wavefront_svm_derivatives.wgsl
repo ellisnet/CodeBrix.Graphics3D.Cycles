@@ -208,8 +208,8 @@ fn svmd_zero_if(mask:vec3<bool>,a:NormalDual)->NormalDual{return svmd_select(mas
 fn svmd_floor(a:NormalDual)->NormalDual{return svmd_const(floor(a.value));}
 //#endif
 //#if SVM_NODE_GEOMETRY_DERIVATIVE
-// geometry.h svm_node_geometry<dual3>. The tangent output (primitive_tangent)
-// is not ported for derivatives and reports unsupported (16).
+// geometry.h svm_node_geometry<dual3>. The tangent output (primitive_tangent) is svm_geometry_tangent
+// (SVM_GEOMETRY_TANGENT, wavefront_normals.wgsl).
 fn svm_geometry_derivative(s:ptr<function,SvmState>,node:u32){
     let sd=(*s).geometry;let kind=svm_byte(node+N_Geometry_geom_type);var data=svmd_const(vec3<f32>(0));
     switch(kind){
@@ -218,8 +218,13 @@ fn svm_geometry_derivative(s:ptr<function,SvmState>,node:u32){
         case NODE_GEOM_Ng:{data=svmd_const(sd.Ng);}
         case NODE_GEOM_I:{data=svmd_incoming(sd);}
         case NODE_GEOM_uv:{data=NormalDual(vec3<f32>(1.0-sd.u-sd.v,sd.u,0),vec3<f32>(-sd.du.x-sd.dv.x,sd.du.x,0),vec3<f32>(-sd.du.y-sd.dv.y,sd.du.y,0));}
+//#if SVM_GEOMETRY_TANGENT
+        case NODE_GEOM_T:{data=svm_geometry_tangent(s,true);if((*s).error!=0u){return;}}
+//#endif
+//#if !SVM_GEOMETRY_TANGENT
 //#if CURVES
         case NODE_GEOM_T:{if((sd.primitive_type&PRIMITIVE_CURVE)==0u){svm_error(s,16u);return;}data=svmd_const(cv_normalize(sd.dPdu,cv_order()));}
+//#endif
 //#endif
         default:{svm_error(s,16u);return;}
     }
@@ -232,13 +237,16 @@ fn svm_geometry_derivative(s:ptr<function,SvmState>,node:u32){
 // tex_coord.h svm_node_tex_coord_derivative. Values reuse svm_texco (the
 // non-derivative evaluation of the same coordinate); derivatives follow
 // svm_node_tex_coord_eval<dual3>. Smooth normals use triangle_smooth_normal
-// with the du/dv offsets; motion-triangle is_smooth normals report unsupported (16).
+// with the du/dv offsets; motion-triangle is_smooth normals are motion_triangle_smooth_normal's
+// (SVM_MOTION_NORMAL_DERIVATIVE; without that region they report unsupported, 16).
 fn svmd_smooth_normal(s:ptr<function,SvmState>)->NormalDual{
     let sd=(*s).geometry;var v:array<vec3<f32>,3>;v[0]=sd.N;var count=1u;
     let is_smooth=(sd.primitive_type&PRIMITIVE_TRIANGLE)!=0u&&(sd.shader&SHADER_SMOOTH_NORMAL)!=0u;
     var transform=sd.object_id!=NONE;
     if(is_smooth){
-        if(sd.primitive_type!=PRIMITIVE_TRIANGLE){svm_error(s,16u);return svmd_const(sd.N);}
+//#if SVM_MOTION_NORMAL_DERIVATIVE else         if(sd.primitive_type!=PRIMITIVE_TRIANGLE){svm_error(s,16u);return svmd_const(sd.N);}
+        if(sd.primitive_type!=PRIMITIVE_TRIANGLE&&sd.primitive_type!=PRIMITIVE_MOTION_TRIANGLE){svm_error(s,16u);return svmd_const(sd.N);}
+//#endif
         let object=table_at(G_objects,sd.object_id,SIZE_objects);var indices:vec3<u32>;
         if((sd.object_flag&SD_OBJECT_HAS_CORNER_NORMALS)!=0u){
             if(sd.prim>(0xffffffffu-2u)/3u){svm_error(s,64u);return svmd_const(sd.N);}
@@ -249,7 +257,27 @@ fn svmd_smooth_normal(s:ptr<function,SvmState>)->NormalDual{
             indices=vec3<u32>(load_word(at),load_word(at+4u),load_word(at+8u));
         }
         let desc=AttributeDesc(ATTR_ELEMENT_VERTEX_NORMAL,NODE_ATTR_FLOAT3,bitcast<i32>(load_word(object+O_normal_offset)),true);
-        var n:array<vec3<f32>,3>;for(var j=0u;j<3u;j++){n[j]=attribute_fetch(s,desc,indices[j]).xyz;}
+        var n:array<vec3<f32>,3>;
+//#if SVM_MOTION_NORMAL_DERIVATIVE
+        // motion_triangle_smooth_normal with the du/dv offsets: motion_triangle_normals at the shading time (the two steps'
+        // normals of each corner mixed by t and normalized, as the shader data computes them).
+        if(sd.primitive_type==PRIMITIVE_MOTION_TRIANGLE){
+            let offset=bitcast<i32>(load_word(object+O_normal_offset));let nc=table_count(G_attributes_normal);
+            var stride=load_word(object+O_numverts);if((sd.object_flag&SD_OBJECT_HAS_CORNER_NORMALS)!=0u){stride=3u*load_word(object+O_numprims);}
+            let frame=triangle_motion_time(sd.object_id,sd.time);
+            for(var j=0u;j<3u;j++){
+                let a=triangle_frame_index(indices[j],offset,frame.a,stride,nc);let b=triangle_frame_index(indices[j],offset,frame.b,stride,nc);
+                if(a==NONE||b==NONE){svm_error(s,64u);return svmd_const(sd.N);}
+                let na=surface_decode_normal(load_word(table_at(G_attributes_normal,a,SIZE_attributes_normal)));
+                let nb=surface_decode_normal(load_word(table_at(G_attributes_normal,b,SIZE_attributes_normal)));
+                n[j]=surface_native_normalize(rounded_add3((1.0-frame.t)*na,frame.t*nb));
+            }
+        }else{
+//#endif
+        for(var j=0u;j<3u;j++){n[j]=attribute_fetch(s,desc,indices[j]).xyz;}
+//#if SVM_MOTION_NORMAL_DERIVATIVE
+        }
+//#endif
         // triangle_smooth_normal at (u,v), (u+du.dx,v+dv.dx) and (u+du.dy,v+dv.dy).
         let uv=array<vec2<f32>,3>(vec2<f32>(sd.u,sd.v),vec2<f32>(sd.u+sd.du.x,sd.v+sd.dv.x),vec2<f32>(sd.u+sd.du.y,sd.v+sd.dv.y));
         for(var j=0u;j<3u;j++){

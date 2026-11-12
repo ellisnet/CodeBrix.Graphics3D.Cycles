@@ -27,7 +27,7 @@ Intel Mac without Docker) hands the files to the Linux x64 machine instead:
 
 Every step writes manifest.json (commit, working-tree changes, binary and runtime SHA-256, `dotnet --version`,
 host identity) and refuses inputs from another commit or with another runtime. The WebGPU runtime must be the
-CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 file for the RID and the .NET SDK 10.0.403 (docs/TESTING-*.md,
+CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 file for the RID and the .NET SDK 11.0.100 (docs/TESTING-*.md,
 "MANDATORY TEST RULES"). linux-judge --evidence writes a copy for native/evidence/ without the stage records
 (mnee about 150 MB, microfacet_render about 25 MB) and the GPU arena dumps (about 17-27 MB per case), which are
 identified by SHA-256 in transport-only.json and travel by hand.
@@ -38,7 +38,7 @@ REPO=Path(__file__).resolve().parents[2]
 TOOLS=REPO/'native/tools'
 LINUX_BIN=REPO/'native/work/cycles-build/bin'
 RUNTIME_VERSION='1.0.300.210'
-SDK_VERSION='10.0.403'
+SDK_VERSION='11.0.100'
 SCENE_GATES=['light_tree','microfacet_render']
 GATES=SCENE_GATES+['mnee']
 RUNTIME_FILE={'linux-x64':'libcodebrix_wgpu.so','linux-arm64':'libcodebrix_wgpu.so','osx-x64':'libcodebrix_wgpu.dylib',

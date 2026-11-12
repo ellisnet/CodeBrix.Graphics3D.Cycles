@@ -346,6 +346,19 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     let index=mn_index(id.x);if(index>=p(10u)){fail();return;}
     if(state_half(S_path_queued_kernel,index)!=MNEE_K_INTERSECT){fail();return;}
     let sd=surface_from_ray(index);if(sd.error!=0u){return;}surface_data_write(at+MR_SD,sd);store_word(at+MR_STAGE,MN_DONE);
+//#if MNEE_BACKGROUND
+    // background_light_sample for a background lamp mnee_seed may select (mn_background_sample): it takes only the
+    // shading point and the light random numbers, so it runs here for every receiver (entry size), into MR_LS.
+    if(data_word(D_integrator_use_direct_light)!=0u){
+//#if SAMPLING_SOBOL_BURLEY else         let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT).xyz;
+        let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_LIGHT,3u).xyz;
+//#endif
+//#if BACKGROUND_PORTAL else         let sampled=bgl_sample(random.xy);
+        let sampled=bgl_portal_light_sample(sd.P,random.xy);
+//#endif
+        mn_s4(at+MR_LS,sampled);
+    }
+//#endif
 }
 //#endif
 //#if MNEE_ENTRIES
@@ -360,6 +373,33 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     let index=mn_index(id.x);let sd=surface_data_read(at+MR_SD);var r:SvmResult;r.runtime_flag=sd.runtime_flag;
     let result=light_selection_compute(index,sd,r,true,false);if(load_word(p(17u))!=0u){return;}
     light_selection_write(at+MR_SELECT-LIGHT_SELECT_RECORD,result.selection,0.0);
+}
+//#endif
+//#if MNEE_LIGHT_STAGES
+// light_sample for the spot and area lights (light/spot.h spot_light_sample, light/area.h area_light_sample) of the
+// selection mnee_seed takes (the same light_select), into MR_LS: own entry before mnee_seed (compiler pressure: the
+// samplers inlined into mnee_seed pass the size guard). Other lamp types leave MR_LS as it is (the background sample).
+@compute @workgroup_size(64) fn mnee_light_sample(@builtin(global_invocation_id) id:vec3<u32>){
+    if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_DONE){return;}
+    if(data_word(D_integrator_use_direct_light)==0u){return;}
+    let index=mn_index(id.x);let sd=surface_data_read(at+MR_SD);
+//#if LIGHT_SELECT
+    light_select_record=at+MR_SELECT-LIGHT_SELECT_RECORD;
+//#endif
+//#if LIGHT_SELECT else     let selection=light_select(index);if(selection.prim>=0){return;}
+    let selection=light_select(index);if(!selection.valid||selection.prim>=0){return;}
+//#endif
+    let kind=load_word(table_at(G_lights,~bitcast<u32>(selection.prim),SIZE_lights)+L_type);
+    var sample:NativeLightSample;
+//#if MNEE_SPOT
+    if(kind==LIGHT_SPOT){sample=mn_spot_sample(index,sd,selection,mn_point_sample(index,sd,selection));}
+//#endif
+//#if MNEE_AREA
+    if(kind==LIGHT_AREA){sample=mn_area_sample(index,sd,selection);}
+//#endif
+    if(kind!=LIGHT_SPOT&&kind!=LIGHT_AREA){return;}
+    var ls:MnLight;ls.P=sample.P;ls.D=sample.D;ls.t=sample.t;ls.pdf=sample.pdf;ls.eval_fac=sample.eval_fac;
+    ls.shader=sample.shader;ls.object=sample.object_id;ls.prim=sample.prim;mn_light_write(at+MR_LS,ls);
 }
 //#endif
 @compute @workgroup_size(64) fn mnee_seed(@builtin(global_invocation_id) id:vec3<u32>){
@@ -380,8 +420,24 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     // A lamp without use_caustics ends the walk before any state change whatever
     // its sample is; the device accepts caustics only from point and sun lamps.
     let lamp=table_at(G_lights,~bitcast<u32>(selection.prim),SIZE_lights);if(load_word(lamp+MNEE_L_use_caustics)==0u){return;}
+//#if SHADOW_CATCHER
+    // light_sample: a shadow catcher pass path takes no sample of a lamp that excludes the catcher.
+    if((state_word(S_path_flag,index)&SC_PATH_PASS)!=0u&&(load_word(lamp+L_shader_id)&SC_EXCLUDE)!=0u){return;}
+//#endif
     var sample:NativeLightSample;let kind=load_word(lamp+L_type);
+//#if MNEE_LIGHT_STAGES else     if(kind==LIGHT_POINT){sample=mn_point_sample(index,sd,selection);}else if(kind==LIGHT_SUN){sample=mn_sun_sample(index,selection);}
     if(kind==LIGHT_POINT){sample=mn_point_sample(index,sd,selection);}else if(kind==LIGHT_SUN){sample=mn_sun_sample(index,selection);}
+    // Spot and area lights: the sample mnee_light_sample took for this record (MR_LS).
+//#if MNEE_SPOT
+    else if(kind==LIGHT_SPOT){sample=mn_staged_sample(at);}
+//#endif
+//#if MNEE_AREA
+    else if(kind==LIGHT_AREA){sample=mn_staged_sample(at);}
+//#endif
+//#endif
+//#if MNEE_BACKGROUND
+    else if(kind==LIGHT_BACKGROUND){sample=mn_background_sample(index,selection,at);}
+//#endif
     else{atomicOr(&heap[p(17u)/4u],2u);return;}
     if(load_word(p(17u))!=0u){return;}
     if(!(sample.pdf>0.0)){return;}
@@ -440,7 +496,13 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
 //#if SAMPLING_SOBOL_BURLEY else                     let random=native_rng(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF).xy;
                     let random=native_rng_pattern(state_word(S_path_sample,index),state_word(S_path_rng_pixel,index),state_half(S_path_rng_offset,index)+PRNG_SURFACE_BSDF,2u).xy;
 //#endif
+//#if MNEE_BECKMANN
+                    if(c.kind==MNEE_CLOSURE_REFRACTION_FIRST){n_offset=mn_beckmann_dh(c.alpha_x,c.alpha_y,random.x,random.y);}else{
+//#endif
                     n_offset=mn_sample_dh(c.alpha_x,c.alpha_y,random.x,random.y);if(load_word(p(17u))!=0u){return;}
+//#if MNEE_BECKMANN
+                    }if(load_word(p(17u))!=0u){return;}
+//#endif
                 }
                 store_word(h+24u,ci);mn_sf(h+28u,eta);mn_s2(at+MR_T+k*MN_VERTEX_BYTES+108u,n_offset);
                 break;
@@ -537,8 +599,20 @@ fn mn_solve_h_to_x(base:u32,count:u32,dx:ptr<function,array<vec2<f32>,6>>)->bool
     if(solved==1u){store_word(at+MR_STAGE,MN_TRANSFER);}
 }
 //#endif
-// light_sample_update for the lamp types the device accepts with caustics
-// (point and sun; spot and area casters are refused in mnee.cpp).
+//#if MNEE_ENTRIES
+//#if MNEE_LIGHT_STAGES
+// light_sample_update at the walk's last vertex (mnee_path_contribution) for mnee_transfer: own entry after mnee_solve
+// (compiler pressure: the area light's update inlined into mnee_transfer).
+@compute @workgroup_size(64) fn mnee_light_update(@builtin(global_invocation_id) id:vec3<u32>){
+    if(id.x>=p(1u)){return;}let at=mn_record(id.x);if(at==0u){return;}if(load_word(at+MR_STAGE)!=MN_TRANSFER){return;}
+    let index=mn_index(id.x);let count=load_word(at+MR_META+MM_COUNT);var ls=mn_light_read(at+MR_LS);
+    let last=mn_read(at+MR_V+(count-1u)*MN_VERTEX_BYTES);
+    mn_light_update(&ls,last.p,last.n,state_word(S_path_flag,index));mn_light_write(at+MR_LS,ls);
+}
+//#endif
+//#endif
+// light_sample_update for the lamp types the device accepts with caustics (point, spot, area; sun and background
+// lights keep their sample).
 fn mn_light_update(ls:ptr<function,MnLight>,P:vec3<f32>,N:vec3<f32>,path_flag:u32){
     let light=table_at(G_lights,(*ls).prim,SIZE_lights);
     if((*ls).kind==LIGHT_POINT){
@@ -557,6 +631,12 @@ fn mn_light_update(ls:ptr<function,MnLight>,P:vec3<f32>,N:vec3<f32>,path_flag:u3
             (*ls).pdf=pdf*jacobian;(*ls).Ng=mn_normalize(mn_sub((*ls).P,co));
         }else{(*ls).pdf=((*ls).eval_fac*4.0)*3.1415927410125732;(*ls).Ng=-(*ls).D;}
     }
+//#if MNEE_SPOT
+    if((*ls).kind==LIGHT_SPOT){mn_spot_update(ls,light,P,N,path_flag);}
+//#endif
+//#if MNEE_AREA
+    if((*ls).kind==LIGHT_AREA){mn_area_update(ls,light,P);}
+//#endif
     (*ls).pdf*=(*ls).pdf_selection;
 }
 // mnee_compute_transfer_matrix: x = dx1/dxlight, y = |dh/dx|, z = 1 on success.
@@ -627,10 +707,20 @@ fn mn_bsdf_contribution(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec3<f32>{
     let cosNI=rounded_dot(c.N,wi);let cosNO=rounded_dot(c.N,wo);
     let Ht=mn_normalize(-rounded_add3(c.ior*wo,wi));let cosHI=rounded_dot(Ht,wi);
     let alpha2=c.alpha_x*c.alpha_y;let cosThetaM=rounded_dot(c.N,Ht);
-    let li=0.5*rounded_add(rounded_sqrt(rounded_add(1.0,alpha2*max(rounded_add(rounded_divide(1.0,cosNI*cosNI),-1.0),0.0))),-1.0);
-    let lo=0.5*rounded_add(rounded_sqrt(rounded_add(1.0,alpha2*max(rounded_add(rounded_divide(1.0,cosNO*cosNO),-1.0),0.0))),-1.0);
-    let G=rounded_divide(1.0,rounded_add(rounded_add(1.0,li),lo));
-    let f=ggx_fresnel(c,cosHI);
+//#if MNEE_BECKMANN else     let li=0.5*rounded_add(rounded_sqrt(rounded_add(1.0,alpha2*max(rounded_add(rounded_divide(1.0,cosNI*cosNI),-1.0),0.0))),-1.0);
+//#endif
+//#if MNEE_BECKMANN else     let lo=0.5*rounded_add(rounded_sqrt(rounded_add(1.0,alpha2*max(rounded_add(rounded_divide(1.0,cosNO*cosNO),-1.0),0.0))),-1.0);
+//#endif
+//#if MNEE_BECKMANN else     let G=rounded_divide(1.0,rounded_add(rounded_add(1.0,li),lo));
+    // bsdf_G<GGX> or, for a Beckmann refraction closure (MNEE_CLOSURE_REFRACTION_FIRST), bsdf_G<BECKMANN>: 1 / ((1 + lambda(NI))
+    // + lambda(NO)), one lambda body for both cosines; and the Fresnel of a refraction lobe for the Beckmann closure.
+    let beckmann=c.kind==MNEE_CLOSURE_REFRACTION_FIRST;var G=1.0;
+    for(var k=0u;k<2u;k++){G=rounded_add(G,mn_lambda(beckmann,alpha2,select(cosNO,cosNI,k==0u)));}
+    G=rounded_divide(1.0,G);var lobes=c;if(beckmann){lobes.kind=MNEE_CLOSURE_REFRACTION_LAST;}
+//#endif
+//#if MNEE_BECKMANN else     let f=ggx_fresnel(c,cosHI);
+    let f=ggx_fresnel(lobes,cosHI);
+//#endif
     return ((c.weight*f.transmission)*G)*abs(rounded_divide(cosHI,cosNI*(cosThetaM*cosThetaM)));
 }
 // mnee_path_contribution up to the solution shaders: the light update, the
@@ -645,7 +735,9 @@ fn mn_bsdf_contribution(c:SvmClosure,wi:vec3<f32>,wo:vec3<f32>)->vec3<f32>{
     let wo_ray=mn_normalize_len(mn_sub(heap_vec3(at+MR_V),sd.P));let wo=wo_ray.xyz;let wo_len=wo_ray.w;
     var throughput=vec3<f32>(1);
     let last=mn_read(at+MR_V+(count-1u)*MN_VERTEX_BYTES);
-    mn_light_update(&ls,last.p,last.n,state_word(S_path_flag,index));mn_light_write(at+MR_LS,ls);
+//#if MNEE_LIGHT_STAGES else     mn_light_update(&ls,last.p,last.n,state_word(S_path_flag,index));mn_light_write(at+MR_LS,ls);
+    // mnee_light_update updated the light sample (light_sample_update).
+//#endif
     let transmission_bounce=state_half(S_path_transmission_bounce,index);let diffuse_bounce=state_half(S_path_diffuse_bounce,index);
     let bounce=state_half(S_path_bounce,index);
     store_word(at+MR_META+MM_BOUNCES,transmission_bounce|(diffuse_bounce<<16u));store_word(at+MR_META+MM_BOUNCES+4u,bounce);
@@ -764,6 +856,10 @@ fn mnee_direct_light(index:u32,sd:SurfaceData,r:SvmResult){
     state_u16(S_shadow_path_transparent_bounce,shadow,state_half(S_path_transparent_bounce,index));
     state_u16(S_shadow_path_volume_bounds_bounce,shadow,state_half(S_path_volume_bounds_bounce,index));
     state_u16(S_shadow_path_glossy_bounce,shadow,state_half(S_path_glossy_bounce,index));
+//#if MNEE_VOLUME
+    // integrate_direct_light_shadow_init_common: the main path's volume stack goes to the MNEE shadow path.
+    vl_copy_volume_stack(index,shadow);
+//#endif
     state_vec3(S_shadow_path_throughput,shadow,heap_vec3(state_address(S_path_throughput,index,12u))*bsdf.eval);
     state_u16(S_shadow_path_transmission_bounce,shadow,state_half(S_path_transmission_bounce,index)+count-1u);
     state_u16(S_shadow_path_diffuse_bounce,shadow,state_half(S_path_diffuse_bounce,index)+1u);
@@ -844,5 +940,233 @@ fn mn_point_sample(index:u32,sd:SurfaceData,selection:LightSelection)->NativeLig
 //#if LIGHT_SELECT else     ls.pdf*=data_float(D_integrator_distribution_pdf_lights);return ls;
     ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);return ls;
 //#endif
+}
+//#if MNEE_SPOT
+// Spot lights with caustics (light/spot.h, util/math_intersect.h), every sum, quotient and square root correctly
+// rounded in the oracle's float3 order, as mn_point_sample.
+// spot_light_to_local: safe_normalize(transform_direction(itfm, ray)) with z negated; the host's transform_direction
+// order (lamp_direction, wavefront_emitters.wgsl).
+fn mn_spot_local(light:u32,ray:vec3<f32>)->vec3<f32>{
+    let a=table_at(G_objects,load_word(light+L_object_id),SIZE_objects)+O_itfm;let x=heap_vec4(a);let y=heap_vec4(a+16u);let z=heap_vec4(a+32u);
+    let c0=vec3<f32>(x.x,y.x,z.x)*ray.x;let c1=vec3<f32>(x.y,y.y,z.y)*ray.y;let c2=vec3<f32>(x.z,y.z,z.z)*ray.z;
+    var d=rounded_add3(rounded_add3(c0,c1),c2);if(CAMERA_NATIVE_VECTOR_DIVIDE!=0u){d=rounded_add3(c0,rounded_add3(c1,c2));}
+    var local=mn_safe_normalize_len(d).xyz;local.z=-local.z;return local;
+}
+// spot_light_attenuation: smoothstepf((ray.z - cos_half_spot_angle) * spot_smooth).
+fn mn_spot_attenuation(light:u32,local:vec3<f32>)->f32{
+    let f=rounded_add(local.z,-heap_float(light+L_spot_cos))*heap_float(light+L_spot_smooth);
+    if(f<=0.0){return 0.0;}if(f>=1.0){return 1.0;}let ff=f*f;return rounded_add(3.0*ff,-((2.0*ff)*f));
+}
+// ray_sphere_intersect(P, D, 0, FLT_MAX, centre, radius): xyz the hit, w its distance (negative: no hit).
+fn mn_sphere_hit(P:vec3<f32>,D:vec3<f32>,centre:vec3<f32>,radius:f32)->vec4<f32>{
+    let none=vec4<f32>(0.0,0.0,0.0,-1.0);
+    let d_vec=mn_sub(centre,P);let r_sq=radius*radius;let d_sq=rounded_dot(d_vec,d_vec);let d_cos=rounded_dot(d_vec,D);
+    if(d_sq>r_sq&&d_cos<0.0){return none;}
+    let perpendicular=mn_sub(d_vec,d_cos*D);let s_sq=rounded_dot(perpendicular,perpendicular);if(s_sq>r_sq){return none;}
+    let root=rounded_sqrt(rounded_add(r_sq,-s_sq));let t=rounded_add(d_cos,-select(-root,root,rounded_add(d_sq,-r_sq)>=0.0));
+    if(t>0.0&&t<MNEE_FLT_MAX){return vec4<f32>(rounded_add3(P,D*t),t);}
+    return none;
+}
+// spot_light_sample (not in a volume segment) from the point light's sample of the same record (mn_point_sample: the same
+// fields, the visible cone, the hemisphere inside the sphere, the disk, the law of cosines and the pdf times the selection
+// pdf): the spread cone where it is the smaller one, then the spot attenuation. A sample the pinned code rejects has pdf 0.
+fn mn_spot_sample(index:u32,sd:SurfaceData,selection:LightSelection,point:NativeLightSample)->NativeLightSample{
+    var ls=point;let light=table_at(G_lights,ls.prim,SIZE_lights);
+    if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return ls;}
+    let co=heap_vec3(light+L_co);let radius=heap_float(light+L_radius);let r_sq=radius*radius;
+    let delta=mn_sub(sd.P,co);let d_sq=rounded_dot(delta,delta);
+    let sphere=load_word(light+L_is_sphere)!=0u;let outside=d_sq>r_sq;
+    if(sphere&&outside){
+        let one_minus_spread=rounded_add(1.0,-heap_float(light+L_spot_spread_cos));
+        let s_sq=rounded_divide(r_sq,d_sq);
+        let one_minus_cos=select(0.5*s_sq,rounded_add(1.0,-rounded_sqrt(max(rounded_add(1.0,-s_sq),0.0))),s_sq>0.0004);
+        if(!(one_minus_cos<one_minus_spread)){
+            // Sample the spread cone, then the sphere it reaches (ray_sphere_intersect), remapped onto the sphere.
+            let cone=mn_cone(-heap_vec3(light+L_spot_dir),one_minus_spread,selection.random.xy);ls.D=cone.D;
+//#if LIGHT_SELECT else             ls.pdf=cone.pdf*data_float(D_integrator_distribution_pdf_lights);
+            ls.pdf=cone.pdf*select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);
+//#endif
+            let hit=mn_sphere_hit(sd.P,ls.D,co,radius);if(hit.w<0.0){ls.pdf=0.0;return ls;}
+            ls.t=hit.w;let Ng=mn_normalize(mn_sub(hit.xyz,co));ls.P=rounded_add3(Ng*radius,co);
+        }
+    }
+    if(!sphere||outside){ls.eval_fac*=mn_spot_attenuation(light,mn_spot_local(light,-ls.D));}
+    if(ls.eval_fac==0.0){ls.pdf=0.0;}
+    return ls;
+}
+// spot_light_mnee_sample_update (the selection pdf is re-applied by mn_light_update).
+fn mn_spot_update(ls:ptr<function,MnLight>,light:u32,P:vec3<f32>,N:vec3<f32>,path_flag:u32){
+    let ray=mn_safe_normalize_len(mn_sub((*ls).P,P));(*ls).D=ray.xyz;(*ls).t=ray.w;
+    (*ls).eval_fac=heap_float(light+L_point_eval);
+    let radius=heap_float(light+L_radius);var use_attenuation=true;
+    if(load_word(light+L_is_sphere)!=0u){
+        let co=heap_vec3(light+L_co);let delta=mn_sub(P,co);let d_sq=rounded_dot(delta,delta);let r_sq=radius*radius;let t_sq=(*ls).t*(*ls).t;
+        let jacobian=rounded_divide(0.5*abs(rounded_add(rounded_add(d_sq,-r_sq),-t_sq)),(radius*(*ls).t)*t_sq);
+        var pdf:f32;
+        if(d_sq>r_sq){
+            let s_sq=rounded_divide(r_sq,d_sq);
+            let one_minus_cos=select(0.5*s_sq,rounded_add(1.0,-rounded_sqrt(max(rounded_add(1.0,-s_sq),0.0))),s_sq>0.0004);
+            pdf=rounded_divide(0.15915493667125702,min(one_minus_cos,rounded_add(1.0,-heap_float(light+L_spot_spread_cos))));
+        }else if((path_flag&PATH_RAY_MIS_HAD_TRANSMISSION)!=0u){pdf=0.15915493667125702*0.5;}
+        else{pdf=max(rounded_dot(N,(*ls).D),0.0)*0.31830987334251404;}
+        (*ls).pdf=pdf*jacobian;(*ls).Ng=mn_normalize(mn_sub((*ls).P,co));use_attenuation=d_sq>r_sq;
+    }else{(*ls).pdf=((*ls).eval_fac*4.0)*3.1415927410125732;(*ls).Ng=-(*ls).D;}
+    let local=mn_spot_local(light,-(*ls).D);
+    if(use_attenuation){(*ls).eval_fac*=mn_spot_attenuation(light,local);}
+}
+//#endif
+//#if MNEE_BECKMANN
+// Beckmann refraction casters (integrator/mnee.h mnee_sample_bsdf_dh and mnee_eval_bsdf_contribution for
+// CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID; Beckmann glass takes the GGX forms there, as pinned).
+// logf of a positive normal x, correctly rounded: e ln2 + 2 atanh((m-1)/(m+1)) in double-float (family_log_parts,
+// wavefront_microfacet.wgsl), rounded once.
+fn mn_logf(x:f32)->f32{
+    var bits=bitcast<u32>(x);var e=f32(i32(bits>>23u)-127);var m=bitcast<f32>((bits&0x007fffffu)|0x3f800000u);
+    if(m>1.4142135){m*=0.5;e+=1.0;}
+    let num=m-1.0;let den=trig_two_sum(m,1.0);let q=rounded_divide(num,den.x);let qd=trig_product(q,den.x);
+    let sl=rounded_divide(rounded_add(rounded_add(rounded_add(num,-qd.x),-qd.y),-(q*den.y)),den.x);let sv=vec2<f32>(q,sl);
+    let z=trig_mul(sv,sv);
+    var coefficients=array<vec2<f32>,10>(vec2<f32>(0.05263157933950424,-3.9213582381236733e-10),vec2<f32>(0.05882352963089943,-2.1913472425527658e-10),
+        vec2<f32>(0.06666667014360428,-3.47693762670076e-09),vec2<f32>(0.07692307978868484,-2.8656079731348427e-09),vec2<f32>(0.09090909361839294,-2.709302115988521e-09),
+        vec2<f32>(0.1111111119389534,-8.278422947149977e-10),vec2<f32>(0.1428571492433548,-6.38621200366174e-09),vec2<f32>(0.20000000298023224,-2.9802322831784522e-09),
+        vec2<f32>(0.3333333432674408,-9.934107758624577e-09),vec2<f32>(1.0,0.0));
+    var polynomial=vec2<f32>(0.0476190485060215,-8.869738832295582e-10);
+    for(var i=0u;i<10u;i++){polynomial=trig_coeff(coefficients[i],trig_mul(polynomial,z));}
+    let lm=trig_mul(vec2<f32>(2.0*sv.x,2.0*sv.y),polynomial);
+    let le=trig_product(e,0.6931471824645996);let tail=rounded_add(le.y,e*-1.9046542121259336e-09);
+    let sum=trig_two_sum(le.x,lm.x);let l=vec2<f32>(sum.x,rounded_add(rounded_add(sum.y,lm.y),tail));return rounded_add(l.x,l.y);
+}
+// mnee_sample_bsdf_dh for an isotropic Beckmann refraction lobe: tan2_theta = alpha2 * -logf(1 - u).
+fn mn_beckmann_dh(alpha_x:f32,alpha_y:f32,u:f32,v:f32)->vec2<f32>{
+    if(alpha_x!=alpha_y){atomicOr(&heap[p(17u)/4u],2u);return vec2<f32>(0);}
+    let sc=mn_fast_sincos(v*6.2831854820251465);let alpha2=alpha_x*alpha_x;
+    let tan2=alpha2*(-mn_logf(rounded_add(1.0,-u)));
+    let cos2=rounded_divide(1.0,rounded_add(1.0,tan2));let sin_theta=rounded_sqrt(max(rounded_add(1.0,-cos2),0.0));
+    return vec2<f32>(sc.y*sin_theta,sc.x*sin_theta);
+}
+// bsdf_lambda<GGX> or bsdf_lambda<BECKMANN>(alpha2, cos_N) (closure/bsdf_microfacet.h): for Beckmann the rational
+// approximation of bsdf_lambda_from_sqr_alpha_tan_n, inversesqrtf as 1 / sqrtf.
+fn mn_lambda(beckmann:bool,alpha2:f32,cosine:f32)->f32{
+    let x=alpha2*max(rounded_add(rounded_divide(1.0,cosine*cosine),-1.0),0.0);
+    if(!beckmann){return 0.5*rounded_add(rounded_sqrt(rounded_add(1.0,x)),-1.0);}
+    if(x<0.39){return 0.0;}
+    let a=rounded_divide(1.0,rounded_sqrt(x));
+    return rounded_divide(rounded_add(rounded_add(0.396*a,-1.259)*a,1.0),rounded_add(2.181*a,3.535)*a);
+}
+//#endif
+//#if MNEE_BACKGROUND
+// Background lights with caustics: light_sample's LIGHT_BACKGROUND branch (light/light.h, background_light_sample of
+// light/background.h through bgl_sample, wavefront_background_light.wgsl; taken by mnee_receiver into MR_LS): D = -sample,
+// P = Ng = sample direction reversed, t = FLT_MAX (a fixed-direction walk), eval_fac 1.
+fn mn_background_sample(index:u32,selection:LightSelection,at:u32)->NativeLightSample{
+    var ls:NativeLightSample;ls.is_light=true;ls.prim=~bitcast<u32>(selection.prim);
+    let light=table_at(G_lights,ls.prim,SIZE_lights);
+    if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return ls;}
+    ls.shader=load_word(light+L_shader_id);ls.object_id=load_word(light+L_object_id);
+    let sampled=mn_v4(at+MR_LS);
+    ls.D=sampled.xyz;ls.P=-sampled.xyz;ls.pdf=sampled.w;ls.t=MNEE_FLT_MAX;ls.eval_fac=1.0;
+    if(load_word(p(17u))!=0u){ls.pdf=0.0;return ls;}
+//#if LIGHT_SELECT else     ls.pdf*=data_float(D_integrator_distribution_pdf_lights);return ls;
+    ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);return ls;
+//#endif
+}
+//#endif
+//#endif
+//#if MNEE_LIGHT_STAGES
+// The spot or area light sample mnee_light_sample wrote into MR_LS.
+fn mn_staged_sample(at:u32)->NativeLightSample{
+    let ls=mn_light_read(at+MR_LS);var s:NativeLightSample;s.P=ls.P;s.D=ls.D;s.t=ls.t;s.pdf=ls.pdf;s.eval_fac=ls.eval_fac;
+    s.shader=ls.shader;s.object_id=ls.object;s.prim=ls.prim;s.is_light=true;return s;
+}
+//#endif
+//#if MNEE_AREA
+// Area lights with caustics (light/area.h): area_light_spread_clamp_light from the region's current centre
+// (area_light_eval starts from *light_P, the light's centre when sampling, the sampled point when
+// light_sample_update calls it), then area_light_eval and area_light_sample with the rectangle sampler
+// area_rectangle (wavefront_emitters.wgsl), every sum, product and quotient in the oracle's order.
+fn mn_area_region(light:u32,P:vec3<f32>,start:vec3<f32>)->AreaRegion{
+    var r=AreaRegion(start,heap_vec3(light+L_area_axis_u),heap_vec3(light+L_area_axis_v),heap_float(light+L_area_len_u),heap_float(light+L_area_len_v),heap_float(light+L_area_invarea)>0.0,true);
+    if(heap_float(light+L_area_normalize_spread)<=0.0){return r;}
+    let N=heap_vec3(light+L_area_dir);let t=rounded_dot(N,mn_sub(P,r.P));let closest=mn_sub(P,t*N);
+    let spread=t*heap_float(light+L_area_tan_half_spread);let su=rounded_dot(r.U,mn_sub(closest,r.P));let sv=rounded_dot(r.V,mn_sub(closest,r.P));
+    let round= !r.rectangle&&r.len_u==r.len_v;var sample_spread=spread==0.0;
+    if(round&&!sample_spread){
+        let distance=rounded_sqrt(rounded_add(su*su,sv*sv));let radius=r.len_u*0.5;
+        if(distance>=radius+spread){r.valid=false;return r;}
+        sample_spread=distance<=abs(radius-spread)&&spread<radius;
+        if(distance>abs(radius-spread)){
+            let len_u=(radius+spread)-distance;var len_v=2.0*min(radius,spread);
+            if(abs(rounded_add(radius*radius,-(spread*spread)))<distance*distance){let x=rounded_add(distance,rounded_divide(rounded_add(spread*spread,-(radius*radius)),distance));
+                len_v=rounded_sqrt(rounded_add((2.0*spread)*(2.0*spread),-(x*x)));}
+            let rectangle_area=len_u*len_v;let circle_area=EMITTER_PI*(radius*radius);let spread_area=EMITTER_PI*(spread*spread);
+            if(rectangle_area<min(circle_area,spread_area)){
+                r.rectangle=true;r.U=emitter_native_normalize(mn_sub(r.P,closest));r.V=emitter_quarter_turn(r.U,N);r.len_u=len_u;r.len_v=len_v;
+                r.P=0.5*rounded_add3(r.P+closest,r.U*(spread-radius));return r;
+            }sample_spread=spread_area<circle_area;
+        }
+    }else if(!round&&!sample_spread){
+        let min_u=max(su-spread,-r.len_u*0.5);let max_u=min(su+spread,r.len_u*0.5);
+        let min_v=max(sv-spread,-r.len_v*0.5);let max_v=min(sv+spread,r.len_v*0.5);
+        if(min_u>=max_u||min_v>=max_v){r.valid=false;return r;}
+        let lu=max_u-min_u;let lv=max_v-min_v;let rectangle_area=lu*lv;
+        let ellipse_area=select(((EMITTER_PI*0.25)*r.len_u)*r.len_v,MNEE_FLT_MAX,r.rectangle);let spread_area=EMITTER_PI*(spread*spread);
+        if(r.rectangle||rectangle_area<min(ellipse_area,spread_area)){
+            r.rectangle=true;r.len_u=lu;r.len_v=lv;r.P=rounded_add3(rounded_add3(r.P,r.U*(0.5*(min_u+max_u))),r.V*(0.5*(min_v+max_v)));return r;
+        }r.rectangle=false;sample_spread=spread_area<ellipse_area;
+    }
+    if(sample_spread){r.rectangle=false;r.P=rounded_add3(rounded_add3(r.P,r.U*su),r.V*sv);r.len_u=spread*2.0;r.len_v=spread*2.0;}
+    return r;
+}
+// area_light_eval<false>(klight, ray_P, &ls->P, ls, rand, sample_coord): pdf, eval_fac and, with sample_coord, the
+// new point, direction and distance. A rejected region leaves the sample as it was (false).
+fn mn_area_eval(ls:ptr<function,MnLight>,light:u32,ray_P:vec3<f32>,random:vec2<f32>,sample_coord:bool)->bool{
+    let N=heap_vec3(light+L_area_dir);let spread=heap_float(light+L_area_tan_half_spread);let normalization=heap_float(light+L_area_normalize_spread);
+    let region=mn_area_region(light,ray_P,(*ls).P);if(!region.valid){return false;}
+    var P=region.P;
+    if(region.rectangle){let rect=area_rectangle(ray_P,region,random,sample_coord);P=rect.P;(*ls).pdf=rect.pdf;}
+    else if(spread==0.0){(*ls).pdf=1.0;}
+    else{
+        if(sample_coord){let disk=emitter_disk(random);let ru=(region.U*region.len_u)*0.5;let rv=(region.V*region.len_v)*0.5;P=rounded_add3(P,rounded_add3(ru*disk.x,rv*disk.y));}
+        (*ls).pdf=rounded_divide(4.0*0.31830987334251404,region.len_u*region.len_v);
+    }
+    if(sample_coord){(*ls).P=P;let ray=mn_safe_normalize_len(mn_sub(P,ray_P));(*ls).D=ray.xyz;(*ls).t=ray.w;}
+    (*ls).eval_fac=0.31830987334251404*abs(heap_float(light+L_area_invarea));
+    if(normalization>0.0){
+        // area_light_spread_attenuation with tan_angle(-D, Ng) = len(cross(-D, Ng)) / dot(-D, Ng).
+        let tan_a=rounded_divide(mn_len(rounded_cross(-(*ls).D,N)),rounded_dot(-(*ls).D,N));
+        var attenuation=max(rounded_add(spread,-tan_a)*normalization,0.0);if(spread==0.0){attenuation=select(3.1415927410125732,0.0,tan_a>1e-5);}
+        (*ls).eval_fac*=attenuation;
+    }
+    if(!region.rectangle&&spread>0.0){let cosine=rounded_dot(N,-(*ls).D);(*ls).pdf*=select(0.0,rounded_divide((*ls).t*(*ls).t,cosine),cosine>0.0);}
+    return (*ls).eval_fac>0.0;
+}
+// area_light_sample (not in a volume segment); a sample the pinned code rejects has pdf 0.
+fn mn_area_sample(index:u32,sd:SurfaceData,selection:LightSelection)->NativeLightSample{
+    var ls:NativeLightSample;let random=selection.random;ls.is_light=true;ls.prim=~bitcast<u32>(selection.prim);
+    let light=table_at(G_lights,ls.prim,SIZE_lights);
+    if(f32(state_half(S_path_bounce,index))>heap_float(light+L_max_bounces)){return ls;}
+    ls.shader=load_word(light+L_shader_id);ls.object_id=load_word(light+L_object_id);
+    let co=heap_vec3(light+L_co);if(rounded_dot(mn_sub(co,sd.P),heap_vec3(light+L_area_dir))>0.0){return ls;}
+    var m:MnLight;m.P=co;if(!mn_area_eval(&m,light,sd.P,random.xy,true)){return ls;}
+    if(heap_float(light+L_area_normalize_spread)>0.0){
+        let inplane=mn_sub(m.P,co);let u=rounded_dot(inplane,heap_vec3(light+L_area_axis_u));let v=rounded_dot(inplane,heap_vec3(light+L_area_axis_v));
+        let eu=rounded_add(0.50000011920928955*heap_float(light+L_area_len_u),1e-6);let ev=rounded_add(0.50000011920928955*heap_float(light+L_area_len_v),1e-6);
+        if(heap_float(light+L_area_invarea)<0.0){let a=rounded_divide(u,eu);let b=rounded_divide(v,ev);if(rounded_add(a*a,b*b)>1.0){return ls;}}
+        else if(abs(u)>eu||abs(v)>ev){return ls;}
+    }
+    ls.P=m.P;ls.D=m.D;ls.t=m.t;ls.eval_fac=m.eval_fac;ls.pdf=m.pdf;if(!(ls.pdf>0.0)){ls.pdf=0.0;return ls;}
+//#if LIGHT_SELECT else     ls.pdf*=data_float(D_integrator_distribution_pdf_lights);return ls;
+    ls.pdf*=select(data_float(D_integrator_distribution_pdf_lights),selection.pdf,selection.tree);return ls;
+//#endif
+}
+// area_light_mnee_sample_update (the selection pdf is re-applied by mn_light_update); Ng is the light's normal.
+fn mn_area_update(ls:ptr<function,MnLight>,light:u32,P:vec3<f32>){
+    (*ls).Ng=heap_vec3(light+L_area_dir);
+    if(heap_float(light+L_area_tan_half_spread)==0.0){_=mn_area_eval(ls,light,P,vec2<f32>(0),true);return;}
+    let ray=mn_safe_normalize_len(mn_sub((*ls).P,P));(*ls).D=ray.xyz;(*ls).t=ray.w;
+    _=mn_area_eval(ls,light,P,vec2<f32>(0),false);
+    // pdf /= light_pdf_area_to_solid_angle(Ng, -D, t).
+    let cosine=rounded_dot((*ls).Ng,-(*ls).D);var factor=0.0;if(cosine>0.0){factor=rounded_divide((*ls).t*(*ls).t,cosine);}
+    (*ls).pdf=rounded_divide((*ls).pdf,factor);
 }
 //#endif

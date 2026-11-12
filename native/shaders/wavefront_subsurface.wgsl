@@ -91,8 +91,16 @@ fn ss_exit(slot:u32,geometry:SurfaceData,e:SvmResult,evaluated:bool){
     var r:SvmResult;r.closure_base=base;r.count=1u;r.remaining=data_word(D_max_closures)-1u;r.runtime_flag=SR_BSDF|SR_BSDF_HAS_EVAL;r.N=sd.N;
     var c:SvmClosure;c.kind=CLOSURE_BSDF_DIFFUSE_ID;c.weight=vec3<f32>(1);c.sample_weight=1.0;c.N=n;svm_closure_write(base,c);
     sd.runtime_flag=0u;
+//#if FILM_PASSES_ANY
+    // integrate_surface writes no data passes and no denoising features at the exit point: the record carries
+    // SS_SR_EXIT_POINT for shade_surface_passes (no SR_* flag uses bit 31; the stages test sd.runtime_flag bit by bit).
+    sd.runtime_flag=SS_SR_EXIT_POINT;
+//#endif
     surface_stage_write(p(24u)+slot*SURFACE_STAGE_BYTES,sd,r);
 }
+//#if FILM_PASSES_ANY
+const SS_SR_EXIT_POINT:u32=0x80000000u;
+//#endif
 //#endif
 //#if SUBSURFACE_ENTRY
 // powf (correctly rounded) with powf of 0 as the C library.
@@ -136,6 +144,33 @@ fn ss_rng(index:u32,dimension:u32,count:u32)->vec2<f32>{
 //#endif
 }
 //#endif
+//#if MOTION_OBJECT
+//#if SUBSURFACE_ENTRIES
+// The motion record of an input whose object moves (push word 13, SS_MOTION_RECORD_BYTES apart): the object's motion
+// transform at the ray's time and its inverse, written by intersect_subsurface_motion. A walk or disk probe traverses
+// with them as the shading object's transforms (raytrace_traverse), and the disk turns its hit normals with them.
+fn ss_motion_geometry(geometry:ptr<function,SurfaceData>,slot:u32,object:u32){
+    (*geometry).object_flag=load_word(table_at(G_object_flag,object,SIZE_object_flag));if(((*geometry).object_flag&SD_OBJECT_MOTION)==0u){return;}
+    if(p(13u)==0u){fail();return;}let at=p(13u)+slot*SS_MOTION_RECORD_BYTES;
+    (*geometry).object_id=object;(*geometry).motion_tfm=motion_transform_load(at);(*geometry).motion_itfm=motion_transform_load(at+48u);
+}
+//#endif
+//#if SUBSURFACE_ENTRY
+// object_fetch_transform_motion_test of each input's object at the ray's time (motion_object, transform_inverse), for the
+// walk and the disk: its own entry, dispatched before both (with the two inlined into the walk's traversal intersect_subsurface
+// reached 984,020 B, over the size guard).
+@compute @workgroup_size(64) fn intersect_subsurface_motion(@builtin(global_invocation_id) id:vec3<u32>){
+    if(id.x>=p(1u)||load_word(p(17u))!=0u){return;}var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+    if(index>=p(10u)){fail();return;}if(state_half(S_path_queued_kernel,index)!=SS_K_INTERSECT){return;}
+    let object=state_word(S_isect_object,index);if(object>=table_count(G_object_flag)){fail();return;}
+    if((load_word(table_at(G_object_flag,object,SIZE_object_flag))&SD_OBJECT_MOTION)==0u){return;}
+    if(p(13u)==0u){fail();return;}let at=p(13u)+id.x*SS_MOTION_RECORD_BYTES;
+    let tfm=motion_object(object,heap_float(state_address(S_ray_time,index,4u)));let itfm=motion_inverse(tfm);
+    for(var k=0u;k<4u;k++){store_word(at+k*4u,bitcast<u32>(tfm.x[k]));store_word(at+16u+k*4u,bitcast<u32>(tfm.y[k]));store_word(at+32u+k*4u,bitcast<u32>(tfm.z[k]));
+        store_word(at+48u+k*4u,bitcast<u32>(itfm.x[k]));store_word(at+64u+k*4u,bitcast<u32>(itfm.y[k]));store_word(at+80u+k*4u,bitcast<u32>(itfm.z[k]));}
+}
+//#endif
+//#endif
 //#if SUBSURFACE_ENTRY
 // hash_hp_seeded_uint(i, seed) (util/hash.h).
 fn ss_hash_seeded(i:u32,seed:u32)->u32{
@@ -147,6 +182,18 @@ fn ss_hash_seeded(i:u32,seed:u32)->u32{
 fn ss_terminate(index:u32){
     let counter=load_word(p(7u)+S_queue_counter)/4u;atomicSub(&heap[counter+SS_K_INTERSECT],1u);state_u16(S_path_queued_kernel,index,0u);
 }
+//#endif
+//#if SUBSURFACE_VOLUME
+//#if SUBSURFACE_ENTRIES
+// The inputs of integrator_volume_stack_update_for_subsurface for intersect_subsurface_volume_stack (the volume stack
+// module), in this input's traversal stack slot once the traversals are done: the entry point (the state's ray P), the
+// exit point (the ray P before subsurface_scatter reverses it) and the entry primitive (the volume ray's self prim).
+fn ss_volume_record(from_P:vec3<f32>,to_P:vec3<f32>,self_prim:u32){
+    let at=p(30u)+svm_slot*AO_STACK_BYTES;
+    store_word(at,bitcast<u32>(from_P.x));store_word(at+4u,bitcast<u32>(from_P.y));store_word(at+8u,bitcast<u32>(from_P.z));
+    store_word(at+12u,bitcast<u32>(to_P.x));store_word(at+16u,bitcast<u32>(to_P.y));store_word(at+20u,bitcast<u32>(to_P.z));store_word(at+24u,self_prim);
+}
+//#endif
 //#endif
 //#if SUBSURFACE_ENTRY
 // DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE: subsurface_scatter with subsurface_random_walk.
@@ -162,6 +209,9 @@ fn ss_terminate(index:u32){
     let ray_dP=heap_float(state_address(S_ray_dP,index,4u));let N=heap_vec3(state_address(S_subsurface_N,index,12u));
     let object=state_word(S_isect_object,index);let prim=state_word(S_isect_prim,index);
     var geometry:SurfaceData;geometry.object_id=NONE;geometry.time=heap_float(state_address(S_ray_time,index,4u));
+//#if MOTION_OBJECT
+    ss_motion_geometry(&geometry,id.x,object);if(load_word(p(17u))!=0u){return;}
+//#endif
     let albedo=heap_vec3(state_address(S_subsurface_albedo,index,12u));let radius=heap_vec3(state_address(S_subsurface_radius,index,12u));
     var anisotropy=heap_float(state_address(S_subsurface_anisotropy,index,4u));
     var van_de_hulst=true;if(anisotropy>=1.0){anisotropy-=2.0;van_de_hulst=anisotropy<0.0;}
@@ -260,6 +310,9 @@ fn ss_terminate(index:u32){
         if(max(max(throughput.x,throughput.y),throughput.z)<1e-6){break;}
     }
     if(!hit){ss_terminate(index);return;}
+//#if SUBSURFACE_VOLUME
+    ss_volume_record(P,ray_P,prim);
+//#endif
     state_vec3(S_path_throughput,index,throughput);
     // subsurface_scatter: the ray reversed towards the exit point, the hit as the path's intersection.
     state_vec3(S_ray_P,index,rounded_add3(ray_P,(ray_D*ray_tmax)*2.0));state_vec3(S_ray_D,index,-ray_D);
@@ -267,6 +320,12 @@ fn ss_terminate(index:u32){
     state_f32(S_isect_t,index,hits.t[0]);state_f32(S_isect_u,index,hits.u[0]);state_f32(S_isect_v,index,hits.v[0]);
     state_u32(S_isect_object,index,object);state_u32(S_isect_prim,index,hits.prim[0]);state_u32(S_isect_type,index,hits.kind);
     state_u16(S_path_rng_offset,index,state_half(S_path_rng_offset,index)+RNG_BOUNCE);
+//#if MNEE
+    // use_caustics and a caustics receiver: integrator_path_next to INTERSECT_MNEE (unsorted).
+    if(data_word(MNEE_D_use_caustics)!=0u&&(load_word(table_at(G_object_flag,object,SIZE_object_flag))&SD_OBJECT_CAUSTICS_RECEIVER)!=0u){
+        let queue=load_word(p(7u)+S_queue_counter)/4u;atomicSub(&heap[queue+SS_K_INTERSECT],1u);atomicAdd(&heap[queue+MNEE_K_INTERSECT],1u);
+        state_u16(S_path_queued_kernel,index,MNEE_K_INTERSECT);return;}
+//#endif
     // integrator_path_next_sorted to SHADE_SURFACE or SHADE_SURFACE_RAYTRACE, keyed by the exit point's shader.
     let shader=load_word(table_at(G_tri_shader,hits.prim[0],SIZE_tri_shader))&SHADER_MASK;
     let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);
@@ -352,6 +411,9 @@ fn ss_disk_lcg(index:u32)->u32{
     // recorded, at most BSSRDF_MAX_HITS kept by the reservoir.
     if((bitcast<u32>(ray_P.x)&0x7f800000u)==0x7f800000u){ss_terminate(index);return;}
     var geometry:SurfaceData;geometry.object_id=NONE;geometry.time=time;
+//#if MOTION_OBJECT
+    ss_motion_geometry(&geometry,id.x,object);if(load_word(p(17u))!=0u){return;}
+//#endif
     let hits=raytrace_traverse(geometry,ray_P,ray_D,0.0,2.0*disk_height,object,NONE,NONE,AO_VISIBILITY_ALL,ss_disk_lcg(index),true);
     if(load_word(p(17u))!=0u){return;}
     let count=min(hits.count,SS_MAX_HITS);if(count==0u){ss_terminate(index);return;}
@@ -364,6 +426,10 @@ fn ss_disk_lcg(index:u32)->u32{
     }
     let object_flag=load_word(table_at(G_object_flag,object,SIZE_object_flag));let applied=(object_flag&SD_OBJECT_TRANSFORM_APPLIED)!=0u;
     var hit_object:SurfaceData;hit_object.object_id=object;hit_object.object_flag=object_flag;hit_object.time=time;
+//#if MOTION_OBJECT
+    // object_fetch_transform_motion_test: a moving object's transform at the ray's time and its inverse (the motion record).
+    if((object_flag&SD_OBJECT_MOTION)!=0u){hit_object.motion_tfm=geometry.motion_tfm;hit_object.motion_itfm=geometry.motion_itfm;}
+//#endif
     // bssrdf_pdf(radius, disk_r): the same for every hit.
     let disk_e=ss_disk_eval(radius,disk_r);let disk_pdf=rounded_divide(rounded_add(rounded_add(disk_e.x,disk_e.y),disk_e.z),ss_disk_channels(radius));
     var weights=array<vec3<f32>,4>(vec3<f32>(0),vec3<f32>(0),vec3<f32>(0),vec3<f32>(0));var normals=weights;var sum_weights=0.0;
@@ -394,11 +460,20 @@ fn ss_disk_lcg(index:u32)->u32{
     // subsurface_scatter: the ray reversed towards the exit point (tmax 1 along the hit normal), the hit as the path's
     // intersection.
     let hit=order[selected];let exit_P=rounded_add3(ray_P,ray_D*hits.t[hit]);let exit_D=normals[selected];
+//#if SUBSURFACE_VOLUME
+    ss_volume_record(P,exit_P,state_word(S_isect_prim,index));
+//#endif
     state_vec3(S_ray_P,index,rounded_add3(exit_P,(exit_D*1.0)*2.0));state_vec3(S_ray_D,index,-exit_D);
     state_f32(S_ray_tmin,index,0.0);state_f32(S_ray_tmax,index,1.0);state_f32(S_ray_dP,index,ray_dP);state_f32(S_ray_dD,index,0.0);
     state_f32(S_isect_t,index,hits.t[hit]);state_f32(S_isect_u,index,hits.u[hit]);state_f32(S_isect_v,index,hits.v[hit]);
     state_u32(S_isect_object,index,object);state_u32(S_isect_prim,index,hits.prim[hit]);state_u32(S_isect_type,index,hits.kind);
     state_u16(S_path_rng_offset,index,offset+RNG_BOUNCE);
+//#if MNEE
+    // use_caustics and a caustics receiver: integrator_path_next to INTERSECT_MNEE (unsorted).
+    if(data_word(MNEE_D_use_caustics)!=0u&&(load_word(table_at(G_object_flag,object,SIZE_object_flag))&SD_OBJECT_CAUSTICS_RECEIVER)!=0u){
+        let queue=load_word(p(7u)+S_queue_counter)/4u;atomicSub(&heap[queue+SS_K_INTERSECT],1u);atomicAdd(&heap[queue+MNEE_K_INTERSECT],1u);
+        state_u16(S_path_queued_kernel,index,MNEE_K_INTERSECT);return;}
+//#endif
     // integrator_path_next_sorted to SHADE_SURFACE or SHADE_SURFACE_RAYTRACE, keyed by the exit point's shader.
     let shader=load_word(table_at(G_tri_shader,hits.prim[hit],SIZE_tri_shader))&SHADER_MASK;
     let flags=load_word(table_at(G_shaders,shader,SIZE_shaders)+SH_flags);

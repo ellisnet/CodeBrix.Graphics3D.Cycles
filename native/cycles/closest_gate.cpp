@@ -177,7 +177,8 @@ static unsigned rejections(const DeviceInfo &info){
       if(test==16){flags|=SD_OBJECT_HAS_VERTEX_MOTION;reason="deforming triangle flags/type";}
       if(test==17){object.num_tfm_steps=1;reason="motion range";}
       if(test==18){flags|=SD_OBJECT_TRANSFORM_APPLIED;reason="applied object motion";}
-      if(test==19){object.primitive_type=PRIMITIVE_LAMP;reason="animated emitters";}
+      // A moving light object renders (its lamp is static); another primitive type with object motion is invalid.
+      if(test==19){object.primitive_type=PRIMITIVE_NONE;reason="moving object type";}
       if(test==20){object.motion_offset=uint(scene.dscene.object_motion.size());reason="motion range";}
       scene.dscene.objects.copy_to_device();scene.dscene.object_flag.copy_to_device();}
     d.const_copy_to("data",&data,sizeof(data));upload(d,layout,states);healthy(d);

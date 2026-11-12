@@ -629,52 +629,35 @@ What a consumer can observe:
 WEBGPU RENDER-TIME LIMITS. The WebGPU device rejects some scenes when the
 render runs (the render fails with NativeStatus.Failed, not at edit time):
   - the passes the WebGPU device does not write fail the render with
-    "WebGPU film pass <name> not implemented" (the path guiding passes), as
-    does the motion pass with a camera that is not
-    perspective (the motion pass and the denoising motion features with
-    deforming geometry render);
-  - stereo cameras (an InterocularDistance with a StereoEye other than None):
-    "WebGPU stereo camera not implemented"; custom cameras need OSL, which is
-    outside the package; a texture coordinate node's Window output with a
-    panoramic camera fails with an unsupported-parameter error;
+    "WebGPU film pass <name> not implemented" (the path guiding passes); the
+    motion pass and the denoising motion features render with every camera
+    type and with deforming geometry;
+  - custom cameras need OSL, which is outside the package; stereo cameras (a
+    StereoEye other than None, with InterocularDistance, ConvergenceDistance
+    and pole merge) and a texture coordinate node's Window output with a
+    panoramic camera render;
   - the integrator defaults: switch off UseGuiding before a WebGPU render
     (the light tree, UseLightTree, adaptive sampling, UseAdaptiveSampling, and
     denoising, UseDenoise, render);
-  - shadow linking (an object's BlockerShadowSet or ShadowSetMembership other
-    than the defaults) together with the shadow catcher, with ambient occlusion
-    (fast GI and the AO pass), or with volumes on the light tree, with spot,
-    area or emissive triangle lights in a volume, or with the volume light
-    passes: "WebGPU shadow linking with ... not implemented";
   - subsurface scattering: the random walk and Christensen-Burley methods
     render (and a thin-walled PrincipledBsdfNode with subsurface, which has
-    no BSSRDF), but not together with volumes, MNEE caustics, the shadow
-    catcher, light or shadow linking, data/denoising/AOV/cryptomatte passes,
-    motion blur or holdout objects ("WebGPU subsurface scattering with ...
-    not implemented");
+    no BSSRDF), also with film passes, denoising, light and shadow linking,
+    holdout objects, the shadow catcher, object and deformation motion blur,
+    volumes and MNEE caustics from point and sun lights;
   - shader nodes the WebGPU device does not implement (the point info and
     particle info nodes, the sky texture, IES texture and
     light falloff nodes, the AOV output nodes, the bump node, the Gabor texture (GaborTextureNode,
     2D and 3D), the displacement and vector displacement nodes and the bevel,
-    raycast and radial tiling nodes are implemented, but tangent and
-    motion-triangle smooth-normal derivatives inside a bump height are
-    rejected);
-  - in a shader with true displacement (DisplacementMethod True or Both), a
-    light path, ambient occlusion, bevel, raycast, wireframe or Principled BSDF
-    node feeding the displacement output: "... in a displacement shader (true
-    displacement) is not implemented";
-  - shadow caustics with an object-motion-blurred caustic caster (an object
-    with IsCausticsCaster and motion steps): "WebGPU MNEE with a moving
-    caustic caster (object motion blur) not implemented" (moving and
-    deforming receivers and deforming casters render);
+    raycast and radial tiling nodes are implemented, and so are the Geometry
+    node's Tangent output and smooth normals of deforming meshes inside a bump
+    height; light path, ambient occlusion, bevel, raycast and wireframe nodes
+    feeding a true displacement output render as Cycles evaluates them there);
   - a RadialTilingNode with at most two sides and a roundness strictly
     between 0 and 1: "Unsupported feature: Radial Tiling node with two sides"
     (the Cycles CPU outputs there are binary32 rounding residue, and Cycles' own
     Metal device does not reproduce them either); when Sides
     or Roundness is linked the render fails with an unsupported-parameter
     error instead;
-  - an AmbientOcclusionNode with OnlyLocal on an object that is not instanced
-    while the scene also has instanced objects (the render fails with an
-    unsupported-parameter error);
   - the classes listed in GetCapabilities().Scope.RenderTimeRejections.
 The WebGPU device implements the AmbientOcclusionNode (Inside, OnlyLocal,
 Samples, Distance, Normal) and fast GI ambient occlusion: IntegratorNode
@@ -727,13 +710,13 @@ setting; with an opaque background, Film.UseApproximateShadowCatcher = true
 writes the matte with the shadow approximated into it (a background pass is
 added for it). Lights contribute to the ShadowCatcher pass only when their own
 object is also marked IsShadowCatcher, as in Cycles. Both backends render all
-of this, also together with a volume (world or object); on the WebGPU device
-caustics (MNEE) with a shadow catcher are refused. A shadow catcher
-together with ambient occlusion (the AO node, the AO pass or the integrator's
-fast-GI ambient occlusion) is not yet validated on the WebGPU device and is not
-refused: its shadow stage writes the ambient-occlusion term without the catcher
-handling the CPU applies, so the passes of such a scene may differ from the CPU
-device; keep the two features apart until this note is gone.
+of this, also together with a volume (world or object) and with shadow
+caustics (MNEE). A shadow catcher together with ambient occlusion (the AO
+node, the AO pass or the integrator's fast-GI ambient occlusion) is not yet
+validated on the WebGPU device and is not refused: its shadow stage writes the
+ambient-occlusion term without the catcher handling the CPU applies, so the
+passes of such a scene may differ from the CPU device; keep the two features
+apart until this note is gone.
 
 BAKING TEXTURES
 ---------------
@@ -1222,39 +1205,41 @@ WHAT THIS PACKAGE DOES NOT DO
 - It does not detect or work around a driver fault on Intel integrated graphics
   that can compute a path wrongly in a WebGPU render of a heterogeneous volume;
   see KNOWN DRIVER LIMITATION: HETEROGENEOUS VOLUMES ON INTEL GRAPHICS.
-- It does not yet render stereo cameras on the WebGPU device (the CPU
-  reference backend and the Metal backend do). Orthographic
-  and panoramic cameras (equirectangular, equiangular cubemap face, mirror
-  ball, the three fisheye models, central cylindrical) with depth of field
-  (disk or polygonal apertures, rotation, anamorphic ratio), every sampling
-  pattern (tabulated Sobol, Sobol-Burley, the blue-noise patterns, scrambling
-  distance) and adaptive sampling render there, and so does
-  Christensen-Burley subsurface scattering. The Hair BSDF and the
-  Principled Hair BSDF's Chiang and Huang models (all three colour
+- Stereo cameras render on the WebGPU device, as on the CPU reference backend
+  and the Metal backend. Orthographic and panoramic cameras (equirectangular,
+  equiangular cubemap face, mirror ball, the three fisheye models, central
+  cylindrical) with depth of field (disk or polygonal apertures, rotation,
+  anamorphic ratio), every sampling pattern (tabulated Sobol, Sobol-Burley,
+  the blue-noise patterns, scrambling distance) and adaptive sampling render
+  there, and so does Christensen-Burley subsurface scattering. The Hair BSDF
+  and the Principled Hair BSDF's Chiang and Huang models (all three colour
   parametrizations, and the Huang model's elliptical cross-sections) render
-  there, on curves and on triangles; the Huang model is refused together with
-  caustics. Point clouds render there, with motion blur and everything else the
-  device has (PointCloudNode.SetPoints, SetMotion, CyclesScene.CreatePointCloud),
-  point attributes, the Point Info node (set the standard attribute point_random
-  for its Random output) and the Particle Info node (on any geometry; see
-  ParticleSystemNode.SetParticles). A shader with displacement method Both on a
-  point cloud or on curves fails with an error naming it, since Cycles' own kernels read
-  uninitialized values there; the Tangent output of the Geometry node fails on
-  points as it does on triangles. Curves render there: ribbons, thick curves and thick linear
-  curves (HairNode.SetCurves, SetShape, CyclesScene.CreateHair and
-  SetCurveSubdivisions) with the other closures, curve attributes and the Hair
-  Info node (set the standard attributes curve_intercept, curve_length and
-  curve_random for its Intercept, Length and Random outputs), object and
-  deformation motion blur (HairNode.SetMotionKeys), the motion pass and
-  transparent shadows, in scenes with caustics, subsurface scattering, volumes, true
-  displacement, the Ambient Occlusion, Bevel and Raycast nodes and shadow linking. Volumes of constant density and volumes whose density varies through
-  space (with or without biased ray marching) render there with direct light
-  from point, spot, area, mesh, sun and world lights (also through the light tree) and shadows through them, the Henyey-Greenstein, Fournier-Forand,
-  Rayleigh, Draine and Mie phase functions, the Volume Coefficients and
-  Principled Volume nodes, volume emission, the volume light passes, shadow
-  catchers, every sampling pattern, denoising (the volumes' albedo and normal
-  guides) and light linking. A BSDF node in a volume shader is ignored there,
-  as in Cycles. The Light Path node's ray type outputs (Is Camera Ray and the
+  there, on curves and on triangles, also as shadow-caustic receivers. Point
+  clouds render there, with motion blur and everything else the device has
+  (PointCloudNode.SetPoints, SetMotion, CyclesScene.CreatePointCloud), point
+  attributes, the Point Info node (set the standard attribute point_random for
+  its Random output) and the Particle Info node (on any geometry; see
+  ParticleSystemNode.SetParticles). A shader with displacement method Both on
+  a point cloud or on curves fails with an error naming it, since Cycles' own
+  kernels read uninitialized values there; the Tangent output of the Geometry
+  node fails on points (it renders on triangles and curves). Curves render
+  there: ribbons, thick curves and thick linear curves (HairNode.SetCurves,
+  SetShape, CyclesScene.CreateHair and SetCurveSubdivisions) with the other
+  closures, curve attributes and the Hair Info node (set the standard
+  attributes curve_intercept, curve_length and curve_random for its Intercept,
+  Length and Random outputs), object and deformation motion blur
+  (HairNode.SetMotionKeys), the motion pass and transparent shadows, in scenes
+  with caustics, subsurface scattering, volumes, true displacement, the
+  Ambient Occlusion, Bevel and Raycast nodes and shadow linking. Volumes of
+  constant density and volumes whose density varies through space (with or
+  without biased ray marching) render there with direct light from point,
+  spot, area, mesh, sun and world lights (also through the light tree) and
+  shadows through them, the Henyey-Greenstein, Fournier-Forand, Rayleigh,
+  Draine and Mie phase functions, the Volume Coefficients and Principled
+  Volume nodes, volume emission, the volume light passes, shadow catchers,
+  every sampling pattern, denoising (the volumes' albedo and normal guides)
+  and light linking. A BSDF node in a volume shader is ignored there, as in
+  Cycles. The Light Path node's ray type outputs (Is Camera Ray and the
   others) work in volume shaders there, uniform and varying; its Backfacing,
   Ray Length and ray depth outputs in a volume shader fail the render. Volumes
   render with camera, object and deformation motion blur, the volume objects
@@ -1270,11 +1255,11 @@ WHAT THIS PACKAGE DOES NOT DO
   denoised image, and so are the ShadowCatcher and ShadowCatcherMatte passes.
   AddPass(PassType.Combined, "Noisy Image", PassMode.Noisy) (or the same with
   a shadow catcher type) also returns the undenoised version in the same
-  render; one noisy pass per type. Light group passes together with
-  denoising fail the render (NativeStatus.Unsupported). A WebGPU render is denoised on the CPU (Open Image
-  Denoise's CPU device; the render buffers are copied to the host), so it adds
-  CPU time; Metal renders can denoise on the GPU. GetCapabilities().CanDenoise
-  and DenoiseDevices report it. The integrator's
+  render; one noisy pass per type. Light group passes are never denoised:
+  with denoising they keep their noisy values. A WebGPU render is denoised on
+  the CPU (Open Image Denoise's CPU device; the render buffers are copied to
+  the host), so it adds CPU time; Metal renders can denoise on the GPU.
+  GetCapabilities().CanDenoise and DenoiseDevices report it. The integrator's
   light tree (UseLightTree, on by default) and light linking (an object's
   ReceiverLightSet and an emitter object's LightSetMembership) do render on the
   WebGPU device, for lamps, mesh emitters and the background light.
@@ -1283,19 +1268,17 @@ WHAT THIS PACKAGE DOES NOT DO
   Environment-texture, sky-texture (every sky type, the sun disc and
   sun guiding) and procedural worlds with importance sampling, mesh emitters with textured or node emission, and point,
   spot, area and sun lamps with node emission shaders (light falloff, IES
-  texture, textures on the lamp's coordinates) do render there; shadow caustics
-  from a lamp whose emission shader is not constant are refused.
+  texture, textures on the lamp's coordinates) do render there, also as
+  lamps with shadow caustics.
 - Shadow caustics (manifold next-event estimation: objects with
   is_caustics_caster / is_caustics_receiver and lights with use_caustics)
-  render on the WebGPU device through glass and refraction BSDFs from point and
-  sun lights. It does not render shadow caustics through anisotropic glass,
-  from spot, area or background lights, with a moving (object motion blur)
-  caustic caster, or together with volumes, on the WebGPU device: the render
-  fails with an error naming the feature. Light trees, light and shadow linking,
-  fast GI, the AO pass and motion blur of the receivers and of deforming
-  casters do render with shadow caustics there. On Adreno 650
-  GPUs (for example the Samsung Galaxy S20) scenes with shadow caustics are
-  refused with an error message before rendering starts.
+  render on the WebGPU device through glass and refraction BSDFs from point,
+  sun, spot, area and background lights, also through rough Beckmann
+  refraction. It renders them in scenes with volumes too. Light trees, light
+  and shadow linking, fast GI, the AO pass and motion blur of the receivers
+  and of moving and deforming casters do render with shadow caustics there. On
+  Adreno 650 GPUs (for example the Samsung Galaxy S20) scenes with shadow
+  caustics are refused with an error message before rendering starts.
 - It does not render texture, colour and utility shader nodes (noise, Voronoi,
   wave, magic, brick and Gabor textures, ramps, mixing, mapping and similar) on
   Adreno 650 GPUs (for example the Samsung Galaxy S20); such scenes are refused

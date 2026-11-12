@@ -173,7 +173,12 @@ fn ao_trace(origin:vec3<f32>,direction:vec3<f32>,tmax:f32,time:f32,self_object:u
                 // Instances below an object's own root cannot occur; a local
                 // traversal from the top-level root (transform-applied object
                 // in a scene with instances) is refused, never approximated.
-                if(object!=NONE||local!=NONE){atomicOr(&heap[p(17u)/4u],16u);return false;}
+//#if LOCAL_INSTANCE_SKIP else                 if(object!=NONE||local!=NONE){atomicOr(&heap[p(17u)/4u],16u);return false;}
+                // A local traversal from the top-level root (a transform-applied object in a scene
+                // with instances) passes the instance leaf over: another object is never a local hit.
+                if(object!=NONE){atomicOr(&heap[p(17u)/4u],16u);return false;}
+                if(local!=NONE){if(sp<0){fail();return false;}node=bitcast<i32>(load_word(stack_at+u32(sp)*4u));sp--;continue;}
+//#endif
                 object=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));enter=object;
                 sp++;if(sp>=192){fail();return false;}store_word(stack_at+u32(sp)*4u,bitcast<u32>(0x76543210i));
                 node=bitcast<i32>(load_word(table_at(G_object_node,object,SIZE_object_node)));
@@ -310,7 +315,14 @@ fn raytrace_traverse(sd:SurfaceData,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
             if((load_word(table_at(G_object_flag,object,SIZE_object_flag))&SD_OBJECT_MOTION)!=0u){
 //#if MOTION_OBJECT else atomicOr(&heap[p(17u)/4u],2u);return hits;
                 if(object==sd.object_id){motion=sd.motion_tfm;motion_inverse_tfm=sd.motion_itfm;}
+//#if !SUBSURFACE_ENTRIES
                 else{motion=motion_object(object,sd.time);motion_inverse_tfm=motion_inverse(motion);}
+//#endif
+//#if SUBSURFACE_ENTRIES
+                // The subsurface entries enter only their own object, as the shading object with the motion transforms of
+                // intersect_subsurface_motion (compiler pressure: motion_object and motion_inverse stay out of these entries).
+                else{fail();return hits;}
+//#endif
                 rows=motion_inverse_tfm;
 //#endif
             }else{let obj=table_at(G_objects,object,SIZE_objects)+O_itfm;rows=NativeTransform(heap_vec4(obj),heap_vec4(obj+16u),heap_vec4(obj+32u));}
@@ -405,7 +417,10 @@ fn raytrace_traverse(sd:SurfaceData,origin:vec3<f32>,direction:vec3<f32>,tmin:f3
                 }
             }else{
                 // An instance leaf: only the scene traversal enters it.
-                if(!global){atomicOr(&heap[p(17u)/4u],16u);return hits;}
+//#if LOCAL_INSTANCE_SKIP else                 if(!global){atomicOr(&heap[p(17u)/4u],16u);return hits;}
+                // The local traversal of a transform-applied object (from the scene root) passes it over.
+                if(!global){if(sp<0){fail();return hits;}node=bitcast<i32>(load_word(stack_at+u32(sp)*4u));sp--;continue;}
+//#endif
                 if(object!=NONE){fail();return hits;}
                 enter=load_word(table_at(G_prim_object,u32(-first-1),SIZE_prim_object));
                 sp++;if(sp>=192){fail();return hits;}store_word(stack_at+u32(sp)*4u,0x76543210u);

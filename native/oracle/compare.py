@@ -208,6 +208,13 @@ def pair_role(a,b,cpu_isas,isas=None):
  return 'gating' if family==cpu_family or family not in cpu_isas else 'reported'
 
 
+def judged_scene(meta):
+ """(scene id, scene sha256) a film is judged as. A gold-standard film rendered from a scene's oracle reference
+ (render_oracles.py, a scene's "oracleReference") stands for the scene that names it, recorded in oracleReferenceFor."""
+ named=meta.get('oracleReferenceFor')
+ return (named['sceneId'],named['sceneSha256']) if named else (meta['sceneId'],meta['sceneSha256'])
+
+
 def run(directories):
  films=[];problems=[]
  for directory in directories:
@@ -223,7 +230,7 @@ def run(directories):
  if not any(role_of(m['backend'])=='cpu' for _,m,_ in films):
   raise Invalid('no gold standard: no cpu-* backend among '+', '.join(m['backend'] for _,m,_ in films))
  for directory,meta,_ in films[1:]:
-  if meta['sceneSha256']!=first['sceneSha256']:raise Invalid(f'{directory} rendered a different scene file')
+  if judged_scene(meta)!=judged_scene(first):raise Invalid(f'{directory} rendered a different scene file')
   if (meta['width'],meta['height'],meta.get('filmComponents',4))!=(first['width'],first['height'],first.get('filmComponents',4)):raise Invalid(f'{directory} has a different film shape')
  backends=[]
  for d,m,v in films:
@@ -244,13 +251,14 @@ def run(directories):
    measuredRepeatMaxAbsDifference=max([0.0]+[r['maxAbsoluteDifference'] for r in rows]),
    deviceName=m.get('deviceName'),renderSeconds=m.get('renderSeconds'),nonfiniteComponents=nonfinite(v),
    rid=m.get('rid'),wgslArithmetic=m.get('wgslArithmetic'),isaFamily=isa_source(m['backend'],m)[0],isaSource=isa_source(m['backend'],m)[1]))
- report=dict(sceneId=first['sceneId'],sceneSha256=first['sceneSha256'],width=first['width'],height=first['height'],
+ report=dict(sceneId=judged_scene(first)[0],sceneSha256=judged_scene(first)[1],width=first['width'],height=first['height'],
   practicalCriterion='abs(a-b) <= 5e-5 + 2e-4*abs(b)',strictCriterion='abs(a-b) <= 1e-7 + 1e-7*abs(b)',backends=backends,
   goldStandards=[m['backend'] for _,m,_ in films if role_of(m['backend'])!='candidate'],
   candidates=[m['backend'] for _,m,_ in films if role_of(m['backend'])=='candidate'],pairs=[])
  rank={'cpu':0,'metal':1,'candidate':2}
  isas={m['backend']:isa_of(m['backend'],m) for _,m,_ in films}
  cpu_isas={isas[m['backend']] for _,m,_ in films if role_of(m['backend'])=='cpu'}
+ report['oracleReferences']={m['backend']:dict(sceneId=m['sceneId'],sceneSha256=m['sceneSha256']) for _,m,_ in films if m.get('oracleReferenceFor')}
  report['crossIsaGating']=sorted(m['backend'] for _,m,_ in films if role_of(m['backend'])=='candidate' and isas[m['backend']] not in cpu_isas)
  report['legacyAndroidIsa']=sorted(m['backend'] for _,m,_ in films if isa_source(m['backend'],m)[1]==LEGACY_ANDROID)
  for x,y in itertools.combinations(films,2):

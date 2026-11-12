@@ -20,6 +20,7 @@
 #include "shadow_reference.h"
 #include "light_reference.h"
 #include "mnee_reference.h"
+#include "volume_reference.h"
 #include "mnee_fixture.h"
 #include "surface_closure.h"
 #include "util/progress.h"
@@ -137,7 +138,7 @@ static void verdict(bool ok,const std::string &message){
   if(exchange::tape.mode==exchange::Record){if(!exchange::tape.local_differences++)exchange::tape.first_local_difference=message;return;}
   require(ok,message);
 }
-struct Metrics {uint64_t paths=0,sampled=0,integers=0,floats=0,strict=0,dispatches=0;double maximum=0;std::string maximum_field;
+struct Metrics {uint64_t paths=0,sampled=0,curve_sampled=0,integers=0,floats=0,strict=0,dispatches=0;double maximum=0;std::string maximum_field;
   std::map<unsigned,uint64_t> solver,iterations,casters;std::map<std::string,double> field_ratio;};
 static void fixture(Scene &scene,int mode){
   scene.integrator->set_use_guiding(false);scene.integrator->set_use_light_tree(false);scene.integrator->set_use_adaptive_sampling(false);
@@ -204,14 +205,16 @@ static void lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Field> &layo
   // Sort keys: same shader bucket as integrator_path_next_sorted.
   std::vector<uint32_t> keys_after(sort.size());exchange::read_vector("mnee sort keys",keys_after,[&]{d.download(keys,keys_after.data(),keys_after.size()*4);});
   std::vector<uint32_t> keys_expected(keys_after.size(),0);for(int i:ids)keys_expected[actual[i].path.shader_sort_key]++;
-  for(int i:ids){const uint32_t key=(scene.dscene.tri_shader[expected[i].isect.prim]&SHADER_MASK)+scene.dscene.data.max_shaders*(uint32_t(i)/d.state.sort_partition_divisor);
+  // A curve receiver's shader is its curve record's (mnee_fixture.h case 25).
+  for(int i:ids){const uint32_t shader=(expected[i].isect.type&PRIMITIVE_CURVE)?uint32_t(scene.dscene.curves[expected[i].isect.prim].shader_id):scene.dscene.tri_shader[expected[i].isect.prim];
+    const uint32_t key=(shader&SHADER_MASK)+scene.dscene.data.max_shaders*(uint32_t(i)/d.state.sort_partition_divisor);
     verdict(actual[i].path.shader_sort_key==key,label+" sort key path="+std::to_string(i));m.integers++;}
   verdict(keys_after==keys_expected,label+" sort key counters");
   // Shadow slots of the sampled paths.
   uint32_t allocated=0;exchange::read("mnee allocated",&allocated,4,[&]{d.download(uintptr_t(d.state.next_shadow_path_index),&allocated,4);});
   std::vector<int32_t> owners(std::max<uint32_t>(1,allocated));exchange::read("mnee slot owners",owners.data(),allocated*4,[&]{if(allocated)d.download(uintptr_t(d.state.shadow_isect[2].prim),owners.data(),allocated*4);});
   unsigned sampled=0;
-  for(int i:ids){const bool on=expected[i].path.mnee&PATH_MNEE_SAMPLED;if(!on)continue;sampled++;
+  for(int i:ids){const bool on=expected[i].path.mnee&PATH_MNEE_SAMPLED;if(!on)continue;sampled++;m.curve_sampled+=(states[i].isect.type&PRIMITIVE_CURVE)!=0;
     const uint32_t slot=uint32_t(actual[i].path.mnee_shadow_state);verdict(slot<allocated&&owners[slot]==i,label+" MNEE slot owner path="+std::to_string(i));m.integers++;
     for(auto &f:slots){std::vector<char> a(f.stride);exchange::read(std::string("mnee slot ")+f.name,a.data(),f.stride,[&]{d.download(f.address+slot*f.stride,a.data(),f.stride);});const char *e=reinterpret_cast<const char*>(&expected[i].shadow)+f.offset;
       if(f.floating){for(size_t k=0;k<f.stride;k+=4){float av,ev;std::memcpy(&av,a.data()+k,4);std::memcpy(&ev,e+k,4);number(av,ev,std::string("slot ")+f.name+" path="+std::to_string(i)+" component="+std::to_string(k/4));}}
@@ -244,10 +247,10 @@ static void lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Field> &layo
   }
   // Surface lockstep of the same paths (MNEE consumption and cleanup), with the GPU slot indices.
   {auto input=expected;for(int i:ids)input[i].path.mnee_shadow_state=actual[i].path.mnee_shadow_state;
-    auto wanted_states=input;std::vector<float> wanted_film(width*height*4,0.f);original_surface(scene.dscene,ids,wanted_states,wanted_film);
+    auto wanted_states=input;std::vector<float> wanted_film(width*height*scene.dscene.data.film.pass_stride,0.f);original_surface(scene.dscene,ids,wanted_states,wanted_film);
     upload(d,layout,input);IntegratorQueueCounter c{};c.num_queued[DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE]=ids.size();c.num_queued[DEVICE_KERNEL_INTEGRATOR_SHADOW_PATH_MNEE_PENDING]=sampled;
     d.upload(uintptr_t(d.state.queue_counter),&c,sizeof(c));
-    device_vector<float> gpu_film(&d,"mnee_surface_film",MEM_READ_WRITE);gpu_film.alloc(width*height*4);std::fill_n(gpu_film.data(),gpu_film.size(),0.f);gpu_film.copy_to_device();
+    device_vector<float> gpu_film(&d,"mnee_surface_film",MEM_READ_WRITE);gpu_film.alloc(width*height*scene.dscene.data.film.pass_stride);std::fill_n(gpu_film.data(),gpu_film.size(),0.f);gpu_film.copy_to_device();
     DeviceKernelArguments sargs;device_ptr selection=selected.device_pointer;sargs.add(&selection);sargs.add(&gpu_film.device_pointer);sargs.add(&n);
     if(exchange::gpu()){require(queue->enqueue(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,n,sargs),label+" surface: "+d.error_message());require(queue->synchronize(),label+" surface: "+d.error_message());}
     auto after_surface=exchange::states("surface states",d,layout,states.size(),ids);
@@ -265,7 +268,7 @@ static void lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Field> &layo
     // Shadow lockstep of the live MNEE shadow paths: intersect then shade, film compared.
     std::vector<int> paths,gpu_slots;for(int i:ids)if((expected[i].path.mnee&PATH_MNEE_SAMPLED)&&wanted_states[i].shadow.shadow_path.queued_kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW){paths.push_back(i);gpu_slots.push_back(int(actual[i].path.mnee_shadow_state));}
     if(!paths.empty()){
-      std::vector<IntegratorShadowStateCPU> shadows(states.size());for(int i:paths)shadows[i]=wanted_states[i].shadow;std::vector<float> cpu_film(width*height*4,0.f);
+      std::vector<IntegratorShadowStateCPU> shadows(states.size());for(int i:paths)shadows[i]=wanted_states[i].shadow;std::vector<float> cpu_film(width*height*scene.dscene.data.film.pass_stride,0.f);
       original_shadow(scene.dscene,DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW,paths,shadows,cpu_film);
       std::vector<int> clear;std::map<int,bool> cpu_clear;for(int i:paths){cpu_clear[i]=shadows[i].shadow_path.queued_kernel!=0;if(cpu_clear[i])clear.push_back(i);}
       original_shadow(scene.dscene,DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW,clear,shadows,cpu_film);
@@ -301,11 +304,11 @@ static void lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Field> &layo
 static void surface_lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Field> &layout,const std::vector<IntegratorStateCPU> &states,
                              const std::vector<int> &ids,const std::string &label,Metrics &m){
   exchange::check("surface",label,ids,states);
-  auto wanted=states;std::vector<float> wanted_film(width*height*4,0.f);original_surface(scene.dscene,ids,wanted,wanted_film);
+  auto wanted=states;std::vector<float> wanted_film(width*height*scene.dscene.data.film.pass_stride,0.f);original_surface(scene.dscene,ids,wanted,wanted_film);
   upload(d,layout,states);IntegratorQueueCounter c{};c.num_queued[DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE]=ids.size();d.upload(uintptr_t(d.state.queue_counter),&c,sizeof(c));
   const uint32_t zero=0;d.upload(uintptr_t(d.state.next_shadow_path_index),&zero,4);
   device_vector<int> selected(&d,"mnee_surface_indices",MEM_READ_WRITE);selected.alloc(std::max<size_t>(1,ids.size()));std::copy(ids.begin(),ids.end(),selected.data());selected.copy_to_device();
-  device_vector<float> film(&d,"mnee_surface_film2",MEM_READ_WRITE);film.alloc(width*height*4);std::fill_n(film.data(),film.size(),0.f);film.copy_to_device();
+  device_vector<float> film(&d,"mnee_surface_film2",MEM_READ_WRITE);film.alloc(width*height*scene.dscene.data.film.pass_stride);std::fill_n(film.data(),film.size(),0.f);film.copy_to_device();
   auto queue=d.gpu_queue_create();int n=int(ids.size());DeviceKernelArguments args;args.add(&selected.device_pointer);args.add(&film.device_pointer);args.add(&n);
   if(exchange::gpu()){require(queue->enqueue(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,n,args),label+" surface: "+d.error_message());require(queue->synchronize(),label+" surface: "+d.error_message());}
   auto actual=exchange::states("plain surface states",d,layout,states.size(),ids);
@@ -331,11 +334,11 @@ static void surface_lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Fiel
 static void closest_lockstep(WebGPUDevice &d,Scene &scene,const std::vector<Field> &layout,const std::vector<IntegratorStateCPU> &states,
                              const std::vector<int> &ids,const std::string &label,Metrics &m){
   exchange::check("closest",label,ids,states);
-  auto wanted=states;std::vector<float> wanted_film(width*height*4,0.f);original_closest(scene.dscene,ids,wanted,wanted_film);
+  auto wanted=states;std::vector<float> wanted_film(width*height*scene.dscene.data.film.pass_stride,0.f);original_closest(scene.dscene,ids,wanted,wanted_film);
   upload(d,layout,states);IntegratorQueueCounter c{};c.num_queued[DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST]=ids.size();d.upload(uintptr_t(d.state.queue_counter),&c,sizeof(c));
   const auto keys=uintptr_t(d.state.sort_key_counter[DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE]);std::vector<uint32_t> sort(d.remaining(keys)/4,0);d.upload(keys,sort.data(),sort.size()*4);
   device_vector<int> selected(&d,"mnee_closest_indices",MEM_READ_WRITE);selected.alloc(std::max<size_t>(1,ids.size()));std::copy(ids.begin(),ids.end(),selected.data());selected.copy_to_device();
-  device_vector<float> film(&d,"mnee_closest_film",MEM_READ_WRITE);film.alloc(width*height*4);std::fill_n(film.data(),film.size(),0.f);film.copy_to_device();
+  device_vector<float> film(&d,"mnee_closest_film",MEM_READ_WRITE);film.alloc(width*height*scene.dscene.data.film.pass_stride);std::fill_n(film.data(),film.size(),0.f);film.copy_to_device();
   auto queue=d.gpu_queue_create();int n=int(ids.size());DeviceKernelArguments args;args.add(&selected.device_pointer);args.add(&film.device_pointer);args.add(&n);
   if(exchange::gpu()){require(queue->enqueue(DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST,n,args),label+" closest: "+d.error_message());require(queue->synchronize(),label+" closest: "+d.error_message());}
   auto actual=exchange::states("closest states",d,layout,states.size(),ids);
@@ -362,6 +365,10 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     Metrics m;SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;gate_curve_params(params);
     Scene scene(params,&d);fixture(scene,mode);gate_curve_tufts(scene);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"MNEE scene preparation failed");
     require(scene.dscene.data.integrator.use_caustics&&(scene.dscene.data.kernel_features&KERNEL_FEATURE_MNEE),"MNEE fixture without caustics");
+    {bool spot=false,area=false,background=false;for(size_t i=0;i<scene.dscene.lights.size()&&i<size_t(scene.dscene.data.integrator.num_lights);i++){const KernelLight &l=scene.dscene.lights[i];
+       if(l.use_caustics){spot|=l.type==LIGHT_SPOT;area|=l.type==LIGHT_AREA;background|=l.type==LIGHT_BACKGROUND;}}
+     require(spot==(mode>=mnee_first_lamp_case&&mode<mnee_first_lamp_case+2)&&area==(mode>=mnee_area_case)&&background==(mode==mnee_background_case),
+             "Unexpected MNEE caustic light types");}
     // Scene exchange (reference_policy.h): a dump pass stops here, the judge continues on the device's loaded tables,
     // and the device record pass writes the tables its GPU uses beside the record.
     const std::string key="case-"+std::to_string(mode);
@@ -384,8 +391,11 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
         else throw std::runtime_error("Unknown MNEE stage exchange check "+kind);
       }
     }else{
-    std::vector<IntegratorStateCPU> state(width*height);std::vector<IntegratorShadowStateCPU> shadow(width*height);std::vector<float> film(width*height*4);
-    for(unsigned sample=0;sample<samples;sample++){
+    std::vector<IntegratorStateCPU> state(width*height);std::vector<IntegratorShadowStateCPU> shadow(width*height);std::vector<float> film(width*height*scene.dscene.data.film.pass_stride);
+    // Case 28 (zero-spread area light: few receivers see the fixed-direction walk) runs more samples, so that the coverage
+    // rule below holds in the curve variant of the fixture too; the comparison of every step is unchanged.
+    const unsigned case_samples=mode==28?32u:samples;
+    for(unsigned sample=0;sample<case_samples;sample++){
       std::fill(state.begin(),state.end(),IntegratorStateCPU{});KernelWorkTile tile{};tile.w=width;tile.h=height;tile.stride=width;tile.num_samples=1;tile.start_sample=sample;
       original_camera(scene.dscene,{tile},0,state,film);
       for(unsigned step=0;step<100;step++){
@@ -397,6 +407,9 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
           if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST){closest_lockstep(d,scene,layout,state,ids,"case "+std::to_string(mode)+" sample "+std::to_string(sample)+" step "+std::to_string(step)+" closest",m);original_closest(scene.dscene,ids,state,film);}
           else if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE)lockstep(d,scene,layout,slots,state,ids,"case "+std::to_string(mode)+" sample "+std::to_string(sample)+" step "+std::to_string(step),m);
           else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND)original_background(scene.dscene,ids,state,film);
+          // Case 24's absorbing medium (no scattering, so shade_volume queues no shadow path).
+          else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME)original_volume(scene.dscene,ids,state,film);
+          else if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK)original_volume_stack(scene.dscene,ids,state);
           else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD)original_light_forward(scene.dscene,ids,state,film);
           else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){
             {std::vector<int> plain;for(int i:ids)if(!(state[i].path.mnee&PATH_MNEE_SAMPLED))plain.push_back(i);
@@ -413,6 +426,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     }
     exchange::end_case();
     require(m.paths>100&&m.sampled>=(mnee_samples(mode)?5u:0u),"Missing MNEE state coverage case "+std::to_string(mode));
+    require((mode==mnee_huang_case)==(m.curve_sampled>0),"Missing MNEE Huang hair receiver coverage case "+std::to_string(mode));
     auto histogram=[&](const std::map<unsigned,uint64_t> &h){std::ostringstream o;o<<'{';bool first=true;for(auto [k,v]:h){if(!first)o<<',';first=false;o<<'"'<<k<<"\":"<<v;}o<<'}';return o.str();};
     if(cases.tellp()>0)cases<<',';
     cases<<std::setprecision(17)<<"{\"case\":"<<mode<<",\"paths\":"<<m.paths<<",\"sampled\":"<<m.sampled<<",\"integerChecks\":"<<m.integers<<",\"floatChecks\":"<<m.floats<<",\"strict\":"<<m.strict
@@ -421,19 +435,6 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
     if(m.maximum>total.maximum){total.maximum=m.maximum;total.maximum_field=m.maximum_field;}
   }
   exchange::finish();
-  // Refusal: a moving caustic caster (mnee_fixture.h variant mnee_refused_moving_caster) stops the first MNEE dispatch with its reason.
-  bool refused=false;
-  if(exchange::gpu()&&!reference_policy::prepare_only()){
-    SceneParams params;params.bvh_layout=BVH_LAYOUT_BVH2;params.bvh_type=BVH_TYPE_STATIC;params.use_bvh_unaligned_nodes=false;params.use_texture_cache=false;
-    Scene scene(params,&d);fixture(scene,mnee_refused_moving_caster);Progress progress;scene.device_update(&d,progress);healthy(d);require(!progress.get_error(),"MNEE refusal scene preparation failed");
-    require(scene.dscene.data.integrator.use_caustics&&scene.dscene.data.bvh.have_motion,"MNEE refusal scene without caustics or motion");
-    bool cancelled=false;Scheduler scheduler(&d,scene.film,&scene.dscene,&cancelled);scheduler.alloc_work_memory();scheduler.init_execution();healthy(d);
-    device_vector<int> selected(&d,"mnee_refusal_indices",MEM_READ_WRITE);selected.alloc(1);selected.data()[0]=0;selected.copy_to_device();
-    auto queue=d.gpu_queue_create();int n=1;DeviceKernelArguments args;args.add(&selected.device_pointer);args.add(&n);
-    const bool ran=queue->enqueue(DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE,n,args)&&queue->synchronize();
-    refused=!ran&&d.error_message().find("moving caustic caster")!=std::string::npos;
-    require(refused,"Moving caustic caster was not refused: "+d.error_message());
-  }
   if(reference_policy::prepare_only()){std::cout<<"{\"passed\":true,\"sceneExchangeOnly\":\"dump\"}\n";TaskScheduler::exit();return 0;}
   // CODEBRIX_MNEE_GATE_DIAGNOSE reports every difference instead of stopping at the first; it still fails.
   require(diagnosed==0,"MNEE gate differences: "+std::to_string(diagnosed));
@@ -443,7 +444,7 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
   if(exchange::tape.mode==exchange::Judge)result<<"\"stageJudge\":true,\"stageChecks\":"<<exchange::tape.checks<<",";
   if(exchange::tape.mode==exchange::Record)result<<"\"stageRecord\":true,\"stageChecks\":"<<exchange::tape.checks<<",\"localDifferencesDiagnostic\":"<<exchange::tape.local_differences
     <<",\"firstLocalDifference\":\""<<reference_policy::escape(exchange::tape.first_local_difference)<<"\",";
-  result<<"\"movingCasterRefused\":"<<(refused?"true":"false")<<",\"originalCpuIntersectMnee\":true,\"paths\":"<<total.paths<<",\"sampled\":"<<total.sampled<<",\"dispatches\":"<<total.dispatches
+  result<<"\"originalCpuIntersectMnee\":true,\"paths\":"<<total.paths<<",\"sampled\":"<<total.sampled<<",\"dispatches\":"<<total.dispatches
     <<",\"integerChecks\":"<<total.integers<<",\"floatChecks\":"<<total.floats<<",\"strictFloatFailures\":"<<total.strict<<",\"maximumAbsoluteError\":"<<total.maximum<<",\"maximumErrorField\":\""<<total.maximum_field<<"\",\"cases\":["<<cases.str()<<"]}\n";
   std::ofstream(prefix+".result.json")<<result.str();std::cout<<result.str();
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';status=1;}TaskScheduler::exit();return status;}

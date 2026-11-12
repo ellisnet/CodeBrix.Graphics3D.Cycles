@@ -11,23 +11,17 @@
 namespace ccl {
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
 static constexpr size_t dedicated_record_stride=32; // DL_RECORD_BYTES (camera.cpp, wavefront_shadow_link_lamp.wgsl).
-// The combinations shadow linking renders on this device; the others are refused by name before any dispatch.
+// The combinations shadow linking renders on this device. None is refused here: path guiding (outside the target) is refused in
+// enqueue_dedicated_light; subsurface scattering with shadow linking renders (subsurface.cpp).
 void WebGPUDevice::validate_shadow_linking() const{
   if(!(data.kernel_features&KERNEL_FEATURE_SHADOW_LINKING))return;
-  // Volumes: the forward MIS of a phase scatter on the flat CDF; on the tree (previous_dt, segment importance) not gated.
-  require(!((data.kernel_features&KERNEL_FEATURE_VOLUME)&&data.integrator.use_light_tree),"WebGPU shadow linking with volumes and the light tree not implemented");
-  // Spot, area and triangle lights in volume direct light and the volume light passes have no gate case with shadow linking.
-  if(data.kernel_features&KERNEL_FEATURE_VOLUME){
-    if(data.integrator.use_direct_light){
-      for(const KernelLight &light:lamp_records())
-        require(light.type==LIGHT_POINT||light.type==LIGHT_SUN||light.type==LIGHT_BACKGROUND,"WebGPU shadow linking with volumes and spot or area lights not implemented");
-      for(size_t i=0;i+1<light_distribution_records.size();i++)
-        require(light_distribution_records[i].prim<0,"WebGPU shadow linking with volumes and emissive triangles not implemented");
-    }
-    require(data.film.pass_volume_direct==PASS_UNUSED&&data.film.pass_volume_indirect==PASS_UNUSED,"WebGPU shadow linking with volume light passes not implemented");
-  }
-  require(!data.integrator.has_shadow_catcher,"WebGPU shadow linking with a shadow catcher not implemented");
-  require(!(data.kernel_features&(KERNEL_FEATURE_AO_ADDITIVE|KERNEL_FEATURE_AO_PASS)),"WebGPU shadow linking with ambient occlusion not implemented");
+  // Volumes on the light tree: the forward pdfs of a phase scatter's dedicated hit take the segment (previous_dt, the importance of the
+  // ray segment, light_tree_pdf<true>) as the main path's forward MIS does: gate case 18.
+  // Spot, area and triangle lights in volume direct light render as the pinned kernel (their next-event rays carry the light object, a
+  // phase scatter takes the dedicated light kernels): gate cases 16-17. The volume light passes: the dedicated shadow path of a phase scatter
+  // carries PATH_RAY_VOLUME_PASS and the main path's pass weights into film_write_direct_light: gate case 19.
+  // The shadow catcher (split paths through both dedicated kernels, the catcher's visibility and light exclusion) and ambient
+  // occlusion (fast GI's additive AO and the AO pass beside the dedicated shadow rays) render as the pinned kernel: gate cases 13-15.
 }
 void WebGPUDevice::enqueue_dedicated_light(DeviceKernel kernel,int work,const DeviceKernelArguments &args){
   const bool intersect=kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT;

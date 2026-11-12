@@ -7,7 +7,9 @@
 // displaced the grids through the same kernel before the BVH build (the gate also checks that the
 // vertices moved). Cases: Displacement node height in object space (rotated, scaled object) and in
 // world space (flat grid), Vector Displacement in object, world and tangent space (without a UV map:
-// dPdu; with a UV map: its tangent and sign attributes), and displacement method Both.
+// dPdu; with a UV map: its tangent and sign attributes), and displacement method Both. The stateful nodes in the
+// displacement program (node 2): Ambient Occlusion, Light Path (ray type, length and depths), Wireframe, Bevel and Raycast,
+// which the displacement node mask (KERNEL_FEATURE_NODE_MASK_DISPLACEMENT) evaluates without path state or ray tracing.
 #include "wavefront_test.h"
 #include "reference_policy.h"
 #include "environment_reference.h"
@@ -28,7 +30,7 @@
 using namespace ccl;
 using namespace wavefront_test;
 struct Case {const char *name;int node;NodeNormalMapSpace space;DisplacementMethod method;bool smooth,uv,transform;};
-// node: 0 Displacement (noise height), 1 Vector Displacement (wave colour).
+// node: 0 Displacement (noise height), 1 Vector Displacement (wave colour), 2 Displacement of a sum of stateful node outputs.
 static const Case cases[]={
   {"height-object-transformed",0,NODE_NORMAL_MAP_OBJECT,DISPLACE_TRUE,true,false,true},
   {"height-world-flat",0,NODE_NORMAL_MAP_WORLD,DISPLACE_TRUE,false,false,false},
@@ -37,6 +39,8 @@ static const Case cases[]={
   {"vector-tangent-dpdu",1,NODE_NORMAL_MAP_TANGENT,DISPLACE_TRUE,true,false,true},
   {"vector-tangent-uv",1,NODE_NORMAL_MAP_TANGENT,DISPLACE_TRUE,true,true,true},
   {"height-object-both",0,NODE_NORMAL_MAP_OBJECT,DISPLACE_BOTH,true,false,true},
+  {"stateful-nodes-object",2,NODE_NORMAL_MAP_OBJECT,DISPLACE_TRUE,true,false,true},
+  {"stateful-nodes-world-both",2,NODE_NORMAL_MAP_WORLD,DISPLACE_BOTH,false,false,false},
 };
 constexpr unsigned case_count=sizeof(cases)/sizeof(cases[0]);
 constexpr int grid_n=12;
@@ -46,6 +50,21 @@ static Shader *displacement_shader(Scene &scene,const Case &c){
   if(c.node==0){auto noise=g->create_node<NoiseTextureNode>();noise->set_scale(2.5f);noise->set_detail(2.f);
     auto disp=g->create_node<DisplacementNode>();disp->set_space(c.space);disp->set_scale(.45f);disp->set_midlevel(.5f);
     g->connect(noise->output("Fac"),disp->input("Height"));g->connect(disp->output("Displacement"),g->output()->input("Displacement"));}
+  else if(c.node==2){
+    // Height = noise + AO + Is Camera Ray + Ray Length + Ray Depth + Transparent Depth + Wireframe + Bevel Normal x + Is Hit
+    // + Hit Distance, each through an Add node.
+    auto noise=g->create_node<NoiseTextureNode>();noise->set_scale(2.5f);noise->set_detail(2.f);
+    auto ao=g->create_node<AmbientOcclusionNode>();ao->set_samples(4);ao->set_distance(.7f);
+    auto path=g->create_node<LightPathNode>();auto wire=g->create_node<WireframeNode>();wire->set_size(.08f);
+    auto bevel=g->create_node<BevelNode>();bevel->set_samples(4);bevel->set_radius(.1f);auto bevel_x=g->create_node<SeparateXYZNode>();
+    auto ray=g->create_node<RaycastNode>();ray->set_length(1.5f);ray->set_direction(make_float3(0,1,0));
+    g->connect(bevel->output("Normal"),bevel_x->input("Vector"));
+    ShaderOutput *sum=noise->output("Fac");
+    for(ShaderOutput *term:{ao->output("AO"),path->output("Is Camera Ray"),path->output("Ray Length"),path->output("Ray Depth"),path->output("Transparent Depth"),
+                            wire->output("Fac"),bevel_x->output("X"),ray->output("Is Hit"),ray->output("Hit Distance")}){
+      auto add=g->create_node<MathNode>();add->set_math_type(NODE_MATH_ADD);g->connect(sum,add->input("Value1"));g->connect(term,add->input("Value2"));sum=add->output("Value");}
+    auto disp=g->create_node<DisplacementNode>();disp->set_space(c.space);disp->set_scale(.12f);disp->set_midlevel(1.5f);
+    g->connect(sum,disp->input("Height"));g->connect(disp->output("Displacement"),g->output()->input("Displacement"));}
   else{auto wave=g->create_node<WaveTextureNode>();wave->set_scale(1.7f);wave->set_distortion(1.5f);
     auto disp=g->create_node<VectorDisplacementNode>();disp->set_space(c.space);disp->set_scale(.3f);disp->set_midlevel(.4f);
     if(c.uv)disp->set_attribute(ustring("UVMap"));

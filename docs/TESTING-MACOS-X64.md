@@ -13,11 +13,12 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 >    upstream wgpu-native release, a system library) or from any other version
 >    of this package, earlier or later. Runs with other WebGPU binaries are not
 >    evidence and must not be recorded as results.
-> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
->    .NET libraries and tools in this repository uses the .NET 10 SDK
->    10.0.403 - **absolutely no earlier version**. Check with
->    `dotnet --version` (it must print `10.0.403`) before starting and record
->    the output with the run.
+> 2. **.NET SDK: ONLY version 11.0.100.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 11 SDK
+>    11.0.100 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `11.0.100`) before starting and record
+>    the output with the run. The projects themselves keep targeting
+>    `net10.0`; only the SDK that builds, tests and runs them is 11.0.100.
 > 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
@@ -233,7 +234,7 @@ match the device name (M2).
 | Homebrew (x64) | In `/usr/local`. Used only for tools; every recipe excludes `/usr/local` and `/opt/homebrew` from searches and rejects any reference to them. |
 | CMake | 3.24 or newer (4.4.3 validated). |
 | Python | 3.12 or newer (3.15.2 validated). Xcode's Python is too old. |
-| .NET | .NET 10 SDK **10.0.403 only** (no earlier version) for x64 (`dotnet --version` must print `10.0.403`; `dotnet --info` must report `RID: osx-x64`). |
+| .NET | .NET 11 SDK **11.0.100 only** (no earlier version) for x64 (`dotnet --version` must print `11.0.100`; `dotnet --info` must report `RID: osx-x64`). |
 | zstd | For the oracle bundle. |
 | Deployment target | macOS 15.0 for every built Mach-O (the runtime declares 11.0). |
 

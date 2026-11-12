@@ -11,8 +11,8 @@ static constexpr char closest_source[]=
 static void require(bool ok,const char *message){if(!ok)throw std::runtime_error(message);}
 // Typed host copies are capability checks only; GPU kernels evaluate every
 // ray-time transform. Native arrays stay authoritative for rendering.
-// Motion support covers triangle and curve deformation and triangle and curve instances.
-// Animated emitters, points and subdivision are outside this adapter;
+// Motion support covers triangle, curve and point deformation, triangle, curve and point instances and moving lights.
+// Subdivision is outside this adapter;
 // transparent-shadow and volume combinations retain their separate guards.
 void WebGPUDevice::validate_geometry_motion() const{
   require(object_records.size()==object_flag_records.size(),"Invalid native object flag table");
@@ -38,7 +38,9 @@ void WebGPUDevice::validate_geometry_motion() const{
       require(object.num_geom_steps>=2&&object.numverts>0&&(object.numprims>0||(object.primitive_type&PRIMITIVE_POINT)),"Invalid deforming triangle steps/size");
     }else require(object.primitive_type!=PRIMITIVE_MOTION_TRIANGLE&&object.primitive_type!=PRIMITIVE_MOTION_POINT,"Invalid deforming triangle flags/type");
     if(flags&SD_OBJECT_MOTION){
-      moving=true;require(curve||object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_TRIANGLE||object.primitive_type==PRIMITIVE_POINT||object.primitive_type==PRIMITIVE_MOTION_POINT,"WebGPU animated emitters (object motion on lights) not implemented");
+      // A light object with motion (PRIMITIVE_LAMP): ObjectManager decomposes its motion and sets SD_OBJECT_MOTION, but no pinned
+      // kernel reads a lamp object's motion (KernelLight holds one transform; lamps are not in the BVH), so it renders static.
+      moving=true;require(curve||object.primitive_type==PRIMITIVE_TRIANGLE||object.primitive_type==PRIMITIVE_MOTION_TRIANGLE||object.primitive_type==PRIMITIVE_POINT||object.primitive_type==PRIMITIVE_MOTION_POINT||object.primitive_type==PRIMITIVE_LAMP,"Invalid moving object type");
       require(!(flags&SD_OBJECT_TRANSFORM_APPLIED),"Invalid applied object motion transform");
       require(object.num_tfm_steps>=2&&object.motion_offset<=count&&object.num_tfm_steps<=count-object.motion_offset,
               "Invalid native object motion range");

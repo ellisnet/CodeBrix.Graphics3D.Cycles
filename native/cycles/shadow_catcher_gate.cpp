@@ -34,6 +34,8 @@
 #include "shadow_reference.h"
 #include "environment_reference.h"
 #include "environment_fixture.h"
+#include "mnee_reference.h"
+#include "mnee_fixture.h"
 #include "transparent_shadow_fixture.h"
 #include "object_motion_fixture.h"
 #include "deforming_motion_fixture.h"
@@ -60,7 +62,7 @@ constexpr unsigned width=32,height=24,samples=8,pixels=width*height;
 // 0-3 state cases, 4-9 image cases, 10 volume without refusal, 11-13 ambient occlusion image cases,
 // 14-22 combination image cases (object, deformation, camera motion; light tree; light
 // linking; spot lamp; glass and principled transmission; shadow terminator; non-constant emitter).
-constexpr int state_cases=4,image_cases=6,ao_cases=3,combination_cases=9,cases=state_cases+image_cases+1+ao_cases+combination_cases;
+constexpr int state_cases=4,image_cases=6,ao_cases=3,combination_cases=10,cases=state_cases+image_cases+1+ao_cases+combination_cases;
 constexpr int first_ao_case=state_cases+image_cases+1,first_combination_case=first_ao_case+ao_cases;
 static bool ao_case(int mode){return mode>=first_ao_case&&mode<first_combination_case;}
 static int combination(int mode){return mode>=first_combination_case?mode-first_combination_case:-1;}
@@ -69,7 +71,7 @@ struct SplitScheduler:Scheduler {
   using PathTraceWorkGPU::shadow_catcher_count_possible_splits;
   void set_active_with_splits(int n){max_active_main_path_index_=n;}
 };
-struct Metrics {uint64_t stages=0,integers=0,floats=0,strict=0,splits=0,background_splits=0,catcher_paths=0,count_checks=0,shadows=0,visible=0,nee=0,ao=0,ao_visible=0,repeat_differences=0;double maximum=0;
+struct Metrics {uint64_t mnee=0,stages=0,integers=0,floats=0,strict=0,splits=0,background_splits=0,catcher_paths=0,count_checks=0,shadows=0,visible=0,nee=0,ao=0,ao_visible=0,repeat_differences=0;double maximum=0;
   std::string maximum_field;};
 static void number(float a,float e,const std::string &where,Metrics &m){
   const double error=std::abs(double(a)-e);if(error>m.maximum){m.maximum=error;m.maximum_field=where;}m.floats++;m.strict+=error>1e-7+1e-7*std::abs(double(e));
@@ -101,7 +103,8 @@ static Object *lamp(Scene &scene,Shader *emitter,Light *light,float3 strength,Tr
 // light linking (the floor receives the point lamp only through light set 0, the blue
 // object a sun of its own set), 5 a spot lamp, 6 glass and principled transmission
 // (materials chosen in fixture()), 7 shadow terminator offsets on two smooth spheres,
-// 8 a non-constant emitter (procedural checker emission on a panel).
+// 8 a non-constant emitter (procedural checker emission on a panel), 9 shadow caustics (the catcher floor is a caustic
+// receiver of a smooth glass sphere under the point lamp with use_caustics).
 static void combination_fixture(Scene &scene,int c,Object &blue,Object &orange,Object &floor,Object *point){
   if(c<0)return;
   require(point!=nullptr,"Combination cases need the point lamp");
@@ -128,6 +131,8 @@ static void combination_fixture(Scene &scene,int c,Object &blue,Object &orange,O
       sphere->set_tfm(transform_translate(make_float3(i?-2.2f:.2f,-1.35f,i?1.2f:-1.4f))*transform_scale(make_float3(.6f,.6f,.6f)));
       sphere->set_shadow_terminator_geometry_offset(i?.3f:.1f);sphere->set_shadow_terminator_shading_offset(i?1.f:.5f);}
     floor.set_shadow_terminator_geometry_offset(.1f);}
+  if(c==9){floor.set_is_caustics_receiver(true);static_cast<Light*>(point->get_geometry())->set_use_caustics(true);
+    auto sphere=mnee_sphere(scene,mnee_shader(scene,1),make_float3(1.3f,-1.2f,-1.6f),.75f);sphere->set_is_caustics_caster(true);}
   if(c==8){auto panel=quad(scene,environment_emitter(scene,1),{make_float3(-.7,-.5,0),make_float3(.7,-.5,0),make_float3(.7,.5,0),make_float3(-.7,.5,0)});
     panel->set_tfm(transform_translate(make_float3(-1.8f,2.1f,-1.2f))*transform_rotate(1.1f,make_float3(1,0,0)));}
   for(auto shader:scene.shaders)if(shader->get_emission_sampling_method()!=EMISSION_SAMPLING_FRONT_BACK)shader->set_emission_sampling_method(EMISSION_SAMPLING_NONE);
@@ -216,6 +221,7 @@ static void cpu_render(DeviceScene &scene,std::vector<float> &film,Metrics &m){
         if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST)closest_split(scene,ids,state,film,next,m,0);
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND)original_background(scene,ids,state,film);
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT_FORWARD)original_light_forward(scene,ids,state,film);
+        else if(kernel==DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE){m.mnee+=ids.size();original_mnee(scene,ids,state);}
         else if(kernel==DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE){
           for(int i:ids)m.catcher_paths+=(state[i].path.flag&PATH_RAY_SHADOW_CATCHER_PASS)!=0;
           original_surface(scene,ids,state,film);std::vector<int> nee,pending;
@@ -417,11 +423,12 @@ int main(int argc,char **argv){TaskScheduler::init(1);int status=0;try{
               (c==4)==bool(data.kernel_features&KERNEL_FEATURE_LIGHT_LINKING),"Unexpected native combination configuration");
       if(c==7){bool offsets=false;for(size_t i=0;i<scene.dscene.objects.size();i++)offsets|=scene.dscene.objects[i].shadow_terminator_geometry_offset>.2f;
         require(offsets,"Missing shadow terminator offsets");}
-      if(c==8)require(cpu.nee>100,"Missing non-constant emitter coverage");}
+      if(c==8)require(cpu.nee>100,"Missing non-constant emitter coverage");
+      require((c==9)==(bool(data.integrator.use_caustics)&&cpu.mnee>100),"Missing shadow catcher caustics coverage");}
     if(ao_case(mode))require(cpu.ao>100&&cpu.ao_visible>10&&cpu.ao_visible<cpu.ao,"Missing ambient occlusion shadow ray coverage");
     reports<<",{\"case\":"<<mode<<",\"stateStages\":"<<m.stages<<",\"lockstep\":\""<<(state_case?(recorder?"recorded":"local"):"none")<<"\",\"splits\":"<<cpu.splits<<",\"backgroundSplits\":"<<cpu.background_splits
            <<",\"catcherSurfacePaths\":"<<cpu.catcher_paths<<",\"stateIntegerChecks\":"<<m.integers<<",\"stateFloatChecks\":"<<m.floats<<",\"strictStageFailures\":"<<m.strict<<",\"maximumStageError\":"<<std::setprecision(17)<<m.maximum
-           <<",\"shadows\":"<<cpu.shadows<<",\"visible\":"<<cpu.visible<<",\"aoShadowPaths\":"<<cpu.ao<<",\"aoUnoccluded\":"<<cpu.ao_visible<<",\"filmChecks\":"<<cpu.floats<<",\"strictImageDifferences\":"<<cpu.strict<<",\"maximumImageError\":"<<cpu.maximum
+           <<",\"shadows\":"<<cpu.shadows<<",\"visible\":"<<cpu.visible<<",\"aoShadowPaths\":"<<cpu.ao<<",\"aoUnoccluded\":"<<cpu.ao_visible<<",\"mneePaths\":"<<cpu.mnee<<",\"filmChecks\":"<<cpu.floats<<",\"strictImageDifferences\":"<<cpu.strict<<",\"maximumImageError\":"<<cpu.maximum
            <<",\"repeatBitwiseDifferences\":"<<m.repeat_differences<<",\"passStride\":"<<data.film.pass_stride<<"}";
     total.stages+=m.stages;total.integers+=m.integers;total.floats+=m.floats+cpu.floats;total.strict+=m.strict+cpu.strict;total.maximum=std::max({total.maximum,m.maximum,cpu.maximum});total.repeat_differences+=m.repeat_differences;
   }

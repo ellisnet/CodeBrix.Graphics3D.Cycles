@@ -11,11 +11,12 @@
 >    upstream wgpu-native release, a system library) or from any other version
 >    of this package, earlier or later. Runs with other WebGPU binaries are not
 >    evidence and must not be recorded as results.
-> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
->    .NET libraries and tools in this repository uses the .NET 10 SDK
->    10.0.403 - **absolutely no earlier version**. Check with
->    `dotnet --version` (it must print `10.0.403`) before starting and record
->    the output with the run.
+> 2. **.NET SDK: ONLY version 11.0.100.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 11 SDK
+>    11.0.100 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `11.0.100`) before starting and record
+>    the output with the run. The projects themselves keep targeting
+>    `net10.0`; only the SDK that builds, tests and runs them is 11.0.100.
 > 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
@@ -166,7 +167,7 @@ the host takes the package's `libcodebrix_wgpu.so` from the NuGet cache and
 records its SHA-256.
 
 Requirements on the Pi, beyond section 2: `gcc-14`/`g++-14`, `clang` (the WGSL
-translation's AST dump), `cmake`, `make`, `time`, the .NET 10 SDK **10.0.403 only**
+translation's AST dump), `cmake`, `make`, `time`, the .NET 11 SDK **11.0.100 only**
 (no earlier version) for the managed steps, and the package
 (`dotnet restore research/GpuProbe/GpuProbe.csproj`). Since commit `80f9c5e6b` also
 ISPC 1.30.0 **for Linux aarch64** (`ispc-v1.30.0-linux.aarch64.tar.gz` from
@@ -307,7 +308,7 @@ The maintainer installs these with apt; nothing else in this procedure uses
 - `git`
 
 No .NET SDK is needed on the Pi for the cross-built procedure (section 4, step
-P9); the native build on the device needs SDK 10.0.403, and only that version.
+P9); the native build on the device needs SDK 11.0.100, and only that version.
 No other GPU stack is needed; the host chooses only a hardware Vulkan adapter
 and ignores `llvmpipe`.
 

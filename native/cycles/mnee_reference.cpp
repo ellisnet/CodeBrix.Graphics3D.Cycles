@@ -59,6 +59,8 @@ MneeTrace original_mnee_trace(ccl::DeviceScene &scene,const ccl::IntegratorState
   }
   out.count=count;if(!count)return out;
   bool fixed=ls.t==FLT_MAX;
+  // integrate_surface_mnee: an area light with zero spread also has a fixed direction.
+  if(ls.type==LIGHT_AREA&&kernel_data_fetch(lights,ls.prim).area.tan_half_spread==0.0f)fixed=true;
   // mnee_newton_solver with the iteration and constraint-norm record.
   float2 dx[MNEE_MAX_CAUSTIC_CASTERS];ManifoldVertex tentative[MNEE_MAX_CAUSTIC_CASTERS];Ray pr;
   pr.self.light_object=OBJECT_NONE;pr.self.light_prim=PRIM_NONE;pr.dP=differential_make_compact(sd.dP);pr.dD=differential_zero_compact();pr.tmin=0;pr.time=sd.time;Intersection pi;

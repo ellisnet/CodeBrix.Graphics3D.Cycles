@@ -13,11 +13,12 @@ Copyright (c) 2026 Jeremy Ellis and contributors
 >    upstream wgpu-native release, a system library) or from any other version
 >    of this package, earlier or later. Runs with other WebGPU binaries are not
 >    evidence and must not be recorded as results.
-> 2. **.NET SDK: ONLY version 10.0.403.** Every build, test and tool run of the
->    .NET libraries and tools in this repository uses the .NET 10 SDK
->    10.0.403 - **absolutely no earlier version**. Check with
->    `dotnet --version` (it must print `10.0.403`) before starting and record
->    the output with the run.
+> 2. **.NET SDK: ONLY version 11.0.100.** Every build, test and tool run of the
+>    .NET libraries and tools in this repository uses the .NET 11 SDK
+>    11.0.100 - **absolutely no earlier version**. Check with
+>    `dotnet --version` (it must print `11.0.100`) before starting and record
+>    the output with the run. The projects themselves keep targeting
+>    `net10.0`; only the SDK that builds, tests and runs them is 11.0.100.
 > 3. **Linux x64 reference: ONLY from the Linux x64 machine.** Linux x64 and
 >    Android testing and validation are done on the dedicated Linux x64 machine
 >    only. Every comparison against Linux x64 uses the newest
@@ -65,7 +66,7 @@ default, Vulkan on request. A run establishes:
 | DXC | `dxcompiler.dll` 1.9.2609.5 in `native/binaries/<rid>/runtime/` (`third_party/dxc-import.json`; `tools/windows_dxc.py` pins the hashes) |
 | Visual Studio | 2022 or later with "Desktop development with C++" and "C++ Clang tools for Windows" (clang-cl, lld-link), the Windows SDK, and its bundled CMake and Ninja. Versions are recorded by the recipes. |
 | Python | 3.12 or newer, run as `python -I -X utf8` (UTF-8 mode; `-I` ignores `PYTHONUTF8`). |
-| .NET | .NET 10 SDK **10.0.403 only** (no earlier version) for the machine's architecture; `dotnet --version` must print `10.0.403`. |
+| .NET | .NET 11 SDK **11.0.100 only** (no earlier version) for the machine's architecture; `dotnet --version` must print `11.0.100`. |
 | Git | `core.autocrlf` may stay `true`: the root `.gitattributes` keeps every file's committed bytes (LF, and the CRLF files of the pinned snapshots). |
 
 Antivirus scanning of a fresh clone can make the first full read of
@@ -234,7 +235,7 @@ native/binaries/win-x64` passed (28 films, 0 failures, maximum GPU error
 The device run, its results and its findings are in
 [TESTING-WINDOWS-ARM64.md](TESTING-WINDOWS-ARM64.md). On the ARM64 device, from
 a clone of the commit that carries the staged payload (nothing is built there;
-.NET 10 SDK 10.0.403 (only) for ARM64 and Python are needed):
+.NET 11 SDK 11.0.100 (only) for ARM64 and Python are needed):
 
 ```
 dotnet restore research/GpuProbe/GpuProbe.csproj

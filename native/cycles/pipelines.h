@@ -325,6 +325,13 @@ inline constexpr ShaderFeatures SF_SUBSURFACE_DISK_ENTRY=ShaderFeatures::bit(217
 // translucent closures, or Oren-Nayar and the rough translucent closure (CLOSURE_BSDF_ROUGH_TRANSLUCENT_ID), weighted by
 // the subsurface anisotropy; no BSSRDF.
 inline constexpr ShaderFeatures SF_BSDF_THIN_SUBSURFACE=ShaderFeatures::bit(218);
+// Subsurface scattering with volumes (range 232-237): integrator_volume_stack_update_for_subsurface after subsurface_scatter
+// (integrator/intersect_volume_stack.h), the entry intersect_subsurface_volume_stack of the volume stack module and the
+// record of each exit the subsurface entries leave for it. A scene feature: KERNEL_FEATURE_VOLUME with SUBSURFACE.
+inline constexpr ShaderFeatures SF_SUBSURFACE_VOLUME=ShaderFeatures::bit(232);
+// Subsurface scattering with a holdout object in the scene: integrate_surface skips the holdout (an object holdout too) at
+// the exit point (connect_surface_light). A scene feature.
+inline constexpr ShaderFeatures SF_SUBSURFACE_HOLDOUT=ShaderFeatures::bit(233);
 // The motion pass (or a denoising motion feature) with deforming geometry: without motion blur a deforming mesh keeps
 // plain triangles with SD_OBJECT_HAS_VERTEX_MOTION and its motion steps after the centre positions
 // (primitive_motion_data_without_camera's deformation motion).
@@ -421,12 +428,58 @@ inline constexpr ShaderFeatures SF_BACKGROUND_PORTAL=ShaderFeatures::bit(226);
 // (integrate_transparent_surface_shadow), the portal bounce of the path and shadow states and the Light Path node's
 // portal depth.
 inline constexpr ShaderFeatures SF_RAY_PORTAL=ShaderFeatures::bit(227);
+// MNEE (caustics) from spot and background lights (lane range 238-243): the pinned light_sample of the type for the
+// walk's seed and light_sample_update after it (light/spot.h spot_light_sample and spot_light_mnee_sample_update,
+// light/light.h's background branch with light/background.h background_light_sample), in wavefront_mnee.wgsl's MNEE_SPOT
+// and MNEE_BACKGROUND regions. Set when a light of that type has use_caustics. Area lights (bit 239, MNEE_AREA): light/area.h
+// area_light_sample and area_light_mnee_sample_update. The spot and area samplers and light updates run in entries of their
+// own (mnee_light_sample before mnee_seed, mnee_light_update after mnee_solve; region MNEE_LIGHT_STAGES).
+inline constexpr ShaderFeatures SF_MNEE_SPOT=ShaderFeatures::bit(238);
+inline constexpr ShaderFeatures SF_MNEE_AREA=ShaderFeatures::bit(239);
+inline constexpr ShaderFeatures SF_MNEE_BACKGROUND=ShaderFeatures::bit(240);
+// MNEE in a scene with Beckmann closures: a Beckmann refraction caster's half-vector offset (-logf(1 - u)), Smith term and
+// refraction Fresnel in the walk (integrator/mnee.h mnee_sample_bsdf_dh and mnee_eval_bsdf_contribution; MNEE_BECKMANN regions).
+inline constexpr ShaderFeatures SF_MNEE_BECKMANN=ShaderFeatures::bit(241);
+// MNEE in a scene with volumes (KERNEL_FEATURE_VOLUME): the caustic receiver's routing after shade_volume
+// (integrator_intersect_next_kernel_after_volume) and the volume stack of the MNEE shadow path (MNEE_VOLUME regions).
+inline constexpr ShaderFeatures SF_MNEE_VOLUME=ShaderFeatures::bit(242);
+// MNEE in a scene with the Huang hair closure: the closure's evaluation entry takes an MNEE-sampled path's direction
+// from its MNEE slot (MNEE_HUANG region of wavefront_hair_huang.wgsl).
+inline constexpr ShaderFeatures SF_MNEE_HUANG=ShaderFeatures::bit(243);
+// Cameras, film and nodes (range 247-253). LOCAL_INSTANCE_SKIP: the local traversal (bvh/local.h scene_intersect_local,
+// for the Bevel node, and for the Ambient Occlusion and Raycast nodes with only_local) of a transform-applied object starts at
+// the scene root, so in a scene with instances it reaches instance leaves; it passes them over, since another object cannot be
+// a local hit (the pinned BVH2 triangle loop would read the leaves' negative primitive addresses; MetalRT and Embree give
+// every geometry its own BVH or filter by object). Set when a raytrace node, an instance leaf in the top-level BVH and a
+// transform-applied object whose shader traces locally are all in the scene; without the region the leaf still reports
+// unsupported (16).
+inline constexpr ShaderFeatures SF_LOCAL_INSTANCE_SKIP=ShaderFeatures::bit(247);
+// CAMERA_STEREO: spherical stereo (KernelCamera interocular_offset non-zero, a left or right Stereo Eye): the eye offset of
+// camera_sample_perspective and camera_sample_to_ray (kernel/camera/camera.h) with projection.h spherical_stereo_transform
+// (pole merge, convergence distance), and their ray differentials. Taken from the uploaded KernelData at every
+// shader_features() call; it also sets CAMERA_PROJECTIONS, whose camera_projected_ray carries it.
+inline constexpr ShaderFeatures SF_CAMERA_STEREO=ShaderFeatures::bit(248);
+// CAMERA_PANORAMA_INVERSE: a panoramic camera's inverse mappings (projection.h direction_to_panorama) for the Texture
+// Coordinate node's Window output (camera_world_to_ndc) and the motion pass (camera_motion_vector and its direction form).
+// Set with a panoramic camera and a Texture Coordinate node or motion vectors in the film.
+inline constexpr ShaderFeatures SF_CAMERA_PANORAMA_INVERSE=ShaderFeatures::bit(249);
+// LIGHT_MOTION: a light object with object motion (SD_OBJECT_MOTION on a PRIMITIVE_LAMP object): shader_setup_from_sample's
+// object transforms at the sample's time for its emission shader. KernelLight keeps one transform, so the light itself
+// does not move (as on every pinned device).
+inline constexpr ShaderFeatures SF_LIGHT_MOTION=ShaderFeatures::bit(250);
+// SVM_GEOMETRY_TANGENT: the Geometry node's Tangent output (geom/primitive.h primitive_tangent) on triangles, plain and
+// with derivatives inside bump (census: a NODE_GEOMETRY or NODE_GEOMETRY_DERIVATIVE record with NODE_GEOM_T).
+inline constexpr ShaderFeatures SF_GEOMETRY_TANGENT=ShaderFeatures::bit(251);
+// SVM_MOTION_NORMAL_DERIVATIVE: the smooth normal with derivatives (the Texture Coordinate node's Normal inside bump,
+// svm_node_tex_coord_derivative) on motion triangles (geom/motion_triangle.h motion_triangle_smooth_normal with the du/dv
+// offsets). Set with a derivative texture coordinate in the census and a motion-triangle object.
+inline constexpr ShaderFeatures SF_MOTION_NORMAL_DERIVATIVE=ShaderFeatures::bit(252);
 // Every assigned scene feature (bits 0-61, 63, 64, 65, 94-96, 102, 106, 108, 110, 120,
-// 128-160, 162-168, 170-180, 186-189, 194-198, 200, 201, 204, 206-209, 216, 218, 220, 221, 223, 226, 227; bit 62 is unassigned; 107, 161, 169 and 217 are module variants).
+// 128-160, 162-168, 170-180, 186-189, 194-198, 200, 201, 204, 206-209, 216, 218, 220, 221, 223, 226, 227, 232, 233, 238-243, 247-252; bit 62 is unassigned; 107, 161, 169 and 217 are module variants).
 inline constexpr ShaderFeatures SF_ALL=SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|ShaderFeatures::range(0,62)|SF_TEX_GABOR|SF_LIGHT_BACKGROUND|SF_LIGHT_NEE|SF_LIGHT_TREE|SF_LIGHT_LINKING|SF_LIGHT_SELECT|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|
   SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|
-  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE;
+  SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE;
 // The families above, for regions shared by all of them (closure classification).
 inline constexpr ShaderFeatures SF_BSDF_FAMILIES=SF_BSDF_METALLIC|SF_BSDF_BECKMANN|SF_BSDF_ASHIKHMIN_SHIRLEY|SF_BSDF_VELVET|SF_BSDF_TOON|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_BSDF_HAIR_HUANG;
 inline constexpr ShaderFeatures SF_PRINCIPLED_ALL=SF_BSDF_PRINCIPLED|SF_BSDF_THIN_FILM|SF_BSDF_THIN_WALL;
@@ -439,7 +492,7 @@ inline constexpr ShaderFeatures SF_SUPERSET_SCENE_ONLY=SF_POINTS_ALL|SF_BUMP|SF_
   SF_VALUE_DERIVATIVE|SF_VECTOR_MATH_DERIVATIVE|SF_MAPPING_DERIVATIVE|SF_TEX_GABOR|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|
   SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|
   SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|
-  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE;
+  SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_PHASES|SF_VOLUME_PHASE_KINDS|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_SHADOW_LINKING|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|SF_BSDF_HAIR_HUANG|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE;
 // Specialization modes: Scene (default, only the regions the scene reaches),
 // Superset (the on/off identity check) and Off (every region; diagnostic).
 //
@@ -507,6 +560,8 @@ std::string shader_feature_list(ShaderFeatures features);
 struct SvmCensus {
   ShaderFeatures features;  // Handlers any reachable decode path can execute.
   uint64_t decoded_nodes=0; // Distinct node records decoded.
+  // A Bevel node, or an Ambient Occlusion or Raycast node with only_local: a local traversal (bvh/local.h).
+  bool local_traversal=false;
   uint64_t stopped_paths=0; // Paths ending where the GPU interpreter reports an error.
   // First reachable feature the device rejects before rendering (empty: none).
   // Principled subsurface is refused here when a constant enables it or its

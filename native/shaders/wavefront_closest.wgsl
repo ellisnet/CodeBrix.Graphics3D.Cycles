@@ -358,6 +358,10 @@ fn sc_split_mark(index:u32,object:u32,shader:u32,next:u32){
     }
 //#if SHADOW_CATCHER
     if(sorted){sc_split_mark(index,hit.object,shader,next);if(load_word(p(17u))!=0u){return;}}
+//#if MNEE
+    // integrator_split_shadow_catcher after the caustic receiver's (unsorted) INTERSECT_MNEE routing.
+    if(next==MNEE_K_INTERSECT){sc_split_mark(index,hit.object,shader,next);if(load_word(p(17u))!=0u){return;}}
+//#endif
 //#endif
     let counter=load_word(p(7u)+S_queue_counter);
     atomicSub(&heap[(counter+K_CLOSEST*4u)/4u],1u);

@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
 >    1.0.300.210 NuGet package**, unmodified, from the NuGet cache. The CPU oracle
 >    does not render with WebGPU, but the host library links the package's
 >    `runtimes/linux-arm64/native/libcodebrix_wgpu.so`; no other copy or version.
-> 2. **.NET SDK: ONLY 10.0.403** for any .NET step (this procedure needs none
+> 2. **.NET SDK: ONLY 11.0.100** for any .NET step (this procedure needs none
 >    inside the container).
 > 3. **Linux x64 references come only from the Linux x64 machine.** This procedure
 >    produces **Linux ARM64** CPU oracle films; it never produces or replaces Linux
@@ -50,7 +50,7 @@ On the Mac (the maintainer installs these; nothing is installed by the procedure
 - The repository checked out at the commit to be rendered (`git pull`), clean.
 - The NuGet cache holding `codebrix.webgpu.native.mitlicenseforever/1.0.300.210`
   (restore it once on the Mac, e.g. `dotnet restore research/GpuProbe/GpuProbe.csproj`
-  with SDK 10.0.403). The package contains every RID, including
+  with SDK 11.0.100). The package contains every RID, including
   `runtimes/linux-arm64/native/libcodebrix_wgpu.so`.
 - ISPC 1.30.0 **for Linux aarch64** (build-time only: it compiles Open Image
   Denoise's CPU kernels, part of every dependency build since commit `80f9c5e6b`;

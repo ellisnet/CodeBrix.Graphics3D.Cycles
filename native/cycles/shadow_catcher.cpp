@@ -23,6 +23,7 @@ static void flag_constants(std::ostringstream &out){
   constant("SC_PATH_BACKGROUND",PATH_RAY_SHADOW_CATCHER_BACKGROUND);constant("SC_TRANSPARENT_BACKGROUND",PATH_RAY_TRANSPARENT_BACKGROUND);
   constant("SC_K_BACKGROUND",DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND);constant("SC_K_SURFACE",DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE);
   out<<"//#if VOLUME_SHADOW_CATCHER\n";constant("SC_K_VOLUME_STACK",DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK);constant("SC_SD_HAS_RAYTRACE",SD_HAS_RAYTRACE);out<<"//#endif\n";
+  out<<"//#if MNEE\n";constant("SC_K_MNEE",DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE);out<<"//#endif\n";
 }
 // Constants of the SHADOW_CATCHER region; the markers make modules of scenes
 // without a shadow catcher identical to modules without this layout.
@@ -40,7 +41,13 @@ std::string shadow_catcher_layout(){
   constant("SC_HOLDOUT_MASK",SD_OBJECT_HOLDOUT_MASK);constant("SC_EXCLUDE",SHADER_EXCLUDE_SHADOW_CATCHER);
   constant("SC_SR_TRANSPARENT",SR_TRANSPARENT);constant("SC_SR_RAY_PORTAL",SR_RAY_PORTAL);
   constant("SC_FLAGS",PATH_RAY_SHADOW_CATCHER_HIT|PATH_RAY_SHADOW_CATCHER_PASS|PATH_RAY_SHADOW_CATCHER_BACKGROUND);
-  out<<"//#endif\n";return out.str();
+  out<<"//#endif\n";
+  // A volume scene without a shadow catcher: the constants of sc_data_passes (DATA_PASS_BOOKKEEPING).
+  out<<"//#if !SHADOW_CATCHER\n//#if VOLUME_SHADOW\n";
+  constant("SC_D_pass_flag",offsetof(KernelData,film.pass_flag));constant("SC_D_pass_alpha_threshold",offsetof(KernelData,film.pass_alpha_threshold));
+  constant("SC_PATH_PASS",PATH_RAY_SHADOW_CATCHER_PASS);constant("SC_TRANSPARENT_BACKGROUND",PATH_RAY_TRANSPARENT_BACKGROUND);
+  constant("SC_SINGLE_PASS_DONE",PATH_RAY_SINGLE_PASS_DONE);constant("SC_SR_TRANSPARENT",SR_TRANSPARENT);constant("SC_SR_RAY_PORTAL",SR_RAY_PORTAL);
+  out<<"//#endif\n//#endif\n";return out.str();
 }
 // Every stage that can see a shadow catcher path or write its passes calls this:
 // the three passes (3, 1 and 4 floats) inside the film record, present whenever
@@ -53,7 +60,6 @@ void WebGPUDevice::validate_shadow_catcher() const{
   require(data.kernel_features&KERNEL_FEATURE_SHADOW_CATCHER,"Missing native shadow catcher kernel feature");
   require(data.film.pass_shadow_catcher!=PASS_UNUSED&&data.film.pass_shadow_catcher_sample_count!=PASS_UNUSED&&
           data.film.pass_shadow_catcher_matte!=PASS_UNUSED,"Missing shadow catcher film passes");
-  require(!data.integrator.use_caustics&&!(data.kernel_features&KERNEL_FEATURE_MNEE),"WebGPU shadow catcher with caustics not implemented");
   require(state.next_main_path_index!=nullptr,"Missing shadow catcher path index");
   validate(uintptr_t(state.next_main_path_index),4);
 }

@@ -112,7 +112,7 @@ works everywhere.
 Agreed external inputs on the build machine: Xcode or the Xcode command-line
 tools (Apple Clang, the macOS SDK and libc++; the Command Line Tools alone are
 enough, and the recipes record their package version when Xcode is absent),
-CMake 3.24 or newer, Python 3.12 or newer and the .NET 10 SDK for x64. `zstd` is needed only to bundle oracle
+CMake 3.24 or newer, Python 3.12 or newer and the .NET 11 SDK for x64. `zstd` is needed only to bundle oracle
 runs. Exact versions and compiler and CMake hashes are recorded with each build.
 Dependency source comes only from the verified snapshots in `third_party/`.
 

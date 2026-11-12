@@ -101,6 +101,42 @@ fn normal_radial(v:vec3<f32>,axis:u32,center:f32)->vec3<f32>{
     if(axis==NODE_TANGENT_AXIS_Y){return vec3<f32>(-(v.z-center),0,v.x-center);}
     return vec3<f32>(-(v.y-center),v.x-center,0);
 }
+//#if SVM_GEOMETRY_TANGENT
+// primitive_tangent (geom/primitive.h) for the Geometry node's Tangent output, plain or with derivatives (dual3): on a
+// curve normalize(dPdu); on a triangle the radial tangent of the generated coordinates, (-(y - 0.5), x - 0.5, 0) through
+// object_normal_transform, then cross(N, normalize(cross(t, N))); without generated coordinates normalize(dPdu). The value
+// follows the pinned float3 order exactly (transform_direction_transposed's dots, normalize, the SSE cross), so a frame
+// that is degenerate on the CPU (t parallel to N: exactly zero, then normalize's 0/0) is degenerate here too; the
+// derivatives use the dual arithmetic of the Tangent node. Points keep reporting unsupported (16).
+fn svm_geometry_normal_transform(sd:SurfaceData,v:vec3<f32>)->vec3<f32>{
+    // object_normal_transform: normalize(transform_direction_transposed(itfm, v)), the motion inverse for a moving object.
+    var rows:NativeTransform;
+    if((sd.object_flag&SD_OBJECT_MOTION)!=0u){rows=sd.motion_itfm;}
+    else{let at=table_at(G_objects,sd.object_id,SIZE_objects)+O_itfm;rows=NativeTransform(heap_vec4(at),heap_vec4(at+16u),heap_vec4(at+32u));}
+    var out=vec3<f32>(0);let n=rounded_steps(3u);
+    for(var k=0u;k<n;k++){out[k]=rounded_dot(vec3<f32>(rows.x[k],rows.y[k],rows.z[k]),v);}
+    return surface_native_normalize(out);
+}
+fn svm_geometry_tangent(s:ptr<function,SvmState>,derivative:bool)->NormalDual{
+    let sd=(*s).geometry;let zero=vec3<f32>(0);
+//#if CURVES
+    if((sd.primitive_type&PRIMITIVE_CURVE)!=0u){return NormalDual(cv_normalize(sd.dPdu,cv_order()),zero,zero);}
+//#endif
+    if(sd.object_id==NONE){return NormalDual(normalize(sd.dPdu),zero,zero);}
+    if((sd.primitive_type&PRIMITIVE_TRIANGLE)==0u){svm_error(s,16u);return NormalDual(zero,zero,zero);}
+    let desc=normal_attribute(s,ATTR_STD_GENERATED);
+    if(!desc.found){return NormalDual(surface_native_normalize(sd.dPdu),zero,zero);}
+    let a=attribute_read(s,desc);if((*s).error!=0u){return NormalDual(zero,zero,zero);}
+    let tv=svm_geometry_normal_transform(sd,vec3<f32>(-rounded_add(a.value.y,-0.5),rounded_add(a.value.x,-0.5),0.0));
+    let value=rounded_cross(sd.N,surface_native_normalize(rounded_cross(tv,sd.N)));
+    if(!derivative){return NormalDual(value,zero,zero);}
+    var t=NormalDual(vec3<f32>(-(a.value.y-0.5),a.value.x-0.5,0.0),vec3<f32>(-a.dx.y,a.dx.x,0.0),vec3<f32>(-a.dy.y,a.dy.x,0.0));
+    t=NormalDual(normal_object_transpose(sd,t.value,true),normal_object_transpose(sd,t.dx,true),normal_object_transpose(sd,t.dy,true));
+    t=normal_dual_normalize(t);
+    t=normal_dual_normalize(NormalDual(cross(t.value,sd.N),cross(t.dx,sd.N),cross(t.dy,sd.N)));
+    return NormalDual(value,cross(sd.N,t.dx),cross(sd.N,t.dy));
+}
+//#endif
 fn svm_tangent(s:ptr<function,SvmState>,node:u32,derivative:bool){
     let kind=load_word(node+N_Tangent_direction_type);let axis=load_word(node+N_Tangent_axis);
     if(kind>NODE_TANGENT_UVMAP||axis>NODE_TANGENT_AXIS_Z){svm_error(s,16u);return;}

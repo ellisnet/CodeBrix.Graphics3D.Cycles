@@ -94,6 +94,14 @@ bottom row first, in one of `float`, `float4`, `half`, `half4`, `byte`, `byte4`,
 To reproduce a scene exactly across backends, set every integrator, film and
 camera control the result depends on; do not rely on defaults.
 
+A scene whose result the pinned gold-standard kernels leave undefined names its oracle reference instead:
+`"oracleReference": {"scene": ID, "withoutHandles": [HANDLE, ...], "reason": TEXT}`. `render_oracles.py` renders the
+gold-standard backends (`cpu-*`, `metal-*`) from that committed scene, which must be the same document without exactly
+the listed node entries (and without `oracleReference`; `id` and `description` may differ), and records
+`oracleReferenceFor` (the scene's id and SHA-256) in their `meta.json`; `compare.py` then judges the candidate's film of the
+scene against those films. The only such scenes are `surface-nodes/local-beside-instances-*` (native/DEVICE.md, open
+items 18 and 34).
+
 The library's managed loader (`CodeBrix.Graphics3D.Cycles.Bundles.OracleSceneBundle`)
 reads the same format and builds the same scene through the managed API; on the
 CPU reference backend its films are bit-identical to the runner's for the same
@@ -196,7 +204,11 @@ Sobol-Burley and blue-noise patterns, with scrambling distance, and pattern
 variants of committed scenes (raw files stay beside the source scene).
 `author_cameras.py` (`--check`) writes `scenes/cameras/`: the same room seen
 through orthographic and panoramic cameras (every panorama type) and with depth
-of field (disk and polygonal apertures, anamorphic ratio). `author_lamps.py`
+of field (disk and polygonal apertures, anamorphic ratio). `author_cameras_b.py` (`--check`) adds spherical stereo
+(`cameras/stereo-*`: perspective and panoramic cameras, left and right eyes, convergence, pole merge, depth of field), the
+Texture Coordinate node's Window output through every panorama type (`cameras/window-*`), and `passes/motion-*` and
+`passes/denoising-motion-*`: the motion pass and the denoising motion features through an orthographic camera and every
+panorama type. `author_lamps.py`
 (`--check`) writes `scenes/lamps/`: the Light Falloff and IES Texture nodes and
 point, spot, area and sun lights with emission shaders that are not constant.
 `author_sky.py` (`--check`) writes `scenes/sky/`: the room under a Sky Texture
@@ -285,6 +297,22 @@ method there: on the Principled BSDF, on the node beside a random walk node, wit
 points in the scene and carrying a Burley closure. `author_subsurface_thin.py` (`--check`) adds thin-walled Principled
 spheres there: diffuse and translucent, Oren-Nayar and rough translucent closures, with transmission and a coat, and the
 Christensen-Burley method selected on a thin wall.
+`author_subsurface_combinations.py` (`--check`) puts a random walk and a Christensen-Burley sphere there together with
+film passes (light, data, AOV, cryptomatte and denoising feature passes), denoising, light and shadow linking, holdout
+objects, the shadow catcher, object and deformation motion blur, volumes and MNEE caustics from point and sun lights:
+`with-passes`, `aov-cryptomatte-bump`, `aov-only-bump`, `denoise-on`, `light-linking`, `shadow-linking`, `holdout`,
+`shadow-catcher`, `object-motion`, `deformation-motion`, `volume-crossing`, `volume-enclosed`, `mnee-receivers`.
+
+## Surface node and displacement additions
+
+`author_only_local.py` (`--check`) writes `scenes/surface-nodes/local-beside-instances-*`: the Ambient Occlusion node with
+only_local, the Bevel node and the Raycast node with only_local on a transform-applied object beside instances, each with
+its oracle reference (the same scene without the instances; see "Scene files"). `author_geometry_tangent.py` (`--check`)
+writes `scenes/surface-nodes/geometry-tangent*` (the Geometry node's Tangent output as a colour and as a Bump height),
+`scenes/light-motion/deforming-smooth-normal-bump` (a deforming smooth mesh bumped from the Texture Coordinate node's Normal)
+and `scenes/displacement/stateful-nodes` (true displacement by the Ambient Occlusion, Light Path, Wireframe, Bevel and
+Raycast nodes). `author_light_motion_b.py` (`--check`) writes `scenes/light-motion/moving-lamps*`: object motion on point,
+spot and area lamps, with an object-space emission shader in one.
 
 ## Bake scenes (`scenes/bake/`)
 

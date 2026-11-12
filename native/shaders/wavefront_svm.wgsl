@@ -149,6 +149,95 @@ fn svm_transform(address:u32,v:vec3<f32>)->vec3<f32>{
     let x=heap_vec4(address);let y=heap_vec4(address+16u);let z=heap_vec4(address+32u);
     return vec3<f32>(x.x,y.x,z.x)*v.x+(vec3<f32>(x.y,y.y,z.y)*v.y+vec3<f32>(x.z,y.z,z.z)*v.z)+vec3<f32>(x.w,y.w,z.w);
 }
+//#if CAMERA_PANORAMA_INVERSE
+// SPDX-FileCopyrightText: 2011-2022 Blender Foundation (kernel/camera/projection.h; BSD-3-Clause)
+// direction_to_panorama: the inverse mappings of the panoramic camera types (the Texture Coordinate node's Window
+// output through camera_world_to_ndc, and the motion pass's camera_motion_vector), in the pinned order: every sum,
+// product, quotient and square root a correctly rounded binary32 step; atan2f, acosf and sinf as glibc's (the
+// guarded correctly rounded arctangent, the double-float arccosine, the scalar sinf polynomial up to pi/2).
+// float3 / float divides each component with SSE (CAMERA_NATIVE_VECTOR_DIVIDE), else multiplies by the reciprocal.
+fn cpi_divide3(v:vec3<f32>,f:f32)->vec3<f32>{
+    if(CAMERA_NATIVE_VECTOR_DIVIDE!=0u){return vec3<f32>(rounded_divide(v.x,f),rounded_divide(v.y,f),rounded_divide(v.z,f));}
+    return v*rounded_divide(1.0,f);
+}
+fn cpi_normalize(v:vec3<f32>)->vec3<f32>{return cpi_divide3(v,rounded_sqrt(rounded_dot(v,v)));}
+fn cpi_len2(a:vec2<f32>)->f32{return rounded_sqrt(rounded_add(a.x*a.x,a.y*a.y));}
+// safe_normalize(float2): a * (1 / len(a)) unless the length is zero.
+fn cpi_safe_normalize2(a:vec2<f32>)->vec2<f32>{let t=cpi_len2(a);if(t==0.0){return a;}return a*rounded_divide(1.0,t);}
+// One arctangent loop (up to two), one arccosine and one sine body for every type, then each type's arithmetic.
+fn cpi_direction_to_panorama(dir_in:vec3<f32>)->vec2<f32>{
+    let kind=data_word(CP_D_panorama_type);var dir=dir_in;
+    if(kind==CP_PANORAMA_MIRRORBALL){
+        dir.y=rounded_add(dir.y,-1.0);
+        let div=2.0*rounded_sqrt(max(-0.5*dir.y,0.0));
+        if(div>0.0){dir=cpi_divide3(dir,div);}
+        return vec2<f32>(0.5*rounded_add(dir.x,1.0),0.5*rounded_add(dir.z,1.0));
+    }
+    let equirectangular=kind==CP_PANORAMA_EQUIRECTANGULAR;let cubemap=kind==CP_PANORAMA_EQUIANGULAR_CUBEMAP_FACE;
+    let cylindrical=kind==CP_PANORAMA_CENTRAL_CYLINDRICAL;let equidistant=kind==CP_PANORAMA_FISHEYE_EQUIDISTANT;
+    let polynomial=kind==CP_PANORAMA_FISHEYE_LENS_POLYNOMIAL;let equisolid=!(equirectangular||cubemap||cylindrical||equidistant||polynomial);
+    if(equirectangular&&all(dir==vec3<f32>(0))){return vec2<f32>(0);}
+    // atan2f(y, x): equirectangular, cylindrical (dir.y, dir.x); cubemap also (dir.z, dir.x); equidistant (len(dir.yz), dir.x).
+    var arc=vec2<f32>(0);let arcs=rounded_steps(select(select(0u,1u,equirectangular||cylindrical||equidistant),2u,cubemap));
+    for(var k=0u;k<arcs;k++){arc[k]=trig_atan2_guarded(select(select(dir.y,dir.z,k==1u),cpi_len2(dir.yz),equidistant),dir.x);}
+    // acosf(dir.z / len(dir)) (equirectangular), safe_acosf(dir.x) (the lens polynomial and equisolid fisheyes).
+    var theta=0.0;
+    if(equirectangular||polynomial||equisolid){theta=trig_acos(select(dir.x,rounded_divide(dir.z,rounded_sqrt(rounded_dot(dir,dir))),equirectangular));}
+    if(equirectangular){
+        let range=heap_vec4(p(6u)+CP_D_equirectangular_range);
+        return vec2<f32>(rounded_divide(rounded_add(arc.x,-range.y),range.x),rounded_divide(rounded_add(theta,-range.w),range.z));
+    }
+    if(cubemap){
+        // atan2f(...) * 2.0f / M_PI_F: the doubling is exact, then one quotient.
+        return vec2<f32>(rounded_add(0.5,-rounded_divide(arc.x*2.0,3.1415927410125732)),rounded_add(rounded_divide(arc.y*2.0,3.1415927410125732),0.5));
+    }
+    if(cylindrical){
+        let range=heap_vec4(p(6u)+CP_D_central_cylindrical_range);let z=rounded_divide(dir.z,cpi_len2(dir.xy));
+        return vec2<f32>(rounded_divide(rounded_add(arc.x,-range.x),rounded_add(range.y,-range.x)),rounded_divide(rounded_add(z,-range.z),rounded_add(range.w,-range.z)));
+    }
+    var r=0.0;
+    if(equidistant){
+        r=rounded_divide(arc.x,data_float(CP_D_fisheye_fov));
+        let uv=r*cpi_safe_normalize2(dir.yz);
+        return vec2<f32>(rounded_add(0.5,-uv.x),rounded_add(uv.y,0.5));
+    }
+    if(polynomial){
+        // theta = -safe_acosf(dir.x), then Newton's method from the closed form of the linear model.
+        theta=-theta;let coeff0=data_float(CP_D_fisheye_lens_polynomial_bias);
+        let coeffs=heap_vec4(p(6u)+CP_D_fisheye_lens_polynomial_coefficients);
+        r=rounded_divide(rounded_add(theta,-coeff0),coeffs.x);
+        let diff=vec4<f32>(1.0,2.0,3.0,4.0)*coeffs;
+        for(var i=0;i<20;i++){
+            let old_r=r;let r2=r*r;
+            let F=rounded_add(theta,-rounded_add(coeff0,motion_dot4(coeffs,vec4<f32>(r,r2,r2*r,r2*r2))));
+            let dF=motion_dot4(diff,vec4<f32>(1.0,r,r2,r2*r));
+            r=rounded_add(r,rounded_divide(F,dF));
+            if(abs(rounded_add(r,-old_r))<1e-6){break;}
+        }
+    }else{
+        // PANORAMA_FISHEYE_EQUISOLID (and the default): 2 * lens * sinf(theta / 2), theta/2 in [0, pi/2].
+        r=(2.0*data_float(CP_D_fisheye_lens))*native_disk_sincos(theta*0.5).x;
+    }
+    let uv=r*cpi_safe_normalize2(dir.yz);
+    return vec2<f32>(rounded_add(0.5,-rounded_divide(uv.x,data_float(CP_D_sensorwidth))),rounded_add(rounded_divide(uv.y,data_float(CP_D_sensorheight)),0.5));
+}
+//#if FILM_MOTION
+// The panoramic camera_motion_vector: the centre (world-to-camera), pre and post (motion_pass_pre, motion_pass_post)
+// positions (point) or directions (the background), normalized, through one direction_to_panorama body, scaled to the
+// raster: (pre - centre, centre - post).
+fn cpi_motion_vector(center:vec3<f32>,pre:vec3<f32>,post:vec3<f32>,point:bool)->vec4<f32>{
+    let size=vec2<f32>(data_float(D_cam_width),data_float(D_cam_height));var uv:array<vec2<f32>,3>;let steps=rounded_steps(3u);
+    for(var k=0u;k<steps;k++){
+        let tfm=p(6u)+select(select(CPI_D_motion_pass_post,CPI_D_motion_pass_pre,k==1u),D_cam_worldtocamera,k==0u);
+        let v=select(select(post,pre,k==1u),center,k==0u);
+        var c=surface_transform_direction(tfm,v);if(point){c=surface_transform_point(tfm,v);}
+        uv[k]=cpi_direction_to_panorama(cpi_normalize(c))*size;
+    }
+    let a=rounded_add3(vec3<f32>(uv[1],0.0),-vec3<f32>(uv[0],0.0));let b=rounded_add3(vec3<f32>(uv[0],0.0),-vec3<f32>(uv[2],0.0));
+    return vec4<f32>(a.x,a.y,b.x,b.y);
+}
+//#endif
+//#endif
 fn svm_texco(s:ptr<function,SvmState>,node:u32,index:u32)->vec3<f32>{
     let kind=svm_byte(node+N_TexCoord_texco_type);let sd=(*s).geometry;let world=sd.object_id==NONE;
     var object=0u;if(!world){object=table_at(G_objects,sd.object_id,SIZE_objects);}
@@ -174,7 +263,15 @@ fn svm_texco(s:ptr<function,SvmState>,node:u32,index:u32)->vec3<f32>{
             let camera_type=data_word(D_cam_type);var point=sd.P;
             if(camera_type==CAMERA_PERSPECTIVE){if(world){point+=camera_pos;}}
             else if(camera_type==CAMERA_ORTHOGRAPHIC){if(world&&(state_byte(S_path_visibility,index)&VIS_CAMERA)!=0u){point=heap_vec3(state_address(S_ray_P,index,12u));}}
-            else{svm_error(s,16u);return vec3<f32>(0);}
+//#if CAMERA_PANORAMA_INVERSE else             else{svm_error(s,16u);return vec3<f32>(0);}
+            else{
+                // camera_world_to_ndc of a panoramic camera: the normalized camera-space position (direction for the
+                // world), through direction_to_panorama. Custom cameras (OSL) are refused before any render.
+                if(camera_type!=CPI_CAMERA_PANORAMA){svm_error(s,16u);return vec3<f32>(0);}
+                var c=vec3<f32>(0);if(world){c=surface_transform_direction(p(6u)+D_cam_worldtocamera,sd.P);}else{c=surface_transform_point(p(6u)+D_cam_worldtocamera,sd.P);}
+                return vec3<f32>(cpi_direction_to_panorama(cpi_normalize(c)),0.0);
+            }
+//#endif
             let matrix=p(6u)+D_cam_worldtondc;let v=vec4<f32>(point,1);let w=dot(heap_vec4(matrix+48u),v);
             return vec3<f32>(dot(heap_vec4(matrix),v)/w,dot(heap_vec4(matrix+16u),v)/w,0);
         }
@@ -456,9 +553,14 @@ fn svm_evaluate_context_seeded(index:u32,geometry:SurfaceData,closure_limit:u32,
                     case NODE_GEOM_Ng:{v=s.geometry.Ng;}
                     case NODE_GEOM_I:{v=s.geometry.wi;}
                     case NODE_GEOM_uv:{v=vec3<f32>(1.0-s.geometry.u-s.geometry.v,s.geometry.u,0);}
+//#if SVM_GEOMETRY_TANGENT
+                    case NODE_GEOM_T:{v=svm_geometry_tangent(&s,false).value;}
+//#endif
+//#if !SVM_GEOMETRY_TANGENT
 //#if CURVES else                     case NODE_GEOM_T:{if(s.geometry.object_id!=NONE){svm_error(&s,16u);}else{v=normalize(s.geometry.dPdu);}}
                     // primitive_tangent: normalize(dPdu) for a curve.
                     case NODE_GEOM_T:{if((s.geometry.primitive_type&PRIMITIVE_CURVE)!=0u){v=cv_normalize(s.geometry.dPdu,cv_order());}else if(s.geometry.object_id!=NONE){svm_error(&s,16u);}else{v=normalize(s.geometry.dPdu);}}
+//#endif
 //#endif
                     default:{svm_error(&s,16u);}
                 }

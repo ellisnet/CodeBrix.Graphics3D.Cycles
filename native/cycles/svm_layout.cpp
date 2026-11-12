@@ -72,6 +72,10 @@ std::string svm_layout(bool surface){
   constant("AOV_D_pass_aov_color",offsetof(KernelData,film.pass_aov_color));constant("AOV_D_pass_aov_value",offsetof(KernelData,film.pass_aov_value));
   constant("AOV_D_pass_stride",offsetof(KernelData,film.pass_stride));constant("AOV_PASS_UNUSED",uint32_t(PASS_UNUSED));
   constant("AOV_PATH_RAY_TRANSPARENT_BACKGROUND",PATH_RAY_TRANSPARENT_BACKGROUND);constant("AOV_PATH_RAY_SINGLE_PASS_DONE",PATH_RAY_SINGLE_PASS_DONE);
+  // AOV passes as the only data passes: film_write_data_passes' PATH_RAY_SINGLE_PASS_DONE bookkeeping (aov_single_pass_done).
+  source<<"//#if !FILM_DATA_PASSES\n";
+  constant("AOV_D_pass_alpha_threshold",offsetof(KernelData,film.pass_alpha_threshold));constant("AOV_SR_TRANSPARENT",SR_TRANSPARENT);constant("AOV_SR_RAY_PORTAL",SR_RAY_PORTAL);
+  source<<"//#endif\n";
   source<<"//#endif\n//#if SVM_NODE_DISPLACEMENT\n";
   constant("OP_SET_DISPLACEMENT",NODE_SET_DISPLACEMENT);constant("OP_DISPLACEMENT",NODE_DISPLACEMENT);constant("OP_VECTOR_DISPLACEMENT",NODE_VECTOR_DISPLACEMENT);
   SIZE(SetDisplacement);FIELD(SetDisplacement,fac_offset);
@@ -280,6 +284,11 @@ std::string svm_layout(bool surface){
   constant("D_cam_type",offsetof(KernelData,cam.type));
   constant("D_cam_worldtocamera",offsetof(KernelData,cam.worldtocamera));
   constant("D_cam_worldtondc",offsetof(KernelData,cam.worldtondc));
+  // The panoramic cameras' inverse mappings (CAMERA_PANORAMA_INVERSE, wavefront_svm.wgsl cpi_direction_to_panorama).
+  source<<"//#if CAMERA_PANORAMA_INVERSE\n";
+  constant("CPI_CAMERA_PANORAMA",CAMERA_PANORAMA);constant("CPI_D_motion_pass_pre",offsetof(KernelData,cam.motion_pass_pre));
+  constant("CPI_D_motion_pass_post",offsetof(KernelData,cam.motion_pass_post));
+  source<<"//#endif\n";
   constant("SZ_PackedTransform",sizeof(PackedTransform));
   // Principled BSDF layout, enums and lookup tables: emitted only into modules
   // whose scene can reach the Principled handler (pipelines.h specialization).

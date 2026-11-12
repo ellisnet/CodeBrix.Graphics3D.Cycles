@@ -138,7 +138,7 @@ fn shadow_write_film(index:u32){
 //#endif
 //#if SHADOW_CATCHER else             if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
             // film_write_combined_pass: the shadow catcher split first (matte, catcher pass).
-            let ao_handled=sc_combined(flag,base,ao);if(!ao_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),ao);}
+            let ao_handled=sc_combined(flag,base,ao,select(PASS_NONE,data_word(D_film_pass_combined),(flags&MASK_COMBINED)!=0u));
 //#endif
 //#if VOLUME_SHADOW_CATCHER
             if(!ao_handled){vl_shadow_guidance(base,flag,state_byte(S_shadow_path_visibility,index),ao);}
@@ -151,7 +151,7 @@ fn shadow_write_film(index:u32){
     }
 //#endif
 //#if SHADOW_CATCHER else     if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
-    let sc_handled=sc_combined(flag,base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+    let sc_handled=sc_combined(flag,base,value,select(PASS_NONE,data_word(D_film_pass_combined),(flags&MASK_COMBINED)!=0u));
 //#endif
 //#if VOLUME_SHADOW
     // film_write_combined_pass: the volume scattering probability guiding pass.

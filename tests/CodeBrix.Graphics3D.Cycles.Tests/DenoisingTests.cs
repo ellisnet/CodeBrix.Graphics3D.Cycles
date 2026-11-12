@@ -171,18 +171,56 @@ public class DenoisingTests
     }
 
     [Fact]
-    public void light_group_passes_with_denoising_are_refused()
+    public void light_group_passes_with_denoising_stay_noisy_beside_the_denoised_combined()
     {
         //Arrange
+        using CyclesScene reference = TestScenes.CreateCpuScene();
+        BuildLightGroup(reference);
+        float[] undenoised = reference.Render(Small).ToArray();
+        float[] group = reference.ReadPass("Group").ToArray();
+        using CyclesScene denoisedReference = TestScenes.CreateCpuScene();
+        TestScenes.BuildTyped(denoisedReference);
+        RequestDenoising(denoisedReference.Integrator);
+        float[] denoised = denoisedReference.Render(Small).ToArray();
         using CyclesScene scene = TestScenes.CreateCpuScene();
         BuildLightGroup(scene);
         RequestDenoising(scene.Integrator);
 
         //Act
-        Action render = () => scene.Render(Small);
+        float[] first = scene.Render(Small).ToArray();
+        float[] firstGroup = scene.ReadPass("Group").ToArray();
+        float[] second = scene.Render(Small).ToArray();
 
         //Assert
-        render.Should().Throw<CyclesException>().Which.Message.Should().Contain("Light group passes are not supported together with denoising");
+        first.SequenceEqual(undenoised).Should().BeFalse();
+        first.SequenceEqual(denoised).Should().BeTrue();
+        second.SequenceEqual(first).Should().BeTrue();
+        group.Any(value => value != 0).Should().BeTrue();
+        firstGroup.SequenceEqual(group).Should().BeTrue();
+        scene.ReadPass("Group").ToArray().SequenceEqual(group).Should().BeTrue();
+        scene.GetRenderedPasses().Select(pass => pass.Name).Should().NotContain("CodeBrix Noisy Combined");
+    }
+
+    [Fact]
+    public void light_group_passes_with_denoising_keep_a_noisy_combined_request_created_after_them()
+    {
+        //Arrange
+        using CyclesScene reference = TestScenes.CreateCpuScene();
+        BuildLightGroup(reference);
+        float[] undenoised = reference.Render(Small).ToArray();
+        float[] group = reference.ReadPass("Group").ToArray();
+        using CyclesScene scene = TestScenes.CreateCpuScene();
+        BuildLightGroup(scene);
+        scene.AddPass(PassType.Combined, "Noisy Image", PassMode.Noisy);
+        RequestDenoising(scene.Integrator);
+
+        //Act
+        float[] combined = scene.Render(Small).ToArray();
+
+        //Assert
+        combined.SequenceEqual(undenoised).Should().BeFalse();
+        scene.ReadPass("Noisy Image").ToArray().SequenceEqual(undenoised).Should().BeTrue();
+        scene.ReadPass("Group").ToArray().SequenceEqual(group).Should().BeTrue();
     }
 
     private static void BuildShadowCatcher(CyclesScene scene, bool noisy = true)

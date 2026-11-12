@@ -437,7 +437,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
     volume_guidance_pass(index,base,value);
 //#endif
 //#if SHADOW_CATCHER else     let flags=data_word(D_film_light_pass_flag);if((flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
-    let flags=data_word(D_film_light_pass_flag);let sc_handled=sc_combined(state_word(S_path_flag,index),base,value);if(!sc_handled&&(flags&MASK_COMBINED)!=0u){film_rgb(base,data_word(D_film_pass_combined),value);}
+    let flags=data_word(D_film_light_pass_flag);let sc_handled=sc_combined(state_word(S_path_flag,index),base,value,select(PASS_NONE,data_word(D_film_pass_combined),(flags&MASK_COMBINED)!=0u));
 //#endif
 //#if VOLUME_SHADOW_CATCHER
     if(!sc_handled){volume_guidance_pass(index,base,value);}
@@ -466,7 +466,7 @@ fn surf_emission(index:u32,base:u32,sd:SurfaceData,emission:vec3<f32>,mis_weight
 //#endif
 //#endif
 }
-//#if SHADOW_CATCHER
+//#if DATA_PASS_BOOKKEEPING
 // film_write_data_passes with only the shadow catcher passes in the data pass
 // flag (every other data pass is refused): no film write, only the
 // PATH_RAY_SINGLE_PASS_DONE bookkeeping of the pinned function.
@@ -480,6 +480,25 @@ fn sc_data_passes(index:u32,r:SvmResult){
     }
     state_u32(S_path_flag,index,flag|SC_SINGLE_PASS_DONE);
 }
+//#endif
+//#if SVM_NODE_AOV
+//#if !FILM_DATA_PASSES
+//#if !SHADOW_CATCHER
+// film_write_data_passes when the AOV passes are the only data passes in the pass flag: no film write, only the
+// PATH_RAY_SINGLE_PASS_DONE bookkeeping of the pinned function, which the AOV outputs of later surfaces of the path test
+// (svm_node_aov_check).
+fn aov_single_pass_done(index:u32,r:SvmResult){
+    let flag=state_word(S_path_flag,index);
+    if((flag&AOV_PATH_RAY_TRANSPARENT_BACKGROUND)==0u||data_word(D_film_pass_flag)==0u||(flag&AOV_PATH_RAY_SINGLE_PASS_DONE)!=0u){return;}
+    let threshold=data_float(AOV_D_pass_alpha_threshold);
+    if((r.runtime_flag&(AOV_SR_TRANSPARENT|AOV_SR_RAY_PORTAL))!=0u&&threshold!=0.0){
+        let alpha=clamp(vec3<f32>(1)-r.transparency,vec3<f32>(0),vec3<f32>(1));
+        if(!((alpha.x+alpha.y+alpha.z)*(1.0/3.0)>=threshold)){return;}
+    }
+    state_u32(S_path_flag,index,flag|AOV_PATH_RAY_SINGLE_PASS_DONE);
+}
+//#endif
+//#endif
 //#endif
 // Preparation validates inputs and evaluates closures without changing path or film state.
 @compute @workgroup_size(64) fn prepare_surface(@builtin(global_invocation_id) id:vec3<u32>){surface_prepare(id);}
@@ -701,7 +720,13 @@ fn surface_light_combined(li:SurfaceLightInputs){
     // The subsurface exit point: the flag cleared before the direct light, no termination (ss_exit).
     let ss_exit_point=(flag&SS_PATH_RAY_SUBSURFACE)!=0u;if(ss_exit_point){state_u32(S_path_flag,index,flag&~SS_PATH_RAY_SUBSURFACE);}
 //#endif
+//#if !SUBSURFACE_HOLDOUT
     if(((r.runtime_flag&SR_HOLDOUT)!=0u||(sd.object_flag&SD_OBJECT_HOLDOUT_MASK)!=0u)&&(flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u){
+//#endif
+//#if SUBSURFACE_HOLDOUT
+    // integrate_surface applies no holdout at the subsurface exit point, an object holdout included (ss_exit).
+    if(!ss_exit_point&&((r.runtime_flag&SR_HOLDOUT)!=0u||(sd.object_flag&SD_OBJECT_HOLDOUT_MASK)!=0u)&&(flag&PATH_RAY_TRANSPARENT_BACKGROUND)!=0u){
+//#endif
         let weight=surf_holdout(sd,&r);let contribution=weight*heap_vec3(state_address(S_path_throughput,index,12u));
         if((data_word(D_film_light_pass_flag)&MASK_COMBINED)!=0u){film_add(base+(data_word(D_film_pass_combined)+3u)*4u,(contribution.x+contribution.y+contribution.z)*(1.0/3.0));}
 //#if SHADOW_CATCHER
@@ -727,6 +752,20 @@ fn surface_light_combined(li:SurfaceLightInputs){
 //#endif
     if(probability==0.0){surf_finish(index,false);return;}
     var throughput=heap_vec3(state_address(S_path_throughput,index,12u));if(probability!=1.0){throughput/=probability;state_vec3(S_path_throughput,index,throughput);}
+//#if VOLUME_SHADOW
+//#if !SHADOW_CATCHER
+//#if !FILM_DATA_PASSES
+//#if !SVM_NODE_AOV
+    // film_write_data_passes after the termination, on a surface that is not volume-only: in a volume scene the data pass
+    // flag holds the passes Cycles adds there (sample count, volume majorant), and sc_data_passes keeps only the
+    // PATH_RAY_SINGLE_PASS_DONE bookkeeping (with AOV outputs: aov_single_pass_done; at the subsurface exit point: none, ss_exit).
+//#if SUBSURFACE else     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u){sc_data_passes(index,r);}
+    if((sd.shader_flag&SD_HAS_ONLY_VOLUME)==0u&&!ss_exit_point){sc_data_passes(index,r);}
+//#endif
+//#endif
+//#endif
+//#endif
+//#endif
     if((sd.shader_flag&SD_HAS_ONLY_VOLUME)!=0u){
         let bounds=state_half(S_path_volume_bounds_bounce,index)+1u;state_u16(S_path_volume_bounds_bounce,index,bounds);
         if(bounds>VS_BOUNDS_MAX){surf_finish(index,false);return;}
@@ -735,8 +774,26 @@ fn surface_light_combined(li:SurfaceLightInputs){
         volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);surf_finish(index,true);return;
     }
 //#if SHADOW_CATCHER
+//#if !SUBSURFACE
 //#if FILM_DATA_PASSES else     sc_data_passes(index,r);
     // With data passes, shade_surface_passes runs film_write_data_passes (its bookkeeping included).
+//#endif
+//#endif
+//#if SUBSURFACE
+    // The subsurface exit point writes no data pass (ss_exit), so it leaves PATH_RAY_SINGLE_PASS_DONE as it is.
+//#if FILM_DATA_PASSES else     if(!ss_exit_point){sc_data_passes(index,r);}
+    // With data passes, shade_surface_passes runs film_write_data_passes (its bookkeeping included).
+//#endif
+//#endif
+//#endif
+//#if SVM_NODE_AOV
+//#if !FILM_DATA_PASSES
+//#if !SHADOW_CATCHER
+//#if SUBSURFACE else     aov_single_pass_done(index,r);
+    // The subsurface exit point writes no data pass (ss_exit).
+    if(!ss_exit_point){aov_single_pass_done(index,r);}
+//#endif
+//#endif
 //#endif
 //#endif
     surface_direct_light(index,id.x,sd,r,light_sample_read(at+308u));if(load_word(p(17u))!=0u){return;}
@@ -831,7 +888,10 @@ fn surf_ray_portal(index:u32,sd:SurfaceData,r:SvmResult,selected:u32,throughput:
         surf_next(index,LABEL_TRANSMIT|RP_LABEL_RAY_PORTAL,r.runtime_flag);
         volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);
 //#if SHADOW_LINKING else         surf_finish(index,true);
+        // shadow_linking_schedule_intersection_kernel: only while the scene has KERNEL_FEATURE_SHADOW_LINKING (a device keeps the region).
+        if((data_word(D_kernel_features)&DL_FEATURE_SHADOW_LINKING)!=0u){
         let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[counter/4u+surf_queue()],1u);atomicAdd(&heap[counter/4u+DL_K_INTERSECT],1u);state_u16(S_path_queued_kernel,index,DL_K_INTERSECT);
+        }else{surf_finish(index,true);}
 //#endif
         return;}}
 //#endif
@@ -856,8 +916,9 @@ fn surf_ray_portal(index:u32,sd:SurfaceData,r:SvmResult,selected:u32,throughput:
     surf_next(index,sampled.label,r.runtime_flag);
     if((sampled.label&LABEL_TRANSMIT)!=0u){volume_stack_enter_exit(index,sd.object_id,sd.shader,(sd.runtime_flag&SR_BACKFACING)!=0u);}
 //#if SHADOW_LINKING else     surf_finish(index,true);
-    // integrator_shade_surface: a non-transparent bounce looks for its dedicated lights first.
-    if((sampled.label&LABEL_TRANSPARENT)==0u){
+    // integrator_shade_surface: a non-transparent bounce looks for its dedicated lights first (shadow_linking_scene_need_shadow_ray:
+    // only while the scene has KERNEL_FEATURE_SHADOW_LINKING; a device keeps the region after a shadow-linking scene).
+    if((sampled.label&LABEL_TRANSPARENT)==0u&&(data_word(D_kernel_features)&DL_FEATURE_SHADOW_LINKING)!=0u){
         let counter=load_word(p(7u)+S_queue_counter);atomicSub(&heap[counter/4u+surf_queue()],1u);atomicAdd(&heap[counter/4u+DL_K_INTERSECT],1u);state_u16(S_path_queued_kernel,index,DL_K_INTERSECT);
     }else{surf_finish(index,true);}
 //#endif

@@ -11,7 +11,12 @@ static void require(bool ok,const char *message){if(!ok)throw std::runtime_error
 static constexpr char volume_stack_fragment[]=
 #include "volume_stack_shader.inc"
 ;
-std::string volume_stack_source(){return wavefront_layout()+shader_data_layout()+shadow_catcher_layout()+volume_stack_fragment;}
+// MNEE with volumes and a shadow catcher (MNEE_VOLUME): the catcher-pass copy's routing to INTERSECT_MNEE after the stack.
+static std::string volume_stack_mnee_layout(){
+  std::ostringstream out;out<<"//#if MNEE_VOLUME\n";auto constant=[&](const char *name,size_t v){out<<"const "<<name<<":u32="<<uint32_t(v)<<"u;\n";};
+  constant("VS_K_INTERSECT_MNEE",DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE);constant("VS_D_use_caustics",offsetof(KernelData,integrator.use_caustics));
+  constant("VS_SD_OBJECT_CAUSTICS_RECEIVER",SD_OBJECT_CAUSTICS_RECEIVER);out<<"//#endif\n";return out.str();}
+std::string volume_stack_source(){return wavefront_layout()+shader_data_layout()+shadow_catcher_layout()+volume_stack_mnee_layout()+subsurface_volume_layout()+volume_stack_fragment;}
 static constexpr char volume_fragment[]=
 #include "volume_shader.inc"
 ;
@@ -57,6 +62,9 @@ std::string volume_source(){
   ENUM(PATH_RAY_REFLECT);ENUM(PATH_RAY_SINGULAR);ENUM(PATH_RAY_IMPORTANCE_BAKE);ENUM(PATH_RAY_MIS_SKIP);ENUM(PATH_RAY_MIS_HAD_TRANSMISSION);
   ENUM(PATH_RAY_TRANSPARENT_BACKGROUND);ENUM(PATH_RAY_ANY_PASS);ENUM(PATH_RAY_VISIBILITY_VOLUME_SCATTER);ENUM(PRIMITIVE_VOLUME);
 #undef ENUM
+  // MNEE with volumes (MNEE_VOLUME): the caustic receiver's routing after shade_volume.
+  source<<"//#if MNEE_VOLUME\n";constant("V_K_INTERSECT_MNEE",DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE);constant("V_D_use_caustics",offsetof(KernelData,integrator.use_caustics));
+  constant("V_SD_OBJECT_CAUSTICS_RECEIVER",SD_OBJECT_CAUSTICS_RECEIVER);source<<"//#endif\n";
   // Heterogeneous density prepass (VOLUME_HETEROGENEOUS): the voxel corner and size words, the sample dimension.
   source<<"//#if VOLUME_HETEROGENEOUS\n";
   constant("VD_INPUT_PRIM",offsetof(KernelShaderEvalInput,prim));constant("VD_INPUT_U",offsetof(KernelShaderEvalInput,u));
@@ -139,9 +147,7 @@ void WebGPUDevice::enqueue_volume(int work,const DeviceKernelArguments &args){
   validate(uintptr_t(state.queue_counter),sizeof(IntegratorQueueCounter));
   for(auto [kernel,slot]:{std::pair{DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE,15},std::pair{DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE,16}}){if(state.sort_key_counter[kernel])p[slot]=uint32_t(remaining(uintptr_t(state.sort_key_counter[kernel]))/4);}
   require(p[15]>=uint32_t(data.max_shaders)&&state.sort_partition_divisor>0,"Invalid volume surface sort counters");
-  // Volume emission's light passes have no gate case with shadow linking.
-  require(!((data.kernel_features&KERNEL_FEATURE_SHADOW_LINKING)&&(shader_features()&SF_VOLUME_EMISSION).any()&&(data.film.pass_emission!=PASS_UNUSED||data.film.pass_lightgroup!=PASS_UNUSED)),
-          "WebGPU shadow linking with volume emission and light passes not implemented");
+  // Volume emission's emission and light group passes do not depend on shadow linking (film_write_volume_emission): shadow linking gate case 20.
   // Volume direct light (VOLUME_LIGHT): shade_volume_segment and shade_volume_light come from the surface module
   // (light sampling, shadow paths); the three entries share the per-input record at push word 24.
   const bool light_stage=(shader_features()&SF_VOLUME_LIGHT).any();

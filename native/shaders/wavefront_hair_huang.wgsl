@@ -580,7 +580,15 @@ fn huang_read_sample(c:SvmClosure)->SurfaceSample{
     if(state==3u){
         // The sampled light's direction, for surface_direct_light's light_bsdf.
         if(data_word(D_integrator_use_direct_light)==0u||(r.runtime_flag&SR_BSDF_HAS_EVAL)==0u){return;}
-        let ls=light_sample_read(at+308u);if(!(ls.pdf>0.0)){return;}wo=ls.D;
+//#if MNEE_HUANG else         let ls=light_sample_read(at+308u);if(!(ls.pdf>0.0)){return;}wo=ls.D;
+        // A path MNEE sampled (integrate_surface_direct_light with PATH_MNEE_SAMPLED): the direction of the MNEE slot, the
+        // receiver's direction to the first manifold vertex (mnee_direct_light, wavefront_mnee.wgsl).
+        var index=id.x;if(p(2u)!=0u){index=load_word(p(2u)+id.x*4u);}
+        if((data_word(D_kernel_features)&MNEE_KERNEL_FEATURE)!=0u&&(state_byte(S_path_mnee,index)&MNEE_PATH_SAMPLED)!=0u){
+            let shadow=state_word(S_path_mnee_shadow_state,index);if(shadow>=p(25u)){fail();return;}
+            wo=vec3<f32>(heap_float(state_address(MNEE_S_I1_t,shadow,4u)),heap_float(state_address(MNEE_S_I1_u,shadow,4u)),heap_float(state_address(MNEE_S_I1_v,shadow,4u)));
+        }else{let ls=light_sample_read(at+308u);if(!(ls.pdf>0.0)){return;}wo=ls.D;}
+//#endif
     }else{
         // The sampled direction, for surf_sample_mis: every closure but the sampled one.
         if(r.count<=1u){return;}let sampled=surf_sample_load(p(0u)+id.x*SURF_SAMPLE_BYTES);if(sampled.pdf==0.0){return;}

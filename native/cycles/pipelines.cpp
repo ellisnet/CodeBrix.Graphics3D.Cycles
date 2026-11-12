@@ -27,7 +27,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SVM_TEX_ENVIRONMENT",SF_TEX_ENVIRONMENT},{"SVM_TEX_IMAGE_BOX",SF_TEX_IMAGE_BOX},{"SAMPLING_SOBOL_BURLEY",SF_SAMPLING_PATTERN|SF_VOLUME_HETEROGENEOUS},{"VOLUME_HETEROGENEOUS",SF_VOLUME_HETEROGENEOUS},{"VOLUME_RAY_MARCHING",SF_VOLUME_RAY_MARCHING},{"VOLUME_LIGHT_SHAPES",SF_VOLUME_LIGHT_SHAPES},{"VOLUME_LIGHT_TREE",SF_VOLUME_LIGHT_TREE},{"VOLUME_LIGHT_PASSES",SF_VOLUME_LIGHT_PASSES},{"VOLUME_SHADOW_CATCHER",SF_VOLUME_SHADOW_CATCHER},{"CAMERA_PROJECTIONS",SF_CAMERA_PROJECTIONS},{"SVM_NODE_LIGHT_FALLOFF",SF_LIGHT_FALLOFF},{"LIGHT_LAMP_SHADER",SF_LIGHT_LAMP_SHADER},{"SVM_NODE_IES",SF_NODE_IES},{"SVM_BSDF_THIN_FILM_CONDUCTOR",SF_BSDF_THIN_FILM_CONDUCTOR},{"SVM_TEX_SKY_ANALYTIC",SF_TEX_SKY},{"SVM_TEX_SKY_SCATTERING",SF_TEX_SKY_SCATTERING},{"SVM_TEX_SKY",SF_TEX_SKY|SF_TEX_SKY_SCATTERING},{"BACKGROUND_SUN",SF_BACKGROUND_SUN},{"SVM_MATH_ARC",SF_MATH_ARC},
     // The guarded arctangent (wavefront_trig.wgsl): the equirectangular lookups of environment textures and the
     // background light, the lamp and IES coordinates.
-    {"TRIG_ATAN2_GUARD",SF_TEX_ENVIRONMENT|SF_LIGHT_BACKGROUND|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_BSDF_HAIR_CHIANG|SF_BSDF_HAIR_HUANG},
+    {"TRIG_ATAN2_GUARD",SF_TEX_ENVIRONMENT|SF_LIGHT_BACKGROUND|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_TEX_SKY|SF_TEX_SKY_SCATTERING|SF_BSDF_HAIR_CHIANG|SF_BSDF_HAIR_HUANG|SF_CAMERA_PANORAMA_INVERSE},
     {"SVM_NODE_ATTR",SF_ATTR},{"SVM_NODE_NORMAL_MAP",SF_NORMAL_MAP},{"SVM_NODE_TANGENT",SF_TANGENT},
     {"SVM_NODE_VERTEX_COLOR",SF_VERTEX_COLOR},{"SVM_NODE_MATH",SF_MATH},{"SVM_NODE_VECTOR_MATH",SF_VECTOR_MATH},
     {"SVM_NODE_CLAMP",SF_CLAMP},{"SVM_NODE_CONVERT",SF_CONVERT},{"SVM_NODE_SEPARATE_VECTOR",SF_SEPARATE_VECTOR},
@@ -77,7 +77,7 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     {"SVM_NODE_BEVEL",SF_NODE_BEVEL},{"SVM_NODE_RAYCAST",SF_NODE_RAYCAST},{"SVM_RAYTRACE_NODES",SF_NODE_BEVEL|SF_NODE_RAYCAST},
     // The SHADE_SURFACE_RAYTRACE queue (surf_queue): shaders with an AO, Bevel or Raycast node.
     {"SVM_RAYTRACE_QUEUE",SF_NODE_AO|SF_NODE_BEVEL|SF_NODE_RAYCAST},
-    {"SURFACE_FILTER_GLOSSY",SF_FILTER_GLOSSY},{"SHADOW_TERMINATOR_WIDE",SF_TERMINATOR_WIDE},{"SHADOW_TRANSPARENT_MOTION",SF_SHADOW_MOTION},{"MNEE_MOTION",SF_MNEE_MOTION|SF_FILM_MOTION_EXACT},{"SVM_NODE_DISPLACEMENT",SF_NODE_DISPLACEMENT},{"SHADER_EVAL_DISPLACE",SF_EVAL_DISPLACE},{"SVM_BUMP_UNDISPLACED",SF_BUMP_UNDISPLACED},{"SVM_NODE_RADIAL_TILING",SF_NODE_RADIAL_TILING},
+    {"SURFACE_FILTER_GLOSSY",SF_FILTER_GLOSSY},{"SHADOW_TERMINATOR_WIDE",SF_TERMINATOR_WIDE},{"SHADOW_TRANSPARENT_MOTION",SF_SHADOW_MOTION},{"MNEE_MOTION",SF_MNEE_MOTION|SF_FILM_MOTION_EXACT},{"MNEE_SPOT",SF_MNEE_SPOT},{"MNEE_AREA",SF_MNEE_AREA},{"MNEE_LIGHT_STAGES",SF_MNEE_SPOT|SF_MNEE_AREA},{"MNEE_BACKGROUND",SF_MNEE_BACKGROUND},{"MNEE_BECKMANN",SF_MNEE_BECKMANN},{"MNEE_VOLUME",SF_MNEE_VOLUME},{"MNEE_HUANG",SF_MNEE_HUANG},{"DATA_PASS_BOOKKEEPING",SF_SHADOW_CATCHER|SF_VOLUME_SHADOW},{"SVM_NODE_DISPLACEMENT",SF_NODE_DISPLACEMENT},{"SHADER_EVAL_DISPLACE",SF_EVAL_DISPLACE},{"SVM_BUMP_UNDISPLACED",SF_BUMP_UNDISPLACED},{"SVM_NODE_RADIAL_TILING",SF_NODE_RADIAL_TILING},
     {"FILM_DATA_PASSES",SF_FILM_DATA_PASSES},{"SVM_NODE_AOV",SF_NODE_AOV},{"FILM_CRYPTOMATTE",SF_FILM_CRYPTOMATTE},{"FILM_DENOISING",SF_FILM_DENOISING},{"FILM_MOTION",SF_FILM_MOTION},
     // The shade_surface_passes entry and its shared helpers (data passes or denoising features).
     {"FILM_PASSES_ANY",SF_FILM_DATA_PASSES|SF_FILM_DENOISING},
@@ -101,7 +101,23 @@ const std::vector<ShaderFeatureName> &shader_feature_names(){
     // Christensen-Burley subsurface scattering; SUBSURFACE_ENTRIES: what the random walk's and the disk's entries share.
     {"SUBSURFACE_DISK",SF_SUBSURFACE_DISK},{"SUBSURFACE_DISK_ENTRY",SF_SUBSURFACE_DISK_ENTRY},{"SUBSURFACE_ENTRIES",SF_SUBSURFACE_ENTRY|SF_SUBSURFACE_DISK_ENTRY},
     // A thin-walled Principled BSDF with subsurface (bsdf_thin_subsurface_setup).
-    {"SVM_BSDF_THIN_SUBSURFACE",SF_BSDF_THIN_SUBSURFACE}};
+    {"SVM_BSDF_THIN_SUBSURFACE",SF_BSDF_THIN_SUBSURFACE},
+    // Subsurface scattering with volumes: the volume stack update of subsurface_scatter.
+    {"SUBSURFACE_VOLUME",SF_SUBSURFACE_VOLUME},
+    // Subsurface scattering with holdout objects: no holdout at the exit point.
+    {"SUBSURFACE_HOLDOUT",SF_SUBSURFACE_HOLDOUT},
+    // The local traversal of a transform-applied object passes instance leaves over (wavefront_ao.wgsl).
+    {"LOCAL_INSTANCE_SKIP",SF_LOCAL_INSTANCE_SKIP},
+    // Spherical stereo cameras (wavefront_camera.wgsl cp_stereo).
+    {"CAMERA_STEREO",SF_CAMERA_STEREO},
+    // The panoramic cameras' inverse mappings (wavefront_svm.wgsl cpi_direction_to_panorama).
+    {"CAMERA_PANORAMA_INVERSE",SF_CAMERA_PANORAMA_INVERSE},
+    // A moving light object's emission shader transforms (wavefront_emitters.wgsl lamp_shader_data).
+    {"LIGHT_MOTION",SF_LIGHT_MOTION},
+    // The Geometry node's Tangent output on triangles (wavefront_normals.wgsl svm_geometry_tangent).
+    {"SVM_GEOMETRY_TANGENT",SF_GEOMETRY_TANGENT},
+    // Smooth-normal derivatives on motion triangles (wavefront_svm_derivatives.wgsl svmd_smooth_normal).
+    {"SVM_MOTION_NORMAL_DERIVATIVE",SF_MOTION_NORMAL_DERIVATIVE}};
   return names;
 }
 std::string shader_feature_list(ShaderFeatures features){
@@ -119,7 +135,7 @@ static_assert(SF_CURVE_RIBBON.test(186)&&SF_CURVE_THICK.test(187)&&SF_CURVE_THIC
 static_assert(SF_CURVE_MOTION.test(194)&&SF_CURVE_SHADOW.test(195)&&SF_CURVE_RAYTRACE.test(196)&&SF_CURVE_SHADOW_CATCHER.test(197)&&SF_CURVE_RAYCAST.test(198)&&(SF_SUPERSET_SCENE_ONLY&(SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST))==(SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST));
 static_assert(SF_POINTS.test(206)&&SF_POINTS_MOTION.test(207)&&SF_NODE_POINT_INFO.test(208)&&SF_NODE_PARTICLE_INFO.test(209)&&(SF_SUPERSET_SCENE_ONLY&SF_POINTS_ALL)==SF_POINTS_ALL);
 static_assert(SF_BSDF_HAIR.test(200)&&SF_BSDF_HAIR_CHIANG.test(201)&&(SF_SUPERSET_SCENE_ONLY&(SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG))==(SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG));
-static_assert(SF_ALL.count()==147&&!(SF_ALL&~(SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
+static_assert(SF_ALL.count()==161&&!(SF_ALL&~(SF_BACKGROUND_PORTAL|SF_RAY_PORTAL|SF_BSDF_HAIR|SF_BSDF_HAIR_CHIANG|SF_POINTS_ALL|SF_CURVES|SF_NODE_HAIR_INFO|SF_CURVE_MOTION|SF_CURVE_SHADOW|SF_CURVE_RAYTRACE|SF_CURVE_SHADOW_CATCHER|SF_CURVE_RAYCAST|ShaderFeatures::range(0,66)|ShaderFeatures::range(94,97)|SF_SHADOW_LINKING|SF_SHADOW_CATCHER|SF_NODE_AO|SF_AO_SHADOW|SF_MNEE|SF_BSDF_FAMILIES|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_NODE_RADIAL_TILING|SF_FILTER_GLOSSY|SF_TERMINATOR_WIDE|SF_SHADOW_MOTION|SF_MNEE_MOTION|SF_NODE_DISPLACEMENT|SF_EVAL_DISPLACE|SF_BUMP_UNDISPLACED|SF_FILM_DATA_PASSES|SF_NODE_AOV|SF_FILM_CRYPTOMATTE|SF_FILM_DENOISING|SF_FILM_MOTION|SF_FILM_MOTION_EXACT|SF_TEX_ENVIRONMENT|SF_TEX_IMAGE_BOX|SF_SAMPLING_PATTERN|SF_CAMERA_PROJECTIONS|SF_LIGHT_FALLOFF|SF_LIGHT_LAMP_SHADER|SF_NODE_IES|SF_BSDF_THIN_FILM_CONDUCTOR|SF_TEX_SKY|SF_BACKGROUND_SUN|SF_TEX_SKY_SCATTERING|SF_MATH_ARC|SF_VOLUME_SHADOW|SF_VOLUME_LIGHT|SF_VOLUME_PHASES|SF_NODE_VOLUME_COEFFICIENTS|SF_NODE_PRINCIPLED_VOLUME|SF_VOLUME_EMISSION|SF_SUBSURFACE|SF_FILM_MOTION_DEFORM|SF_VOLUME_PHASE_KINDS|SF_VOLUME_HETEROGENEOUS|SF_VOLUME_RAY_MARCHING|SF_VOLUME_LIGHT_SHAPES|SF_VOLUME_LIGHT_TREE|SF_VOLUME_LIGHT_PASSES|SF_VOLUME_SHADOW_CATCHER|SF_VOLUME_SAMPLING_PATTERN|SF_VOLUME_LIGHT_PATH|SF_VOLUME_MOTION|SF_SUBSURFACE_DISK|SF_BSDF_THIN_SUBSURFACE|SF_MNEE_SPOT|SF_MNEE_AREA|SF_MNEE_BACKGROUND|SF_MNEE_BECKMANN|SF_MNEE_VOLUME|SF_MNEE_HUANG|SF_SUBSURFACE_VOLUME|SF_SUBSURFACE_HOLDOUT|SF_LOCAL_INSTANCE_SKIP|SF_CAMERA_STEREO|SF_CAMERA_PANORAMA_INVERSE|SF_LIGHT_MOTION|SF_GEOMETRY_TANGENT|SF_MOTION_NORMAL_DERIVATIVE)).any()&&SF_LIGHT_BACKGROUND.test(64)&&SF_LIGHT_NEE.test(65)&&
   SF_LIGHT_TREE.test(94)&&SF_LIGHT_LINKING.test(95)&&SF_LIGHT_SELECT.test(96)&&SF_SHADOW_CATCHER.test(102)&&SF_MNEE.test(110));
 static_assert(SF_NODE_AO.test(106)&&SF_NODE_RAYTRACE.test(107)&&SF_AO_SHADOW.test(108)&&!(SF_ALL&SF_NODE_RAYTRACE).any());
 static_assert(SF_MNEE_ENTRIES.test(111)&&!(SF_ALL&SF_MNEE_ENTRIES).any());
@@ -128,6 +144,14 @@ static_assert(SF_VOLUME_SHADOW.test(162)&&SF_VOLUME_LIGHT.test(163)&&SF_VOLUME_P
 static_assert(SF_SUBSURFACE.test(168)&&SF_SUBSURFACE_ENTRY.test(169)&&!(SF_ALL&SF_SUBSURFACE_ENTRY).any()&&SF_FILM_MOTION_DEFORM.test(170));
 static_assert(SF_SUBSURFACE_DISK.test(216)&&SF_SUBSURFACE_DISK_ENTRY.test(217)&&!(SF_ALL&SF_SUBSURFACE_DISK_ENTRY).any()&&(SF_SUPERSET_SCENE_ONLY&SF_SUBSURFACE_DISK).any());
 static_assert(SF_BSDF_THIN_SUBSURFACE.test(218)&&(SF_SUPERSET_SCENE_ONLY&SF_BSDF_THIN_SUBSURFACE).any());
+static_assert(SF_SUBSURFACE_VOLUME.test(232)&&(SF_SUPERSET_SCENE_ONLY&SF_SUBSURFACE_VOLUME).any());
+static_assert(SF_SUBSURFACE_HOLDOUT.test(233)&&(SF_SUPERSET_SCENE_ONLY&SF_SUBSURFACE_HOLDOUT).any());
+static_assert(SF_LOCAL_INSTANCE_SKIP.test(247)&&(SF_SUPERSET_SCENE_ONLY&SF_LOCAL_INSTANCE_SKIP).any());
+static_assert(SF_CAMERA_STEREO.test(248)&&(SF_SUPERSET_SCENE_ONLY&SF_CAMERA_STEREO).any());
+static_assert(SF_CAMERA_PANORAMA_INVERSE.test(249)&&(SF_SUPERSET_SCENE_ONLY&SF_CAMERA_PANORAMA_INVERSE).any());
+static_assert(SF_LIGHT_MOTION.test(250)&&(SF_SUPERSET_SCENE_ONLY&SF_LIGHT_MOTION).any());
+static_assert(SF_GEOMETRY_TANGENT.test(251)&&(SF_SUPERSET_SCENE_ONLY&SF_GEOMETRY_TANGENT).any());
+static_assert(SF_MOTION_NORMAL_DERIVATIVE.test(252)&&(SF_SUPERSET_SCENE_ONLY&SF_MOTION_NORMAL_DERIVATIVE).any());
 static_assert(SF_PHASE_FOURNIER_FORAND.test(171)&&SF_PHASE_RAYLEIGH.test(172)&&SF_PHASE_DRAINE.test(173)&&SF_PHASE_MIE.test(174)&&SF_VOLUME_HETEROGENEOUS.test(175)&&SF_VOLUME_RAY_MARCHING.test(176)&&SF_VOLUME_LIGHT_SHAPES.test(177)&&SF_VOLUME_LIGHT_TREE.test(178)&&SF_VOLUME_LIGHT_PASSES.test(179)&&SF_VOLUME_SHADOW_CATCHER.test(180));
 static_assert(ShaderFeatures::bit(64).words[1]==1&&ShaderFeatures::bit(shader_feature_bits-1).test(shader_feature_bits-1));
 static_assert(SF_DEBUG_OUTPUT.test(116)&&!(SF_ALL&SF_DEBUG_OUTPUT).any());
@@ -302,6 +326,12 @@ SvmCensus svm_census(const std::vector<uint32_t> &w,size_t shader_count,const st
         }
       }
       if(op==NODE_CLOSURE_EMISSION||op==NODE_VOLUME_COEFFICIENTS||op==NODE_PRINCIPLED_VOLUME)out.features|=SF_VOLUME_EMISSION;
+      // Local traversals (SvmCensus::local_traversal): the byte fields of the node record.
+      {auto byte_at=[&](size_t offset){return (w[node+offset/4]>>(8*(offset%4)))&0xffu;};
+        if(op==NODE_BEVEL||(op==NODE_AMBIENT_OCCLUSION&&(byte_at(offsetof(SVMNodeAmbientOcclusion,flags))&NODE_AO_ONLY_LOCAL))||
+           (op==NODE_RAYCAST&&byte_at(offsetof(SVMNodeRaycast,only_local))))out.local_traversal=true;
+        // The Geometry node's Tangent output (SVM_GEOMETRY_TANGENT).
+        if((op==NODE_GEOMETRY||op==NODE_GEOMETRY_DERIVATIVE)&&byte_at(offsetof(SVMNodeGeometry,geom_type))==NODE_GEOM_T)out.features|=SF_GEOMETRY_TANGENT;}
       if(op==NODE_CLOSURE_BSDF){
         const uint32_t kind=w[node+offsetof(SVMNodeClosureBsdf,closure_type)/4];const uint64_t data_at=pc;
         const OpInfo data=bsdf_info(kind);
@@ -523,8 +553,13 @@ ShaderFeatures WebGPUDevice::shader_features(){
        displacement_features=program.features|SF_EVAL_DISPLACE;displacement_program_features=program.features;
        for(uint32_t s:displaced)if(shader_records[s].flags&SD_HAS_BUMP_FROM_DISPLACEMENT)displacement_features|=SF_BUMP_UNDISPLACED;
        if(unsupported_feature.empty())unsupported_feature=program.unsupported;
-       if(unsupported_feature.empty()&&program.stopped_paths)unsupported_feature="Unsupported feature: a displacement shader node the WebGPU device does not implement";
-       const ShaderFeatures stateful=program.features&(SF_LIGHT_PATH|SF_NODE_AO|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_WIREFRAME|SF_PRINCIPLED_ALL);
+       // Every opcode the SVM compiler emits has a record size (op_info), so a stopped path is a malformed program.
+       if(unsupported_feature.empty()&&program.stopped_paths)unsupported_feature="Invalid displacement shader program";
+       // The displacement program runs under KERNEL_FEATURE_NODE_MASK_DISPLACEMENT without path state: the Light Path node
+       // reads its ray types, ray length and depths as zero, Ambient Occlusion is 1, Bevel returns N, Raycast misses, and
+       // Wireframe works from the triangle; the handlers do the same outside prepare_surface_raytrace (svm_displace_program).
+       // A closure (Principled BSDF) cannot feed the displacement output, so it never reaches the program.
+       const ShaderFeatures stateful=program.features&SF_PRINCIPLED_ALL;
        if(unsupported_feature.empty()&&stateful.any())
          unsupported_feature="Unsupported feature: "+shader_feature_list(stateful)+" in a displacement shader (true displacement) is not implemented by the WebGPU device; the scene is rejected, not approximated";}}
     // Adapter-class refusal from the known-adapter table (device_tier.cpp), for
@@ -585,6 +620,7 @@ ShaderFeatures WebGPUDevice::shader_features(){
     for(size_t i=0;i+1<light_distribution_records.size();i++)if(light_distribution_records[i].prim>=0&&size_t(light_distribution_records[i].prim)<tri_shader_words.size()){
       const auto id=tri_shader_words[light_distribution_records[i].prim]&SHADER_MASK;if(id<shader_records.size()&&!(shader_records[id].flags&SD_HAS_CONSTANT_EMISSION))enabled_features|=SF_LIGHT_NEE;}
     for(const uint flags:object_flag_records)if(flags&SD_OBJECT_MOTION)enabled_features|=SF_MOTION_OBJECT;
+    for(size_t i=0;i<object_records.size()&&i<object_flag_records.size();i++)if((object_flag_records[i]&SD_OBJECT_MOTION)&&object_records[i].primitive_type==PRIMITIVE_LAMP)enabled_features|=SF_LIGHT_MOTION|SF_MOTION_OBJECT;
     // Light tree and light linking (lighting.cpp validate_light_tree; m2-lighttree).
     if(data.integrator.use_light_tree){enabled_features|=SF_LIGHT_TREE|SF_LIGHT_SELECT;
       if((data.kernel_features&KERNEL_FEATURE_VOLUME)&&data.integrator.use_direct_light)enabled_features|=SF_VOLUME_LIGHT_TREE;
@@ -605,9 +641,16 @@ ShaderFeatures WebGPUDevice::shader_features(){
     // Points: any uploaded point; their motion when an object's primitive type carries it.
     if(!point_shader_words.empty())enabled_features|=SF_POINTS;
     for(const KernelObject &object:object_records)if(object.primitive_type==PRIMITIVE_MOTION_POINT)enabled_features|=SF_POINTS_MOTION;
+    // Smooth-normal derivatives of motion triangles (pipelines.h SF_MOTION_NORMAL_DERIVATIVE).
+    if((enabled_features&SF_TEX_COORD_DERIVATIVE).any())for(const KernelObject &object:object_records)if(object.primitive_type==PRIMITIVE_MOTION_TRIANGLE)enabled_features|=SF_MOTION_NORMAL_DERIVATIVE;
     if(data.integrator.has_shadow_catcher)enabled_features|=SF_SHADOW_CATCHER;
     if(data.kernel_features&KERNEL_FEATURE_AO)enabled_features|=SF_AO_SHADOW;
     if(data.integrator.use_caustics)enabled_features|=SF_MNEE;
+    if(data.integrator.use_caustics)for(const KernelLight &light:lamp_records())if(light.use_caustics)
+      enabled_features|=light.type==LIGHT_SPOT?SF_MNEE_SPOT:light.type==LIGHT_AREA?SF_MNEE_AREA:light.type==LIGHT_BACKGROUND?SF_MNEE_BACKGROUND:ShaderFeatures{};
+    if(data.integrator.use_caustics&&(enabled_features&SF_BSDF_BECKMANN).any())enabled_features|=SF_MNEE_BECKMANN;
+    if(data.integrator.use_caustics&&(data.kernel_features&KERNEL_FEATURE_VOLUME))enabled_features|=SF_MNEE_VOLUME;
+    if(data.integrator.use_caustics&&(enabled_features&SF_BSDF_HAIR_HUANG).any())enabled_features|=SF_MNEE_HUANG;
     if(data.integrator.filter_glossy!=FLT_MAX)enabled_features|=SF_FILTER_GLOSSY;
     if(film_surface_passes())enabled_features|=SF_FILM_DATA_PASSES;
     if(film_cryptomatte())enabled_features|=SF_FILM_CRYPTOMATTE;
@@ -625,6 +668,8 @@ ShaderFeatures WebGPUDevice::shader_features(){
       if(object.shadow_terminator_geometry_offset>0.0f&&smooth_triangles&&(data.integrator.use_direct_light||(data.kernel_features&KERNEL_FEATURE_AO)))enabled_features|=SF_TERMINATOR_GEOMETRY;
     }
     if(!curve_records.empty()&&(enabled_features&(SF_NODE_AO|SF_NODE_BEVEL|SF_NODE_RAYCAST|SF_SUBSURFACE)).any())enabled_features|=SF_CURVE_RAYTRACE;
+    if((data.kernel_features&KERNEL_FEATURE_VOLUME)&&(enabled_features&SF_SUBSURFACE).any())enabled_features|=SF_SUBSURFACE_VOLUME;
+    if((enabled_features&SF_SUBSURFACE).any())for(const uint flags:object_flag_records)if(flags&SD_OBJECT_HOLDOUT_MASK){enabled_features|=SF_SUBSURFACE_HOLDOUT;break;}
     if(!curve_records.empty()&&(enabled_features&SF_NODE_RAYCAST).any())enabled_features|=SF_CURVE_RAYCAST;
     for(size_t i=0;i<object_records.size()&&i<object_flag_records.size();i++)if((object_records[i].primitive_type&PRIMITIVE_CURVE)&&(object_flag_records[i]&SD_OBJECT_SHADOW_CATCHER))enabled_features|=SF_CURVE_SHADOW_CATCHER;
   }
@@ -639,7 +684,39 @@ ShaderFeatures WebGPUDevice::shader_features(){
   // Volumes with motion blur (pipelines.h SF_VOLUME_MOTION): this call's KernelData only, as the pattern above.
   enabled_features&=~SF_VOLUME_MOTION;
   if((data.kernel_features&KERNEL_FEATURE_VOLUME)&&data.bvh.have_motion)enabled_features|=SF_VOLUME_MOTION;
+  // A local traversal from a transform-applied object (it starts at the scene root) in a scene with instance leaves
+  // (pipelines.h SF_LOCAL_INSTANCE_SKIP): the shaders of the applied objects' top-level primitives, from this call's tables,
+  // kept per upload.
+  if((enabled_features&(SF_NODE_AO|SF_NODE_BEVEL|SF_NODE_RAYCAST)).any()&&!(enabled_features&SF_LOCAL_INSTANCE_SKIP).any()){
+    if(local_skip_key[0]!=svm_generation||local_skip_key[1]!=mnee_generation){
+      local_skip_key[0]=svm_generation;local_skip_key[1]=mnee_generation;local_skip=false;
+      const bool leaves=std::any_of(prim_index_words.begin(),prim_index_words.end(),[](int prim){return prim<0;});
+      if(leaves){
+        // BVH2::pack_instances puts the top-level primitives first and appends each instanced geometry's, whose
+        // prim_object is 0 ("unused for instances"). The top-level count is the applied meshes' triangles plus one
+        // reference per instance; checked against the tables, else (or with curves or points) every applied object counts
+        // as tracing locally.
+        size_t top=size_t(std::count_if(prim_index_words.begin(),prim_index_words.end(),[](int prim){return prim<0;}));
+        bool applied_any=false;
+        for(size_t i=0;i<object_records.size()&&i<object_flag_records.size();i++)if(object_flag_records[i]&SD_OBJECT_TRANSFORM_APPLIED){
+          applied_any=true;if(object_records[i].primitive_type&PRIMITIVE_TRIANGLE)top+=size_t(std::max(object_records[i].numprims,0));}
+        bool exact=curve_records.empty()&&point_shader_words.empty()&&prim_index_words.size()==prim_object_words.size()&&top<=prim_index_words.size();
+        for(size_t i=top;exact&&i<prim_index_words.size();i++)exact=prim_index_words[i]>=0&&prim_object_words[i]==0;
+        if(!exact)local_skip=applied_any;
+        else{
+          std::vector<uint32_t> roots;
+          for(size_t i=0;i<top;i++){const int prim=prim_index_words[i],object=prim_object_words[i];
+            if(prim>=0&&object>=0&&size_t(object)<object_flag_records.size()&&(object_flag_records[object]&SD_OBJECT_TRANSFORM_APPLIED)&&
+               size_t(prim)<tri_shader_words.size())roots.push_back(tri_shader_words[prim]&SHADER_MASK);}
+          std::sort(roots.begin(),roots.end());roots.erase(std::unique(roots.begin(),roots.end()),roots.end());
+          if(!roots.empty())local_skip=svm_census(svm_node_words,shader_records.size(),&roots).local_traversal;
+        }
+      }
+    }
+    if(local_skip)enabled_features|=SF_LOCAL_INSTANCE_SKIP;}
   if(data.cam.type!=CAMERA_PERSPECTIVE||data.cam.aperturesize>0)enabled_features|=SF_CAMERA_PROJECTIONS;
+  if(data.cam.interocular_offset!=0.0f)enabled_features|=SF_CAMERA_STEREO|SF_CAMERA_PROJECTIONS;
+  if(data.cam.type==CAMERA_PANORAMA&&((enabled_features&SF_TEX_COORD).any()||film_motion_vectors()))enabled_features|=SF_CAMERA_PANORAMA_INVERSE;
   if(specialization_mode==SpecializationMode::Superset){
     if(superset_scene!=enabled_features){
       size_t budget=superset_default_budget_bytes;

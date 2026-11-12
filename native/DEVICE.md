@@ -618,10 +618,14 @@ and 63 are the last free bits of the 64-bit mask.
   centre/dx/dy heights with `differential_from_compact(Ng, dP)` (or the saved
   full differential), strength, distance, invert and object space. Background
   evaluation stores zero, as the host background node mask has no bump feature.
-- `NODE_ENTER/LEAVE_BUMP_EVAL` (`bump.h`) save and restore P and dP. The
-  undisplaced-position branch is ported with true displacement (the
-  `SVM_BUMP_UNDISPLACED` region, bit 142); a module built without that region
-  reports unsupported (16) if it finds the attribute.
+- `NODE_ENTER/LEAVE_BUMP_EVAL` (`bump.h`) save and restore P and dP, and the
+  undisplaced-position branch moves the shading point to
+  `ATTR_STD_POSITION_UNDISPLACED` with its full differential saved for
+  `NODE_SET_BUMP`. It is ported with true displacement (the
+  `SVM_BUMP_UNDISPLACED` region, bit 142). Only a Both displacement shader
+  requests that attribute (`Shader::update`), and a scene with one compiles the
+  region (bit 142 comes from `SD_HAS_BUMP_FROM_DISPLACEMENT`), so the error-16
+  fallback of a module without it is not reached.
 - Derivative variants keep (value, d/dx, d/dy) in adjacent stack slots and
   apply the first-order bump offsets. Geometry: P/N/Ng/I/uv (tangent reports
   16). Texture coordinates: object, normal (smooth `triangle_smooth_normal`
@@ -2000,7 +2004,7 @@ Pi) run the device-gate exchanges as a two-visit hand-off with that machine,
 `device-import`, `linux-judge`; docs/TESTING-WINDOWS-ARM64.md, "Device-gate
 exchange with the Linux x64 machine"). Tests use only the
 CodeBrix.WebGpu.Native.MitLicenseForever 1.0.300.210 binaries and the .NET SDK
-10.0.403 (docs/TESTING-*.md, "MANDATORY TEST RULES").
+11.0.100 (docs/TESTING-*.md, "MANDATORY TEST RULES").
 
 ## Exact traversal and intersection arithmetic (2026-10-20)
 
@@ -2888,9 +2892,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    Linux-prepared glibc films). Follow-up: move the remaining state gates onto the glibc flow; the on-device CPU
    then judges nothing. Android builds use the oracle's no-contraction, no-reciprocal-math rule (not its ISA
    baseline): the same code prepares the scene the device's GPU renders.
-6. **Not yet ported** [14]: the Geometry node's tangent output (the derivative form always, the plain form on an
-   object) and motion-triangle smooth-normal derivatives (rejected, error 16; the Tangent node and its derivative
-   form are ported, `NODE_TANGENT_DERIVATIVE`, `normal_gate`); particle/hair/point info nodes (the IES texture, light falloff
+6. **Not yet ported** [14]: the Geometry node's tangent output and motion-triangle smooth-normal derivatives are ported
+   (see Resolved, item 6 of this list; the Tangent node and its derivative form were already, `NODE_TANGENT_DERIVATIVE`,
+   `normal_gate`); particle/hair/point info nodes (the IES texture, light falloff
    and sky texture nodes are ported, see "Entry splits, cameras, sampling patterns, adaptive sampling and lamps";
    true displacement, with the bump-state branch that needs the undisplaced position, is ported, feature bits 140-142;
    the Volume Coefficients and Principled Volume nodes are ported, see "Shader-defined volumes"). The AOV output nodes are ported (see "Film passes, light groups, AOVs, cryptomatte and denoising
@@ -2941,7 +2945,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    (two reserved slots per surface input and the stable serial path-array scan; "Ambient occlusion"), which made its
    own replays exact; scenes without AO keep the atomic allocator unchanged, so this case still does not replay.
 18. **Ambient occlusion remainder.** The AO node's `only_local` from an object without its own BVH in a scene that
-   also has instanced objects is refused (error 16 when the local traversal reaches an instance leaf); ambient
+   also has instanced objects renders (item 34, resolved); ambient
    occlusion with object motion and with deformation motion (AO shadow rays and the AO node) passes the AO state and
    image gates on Linux (max 1.21e-4 and 1.38e-5; "Ambient occlusion"); on the Adreno 650 the AO node and the AO
    shadow rays are refused (see "Ambient occlusion"). The bevel and raycast nodes run on the same raytrace queue
@@ -3038,15 +3042,15 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    polarized conductor reflectance at the film's bottom interface (`SVM_BSDF_THIN_FILM_CONDUCTOR`, bit 156; see "Entry
    splits, cameras, sampling patterns, adaptive sampling and lamps").
 
-33. **MNEE with a moving caustic caster (refused).** With object motion on a caustic caster, about 34 of 5,800 walks
-   of the state gate's fixture end with another outcome or iteration count than the CPU's, although the `MNEE_MOTION`
-   motion transforms are host-exact (iteration-0 constraint norms one ULP apart). Not isolated when it was refused; the
-   candidates were glibc's sinf/cosf, which the motion transforms now reproduce (item 15), and the moving instance's
-   traversal. The refusal has not been retried since. Moving and deforming receivers and deforming casters render.
-34. **AO / bevel / raycast `only_local` from a transform-applied object in a scene with instances (refused, error 16).**
-   The pinned BVH2 local traversal starts at the scene root there (the object has no own BVH) and runs its triangle
-   loop over the instance leaves' negative primitive addresses: the CPU result is undefined, so there is nothing to
-   match.
+33. (resolved) Was: **MNEE with a moving caustic caster (refused).** With object motion on a caustic caster, about 34 of
+   5,800 walks of the state gate's fixture ended with another outcome or iteration count than the CPU's. Retried on the
+   tree whose motion transforms reproduce glibc's sinf/cosf (item 15): with the refusal lifted and no other change, every
+   walk of the moving-caster case (`mnee_gate` case 18: 5,959 paths, every solver outcome and iteration count) equals the
+   CPU's, and the image case and its replay pass. INFERENCE: the earlier differences came from those sinf/cosf results.
+   Moving casters render (`mnee/glass-sphere-moving-caster`).
+34. (resolved, see "Resolved" below) Was: **AO / bevel / raycast `only_local` from a transform-applied object in a scene
+   with instances (refused, error 16).** The pinned BVH2 local traversal starts at the scene root there (the object has no
+   own BVH) and runs its triangle loop over the instance leaves' negative primitive addresses: the CPU result is undefined.
 35. (resolved, see "Resolved" below) Was: **`surf_bump` and `c_acos`/`c_asin` arithmetic, and `trig_acos` near 0.** Host-exact versions exist (see item 28's
    resolution) but exceed the size guard (arcsine/arccosine, raytrace-node entries) or the compile envelope (`surf_bump`,
    the shadow catcher's `shade_surface`, already at 59,267 instructions). The shared
@@ -3081,10 +3085,9 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
    as `surface_mnee.wgsl` (replay entries 27-33; captures without it keep them in `surface.wgsl`). In the gate's last
    case they are 750,521 / 35,138 and 853,644 / 42,349; the other MNEE entries' code is unchanged and the case's GPU
    and CPU films are bit-identical to before.
-39. **Cameras the WebGPU device refuses.** Stereo (a non-zero interocular offset) is refused by name; custom cameras
-   need OSL (outside the package). A texture coordinate node's Window output with a panoramic camera reports an
-   unsupported parameter (the inverse panorama mappings are not ported), and the motion pass keeps its perspective-camera
-   requirement.
+39. (resolved, see "Resolved" below) Was: **Cameras the WebGPU device refuses.** Stereo was refused by name, a texture
+   coordinate node's Window output with a panoramic camera reported an unsupported parameter, and the motion pass required
+   the perspective camera. Custom cameras still need OSL (outside the package).
 40. **Samsung SM-X700, x64-adapter cross-check (reported, not a failure; ARM64 rounding rule above): three oracle
    scenes follow the tablet's scene preparation.** With
    `CODEBRIX_CYCLES_REFERENCE_ORACLE=linux-x64-sse4.2` the tablet's films of `combinations/tree-triangle-lighting-2`
@@ -3290,7 +3293,7 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     integrator block (8 samples, 64 x 48) gives 3 practical failures at x=34, y=20 (1.88 times the tolerance) on the base tree
     as well, with or without hair; `scenes/hair/huang-triangles` leaves that sphere out.
 86. **Point clouds on the reference devices: not run yet.** Points pass on Linux in x64 arithmetic against the x64 CPU oracle (`native/tools/point_gate.py`, `scenes/points/`). `arm64-scalar` on Linux compiles and runs, judged against nothing here. No ARM64 oracle exists for this family, so that says nothing about correctness there. Checkpoint 1 and the ARM64 oracle films owe them.
-87. **The pinned kernel reads an uninitialized stack for a Both displacement shader on a point or a curve.** `svm_node_set_bump` loads `bump_state_offset + 4` and `+ 7`, which `svm_node_enter_bump_eval` only stores when `ATTR_STD_POSITION_UNDISPLACED` is found, and only meshes have it (`scene/mesh.cpp`). The WGSL stack check reports it (mask 8), so scenes with that combination are refused by name on the device; the CPU's result depends on what the stack held. Keep the refusal unless the kernel changes.
+87. **The pinned kernel reads an uninitialized stack for a Both displacement shader on a point or a curve.** `svm_node_set_bump` loads `bump_state_offset + 4` and `+ 7`, which `svm_node_enter_bump_eval` only stores when `ATTR_STD_POSITION_UNDISPLACED` is found, and only meshes have it (`scene/mesh.cpp`). The WGSL stack check reports it (mask 8), so scenes with that combination are refused by name on the device; the CPU's result depends on what the stack held. Keep the refusal unless the kernel changes. Evidence (2026-11-11, `curves/thick-diffuse` and `points/diffuse` with displacement/both's Both shader on the curves or points, not committed): the CPU device (BVH2, 1, 2, 4 and 8 threads, 4 threads twice) and the Embree CPU device (twice), each process rendering twice, gave 13 distinct film hashes in 14 films per scene; the two films of one process differed in 12 of 14 processes; up to 2,481 (curves) and 3,105 (points) of 12,288 film components differed, by up to 0.173 and 0.432. FACT from the pinned source: `svm_eval_nodes` declares the stack `float stack[SVM_STACK_SIZE]` without initializer (`kernel/svm/svm.h`) and Cycles' Metal device compiles the same kernel source, so its result there is not defined by the source either.
 98. **Device replays of Linux x64 captures: three scenes cannot pass bit for bit on another GPU (a known cross-GPU limitation;
     recorded, not fixed).** The device job `oracle-replays` replays 20 Linux x64 captures of oracle scenes on the device with every
     readback checked bit for bit. Three cannot pass on a GPU other than the one that captured them, and no product code is wrong:
@@ -3372,8 +3375,150 @@ reference devices; see "Samsung Galaxy S20 FE 5G (Adreno 650) sweep" and "Adreno
     (`wavefront_bake.wgsl`; `CBC_FAILED`), and writes nothing, for every type but Position, Background and a Normal bake whose
     interpolated smooth normal is not zero (those read no geometric normal, and equal the CPU). A render never reaches such a triangle. Open for a ruling:
     keep the refusal, or have the host leave texels of zero-area triangles out of the map on every backend.
+120. **Volume scatter probability: the defensive mix in the wrong order (RESOLVED).** Found as one failing pixel of
+    `shadow-linking/volume-light-passes` ((50, 14), 25.9 times the practical tolerance). Cause (FACT): the WGSL
+    `vl_scatter_probability` (`wavefront_volume.wgsl`, VOLUME_LIGHT) returned `attenuation*0.25 + guided*0.75`, where the pinned
+    `volume_scatter_probability_homogeneous` returns `mix(attenuation, guided, 0.75)` and `util/math_base.h` `mix` is `a + t * (b - a)`; the
+    two differ in the last bit. That bit moved one scatter distance by two ulps (pixel (52, 16), sample 2), a triangle light seen almost
+    edge-on from the next surface (solid-angle sampling with `q` near 1) turned it into a 31% different light sample, the difference entered
+    the volume guiding passes, and after 8 samples the RGBE word of the denoised volume scatter pass at (50, 14) read one quantum higher
+    (mantissa 111 against 110), so that pixel's guided scatter probabilities changed and one high-throughput sample came out 1.6% higher. Evidence:
+    per-sample render buffers of both devices; a lockstep transcription of the scene in a diagnostic gate build with the pinned guiding denoise
+    between samples (bit-identical to the host CPU render at every sample); the pinned filter recomputed from each device's own buffer
+    (exact on both); the GPU's light-sampling inputs against the pinned triangle sample on the CPU's state (the first difference is the shading
+    point, two ulps); with the CPU's one RGBE word forced on the device, sample 8 equals the CPU's. Fix: the pinned order,
+    `attenuation + 0.75 * (guided - attenuation)`, each operation rounded once. The scene is now perfect (worst ratio 0.528). Every volume
+    scene with volume direct light compiles the changed `shade_volume`, `shade_volume_heterogeneous`, `shade_volume_phase` and
+    `shade_volume_ray_marching`. Not changed here (same pinned function, other regions): the scenes without volume direct light use
+    `volume_scatter_probability` (native `exp` and quotient, the same mix order), and `wavefront_volume_heterogeneous.wgsl` uses WGSL's built-in
+    `mix` (`e1*(1-e3)+e2*e3`) for the reservoir's emission, albedo and total weight where the pinned code uses `a + t * (b - a)`.
+121. **A scene without shadow linking after one with it, on the same device: paths sent to the dedicated light kernels (RESOLVED).** Found
+    by the subsurface exit gate (`subsurface_exit_gate --one-device`). Cause (FACT): a device's specialization only grows (`pipeline_current` keeps a pipeline
+    whose features are a superset), and the four SHADOW_LINKING sites that route a path to `INTERSECT_DEDICATED_LIGHT` (a surface bounce and a
+    Ray Portal bounce in `wavefront_surface.wgsl`, a phase scatter in `wavefront_volume.wgsl` and `wavefront_volume_light.wgsl`) had no run-time
+    test, so a later scene without `KERNEL_FEATURE_SHADOW_LINKING` queued paths for kernel 6 and the dispatch stopped with "Invalid native
+    dedicated light dispatch without shadow linking" (where the pinned kernel sends them to `INTERSECT_CLOSEST`). Reproduced by shadow linking gate
+    cases 21 (memberships and blocker sets reset between two renders of one scene, the consumer's scene edit) and 22 (a second scene without shadow
+    linking on the same device). Fix: the pinned run-time test, `shadow_linking_scene_need_shadow_ray` (`kernel_features & KERNEL_FEATURE_SHADOW_LINKING`),
+    at those four sites, inside the SHADOW_LINKING regions (modules of scenes without shadow linking are unchanged). The region's other code
+    reads shadow set memberships, which are all `LIGHT_LINK_MASK_ALL` without the feature, so it already behaves as the pinned kernel's tests.
+    Light linking has no such defect: every LIGHT_LINKING region tests `kernel_features` at run time (`light_link_enabled`, `vll_emission_visible`).
+122. **`shadow-linking/shadow-catcher`: the Shadow Catcher pass at one pixel, from run to run: RESOLVED.** At pixel (45, 11) the CPU's
+    converted Shadow Catcher value is exactly 0: no path there hit the catcher, so Combined and the Shadow Catcher Matte pass are sums of the same
+    contributions, bit-equal on the CPU, and (combined - matte) / catcher is 0. The device gave 0 or a few 1e-5 (practical failure, absolute term
+    5e-5) in 4 of 8 renders. Cause (FACT, raw render buffers after every update and a diagnostic log of every successful film add at that pixel):
+    the device adds a contribution to each film word with its own atomic compare-exchange loop, and two contributions to one pixel in one
+    dispatch take an undefined order per word, so Combined and the matte could take the same two values in opposite orders and differ by an ulp,
+    which the division by the small catcher value (0.012) turns into the few 1e-5. Two sources: (a) the samples of one update run side by side
+    (the scheduler gives 1 sample, then 15, per update): render pairs differ in 2,883 to 6,883 film words; with one sample per update only 35 to
+    86; (b) within one sample, the next-event shadow paths of bounces 1 and 2 of the same main path (regular shadow paths, not dedicated light
+    ones) in one `shade_shadow` dispatch: in 6 of 8 logged renders with one sample per update the two orders differed at that pixel. The CPU
+    (megakernel) adds a pixel's samples in order and each shadow path right after the shading that made it, the same order for every word. Not
+    specific to shadow linking: every WebGPU film varies between renders (486 of the 504 WGSL films of the 20261107 reference are not
+    repeat-identical; `shadow-catcher/catcher-approximate`, `catcher-point-light` and `curves/shadow-catcher` differ in 1,092 to 2,810 film words
+    between renders, their Shadow Catcher pass by up to 1.1e-5); only an exact 0 of the CPU makes it visible. Fix (`wavefront_shadow_catcher.wgsl`,
+    the SHADOW_CATCHER regions of the callers): a matte path writes the matte colour and the combined colour while it holds the matte pass's first
+    word (exchanged for a lock pattern, the other five words added atomically, the first word's sum stored last), so both passes take every
+    matte contribution in the same order; every write of the matte colour goes through it, and `sc_combined` now writes the combined colour
+    itself. The accumulation order is still not the CPU's (sums differ in the last bits as before), but where the CPU's two sums are equal the
+    device's are too. Only shadow catcher scenes' modules change (of the 107 fingerprinted scenes, the 12 with a shadow catcher; scene data and
+    commands identical). Evidence: the scene rendered 16 times in a row with Combined and the matte bit-equal at every pixel where the CPU's are
+    and its pixel exactly 0, then 8 runs of two repeats perfect; the shadow catcher gate (all cases, 18 replays) and shadow linking gate case 13
+    with its replay passed; WGSL films of the other 22 shadow catcher scenes with a CPU reference perfect; compile envelope of the 32 changed
+    module texts passed (164 entries, worst 51,382 instructions).
+125. **`PATH_RAY_SINGLE_PASS_DONE` in volume scenes: RESOLVED.** FACT: in a scene with volumes Cycles adds
+    data passes of its own (sample count, volume majorant), so the film's pass flag is not zero, and the pinned
+    `film_write_data_passes` sets `PATH_RAY_SINGLE_PASS_DONE` at a path's first surface that is not volume-only (with the alpha
+    threshold rule) even when it writes nothing; the device's surface stage runs that function only with a data pass it writes
+    (`FILM_DATA_PASSES`) or the shadow catcher's, so `path.flag` differed from the CPU at every such hit with a transparent
+    background (seen in the MNEE state gate's volume case; the films did not change, since only AOV outputs and data passes read
+    the flag). `connect_surface_light` now calls the shadow catcher's `sc_data_passes` (the bookkeeping only) in volume scenes
+    without a shadow catcher, data passes or AOV outputs (regions `VOLUME_SHADOW`, `!SHADOW_CATCHER`, `!FILM_DATA_PASSES`,
+    `!SVM_NODE_AOV`; the function and its constants under `DATA_PASS_BOOKKEEPING`, the shadow catcher or `VOLUME_SHADOW`), not at
+    a subsurface exit point, which writes no data pass. AOV outputs in a scene with no other data pass take the same bookkeeping
+    from their own function (`aov_single_pass_done`), so each module runs it from one place. Only modules of volume scenes
+    change; `mnee_gate` case 24 compares `path.flag` exactly.
+126. **`mnee_solve` over the Intel compile envelope with caustics, thick curves and a moving receiver: OPEN.** FACT
+    (`intel_compile_envelope.py`, Mesa 25.0.7): with these three features the MNEE module's `mnee_solve` inlines to 1,113,292 bytes
+    and reaches 62,184 backend instructions (limit 60,000). Commit 4ccca1b16, before MNEE gained Huang receivers and area
+    lights, builds a byte-identical module for a scene with them: the size comes from the curve intersection inlined into the
+    walk's traversal (`curve_intersect`). Without curves the entry stays at 964,054 bytes and 55,186 instructions (moving receiver), and no
+    corpus scene builds it over the limit (`mnee/huang-hair-receiver`, thick curves without motion: 784,018 bytes, 38,353). The
+    MNEE image gate reaches the combination because it accumulates its cases' features in one process.
+
+127. **`shade_surface_light` above the pipeline size guard in the MNEE image gate's accumulated features: OPEN.** FACT
+    (`intel_compile_envelope.py`, Mesa 25.0.7): once the gate's area-light cases join the features of its earlier cases (curves,
+    motion, volumes, the light tree and linking, Beckmann and Huang closures), the lamp light stage inlines to 1,012,776 bytes and
+    59,772 backend instructions (under the 60,000 limit, above the 940,000-byte guard; with the spot cases only, 774,195 bytes and
+    44,044). The entry is the ordinary lamp light stage of the surface module (not an MNEE entry); its call graph was not traced. The new MNEE entries
+    stay under both limits in every module of the gate (`mnee_light_sample` at most 728,952 bytes and 45,047 instructions,
+    `mnee_light_update` 678,775 and 31,675, `mnee_seed` 842,850 and 49,399).
+130. **A bump-mapped Principled BSDF with subsurface and AOV outputs: `prepare_surface` over the 940,000 B size guard: OPEN.** FACT:
+    with a Bump node feeding the Principled Normal and two AOV Output nodes on a random walk and a Christensen-Burley sphere,
+    `prepare_surface` is built at 1,192,719 B inlined and measures 55,045 Intel instructions (under the 60,000 envelope); the device prints
+    its size warning. The size comes from the Principled SVM with bump and the AOV nodes, not from the subsurface combinations; the
+    committed AOV scenes use the Subsurface Scattering node (832,356 B largest entry). Not split; for the maintainer: whether
+    `prepare_surface` needs a split for such materials.
+135. **BVH time steps: refused by name; no consumer can reach them.** "WebGPU BVH time steps not implemented" (points) and
+    "WebGPU curves with BVH time steps not implemented" (`closest.cpp`). FACT: `KernelBVH::use_bvh_steps` comes only from
+    `SceneParams::num_bvh_time_steps` (`scene/geometry_bvh.cpp`), and the host creates every session with the default 0 and
+    exposes no setting for it (`native/host/cycles_host.cpp`, the session's `SceneParams`); the managed API and the scene
+    format reach only the host. The pinned kernels then test `prim_time` on motion curve and point leaves
+    (`bvh/traversal.h`, `bvh/shadow_all.h`). Porting it needs that setting in the host API first (a decision for the
+    maintainer).
+136. **Object motion on light objects: RESOLVED in the same session.** "WebGPU animated emitters (object motion on lights)"
+    is gone. FACT: `ObjectManager` decomposes a light object's motion and sets `SD_OBJECT_MOTION` on it, but `KernelLight`
+    keeps one transform and lamps are not in the BVH, so the lamps light from their authored transforms on every pinned
+    device; only `shader_setup_from_sample` reads the motion, for the object-space inputs of the lamp's emission shader.
+    Bit 250 `LIGHT_MOTION` gives `lamp_shader_data` that motion transform. Scenes `light-motion/moving-lamps` and
+    `moving-lamps-object-shader` (point, spot and area lamps with motion; the second with an emission shader of
+    object-space coordinates): perfect.
+137. **Film: what reaches the denoising pass and light group refusals: RESOLVED in the same session.** "WebGPU film denoising
+    pass not implemented" could not be reached: `Film::device_update` sets `denoising_pass_flag` only from the seven pass
+    types of the denoising category, all written, so the check is now an invalid-data check ("Invalid film denoising pass
+    flags"). The host's "Light group passes are not supported together with denoising yet" is gone (see "Host pass modes"
+    under "Denoising (Open Image Denoise on the CPU)"); every backend. The render time pass stays unwritten: only `PathTraceWorkCPU` measures it, the
+    pinned GPU work (Metal's included) does not.
 
 Resolved, or closed under the device reference policy:
+- [34 and 18 of this list] **AO, Bevel and Raycast `only_local` from a transform-applied object beside instances: RESOLVED.**
+  Bit 247 `LOCAL_INSTANCE_SKIP`: the local traversals (`ao_trace` and `raytrace_traverse`, `wavefront_ao.wgsl`) pass an
+  instance leaf over (pop it, as the pinned loop pops it) instead of reporting error 16: another object is never a local
+  hit, MetalRT and Embree give the same answer (every geometry its own BVH, or filtered by object). The bit is set when a
+  shader of a transform-applied object's top-level primitives traces locally (a Bevel node, an AO or Raycast node with
+  only_local; `SvmCensus::local_traversal`) and the top-level BVH holds an instance leaf; other scenes keep the old text.
+  **Judged against the same scene without the instances** (the one named exception to the BVH2 oracle): the scenes
+  `surface-nodes/local-beside-instances-{ao,bevel,raycast}` carry `oracleReference` (native/oracle/README.md, "Scene
+  files"), their instances are visible to volume scatter rays only (no volume in the scene), so the two scenes differ only
+  in what the local traversals pass over; the CPU films come from the `-reference` scenes. All three are perfect; before
+  the change the device failed them (mask 16, or 24 with the stack check).
+- [39 of this list] **Stereo cameras, the panoramic Window coordinate and the motion pass with any camera: RESOLVED.**
+  Bit 248 `CAMERA_STEREO` (a non-zero interocular offset; with `CAMERA_PROJECTIONS`): `projection.h`
+  `spherical_stereo_transform` (pole merge with `safe_asinf` and `cosf`, the convergence distance, FLT_MAX parallel) in
+  `camera_sample_perspective` (world space, differentials from scratch) and `camera_sample_to_ray` (camera space, dP from
+  the transformed origins), every step correctly rounded in the pinned order; the four (P, D) pairs of a sample, every
+  normalization and the camera transform go through one inlined body, which keeps `init_camera` at 924,665 bytes (the
+  projection gate's largest is 788,534). Gate `codebrix_cycles_camera_gate --stereo` (24 cases: perspective and
+  panoramic, left and right eyes, pole merge, depth of field, an orthographic camera that ignores the eye; 22,972
+  paths, 65 retries): every ray component bit-identical to the pinned CPU camera kernel (0 differing bits); the stereo
+  rejection case now checks non-finite stereo parameters. Bit 249 `CAMERA_PANORAMA_INVERSE`: `direction_to_panorama`
+  for every panorama type (one arctangent loop, one arccosine, the lens polynomial's Newton iteration) for
+  `camera_world_to_ndc` (the Window output) and `camera_motion_vector` and its direction form (the motion pass, the
+  denoising motion features, the background; for a panoramic camera the backward and specular motion features share one
+  call site, which keeps `shade_surface_passes` at 755,338 bytes); the orthographic camera's motion pass is the
+  perspective camera's arithmetic. Scenes `cameras/stereo-*` (4), `cameras/window-*` (7), `passes/motion-*` (8) and
+  `passes/denoising-motion-{orthographic,equirectangular}`: perfect.
+- [6 of this list] **The Geometry node's Tangent output and motion-triangle smooth-normal derivatives: RESOLVED.** Bit 251
+  `SVM_GEOMETRY_TANGENT` (census: a Geometry record with `NODE_GEOM_T`): `primitive_tangent`, the radial tangent of the
+  generated coordinates through `object_normal_transform`, plain and with derivatives inside bump (as the Tangent node's
+  arithmetic); points keep reporting 16. The value follows the pinned float3 order exactly (`transform_direction_transposed`'s
+  dots, `normalize`, the SSE cross): with the host's generated coordinates (object-space positions here), a box's side
+  faces give t parallel to N, exactly zero on the CPU (normalize's 0/0), and only the exact order reproduces that under a
+  rotated instance. The Tangent node's radial tangent, which uses driver arithmetic and reports a degenerate frame as 16,
+  fails on such a scene (found; not changed). Bit 252 `SVM_MOTION_NORMAL_DERIVATIVE` (a derivative texture coordinate and a
+  motion-triangle object): `motion_triangle_smooth_normal` with the du/dv offsets (the two steps' normals mixed by t, as
+  the shader data computes them). Scenes `surface-nodes/geometry-tangent`, `geometry-tangent-bump`,
+  `light-motion/deforming-smooth-normal-bump`.
 - [70 of this list] **The WebGPU device bakes: RESOLVED.** `DEVICE_KERNEL_INTEGRATOR_INIT_FROM_BAKE` is ported (`native/cycles/bake.cpp`,
   `native/shaders/wavefront_bake.wgsl`, its own `bake` module, so no other module changes): pinned `init_from_bake.h` with the vertex nudge,
   the jitter and its retries (`hash_float2_to_float2`), the convention change, `triangle_point_normal`, smooth normals, the object
@@ -5726,15 +5871,26 @@ the main path's ray cannot reach past its blocker. The WebGPU device renders thi
   a reserved slot (control op 5, so slot numbers do not depend on atomic order; bounce one less, `PATH_RAY_SHADOW_FOR_LIGHT_LINKING`), and restore the path. The MIS pdf
   comes from either sampler: the distribution's selection pdf or the tree's forward pdf. A non-constant emitter's shadow path goes through `SHADE_LIGHT_NEE`.
 - **Specialization**: bit 120 `SHADOW_LINKING`; every edit of shared WGSL is inside a `SHADOW_LINKING` region, so other scenes compile byte-identical modules. Capture entries 51-54 (recorder format v10).
-- **Refused by name**: shadow linking with the shadow catcher, with ambient occlusion (fast GI and the AO pass), and with volumes on the light tree; subsurface scattering with shadow linking
-  stays refused (`subsurface.cpp`). Volumes with shadow linking render on the flat distribution with point, sun and background lights. Spot, area and
-  triangle lights in volume direct light and the volume light passes render without shadow linking; with it they have no gate case and are refused by name (`shadow_linking.cpp`).
+- **Shadow catcher and ambient occlusion**: a path split at a shadow catcher takes the dedicated light kernels with its catcher-pass flag (the shifted visibility of
+  `path_state_ray_visibility`, lamps excluded from catcher rays skipped, the shadow path's flag carried to the catcher passes); fast GI's additive AO and the AO pass trace their
+  AO shadow rays beside the dedicated ones (a ray without a light object is unaffected by blocker sets), and the dedicated ray keeps the bounce's full length at an AO bounce, as the pinned kernel.
+- **Volumes**: shadow linking renders with volumes on the flat distribution and on the light tree, with point, sun, background, spot and area lights and
+  sampled emissive triangles: next-event rays from scatter positions carry the light object, so blocker sets apply, and a phase scatter's dedicated ray
+  picks spot, area and triangle emitters as a surface bounce's does; on the tree its forward pdfs take the ray segment (`previous_dt`, `light_tree_pdf<true>`), as the
+  main path's forward MIS after a phase scatter. With the volume light passes the dedicated shadow path of a phase scatter carries `PATH_RAY_VOLUME_PASS` and the
+  main path's pass weights into `film_write_direct_light`; volume emission's emission and light group passes do not depend on shadow linking.
+- **Subsurface scattering** with shadow linking renders (section "Subsurface scattering").
+- **Refused by name**: path guiding (outside the target) is the only feature
+  `enqueue_dedicated_light` refuses ("WebGPU dedicated light optional integration features not implemented"): the pinned dedicated kernels read no other
+  optional feature.
 
-Gate `codebrix_cycles_shadow_linking_gate` (`native/cycles/shadow_linking_gate.cpp`, `native/tools/shadow_linking_gate.py`), 13 cases, one device per case, against the unmodified pinned kernels on
+Gate `codebrix_cycles_shadow_linking_gate` (`native/cycles/shadow_linking_gate.cpp`, `native/tools/shadow_linking_gate.py`), 23 cases, one device per case, against the unmodified pinned kernels on
 the same tables: real path states from the CPU render through both kernels (successor, picked emitter, hit count, stored and restored self primitives, every integer of the shadow path and the
 shadow traversal's decision exact; MIS weight, throughput and rays practical); next-event rays towards linked emitters through `intersect_shadow` (decision and hit count exact); the image twice, with the
 repeat captured for its replay. Cases: lamps and panels on the flat distribution and on the tree; an HDRI world on each; transparent blockers with a transparent and non-constant emitters; light linking on each;
-motion (a moving blocker, a moving emitter, a deforming emitter); a glass receiver; a scattering box with an HDRI world; shadow caustics on each; one emitter both moving and deforming. Oracle scenes: `shadow-linking/*`.
+motion (a moving blocker, a moving emitter, a deforming emitter); a glass receiver; a scattering box with an HDRI world; shadow caustics on each; one emitter both moving and deforming;
+a shadow catcher floor (the CPU kernel's split state mapped onto the next free path, as the shadow catcher gate); fast GI with additive AO; the AO pass on the tree; a scattering box with spot and area lamps; a scattering box with sampled emissive panels; a scattering box with every light kind on the tree (these three and the next two also judge the
+next-event rays from scatter positions); a scattering box with the volume and light passes; an emissive scattering box with the emission pass and a light group; the scattering box with every light kind rendered with linking, then with its memberships and blocker sets removed on the same scene and device, and then a second scene without linking on the same device (no dedicated kernel queued; the image against the CPU's). Oracle scenes: `shadow-linking/*`.
 
 ## Shadow catcher and its film passes (lane m2-shadowcatcher, 2026-10-23/24)
 
@@ -5751,6 +5907,8 @@ pass of the approximate shadow catcher). The host reads them with the pinned pas
   (`PATH_RAY_SHADOW_CATCHER_PASS`) add to the catcher pass instead of Combined, `PATH_RAY_SHADOW_CATCHER_BACKGROUND`
   paths write only the background pass, transparency goes to the matte alpha, light passes and light groups are skipped
   for catcher paths, and `film_write_data_passes` keeps its `PATH_RAY_SINGLE_PASS_DONE` bookkeeping.
+  A matte path's matte and combined colours are written together under a lock on the matte pass's first word, so the
+  two sums take the same order where the CPU's are equal (item 122).
 - **Path split.** `intersect_closest` makes the split decision (`kernel_shadow_catcher_is_path_split_bounce`), writes
   the sample count and matte alpha, sets `PATH_RAY_SHADOW_CATCHER_HIT` and records the new path's kernel and shader in
   a per-path mark. Two dispatches of the `shadow_catcher` module then take new path indices from
@@ -5764,8 +5922,12 @@ pass of the approximate shadow catcher). The host reads them with the pinned pas
 - **Visibility and lights.** Shadow catcher paths and their shadow rays trace with the visibility shifted by 16 bits
   (opaque mask likewise); lamps with `SHADER_EXCLUDE_SHADOW_CATCHER` and mesh lights of non-catcher objects are not
   sampled by them.
-- **Refused.** A shadow catcher with caustics
-  (MNEE); with volumes it renders (see "Shader-defined volumes"). On the Adreno 650 (S20, not a reference device) a shadow catcher with transparent shadows and direct light is
+- **Caustics.** A shadow catcher that is a caustic receiver splits after its INTERSECT_MNEE routing, the catcher-pass copy
+  goes to INTERSECT_MNEE, the shadow catcher background continues to it, and MNEE's own light samplers skip lamps with
+  `SHADER_EXCLUDE_SHADOW_CATCHER` on catcher-pass paths (pinned `integrator_intersect_next_kernel`,
+  `integrator_split_shadow_catcher`, `light_sample`); the code sits in SHADOW_CATCHER regions nested with MNEE regions
+  (`shadow_catcher_gate` case 23). With volumes the shadow catcher renders (see "Shader-defined volumes").
+- **Refused.** On the Adreno 650 (S20, not a reference device) a shadow catcher with transparent shadows and direct light is
   refused before any pipeline compiles: the transparent shadow stage of such a scene stopped with SVM error 8
   ("invalid/uninitialized SVM stack"); every other case, a transparent pane without direct light included, passes
   there. The cause on that compiler is not determined.
@@ -5958,12 +6120,55 @@ light sampling (the shared lamp sampler divides where the oracle multiplies by `
 it would change untouched films). With these, the solver's outcome and iteration count equal
 the pinned walk path by path on Linux.
 
-Refused before any dispatch (explicit errors, never an image without caustics): spot, area and
-background lamps with shadow caustics and volumes. An anisotropic refractive caster reports the unsupported-handler error
-(error 2). MNEE takes the light tree's or light linking's selection in its own entry (`mnee_select`, between `mnee_receiver` and `mnee_seed`: the walk stays out of the seed for
-compiler pressure; 8 record words, capture entry 55), with the pinned `pdf_selection` re-applied by the light update; a selection that fails or is not linked is no sample. The `mnee` and
+Caustic lights. Spot and background lights with `use_caustics` take MNEE's own samplers in the oracle's order, in regions
+of their own (feature bits 238 `MNEE_SPOT`, 240 `MNEE_BACKGROUND`, set when a light of that type has caustics; a scene
+without one compiles the modules it compiled before): the walk's seed takes `spot_light_sample` (the point light's sampler,
+then the spread cone where it is the smaller one and the spot attenuation) or the background branch of `light_sample`
+(`background_light_sample` through the shared importance-map and portal sampler), and the light update after the walk
+`spot_light_mnee_sample_update`. A background light is enabled only under a direction-dependent world
+(`LightManager::test_enabled_lights`). A light shader whose emission is not constant needs nothing of MNEE's: the MNEE
+shadow path goes to `shade_light_nee`, which evaluates the shader at the light point of the shadow ray, as for any other
+light sample. Area lights with caustics (feature bit 239 `MNEE_AREA`): `area_light_sample` (the spread clamp region, the
+rectangle sampler of the shared emitter code, the disk, the out-of-light check) and `area_light_mnee_sample_update` (zero spread:
+the point moves to keep the direction; otherwise the pdf in the vertex's area measure), and the walk's fixed direction for an
+area light with zero spread. Inlined into `mnee_seed` and `mnee_transfer` they measured 1,379,440 and 1,184,102 bytes, so the
+spot and area samplers and the light update have entries of their own (region `MNEE_LIGHT_STAGES`, spot or area caustics):
+`mnee_light_sample` before `mnee_seed` (the same selection; it writes the sample into the record's light slot, which the seed
+reads; capture entry 65) and `mnee_light_update` after `mnee_solve` (`light_sample_update` at the walk's last vertex, done by
+`mnee_transfer` itself in modules without the region; capture entry 66; entries 63 and 64 are reserved). A scene without spot
+or area caustics compiles the modules it compiled before. Gates: `mnee_gate` and `mnee_render_gate` cases 19 to 22 (a spot
+light with a disk radius, a spherical spot light, a background light beside the point light, a point light with a Light
+Falloff strength) and 26 to 28 (a rectangular area light with the full spread, a disk area light with a narrow spread, a
+rectangular area light with zero spread), oracle scenes `mnee/spot-caustic`, `spot-sphere-caustic`, `background-caustic`,
+`lamp-shader-caustic`, `area-caustic`, `area-disk-spread-caustic` and `area-zero-spread-caustic`.
+
+Beckmann refraction casters (feature bit 241 `MNEE_BECKMANN`, set with caustics in a scene with Beckmann closures). The pinned
+walk treats `CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID` apart (Beckmann glass takes the GGX forms, as pinned): the sampled
+half-vector offset takes `tan2_theta = alpha2 * -logf(1 - u)`, the contribution `bsdf_G<BECKMANN>` and the Fresnel of a refraction
+lobe. Before, the device took GGX's offset, GGX's Smith term and the glass Fresnel formula for such a caster and rendered it
+differently from the CPU without an error. The logf there is correctly rounded (double-float, rounded once); this machine's
+glibc logf is not for about 0.02% of the arguments in (0, 1], so a walk whose offset meets such an argument may take another
+course than the CPU's (none did in the gate). Gate case 23 (case 1's rough slab with Beckmann refraction), oracle scene
+`mnee/beckmann-refraction-caustic`.
+
+Volumes (feature bit 242 `MNEE_VOLUME`, caustics in a scene with `KERNEL_FEATURE_VOLUME`). Two pinned steps had no device
+counterpart: `integrator_intersect_next_kernel_after_volume` sends a caustic receiver reached after `shade_volume` to
+`INTERSECT_MNEE` (unsorted; `volume_after`, `wavefront_volume.wgsl`), and `integrate_direct_light_shadow_init_common` copies the
+main path's volume stack to the MNEE shadow path (`mnee_direct_light`), so the shadow ray from the last manifold vertex is
+attenuated by the receiver's media, as pinned. The walk's own rays pass volume boundaries as any non-caster. Image gate case 24 (the
+sphere and the floor under it inside an absorbing box) and its replay, oracle scene `mnee/volume-caustic`. With a shadow catcher too,
+the catcher-pass copy goes to `INTERSECT_MNEE` after its volume stack (`integrator_intersect_next_kernel_after_shadow_catcher_volume`;
+`wavefront_volume_stack.wgsl`). The state gate takes
+case 24 too, since the device keeps the data-pass bookkeeping of volume scenes (open item 125).
+
+No caustic light type is refused. An
+anisotropic refractive caster cannot occur: every refractive and glass closure setup of the pinned kernel sets
+`alpha_y = alpha_x` (`bsdf_microfacet_ggx_refraction_setup`, `_ggx_glass_setup`, `_beckmann_refraction_setup`,
+`_beckmann_glass_setup`), so `mnee_sample_bsdf_dh`'s anisotropic branch is never taken and the device's unsupported-handler
+error 2 for it is unreachable. MNEE takes the light tree's or light linking's selection in its own entry (`mnee_select`, between `mnee_receiver` and `mnee_seed`: the walk stays out of the seed for
+compiler pressure; 8 record words, capture entry 57), with the pinned `pdf_selection` re-applied by the light update; a selection that fails or is not linked is no sample. The `mnee` and
 `mnee_render` gates carry nine more cases: cases 0, 1, 2, 4, fast GI and receiver motion on the tree, case 4 with light linking on each sampler. With shadow linking the probe and shadow rays follow the
-light's membership (`shadow_linking_gate` cases 10 and 11). A moving caster stays refused.
+light's membership (`shadow_linking_gate` cases 10 and 11). A moving caster renders (item 33).
 
 On the Adreno 650 (Samsung Galaxy S20, not a reference device) every scene with
 `integrator.use_caustics` is refused before any pipeline compiles: "WebGPU: caustics (manifold
@@ -6213,14 +6418,11 @@ CPU kernels with the practical criterion `5e-5 + 2e-4 |ref|`:
   and moving objects share one transform body per call there (pipeline size guard). A deforming caster keeps its
   centre-frame corners, as the pinned `mnee_setup_manifold_vertex` does (its `type & PRIMITIVE_TRIANGLE` test is true
   for motion triangles), so walks through deforming casters mostly fail on the CPU as on the device. Moving caustic
-  casters (object motion) stay refused ("WebGPU MNEE with a moving caustic caster (object motion blur) not
-  implemented"): with a moving caster, 34 of about 5,800 walks of the state gate's fixture still end with another
-  outcome or iteration count than the CPU's (a last-bit difference the walk amplifies; INFER: one of
-  glibc's sinf/cosf results, which are not correctly rounded for about 0.65% / 0.015% of arguments in [1e-4, 0.5], or the
-  moving instance's traversal). Gates: `mnee_gate.py` (state gate cases 5 fast GI, 6 a moving receiver, 7 deforming
-  receivers, 8 a deforming caster, and the moving-caster refusal; image gate cases 5-8), AO render gate case 26 (fast GI,
-  the AO pass and caustics), oracle scenes `mnee/glass-sphere-fast-gi`, `glass-sphere-object-motion` and
-  `glass-sphere-deforming` (perfect).
+  casters (object motion) render: once the motion transforms reproduced glibc's sinf/cosf (item 15), every walk of the
+  moving-caster case equals the CPU's (item 33, resolved). Gates: `mnee_gate.py` (state gate cases 5 fast GI, 6 a moving
+  receiver, 7 deforming receivers, 8 a deforming caster, 18 a moving caster; image gate cases 5-8 and 18), AO render gate case 26 (fast GI,
+  the AO pass and caustics), oracle scenes `mnee/glass-sphere-fast-gi`, `glass-sphere-object-motion`,
+  `glass-sphere-deforming` (perfect) and `glass-sphere-moving-caster`.
 - **Displacement without subdivision.** The host's `GeometryManager::displace` (pinned, unchanged) evaluates the
   displacement programs through `DEVICE_KERNEL_SHADER_EVAL_DISPLACE` before the BVH build: `shader_eval_displace` in
   the surface module sets the shading point up as `shader_setup_from_displace` does (object space unless the transform
@@ -6232,8 +6434,10 @@ CPU kernels with the practical criterion `5e-5 + 2e-4 |ref|`:
   `enter_bump_eval` moves the shading point to `ATTR_STD_POSITION_UNDISPLACED` (value and differentials through the
   object transform; the full differential saved for `set_bump`) and sets the undisplaced normal (the smooth
   `ATTR_STD_NORMAL_UNDISPLACED`, or the face normal of the undisplaced corners). The displacement programs are censused on
-  their own; nodes there whose pinned handlers need a path or the BVH (light path, AO, bevel, raycast, wireframe,
-  Principled) are refused, and `shader_eval_displace` is compiled without the scene's other SVM handlers (closures,
+  their own and run under `KERNEL_FEATURE_NODE_MASK_DISPLACEMENT` without path state: the Light Path node reads its
+  ray types, ray length and depths as zero (`svm_displace_program`), Ambient Occlusion is 1, Bevel returns N, Raycast
+  misses, and Wireframe works from the triangle (the handlers outside `prepare_surface_raytrace` do so). A closure cannot feed the displacement output, so the remaining
+  Principled refusal is not reached. `shader_eval_displace` is compiled without the scene's other SVM handlers (closures,
   bump), which keeps it inside the pipeline size guard. Gates: `codebrix_cycles_displacement_gate` (7 cases: height in
   object space under a rotated, scaled object and in world space on a flat grid; vector displacement in object, world and
   tangent space, with and without a UV map; method Both; 24,192 offset components at the corners and centres of every
@@ -6379,8 +6583,11 @@ Metal device can denoise on the GPU), under the build conditions of `docs/RELEAS
   two renders takes effect and the noisy version is an explicit request (Blender's "Noisy Image"). Without
   denoising, a noisy request would be a second named pass of the same type and mode, which gets a buffer the kernel
   never writes; for that render the host parks it (type none) and reads its twin. Light group passes with denoising
-  are refused: their denoised-mode buffers are never written (and corrupted the host's capture), and noisy mode
-  makes `finalize_passes` merge the main noisy combined pass into the light group.
+  stay noisy (no denoiser writes them; in denoised mode their buffers are never written): `finalize_passes` merges an
+  unnamed pass into the first earlier pass of its type and mode, light group or not, so the main noisy combined pass
+  that `Film::update_passes` adds unnamed after the scene's passes would merge into a light group. The host puts a named
+  noisy combined pass without a light group before the first light group pass: the caller's own noisy request (moved
+  there), or one it adds for that render only (`CodeBrix Noisy Combined`, never listed). Every backend.
 - **Determinism:** the same input denoised twice gives the same bits (CPU renders, repeated). A WGSL film that varies
   run to run (film atomics, at the 1e-7 level) varies more after denoising (a neural filter; 1e-5 level in the first
   scenes measured on Linux x64). The judging criterion for denoised films is not defined yet.
@@ -6430,7 +6637,8 @@ one inlined body (the three panorama directions of a sample in one loop, the len
 `rand_time_lens` sample as `integrate_camera_sample`): a first form inlined `init_camera` to 3.5 MB and the Intel driver
 died compiling it; now at most 799,438 bytes / 41,574 instructions. Samples a panorama maps outside its image (fisheye
 circle, mirror ball) start no path, as the pinned camera. The depth and denoising depth passes take the panoramic
-`camera_z_depth` (distance to the camera). Refused: stereo, custom (OSL) cameras; open item 39.
+`camera_z_depth` (distance to the camera). Stereo renders (bit 248; Resolved, item 39 of "Open device items"); custom
+(OSL) cameras are refused.
 Gate: `codebrix_cycles_camera_gate --projections` (24 cases over 13 projections and four sampling patterns, 22,751
 paths, 65 retries): every ray component (origin, direction, differentials, tmin, tmax, time) bit-identical to the
 pinned CPU camera kernel; 12 rejection cases (custom camera, stereo, unknown pattern added). Oracle scenes
@@ -6491,6 +6699,8 @@ when every pixel converges and with the Sobol-Burley and blue-noise patterns.
 | 216 | `SUBSURFACE_DISK` | The Christensen-Burley method: `subsurface_bounce`'s disk branch, the walk entry passing disk paths over |
 | 217 | `SUBSURFACE_DISK_ENTRY` | Module variant (not a scene feature): the `intersect_subsurface_disk` entry (`subsurface_disk`) |
 | 218 | `SVM_BSDF_THIN_SUBSURFACE` | A thin-walled Principled BSDF with subsurface (`bsdf_thin_subsurface_setup`) and the rough translucent closure |
+| 232 | `SUBSURFACE_VOLUME` | Subsurface scattering with volumes: the volume stack update of `subsurface_scatter` (`intersect_subsurface_volume_stack`) and the exit records of the subsurface entries |
+| 233 | `SUBSURFACE_HOLDOUT` | Subsurface scattering with a holdout object: no holdout at the exit point (`connect_surface_light`) |
 | 220 | `VOLUME_SAMPLING_PATTERN` | The volume integrators' random numbers with a sampling pattern other than tabulated Sobol (from KernelData at each call) |
 | 221 | `VOLUME_LIGHT_PATH` | A Light Path node in a volume shader: its ray type outputs, and the extrema estimate of heterogeneous media for rays other than camera rays |
 | 223 | `VOLUME_MOTION` | Volumes in a scene with BVH motion: the stack initialization's motion traversal and the object motion transforms of the volume shader evaluations |
@@ -6756,8 +6966,9 @@ time. `shadow_catcher_gate` case 10 now renders the volume scene (it was the
 refusal); **scenes** `volumes/catcher-*`.
 
 **Not implemented (refused by name):** velocity-advected volumes (see "Motion blur" below; a Light Path node's Backfacing, Ray
-Length and ray depth outputs in a volume shader report error 2), MNEE with volumes, subsurface scattering with volumes, shadow linking with
-volumes (the combinations above), path guiding (permanent).
+Length and ray depth outputs in a volume shader report error 2), path guiding (permanent).
+Shadow linking, MNEE and subsurface scattering render with volumes (see "Shadow linking", "Manifold next-event estimation (caustics)" and
+"Subsurface scattering").
 
 **BSDF nodes, sampling patterns, denoising features and light linking (2026-11-09, Linux).**
 - The volume module's `NODE_CLOSURE_BSDF` is the pinned `svm_node_closure_bsdf_skip` (`svm_volume_source`, svm_layout.cpp):
@@ -7020,7 +7231,10 @@ use of it is behind `T > 0`, and the device holds 0. `make_float2(lcg_step_float
 random numbers in the compiler's argument order: GCC, which builds the Linux CPU oracles (x64 and ARM64), evaluates the second
 argument first, and the device follows it. A CPU kernel built by another compiler draws them the other way round (open item 82).
 
-**Refused by name:** "WebGPU MNEE with the Huang model of the Principled Hair BSDF not implemented". An elliptical
+With caustics (feature bit 243 `MNEE_HUANG`): a path that MNEE sampled takes the direction of its MNEE slot (the receiver's
+direction to the first manifold vertex, as `integrator_state_read_mnee` sets `ls.D`) in `shade_surface_huang_eval`, so the
+closure's stored evaluation is the one `mnee_direct_light` reads (`mnee_gate` case 25: Huang hair curves as caustic receivers).
+An elliptical
 cross-section counts as transparent (`PrincipledHairBsdfNode::has_surface_transparent`): on curves with the shader's
 transparent shadow on, the scene evaluates the curve shadow transparency and traces transparent shadows through curves
 (open item 81).
@@ -7099,13 +7313,64 @@ capacity 1 to 3, a linked Thin Wall input with the random walk and the Christens
 `principled-thin-wall` and `principled-thin-wall-mixed` (`author_subsurface_thin.py`; transmission and a coat, and the
 Christensen-Burley method selected on a thin wall).
 
-**Not implemented (refused by name):** subsurface scattering (any method) with volumes (the volume stack update of
-`subsurface_scatter`), MNEE caustics, the shadow catcher, light or shadow linking, path guiding or denoising features,
-data, denoising, AOV or cryptomatte passes, motion blur and holdout objects. Curves and points are not refused: the
-local traversals pass curve and point leaves over (`bvh/local.h` has no curve or point case), so a walk or disk probe
-from a curve or point finds no hit in its own object and ends the path, and exit and probe rays elsewhere ignore them,
-as in the pinned kernels (scenes `curves-b/subsurface-beside`, `curves-b/subsurface-on-curves`,
-`points/beside-subsurface`, `points/subsurface-on-points`, `subsurface/burley-beside-points`).
+**Combinations** (`native/cycles/subsurface.cpp` `validate_subsurface`; scenes `author_subsurface_combinations.py`, each
+with a random walk and a Christensen-Burley sphere). Film passes: at the exit point `integrate_surface` writes no data
+pass and no denoising feature, so `ss_exit` marks the stage record (`SS_SR_EXIT_POINT`, bit 31 of the record's runtime
+flags, in modules with `FILM_PASSES_ANY`) and `shade_surface_passes` passes such records over; a bump-mapped exit point
+evaluates the shader and its AOV outputs test `PATH_RAY_SINGLE_PASS_DONE` as `svm_node_aov_check` does. With AOV passes
+as the only data passes, `connect_surface_light` runs the `PATH_RAY_SINGLE_PASS_DONE` bookkeeping of
+`film_write_data_passes` (`aov_single_pass_done`, regions `SVM_NODE_AOV` without `FILM_DATA_PASSES` or `SHADOW_CATCHER`;
+before this the device set no such flag there, so later AOV outputs of the path wrote again), skipped at the exit point.
+Denoising (the denoising features and Open Image Denoise) renders as at any surface.
+
+Light and shadow linking: the exit point selects and links lights as any surface does (its object is the receiver), and
+`subsurface_bounce` schedules no dedicated light (`integrator_shade_surface` skips shadow linking for
+`LABEL_SUBSURFACE_SCATTER`; `ss_bounce` queues the subsurface intersection only); the bounce after the exit point does.
+
+Holdout objects: a camera path that hits a holdout object ends there or continues only through its transparent closures
+(`surface_shader_apply_holdout` keeps no BSSRDF), and other paths have no holdout, so a render reaches no exit point on
+a holdout; as `integrate_surface`, `connect_surface_light` applies no holdout at an exit point (bit 233
+`SUBSURFACE_HOLDOUT`, a scene feature: subsurface with a holdout object; other modules keep their text). The shadow
+catcher: the exit point leaves `PATH_RAY_SINGLE_PASS_DONE` as it is (the catcher's `sc_data_passes` is skipped there),
+and the catcher split happens in the closest intersection only, as in the pinned kernels.
+
+**Exit point gate:** `codebrix_cycles_subsurface_exit_gate` takes the exit points the pinned
+`integrator_intersect_subsurface` queues (both methods) through one `integrator_shade_surface` step on both sides and
+compares every path and shadow path field, the film and the queue counters: data, AOV, cryptomatte and denoising feature
+passes on a bump-mapped BSSRDF, AOV passes alone, light linking, shadow linking, a holdout object, the shadow catcher
+and a holdout closure mixed with a bump-mapped BSSRDF, each case on its own device (`--one-device` runs every case on
+one device). `codebrix_cycles_subsurface_gate` adds both methods on a caustics receiver (exits queued for
+`INTERSECT_MNEE`).
+
+Motion blur: the walk and the disk probe traverse the object at the ray's time (`raytrace_traverse`: moving objects with
+their motion transform, motion triangles at the time), and a disk hit normal of a moving object takes its motion
+transform at the time (`object_fetch_transform_motion_test`). For compiler pressure the motion transform and its inverse
+come from their own entry, `intersect_subsurface_motion` (recorder entry 64, dispatched before both entries when the
+scene has object motion; with `motion_object` and `motion_inverse` inlined into its traversal `intersect_subsurface`
+reached 984,020 B), which leaves them in the input's motion record (push word 13; word 31 is the samplers' opaque zero);
+the two entries traverse with them as the shading object's transforms. `codebrix_cycles_subsurface_gate` adds both
+methods on a moving object (five transforms) and on a deforming one (five steps) at ray times 0.35 to 0.65.
+
+Volumes (bit 232 `SUBSURFACE_VOLUME`, a scene feature: `KERNEL_FEATURE_VOLUME` with subsurface; entry
+`intersect_subsurface_volume_stack` of the volume stack module, recorder entry 63):
+`integrator_volume_stack_update_for_subsurface`. The walk and disk entries leave each exit's entry point, exit point and
+entry primitive in the input's traversal stack slot, and the new entry, dispatched after both when `use_volumes` is set,
+traces the segment between them through the volume objects (`volume_all` with the segment's length and the entry
+primitive as self, the hits by distance) and enters or leaves the path's volume stack at every boundary of another
+object (`volume_stack_enter_exit`), for an exit object with `SD_OBJECT_INTERSECTS_VOLUME`.
+`codebrix_cycles_subsurface_gate` adds both methods with a volume box across the sphere (every volume stack slot
+compared).
+
+MNEE caustics: with `use_caustics`, an exit point on a caustics receiver (`SD_OBJECT_CAUSTICS_RECEIVER`) goes to
+`DEVICE_KERNEL_INTEGRATOR_INTERSECT_MNEE` unsorted (`integrator_path_next`) instead of the sorted surface queue, as
+`subsurface_scatter` does; the MNEE entries then treat it as any receiver, for every light type the MNEE port renders.
+
+**Not implemented (refused by name):** subsurface scattering with path guiding ("WebGPU subsurface scattering with path
+guiding not implemented"), which is outside the target. Curves and points are not refused: the local traversals pass
+curve and point leaves over (`bvh/local.h` has no curve or point case), so a walk or disk probe from a curve or point
+finds no hit in its own object and ends the path, and exit and probe rays elsewhere ignore them, as in the pinned
+kernels (scenes `curves-b/subsurface-beside`, `curves-b/subsurface-on-curves`, `points/beside-subsurface`,
+`points/subsurface-on-points`, `subsurface/burley-beside-points`).
 
 ## Hair closures (Hair BSDF, Principled Hair Chiang)
 

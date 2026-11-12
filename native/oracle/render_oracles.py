@@ -153,6 +153,26 @@ def render(args,scene,name,target,cache,extra_meta):
  return meta
 
 
+def oracle_reference(scene):
+ """The document a gold-standard backend renders for a scene: the scene itself, or the scene its "oracleReference"
+ names ({"scene": id, "withoutHandles": [...], "reason": ...}) when the pinned gold standard's result for the scene is
+ undefined. The reference must be the same document without exactly the listed node entries (and without
+ oracleReference; id and description may differ). Returns (path, oracleReferenceFor or None); ValueError otherwise."""
+ document=json.loads(scene.read_text());named=document.get('oracleReference')
+ if not named:return scene,None
+ path=HERE/'scenes'/(named['scene']+'.json')
+ if not path.is_file():raise ValueError(f"oracle reference {named['scene']} is not a committed scene")
+ reference=json.loads(path.read_text());drop=set(named.get('withoutHandles',[]))
+ if reference.get('oracleReference'):raise ValueError(f"oracle reference {named['scene']} names a reference itself")
+ expected={k:v for k,v in document.items() if k not in ('id','description','oracleReference')}
+ expected['nodes']=[n for n in document['nodes'] if n.get('handle') not in drop]
+ if len(expected['nodes'])!=len(document['nodes'])-len(drop):raise ValueError(f"oracleReference withoutHandles names handles {document['id']} does not have")
+ if {k:v for k,v in reference.items() if k not in ('id','description')}!=expected:
+  raise ValueError(f"oracle reference {named['scene']} is not {document['id']} without {sorted(drop)}")
+ return path,dict(sceneId=document['id'],sceneSha256=sha(scene),sceneFile=str(scene.relative_to(REPO)),referenceScene=named['scene'],
+  withoutHandles=sorted(drop),reason=named['reason'])
+
+
 def run(args):
  root=args.output.resolve()
  if root.exists() and any(root.iterdir()):raise SystemExit(f'{root} is not empty; use a new run directory')
@@ -176,8 +196,15 @@ def run(args):
   for scene in scenes:
    identifier=json.loads(scene.read_text())['id'];target=oracle/identifier/name;target.parent.mkdir(parents=True,exist_ok=True)
    extra=dict(common,sceneFile=str(scene.relative_to(REPO)))
+   source=scene
+   if name.startswith(('cpu-','metal-')):
+    try:source,named=oracle_reference(scene)
+    except ValueError as error:
+     record.setdefault('failures',{}).setdefault(identifier,{})[name]=str(error)
+     print(f'{identifier:<40} {name:<22} FAILED: {error}',flush=True);continue
+    if named:extra.update(oracleReferenceFor=named,sceneFile=str(source.relative_to(REPO)))
    if name in record['kernelCompileSeconds']:extra['kernelCompileSeconds']=record['kernelCompileSeconds'][name]['firstRenderSeconds']
-   try:meta=render(args,scene,name,target,cache,extra)
+   try:meta=render(args,source,name,target,cache,extra)
    except RuntimeError as error:
     # A backend that rejects a scene is a recorded finding, not a run abort.
     record.setdefault('failures',{}).setdefault(identifier,{})[name]=str(error).splitlines()[-1]

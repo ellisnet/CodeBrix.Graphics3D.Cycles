@@ -453,7 +453,9 @@ fn vl_phase_scatter(index:u32,r:SvmResult,sampled_t:f32,object:u32){
     state_u32(S_path_flag,index,flag);state_u8(S_path_visibility,index,VL_PATH_RAY_VISIBILITY_VOLUME_SCATTER);state_u16(S_path_bounce,index,next_bounce);state_u16(S_path_volume_bounce,index,volume_bounce);
 //#if SHADOW_LINKING else     state_u16(S_path_rng_offset,index,state_half(S_path_rng_offset,index)+RNG_BOUNCE);vl_finish(index,VL_K_INTERSECT_CLOSEST);
     // integrator_shade_volume: a phase scatter looks for its dedicated lights first.
-    state_u16(S_path_rng_offset,index,state_half(S_path_rng_offset,index)+RNG_BOUNCE);vl_finish(index,DL_K_INTERSECT);
+    // shadow_linking_scene_need_shadow_ray: only while the scene has KERNEL_FEATURE_SHADOW_LINKING.
+    state_u16(S_path_rng_offset,index,state_half(S_path_rng_offset,index)+RNG_BOUNCE);
+    vl_finish(index,select(VL_K_INTERSECT_CLOSEST,DL_K_INTERSECT,(data_word(D_kernel_features)&DL_FEATURE_SHADOW_LINKING)!=0u));
 //#endif
 }
 // DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME, part 3: the direct light at the scatter position shade_volume chose,

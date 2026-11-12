@@ -177,10 +177,65 @@ fn cp_panorama(u_in:f32,v_in:f32)->vec3<f32>{
 fn cp_panorama_direction(x:f32,y:f32)->vec3<f32>{
     let c=camera_projection(p(6u)+D_cam_rastertocamera,vec4<f32>(x,y,0.0,1.0));return cp_panorama(c.x,c.y);
 }
+//#if CAMERA_STEREO
+// SPDX-FileCopyrightText: 2011-2022 Blender Foundation (kernel/camera/projection.h; BSD-3-Clause)
+// spherical_stereo_transform: the eye offset along normalize(cross(D, up)), up = (0, 0, 1), faded by the pole merge
+// (cosf(fac * pi/2) between the two altitudes, safe_asinf of D.z), and the direction towards the convergence point unless
+// the convergence distance is FLT_MAX. With the camera transform of camera_sample_perspective (kind 1: transform_point and
+// normalize(transform_direction) before the stereo transform, in world space) or camera_sample_to_ray (kind 2: after it,
+// from camera space). Every normalization and the transform go through one inlined body (steps 0 to 3).
+fn cp_stereo(P_in:vec3<f32>,D_in:vec3<f32>,kind:u32,world:NativeTransform)->array<vec3<f32>,2>{
+    var P=P_in;var D=D_in;var offset=0.0;var stereo_offset=vec3<f32>(0);
+    let convergence=data_float(CS_D_convergence_distance);let steps=rounded_steps(4u);
+    for(var k=0u;k<steps;k++){
+        let transform=k==0u||k==3u;
+        if(transform&&(k==0u)!=(kind==1u)){continue;}
+        if(k==2u&&bitcast<u32>(convergence)==0x7f7fffffu){continue;}
+        var v=vec3<f32>(0);
+        if(transform){P=cp_point(world,P);v=camera_direction(world,D);}
+        if(k==1u){
+            offset=data_float(CS_D_interocular_offset);let merge_to=data_float(CS_D_pole_merge_angle_to);
+            if(merge_to>0.0){
+                let merge_from=data_float(CS_D_pole_merge_angle_from);let altitude=abs(cp_asin(D.z));
+                if(altitude>merge_to){offset=0.0;}
+                else if(altitude>merge_from){
+                    // cosf(fac * M_PI_2_F), fac in [0, 1]: the scalar polynomial (native_disk_sincos) covers [0, pi/2].
+                    let fac=rounded_divide(rounded_add(altitude,-merge_from),rounded_add(merge_to,-merge_from));
+                    offset=offset*native_disk_sincos(fac*1.5707963705062866).y;
+                }
+            }
+            v=rounded_cross(D,vec3<f32>(0,0,1));
+        }
+        if(k==2u){v=rounded_add3(convergence*D,-stereo_offset);}
+        let n=camera_normalize(v);
+        if(k==1u){stereo_offset=n*offset;P=rounded_add3(P,stereo_offset);}else{D=n;}
+    }
+    return array<vec3<f32>,2>(P,D);
+}
+// camera_projection with its row dots and quotients through one inlined body each (the same arithmetic).
+fn cp_projection(address:u32,v:vec4<f32>)->vec3<f32>{
+    let w=motion_dot4(heap_vec4(address+48u),v);if(w==0.0){return vec3<f32>(0);}
+    let native=CAMERA_NATIVE_VECTOR_DIVIDE!=0u;var out=vec3<f32>(0);let n=rounded_steps(3u);
+    for(var k=0u;k<n;k++){let c=motion_dot4(heap_vec4(address+16u*k),v);let q=rounded_divide(select(1.0,c,native),w);out[k]=select(c*q,q,native);}
+    return out;
+}
+// The four (P, D) pairs of a camera sample (the ray, then the centre, x and y differential rays) in one loop.
+fn cp_stereo4(P:array<vec3<f32>,4>,D:array<vec3<f32>,4>,kind:u32,world:NativeTransform)->array<vec3<f32>,8>{
+    var out:array<vec3<f32>,8>;let steps=rounded_steps(4u);
+    for(var k=0u;k<steps;k++){let r=cp_stereo(P[k],D[k],kind,world);out[2u*k]=r[0];out[2u*k+1u]=r[1];}
+    return out;
+}
+//#endif
 // camera_sample for every type but the pinhole perspective camera (the existing code in init_camera):
 // pc is the perspective camera-space position (with perspective motion), world the camera transform.
 fn camera_projected_ray(lens_rand:vec2<f32>,raster:vec2<f32>,pc:vec3<f32>,world:NativeTransform)->CameraRay{
     var out:CameraRay;out.valid=true;
+//#if CAMERA_STEREO
+    // Spherical stereo: the four (P, D) pairs of the sample go through one cp_stereo4 call after the branches (one
+    // inlined copy): kind 1 the perspective camera, kind 2 a panoramic one.
+    var stereo_kind=0u;var stereo_P:array<vec3<f32>,4>;var stereo_D:array<vec3<f32>,4>;
+    let stereo=data_float(CS_D_interocular_offset)!=0.0;
+//#endif
     let kind=data_word(CP_D_type);let aperture=data_float(CP_D_aperturesize);let scale=data_float(D_cam_differential_scale);
     var lens=vec2<f32>(0);if(aperture>0.0){lens=cp_aperture(lens_rand)*aperture;}
     if(kind==CP_CAMERA_ORTHOGRAPHIC){
@@ -200,13 +255,29 @@ fn camera_projected_ray(lens_rand:vec2<f32>,raster:vec2<f32>,pc:vec3<f32>,world:
             P=vec3<f32>(lens,0.0);D=camera_normalize(rounded_add3(D*ft,-P));
         }
         out.P=cp_point(world,P);out.D=camera_normalize(camera_direction(world,D));
+//#if CAMERA_STEREO
+        // camera_sample_perspective with stereo: the eye offset in world space, and the differentials from scratch: the
+        // centre and the raster points one pixel along x and y (rastertocamera, no perspective motion), each from the
+        // camera position.
+        if(stereo){
+            let rt=p(6u)+D_cam_rastertocamera;let n=rounded_steps(2u);
+            stereo_kind=1u;stereo_P=array<vec3<f32>,4>(P,vec3<f32>(0),vec3<f32>(0),vec3<f32>(0));stereo_D[0]=D;stereo_D[1]=pc;
+            for(var k=0u;k<n;k++){stereo_D[k+2u]=cp_projection(rt,vec4<f32>(select(raster.x,rounded_add(raster.x,1.0),k==0u),select(rounded_add(raster.y,1.0),raster.y,k==0u),0.0,1.0));}
+        }else{
+//#endif
         let center=camera_direction(world,pc);let direction=camera_normalize(center);
         let dx=camera_normalize(center+heap_vec3(p(6u)+D_cam_dx))-direction;
         let dy=camera_normalize(center+heap_vec3(p(6u)+D_cam_dy))-direction;
         out.dD=(0.5*(camera_length(dx)+camera_length(dy)))*scale;
         let zi=rounded_divide(1.0,camera_normalize(pc).z);let near=data_float(D_cam_nearclip)*zi;
         out.P=rounded_add3(out.P,near*out.D);out.dP=near*out.dD;out.tmax=data_float(D_cam_cliplength)*zi;return out;
+//#if CAMERA_STEREO
+        }
+//#endif
     }
+//#if CAMERA_STEREO
+    if(stereo_kind==0u){
+//#endif
     // CAMERA_PANORAMA: camera_sample_panorama, then camera_sample_to_ray.
     // The direction at the raster point and one pixel along x and y, through one inlined body.
     var center=vec3<f32>(0);var Dx=vec3<f32>(0);var Dy=vec3<f32>(0);let points=rounded_steps(3u);
@@ -222,6 +293,12 @@ fn camera_projected_ray(lens_rand:vec2<f32>,raster:vec2<f32>,pc:vec3<f32>,world:
         let V=camera_normalize(rounded_cross(focus,U));
         P=rounded_add3(U*lens.x,V*lens.y);D=camera_normalize(rounded_add3(Pfocus,-P));
     }
+//#if CAMERA_STEREO
+    // camera_sample_to_ray with stereo: the eye offset in camera space, before the camera transform, for the ray and
+    // for the centre, x and y differential rays (origins at the camera).
+    if(stereo){stereo_kind=2u;stereo_P=array<vec3<f32>,4>(P,vec3<f32>(0),vec3<f32>(0),vec3<f32>(0));stereo_D=array<vec3<f32>,4>(D,center,Dx,Dy);}
+    else{
+//#endif
     out.P=cp_point(world,P);out.D=camera_normalize(camera_direction(world,D));
     let c=camera_normalize(camera_direction(world,center));
     let ddx=rounded_add3(camera_normalize(camera_direction(world,Dx)),-c);let ddy=rounded_add3(camera_normalize(camera_direction(world,Dy)),-c);
@@ -229,6 +306,30 @@ fn camera_projected_ray(lens_rand:vec2<f32>,raster:vec2<f32>,pc:vec3<f32>,world:
     let near=data_float(D_cam_nearclip);
     out.P=rounded_add3(out.P,near*out.D);out.dP=near*out.dD;out.tmax=data_float(D_cam_cliplength);
     return out;
+//#if CAMERA_STEREO
+    }}
+    // The four pairs in world space, then dP and dD from the centre and the x and y rays.
+    let s=cp_stereo4(stereo_P,stereo_D,stereo_kind,world);
+    var Ps:array<vec3<f32>,4>;var Ds:array<vec3<f32>,4>;
+    for(var k=0u;k<4u;k++){Ps[k]=s[2u*k];Ds[k]=s[2u*k+1u];}
+    // len(D2 - D1), len(D3 - D1), len(P2 - P1), len(P3 - P1) and len(Pcamera) through one inlined body.
+    var lengths=array<f32,5>();let count=rounded_steps(5u);
+    for(var k=0u;k<count;k++){
+        let a=select(Ds[1u+(k&1u)*2u],Ps[2u+(k&1u)],k>=2u);let b=select(Ds[1u],Ps[1u],k>=2u);
+        lengths[k]=camera_length(select(rounded_add3(select(Ds[2u],a,k!=0u),-b),pc,k==4u));
+    }
+    out.P=Ps[0];out.D=Ds[0];
+    out.dD=(0.5*(lengths[0]+lengths[1]))*scale;let dP=(0.5*(lengths[2]+lengths[3]))*scale;
+    // The perspective camera's z_inv = 1 / normalize(Pcamera).z: normalize's z component (SSE: z / len; scalar: z * (1 / len)).
+    var zi=1.0;
+    if(stereo_kind==1u){
+        let native=CAMERA_NATIVE_VECTOR_DIVIDE!=0u;var z=pc.z;let l=lengths[4];let steps=rounded_steps(2u);
+        for(var k=0u;k<steps;k++){let q=rounded_divide(select(select(1.0,z,native),1.0,k==1u),select(l,z,k==1u));if(k==0u){z=select(pc.z*q,q,native);}else{zi=q;}}
+    }
+    let near=data_float(D_cam_nearclip)*zi;
+    out.P=rounded_add3(out.P,near*out.D);out.dP=rounded_add(dP,near*out.dD);out.tmax=data_float(D_cam_cliplength)*zi;
+    return out;
+//#endif
 }
 //#endif
 @compute @workgroup_size(64) fn init_camera(@builtin(global_invocation_id) id:vec3<u32>){

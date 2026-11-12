@@ -9,6 +9,9 @@ shadow-linking/hdri-world: the flat CDF with a procedural world and its backgrou
 shadow-linking/volume: a scattering box: a phase scatter also traces the dedicated light ray; shadow rays attenuate through the medium.
 shadow-linking/caustics and mnee/light-tree-caustic, mnee/light-linking-caustic: mnee/glass-sphere-caustic with shadow linking on the tree,
 on the light tree alone, and with light linking on the flat CDF.
+The combinations (COMBINATIONS and VOLUME_COMBINATIONS, the block before main): shadow-linking/shadow-catcher, shadow-linking/fast-gi, shadow-linking/ao-pass,
+shadow-linking/volume-spot-area, shadow-linking/volume-triangles, shadow-linking/volume-light-tree,
+shadow-linking/volume-light-passes, shadow-linking/volume-emission-passes.
 """
 import json
 from pathlib import Path
@@ -73,8 +76,47 @@ def caustic(identifier,description,tree,light_linking,shadow_linking):
   blocker=mesh('blocker',[-1.6,1.3,-1.2, 1.6,1.3,-1.2, 1.6,1.3,1.6, -1.6,1.3,1.6],[0,1,2, 0,2,3],'diffuse')
   nodes[at:at]=blocker;node('blocker-object')['set']['blocker_shadow_set']=1;node('light-object')['set']['shadow_set_membership']=0b001
  return data
+# Shadow linking combined with the shadow catcher, ambient occlusion and volumes (one scene per combination of the pinned kernel).
+# shadow-linking/shadow-catcher: blockers' scene with a shadow catcher floor, a transparent film, the point lamp itself a catcher, the three catcher passes.
+# shadow-linking/fast-gi: fast GI with one AO bounce and additive AO. shadow-linking/ao-pass: the AO pass on the light tree.
+def combination(identifier,description,tree=False,catcher=False,fast_gi=False,ao_pass=False):
+ data=base(identifier,description,tree,False,False);nodes=data['nodes']
+ def node(handle):return next(n for n in nodes if n['handle']==handle)
+ if catcher:
+  node('floor-object')['set']['is_shadow_catcher']=True;node('point-object')['set']['is_shadow_catcher']=True;node('bg')['set']['transparent']=True
+  nodes+=[dict(handle='pass-'+kind,create='pass',set=dict(type=kind,name=name)) for kind,name in
+          (('shadow_catcher','Shadow Catcher'),('shadow_catcher_matte','Shadow Catcher Matte'),('shadow_catcher_sample_count','Shadow Catcher Sample Count'))]
+ if fast_gi:node('integrator')['set'].update(ao_bounces=1,ao_factor=0.5,ao_distance=1.2,ao_additive_factor=0.7)
+ if ao_pass:
+  node('integrator')['set'].update(ao_distance=1.2);nodes.append(dict(handle='pass-ao',create='pass',set=dict(type='ao',name='AO')))
+ return data
+# shadow-linking/volume-*: the scattering box of shadow-linking/volume (no world) with spot and area lamps (shapes) and sampled emissive panels (triangles),
+# on the flat CDF or the tree; with the volume and light passes; with an emissive medium, the emission pass and a light group.
+def volume_combination(identifier,description,tree=False,shapes=False,triangles=False,passes=False,emission=False):
+ data=base(identifier,description,tree,False,False,True);nodes=data['nodes']
+ def node(handle):return next(n for n in nodes if n['handle']==handle)
+ if shapes:
+  at=nodes.index(node('sun'))-1
+  nodes[at:at]=light('spot','spotlight',dict(radius=0.4,is_sphere=True,angle=1.2,smooth=0.3),DOWN(0.3,2.7,0.6),[90,90,100])+light('area','arealight',dict(sizeu=1.4,sizev=1.0,ellipse=False,spread=1.3,is_portal=False),DOWN(2.2,2.3,1.0),[50,60,80])
+  node('spot-object')['set']['shadow_set_membership']=SET_0;node('area-object')['set']['shadow_set_membership']=SET_0_1
+ if triangles:node('panel-emission')['set']['emission_sampling_method']='front_back'
+ if passes:nodes+=[dict(handle='pass-'+kind,create='pass',set=dict(type=kind,name=kind)) for kind in ('volume_direct','volume_indirect','diffuse_direct','diffuse_indirect','glossy_direct','glossy_indirect')]
+ if emission:
+  graph=node('medium')['graph'];graph['nodes']+=[dict(handle='e',type='emission',set=dict(color=[1.0,0.6,0.3],strength=0.06)),dict(handle='add',type='add_closure')]
+  graph['connect']=[['s','Volume','add','Closure1'],['e','Emission','add','Closure2'],['add','Closure','output','Volume']]
+  node('box-object')['set']['lightgroup']='one';node('point-object')['set']['lightgroup']='one'
+  nodes+=[dict(handle='pass-emission',create='pass',set=dict(type='emission',name='emission')),dict(handle='pass-group',create='pass',set=dict(type='combined',name='Combined_one',lightgroup='one'))]
+ return data
+VOLUME_COMBINATIONS=[('shadow-linking/volume-spot-area','Shadow linking with a scattering box lit by spot and area lamps past blockers: next-event rays from scatter positions and dedicated rays from phase scatters',dict(shapes=True)),
+ ('shadow-linking/volume-triangles','Shadow linking with a scattering box and sampled emissive panels: their next-event and dedicated rays from scatter positions, the flat CDF',dict(triangles=True)),
+ ('shadow-linking/volume-light-tree','Shadow linking with a scattering box on the light tree: lamps, spot, area and sampled emissive panels; the segment pdfs of phase scatters',dict(tree=True,shapes=True,triangles=True)),
+ ('shadow-linking/volume-light-passes','Shadow linking with a scattering box and the volume, diffuse and glossy direct and indirect passes: the dedicated shadow paths of phase scatters in the volume passes',dict(shapes=True,triangles=True,passes=True)),
+ ('shadow-linking/volume-emission-passes','Shadow linking with an emissive scattering box, the emission pass and a light group holding the box and a lamp',dict(shapes=True,triangles=True,emission=True))]
+COMBINATIONS=[('shadow-linking/shadow-catcher','Shadow linking with a shadow catcher floor and a transparent film: split paths take the dedicated light kernels; the three catcher passes',dict(catcher=True)),
+ ('shadow-linking/fast-gi','Shadow linking with fast GI: one AO bounce and additive ambient occlusion beside the dedicated light rays, the flat CDF',dict(fast_gi=True)),
+ ('shadow-linking/ao-pass','Shadow linking with the ambient occlusion pass on the light tree',dict(tree=True,ao_pass=True))]
 def main():
- for data in [base('shadow-linking/blockers','Shadow linking on the flat CDF: lamps, a sun and an emissive panel seen past blockers of sets 1 and 2; a default blocker stops every ray',False,False,False),
+ for data in [combination(identifier,description,**flags) for identifier,description,flags in COMBINATIONS]+[volume_combination(identifier,description,**flags) for identifier,description,flags in VOLUME_COMBINATIONS]+[base('shadow-linking/blockers','Shadow linking on the flat CDF: lamps, a sun and an emissive panel seen past blockers of sets 1 and 2; a default blocker stops every ray',False,False,False),
               base('shadow-linking/light-tree','Shadow linking on the light tree with light linking on the floor and the ball',True,True,False),
               base('shadow-linking/hdri-world','Shadow linking on the flat CDF with a procedural world and its background light, sampled with MIS',False,False,True),
               base('shadow-linking/volume','Shadow linking with a scattering box: phase scatters take the dedicated light kernels, shadow rays attenuate through the medium',False,False,True,True),
